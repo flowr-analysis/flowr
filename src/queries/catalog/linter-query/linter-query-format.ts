@@ -1,13 +1,13 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { bold } from '../../../util/text/ansi';
-import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeLinterQuery } from './linter-query-executor';
 import type { LintingRuleNames, LintingRuleResult } from '../../../linter/linter-rules';
 import { LintingRules } from '../../../linter/linter-rules';
-import type { ConfiguredLintingRule } from '../../../linter/linter-format';
+import type { ConfiguredLintingRule, LintingResults } from '../../../linter/linter-format';
 import { LintingCertainty } from '../../../linter/linter-format';
+import { bold } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:   'linter';
@@ -18,7 +18,7 @@ export interface LinterQuery extends BaseQueryFormat {
 }
 
 export interface LinterQueryResult extends BaseQueryResult {
-	readonly results: { [L in LintingRuleNames]?: LintingRuleResult<L>[] }
+	readonly results: { [L in LintingRuleNames]?: LintingResults<L>}
 }
 
 export const LinterQueryDefinition = {
@@ -30,14 +30,15 @@ export const LinterQueryDefinition = {
 			const rule = LintingRules[ruleName as LintingRuleNames];
 			result.push(`   ╰ ${ruleName}:`);
 			for(const certainty of [LintingCertainty.Definitely, LintingCertainty.Maybe]) {
-				const certaintyResults = results.filter(r => r.certainty === certainty);
+				const certaintyResults = results.results.filter(r => r.certainty === certainty);
 				if(certaintyResults.length) {
 					result.push(`       ╰ ${certainty}:`);
 					for(const res of certaintyResults) {
-						result.push(`           ╰ ${rule.prettyPrint(res)}`);
+						result.push(`           ╰ ${rule.prettyPrint(res as LintingRuleResult<LintingRuleNames>)}`);
 					}
 				}
 			}
+			result.push(`       ╰ Metadata: ${JSON.stringify(results['.meta'])}`);
 		}
 		return true;
 	},

@@ -60,5 +60,11 @@ describe.sequential('flowR search', withShell(shell => {
 				Q.all().get(Enrichment.CallTargets),
 			);
 		});
+		describe('last call', () => {
+			assertSearch('plot mapper', shell, 'plot(x)\nplot(x)\npoints(y)', ['2@plot'],
+				Q.var('points').with(Enrichment.LastCall, [{ callName: 'plot' }]).map(Mapper.Enrichment, Enrichment.LastCall),
+				Q.var('points').get(Enrichment.LastCall, [{ callName: 'plot' }]),
+			);
+		});
 	});
 }));

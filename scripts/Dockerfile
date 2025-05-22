@@ -19,7 +19,7 @@ LABEL author="Florian Sihler" git="https://github.com/flowr-analysis/flowr"
 
 WORKDIR /app
 
-RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories; apk add --no-cache --update R
+RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories; apk add --no-cache --update icu-libs R
 
 COPY ./scripts/demo.R LICENSE /app/
 

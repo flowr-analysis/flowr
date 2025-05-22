@@ -166,19 +166,19 @@ describe.sequential('Control Flow Graph', withShell(shell => {
 <${domain}${context}/5> <${domain}when> "TRUE" <${context}> .
 <${domain}${context}/0> <${domain}edges> <${domain}${context}/6> <${context}> .
 <${domain}${context}/6> <${domain}next> <${domain}${context}/7> <${context}> .
-<${domain}${context}/6> <${domain}from> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${domain}${context}/6> <${domain}to> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${domain}${context}/6> <${domain}type> "FD" <${context}> .
+<${domain}${context}/6> <${domain}from> "3-exit" <${context}> .
+<${domain}${context}/6> <${domain}to> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${domain}${context}/6> <${domain}type> "CD" <${context}> .
+<${domain}${context}/6> <${domain}when> "FALSE" <${context}> .
 <${domain}${context}/0> <${domain}edges> <${domain}${context}/7> <${context}> .
 <${domain}${context}/7> <${domain}next> <${domain}${context}/8> <${context}> .
 <${domain}${context}/7> <${domain}from> "3-exit" <${context}> .
 <${domain}${context}/7> <${domain}to> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${domain}${context}/7> <${domain}type> "FD" <${context}> .
 <${domain}${context}/0> <${domain}edges> <${domain}${context}/8> <${context}> .
-<${domain}${context}/8> <${domain}from> "3-exit" <${context}> .
-<${domain}${context}/8> <${domain}to> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${domain}${context}/8> <${domain}type> "CD" <${context}> .
-<${domain}${context}/8> <${domain}when> "FALSE" <${context}> .
+<${domain}${context}/8> <${domain}from> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${domain}${context}/8> <${domain}to> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${domain}${context}/8> <${domain}type> "FD" <${context}> .
 <${domain}${context}/0> <${domain}entryPoints> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${domain}${context}/0> <${domain}exitPoints> "3-exit" <${context}> .
 `);

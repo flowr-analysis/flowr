@@ -128,10 +128,13 @@ function mapDataFrameIndexColRowAssignment(
 }
 
 function mapDataFrameColNamesAssignment(
-	operand: RArgument<ParentInformation>,
+	operand: RArgument<AbstractInterpretationInfo & ParentInformation>,
 	expression: RNode<ParentInformation>,
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
+	if(operand.info.dataFrame?.domain?.get(operand.info.id) === undefined) {
+		return;
+	}
 	const argument = info.idMap !== undefined ? toUnnamedArgument(expression, info.idMap) : EmptyArgument;
 	const assignedNames = resolveIdToArgStringVector(argument, info);
 
@@ -143,12 +146,15 @@ function mapDataFrameColNamesAssignment(
 }
 
 function mapDataFrameRowNamesAssignment(): DataFrameOperations[] | undefined {
-	return undefined;
+	return;
 }
 
 function mapDataFrameDimNamesAssignment(
-	operand: RArgument<ParentInformation>
-): DataFrameOperations[] {
+	operand: RArgument<AbstractInterpretationInfo & ParentInformation>
+): DataFrameOperations[] | undefined {
+	if(operand.info.dataFrame?.domain?.get(operand.info.id) === undefined) {
+		return;
+	}
 	return [{
 		operation: 'setColNames',
 		operand:   operand.value?.info.id,
@@ -157,8 +163,11 @@ function mapDataFrameDimNamesAssignment(
 }
 
 function mapDataFrameUnknownAssignment(
-	operand: RArgument<ParentInformation>
-): DataFrameOperations[] {
+	operand: RArgument<AbstractInterpretationInfo & ParentInformation>
+): DataFrameOperations[] | undefined {
+	if(operand.info.dataFrame?.domain?.get(operand.info.id) === undefined) {
+		return;
+	}
 	return [{
 		operation: 'unknownModify',
 		operand:   operand.value?.info.id,

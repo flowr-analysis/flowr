@@ -20,6 +20,7 @@ export interface SingleBenchmarkCliOptions {
 	slice:                     string
 	output?:                   string
 	parser:                    KnownParserName
+	'abstract-interpretation': boolean
 	'enable-pointer-tracking': boolean
 	'max-slices':              number
 	threshold?:                number
@@ -99,6 +100,15 @@ async function benchmark() {
 			console.log(`${prefix} Completed Slicing`);
 			guard(count >= 0, `Number of slices exceeded limit of ${maxSlices} with ${-count} slices, skipping in count`);
 			guard(count > 0, `No possible slices found for ${options.input}, skipping in count`);
+		}
+
+		if(options['abstract-interpretation']) {
+			console.log(`${prefix} Extracting control flow graph for abstract interpretation`);
+			slicer.extractCFG();
+
+			console.log(`${prefix} Performing abstract interpretation for data frames`);
+			slicer.abstractIntepretation();
+			console.log(`${prefix} Completed abstract interpretation`);
 		}
 
 		const { stats } = slicer.finish();

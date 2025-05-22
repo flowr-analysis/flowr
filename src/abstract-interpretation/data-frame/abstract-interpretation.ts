@@ -15,7 +15,7 @@ export function performDataFrameAbsint(cfinfo: ControlFlowInformation, dfg: Data
 	const visited: Map<NodeId, number> = new Map();
 	let finalDomain: DataFrameStateDomain = new Map();
 
-	const visitor = (cfg: ControlFlowGraph, vertex: CfgVertex): CfgVertex[] => {
+	const visitor = (cfg: ControlFlowGraph, dfg: DataflowGraph, vertex: CfgVertex): CfgVertex[] => {
 		if(shouldSkipVertex(vertex, dfg)) {
 			return getSuccessorVertices(cfg, vertex.id, dfg);
 		}
@@ -25,11 +25,11 @@ export function performDataFrameAbsint(cfinfo: ControlFlowInformation, dfg: Data
 		let newDomain = inputDomain;
 
 		const entryNode: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = dfg.idMap?.get(vertex.id);
-		let node: RNode<AbstractInterpretationInfo> | undefined;
+		let node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined;
 
 		if(entryNode !== undefined && isRSingleNode(entryNode)) {
 			oldDomain = entryNode.info.dataFrame?.domain ?? oldDomain;
-			newDomain = processDataFrameLeaf(entryNode, new Map(inputDomain), dfg);
+			newDomain = processDataFrameLeaf(entryNode, inputDomain, dfg);
 			node = entryNode;
 		} else if(vertex.type === CfgVertexType.EndMarker) {
 			const exitId = getNodeIdForExitVertex(vertex.id);
@@ -37,7 +37,7 @@ export function performDataFrameAbsint(cfinfo: ControlFlowInformation, dfg: Data
 
 			if(exitNode !== undefined && !isRSingleNode(exitNode)) {
 				oldDomain = exitNode.info.dataFrame?.domain ?? oldDomain;
-				newDomain = processDataFrameExpression(exitNode, new Map(inputDomain), dfg);
+				newDomain = processDataFrameExpression(exitNode, inputDomain, dfg);
 				node = exitNode;
 			}
 		}
@@ -52,7 +52,7 @@ export function performDataFrameAbsint(cfinfo: ControlFlowInformation, dfg: Data
 		}
 		if(node !== undefined) {
 			node.info.dataFrame ??= {};
-			node.info.dataFrame.domain = new Map(newDomain);
+			node.info.dataFrame.domain = newDomain;
 		}
 		if(!equalDataFrameState(oldDomain, newDomain)) {
 			return getSuccessorVertices(cfg, vertex.id, dfg);
@@ -64,7 +64,12 @@ export function performDataFrameAbsint(cfinfo: ControlFlowInformation, dfg: Data
 		.map(id => cfg.vertices().get(id))
 		.filter(vertex => vertex !== undefined);
 
-	foldCfg(cfg, entryPoints, visitor);
+	const queue: CfgVertex[] = [...entryPoints];
+	let vertex: CfgVertex | undefined;
+
+	while((vertex = queue.shift()) !== undefined) {
+		queue.push(...visitor(cfg, dfg, vertex));
+	}
 	return finalDomain;
 }
 
@@ -80,17 +85,6 @@ export function flipCfg(cfg: ControlFlowGraph): ControlFlowGraph {
 		}
 	}
 	return flippedCfg;
-}
-
-function foldCfg(
-	cfg: ControlFlowGraph,
-	vertices: CfgVertex[],
-	visitor: (cfg: ControlFlowGraph, vertex: CfgVertex) => CfgVertex[]
-): void {
-	for(const vertex of vertices) {
-		const successors = visitor(cfg, vertex);
-		foldCfg(cfg, successors, visitor);
-	}
 }
 
 function isRConstant(

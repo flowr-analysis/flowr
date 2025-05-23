@@ -79,39 +79,39 @@ export class SemanticCfgGuidedVisitor<
 
 	protected override visitValue(val: DataflowGraphVertexValue) {
 		super.visitValue(val);
-		const astVertex = this.getNormalizedAst(val.id);
-		if(!astVertex) {
+		const astNode = this.getNormalizedAst(val.id);
+		if(!astNode) {
 			return;
 		}
-		switch(astVertex.type) {
-			case RType.String:  return this.onStringConstant(val, astVertex);
-			case RType.Number:  return this.onNumberConstant(val, astVertex);
-			case RType.Logical: return this.onLogicalConstant(val, astVertex);
+		switch(astNode.type) {
+			case RType.String:  return this.onStringConstant({ vertex: val, node: astNode });
+			case RType.Number:  return this.onNumberConstant({ vertex: val, node: astNode });
+			case RType.Logical: return this.onLogicalConstant({ vertex: val, node: astNode });
 		}
-		guard(false, `Unexpected value type ${astVertex.type} for value ${astVertex.lexeme}`);
+		guard(false, `Unexpected value type ${astNode.type} for value ${astNode.lexeme}`);
 	}
 
-	protected override visitVariableUse(val: DataflowGraphVertexUse) {
-		super.visitVariableUse(val);
-		this.onVariableUse(val);
+	protected override visitVariableUse(vertex: DataflowGraphVertexUse) {
+		super.visitVariableUse(vertex);
+		this.onVariableUse({ vertex });
 	}
 
-	protected override visitVariableDefinition(val: DataflowGraphVertexVariableDefinition) {
-		super.visitVariableDefinition(val);
-		this.onVariableDefinition(val);
+	protected override visitVariableDefinition(vertex: DataflowGraphVertexVariableDefinition) {
+		super.visitVariableDefinition(vertex);
+		this.onVariableDefinition({ vertex });
 	}
 
-	protected override visitFunctionDefinition(def: DataflowGraphVertexFunctionDefinition): void {
-		super.visitFunctionDefinition(def);
-		this.onFunctionDefinition(def);
+	protected override visitFunctionDefinition(vertex: DataflowGraphVertexFunctionDefinition): void {
+		super.visitFunctionDefinition(vertex);
+		this.onFunctionDefinition({ vertex });
 	}
 
-	protected override visitFunctionCall(call: DataflowGraphVertexFunctionCall) {
-		super.visitFunctionCall(call);
-		if(call.origin === 'unnamed') {
-			this.onUnnamedCall(call);
+	protected override visitFunctionCall(vertex: DataflowGraphVertexFunctionCall) {
+		super.visitFunctionCall(vertex);
+		if(vertex.origin === 'unnamed') {
+			this.onUnnamedCall({ vertex });
 		} else {
-			this.onDispatchFunctionCallOrigins(call, call.origin);
+			this.onDispatchFunctionCallOrigins(vertex, vertex.origin);
 		}
 	}
 
@@ -191,30 +191,30 @@ export class SemanticCfgGuidedVisitor<
 	}
 
 	/** Called for every constant string value in the program */
-	protected onStringConstant(_vertex: DataflowGraphVertexValue, _node: RString) {}
+	protected onStringConstant(_data: { vertex: DataflowGraphVertexValue, node: RString }) {}
 
 	/** Called for every constant number value in the program */
-	protected onNumberConstant(_vertex: DataflowGraphVertexValue, _node: RNumber) {}
+	protected onNumberConstant(_data: { vertex: DataflowGraphVertexValue, node: RNumber }) {}
 
 	/** Called for every constant logical value in the program */
-	protected onLogicalConstant(_vertex: DataflowGraphVertexValue, _node: RLogical) {}
+	protected onLogicalConstant(_data: { vertex: DataflowGraphVertexValue, node: RLogical }) {}
 
 	/**
 	 * Called for every variable that is read within the program.
 	 * You can use {@link getOrigins} to get the origins of the variable.
 	 */
-	protected onVariableUse(_vertex: DataflowGraphVertexUse) {}
+	protected onVariableUse(_data: { vertex: DataflowGraphVertexUse }) {}
 
 	/**
 	 * Called for every variable that is written within the program.
 	 * You can use {@link getOrigins} to get the origins of the variable.
 	 */
-	protected onVariableDefinition(_vertex: DataflowGraphVertexVariableDefinition) {}
+	protected onVariableDefinition(_data: { vertex: DataflowGraphVertexVariableDefinition }) {}
 
 	/** Called for every anonymous function definition */
-	protected onFunctionDefinition(_vertex: DataflowGraphVertexFunctionDefinition) {}
+	protected onFunctionDefinition(_data: { vertex: DataflowGraphVertexFunctionDefinition }) {}
 
-	protected onUnnamedCall(_call: DataflowGraphVertexFunctionCall) {}
+	protected onUnnamedCall(_data: { vertex: DataflowGraphVertexFunctionCall }) {}
 
 	protected onDefaultFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {
 	}

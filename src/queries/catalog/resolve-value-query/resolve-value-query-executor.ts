@@ -2,7 +2,7 @@ import type { ResolveValueQuery, ResolveValueQueryResult } from './resolve-value
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
-import { resolveIdToValue } from '../../../dataflow/environments/resolve-by-name';
+import { resolveIdToValue } from '../../../dataflow/eval/resolve/alias-tracking';
 
 export function fingerPrintOfQuery(query: ResolveValueQuery): string {
 	return JSON.stringify(query);
@@ -20,10 +20,10 @@ export function executeResolveValueQuery({ dataflow: { graph }, ast }: BasicQuer
 		
 		const values = query.criteria
 			.map(criteria => slicingCriterionToId(criteria, ast.idMap))
-			.flatMap(ident => resolveIdToValue(ident, { graph, full: true, idMap: ast.idMap }) ?? []);
+			.flatMap(ident => resolveIdToValue(ident, { graph, full: true, idMap: ast.idMap }));
 
 		results[key] = {
-			values: values ? [... new Set(values)] : []
+			values: values
 		};
 	}
 

@@ -14,6 +14,7 @@ import { guard } from '../util/assert';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
+import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 export function inferDataTypes<Info extends { typeVariable?: undefined }>(ast: NormalizedAst<Info>, dataFlowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
@@ -122,6 +123,23 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 		guard(target !== undefined, 'Expected target node to be defined');
 
 		target.info.typeVariable.unify(new RFunctionType());
+	}
+
+	override onGetCall(data: { call: DataflowGraphVertexFunctionCall }) {
+		guard(data.call.args.length == 1, 'Expected exactly one argument for get call');
+		const varName = data.call.args.at(0);
+		
+		guard(varName !== undefined && varName !== EmptyArgument, 'Expected argument of get call to be defined');
+		const varNameNode = this.getNormalizedAst(varName.nodeId);
+
+		guard(varNameNode !== undefined, 'Expected variable name node to be defined');
+		varNameNode.info.typeVariable.unify(new RStringType());
+	}
+
+	override onRmCall(data: { call: DataflowGraphVertexFunctionCall }) {
+		const node = this.getNormalizedAst(data.call.id);
+		guard(node !== undefined, 'Expected AST node to be defined');
+		node.info.typeVariable.unify(new RNullType());
 	}
 
 	override onFunctionDefinition(vertex: DataflowGraphVertexFunctionDefinition): void {

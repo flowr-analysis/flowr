@@ -25,10 +25,8 @@ export enum RDataTypeTag {
     List = 'RListType',
     /** {@link REnvironmentType} */
     Environment = 'REnvironmentType',
-    /** {@link RSpecialType} */
-    Special = 'RSpecialType',
-    /** {@link RBuiltinType} */
-    Builtin = 'RBuiltinType',
+    /** {@link RLanguageType} */
+    Language = 'RLanguageType',
 	/** {@link RNeverType} */
 	Never = 'RNeverType',
     /** {@link RTypeVariable} */
@@ -81,12 +79,8 @@ export class REnvironmentType {
 	readonly tag = RDataTypeTag.Environment;
 }
 
-export class RSpecialType {
-	readonly tag = RDataTypeTag.Special;
-}
-
-export class RBuiltinType {
-	readonly tag = RDataTypeTag.Builtin;
+export class RLanguageType {
+	readonly tag = RDataTypeTag.Language;
 }
 
 export class RNeverType {
@@ -148,8 +142,7 @@ export type PrimitiveRDataType
 	| RFunctionType
 	| RListType
 	| REnvironmentType
-	| RSpecialType
-	| RBuiltinType;
+	| RLanguageType
 
 export type CompoundRDataType = never;
 

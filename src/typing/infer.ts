@@ -8,7 +8,7 @@ import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RDataType } from './types';
-import { RTypeVariable , RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, RFunctionType, RNeverType, RListType } from './types';
+import { RTypeVariable , RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, RFunctionType, RNeverType, RListType, RLanguageType, RAnyType } from './types';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../util/assert';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
@@ -218,6 +218,36 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 				node.info.typeVariable.unify(new RNeverType());
 			}
 		}
+	}
+	
+	override onQuoteCall(data: { call: DataflowGraphVertexFunctionCall }) {
+		guard(data.call.args.length === 1, 'Expected exactly one argument for quote call');
+		const arg = data.call.args.at(0);
+		
+		guard(arg !== undefined && arg !== EmptyArgument, 'Expected argument of quote call to be defined');
+		const argNode = this.getNormalizedAst(arg.nodeId);
+		
+		guard(argNode !== undefined, 'Expected argument node to be defined');
+		argNode.info.typeVariable.unify(new RStringType());
+
+		const node = this.getNormalizedAst(data.call.id);
+		guard(node !== undefined, 'Expected AST node to be defined');
+		node.info.typeVariable.unify(new RLanguageType());
+	}
+
+	override onEvalFunctionCall(data: { call: DataflowGraphVertexFunctionCall }) {
+		guard(data.call.args.length === 1, 'Expected exactly one argument for eval call');
+		const arg = data.call.args.at(0);
+		
+		guard(arg !== undefined && arg !== EmptyArgument, 'Expected argument of eval call to be defined');
+		const argNode = this.getNormalizedAst(arg.nodeId);
+		
+		guard(argNode !== undefined, 'Expected argument node to be defined');
+		argNode.info.typeVariable.unify(new RLanguageType());
+
+		const node = this.getNormalizedAst(data.call.id);
+		guard(node !== undefined, 'Expected AST node to be defined');
+		node.info.typeVariable.unify(new RAnyType()); // TODO: Infer a more specific type based on the argument if possible
 	}
 
 	override onListCall(data: { call: DataflowGraphVertexFunctionCall }) {

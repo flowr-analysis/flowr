@@ -8,13 +8,15 @@ import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RDataType } from './types';
-import { RTypeVariable , RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, RFunctionType } from './types';
+import { RTypeVariable , RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, RFunctionType, RNeverType } from './types';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../util/assert';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { FunctionArgument } from '../dataflow/graph/graph';
+import { CfgVertexType } from '../control-flow/control-flow-graph';
 
 export function inferDataTypes<Info extends { typeVariable?: undefined }>(ast: NormalizedAst<Info>, dataFlowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
@@ -140,6 +142,46 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 		const node = this.getNormalizedAst(data.call.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
 		node.info.typeVariable.unify(new RNullType());
+	}
+
+	override onForLoopCall(data: { call: DataflowGraphVertexFunctionCall, variable: FunctionArgument, vector: FunctionArgument, body: FunctionArgument }) {
+		guard(data.variable !== EmptyArgument && data.vector !== EmptyArgument, 'Expected variable and vector arguments to be defined');
+		const variableNode = this.getNormalizedAst(data.variable.nodeId);
+		const vectorNode = this.getNormalizedAst(data.vector.nodeId);
+		
+		guard(variableNode !== undefined && vectorNode !== undefined, 'Expected variable and vector nodes to be defined');
+		variableNode.info.typeVariable.unify(vectorNode.info.typeVariable);
+
+		this.onLoopCall(data);
+	}
+
+	override onWhileLoopCall(data: { call: DataflowGraphVertexFunctionCall, condition: FunctionArgument, body: FunctionArgument }) {
+		guard(data.condition !== EmptyArgument, 'Expected condition argument to be defined');
+		const conditionNode = this.getNormalizedAst(data.condition.nodeId);
+		
+		guard(conditionNode !== undefined, 'Expected condition node to be defined');
+		conditionNode.info.typeVariable.unify(new RLogicalType());
+
+		this.onLoopCall(data);
+	}
+
+	override onRepeatLoopCall(data: { call: DataflowGraphVertexFunctionCall, body: FunctionArgument }) {
+		this.onLoopCall(data);
+	}
+
+	protected onLoopCall(data: { call: DataflowGraphVertexFunctionCall, body: FunctionArgument }) {
+		const node = this.getNormalizedAst(data.call.id);
+		guard(node !== undefined, 'Expected AST node to be defined');
+
+		const cfgVertex = this.config.controlFlow.graph.getVertex(data.call.id);
+		guard(cfgVertex !== undefined && cfgVertex.type === CfgVertexType.Statement, 'Expected statement vertex for loop');
+		const isInfinite = (cfgVertex.end ?? []).flatMap((id) => this.config.controlFlow.graph.ingoing(id) ?? []).length === 0;
+
+		if(isInfinite) {
+			node.info.typeVariable.unify(new RNeverType());
+		} else {
+			node.info.typeVariable.unify(new RNullType());
+		}
 	}
 
 	override onFunctionDefinition(vertex: DataflowGraphVertexFunctionDefinition): void {

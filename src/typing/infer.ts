@@ -184,6 +184,42 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 		}
 	}
 
+	override onIfThenElseCall(data: { call: DataflowGraphVertexFunctionCall, condition: FunctionArgument, then: FunctionArgument, else: FunctionArgument | undefined }) {
+		guard(data.condition !== EmptyArgument, 'Expected condition argument to be defined');
+		const conditionNode = this.getNormalizedAst(data.condition.nodeId);
+		
+		guard(conditionNode !== undefined, 'Expected condition node to be defined');
+		conditionNode.info.typeVariable.unify(new RLogicalType());
+
+		const node = this.getNormalizedAst(data.call.id);
+		guard(node !== undefined, 'Expected AST node to be defined');
+
+		guard(data.then !== EmptyArgument, 'Expected then argument to be defined');
+		const isThenBranchReachable = (this.config.controlFlow.graph.ingoing(data.then.nodeId)?.size ?? 0) > 0;
+		
+		const thenNode = this.getNormalizedAst(data.then.nodeId);
+		guard(thenNode !== undefined, 'Expected then node to be defined');
+
+		if(isThenBranchReachable) {
+			node.info.typeVariable.unify(thenNode.info.typeVariable);
+		} else {
+			node.info.typeVariable.unify(new RNeverType());
+		}
+
+		if(data.else !== undefined && data.else !== EmptyArgument) {
+			const isElseBranchReachable = (this.config.controlFlow.graph.ingoing(data.else.nodeId)?.size ?? 0) > 0;
+
+			const elseNode = this.getNormalizedAst(data.else.nodeId);
+			guard(elseNode !== undefined, 'Expected else node to be defined');
+
+			if(isElseBranchReachable) {
+				node.info.typeVariable.unify(elseNode.info.typeVariable);
+			} else {
+				node.info.typeVariable.unify(new RNeverType());
+			}
+		}
+	}
+
 	override onFunctionDefinition(vertex: DataflowGraphVertexFunctionDefinition): void {
 		const node = this.getNormalizedAst(vertex.id);
 		guard(node !== undefined, 'Expected AST node to be defined');

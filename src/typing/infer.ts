@@ -8,7 +8,7 @@ import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RDataType } from './types';
-import { RTypeVariable , RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, RFunctionType, RNeverType } from './types';
+import { RTypeVariable , RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, RFunctionType, RNeverType, RListType } from './types';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../util/assert';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
@@ -217,6 +217,28 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 			} else {
 				node.info.typeVariable.unify(new RNeverType());
 			}
+		}
+	}
+
+	override onListCall(data: { call: DataflowGraphVertexFunctionCall }) {
+		const node = this.getNormalizedAst(data.call.id);
+		guard(node !== undefined, 'Expected AST node to be defined');
+		node.info.typeVariable.unify(new RListType());
+	}
+
+	override onVectorCall(data: { call: DataflowGraphVertexFunctionCall }) {
+		const node = this.getNormalizedAst(data.call.id);
+		guard(node !== undefined, 'Expected AST node to be defined');
+		
+		const args = data.call.args.filter((arg) => arg !== EmptyArgument);
+		if(args.length === 0) {
+			node.info.typeVariable.unify(new RNullType());
+			return;
+		}
+		for(const arg of args) {
+			const argNode = this.getNormalizedAst(arg.nodeId);
+			guard(argNode !== undefined, 'Expected argument node to be defined');
+			node.info.typeVariable.unify(argNode.info.typeVariable);
 		}
 	}
 

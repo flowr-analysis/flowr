@@ -168,7 +168,7 @@ export class SemanticCfgGuidedVisitor<
 				return this.onQuoteCall({ call });
 			case 'builtin:for-loop':
 				return this.onForLoopCall({ call, variable: call.args[0], vector: call.args[1], body: call.args[2] });
-			case 'builtin:builtin:repeat-loop':
+			case 'builtin:repeat-loop':
 				return this.onRepeatLoopCall({ call, body: call.args[0] });
 			case 'builtin:while-loop':
 				return this.onWhileLoopCall({ call, condition: call.args[0], body: call.args[1] });

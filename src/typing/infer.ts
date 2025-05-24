@@ -175,7 +175,7 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 
 		const cfgVertex = this.config.controlFlow.graph.getVertex(data.call.id);
 		guard(cfgVertex !== undefined && cfgVertex.type === CfgVertexType.Statement, 'Expected statement vertex for loop');
-		const isInfinite = (cfgVertex.end ?? []).flatMap((id) => this.config.controlFlow.graph.ingoing(id) ?? []).length === 0;
+		const isInfinite = (cfgVertex.end ?? []).reduce((prevCount, id) => prevCount + (this.config.controlFlow.graph.outgoing(id)?.size ?? 0), 0) === 0;
 
 		if(isInfinite) {
 			node.info.typeVariable.unify(new RNeverType());

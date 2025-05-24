@@ -78,9 +78,9 @@ describe.sequential('Call Context Query', withShell(shell => {
 		const code = 'if(x) { print <- function() {} }\nprint()';
 		testQuery('May be local or global', code, [q(/print/)], r([{ id: 12, name: 'print' }]));
 		testQuery('May be local or global (only local)', code, [q(/print/, { callTargets: CallTargets.OnlyLocal })], baseResult({}));
-		testQuery('May be local or global (incl. local)', code, [q(/print/, { callTargets: CallTargets.MustIncludeLocal })], r([{ id: 12, calls: [7, 'built-in'], name: 'print' }]));
+		testQuery('May be local or global (incl. local)', code, [q(/print/, { callTargets: CallTargets.MustIncludeLocal })], r([{ id: 12, calls: [builtInId('print'), 7, 'built-in'], name: 'print' }]));
 		testQuery('May be local or global (only global)', code, [q(/print/, { callTargets: CallTargets.OnlyGlobal })], baseResult({}));
-		testQuery('May be local or global (incl. global)', code, [q(/print/, { callTargets: CallTargets.MustIncludeGlobal })], r([{ id: 12, calls: [7, 'built-in'], name: 'print' }]));
+		testQuery('May be local or global (incl. global)', code, [q(/print/, { callTargets: CallTargets.MustIncludeGlobal })], r([{ id: 12, calls: [builtInId('print'), 7, 'built-in'], name: 'print' }]));
 	});
 	describe('Linked Calls', () => {
 		testQuery('Link to Plot', 'plot(x)\nplot(x)\npoints(y)', [q(/points/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 11, linkedIds: [7], name: 'points' }]));

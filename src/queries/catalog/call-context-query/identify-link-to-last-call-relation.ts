@@ -65,7 +65,7 @@ export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarge
 		case CallTargets.Any:
 			return callTargets;
 		case CallTargets.OnlyGlobal:
-			if(callTargets.length === 0) {
+			if(callTargets.every(isBuiltIn)) {
 				return builtIn ? ['built-in'] : [];
 			} else {
 				return 'no';

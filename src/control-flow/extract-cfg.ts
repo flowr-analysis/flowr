@@ -220,7 +220,7 @@ function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFl
 
 function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInformation, vector: ControlFlowInformation, body: ControlFlowInformation): ControlFlowInformation {
 	const graph = variable.graph;
-	graph.addVertex({ id: forLoop.info.id, type: identifyMayStatementType(forLoop), exit: [forLoop.info.id + '-exit'], mid: [forLoop.info.id + '-head'] });
+	graph.addVertex({ id: forLoop.info.id, type: identifyMayStatementType(forLoop), end: [forLoop.info.id + '-exit'], mid: [forLoop.info.id + '-head'] });
 
 	graph.merge(vector.graph);
 	graph.merge(body.graph);

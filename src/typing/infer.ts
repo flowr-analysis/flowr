@@ -53,29 +53,29 @@ function resolveTypeVariables<Info extends UnresolvedTypeInfo>(ast: NormalizedAs
 }
 
 class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTypeInfo>{
-	override onLogicalConstant(_vertex: DataflowGraphVertexValue, node: RLogical<UnresolvedTypeInfo>): void {
-		node.info.typeVariable.unify(new RLogicalType());
+	override onLogicalConstant(data: { vertex: DataflowGraphVertexValue, node: RLogical<UnresolvedTypeInfo> }): void {
+		data.node.info.typeVariable.unify(new RLogicalType());
 	}
 
-	override onNumberConstant(_vertex: DataflowGraphVertexValue, node: RNumber<UnresolvedTypeInfo>): void {
-		if(node.content.complexNumber) {
-			node.info.typeVariable.unify(new RComplexType());
-		} else if(Number.isInteger(node.content.num)) {
-			node.info.typeVariable.unify(new RIntegerType());
+	override onNumberConstant(data: { vertex: DataflowGraphVertexValue, node: RNumber<UnresolvedTypeInfo> }): void {
+		if(data.node.content.complexNumber) {
+			data.node.info.typeVariable.unify(new RComplexType());
+		} else if(Number.isInteger(data.node.content.num)) {
+			data.node.info.typeVariable.unify(new RIntegerType());
 		} else {
-			node.info.typeVariable.unify(new RDoubleType());
+			data.node.info.typeVariable.unify(new RDoubleType());
 		}
 	}
 
-	override onStringConstant(_vertex: DataflowGraphVertexValue, node: RString<UnresolvedTypeInfo>): void {
-		node.info.typeVariable.unify(new RStringType());
+	override onStringConstant(data: { vertex: DataflowGraphVertexValue, node: RString<UnresolvedTypeInfo> }): void {
+		data.node.info.typeVariable.unify(new RStringType());
 	}
 
-	override onVariableUse(vertex: DataflowGraphVertexUse): void {
-		const node = this.getNormalizedAst(vertex.id);
+	override onVariableUse(data: { vertex: DataflowGraphVertexUse }): void {
+		const node = this.getNormalizedAst(data.vertex.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
 		
-		const origins = this.getOrigins(vertex.id);
+		const origins = this.getOrigins(data.vertex.id);
 		const readOrigins = origins?.filter((origin) => origin.type === OriginType.ReadVariableOrigin);
 
 		if(readOrigins === undefined || readOrigins.length === 0) {
@@ -105,8 +105,8 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 	}
 
 	override onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall }): void {
-		const node = this.getNormalizedAst(data.call.id);
-		guard(node !== undefined, 'Expected AST node to be defined');
+		// const node = this.getNormalizedAst(data.call.id);
+		// guard(node !== undefined, 'Expected AST node to be defined');
 
 		const outgoing = this.config.dataflow.graph.outgoingEdges(data.call.id);
 		const callsTargets = outgoing?.entries()
@@ -272,8 +272,8 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 		}
 	}
 
-	override onFunctionDefinition(vertex: DataflowGraphVertexFunctionDefinition): void {
-		const node = this.getNormalizedAst(vertex.id);
+	override onFunctionDefinition(data: { vertex: DataflowGraphVertexFunctionDefinition }): void {
+		const node = this.getNormalizedAst(data.vertex.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
 
 		node.info.typeVariable.unify(new RFunctionType());

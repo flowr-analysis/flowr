@@ -31,6 +31,7 @@ import { expensiveTrace } from '../../../../../../util/log';
 
 
 const dotDotDotAccess = /^\.\.\d+$/;
+
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
 	const readName = read.name && dotDotDotAccess.test(read.name) ? '...' : read.name;
 
@@ -57,6 +58,9 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 	for(const target of probableTarget) {
 		// we can stick with maybe even if readId.attribute is always
 		nextGraph.addEdge(read, target, EdgeType.Reads);
+		if((read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction) && (isBuiltIn(target.definedAt))) {
+			nextGraph.addEdge(read, target, EdgeType.Calls);
+		}
 	}
 }
 
@@ -207,7 +211,7 @@ export function processExpressionList<OtherInfo>(
 			origin:                'builtin:expression-list'
 		});
 
-		nextGraph.addEdge(rootId, builtInId('{'), EdgeType.Reads);
+		nextGraph.addEdge(rootId, builtInId('{'), EdgeType.Reads | EdgeType.Calls);
 
 		// process all exit points as potential returns:
 		for(const exit of exitPoints) {

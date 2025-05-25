@@ -1,5 +1,26 @@
-*.jpeg filter=lfs diff=lfs merge=lfs -text
-*.pdf filter=lfs diff=lfs merge=lfs -text
-*.png filter=lfs diff=lfs merge=lfs -text
-*.jpg filter=lfs diff=lfs merge=lfs -text
-*.gif filter=lfs diff=lfs merge=lfs -text
+*.ai              binary
+*.bmp             binary
+*.eps             binary
+*.gif             binary
+*.gifv            binary
+*.ico             binary
+*.jng             binary
+*.jp2             binary
+*.jpg             binary
+*.jpeg            binary
+*.jpx             binary
+*.jxr             binary
+*.pdf             binary
+*.png             binary
+*.psb             binary
+*.psd             binary
+# SVG treated as an asset (binary) by default.
+*.svg             text
+# If you want to treat it as binary,
+# use the following line instead.
+# *.svg           binary
+*.svgz            binary
+*.tif             binary
+*.tiff            binary
+*.wbmp            binary
+*.webp            binary

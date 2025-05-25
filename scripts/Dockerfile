@@ -25,7 +25,6 @@ COPY ./scripts/demo.R LICENSE /app/
 
 # copy all package.jsons so we can install them (see below)
 COPY ./package.json ./package-lock.json /app/
-COPY ./src/r-bridge/lang-4.x/tree-sitter/tree-sitter-r.wasm ./src/r-bridge/lang-4.x/tree-sitter/tree-sitter.wasm /app/dist/src/cli/
 
 # install all modules so that we have dependencies in here too
 # (we don't copy them from the builder because builder modules include dev deps too)

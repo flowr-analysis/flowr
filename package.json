@@ -40,9 +40,8 @@
     "gen:readme": "ts-node src/documentation/print-readme.ts",
     "build": "tsc --project .",
     "build-dev": "npm run build && npm run build:copy-wasm",
-    "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --tree-shaking=true --bundle --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm-min",
-    "build:copy-wasm": "mkdir -p dist/src/r-bridge/lang-4.x/tree-sitter/ && cp src/r-bridge/lang-4.x/tree-sitter/tree-sitter-r.wasm src/r-bridge/lang-4.x/tree-sitter/tree-sitter.wasm dist/src/r-bridge/lang-4.x/tree-sitter/",
-    "build:copy-wasm-min": "mkdir -p dist/src/cli && cp src/r-bridge/lang-4.x/tree-sitter/tree-sitter-r.wasm src/r-bridge/lang-4.x/tree-sitter/tree-sitter.wasm dist/src/cli",
+    "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --tree-shaking=true --bundle --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm",
+    "build:copy-wasm": "mkdir -p dist/node_modules/@eagleoutice/tree-sitter-r/ && mkdir -p dist/node_modules/web-tree-sitter && cp node_modules/@eagleoutice/tree-sitter-r/tree-sitter-r.wasm dist/node_modules/@eagleoutice/tree-sitter-r/  && cp node_modules/web-tree-sitter/tree-sitter.wasm dist/node_modules/web-tree-sitter/",
     "lint-local": "npx eslint --version && npx eslint src/ test/ --rule \"no-warning-comments: off\"",
     "lint": "npm run license-compat -- --summary && npx eslint --version && npx eslint src/ test/",
     "license-compat": "license-checker --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;BlueOak-1.0.0;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
@@ -203,6 +202,7 @@
     "vitest": "^3.0.6"
   },
   "dependencies": {
+    "@eagleoutice/tree-sitter-r": "^1.1.2",
     "@xmldom/xmldom": "^0.9.7",
     "clipboardy": "^4.0.0",
     "command-line-args": "^6.0.1",

@@ -105,26 +105,22 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 	}
 
 	override onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall }): void {
-		// const node = this.getNormalizedAst(data.call.id);
-		// guard(node !== undefined, 'Expected AST node to be defined');
-
 		const outgoing = this.config.dataflow.graph.outgoingEdges(data.call.id);
-		const callsTargets = outgoing?.entries()
+		const callTargets = outgoing?.entries()
 			.filter(([_target, edge]) => edgeIncludesType(edge.types, EdgeType.Calls))
 			.map(([target, _edge]) => target)
 			.toArray();
 
-		guard(callsTargets === undefined || callsTargets.length <= 1, 'Expected at most one call edge');
+		guard(callTargets !== undefined && callTargets.length >= 1, 'Expected at least one target for default function call');
 
-		if(callsTargets === undefined || callsTargets.length === 0) {
-			// TODO: Handle builtin functions
-			return;
+		for(const target of callTargets) {
+			const targetNode = this.getNormalizedAst(target);
+			if(targetNode !== undefined) {
+				targetNode.info.typeVariable.unify(new RFunctionType());
+			} else {
+				// TODO: Handle builtin functions that are not represented in the AST
+			}
 		}
-
-		const target = this.getNormalizedAst(callsTargets[0]);
-		guard(target !== undefined, 'Expected target node to be defined');
-
-		target.info.typeVariable.unify(new RFunctionType());
 	}
 
 	override onGetCall(data: { call: DataflowGraphVertexFunctionCall }) {

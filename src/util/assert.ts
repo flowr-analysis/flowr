@@ -27,6 +27,7 @@ function prepareStack(stack: string | undefined): string {
 	let lines = stack.split('\n');
 	lines.shift();
 	lines.shift();
+	lines.shift();
 	// clip over 8
 	if(lines.length > 8) {
 		lines = [...lines.slice(0, 3),

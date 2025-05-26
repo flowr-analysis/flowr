@@ -224,12 +224,7 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 	override onQuoteCall(data: { call: DataflowGraphVertexFunctionCall }) {
 		guard(data.call.args.length === 1, 'Expected exactly one argument for quote call');
 		const arg = data.call.args.at(0);
-		
 		guard(arg !== undefined && arg !== EmptyArgument, 'Expected argument of quote call to be defined');
-		const argNode = this.getNormalizedAst(arg.nodeId);
-		
-		guard(argNode !== undefined, 'Expected argument node to be defined');
-		argNode.info.typeVariable.unify(new RStringType());
 
 		const node = this.getNormalizedAst(data.call.id);
 		guard(node !== undefined, 'Expected AST node to be defined');

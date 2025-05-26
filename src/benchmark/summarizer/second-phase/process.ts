@@ -15,6 +15,7 @@ import {
 } from '../../stats/stats';
 import type { DataFrameOperationName } from '../../../abstract-interpretation/data-frame/semantics';
 import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
+import { arraySum } from '../../../util/arrays';
 
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => []);
@@ -120,6 +121,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 			overwrittenIndices:          summarizeMeasurement(dataflows.map(d => d.overwrittenIndices)),
 		},
 		absint: stats.some(s => s.absint !== undefined) ? {
+			numberOfDataFrameFiles:    arraySum(stats.map(s => s.absint?.numberOfDataFrameFiles).filter(isNotUndefined)),
 			numberOfResultConstraints: summarizeMeasurement(stats.map(s => s.absint?.numberOfResultConstraints).filter(isNotUndefined)),
 			numberOfResultingValues:   summarizeMeasurement(stats.map(s => s.absint?.numberOfResultingValues).filter(isNotUndefined)),
 			numberOfResultingTop:      summarizeMeasurement(stats.map(s => s.absint?.numberOfResultingTop).filter(isNotUndefined)),
@@ -198,6 +200,7 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 			overwrittenIndices:          summarizeSummarizedMeasurement(stats.map(s => s.dataflow.overwrittenIndices)),
 		},
 		absint: stats.some(s => s.absint !== undefined) ? {
+			numberOfDataFrameFiles:    arraySum(stats.map(s => s.absint?.numberOfDataFrameFiles).filter(isNotUndefined)),
 			numberOfResultConstraints: summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfResultConstraints).filter(isNotUndefined)),
 			numberOfResultingValues:   summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfResultingValues).filter(isNotUndefined)),
 			numberOfResultingTop:      summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfResultingTop).filter(isNotUndefined)),

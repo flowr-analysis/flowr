@@ -401,6 +401,7 @@ export class BenchmarkSlicer {
 		const cfinfo = this.controlFlow;
 
 		const stats: SlicerStatsAbsint = {
+			numberOfDataFrameFiles:    0,
 			numberOfResultConstraints: 0,
 			numberOfResultingValues:   0,
 			numberOfResultingTop:      0,
@@ -446,6 +447,7 @@ export class BenchmarkSlicer {
 			if(expression !== undefined) {
 				nodeStats.mappedOperations = expression.operations.map(op => op.operation);
 				stats.numberOfOperationNodes++;
+				stats.numberOfDataFrameFiles = 1;
 			}
 			if(value !== undefined) {
 				nodeStats.inferredColNames = value.colnames === ColNamesTop ? 'top' : value.colnames.length;

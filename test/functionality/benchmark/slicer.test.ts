@@ -297,6 +297,7 @@ e <- 5`,
 				const { numberOfEmptyNodes: _numberOfEmptyNodes, sizeOfInfo: _sizeOfInfo, ...absintStats } = stats.absint;
 				assert.deepStrictEqual(absintStats, {
 					// checked manually
+					numberOfDataFrameFiles:    1,
 					numberOfResultConstraints: 3,
 					numberOfResultingValues:   3,
 					numberOfResultingTop:      0,

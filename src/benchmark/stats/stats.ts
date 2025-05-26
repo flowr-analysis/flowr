@@ -51,6 +51,7 @@ export interface SlicerStatsDataflow<T = number> {
 }
 
 export interface SlicerStatsAbsint<T = number> {
+	numberOfDataFrameFiles:    T extends number ? 0 | 1 : number,
 	numberOfResultConstraints: T,
 	numberOfResultingValues:   T,
 	numberOfResultingTop:      T,

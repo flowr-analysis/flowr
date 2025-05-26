@@ -49,7 +49,7 @@ export interface SemanticCfgGuidedVisitorConfiguration<
  * Overwrite the functions starting with `on` to implement your logic.
  * In general, there is just one special case that you need to be aware of:
  *
- * In the context of a function call, flowR may be unsure to which origin the call relate!
+ * In the context of a function call, flowR may be unsure to which origin the call relates!
  * Consider the following example:
  *
  * ```r
@@ -338,14 +338,20 @@ export class SemanticCfgGuidedVisitor<
 	 *
 	 * For example, `(function(x) { x + 1 })(42)` or the second call in `a()()`.
 	 *
+	 * This is separate from {@link SemanticCfgGuidedVisitor#onDefaultFunctionCall|`onDefaultFunctionCall`} which is used for named function calls that do not trigger any of these events.
+	 * The main differentiation for these calls is that you may not infer their semantics from any name alone and probably _have_
+	 * to rely on {@link SemanticCfgGuidedVisitor#getOrigins|`getOrigins`} to get more information.
+	 *
 	 * @protected
 	 */
 	protected onUnnamedCall(_data: { vertex: DataflowGraphVertexFunctionCall }) {}
 
 	/**
 	 * This event triggers for every function call that is not handled by a specific overload,
-	 * and hence may be a function that targets a user-defined function.
-	 * Use {@link SemanticCfgGuidedVisitor#getOrigins} to get the origins of the call.
+	 * and hence may be a function that targets a user-defined function. In a way, these are functions that are named,
+	 * but flowR does not specifically care about them (currently) wrt. to their dataflow impact.
+	 *
+	 * Use {@link SemanticCfgGuidedVisitor#getOrigins|`getOrigins`} to get the origins of the call.
 	 *
 	 * For example, this triggers for `foo(x)` in
 	 *
@@ -353,6 +359,10 @@ export class SemanticCfgGuidedVisitor<
 	 * foo <- function(x) { x + 1 }
 	 * foo(x)
 	 * ```
+	 *
+	 * This explicitly will not trigger for scenarios in which the function has no name (i.e., if it is anonymous).
+	 * For such cases, you may rely on the {@link SemanticCfgGuidedVisitor#onUnnamedCall|`onUnnamedCall`} event.
+	 * The main reason for this separation is part of flowR's handling of these functions, as anonmyous calls cannot be resolved using the active environment.
 	 *
 	 * @protected
 	 */
@@ -424,6 +434,9 @@ export class SemanticCfgGuidedVisitor<
 	 * This event triggers for every call to the `get` function, which is used to access variables in the global environment.
 	 *
 	 * For example, `get` in `get("x")`.
+	 *
+	 * Please be aware, that with flowR resolving the `get` during the dataflow analysis,
+	 * this may very well trigger a {@link SemanticCfgGuidedVisitor#onVariableUse|`onVariableUse`} event as well.
 	 *
 	 * @protected
 	 */

@@ -554,7 +554,10 @@ ${
 	/* let's iterate over all methods */
 	Object.getOwnPropertyNames(Object.getPrototypeOf(new SemanticCfgGuidedVisitor(undefined as unknown as SemanticCfgGuidedVisitorConfiguration)))
 		.filter(n => n !== 'constructor').sort().map(
-			key => `- ${shortLink(`SemanticCfgGuidedVisitor::${key}`, types.info)}\\\n${getDocumentationForType(`SemanticCfgGuidedVisitor::${key}`, types.info, '  ')}`
+			key => {
+				const doc = getDocumentationForType(`SemanticCfgGuidedVisitor::${key}`, types.info, '  ');
+				return `- ${shortLink(`SemanticCfgGuidedVisitor::${key}`, types.info)}\\\n${doc ?? '_no documentation available_'}\n`;	
+			}
 		).join('\n')
 }
 

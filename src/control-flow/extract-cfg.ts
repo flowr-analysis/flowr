@@ -259,9 +259,7 @@ function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInfor
 			type: CfgVertexType.EndMarker,
 			root: forLoop.info.id
 		});
-		for(const exit of vector.exitPoints) {
-			graph.addEdge(forLoop.info.id + '-exit', exit, { label: CfgEdgeType.Cd, when: RFalse, caused: forLoop.info.id });
-		}
+		graph.addEdge(forLoop.info.id + '-exit', forLoop.info.id + '-head', { label: CfgEdgeType.Cd, when: RFalse, caused: forLoop.info.id });
 	}
 
 

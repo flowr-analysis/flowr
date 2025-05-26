@@ -65,11 +65,11 @@ export function getConstraintType(operation: DataFrameOperationName): Constraint
 
 function applyCreateSemantics(
 	value: DataFrameDomain,
-	{ colnames, rows }: { colnames: (string | undefined)[], rows: number | undefined }
+	{ colnames, rows }: { colnames: (string | undefined)[] | undefined, rows: number | undefined }
 ): DataFrameDomain {
 	return {
-		colnames: colnames.every(name => name !== undefined) ? colnames : ColNamesTop,
-		cols:     [colnames.length, colnames.length],
+		colnames: colnames?.every(name => name !== undefined) ? colnames : ColNamesTop,
+		cols:     colnames ? [colnames.length, colnames.length] : IntervalTop,
 		rows:     rows !== undefined ? [rows, rows] : IntervalTop
 	};
 }

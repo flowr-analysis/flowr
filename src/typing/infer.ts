@@ -5,7 +5,7 @@ import type { DataflowInformation } from '../dataflow/info';
 import type { RLogical } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RDataType } from './types';
 import { RTypeVariable , RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, RFunctionType, RNeverType, RListType, RLanguageType, RAnyType } from './types';
@@ -17,6 +17,7 @@ import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { FunctionArgument } from '../dataflow/graph/graph';
 import { CfgVertexType } from '../control-flow/control-flow-graph';
+import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 export function inferDataTypes<Info extends { typeVariable?: undefined }>(ast: NormalizedAst<Info>, dataFlowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
@@ -53,6 +54,10 @@ function resolveTypeVariables<Info extends UnresolvedTypeInfo>(ast: NormalizedAs
 }
 
 class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTypeInfo>{
+	protected override onNullConstant(data: { vertex: DataflowGraphVertexValue; node: RSymbol<UnresolvedTypeInfo & ParentInformation, 'NULL'>; }): void {
+		data.node.info.typeVariable.unify(new RNullType());
+	}
+
 	override onLogicalConstant(data: { vertex: DataflowGraphVertexValue, node: RLogical<UnresolvedTypeInfo> }): void {
 		data.node.info.typeVariable.unify(new RLogicalType());
 	}

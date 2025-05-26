@@ -3,7 +3,14 @@ import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
-import { mermaidHide, getTypesFromFolderAsMermaid, shortLink, printHierarchy, printCodeOfElement } from './doc-util/doc-types';
+import {
+	mermaidHide,
+	getTypesFromFolderAsMermaid,
+	shortLink,
+	printHierarchy,
+	printCodeOfElement,
+	getDocumentationForType
+} from './doc-util/doc-types';
 import path from 'path';
 import { FlowrWikiBaseRef } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
@@ -31,7 +38,12 @@ import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
 import { DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-visitor';
 import type { DataflowInformation } from '../dataflow/info';
 import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
-import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
+import type {
+	SemanticCfgGuidedVisitorConfiguration
+} from '../control-flow/semantic-cfg-guided-visitor';
+import {
+	SemanticCfgGuidedVisitor
+} from '../control-flow/semantic-cfg-guided-visitor';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { EdgeType, edgeTypeToName } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
@@ -535,6 +547,16 @@ ${await (async() => {
 	const collected = visitor.getSources();
 	return collected.map(n => '\n- `' + n + '`').join('');
 })()}
+
+All in all, this visitor offers the following semantic events:
+
+${
+	/* let's iterate over all methods */
+	Object.getOwnPropertyNames(Object.getPrototypeOf(new SemanticCfgGuidedVisitor(undefined as unknown as SemanticCfgGuidedVisitorConfiguration)))
+		.filter(n => n !== 'constructor').sort().map(
+			key => `- ${shortLink(`SemanticCfgGuidedVisitor::${key}`, types.info)}\\\n${getDocumentationForType(`SemanticCfgGuidedVisitor::${key}`, types.info, '  ')}`
+		).join('\n')
+}
 
 
 ${section('Working With Exit Points', 3, 'cfg-exit-points')}

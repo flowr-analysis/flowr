@@ -7,6 +7,7 @@ import { escapeMarkdown } from '../../util/mermaid/mermaid';
 import { codeBlock } from './doc-code';
 import { details } from './doc-structure';
 import { textWithTooltip } from '../../util/html-hover-over';
+import { prefixLines } from './doc-general';
 
 /* basics generated */
 
@@ -470,11 +471,11 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 	}${codeStyle ? '</code>' : ''}](${getTypePathLink(node)})`;
 }
 
-export function getDocumentationForType(name: string, hierarchy: TypeElementInSource[]): string {
+export function getDocumentationForType(name: string, hierarchy: TypeElementInSource[], prefix = ''): string {
 	const res = retrieveNode(name, hierarchy);
 	if(!res) {
 		return '';
 	}
 	const [, , node] = res;
-	return node.comments?.join('\n') ?? '';
+	return prefixLines(node.comments?.join('\n') ?? '', prefix);
 }

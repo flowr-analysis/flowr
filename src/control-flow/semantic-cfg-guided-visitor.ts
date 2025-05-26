@@ -29,6 +29,7 @@ import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { BuiltInProcessorMapper } from '../dataflow/environments/built-in';
 
 
 
@@ -57,7 +58,7 @@ export interface SemanticCfgGuidedVisitorConfiguration<
  * ```
  *
  * Obtaining the origins of the call to `foo` will return both built-in functions `library` and `rm`.
- * The general semantic visitor can not decide on how to combine these cases,
+ * The general semantic visitor cannot decide on how to combine these cases,
  * and it is up to your overload of {@link SemanticCfgGuidedVisitor#onDispatchFunctionCallOrigins|onDispatchFunctionCallOrigins}
  * to decide how to handle this.
  *
@@ -72,7 +73,7 @@ export class SemanticCfgGuidedVisitor<
 > extends DataflowAwareCfgGuidedVisitor<Cfg, Dfg, Config> {
 
 	/**
-	 * Get the normalized AST node for the given id or fail if it does not exist.
+	 * A helper function to get the normalized AST node for the given id or fail if it does not exist.
 	 */
 	protected getNormalizedAst(id: NodeId): RNode<OtherInfo & ParentInformation> | undefined {
 		return this.config.normalizedAst.idMap.get(id);
@@ -119,13 +120,31 @@ export class SemanticCfgGuidedVisitor<
 		}
 	}
 
+	/**
+	 * Given a function call that has multiple targets (e.g., two potential built-in definitions).
+	 * This function is responsible for calling {@link onDispatchFunctionCallOrigin} for each of the origins,
+	 * and aggregating their results (which is just additive by default).
+	 * If you want to change the behavior in case of multiple potential function definition targets, simply overwrite this function
+	 * with the logic you desire.
+	 *
+	 * @protected
+	 */
 	protected onDispatchFunctionCallOrigins(call: DataflowGraphVertexFunctionCall, origins: readonly string[]) {
 		for(const origin of origins) {
 			this.onDispatchFunctionCallOrigin(call, origin);
 		}
 	}
 
-	protected onDispatchFunctionCallOrigin(call: DataflowGraphVertexFunctionCall, origin: string) {
+	/**
+	 * This function is responsible for dispatching the appropriate event
+	 * based on a given dataflow vertex. The default serves as a backend
+	 * for the event functions, but you may overwrite and extend this function at will.
+	 *
+	 * @see {@link onDispatchFunctionCallOrigins} for the aggregation in case the function call target is ambiguous.
+	 *
+	 * @protected
+	 */
+	protected onDispatchFunctionCallOrigin(call: DataflowGraphVertexFunctionCall, origin: keyof typeof BuiltInProcessorMapper | string) {
 		switch(origin) {
 			case 'builtin:eval':
 				return this.onEvalFunctionCall({ call });
@@ -180,57 +199,121 @@ export class SemanticCfgGuidedVisitor<
 				return this.onReplacementCall({ call });
 			case 'builtin:library':
 				return this.onLibraryCall({ call });
-			default:
 			case 'builtin:default':
+			default:
 				return this.onDefaultFunctionCall({ call });
 		}
 	}
 
 
 	/**
-	 * Requests the {@link getOriginInDfg|origins} of the given node.
+	 * A helper function to request the {@link getOriginInDfg|origins} of the given node.
 	 */
 	protected getOrigins(id: NodeId): Origin[] | undefined {
 		return getOriginInDfg(this.config.dataflow.graph, id);
 	}
 
+	/** Called for every occurrence of a `NULL` in the program. */
 	protected onNullConstant(_data: { vertex: DataflowGraphVertexValue, node: RSymbol<OtherInfo & ParentInformation, 'NULL'> }) {}
 
-	/** Called for every constant string value in the program */
+	/**
+	 * Called for every constant string value in the program.
+	 *
+	 * For example, `"Hello World"` in `print("Hello World")`.
+	 */
 	protected onStringConstant(_data: { vertex: DataflowGraphVertexValue, node: RString }) {}
 
-	/** Called for every constant number value in the program */
+	/**
+	 * Called for every constant number value in the program.
+	 *
+	 * For example, `42` in `print(42)`.
+	 */
 	protected onNumberConstant(_data: { vertex: DataflowGraphVertexValue, node: RNumber }) {}
 
-	/** Called for every constant logical value in the program */
+	/**
+	 * Called for every constant logical value in the program.
+	 *
+	 * For example, `TRUE` in `if(TRUE) { ... }`.
+	 */
 	protected onLogicalConstant(_data: { vertex: DataflowGraphVertexValue, node: RLogical }) {}
 
 	/**
 	 * Called for every variable that is read within the program.
 	 * You can use {@link getOrigins} to get the origins of the variable.
+	 *
+	 * For example, `x` in `print(x)`.
 	 */
 	protected onVariableUse(_data: { vertex: DataflowGraphVertexUse }) {}
 
 	/**
 	 * Called for every variable that is written within the program.
 	 * You can use {@link getOrigins} to get the origins of the variable.
+	 *
+	 * For example, `x` in `x <- 42` or `x` in `assign("x", 42)`.
 	 */
 	protected onVariableDefinition(_data: { vertex: DataflowGraphVertexVariableDefinition }) {}
 
-	/** Called for every anonymous function definition */
+	/**
+	 * Called for every anonymous function definition.
+	 *
+	 * For example, `function(x) { x + 1 }` in `lapply(1:10, function(x) { x + 1 })`.
+	 */
 	protected onFunctionDefinition(_data: { vertex: DataflowGraphVertexFunctionDefinition }) {}
 
+	/**
+	 * This event triggers for every anonymous call within the program.
+	 *
+	 * For example, `(function(x) { x + 1 })(42)` or the second call in `a()()`.
+	 *
+	 * @protected
+	 */
 	protected onUnnamedCall(_data: { vertex: DataflowGraphVertexFunctionCall }) {}
 
-	protected onDefaultFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {
-	}
+	/**
+	 * This event triggers for every function call that is not handled by a specific overload,
+	 * and hence may be a function that targets a user-defined function.
+	 * Use {@link SemanticCfgGuidedVisitor#getOrigins} to get the origins of the call.
+	 *
+	 * For example, this triggers for `foo(x)` in
+	 *
+	 * ```r
+	 * foo <- function(x) { x + 1 }
+	 * foo(x)
+	 * ```
+	 *
+	 * @protected
+	 */
+	protected onDefaultFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 
-	protected onEvalFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {
-	}
+	/**
+	 * This event triggers for every call to the `eval` function.
+	 *
+	 * For example, `eval` in `eval(parse(text = "x + 1"))`.
+	 *
+	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
+	 *
+	 * @protected
+	 */
+	protected onEvalFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 
+	/**
+	 * This event triggers for every call to any of the `*apply` functions.
+	 *
+	 * For example, `lapply` in `lapply(1:10, function(x) { x + 1 })`.
+	 *
+	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
+	 *
+	 * @protected
+	 */
 	protected onApplyFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {
 	}
 
+	/**
+	 * This event triggers for every expression list - implicit or explicit, _but_ not for the root program (see {@link SemanticCfgGuidedVisitor#onProgram
+	 *
+	 * @param _data
+	 * @protected
+	 */
 	protected onExpressionList(_data: { call: DataflowGraphVertexFunctionCall }) {
 	}
 

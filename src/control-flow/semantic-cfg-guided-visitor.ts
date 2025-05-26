@@ -28,6 +28,7 @@ import type { FunctionArgument } from '../dataflow/graph/graph';
 import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 
 
@@ -87,6 +88,9 @@ export class SemanticCfgGuidedVisitor<
 			case RType.String:  return this.onStringConstant({ vertex: val, node: astNode });
 			case RType.Number:  return this.onNumberConstant({ vertex: val, node: astNode });
 			case RType.Logical: return this.onLogicalConstant({ vertex: val, node: astNode });
+			case RType.Symbol:
+				guard(astNode.lexeme === 'NULL', `Expected NULL constant, got ${astNode.lexeme}`);
+				return this.onNullConstant({ vertex: val, node: astNode as RSymbol<OtherInfo & ParentInformation, 'NULL'> });
 		}
 		guard(false, `Unexpected value type ${astNode.type} for value ${astNode.lexeme}`);
 	}
@@ -189,6 +193,8 @@ export class SemanticCfgGuidedVisitor<
 	protected getOrigins(id: NodeId): Origin[] | undefined {
 		return getOriginInDfg(this.config.dataflow.graph, id);
 	}
+
+	protected onNullConstant(_data: { vertex: DataflowGraphVertexValue, node: RSymbol<OtherInfo & ParentInformation, 'NULL'> }) {}
 
 	/** Called for every constant string value in the program */
 	protected onStringConstant(_data: { vertex: DataflowGraphVertexValue, node: RString }) {}

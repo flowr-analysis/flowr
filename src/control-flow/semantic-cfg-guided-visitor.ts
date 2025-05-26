@@ -164,7 +164,7 @@ export class SemanticCfgGuidedVisitor<
 	 * This function is called for every unknown vertex in the program.
 	 * It dispatches the appropriate event based on the type of the vertex.
 	 * In case you have to overwrite this function please make sure to still call this implementation to get a correctly working {@link SemanticCfgGuidedVisitor#onProgram|`onProgram`}.
-	 * 
+	 *
 	 * @protected
 	 */
 	protected override visitUnknown(vertex: CfgStatementVertex | CfgExpressionVertex) {
@@ -322,7 +322,7 @@ export class SemanticCfgGuidedVisitor<
 	 * You can use {@link getOrigins} to get the origins of the variable.
 	 *
 	 * For example, `x` in `x <- 42` or `x` in `assign("x", 42)`.
-	 * See {@link SemanticCfgGuidedVisitor#onAssignmentCall} for the assignment call. This event handler also provides you with informaton on the source.
+	 * See {@link SemanticCfgGuidedVisitor#onAssignmentCall} for the assignment call. This event handler also provides you with information on the source.
 	 */
 	protected onVariableDefinition(_data: { vertex: DataflowGraphVertexVariableDefinition }) {}
 

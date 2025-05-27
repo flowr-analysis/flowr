@@ -39,6 +39,13 @@ describe.sequential('Resolve Value Query', withShell(shell => {
 	testQuery('Intermediary', 'x <- 1\ny <- x\nprint(y)', ['3@y'], [[numVal(1)]]);
 	testQuery('Mystic Intermediary', 'x <- 1\ny <- f(x)\nprint(y)', ['3@y'], [[]]);
 	testQuery('Either or', 'if(u) { x <- 1 } else { x <- 2 }\nprint(x)', ['2@x'], [[numVal(2), numVal(1)]]);
+	testQuery('Big vector', `col <- vector()
+
+for (i in u) {
+  col <- append(col, ifelse(results[[i]] == "empty", "empty", results[[i]]))
+}
+
+f1 <- data.frame(col)`, ['7@col'], [[]]);
 
 	describe('For now suboptimal', () =>  {
 		testQuery('Unknown df', `

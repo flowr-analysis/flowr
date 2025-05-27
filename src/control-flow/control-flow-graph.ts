@@ -428,7 +428,7 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	/**
 	 * Merge another control flow graph into this one.
 	 * @param other - the other control flow graph to merge into this one
-	 * @param forceNested - should the other graph be assumed ot be fully nested (e.g., within a function definition).
+	 * @param forceNested - should the other graph be assumed to be fully nested (e.g., within a function definition).
 	 *
 	 * This is the pendant of {@link DataflowGraph#mergeWith|mergeWith()} on a {@link DataflowGraph}.
 	 */

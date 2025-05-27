@@ -121,14 +121,77 @@ export type CfgEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge
  * A read-only view of the {@link ControlFlowGraph}.
  */
 export interface ReadOnlyControlFlowGraph {
-	readonly rootVertexIds: () => ReadonlySet<NodeId>
-	readonly vertices:      (includeBasicBlockElements: boolean) => ReadonlyMap<NodeId, CfgSimpleVertex>
-	readonly edges:         () => ReadonlyMap<NodeId, ReadonlyMap<NodeId, CfgEdge>>
-	readonly outgoing:      (node: NodeId) => ReadonlyMap<NodeId, CfgEdge> | undefined
-	readonly ingoing:       (node: NodeId) => ReadonlyMap<NodeId, CfgEdge> | undefined
-	readonly getVertex:     (id: NodeId, includeBlocks?: boolean) => CfgSimpleVertex | undefined
-	readonly hasVertex:     (id: NodeId, includeBlocks?: boolean) => boolean
-	readonly getBasicBlock: (elemId: NodeId) => CfgBasicBlockVertex | undefined
+	/**
+	 * Get all ids of the root vertices &mdash; vertices that are not part of
+	 * any function definition or basic block and hence part of the "top-level" control flow.
+	 *
+	 * This is the pendant of {@link DataflowGraph#rootIds|rootIds()} on a {@link DataflowGraph}.
+	 *
+	 * @see {@link ReadOnlyControlFlowGraph#vertices|vertices()} - for a way to get all vertices in the graph.
+	 * @see {@link ReadOnlyControlFlowGraph#getVertex|getVertex()} - for a way to get a specific vertex by its id.
+	 * @see {@link ReadOnlyControlFlowGraph#edges|edges()} - for a way to get all edges in the graph.
+	 */
+	readonly rootIds:            () => ReadonlySet<NodeId>
+	/**
+	 * Provide a view of all vertices in the graph.
+	 *
+	 * @param includeBasicBlockElements - if true, the elements of basic block elements are included in the result, otherwise this will only the basic blocks themselves
+	 *
+	 * @see {@link ReadOnlyControlFlowGraph#rootVertexIds|rootVertexIds()} - for a way to get the root vertices of the graph.
+	 * @see {@link ReadOnlyControlFlowGraph#getVertex|getVertex()} - for a way to get a specific vertex by its id.
+	 * @see {@link ReadOnlyControlFlowGraph#edges|edges()} - for a way to get all edges in the graph.
+	 */
+	readonly vertices:           (includeBasicBlockElements: boolean) => ReadonlyMap<NodeId, CfgSimpleVertex>
+	/**
+	 * Get all edges in the graph, independent of their sources and targets.
+	 * If you are only interested in the edges of a specific node, please use {@link ReadOnlyControlFlowGraph#outgoingEdges|outgoingEdges()} or {@link ReadOnlyControlFlowGraph#ingoingEdges|ingoingEdges()}.
+	 *
+	 * This is the pendant of {@link DataflowGraph#edges|edges()} on a {@link DataflowGraph}.
+	 */
+	readonly edges:              () => ReadonlyMap<NodeId, ReadonlyMap<NodeId, CfgEdge>>
+	/**
+	 * Receive all outgoing edges of a given vertex.
+	 *
+	 * This is the pendant of {@link DataflowGraph#ingoingEdges|ingoingEdges()} on a {@link DataflowGraph}.
+	 *
+	 * @see {@link ReadOnlyControlFlowGraph#ingoingEdges|ingoingEdges()} - for a way to get all ingoing edges of a vertex.
+	 */
+	readonly outgoingEdges:      (id: NodeId) => ReadonlyMap<NodeId, CfgEdge> | undefined
+	/**
+	 * Receive all ingoing edges of a given vertex.
+	 *
+	 * This is the pendant of {@link DataflowGraph#outgoingEdges|outgoingEdges()} on a {@link DataflowGraph}.
+	 *
+	 * @see {@link ReadOnlyControlFlowGraph#outgoingEdges|outgoingEdges()} - for a way to get all outgoing edges of a vertex.
+	 */
+	readonly ingoingEdges:       (id: NodeId) => ReadonlyMap<NodeId, CfgEdge> | undefined
+	/**
+	 * Retrieve a vertex by its id.
+	 *
+	 * @param id - the id of the vertex to retrieve
+	 * @param includeBlocks - if true, the elements of basic block elements are included in the result, otherwise this will only the basic blocks themselves
+	 *
+	 * This is the pendant of {@link DataflowGraph#getVertex|getVertex()} on a {@link DataflowGraph}.
+	 */
+	readonly getVertex:          (id: NodeId, includeBlocks?: boolean) => CfgSimpleVertex | undefined
+	/**
+	 * Check if a vertex with the given id exists in the graph.
+	 *
+	 * @param id - the id of the vertex to check
+	 * @param includeBlocks - if true, the elements of basic block elements are included in the check, otherwise this will only check the basic blocks themselves
+	 *
+	 * This is the pendant of {@link DataflowGraph#hasVertex|hasVertex()} on a {@link DataflowGraph}.
+	 */
+	readonly hasVertex:          (id: NodeId, includeBlocks?: boolean) => boolean
+	/**
+	 * Obtain the basic block associated with the given element id (i.e. if this is an element within a basic block, return the blockit belongs to).
+	 */
+	readonly getBasicBlock:      (elemId: NodeId) => CfgBasicBlockVertex | undefined
+	/**
+	 * Returns true if the graph may contain basic blocks and false if we know that it does not.
+	 * This can be used for optimizations.
+	 */
+	readonly mayHaveBasicBlocks: () => boolean
 }
 
 /**
@@ -151,6 +214,12 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	/** used as an optimization to avoid unnecessary lookups */
 	private _mayHaveBasicBlocks = false;
 
+
+	/**
+	 * Add a new vertex to the control flow graph.
+	 *
+	 * @see {@link ControlFlowGraph#addEdge|addEdge()} - to add an edge
+	 */
 	addVertex(vertex: Vertex, rootVertex = true): this {
 		guard(!this.vertexInformation.has(vertex.id), `Node with id ${vertex.id} already exists`);
 
@@ -172,6 +241,12 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 		return this;
 	}
 
+	/**
+	 * Add a new edge to the control flow graph.
+	 *
+	 * @see {@link ControlFlowGraph#addVertex|addVertex()} - to add vertices
+	 * @see {@link ControlFlowGraph#addEdges|addEdges()} - to add multiple edges at once
+	 */
 	addEdge(from: NodeId, to: NodeId, edge: CfgEdge): this {
 		const edgesFrom = this.edgeInformation.get(from) ?? new Map<NodeId, CfgEdge>();
 		if(!this.edgeInformation.has(from)) {
@@ -181,6 +256,9 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 		return this;
 	}
 
+	/**
+	 * Add multiple edges from a given source vertex to the control flow graph.
+	 */
 	addEdges(from: NodeId, to: Map<NodeId, CfgEdge>): this {
 		const edgesFrom = this.edgeInformation.get(from) ?? new Map<NodeId, CfgEdge>();
 		if(!this.edgeInformation.has(from)) {
@@ -192,11 +270,11 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 		return this;
 	}
 
-	outgoing(node: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
+	outgoingEdges(node: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
 		return this.edgeInformation.get(node);
 	}
 
-	ingoing(id: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
+	ingoingEdges(id: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
 		const edges = new Map<NodeId, CfgEdge>();
 		for(const [source, outgoing] of this.edgeInformation.entries()) {
 			if(outgoing.has(id)) {
@@ -206,7 +284,7 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 		return edges;
 	}
 
-	rootVertexIds(): ReadonlySet<NodeId> {
+	rootIds(): ReadonlySet<NodeId> {
 		return this.rootVertices;
 	}
 
@@ -268,10 +346,6 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 		return this.vertexInformation.has(id) || (this._mayHaveBasicBlocks && includeBlocks && this.bbChildren.has(id));
 	}
 
-	/**
-	 * Returns true if the graph may contain basic blocks and false if we know that it does not.
-	 * This can be used for optimizations.
-	 */
 	mayHaveBasicBlocks(): boolean {
 		return this._mayHaveBasicBlocks;
 	}
@@ -279,6 +353,9 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	/**
 	 * This removes the vertex and all edges to and from it.
 	 * @param id - the id of the vertex to remove
+	 *
+	 * @see {@link ControlFlowGraph#addVertex|addVertex()} - to add a vertex
+	 * @see {@link ControlFlowGraph#removeEdge|removeEdge()} - to remove a specific edge
 	 */
 	removeVertex(id: NodeId): this {
 		this.vertexInformation.delete(id);
@@ -297,6 +374,12 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 		return this;
 	}
 
+	/**
+	 * Removes a all direct edges between `from` and `to` from the control flow graph.
+	 *
+	 * @see {@link ControlFlowGraph#addEdge|addEdge()} - to add an edge
+	 * @see {@link ControlFlowGraph#removeVertex|removeVertex()} - to remove a vertex and all its edges
+	 */
 	removeEdge(from: NodeId, to: NodeId): this {
 		const edges = this.edgeInformation.get(from);
 		if(edges) {
@@ -331,7 +414,7 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 		// drop all edges from a to b
 		this.removeEdge(a, b);
 
-		const bOutgoing = this.outgoing(b);
+		const bOutgoing = this.outgoingEdges(b);
 
 		this.removeVertex(b);
 
@@ -342,7 +425,14 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 		return this;
 	}
 
-	merge(other: ControlFlowGraph<Vertex>, forceNested = false): this {
+	/**
+	 * Merge another control flow graph into this one.
+	 * @param other - the other control flow graph to merge into this one
+	 * @param forceNested - should the other graph be assumed ot be fully nested (e.g., within a function definition).
+	 *
+	 * This is the pendant of {@link DataflowGraph#mergeWith|mergeWith()} on a {@link DataflowGraph}.
+	 */
+	mergeWith(other: ControlFlowGraph<Vertex>, forceNested = false): this {
 		this._mayHaveBasicBlocks ||= other._mayHaveBasicBlocks;
 
 		const roots = other.rootVertices;

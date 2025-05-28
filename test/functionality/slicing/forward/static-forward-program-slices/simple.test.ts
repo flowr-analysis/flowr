@@ -31,5 +31,5 @@ print(x + y)
 	}
 f()
 print(x + y)
-		`, ['2@x'], '{ x <<- 2; }\nf()\nprint(x + y)');
+		`, ['2@x'], '{ x <<- 2 }\nf()\nprint(x + y)');
 }));

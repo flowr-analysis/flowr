@@ -9,7 +9,7 @@ import {
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
-import { extractCFG } from '../../../src/control-flow/extract-cfg';
+import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import type { ControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
 import type { DataflowGraphVertexValue } from '../../../src/dataflow/graph/vertex';
 import type { RNumber } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
@@ -19,7 +19,7 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 	function testSemanticVisitor<V extends SemanticCfgGuidedVisitor>(code: string, visitor: (o: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>, controlFlow: ControlFlowInformation) => V, assert: (obj: V) => void) {
 		it(code, async() => {
 			const data = await createDataflowPipeline(ts, { request: requestFromInput(code) }).allRemainingSteps();
-			const cfg = extractCFG(data.normalize, data.dataflow.graph);
+			const cfg = extractCfg(data.normalize, data.dataflow.graph);
 			const v = visitor(data, cfg);
 			v.start();
 			assert(v);

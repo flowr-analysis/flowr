@@ -81,7 +81,7 @@ function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInf
  *
  * @see {@link extractSimpleCfg} - for a simplified version of this function
  */
-export function extractCFG<Info=ParentInformation>(
+export function extractCfg<Info=ParentInformation>(
 	ast:    NormalizedAst<Info>,
 	graph?: DataflowGraph,
 	simplifications?: readonly CfgSimplificationPassName[]
@@ -90,7 +90,7 @@ export function extractCFG<Info=ParentInformation>(
 }
 
 /**
- * Simplified version of {@link extractCFG} that is much quicker, but much simpler!
+ * Simplified version of {@link extractCfg} that is much quicker, but much simpler!
  */
 export function extractSimpleCfg<Info=ParentInformation>(ast: NormalizedAst<Info>) {
 	return foldAst(ast.ast, cfgFolds);
@@ -352,13 +352,13 @@ export const ResolvedCallSuffix = '-resolved-call-exit';
 
 function cfgFunctionCallWithDataflow(graph: DataflowGraph): typeof cfgFunctionCall {
 	return (call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation => {
-		const baseCFG = cfgFunctionCall(call, name, args);
+		const baseCfg = cfgFunctionCall(call, name, args);
 
 		/* try to resolve the call and link the target definitions */
 		const targets = getAllFunctionCallTargets(call.info.id, graph);
 
 		const exits: NodeId[] = [];
-		const callVertex = baseCFG.graph.getVertex(call.info.id);
+		const callVertex = baseCfg.graph.getVertex(call.info.id);
 		guard(callVertex !== undefined, 'cfgFunctionCallWithDataflow: call vertex not found');
 		for(const target of targets) {
 			// we have to filter out non func-call targets as the call targets contains names and call ids
@@ -370,22 +370,22 @@ function cfgFunctionCallWithDataflow(graph: DataflowGraph): typeof cfgFunctionCa
 		}
 
 		if(exits.length > 0) {
-			baseCFG.graph.addVertex({
+			baseCfg.graph.addVertex({
 				id:   call.info.id + ResolvedCallSuffix,
 				type: CfgVertexType.EndMarker,
 				root: call.info.id
 			});
 
-			for(const exit of [...baseCFG.exitPoints, ...exits]) {
-				baseCFG.graph.addEdge(call.info.id + ResolvedCallSuffix, exit, { label: CfgEdgeType.Fd });
+			for(const exit of [...baseCfg.exitPoints, ...exits]) {
+				baseCfg.graph.addEdge(call.info.id + ResolvedCallSuffix, exit, { label: CfgEdgeType.Fd });
 			}
 
 			return {
-				...baseCFG,
+				...baseCfg,
 				exitPoints: [call.info.id + ResolvedCallSuffix]
 			};
 		} else {
-			return baseCFG;
+			return baseCfg;
 		}
 	};
 }

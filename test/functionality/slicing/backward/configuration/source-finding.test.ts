@@ -2,16 +2,16 @@ import { afterAll, assert, beforeAll, describe, test } from 'vitest';
 import {
 	findSource,
 	setSourceProvider
-} from '../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
-import type { RParseRequest } from '../../../../src/r-bridge/retriever';
-import { requestProviderFromFile, requestProviderFromText } from '../../../../src/r-bridge/retriever';
+} from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
+import type { RParseRequest } from '../../../../../src/r-bridge/retriever';
+import { requestProviderFromFile, requestProviderFromText } from '../../../../../src/r-bridge/retriever';
 import {
 	amendConfig,
 	defaultConfigOptions,
 	DropPathsOption,
 	InferWorkingDirectory,
 	setConfig
-} from '../../../../src/config';
+} from '../../../../../src/config';
 import path from 'path';
 
 describe('source finding', () => {

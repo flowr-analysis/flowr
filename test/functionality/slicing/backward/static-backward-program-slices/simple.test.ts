@@ -1,9 +1,9 @@
-import { assertSliced, withShell } from '../../_helper/shell';
-import { label } from '../../_helper/label';
-import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
+import { assertSliced, withShell } from '../../../_helper/shell';
+import { label } from '../../../_helper/label';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { afterAll, beforeAll, describe } from 'vitest';
-import { amendConfig, defaultConfigOptions, setConfig } from '../../../../src/config';
+import { amendConfig, defaultConfigOptions, setConfig } from '../../../../../src/config';
 
 describe.sequential('Simple', withShell(shell => {
 	for(const withPointer of [true, false]) {

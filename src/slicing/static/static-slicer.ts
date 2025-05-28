@@ -15,6 +15,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { VertexType } from '../../dataflow/graph/vertex';
 import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import { getConfig } from '../../config';
+import { invertDfg } from '../../dataflow/graph/invert-dfg';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -29,7 +30,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  * @param threshold - The maximum number of nodes to visit in the graph. If the threshold is reached, the slice will side with inclusion and drop its minimal guarantee. The limit ensures that the algorithm halts.
  * @param cache     - A cache to store the results of the slice. If provided, the slice may use this cache to speed up the slicing process.
  */
-export function staticSlicing(
+export function staticBackwardSlice(
 	graph: DataflowGraph,
 	{ idMap }: NormalizedAst,
 	criteria: SlicingCriteria,
@@ -141,4 +142,15 @@ export function updatePotentialAddition(queue: VisitingQueue, id: NodeId, target
 			onlyForSideEffects: false
 		}]);
 	}
+}
+
+export function staticForwardSlice(
+	graph: DataflowGraph,
+	ast: NormalizedAst,
+	criteria: SlicingCriteria,
+	threshold = getConfig().solver.slicer?.threshold ?? 75,
+	cache?: Map<Fingerprint, Set<NodeId>>
+): Readonly<SliceResult> {
+	const useGraph = invertDfg(graph);
+	return staticBackwardSlice(useGraph, ast, criteria, threshold, cache);
 }

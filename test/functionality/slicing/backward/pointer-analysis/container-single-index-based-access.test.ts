@@ -1,8 +1,8 @@
 import { describe } from 'vitest';
-import { assertSliced, withShell } from '../../_helper/shell';
-import { useConfigForTest } from '../../_helper/config';
-import { label } from '../../_helper/label';
-import { AccessType, ContainerType, setupContainerFunctions } from '../../_helper/pointer-analysis';
+import { assertSliced, withShell } from '../../../_helper/shell';
+import { useConfigForTest } from '../../../_helper/config';
+import { label } from '../../../_helper/label';
+import { AccessType, ContainerType, setupContainerFunctions } from '../../../_helper/pointer-analysis';
 
 describe.sequential('Container Single Index Based Access', withShell(shell => {
 

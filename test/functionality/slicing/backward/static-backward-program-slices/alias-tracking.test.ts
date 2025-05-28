@@ -1,12 +1,12 @@
-import { withShell } from '../../_helper/shell';
+import { withShell } from '../../../_helper/shell';
 import { describe, expect, test } from 'vitest';
-import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { trackAliasInEnvironments } from '../../../../src/dataflow/environments/resolve-by-name';
-import type { Identifier } from '../../../../src/dataflow/environments/identifier';
-import type { RShell } from '../../../../src/r-bridge/shell';
-import { numVal } from '../../_helper/ast-builder';
+import { PipelineExecutor } from '../../../../../src/core/pipeline-executor';
+import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../../src/core/steps/pipeline/default-pipelines';
+import { requestFromInput } from '../../../../../src/r-bridge/retriever';
+import { trackAliasInEnvironments } from '../../../../../src/dataflow/environments/resolve-by-name';
+import type { Identifier } from '../../../../../src/dataflow/environments/identifier';
+import type { RShell } from '../../../../../src/r-bridge/shell';
+import { numVal } from '../../../_helper/ast-builder';
 
 async function runPipeline(code: string, shell: RShell) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {

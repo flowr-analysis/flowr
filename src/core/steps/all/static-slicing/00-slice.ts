@@ -4,7 +4,7 @@ import { PipelineStepStage } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import type { DataflowInformation } from '../../../../dataflow/info';
 import type { SlicingCriteria } from '../../../../slicing/criterion/parse';
-import { staticSlicing } from '../../../../slicing/static/static-slicer';
+import { staticBackwardSlice } from '../../../../slicing/static/static-slicer';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 export interface SliceRequiredInput {
@@ -15,7 +15,7 @@ export interface SliceRequiredInput {
 }
 
 function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>) {
-	return staticSlicing((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold);
+	return staticBackwardSlice((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold);
 }
 
 export const STATIC_SLICE = {

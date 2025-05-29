@@ -79,6 +79,10 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
 	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
 	asciiSummarizer:      (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
 	schema:               Joi.ObjectSchema
+	/**
+	 * Flattens the involved query nodes to be added to a flowR search when the {@link fromQuery} function is used based on the given result after this query is executed.
+	 * If this query does not involve any nodes, an empty array can be returned.
+	 */
 	flattenInvolvedNodes: (queryResults: BaseQueryResult) => NodeId[]
 }
 

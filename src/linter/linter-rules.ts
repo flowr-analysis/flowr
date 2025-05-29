@@ -2,6 +2,10 @@ import { R1_DEPRECATED_FUNCTIONS } from './rules/1-deprecated-functions';
 import type { LintingRule } from './linter-format';
 import { R2_FILE_PATH_VALIDITY } from './rules/2-file-path-validity';
 
+/**
+ * The registry of currently supported linting rules.
+ * A linting rule can be executed on a dataflow pipeline result using {@link executeLintingRule}.
+ */
 export const LintingRules = {
 	'deprecated-functions': R1_DEPRECATED_FUNCTIONS,
 	'file-path-validity':   R2_FILE_PATH_VALIDITY

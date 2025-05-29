@@ -13,11 +13,18 @@ import { identifyLinkToLastCallRelation } from '../../queries/catalog/call-conte
 import { guard } from '../../util/assert';
 import { extractSimpleCfg } from '../../control-flow/extract-cfg';
 
+/**
+ * A {@link FlowrSearchElement} that is enriched with a set of enrichments through {@link FlowrSearchBuilder.with}.
+ * Enrichments can be retrieved easily from an element through {@link enrichmentContent}.
+ */
 export interface EnrichedFlowrSearchElement<Info> extends FlowrSearchElement<Info> {
 	enrichments: { [E in Enrichment]?: EnrichmentContent<E> }
 }
 
 export interface EnrichmentData<EnrichmentContent extends MergeableRecord, EnrichmentArguments = undefined> {
+	/**
+	 * A function that is applied to each element of the search to enrich it with additional data.
+	 */
 	readonly enrich: (e: FlowrSearchElement<ParentInformation>, data: FlowrSearchInput<Pipeline>, args: EnrichmentArguments | undefined) => EnrichmentContent
 	/**
 	 * The mapping function used by the {@link Mapper.Enrichment} mapper.
@@ -27,7 +34,12 @@ export interface EnrichmentData<EnrichmentContent extends MergeableRecord, Enric
 export type EnrichmentContent<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer Content, infer _Args> ? Content : never;
 export type EnrichmentArguments<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer _Content, infer Args> ? Args : never;
 
+/**
+ * An enumeration that stores the names of the available enrichments that can be applied to a set of search elements.
+ * See {@link FlowrSearchBuilder.with} for more information on how to apply enrichments.
+ */
 export enum Enrichment {
+
 	CallTargets = 'call-targets',
 	LastCall = 'last-call'
 }
@@ -43,6 +55,10 @@ export interface LastCallContent extends MergeableRecord {
 	linkedIds: FlowrSearchElement<ParentInformation>[]
 }
 
+/**
+ * The registry of enrichments that are currently supported by the search.
+ * See {@link FlowrSearchBuilder.with} for more information on how to apply enrichments.
+ */
 export const Enrichments = {
 	[Enrichment.CallTargets]: {
 		enrich: (e, data) => {
@@ -97,6 +113,12 @@ export const Enrichments = {
 	} satisfies EnrichmentData<LastCallContent, Omit<LinkToLastCall, 'type'>[]>,
 } as const;
 
+/**
+ * Returns the content of the given enrichment type from a {@link FlowrSearchElement}.
+ * If the search element is not enriched with the given enrichment, `undefined` is returned.
+ * @param e - The search element whose enrichment content should be retrieved.
+ * @param enrichment - The enrichment content, if present, else `undefined`.
+ */
 export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<ParentInformation>, enrichment: E): EnrichmentContent<E> {
 	return (e as EnrichedFlowrSearchElement<ParentInformation>)?.enrichments?.[enrichment] as EnrichmentContent<E>;
 }

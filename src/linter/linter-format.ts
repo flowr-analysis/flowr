@@ -7,17 +7,39 @@ import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/
 import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from './linter-rules';
 import type { DataflowInformation } from '../dataflow/info';
 
+/**
+ * The base interface for a linting rule, which contains all of its relevant settings.
+ * The registry of valid linting rules is stored in {@link LintingRules}.
+ */
 export interface LintingRule<Result extends LintingResult, Metadata extends MergeableRecord, Config extends MergeableRecord = never, Info = ParentInformation, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
+	/**
+	 * Creates a flowR search that will then be executed and whose results will be passed to {@link processSearchResult}.
+	 * In the future, additional optimizations and transformations may be applied to the search between this function and {@link processSearchResult}.
+	 */
 	readonly createSearch:        (config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation }) => FlowrSearchLike<Info, GeneratorNames, TransformerNames[], FlowrSearchElements<Info, Elements>>
-	// between these two, there's a chance for the search for multiple rules to be combined or optimized maybe
+	/**
+	 * Processes the search results of the search created through {@link createSearch}.
+	 * This function is expected to return the linting results from this rule for the given search, ie usually the given script file.
+	 */
 	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation }) => {
 		results: Result[],
 		'.meta': Metadata
 	}
+	/**
+	 * A function used to pretty-print the given linting result.
+	 * By default, the {@link LintingResult#certainty} is automatically printed alongside this information.
+	 */
 	readonly prettyPrint:   (result: Result, metadata: Metadata) => string
+	/**
+	 * The default config for this linting rule.
+	 * The default config is combined with the user config when executing the rule.
+	 */
 	readonly defaultConfig: NoInfer<Config>
 }
 
+/**
+ * A linting result for a single linting rule match.
+ */
 export interface LintingResult {
 	readonly certainty: LintingCertainty
 }

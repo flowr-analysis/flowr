@@ -33,6 +33,11 @@ export const FlowrSearchGenerator = {
 	from(from: FlowrSearchElement<ParentInformation> | FlowrSearchElement<ParentInformation>[]): FlowrSearchBuilder<'from'> {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'from', args: { from } });
 	},
+	/**
+	 * Initializes a new search query based on the results of the given JSON query or queries.
+	 * Internally, the {@link SupportedQuery#flattenInvolvedNodes} function is used to flatten the resulting nodes of the query.
+	 * Please note that, due to the fact that not every query involves dataflow nodes, the search may not contain any elements at all for certain queries.
+	 */
 	fromQuery(...from: readonly Query[]): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]>> {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'from-query', args: { from } });
 	},
@@ -212,16 +217,26 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 		return this;
 	}
 
+	/**
+	 * Adds the given enrichment to each element of the search.
+	 * Added enrichments can later be retrieved using the {@link enrichmentContent} function.
+	 */
 	with<ConcreteEnrichment extends Enrichment>(enrichment: ConcreteEnrichment, args?: EnrichmentArguments<ConcreteEnrichment>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with'> {
 		this.search.push( { type: 'transformer', name: 'with', args: { info: enrichment, args: args as EnrichmentArguments<Enrichment> } });
 		return this;
 	}
 
+	/**
+	 * Maps the elements of the search to new values using the given mapper function.
+	 */
 	map<MapperType extends Mapper>(mapper: MapperType, args: MapperArguments<MapperType>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'map'> {
 		this.search.push( { type: 'transformer', name: 'map', args: { mapper: mapper, args: args as MapperArguments<Mapper> } });
 		return this;
 	}
 
+	/**
+	 * A convenience function that combines {@link with} and the {@link Mapper.Enrichment} mapper to immediately add an enrichment and then map to its value(s).
+	 */
 	get<ConcreteEnrichment extends Enrichment>(enrichment: ConcreteEnrichment, args?: EnrichmentArguments<ConcreteEnrichment>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with' | 'map'> {
 		return this.with(enrichment, args).map(Mapper.Enrichment, enrichment);
 	}

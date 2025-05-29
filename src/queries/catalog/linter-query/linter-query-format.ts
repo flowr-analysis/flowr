@@ -13,11 +13,15 @@ export interface LinterQuery extends BaseQueryFormat {
 	readonly type:   'linter';
 	/**
 	 * The rules to lint for. If unset, all rules will be included.
+	 * Optionally, a {@link ConfiguredLintingRule} can be provided, which additionally includes custom user-supplied values for the linting rules' configurations.
 	 */
 	readonly rules?: (LintingRuleNames | ConfiguredLintingRule)[];
 }
 
 export interface LinterQueryResult extends BaseQueryResult {
+	/**
+	 * The results of the linter query, which returns a set of linting results for each rule that was executed.
+	 */
 	readonly results: { [L in LintingRuleNames]?: LintingResults<L>}
 }
 

@@ -43,7 +43,7 @@ function checkReachFrom(label: string, cfg: ControlFlowInformation, start: NodeI
 	});
 
 	// we only require the roots to be there
-	const allVertices = cfg.graph.rootVertexIds();
+	const allVertices = cfg.graph.rootIds();
 	const diff = setMinus(allVertices, collected);
 	if(diff.size > 0) {
 		log.error(`Unreachable vertices from ${label}:`, diff);
@@ -72,7 +72,7 @@ function _checkFdIOCount(cfg: ControlFlowInformation, dir: 'in' | 'out', type: '
 	}
 	const check = type === 'exact' ? (a: number) => a === limit : (a: number) => a <= limit;
 	for(const [node, count] of counts) {
-		if(type === 'exact' && (cfg.entryPoints.includes(node) || cfg.exitPoints.includes(node) || !cfg.graph.rootVertexIds().has(node))) {
+		if(type === 'exact' && (cfg.entryPoints.includes(node) || cfg.exitPoints.includes(node) || !cfg.graph.rootIds().has(node))) {
 			continue; // skip entry and exit points, they do not have to satisfy this
 		}
 		if(!check(count)) {

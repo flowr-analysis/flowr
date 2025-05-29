@@ -38,7 +38,7 @@ export function visitCfgInReverseOrder(
 				queue = queue.concat(get.elems.toReversed().map(e => e.id));
 			}
 		}
-		const incoming = graph.outgoing(current) ?? [];
+		const incoming = graph.outgoingEdges(current) ?? [];
 		for(const [from] of incoming) {
 			queue.push(from);
 		}
@@ -78,7 +78,7 @@ export function visitCfgInOrder(
 				queue = queue.concat(get.elems.map(e => e.id));
 			}
 		}
-		const outgoing = graph.ingoing(current) ?? [];
+		const outgoing = graph.ingoingEdges(current) ?? [];
 		for(const [to] of outgoing) {
 			queue.push(to);
 		}

@@ -52,7 +52,7 @@ function cfgRemoveDeadCode(cfg: ControlFlowInformation): ControlFlowInformation 
 	visitCfgInOrder(cfg.graph, cfg.entryPoints, node => {
 		reachable.add(node);
 	});
-	for(const id of cfg.graph.rootVertexIds()) {
+	for(const id of cfg.graph.rootIds()) {
 		if(!reachable.has(id)) {
 			cfg.graph.removeVertex(id);
 		}

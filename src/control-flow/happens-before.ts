@@ -21,7 +21,7 @@ export function happensBefore(cfg: ControlFlowGraph, a: NodeId, b: NodeId): Tern
 			useCd = undefined;
 		}
 		visited.add(current);
-		for(const [id, t] of cfg.outgoing(current) ?? []) {
+		for(const [id, t] of cfg.outgoingEdges(current) ?? []) {
 			const marker = t.label === CfgEdgeType.Cd ? `${t.caused}-exit` : useCd;
 			stack.push([id, useCd ?? marker]);
 		}

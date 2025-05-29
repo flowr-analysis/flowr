@@ -51,7 +51,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.2.12, R v4.4.3 (r-shell engine)
+    flowR repl using flowR v2.2.13, R v4.4.3 (r-shell engine)
     R> :slicer test/testfiles/example.R --criterion "11@sum"
     ```
     
@@ -98,7 +98,7 @@ It offers a wide variety of features, for example:
         
 
 * 🚀 **fast data- and control-flow graphs**\
-  Within just <i><span title="This measurement is automatically fetched from the latest benchmark!">124.8 ms</span></i> (as of Mar 17, 2025), 
+  Within just <i><span title="This measurement is automatically fetched from the latest benchmark!">139.5 ms</span></i> (as of May 27, 2025), 
   _flowR_ can analyze the data- and control-flow of the average real-world R script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
   and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for more details on the dataflow graph.
 
@@ -134,7 +134,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.2.12, R v4.4.3 (r-shell engine)
+    flowR repl using flowR v2.2.13, R v4.4.3 (r-shell engine)
     R> :dataflow* test/testfiles/example.R
     ```
     
@@ -435,7 +435,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _22.6 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _22.0 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

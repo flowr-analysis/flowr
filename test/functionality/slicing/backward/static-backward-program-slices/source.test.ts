@@ -1,8 +1,8 @@
-import { assertSliced, withShell } from '../../_helper/shell';
-import { setSourceProvider } from '../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
-import { requestProviderFromFile, requestProviderFromText } from '../../../../src/r-bridge/retriever';
-import { label } from '../../_helper/label';
-import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import { assertSliced, withShell } from '../../../_helper/shell';
+import { setSourceProvider } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
+import { requestProviderFromFile, requestProviderFromText } from '../../../../../src/r-bridge/retriever';
+import { label } from '../../../_helper/label';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { describe, beforeAll, afterAll } from 'vitest';
 
 describe.sequential('source', withShell(shell => {

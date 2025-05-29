@@ -1,8 +1,8 @@
-import { assertSliced, withShell } from '../../_helper/shell';
-import { label } from '../../_helper/label';
-import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import { assertSliced, withShell } from '../../../_helper/shell';
+import { label } from '../../../_helper/label';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { describe } from 'vitest';
-import { MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
+import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 
 describe.sequential('dollar access', withShell(shell => {
 	describe('problems in practice', () => {

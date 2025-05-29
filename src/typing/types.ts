@@ -1,3 +1,5 @@
+import { guard } from '../util/assert';
+
 /**
  * This enum lists a tag for each of the possible R data types inferred by the
  * type inferencer. It is mainly used to identify subtypes of {@link RDataType}.
@@ -67,8 +69,37 @@ export class RNullType {
 	readonly tag = RDataTypeTag.Null;
 }
 
+export class UnresolvedRFunctionType {
+	readonly tag = RDataTypeTag.Function;
+
+	constructor(argumentCount: number) {
+		this.parameterTypes = Array.from({ length: argumentCount }, () => new RTypeVariable());
+		this.returnType = new RTypeVariable();
+	}
+
+	parameterTypes: RTypeVariable[];
+	returnType:     RTypeVariable;
+
+	unify(other: UnresolvedRFunctionType): void {
+		guard(this.parameterTypes.length === other.parameterTypes.length, 'Expected the same number of parameters for function types to unify');
+
+		for(let i = 0; i < this.parameterTypes.length; i++) {
+			this.parameterTypes[i].unify(other.parameterTypes[i]);
+		}
+		this.returnType.unify(other.returnType);
+	}
+}
+
 export class RFunctionType {
 	readonly tag = RDataTypeTag.Function;
+
+	constructor(parameterTypes: RDataType[], returnType: RDataType) {
+		this.parameterTypes = parameterTypes;
+		this.returnType = returnType;
+	}
+
+	readonly parameterTypes: RDataType[];
+	readonly returnType:     RDataType;
 }
 
 export class RListType {
@@ -110,6 +141,8 @@ export class RTypeVariable {
 			thisRep.boundType = otherRep;
 		} else if(otherRep instanceof RTypeVariable) {
 			otherRep.boundType = thisRep;
+		} else if(thisRep instanceof UnresolvedRFunctionType && otherRep instanceof UnresolvedRFunctionType && thisRep.parameterTypes.length === otherRep.parameterTypes.length) {
+			thisRep.unify(otherRep);
 		} else if(thisRep.tag !== otherRep.tag) {
 			this.boundType = new RErrorType();
 		}
@@ -126,6 +159,10 @@ export function resolveType(type: UnresolvedRDataType): RDataType {
 	if(type instanceof RTypeVariable) {
 		const typeRep = type.find();
 		return typeRep !== type ? resolveType(typeRep) : { tag: RDataTypeTag.Any };
+	} else if(type instanceof UnresolvedRFunctionType) {
+		const resolvedParameterTypes = type.parameterTypes.map(resolveType);
+		const resolvedReturnType = resolveType(type.returnType);
+		return new RFunctionType(resolvedParameterTypes, resolvedReturnType);
 	}
 	return type;
 }
@@ -139,12 +176,11 @@ export type PrimitiveRDataType
 	| RStringType
 	| RRawType
 	| RNullType
-	| RFunctionType
 	| RListType
 	| REnvironmentType
 	| RLanguageType
 
-export type CompoundRDataType = never;
+export type CompoundRDataType = RFunctionType;
 
 /**
  * The `RDataType` type is the union of all possible types that can be inferred
@@ -154,7 +190,7 @@ export type CompoundRDataType = never;
  */
 export type RDataType = RAnyType | RNeverType | PrimitiveRDataType | CompoundRDataType | RErrorType;
 
-export type UnresolvedCompoundRDataType = never;
+export type UnresolvedCompoundRDataType = UnresolvedRFunctionType;
 
 export type UnresolvedRDataType
 	= RAnyType

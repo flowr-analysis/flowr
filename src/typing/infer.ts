@@ -8,7 +8,7 @@ import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RDataType } from './types';
-import { RTypeVariable , RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, RFunctionType, RNeverType, RListType, RLanguageType, RAnyType } from './types';
+import { RTypeVariable , RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, RNeverType, RListType, RLanguageType, RAnyType, UnresolvedRFunctionType } from './types';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../util/assert';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
@@ -18,6 +18,7 @@ import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-c
 import type { FunctionArgument } from '../dataflow/graph/graph';
 import { CfgVertexType } from '../control-flow/control-flow-graph';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 
 export function inferDataTypes<Info extends { typeVariable?: undefined }>(ast: NormalizedAst<Info>, dataFlowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
@@ -115,13 +116,12 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 			.filter(([_target, edge]) => edgeIncludesType(edge.types, EdgeType.Calls))
 			.map(([target, _edge]) => target)
 			.toArray();
-
+			
 		guard(callTargets !== undefined && callTargets.length >= 1, 'Expected at least one target for default function call');
-
 		for(const target of callTargets) {
 			const targetNode = this.getNormalizedAst(target);
 			if(targetNode !== undefined) {
-				targetNode.info.typeVariable.unify(new RFunctionType());
+				targetNode.info.typeVariable.unify(new UnresolvedRFunctionType(data.call.args.length));
 			} else {
 				// TODO: Handle builtin functions that are not represented in the AST
 			}
@@ -277,9 +277,9 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 
 	override onFunctionDefinition(data: { vertex: DataflowGraphVertexFunctionDefinition }): void {
 		const node = this.getNormalizedAst(data.vertex.id);
-		guard(node !== undefined, 'Expected AST node to be defined');
+		guard(node !== undefined && node.type === RType.FunctionDefinition, 'Expected AST node to be a function definition');
 
-		node.info.typeVariable.unify(new RFunctionType());
+		node.info.typeVariable.unify(new UnresolvedRFunctionType(node.parameters.length));
 	}
 
 	override onProgram(node: RExpressionList<UnresolvedTypeInfo>) {

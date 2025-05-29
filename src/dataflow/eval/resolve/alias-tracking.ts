@@ -19,7 +19,7 @@ import type { ReplacementOperatorHandlerArgs } from '../../graph/unknown-replace
 import { onReplacementOperator } from '../../graph/unknown-replacement';
 import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
 import { VertexType } from '../../graph/vertex';
-import { valueFromRNode, valueFromTsValue } from '../values/general';
+import { valueFromRNodeConstant, valueFromTsValue } from '../values/general';
 import type { Lift, Value, ValueSet } from '../values/r-value';
 import { Bottom, isTop, Top } from '../values/r-value';
 import { setFrom } from '../values/sets/set-constants';
@@ -93,6 +93,20 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 	return definitions;
 }
 
+/**
+ * Gets the definitions / aliases of a node
+ * 
+ * This function is called by the built-in-assignment processor so that we can 
+ * track assignments inside of the environment. The returned ids are stored in 
+ * the sourceIds value field of their InGraphIdentifierDefinition. This enables
+ * us later, in the {@link trackAliasInEnvironments} function, to get all the 
+ * aliases of an identifier.
+ * 
+ * @param sourceIds    - nodeids to get the definitions for  
+ * @param dataflow     - dataflow graph
+ * @param environment  - environment
+ * @returns node id of alias
+ */
 export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
 	const definitions: Set<NodeId> = new Set<NodeId>();
 
@@ -112,7 +126,17 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 }
 
 /**
- * Evaluates a node based on the value resolve
+ * Evaluates the value of a node in the set domain.
+ * 
+ * resolveIdToValue tries to resolve the value using the data it has been given.
+ * If the environment is provided the approximation is more precise, as we can 
+ * track aliases in the environemnt.
+ * Otherwise the graph is used to try and resolve the nodes value. 
+ * If neither is probieded the valu cannot be resolved. 
+ * 
+ * This function is also used by the Resolve Value Query and the Dependency Query
+ * to resolve values. For e.g. in the Dependency Query it is used to resolve calls
+ * like `lapply(c("a", "b", "c"), library, character.only = TRUE)`
  *
  * @param id          - The node id or node to resolve
  * @param environment - The current environment used for name resolution
@@ -149,13 +173,25 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 		case RType.String:
 		case RType.Number:
 		case RType.Logical:
-			return setFrom(valueFromRNode(node));
+			return setFrom(valueFromRNodeConstant(node));
 		default:
 			return Top;
 	}
 }
 
-/** Please use {@link resolveIdToValue} */
+/**
+ * Please use {@link resolveIdToValue}
+ * 
+ * Uses the aliases that were tracked in the environements (by the 
+ * {@link getAliases} function) to resolve a node to a value.
+ * 
+ * 
+ * @param identifier - Identifier to resolve
+ * @param use        - Environment to use
+ * @param graph      - Dataflow graph
+ * @param idMap      - Idmap of Dataflow graph
+ * @returns Value of Identifier or Top
+ */
 export function trackAliasInEnvironments(identifier: Identifier | undefined, use: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ResolveResult {
 	if(identifier === undefined) {
 		return Top;
@@ -256,7 +292,16 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
 	return isNestedInLoop(parentNode, ast);
 }
 
-/** Please use {@link resolveIdToValue} */
+/**
+ * Please use {@link resolveIdToValue} 
+ * 
+ * Tries to resolve the value of a node by traversing the dataflow graph
+ * 
+ * @param id    - node to resolve
+ * @param graph - dataflow graph
+ * @param idMap - idmap of dataflow graph
+ * @returns Value of node or Top/Bottom
+ */
 export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: AstIdMap): ResolveResult {
 	idMap ??= graph.idMap;
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
@@ -327,13 +372,21 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 	for(const id of resultIds) {
 		const node = idMap.get(id);
 		if(node !== undefined) {
-			values.add(valueFromRNode(node));
+			values.add(valueFromRNodeConstant(node));
 		}
 	}
 	return setFrom(...values);
 }
 
-/** Please use {@link resolveIdToValue} */
+/**
+ * Please use {@link resolveIdToValue}
+ * 
+ * Resolve an Identifier to a constant, if the identifier is a constant
+ * 
+ * @param name        - Identifier to resolve
+ * @param environment - Environment to use
+ * @returns Value of Constant or Top
+ */
 export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): ResolveResult {
 	if(name === undefined) {
 		return Top;

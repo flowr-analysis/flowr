@@ -14,6 +14,19 @@ import { stringFrom } from '../values/string/string-constants';
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
 import { resolveIdToValue } from './alias-tracking';
 
+/**
+ * Helper function used by {@link resolveIdToValue}, please use that instead, if 
+ * you want to resolve the value of a identifier / node
+ * 
+ * This function converts an RNode to its Value, but also recursivly resolves 
+ * aliases and vectors (in case of a vector). 
+ * 
+ * @param a     - Ast node to resolve
+ * @param env   - Environment to use
+ * @param graph - Dataflow Graph to use
+ * @param map   - Idmap of Dataflow Graph
+ * @returns resolved value or top/bottom
+ */
 export function resolveNode(a: RNodeWithParent, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap): Value {
 	if(a.type === RType.String) {
 		return stringFrom(a.content.str);
@@ -35,6 +48,21 @@ export function resolveNode(a: RNodeWithParent, env?: REnvironmentInformation, g
 	return Top;
 }
 
+/**
+ * Helper function used by {@link resolveIdToValue}, please use that instead, if 
+ * you want to resolve the value of a identifier / node
+ * 
+ * This function converts an rnode to a Value Vector {@link vectorFrom}
+ * It also recursivly resolves any symbols, values, function calls (only c), in 
+ * order to construct the value of the vector to resolve by calling {@link resolveIdToValue}
+ * or {@link resolveNode}
+ * 
+ * @param a     - Node of the vector to resolve
+ * @param env   - Environment to use
+ * @param graph - Dataflow graph
+ * @param map   - Idmap of Dataflow Graph
+ * @returns ValueVector or Top
+ */
 export function resolveAsVector(a: RNodeWithParent, env: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap): Value {
 	guard(a.type === RType.FunctionCall);
 

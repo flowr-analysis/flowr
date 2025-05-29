@@ -4,7 +4,7 @@ import type { FeatureKey } from '../../statistics/features/feature';
 import { RShell } from '../../r-bridge/shell';
 import { initFileProvider, statisticsFileProvider } from '../../statistics/output/statistics-file';
 import { extractUsageStatistics, staticRequests } from '../../statistics/statistics';
-import { extractCFG } from '../../control-flow/extract-cfg';
+import { extractCfg } from '../../control-flow/extract-cfg';
 import { printStepResult, StepOutputFormat } from '../../core/print/print';
 import { PARSE_WITH_R_SHELL_STEP } from '../../core/steps/all/core/00-parse';
 import { NORMALIZE } from '../../core/steps/all/core/10-normalize';
@@ -69,7 +69,7 @@ export async function getStatsForSingleFile(options: StatsHelperCliOptions) {
 	if(stats.outputs.size === 1) {
 		if(options['dump-json']) {
 			const [, output] = [...stats.outputs.entries()][0];
-			const cfg = extractCFG(output.normalize, output.dataflow.graph);
+			const cfg = extractCfg(output.normalize, output.dataflow.graph);
 			statisticsFileProvider.append('output-json', 'parse', await printStepResult(PARSE_WITH_R_SHELL_STEP, output.parse, StepOutputFormat.Json));
 			statisticsFileProvider.append('output-json', 'normalize', await printStepResult(NORMALIZE, output.normalize, StepOutputFormat.Json));
 			statisticsFileProvider.append('output-json', 'dataflow', await printStepResult(STATIC_DATAFLOW, output.dataflow, StepOutputFormat.Json));

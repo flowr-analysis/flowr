@@ -226,7 +226,9 @@ export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
 }
 
 /**
- * Arguments required to construct a vertex which represents the usage of a variable in the {@link DataflowGraph|dataflow graph}.
+ * Arguments required to construct a vertex which represents the call to a function in the {@link DataflowGraph|dataflow graph}.
+ * This describes all kinds of function calls, including calls to built-ins and control-flow structures such as `if` or `for` (they are
+ * treated as function calls in R).
  *
  * @see {@link isFunctionCallVertex} - to check if a vertex is a function call vertex
  */

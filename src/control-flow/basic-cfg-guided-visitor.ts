@@ -52,8 +52,8 @@ export class BasicCfgGuidedVisitor<
 	protected startVisitor(start: readonly NodeId[]): void {
 		const g = this.config.controlFlow.graph;
 		const n = this.config.defaultVisitingOrder === 'forward' ?
-			(n: NodeId) => g.ingoing(n) :
-			(n: NodeId) => g.outgoing(n);
+			(n: NodeId) => g.ingoingEdges(n) :
+			(n: NodeId) => g.outgoingEdges(n);
 		const stack = [...start];
 		while(stack.length > 0) {
 			const current = stack.shift() as NodeId;

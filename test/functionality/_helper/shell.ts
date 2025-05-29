@@ -42,7 +42,7 @@ import type { DataflowInformation } from '../../../src/dataflow/info';
 import type { REnvironmentInformation } from '../../../src/dataflow/environments/environment';
 import { resolveByName } from '../../../src/dataflow/environments/resolve-by-name';
 import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/util/diff-graph';
-import { extractCFG } from '../../../src/control-flow/extract-cfg';
+import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import type { CfgProperty } from '../../../src/control-flow/cfg-properties';
 import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
@@ -511,7 +511,7 @@ export function assertSliced(
 			'cfg SAT properties',
 			function() {
 				const res = tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>;
-				const cfg = extractCFG(res.normalize, res.dataflow.graph);
+				const cfg = extractCfg(res.normalize, res.dataflow.graph);
 				const check = assertCfgSatisfiesProperties(cfg, userConfig?.cfgExcludeProperties);
 				try {
 					assert.isTrue(check, 'cfg fails properties: ' + check + ' is not satisfied');

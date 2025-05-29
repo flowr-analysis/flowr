@@ -51,7 +51,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.2.12, R v4.4.3 (r-shell engine)
+    flowR repl using flowR v2.2.13, R v4.4.3 (r-shell engine)
     R> :slicer test/testfiles/example.R --criterion "11@sum"
     ```
     
@@ -98,7 +98,7 @@ It offers a wide variety of features, for example:
         
 
 * 🚀 **fast data- and control-flow graphs**\
-  Within just <i><span title="This measurement is automatically fetched from the latest benchmark!">124.8 ms</span></i> (as of Mar 17, 2025), 
+  Within just <i><span title="This measurement is automatically fetched from the latest benchmark!">139.5 ms</span></i> (as of May 27, 2025), 
   _flowR_ can analyze the data- and control-flow of the average real-world R script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
   and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for more details on the dataflow graph.
 
@@ -134,7 +134,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.2.12, R v4.4.3 (r-shell engine)
+    flowR repl using flowR v2.2.13, R v4.4.3 (r-shell engine)
     R> :dataflow* test/testfiles/example.R
     ```
     
@@ -143,7 +143,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAgMShbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RmaWxlc1xuICAgICAgKDEpXG4gICAgICAqMS42LTE0KmBcIl0pXG4gICAgMltbXCJgIzkxO1JCaW5hcnlPcCM5MzsgL1xuICAgICAgKDIpXG4gICAgICAqMS4xLTE0KlxuICAgICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46X1tcImBCdWlsdC1Jbjpcbi9gXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46XyBzdHJva2U6Z3JheSxmaWxsOmxpZ2h0Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IGV4YW1wbGUuUlxuICAgICAgKDMpXG4gICAgICAqMS4xNi0yNCpgXCJdKVxuICAgIDRbW1wiYCM5MTtSQmluYXJ5T3AjOTM7IC9cbiAgICAgICg0KVxuICAgICAgKjEuMS0yNCpcbiAgICAoMiwgMylgXCJdXVxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDBcbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAxXG4gICAgMiAtLi0+fFwicmVhZHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSAyIHN0cm9rZTpncmF5O1xuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDJcbiAgICA0IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAzXG4gICAgNCAtLi0+fFwicmVhZHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA1IHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
+    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAgMShbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RmaWxlc1xuICAgICAgKDEpXG4gICAgICAqMS42LTE0KmBcIl0pXG4gICAgMltbXCJgIzkxO1JCaW5hcnlPcCM5MzsgL1xuICAgICAgKDIpXG4gICAgICAqMS4xLTE0KlxuICAgICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46X1tcImBCdWlsdC1Jbjpcbi9gXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46XyBzdHJva2U6Z3JheSxmaWxsOmxpZ2h0Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IGV4YW1wbGUuUlxuICAgICAgKDMpXG4gICAgICAqMS4xNi0yNCpgXCJdKVxuICAgIDRbW1wiYCM5MTtSQmluYXJ5T3AjOTM7IC9cbiAgICAgICg0KVxuICAgICAgKjEuMS0yNCpcbiAgICAoMiwgMylgXCJdXVxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDBcbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAxXG4gICAgMiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgMiBzdHJva2U6Z3JheTtcbiAgICA0IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAyXG4gICAgNCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgM1xuICAgIDQgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfXG4gICAgbGlua1N0eWxlIDUgc3Ryb2tlOmdyYXk7IiwibWVybWFpZCI6eyJhdXRvU3luYyI6dHJ1ZX19
     ```
     
     
@@ -321,38 +321,38 @@ It offers a wide variety of features, for example:
         0 -->|"defined-by"| 2
         2 -->|"argument"| 1
         2 -->|"returns, argument"| 0
-        2 -.->|"reads"| built-in:_-
+        2 -.->|"reads, calls"| built-in:_-
         linkStyle 4 stroke:gray;
         3 -->|"defined-by"| 4
         3 -->|"defined-by"| 5
         5 -->|"argument"| 4
         5 -->|"returns, argument"| 3
-        5 -.->|"reads"| built-in:_-
+        5 -.->|"reads, calls"| built-in:_-
         linkStyle 9 stroke:gray;
         6 -->|"defined-by"| 7
         6 -->|"defined-by"| 8
         8 -->|"argument"| 7
         8 -->|"returns, argument"| 6
-        8 -.->|"reads"| built-in:_-
+        8 -.->|"reads, calls"| built-in:_-
         linkStyle 14 stroke:gray;
         9 -->|"defined-by"| 10
         9 -->|"defined-by"| 11
         11 -->|"argument"| 10
         11 -->|"returns, argument"| 9
-        11 -.->|"reads"| built-in:_-
+        11 -.->|"reads, calls"| built-in:_-
         linkStyle 19 stroke:gray;
         12 -->|"defined-by"| 20
         16 -->|"reads"| 9
         18 -->|"reads, argument"| 16
         18 -->|"reads, argument"| 17
-        18 -.->|"reads"| built-in:-
+        18 -.->|"reads, calls"| built-in:-
         linkStyle 24 stroke:gray;
         19 -->|"returns, argument"| 18
         19 -.->|"reads"| built-in:_
         linkStyle 26 stroke:gray;
         20 -->|"reads, argument"| 13
         20 -->|"reads, argument"| 19
-        20 -.->|"reads"| built-in::
+        20 -.->|"reads, calls"| built-in::
         linkStyle 29 stroke:gray;
         24 -->|"reads"| 0
         24 -->|"reads"| 23
@@ -363,7 +363,7 @@ It offers a wide variety of features, for example:
         linkStyle 34 stroke:gray,color:gray;
         26 -->|"reads, argument"| 24
         26 -->|"reads, argument"| 25
-        26 -.->|"reads"| built-in:_
+        26 -.->|"reads, calls"| built-in:_
         linkStyle 37 stroke:gray;
         26 -->|"CD-True"| 36
         linkStyle 38 stroke:gray,color:gray;
@@ -372,7 +372,7 @@ It offers a wide variety of features, for example:
         linkStyle 40 stroke:gray,color:gray;
         28 -->|"reads, argument"| 26
         28 -->|"reads, argument"| 27
-        28 -.->|"reads"| built-in:_
+        28 -.->|"reads, calls"| built-in:_
         linkStyle 43 stroke:gray;
         28 -->|"CD-True"| 36
         linkStyle 44 stroke:gray,color:gray;
@@ -380,7 +380,7 @@ It offers a wide variety of features, for example:
         23 -->|"defined-by"| 29
         29 -->|"argument"| 28
         29 -->|"returns, argument"| 23
-        29 -.->|"reads"| built-in:_-
+        29 -.->|"reads, calls"| built-in:_-
         linkStyle 49 stroke:gray;
         29 -->|"CD-True"| 36
         linkStyle 50 stroke:gray,color:gray;
@@ -393,7 +393,7 @@ It offers a wide variety of features, for example:
         linkStyle 55 stroke:gray,color:gray;
         33 -->|"reads, argument"| 31
         33 -->|"reads, argument"| 32
-        33 -.->|"reads"| built-in:_
+        33 -.->|"reads, calls"| built-in:_
         linkStyle 58 stroke:gray;
         33 -->|"CD-True"| 36
         linkStyle 59 stroke:gray,color:gray;
@@ -401,20 +401,20 @@ It offers a wide variety of features, for example:
         30 -->|"defined-by"| 34
         34 -->|"argument"| 33
         34 -->|"returns, argument"| 30
-        34 -.->|"reads"| built-in:_-
+        34 -.->|"reads, calls"| built-in:_-
         linkStyle 64 stroke:gray;
         34 -->|"CD-True"| 36
         linkStyle 65 stroke:gray,color:gray;
         35 -->|"argument"| 29
         35 -->|"returns, argument"| 34
-        35 -.->|"reads"| built-in:_
+        35 -.->|"reads, calls"| built-in:_
         linkStyle 68 stroke:gray;
         35 -->|"CD-True"| 36
         linkStyle 69 stroke:gray,color:gray;
         36 -->|"reads, argument"| 12
         36 -->|"reads, argument"| 20
         36 -->|"argument, non-standard-evaluation"| 35
-        36 -.->|"reads"| built-in:for
+        36 -.->|"reads, calls"| built-in:for
         linkStyle 73 stroke:gray;
         40 -->|"reads"| 0
         40 -->|"reads"| 23
@@ -423,19 +423,19 @@ It offers a wide variety of features, for example:
         44 -->|"argument"| 38
         44 -->|"reads, argument"| 40
         44 -->|"argument"| 42
-        44 -.->|"reads"| built-in:cat
+        44 -.->|"reads, calls"| built-in:cat
         linkStyle 80 stroke:gray;
         48 -->|"reads"| 3
         48 -->|"reads"| 30
         52 -->|"argument"| 46
         52 -->|"reads, argument"| 48
         52 -->|"argument"| 50
-        52 -.->|"reads"| built-in:cat
+        52 -.->|"reads, calls"| built-in:cat
         linkStyle 86 stroke:gray;
     ```
     
     	
-    (The analysis required _22.6 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _22.0 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

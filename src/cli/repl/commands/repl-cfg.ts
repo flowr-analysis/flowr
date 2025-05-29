@@ -1,5 +1,5 @@
 import type { ReplCommand, ReplOutput } from './repl-main';
-import { extractCFG } from '../../../control-flow/extract-cfg';
+import { extractCfg } from '../../../control-flow/extract-cfg';
 import { createDataflowPipeline } from '../../../core/steps/pipeline/default-pipelines';
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid/cfg';
@@ -28,7 +28,7 @@ function formatInfo(out: ReplOutput, type: string): string {
 async function produceAndPrintCfg(shell: KnownParser, remainingLine: string, output: ReplOutput, simplifications: readonly CfgSimplificationPassName[], cfgConverter: (cfg: ControlFlowInformation, ast: NormalizedAst) => string) {
 	const result = await controlflow(shell, handleString(remainingLine));
 
-	const cfg = extractCFG(result.normalize, result.dataflow.graph, [...DefaultCfgSimplificationOrder, ...simplifications]);
+	const cfg = extractCfg(result.normalize, result.dataflow.graph, [...DefaultCfgSimplificationOrder, ...simplifications]);
 	const mermaid = cfgConverter(cfg, result.normalize);
 	output.stdout(mermaid);
 	try {
@@ -61,7 +61,7 @@ export const controlflowStarCommand: ReplCommand = {
 };
 
 
-export const controlflowBBCommand: ReplCommand = {
+export const controlflowBbCommand: ReplCommand = {
 	description:  `Get mermaid code for the control-flow graph with basic blocks, start with '${fileProtocol}' to indicate a file`,
 	usageExample: ':controlflowbb',
 	aliases:      [ 'cfgb', 'cfb' ],
@@ -72,7 +72,7 @@ export const controlflowBBCommand: ReplCommand = {
 };
 
 
-export const controlflowBBStarCommand: ReplCommand = {
+export const controlflowBbStarCommand: ReplCommand = {
 	description:  'Returns the URL to mermaid.live',
 	usageExample: ':controlflowbb*',
 	aliases:      [ 'cfgb*', 'cfb*' ],

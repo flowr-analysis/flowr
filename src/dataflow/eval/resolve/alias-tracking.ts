@@ -298,10 +298,22 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 		if(vertex.tag === VertexType.Value) {
 			resultIds.push(id);
 			continue;
+		} else if(vertex.tag === VertexType.FunctionDefinition) {
+			resultIds.push(id);
+			continue;
 		}
+
+		const isFn = vertex.tag === VertexType.FunctionCall;
+
 
 		// travel all read and defined-by edges
 		for(const [targetId, edge] of outgoingEdges) {
+			if(isFn) {
+				if(edge.types === EdgeType.Returns || edge.types === EdgeType.DefinedByOnCall || edge.types ===  EdgeType.DefinedBy) {
+					queue.add(targetId, baseEnvironment, cleanFingerprint, false);
+				}
+				continue;
+			}
 			// currently, they have to be exact!
 			if(edge.types === EdgeType.Reads || edge.types ===  EdgeType.DefinedBy || edge.types === EdgeType.DefinedByOnCall) {
 				queue.add(targetId, baseEnvironment, cleanFingerprint, false);

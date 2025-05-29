@@ -1,4 +1,4 @@
-import { extractCFG } from '../control-flow/extract-cfg';
+import { extractCfg } from '../control-flow/extract-cfg';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse, DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import type { DataflowInformation } from '../dataflow/info';
@@ -21,7 +21,7 @@ import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 export function inferDataTypes<Info extends { typeVariable?: undefined }>(ast: NormalizedAst<Info>, dataFlowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
-	const controlFlowInfo = extractCFG(astWithTypeVars);
+	const controlFlowInfo = extractCfg(astWithTypeVars);
 	const config = {
 		normalizedAst:        astWithTypeVars,
 		controlFlow:          controlFlowInfo,
@@ -176,7 +176,7 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 
 		const cfgVertex = this.config.controlFlow.graph.getVertex(data.call.id);
 		guard(cfgVertex !== undefined && cfgVertex.type === CfgVertexType.Statement, 'Expected statement vertex for loop');
-		const isInfinite = (cfgVertex.end ?? []).reduce((prevCount, id) => prevCount + (this.config.controlFlow.graph.outgoing(id)?.size ?? 0), 0) === 0;
+		const isInfinite = (cfgVertex.end ?? []).reduce((prevCount, id) => prevCount + (this.config.controlFlow.graph.outgoingEdges(id)?.size ?? 0), 0) === 0;
 
 		if(isInfinite) {
 			node.info.typeVariable.unify(new RNeverType());
@@ -196,7 +196,7 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 		guard(node !== undefined, 'Expected AST node to be defined');
 
 		guard(data.then !== EmptyArgument, 'Expected then argument to be defined');
-		const isThenBranchReachable = (this.config.controlFlow.graph.ingoing(data.then.nodeId)?.size ?? 0) > 0;
+		const isThenBranchReachable = (this.config.controlFlow.graph.ingoingEdges(data.then.nodeId)?.size ?? 0) > 0;
 		
 		const thenNode = this.getNormalizedAst(data.then.nodeId);
 		guard(thenNode !== undefined, 'Expected then node to be defined');
@@ -208,7 +208,7 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 		}
 
 		if(data.else !== undefined && data.else !== EmptyArgument) {
-			const isElseBranchReachable = (this.config.controlFlow.graph.ingoing(data.else.nodeId)?.size ?? 0) > 0;
+			const isElseBranchReachable = (this.config.controlFlow.graph.ingoingEdges(data.else.nodeId)?.size ?? 0) > 0;
 
 			const elseNode = this.getNormalizedAst(data.else.nodeId);
 			guard(elseNode !== undefined, 'Expected else node to be defined');

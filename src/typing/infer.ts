@@ -195,16 +195,20 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 		const node = this.getNormalizedAst(data.call.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
 
-		guard(data.then !== EmptyArgument, 'Expected then argument to be defined');
-		const isThenBranchReachable = (this.config.controlFlow.graph.ingoingEdges(data.then.nodeId)?.size ?? 0) > 0;
-		
-		const thenNode = this.getNormalizedAst(data.then.nodeId);
-		guard(thenNode !== undefined, 'Expected then node to be defined');
+		if(data.then !== EmptyArgument) {
+			const isThenBranchReachable = (this.config.controlFlow.graph.ingoingEdges(data.then.nodeId)?.size ?? 0) > 0;
+			
+			const thenNode = this.getNormalizedAst(data.then.nodeId);
+			guard(thenNode !== undefined, 'Expected then node to be defined');
 
-		if(isThenBranchReachable) {
-			node.info.typeVariable.unify(thenNode.info.typeVariable);
+			if(isThenBranchReachable) {
+				node.info.typeVariable.unify(thenNode.info.typeVariable);
+			} else {
+				node.info.typeVariable.unify(new RNeverType());
+			}
 		} else {
-			node.info.typeVariable.unify(new RNeverType());
+			// If there is no then branch, we can assume that the type is null
+			node.info.typeVariable.unify(new RNullType());
 		}
 
 		if(data.else !== undefined && data.else !== EmptyArgument) {
@@ -218,6 +222,9 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 			} else {
 				node.info.typeVariable.unify(new RNeverType());
 			}
+		} else {
+			// If there is no else branch, we can assume that the type is null
+			node.info.typeVariable.unify(new RNullType());
 		}
 	}
 	

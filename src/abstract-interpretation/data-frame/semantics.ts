@@ -46,6 +46,7 @@ type DataFrameSemanticsApplier<Arguments extends object> = (
 ) => DataFrameDomain;
 
 export type DataFrameOperationName = keyof typeof DataFrameSemanticsMapper;
+export const DataFrameOperationNames = Object.keys(DataFrameSemanticsMapper) as DataFrameOperationName[];
 export type DataFrameOperationArgs<N extends DataFrameOperationName> = Parameters<typeof DataFrameSemanticsMapper[N]['apply']>[1];
 
 export function applySemantics<Name extends DataFrameOperationName>(
@@ -64,11 +65,11 @@ export function getConstraintType(operation: DataFrameOperationName): Constraint
 
 function applyCreateSemantics(
 	value: DataFrameDomain,
-	{ colnames, rows }: { colnames: (string | undefined)[], rows: number | undefined }
+	{ colnames, rows }: { colnames: (string | undefined)[] | undefined, rows: number | undefined }
 ): DataFrameDomain {
 	return {
-		colnames: colnames.every(name => name !== undefined) ? colnames : ColNamesTop,
-		cols:     [colnames.length, colnames.length],
+		colnames: colnames?.every(name => name !== undefined) ? colnames : ColNamesTop,
+		cols:     colnames ? [colnames.length, colnames.length] : IntervalTop,
 		rows:     rows !== undefined ? [rows, rows] : IntervalTop
 	};
 }

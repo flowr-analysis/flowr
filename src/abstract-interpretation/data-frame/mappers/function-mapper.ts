@@ -74,13 +74,14 @@ function mapDataFrameCreate(
 ): DataFrameOperations[] {
 	const argNames = args.map(arg => arg ? resolveIdToArgName(arg, info) : undefined);
 	const argLengths = args.map(arg => arg ? resolveIdToArgVectorLength(arg, info) : undefined);
+	const allVectors = argLengths.every(len => len !== undefined);
 	const colnames = argNames.map(arg => isValidColName(arg) ? arg : undefined);
 	const rows = argLengths.every(arg => arg !== undefined) ? Math.max(...argLengths, 0) : undefined;
 
 	return [{
 		operation: 'create',
 		operand:   undefined,
-		args:      { colnames: colnames, rows: rows }
+		args:      { colnames: allVectors ? colnames : undefined, rows: rows }
 	}];
 }
 
@@ -572,6 +573,9 @@ function mapDataFrameIdentity(
 ): DataFrameOperations[] | undefined {
 	const dataFrame = args.find(isDataFrameArgument);
 
+	if(!isDataFrameArgument(dataFrame)) {
+		return;
+	}
 	return [{
 		operation: 'identity',
 		operand:   dataFrame?.value.info.id,

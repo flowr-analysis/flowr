@@ -11,6 +11,7 @@ import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x
 import { executeLintingRule } from '../../../src/linter/linter-executor';
 import type { LintingRule } from '../../../src/linter/linter-format';
 import { log } from '../../../src/util/log';
+import type { DeepPartial } from 'ts-essentials';
 
 export function assertLinter<Name extends LintingRuleNames>(
 	name: string | TestLabel,
@@ -19,7 +20,7 @@ export function assertLinter<Name extends LintingRuleNames>(
 	ruleName: Name,
 	expected: LintingRuleResult<Name>[],
 	expectedMetadata?: LintingRuleMetadata<Name>,
-	config?: Partial<LintingRuleConfig<Name>>
+	config?: DeepPartial<LintingRuleConfig<Name>>
 ) {
 	test(decorateLabelContext(name, ['linter']), async() => {
 		const pipelineResults = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {

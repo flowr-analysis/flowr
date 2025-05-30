@@ -298,6 +298,7 @@ e <- 5`,
 				assert.deepStrictEqual(absintStats, {
 					// checked manually
 					numberOfDataFrameFiles:    1,
+					numberOfNonDataFrameFiles: 0,
 					numberOfResultConstraints: 3,
 					numberOfResultingValues:   3,
 					numberOfResultingTop:      0,

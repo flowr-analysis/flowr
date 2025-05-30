@@ -122,6 +122,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		},
 		absint: stats.some(s => s.absint !== undefined) ? {
 			numberOfDataFrameFiles:    arraySum(stats.map(s => s.absint?.numberOfDataFrameFiles).filter(isNotUndefined)),
+			numberOfNonDataFrameFiles: arraySum(stats.map(s => s.absint?.numberOfNonDataFrameFiles).filter(isNotUndefined)),
 			numberOfResultConstraints: summarizeMeasurement(stats.map(s => s.absint?.numberOfResultConstraints).filter(isNotUndefined)),
 			numberOfResultingValues:   summarizeMeasurement(stats.map(s => s.absint?.numberOfResultingValues).filter(isNotUndefined)),
 			numberOfResultingTop:      summarizeMeasurement(stats.map(s => s.absint?.numberOfResultingTop).filter(isNotUndefined)),
@@ -201,6 +202,7 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 		},
 		absint: stats.some(s => s.absint !== undefined) ? {
 			numberOfDataFrameFiles:    arraySum(stats.map(s => s.absint?.numberOfDataFrameFiles).filter(isNotUndefined)),
+			numberOfNonDataFrameFiles: arraySum(stats.map(s => s.absint?.numberOfNonDataFrameFiles).filter(isNotUndefined)),
 			numberOfResultConstraints: summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfResultConstraints).filter(isNotUndefined)),
 			numberOfResultingValues:   summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfResultingValues).filter(isNotUndefined)),
 			numberOfResultingTop:      summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfResultingTop).filter(isNotUndefined)),

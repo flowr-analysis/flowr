@@ -402,6 +402,7 @@ export class BenchmarkSlicer {
 
 		const stats: SlicerStatsAbsint = {
 			numberOfDataFrameFiles:    0,
+			numberOfNonDataFrameFiles: 0,
 			numberOfResultConstraints: 0,
 			numberOfResultingValues:   0,
 			numberOfResultingTop:      0,
@@ -447,7 +448,6 @@ export class BenchmarkSlicer {
 			if(expression !== undefined) {
 				nodeStats.mappedOperations = expression.operations.map(op => op.operation);
 				stats.numberOfOperationNodes++;
-				stats.numberOfDataFrameFiles = 1;
 			}
 			if(value !== undefined) {
 				nodeStats.inferredColNames = value.colnames === ColNamesTop ? 'top' : value.colnames.length;
@@ -459,6 +459,11 @@ export class BenchmarkSlicer {
 			}
 			stats.perNodeStats.set(node.info.id, nodeStats);
 		});
+		if(stats.numberOfOperationNodes > 0) {
+			stats.numberOfDataFrameFiles = 1;
+		} else {
+			stats.numberOfNonDataFrameFiles = 1;
+		}
 		this.stats.absint = stats;
 
 		return stats;

@@ -13,6 +13,9 @@ export interface DeprecatedFunctionsResult extends LintingResult {
 }
 
 export interface DeprecatedFunctionsConfig extends MergeableRecord {
+	/**
+	 * The list of function names that should be marked as deprecated.
+	 */
 	deprecatedFunctions: string[]
 }
 

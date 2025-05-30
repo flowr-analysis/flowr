@@ -6,6 +6,7 @@ import type { TransformerNames } from '../search/search-executor/search-transfor
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from './linter-rules';
 import type { DataflowInformation } from '../dataflow/info';
+import type { DeepPartial } from 'ts-essentials';
 
 /**
  * The base interface for a linting rule, which contains all of its relevant settings.
@@ -46,7 +47,7 @@ export interface LintingResult {
 
 export interface ConfiguredLintingRule<Name extends LintingRuleNames = LintingRuleNames> {
 	readonly name:   Name
-	readonly config: LintingRuleConfig<Name>
+	readonly config: DeepPartial<LintingRuleConfig<Name>>
 }
 
 export interface LintingResults<Name extends LintingRuleNames> {

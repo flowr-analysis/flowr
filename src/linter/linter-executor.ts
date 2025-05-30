@@ -5,8 +5,9 @@ import type { DataflowInformation } from '../dataflow/info';
 import type { LintingResults, LintingRule } from './linter-format';
 import { runSearch } from '../search/flowr-search-executor';
 import { FlowrSearchElements } from '../search/flowr-search';
+import type { DeepPartial } from 'ts-essentials';
 
-export function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: { normalize: NormalizedAst, dataflow: DataflowInformation }, config?: Partial<LintingRuleConfig<Name>>): LintingResults<Name> {
+export function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: { normalize: NormalizedAst, dataflow: DataflowInformation }, config?: DeepPartial<LintingRuleConfig<Name>>): LintingResults<Name> {
 	const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
 	const fullConfig = { ...rule.defaultConfig, ...config };
 

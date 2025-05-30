@@ -41,9 +41,6 @@ export function performDataFrameAbsint(cfinfo: ControlFlowInformation, dfg: Data
 				node = exitNode;
 			}
 		}
-		if(cfinfo.exitPoints.includes(vertex.id)) {
-			finalDomain = newDomain;
-		}
 		const visitedCount = visited.get(vertex.id) ?? 0;
 		visited.set(vertex.id, visitedCount + 1);
 
@@ -53,6 +50,9 @@ export function performDataFrameAbsint(cfinfo: ControlFlowInformation, dfg: Data
 		if(node !== undefined) {
 			node.info.dataFrame ??= {};
 			node.info.dataFrame.domain = newDomain;
+		}
+		if(cfinfo.exitPoints.includes(vertex.id)) {
+			finalDomain = newDomain;
 		}
 		if(!equalDataFrameState(oldDomain, newDomain)) {
 			return getSuccessorVertices(cfg, vertex.id, dfg);
@@ -67,7 +67,7 @@ export function performDataFrameAbsint(cfinfo: ControlFlowInformation, dfg: Data
 	const queue: CfgVertex[] = [...entryPoints];
 	let vertex: CfgVertex | undefined;
 
-	while((vertex = queue.shift()) !== undefined) {
+	while((vertex = queue.pop()) !== undefined) {
 		queue.push(...visitor(cfg, dfg, vertex));
 	}
 	return finalDomain;

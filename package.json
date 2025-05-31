@@ -37,6 +37,7 @@
     "wiki:onboarding": "ts-node src/documentation/print-onboarding-wiki.ts",
     "wiki:faq": "ts-node src/documentation/print-faq-wiki.ts",
     "wiki:cfg": "ts-node src/documentation/print-cfg-wiki.ts",
+    "wiki:linter": "ts-node src/documentation/print-linter-wiki.ts",
     "gen:readme": "ts-node src/documentation/print-readme.ts",
     "build": "tsc --project .",
     "build-dev": "npm run build && npm run build:copy-wasm",

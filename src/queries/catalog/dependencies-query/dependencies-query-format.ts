@@ -82,5 +82,14 @@ export const DependenciesQueryDefinition = {
 		sourceFunctions:        functionInfoSchema.description('The set of source functions to search for.'),
 		readFunctions:          functionInfoSchema.description('The set of data reading functions to search for.'),
 		writeFunctions:         functionInfoSchema.description('The set of data writing functions to search for.'),
-	}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.')
+	}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.'),
+	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
+		const out = queryResults as QueryResults<'dependencies'>['dependencies'];
+		return [
+			...out.libraries.map(library => library.nodeId),
+			...out.sourcedFiles.map(sourced => sourced.nodeId),
+			...out.readData.map(read => read.nodeId),
+			...out.writtenData.map(write => write.nodeId)
+		];
+	}
 } as const satisfies SupportedQuery<'dependencies'>;

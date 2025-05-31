@@ -4,8 +4,7 @@ import type { TestLabel } from './label';
 import { decorateLabelContext } from './label';
 import type { RShell } from '../../../src/r-bridge/shell';
 import { assert, test } from 'vitest';
-import { PipelineExecutor } from '../../../src/core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { executeLintingRule } from '../../../src/linter/linter-executor';
@@ -23,8 +22,7 @@ export function assertLinter<Name extends LintingRuleNames>(
 	config?: DeepPartial<LintingRuleConfig<Name>>
 ) {
 	test(decorateLabelContext(name, ['linter']), async() => {
-		const pipelineResults = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			parser:  shell,
+		const pipelineResults = await createDataflowPipeline(shell, {
 			request: requestFromInput(code),
 			getId:   deterministicCountingIdGenerator(0)
 		}).allRemainingSteps();

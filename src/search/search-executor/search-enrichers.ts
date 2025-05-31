@@ -3,15 +3,15 @@ import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x
 import type { Pipeline } from '../../core/steps/pipeline/pipeline';
 import type { MergeableRecord } from '../../util/objects';
 import { VertexType } from '../../dataflow/graph/vertex';
-import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
-import { resolveByName } from '../../dataflow/environments/resolve-by-name';
 import type { Identifier } from '../../dataflow/environments/identifier';
-import { initializeCleanEnvironments } from '../../dataflow/environments/environment';
 import { log } from '../../util/log';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
-import { identifyLinkToLastCallRelation } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
-import { guard } from '../../util/assert';
+import {
+	identifyLinkToLastCallRelation
+} from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import { guard, isNotUndefined } from '../../util/assert';
 import { extractSimpleCfg } from '../../control-flow/extract-cfg';
+import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
 
 /**
  * A {@link FlowrSearchElement} that is enriched with a set of enrichments through {@link FlowrSearchBuilder.with}.
@@ -39,7 +39,6 @@ export type EnrichmentArguments<E extends Enrichment> = typeof Enrichments[E] ex
  * See {@link FlowrSearchBuilder.with} for more information on how to apply enrichments.
  */
 export enum Enrichment {
-
 	CallTargets = 'call-targets',
 	LastCall = 'last-call'
 }
@@ -63,26 +62,29 @@ export const Enrichments = {
 	[Enrichment.CallTargets]: {
 		enrich: (e, data) => {
 			// we don't resolve aliases here yet!
-
 			const content: CallTargetsContent = { targets: [] };
-			const callVertex = data.dataflow.graph.get(e.node.info.id);
-			if(callVertex !== undefined && callVertex[0].tag === VertexType.FunctionCall) {
-				const [info, outgoing] = callVertex;
-
-				// find call targets in user code (which have ids!)
-				content.targets.push(...[...outgoing]
-					.filter(([, e]) => edgeIncludesType(e.types, EdgeType.Calls))
-					.map(([t]) => ({ node: data.normalize.idMap.get(t) as RNodeWithParent })));
-
-				// find builtin call targets (which don't have ids, so we just put the name)
-				const resolved = resolveByName(info.name, info.environment ?? initializeCleanEnvironments());
-				if(resolved) {
-					content.targets.push(...resolved.map(r => r.name).filter(i => i !== undefined));
-				} else {
-					// if we can't resolve the name to actual memory, we still want to show it as a vague target
-					content.targets.push(info.name);
-					log.trace(`Could not resolve call target ${info.name} (${info.id}) to memory, still including as target as it may be a library function.`);
+			const callVertex = data.dataflow.graph.getVertex(e.node.info.id);
+			if(callVertex?.tag === VertexType.FunctionCall) {
+				const origins = getOriginInDfg(data.dataflow.graph, callVertex.id);
+				if(!origins || origins.length === 0) {
+					log.warn(`No origin found for call vertex ${callVertex.id}, cannot resolve call targets.`);
+					return content;
 				}
+				// find call targets in user code (which have ids!)
+				content.targets = content.targets.concat(
+					origins.map(o => {
+						switch(o.type) {
+							case OriginType.FunctionCallOrigin:
+								return {
+									node: data.normalize.idMap.get(o.id) as RNodeWithParent,
+								} satisfies FlowrSearchElement<ParentInformation>;
+							case OriginType.BuiltInFunctionOrigin:
+								return o.fn.name;
+							default:
+								return undefined;
+						}
+					}).filter(isNotUndefined)
+				);
 			}
 			return content;
 		},

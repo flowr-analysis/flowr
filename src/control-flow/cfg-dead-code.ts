@@ -1,5 +1,5 @@
 /* currently this does not do work on function definitions */
-import type { CfgEdge, ControlFlowInformation } from './control-flow-graph';
+import type { ControlFlowInformation } from './control-flow-graph';
 import { CfgEdgeType } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../util/logic';
@@ -14,7 +14,6 @@ import { log } from '../util/log';
 type CachedValues = Map<NodeId, Ternary>;
 
 class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
-	private currentEdge:               [from: NodeId, to: NodeId, edge: CfgEdge] | undefined;
 	private readonly cachedConditions: CachedValues = new Map();
 
 	private getValue(id: NodeId): Ternary {
@@ -38,7 +37,6 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		for(const [from, targets] of this.config.controlFlow.graph.edges()) {
 			for(const [target, edge] of targets) {
 				if(edge.label === CfgEdgeType.Cd) {
-					this.currentEdge = [from, target, edge];
 					const og = this.getValue(edge.caused);
 
 					if(og === Ternary.Always && edge.when === 'FALSE') {

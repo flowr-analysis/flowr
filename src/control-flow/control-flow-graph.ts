@@ -205,7 +205,8 @@ export interface ReadOnlyControlFlowGraph {
  * If you want to prohibit modification, please refer to the {@link ReadOnlyControlFlowGraph} interface.
  */
 export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> implements ReadOnlyControlFlowGraph {
-	private readonly rootVertices:      Set<NodeId> = new Set<NodeId>();
+	private readonly rootVertices:      Set<NodeId>         = new Set<NodeId>();
+	/** Nesting-Independent vertex information, mapping the id to the vertex */
 	private readonly vertexInformation: Map<NodeId, Vertex> = new Map<NodeId, Vertex>();
 	/** the basic block children map contains a mapping of ids to all vertices that are nested in basic blocks, mapping them to the Id of the block they appear in */
 	private readonly bbChildren:        Map<NodeId, NodeId> = new Map<NodeId, NodeId>();

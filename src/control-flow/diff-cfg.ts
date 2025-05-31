@@ -33,7 +33,7 @@ function diffDataflowGraphs(ctx: GraphDiffContext<ControlFlowGraph>): void {
 }
 
 function diffRootVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
-	setDifference(ctx.left.rootVertexIds(), ctx.right.rootVertexIds(), {
+	setDifference(ctx.left.rootIds(), ctx.right.rootIds(), {
 		...ctx,
 		position: `${ctx.position}Root vertices differ in graphs. `
 	});

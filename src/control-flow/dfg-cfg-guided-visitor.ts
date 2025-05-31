@@ -51,6 +51,7 @@ export class DataflowAwareCfgGuidedVisitor<
 	private onExprOrStmtNode(node: CfgStatementVertex | CfgExpressionVertex): void {
 		const dfgVertex = this.getDataflowGraph(node.id);
 		if(!dfgVertex) {
+			this.visitUnknown(node);
 			return;
 		}
 
@@ -74,6 +75,12 @@ export class DataflowAwareCfgGuidedVisitor<
 			default:
 				assertUnreachable(tag);
 		}
+	}
+
+	/**
+	 * called for every cfg vertex that has no corresponding dataflow vertex.
+	 */
+	protected visitUnknown(_vertex: CfgStatementVertex | CfgExpressionVertex): void {
 	}
 
 	protected visitValue(_val: DataflowGraphVertexValue): void {

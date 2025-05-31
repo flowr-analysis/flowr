@@ -1,4 +1,4 @@
-import { extractCFG } from '../../control-flow/extract-cfg';
+import { extractCfg } from '../../control-flow/extract-cfg';
 import {
 	createDataflowPipeline, createNormalizePipeline
 } from '../../core/steps/pipeline/default-pipelines';
@@ -28,7 +28,7 @@ export async function getCfg(parser: KnownParser, code: string, simplifications:
 	}).allRemainingSteps() : await createNormalizePipeline(parser, {
 		request: requestFromInput(code)
 	}).allRemainingSteps();
-	const cfg = extractCFG(result.normalize, useDfg ? (result as unknown as {dataflow: DataflowInformation}).dataflow.graph : undefined, [...DefaultCfgSimplificationOrder, ...simplifications]);
+	const cfg = extractCfg(result.normalize, useDfg ? (result as unknown as {dataflow: DataflowInformation}).dataflow.graph : undefined, [...DefaultCfgSimplificationOrder, ...simplifications]);
 	return {
 		info:     cfg,
 		ast:      result.normalize,
@@ -50,7 +50,7 @@ export interface PrintCfgOptions {
 	readonly simplify?:        boolean;
 	readonly useDfg?:          boolean;
 }
-export async function printCFGCode(parser: KnownParser, code: string, { showCode = true, openCode = false, prefix = 'flowchart BT\n', simplifications = [], simplify = false, useDfg = true }: PrintCfgOptions = {}) {
+export async function printCfgCode(parser: KnownParser, code: string, { showCode = true, openCode = false, prefix = 'flowchart BT\n', simplifications = [], simplify = false, useDfg = true }: PrintCfgOptions = {}) {
 	const now = performance.now();
 	const res = await getCfg(parser, code, simplifications, useDfg);
 	const duration = performance.now() - now;

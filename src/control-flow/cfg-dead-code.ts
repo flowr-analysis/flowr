@@ -13,39 +13,6 @@ import { log } from '../util/log';
 
 type CachedValues = Map<NodeId, Ternary>;
 
-/*
-function getConditionalValue(node: CfgSimpleVertex, info: CfgPassInfo): Ternary {
-	const astVertex = info.idMap.get(node.id);
-	if(!astVertex) {
-		return Ternary.Maybe; // no information, assume unknown
-	}
-
-	console.log(astVertex);
-	return Ternary.Maybe;
-}
-
-function getValue(node: NodeId, cfg: ControlFlowInformation, info: CfgPassInfo, cachedConditions: CachedValues): Ternary {
-	const has = cachedConditions.get(node);
-	if(has) {
-		return has;
-	}
-	let value = Ternary.Maybe;
-
-	const cfgVert = cfg.graph.getVertex(node);
-
-	if(cfgVert && cfgVert.type === CfgVertexType.MidMarker) {
-		const root = cfg.graph.getVertex(cfgVert.root);
-		if(root) {
-			value = getConditionalValue(root, info);
-		}
-	}
-
-	cachedConditions.set(node, value);
-	return value;
-}
-
- */
-
 class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	private currentEdge:               [from: NodeId, to: NodeId, edge: CfgEdge] | undefined;
 	private readonly cachedConditions: CachedValues = new Map();

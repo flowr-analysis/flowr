@@ -107,7 +107,7 @@ interface CfgFlowDependencyEdge extends MergeableRecord {
     label: CfgEdgeType.Fd
 }
 
-interface CfgControlDependencyEdge extends MergeableRecord {
+export interface CfgControlDependencyEdge extends MergeableRecord {
     label:  CfgEdgeType.Cd
     /** the id which caused the control dependency */
     caused: NodeId,

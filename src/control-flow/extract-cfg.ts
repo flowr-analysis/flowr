@@ -82,11 +82,11 @@ function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInf
  * @see {@link extractSimpleCfg} - for a simplified version of this function
  */
 export function extractCfg<Info = ParentInformation>(
-	ast:    NormalizedAst<Info>,
+	ast:    NormalizedAst<Info & ParentInformation>,
 	graph?: DataflowGraph,
 	simplifications?: readonly CfgSimplificationPassName[]
 ): ControlFlowInformation {
-	return simplifyControlFlowInformation(foldAst(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds), simplifications);
+	return simplifyControlFlowInformation(foldAst(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds), { ast, dfg: graph }, simplifications);
 }
 
 /**

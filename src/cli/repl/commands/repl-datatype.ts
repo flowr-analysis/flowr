@@ -10,6 +10,7 @@ import { inferDataTypes } from '../../../typing/infer';
 import type { DataflowInformation } from '../../../dataflow/info';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { guard } from '../../../util/assert';
+import { asciiDataType } from '../../../queries/query-print';
 
 /**
  * Get the inferred data type of a node in the normalized AST
@@ -41,6 +42,6 @@ export const datatypeCommand: ReplCommand = {
 		const [criterion, code] = remainingLine.trim().match(/(?:--criterion\s+(\S+)\s+)?(.+)/)?.slice(1) ?? [undefined, ''];
 		const pipelineResult = await createDataflowPipeline(shell, { request: requestFromInput(code as string) }).allRemainingSteps();
 		const type = getInferredType(criterion as SingleSlicingCriterion | undefined, pipelineResult.normalize, pipelineResult.dataflow);
-		output.stdout(JSON.stringify(type, null, 2));
+		output.stdout(asciiDataType(type));
 	}
 };

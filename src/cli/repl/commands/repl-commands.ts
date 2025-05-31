@@ -20,6 +20,7 @@ import { guard } from '../../../util/assert';
 import { scripts } from '../../common/scripts-info';
 import { lineageCommand } from './repl-lineage';
 import { queryCommand, queryStarCommand } from './repl-query';
+import { datatypeCommand } from './repl-datatype';
 
 function printHelpForScript(script: [string, ReplCommand], f: OutputFormatter, starredVersion?: ReplCommand): string {
 	let base = `  ${bold(padCmd(':' + script[0] + (starredVersion ? '[*]' : '')), f)}${script[1].description}`;
@@ -96,6 +97,7 @@ const _commands: Record<string, ReplCommand> = {
 	'controlflowbb':   controlflowBbCommand,
 	'controlflowbb*':  controlflowBbStarCommand,
 	'lineage':         lineageCommand,
+	'datatype':        datatypeCommand,
 	'query':           queryCommand,
 	'query*':          queryStarCommand
 };

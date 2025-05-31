@@ -43,6 +43,7 @@ import type { ProjectQuery } from './catalog/project-query/project-query-format'
 import { ProjectQueryDefinition } from './catalog/project-query/project-query-format';
 import type { OriginQuery } from './catalog/origin-query/origin-query-format';
 import { OriginQueryDefinition } from './catalog/origin-query/origin-query-format';
+import { DatatypeQueryDefinition, type DatatypeQuery } from './catalog/datatype-query/datatype-query-format';
 
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -54,6 +55,7 @@ export type Query = CallContextQuery
 	| DataflowClusterQuery
 	| StaticSliceQuery
 	| LineageQuery
+	| DatatypeQuery
 	| DependenciesQuery
 	| LocationMapQuery
 	| HappensBeforeQuery
@@ -87,6 +89,7 @@ export const SupportedQueries = {
 	'dataflow-cluster': ClusterQueryDefinition,
 	'static-slice':     StaticSliceQueryDefinition,
 	'lineage':          LineageQueryDefinition,
+	'datatype':         DatatypeQueryDefinition,
 	'dependencies':     DependenciesQueryDefinition,
 	'location-map':     LocationMapQueryDefinition,
 	'search':           SearchQueryDefinition,

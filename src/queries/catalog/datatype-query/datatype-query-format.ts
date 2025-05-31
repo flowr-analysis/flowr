@@ -1,0 +1,39 @@
+import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { QueryResults, SupportedQuery } from '../../query';
+import { bold } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
+import Joi from 'joi';
+import { executeDatatypeQuery } from './datatype-query-executor';
+
+import { asciiDataType } from '../../query-print';
+import type { RDataType } from '../../../typing/types';
+
+/**
+ * Calculates the inferred data type for the given criterion.
+ */
+export interface DatatypeQuery extends BaseQueryFormat {
+	readonly type:      'datatype';
+	readonly criterion: SingleSlicingCriterion;
+}
+
+export interface DatatypeQueryResult extends BaseQueryResult {
+	/** Maps each criterion to the inferred data type, duplicates are ignored. */
+	readonly inferredTypes: Record<SingleSlicingCriterion, RDataType>;
+}
+
+export const DatatypeQueryDefinition = {
+	executor:        executeDatatypeQuery,
+	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+		const out = queryResults as QueryResults<'datatype'>['datatype'];
+		result.push(`Query: ${bold('datatype', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		for(const [criterion, inferredType] of Object.entries(out.inferredTypes)) {
+			result.push(`   ╰ ${criterion}: {${asciiDataType(inferredType)}}`);
+		}
+		return true;
+	},
+	schema: Joi.object({
+		type:      Joi.string().valid('datatype').required().description('The type of the query.'),
+		criterion: Joi.string().required().description('The slicing criterion of the node to get the inferred data type for.')
+	}).description('Datatype query used to extract the inferred data type for a node in the normalized AST')
+} as const satisfies SupportedQuery<'datatype'>;

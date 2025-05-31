@@ -36,7 +36,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				}).allRemainingSteps();
 				let cfg = extractCfg(result.normalize, result.dataflow?.graph);
 				if(useBasicBlocks) {
-					cfg = simplifyControlFlowInformation(cfg, ['to-basic-blocks', 'remove-dead-code']);
+					cfg = simplifyControlFlowInformation(cfg, { ast: result.normalize, dfg: result.dataflow.graph }, ['to-basic-blocks', 'remove-dead-code']);
 				}
 
 				const configuration: BasicCfgGuidedVisitorConfiguration = {

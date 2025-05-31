@@ -1,6 +1,5 @@
 import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from './control-flow-graph';
 
-import type { DataflowInformation } from '../dataflow/info';
 
 
 import type { DataflowCfgGuidedVisitorConfiguration } from './dfg-cfg-guided-visitor';
@@ -24,7 +23,7 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RLogical } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
-import type { FunctionArgument } from '../dataflow/graph/graph';
+import type { DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
 import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
@@ -37,7 +36,7 @@ export interface SemanticCfgGuidedVisitorConfiguration<
 	OtherInfo = NoInfo,
 	Cfg extends ControlFlowInformation    = ControlFlowInformation,
 	Ast extends NormalizedAst<OtherInfo>  = NormalizedAst<OtherInfo>,
-	Dfg extends DataflowInformation       = DataflowInformation
+	Dfg extends DataflowGraph             = DataflowGraph
 > extends DataflowCfgGuidedVisitorConfiguration<Cfg, Dfg>, SyntaxCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast> {
 }
 
@@ -68,7 +67,7 @@ export class SemanticCfgGuidedVisitor<
 	OtherInfo = NoInfo,
     Cfg extends ControlFlowInformation   = ControlFlowInformation,
 	Ast extends NormalizedAst<OtherInfo> = NormalizedAst<OtherInfo>,
-	Dfg extends DataflowInformation      = DataflowInformation,
+	Dfg extends DataflowGraph            = DataflowGraph,
 	Config extends SemanticCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast, Dfg> = SemanticCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast, Dfg>
 > extends DataflowAwareCfgGuidedVisitor<Cfg, Dfg, Config> {
 
@@ -223,11 +222,11 @@ export class SemanticCfgGuidedVisitor<
 				return this.onVectorCall({ call });
 			case 'table:assign':
 			case 'builtin:assignment': {
-				const outgoing = this.config.dataflow.graph.outgoingEdges(call.id);
+				const outgoing = this.config.dataflow.outgoingEdges(call.id);
 				if(outgoing) {
 					const target = [...outgoing.entries()].filter(([, e]) => edgeIncludesType(e.types, EdgeType.Returns));
 					if(target.length === 1) {
-						const targetOut = this.config.dataflow.graph.outgoingEdges(target[0][0]);
+						const targetOut = this.config.dataflow.outgoingEdges(target[0][0]);
 						if(targetOut) {
 							const source = [...targetOut.entries()].filter(([t, e]) => edgeIncludesType(e.types, EdgeType.DefinedBy) && t !== call.id);
 							if(source.length === 1) {
@@ -251,11 +250,11 @@ export class SemanticCfgGuidedVisitor<
 			case 'builtin:while-loop':
 				return this.onWhileLoopCall({ call, condition: call.args[0], body: call.args[1] });
 			case 'builtin:replacement': {
-				const outgoing = this.config.dataflow.graph.outgoingEdges(call.id);
+				const outgoing = this.config.dataflow.outgoingEdges(call.id);
 				if(outgoing) {
 					const target = [...outgoing.entries()].filter(([, e]) => edgeIncludesType(e.types, EdgeType.Returns));
 					if(target.length === 1) {
-						const targetOut = this.config.dataflow.graph.outgoingEdges(target[0][0]);
+						const targetOut = this.config.dataflow.outgoingEdges(target[0][0]);
 						if(targetOut) {
 							const source = [...targetOut.entries()].filter(([t, e]) => edgeIncludesType(e.types, EdgeType.DefinedBy) && t !== call.id);
 							if(source.length === 1) {
@@ -282,7 +281,7 @@ export class SemanticCfgGuidedVisitor<
 	 * A helper function to request the {@link getOriginInDfg|origins} of the given node.
 	 */
 	protected getOrigins(id: NodeId): Origin[] | undefined {
-		return getOriginInDfg(this.config.dataflow.graph, id);
+		return getOriginInDfg(this.config.dataflow, id);
 	}
 
 	/** Called for every occurrence of a `NULL` in the program. */

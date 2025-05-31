@@ -30,7 +30,7 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 		private collect: number[] = [];
 
 		constructor() {
-			super({ defaultVisitingOrder: 'forward', controlFlow, dataflow, normalizedAst: normalize });
+			super({ defaultVisitingOrder: 'forward', controlFlow, dataflow: dataflow.graph, normalizedAst: normalize });
 		}
 
 		protected onNumberConstant(d: { vertex: DataflowGraphVertexValue; node: RNumber }) {
@@ -50,7 +50,7 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 		private foundNull = false;
 
 		constructor() {
-			super({ defaultVisitingOrder: 'forward', controlFlow, dataflow, normalizedAst: normalize });
+			super({ defaultVisitingOrder: 'forward', controlFlow, dataflow: dataflow.graph, normalizedAst: normalize });
 		}
 
 		protected onNullConstant() {

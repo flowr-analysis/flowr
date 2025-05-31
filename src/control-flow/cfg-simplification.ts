@@ -1,14 +1,22 @@
 import type { ControlFlowInformation } from './control-flow-graph';
-import { visitCfgInOrder } from './simple-visitor';
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { convertCfgToBasicBlocks } from './cfg-to-basic-blocks';
+import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { DataflowGraph } from '../dataflow/graph/graph';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { visitCfgInOrder } from './simple-visitor';
+import { cfgAnalyzeDeadCode } from './cfg-dead-code';
 
-export type CfgSimplificationPass = (cfg: ControlFlowInformation) => ControlFlowInformation;
+export interface CfgPassInfo {
+	ast?: NormalizedAst,
+	dfg?: DataflowGraph
+}
+export type CfgSimplificationPass = (cfg: ControlFlowInformation, info: CfgPassInfo) => ControlFlowInformation;
 
 const CfgSimplificationPasses = {
-	'unique-cf-sets':   uniqueControlFlowSets,
-	'remove-dead-code': cfgRemoveDeadCode,
-	'to-basic-blocks':  toBasicBlocks
+	'unique-cf-sets':    uniqueControlFlowSets,
+	'analyze-dead-code': cfgAnalyzeDeadCode,
+	'remove-dead-code':  cfgRemoveDeadCode,
+	'to-basic-blocks':   toBasicBlocks
 } as const satisfies Record<string, CfgSimplificationPass>;
 
 export type CfgSimplificationPassName = keyof typeof CfgSimplificationPasses;
@@ -25,28 +33,20 @@ export const DefaultCfgSimplificationOrder = [
  */
 export function simplifyControlFlowInformation(
 	cfg: ControlFlowInformation,
+	info: CfgPassInfo,
 	passes: readonly CfgSimplificationPassName[] = DefaultCfgSimplificationOrder
 ): ControlFlowInformation {
 	for(const pass of passes) {
 		const passFn = CfgSimplificationPasses[pass];
-		cfg = passFn(cfg);
+		cfg = passFn(cfg, info);
 	}
 	return cfg;
 }
 
-function uniqueControlFlowSets(cfg: ControlFlowInformation): ControlFlowInformation {
-	return {
-		returns:     [...new Set(cfg.returns)],
-		entryPoints: [...new Set(cfg.entryPoints)],
-		exitPoints:  [...new Set(cfg.exitPoints)],
-		breaks:      [...new Set(cfg.breaks)],
-		nexts:       [...new Set(cfg.nexts)],
-		graph:       cfg.graph
-	};
-}
-
-/* currently this does not do work on function definitions */
-function cfgRemoveDeadCode(cfg: ControlFlowInformation): ControlFlowInformation {
+/**
+ * removes dead vertices and edges from the control flow graph.
+ */
+function cfgRemoveDeadCode(cfg: ControlFlowInformation, _info?: CfgPassInfo): ControlFlowInformation {
 	// remove every root level node and accompanying vertices that can not be reached from the entry points
 	const reachable = new Set<NodeId>();
 	visitCfgInOrder(cfg.graph, cfg.entryPoints, node => {
@@ -60,6 +60,17 @@ function cfgRemoveDeadCode(cfg: ControlFlowInformation): ControlFlowInformation 
 	return cfg;
 }
 
-function toBasicBlocks(cfg: ControlFlowInformation): ControlFlowInformation {
+function uniqueControlFlowSets(cfg: ControlFlowInformation, _info?: CfgPassInfo): ControlFlowInformation {
+	return {
+		returns:     [...new Set(cfg.returns)],
+		entryPoints: [...new Set(cfg.entryPoints)],
+		exitPoints:  [...new Set(cfg.exitPoints)],
+		breaks:      [...new Set(cfg.breaks)],
+		nexts:       [...new Set(cfg.nexts)],
+		graph:       cfg.graph
+	};
+}
+
+function toBasicBlocks(cfg: ControlFlowInformation, _info?: CfgPassInfo): ControlFlowInformation {
 	return convertCfgToBasicBlocks(cfg);
 }

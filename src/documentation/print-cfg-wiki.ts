@@ -36,7 +36,6 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
 import { DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-visitor';
-import type { DataflowInformation } from '../dataflow/info';
 import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import type {
 	SemanticCfgGuidedVisitorConfiguration
@@ -47,6 +46,7 @@ import {
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { EdgeType, edgeTypeToName } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
+import type { DataflowGraph } from '../dataflow/graph/graph';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -117,12 +117,12 @@ class CollectNumbersSyntaxVisitor extends SyntaxAwareCfgGuidedVisitor {
 class CollectNumbersDataflowVisitor extends DataflowAwareCfgGuidedVisitor {
 	private numbers: RNumberValue[] = [];
 
-	constructor(controlFlow: ControlFlowInformation, dataflow: DataflowInformation) {
+	constructor(controlFlow: ControlFlowInformation, dataflow: DataflowGraph) {
 		super({ controlFlow, dataflow, defaultVisitingOrder: 'forward' });
 	}
 
 	protected override visitValue(node: DataflowGraphVertexValue): void {
-		const astNode = this.config.dataflow.graph.idMap?.get(node.id);
+		const astNode = this.config.dataflow.idMap?.get(node.id);
 		if(isRNumber(astNode)) {
 			this.numbers.push(astNode.content);
 		}
@@ -136,7 +136,7 @@ class CollectNumbersDataflowVisitor extends DataflowAwareCfgGuidedVisitor {
 class CollectSourcesSemanticVisitor extends SemanticCfgGuidedVisitor {
 	private sources: string[] = [];
 
-	constructor(controlFlow: ControlFlowInformation, normalizedAst: NormalizedAst, dataflow: DataflowInformation) {
+	constructor(controlFlow: ControlFlowInformation, normalizedAst: NormalizedAst, dataflow: DataflowGraph) {
 		super({ controlFlow, normalizedAst, dataflow, defaultVisitingOrder: 'forward' });
 	}
 
@@ -248,7 +248,7 @@ ${section('Structure of the Control Flow Graph', 2, 'cfg-structure')}
 You can produce your very own control flow graph with ${shortLink(extractCfg.name, types.info)}.
 The ${shortLink(ControlFlowGraph.name, types.info)} class describes everything required to model the control flow graph, with its edge types described by
  ${shortLink('CfgEdge', types.info)} and its vertices by ${shortLink('CfgSimpleVertex', types.info)}.
-However, you should be aware of the ${shortLink('ControlFlowInformation', types.info)} interface which adds some additional information the the CFG
+However, you should be aware of the ${shortLink('ControlFlowInformation', types.info)} interface which adds some additional information the CFG
 (and is used during the construction of the CFG as well):
 
 ${printHierarchy({ info: types.info, root: 'ControlFlowInformation', program: types.program, openTop: true })}
@@ -517,7 +517,7 @@ Again, executing it with the CFG and Dataflow of the expression \`x - 1 + 2L * 3
 
 ${await (async() => {
 	const res = await getCfg(shell, 'x - 1 + 2L * 3');
-	const visitor = new CollectNumbersDataflowVisitor(res.info, res.dataflow);
+	const visitor = new CollectNumbersDataflowVisitor(res.info, res.dataflow.graph);
 	visitor.start();
 	const collected = visitor.getNumbers();
 	return collected.map(n => '\n- `' + JSON.stringify(n) + '`').join('');
@@ -542,7 +542,7 @@ Executing it with the CFG and Dataflow of the expression \`x <- 2; 3 -> x; assig
 
 ${await (async() => {
 	const res = await getCfg(shell, 'x <- 2; 3 -> x; assign("x", 42 + 21)');
-	const visitor = new CollectSourcesSemanticVisitor(res.info, res.ast, res.dataflow);
+	const visitor = new CollectSourcesSemanticVisitor(res.info, res.ast, res.dataflow.graph);
 	visitor.start();
 	const collected = visitor.getSources();
 	return collected.map(n => '\n- `' + n + '`').join('');

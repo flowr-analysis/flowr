@@ -5,10 +5,7 @@ import type { DataflowInformation } from '../dataflow/info';
 
 import type { DataflowCfgGuidedVisitorConfiguration } from './dfg-cfg-guided-visitor';
 import { DataflowAwareCfgGuidedVisitor } from './dfg-cfg-guided-visitor';
-import type {
-	NormalizedAst,
-	ParentInformation
-} from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SyntaxCfgGuidedVisitorConfiguration } from './syntax-cfg-guided-visitor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { Origin } from '../dataflow/origin/dfg-get-origin';
@@ -136,7 +133,12 @@ export class SemanticCfgGuidedVisitor<
 	 */
 	protected override visitFunctionDefinition(vertex: DataflowGraphVertexFunctionDefinition): void {
 		super.visitFunctionDefinition(vertex);
-		this.onFunctionDefinition({ vertex });
+		const ast = this.getNormalizedAst(vertex.id);
+		if(ast?.type === RType.FunctionDefinition) {
+			this.onFunctionDefinition({ vertex, parameters: ast.parameters.map(p => p.info.id) });
+		} else {
+			this.onFunctionDefinition({ vertex });
+		}
 	}
 
 	/**
@@ -239,9 +241,15 @@ export class SemanticCfgGuidedVisitor<
 				return this.onAssignmentCall({ call, target: undefined, source: undefined });
 			}
 			case 'builtin:special-bin-op':
-				return this.onSpecialBinaryOpCall({ call });
+				if(call.args.length !== 2) {
+					return this.onSpecialBinaryOpCall({ call });
+				}
+				return this.onSpecialBinaryOpCall({ call, lhs: call.args[0], rhs: call.args[1] });
 			case 'builtin:pipe':
-				return this.onPipeCall({ call });
+				if(call.args.length !== 2) {
+					return this.onPipeCall({ call });
+				}
+				return this.onPipeCall({ call, lhs: call.args[0], rhs: call.args[1] });
 			case 'builtin:quote':
 				return this.onQuoteCall({ call });
 			case 'builtin:for-loop':
@@ -274,6 +282,11 @@ export class SemanticCfgGuidedVisitor<
 		}
 	}
 
+	/**
+	 * This event is called for the root program node, i.e., the program that is being analyzed.
+	 *
+	 * @protected
+	 */
 	protected onProgram(_data: RExpressionList<OtherInfo>) {
 	}
 
@@ -331,7 +344,7 @@ export class SemanticCfgGuidedVisitor<
 	 *
 	 * For example, `function(x) { x + 1 }` in `lapply(1:10, function(x) { x + 1 })`.
 	 */
-	protected onFunctionDefinition(_data: { vertex: DataflowGraphVertexFunctionDefinition }) {}
+	protected onFunctionDefinition(_data: { vertex: DataflowGraphVertexFunctionDefinition, parameters?: readonly NodeId[] }) {}
 
 	/**
 	 * This event triggers for every anonymous call within the program.
@@ -362,7 +375,7 @@ export class SemanticCfgGuidedVisitor<
 	 *
 	 * This explicitly will not trigger for scenarios in which the function has no name (i.e., if it is anonymous).
 	 * For such cases, you may rely on the {@link SemanticCfgGuidedVisitor#onUnnamedCall|`onUnnamedCall`} event.
-	 * The main reason for this separation is part of flowR's handling of these functions, as anonmyous calls cannot be resolved using the active environment.
+	 * The main reason for this separation is part of flowR's handling of these functions, as anonymous calls cannot be resolved using the active environment.
 	 *
 	 * @protected
 	 */
@@ -482,14 +495,14 @@ export class SemanticCfgGuidedVisitor<
 	 *
 	 * @protected
 	 */
-	protected onSpecialBinaryOpCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onSpecialBinaryOpCall(_data: { call: DataflowGraphVertexFunctionCall, lhs?: FunctionArgument, rhs?: FunctionArgument }) {}
 
 	/**
 	 * This event triggers for every call to R's pipe operator, i.e., for every call to `|>`.
 	 *
 	 * @protected
 	 */
-	protected onPipeCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onPipeCall(_data: { call: DataflowGraphVertexFunctionCall, lhs?: FunctionArgument, rhs?: FunctionArgument }) {}
 
 
 	/**

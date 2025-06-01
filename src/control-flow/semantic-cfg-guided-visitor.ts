@@ -28,6 +28,7 @@ import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { BuiltInProcessorMapper } from '../dataflow/environments/built-in';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 
 export interface SemanticCfgGuidedVisitorConfiguration<
@@ -213,8 +214,25 @@ export class SemanticCfgGuidedVisitor<
 				return this.onSourceCall({ call });
 			case 'builtin:access':
 				return this.onAccessCall({ call });
-			case 'builtin:if-then-else':
-				return this.onIfThenElseCall({ call, condition: call.args[0], then: call.args[1], else: call.args[2] });
+			case 'builtin:if-then-else': {
+				// recover dead arguments from ast
+				const ast = this.getNormalizedAst(call.id);
+				if(!ast || ast.type !== RType.IfThenElse) {
+					return this.onIfThenElseCall({
+						call,
+						condition: call.args[0] === EmptyArgument ? undefined : call.args[0].nodeId,
+						then:      call.args[1] === EmptyArgument ? undefined : call.args[1].nodeId,
+						else:      call.args[2] === EmptyArgument ? undefined : call.args[2].nodeId
+					});
+				} else {
+					return this.onIfThenElseCall({
+						call,
+						condition: ast.condition.info.id,
+						then:      ast.then.info.id,
+						else:      ast.otherwise?.info.id
+					});
+				}
+			}
 			case 'builtin:get':
 				return this.onGetCall({ call });
 			case 'builtin:rm':
@@ -440,7 +458,7 @@ export class SemanticCfgGuidedVisitor<
 	 *
 	 * @protected
 	 */
-	protected onIfThenElseCall(_data: { call: DataflowGraphVertexFunctionCall, condition: FunctionArgument, then: FunctionArgument, else: FunctionArgument | undefined }) {
+	protected onIfThenElseCall(_data: { call: DataflowGraphVertexFunctionCall, condition: NodeId | undefined, then: NodeId | undefined, else: NodeId | undefined }) {
 	}
 
 	/**

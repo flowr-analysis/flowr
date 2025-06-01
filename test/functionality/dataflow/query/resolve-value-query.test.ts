@@ -1,6 +1,5 @@
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
-import { withShell } from '../../_helper/shell';
 import { assert, describe } from 'vitest';
 import type {
 	ResolveValueQuery,
@@ -13,10 +12,12 @@ import { intervalFrom } from '../../../../src/dataflow/eval/values/intervals/int
 import { Top } from '../../../../src/dataflow/eval/values/r-value';
 import type { ResolveResult } from '../../../../src/dataflow/eval/resolve/alias-tracking';
 
-describe.sequential('Resolve Value Query', withShell(shell => {
+import { withTreeSitter } from '../../_helper/shell';
+
+describe('Resolve Value Query', withTreeSitter( parser => {
 	function testQuery(name: string, code: string, criteria: SlicingCriteria, expected: ResolveResult[][]) {
 		const queries: ResolveValueQuery[] = [{ type: 'resolve-value' as const, criteria }];
-		assertQuery(label(name), shell, code, queries, ({ dataflow }) => {
+		assertQuery(label(name), parser, code, queries, ({ dataflow }) => {
 			const results: ResolveValueQueryResult['results'] = {};
 			
 			const idMap = dataflow.graph.idMap;

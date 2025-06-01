@@ -31,5 +31,6 @@ export const HappensBeforeQueryDefinition = {
 		type: Joi.string().valid('happens-before').required().description('The type of the query.'),
 		a:    Joi.string().required().description('The first slicing criterion.'),
 		b:    Joi.string().required().description('The second slicing criterion.')
-	}).description('Happens-Before tracks whether a always happens before b.')
+	}).description('Happens-Before tracks whether a always happens before b.'),
+	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'happens-before'>;

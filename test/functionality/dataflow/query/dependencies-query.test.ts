@@ -1,4 +1,3 @@
-import { withShell } from '../../_helper/shell';
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
@@ -10,6 +9,7 @@ import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/proce
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 
 import { describe } from 'vitest';
+import { withTreeSitter } from '../../_helper/shell';
 
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { libraries: [], sourcedFiles: [], readData: [], writtenData: [] };
 
@@ -27,7 +27,7 @@ function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Part
 	return out;
 }
 
-describe.sequential('Dependencies Query', withShell(shell => {
+describe('Dependencies Query', withTreeSitter(parser => {
 	/** handles slicing criteria for the node ids */
 	function testQuery(
 		name: string,
@@ -35,7 +35,7 @@ describe.sequential('Dependencies Query', withShell(shell => {
 		expected: Partial<DependenciesQueryResult>,
 		query: Partial<DependenciesQuery> = {}
 	): void {
-		assertQuery(label(name), shell, code, [{ type: 'dependencies', ...query }], ({ normalize }) => ({
+		assertQuery(label(name), parser, code, [{ type: 'dependencies', ...query }], ({ normalize }) => ({
 			dependencies: {
 				...emptyDependencies,
 				...decodeIds(expected, normalize.idMap)

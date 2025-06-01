@@ -12,7 +12,7 @@ export interface CfgPassInfo {
 }
 export type CfgSimplificationPass = (cfg: ControlFlowInformation, info: CfgPassInfo) => ControlFlowInformation;
 
-const CfgSimplificationPasses = {
+export const CfgSimplificationPasses = {
 	'unique-cf-sets':    uniqueControlFlowSets,
 	'analyze-dead-code': cfgAnalyzeDeadCode,
 	'remove-dead-code':  cfgRemoveDeadCode,

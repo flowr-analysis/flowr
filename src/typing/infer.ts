@@ -25,7 +25,7 @@ import type { NoInfo } from '../r-bridge/lang-4.x/ast/model/model';
 
 export function inferDataTypes<Info extends { typeVariable?: undefined }>(ast: NormalizedAst<Info>, dataflowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
-	const controlFlowInfo = extractCfg(astWithTypeVars);
+	const controlFlowInfo = extractCfg(astWithTypeVars, dataflowInfo.graph, ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code']);
 	const config = {
 		normalizedAst:        astWithTypeVars,
 		controlFlow:          controlFlowInfo,

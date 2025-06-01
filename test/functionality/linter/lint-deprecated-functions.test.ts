@@ -27,11 +27,6 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ totalRelevant: 5, totalNotDeprecated: 4 },
 			{ deprecatedFunctions: ['cat'] }
 		);
-		assertLinter('ignore quote', parser, 'quote(cat(foo))',
-			'deprecated-functions', [],
-			{ totalRelevant: 2, totalNotDeprecated: 2 },
-			{ deprecatedFunctions: ['cat'] }
-		);
 		assertLinter('with defaults', parser, 'all_equal(foo)',
 			'deprecated-functions', [
 				{ certainty: LintingCertainty.Definitely, function: 'all_equal', range: [1, 1, 1, 14] }

@@ -32,6 +32,9 @@ export const DatatypeQueryDefinition = {
 		}
 		return true;
 	},
+	flattenInvolvedNodes: () => {
+		return [];
+	},
 	schema: Joi.object({
 		type:      Joi.string().valid('datatype').required().description('The type of the query.'),
 		criterion: Joi.string().optional().description('The slicing criterion of the node to get the inferred data type for.')

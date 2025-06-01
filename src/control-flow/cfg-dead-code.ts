@@ -7,7 +7,7 @@ import type { CfgPassInfo } from './cfg-simplification';
 import { SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import type { FunctionArgument } from '../dataflow/graph/graph';
-import { resolveIdToValue } from '../dataflow/environments/resolve-by-name';
+import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
 import { log } from '../util/log';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 

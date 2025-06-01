@@ -2,7 +2,6 @@ import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingR
 import { LintingRules } from '../../../src/linter/linter-rules';
 import type { TestLabel } from './label';
 import { decorateLabelContext } from './label';
-import type { RShell } from '../../../src/r-bridge/shell';
 import { assert, test } from 'vitest';
 import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
@@ -11,10 +10,11 @@ import { executeLintingRule } from '../../../src/linter/linter-executor';
 import type { LintingRule } from '../../../src/linter/linter-format';
 import { log } from '../../../src/util/log';
 import type { DeepPartial } from 'ts-essentials';
+import type { KnownParser } from '../../../src/r-bridge/parser';
 
 export function assertLinter<Name extends LintingRuleNames>(
 	name: string | TestLabel,
-	shell: RShell,
+	parser: KnownParser,
 	code: string,
 	ruleName: Name,
 	expected: LintingRuleResult<Name>[],
@@ -22,7 +22,7 @@ export function assertLinter<Name extends LintingRuleNames>(
 	config?: DeepPartial<LintingRuleConfig<Name>>
 ) {
 	test(decorateLabelContext(name, ['linter']), async() => {
-		const pipelineResults = await createDataflowPipeline(shell, {
+		const pipelineResults = await createDataflowPipeline(parser, {
 			request: requestFromInput(code),
 			getId:   deterministicCountingIdGenerator(0)
 		}).allRemainingSteps();

@@ -4,7 +4,6 @@ import type { Pipeline } from '../../core/steps/pipeline/pipeline';
 import type { MergeableRecord } from '../../util/objects';
 import { VertexType } from '../../dataflow/graph/vertex';
 import type { Identifier } from '../../dataflow/environments/identifier';
-import { log } from '../../util/log';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import {
 	identifyLinkToLastCallRelation
@@ -12,6 +11,7 @@ import {
 import { guard, isNotUndefined } from '../../util/assert';
 import { extractSimpleCfg } from '../../control-flow/extract-cfg';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
+import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /**
  * A {@link FlowrSearchElement} that is enriched with a set of enrichments through {@link FlowrSearchBuilder.with}.
@@ -67,7 +67,7 @@ export const Enrichments = {
 			if(callVertex?.tag === VertexType.FunctionCall) {
 				const origins = getOriginInDfg(data.dataflow.graph, callVertex.id);
 				if(!origins || origins.length === 0) {
-					log.warn(`No origin found for call vertex ${callVertex.id}, cannot resolve call targets.`);
+					content.targets = [recoverName(callVertex.id, data.normalize.idMap)] as (FlowrSearchElement<ParentInformation> | Identifier)[];
 					return content;
 				}
 				// find call targets in user code (which have ids!)
@@ -85,6 +85,9 @@ export const Enrichments = {
 						}
 					}).filter(isNotUndefined)
 				);
+				if(content.targets.length === 0) {
+					content.targets = [recoverName(callVertex.id, data.normalize.idMap)] as (FlowrSearchElement<ParentInformation> | Identifier)[];
+				}
 			}
 			return content;
 		},

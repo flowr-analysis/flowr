@@ -8,6 +8,7 @@ import Joi from 'joi';
 
 import { executeResolveValueQuery } from './origin-query-executor';
 import type { Origin } from '../../../dataflow/origin/dfg-get-origin';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 
 export interface OriginQuery extends BaseQueryFormat {
@@ -34,5 +35,9 @@ export const OriginQueryDefinition = {
 	schema: Joi.object({
 		type:      Joi.string().valid('origin').required().description('The type of the query.'),
 		criterion: Joi.string().required().description('The slicing criteria to use'),
-	}).description('The resolve value query used to get definitions of an identifier')
+	}).description('The resolve value query used to get definitions of an identifier'),
+	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
+		const out = queryResults as QueryResults<'origin'>['origin'];
+		return Object.entries(out.results).flatMap(([_, obj]) => obj?.map(origin => origin.id) ?? []);
+	}
 } as const satisfies SupportedQuery<'origin'>;

@@ -8,7 +8,7 @@ describe('Infer types for if statements', () => {
 	describe.each([
 		{ input: 'if(FALSE) { TRUE }',           expectedType: { tag: RDataTypeTag.Null as const } },
 		{ input: 'if(TRUE) { 1 } else { NULL }', expectedType: { tag: RDataTypeTag.Integer as const } },
-		// { input: 'if(return()) { 1 } else { NULL }', expectedType: { tag: RDataTypeTag.Never as const } },
+		{ input: 'if(stop("stop here")) { 1 } else { 2 }', expectedType: { tag: RDataTypeTag.Never as const } },
 	])('Infer $expectedType for $input', ({ input, expectedType }) => assertInferredType(input, expectedType));
 
 	assertInferredTypes(

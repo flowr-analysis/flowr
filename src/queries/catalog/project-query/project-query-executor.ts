@@ -4,7 +4,7 @@ import type { BasicQueryData } from '../../base-query-format';
 
 export function executeProjectQuery({ dataflow }: BasicQueryData, queries: readonly ProjectQuery[]): ProjectQueryResult {
 	if(queries.length !== 1) {
-		log.warn('Id-Map query expects only up to one query, but got', queries.length);
+		log.warn('Project query expects only up to one query, but got', queries.length);
 	}
 	return {
 		'.meta': {

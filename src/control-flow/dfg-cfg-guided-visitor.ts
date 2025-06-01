@@ -1,7 +1,6 @@
 import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
-import type { DataflowInformation } from '../dataflow/info';
 import type {
 	DataflowGraphVertexArgument, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexUse,
@@ -11,10 +10,11 @@ import { VertexType
 import type { BasicCfgGuidedVisitorConfiguration } from './basic-cfg-guided-visitor';
 import { BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
 import { assertUnreachable } from '../util/assert';
+import type { DataflowGraph } from '../dataflow/graph/graph';
 
 export interface DataflowCfgGuidedVisitorConfiguration<
 	Cfg extends ControlFlowInformation = ControlFlowInformation,
-	Dfg extends DataflowInformation    = DataflowInformation
+	Dfg extends DataflowGraph    = DataflowGraph
 > extends BasicCfgGuidedVisitorConfiguration<Cfg> {
 	readonly dataflow: Dfg;
 }
@@ -26,7 +26,7 @@ export interface DataflowCfgGuidedVisitorConfiguration<
  */
 export class DataflowAwareCfgGuidedVisitor<
     Cfg extends ControlFlowInformation = ControlFlowInformation,
-	Dfg extends DataflowInformation    = DataflowInformation,
+	Dfg extends DataflowGraph    = DataflowGraph,
 	Config extends DataflowCfgGuidedVisitorConfiguration<Cfg, Dfg> = DataflowCfgGuidedVisitorConfiguration<Cfg, Dfg>
 > extends BasicCfgGuidedVisitor<Cfg, Config> {
 
@@ -34,7 +34,7 @@ export class DataflowAwareCfgGuidedVisitor<
 	 * Get the dataflow graph vertex for the given id
 	 */
 	protected getDataflowGraph(id: NodeId): DataflowGraphVertexArgument | undefined {
-		return this.config.dataflow.graph.getVertex(id);
+		return this.config.dataflow.getVertex(id);
 	}
 
 

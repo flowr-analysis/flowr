@@ -1,12 +1,12 @@
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
-import { withShell } from '../../_helper/shell';
 import type { IdMapQuery } from '../../../../src/queries/catalog/id-map-query/id-map-query-format';
 import { describe } from 'vitest';
+import { withTreeSitter } from '../../_helper/shell';
 
-describe.sequential('Normalized AST Query', withShell(shell => {
+describe('Normalized AST Query', withTreeSitter(parser => {
 	function testQuery(name: string, code: string, query: readonly IdMapQuery[]) {
-		assertQuery(label(name), shell, code, query, (({ normalize }) => ({ 'id-map': { idMap: normalize.idMap } })));
+		assertQuery(label(name), parser, code, query, (({ normalize }) => ({ 'id-map': { idMap: normalize.idMap } })));
 	}
 
 	testQuery('Single normalized AST', 'x + 1', [{ type: 'id-map' }]);

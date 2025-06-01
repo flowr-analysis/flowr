@@ -1,6 +1,5 @@
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
-import { withShell } from '../../_helper/shell';
 import { assert, describe } from 'vitest';
 import type {
 	ResolveValueQuery,
@@ -11,11 +10,12 @@ import type {
 import { fingerPrintOfQuery } from '../../../../src/queries/catalog/resolve-value-query/resolve-value-query-executor';
 import { numVal } from '../../_helper/ast-builder';
 import type { SlicingCriteria } from '../../../../src/slicing/criterion/parse';
+import { withTreeSitter } from '../../_helper/shell';
 
-describe.sequential('Resolve Value Query', withShell(shell => {
+describe('Resolve Value Query', withTreeSitter( parser => {
 	function testQuery(name: string, code: string, criteria: SlicingCriteria, expected: readonly unknown[][]) {
 		const queries: ResolveValueQuery[] = [{ type: 'resolve-value' as const, criteria }];
-		assertQuery(label(name), shell, code, queries, ({ dataflow }) => {
+		assertQuery(label(name), parser, code, queries, ({ dataflow }) => {
 			const results: ResolveValueQueryResult['results'] = {};
 			
 			const idMap = dataflow.graph.idMap;

@@ -13,17 +13,19 @@ import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock, jsonWithLimit } from './doc-code';
 import { printAsMs } from '../../util/text/time';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
+import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
 
-export interface ShowQueryOptions {
+export interface ShowQueryOptions<Base extends SupportedQueryTypes> {
 	readonly showCode?:       boolean;
 	readonly collapseResult?: boolean;
 	readonly collapseQuery?:  boolean;
+	readonly addOutput?:      (result: QueryResults<Base>, pipeline: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>) => string;
 }
 
 export async function showQuery<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult, collapseQuery }: ShowQueryOptions = {}): Promise<string> {
+>(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult, collapseQuery, addOutput = () => '' }: ShowQueryOptions<Base> = {}): Promise<string> {
 	const now = performance.now();
 	const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
@@ -71,6 +73,8 @@ ${await printDfGraphForCode(shell, code, { switchCodeAndGraph: true })}
 }
 
 ${collapseResult ? '</details>' : ''}
+
+${addOutput(results, analysis)}
 
 	`;
 

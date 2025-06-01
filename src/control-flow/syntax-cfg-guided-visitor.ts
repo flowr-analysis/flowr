@@ -37,9 +37,9 @@ import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 export interface SyntaxCfgGuidedVisitorConfiguration<
 	OtherInfo = NoInfo,
-    Cfg extends ControlFlowInformation   = ControlFlowInformation,
-	Ast extends NormalizedAst<OtherInfo> = NormalizedAst<OtherInfo>
-> extends BasicCfgGuidedVisitorConfiguration<Cfg> {
+    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	Ast extends NormalizedAst<OtherInfo>       = NormalizedAst<OtherInfo>
+> extends BasicCfgGuidedVisitorConfiguration<ControlFlow> {
 	readonly normalizedAst: Ast;
 }
 
@@ -50,10 +50,10 @@ export interface SyntaxCfgGuidedVisitorConfiguration<
  */
 export class SyntaxAwareCfgGuidedVisitor<
 	OtherInfo = NoInfo,
-    Cfg extends ControlFlowInformation = ControlFlowInformation,
-	Ast extends NormalizedAst<OtherInfo> = NormalizedAst<OtherInfo>,
-	Config extends SyntaxCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast> = SyntaxCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast>,
-> extends BasicCfgGuidedVisitor<Cfg, Config> {
+    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	Ast extends NormalizedAst<OtherInfo>       = NormalizedAst<OtherInfo>,
+	Config extends SyntaxCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast> = SyntaxCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast>,
+> extends BasicCfgGuidedVisitor<ControlFlow, Config> {
 
 	/**
 	 * Get the normalized AST node for the given id or fail if it does not exist.

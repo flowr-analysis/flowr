@@ -1,9 +1,8 @@
 import type { TestLabel } from './label';
 import { decorateLabelContext } from './label';
-import type { RShell } from '../../../src/r-bridge/shell';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
+import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { assert, beforeAll, describe, test } from 'vitest';
-import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { ParentInformation } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -23,6 +22,7 @@ import { flowrSearchToAscii } from '../../../src/search/flowr-search-printer';
 import type { FlowrSearchElement } from '../../../src/search/flowr-search';
 import type { Enrichment, EnrichmentContent } from '../../../src/search/search-executor/search-enrichers';
 import { enrichmentContent } from '../../../src/search/search-executor/search-enrichers';
+import type { KnownParser } from '../../../src/r-bridge/parser';
 
 /**
  * Asserts the result of a search or a set of searches (all of which should return the same result)!
@@ -30,7 +30,7 @@ import { enrichmentContent } from '../../../src/search/search-executor/search-en
  */
 export function assertSearch(
 	name: string | TestLabel,
-	shell: RShell,
+	parser: KnownParser,
 	code: string,
 	expected: readonly (NodeId | SingleSlicingCriterion)[] | ((result: FlowrSearchElement<ParentInformation>[]) => boolean),
 	...searches: FlowrSearchLike[]
@@ -39,8 +39,7 @@ export function assertSearch(
 	describe(effectiveName, () => {
 		let results: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> | undefined;
 		beforeAll(async() => {
-			results = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-				parser:  shell,
+			results = await createDataflowPipeline(parser, {
 				request: requestFromInput(code),
 				getId:   deterministicCountingIdGenerator(0)
 			}).allRemainingSteps();
@@ -83,13 +82,13 @@ export function assertSearch(
 
 export function assertSearchEnrichment(
 	name: string | TestLabel,
-	shell: RShell,
+	parser: KnownParser,
 	code: string,
 	expectedEnrichments: readonly { [E in Enrichment]?: EnrichmentContent<E> }[],
 	matchType: 'some' | 'every',
 	...searches: FlowrSearchLike[]
 ) {
-	assertSearch(name, shell, code, results => {
+	assertSearch(name, parser, code, results => {
 		for(const expected of expectedEnrichments) {
 			for(const [enrichment, content] of Object.entries(expected)) {
 				let any = false;

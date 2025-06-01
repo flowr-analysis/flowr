@@ -4,7 +4,7 @@ import type { IdMapQuery } from '../../../../src/queries/catalog/id-map-query/id
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 
-describe('Normalized AST Query', withTreeSitter(parser => {
+describe('Id Map Query', withTreeSitter(parser => {
 	function testQuery(name: string, code: string, query: readonly IdMapQuery[]) {
 		assertQuery(label(name), parser, code, query, (({ normalize }) => ({ 'id-map': { idMap: normalize.idMap } })));
 	}

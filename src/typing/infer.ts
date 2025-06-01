@@ -1,4 +1,5 @@
 import { extractCfg } from '../control-flow/extract-cfg';
+import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse, DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import type { DataflowInformation } from '../dataflow/info';
@@ -16,20 +17,22 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { FunctionArgument } from '../dataflow/graph/graph';
+import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { CfgVertexType } from '../control-flow/control-flow-graph';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import type { NoInfo } from '../r-bridge/lang-4.x/ast/model/model';
 
-export function inferDataTypes<Info extends { typeVariable?: undefined }>(ast: NormalizedAst<Info>, dataFlowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
+export function inferDataTypes<Info extends { typeVariable?: undefined }>(ast: NormalizedAst<Info>, dataflowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
 	const controlFlowInfo = extractCfg(astWithTypeVars);
 	const config = {
 		normalizedAst:        astWithTypeVars,
 		controlFlow:          controlFlowInfo,
-		dataflow:             dataFlowInfo,
+		dataflowInfo:         dataflowInfo,
 		defaultVisitingOrder: 'forward' as const,
 	};
-	const visitor = new TypeInferingCfgGuidedVisitor(config);
+	const visitor = new TypeInferringCfgGuidedVisitor(config);
 	visitor.start();
 
 	return resolveTypeVariables(astWithTypeVars);
@@ -54,7 +57,26 @@ function resolveTypeVariables<Info extends UnresolvedTypeInfo>(ast: NormalizedAs
 	});
 }
 
-class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTypeInfo>{
+export interface TypeInferringCfgGuidedVisitorConfiguration<
+	OtherInfo                                                 = NoInfo,
+	ControlFlow extends ControlFlowInformation                = ControlFlowInformation,
+	Ast extends NormalizedAst<UnresolvedTypeInfo & OtherInfo> = NormalizedAst<UnresolvedTypeInfo & OtherInfo>,
+	Dataflow extends DataflowInformation                      = DataflowInformation
+> extends Omit<SemanticCfgGuidedVisitorConfiguration<UnresolvedTypeInfo & OtherInfo, ControlFlow, Ast>, 'dataflow'> {
+	dataflowInfo: Dataflow;
+}
+
+class TypeInferringCfgGuidedVisitor<
+	OtherInfo                                                 = NoInfo,
+	ControlFlow extends ControlFlowInformation                = ControlFlowInformation,
+	Ast extends NormalizedAst<UnresolvedTypeInfo & OtherInfo> = NormalizedAst<UnresolvedTypeInfo & OtherInfo>,
+	Dataflow extends DataflowInformation                      = DataflowInformation,
+	Config extends TypeInferringCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dataflow> = TypeInferringCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dataflow>
+> extends SemanticCfgGuidedVisitor<UnresolvedTypeInfo & OtherInfo, ControlFlow, Ast, Dataflow['graph'], Config & { dataflow: Dataflow['graph'] }> {
+	constructor(config: Config) {
+		super({ dataflow: config.dataflowInfo.graph, ...config });
+	}
+
 	protected override onNullConstant(data: { vertex: DataflowGraphVertexValue; node: RSymbol<UnresolvedTypeInfo & ParentInformation, 'NULL'>; }): void {
 		data.node.info.typeVariable.unify(new RNullType());
 	}
@@ -111,7 +133,7 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 	}
 
 	override onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall }): void {
-		const outgoing = this.config.dataflow.graph.outgoingEdges(data.call.id);
+		const outgoing = this.config.dataflowInfo.graph.outgoingEdges(data.call.id);
 		const callTargets = outgoing?.entries()
 			.filter(([_target, edge]) => edgeIncludesType(edge.types, EdgeType.Calls))
 			.map(([target, _edge]) => target)
@@ -185,9 +207,9 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 		}
 	}
 
-	override onIfThenElseCall(data: { call: DataflowGraphVertexFunctionCall, condition: FunctionArgument, then: FunctionArgument, else: FunctionArgument | undefined }) {
-		guard(data.condition !== EmptyArgument, 'Expected condition argument to be defined');
-		const conditionNode = this.getNormalizedAst(data.condition.nodeId);
+	override onIfThenElseCall(data: { call: DataflowGraphVertexFunctionCall, condition: NodeId | undefined, then: NodeId | undefined, else: NodeId | undefined }) {
+		guard(data.condition !== undefined, 'Expected condition argument to be defined');
+		const conditionNode = this.getNormalizedAst(data.condition);
 		
 		guard(conditionNode !== undefined, 'Expected condition node to be defined');
 		conditionNode.info.typeVariable.unify(new RLogicalType());
@@ -195,10 +217,10 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 		const node = this.getNormalizedAst(data.call.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
 
-		if(data.then !== EmptyArgument) {
-			const isThenBranchReachable = (this.config.controlFlow.graph.ingoingEdges(data.then.nodeId)?.size ?? 0) > 0;
+		if(data.then !== undefined) {
+			const isThenBranchReachable = (this.config.controlFlow.graph.ingoingEdges(data.then)?.size ?? 0) > 0;
 			
-			const thenNode = this.getNormalizedAst(data.then.nodeId);
+			const thenNode = this.getNormalizedAst(data.then);
 			guard(thenNode !== undefined, 'Expected then node to be defined');
 
 			if(isThenBranchReachable) {
@@ -211,10 +233,10 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 			node.info.typeVariable.unify(new RNullType());
 		}
 
-		if(data.else !== undefined && data.else !== EmptyArgument) {
-			const isElseBranchReachable = (this.config.controlFlow.graph.ingoingEdges(data.else.nodeId)?.size ?? 0) > 0;
+		if(data.else !== undefined) {
+			const isElseBranchReachable = (this.config.controlFlow.graph.ingoingEdges(data.else)?.size ?? 0) > 0;
 
-			const elseNode = this.getNormalizedAst(data.else.nodeId);
+			const elseNode = this.getNormalizedAst(data.else);
 			guard(elseNode !== undefined, 'Expected else node to be defined');
 
 			if(isElseBranchReachable) {
@@ -283,7 +305,7 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 	}
 
 	override onProgram(node: RExpressionList<UnresolvedTypeInfo>) {
-		const exitPoints = this.config.dataflow.exitPoints;
+		const exitPoints = this.config.dataflowInfo.exitPoints;
 		const evalCandidates = exitPoints.map((exitPoint) => exitPoint.nodeId);
 
 		if(evalCandidates.length === 0) {
@@ -302,7 +324,7 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 		const node = this.getNormalizedAst(data.call.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
 
-		const outgoing = this.config.dataflow.graph.outgoingEdges(data.call.id);
+		const outgoing = this.config.dataflowInfo.graph.outgoingEdges(data.call.id);
 		const evalCandidates = outgoing?.entries()
 			.filter(([_target, edge]) => edgeIncludesType(edge.types, EdgeType.Returns))
 			.map(([target, _edge]) => target)

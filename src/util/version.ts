@@ -1,7 +1,7 @@
 import { SemVer } from 'semver';
 
 // this is automatically replaced with the current version by release-it
-const version = '2.2.13';
+const version = '2.2.14';
 
 export function flowrVersion(): SemVer {
 	return new SemVer(version);

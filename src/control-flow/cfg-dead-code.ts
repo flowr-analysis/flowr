@@ -7,9 +7,9 @@ import type { CfgPassInfo } from './cfg-simplification';
 import { SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import type { FunctionArgument } from '../dataflow/graph/graph';
-import { isPositionalArgument } from '../dataflow/graph/graph';
 import { resolveIdToValue } from '../dataflow/environments/resolve-by-name';
 import { log } from '../util/log';
+import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 type CachedValues = Map<NodeId, Ternary>;
 
@@ -59,16 +59,16 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		this.storeDefiniteValue(id, Boolean(values[0]));
 	}
 
-	private handleWithCondition(data: { call: DataflowGraphVertexFunctionCall, condition: FunctionArgument }) {
+	private handleWithCondition(data: { call: DataflowGraphVertexFunctionCall, condition?: FunctionArgument | NodeId }) {
 		const id = data.call.id;
-		if(!isPositionalArgument(data.condition)) {
+		if(data.condition === undefined || data.condition === EmptyArgument) {
 			this.unableToCalculateValue(id);
 			return;
 		}
-		this.handleValuesFor(id, data.condition.nodeId);
+		this.handleValuesFor(id, typeof data.condition === 'object' ? data.condition.nodeId : data.condition);
 	}
 
-	protected onIfThenElseCall(data: { call: DataflowGraphVertexFunctionCall, condition: FunctionArgument }) {
+	protected onIfThenElseCall(data: { call: DataflowGraphVertexFunctionCall, condition?: NodeId }) {
 		this.handleWithCondition(data);
 	}
 

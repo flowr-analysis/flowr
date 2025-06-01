@@ -547,7 +547,7 @@ Here, \`resolveValue\` tells the dependency query to resolve the value of this a
 registerQueryDocumentation('linter', {
 	name:             'Linter Query',
 	type:             'active',
-	shortDescription: 'Lint\'s a given R script for common issues.',
+	shortDescription: 'Lints a given R script for common issues.',
 	functionName:     executeDependenciesQuery.name,
 	functionFile:     '../queries/catalog/linter-query/linter-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
@@ -555,7 +555,7 @@ registerQueryDocumentation('linter', {
 		return `
 This query lints a given R script for common issues, such as missing files, unused variables, and more.
 
-In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the loaded library:
+In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns all smells detected:
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'linter'

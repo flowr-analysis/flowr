@@ -36,6 +36,8 @@ import { Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
 import { getTypesFromFolderAsMermaid, shortLink } from './doc-util/doc-types';
 import path from 'path';
+import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
+import { printCfgCode } from './doc-util/doc-cfg';
 
 
 registerQueryDocumentation('call-context', {
@@ -543,7 +545,6 @@ Here, \`resolveValue\` tells the dependency query to resolve the value of this a
 	}
 });
 
-
 registerQueryDocumentation('linter', {
 	name:             'Linter Query',
 	type:             'active',
@@ -568,6 +569,71 @@ We welcome any feedback and suggestions for new rules on this (consider opening 
 	}
 });
 
+registerQueryDocumentation('control-flow', {
+	name:             'Control-Flow Query',
+	type:             'active',
+	shortDescription: 'Provides the control-flow of the program.',
+	functionName:     executeControlFlowQuery.name,
+	functionFile:     '../queries/catalog/control-flow-query/control-flow-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'if(TRUE) 1 else 2';
+		return `
+This control-flow query provides you access to the control flow graph.
+
+In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the CFG:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'control-flow'
+	}], { showCode: false, collapseQuery: true, collapseResult: true })
+}
+
+You can also overwrite the simplification passes to tune the perspective. for example, if you want to have basic blocks:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'control-flow',
+		config: {
+			simplificationPasses: ['unique-cf-sets', 'to-basic-blocks']
+		}
+	}], { showCode: false, collapseResult: true })
+}
+
+this produces: 
+
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'] })}}
+
+
+If, on the other hand, you want to prune dead code edges:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'control-flow',
+		config: {
+			simplificationPasses: ['unique-cf-sets', 'analyze-dead-code']
+		}
+	}], { showCode: false, collapseResult: true })
+}
+
+this produces:
+
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['analyze-dead-code'] })}
+
+
+Or, completely remove dead code:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'control-flow',
+		config: {
+			simplificationPasses: ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code']
+		}
+	}], { showCode: false, collapseResult: true })
+}
+
+this produces:
+
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['analyze-dead-code', 'remove-dead-code'] })}
+
+		`;
+	}
+});
 
 registerQueryDocumentation('location-map', {
 	name:             'Location Map Query',

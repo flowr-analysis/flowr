@@ -543,6 +543,32 @@ Here, \`resolveValue\` tells the dependency query to resolve the value of this a
 	}
 });
 
+
+registerQueryDocumentation('linter', {
+	name:             'Linter Query',
+	type:             'active',
+	shortDescription: 'Lints a given R script for common issues.',
+	functionName:     executeDependenciesQuery.name,
+	functionFile:     '../queries/catalog/linter-query/linter-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'read.csv("i_do_not_exist.csv")';
+		return `
+This query lints a given R script for common issues, such as missing files, unused variables, and more.
+
+In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns all smells detected:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'linter'
+	}], { showCode: false, collapseQuery: true })
+}
+
+You can also configure which rules to apply and what settings to use for these rules. 
+We welcome any feedback and suggestions for new rules on this (consider opening a [new issue](${NewIssueUrl})).
+		`;
+	}
+});
+
+
 registerQueryDocumentation('location-map', {
 	name:             'Location Map Query',
 	type:             'active',

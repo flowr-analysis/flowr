@@ -50,7 +50,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private handleValuesFor(id: NodeId, valueId: NodeId): void {
-		const values = resolveIdToValue(valueId, { graph: this.config.dataflow, full: true, idMap: this.config.normalizedAst.idMap });
+		const values = resolveIdToValue(valueId, { graph: this.config.dfg, full: true, idMap: this.config.normalizedAst.idMap });
 		if(values === undefined || values.length !== 1) {
 			this.unableToCalculateValue(id);
 			return;
@@ -87,7 +87,7 @@ export function cfgAnalyzeDeadCode(cfg: ControlFlowInformation, info: CfgPassInf
 	const visitor = new CfgConditionalDeadCodeRemoval({
 		controlFlow:          cfg,
 		normalizedAst:        info.ast,
-		dataflow:             info.dfg,
+		dfg:                  info.dfg,
 		defaultVisitingOrder: 'forward'
 	});
 	visitor.start();

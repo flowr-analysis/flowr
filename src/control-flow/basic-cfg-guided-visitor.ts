@@ -9,9 +9,9 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assertUnreachable } from '../util/assert';
 
 export interface BasicCfgGuidedVisitorConfiguration<
-    Cfg extends ControlFlowInformation = ControlFlowInformation,
+    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 > {
-    readonly controlFlow:          Cfg;
+    readonly controlFlow:          ControlFlow;
     readonly defaultVisitingOrder: 'forward' | 'backward';
 }
 
@@ -23,8 +23,8 @@ export interface BasicCfgGuidedVisitorConfiguration<
  * Use {@link BasicCfgGuidedVisitor#start} to start the traversal.
  */
 export class BasicCfgGuidedVisitor<
-    Cfg extends ControlFlowInformation = ControlFlowInformation,
-	Config extends BasicCfgGuidedVisitorConfiguration<Cfg> = BasicCfgGuidedVisitorConfiguration<Cfg>
+    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	Config extends BasicCfgGuidedVisitorConfiguration<ControlFlow> = BasicCfgGuidedVisitorConfiguration<ControlFlow>
 > {
 
 	protected readonly config:  Config;

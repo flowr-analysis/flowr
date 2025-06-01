@@ -32,11 +32,10 @@ import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-c
 
 export interface SemanticCfgGuidedVisitorConfiguration<
 	OtherInfo = NoInfo,
-	Cfg extends ControlFlowInformation    = ControlFlowInformation,
-	Ast extends NormalizedAst<OtherInfo>  = NormalizedAst<OtherInfo>,
-	Dfg extends DataflowGraph             = DataflowGraph
-> extends DataflowCfgGuidedVisitorConfiguration<Cfg, Dfg>, SyntaxCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast> {
-}
+	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	Ast extends NormalizedAst<OtherInfo>       = NormalizedAst<OtherInfo>,
+	Dfg extends DataflowGraph                  = DataflowGraph
+> extends DataflowCfgGuidedVisitorConfiguration<ControlFlow, Dfg>, SyntaxCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast> {}
 
 /**
  * This visitor extends on the {@link DataflowAwareCfgGuidedVisitor} by dispatching visitors for separate function calls as well,
@@ -63,11 +62,11 @@ export interface SemanticCfgGuidedVisitorConfiguration<
  */
 export class SemanticCfgGuidedVisitor<
 	OtherInfo = NoInfo,
-    Cfg extends ControlFlowInformation   = ControlFlowInformation,
-	Ast extends NormalizedAst<OtherInfo> = NormalizedAst<OtherInfo>,
-	Dfg extends DataflowGraph            = DataflowGraph,
-	Config extends SemanticCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast, Dfg> = SemanticCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast, Dfg>
-> extends DataflowAwareCfgGuidedVisitor<Cfg, Dfg, Config> {
+    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	Ast extends NormalizedAst<OtherInfo>       = NormalizedAst<OtherInfo>,
+	Dfg extends DataflowGraph                  = DataflowGraph,
+	Config extends SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg> = SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg>
+> extends DataflowAwareCfgGuidedVisitor<ControlFlow, Dfg, Config> {
 
 	/**
 	 * A helper function to get the normalized AST node for the given id or fail if it does not exist.
@@ -242,11 +241,11 @@ export class SemanticCfgGuidedVisitor<
 				return this.onVectorCall({ call });
 			case 'table:assign':
 			case 'builtin:assignment': {
-				const outgoing = this.config.dataflow.outgoingEdges(call.id);
+				const outgoing = this.config.dfg.outgoingEdges(call.id);
 				if(outgoing) {
 					const target = [...outgoing.entries()].filter(([, e]) => edgeIncludesType(e.types, EdgeType.Returns));
 					if(target.length === 1) {
-						const targetOut = this.config.dataflow.outgoingEdges(target[0][0]);
+						const targetOut = this.config.dfg.outgoingEdges(target[0][0]);
 						if(targetOut) {
 							const source = [...targetOut.entries()].filter(([t, e]) => edgeIncludesType(e.types, EdgeType.DefinedBy) && t !== call.id);
 							if(source.length === 1) {
@@ -276,11 +275,11 @@ export class SemanticCfgGuidedVisitor<
 			case 'builtin:while-loop':
 				return this.onWhileLoopCall({ call, condition: call.args[0], body: call.args[1] });
 			case 'builtin:replacement': {
-				const outgoing = this.config.dataflow.outgoingEdges(call.id);
+				const outgoing = this.config.dfg.outgoingEdges(call.id);
 				if(outgoing) {
 					const target = [...outgoing.entries()].filter(([, e]) => edgeIncludesType(e.types, EdgeType.Returns));
 					if(target.length === 1) {
-						const targetOut = this.config.dataflow.outgoingEdges(target[0][0]);
+						const targetOut = this.config.dfg.outgoingEdges(target[0][0]);
 						if(targetOut) {
 							const source = [...targetOut.entries()].filter(([t, e]) => edgeIncludesType(e.types, EdgeType.DefinedBy) && t !== call.id);
 							if(source.length === 1) {
@@ -304,15 +303,14 @@ export class SemanticCfgGuidedVisitor<
 	 *
 	 * @protected
 	 */
-	protected onProgram(_data: RExpressionList<OtherInfo>) {
-	}
+	protected onProgram(_data: RExpressionList<OtherInfo>) {}
 
 
 	/**
 	 * A helper function to request the {@link getOriginInDfg|origins} of the given node.
 	 */
 	protected getOrigins(id: NodeId): Origin[] | undefined {
-		return getOriginInDfg(this.config.dataflow, id);
+		return getOriginInDfg(this.config.dfg, id);
 	}
 
 	/** Called for every occurrence of a `NULL` in the program. */
@@ -449,16 +447,14 @@ export class SemanticCfgGuidedVisitor<
 	 *
 	 * @protected
 	 */
-	protected onAccessCall(_data: { call: DataflowGraphVertexFunctionCall }) {
-	}
+	protected onAccessCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 
 	/**
 	 * This event triggers for every call to the `if` function, which is used to implement the `if-then-else` control flow.
 	 *
 	 * @protected
 	 */
-	protected onIfThenElseCall(_data: { call: DataflowGraphVertexFunctionCall, condition: NodeId | undefined, then: NodeId | undefined, else: NodeId | undefined }) {
-	}
+	protected onIfThenElseCall(_data: { call: DataflowGraphVertexFunctionCall, condition: NodeId | undefined, then: NodeId | undefined, else: NodeId | undefined }) {}
 
 	/**
 	 * This event triggers for every call to the `get` function, which is used to access variables in the global environment.

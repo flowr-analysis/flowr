@@ -46,6 +46,7 @@ import { OriginQueryDefinition } from './catalog/origin-query/origin-query-forma
 import type { LinterQuery } from './catalog/linter-query/linter-query-format';
 import { LinterQueryDefinition } from './catalog/linter-query/linter-query-format';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { DatatypeQueryDefinition, type DatatypeQuery } from './catalog/datatype-query/datatype-query-format';
 
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -57,6 +58,7 @@ export type Query = CallContextQuery
 	| DataflowClusterQuery
 	| StaticSliceQuery
 	| LineageQuery
+	| DatatypeQuery
 	| DependenciesQuery
 	| LocationMapQuery
 	| HappensBeforeQuery
@@ -96,6 +98,7 @@ export const SupportedQueries = {
 	'dataflow-cluster': ClusterQueryDefinition,
 	'static-slice':     StaticSliceQueryDefinition,
 	'lineage':          LineageQueryDefinition,
+	'datatype':         DatatypeQueryDefinition,
 	'dependencies':     DependenciesQueryDefinition,
 	'location-map':     LocationMapQueryDefinition,
 	'search':           SearchQueryDefinition,

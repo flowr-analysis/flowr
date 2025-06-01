@@ -36,6 +36,7 @@ import { Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
 import { getTypesFromFolderAsMermaid, shortLink } from './doc-util/doc-types';
 import path from 'path';
+import { executeDatatypeQuery } from '../queries/catalog/datatype-query/datatype-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -478,6 +479,30 @@ ${
 You can disable [magic comments](${FlowrWikiBaseRef}/Interface#slice-magic-comments) using the \`noMagicComments\` flag.
 This query replaces the old [\`request-slice\`](${FlowrWikiBaseRef}/Interface#message-request-slice) message.
 		`;
+	}
+});
+
+
+registerQueryDocumentation('datatype', {
+	name:             'Datatype Query',
+	type:             'active',
+	shortDescription: 'Returns all datatypes for syntactic elements (or the type for a criterion).',
+	functionName:     executeDatatypeQuery.name,
+	functionFile:     '../queries/catalog/datatype-query/datatype-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- 1\ny <- 2\nx';
+		return `
+This query returns the datatypes of syntactic elements in the code.
+To exemplify the capabilities, consider the following code:
+${codeBlock('r', exampleCode)}
+To see the type of the variable \`x\`, you can use the following query:
+${
+	await showQuery(shell, exampleCode, [{
+		type:      'datatype',
+		criterion: '3@x'
+	}], { showCode: false })
+}
+`;
 	}
 });
 

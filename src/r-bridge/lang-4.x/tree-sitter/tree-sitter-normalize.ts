@@ -302,13 +302,20 @@ function convertTreeNode(node: SyntaxNode): RNode {
 					...defaultInfo
 				};
 			}
-			const args = splitArrayOn(nonErrorChildren(argsParentheses).slice(1, -1), x => x.type === 'comma');
+			const rawArgs = nonErrorChildren(argsParentheses);
+			const [comments, noCommentrawArgs] = splitComments(rawArgs);
+			const args = splitArrayOn(noCommentrawArgs.slice(1, -1), x => x.type === 'comma');
 			const funcRange = makeSourceRange(func);
+			const mappedArgs = args.map(n => n.length == 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument);
 			const call = {
-				arguments: args.map(n => n.length == 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument),
+				arguments: mappedArgs,
 				location:  funcRange,
 				lexeme:    func.text,
-				...defaultInfo
+				...defaultInfo,
+				info:      {
+					...defaultInfo.info,
+					additionalTokens: comments.map(c => c[1]),
+				}
 			};
 			if(func.type === TreeSitterType.Identifier || func.type === TreeSitterType.String || func.type === TreeSitterType.NamespaceOperator || func.type === TreeSitterType.Return) {
 				let funcNode = convertTreeNode(func) as RSymbol | RString;

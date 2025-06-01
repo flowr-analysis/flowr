@@ -1,11 +1,11 @@
-import { withShell } from '../../_helper/shell';
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
 import { describe } from 'vitest';
+import { withTreeSitter } from '../../_helper/shell';
 
-describe.sequential('Compound Query', withShell(shell => {
+describe('Compound Query', withTreeSitter(parser => {
 	assertQuery(label('Compound Virtual Query'),
-		shell, 'print(1); foo(2)', [{
+		parser, 'print(1); foo(2)', [{
 			type:            'compound',
 			query:           'call-context',
 			commonArguments: {

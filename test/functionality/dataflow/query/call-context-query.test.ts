@@ -3,13 +3,13 @@ import type {
 	CallContextQueryKindResult,
 	CallContextQuerySubKindResult
 } from '../../../../src/queries/catalog/call-context-query/call-context-query-format';
-import { withShell } from '../../_helper/shell';
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
 import type { QueryResultsWithoutMeta } from '../../../../src/queries/query';
 import { CallTargets } from '../../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { describe } from 'vitest';
 import { builtInId } from '../../../../src/dataflow/environments/built-in';
+import { withTreeSitter } from '../../_helper/shell';
 
 /** simple query shortcut */
 function q(callName: RegExp | string, c: Partial<CallContextQuery> = {}): CallContextQuery {
@@ -41,9 +41,9 @@ function r(results: CallContextQuerySubKindResult[], kind = 'test-kind', subkind
 	});
 }
 
-describe.sequential('Call Context Query', withShell(shell => {
+describe('Call Context Query', withTreeSitter(parser => {
 	function testQuery(name: string, code: string, query: readonly CallContextQuery[], expected: QueryResultsWithoutMeta<CallContextQuery>) {
-		assertQuery(label(name), shell, code, query, expected);
+		assertQuery(label(name), parser, code, query, expected);
 	}
 	testQuery('No Call', '1', [q(/print/)], baseResult({}));
 	testQuery('No Call (Symbol)', 'print', [q(/print/)], baseResult({}));

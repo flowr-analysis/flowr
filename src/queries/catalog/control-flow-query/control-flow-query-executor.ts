@@ -6,7 +6,7 @@ import { extractCfg } from '../../../control-flow/extract-cfg';
 
 export function executeControlFlowQuery({ dataflow: { graph }, ast }: BasicQueryData, queries: readonly ControlFlowQuery[]): ControlFlowQueryResult {
 	if(queries.length !== 1) {
-		log.warn('The  control flow query expects only up to one query, but got', queries.length);
+		log.warn('The control flow query expects only up to one query, but got', queries.length);
 	}
 
 	const query = queries[0];

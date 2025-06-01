@@ -43,7 +43,7 @@ export const ControlFlowQueryDefinition = {
 				Joi.string().valid(...Object.keys(CfgSimplificationPasses) as CfgSimplificationPassName[])
 			).description('The simplification passes to apply to the control flow graph. If unset, the default simplification order will be used.')
 		}).optional().description('Optional configuration for the control flow query.')
-	}).description('The cluster query calculates and returns all clusters in the dataflow graph.'),
+	}).description('The control flow query provides the control flow graph of the analysis, optionally simplified.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as QueryResults<'control-flow'>['control-flow'];
 		return [...out.controlFlow.graph.vertices(true)]

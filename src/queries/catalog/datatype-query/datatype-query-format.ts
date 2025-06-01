@@ -13,8 +13,8 @@ import type { RDataType } from '../../../typing/types';
  * Calculates the inferred data type for the given criterion.
  */
 export interface DatatypeQuery extends BaseQueryFormat {
-	readonly type:      'datatype';
-	readonly criterion: SingleSlicingCriterion;
+	readonly type:       'datatype';
+	readonly criterion?: SingleSlicingCriterion;
 }
 
 export interface DatatypeQueryResult extends BaseQueryResult {
@@ -34,6 +34,6 @@ export const DatatypeQueryDefinition = {
 	},
 	schema: Joi.object({
 		type:      Joi.string().valid('datatype').required().description('The type of the query.'),
-		criterion: Joi.string().required().description('The slicing criterion of the node to get the inferred data type for.')
+		criterion: Joi.string().optional().description('The slicing criterion of the node to get the inferred data type for.')
 	}).description('Datatype query used to extract the inferred data type for a node in the normalized AST')
 } as const satisfies SupportedQuery<'datatype'>;

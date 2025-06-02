@@ -144,6 +144,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 			'a[x] <- 5',  emptyGraph()
 				.use(1, 'x')
 				.call(3, '[<-', [argumentInCall(0), argumentInCall(1), argumentInCall(4)], { returns: [0], reads: [1, builtInId('[<-')], onlyBuiltIn: true, link: { origin: [5] } })
+				.reads(0, 3)
 				.calls(3, builtInId('[<-'))
 				.constant(4)
 				.defineVariable(0, 'a', { definedBy: [4, 3] })
@@ -156,6 +157,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				.call(6, '$<-', [argumentInCall(3), argumentInCall(4), argumentInCall(7)], { returns: [], reads: [4], onlyBuiltIn: true, link: { origin: [8] } })
 				.constant(4)
 				.defineVariable(0, 'a', { definedBy: [7, 3] })
+				.reads(0, 3)
 				.constant(1)
 				.constant(7)
 		);
@@ -386,6 +388,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					.call(3, '[<-', [argumentInCall(0), argumentInCall(1), argumentInCall(6)], { returns: [0], reads: [1, builtInId('[<-')], onlyBuiltIn: true, link: { origin: [7] } })
 					.calls(3, builtInId('[<-'))
 					.argument(3, 0)
+					.reads(0, 3)
 					.constant(5)
 					.defineVariable(4, 'x', { definedBy: [5, 6] })
 					.defineVariable(0, 'a', { definedBy: [6, 3] })

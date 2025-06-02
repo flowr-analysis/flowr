@@ -17,7 +17,7 @@ import { processQuote } from '../internal/process/functions/call/built-in/built-
 import { processFunctionDefinition } from '../internal/process/functions/call/built-in/built-in-function-definition';
 import { processExpressionList } from '../internal/process/functions/call/built-in/built-in-expression-list';
 import { processGet } from '../internal/process/functions/call/built-in/built-in-get';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -36,6 +36,11 @@ import { processRm } from '../internal/process/functions/call/built-in/built-in-
 import { processEvalCall } from '../internal/process/functions/call/built-in/built-in-eval';
 import { VertexType } from '../graph/vertex';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
+import type { REnvironmentInformation } from './environment';
+import type { Value } from '../eval/values/r-value';
+import { resolveAsVector } from '../eval/resolve/resolve';
+import type { DataflowGraph } from '../graph/graph';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -83,6 +88,9 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	readonly treatAsFnCall?:         Record<string, readonly string[]>
 }
 
+
+export type BuiltInEvalHandler = (a: RNodeWithParent, env: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap) => Value;
+
 function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
@@ -107,9 +115,9 @@ function defaultBuiltInProcessor<OtherInfo>(
 
 	if(config.hasUnknownSideEffects) {
 		if(typeof config.hasUnknownSideEffects !== 'boolean') {
-			res.graph.markIdForUnknownSideEffects(rootId, config.hasUnknownSideEffects);
+			handleUnknownSideEffect(res.graph, res.environment, rootId, config.hasUnknownSideEffects);
 		} else {
-			res.graph.markIdForUnknownSideEffects(rootId);
+			handleUnknownSideEffect(res.graph, res.environment, rootId);
 		}
 	}
 
@@ -198,6 +206,11 @@ export const BuiltInProcessorMapper = {
 	'builtin:list':                processList,
 	'builtin:vector':              processVector,
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;
+
+export const BuiltInEvalHandlerMapper = {
+	'built-in:c':     resolveAsVector,
+	'builtin:vector': resolveAsVector
+} as const satisfies Record<string, BuiltInEvalHandler>;
 
 export type BuiltInMappingName = keyof typeof BuiltInProcessorMapper;
 export type ConfigOfBuiltInMappingName<N extends BuiltInMappingName> = Parameters<typeof BuiltInProcessorMapper[N]>[4];

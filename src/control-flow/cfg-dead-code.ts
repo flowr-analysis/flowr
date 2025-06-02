@@ -7,9 +7,11 @@ import type { CfgPassInfo } from './cfg-simplification';
 import { SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import type { FunctionArgument } from '../dataflow/graph/graph';
-import { resolveIdToValue } from '../dataflow/environments/resolve-by-name';
+import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
 import { log } from '../util/log';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { valueSetGuard } from '../dataflow/eval/values/general';
+import { isValue } from '../dataflow/eval/values/r-value';
 
 type CachedValues = Map<NodeId, Ternary>;
 
@@ -50,13 +52,13 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private handleValuesFor(id: NodeId, valueId: NodeId): void {
-		const values = resolveIdToValue(valueId, { graph: this.config.dfg, full: true, idMap: this.config.normalizedAst.idMap });
-		if(values === undefined || values.length !== 1) {
+		const values = valueSetGuard(resolveIdToValue(valueId, { graph: this.config.dfg, full: true, idMap: this.config.normalizedAst.idMap }));
+		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
 			this.unableToCalculateValue(id);
 			return;
 		}
 		/* we should translate this to truthy later */
-		this.storeDefiniteValue(id, Boolean(values[0]));
+		this.storeDefiniteValue(id, Boolean(values.elements[0].value));
 	}
 
 	private handleWithCondition(data: { call: DataflowGraphVertexFunctionCall, condition?: FunctionArgument | NodeId }) {

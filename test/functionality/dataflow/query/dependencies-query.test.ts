@@ -100,13 +100,19 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '2@y', functionName: ':::', libraryName: 'bar' }
 		] });
 
-
-		/* currently not supported */
 		testQuery('Using a vector to load', 'lapply(c("a", "b", "c"), library, character.only = TRUE)', { libraries: [
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'a' },
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'b' },
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'c' }
 		] });
+
+		describe('foodoo', () => {
+			testQuery('Using a vector to load by variable', 'v <- c("a", "b", "c")\nlapply(v, library, character.only = TRUE)', { libraries: [
+				{ nodeId: '2@library', functionName: 'library', libraryName: 'a' },
+				{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
+				{ nodeId: '2@library', functionName: 'library', libraryName: 'c' }
+			] });
+		});
 
 		describe('Custom', () => {
 			const readCustomFile: Partial<DependenciesQuery> = {

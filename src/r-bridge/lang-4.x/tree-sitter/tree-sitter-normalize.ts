@@ -490,6 +490,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			} else {
 				const [nameNode, /* = */, valueNode] = children;
 				let name = convertTreeNode(nameNode) as RString | RSymbol;
+
 				// unescape argument names
 				if(name.type === RType.String){
 					name = {
@@ -502,9 +503,10 @@ function convertTreeNode(node: SyntaxNode): RNode {
 					name.content = name.content.slice(1, -1);
 				}
 				const nameRange = makeSourceRange(nameNode);
+
 				return {
 					type:     RType.Argument,
-					name:     name,
+					name,
 					value:    valueNode ? convertTreeNode(valueNode) : undefined,
 					location: nameRange,
 					lexeme:   nameNode.text,

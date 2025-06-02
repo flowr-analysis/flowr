@@ -107,7 +107,7 @@ export function processApply<OtherInfo>(
 		return information;
 	}
 
-	const allOtherArguments: FunctionArgument[] = processedArguments.filter((_, i) => i !== index).map((arg, i) => {
+	const allOtherArguments: FunctionArgument[] = processedArguments.map((arg, i) => {
 		const counterpart = args[i];
 		if(arg && counterpart !== EmptyArgument) {
 			return {
@@ -119,7 +119,7 @@ export function processApply<OtherInfo>(
 		} else {
 			return EmptyArgument;
 		}
-	});
+	}).filter((_, i) => i !== index);
 
 	if(anonymous) {
 		const rootFnId = functionId;
@@ -183,7 +183,6 @@ export function processApply<OtherInfo>(
 			origin:      ['function']
 		});
 	}
-
 
 	for(const arg of processedArguments) {
 		if(arg) {

@@ -97,12 +97,12 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
  * Gets the definitions / aliases of a node
  * 
  * This function is called by the built-in-assignment processor so that we can 
- * track assignments inside of the environment. The returned ids are stored in 
+ * track assignments inside the environment. The returned ids are stored in
  * the sourceIds value field of their InGraphIdentifierDefinition. This enables
  * us later, in the {@link trackAliasInEnvironments} function, to get all the 
  * aliases of an identifier.
  * 
- * @param sourceIds    - nodeids to get the definitions for  
+ * @param sourceIds    - node ids to get the definitions for
  * @param dataflow     - dataflow graph
  * @param environment  - environment
  * @returns node id of alias
@@ -130,9 +130,9 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
  * 
  * resolveIdToValue tries to resolve the value using the data it has been given.
  * If the environment is provided the approximation is more precise, as we can 
- * track aliases in the environemnt.
- * Otherwise the graph is used to try and resolve the nodes value. 
- * If neither is probieded the valu cannot be resolved. 
+ * track aliases in the environment.
+ * Otherwise, the graph is used to try and resolve the nodes value.
+ * If neither is provided the value cannot be resolved.
  * 
  * This function is also used by the Resolve Value Query and the Dependency Query
  * to resolve values. For e.g. in the Dependency Query it is used to resolve calls
@@ -142,8 +142,9 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
  * @param environment - The current environment used for name resolution
  * @param graph       - The graph to resolve in
  * @param idMap       - The id map to resolve the node if given as an id
+ * @param full        - Whether to track aliases on resolve
  */
-export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full } : ResolveInfo): ResolveResult {
+export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true } : ResolveInfo): ResolveResult {
 	if(id === undefined) {
 		return Top;
 	}
@@ -152,10 +153,6 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 	const node = typeof id === 'object' ? id : idMap?.get(id);
 	if(node === undefined) {
 		return Top;
-	}
-
-	if(full === undefined) {
-		full = true;
 	}
 
 	switch(node.type) {
@@ -182,14 +179,14 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 /**
  * Please use {@link resolveIdToValue}
  * 
- * Uses the aliases that were tracked in the environements (by the 
+ * Uses the aliases that were tracked in the environments (by the
  * {@link getAliases} function) to resolve a node to a value.
  * 
  * 
  * @param identifier - Identifier to resolve
  * @param use        - Environment to use
  * @param graph      - Dataflow graph
- * @param idMap      - Idmap of Dataflow graph
+ * @param idMap      - id map of Dataflow graph
  * @returns Value of Identifier or Top
  */
 export function trackAliasInEnvironments(identifier: Identifier | undefined, use: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ResolveResult {

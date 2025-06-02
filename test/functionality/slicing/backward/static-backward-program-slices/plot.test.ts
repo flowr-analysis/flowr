@@ -1,5 +1,5 @@
-import { assertSliced, withShell } from '../../_helper/shell';
-import { label } from '../../_helper/label';
+import { assertSliced, withShell } from '../../../_helper/shell';
+import { label } from '../../../_helper/label';
 import { describe } from 'vitest';
 
 describe.sequential('visualizations', withShell(shell => {

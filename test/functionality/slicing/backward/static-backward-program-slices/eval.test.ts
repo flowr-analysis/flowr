@@ -1,6 +1,6 @@
-import { assertSliced, withShell } from '../../_helper/shell';
-import { label } from '../../_helper/label';
-import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import { assertSliced, withShell } from '../../../_helper/shell';
+import { label } from '../../../_helper/label';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { describe } from 'vitest';
 
 describe.sequential('eval', withShell(shell => {

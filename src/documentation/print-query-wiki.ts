@@ -599,7 +599,7 @@ ${
 
 this produces: 
 
-${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'] })}}
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'] })}
 
 
 If, on the other hand, you want to prune dead code edges:

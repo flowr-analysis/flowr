@@ -8,6 +8,7 @@ import type { ConfiguredLintingRule, LintingResults } from '../../../linter/lint
 import { LintingCertainty } from '../../../linter/linter-format';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
+import { codeInline } from '../../../documentation/doc-util/doc-code';
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:   'linter';
@@ -24,6 +25,7 @@ export interface LinterQueryResult extends BaseQueryResult {
 	 */
 	readonly results: { [L in LintingRuleNames]?: LintingResults<L>}
 }
+
 
 export const LinterQueryDefinition = {
 	executor:        executeLinterQuery,
@@ -42,7 +44,7 @@ export const LinterQueryDefinition = {
 					}
 				}
 			}
-			result.push(`       ╰ Metadata: ${JSON.stringify(results['.meta'])}`);
+			result.push(`       ╰ _Metadata_: ${codeInline(JSON.stringify(results['.meta']))}`);
 		}
 		return true;
 	},

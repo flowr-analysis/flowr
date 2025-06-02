@@ -118,11 +118,11 @@ class CollectNumbersDataflowVisitor extends DataflowAwareCfgGuidedVisitor {
 	private numbers: RNumberValue[] = [];
 
 	constructor(controlFlow: ControlFlowInformation, dataflow: DataflowGraph) {
-		super({ controlFlow, dataflow, defaultVisitingOrder: 'forward' });
+		super({ controlFlow, dfg: dataflow, defaultVisitingOrder: 'forward' });
 	}
 
 	protected override visitValue(node: DataflowGraphVertexValue): void {
-		const astNode = this.config.dataflow.idMap?.get(node.id);
+		const astNode = this.config.dfg.idMap?.get(node.id);
 		if(isRNumber(astNode)) {
 			this.numbers.push(astNode.content);
 		}
@@ -137,7 +137,7 @@ class CollectSourcesSemanticVisitor extends SemanticCfgGuidedVisitor {
 	private sources: string[] = [];
 
 	constructor(controlFlow: ControlFlowInformation, normalizedAst: NormalizedAst, dataflow: DataflowGraph) {
-		super({ controlFlow, normalizedAst, dataflow, defaultVisitingOrder: 'forward' });
+		super({ controlFlow, normalizedAst, dfg: dataflow, defaultVisitingOrder: 'forward' });
 	}
 
 	protected override onAssignmentCall({ source }: { source?: NodeId }): void {

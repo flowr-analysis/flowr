@@ -200,7 +200,7 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 		}
 	},
 	engines:       [],
-	defaultEngine: 'r-shell',
+	defaultEngine: 'tree-sitter',
 	solver:        {
 		variables:       VariableResolve.Alias,
 		evalStrings:     true,

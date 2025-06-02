@@ -13,10 +13,10 @@ import { assertUnreachable } from '../util/assert';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 
 export interface DataflowCfgGuidedVisitorConfiguration<
-	Cfg extends ControlFlowInformation = ControlFlowInformation,
-	Dfg extends DataflowGraph    = DataflowGraph
-> extends BasicCfgGuidedVisitorConfiguration<Cfg> {
-	readonly dataflow: Dfg;
+	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	Dfg extends DataflowGraph                  = DataflowGraph
+> extends BasicCfgGuidedVisitorConfiguration<ControlFlow> {
+	readonly dfg: Dfg;
 }
 
 /**
@@ -25,16 +25,16 @@ export interface DataflowCfgGuidedVisitorConfiguration<
  * Use {@link BasicCfgGuidedVisitor#start} to start the traversal.
  */
 export class DataflowAwareCfgGuidedVisitor<
-    Cfg extends ControlFlowInformation = ControlFlowInformation,
-	Dfg extends DataflowGraph    = DataflowGraph,
-	Config extends DataflowCfgGuidedVisitorConfiguration<Cfg, Dfg> = DataflowCfgGuidedVisitorConfiguration<Cfg, Dfg>
-> extends BasicCfgGuidedVisitor<Cfg, Config> {
+    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	Dfg extends DataflowGraph                  = DataflowGraph,
+	Config extends DataflowCfgGuidedVisitorConfiguration<ControlFlow, Dfg> = DataflowCfgGuidedVisitorConfiguration<ControlFlow, Dfg>
+> extends BasicCfgGuidedVisitor<ControlFlow, Config> {
 
 	/**
 	 * Get the dataflow graph vertex for the given id
 	 */
 	protected getDataflowGraph(id: NodeId): DataflowGraphVertexArgument | undefined {
-		return this.config.dataflow.getVertex(id);
+		return this.config.dfg.getVertex(id);
 	}
 
 

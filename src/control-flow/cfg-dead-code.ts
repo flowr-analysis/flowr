@@ -89,7 +89,7 @@ export function cfgAnalyzeDeadCode(cfg: ControlFlowInformation, info: CfgPassInf
 	const visitor = new CfgConditionalDeadCodeRemoval({
 		controlFlow:          cfg,
 		normalizedAst:        info.ast,
-		dataflow:             info.dfg,
+		dfg:                  info.dfg,
 		defaultVisitingOrder: 'forward'
 	});
 	visitor.start();

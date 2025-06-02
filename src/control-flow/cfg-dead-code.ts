@@ -52,7 +52,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private handleValuesFor(id: NodeId, valueId: NodeId): void {
-		const values = valueSetGuard(resolveIdToValue(valueId, { graph: this.config.dataflow, full: true, idMap: this.config.normalizedAst.idMap }));
+		const values = valueSetGuard(resolveIdToValue(valueId, { graph: this.config.dfg, full: true, idMap: this.config.normalizedAst.idMap }));
 		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
 			this.unableToCalculateValue(id);
 			return;

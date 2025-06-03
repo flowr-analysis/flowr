@@ -12,7 +12,7 @@ import Joi from 'joi';
 import { executeStaticSliceQuery } from './static-slice-query-executor';
 
 import { summarizeIdsIfTooLong } from '../../query-print';
-import type { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
+import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
 
 /** Calculates and returns all clusters encountered in the dataflow graph. */
 export interface StaticSliceQuery extends BaseQueryFormat {
@@ -69,6 +69,6 @@ export const StaticSliceQueryDefinition = {
 		criteria:         Joi.array().items(Joi.string()).min(0).required().description('The slicing criteria to use.'),
 		noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),
 		noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?'),
-		forward:          Joi.boolean().optional().description('Whether to calculate a forward slice instead of the default backward slice')
+		direction:        Joi.string().valid(...Object.values(SliceDirection)).optional().description('The direction to slice in. Defaults to backward slicing if unset.')
 	}).description('Slice query used to slice the dataflow graph')
 } as const satisfies SupportedQuery<'static-slice'>;

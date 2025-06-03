@@ -17,10 +17,12 @@ import type {
 import {
 	deterministicCountingIdGenerator
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE,
-	DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
+import type {
+	TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE ,
+	DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
+import {
 	DEFAULT_DATAFLOW_PIPELINE,
-	DEFAULT_NORMALIZE_PIPELINE, TREE_SITTER_NORMALIZE_PIPELINE
+	DEFAULT_NORMALIZE_PIPELINE, TREE_SITTER_NORMALIZE_PIPELINE, createSlicePipeline
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff-dataflow-graph';
@@ -46,6 +48,7 @@ import { extractCFG } from '../../../src/control-flow/extract-cfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import type { CfgProperty } from '../../../src/control-flow/cfg-properties';
 import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
+import type { KnownParser } from '../../../src/r-bridge/parser';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -465,23 +468,9 @@ export function assertSliced(
 		let shellResult: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
 		let tsResult: PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
 		beforeAll(async() => {
-			shellResult = await new PipelineExecutor(DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE, {
-				getId:        getId(),
-				request:      requestFromInput(input),
-				parser:       shell,
-				criterion:    criteria,
-				autoSelectIf: userConfig?.autoSelectIf,
-				forward:      userConfig?.forwardSlice
-			}).allRemainingSteps();
+			shellResult = await executePipeline(shell);
 			if(!userConfig?.skipTreeSitter) {
-				tsResult = await new PipelineExecutor(TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE, {
-					getId:        getId(),
-					request:      requestFromInput(input),
-					parser:       ts as TreeSitterExecutor,
-					criterion:    criteria,
-					autoSelectIf: userConfig?.autoSelectIf,
-					forward:      userConfig?.forwardSlice
-				}).allRemainingSteps();
+				tsResult = await executePipeline(ts as TreeSitterExecutor);
 			}
 		});
 		afterAll(() => ts?.close());
@@ -492,7 +481,6 @@ export function assertSliced(
 			'shell',
 			() => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>, testCaseFailType !== 'fail-both' && testCaseFailType !== 'fail-shell'),
 		);
-
 		testWrapper(
 			userConfig?.skipTreeSitter,
 			testCaseFailType === 'fail-both' || testCaseFailType === 'fail-tree-sitter',
@@ -530,6 +518,15 @@ export function assertSliced(
 	});
 	handleAssertOutput(name, shell, input, userConfig);
 
+	async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
+		return await createSlicePipeline(parser, {
+			getId:        getId(),
+			request:      requestFromInput(input),
+			criterion:    criteria,
+			autoSelectIf: userConfig?.autoSelectIf,
+			forward:      userConfig?.forwardSlice
+		}).allRemainingSteps();
+	}
 	function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {
 		try {
 			assert.strictEqual(
@@ -544,7 +541,6 @@ export function assertSliced(
 			throw e;
 		} /* v8 ignore stop */
 	}
-	handleAssertOutput(name, shell, input, userConfig);
 }
 
 function findInDfg(id: NodeId, dfg: DataflowGraph): ContainerIndex[] | undefined {

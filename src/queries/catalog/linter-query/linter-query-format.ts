@@ -5,7 +5,8 @@ import { executeLinterQuery } from './linter-query-executor';
 import type { LintingRuleNames, LintingRuleResult } from '../../../linter/linter-rules';
 import { LintingRules } from '../../../linter/linter-rules';
 import type { ConfiguredLintingRule, LintingResults } from '../../../linter/linter-format';
-import { LintingCertainty } from '../../../linter/linter-format';
+import { LintingPrettyPrintContext , LintingCertainty } from '../../../linter/linter-format';
+
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import { codeInline } from '../../../documentation/doc-util/doc-code';
@@ -34,13 +35,13 @@ export const LinterQueryDefinition = {
 		result.push(`Query: ${bold('linter', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [ruleName, results] of Object.entries(out.results)) {
 			const rule = LintingRules[ruleName as LintingRuleNames];
-			result.push(`   ╰ ${ruleName}:`);
+			result.push(`   ╰ **${rule.humanReadableName}** (${ruleName}):`);
 			for(const certainty of [LintingCertainty.Definitely, LintingCertainty.Maybe]) {
 				const certaintyResults = results.results.filter(r => r.certainty === certainty);
 				if(certaintyResults.length) {
 					result.push(`       ╰ ${certainty}:`);
 					for(const res of certaintyResults) {
-						result.push(`           ╰ ${rule.prettyPrint(res as LintingRuleResult<LintingRuleNames>)}`);
+						result.push(`           ╰ ${rule.prettyPrint[LintingPrettyPrintContext.Query](res as LintingRuleResult<LintingRuleNames>)}`);
 					}
 				}
 			}

@@ -1,5 +1,5 @@
-import type { LintingResult ,  LintingRule } from '../linter-format';
-import  { LintingCertainty } from '../linter-format';
+import type { LintingResult, LintingRule } from '../linter-format';
+import { LintingPrettyPrintContext , LintingCertainty } from '../linter-format';
 import type { SourceRange } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -75,9 +75,13 @@ export const R3_SEEDED_RANDOMNESS = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint:   result => `at ${formatRange(result.range)}`,
 	defaultConfig: {
 		randomnessProducers: ['set.seed'],
 		randomnessConsumers: ['runif'],
+	},
+	humanReadableName: 'Seeded Randomness',
+	prettyPrint:       {
+		[LintingPrettyPrintContext.Query]: result => `Function \`${result.function}\` at ${formatRange(result.range)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Function \`${result.function}\` at ${formatRange(result.range)} is called without a preceding random seed function like \`set.seed\``
 	}
 } as const satisfies LintingRule<SeededRandomnessResult, SeededRandomnessMeta, SeededRandomnessConfig>;

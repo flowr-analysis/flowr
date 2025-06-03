@@ -59,6 +59,11 @@ df2 <- df1
 	);
 
 	testDataFrameDomain(
+		'df <- as.data.frame(c(1, 2, 3))',
+		[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
+	);
+
+	testDataFrameDomain(
 		`
 df1 <- data.frame(id = 1:3, label = c("A", "B", "C"))
 df2 <- as.data.frame(df1)
@@ -916,6 +921,17 @@ df <- merge(df1, df2, by = "id")
 			['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
 			['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
 			['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [4, 4] }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = c(1, 2, 3, 1, 3), score = c(80, 75, 90, 70, 85))
+df <- aggregate(df, list(df$id), mean)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
+			['2@df', DataFrameTop, DataFrameTestOverapproximation]
 		]
 	);
 

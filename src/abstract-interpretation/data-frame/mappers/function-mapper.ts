@@ -15,26 +15,29 @@ import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName,
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
 
 const DataFrameFunctionMapper = {
-	'data.frame':    { mapper: mapDataFrameCreate, specialArgs: ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'] },
-	'as.data.frame': { mapper: mapDataFrameIdentity, specialArgs: ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'] },
-	'read.csv':      { mapper: mapDataFrameUnknownCreate, specialArgs: [] },
-	'read.table':    { mapper: mapDataFrameUnknownCreate, specialArgs: [] },
-	'cbind':         { mapper: mapDataFrameColBind, specialArgs: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
-	'rbind':         { mapper: mapDataFrameRowBind, specialArgs: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
-	'head':          { mapper: mapDataFrameHeadTail, specialArgs: ['addrownums'] },
-	'tail':          { mapper: mapDataFrameHeadTail, specialArgs: ['addrownums'] },
-	'subset':        { mapper: mapDataFrameSubset, specialArgs: ['drop'] },
-	'filter':        { mapper: mapDataFrameFilter, specialArgs: ['.by', '.preserve'] },
-	'select':        { mapper: mapDataFrameSelect, specialArgs: [] },
-	'transform':     { mapper: mapDataFrameMutate, specialArgs: [] },
-	'mutate':        { mapper: mapDataFrameMutate, specialArgs: ['.by', '.keep', '.before', '.after'] },
-	'group_by':      { mapper: mapDataFrameGroupBy, specialArgs: ['.add', '.drop'] },
+	'data.frame':    { mapper: mapDataFrameCreate,    specialArgs: ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'] },
+	'as.data.frame': { mapper: mapDataFrameConvert,   specialArgs: ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'] },
+	'read.table':    { mapper: mapDataFrameRead,      specialArgs: ['header', 'sep', 'quote', 'dec', 'numerals', 'row.names', 'col.names', 'as.is', 'na.strings', 'colClasses', 'nrows', 'skip', 'check.names', 'fill', 'strip.white', 'blank.lines.skip', 'comment.char', 'allowEscapes', 'flush', 'stringsAsFactors', 'fileEncoding', 'encoding', 'text', 'skipNul'] },
+	'read.csv':      { mapper: mapDataFrameRead,      specialArgs: ['header', 'sep', 'quote', 'dec', 'numerals', 'row.names', 'col.names', 'as.is', 'na.strings', 'colClasses', 'nrows', 'skip', 'check.names', 'fill', 'strip.white', 'blank.lines.skip', 'comment.char', 'allowEscapes', 'flush', 'stringsAsFactors', 'fileEncoding', 'encoding', 'text', 'skipNul'] },
+	'read.csv2':     { mapper: mapDataFrameRead,      specialArgs: ['header', 'sep', 'quote', 'dec', 'numerals', 'row.names', 'col.names', 'as.is', 'na.strings', 'colClasses', 'nrows', 'skip', 'check.names', 'fill', 'strip.white', 'blank.lines.skip', 'comment.char', 'allowEscapes', 'flush', 'stringsAsFactors', 'fileEncoding', 'encoding', 'text', 'skipNul'] },
+	'read.delim':    { mapper: mapDataFrameRead,      specialArgs: ['header', 'sep', 'quote', 'dec', 'numerals', 'row.names', 'col.names', 'as.is', 'na.strings', 'colClasses', 'nrows', 'skip', 'check.names', 'fill', 'strip.white', 'blank.lines.skip', 'comment.char', 'allowEscapes', 'flush', 'stringsAsFactors', 'fileEncoding', 'encoding', 'text', 'skipNul'] },
+	'read.delim2':   { mapper: mapDataFrameRead,      specialArgs: ['header', 'sep', 'quote', 'dec', 'numerals', 'row.names', 'col.names', 'as.is', 'na.strings', 'colClasses', 'nrows', 'skip', 'check.names', 'fill', 'strip.white', 'blank.lines.skip', 'comment.char', 'allowEscapes', 'flush', 'stringsAsFactors', 'fileEncoding', 'encoding', 'text', 'skipNul'] },
+	'cbind':         { mapper: mapDataFrameColBind,   specialArgs: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
+	'rbind':         { mapper: mapDataFrameRowBind,   specialArgs: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
+	'head':          { mapper: mapDataFrameHeadTail,  specialArgs: ['addrownums'] },
+	'tail':          { mapper: mapDataFrameHeadTail,  specialArgs: ['addrownums'] },
+	'subset':        { mapper: mapDataFrameSubset,    specialArgs: ['drop'] },
+	'filter':        { mapper: mapDataFrameFilter,    specialArgs: ['.by', '.preserve'] },
+	'select':        { mapper: mapDataFrameSelect,    specialArgs: [] },
+	'transform':     { mapper: mapDataFrameMutate,    specialArgs: [] },
+	'mutate':        { mapper: mapDataFrameMutate,    specialArgs: ['.by', '.keep', '.before', '.after'] },
+	'group_by':      { mapper: mapDataFrameGroupBy,   specialArgs: ['.add', '.drop'] },
 	'summarise':     { mapper: mapDataFrameSummarize, specialArgs: ['.by', '.groups'] },
 	'summarize':     { mapper: mapDataFrameSummarize, specialArgs: ['.by', '.groups'] },
-	'left_join':     { mapper: mapDataFrameLeftJoin, specialArgs: ['copy', 'suffix', 'keep'] },
+	'left_join':     { mapper: mapDataFrameLeftJoin,  specialArgs: ['copy', 'suffix', 'keep'] },
 	'merge':         { mapper: (...args) => mapDataFrameLeftJoin(...args, true), specialArgs: ['by.x', 'bx.y', 'all', 'all.x', 'all.y', 'sort', 'suffixes', 'no.dups', 'incomparables'] },
-	'relocate':      { mapper: mapDataFrameIdentity, specialArgs: ['.before', '.after'] },
-	'arrange':       { mapper: mapDataFrameIdentity, specialArgs: ['.by_group', '.locale'] }
+	'relocate':      { mapper: mapDataFrameIdentity,  specialArgs: ['.before', '.after'] },
+	'arrange':       { mapper: mapDataFrameIdentity,  specialArgs: ['.by_group', '.locale'] }
 } as const satisfies Record<string, DataFrameFunctionMapperInfo>;
 
 type DataFrameFunctionMapperInfo = {
@@ -53,7 +56,7 @@ export function mapDataFrameFunctionCall(
 	node: RNode<ParentInformation>,
 	dfg: DataflowGraph
 ): DataFrameInfo | undefined {
-	if(node.type === RType.FunctionCall && node.named && node.functionName.content in DataFrameFunctionMapper) {
+	if(node.type === RType.FunctionCall && node.named && Object.prototype.hasOwnProperty.call(DataFrameFunctionMapper, node.functionName.content)) {
 		const functionName = node.functionName.content as DataFrameFunction;
 		const args = getFunctionArguments(node, dfg);
 		const effectiveArgs = getEffectiveArgs(functionName, args);
@@ -85,10 +88,25 @@ function mapDataFrameCreate(
 	}];
 }
 
-function mapDataFrameUnknownCreate(): DataFrameOperations[] {
+function mapDataFrameRead(): DataFrameOperations[] {
 	return [{
-		operation: 'unknownCreate',
+		operation: 'unknown',
 		operand:   undefined,
+		args:      {}
+	}];
+}
+
+function mapDataFrameConvert(
+	args: readonly RFunctionArgument<ParentInformation>[]
+): DataFrameOperations[] | undefined {
+	const dataFrame = args[0];
+
+	if(dataFrame === undefined || dataFrame === EmptyArgument || dataFrame.value === undefined) {
+		return;
+	}
+	return [{
+		operation: 'identity',
+		operand:   dataFrame.value?.info.id,
 		args:      {}
 	}];
 }
@@ -573,12 +591,12 @@ function mapDataFrameIdentity(
 ): DataFrameOperations[] | undefined {
 	const dataFrame = args.find(isDataFrameArgument);
 
-	if(!isDataFrameArgument(dataFrame)) {
+	if(dataFrame === undefined) {
 		return;
 	}
 	return [{
 		operation: 'identity',
-		operand:   dataFrame?.value.info.id,
+		operand:   dataFrame.value.info.id,
 		args:      {}
 	}];
 }
@@ -643,7 +661,7 @@ function getUnresolvedSymbolsInExpression(
 
 function isDataFrameArgument(
 	arg: RFunctionArgument<ParentInformation & AbstractInterpretationInfo> | undefined
-): arg is RArgument<ParentInformation & Required<AbstractInterpretationInfo>> & {value: RNode<ParentInformation & Required<AbstractInterpretationInfo>>} {
+): arg is RArgument<ParentInformation & Required<AbstractInterpretationInfo>> & { value: RNode<ParentInformation & Required<AbstractInterpretationInfo>> } {
 	if(arg === EmptyArgument || arg?.value === undefined) {
 		return false;
 	}

@@ -12,7 +12,6 @@ export enum ConstraintType {
 
 const DataFrameSemanticsMapper = {
 	'create':        { apply: applyCreateSemantics,      type: ConstraintType.ResultPostcondition },
-	'unknownCreate': { apply: applyUnknownSemantics,     type: ConstraintType.ResultPostcondition },
 	'accessCols':    { apply: applyAccessColsSemantics,  type: ConstraintType.OperandPrecondition },
 	'accessRows':    { apply: applyAccessRowsSemantics,  type: ConstraintType.OperandPrecondition },
 	'assignCols':    { apply: applyAssignColsSemantics,  type: ConstraintType.OperandModification },
@@ -32,6 +31,7 @@ const DataFrameSemanticsMapper = {
 	'groupBy':       { apply: applyGroupBySemantics,     type: ConstraintType.ResultPostcondition },
 	'summarize':     { apply: applySummarizeSemantics,   type: ConstraintType.ResultPostcondition },
 	'leftJoin':      { apply: applyLeftJoinSemantics,    type: ConstraintType.ResultPostcondition },
+	'unknown':       { apply: applyUnknownSemantics,     type: ConstraintType.ResultPostcondition },
 	'identity':      { apply: applyIdentitySemantics,    type: ConstraintType.ResultPostcondition }
 } as const satisfies Record<string, DataFrameSemanticsMapperInfo<never>>;
 

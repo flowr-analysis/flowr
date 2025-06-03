@@ -27,15 +27,16 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 		'.meta': Metadata
 	}
 	/**
-	 * A function used to pretty-print the given linting result.
-	 * By default, the {@link LintingResult#certainty} is automatically printed alongside this information.
-	 */
-	readonly prettyPrint:   (result: Result, metadata: Metadata) => string
-	/**
 	 * The default config for this linting rule.
 	 * The default config is combined with the user config when executing the rule.
 	 */
-	readonly defaultConfig: NoInfer<Config>
+	readonly defaultConfig:     NoInfer<Config>
+	readonly humanReadableName: string
+	/**
+	 * A set of functions used to pretty-print the given linting result.
+	 * By default, the {@link LintingResult#certainty} is automatically printed alongside this information.
+	 */
+	readonly prettyPrint:       { [C in LintingPrettyPrintContext]: (result: Result, metadata: Metadata) => string }
 }
 
 /**
@@ -58,4 +59,9 @@ export interface LintingResults<Name extends LintingRuleNames> {
 export enum LintingCertainty {
 	Maybe = 'maybe',
 	Definitely = 'definitely'
+}
+
+export enum LintingPrettyPrintContext {
+	Query = 'query',
+	Full = 'full'
 }

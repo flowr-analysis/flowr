@@ -12,15 +12,21 @@ export interface SliceRequiredInput {
 	readonly criterion:  SlicingCriteria,
 	/** How many re-visits of the same node are ok? */
 	readonly threshold?: number
-	/** Whether to calculate a forward slice instead of the default backward slice **/
-	readonly forward?:   boolean
+	/** The direction to slice in. Defaults to backward slicing if unset. */
+	readonly direction?: SliceDirection
+}
+
+export enum SliceDirection {
+	Backward = 'backward',
+	Forward = 'forward'
 }
 
 function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>) {
-	if(input.forward) {
-		return staticForwardSlice((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold);
-	} else {
-		return staticBackwardSlice((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold);
+	switch(input.direction ?? SliceDirection.Backward) {
+		case SliceDirection.Backward:
+			return staticBackwardSlice((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold);
+		case SliceDirection.Forward:
+			return staticForwardSlice((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold);
 	}
 }
 

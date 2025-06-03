@@ -12,6 +12,7 @@ import Joi from 'joi';
 import { executeStaticSliceQuery } from './static-slice-query-executor';
 
 import { summarizeIdsIfTooLong } from '../../query-print';
+import type { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
 
 /** Calculates and returns all clusters encountered in the dataflow graph. */
 export interface StaticSliceQuery extends BaseQueryFormat {
@@ -22,8 +23,8 @@ export interface StaticSliceQuery extends BaseQueryFormat {
 	readonly noReconstruction?: boolean;
 	/** Should the magic comments (force-including lines within the slice) be ignored? */
 	readonly noMagicComments?:  boolean
-	/** Whether to calculate a forward slice instead of the default backward slice **/
-	readonly forward?:          boolean
+	/** The direction to slice in. Defaults to backward slicing if unset. */
+	readonly direction?:        SliceDirection
 }
 
 export interface StaticSliceQueryResult extends BaseQueryResult {

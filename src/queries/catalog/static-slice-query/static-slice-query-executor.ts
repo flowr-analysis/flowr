@@ -5,6 +5,7 @@ import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-de
 import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
+import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
 
 export function fingerPrintOfQuery(query: StaticSliceQuery): string {
 	return JSON.stringify(query);
@@ -20,7 +21,7 @@ export function executeStaticSliceQuery({ dataflow: { graph }, ast }: BasicQuery
 		}
 		const { criteria, noReconstruction, noMagicComments } = query;
 		const sliceStart = Date.now();
-		const slice = query.forward ? staticForwardSlice(graph, ast, criteria) : staticBackwardSlice(graph, ast, criteria);
+		const slice = query.direction === SliceDirection.Forward ? staticForwardSlice(graph, ast, criteria) : staticBackwardSlice(graph, ast, criteria);
 		const sliceEnd = Date.now();
 		if(noReconstruction) {
 			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };

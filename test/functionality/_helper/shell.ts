@@ -49,6 +49,7 @@ import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import type { CfgProperty } from '../../../src/control-flow/cfg-properties';
 import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
 import type { KnownParser } from '../../../src/r-bridge/parser';
+import type { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -453,7 +454,7 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[], forwardSlice?: boolean },
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[], sliceDirection?: SliceDirection },
 	testCaseFailType?: TestCaseFailType,
 	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0)
 ) {
@@ -524,7 +525,7 @@ export function assertSliced(
 			request:      requestFromInput(input),
 			criterion:    criteria,
 			autoSelectIf: userConfig?.autoSelectIf,
-			forward:      userConfig?.forwardSlice
+			direction:    userConfig?.sliceDirection
 		}).allRemainingSteps();
 	}
 	function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {

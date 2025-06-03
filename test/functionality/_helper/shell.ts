@@ -229,6 +229,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 	}
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
 	return describe.skipIf(skip)(`${decorateLabelContext(name, labelContext)} (input: ${input})`, () => {
+		const ts = !skipTreeSitter ? new TreeSitterExecutor() : undefined;
 		let shellAst: RNode | undefined;
 		let tsAst: RNode | undefined;
 		beforeAll(async() => {
@@ -237,6 +238,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 				tsAst = await makeTsAst();
 			}
 		});
+		afterAll(() => ts?.close());
 		test('shell', function() {
 			assertAstEqual(shellAst as RNode, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(shellAst)}, vs. expected: ${JSON.stringify(expected)}`);
@@ -250,25 +252,25 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 			assertAstEqual(tsAst as RNode, shellAst as RNode, true, userConfig?.ignoreColumns === true,
 				() => `tree-sitter ast: ${JSON.stringify(tsAst)}, vs. shell ast: ${JSON.stringify(shellAst)}`, false);
 		});
+
+		async function makeShellAst(): Promise<RNode> {
+			const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
+				parser:  shell,
+				request: requestFromInput(input)
+			});
+			const result = await pipeline.allRemainingSteps();
+			return result.normalize.ast;
+		}
+
+		async function makeTsAst(): Promise<RNode> {
+			const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
+				parser:  ts as TreeSitterExecutor,
+				request: requestFromInput(input)
+			});
+			const result = await pipeline.allRemainingSteps();
+			return result.normalize.ast;
+		}
 	});
-
-	async function makeShellAst(): Promise<RNode> {
-		const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-			parser:  shell,
-			request: requestFromInput(input)
-		});
-		const result = await pipeline.allRemainingSteps();
-		return result.normalize.ast;
-	}
-
-	async function makeTsAst(): Promise<RNode> {
-		const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
-			parser:  new TreeSitterExecutor(),
-			request: requestFromInput(input)
-		});
-		const result = await pipeline.allRemainingSteps();
-		return result.normalize.ast;
-	}
 }
 
 /** call within describeSession */
@@ -459,6 +461,7 @@ export function assertSliced(
 		dropTestLabel(name);
 	}
 	describe.skipIf(skip)(fullname, () => {
+		const ts = !userConfig?.skipTreeSitter ? new TreeSitterExecutor() : undefined;
 		let shellResult: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
 		let tsResult: PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
 		beforeAll(async() => {
@@ -474,13 +477,14 @@ export function assertSliced(
 				tsResult = await new PipelineExecutor(TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE, {
 					getId:        getId(),
 					request:      requestFromInput(input),
-					parser:       new TreeSitterExecutor(),
+					parser:       ts as TreeSitterExecutor,
 					criterion:    criteria,
 					autoSelectIf: userConfig?.autoSelectIf,
 					forward:      userConfig?.forwardSlice
 				}).allRemainingSteps();
 			}
 		});
+		afterAll(() => ts?.close());
 
 		testWrapper(
 			false,

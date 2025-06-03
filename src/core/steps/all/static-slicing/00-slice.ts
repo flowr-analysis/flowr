@@ -4,7 +4,7 @@ import { PipelineStepStage } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import type { DataflowInformation } from '../../../../dataflow/info';
 import type { SlicingCriteria } from '../../../../slicing/criterion/parse';
-import { staticBackwardSlice } from '../../../../slicing/static/static-slicer';
+import { staticBackwardSlice, staticForwardSlice } from '../../../../slicing/static/static-slicer';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 export interface SliceRequiredInput {
@@ -12,10 +12,16 @@ export interface SliceRequiredInput {
 	readonly criterion:  SlicingCriteria,
 	/** How many re-visits of the same node are ok? */
 	readonly threshold?: number
+	/** Whether to calculate a forward slice instead of the default backward slice **/
+	readonly forward?:   boolean
 }
 
 function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>) {
-	return staticBackwardSlice((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold);
+	if(input.forward) {
+		return staticForwardSlice((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold);
+	} else {
+		return staticBackwardSlice((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold);
+	}
 }
 
 export const STATIC_SLICE = {

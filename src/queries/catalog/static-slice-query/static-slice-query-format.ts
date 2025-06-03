@@ -22,6 +22,8 @@ export interface StaticSliceQuery extends BaseQueryFormat {
 	readonly noReconstruction?: boolean;
 	/** Should the magic comments (force-including lines within the slice) be ignored? */
 	readonly noMagicComments?:  boolean
+	/** Whether to calculate a forward slice instead of the default backward slice **/
+	readonly forward?:          boolean
 }
 
 export interface StaticSliceQueryResult extends BaseQueryResult {
@@ -65,6 +67,7 @@ export const StaticSliceQueryDefinition = {
 		type:             Joi.string().valid('static-slice').required().description('The type of the query.'),
 		criteria:         Joi.array().items(Joi.string()).min(0).required().description('The slicing criteria to use.'),
 		noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),
-		noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?')
+		noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?'),
+		forward:          Joi.boolean().optional().description('Whether to calculate a forward slice instead of the default backward slice')
 	}).description('Slice query used to slice the dataflow graph')
 } as const satisfies SupportedQuery<'static-slice'>;

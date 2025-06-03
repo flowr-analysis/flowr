@@ -1,25 +1,11 @@
-import { withTreeSitter } from '../../../_helper/shell';
-import { assert, describe, test } from 'vitest';
-import { createDataflowPipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../../../src/r-bridge/retriever';
-import { staticForwardSlice } from '../../../../../src/slicing/static/static-slicer';
+import { assertSliced, withShell } from '../../../_helper/shell';
+import { describe } from 'vitest';
 import type { SlicingCriteria } from '../../../../../src/slicing/criterion/parse';
-import { reconstructToCode } from '../../../../../src/reconstruct/reconstruct';
+import { label } from '../../../_helper/label';
 
-describe.sequential('Simple Forward', withTreeSitter(ts => {
+describe.sequential('Simple Forward', withShell(shell => {
 	function testForwardSlice(code: string, criteria: SlicingCriteria, expected: string) {
-		test(`Forward slice: ${code}`, async() => {
-			const result = await createDataflowPipeline(ts, {
-				request: requestFromInput(code)
-			}).allRemainingSteps();
-			const slice = staticForwardSlice(
-				result.dataflow.graph,
-				result.normalize,
-				criteria
-			);
-			const reconstructed = reconstructToCode(result.normalize, slice.result);
-			assert.strictEqual(reconstructed.code, expected, 'Reconstructed code does not match expected output');
-		});
+		assertSliced(label(`Forward slice: ${code}`), shell, code, criteria, expected, { forwardSlice: true });
 	}
 
 	testForwardSlice(`x <- 1

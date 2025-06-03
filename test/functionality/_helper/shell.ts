@@ -448,9 +448,9 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[] },
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[], forwardSlice?: boolean },
 	testCaseFailType?: TestCaseFailType,
-	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0),
+	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0)
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const skip = skipTestBecauseConfigNotMet(userConfig);
@@ -468,6 +468,7 @@ export function assertSliced(
 				parser:       shell,
 				criterion:    criteria,
 				autoSelectIf: userConfig?.autoSelectIf,
+				forward:      userConfig?.forwardSlice
 			}).allRemainingSteps();
 			if(!userConfig?.skipTreeSitter) {
 				tsResult = await new PipelineExecutor(TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE, {
@@ -475,7 +476,8 @@ export function assertSliced(
 					request:      requestFromInput(input),
 					parser:       new TreeSitterExecutor(),
 					criterion:    criteria,
-					autoSelectIf: userConfig?.autoSelectIf
+					autoSelectIf: userConfig?.autoSelectIf,
+					forward:      userConfig?.forwardSlice
 				}).allRemainingSteps();
 			}
 		});

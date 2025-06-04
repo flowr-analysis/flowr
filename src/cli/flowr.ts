@@ -111,7 +111,7 @@ if(!usedConfig) {
 // for all options that we manually supply that have a config equivalent, set them in the config
 amendConfig(c => {
 	if(!options['engine.r-shell.disabled']) {
-		c.engines = [{ type: 'r-shell', rPath: options['r-path'] ?? options['engine.r-shell.r-path'] }];
+		c.engines = [{ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] }];
 	}
 
 	if(!options['engine.tree-sitter.disabled']) {

@@ -8,7 +8,7 @@ describe.sequential('List Definition', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'subsetting-multiple'] as const;
 
 	beforeEach(() => {
-		amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
+		amendConfig(c => c.solver.pointerTracking = true);
 	});
 
 	afterEach(() => {
@@ -72,7 +72,7 @@ describe.sequential('List Definition', withShell(shell => {
 
 			describe('Skip if index threshold', () => {
 				beforeEach(() => {
-					setConfig({ ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, pointerTracking: { maxIndexCount: 1 } } });
+					amendConfig(c => c.solver.pointerTracking = { maxIndexCount: 1 });
 				});
 				afterEach(() => {
 					setConfig(defaultConfigOptions);

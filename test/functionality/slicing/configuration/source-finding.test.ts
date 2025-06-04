@@ -25,21 +25,18 @@ describe('source finding', () => {
 	};
 	beforeAll(() => {
 		setSourceProvider(requestProviderFromText(sources));
-		amendConfig({
-			solver: {
-				...defaultConfigOptions.solver,
-				resolveSource: {
-					dropPaths:             DropPathsOption.All,
-					ignoreCapitalization:  true,
-					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
-					searchPath:            [],
-					applyReplacements:     [
-						{ },
-						{ ' ': '-' }
-					]
-				}
+		amendConfig(c =>
+			c.solver.resolveSource = {
+				dropPaths:             DropPathsOption.All,
+				ignoreCapitalization:  true,
+				inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
+				searchPath:            [],
+				applyReplacements:     [
+					{ },
+					{ ' ': '-' }
+				]
 			}
-		});
+		);
 	});
 	afterAll(() => {
 		setSourceProvider(requestProviderFromFile());

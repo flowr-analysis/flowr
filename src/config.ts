@@ -7,7 +7,7 @@ import { getParentDirectory } from './util/files';
 import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
-import type { DeepPartial } from 'ts-essentials';
+import type { DeepWritable } from 'ts-essentials';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -56,7 +56,7 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 	/**
 	 * Additionally search in these paths
 	 */
-	readonly searchPath:            readonly string[]
+	readonly searchPath:            string[]
 	/**
 	 * Allow to drop the first or all parts of the sourced path,
 	 * if it is relative.
@@ -113,7 +113,7 @@ export interface FlowrConfigOptions extends MergeableRecord {
 	 * The engines to use for interacting with R code. Currently, supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
 	 * An empty array means all available engines will be used.
 	 */
-	readonly engines:        readonly EngineConfig[]
+	readonly engines:        EngineConfig[]
 	/**
 	 * The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from {@link engines} will be used.
 	 */
@@ -300,9 +300,8 @@ export function setConfig(config: FlowrConfigOptions) {
 	currentConfig = config;
 }
 
-export function amendConfig(amendment: DeepPartial<FlowrConfigOptions>) {
-	setConfig(deepMergeObject(getConfig(), amendment) as FlowrConfigOptions);
-	log.trace(`Amending config with ${JSON.stringify(amendment)}, resulting in ${JSON.stringify(getConfig())}}`);
+export function amendConfig(amendmentFunc: (config: DeepWritable<FlowrConfigOptions>) => void) {
+	amendmentFunc(getConfig());
 }
 
 export function getConfig(): FlowrConfigOptions {

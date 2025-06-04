@@ -100,10 +100,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '2@y', functionName: ':::', libraryName: 'bar' }
 		] });
 
-		testQuery('Using a vector to load', 'lapply(c("a", "b", "c"), library, character.only = TRUE)', { libraries: [
-			{ nodeId: '1@library', functionName: 'library', libraryName: 'a' },
-			{ nodeId: '1@library', functionName: 'library', libraryName: 'b' },
-			{ nodeId: '1@library', functionName: 'library', libraryName: 'c' }
+		testQuery('Using a vector to load', 'lapply(c("foo", "bar", "baz"), library, character.only = TRUE)', { libraries: [
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'foo' },
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'bar' },
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'baz' }
 		] });
 
 		testQuery('Using a vector to load by variable', 'v <- c("a", "b", "c")\nlapply(v, library, character.only = TRUE)', { libraries: [
@@ -111,6 +111,29 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'c' }
 		] });
+
+		testQuery('Using a nested vector to load', 'lapply(c(c("a", "b"), "c"), library, character.only = TRUE)', { libraries: [
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'a' },
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'b' },
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'c' }
+		] });
+
+		testQuery('Using a nested vector by variable', 'v <- c(c("a", "b"), "c")\nlapply(v, library, character.only = TRUE)', { libraries: [
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'a' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'c' }
+		] });
+
+		testQuery('Using a deeply nested vector by variable', 'v <- c(c(c("a", c("b")), "c"), "d", c("e", c("f", "g")))\nlapply(v, library, character.only = TRUE)', { libraries: [
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'a' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'c' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'd' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'e' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'f' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'g' }
+		] });
+
 
 		describe('Custom', () => {
 			const readCustomFile: Partial<DependenciesQuery> = {

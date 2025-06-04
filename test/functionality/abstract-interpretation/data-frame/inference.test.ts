@@ -59,6 +59,11 @@ df2 <- df1
 	);
 
 	testDataFrameDomain(
+		'df <- as.data.frame(c(1, 2, 3))',
+		[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
+	);
+
+	testDataFrameDomain(
 		`
 df1 <- data.frame(id = 1:3, label = c("A", "B", "C"))
 df2 <- as.data.frame(df1)
@@ -404,6 +409,54 @@ print(df)
 		[
 			['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }],
 			['3@df', { colnames: ColNamesTop, cols: [2, 2], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(1:5, 6:10)
+names(df) <- c("id", "name")
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }],
+			['3@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:5, name = 6:10)
+names(df) <- runif(2)
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }],
+			['3@df', { colnames: ColNamesTop, cols: [2, 2], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3, name = 4:6)
+rownames(df) <- c("row1", "row2", "row3")
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
+			['3@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3, name = 4:6)
+dimnames(df) <- list(c("row1", "row2", "row3"), c("col1", "col2"))
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
+			['3@df', { colnames: ColNamesTop, cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
 		]
 	);
 
@@ -868,6 +921,17 @@ df <- merge(df1, df2, by = "id")
 			['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
 			['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
 			['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [4, 4] }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = c(1, 2, 3, 1, 3), score = c(80, 75, 90, 70, 85))
+df <- aggregate(df, list(df$id), mean)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
+			['2@df', DataFrameTop, DataFrameTestOverapproximation]
 		]
 	);
 

@@ -8,7 +8,7 @@ describe.sequential('List Definition', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'subsetting-multiple'] as const;
 
 	beforeEach(() => {
-		amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
+		amendConfig(c => c.solver.pointerTracking = true);
 	});
 
 	afterEach(() => {

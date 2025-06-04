@@ -72,7 +72,7 @@ describe.sequential('List Definition', withShell(shell => {
 
 			describe('Skip if index threshold', () => {
 				beforeEach(() => {
-					setConfig({ ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, pointerTracking: { maxIndexCount: 1 } } });
+					amendConfig(c => c.solver.pointerTracking = { maxIndexCount: 1 });
 				});
 				afterEach(() => {
 					setConfig(defaultConfigOptions);

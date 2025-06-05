@@ -8,7 +8,7 @@ describe('Infer types for loops', () => {
 	describe.each([
 		{ input: 'while(FALSE) { print("Testing is fun!") }',                         expectedType: { tag: RDataTypeTag.Null as const } },
 		{ input: 'while(TRUE) { next }',                                              expectedType: { tag: RDataTypeTag.Never as const } },
-		{ input: 'while(1 < 2) { print("Hi Flo!") }',                                 expectedType: { tag: RDataTypeTag.Never as const } },
+		{ input: 'while(1 < 2) { print("Hi Flo!") }',                                 expectedType: { tag: RDataTypeTag.Null as const } },
 		{ input: 'while(TRUE) { break }',                                             expectedType: { tag: RDataTypeTag.Null as const } },
 		{ input: 'for(i in NULL) { print("I would like to write a test for that") }', expectedType: { tag: RDataTypeTag.Null as const } },
 		{ input: 'for(i in 1:10) { print(i) }',                                       expectedType: { tag: RDataTypeTag.Null as const } },

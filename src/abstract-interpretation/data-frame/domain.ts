@@ -1,5 +1,5 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { setEquals } from '../../util/set';
+import { setEquals } from '../../util/collections/set';
 
 const MaxColNames = 50;
 

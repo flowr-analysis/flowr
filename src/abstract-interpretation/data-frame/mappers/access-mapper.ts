@@ -1,4 +1,4 @@
-import type { ResolveInfo } from '../../../dataflow/environments/resolve-by-name';
+import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';

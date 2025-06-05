@@ -49,8 +49,8 @@ import type { ContainerIndicesCollection } from '../dataflow/graph/vertex';
 import { isParentContainerIndex } from '../dataflow/graph/vertex';
 import { equidistantSampling } from '../util/collections/arrays';
 import { performDataFrameAbsint } from '../abstract-interpretation/data-frame/abstract-interpretation';
-import type { ControlFlowInformation } from '../util/cfg/cfg';
-import { extractCFG } from '../util/cfg/cfg';
+import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
+import { extractCfg } from '../control-flow/extract-cfg';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { AbstractInterpretationInfo } from '../abstract-interpretation/data-frame/absint-info';
 import type { IntervalDomain } from '../abstract-interpretation/data-frame/domain';
@@ -381,7 +381,7 @@ export class BenchmarkSlicer {
 		const ast = this.normalizedAst;
 		const dfg = this.dataflow.graph;
 
-		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCFG(ast, dfg));
+		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, dfg));
 	}
 
 	/**

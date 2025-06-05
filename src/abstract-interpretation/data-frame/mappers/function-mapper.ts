@@ -1,4 +1,4 @@
-import type { ResolveInfo } from '../../../dataflow/environments/resolve-by-name';
+import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { isUseVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';

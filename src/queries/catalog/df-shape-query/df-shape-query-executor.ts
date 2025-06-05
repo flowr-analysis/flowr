@@ -1,7 +1,7 @@
 import type { DfShapeQuery, DfShapeQueryResult } from './df-shape-query-format';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
-import { extractCFG } from '../../../util/cfg/cfg';
+import { extractCfg } from '../../../control-flow/extract-cfg';
 import { performDataFrameAbsint } from '../../../abstract-interpretation/data-frame/abstract-interpretation';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
@@ -17,7 +17,7 @@ export function executeDfShapeQuery({ dataflow: { graph }, ast }: BasicQueryData
 	}
 
 	const start = Date.now();
-	const cfg = extractCFG(ast, graph);
+	const cfg = extractCfg(ast, graph);
 	const domains = performDataFrameAbsint(cfg, graph);
 
 	if(queries.length === 1 && queries[0].criterion === undefined) {

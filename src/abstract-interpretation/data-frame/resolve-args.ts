@@ -1,11 +1,16 @@
-import type { ResolveInfo } from '../../dataflow/environments/resolve-by-name';
-import { resolveIdToValue } from '../../dataflow/environments/resolve-by-name';
+import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
+import { resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
+import type { Value, ValueInterval, ValueLogical, ValueNumber, ValueString, ValueVector } from '../../dataflow/eval/values/r-value';
+import { isValue } from '../../dataflow/eval/values/r-value';
 import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import type { RLogicalValue } from '../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import type { RNumberValue, RStringValue } from '../../r-bridge/lang-4.x/convert-values';
+import { assertUnreachable, isNotUndefined } from '../../util/assert';
 import { unwrapRValue, unwrapRValueToString, unwrapRVector } from '../../util/r-value';
-import { startAndEndsWith } from '../../util/strings';
+import { startAndEndsWith } from '../../util/text/strings';
 
 /**
  * Returns the argument name of a function argument
@@ -24,13 +29,12 @@ export function resolveIdToArgValue(id: NodeId | RArgument<ParentInformation>, i
 
 	if(node?.value !== undefined) {
 		const resolvedValue = resolveIdToValue(node.value, info);
+		const unliftedValue = unliftRValue(resolvedValue);
 
-		if(resolvedValue?.length === 1) {
-			if(Array.isArray(resolvedValue[0])) {
-				return unwrapRVector(resolvedValue[0]);
-			} else {
-				return unwrapRValue(resolvedValue[0]);
-			}
+		if(Array.isArray(unliftedValue)) {
+			return unwrapRVector(unliftedValue);
+		} else {
+			return unwrapRValue(unliftedValue);
 		}
 	}
 	return undefined;
@@ -44,16 +48,14 @@ export function resolveIdToArgStringVector(id: NodeId | RArgument<ParentInformat
 
 	if(node?.value !== undefined) {
 		const resolvedValue = resolveIdToValue(node.value, info);
+		const unliftedValue = unliftRValue(resolvedValue);
 
-		if(resolvedValue?.length === 1) {
-			if(Array.isArray(resolvedValue[0])) {
-				const array = resolvedValue[0].map(unwrapRValueToString);
-				return array.every(value => value !== undefined) ? array : undefined;
-			} else {
-				const value: unknown = resolvedValue[0];
-				const result = unwrapRValueToString(value);
-				return result !== undefined ? [result] : undefined;
-			}
+		if(Array.isArray(unliftedValue)) {
+			const array = unliftedValue.map(unwrapRValueToString);
+			return array.every(isNotUndefined) ? array : undefined;
+		} else {
+			const result = unwrapRValueToString(unliftedValue);
+			return result !== undefined ? [result] : undefined;
 		}
 	}
 	return undefined;
@@ -81,13 +83,12 @@ export function resolveIdToArgVectorLength(id: NodeId | RArgument<ParentInformat
 
 	if(node?.value !== undefined) {
 		const resolvedValue = resolveIdToValue(node.value, info);
+		const unliftedValue = unliftRValue(resolvedValue);
 
-		if(resolvedValue?.length === 1) {
-			if(Array.isArray(resolvedValue[0])) {
-				return resolvedValue[0].length;
-			} else if(unwrapRValue(resolvedValue[0]) !== undefined) {
-				return 1;
-			}
+		if(Array.isArray(unliftedValue)) {
+			return unliftedValue.length;
+		} else if(unwrapRValue(unliftedValue) !== undefined) {
+			return 1;
 		}
 	}
 	return undefined;
@@ -113,4 +114,45 @@ export function unescapeArgument(argument: string | undefined): string | undefin
 		return argument.slice(1, -1);
 	}
 	return argument;
+}
+
+function unliftRValue(value: ValueString): RStringValue | undefined;
+function unliftRValue(value: ValueNumber | ValueInterval): RNumberValue | undefined;
+function unliftRValue(value: ValueLogical): RLogicalValue | undefined;
+function unliftRValue(value: ValueVector): (RStringValue | RNumberValue | RLogicalValue)[] | undefined;
+function unliftRValue(value: Value): RStringValue | RNumberValue | boolean | (RStringValue | RNumberValue | RLogicalValue)[] | undefined;
+function unliftRValue(value: Value): RStringValue | RNumberValue | boolean | (RStringValue | RNumberValue | RLogicalValue)[] | undefined {
+	if(!isValue(value)) {
+		return undefined;
+	}
+	const type = value.type;
+
+	switch(type) {
+		case 'string': {
+			return isValue(value.value) ? value.value : undefined;
+		}
+		case 'number': {
+			return isValue(value.value) ? value.value : undefined;
+		}
+		case 'logical': {
+			return isValue(value.value) && typeof value.value === 'boolean' ? value.value : undefined;
+		}
+		case 'interval': {
+			const start = unliftRValue(value.start);
+			const end = unliftRValue(value.end);
+			return start !== undefined && end !== undefined && start.num === end.num ? start : undefined;
+		}
+		case 'vector': {
+			const values = isValue(value.elements) ? value.elements.map(unliftRValue) : undefined;
+			return values?.every(isNotUndefined) ? values.flat() : undefined;
+		}
+		case 'set': {
+			return isValue(value.elements) && value.elements.length === 1 ? unliftRValue(value.elements[0]) : undefined;
+		}
+		case 'missing': {
+			return undefined;
+		}
+		default:
+			assertUnreachable(type);
+	}
 }

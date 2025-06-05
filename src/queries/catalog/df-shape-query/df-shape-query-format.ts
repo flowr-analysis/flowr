@@ -1,8 +1,8 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 
 import type { QueryResults, SupportedQuery } from '../../query';
-import { bold } from '../../../util/ansi';
-import { printAsMs } from '../../../util/time';
+import { bold } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 
 import type { DataFrameDomain, DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/domain';
@@ -36,5 +36,6 @@ export const DfShapeQueryDefinition = {
 	schema: Joi.object({
 		type:      Joi.string().valid('df-shape').required().description('The type of the query.'),
 		criterion: Joi.string().optional().description('The slicing criterion of the node to get the dataframe shape for.')
-	}).description('Retrieve information on the dataframe shapes')
+	}).description('Retrieve information on the dataframe shapes'),
+	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'df-shape'>;

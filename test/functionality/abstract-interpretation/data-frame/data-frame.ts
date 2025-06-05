@@ -3,6 +3,7 @@ import type { AbstractInterpretationInfo } from '../../../../src/abstract-interp
 import { performDataFrameAbsint } from '../../../../src/abstract-interpretation/data-frame/abstract-interpretation';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { DataFrameTop, equalColNames, equalInterval, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
+import { extractCfg } from '../../../../src/control-flow/extract-cfg';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
@@ -17,7 +18,6 @@ import { type RShell } from '../../../../src/r-bridge/shell';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
-import { extractCFG } from '../../../../src/util/cfg/cfg';
 import { getRangeEnd } from '../../../../src/util/range';
 import { decorateLabelContext, type TestLabel } from '../../_helper/label';
 
@@ -188,7 +188,7 @@ function getInferredDomainForCriterion(
 	if(node === undefined || node.type !== RType.Symbol) {
 		throw new Error(`slicing criterion ${criterion} does not refer to a R symbol`);
 	}
-	const cfg = extractCFG(result.normalize, result.dataflow.graph);
+	const cfg = extractCfg(result.normalize, result.dataflow.graph);
 	performDataFrameAbsint(cfg, result.dataflow.graph);
 	const value = node.info.dataFrame?.domain?.get(node.info.id) ?? DataFrameTop;
 

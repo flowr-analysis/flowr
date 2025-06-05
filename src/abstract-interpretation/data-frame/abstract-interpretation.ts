@@ -1,9 +1,10 @@
+import type { CfgSimpleVertex, ControlFlowInformation } from '../../control-flow/control-flow-graph';
+import { CfgVertexType, ControlFlowGraph } from '../../control-flow/control-flow-graph';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { RConstant, RNode, RSingleNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { CfgVertexType, ControlFlowGraph, type CfgVertex, type ControlFlowInformation } from '../../util/cfg/cfg';
 import type { AbstractInterpretationInfo } from './absint-info';
 import type { DataFrameDomain, DataFrameStateDomain } from './domain';
 import { equalDataFrameState, joinDataFrameStates, wideningDataFrameStates } from './domain';
@@ -15,7 +16,7 @@ export function performDataFrameAbsint(cfinfo: ControlFlowInformation, dfg: Data
 	const visited: Map<NodeId, number> = new Map();
 	let finalDomain: DataFrameStateDomain = new Map();
 
-	const visitor = (cfg: ControlFlowGraph, dfg: DataflowGraph, vertex: CfgVertex): CfgVertex[] => {
+	const visitor = (cfg: ControlFlowGraph, dfg: DataflowGraph, vertex: CfgSimpleVertex): CfgSimpleVertex[] => {
 		if(shouldSkipVertex(vertex, dfg)) {
 			return getSuccessorVertices(cfg, vertex.id, dfg);
 		}
@@ -64,8 +65,8 @@ export function performDataFrameAbsint(cfinfo: ControlFlowInformation, dfg: Data
 		.map(id => cfg.vertices().get(id))
 		.filter(vertex => vertex !== undefined);
 
-	const queue: CfgVertex[] = [...entryPoints];
-	let vertex: CfgVertex | undefined;
+	const queue: CfgSimpleVertex[] = [...entryPoints];
+	let vertex: CfgSimpleVertex | undefined;
 
 	while((vertex = queue.pop()) !== undefined) {
 		queue.push(...visitor(cfg, dfg, vertex));
@@ -77,7 +78,7 @@ export function flipCfg(cfg: ControlFlowGraph): ControlFlowGraph {
 	const flippedCfg = new ControlFlowGraph();
 
 	for(const [id, vertex] of cfg.vertices()) {
-		flippedCfg.addVertex(vertex, cfg.rootVertexIds().has(id));
+		flippedCfg.addVertex(vertex, cfg.rootIds().has(id));
 	}
 	for(const [to, edges] of cfg.edges()) {
 		for(const [from, edge] of edges) {
@@ -100,7 +101,7 @@ function isRSingleNode(
 }
 
 // We only process vertices of leaf nodes and exit vertices (no entry nodes of complex nodes)
-function shouldSkipVertex(vertex: CfgVertex, dfg: DataflowGraph) {
+function shouldSkipVertex(vertex: CfgSimpleVertex, dfg: DataflowGraph) {
 	if(vertex.type === CfgVertexType.EndMarker) {
 		return false;
 	} else if(vertex.type === CfgVertexType.MidMarker) {
@@ -121,7 +122,7 @@ function getNodeIdForExitVertex(vertexId: NodeId): number | undefined {
 }
 
 function getPredecessorNodes(cfg: ControlFlowGraph, vertexId: NodeId, dfg: DataflowGraph): RNode<ParentInformation & AbstractInterpretationInfo>[] {
-	return cfg.ingoing(vertexId)?.keys()
+	return cfg.ingoingEdges(vertexId)?.keys()
 		.map(id => cfg.vertices().get(id))
 		.flatMap(vertex => {
 			if(vertex !== undefined && shouldSkipVertex(vertex, dfg)) {
@@ -137,8 +138,8 @@ function getPredecessorNodes(cfg: ControlFlowGraph, vertexId: NodeId, dfg: Dataf
 		.toArray() ?? [];
 }
 
-function getSuccessorVertices(cfg: ControlFlowGraph, vertexId: NodeId, dfg: DataflowGraph): CfgVertex[] {
-	return cfg.outgoing(vertexId)?.keys()
+function getSuccessorVertices(cfg: ControlFlowGraph, vertexId: NodeId, dfg: DataflowGraph): CfgSimpleVertex[] {
+	return cfg.outgoingEdges(vertexId)?.keys()
 		.map(id => cfg.vertices().get(id))
 		.flatMap(vertex => {
 			if(vertex !== undefined && shouldSkipVertex(vertex, dfg)) {

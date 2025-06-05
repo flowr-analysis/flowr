@@ -15,7 +15,7 @@ import {
 } from '../../stats/stats';
 import type { DataFrameOperationName } from '../../../abstract-interpretation/data-frame/semantics';
 import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
-import { arraySum } from '../../../util/arrays';
+import { arraySum } from '../../../util/collections/arrays';
 
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => []);

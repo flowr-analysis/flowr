@@ -20,7 +20,7 @@ import type { DataflowClusterQuery } from './catalog/cluster-query/cluster-query
 import { ClusterQueryDefinition } from './catalog/cluster-query/cluster-query-format';
 import type { DependenciesQuery } from './catalog/dependencies-query/dependencies-query-format';
 import { DependenciesQueryDefinition } from './catalog/dependencies-query/dependencies-query-format';
-import type { OutputFormatter } from '../util/ansi';
+import type { OutputFormatter } from '../util/text/ansi';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import Joi from 'joi';
@@ -30,17 +30,21 @@ import type { ConfigQuery } from './catalog/config-query/config-query-format';
 import { ConfigQueryDefinition } from './catalog/config-query/config-query-format';
 import type { SearchQuery } from './catalog/search-query/search-query-format';
 import { SearchQueryDefinition } from './catalog/search-query/search-query-format';
-import type {
-	HappensBeforeQuery } from './catalog/happens-before-query/happens-before-query-format';
-import {
-	HappensBeforeQueryDefinition
-} from './catalog/happens-before-query/happens-before-query-format';
+import type { HappensBeforeQuery } from './catalog/happens-before-query/happens-before-query-format';
+import { HappensBeforeQueryDefinition } from './catalog/happens-before-query/happens-before-query-format';
 import type { ResolveValueQuery } from './catalog/resolve-value-query/resolve-value-query-format';
 import { ResolveValueQueryDefinition } from './catalog/resolve-value-query/resolve-value-query-format';
 import type { DataflowLensQuery } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
 import { DataflowLensQueryDefinition } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
 import type { ProjectQuery } from './catalog/project-query/project-query-format';
 import { ProjectQueryDefinition } from './catalog/project-query/project-query-format';
+import type { OriginQuery } from './catalog/origin-query/origin-query-format';
+import { OriginQueryDefinition } from './catalog/origin-query/origin-query-format';
+import type { LinterQuery } from './catalog/linter-query/linter-query-format';
+import { LinterQueryDefinition } from './catalog/linter-query/linter-query-format';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { ControlFlowQuery } from './catalog/control-flow-query/control-flow-query-format';
+import { ControlFlowQueryDefinition } from './catalog/control-flow-query/control-flow-query-format';
 import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-format';
 import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 
@@ -48,6 +52,7 @@ export type Query = CallContextQuery
 	| ConfigQuery
 	| SearchQuery
 	| DataflowQuery
+	| ControlFlowQuery
 	| DataflowLensQuery
 	| DfShapeQuery
 	| NormalizedAstQuery
@@ -60,6 +65,8 @@ export type Query = CallContextQuery
 	| HappensBeforeQuery
 	| ResolveValueQuery
 	| ProjectQuery
+	| OriginQuery
+	| LinterQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -72,14 +79,20 @@ type SupportedQueries = {
 }
 
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
-	executor:        QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
-	asciiSummarizer: (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
-	schema:          Joi.ObjectSchema
+	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
+	asciiSummarizer:      (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
+	schema:               Joi.ObjectSchema
+	/**
+	 * Flattens the involved query nodes to be added to a flowR search when the {@link fromQuery} function is used based on the given result after this query is executed.
+	 * If this query does not involve any nodes, an empty array can be returned.
+	 */
+	flattenInvolvedNodes: (queryResults: BaseQueryResult) => NodeId[]
 }
 
 export const SupportedQueries = {
 	'call-context':     CallContextQueryDefinition,
 	'config':           ConfigQueryDefinition,
+	'control-flow':     ControlFlowQueryDefinition,
 	'dataflow':         DataflowQueryDefinition,
 	'dataflow-lens':    DataflowLensQueryDefinition,
 	'df-shape':         DfShapeQueryDefinition,
@@ -93,7 +106,9 @@ export const SupportedQueries = {
 	'search':           SearchQueryDefinition,
 	'happens-before':   HappensBeforeQueryDefinition,
 	'resolve-value':    ResolveValueQueryDefinition,
-	'project':          ProjectQueryDefinition
+	'project':          ProjectQueryDefinition,
+	'origin':           OriginQueryDefinition,
+	'linter':           LinterQueryDefinition
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

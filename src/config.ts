@@ -42,7 +42,54 @@ export enum DropPathsOption {
 	Once = 'once',
 	/** try to drop every folder of the path */
 	All = 'all'
-};
+}
+
+export interface FlowrLaxSourcingOptions extends MergeableRecord {
+	/**
+	 * search for filenames matching in the lowercase
+	 */
+	readonly ignoreCapitalization:  boolean
+	/**
+	 * try to infer the working directory from the main or any script to analyze.
+	 */
+	readonly inferWorkingDirectory: InferWorkingDirectory
+	/**
+	 * Additionally search in these paths
+	 */
+	readonly searchPath:            readonly string[]
+	/**
+	 * Allow to drop the first or all parts of the sourced path,
+	 * if it is relative.
+	 */
+	readonly dropPaths:             DropPathsOption
+	/**
+	 * How often the same file can be sourced within a single run?
+	 * Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.
+	 */
+	readonly repeatedSourceLimit?:  number
+	/**
+	 * sometimes files may have a different name in the source call	(e.g., due to later replacements),
+	 * with this setting you can provide a list of replacements to apply for each sourced file.
+	 * Every replacement consists of a record that maps a regex to a replacement string.
+	 *
+	 * @example
+	 * ```ts
+	 * [
+	 *      { }, // no replacement -> still try the original name/path
+	 *      { '.*\\.R$': 'main.R' }, // replace all .R files with main.R
+	 *      { '\s' : '_' }, // replace all spaces with underscores
+	 *      { '\s' : '-', 'oo': 'aa' }, // replace all spaces with dashes and oo with aa
+	 * ]
+	 * ```
+	 *
+	 * Given a `source("foo bar.R")` this configuration will search for (in this order):
+	 * - `foo bar.R` (original name)
+	 * - `main.R` (replaced with main.R)
+	 * - `foo_bar.R` (replaced spaces)
+	 * - `foo-bar.R` (replaced spaces and oo)
+	 */
+	readonly applyReplacements?:    Record<string, string>[]
+}
 
 export interface FlowrConfigOptions extends MergeableRecord {
 	/**
@@ -97,30 +144,7 @@ export interface FlowrConfigOptions extends MergeableRecord {
 		 * based on the configurations you give it.
 		 * This option is only in effect if {@link ignoreSourceCalls} is set to false.
 		 */
-		readonly resolveSource?: {
-			/**
-			 * search for filenames matching in the lowercase
-			 */
-			readonly ignoreCapitalization:  boolean
-			/**
-			 * try to infer the working directory from the main or any script to analyze.
-			 */
-			readonly inferWorkingDirectory: InferWorkingDirectory
-			/**
-			 * Additionally search in these paths
-			 */
-			readonly searchPath:            readonly string[]
-			/**
-			 * Allow to drop the first or all parts of the sourced path,
-			 * if it is relative.
-			 */
-			readonly dropPaths:             DropPathsOption
-			/**
-			 * How often the same file can be sourced within a single run?
-			 * Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.
-			 */
-			readonly repeatedSourceLimit?:  number
-		},
+		readonly resolveSource?: FlowrLaxSourcingOptions,
 		/**
 		 * The configuration for flowR's slicer
 		 */
@@ -146,7 +170,7 @@ export interface TreeSitterEngineConfig extends MergeableRecord {
 	/**
 	 * Whether to use the lax parser for parsing R code (allowing for syntax errors). If this is undefined, the strict parser will be used.
 	 */
-	readonly lax?:				            boolean
+	readonly lax?:                boolean
 }
 
 export interface RShellEngineConfig extends MergeableRecord {
@@ -176,11 +200,11 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 		}
 	},
 	engines:       [],
-	defaultEngine: 'r-shell',
+	defaultEngine: 'tree-sitter',
 	solver:        {
 		variables:       VariableResolve.Alias,
 		evalStrings:     true,
-		pointerTracking: true,
+		pointerTracking: false,
 		resolveSource:   {
 			dropPaths:             DropPathsOption.No,
 			ignoreCapitalization:  true,
@@ -231,7 +255,8 @@ export const flowrConfigFileSchema = Joi.object({
 			ignoreCapitalization:  Joi.boolean().description('Search for filenames matching in the lowercase.'),
 			inferWorkingDirectory: Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
 			searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.'),
-			repeatedSourceLimit:   Joi.number().optional().description('How often the same file can be sourced within a single run? Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.')
+			repeatedSourceLimit:   Joi.number().optional().description('How often the same file can be sourced within a single run? Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.'),
+			applyReplacements:     Joi.array().items(Joi.object()).description('Provide name replacements for loaded files')
 		}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.'),
 		slicer: Joi.object({
 			threshold: Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.')

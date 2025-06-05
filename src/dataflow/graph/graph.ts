@@ -1,7 +1,7 @@
 import { guard } from '../../util/assert';
 import type { DataflowGraphEdge , EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
-import { equalFunctionArguments } from './diff';
+import { equalFunctionArguments } from './diff-dataflow-graph';
 import type {
 	DataflowGraphVertexArgument,
 	DataflowGraphVertexFunctionCall,
@@ -10,7 +10,7 @@ import type {
 	DataflowGraphVertices
 } from './vertex';
 import { VertexType } from './vertex';
-import { arrayEqual } from '../../util/arrays';
+import { arrayEqual } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -20,7 +20,6 @@ import { initializeCleanEnvironments } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
 import { jsonReplacer } from '../../util/json';
-import { BuiltIn } from '../environments/built-in';
 import { dataflowLogger } from '../logger';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
@@ -337,13 +336,10 @@ export class DataflowGraph<
 	public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: EdgeType | number): this
 	/** {@inheritDoc} */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType | number): this
-	/**
-	 * Please note that this will never make edges to {@link BuiltIn} as they are not part of the graph.
-	 */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType | number): this {
 		const [fromId, toId] = extractEdgeIds(from, to);
 
-		if(fromId === toId || toId === BuiltIn) {
+		if(fromId === toId) {
 			return this;
 		}
 
@@ -385,7 +381,7 @@ export class DataflowGraph<
 			}
 		}
 
-		this.sourced.push(...otherGraph.sourced);
+		this._sourced = this._sourced.concat(otherGraph.sourced);
 
 		for(const unknown of otherGraph.unknownSideEffects) {
 			this._unknownSideEffects.add(unknown);
@@ -464,7 +460,7 @@ export class DataflowGraph<
 	}
 
 	/** Marks the given node as having unknown side effects */
-	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo<RegExp | string>): this {
+	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo): this {
 		if(target) {
 			this._unknownSideEffects.add({ id: normalizeIdToNumberIfPossible(id), linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp> });
 			return this;

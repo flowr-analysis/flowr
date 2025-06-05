@@ -12,7 +12,7 @@ import {
 	tocForQueryType
 } from './doc-util/doc-query';
 import { describeSchema } from '../util/schema';
-import { markdownFormatter } from '../util/ansi';
+import { markdownFormatter } from '../util/text/ansi';
 import { executeCallContextQueries } from '../queries/catalog/call-context-query/call-context-query-executor';
 import { executeCompoundQueries } from '../queries/virtual-query/compound-query';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
@@ -36,6 +36,8 @@ import { Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
 import { getTypesFromFolderAsMermaid, shortLink } from './doc-util/doc-types';
 import path from 'path';
+import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
+import { printCfgCode } from './doc-util/doc-cfg';
 import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
 
 
@@ -94,7 +96,7 @@ ${
 
 As you can see, all kinds and subkinds with the same name are grouped together.
 Yet, re-stating common arguments and kinds may be cumbersome (although you can already use clever regex patterns).
-See the ${linkToQueryOfName('compound')} for a way to structure your queries more compactly if you think it gets too verbose. 
+See the ${linkToQueryOfName('compound')} for a way to structure your queries more compactly if you think it gets too verbose.
 
 ${
 	await (async() => {
@@ -195,9 +197,9 @@ respective variables stems from given the reads, definitions, and returns in the
 
 To understand this, let's start with a simple example query, to get the lineage of the second use of \`x\` in the following code:
 ${codeBlock('r', exampleCode)}
- 
+
 For this, we use the criterion \`2@x\` (which is the first use of \`x\` in the second line).
- 
+
 ${
 	await showQuery(shell, exampleCode, [{
 		type:      'lineage',
@@ -205,8 +207,8 @@ ${
 	}], { showCode: false })
 }
 
-In this simple scenario, the _lineage_ is equivalent to the slice (and in-fact the complete code). 
-In general the lineage is smaller and makes no guarantees on executability. 
+In this simple scenario, the _lineage_ is equivalent to the slice (and in-fact the complete code).
+In general the lineage is smaller and makes no guarantees on executability.
 It is just a quick and neither complete nor sound way to get information on where the variable originates from.
 
 This query replaces the old [\`request-lineage\`](${FlowrWikiBaseRef}/Interface#message-request-lineage) message.
@@ -225,14 +227,14 @@ registerQueryDocumentation('dataflow-cluster', {
 		const exampleA = 'x <- 1; x';
 		const exampleB = 'x <- 1; y';
 		return `
-This query automatically calculates clusters in flowR's dataflow graph 
-and returns a list of all clusters found. 
+This query automatically calculates clusters in flowR's dataflow graph
+and returns a list of all clusters found.
 Clusters are to be interpreted as literal clusters on the graph traversing
-edges in both directions. From this perspective, 
-the code \`${exampleA}\` has one cluster (given that all code is related), 
+edges in both directions. From this perspective,
+the code \`${exampleA}\` has one cluster (given that all code is related),
 while the code \`${exampleB}\` has two clusters (given that the \`y\` has no relation to the previous definition).
 
-${details('Example <code>' + exampleA + '</code>',  
+${details('Example <code>' + exampleA + '</code>',
 	await showQuery(shell, exampleA, [{ type: 'dataflow-cluster' }], { showCode: false }))}
 ${details('Example <code>' + exampleB + '</code>',
 	await showQuery(shell, exampleB, [{ type: 'dataflow-cluster' }], { showCode: false }))}
@@ -270,6 +272,29 @@ ${
 	}
 });
 
+registerQueryDocumentation('origin', {
+	name:             'Origin Query',
+	type:             'active',
+	shortDescription: 'Retrieve the origin of a variable, function call, ...',
+	functionName:     executeSearch.name,
+	functionFile:     '../queries/catalog/origin-query/origin-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- 1\nprint(x)';
+		return `
+With this query you can use flowR's origin tracking to find out the read origins of a variable,
+the functions called by a call, and more.
+
+Using the example code \`${exampleCode}\` (with the \`print(x)\` in the second line), the following query returns the origins of \`x\` in the code:
+${
+	await showQuery(shell, exampleCode, [{
+		type:      'origin',
+		criterion: '2@x'
+	}], { showCode: true })
+}
+		`;
+	}
+});
+
 registerQueryDocumentation('search', {
 	name:             'Search Query',
 	type:             'active',
@@ -279,7 +304,7 @@ registerQueryDocumentation('search', {
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x + 1';
 		return `
-With this query you can use the [Search API](${FlowrWikiBaseRef}/Search%20API) to conduct searches on the flowR analysis result. 
+With this query you can use the [Search API](${FlowrWikiBaseRef}/Search%20API) to conduct searches on the flowR analysis result.
 
 Using the example code \`${exampleCode}\`, the following query returns all uses of 'x' in the code:
 ${
@@ -328,7 +353,7 @@ registerQueryDocumentation('id-map', {
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x + 1';
 		return `
-This query provides access to all nodes in the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) as a mapping from their id to the node itself. 
+This query provides access to all nodes in the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) as a mapping from their id to the node itself.
 
 Using the example code \`${exampleCode}\`, the following query returns all nodes from the code:
 ${
@@ -444,7 +469,7 @@ registerQueryDocumentation('static-slice', {
 		const exampleCode = 'x <- 1\ny <- 2\nx';
 		return `
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
-return of the call) that you want to slice the dataflow graph for. 
+return of the call) that you want to slice the dataflow graph for.
 Given this, the slice is essentially the subpart of the program that may influence the value of the variables you are interested in.
 To specify a variable of interest, you have to present flowR with a [slicing criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion) (or, respectively, an array of them).
 
@@ -540,6 +565,96 @@ Here, \`resolveValue\` tells the dependency query to resolve the value of this a
 	}
 });
 
+registerQueryDocumentation('linter', {
+	name:             'Linter Query',
+	type:             'active',
+	shortDescription: 'Lints a given R script for common issues.',
+	functionName:     executeDependenciesQuery.name,
+	functionFile:     '../queries/catalog/linter-query/linter-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'read.csv("i_do_not_exist.csv")';
+		return `
+This query lints a given R script for common issues, such as missing files, unused variables, and more.
+
+In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns all smells detected:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'linter'
+	}], { showCode: false, collapseQuery: true })
+}
+
+You can also configure which rules to apply and what settings to use for these rules.
+We welcome any feedback and suggestions for new rules on this (consider opening a [new issue](${NewIssueUrl})).
+		`;
+	}
+});
+
+registerQueryDocumentation('control-flow', {
+	name:             'Control-Flow Query',
+	type:             'active',
+	shortDescription: 'Provides the control-flow of the program.',
+	functionName:     executeControlFlowQuery.name,
+	functionFile:     '../queries/catalog/control-flow-query/control-flow-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'if(TRUE) 1 else 2';
+		return `
+This control-flow query provides you access to the control flow graph.
+
+In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the CFG:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'control-flow'
+	}], { showCode: false, collapseQuery: true, collapseResult: true })
+}
+
+You can also overwrite the simplification passes to tune the perspective. for example, if you want to have basic blocks:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'control-flow',
+		config: {
+			simplificationPasses: ['unique-cf-sets', 'to-basic-blocks']
+		}
+	}], { showCode: false, collapseResult: true })
+}
+
+this produces:
+
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'] })}
+
+
+If, on the other hand, you want to prune dead code edges:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'control-flow',
+		config: {
+			simplificationPasses: ['unique-cf-sets', 'analyze-dead-code']
+		}
+	}], { showCode: false, collapseResult: true })
+}
+
+this produces:
+
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['analyze-dead-code'] })}
+
+
+Or, completely remove dead code:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'control-flow',
+		config: {
+			simplificationPasses: ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code']
+		}
+	}], { showCode: false, collapseResult: true })
+}
+
+this produces:
+
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['analyze-dead-code', 'remove-dead-code'] })}
+
+		`;
+	}
+});
+
 registerQueryDocumentation('location-map', {
 	name:             'Location Map Query',
 	type:             'active',
@@ -555,7 +670,7 @@ registerQueryDocumentation('location-map', {
 		const exampleCode = 'x + 1\nx * 2';
 		return `
 A query like the ${linkToQueryOfName('id-map')} query can return a huge result, especially for larger scripts.
-If you are not interested in all of the information contained within the full map, you can use the location map query to get a simple mapping of ids to their location in the source file.   
+If you are not interested in all of the information contained within the full map, you can use the location map query to get a simple mapping of ids to their location in the source file.
 
 Consider you have the following code:
 
@@ -569,7 +684,7 @@ ${
 	}], { showCode: false, collapseQuery: true })
 }
 
-All locations are given as a ${shortLink('SourceRange', types.info)} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.	
+All locations are given as a ${shortLink('SourceRange', types.info)} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.
 
 		`;
 	}
@@ -590,7 +705,7 @@ ${
 		content: `
 There are many ways to query a dataflow graph created by flowR.
 For example, you can use the [\`request-query\`](${FlowrWikiBaseRef}/Interface#message-request-query) message
-with a running flowR server, or the ${getReplCommand('query')} command in the flowR [REPL](${FlowrWikiBaseRef}/Interface#repl).	
+with a running flowR server, or the ${getReplCommand('query')} command in the flowR [REPL](${FlowrWikiBaseRef}/Interface#repl).
 			`.trim()
 	})
 }
@@ -603,12 +718,12 @@ In general, we separate two types of queries:
 1. **Active Queries**: Are exactly what you would expect from a query (e.g., the ${linkToQueryOfName('call-context')}). They fetch information from the dataflow graph.
 2. **Virtual Queries**: Are used to structure your queries (e.g., the ${linkToQueryOfName('compound')}).
 
-We separate these from a concept perspective. 
+We separate these from a concept perspective.
 For now, we support the following **active** queries (which we will refer to simply as a \`query\`):
 
 ${tocForQueryType('active')}
 
-Similarly, we support the following **virtual** queries: 
+Similarly, we support the following **virtual** queries:
 
 ${tocForQueryType('virtual')}
 
@@ -642,7 +757,7 @@ ${await printDfGraphForCode(shell, exampleQueryCode, { showCode: false })}
 Additionally, consider that you are interested in all function calls which loads data with \`read_csv\`.
 A simple \`regex\`-based query could look like this: \`^read_csv$\`.
 However, this fails to incorporate
- 
+
 1. Syntax-based information (comments, strings, used as a variable, called as a higher-order function, ...)
 2. Semantic information (e.g., \`read_csv\` is overwritten by a function with the same name)
 3. Context information (e.g., calls like \`points\` may link to the current plot)

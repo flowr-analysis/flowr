@@ -1,6 +1,6 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import { bold } from '../../../util/ansi';
-import { printAsMs } from '../../../util/time';
+import { bold } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { summarizeIdsIfTooLong } from '../../query-print';
@@ -32,5 +32,9 @@ export const SearchQueryDefinition = {
 	schema: Joi.object({
 		type:   Joi.string().valid('search').required().description('The type of the query.'),
 		search: Joi.object().required().description('The search query to execute.')
-	}).description('The search query searches the normalized AST and dataflow graph for nodes that match the given search query.')
+	}).description('The search query searches the normalized AST and dataflow graph for nodes that match the given search query.'),
+	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
+		const out = queryResults as QueryResults<'search'>['search'];
+		return out.results.flatMap(({ ids }) => ids);
+	}
 } as const satisfies SupportedQuery<'search'>;

@@ -1,8 +1,7 @@
-import type { RShell } from '../../../src/r-bridge/shell';
 
 
-import { PipelineExecutor } from '../../../src/core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
+import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { QueryResults, Query, QueryResultsWithoutMeta } from '../../../src/queries/query';
@@ -16,7 +15,8 @@ import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-prin
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import { assert, test } from 'vitest';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
-import { extractCFG } from '../../../src/util/cfg/cfg';
+import { extractCfg } from '../../../src/control-flow/extract-cfg';
+import type { KnownParser } from '../../../src/r-bridge/parser';
 
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
@@ -32,7 +32,7 @@ function normalizeResults<Queries extends Query>(result: QueryResults<Queries['t
  * Asserts the result of a query
  *
  * @param name     - Name of the test case to generate
- * @param shell    - R Shell Session to use
+ * @param parser   - R Shell Session/Parser to use
  * @param code     - R code to execute the query on
  * @param queries  - Queries to execute
  * @param expected - Expected result of the queries (without attached meta-information like timing)
@@ -42,7 +42,7 @@ export function assertQuery<
 	VirtualArguments extends VirtualCompoundConstraint<Queries['type']> = VirtualCompoundConstraint<Queries['type']>
 >(
 	name: string | TestLabel,
-	shell: RShell,
+	parser: KnownParser,
 	code: string,
 	queries: readonly (Queries | VirtualQueryArgumentsWithType<Queries['type'], VirtualArguments>)[],
 	expected: QueryResultsWithoutMeta<Queries> | ((info: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>) => (QueryResultsWithoutMeta<Queries> | Promise<QueryResultsWithoutMeta<Queries>>))
@@ -68,8 +68,7 @@ export function assertQuery<
 			}
 		}
 
-		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			parser:  shell,
+		const info = await createDataflowPipeline(parser, {
 			request: requestFromInput(code),
 			getId:   deterministicCountingIdGenerator(0)
 		}).allRemainingSteps();
@@ -87,7 +86,7 @@ export function assertQuery<
 			assert.deepStrictEqual(normalized, expectedNormalized, 'The result of the query does not match the expected result');
 		} /* v8 ignore next 3 */ catch(e: unknown) {
 			console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(info.dataflow));
-			console.error('Control-Flow-Graph', cfgToMermaidUrl(extractCFG(info.normalize, info.dataflow.graph), info.normalize));
+			console.error('Control-Flow-Graph', cfgToMermaidUrl(extractCfg(info.normalize, info.dataflow.graph), info.normalize));
 			throw e;
 		}
 	});

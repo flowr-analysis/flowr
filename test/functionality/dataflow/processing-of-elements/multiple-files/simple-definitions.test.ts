@@ -5,6 +5,7 @@ import { argumentInCall } from '../../../_helper/dataflow/environment-builder';
 import { assert, describe, test } from 'vitest';
 import { produceDataFlowGraph } from '../../../../../src/dataflow/extractor';
 import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
+import { builtInId } from '../../../../../src/dataflow/environments/built-in';
 
 describe.sequential('Simple Defs in Multiple Files', withShell(shell => {
 
@@ -19,17 +20,21 @@ describe.sequential('Simple Defs in Multiple Files', withShell(shell => {
 			.reads('-inline-::root-2-1', '0')
 			.use('-inline-::root-2-2')
 			.reads('-inline-::root-2-2', '-inline-::root-1-0')
-			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [], onlyBuiltIn: true })
+			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')], onlyBuiltIn: true })
+			.calls('2', builtInId('<-'))
 			.argument('2', ['1', '0'])
-			.call('-inline-::root-1-2', '<-', [argumentInCall('-inline-::root-1-0'), argumentInCall('-inline-::root-1-1')], { returns: ['-inline-::root-1-0'], reads: [], onlyBuiltIn: true })
+			.call('-inline-::root-1-2', '<-', [argumentInCall('-inline-::root-1-0'), argumentInCall('-inline-::root-1-1')], { returns: ['-inline-::root-1-0'], reads: [builtInId('<-')], onlyBuiltIn: true })
+			.calls('-inline-::root-1-2', builtInId('<-'))
 			.addControlDependency('-inline-::root-1-2', 'root-1', true)
 			.argument('-inline-::root-1-2', ['-inline-::root-1-1', '-inline-::root-1-0'])
 			.argument('-inline-::root-2-3', '-inline-::root-2-1')
 			.argument('-inline-::root-2-3', '-inline-::root-2-2')
-			.call('-inline-::root-2-3', '+', [argumentInCall('-inline-::root-2-1'), argumentInCall('-inline-::root-2-2')], { returns: [], reads: ['-inline-::root-2-1', '-inline-::root-2-2'], onlyBuiltIn: true })
+			.call('-inline-::root-2-3', '+', [argumentInCall('-inline-::root-2-1'), argumentInCall('-inline-::root-2-2')], { returns: [], reads: ['-inline-::root-2-1', '-inline-::root-2-2', builtInId('+')], onlyBuiltIn: true })
+			.calls('-inline-::root-2-3', builtInId('+'))
 			.argument('-inline-::root-2-5', '-inline-::root-2-3')
 			.reads('-inline-::root-2-5', '-inline-::root-2-3')
-			.call('-inline-::root-2-5', 'print', [argumentInCall('-inline-::root-2-3')], { returns: ['-inline-::root-2-3'], reads: [], onlyBuiltIn: true })
+			.call('-inline-::root-2-5', 'print', [argumentInCall('-inline-::root-2-3')], { returns: ['-inline-::root-2-3'], reads: [builtInId('print')], onlyBuiltIn: true })
+			.calls('-inline-::root-2-5', builtInId('print'))
 			.addControlDependency('-inline-::root-2-5', 'root-2', true)
 			.constant('1')
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })

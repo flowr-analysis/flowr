@@ -1,6 +1,6 @@
 import type { SourceRange } from '../../../../../src/util/range';
 import { mergeRanges, rangeFrom } from '../../../../../src/util/range';
-import { allPermutations } from '../../../../../src/util/arrays';
+import { allPermutations } from '../../../../../src/util/collections/arrays';
 import { describe, assert, test } from 'vitest';
 
 describe('Model specific tests', () => {

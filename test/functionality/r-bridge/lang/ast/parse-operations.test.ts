@@ -3,7 +3,7 @@ import { exprList, numVal } from '../../../_helper/ast-builder';
 import { AssignmentOperators, BinaryOperatorPool, UnaryOperatorPool } from '../../../_helper/provider';
 import { rangeFrom } from '../../../../../src/util/range';
 import { label } from '../../../_helper/label';
-import { startAndEndsWith } from '../../../../../src/util/strings';
+import { startAndEndsWith } from '../../../../../src/util/text/strings';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { RShell } from '../../../../../src/r-bridge/shell';

@@ -23,8 +23,7 @@ import { TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE,
 	DEFAULT_NORMALIZE_PIPELINE, TREE_SITTER_NORMALIZE_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import type { DataflowDifferenceReport, ProblematicDiffInfo } from '../../../src/dataflow/graph/diff';
-import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff';
+import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff-dataflow-graph';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
@@ -42,6 +41,11 @@ import type { ContainerIndex } from '../../../src/dataflow/graph/vertex';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import type { REnvironmentInformation } from '../../../src/dataflow/environments/environment';
 import { resolveByName } from '../../../src/dataflow/environments/resolve-by-name';
+import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/util/diff-graph';
+import { extractCfg } from '../../../src/control-flow/extract-cfg';
+import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
+import type { CfgProperty } from '../../../src/control-flow/cfg-properties';
+import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -65,6 +69,8 @@ let testShell: RShell | undefined = undefined;
  *
  * @param fn       - function to use the shell
  * @param newShell - whether to create a new shell or reuse a global shell instance for the tests
+ *
+ * @see {@link withTreeSitter}
  */
 export function withShell(fn: (shell: RShell) => void, newShell = false): () => void {
 	if(!newShell && testShell === undefined) {
@@ -87,6 +93,18 @@ export function withShell(fn: (shell: RShell) => void, newShell = false): () => 
 	};
 }
 
+/**
+ * This is the convenience sister-function to {@link withShell}.
+ * It provides you with a {@link TreeSitterExecutor} instance.
+ */
+export function withTreeSitter(fn: (shell: TreeSitterExecutor) => void): () => void {
+	const parser = new TreeSitterExecutor();
+	afterAll(() => parser.close());
+	return function() {
+		fn(parser);
+	};
+}
+
 function removeInformation<T extends Record<string, unknown>>(obj: T, includeTokens: boolean, ignoreColumns: boolean, ignoreMisc: boolean): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
 		if(key === 'fullRange' || ignoreMisc && (key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nesting')) {
@@ -94,7 +112,7 @@ function removeInformation<T extends Record<string, unknown>>(obj: T, includeTok
 		} else if(key === 'additionalTokens' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
 			return undefined;
 		} else if(ignoreColumns && (key == 'location' || key == 'fullRange') && Array.isArray(value) && value.length === 4) {
-			 
+
 			value = [value[0], 0, value[2], 0];
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
@@ -353,7 +371,7 @@ export function assertDataflow<P extends Pipeline>(
 			expected = resolveDataflowGraph(expected);
 		}
 
-		const report: DataflowDifferenceReport = diffOfDataflowGraphs(
+		const report: GraphDifferenceReport = diffOfDataflowGraphs(
 			{ name: 'expected', graph: expected },
 			{ name: 'got',      graph: info.dataflow.graph },
 			{
@@ -430,7 +448,7 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean },
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[] },
 	testCaseFailType?: TestCaseFailType,
 	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0),
 ) {
@@ -479,12 +497,29 @@ export function assertSliced(
 		testWrapper(
 			userConfig?.skipTreeSitter || userConfig?.skipCompare,
 			false,
-			'compare',
+			'compare ASTs',
 			function() {
 				const tsAst = tsResult?.normalize.ast as RNodeWithParent;
 				const shellAst = shellResult?.normalize.ast as RNodeWithParent;
 				assertAstEqual(tsAst, shellAst, true, true, () => `tree-sitter ast: ${JSON.stringify(tsAst)} (${normalizedAstToMermaidUrl(tsAst)}), vs. shell ast: ${JSON.stringify(shellAst)} (${normalizedAstToMermaidUrl(shellAst)})`, false);
 			},
+		);
+
+		testWrapper(
+			userConfig?.skipTreeSitter,
+			false,
+			'cfg SAT properties',
+			function() {
+				const res = tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>;
+				const cfg = extractCfg(res.normalize, res.dataflow.graph);
+				const check = assertCfgSatisfiesProperties(cfg, userConfig?.cfgExcludeProperties);
+				try {
+					assert.isTrue(check, 'cfg fails properties: ' + check + ' is not satisfied');
+				} catch(e: unknown) {
+					console.error('cfg properties:', cfgToMermaidUrl(cfg, res.normalize));
+					throw e;
+				}
+			}
 		);
 	});
 	handleAssertOutput(name, shell, input, userConfig);

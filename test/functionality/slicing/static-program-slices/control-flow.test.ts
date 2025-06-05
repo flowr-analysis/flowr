@@ -59,13 +59,18 @@ print(x)`, ['7@x'], loop == 'repeat' ? 'x <- 1\nrepeat x <- 2\nx' : `x <- 1\n${l
     x <- 2
     x <- 3
 }
-x`, { skipCompare: true /* see https://github.com/flowr-analysis/flowr/issues/1209 */ });
+x`,
+				{
+					skipCompare:          true /* see https://github.com/flowr-analysis/flowr/issues/1209 */,
+					/* they have dead code, the repeat loop never reaches the exit */
+					cfgExcludeProperties: ['entry-reaches-all', 'exit-reaches-all', ...(loop === 'repeat' ? ['has-entry-and-exit' as const] : [])],
+				});
 		});
 		assertSliced(label('dead code (return)', ['name-normal', 'formals-named', 'newlines', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities, 'numbers', 'return', 'unnamed-arguments', 'comments']),
 			shell, `f <- function(x) {
    x <- 3 * x
    return(x)
-   # alles drunter soll natürlich weg 
+   # everything below should no longer be included
    x <- 2
    return(x)
 }
@@ -82,7 +87,7 @@ f(5)`, { skipCompare: true /* inconsistent comment placement in ast, see https:/
       return(x)
    else
       return(1)
-   # alles drunter soll natürlich weg 
+   # everything below should no longer be included
    x <- 2
    return(x)
 }

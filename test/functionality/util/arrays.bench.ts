@@ -1,5 +1,5 @@
 import { bench } from 'vitest';
-import { arrayEqual, arraySum } from '../../../src/util/arrays';
+import { arrayEqual, arraySum } from '../../../src/util/collections/arrays';
 
 
 bench('arrayEqual', () => {
@@ -11,4 +11,3 @@ bench('arraySum', () => {
 	const a = new Array(100000).fill(0);
 	arraySum(a);
 });
-

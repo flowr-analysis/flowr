@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.2.12",
+  "version": "2.2.15",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -12,6 +12,7 @@
     "url": "https://github.com/flowr-analysis/flowr/issues"
   },
   "scripts": {
+    "setup:dev": "git lfs fetch && npm ci && git config --local core.hooksPath .githooks/ && git push --dry-run",
     "main": "npm run build:bundle-flowr && node dist/src/cli/flowr.min.js",
     "flowr": "npm run main --",
     "main-dev": "ts-node src/cli/flowr.ts",
@@ -33,13 +34,15 @@
     "wiki:search-api": "ts-node src/documentation/print-search-wiki.ts",
     "wiki:linting-and-testing": "ts-node src/documentation/print-linting-and-testing-wiki.ts",
     "wiki:interface": "ts-node src/documentation/print-interface-wiki.ts",
+    "wiki:onboarding": "ts-node src/documentation/print-onboarding-wiki.ts",
+    "wiki:faq": "ts-node src/documentation/print-faq-wiki.ts",
     "wiki:cfg": "ts-node src/documentation/print-cfg-wiki.ts",
+    "wiki:linter": "ts-node src/documentation/print-linter-wiki.ts",
     "gen:readme": "ts-node src/documentation/print-readme.ts",
     "build": "tsc --project .",
     "build-dev": "npm run build && npm run build:copy-wasm",
-    "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --tree-shaking=true --bundle --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm-min",
-    "build:copy-wasm": "mkdir -p dist/src/r-bridge/lang-4.x/tree-sitter/ && cp src/r-bridge/lang-4.x/tree-sitter/tree-sitter-r.wasm src/r-bridge/lang-4.x/tree-sitter/tree-sitter.wasm dist/src/r-bridge/lang-4.x/tree-sitter/",
-    "build:copy-wasm-min": "mkdir -p dist/src/cli && cp src/r-bridge/lang-4.x/tree-sitter/tree-sitter-r.wasm src/r-bridge/lang-4.x/tree-sitter/tree-sitter.wasm dist/src/cli",
+    "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --tree-shaking=true --bundle --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm",
+    "build:copy-wasm": "mkdir -p dist/node_modules/@eagleoutice/tree-sitter-r/ && mkdir -p dist/node_modules/web-tree-sitter && cp node_modules/@eagleoutice/tree-sitter-r/tree-sitter-r.wasm dist/node_modules/@eagleoutice/tree-sitter-r/  && cp node_modules/web-tree-sitter/tree-sitter.wasm dist/node_modules/web-tree-sitter/",
     "lint-local": "npx eslint --version && npx eslint src/ test/ --rule \"no-warning-comments: off\"",
     "lint": "npm run license-compat -- --summary && npx eslint --version && npx eslint src/ test/",
     "license-compat": "license-checker --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;BlueOak-1.0.0;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
@@ -175,7 +178,7 @@
     "@eagleoutice/eslint-config-flowr": "^1.0.17",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.20.0",
-    "@j-ulrich/release-it-regex-bumper": "^5.2.0",
+    "@j-ulrich/release-it-regex-bumper": "^5.3.0",
     "@types/command-line-args": "^5.2.3",
     "@types/command-line-usage": "^5.0.4",
     "@types/n-readlines": "^1.0.6",
@@ -190,7 +193,7 @@
     "eslint": "^9.20.1",
     "license-checker": "^25.0.1",
     "npm-run-all": "^4.1.5",
-    "release-it": "^18.1.2",
+    "release-it": "^19.0.2",
     "ts-node": "^10.9.2",
     "typedoc": "^0.27.7",
     "typedoc-plugin-missing-exports": "^3.1.0",
@@ -200,6 +203,7 @@
     "vitest": "^3.0.6"
   },
   "dependencies": {
+    "@eagleoutice/tree-sitter-r": "^1.1.2",
     "@xmldom/xmldom": "^0.9.7",
     "clipboardy": "^4.0.0",
     "command-line-args": "^6.0.1",

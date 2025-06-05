@@ -1,7 +1,7 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import { executeProjectQuery } from './project-query-executor';
-import { bold } from '../../../util/ansi';
-import { printAsMs } from '../../../util/time';
+import { bold } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 
@@ -27,5 +27,6 @@ export const ProjectQueryDefinition = {
 	},
 	schema: Joi.object({
 		type: Joi.string().valid('project').required().description('The type of the query.'),
-	}).description('The project query provides information on the analyzed project.')
+	}).description('The project query provides information on the analyzed project.'),
+	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'project'>;

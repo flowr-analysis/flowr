@@ -23,7 +23,7 @@ export default defineConfig({
 		},
 		setupFiles:  ['./test/functionality/test-setup.ts'],
 		globalSetup: ['./test/functionality/test-setup-global.ts'],
-		reporters:   process.env.GITHUB_ACTIONS ? ['basic', 'github-actions'] : ['dot'],
+		reporters:   process.env.GITHUB_ACTIONS ? ['default', 'github-actions'] : ['dot'],
 		isolate:     false,
 		pool:        'threads',
 		server:      {

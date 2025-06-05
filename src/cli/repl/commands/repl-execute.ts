@@ -1,11 +1,12 @@
 import type { ReplCommand, ReplOutput } from './repl-main';
-import { ColorEffect, Colors, FontStyles, italic } from '../../../util/ansi';
+import { ColorEffect, Colors, FontStyles, italic } from '../../../util/text/ansi';
 import { RShell } from '../../../r-bridge/shell';
 import type { KnownParser } from '../../../r-bridge/parser';
 
 export async function tryExecuteRShellCommand(output: ReplOutput, parser: KnownParser, statement: string, allowRSessionAccess: boolean) {
 	if(!allowRSessionAccess){
-		output.stderr(`${output.formatter.format('You are not allowed to execute arbitrary R code.', { style: FontStyles.Bold, color: Colors.Red, effect: ColorEffect.Foreground })}\nIf you want to do so, please restart flowR with the ${output.formatter.format('--r-session-access', { style: FontStyles.Bold })} flag. Please be careful of the security implications of this action.`);
+		output.stderr(`${output.formatter.format('You are not allowed to execute arbitrary R code.', { style: FontStyles.Bold, color: Colors.Red, effect: ColorEffect.Foreground })} 
+If you want to do so, please restart flowR with the ${output.formatter.format('--r-session-access', { style: FontStyles.Bold })} flag${ parser.name !== 'r-shell' ? '. Additionally, please enable the r-shell engine, e.g., with ' + output.formatter.format('--default-engine r-shell', { style: FontStyles.Bold }) : ''}. Please be careful of the security implications of this action.`);
 	} else if(parser instanceof RShell) {
 		await executeRShellCommand(output, parser, statement);
 	} else {

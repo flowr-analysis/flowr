@@ -1,8 +1,8 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { executeDataflowLensQuery } from './dataflow-lens-query-executor';
-import { bold } from '../../../util/ansi';
-import { printAsMs } from '../../../util/time';
+import { bold } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
 import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
@@ -29,5 +29,6 @@ export const DataflowLensQueryDefinition = {
 	},
 	schema: Joi.object({
 		type: Joi.string().valid('dataflow-lens').required().description('The type of the query.'),
-	}).description('The dataflow-lens query returns a simplified view on the dataflow graph')
+	}).description('The dataflow-lens query returns a simplified view on the dataflow graph'),
+	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'dataflow-lens'>;

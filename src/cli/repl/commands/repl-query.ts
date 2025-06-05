@@ -2,8 +2,8 @@ import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/def
 import { createDataflowPipeline } from '../../../core/steps/pipeline/default-pipelines';
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import type { ReplCommand, ReplOutput } from './repl-main';
-import { splitAtEscapeSensitive } from '../../../util/args';
-import { ansiFormatter, italic } from '../../../util/ansi';
+import { splitAtEscapeSensitive } from '../../../util/text/args';
+import { ansiFormatter, italic } from '../../../util/text/ansi';
 import { describeSchema } from '../../../util/schema';
 import type { Query, QueryResults, SupportedQueryTypes } from '../../../queries/query';
 import { AnyQuerySchema, QueriesSchema , executeQueries } from '../../../queries/query';

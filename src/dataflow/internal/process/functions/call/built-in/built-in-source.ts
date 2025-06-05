@@ -22,13 +22,16 @@ import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { expensiveTrace, log } from '../../../../../../util/log';
+import { expensiveTrace, log, LogLevel } from '../../../../../../util/log';
 import fs from 'fs';
 import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser';
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
-import { resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
 import { isNotUndefined } from '../../../../../../util/assert';
 import path from 'path';
+import { valueSetGuard } from '../../../../../eval/values/general';
+import { isValue } from '../../../../../eval/values/r-value';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
+import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 
 let sourceProvider = requestProviderFromFile();
 
@@ -66,6 +69,16 @@ function returnPlatformPath(p: string): string {
 	return p.replaceAll(AnyPathSeparator, path.sep);
 }
 
+function applyReplacements(path: string, replacements: readonly Record<string, string>[]): string[] {
+	const results = [];
+	for(const replacement of replacements) {
+		const newPath = Object.entries(replacement).reduce((acc, [key, value]) => acc.replace(new RegExp(key, 'g'), value), path);
+		results.push(newPath);
+	}
+
+	return results;
+}
+
 /**
  * Tries to find sourced by a source request and returns the first path that exists
  * @param seed - the path originally requested in the `source` call
@@ -80,7 +93,7 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 		...(inferWdFromScript(config?.inferWorkingDirectory ?? InferWorkingDirectory.No, data.referenceChain))
 	];
 
-	const tryPaths = [seed];
+	let tryPaths = [seed];
 	switch(config?.dropPaths ?? DropPathsOption.No) {
 		case DropPathsOption.Once: {
 			const first = platformBasename(seed);
@@ -90,6 +103,7 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 		case DropPathsOption.All: {
 			const paths = platformDirname(seed).split(AnyPathSeparator);
 			const basename = platformBasename(seed);
+			tryPaths.push(basename);
 			if(paths.length === 1 && paths[0] === '.') {
 				break;
 			}
@@ -103,6 +117,12 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 			break;
 	}
 
+	if(config?.applyReplacements) {
+		const r = config.applyReplacements;
+		tryPaths = tryPaths.flatMap(t => applyReplacements(t, r));
+	}
+
+
 	const found: string[] = [];
 	for(const explore of [undefined, ...explorePaths]) {
 		for(const tryPath of tryPaths) {
@@ -115,7 +135,9 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 			}
 		}
 	}
-	log.info(`Found sourced file ${JSON.stringify(seed)} at ${JSON.stringify(found)}`);
+	if(log.settings.minLevel >= LogLevel.Info) {
+		log.info(`Found sourced file ${JSON.stringify(seed)} at ${JSON.stringify(found)}`);
+	}
 	return found;
 }
 
@@ -144,7 +166,7 @@ export function processSourceCall<OtherInfo>(
 
 	if(!config.forceFollow && getConfig().ignoreSourceCalls) {
 		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFileArgument)} (disabled in config file)`);
-		information.graph.markIdForUnknownSideEffects(rootId);
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
 
@@ -153,13 +175,8 @@ export function processSourceCall<OtherInfo>(
 	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
 		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
 	} else if(sourceFileArgument !== EmptyArgument) {
-		sourceFile = resolveValueOfVariable(sourceFileArgument.value?.lexeme, data.environment, data.completeAst.idMap)?.map(x => {
-			if(typeof x === 'object' && x && 'str' in x) {
-				return x.str as string;
-			} else {
-				return undefined;
-			}
-		}).filter(isNotUndefined);
+		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap }));
+		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 
 	if(sourceFile && sourceFile.length === 1) {
@@ -177,7 +194,7 @@ export function processSourceCall<OtherInfo>(
 			const findCount = data.referenceChain.filter(e => e.request === request.request && e.content === request.content).length;
 			if(findCount > limit) {
 				dataflowLogger.warn(`Found cycle (>=${limit + 1}) in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
-				information.graph.markIdForUnknownSideEffects(rootId);
+				handleUnknownSideEffect(information.graph, information.environment, rootId);
 				return information;
 			}
 
@@ -186,7 +203,7 @@ export function processSourceCall<OtherInfo>(
 	}
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`);
-	information.graph.markIdForUnknownSideEffects(rootId);
+	handleUnknownSideEffect(information.graph, information.environment, rootId);
 	return information;
 }
 
@@ -195,7 +212,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 		/* check if the file exists and if not, fail */
 		if(!fs.existsSync(request.content)) {
 			dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}: file does not exist`);
-			information.graph.markIdForUnknownSideEffects(rootId);
+			handleUnknownSideEffect(information.graph, information.environment, rootId);
 			return information;
 		}
 	}
@@ -217,7 +234,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 	} catch(e) {
 		dataflowLogger.error(`Failed to analyze sourced file ${JSON.stringify(request)}, skipping: ${(e as Error).message}`);
 		dataflowLogger.error((e as Error).stack);
-		information.graph.markIdForUnknownSideEffects(rootId);
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
 
@@ -262,7 +279,7 @@ export function standaloneSourceFile<OtherInfo>(
 	// check if the sourced file has already been dataflow analyzed, and if so, skip it
 	if(data.referenceChain.find(e => e.request === request.request && e.content === request.content)) {
 		dataflowLogger.info(`Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
-		information.graph.markIdForUnknownSideEffects(uniqueSourceId);
+		handleUnknownSideEffect(information.graph, information.environment, uniqueSourceId);
 		return information;
 	}
 

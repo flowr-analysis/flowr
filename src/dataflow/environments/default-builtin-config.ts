@@ -251,7 +251,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{ type: 'function', names: ['interference'],                               processor: 'builtin:apply',               config: { unquoteFunction: true, nameOfFunctionArgument: 'propensity_integrand' },     assumePrimitive: false },
 	{ type: 'function', names: ['ddply'],                                      processor: 'builtin:apply',               config: { unquoteFunction: true, indexOfFunction: 2, nameOfFunctionArgument: '.fun' }, assumePrimitive: false },
 	{ type: 'function', names: ['list'],                                       processor: 'builtin:list',                config: {},                                                                            assumePrimitive: true  },
-	{ type: 'function', names: ['c'],                                          processor: 'builtin:vector',              config: {},                                                                            assumePrimitive: true  },
+	{ type: 'function', names: ['c'],                                          processor: 'builtin:vector',              config: {},                                                                            assumePrimitive: true, evalHandler: 'builtin:c'  },
 	{
 		type:      'function',
 		names:     ['setnames', 'setNames', 'setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr'],

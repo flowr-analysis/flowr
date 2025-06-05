@@ -114,7 +114,7 @@ export const R2_FILE_PATH_VALIDITY = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint:   result => `Path ${result.filePath} at ${formatRange(result.range)}`,
+	prettyPrint:   result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
 	defaultConfig: {
 		additionalReadFunctions:  [],
 		additionalWriteFunctions: [],

@@ -30,11 +30,8 @@ import type { ConfigQuery } from './catalog/config-query/config-query-format';
 import { ConfigQueryDefinition } from './catalog/config-query/config-query-format';
 import type { SearchQuery } from './catalog/search-query/search-query-format';
 import { SearchQueryDefinition } from './catalog/search-query/search-query-format';
-import type {
-	HappensBeforeQuery } from './catalog/happens-before-query/happens-before-query-format';
-import {
-	HappensBeforeQueryDefinition
-} from './catalog/happens-before-query/happens-before-query-format';
+import type { HappensBeforeQuery } from './catalog/happens-before-query/happens-before-query-format';
+import { HappensBeforeQueryDefinition } from './catalog/happens-before-query/happens-before-query-format';
 import type { ResolveValueQuery } from './catalog/resolve-value-query/resolve-value-query-format';
 import { ResolveValueQueryDefinition } from './catalog/resolve-value-query/resolve-value-query-format';
 import type { DataflowLensQuery } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
@@ -47,11 +44,14 @@ import type { LinterQuery } from './catalog/linter-query/linter-query-format';
 import { LinterQueryDefinition } from './catalog/linter-query/linter-query-format';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DatatypeQueryDefinition, type DatatypeQuery } from './catalog/datatype-query/datatype-query-format';
+import type { ControlFlowQuery } from './catalog/control-flow-query/control-flow-query-format';
+import { ControlFlowQueryDefinition } from './catalog/control-flow-query/control-flow-query-format';
 
 export type Query = CallContextQuery
 	| ConfigQuery
 	| SearchQuery
 	| DataflowQuery
+	| ControlFlowQuery
 	| DataflowLensQuery
 	| NormalizedAstQuery
 	| IdMapQuery
@@ -91,6 +91,7 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
 export const SupportedQueries = {
 	'call-context':     CallContextQueryDefinition,
 	'config':           ConfigQueryDefinition,
+	'control-flow':     ControlFlowQueryDefinition,
 	'dataflow':         DataflowQueryDefinition,
 	'dataflow-lens':    DataflowLensQueryDefinition,
 	'id-map':           IdMapQueryDefinition,

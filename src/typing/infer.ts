@@ -30,6 +30,7 @@ export function inferDataTypes<Info extends { typeVariable?: undefined }>(ast: N
 		normalizedAst:        astWithTypeVars,
 		controlFlow:          controlFlowInfo,
 		dataflowInfo:         dataflowInfo,
+		dfg:                  dataflowInfo.graph,
 		defaultVisitingOrder: 'forward' as const,
 	};
 	const visitor = new TypeInferringCfgGuidedVisitor(config);

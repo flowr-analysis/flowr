@@ -127,21 +127,24 @@ describe.sequential('Resolve', withShell(shell => {
 	});
 
 	describe('Resolve Value (distractors)', () => {
-		testMutate('Constant Value',        1, 'x', 'x <- 5', set([5]));
+		testMutate('Constant Value',        1, 'x', 'x <- 5',                                     set([5]));
 		testMutate('Constant Value branch', 4, 'x', 'if(u) { \n x <- 5} else { \n x <- 6 } \n x', set([5, 6]));
-		testMutate('Alias Constant Value',  3, 'x', 'y <- 5 \n x <- y \n x', set([5]));
+		testMutate('Alias Constant Value',  3, 'x', 'y <- 5 \n x <- y \n x',                      set([5]));
+		testMutate('Vector',                2, 'x', 'x <- 1 \n x <- c(1,2,3)',                    vector([1,2,3]));
+
 	});
 
 	describe('Resolve (vectors)', () => {
 		// Do not resolve vector, if c is redefined
 		testResolve('c redefined',            '2@x', 'c <- function() {} \n x <- c(1,2,3)', Top);
 
-		testResolve('Simple Vector (int)',    '2@x', 'x <- c(1, 2, 3, 4) \n x',         vector([1, 2, 3, 4]));
-		testResolve('Simple Vector (string)', '2@x', 'x <- c("a", "b", "c", "d") \n x', vector(['a', 'b', 'c', 'd']));
+		testResolve('Simple Vector (int)',    '2@x', 'x <- c(1, 2, 3, 4) \n x',           vector([1, 2, 3, 4]));
+		testResolve('Simple Vector (string)', '2@x', 'x <- c("a", "b", "c", "d") \n x',   vector(['a', 'b', 'c', 'd']));
 		testResolve('Vector with alias',      '2@x', 'y <- 1 \n x <- c(y,2)',             vector([1, 2]));
-		testResolve('Vector in vector',       '1@x', 'x <- c(1, 2, c(3, 4, 5))',        vector([1, 2, 3, 4, 5]));
+		testResolve('Vector in vector',       '1@x', 'x <- c(1, 2, c(3, 4, 5))',          vector([1, 2, 3, 4, 5]));
 		
-		testResolve('c aliased',              '2@x', 'f <- c \n x <- f(1,2,3)', vector([1,2,3]));
+		testResolve('c aliased',              '2@x', 'f <- c \n x <- f(1,2,3)',           vector([1,2,3]));
+		testResolve('c aliased deeply',       '3@x', 'f <- c \n g <- f \n x <- g(1,2,3)', vector([1,2,3]));
 	});
 
 	describe('Resolve (vectors replacement operators)', () => {

@@ -100,6 +100,12 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '2@y', functionName: ':::', libraryName: 'bar' }
 		] });
 
+		testQuery('Using a vector without chracter.only', 'lapply(c("a", "b", "c"), library)', { libraries: [
+			{ nodeId: '1@library', functionName: 'library', libraryName: '"a"' },
+			{ nodeId: '1@library', functionName: 'library', libraryName: '"b"' },
+			{ nodeId: '1@library', functionName: 'library', libraryName: '"c"' }
+		] });
+
 		testQuery('Using a vector to load', 'lapply(c("foo", "bar", "baz"), library, character.only = TRUE)', { libraries: [
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'foo' },
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'bar' },

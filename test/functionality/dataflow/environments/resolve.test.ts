@@ -77,21 +77,21 @@ describe.sequential('Resolve', withShell(shell => {
 		});
 	}
 
-	// function testMutate(name: string, identifier: string, code: string, expected: Value, allow: Allow = Allow.None) {
-	// 	const distractors: string[] = [
-	// 		`while(FALSE) { ${identifier} <- 0 }`,
-	// 		`if(FALSE) { ${identifier} <- 0 }`, 
-	// 		'u <- u + 1',
-	// 		`if(FALSE) { rm(${identifier})}`
-	// 	];
+	function testMutate(name: string, line: number, identifier: string, code: string, expected: Value, allow: Allow = Allow.None) {
+		const distractors: string[] = [
+			`while(FALSE) { ${identifier} <- 0 }`,
+			`if(FALSE) { ${identifier} <- 0 }`, 
+			'u <- u + 1',
+			`if(FALSE) { rm(${identifier})}`
+		];
 
-	// 	describe(name, () => {
-	// 		for(const distractor of distractors) {
-	// 			const mutatedCode = code.split('\n').map(line => `${distractor}\n${line}`).join('\n');
-	// 			testResolve(distractor, identifier, mutatedCode, expected, allow);
-	// 		}
-	// 	});
-	// }
+		describe(name, () => {
+			for(const distractor of distractors) {
+				const mutatedCode = code.split('\n').map(line => `${distractor}\n${line}`).join('\n');
+				testResolve(distractor, `${line*2}@${identifier}`, mutatedCode, expected, allow);
+			}
+		});
+	}
 
 	describe('Negative Tests', () => { 	
 		testResolve('Unknown if',           '2@x', 'if(u) { x <- 2 } else { x <- foo() } \n x', Top);
@@ -126,11 +126,11 @@ describe.sequential('Resolve', withShell(shell => {
 		testResolve('Superassign Arith',    '5@x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', interval(8), Allow.Top);
 	});
 
-	// describe('Resolve Value (distractors)', () => {
-	// 	testMutate('Constant Value',        '1@x', 'x <- 5', set([5]));
-	// 	testMutate('Constant Value branch', 'x', 'if(u) { \n x <- 5} else { \n x <- 6 }', set([5, 6]));
-	// 	testMutate('Alias Constant Value',  'x', 'y <- 5 \n x <- y \n x', set([5]));
-	// });
+	describe('Resolve Value (distractors)', () => {
+		testMutate('Constant Value',        1, 'x', 'x <- 5', set([5]));
+		testMutate('Constant Value branch', 4, 'x', 'if(u) { \n x <- 5} else { \n x <- 6 } \n x', set([5, 6]));
+		testMutate('Alias Constant Value',  3, 'x', 'y <- 5 \n x <- y \n x', set([5]));
+	});
 
 	describe('Resolve (vectors)', () => {
 		// Do not resolve vector, if c is redefined

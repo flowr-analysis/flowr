@@ -143,15 +143,30 @@ export class RTypeVariable {
 			otherRep.boundType = thisRep;
 		} else if(thisRep instanceof UnresolvedRFunctionType && otherRep instanceof UnresolvedRFunctionType && thisRep.parameterTypes.length === otherRep.parameterTypes.length) {
 			thisRep.unify(otherRep);
+		} else if(thisRep instanceof RErrorType && otherRep instanceof RErrorType) {
+			otherRep.conflictingTypes.push(...thisRep.conflictingTypes);
+			this.boundType = otherRep;
 		} else if(thisRep.tag !== otherRep.tag) {
-			this.boundType = new RErrorType();
+			if(thisRep instanceof RErrorType) {
+				thisRep.conflictingTypes.push(otherRep);
+			} else if(otherRep instanceof RErrorType) {
+				otherRep.conflictingTypes.push(thisRep);
+				this.boundType = otherRep;
+			} else {
+				this.boundType = new RErrorType([thisRep, otherRep]);
+			}
 		}
 	}
 }
 
 export class RErrorType {
 	readonly tag = RDataTypeTag.Error;
-	conflicingTypes: RDataType[] = [];
+
+	constructor(conflictingTypes: UnresolvedRDataType[]) {
+		this.conflictingTypes = conflictingTypes;
+	}	
+
+	conflictingTypes: UnresolvedRDataType[];
 }
 
 

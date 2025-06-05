@@ -136,6 +136,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '4@library', functionName: 'library', libraryName: 'c' }
 		] });
 
+		testQuery('Using a vector (but c is redefined)', 'c <- print\nv <- c(c("a", "b"), "c")\nlapply(v, library, character.only = TRUE)', { libraries: [
+			{ nodeId: '3@library', functionName: 'library', libraryName: 'unknown', lexemeOfArgument: 'v' },
+		] });
 
 		testQuery('Using a vector by variable (real world)', 'packages <- c("ggplot2", "dplyr", "tidyr")\nlapply(packages, library, character.only = TRUE)', { libraries: [
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'ggplot2' },

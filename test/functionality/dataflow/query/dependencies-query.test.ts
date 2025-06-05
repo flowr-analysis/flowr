@@ -130,6 +130,19 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'c' }
 		] });
 
+		testQuery('Using a vector by variable (with distractor)', 'if(u) {v <- 42}\nv <- c(c("a", "b"), "c")\nc <- 4\nlapply(v, library, character.only = TRUE)', { libraries: [
+			{ nodeId: '4@library', functionName: 'library', libraryName: 'a' },
+			{ nodeId: '4@library', functionName: 'library', libraryName: 'b' },
+			{ nodeId: '4@library', functionName: 'library', libraryName: 'c' }
+		] });
+
+
+		testQuery('Using a vector by variable (real world)', 'packages <- c("ggplot2", "dplyr", "tidyr")\nlapply(packages, library, character.only = TRUE)', { libraries: [
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'ggplot2' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'dplyr' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'tidyr' }
+		] });
+
 		testQuery('Using a deeply nested vector by variable', 'v <- c(c(c("a", c("b")), "c"), "d", c("e", c("f", "g")))\nlapply(v, library, character.only = TRUE)', { libraries: [
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'a' },
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },

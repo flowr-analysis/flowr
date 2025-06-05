@@ -240,6 +240,7 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 	if(!resolveValue) {
 		full = false;
 	}
+
 	if(resolveValue === 'library') {
 		const hasChar = hasCharacterOnly(data, vertex, idMap);
 		if(hasChar === false) {
@@ -249,7 +250,7 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 			full = false;
 		}
 	}
-	full = true;
+	
 	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph: data.dataflow.graph, full: full }));
 	if(resolved) {
 		const values: string[] = [];
@@ -263,7 +264,7 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 			} else if(value.type === 'logical' && isValue(value.value)) {
 				values.push(value.value.valueOf() ? 'TRUE' : 'FALSE');
 			} else if(value.type === 'vector' && isValue(value.elements)) {
-				const elements = collectStrings(value.elements);
+				const elements = collectStrings(value.elements, !full);
 				if(elements === undefined) {
 					return undefined;
 				}

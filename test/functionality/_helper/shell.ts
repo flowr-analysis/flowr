@@ -4,26 +4,16 @@ import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10
 import { guard, isNotUndefined } from '../../../src/util/assert';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import type { TestLabel, TestLabelContext } from './label';
-import { dropTestLabel , modifyLabelName , decorateLabelContext } from './label';
+import { decorateLabelContext, dropTestLabel, modifyLabelName } from './label';
 import { printAsBuilder } from './dataflow/dataflow-builder-printer';
 import { RShell } from '../../../src/r-bridge/shell';
 import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
 import type { fileProtocol, RParseRequests } from '../../../src/r-bridge/retriever';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
-import type {
-	AstIdMap, IdGenerator, NormalizedAst,
-	RNodeWithParent
-} from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	deterministicCountingIdGenerator
-} from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import type {
-	TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE ,
-	DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
-import {
-	DEFAULT_DATAFLOW_PIPELINE,
-	DEFAULT_NORMALIZE_PIPELINE, TREE_SITTER_NORMALIZE_PIPELINE, createSlicePipeline
-} from '../../../src/core/steps/pipeline/default-pipelines';
+import type { AstIdMap, IdGenerator, NormalizedAst, RNodeWithParent } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE, TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
+import { createSlicePipeline, DEFAULT_DATAFLOW_PIPELINE, DEFAULT_NORMALIZE_PIPELINE, TREE_SITTER_NORMALIZE_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff-dataflow-graph';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -33,10 +23,10 @@ import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
 import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph';
-import { assert, test, describe, afterAll, beforeAll } from 'vitest';
+import { afterAll, assert, beforeAll, describe, test } from 'vitest';
 import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import type { PipelineOutput , Pipeline } from '../../../src/core/steps/pipeline/pipeline';
+import type { Pipeline, PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
 import { runSearch } from '../../../src/search/flowr-search-executor';
 import type { ContainerIndex } from '../../../src/dataflow/graph/vertex';
@@ -49,7 +39,7 @@ import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import type { CfgProperty } from '../../../src/control-flow/cfg-properties';
 import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
 import type { KnownParser } from '../../../src/r-bridge/parser';
-import type { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
+import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -447,6 +437,19 @@ function testWrapper(skip: boolean | undefined, shouldFail: boolean, testName: s
 }
 
 export type TestCaseFailType = 'fail-shell' | 'fail-tree-sitter' | 'fail-both' | undefined;
+
+export function assertSlicedF(
+	name: TestLabel,
+	shell: RShell,
+	input: string,
+	criteria: SlicingCriteria,
+	expected: string,
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[], sliceDirection?: SliceDirection },
+	testCaseFailType?: TestCaseFailType,
+	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0)
+) {
+	return assertSliced(name, shell, input, criteria, expected, { ...userConfig, sliceDirection: SliceDirection.Forward }, testCaseFailType, getId);
+}
 
 export function assertSliced(
 	name: TestLabel,

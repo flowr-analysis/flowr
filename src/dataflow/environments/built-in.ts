@@ -39,7 +39,7 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
-import { resolveAsVector } from '../eval/resolve/resolve';
+import { resolveAsMinus, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
 import type { DataflowGraph } from '../graph/graph';
 
 export type BuiltIn = `built-in:${string}`;
@@ -89,7 +89,7 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 }
 
 
-export type BuiltInEvalHandler = (a: RNodeWithParent, env: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap) => Value;
+export type BuiltInEvalHandler = (a: RNodeWithParent, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap) => Value;
 
 function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -208,8 +208,9 @@ export const BuiltInProcessorMapper = {
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;
 
 export const BuiltInEvalHandlerMapper = {
-	'built-in:c':     resolveAsVector,
-	'builtin:vector': resolveAsVector
+	'built-in:c': resolveAsVector,
+	'built-in::': resolveAsSeq,
+	'built-in:-': resolveAsMinus
 } as const satisfies Record<string, BuiltInEvalHandler>;
 
 export type BuiltInMappingName = keyof typeof BuiltInProcessorMapper;

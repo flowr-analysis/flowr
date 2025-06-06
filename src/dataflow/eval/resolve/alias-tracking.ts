@@ -56,9 +56,9 @@ function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environ
 	const defs = resolveByName(identifier, environment, ReferenceType.Function);
 	if(defs === undefined || defs.length !== 1) {
 		return undefined;
-	}	
-	
-	return [sourceId]; 
+	}
+
+	return [sourceId];
 }
 
 function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
@@ -95,13 +95,13 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 
 /**
  * Gets the definitions / aliases of a node
- * 
- * This function is called by the built-in-assignment processor so that we can 
+ *
+ * This function is called by the built-in-assignment processor so that we can
  * track assignments inside the environment. The returned ids are stored in
  * the sourceIds value field of their InGraphIdentifierDefinition. This enables
- * us later, in the {@link trackAliasInEnvironments} function, to get all the 
+ * us later, in the {@link trackAliasInEnvironments} function, to get all the
  * aliases of an identifier.
- * 
+ *
  * @param sourceIds    - node ids to get the definitions for
  * @param dataflow     - dataflow graph
  * @param environment  - environment
@@ -127,13 +127,13 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 
 /**
  * Evaluates the value of a node in the set domain.
- * 
+ *
  * resolveIdToValue tries to resolve the value using the data it has been given.
- * If the environment is provided the approximation is more precise, as we can 
+ * If the environment is provided the approximation is more precise, as we can
  * track aliases in the environment.
  * Otherwise, the graph is used to try and resolve the nodes value.
  * If neither is provided the value cannot be resolved.
- * 
+ *
  * This function is also used by the Resolve Value Query and the Dependency Query
  * to resolve values. For e.g. in the Dependency Query it is used to resolve calls
  * like `lapply(c("a", "b", "c"), library, character.only = TRUE)`
@@ -148,7 +148,7 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 	if(id === undefined) {
 		return Top;
 	}
-	
+
 	idMap ??= graph?.idMap;
 	const node = typeof id === 'object' ? id : idMap?.get(id);
 	if(node === undefined) {
@@ -166,6 +166,8 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 				return Top;
 			}
 		case RType.FunctionCall:
+		case RType.BinaryOp:
+		case RType.UnaryOp:
 			return setFrom(resolveNode(node, environment, graph, idMap));
 		case RType.String:
 		case RType.Number:
@@ -178,11 +180,11 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 
 /**
  * Please use {@link resolveIdToValue}
- * 
+ *
  * Uses the aliases that were tracked in the environments (by the
  * {@link getAliases} function) to resolve a node to a value.
- * 
- * 
+ *
+ *
  * @param identifier - Identifier to resolve
  * @param use        - Environment to use
  * @param graph      - Dataflow graph
@@ -210,14 +212,14 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, use
 			if(def.value.length === 0) {
 				return Top;
 			}
-		
+
 			for(const alias of def.value) {
 				const definitionOfAlias = idMap?.get(alias);
 				if(definitionOfAlias !== undefined) {
 					const value = resolveNode(definitionOfAlias, use, graph, idMap);
 					if(isTop(value)) {
 						return Top;
-					} 
+					}
 
 					values.add(value);
 				}
@@ -232,7 +234,7 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, use
 	return setFrom(...values);
 }
 
-onUnknownSideEffect((_graph: DataflowGraph, env: REnvironmentInformation, _id: NodeId, target?: LinkTo<RegExp | string>) => {		
+onUnknownSideEffect((_graph: DataflowGraph, env: REnvironmentInformation, _id: NodeId, target?: LinkTo<RegExp | string>) => {
 	if(target) {
 		return;
 	}
@@ -240,8 +242,8 @@ onUnknownSideEffect((_graph: DataflowGraph, env: REnvironmentInformation, _id: N
 	let current = env.current;
 	while(current) {
 		current.memory.forEach(mem => mem.forEach((def) => {
-			if(def.type !== ReferenceType.BuiltInConstant 
-				&& def.type !== ReferenceType.BuiltInFunction 
+			if(def.type !== ReferenceType.BuiltInConstant
+				&& def.type !== ReferenceType.BuiltInFunction
 				&& def.value !== undefined) {
 				def.value.length = 0;
 			}
@@ -260,8 +262,8 @@ onReplacementOperator((args: ReplacementOperatorHandlerArgs) => {
 	while(current) {
 		const defs = current.memory.get(args.target);
 		defs?.forEach(def  => {
-			if(def.type !== ReferenceType.BuiltInConstant 
-				&& def.type !== ReferenceType.BuiltInFunction 
+			if(def.type !== ReferenceType.BuiltInConstant
+				&& def.type !== ReferenceType.BuiltInFunction
 				&& def.value !== undefined) {
 				def.value.length = 0;
 			}
@@ -290,10 +292,10 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
 }
 
 /**
- * Please use {@link resolveIdToValue} 
- * 
+ * Please use {@link resolveIdToValue}
+ *
  * Tries to resolve the value of a node by traversing the dataflow graph
- * 
+ *
  * @param id    - node to resolve
  * @param graph - dataflow graph
  * @param idMap - idmap of dataflow graph
@@ -377,9 +379,9 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 
 /**
  * Please use {@link resolveIdToValue}
- * 
+ *
  * Resolve an Identifier to a constant, if the identifier is a constant
- * 
+ *
  * @param name        - Identifier to resolve
  * @param environment - Environment to use
  * @returns Value of Constant or Top

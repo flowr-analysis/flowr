@@ -18,10 +18,11 @@ import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { FunctionArgument } from '../dataflow/graph/graph';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { CfgVertexType } from '../control-flow/control-flow-graph';
+import { CfgEdgeType, CfgVertexType } from '../control-flow/control-flow-graph';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import type { NoInfo } from '../r-bridge/lang-4.x/ast/model/model';
+import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 
 export function inferDataTypes<Info extends { typeVariable?: undefined }>(ast: NormalizedAst<Info>, dataflowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
@@ -214,40 +215,46 @@ class TypeInferringCfgGuidedVisitor<
 		
 		guard(conditionNode !== undefined, 'Expected condition node to be defined');
 		conditionNode.info.typeVariable.unify(new RLogicalType());
+		
+		const cfgVertex = this.config.controlFlow.graph.getVertex(data.call.id);
+		guard(cfgVertex !== undefined && (cfgVertex.type === CfgVertexType.Statement || cfgVertex.type === CfgVertexType.Expression),
+			'Expected statement or expression vertex for if-then-else');
+		const cfgEndVertexId = cfgVertex.end?.at(0);
+		guard(cfgEndVertexId !== undefined && cfgVertex.end?.length === 1, 'Expected exactly one end vertex for if-then-else');
+		
+		const isThenBranchReachable = this.config.controlFlow.graph.outgoingEdges(data.then ?? cfgEndVertexId)?.values().some((edge) => {
+			return edge.label === CfgEdgeType.Cd && edge.when === RTrue;
+		}) ?? false;
+		const isElseBranchReachable = this.config.controlFlow.graph.outgoingEdges(data.else ?? cfgEndVertexId)?.values().some((edge) =>{
+			return edge.label === CfgEdgeType.Cd && edge.when === RFalse;
+		}) ?? false;
 
 		const node = this.getNormalizedAst(data.call.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
-
-		if(data.then !== undefined) {
-			const isThenBranchReachable = (this.config.controlFlow.graph.ingoingEdges(data.then)?.size ?? 0) > 0;
-			
-			const thenNode = this.getNormalizedAst(data.then);
-			guard(thenNode !== undefined, 'Expected then node to be defined');
-
-			if(isThenBranchReachable) {
+		
+		if(isThenBranchReachable) {
+			if(data.then !== undefined) {	
+				const thenNode = this.getNormalizedAst(data.then);
+				guard(thenNode !== undefined, 'Expected then node to be defined');
 				node.info.typeVariable.unify(thenNode.info.typeVariable);
 			} else {
-				node.info.typeVariable.unify(new RNeverType());
+				// If there is no then branch, we can assume that the type is null
+				node.info.typeVariable.unify(new RNullType());
 			}
 		} else {
-			// If there is no then branch, we can assume that the type is null
-			node.info.typeVariable.unify(new RNullType());
+			node.info.typeVariable.unify(new RNeverType());
 		}
-
-		if(data.else !== undefined) {
-			const isElseBranchReachable = (this.config.controlFlow.graph.ingoingEdges(data.else)?.size ?? 0) > 0;
-
-			const elseNode = this.getNormalizedAst(data.else);
-			guard(elseNode !== undefined, 'Expected else node to be defined');
-
-			if(isElseBranchReachable) {
+		if(isElseBranchReachable) {
+			if(data.else !== undefined) {
+				const elseNode = this.getNormalizedAst(data.else);
+				guard(elseNode !== undefined, 'Expected else node to be defined');
 				node.info.typeVariable.unify(elseNode.info.typeVariable);
 			} else {
-				node.info.typeVariable.unify(new RNeverType());
+				// If there is no else branch, we can assume that the type is null
+				node.info.typeVariable.unify(new RNullType());
 			}
 		} else {
-			// If there is no else branch, we can assume that the type is null
-			node.info.typeVariable.unify(new RNullType());
+			node.info.typeVariable.unify(new RNeverType());
 		}
 	}
 	

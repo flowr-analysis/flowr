@@ -5,8 +5,6 @@ import { guard } from '../util/assert';
  * type inferencer. It is mainly used to identify subtypes of {@link RDataType}.
  */
 export enum RDataTypeTag {
-    /** {@link RAnyType} */
-    Any = 'RAnyType',
     /** {@link RLogicalType} */
     Logical = 'RLogicalType',
     /** {@link RIntegerType} */
@@ -30,15 +28,11 @@ export enum RDataTypeTag {
     /** {@link RLanguageType} */
     Language = 'RLanguageType',
 	/** {@link RNeverType} */
-	Never = 'RNeverType',
-    /** {@link RTypeVariable} */
     Variable = 'RTypeVariable',
 	/** {@link RErrorType} */
 	Error = 'RErrorType',
-}
-
-export class RAnyType {
-	readonly tag = RDataTypeTag.Any;
+	/** {@link RUnknownType} */
+	Unknown = 'RUnknownType',
 }
 
 export class RLogicalType {
@@ -114,10 +108,6 @@ export class RLanguageType {
 	readonly tag = RDataTypeTag.Language;
 }
 
-export class RNeverType {
-	readonly tag = RDataTypeTag.Never;
-}
-
 export class RTypeVariable {
 	readonly tag = RDataTypeTag.Variable;
 	private boundType: UnresolvedRDataType | undefined;
@@ -169,11 +159,15 @@ export class RErrorType {
 	conflictingTypes: UnresolvedRDataType[];
 }
 
+export class RUnknownType {
+	readonly tag = RDataTypeTag.Unknown;
+}
+
 
 export function resolveType(type: UnresolvedRDataType): RDataType {
 	if(type instanceof RTypeVariable) {
 		const typeRep = type.find();
-		return typeRep !== type ? resolveType(typeRep) : { tag: RDataTypeTag.Any };
+		return typeRep !== type ? resolveType(typeRep) : { tag: RDataTypeTag.Unknown };
 	} else if(type instanceof UnresolvedRFunctionType) {
 		const resolvedParameterTypes = type.parameterTypes.map(resolveType);
 		const resolvedReturnType = resolveType(type.returnType);
@@ -203,14 +197,13 @@ export type CompoundRDataType = RFunctionType;
  * It should be used whenever you either not care what kind of
  * type you are dealing with or if you want to handle all possible types.
  */
-export type RDataType = RAnyType | RNeverType | PrimitiveRDataType | CompoundRDataType | RErrorType;
+export type RDataType = PrimitiveRDataType | CompoundRDataType | RErrorType | RUnknownType;
 
 export type UnresolvedCompoundRDataType = UnresolvedRFunctionType;
 
 export type UnresolvedRDataType
-	= RAnyType
-	| RNeverType
-	| PrimitiveRDataType
+	= PrimitiveRDataType
 	| UnresolvedCompoundRDataType
 	| RTypeVariable
-	| RErrorType;
+	| RErrorType
+	| RUnknownType;

@@ -15,7 +15,7 @@ describe('Infer types for builtin functions', () => {
 
 	assertInferredTypes(
 		'eval(quote(TRUE))',
-		{ query: Q.criterion('1@eval').build(), expectedType: { tag: RDataTypeTag.Any as const } },
+		{ query: Q.criterion('1@eval').build(), expectedType: { tag: RDataTypeTag.Unknown as const } },
 		{ query: Q.criterion('1@quote').build(), expectedType: { tag: RDataTypeTag.Language as const } },
 		{ query: Q.criterion('1@TRUE').build(), expectedType: { tag: RDataTypeTag.Logical as const } }
 	);

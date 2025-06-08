@@ -9,7 +9,7 @@ import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RDataType } from './types';
-import { RTypeVariable , RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, RNeverType, RListType, RLanguageType, RAnyType, UnresolvedRFunctionType } from './types';
+import { RTypeVariable , RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, RListType, RLanguageType, UnresolvedRFunctionType } from './types';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../util/assert';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
@@ -200,11 +200,9 @@ class TypeInferringCfgGuidedVisitor<
 
 		const cfgVertex = this.config.controlFlow.graph.getVertex(data.call.id);
 		guard(cfgVertex !== undefined && cfgVertex.type === CfgVertexType.Statement, 'Expected statement vertex for loop');
-		const isInfinite = (cfgVertex.end ?? []).reduce((prevCount, id) => prevCount + (this.config.controlFlow.graph.outgoingEdges(id)?.size ?? 0), 0) === 0;
+		const isFinite = (cfgVertex.end ?? []).reduce((prevCount, id) => prevCount + (this.config.controlFlow.graph.outgoingEdges(id)?.size ?? 0), 0) > 0;
 
-		if(isInfinite) {
-			node.info.typeVariable.unify(new RNeverType());
-		} else {
+		if(isFinite) {
 			node.info.typeVariable.unify(new RNullType());
 		}
 	}
@@ -241,8 +239,6 @@ class TypeInferringCfgGuidedVisitor<
 				// If there is no then branch, we can assume that the type is null
 				node.info.typeVariable.unify(new RNullType());
 			}
-		} else {
-			node.info.typeVariable.unify(new RNeverType());
 		}
 		if(isElseBranchReachable) {
 			if(data.else !== undefined) {
@@ -253,8 +249,6 @@ class TypeInferringCfgGuidedVisitor<
 				// If there is no else branch, we can assume that the type is null
 				node.info.typeVariable.unify(new RNullType());
 			}
-		} else {
-			node.info.typeVariable.unify(new RNeverType());
 		}
 	}
 	
@@ -277,10 +271,6 @@ class TypeInferringCfgGuidedVisitor<
 		
 		guard(argNode !== undefined, 'Expected argument node to be defined');
 		argNode.info.typeVariable.unify(new RLanguageType());
-
-		const node = this.getNormalizedAst(data.call.id);
-		guard(node !== undefined, 'Expected AST node to be defined');
-		node.info.typeVariable.unify(new RAnyType()); // TODO: Infer a more specific type based on the argument if possible
 	}
 
 	override onListCall(data: { call: DataflowGraphVertexFunctionCall }) {

@@ -102,17 +102,23 @@ class TypeInferringCfgGuidedVisitor<
 	}
 
 	override onVariableUse(data: { vertex: DataflowGraphVertexUse }): void {
-		const node = this.getNormalizedAst(data.vertex.id);
-		guard(node !== undefined, 'Expected AST node to be defined');
+		const isArgumentOfGetCall = this.config.dfg.ingoingEdges(data.vertex.id)?.entries().some(([source, edge]) => {
+			return edgeIncludesType(edge.types, EdgeType.Argument) &&
+				(this.config.dfg.getVertex(source)?.origin as string[] | undefined)?.includes('builtin:get');
+		}) ?? false;
+		if(isArgumentOfGetCall) {
+			// If the variable use occurs through a `get` call, it is already handled by the `onGetCall` method
+			return;
+		}
 		
-		const origins = this.getOrigins(data.vertex.id);
-		const readOrigins = origins?.filter((origin) => origin.type === OriginType.ReadVariableOrigin);
+		const node = this.getNormalizedAst(data.vertex.id);
+		guard(node !== undefined, 'Expected AST node to be defined');		
 
+		const readOrigins = this.getOrigins(data.vertex.id)?.filter((origin) => origin.type === OriginType.ReadVariableOrigin);
 		if(readOrigins === undefined || readOrigins.length === 0) {
 			node.info.typeVariable.unify(new RNullType());
 			return;
 		}
-
 		for(const readOrigin of readOrigins) {
 			const readNode = this.getNormalizedAst(readOrigin.id);
 			guard(readNode !== undefined, 'Expected read node to be defined');
@@ -161,6 +167,20 @@ class TypeInferringCfgGuidedVisitor<
 
 		guard(varNameNode !== undefined, 'Expected variable name node to be defined');
 		varNameNode.info.typeVariable.unify(new RStringType());
+
+		const node = this.getNormalizedAst(data.call.id);
+		guard(node !== undefined, 'Expected AST node to be defined');
+
+		const varReadOrigins = this.getOrigins(varName.nodeId)?.filter((origin) => origin.type === OriginType.ReadVariableOrigin);
+		if(varReadOrigins === undefined || varReadOrigins.length === 0) {
+			node.info.typeVariable.unify(new RNullType());
+			return;
+		}
+		for(const readOrigin of varReadOrigins) {
+			const readNode = this.getNormalizedAst(readOrigin.id);
+			guard(readNode !== undefined, 'Expected read node to be defined');
+			node.info.typeVariable.unify(readNode.info.typeVariable);
+		}
 	}
 
 	override onRmCall(data: { call: DataflowGraphVertexFunctionCall }) {

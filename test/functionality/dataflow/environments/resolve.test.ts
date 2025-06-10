@@ -138,13 +138,14 @@ describe.sequential('Resolve', withShell(shell => {
 		// Do not resolve vector, if c is redefined
 		testResolve('c redefined',            '2@x', 'c <- function() {} \n x <- c(1,2,3)', Top);
 
-		testResolve('Simple Vector (int)',    '2@x', 'x <- c(1, 2, 3, 4) \n x',           vector([1, 2, 3, 4]));
-		testResolve('Simple Vector (string)', '2@x', 'x <- c("a", "b", "c", "d") \n x',   vector(['a', 'b', 'c', 'd']));
-		testResolve('Vector with alias',      '2@x', 'y <- 1 \n x <- c(y,2)',             vector([1, 2]));
-		testResolve('Vector in vector',       '1@x', 'x <- c(1, 2, c(3, 4, 5))',          vector([1, 2, 3, 4, 5]));
+		testResolve('Simple Vector (int)',    '2@x', 'x <- c(1, 2, 3, 4) \n x',                      vector([1, 2, 3, 4]));
+		testResolve('Simple Vector (string)', '2@x', 'x <- c("a", "b", "c", "d") \n x',              vector(['a', 'b', 'c', 'd']));
+		testResolve('Vector with alias',      '2@x', 'y <- 1 \n x <- c(y,2)',                        vector([1, 2]));
+		testResolve('Vector in vector',       '1@x', 'x <- c(1, 2, c(3, 4, 5))',                     vector([1, 2, 3, 4, 5]));
+		testResolve('Vector in vector alias', '2@x', 'y <- c(1, 2, c(3,4)) \n x <- c(y, 5, c(6,7))', vector([1, 2, 3, 4, 5, 6, 7]));
 		
-		testResolve('c aliased',              '2@x', 'f <- c \n x <- f(1,2,3)',           vector([1,2,3]));
-		testResolve('c aliased deeply',       '3@x', 'f <- c \n g <- f \n x <- g(1,2,3)', vector([1,2,3]));
+		testResolve('c aliased',              '2@x', 'f <- c \n x <- f(1,2,3)',                      vector([1,2,3]));
+		testResolve('c aliased deeply',       '3@x', 'f <- c \n g <- f \n x <- g(1,2,3)',            vector([1,2,3]));		
 	});
 
 	describe('Resolve (vectors replacement operators)', () => {

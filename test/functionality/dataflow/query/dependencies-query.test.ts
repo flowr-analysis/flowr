@@ -106,6 +106,11 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '1@library', functionName: 'library', libraryName: '"c"' }
 		] });
 
+		testQuery('Using a vector to load (missing elements)', 'lapply(c("x", u), library, character.only = TRUE)', { libraries: [
+			// We currently don't suppert resolving that "x" and some unknown library is loaded
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'unknown', lexemeOfArgument: 'c("x", u)' },
+		] });
+
 		testQuery('Using a vector to load', 'lapply(c("foo", "bar", "baz"), library, character.only = TRUE)', { libraries: [
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'foo' },
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'bar' },

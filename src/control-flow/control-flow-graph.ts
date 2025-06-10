@@ -34,6 +34,10 @@ export function edgeTypeToString(type: CfgEdgeType): string {
 	}
 }
 
+export function isCfgMarkerNode(vertex: CfgSimpleVertex): vertex is CfgMidMarkerVertex | CfgEndMarkerVertex {
+	return vertex.type === CfgVertexType.MidMarker || vertex.type === CfgVertexType.EndMarker;
+}
+
 /**
  * A plain vertex in the {@link ControlFlowGraph}.
  * Please use {@link CfgSimpleVertex} to refer to all potential vertex types within the graph.

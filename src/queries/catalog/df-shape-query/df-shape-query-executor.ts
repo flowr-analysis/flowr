@@ -2,13 +2,10 @@ import type { DfShapeQuery, DfShapeQueryResult } from './df-shape-query-format';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import { extractCfg } from '../../../control-flow/extract-cfg';
-import { performDataFrameAbsint } from '../../../abstract-interpretation/data-frame/abstract-interpretation';
+import { performDataFrameAbsint, resolveIdToAbstractValue } from '../../../abstract-interpretation/data-frame/absint-visitor';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/domain';
-import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { AbstractInterpretationInfo } from '../../../abstract-interpretation/data-frame/absint-info';
-import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 export function executeDfShapeQuery({ dataflow: { graph }, ast }: BasicQueryData, queries: readonly DfShapeQuery[]): DfShapeQueryResult {
 	if(queries.length !== 1 && queries.some(query => query.criterion === undefined)) {
@@ -18,7 +15,7 @@ export function executeDfShapeQuery({ dataflow: { graph }, ast }: BasicQueryData
 
 	const start = Date.now();
 	const cfg = extractCfg(ast, graph);
-	const domains = performDataFrameAbsint(cfg, graph);
+	const domains = performDataFrameAbsint(cfg, graph, ast);
 
 	if(queries.length === 1 && queries[0].criterion === undefined) {
 		return {
@@ -39,8 +36,8 @@ export function executeDfShapeQuery({ dataflow: { graph }, ast }: BasicQueryData
 			continue;
 		}
 		const nodeId = slicingCriterionToId(query.criterion, ast.idMap);
-		const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = ast.idMap.get(nodeId);
-		const value = node?.info.dataFrame?.domain?.get(node.info.id);
+		const node = ast.idMap.get(nodeId);
+		const value = node ? resolveIdToAbstractValue(node?.info.id, graph) : undefined;
 		result.set(query.criterion, value);
 	}
 

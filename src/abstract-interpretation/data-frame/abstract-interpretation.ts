@@ -1,14 +1,14 @@
 import type { CfgSimpleVertex, ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import { CfgVertexType, ControlFlowGraph } from '../../control-flow/control-flow-graph';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import type { RConstant, RNode, RSingleNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { AbstractInterpretationInfo } from './absint-info';
 import type { DataFrameDomain, DataFrameStateDomain } from './domain';
 import { equalDataFrameState, joinDataFrameStates, wideningDataFrameStates } from './domain';
 import { processDataFrameExpression, processDataFrameLeaf } from './processor';
+import { isRSingleNode } from './util';
 
 const WideningThreshold = 4;
 
@@ -88,18 +88,6 @@ export function flipCfg(cfg: ControlFlowGraph): ControlFlowGraph {
 	return flippedCfg;
 }
 
-function isRConstant(
-	node: RNode<ParentInformation>
-): node is RConstant<ParentInformation> {
-	return node.type === RType.String || node.type === RType.Number || node.type === RType.Logical;
-}
-
-function isRSingleNode(
-	node: RNode<ParentInformation>
-): node is RSingleNode<ParentInformation> {
-	return isRConstant(node) || node.type === RType.Symbol || node.type === RType.Break || node.type === RType.Next || node.type === RType.Comment || node.type === RType.LineDirective;
-}
-
 // We only process vertices of leaf nodes and exit vertices (no entry nodes of complex nodes)
 function shouldSkipVertex(vertex: CfgSimpleVertex, dfg: DataflowGraph) {
 	if(vertex.type === CfgVertexType.EndMarker) {
@@ -145,9 +133,8 @@ function getSuccessorVertices(cfg: ControlFlowGraph, vertexId: NodeId, dfg: Data
 			if(vertex !== undefined && shouldSkipVertex(vertex, dfg)) {
 				return getSuccessorVertices(cfg, vertex.id, dfg);
 			} else {
-				return [vertex];
+				return vertex ? [vertex] : [];
 			}
 		})
-		.filter(vertex => vertex !== undefined)
 		.toArray() ?? [];
 }

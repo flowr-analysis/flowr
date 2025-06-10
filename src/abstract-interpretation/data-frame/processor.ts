@@ -15,7 +15,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { AbstractInterpretationInfo } from './absint-info';
 import type { DataFrameDomain, DataFrameStateDomain } from './domain';
-import { copyDataFrameState, DataFrameTop, joinDataFrames } from './domain';
+import { DataFrameTop, joinDataFrames } from './domain';
 import { applySemantics, ConstraintType, getConstraintType } from './semantics';
 import { mapDataFrameSemantics } from './semantics-mapper';
 
@@ -114,7 +114,7 @@ function processDataFramePipe(
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
-	let rhs: RNode<ParentInformation & AbstractInterpretationInfo> | undefined;
+	let rhs;
 
 	if(node.type === RType.Pipe || node.type === RType.BinaryOp) {
 		rhs = node.rhs;
@@ -200,6 +200,6 @@ function updateDomainOfId(id: NodeId, domain: DataFrameStateDomain, dfg: Dataflo
 
 	if(node !== undefined) {
 		node.info.dataFrame ??= {};
-		node.info.dataFrame.domain = copyDataFrameState(domain);
+		node.info.dataFrame.domain = new Map(domain);
 	}
 }

@@ -9,6 +9,7 @@ import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-func
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
+import { resolveIdToAbstractValue } from '../absint-visitor';
 import { DataFrameTop } from '../domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeArgument } from '../resolve-args';
 
@@ -115,7 +116,7 @@ function mapDataFrameColBind(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
-	const dataFrame = args.find(isDataFrameArgument);
+	const dataFrame = args.find(arg => isDataFrameArgument(arg, info));
 
 	if(dataFrame === undefined) {
 		return;
@@ -132,8 +133,8 @@ function mapDataFrameColBind(
 
 	for(const arg of args) {
 		if(arg !== dataFrame && arg !== EmptyArgument) {
-			if(isDataFrameArgument(arg)) {
-				const otherDataFrame = arg.value.info.dataFrame.domain?.get(arg.value.info.id) ?? DataFrameTop;
+			if(isDataFrameArgument(arg, info)) {
+				const otherDataFrame = resolveIdToAbstractValue(arg.value, info.graph) ?? DataFrameTop;
 
 				result.push({
 					operation: 'concatCols',
@@ -164,7 +165,7 @@ function mapDataFrameRowBind(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
-	const dataFrame = args.find(isDataFrameArgument);
+	const dataFrame = args.find(arg => isDataFrameArgument(arg, info));
 
 	if(dataFrame === undefined) {
 		return;
@@ -181,8 +182,8 @@ function mapDataFrameRowBind(
 
 	for(const arg of args) {
 		if(arg !== dataFrame && arg !== EmptyArgument) {
-			if(isDataFrameArgument(arg)) {
-				const otherDataFrame = arg.value.info.dataFrame.domain?.get(arg.value.info.id) ?? DataFrameTop;
+			if(isDataFrameArgument(arg, info)) {
+				const otherDataFrame = resolveIdToAbstractValue(arg.value, info.graph) ?? DataFrameTop;
 
 				result.push({
 					operation: 'concatRows',
@@ -214,7 +215,7 @@ function mapDataFrameHeadTail(
 ): DataFrameOperations[] | undefined {
 	const dataFrame = args[0];
 
-	if(!isDataFrameArgument(dataFrame)) {
+	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
 	} else if(args.length === 1) {
 		return [{
@@ -257,7 +258,7 @@ function mapDataFrameSubset(
 ): DataFrameOperations[] | undefined {
 	const dataFrame = args[0];
 
-	if(!isDataFrameArgument(dataFrame)) {
+	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
 	} else if(args.length === 1) {
 		return [{
@@ -347,7 +348,7 @@ function mapDataFrameFilter(
 ): DataFrameOperations[] | undefined {
 	const dataFrame = args[0];
 
-	if(!isDataFrameArgument(dataFrame)) {
+	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
 	} else if(args.length === 1) {
 		return [{
@@ -384,7 +385,7 @@ function mapDataFrameSelect(
 ): DataFrameOperations[] | undefined {
 	const dataFrame = args[0];
 
-	if(!isDataFrameArgument(dataFrame)) {
+	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
 	} else if(args.length === 1) {
 		return [{
@@ -442,7 +443,7 @@ function mapDataFrameMutate(
 ): DataFrameOperations[] | undefined {
 	const dataFrame = args[0];
 
-	if(!isDataFrameArgument(dataFrame)) {
+	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
 	} else if(args.length === 1) {
 		return [{
@@ -477,7 +478,7 @@ function mapDataFrameGroupBy(
 ): DataFrameOperations[] | undefined {
 	const dataFrame = args[0];
 
-	if(!isDataFrameArgument(dataFrame)) {
+	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
 	} else if(args.length === 1) {
 		return [{
@@ -512,7 +513,7 @@ function mapDataFrameSummarize(
 ): DataFrameOperations[] | undefined {
 	const dataFrame = args[0];
 
-	if(!isDataFrameArgument(dataFrame)) {
+	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
 	} else if(args.length === 1) {
 		return [{
@@ -548,7 +549,7 @@ function mapDataFrameLeftJoin(
 ): DataFrameOperations[] | undefined {
 	const dataFrame = args[0];
 
-	if(!isDataFrameArgument(dataFrame)) {
+	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
 	} else if(args.length === 1) {
 		return [{
@@ -559,7 +560,7 @@ function mapDataFrameLeftJoin(
 	}
 	const result: DataFrameOperations[] = [];
 	const otherArg = args[1];
-	const otherDataFrame = isDataFrameArgument(otherArg) ? otherArg.value.info.dataFrame.domain?.get(otherArg.value.info.id) : undefined;
+	const otherDataFrame = resolveIdToAbstractValue(otherArg, info.graph);
 
 	const byArg = args.find(arg => resolveIdToArgName(arg, info) === 'by')
 		?? args.find(arg => arg !== dataFrame && resolveIdToArgName(arg, info) === undefined)
@@ -587,9 +588,10 @@ function mapDataFrameLeftJoin(
 }
 
 function mapDataFrameIdentity(
-	args: readonly RFunctionArgument<ParentInformation>[]
+	args: readonly RFunctionArgument<ParentInformation>[],
+	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
-	const dataFrame = args.find(isDataFrameArgument);
+	const dataFrame = args.find(arg => isDataFrameArgument(arg, info));
 
 	if(dataFrame === undefined) {
 		return;
@@ -611,7 +613,7 @@ function getFunctionArguments(
 		const idMap = dfg.idMap;
 
 		return vertex.args
-			.map(arg => arg === EmptyArgument ? arg : dfg.idMap?.get(arg.nodeId))
+			.map(arg => arg === EmptyArgument ? arg : idMap.get(arg.nodeId))
 			.map(arg => arg === EmptyArgument || arg?.type === RType.Argument ? arg : toUnnamedArgument(arg, idMap));
 	}
 	return node.arguments;
@@ -660,12 +662,10 @@ function getUnresolvedSymbolsInExpression(
 }
 
 function isDataFrameArgument(
-	arg: RFunctionArgument<ParentInformation & AbstractInterpretationInfo> | undefined
+	arg: RNode<ParentInformation & AbstractInterpretationInfo> | typeof EmptyArgument | undefined,
+	info: ResolveInfo
 ): arg is RArgument<ParentInformation & Required<AbstractInterpretationInfo>> & { value: RNode<ParentInformation & Required<AbstractInterpretationInfo>> } {
-	if(arg === EmptyArgument || arg?.value === undefined) {
-		return false;
-	}
-	return arg.value.info.dataFrame?.domain?.get(arg.value.info.id) !== undefined;
+	return arg !== undefined && arg !== EmptyArgument && resolveIdToAbstractValue(arg, info.graph) !== undefined;
 }
 
 function isValidColName(colname: string | undefined): boolean {

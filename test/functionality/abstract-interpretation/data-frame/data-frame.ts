@@ -1,6 +1,5 @@
 import { assert, beforeAll, test } from 'vitest';
-import type { AbstractInterpretationInfo } from '../../../../src/abstract-interpretation/data-frame/absint-info';
-import { performDataFrameAbsint } from '../../../../src/abstract-interpretation/data-frame/abstract-interpretation';
+import { performDataFrameAbsint, resolveIdToAbstractValue } from '../../../../src/abstract-interpretation/data-frame/absint-visitor';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { DataFrameTop, equalColNames, equalInterval, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
@@ -8,7 +7,6 @@ import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
-import type { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
@@ -154,7 +152,7 @@ function assertDomainMatching<K extends keyof DataFrameDomain, T extends DataFra
 		case DomainMatchingType.Exact:
 			return assert.ok(equalFunction(actual, expected), `${type} differs: expected ${JSON.stringify(actual)} to equal ${JSON.stringify(expected)}`);
 		case DomainMatchingType.Overapproximation:
-			return assert.ok(leqFunction(expected, actual), `${type} is no over-approximation: expected ${JSON.stringify(expected)} to be an over-approximation of ${JSON.stringify(actual)}`);
+			return assert.ok(leqFunction(expected, actual), `${type} is no over-approximation: expected ${JSON.stringify(actual)} to be an over-approximation of ${JSON.stringify(expected)}`);
 		default:
 			assertUnreachable(matchingType);
 	}
@@ -183,14 +181,14 @@ function getInferredDomainForCriterion(
 ): [DataFrameDomain, RSymbol<ParentInformation>] {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
 	const nodeId = slicingCriterionToId(criterion, idMap);
-	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = idMap.get(nodeId);
+	const node = idMap.get(nodeId);
 
 	if(node === undefined || node.type !== RType.Symbol) {
 		throw new Error(`slicing criterion ${criterion} does not refer to a R symbol`);
 	}
 	const cfg = extractCfg(result.normalize, result.dataflow.graph);
-	performDataFrameAbsint(cfg, result.dataflow.graph);
-	const value = node.info.dataFrame?.domain?.get(node.info.id) ?? DataFrameTop;
+	performDataFrameAbsint(cfg, result.dataflow.graph, result.normalize);
+	const value = resolveIdToAbstractValue(node, result.dataflow.graph) ?? DataFrameTop;
 
 	return [value, node];
 }

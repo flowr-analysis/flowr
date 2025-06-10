@@ -134,7 +134,7 @@ export function maxInterval(interval1: IntervalDomain, interval2: IntervalDomain
 	}
 }
 
-export function includeZeroInterval(interval: IntervalDomain): IntervalDomain {
+export function extendIntervalToZero(interval: IntervalDomain): IntervalDomain {
 	if(interval === IntervalBottom) {
 		return IntervalBottom;
 	} else {
@@ -142,7 +142,7 @@ export function includeZeroInterval(interval: IntervalDomain): IntervalDomain {
 	}
 }
 
-export function includeInfinityInterval(interval: IntervalDomain): IntervalDomain {
+export function extendIntervalToInfinity(interval: IntervalDomain): IntervalDomain {
 	if(interval === IntervalBottom) {
 		return IntervalBottom;
 	} else {
@@ -213,17 +213,8 @@ export function equalDataFrameState(state1: DataFrameStateDomain, state2: DataFr
 	return true;
 }
 
-export function copyDataFrameState(state: DataFrameStateDomain | undefined) {
-	const copy: DataFrameStateDomain = new Map();
-
-	for(const [nodeId, value] of state ?? []) {
-		copy.set(nodeId, value);
-	}
-	return copy;
-}
-
 export function joinDataFrameStates(...states: DataFrameStateDomain[]): DataFrameStateDomain {
-	const result = copyDataFrameState(states[0]);
+	const result = new Map(states[0]);
 
 	for(let i = 1; i < states.length; i++) {
 		for(const [nodeId, value] of states[i]) {
@@ -238,7 +229,7 @@ export function joinDataFrameStates(...states: DataFrameStateDomain[]): DataFram
 }
 
 export function meetDataFrameStates(...states: DataFrameStateDomain[]): DataFrameStateDomain {
-	const result = copyDataFrameState(states[0]);
+	const result = new Map(states[0]);
 
 	for(let i = 1; i < states.length; i++) {
 		for(const [nodeId, value] of states[i]) {
@@ -253,7 +244,7 @@ export function meetDataFrameStates(...states: DataFrameStateDomain[]): DataFram
 }
 
 export function wideningDataFrameStates(state1: DataFrameStateDomain, state2: DataFrameStateDomain): DataFrameStateDomain {
-	const result = copyDataFrameState(state1);
+	const result = new Map(state1);
 
 	for(const [nodeId, value] of state2) {
 		if(result.has(nodeId)) {

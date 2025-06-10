@@ -90,8 +90,11 @@ export class SemanticCfgGuidedVisitor<
 			case RType.Number:  return this.onNumberConstant({ vertex: val, node: astNode });
 			case RType.Logical: return this.onLogicalConstant({ vertex: val, node: astNode });
 			case RType.Symbol:
-				guard(astNode.lexeme === 'NULL', `Expected NULL constant, got ${astNode.lexeme}`);
-				return this.onNullConstant({ vertex: val, node: astNode as RSymbol<OtherInfo & ParentInformation, 'NULL'> });
+				if(astNode.content === 'NULL') {
+					return this.onNullConstant({ vertex: val, node: astNode as RSymbol<OtherInfo & ParentInformation, 'NULL'> });
+				} else {
+					return this.onSymbolConstant({ vertex: val, node: astNode });
+				}
 		}
 		guard(false, `Unexpected value type ${astNode.type} for value ${astNode.lexeme}`);
 	}
@@ -315,6 +318,9 @@ export class SemanticCfgGuidedVisitor<
 
 	/** Called for every occurrence of a `NULL` in the program. */
 	protected onNullConstant(_data: { vertex: DataflowGraphVertexValue, node: RSymbol<OtherInfo & ParentInformation, 'NULL'> }) {}
+
+	/** Called for all symbols representing constants (e.g. in `library` calls) */
+	protected onSymbolConstant(_data: { vertex: DataflowGraphVertexValue, node: RSymbol<OtherInfo & ParentInformation> }) {}
 
 	/**
 	 * Called for every constant string value in the program.

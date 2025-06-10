@@ -1,4 +1,4 @@
-import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from './control-flow-graph';
+import { isCfgMarkerNode, type CfgBasicBlockVertex, type CfgExpressionVertex, type CfgSimpleVertex, type CfgStatementVertex, type ControlFlowInformation } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 import type {
@@ -48,8 +48,9 @@ export class DataflowAwareCfgGuidedVisitor<
 		this.onExprOrStmtNode(node);
 	}
 
-	private onExprOrStmtNode(node: CfgStatementVertex | CfgExpressionVertex): void {
-		const dfgVertex = this.getDataflowGraph(node.id);
+	protected onExprOrStmtNode(node: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): void {
+		const dfgVertex = this.getDataflowGraph(isCfgMarkerNode(node) ? node.root : node.id);
+
 		if(!dfgVertex) {
 			this.visitUnknown(node);
 			return;
@@ -80,7 +81,7 @@ export class DataflowAwareCfgGuidedVisitor<
 	/**
 	 * called for every cfg vertex that has no corresponding dataflow vertex.
 	 */
-	protected visitUnknown(_vertex: CfgStatementVertex | CfgExpressionVertex): void {
+	protected visitUnknown(_vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): void {
 	}
 
 	protected visitValue(_val: DataflowGraphVertexValue): void {

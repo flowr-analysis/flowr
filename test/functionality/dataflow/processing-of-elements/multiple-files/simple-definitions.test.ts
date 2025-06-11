@@ -6,6 +6,7 @@ import { assert, describe, test } from 'vitest';
 import { produceDataFlowGraph } from '../../../../../src/dataflow/extractor';
 import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
 import { builtInId } from '../../../../../src/dataflow/environments/built-in';
+import { defaultConfigOptions } from '../../../../../src/config';
 
 describe.sequential('Simple Defs in Multiple Files', withShell(shell => {
 
@@ -48,7 +49,7 @@ describe.sequential('Simple Defs in Multiple Files', withShell(shell => {
 			request: 'file',
 			content: 'test/testfiles/parse-multiple/b.R'
 		}] as const;
-		const df = produceDataFlowGraph(new RShellExecutor(), requests, await retrieveNormalizedAst(shell, 'file://' + requests[0].content));
+		const df = produceDataFlowGraph(new RShellExecutor(), requests, await retrieveNormalizedAst(shell, 'file://' + requests[0].content), defaultConfigOptions);
 		const idMap = df.graph.idMap;
 		assert(idMap !== undefined);
 		assert(idMap.size > 0);

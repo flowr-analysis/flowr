@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, it } from 'vitest';
+import { describe, it } from 'vitest';
 import { AccessType, ContainerType, setupContainerFunctions } from '../../_helper/pointer-analysis';
 import { assertDataflow, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
@@ -30,13 +30,7 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 			accessCapability,
 		] as const;
 
-		beforeAll(() => {
-			amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
-		});
-
-		afterAll(() => {
-			amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: false } });
-		});
+		const config = amendConfig(defaultConfigOptions, { solver: { pointerTracking: true } });
 
 		describe('Simple access', () => {
 			assertDataflow(
@@ -49,7 +43,9 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 				{
 					expectIsSubgraph:      true,
 					resolveIdsAsCriterion: true,
-				}
+				},
+				undefined,
+				config
 			);
 
 			describe.skipIf(container !== ContainerType.Vector)('Flattened Vectors', () => {
@@ -63,7 +59,9 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 					{
 						expectIsSubgraph:      true,
 						resolveIdsAsCriterion: true,
-					}
+					},
+					undefined,
+					config
 				);
 
 				assertDataflow(
@@ -76,7 +74,9 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 					{
 						expectIsSubgraph:      true,
 						resolveIdsAsCriterion: true,
-					}
+					},
+					undefined,
+					config
 				);
 
 				assertDataflow(
@@ -89,7 +89,9 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 					{
 						expectIsSubgraph:      true,
 						resolveIdsAsCriterion: true,
-					}
+					},
+					undefined,
+					config
 				);
 			});
 
@@ -104,7 +106,9 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 					{
 						expectIsSubgraph:      true,
 						resolveIdsAsCriterion: true,
-					}
+					},
+					undefined,
+					config
 				);
 
 				it.fails('Currently not working, nothing is referenced', () => {
@@ -120,7 +124,9 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 						{
 							expectIsSubgraph:      true,
 							resolveIdsAsCriterion: true,
-						}
+						},
+						undefined,
+						config
 					);
 				});
 			});
@@ -139,7 +145,9 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 				{
 					expectIsSubgraph:      true,
 					resolveIdsAsCriterion: true,
-				}
+				},
+				undefined,
+				config
 			);
 
 			assertDataflow(
@@ -158,7 +166,9 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 				{
 					expectIsSubgraph:      true,
 					resolveIdsAsCriterion: true,
-				}
+				},
+				undefined,
+				config
 			);
 
 			assertDataflow(
@@ -178,7 +188,9 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 				{
 					expectIsSubgraph:      true,
 					resolveIdsAsCriterion: true,
-				}
+				},
+				undefined,
+				config
 			);
 		});
 
@@ -200,7 +212,9 @@ ${accS('numbers', 'foo()')}`,
 				{
 					expectIsSubgraph:      true,
 					resolveIdsAsCriterion: true,
-				}
+				},
+				undefined,
+				config
 			);
 		});
 	});

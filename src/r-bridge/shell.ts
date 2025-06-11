@@ -7,13 +7,13 @@ import type { SemVer } from 'semver';
 import semver from 'semver/preload';
 import { getPlatform } from '../util/os';
 import fs from 'fs';
-import type { DeepReadonly , AsyncOrSync } from 'ts-essentials';
+import type { AsyncOrSync, DeepReadonly } from 'ts-essentials';
 import { initCommand } from './init';
 import type { RShellEngineConfig } from '../config';
 import { ts2r } from './lang-4.x/convert-values';
 import type { AsyncParser } from './parser';
 import type { RParseRequest } from './retriever';
-import {  retrieveParseDataFromRCode } from './retriever';
+import { retrieveParseDataFromRCode } from './retriever';
 
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
@@ -148,7 +148,7 @@ export class RShell implements AsyncParser<string> {
 	// should never be more than one, but let's be sure
 	private tempDirs = new Set<string>();
 
-	public constructor(config: RShellEngineConfig | undefined, options?: Partial<RShellOptions>) {
+	public constructor(config?: RShellEngineConfig, options?: Partial<RShellOptions>) {
 		this.options = { ...getDefaultRShellOptions(config), ...options };
 		this.log = log.getSubLogger({ name: this.options.sessionName });
 

@@ -100,10 +100,11 @@ export class PipelineExecutor<P extends Pipeline> {
 	private readonly pipeline: P;
 	private readonly length:   number;
 
-	private input:  PipelineInput<P>;
-	private output: PipelineOutput<P> = {} as PipelineOutput<P>;
+	private input:           PipelineInput<P>;
+	private output:          PipelineOutput<P> = {} as PipelineOutput<P>;
 	private currentExecutionStage = PipelineStepStage.OncePerFile;
 	private stepCounter = 0;
+	private readonly config: FlowrConfigOptions;
 
 	/**
 	 * Construct a new pipeline executor.
@@ -119,6 +120,7 @@ export class PipelineExecutor<P extends Pipeline> {
 		this.pipeline = pipeline;
 		this.length = pipeline.order.length;
 		this.input = input;
+		this.config = config;
 		const builtIns = config.semantics.environment.overwriteBuiltIns;
 		if(!builtIns.loadDefaults) {
 			BuiltInMemory.clear();
@@ -221,7 +223,7 @@ export class PipelineExecutor<P extends Pipeline> {
 			guard(step.name === expectedStepName, () => `Cannot execute next step, expected step ${JSON.stringify(expectedStepName)} but got ${step.name}.`);
 		}
 
-		return [step.name, step.processor(this.output, this.input) as PipelineStepOutputWithName<P, PipelineStepName>];
+		return [step.name, step.processor(this.output, this.input, this.config) as PipelineStepOutputWithName<P, PipelineStepName>];
 	}
 
 	/**

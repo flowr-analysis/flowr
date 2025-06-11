@@ -2,34 +2,30 @@ import { assertSliced, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
-import { afterAll, beforeAll, describe } from 'vitest';
-import { amendConfig, defaultConfigOptions, setConfig } from '../../../../src/config';
+import { describe } from 'vitest';
+import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 
 describe.sequential('Simple', withShell(shell => {
 	for(const withPointer of [true, false]) {
 		describe(`Constant assignments (${withPointer ? 'with' : 'without'} pointer tracking)`, () => {
-			beforeAll(() => {
-				amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: withPointer } });
-			});
-			afterAll(() => {
-				setConfig(defaultConfigOptions);
-			});
+			const config = amendConfig(defaultConfigOptions, { solver: { ...defaultConfigOptions.solver, pointerTracking: withPointer } });
+
 			for(const i of [1, 2, 3]) {
 				assertSliced(label(`slice constant assignment ${i}`, ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),
-					shell, 'x <- 1\nx <- 2\nx <- 3', [`${i}:1`], `x <- ${i}`
+					shell, 'x <- 1\nx <- 2\nx <- 3', [`${i}:1`], `x <- ${i}`, config
 				);
 			}
 			assertSliced(label('slice constant assignment with print', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
-				shell, 'x <- 2\nx <- 3\nprint(x)', ['3@print'], 'x <- 3\nprint(x)'
+				shell,'x <- 2\nx <- 3\nprint(x)', ['3@print'], 'x <- 3\nprint(x)', config
 			);
 			assertSliced(label('slice constant assignment with print (slice for arg)', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
-				shell, 'x <- 2\nx <- 3\nprint(x)', ['3@x'], 'x <- 3\nx'
+				shell, 'x <- 2\nx <- 3\nprint(x)', ['3@x'], 'x <- 3\nx', config
 			);
 			assertSliced(label('using setnames', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
-				shell, 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nprint(x)', ['3@x'], 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nx'
+				shell, 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nprint(x)', ['3@x'], 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nx', config
 			);
 			assertSliced(label('using setnames but wanting another', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
-				shell, 'x <- read.csv("foo")\ny <- 3\nsetnames(x, 2:3, c("foo"))\nprint(y)', ['4@print'], 'y <- 3\nprint(y)'
+				shell,'x <- read.csv("foo")\ny <- 3\nsetnames(x, 2:3, c("foo"))\nprint(y)', ['4@print'], 'y <- 3\nprint(y)', config
 			);
 		});
 	}

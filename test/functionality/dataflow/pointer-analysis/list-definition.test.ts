@@ -1,19 +1,13 @@
-import { afterEach, beforeEach, describe } from 'vitest';
+import { describe } from 'vitest';
 import { assertContainerIndicesDefinition, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { Q } from '../../../../src/search/flowr-search-builder';
-import { amendConfig, defaultConfigOptions, setConfig } from '../../../../src/config';
+import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 
 describe.sequential('List Definition', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'subsetting-multiple'] as const;
 
-	beforeEach(() => {
-		amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
-	});
-
-	afterEach(() => {
-		setConfig(defaultConfigOptions);
-	});
+	const config = amendConfig(defaultConfigOptions, { solver: { pointerTracking: true } });
 
 	describe('Named Arguments', () => {
 		const capabilities = [...basicCapabilities, 'named-arguments'] as const;
@@ -29,7 +23,8 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 2, lexeme: 'b' }, nodeId: 6, },
 					{ identifier: { index: 3, lexeme: 'c' }, nodeId: 9, },
 					{ identifier: { index: 4, lexeme: 'd' }, nodeId: 12, },
-				]
+				],
+				config
 			);
 
 			assertContainerIndicesDefinition(
@@ -42,7 +37,8 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 2, lexeme: 'b' }, nodeId: 6, },
 					{ identifier: { index: 3, lexeme: 'c' }, nodeId: 9, },
 					{ identifier: { index: 4, lexeme: 'd' }, nodeId: 12, },
-				]
+				],
+				config
 			);
 
 			assertContainerIndicesDefinition(
@@ -55,7 +51,8 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 2, lexeme: 'b' }, nodeId: 6, },
 					{ identifier: { index: 3, lexeme: 'c' }, nodeId: 9, },
 					{ identifier: { index: 4, lexeme: 'd' }, nodeId: 12, },
-				]
+				],
+				config
 			);
 
 			assertContainerIndicesDefinition(
@@ -67,22 +64,20 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 1, lexeme: 'a' }, nodeId: 4 },
 					// currently we are unable to track the new index
 					{ identifier: { index: undefined, lexeme: 'e' }, nodeId: 10 },
-				]
+				],
+				config
 			);
 
 			describe('Skip if index threshold', () => {
-				beforeEach(() => {
-					setConfig({ ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, pointerTracking: { maxIndexCount: 1 } } });
-				});
-				afterEach(() => {
-					setConfig(defaultConfigOptions);
-				});
+				const config = amendConfig(defaultConfigOptions, { solver: { ...defaultConfigOptions.solver, pointerTracking: { maxIndexCount: 1 } } });
+				
 				assertContainerIndicesDefinition(
 					label('Over the limit (list)', capabilities),
 					shell,
 					'list(a = 1, b = 2.3, c = 3.1e4, d = 0xcafe)',
 					Q.criterion('1@list'),
-					undefined
+					undefined,
+					config
 				);
 				assertContainerIndicesDefinition(
 					label('Still works in limit', capabilities),
@@ -91,7 +86,8 @@ describe.sequential('List Definition', withShell(shell => {
 					Q.criterion('1@list'),
 					[
 						{ identifier: { index: 1, lexeme: 'a' }, nodeId: 3, },
-					]
+					],
+					config
 				);
 			});
 		});
@@ -118,7 +114,8 @@ describe.sequential('List Definition', withShell(shell => {
 							}
 						]
 					},
-				]
+				],
+				config
 			);
 
 			assertContainerIndicesDefinition(
@@ -140,7 +137,8 @@ describe.sequential('List Definition', withShell(shell => {
 							}
 						]
 					},
-				]
+				],
+				config
 			);
 
 			assertContainerIndicesDefinition(
@@ -162,7 +160,8 @@ describe.sequential('List Definition', withShell(shell => {
 							}
 						]
 					},
-				]
+				],
+				config
 			);
 
 			assertContainerIndicesDefinition(
@@ -185,7 +184,8 @@ describe.sequential('List Definition', withShell(shell => {
 							}
 						]
 					},
-				]
+				],
+				config
 			);
 		});
 	});
@@ -204,7 +204,8 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 2 }, nodeId: 3, },
 					{ identifier: { index: 3 }, nodeId: 5, },
 					{ identifier: { index: 4 }, nodeId: 7, },
-				]
+				],
+				config
 			);
 
 			assertContainerIndicesDefinition(
@@ -217,7 +218,8 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 2 }, nodeId: 3, },
 					{ identifier: { index: 3 }, nodeId: 5, },
 					{ identifier: { index: 4 }, nodeId: 7, },
-				]
+				],
+				config
 			);
 
 			assertContainerIndicesDefinition(
@@ -230,7 +232,8 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 2 }, nodeId: 3, },
 					{ identifier: { index: 3 }, nodeId: 5, },
 					{ identifier: { index: 4 }, nodeId: 7, },
-				]
+				],
+				config
 			);
 		});
 
@@ -256,7 +259,8 @@ describe.sequential('List Definition', withShell(shell => {
 							}
 						]
 					},
-				]
+				],
+				config
 			);
 
 			assertContainerIndicesDefinition(
@@ -278,7 +282,8 @@ describe.sequential('List Definition', withShell(shell => {
 							}
 						]
 					},
-				]
+				],
+				config
 			);
 
 			assertContainerIndicesDefinition(
@@ -300,7 +305,8 @@ describe.sequential('List Definition', withShell(shell => {
 							}
 						]
 					},
-				]
+				],
+				config
 			);
 
 			assertContainerIndicesDefinition(
@@ -323,7 +329,8 @@ describe.sequential('List Definition', withShell(shell => {
 							}
 						]
 					},
-				]
+				],
+				config
 			);
 		});
 	});

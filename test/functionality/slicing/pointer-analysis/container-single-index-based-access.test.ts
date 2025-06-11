@@ -1,13 +1,14 @@
 import { describe } from 'vitest';
 import { assertSliced, withShell } from '../../_helper/shell';
-import { useConfigForTest } from '../../_helper/config';
 import { label } from '../../_helper/label';
 import { AccessType, ContainerType, setupContainerFunctions } from '../../_helper/pointer-analysis';
+import { amendConfig, defaultConfigOptions } from '../../../../src/config';
+
+const optionsWithEnabledPointerTracking = amendConfig(defaultConfigOptions, { solver: { pointerTracking: true } });
 
 describe.sequential('Container Single Index Based Access', withShell(shell => {
 
 	describe('Failures in Practice', () => {
-		useConfigForTest({ solver: { pointerTracking: true } });
 		assertSliced(
 			label('Potential addition in nesting (not needed)', ['subsetting-multiple']),
 			shell,
@@ -20,8 +21,8 @@ print(data)`,
 			`data <- read.csv(file = "data.csv", header = TRUE)
 data$count = 1 : nrow(data)
 data <- data[order(-age), ]
-print(data)`
-		);
+print(data)`,
+			optionsWithEnabledPointerTracking);
 	});
 	describe.each(
 		[
@@ -43,10 +44,8 @@ print(data)`
 			'subsetting-multiple',
 			accessCapability,
 		] as const;
-		useConfigForTest({ solver: { pointerTracking: true } });
 
 		describe('Simple access', () => {
-			useConfigForTest({ solver: { pointerTracking: true } });
 
 			assertSliced(
 				label('Container with single argument', basicCapabilities),
@@ -56,7 +55,7 @@ print(${acc('numbers', 1)})`,
 				['2@print'],
 				`numbers <- ${def('2')}
 print(${acc('numbers', 1)})`,
-			);
+				amendConfig(defaultConfigOptions, { solver: { pointerTracking: true } }));
 
 			/* we reconstruct everything as every other modification could mess with the correctness of the result */
 			assertSliced(
@@ -71,8 +70,6 @@ print(${acc('numbers', 1)})`,
 		});
 
 		describe('Whole container access', () => {
-			useConfigForTest({ solver: { pointerTracking: true } });
-
 			assertSliced(
 				label('When each argument of a container is redefined, then original container is still in slice', basicCapabilities),
 				shell,
@@ -88,7 +85,8 @@ ${acc('numbers', 1)} <- 4
 ${acc('numbers', 2)} <- 3
 ${acc('numbers', 3)} <- 2
 ${acc('numbers', 4)} <- 1
-print(numbers)`
+print(numbers)`,
+				optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -106,7 +104,7 @@ ${acc('x', 1)} <- 1
 ${acc('x', 2)} <- 2
 ${acc('x', 3)} <- 3
 ${acc('x', 4)} <- 4
-print(x)`
+print(x)`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -123,13 +121,11 @@ print(numbers)`,
 				`numbers <- ${def('3', '4')}
 ${acc('numbers', 1)} <- 4
 ${acc('numbers', 2)} <- 3
-print(numbers)`
+print(numbers)`, optionsWithEnabledPointerTracking
 			);
 		});
 
 		describe('Access with other accesses', () => {
-			useConfigForTest({ solver: { pointerTracking: true } });
-
 			assertSliced(
 				label('With other container', basicCapabilities),
 				shell,
@@ -139,7 +135,7 @@ a <- ${acc('other_numbers', 1)}
 print(${acc('numbers', 1)})`,
 				['4@print'],
 				`numbers <- ${def('1', '2')}
-print(${acc('numbers', 1)})`,
+print(${acc('numbers', 1)})`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -151,13 +147,11 @@ b <- ${acc('numbers', 2)}
 print(${acc('numbers', 1)})`,
 				['4@print'],
 				`numbers <- ${def('1', '2')}
-print(${acc('numbers', 1)})`,
+print(${acc('numbers', 1)})`, optionsWithEnabledPointerTracking
 			);
 		});
 
 		describe('Access with assignment', () => {
-			useConfigForTest({ solver: { pointerTracking: true } });
-
 			assertSliced(
 				label('When there is more than one assignment to the same index, then the last assignment is in the slice', basicCapabilities),
 				shell,
@@ -169,7 +163,7 @@ print(${acc('numbers', 1)})`,
 				['5@print'],
 				`numbers <- ${def('1', '2')}
 ${acc('numbers', 1)} <- 5
-print(${acc('numbers', 1)})`,
+print(${acc('numbers', 1)})`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -183,7 +177,7 @@ print(${acc('numbers', 1)})`,
 				['5@print'],
 				`numbers <- ${def('1', '2', '3')}
 ${acc('numbers', 1)} <- 4
-print(${acc('numbers', 1)})`,
+print(${acc('numbers', 1)})`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -195,7 +189,7 @@ ${acc('numbers', 3)} <- 6
 print(${acc('numbers', 1)})`,
 				['4@print'],
 				`numbers <- ${def('1', '2', '3')}
-print(${acc('numbers', 1)})`,
+print(${acc('numbers', 1)})`, optionsWithEnabledPointerTracking
 			);
 
 			describe('Access within conditionals', () => {
@@ -209,7 +203,7 @@ print(${acc('numbers', 1)})`,
 					['4@print'],
 					`numbers <- ${def('1')}
 if(u) ${acc('numbers', 1)} <- 2
-print(${acc('numbers', 1)})`
+print(${acc('numbers', 1)})`, optionsWithEnabledPointerTracking
 				);
 
 				assertSliced(
@@ -227,14 +221,12 @@ print(${acc('numbers', 1)})`,
 					`numbers <- ${def('1')}
 if(u) { ${acc('numbers', 1)} <- 2 } else
 { numbers <- ${def()} }
-print(${acc('numbers', 1)})`
+print(${acc('numbers', 1)})`, optionsWithEnabledPointerTracking
 				);
 			});
 		});
 
 		describe('Disable config flag (pointer tracking)', () => {
-			useConfigForTest({ solver: { pointerTracking: false } });
-
 			assertSliced(
 				label('When flag is false, then container access is not in slice', ['call-normal']),
 				shell,
@@ -251,8 +243,6 @@ print(${acc('numbers', 1)})`
 		});
 
 		describe('Container assignment', () => {
-			useConfigForTest({ solver: { pointerTracking: true } });
-
 			assertSliced(
 				label('When container is self-redefined, then indices get passed', basicCapabilities),
 				shell,
@@ -264,7 +254,7 @@ print(${acc('numbers', 1)})`,
 				`numbers <- ${def('1', '2')}
 numbers <- numbers
 ${acc('numbers', 1)} <- 1
-print(${acc('numbers', 1)})`
+print(${acc('numbers', 1)})`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -280,7 +270,7 @@ print(${acc('numbers', 1)})`,
 ${acc('numbers', 1)} <- 1
 numbers <- numbers
 ${acc('numbers', 1)} <- 1
-print(${acc('numbers', 1)})`
+print(${acc('numbers', 1)})`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -294,7 +284,7 @@ print(${acc('numbers', 1)})`,
 				`other_numbers <- ${def('1', '2')}
 numbers <- other_numbers
 ${acc('numbers', 1)} <- 1
-print(${acc('numbers', 1)})`
+print(${acc('numbers', 1)})`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -310,7 +300,7 @@ print(${acc('numbers', 1)})`,
 ${acc('other_numbers', 1)} <- 1
 numbers <- other_numbers
 ${acc('numbers', 1)} <- 1
-print(${acc('numbers', 1)})`
+print(${acc('numbers', 1)})`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -323,7 +313,7 @@ print(${acc('numbers', 1)})`,
 				['4@print'],
 				`numbers <- foo()
 ${acc('numbers', 1)} <- 1
-print(${acc('numbers', 1)})`,
+print(${acc('numbers', 1)})`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -342,8 +332,6 @@ print(numbers)`,
 		});
 
 		describe.skipIf(container !== ContainerType.List)('Nested Lists', () => {
-			useConfigForTest({ solver: { pointerTracking: true } });
-
 			assertSliced(
 				label('When index of nested list is overwritten, then overwrite is also in slice', basicCapabilities),
 				shell,
@@ -358,7 +346,7 @@ result <- ${acc(acc('person', 5), 1)}`,
 				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
 ${acc('grades', 1)} <- 1.0
 person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
-result <- ${acc(acc('person', 5), 1)}`,
+result <- ${acc(acc('person', 5), 1)}`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -377,7 +365,7 @@ result <- ${acc(acc('person', 5), 1)}`,
 				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
 person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
 ${acc(acc('person', 5), 1)} <- 4.0
-result <- ${acc(acc('person', 5), 1)}`,
+result <- ${acc(acc('person', 5), 1)}`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -396,7 +384,7 @@ result <- ${acc(acc('person', 5), 2)}`,
 				`grades <- ${def('4.0', '3.0')}
 ${acc('grades', 2)} <- 2.0
 person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
-result <- ${acc(acc('person', 5), 2)}`,
+result <- ${acc(acc('person', 5), 2)}`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -414,7 +402,7 @@ result <- ${acc(acc('person', 5), 2)}`,
 				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
 person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
 ${acc('person', 5)} <- ${def('4.0', '3.0')}
-result <- ${acc(acc('person', 5), 2)}`,
+result <- ${acc(acc('person', 5), 2)}`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -432,7 +420,7 @@ result <- ${acc('person', 2)}`,
 ${acc('grades', 1)} <- 1.0
 ${acc('grades', 4)} <- 1.0
 person <- ${def('"John"', 'grades')}
-result <- ${acc('person', 2)}`,
+result <- ${acc('person', 2)}`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -451,7 +439,7 @@ ${acc('algebra_grades', 1)} <- 4.0
 grades <- ${def('algebra_grades', '1.7')}
 ${acc('grades', 2)} <- 1.0
 person <- ${def('"John"', 'grades')}
-result <- ${acc('person', 2)}`,
+result <- ${acc('person', 2)}`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -469,7 +457,7 @@ result <- ${acc(acc('person', 2), 1)}`,
 ${acc('algebra_grades', 1)} <- 4.0
 grades <- ${def('algebra_grades', '1.7')}
 person <- ${def('"John"', 'grades')}
-result <- ${acc(acc('person', 2), 1)}`,
+result <- ${acc(acc('person', 2), 1)}`, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -491,7 +479,7 @@ person <- ${def('"John"', 'grades')}
 ${acc('person', 1)} <- "Jane"
 result <- person`,
 				undefined,
-				'fail-both',
+				'fail-both', undefined, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -514,7 +502,7 @@ ${acc('person', 5)} <- ${def('4.0', '3.0')}
 ${acc(acc('person', 5), 1)} <- 1.0
 result <- ${acc(acc('person', 5), 2)}`,
 				undefined,
-				'fail-both',
+				'fail-both', undefined, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -535,7 +523,7 @@ person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
 ${acc('person', 5)} <- 3
 result <- ${acc('person', 5)}`,
 				undefined,
-				'fail-both',
+				'fail-both', undefined, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -557,7 +545,7 @@ ${acc('person', 2)} <- ${def('"Jane"', '"Doe"')}
 ${acc(acc('person', 2), 1)} <- "John"
 result <- ${acc('person', 2)}`,
 				undefined,
-				'fail-both'
+				'fail-both', undefined, optionsWithEnabledPointerTracking
 			);
 
 			assertSliced(
@@ -571,11 +559,10 @@ print(${acc(acc(acc('c', 1), 42), 1)})`,
 				`a <- ${def('1')}
 b <- ${def('1', 'a')}
 c <- ${def('b')}
-print(${acc(acc(acc('c', 1), 42), 1)})`,
+print(${acc(acc(acc('c', 1), 42), 1)})`, optionsWithEnabledPointerTracking
 			);
 
 			describe('Access within conditionals', () => {
-				useConfigForTest({ solver: { pointerTracking: true } });
 
 				assertSliced(
 					label('Potential addition in nesting', basicCapabilities),
@@ -588,7 +575,7 @@ print(${acc(acc('wrapper', 1), 2)})`,
 					`person <- ${def('24')}
 if(u) ${acc('person', 2)} <- "peter"
 wrapper <- ${def('person')}
-print(${acc(acc('wrapper', 1), 2)})`,
+print(${acc(acc('wrapper', 1), 2)})`, optionsWithEnabledPointerTracking
 				);
 
 				//Currently we can not handle the indirect passing minimally and include the name line
@@ -604,7 +591,7 @@ print(${acc(acc('wrapper', 1), 1)})`,
 wrapper <- ${def('person')}
 print(${acc(acc('wrapper', 1), 1)})`,
 					undefined,
-					'fail-both',
+					'fail-both', undefined, optionsWithEnabledPointerTracking
 				);
 			});
 		});

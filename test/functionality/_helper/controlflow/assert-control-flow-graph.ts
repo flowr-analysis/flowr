@@ -8,10 +8,11 @@ import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x
 import { diffOfControlFlowGraphs } from '../../../../src/control-flow/diff-cfg';
 import type { GraphDifferenceReport } from '../../../../src/util/diff-graph';
 import type { ControlFlowInformation } from '../../../../src/control-flow/control-flow-graph';
-import {  emptyControlFlowInformation } from '../../../../src/control-flow/control-flow-graph';
+import { emptyControlFlowInformation } from '../../../../src/control-flow/control-flow-graph';
 import { extractCFG } from '../../../../src/control-flow/extract-cfg';
 import { assertCfgSatisfiesProperties } from '../../../../src/control-flow/cfg-properties';
 import { simplifyControlFlowInformation } from '../../../../src/control-flow/cfg-simplification';
+import { defaultConfigOptions } from '../../../../src/config';
 
 function normAllIds(ids: readonly NodeId[]): NodeId[] {
 	return ids.map(normalizeIdToNumberIfPossible);
@@ -31,7 +32,7 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 	return test(code, async()=> {
 		const result = await createDataflowPipeline(parser, {
 			request: requestFromInput(code)
-		}).allRemainingSteps();
+		}, defaultConfigOptions).allRemainingSteps();
 		let cfg = extractCFG(result.normalize, result.dataflow?.graph);
 
 		if(config?.withBasicBlocks) {

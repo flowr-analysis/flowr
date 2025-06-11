@@ -5,8 +5,8 @@ import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { QueryResults, Query, QueryResultsWithoutMeta } from '../../../src/queries/query';
-import { SupportedQueries , executeQueries } from '../../../src/queries/query';
+import type { Query, QueryResults, QueryResultsWithoutMeta } from '../../../src/queries/query';
+import { executeQueries, SupportedQueries } from '../../../src/queries/query';
 import type { VirtualQueryArgumentsWithType } from '../../../src/queries/virtual-query/virtual-queries';
 import type { TestLabel } from './label';
 import { decorateLabelContext } from './label';
@@ -17,6 +17,7 @@ import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import { assert, test } from 'vitest';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { extractCFG } from '../../../src/control-flow/extract-cfg';
+import { defaultConfigOptions } from '../../../src/config';
 
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
@@ -72,9 +73,9 @@ export function assertQuery<
 			parser:  shell,
 			request: requestFromInput(code),
 			getId:   deterministicCountingIdGenerator(0)
-		}).allRemainingSteps();
+		}, defaultConfigOptions).allRemainingSteps();
 
-		const result = executeQueries<Queries['type'], VirtualArguments>({ dataflow: info.dataflow, ast: info.normalize }, queries);
+		const result = executeQueries<Queries['type'], VirtualArguments>({ dataflow: info.dataflow, ast: info.normalize, config: defaultConfigOptions }, queries);
 
 		log.info(`total query time: ${result['.meta'].timing.toFixed(0)}ms (~1ms accuracy)`);
 

@@ -12,13 +12,11 @@ import { getFlowrSearch } from '../../../src/search/flowr-search-builder';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { runSearch } from '../../../src/search/flowr-search-executor';
 import { arrayEqual } from '../../../src/util/collections/arrays';
-import {
-	type SingleSlicingCriterion,
-	slicingCriterionToId
-} from '../../../src/slicing/criterion/parse';
+import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../src/slicing/criterion/parse';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import { guard, isNotUndefined } from '../../../src/util/assert';
 import { flowrSearchToAscii } from '../../../src/search/flowr-search-printer';
+import { defaultConfigOptions } from '../../../src/config';
 
 /**
  * Asserts the result of a search or a set of searches (all of which should return the same result)!
@@ -39,7 +37,7 @@ export function assertSearch(
 				parser:  shell,
 				request: requestFromInput(code),
 				getId:   deterministicCountingIdGenerator(0)
-			}).allRemainingSteps();
+			}, defaultConfigOptions).allRemainingSteps();
 		});
 
 

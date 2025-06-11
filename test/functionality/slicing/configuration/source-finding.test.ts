@@ -5,13 +5,8 @@ import {
 } from '../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { RParseRequest } from '../../../../src/r-bridge/retriever';
 import { requestProviderFromFile, requestProviderFromText } from '../../../../src/r-bridge/retriever';
-import {
-	amendConfig,
-	defaultConfigOptions,
-	DropPathsOption,
-	InferWorkingDirectory,
-	setConfig
-} from '../../../../src/config';
+import type { FlowrLaxSourcingOptions } from '../../../../src/config';
+import { DropPathsOption, InferWorkingDirectory, } from '../../../../src/config';
 import path from 'path';
 
 describe('source finding', () => {
@@ -25,30 +20,24 @@ describe('source finding', () => {
 	};
 	beforeAll(() => {
 		setSourceProvider(requestProviderFromText(sources));
-		amendConfig({
-			solver: {
-				...defaultConfigOptions.solver,
-				resolveSource: {
-					dropPaths:             DropPathsOption.All,
-					ignoreCapitalization:  true,
-					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
-					searchPath:            [],
-					applyReplacements:     [
-						{ },
-						{ ' ': '-' }
-					]
-				}
-			}
-		});
 	});
 	afterAll(() => {
 		setSourceProvider(requestProviderFromFile());
-		setConfig(defaultConfigOptions);
 	});
 
 	function assertSourceFound(path: string, shouldBe: string[], referenceChain: readonly RParseRequest[] = []) {
 		test(`finds source for ${path}`, () => {
-			const result = findSource(path, { referenceChain });
+			const resolveSource : FlowrLaxSourcingOptions = {
+				dropPaths:             DropPathsOption.All,
+				ignoreCapitalization:  true,
+				inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
+				searchPath:            [],
+				applyReplacements:     [
+					{ },
+					{ ' ': '-' }
+				]
+			};
+			const result = findSource(resolveSource, path, { referenceChain });
 			assert.deepStrictEqual(result, shouldBe);
 		});
 	}

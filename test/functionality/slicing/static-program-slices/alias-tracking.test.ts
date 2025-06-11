@@ -7,12 +7,13 @@ import { trackAliasInEnvironments } from '../../../../src/dataflow/environments/
 import type { Identifier } from '../../../../src/dataflow/environments/identifier';
 import type { RShell } from '../../../../src/r-bridge/shell';
 import { numVal } from '../../_helper/ast-builder';
+import { defaultConfigOptions } from '../../../../src/config';
 
 async function runPipeline(code: string, shell: RShell) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
 		request: requestFromInput(code)
-	}).allRemainingSteps();
+	}, defaultConfigOptions).allRemainingSteps();
 }
 
 describe.sequential('Alias Tracking', withShell(shell => {

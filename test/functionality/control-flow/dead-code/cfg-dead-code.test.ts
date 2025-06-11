@@ -36,7 +36,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			{ prefix: 'if(TRUE)', swap: false },
 			{ prefix: 'if(FALSE)', swap: true },
 			{ prefix: 'x <- TRUE; if(x)', swap: false },
-			{ prefix: 'x <- FALSE; if(x)', swap: true }
+			{ prefix: 'x <- FALSE; if(x)', swap: true },
 		])('if-else branches', ({ prefix, swap }) => {
 			let reachableFromStart = ['1@1'];
 			let unreachableFromStart = ['1@2'];
@@ -46,6 +46,12 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			assertDeadCode(prefix + '1 else 2',
 				{ reachableFromStart, unreachableFromStart }
 			);
+		});
+
+		describe('if-elseif-else branches', () => {
+			assertDeadCode('if(TRUE) 1 else if (FALSE) 2 else 3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['1@2', '1@3'] });
+			assertDeadCode('if(FALSE) 1 else if (FALSE) 2 else 3', { reachableFromStart: ['1@3'],  unreachableFromStart: ['1@1', '1@2'] });
+			assertDeadCode('if(FALSE) 1 else if (TRUE) 2 else 3',  { reachableFromStart: ['1@2'],  unreachableFromStart: ['1@1', '1@3'] });
 		});
 
 		describe.each([
@@ -62,6 +68,28 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			assertDeadCode(prefix + ' { 1 }; 2',
 				{ reachableFromStart, unreachableFromStart }
 			);
+		});
+
+		describe.each([
+			{ prefix: 'function()',    loop: false },
+			{ prefix: '\\(bar)',       loop: false },
+			{ prefix: 'for(i in 1:3)', loop: true },
+			{ prefix: 'while(TRUE)',   loop: true },
+			{ prefix: 'repeat',        loop: true },
+			{ prefix: 'if(TRUE)',      loop: false },
+			{ prefix: 'if(bar)',       loop: false },
+		])('code after return', ({ prefix, loop }) => {
+			const verbs = loop ? ['return(1)', 'break', 'next', 'stop(1)'] : ['return(1)', 'stop(1)'];
+			for(const verb of verbs) {
+				assertDeadCode(`${prefix}{ foo; ${verb}; 2 }`, { reachableFromStart: ['1@foo'],  unreachableFromStart: ['1@2'] });
+			}
+		});
+
+		describe.each([
+			{ prefix: 'while(TRUE)' },
+			{ prefix: 'repeat' },
+		])('code after infinite loop', ({ prefix }) => {
+			assertDeadCode(`${prefix}{ foo }; 2`, { reachableFromStart: ['1@foo'],  unreachableFromStart: ['1@2'] });
 		});
 	});
 }));

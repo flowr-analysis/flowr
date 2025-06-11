@@ -111,6 +111,11 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'unknown', lexemeOfArgument: 'c("x", u)' },
 		] });
 
+		testQuery('Using an aliased vector to load (missing elements)', 'x <- c("x", u)\nlapply(x, library, character.only = TRUE)', { libraries: [
+			// We currently don't suppert resolving that "x" and some unknown library is loaded
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'unknown', lexemeOfArgument: 'x' },
+		] });
+
 		testQuery('Using a vector to load', 'lapply(c("foo", "bar", "baz"), library, character.only = TRUE)', { libraries: [
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'foo' },
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'bar' },

@@ -35,6 +35,7 @@ import { isValue } from '../../../dataflow/eval/values/r-value';
 import { valueSetGuard } from '../../../dataflow/eval/values/general';
 import { resolveIdToValue } from '../../../dataflow/eval/resolve/alias-tracking';
 import { collectStrings } from '../../../dataflow/eval/values/string/string-constants';
+import { RFalse, RTrue } from '../../../r-bridge/lang-4.x/convert-values';
 
 function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]) {
 	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
@@ -240,6 +241,7 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 	if(!resolveValue) {
 		full = false;
 	}
+
 	if(resolveValue === 'library') {
 		const hasChar = hasCharacterOnly(data, vertex, idMap);
 		if(hasChar === false) {
@@ -249,7 +251,7 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 			full = false;
 		}
 	}
-	full = true;
+	
 	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph: data.dataflow.graph, full: full }));
 	if(resolved) {
 		const values: string[] = [];
@@ -261,9 +263,9 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 			if(value.type === 'string' && isValue(value.value)) {
 				values.push(value.value.str);
 			} else if(value.type === 'logical' && isValue(value.value)) {
-				values.push(value.value.valueOf() ? 'TRUE' : 'FALSE');
+				values.push(value.value.valueOf() ? RTrue : RFalse);
 			} else if(value.type === 'vector' && isValue(value.elements)) {
-				const elements = collectStrings(value.elements);
+				const elements = collectStrings(value.elements, !full);
 				if(elements === undefined) {
 					return undefined;
 				}

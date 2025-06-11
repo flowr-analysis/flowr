@@ -21,7 +21,7 @@ export function liftString(str: Lift<RStringValue>): ValueString {
 	};
 }
 
-export function collectStrings(a: Value[]): string[] | undefined {
+export function collectStrings(a: Value[], withQuotes: boolean = false): string[] | undefined {
 	if(bottomTopGuard(a)) {
 		return undefined;
 	}
@@ -32,7 +32,11 @@ export function collectStrings(a: Value[]): string[] | undefined {
 			return undefined;
 		}
 
-		values.push(value.value.str);
+		if(withQuotes) {
+			values.push(`${value.value.quotes}${value.value.str}${value.value.quotes}` );
+		} else {
+			values.push(value.value.str);
+		}
 	}
 
 	return values;

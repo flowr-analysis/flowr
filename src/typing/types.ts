@@ -71,8 +71,8 @@ export class UnresolvedRFunctionType {
 		this.returnType = new RTypeVariable();
 	}
 
-	parameterTypes: RTypeVariable[];
-	returnType:     RTypeVariable;
+	readonly parameterTypes: RTypeVariable[];
+	readonly returnType:     RTypeVariable;
 
 	unify(other: UnresolvedRFunctionType): void {
 		guard(this.parameterTypes.length === other.parameterTypes.length, 'Expected the same number of parameters for function types to unify');
@@ -86,18 +86,50 @@ export class UnresolvedRFunctionType {
 
 export class RFunctionType {
 	readonly tag = RDataTypeTag.Function;
+	readonly parameterTypes: RDataType[];
+	readonly returnType:     RDataType;
 
 	constructor(parameterTypes: RDataType[], returnType: RDataType) {
 		this.parameterTypes = parameterTypes;
 		this.returnType = returnType;
 	}
+}
 
-	readonly parameterTypes: RDataType[];
-	readonly returnType:     RDataType;
+export class UnresolvedRListType {
+	readonly tag = RDataTypeTag.List;
+	readonly elementType:       RTypeVariable;
+	readonly namedElementTypes: Map<string, RTypeVariable>;
+
+	constructor(elementType?: UnresolvedRDataType) {
+		this.elementType = new RTypeVariable();
+		this.namedElementTypes = new Map<string, RTypeVariable>();
+		if(elementType !== undefined) {
+			this.elementType.unify(elementType);
+		}
+	}
+
+	constrainTypeForName(name: string, type: UnresolvedRDataType): void {
+		const existingType = this.namedElementTypes.get(name) ?? new RTypeVariable();
+		existingType.unify(type);
+
+		this.elementType.unify(type);
+	}
+	
+	unify(other: UnresolvedRListType): void {
+		this.elementType.unify(other.elementType);
+		for(const [name, type] of other.namedElementTypes) {
+			this.constrainTypeForName(name, type);
+		}
+	}
 }
 
 export class RListType {
 	readonly tag = RDataTypeTag.List;
+	readonly elementType: RDataType;
+
+	constructor(elementType: RDataType) {
+		this.elementType = elementType;
+	}
 }
 
 export class REnvironmentType {
@@ -132,6 +164,8 @@ export class RTypeVariable {
 		} else if(otherRep instanceof RTypeVariable) {
 			otherRep.boundType = thisRep;
 		} else if(thisRep instanceof UnresolvedRFunctionType && otherRep instanceof UnresolvedRFunctionType && thisRep.parameterTypes.length === otherRep.parameterTypes.length) {
+			thisRep.unify(otherRep);
+		} else if(thisRep instanceof UnresolvedRListType && otherRep instanceof UnresolvedRListType) {
 			thisRep.unify(otherRep);
 		} else if(thisRep instanceof RErrorType && otherRep instanceof RErrorType) {
 			otherRep.conflictingTypes.push(...thisRep.conflictingTypes);
@@ -172,8 +206,12 @@ export function resolveType(type: UnresolvedRDataType): RDataType {
 		const resolvedParameterTypes = type.parameterTypes.map(resolveType);
 		const resolvedReturnType = resolveType(type.returnType);
 		return new RFunctionType(resolvedParameterTypes, resolvedReturnType);
+	} else if(type instanceof UnresolvedRListType) {
+		const resolvedElementType = resolveType(type.elementType);
+		return new RListType(resolvedElementType);
+	} else {
+		return type;
 	}
-	return type;
 }
 
 
@@ -185,11 +223,10 @@ export type PrimitiveRDataType
 	| RStringType
 	| RRawType
 	| RNullType
-	| RListType
 	| REnvironmentType
 	| RLanguageType
 
-export type CompoundRDataType = RFunctionType;
+export type CompoundRDataType = RFunctionType | RListType;
 
 /**
  * The `RDataType` type is the union of all possible types that can be inferred
@@ -199,7 +236,7 @@ export type CompoundRDataType = RFunctionType;
  */
 export type RDataType = PrimitiveRDataType | CompoundRDataType | RErrorType | RUnknownType;
 
-export type UnresolvedCompoundRDataType = UnresolvedRFunctionType;
+export type UnresolvedCompoundRDataType = UnresolvedRFunctionType | UnresolvedRListType;
 
 export type UnresolvedRDataType
 	= PrimitiveRDataType

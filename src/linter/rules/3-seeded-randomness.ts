@@ -77,7 +77,8 @@ export const R3_SEEDED_RANDOMNESS = {
 	},
 	defaultConfig: {
 		randomnessProducers: ['set.seed'],
-		randomnessConsumers: ['runif'],
+		randomnessConsumers: ['jitter', 'sample', 'sample.int', 'arima.sim', 'kmeans', 'princomp', 'rcauchy', 'rchisq', 'rexp', 'rgamma', 'rgeom', 'rlnorm', 'rlogis', 'rmultinom', 'rnbinom', 'rnorm', 'rpois', 'runif', 'pointLabel', 'some', 'rbernoulli',
+		],
 	},
 	humanReadableName: 'Seeded Randomness',
 	prettyPrint:       {

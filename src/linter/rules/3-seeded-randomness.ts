@@ -59,12 +59,11 @@ export const R3_SEEDED_RANDOMNESS = {
 				// filter by calls that aren't preceded by a randomness producer
 				.filter(element => {
 					const producers = enrichmentContent(element.searchElement, Enrichment.LastCall).linkedIds;
-					if(producers.length <= 0) {
-						return true;
-					} else {
+					if(producers.length > 0/* && producers.some(p => (p.node as RFunctionCall).arguments.all(a => resolveToConstants()))*/){
 						metadata.callsWithProducers++;
 						return false;
 					}
+					return true;
 				})
 
 				.map(element => ({

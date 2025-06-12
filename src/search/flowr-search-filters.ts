@@ -3,7 +3,7 @@ import type { VertexType } from '../dataflow/graph/vertex';
 import { ValidVertexTypes } from '../dataflow/graph/vertex';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../dataflow/info';
-import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import type { FlowrSearchElement } from './flowr-search';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 
@@ -15,8 +15,8 @@ export const ValidFlowrFilters: Set<string> = new Set(Object.values(FlowrFilter)
 export const ValidFlowrFiltersReverse = Object.fromEntries(Object.entries(FlowrFilter).map(([k, v]) => [v, k]));
 
 export const FlowrFilters = {
-	[FlowrFilter.DropEmptyArguments]: (n: RNode<ParentInformation>) => {
-		return n.type !== RType.Argument || n.name !== undefined;
+	[FlowrFilter.DropEmptyArguments]: (e: FlowrSearchElement<ParentInformation>) => {
+		return e.node.type !== RType.Argument || e.node.name !== undefined;
 	}
 } as const;
 
@@ -154,7 +154,7 @@ export function isBinaryTree(tree: unknown): tree is { tree: BooleanNode } {
 }
 
 interface FilterData {
-	readonly node:      RNode<ParentInformation>,
+	readonly element:   FlowrSearchElement<ParentInformation>,
 	readonly normalize: NormalizedAst,
 	readonly dataflow:  DataflowInformation
 }
@@ -168,14 +168,14 @@ const evalVisit = {
 		evalTree(left, data) !== evalTree(right, data),
 	not: ({ operand }: BooleanUnaryNode<BooleanNode>, data: FilterData) =>
 		!evalTree(operand, data),
-	'r-type': ({ value }: LeafRType, { node }: FilterData) =>
-		node.type === value,
-	'vertex-type': ({ value }: LeafVertexType, { dataflow: { graph }, node }: FilterData) =>
-		graph.getVertex(node.info.id)?.tag === value,
-	'special': ({ value }: LeafSpecial, { node }: FilterData) => {
+	'r-type': ({ value }: LeafRType, { element }: FilterData) =>
+		element.node.type === value,
+	'vertex-type': ({ value }: LeafVertexType, { dataflow: { graph }, element }: FilterData) =>
+		graph.getVertex(element.node.info.id)?.tag === value,
+	'special': ({ value }: LeafSpecial, { element }: FilterData) => {
 		const getHandler = FlowrFilters[value as FlowrFilterName];
 		if(getHandler) {
-			return getHandler(node);
+			return getHandler(element);
 		}
 		throw new Error(`Special filter not implemented: ${value}`);
 	}

@@ -26,7 +26,7 @@ export interface DeprecatedFunctionsMetadata extends MergeableRecord {
 }
 
 export const R1_DEPRECATED_FUNCTIONS = {
-	createSearch:        (_config) => Q.all().with(Enrichment.CallTargets),
+	createSearch:        (_config) => Q.all().with(Enrichment.CallTargets, { onlyBuiltin: true }),
 	processSearchResult: (elements, config) => {
 		const metadata: DeprecatedFunctionsMetadata = {
 			totalRelevant:      0,
@@ -34,21 +34,13 @@ export const R1_DEPRECATED_FUNCTIONS = {
 		};
 		return {
 			results: elements.getElements()
-				.flatMap(element => {
-					const targets = enrichmentContent(element, Enrichment.CallTargets).targets;
-					// if there is a call target that is not built-in (ie a custom function), we don't want to mark it as deprecated
-					// eventually we'd want to solve this with an argument to the CallTargets enrichment like satisfiesCallTargets does!
-					if(targets.some(t => typeof t !== 'string')) {
-						return [];
-					}
-					return targets.map(target => {
-						metadata.totalRelevant++;
-						return {
-							range:  element.node.info.fullRange as SourceRange,
-							target: target as Identifier
-						};
-					});
-				})
+				.flatMap(element => enrichmentContent(element, Enrichment.CallTargets).targets.map(target => {
+					metadata.totalRelevant++;
+					return {
+						range:  element.node.info.fullRange as SourceRange,
+						target: target as Identifier
+					};
+				}))
 				.filter(element => {
 					if(config.deprecatedFunctions.includes(element.target)) {
 						return true;

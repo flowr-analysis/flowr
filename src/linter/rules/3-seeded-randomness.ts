@@ -25,7 +25,7 @@ export interface SeededRandomnessMeta extends MergeableRecord {
 
 export const R3_SEEDED_RANDOMNESS = {
 	createSearch: (config) => Q.all()
-		.with(Enrichment.CallTargets)
+		.with(Enrichment.CallTargets, { onlyBuiltin: true })
 		.filter({
 			name: FlowrFilter.MatchesEnrichment, args: {
 				enrichment: Enrichment.CallTargets,
@@ -41,22 +41,14 @@ export const R3_SEEDED_RANDOMNESS = {
 		return {
 			results: elements.getElements()
 				// map and filter consumers
-				.flatMap(element => {
-					const potentialConsumers = enrichmentContent(element, Enrichment.CallTargets).targets;
-					// if there is a call target that is not built-in (ie a custom function), we don't want to include it here
-					// eventually we'd want to solve this with an argument to the CallTargets enrichment like satisfiesCallTargets does!
-					if(potentialConsumers.some(t => typeof t !== 'string')) {
-						return [];
-					}
-					return potentialConsumers.map(target => {
-						metadata.consumerCalls++;
-						return {
-							range:         element.node.info.fullRange as SourceRange,
-							target:        target as Identifier,
-							searchElement: element
-						};
-					});
-				})
+				.flatMap(element => enrichmentContent(element, Enrichment.CallTargets).targets.map(target => {
+					metadata.consumerCalls++;
+					return {
+						range:         element.node.info.fullRange as SourceRange,
+						target:        target as Identifier,
+						searchElement: element
+					};
+				}))
 				// filter by calls that aren't preceded by a randomness producer
 				.filter(element => {
 					const producers = enrichmentContent(element.searchElement, Enrichment.LastCall).linkedIds;

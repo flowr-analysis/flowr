@@ -5,6 +5,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { VertexType } from '../../dataflow/graph/vertex';
 import type { Identifier } from '../../dataflow/environments/identifier';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
+
 import {
 	identifyLinkToLastCallRelation
 } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
@@ -60,7 +61,7 @@ export interface LastCallContent extends MergeableRecord {
  */
 export const Enrichments = {
 	[Enrichment.CallTargets]: {
-		enrich: (e, data) => {
+		enrich: (e, data, args) => {
 			// we don't resolve aliases here yet!
 			const content: CallTargetsContent = { targets: [] };
 			const callVertex = data.dataflow.graph.getVertex(e.node.info.id);
@@ -68,32 +69,38 @@ export const Enrichments = {
 				const origins = getOriginInDfg(data.dataflow.graph, callVertex.id);
 				if(!origins || origins.length === 0) {
 					content.targets = [recoverName(callVertex.id, data.normalize.idMap)] as (FlowrSearchElement<ParentInformation> | Identifier)[];
-					return content;
-				}
-				// find call targets in user code (which have ids!)
-				content.targets = content.targets.concat(
-					origins.map(o => {
-						switch(o.type) {
-							case OriginType.FunctionCallOrigin:
-								return {
-									node: data.normalize.idMap.get(o.id) as RNodeWithParent,
-								} satisfies FlowrSearchElement<ParentInformation>;
-							case OriginType.BuiltInFunctionOrigin:
-								return o.fn.name;
-							default:
-								return undefined;
-						}
-					}).filter(isNotUndefined)
-				);
-				if(content.targets.length === 0) {
-					content.targets = [recoverName(callVertex.id, data.normalize.idMap)] as (FlowrSearchElement<ParentInformation> | Identifier)[];
+				} else {
+					// find call targets in user code (which have ids!)
+					content.targets = content.targets.concat(
+						origins.map(o => {
+							switch(o.type) {
+								case OriginType.FunctionCallOrigin:
+									return {
+										node: data.normalize.idMap.get(o.id) as RNodeWithParent,
+									} satisfies FlowrSearchElement<ParentInformation>;
+								case OriginType.BuiltInFunctionOrigin:
+									return o.fn.name;
+								default:
+									return undefined;
+							}
+						}).filter(isNotUndefined)
+					);
+					if(content.targets.length === 0) {
+						content.targets = [recoverName(callVertex.id, data.normalize.idMap)] as (FlowrSearchElement<ParentInformation> | Identifier)[];
+					}
 				}
 			}
+
+			// if there is a call target that is not built-in (ie a custom function), we don't want to include it here
+			if(args?.onlyBuiltin && content.targets.some(t => typeof t !== 'string')) {
+				content.targets = [];
+			}
+
 			return content;
 		},
 		// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!
 		mapper: ({ targets }) => targets.map(t => t as FlowrSearchElement<ParentInformation>).filter(t => t.node !== undefined)
-	} satisfies EnrichmentData<CallTargetsContent>,
+	} satisfies EnrichmentData<CallTargetsContent, {onlyBuiltin?: boolean}>,
 	[Enrichment.LastCall]: {
 		enrich: (e, data, args) => {
 			guard(args && args.length, `${Enrichment.LastCall} enrichment requires at least one argument`);

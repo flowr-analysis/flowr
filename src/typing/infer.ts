@@ -296,7 +296,22 @@ class TypeInferringCfgGuidedVisitor<
 	override onListCall(data: { call: DataflowGraphVertexFunctionCall }) {
 		const node = this.getNormalizedAst(data.call.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
-		node.info.typeVariable.unify(new UnresolvedRListType());
+		const listType = new UnresolvedRListType();
+		node.info.typeVariable.unify(listType);
+
+		for(const arg of data.call.args) {
+			if(arg === EmptyArgument) {
+				continue; // Skip empty arguments
+			}
+
+			const argNode = this.getNormalizedAst(arg.nodeId);
+			guard(argNode !== undefined, 'Expected argument node to be defined');
+			if(arg.name !== undefined) {
+				listType.constrainTypeForName(arg.name, argNode.info.typeVariable);
+			} else {
+				listType.elementType.unify(argNode.info.typeVariable);
+			}
+		}
 	}
 
 	override onVectorCall(data: { call: DataflowGraphVertexFunctionCall }) {

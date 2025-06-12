@@ -1,16 +1,16 @@
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
-import { withShell } from '../../_helper/shell';
 import type {
 	LineageQuery,
 	LineageQueryResult
 } from '../../../../src/queries/catalog/lineage-query/lineage-query-format';
 import { getLineage } from '../../../../src/cli/repl/commands/repl-lineage';
 import { describe } from 'vitest';
+import { withTreeSitter } from '../../_helper/shell';
 
-describe.sequential('Lineage Query', withShell(shell => {
+describe('Lineage Query', withTreeSitter(parser => {
 	function testQuery(name: string, code: string, query: readonly LineageQuery[]) {
-		assertQuery(label(name), shell, code, query, ({ dataflow }) => ({
+		assertQuery(label(name), parser, code, query, ({ dataflow }) => ({
 			'lineage': {
 				lineages: query.reduce((acc, { criterion }) => {
 					acc[criterion] = getLineage(criterion, dataflow.graph);

@@ -4,7 +4,7 @@ import { assertDataflow, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { Q } from '../../../../src/search/flowr-search-builder';
-import { amendConfig, defaultConfigOptions } from '../../../../src/config';
+import { amendConfig } from '../../../../src/config';
 
 describe.sequential('Container Single Index Based Access', withShell(shell => {
 	describe.each(

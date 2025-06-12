@@ -9,7 +9,7 @@ import { BenchmarkSlicer } from '../benchmark/slicer';
 import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables';
 import path from 'path';
 import type { KnownParserName } from '../r-bridge/parser';
-import { amendConfig, getConfig } from '../config';
+import { amendConfig } from '../config';
 
 export interface SingleBenchmarkCliOptions {
 	verbose:                   boolean
@@ -59,12 +59,7 @@ async function benchmark() {
 	}
 
 	// Enable pointer analysis if requested, otherwise disable it
-	let config = getConfig();
-	if(options['enable-pointer-tracking']) {
-		config = amendConfig(config, { solver: { ...config.solver, pointerTracking: true, } });
-	} else {
-		config = amendConfig(config, { solver: { ...config.solver, pointerTracking: false, } });
-	}
+	amendConfig(c => c.solver.pointerTracking = options['enable-pointer-tracking']);
 
 	// ensure the file exists
 	const fileStat = fs.statSync(options.input);

@@ -18,10 +18,13 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
 import { appendEnvironment } from '../../../../../environments/append';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { isUndefined } from '../../../../../../util/assert';
+import { valueSetGuard } from '../../../../../eval/values/general';
+import { collectStrings } from '../../../../../eval/values/string/string-constants';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
+import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { cartesianProduct } from '../../../../../../util/collections/arrays';
 import type { FlowrConfigOptions } from '../../../../../../config';
 
@@ -55,7 +58,7 @@ export function processEvalCall<OtherInfo>(
 
 	if(!data.config.solver.evalStrings) {
 		expensiveTrace(dataflowLogger, () => `Skipping eval call ${JSON.stringify(evalArgument)} (disabled in config file)`);
-		information.graph.markIdForUnknownSideEffects(rootId);
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
 
@@ -92,7 +95,7 @@ export function processEvalCall<OtherInfo>(
 	}
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(args)} for eval is currently not supported, skipping`);
-	information.graph.markIdForUnknownSideEffects(rootId);
+	handleUnknownSideEffect(information.graph, information.environment, rootId);
 	return information;
 }
 
@@ -110,9 +113,9 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 		if(arg.value?.type === RType.String) {
 			return [arg.value.content.str];
 		} else if(arg.value?.type === RType.Symbol) {
-			const resolve = resolveValueOfVariable(arg.value.content, env, config.solver.variables, idMap);
-			if(resolve?.every(r => typeof r === 'object' && r !== null && 'str' in r)) {
-				return resolve.map(r => r.str as string);
+			const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, idMap: idMap }, config.solver.variables));
+			if(resolved) {
+				return collectStrings(resolved.elements);
 			}
 		} else if(arg.value?.type === RType.FunctionCall && arg.value.named && ['paste', 'paste0'].includes(arg.value.functionName.content)) {
 			return handlePaste(config, arg.value.arguments, env, idMap, arg.value.functionName.content === 'paste' ? [' '] : ['']);
@@ -134,9 +137,9 @@ function getAsString(config: FlowrConfigOptions, val: RNode<ParentInformation> |
 	if(val.type === RType.String) {
 		return [val.content.str];
 	} else if(val.type === RType.Symbol) {
-		const resolved = resolveValueOfVariable(val.content, env, config.solver.variables, idMap);
-		if(resolved?.every(r => typeof r === 'object' && r !== null && 'str' in r)) {
-			return resolved.map(r => r.str as string);
+		const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: env, idMap: idMap }, config.solver.variables));
+		if(resolved) {
+			return collectStrings(resolved.elements);
 		}
 	}
 	return undefined;

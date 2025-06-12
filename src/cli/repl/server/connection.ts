@@ -20,7 +20,7 @@ import type {
 import { requestExecuteReplExpressionMessage } from './messages/message-repl';
 import { replProcessAnswer } from '../core';
 import { LogLevel } from '../../../util/log';
-import { cfg2quads, extractCFG } from '../../../control-flow/extract-cfg';
+import { cfg2quads, extractCfg } from '../../../control-flow/extract-cfg';
 import type { QuadSerializationConfiguration } from '../../../util/quads';
 import { defaultQuadIdGenerator } from '../../../util/quads';
 import { printStepResult, StepOutputFormat } from '../../../core/print/print';
@@ -167,7 +167,7 @@ export class FlowRServerConnection {
 	private async sendFileAnalysisResponse(slicer: PipelineExecutor<Pipeline>, results: Partial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>>, message: FileAnalysisRequestMessage): Promise<void> {
 		let cfg: ControlFlowInformation | undefined = undefined;
 		if(message.cfg) {
-			cfg = extractCFG(results.normalize as NormalizedAst, results.dataflow?.graph);
+			cfg = extractCfg(results.normalize as NormalizedAst, results.dataflow?.graph);
 		}
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() });

@@ -25,14 +25,14 @@ const PlotCreate = [
 	'overplot', 'residplot', 'heatmap.2', 'lmplot2', 'sinkplot', 'textplot', 'boxplot2', 'profLikCI',
 	...TinyPlotCrate,
 	...GgPlotCreate
-] as const;
+];
 const GraphicDeviceOpen = [
 	'pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz', 'image_graph',
 	'image_draw', 'dev.new', 'trellis.device', 'raster_pdf', 'agg_pdf'
 ] as const;
 const TinyPlotAddons = [
 	'tinyplot_add', 'plt_add'
-] as const;
+];
 const GgPlotImplicitAddons = [
 	'geom_count','geom_bin_2d','geom_spoke','geom_tile','geom_rect',
 	'geom_function','geom_crossbar','geom_density2d','geom_abline','geom_errorbar','geom_errorbarh',
@@ -85,10 +85,10 @@ const PlotAddons = [
 	'points', 'abline', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
 	'qqline', 'qqnorm', 'rasterImage',
 	'tiplabels', 'rug', 'grid', 'box', 'clip', 'matpoints', 'matlines', ...GgPlotImplicitAddons, ...PlotFunctionsWithAddParam
-] as const;
+];
 const GgPlotAddons = [
 	'ggdraw', 'last_plot'
-] as const;
+];
 
 
 function toRegex(n: readonly string[]): RegExp {
@@ -251,7 +251,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{ type: 'function', names: ['interference'],                               processor: 'builtin:apply',               config: { unquoteFunction: true, nameOfFunctionArgument: 'propensity_integrand' },     assumePrimitive: false },
 	{ type: 'function', names: ['ddply'],                                      processor: 'builtin:apply',               config: { unquoteFunction: true, indexOfFunction: 2, nameOfFunctionArgument: '.fun' }, assumePrimitive: false },
 	{ type: 'function', names: ['list'],                                       processor: 'builtin:list',                config: {},                                                                            assumePrimitive: true  },
-	{ type: 'function', names: ['c'],                                          processor: 'builtin:vector',              config: {},                                                                            assumePrimitive: true  },
+	{ type: 'function', names: ['c'],                                          processor: 'builtin:vector',              config: {},                                                                            assumePrimitive: true, evalHandler: 'builtin:c'  },
 	{
 		type:      'function',
 		names:     ['setnames', 'setNames', 'setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr'],

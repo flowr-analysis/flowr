@@ -33,7 +33,7 @@ export const enum OriginType {
  *
  * - Requesting the origins for the use of `x` in `print(x)` returns a {@link ReadVariableOrigin} for the definition of `x` in the first line.
  * - Asking for the origin of the `2` in `x <- 2` returns a {@link ConstantOrigin} for itself.
- * - Asking for the origin of `x` in `x <- 2` returns a {@link WriteVariableOrigin} for the value `2`.
+ * - Asking for the origin of `x` in `x <- 2` returns a {@link WriteVariableOrigin} for the variable `x`.
  */
 export interface SimpleOrigin {
     readonly type: OriginType.ReadVariableOrigin | OriginType.WriteVariableOrigin | OriginType.ConstantOrigin;

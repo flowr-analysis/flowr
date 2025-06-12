@@ -35,11 +35,13 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
-import { getAliases, resolveByName } from '../../../../../environments/resolve-by-name';
+import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { addSubIndicesToLeafIndices, resolveIndicesByName } from '../../../../../../util/containers';
 import type { FlowrConfigOptions } from '../../../../../../config';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
+import { getAliases } from '../../../../../eval/resolve/alias-tracking';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -118,6 +120,7 @@ function tryReplacementPassingIndices<OtherInfo>(
 			assignRootId:  rootId
 		}
 	);
+
 	markAsOnlyBuiltIn(info.graph, functionName.info.id);
 	return info;
 }
@@ -204,7 +207,7 @@ export function processAssignment<OtherInfo>(
 		name, args:      effectiveArgs, rootId, data, forceArgs: config.forceArgs,
 		origin:    'builtin:assignment'
 	}).information;
-	info.graph.markIdForUnknownSideEffects(rootId);
+	handleUnknownSideEffect(info.graph, info.environment, rootId);
 	return info;
 }
 

@@ -1,12 +1,13 @@
 import Parser from 'web-tree-sitter';
+
 import type { RParseRequest } from '../../retriever';
 import fs from 'fs';
 import type { SyncParser } from '../../parser';
 import type { TreeSitterEngineConfig } from '../../../config';
 import { log } from '../../../util/log';
 
-export const DEFAULT_TREE_SITTER_R_WASM_PATH = `${__dirname}/tree-sitter-r.wasm`;
-export const DEFAULT_TREE_SITTER_WASM_PATH = `${__dirname}/tree-sitter.wasm`;
+export const DEFAULT_TREE_SITTER_R_WASM_PATH = './node_modules/@eagleoutice/tree-sitter-r/tree-sitter-r.wasm';
+export const DEFAULT_TREE_SITTER_WASM_PATH = './node_modules/web-tree-sitter/tree-sitter.wasm';
 
 const wasmLog = log.getSubLogger({ name: 'tree-sitter-wasm' });
 
@@ -28,13 +29,13 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		const treeSitterWasmPath = overrideTreeSitterWasmPath ?? config?.treeSitterWasmPath ?? DEFAULT_TREE_SITTER_WASM_PATH;
 		// noinspection JSUnusedGlobalSymbols - this is used by emscripten, see https://emscripten.org/docs/api_reference/module.html
 		await Parser.init({
-			locateFile: (path: string, prefix: string) => {
+			locateFile: treeSitterWasmPath ? (path: string, prefix: string) => {
 				// allow setting a custom path for the tree sitter wasm file
 				if(path.endsWith('tree-sitter.wasm')) {
 					return treeSitterWasmPath;
 				}
 				return prefix + path;
-			},
+			} : undefined,
 			onAbort:  (s: string | number) => wasmLog.error(`Tree-sitter wasm aborted: ${s}`),
 			print:    (s: string) => wasmLog.debug(s),
 			printErr: (s: string) => wasmLog.error(s)

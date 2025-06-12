@@ -24,6 +24,8 @@ export class CriteriaParseError extends Error {
 
 /**
  * Takes a criterion in the form of `line:column` or `line@variable-name` and returns the corresponding node id
+ *
+ * @see {@link tryResolveSliceCriterionToId} for a version that does not throw an error
  */
 export function slicingCriterionToId(criterion: SingleSlicingCriterion, idMap: AstIdMap): NodeId {
 	let resolved: NodeId | undefined;
@@ -43,6 +45,22 @@ export function slicingCriterionToId(criterion: SingleSlicingCriterion, idMap: A
 	return resolved;
 }
 
+/**
+ * Tries to resolve a slicing criterion to an id, but does not throw an error if it fails.
+ *
+ * @see {@link slicingCriterionToId} for the version that throws an error
+ */
+export function tryResolveSliceCriterionToId(criterion: string | NodeId, idMap: AstIdMap): NodeId | undefined {
+	try {
+		return slicingCriterionToId(criterion as SingleSlicingCriterion, idMap);
+	} catch(e) {
+		if(e instanceof CriteriaParseError) {
+			expensiveTrace(slicerLogger, () => `could not resolve slicing criterion ${criterion}: ${e.message}`);
+			return undefined;
+		}
+		throw e; // rethrow other errors
+	}
+}
 
 
 function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: AstIdMap<OtherInfo>): NodeId | undefined {

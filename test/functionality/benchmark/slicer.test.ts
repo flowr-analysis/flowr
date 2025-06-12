@@ -4,6 +4,8 @@ import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/pr
 import { CommonSlicerMeasurements, PerSliceMeasurements } from '../../../src/benchmark/stats/stats';
 import { assert, describe, test } from 'vitest';
 import { amendConfig, defaultConfigOptions } from '../../../src/config';
+import { describe, assert, test, beforeAll, afterAll } from 'vitest';
+import { amendConfig } from '../../../src/config';
 import { DefaultAllVariablesFilter } from '../../../src/slicing/criterion/filters/all-variables';
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {

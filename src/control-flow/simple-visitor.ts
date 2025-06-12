@@ -23,6 +23,7 @@ export function visitCfgInReverseOrder(
 ): void {
 	const visited = new Set<NodeId>();
 	let queue = [...startNodes];
+	const hasBb = graph.mayHaveBasicBlocks();
 	while(queue.length > 0) {
 		const current = queue.pop() as NodeId;
 		if(visited.has(current)) {
@@ -31,12 +32,13 @@ export function visitCfgInReverseOrder(
 		visited.add(current);
 		if(visitor(current)) {
 			continue;
+		} else if(hasBb) {
+			const get = graph.getVertex(current);
+			if(get?.type === CfgVertexType.Block) {
+				queue = queue.concat(get.elems.toReversed().map(e => e.id));
+			}
 		}
-		const get = graph.getVertex(current);
-		if(get?.type === CfgVertexType.Block) {
-			queue = queue.concat(get.elems.toReversed().map(e => e.id));
-		}
-		const incoming = graph.outgoing(current) ?? [];
+		const incoming = graph.outgoingEdges(current) ?? [];
 		for(const [from] of incoming) {
 			queue.push(from);
 		}
@@ -60,7 +62,8 @@ export function visitCfgInOrder(
 	visitor: (node: NodeId) => boolean | void
 ): void {
 	const visited = new Set<NodeId>();
-	let queue = [...startNodes];
+	let queue = startNodes.slice();
+	const hasBb = graph.mayHaveBasicBlocks();
 	while(queue.length > 0) {
 		const current = queue.shift() as NodeId;
 		if(visited.has(current)) {
@@ -69,14 +72,33 @@ export function visitCfgInOrder(
 		visited.add(current);
 		if(visitor(current)) {
 			continue;
+		} else if(hasBb) {
+			const get = graph.getVertex(current);
+			if(get?.type === CfgVertexType.Block) {
+				queue = queue.concat(get.elems.map(e => e.id));
+			}
 		}
-		const get = graph.getVertex(current);
-		if(get?.type === CfgVertexType.Block) {
-			queue = queue.concat(get.elems.map(e => e.id));
-		}
-		const outgoing = graph.ingoing(current) ?? [];
+		const outgoing = graph.ingoingEdges(current) ?? [];
 		for(const [to] of outgoing) {
 			queue.push(to);
 		}
 	}
+}
+
+/**
+ * Check if a node can reach another node in the control flow graph.
+ */
+export function canReach(
+	graph: ControlFlowGraph,
+	from: NodeId[],
+	to: NodeId
+): boolean {
+	let reached = false;
+	visitCfgInOrder(graph, from, node => {
+		if(node === to) {
+			reached = true;
+			return true;
+		}
+	});
+	return reached;
 }

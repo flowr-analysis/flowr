@@ -14,7 +14,7 @@ import type {
 } from '../../../src/cli/repl/server/messages/message-analysis';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { jsonReplacer } from '../../../src/util/json';
-import { extractCFG } from '../../../src/control-flow/extract-cfg';
+import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { sanitizeAnalysisResults } from '../../../src/cli/repl/server/connection';
@@ -158,7 +158,7 @@ describe('flowr', () => {
 
 			const gotCfg = response.cfg;
 			assert.isDefined(gotCfg, 'Expected the cfg to be defined as we requested it');
-			const expectedCfg = extractCFG(response.results.normalize);
+			const expectedCfg = extractCfg(response.results.normalize);
 			assert.equal(JSON.stringify(gotCfg?.graph, jsonReplacer), JSON.stringify(expectedCfg.graph, jsonReplacer), 'Expected the cfg to be the same as the one extracted from the results');
 		}));
 

@@ -116,6 +116,8 @@ export function produceDataFlowGraph<OtherInfo>(
 		config
 	};
 	let df = processDataflowFor<OtherInfo>(completeAst.ast, dfData);
+
+
 	df.graph.sourced.unshift(firstRequest.request === 'file' ? firstRequest.content : '<inline>');
 
 	if(multifile) {
@@ -127,6 +129,7 @@ export function produceDataFlowGraph<OtherInfo>(
 
 	// finally, resolve linkages
 	updateNestedFunctionCalls(df.graph, df.environment);
+
 
 	resolveLinkToSideEffects(completeAst, df.graph);
 	return df;

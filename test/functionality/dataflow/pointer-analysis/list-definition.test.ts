@@ -70,7 +70,7 @@ describe.sequential('List Definition', withShell(shell => {
 
 			describe('Skip if index threshold', () => {
 				const config = amendConfig(defaultConfigOptions, { solver: { ...defaultConfigOptions.solver, pointerTracking: { maxIndexCount: 1 } } });
-				
+
 				assertContainerIndicesDefinition(
 					label('Over the limit (list)', capabilities),
 					shell,

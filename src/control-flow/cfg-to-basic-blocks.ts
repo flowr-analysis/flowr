@@ -30,18 +30,18 @@ export function convertCfgToBasicBlocks(cfInfo: ControlFlowInformation): Control
 			continue;
 		}
 
-		const outgoing = newCfg.outgoing(id);
+		const outgoing = newCfg.outgoingEdges(id);
 		const target = singleOutgoingFd(outgoing);
 		if(target) {
-			const targetIn = newCfg.ingoing(target);
+			const targetIn = newCfg.ingoingEdges(target);
 			if(targetIn && targetIn.size === 1) {
 				newCfg.mergeTwoBasicBlocks(id, target);
 			}
 		}
-		const ingoing = newCfg.ingoing(id);
+		const ingoing = newCfg.ingoingEdges(id);
 		const ingoingTarget = singleOutgoingFd(ingoing);
 		if(ingoingTarget) {
-			const ingoingOut = newCfg.outgoing(ingoingTarget);
+			const ingoingOut = newCfg.outgoingEdges(ingoingTarget);
 			if(ingoingOut && ingoingOut.size === 1) {
 				newCfg.mergeTwoBasicBlocks(ingoingTarget, id);
 			}

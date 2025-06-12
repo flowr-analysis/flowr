@@ -31,6 +31,7 @@ import { symbolArgumentsToStrings } from './built-in-access';
 import type { BuiltInMappingName } from '../../../../../environments/built-in';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { ReferenceType } from '../../../../../environments/identifier';
+import { handleReplacementOperator } from '../../../../../graph/unknown-replacement';
 
 
 export function processReplacementFunction<OtherInfo>(
@@ -46,10 +47,9 @@ export function processReplacementFunction<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
-
 	/* we only get here if <-, <<-, ... or whatever is part of the replacement is not overwritten */
 	expensiveTrace(dataflowLogger, () => `Replacement ${name.content} with ${JSON.stringify(args)}, processing`);
-
+	
 	let indices: ContainerIndicesCollection = config.activeIndices;
 	if(data.config.solver.pointerTracking) {
 		indices ??= constructAccessedIndices<OtherInfo>(name.content, args);
@@ -97,11 +97,18 @@ export function processReplacementFunction<OtherInfo>(
 		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});
 
-	const firstArg = unpackArgument(args[0])?.info.id;
+	const firstArg = unpackArgument(args[0]);
+	
+	handleReplacementOperator({
+		operator: name.content, 
+		target:   firstArg?.lexeme,
+		env:      res.environment,
+		id:       rootId
+	});
 
 	if(firstArg) {
 		res.graph.addEdge(
-			firstArg,
+			firstArg.info.id,
 			rootId,
 			EdgeType.DefinedBy | EdgeType.Reads
 		);

@@ -8,7 +8,7 @@ export interface BaseBuiltInDefinition {
     /** The type of the built-in configuration */
     readonly type:             string;
     /** The function name to define to the given configuration */
-    readonly names:            readonly Identifier[];
+    readonly names:            Identifier[];
     /** Should we assume that the value is a primitive? */
     readonly assumePrimitive?: boolean;
 }
@@ -32,7 +32,8 @@ export interface BuiltInConstantDefinition<Value> extends BaseBuiltInDefinition 
 export interface BuiltInFunctionDefinition<BuiltInProcessor extends BuiltInMappingName> extends BaseBuiltInDefinition {
     readonly type:      'function';
     readonly processor: BuiltInProcessor;
-    readonly config?:   ConfigOfBuiltInMappingName<BuiltInProcessor>
+    readonly config?:   ConfigOfBuiltInMappingName<BuiltInProcessor>;
+	readonly evalHandler?: string
 }
 
 /**
@@ -41,7 +42,7 @@ export interface BuiltInFunctionDefinition<BuiltInProcessor extends BuiltInMappi
  */
 export interface BuiltInReplacementDefinition extends BaseBuiltInDefinition {
     readonly type:     'replacement';
-    readonly suffixes: readonly ('<<-' | '<-')[];
+    readonly suffixes: ('<<-' | '<-')[];
 	readonly config:      { readIndices: boolean }
 }
 
@@ -50,7 +51,7 @@ export type BuiltInDefinition = BuiltInConstantDefinition<any> | BuiltInFunction
 /**
  * @see DefaultBuiltinConfig
  */
-export type BuiltInDefinitions = readonly BuiltInDefinition[];
+export type BuiltInDefinitions = BuiltInDefinition[];
 
 function registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>): void {
 	for(const name of names) {

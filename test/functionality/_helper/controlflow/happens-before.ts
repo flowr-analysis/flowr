@@ -6,7 +6,7 @@ import { Ternary } from '../../../../src/util/logic';
 import type { RShell } from '../../../../src/r-bridge/shell';
 import { createNormalizePipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { extractCFG } from '../../../../src/control-flow/extract-cfg';
+import { extractCfg } from '../../../../src/control-flow/extract-cfg';
 import { happensBefore } from '../../../../src/control-flow/happens-before';
 import { cfgToMermaidUrl } from '../../../../src/util/mermaid/cfg';
 import { defaultConfigOptions } from '../../../../src/config';
@@ -18,7 +18,7 @@ export function assertHappensBefore(shell: RShell, code: string, a: SingleSlicin
 			const result = await createNormalizePipeline(parser, {
 				request: requestFromInput(code)
 			}, defaultConfigOptions).allRemainingSteps();
-			const cfg = extractCFG(result.normalize);
+			const cfg = extractCfg(result.normalize);
 			const aResolved = slicingCriterionToId(a, result.normalize.idMap);
 			const bResolved = slicingCriterionToId(b, result.normalize.idMap);
 			try {

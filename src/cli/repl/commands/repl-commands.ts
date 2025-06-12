@@ -12,7 +12,7 @@ import {
 	dataflowSimplifiedCommand,
 	dataflowStarCommand
 } from './repl-dataflow';
-import { controlflowBBCommand, controlflowBBStarCommand, controlflowCommand, controlflowStarCommand } from './repl-cfg';
+import { controlflowBbCommand, controlflowBbStarCommand, controlflowCommand, controlflowStarCommand } from './repl-cfg';
 import type { OutputFormatter } from '../../../util/text/ansi';
 import { bold, italic } from '../../../util/text/ansi';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
@@ -55,7 +55,7 @@ export const helpCommand: ReplCommand = {
 	fn:           ({ output }) => {
 		initCommandMapping();
 		output.stdout(`
-If enabled ('--r-session-access'), you can just enter R expressions which get evaluated right away:
+If enabled ('--r-session-access' and if using the 'r-shell' engine), you can just enter R expressions which get evaluated right away:
 ${rawPrompt} ${bold('1 + 1', output.formatter)}
 ${italic('[1] 2', output.formatter)}
 
@@ -93,8 +93,8 @@ const _commands: Record<string, ReplCommand> = {
 	'dataflowsimple*': dataflowSimpleStarCommand,
 	'controlflow':     controlflowCommand,
 	'controlflow*':    controlflowStarCommand,
-	'controlflowbb':   controlflowBBCommand,
-	'controlflowbb*':  controlflowBBStarCommand,
+	'controlflowbb':   controlflowBbCommand,
+	'controlflowbb*':  controlflowBbStarCommand,
 	'lineage':         lineageCommand,
 	'query':           queryCommand,
 	'query*':          queryStarCommand

@@ -4,7 +4,7 @@ import { BasicCfgGuidedVisitor } from '../../../src/control-flow/basic-cfg-guide
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
-import { extractCFG } from '../../../src/control-flow/extract-cfg';
+import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { withTreeSitter } from '../_helper/shell';
 import { simplifyControlFlowInformation } from '../../../src/control-flow/cfg-simplification';
 import { defaultConfigOptions } from '../../../src/config';
@@ -31,9 +31,9 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				const result = await createDataflowPipeline(parser, {
 					request: requestFromInput(code)
 				}, defaultConfigOptions).allRemainingSteps();
-				let cfg = extractCFG(result.normalize, result.dataflow?.graph);
+				let cfg = extractCfg(result.normalize, result.dataflow?.graph);
 				if(useBasicBlocks) {
-					cfg = simplifyControlFlowInformation(cfg, ['to-basic-blocks', 'remove-dead-code']);
+					cfg = simplifyControlFlowInformation(cfg, { ast: result.normalize, dfg: result.dataflow.graph }, ['to-basic-blocks', 'remove-dead-code']);
 				}
 
 				const configuration: BasicCfgGuidedVisitorConfiguration = {

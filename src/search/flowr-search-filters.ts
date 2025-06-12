@@ -4,28 +4,46 @@ import { ValidVertexTypes } from '../dataflow/graph/vertex';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../dataflow/info';
 import type { FlowrSearchElement } from './flowr-search';
+import type { MergeableRecord } from '../util/objects';
+import type { Enrichment } from './search-executor/search-enrichers';
+import { enrichmentContent } from './search-executor/search-enrichers';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
+interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {
+	name: Filter;
+	args: Args
+}
 
 export enum FlowrFilter {
-	DropEmptyArguments = 'drop-empty-arguments'
+	DropEmptyArguments = 'drop-empty-arguments',
+	MatchesEnrichment = 'matches-enrichment'
 }
+export type FlowrFilterFunction <T extends MergeableRecord> = (e: FlowrSearchElement<ParentInformation>, args: T) => boolean;
 
 export const ValidFlowrFilters: Set<string> = new Set(Object.values(FlowrFilter));
 export const ValidFlowrFiltersReverse = Object.fromEntries(Object.entries(FlowrFilter).map(([k, v]) => [v, k]));
 
 export const FlowrFilters = {
-	[FlowrFilter.DropEmptyArguments]: (e: FlowrSearchElement<ParentInformation>) => {
+	[FlowrFilter.DropEmptyArguments]: ((e: FlowrSearchElement<ParentInformation>, _args: never) => {
 		return e.node.type !== RType.Argument || e.node.name !== undefined;
-	}
+	}) satisfies FlowrFilterFunction<never>,
+	[FlowrFilter.MatchesEnrichment]: ((e: FlowrSearchElement<ParentInformation>, args: MatchesEnrichmentArgs<Enrichment>) => {
+		const content = JSON.stringify(enrichmentContent(e, args.enrichment));
+		return content !== undefined && args.test.test(content);
+	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>
 } as const;
+export type FlowrFilterArgs<F extends FlowrFilter> = typeof FlowrFilters[F] extends FlowrFilterFunction<infer Args> ? Args : never;
 
+export interface MatchesEnrichmentArgs<E extends Enrichment> extends MergeableRecord {
+	enrichment: E,
+	test:       RegExp
+}
 
-type ValidFilterTypes = FlowrFilterName | RType | VertexType;
+type ValidFilterTypes<F extends FlowrFilter = FlowrFilter> = FlowrFilterName | FlowrFilterWithArgs<F, FlowrFilterArgs<F>> | RType | VertexType;
 /**
  * By default, we provide filter for every {@link RType} and {@link VertexType}.
  */
-export type FlowrFilterExpression = FlowrFilterCombinator | ValidFilterTypes;
+export type FlowrFilterExpression<F extends FlowrFilter = FlowrFilter> = FlowrFilterCombinator | ValidFilterTypes<F>;
 
 interface BooleanBinaryNode<Composite> {
 	readonly type:  'and' | 'or' | 'xor';
@@ -39,7 +57,7 @@ interface BooleanUnaryNode<Composite> {
 
 type LeafRType = { readonly type: 'r-type', readonly value: RType };
 type LeafVertexType = { readonly type: 'vertex-type', readonly value: VertexType };
-type LeafSpecial = { readonly type: 'special', readonly value: string };
+type LeafSpecial = { readonly type: 'special', readonly value: FlowrFilterName | FlowrFilterWithArgs<FlowrFilter, FlowrFilterArgs<FlowrFilter>> };
 
 type Leaf = LeafRType | LeafVertexType | LeafSpecial;
 
@@ -64,14 +82,19 @@ export class FlowrFilterCombinator {
 	}
 
 	public static is(value: BooleanNodeOrCombinator | ValidFilterTypes): FlowrFilterCombinator {
-		if(typeof value === 'object') {
-			return new this(value);
+		if(typeof value === 'string' && ValidFlowrFilters.has(value)) {
+			return new this({ type: 'special', value: value as FlowrFilter });
+		} else if(typeof value === 'object') {
+			const name = (value as FlowrFilterWithArgs<FlowrFilter, FlowrFilterArgs<FlowrFilter>>)?.name;
+			if(name && ValidFlowrFilters.has(name)) {
+				return new this({ type: 'special', value: value as FlowrFilterWithArgs<FlowrFilter, FlowrFilterArgs<FlowrFilter>> });
+			} else {
+				return new this(value as BooleanNodeOrCombinator);
+			}
 		} else if(ValidRTypes.has(value as RType)) {
 			return new this({ type: 'r-type', value: value as RType });
 		} else if(ValidVertexTypes.has(value as VertexType)) {
 			return new this({ type: 'vertex-type', value: value as VertexType });
-		} else if(ValidFlowrFilters.has(value)) {
-			return new this({ type: 'special', value: value as FlowrFilter });
 		} else {
 			throw new Error(`Invalid filter value: ${value}`);
 		}
@@ -138,7 +161,7 @@ const typeToSymbol: Record<BooleanBinaryNode<BooleanNode>['type'] | BooleanUnary
 
 function treeToStringImpl(tree: BooleanNode, depth: number): string {
 	if(tree.type === 'r-type' || tree.type === 'vertex-type' || tree.type === 'special') {
-		return tree.value;
+		return typeof tree.value === 'string' ? tree.value : `${tree.value.name}@${JSON.stringify(tree.value.args)}`;
 	}
 	if(tree.type === 'not') {
 		return `${typeToSymbol[tree.type]}${treeToStringImpl(tree.operand, depth)}`;
@@ -173,11 +196,13 @@ const evalVisit = {
 	'vertex-type': ({ value }: LeafVertexType, { dataflow: { graph }, element }: FilterData) =>
 		graph.getVertex(element.node.info.id)?.tag === value,
 	'special': ({ value }: LeafSpecial, { element }: FilterData) => {
-		const getHandler = FlowrFilters[value as FlowrFilterName];
+		const name = typeof value === 'string' ? value : value.name;
+		const args = typeof value === 'string' ? undefined as unknown as FlowrFilterArgs<FlowrFilter> : value.args;
+		const getHandler = FlowrFilters[name];
 		if(getHandler) {
-			return getHandler(element);
+			return getHandler(element, args);
 		}
-		throw new Error(`Special filter not implemented: ${value}`);
+		throw new Error(`Couldn't find special filter with name ${name}`);
 	}
 };
 
@@ -186,8 +211,8 @@ function evalTree(tree: BooleanNode, data: FilterData): boolean {
 	return evalVisit[tree.type](tree as never, data);
 }
 
-export function evalFilter(filter: FlowrFilterExpression, data: FilterData): boolean {
+export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): boolean {
 	/* common lift, this can be improved easily :D */
-	const tree = FlowrFilterCombinator.is(filter);
+	const tree = FlowrFilterCombinator.is(filter as FlowrFilterExpression);
 	return evalTree(tree.get(), data);
 }

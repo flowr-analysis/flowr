@@ -6,6 +6,7 @@ import { Q } from '../../search/flowr-search-builder';
 import { formatRange } from '../../util/mermaid/dfg';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { Identifier } from '../../dataflow/environments/identifier';
+import { FlowrFilter } from '../../search/flowr-search-filters';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -25,8 +26,14 @@ export interface SeededRandomnessMeta extends MergeableRecord {
 export const R3_SEEDED_RANDOMNESS = {
 	createSearch: (config) => Q.all()
 		.with(Enrichment.CallTargets)
+		.filter({
+			name: FlowrFilter.MatchesEnrichment, args: {
+				enrichment: Enrichment.CallTargets,
+				test:       new RegExp(`"(${config.randomnessConsumers.join('|')})"`)
+			}
+		})
 		.with(Enrichment.LastCall, config.randomnessProducers.map(f => ({ callName: f }))),
-	processSearchResult: (elements, config) => {
+	processSearchResult: (elements) => {
 		const metadata: SeededRandomnessMeta = {
 			consumerCalls:      0,
 			callsWithProducers: 0
@@ -41,21 +48,15 @@ export const R3_SEEDED_RANDOMNESS = {
 					if(potentialConsumers.some(t => typeof t !== 'string')) {
 						return [];
 					}
-					return potentialConsumers.map(target => ({
-						range:         element.node.info.fullRange as SourceRange,
-						target:        target as Identifier,
-						searchElement: element
-					}));
-				})
-				.filter(element => {
-					if(config.randomnessConsumers.includes(element.target)) {
+					return potentialConsumers.map(target => {
 						metadata.consumerCalls++;
-						return true;
-					} else {
-						return false;
-					}
+						return {
+							range:         element.node.info.fullRange as SourceRange,
+							target:        target as Identifier,
+							searchElement: element
+						};
+					});
 				})
-
 				// filter by calls that aren't preceded by a randomness producer
 				.filter(element => {
 					const producers = enrichmentContent(element.searchElement, Enrichment.LastCall).linkedIds;

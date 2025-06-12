@@ -79,7 +79,7 @@ export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly 
 
 export function asciiDataType(type: RDataType): string {
 	if(type.tag === RDataTypeTag.Function) {
-		return `Function(${type.parameterTypes.map(t => asciiDataType(t)).join(', ')}) -> ${asciiDataType(type.returnType)}`;
+		return `Function(${type.parameterTypes.entries().toArray().map(([key, type]) => `${key}: ${asciiDataType(type)}`).join(', ')}) -> ${asciiDataType(type.returnType)}`;
 	} else {
 		return type.tag;
 	}

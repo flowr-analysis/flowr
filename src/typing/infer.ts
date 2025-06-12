@@ -146,12 +146,33 @@ class TypeInferringCfgGuidedVisitor<
 			.filter(([_target, edge]) => edgeIncludesType(edge.types, EdgeType.Calls))
 			.map(([target, _edge]) => target)
 			.toArray();
-			
 		guard(callTargets !== undefined && callTargets.length >= 1, 'Expected at least one target for default function call');
+		
+		const node = this.getNormalizedAst(data.call.id);
+		guard(node !== undefined, 'Expected AST node to be defined');
+
 		for(const target of callTargets) {
 			const targetNode = this.getNormalizedAst(target);
 			if(targetNode !== undefined) {
-				targetNode.info.typeVariable.unify(new UnresolvedRFunctionType(data.call.args.length));
+				const functionType = new UnresolvedRFunctionType();
+				targetNode.info.typeVariable.unify(functionType);
+
+				for(const [index, arg] of data.call.args.entries()) {
+					if(arg === EmptyArgument) {
+						continue; // Skip empty arguments
+					}
+
+					const argNode = this.getNormalizedAst(arg.nodeId);
+					guard(argNode !== undefined, 'Expected argument node to be defined');
+
+					if(arg.name !== undefined) {
+						functionType.constrainParameterType(arg.name, argNode.info.typeVariable);
+					} else {
+						functionType.constrainParameterType(index, argNode.info.typeVariable);
+					}
+				}
+
+				node.info.typeVariable.unify(functionType.returnType);
 			} else {
 				// TODO: Handle builtin functions that are not represented in the AST
 			}
@@ -307,7 +328,7 @@ class TypeInferringCfgGuidedVisitor<
 			const argNode = this.getNormalizedAst(arg.nodeId);
 			guard(argNode !== undefined, 'Expected argument node to be defined');
 			if(arg.name !== undefined) {
-				listType.constrainTypeForName(arg.name, argNode.info.typeVariable);
+				listType.constrainElementTypeForName(arg.name, argNode.info.typeVariable);
 			} else {
 				listType.elementType.unify(argNode.info.typeVariable);
 			}
@@ -334,7 +355,21 @@ class TypeInferringCfgGuidedVisitor<
 		const node = this.getNormalizedAst(data.vertex.id);
 		guard(node !== undefined && node.type === RType.FunctionDefinition, 'Expected AST node to be a function definition');
 
-		node.info.typeVariable.unify(new UnresolvedRFunctionType(node.parameters.length));
+		const functionType = new UnresolvedRFunctionType();
+		node.info.typeVariable.unify(functionType);
+
+		for(const [index, param] of node.parameters.entries()) {
+			if(param.special) {
+				continue; // Skip `...` parameters
+			}
+
+			functionType.constrainParameterType(index, param.info.typeVariable);
+			functionType.constrainParameterType(param.name.lexeme, param.info.typeVariable);
+			
+			if(param.defaultValue !== undefined) {
+				param.info.typeVariable.unify(param.defaultValue.info.typeVariable);
+			}
+		}
 	}
 
 	override onProgram(node: RExpressionList<UnresolvedTypeInfo>) {

@@ -1,30 +1,30 @@
 import { describe } from 'vitest';
-import { RDataTypeTag } from '../../../src/typing/types';
+import { RIntegerType, RLanguageType, RListType, RLogicalType, RNullType, RStringType, RUnknownType } from '../../../src/typing/types';
 import { assertInferredType, assertInferredTypes } from '../_helper/typing/assert-inferred-type';
 import { Q } from '../../../src/search/flowr-search-builder';
 
 describe('Infer types for builtin functions', () => {
-	assertInferredType('rm(x)', { tag: RDataTypeTag.Null as const });
+	assertInferredType('rm(x)', new RNullType());
 
 	assertInferredTypes(
 		'x <- 42\nget("x")',
-		{ query: Q.criterion('1@x').build(), expectedType: { tag: RDataTypeTag.Integer as const } },
-		{ query: Q.criterion('2@get').build(), expectedType: { tag: RDataTypeTag.Integer as const } },
-		{ query: Q.criterion('2@"x"').build(), expectedType: { tag: RDataTypeTag.String as const } }
+		{ query: Q.criterion('1@x').build(),   expectedType: new RIntegerType() },
+		{ query: Q.criterion('2@get').build(), expectedType: new RIntegerType() },
+		{ query: Q.criterion('2@"x"').build(), expectedType: new RStringType() }
 	);
 
 	assertInferredTypes(
 		'eval(quote(TRUE))',
-		{ query: Q.criterion('1@eval').build(), expectedType: { tag: RDataTypeTag.Unknown as const } },
-		{ query: Q.criterion('1@quote').build(), expectedType: { tag: RDataTypeTag.Language as const } },
-		{ query: Q.criterion('1@TRUE').build(), expectedType: { tag: RDataTypeTag.Logical as const } }
+		{ query: Q.criterion('1@eval').build(),  expectedType: new RUnknownType() },
+		{ query: Q.criterion('1@quote').build(), expectedType: new RLanguageType() },
+		{ query: Q.criterion('1@TRUE').build(),  expectedType: new RLogicalType() }
 	);
 	
-	assertInferredType('list(1, 2, 3)', { tag: RDataTypeTag.List as const });
+	assertInferredType('list(1, 2, 3)', new RListType(new RIntegerType()));
 
 	assertInferredTypes(
 		'c("Hello", "Flo", "!")',
-		{ query: Q.criterion('1@c').build(), expectedType: { tag: RDataTypeTag.String as const } },
-		{ query: Q.criterion('1@"Hello"').build(), expectedType: { tag: RDataTypeTag.String as const } }
+		{ query: Q.criterion('1@c').build(),       expectedType: new RStringType() },
+		{ query: Q.criterion('1@"Hello"').build(), expectedType: new RStringType() },
 	);
 });

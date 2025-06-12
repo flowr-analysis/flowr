@@ -358,12 +358,17 @@ class TypeInferringCfgGuidedVisitor<
 		const functionType = new UnresolvedRFunctionType();
 		node.info.typeVariable.unify(functionType);
 
+		let dotsEncountered = false;
 		for(const [index, param] of node.parameters.entries()) {
 			if(param.special) {
+				dotsEncountered = true;
 				continue; // Skip `...` parameters
 			}
 
-			functionType.constrainParameterType(index, param.info.typeVariable);
+			if(!dotsEncountered) {
+				// Only constrain the parameter type positionally if no `...` has been encountered yet
+				functionType.constrainParameterType(index, param.info.typeVariable);
+			}
 			functionType.constrainParameterType(param.name.lexeme, param.info.typeVariable);
 			
 			if(param.defaultValue !== undefined) {

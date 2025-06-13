@@ -19,7 +19,7 @@ export interface SeededRandomnessResult extends LintingResult {
 }
 
 export interface SeededRandomnessConfig extends MergeableRecord {
-    randomnessProducers: {type: 'function' | 'variable', name: string }[]
+    randomnessProducers: {type: 'function' | 'assignment', name: string }[]
     randomnessConsumers: string[]
 }
 
@@ -73,11 +73,12 @@ export const SEEDED_RANDOMNESS = {
 						return false;
 					}
 
-					// assignments have to be queried for their variable
+					// assignments have to be queried for their destination
 					const assignmentDestinations = assignment
+						// TODO for -> and ->>, this needs to be the 1st arg, see swapSourceAndTarget in the default builtin config
 						?.map(a => getReferenceOfArgument(a.args[0])).filter(isNotUndefined)
 						.map(i => dataflow.graph.idMap?.get(i)).filter(isNotUndefined);
-					if(assignmentDestinations?.some(d => config.randomnessProducers.some(p => p.type === 'variable' && p.name === d.lexeme))) {
+					if(assignmentDestinations?.some(d => config.randomnessProducers.some(p => p.type === 'assignment' && p.name === d.lexeme))) {
 						metadata.callsWithAssignmentProducers++;
 						return false;
 					}
@@ -94,7 +95,7 @@ export const SEEDED_RANDOMNESS = {
 		};
 	},
 	defaultConfig: {
-		randomnessProducers: [{ type: 'function', name: 'set.seed' }, { type: 'variable', name: '.Random.seed' }],
+		randomnessProducers: [{ type: 'function', name: 'set.seed' }, { type: 'assignment', name: '.Random.seed' }],
 		randomnessConsumers: ['jitter', 'sample', 'sample.int', 'arima.sim', 'kmeans', 'princomp', 'rcauchy', 'rchisq', 'rexp', 'rgamma', 'rgeom', 'rlnorm', 'rlogis', 'rmultinom', 'rnbinom', 'rnorm', 'rpois', 'runif', 'pointLabel', 'some', 'rbernoulli',
 		],
 	},

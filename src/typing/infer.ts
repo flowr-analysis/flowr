@@ -9,7 +9,7 @@ import { isRString, type RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RDataType } from './types';
-import { RTypeVariable, RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, UnresolvedRListType, RLanguageType, UnresolvedRFunctionType, RVectorType, isVectorType } from './types';
+import { RTypeVariable, RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, UnresolvedRListType, RLanguageType, UnresolvedRFunctionType, isVectorType } from './types';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../util/assert';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
@@ -90,7 +90,7 @@ class TypeInferringCfgGuidedVisitor<
 	override onNumberConstant(data: { vertex: DataflowGraphVertexValue, node: RNumber<UnresolvedTypeInfo> }): void {
 		if(data.node.content.complexNumber) {
 			data.node.info.typeVariable.unify(new RComplexType());
-		} else if(Number.isInteger(data.node.content.num)) {
+		} else if(data.node.content.markedAsInt) {
 			data.node.info.typeVariable.unify(new RIntegerType());
 		} else {
 			data.node.info.typeVariable.unify(new RDoubleType());

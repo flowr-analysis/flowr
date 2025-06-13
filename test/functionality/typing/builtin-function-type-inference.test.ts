@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { RIntegerType, RLanguageType, RListType, RLogicalType, RNullType, RStringType, RUnknownType } from '../../../src/typing/types';
+import { RDoubleType, RLanguageType, RListType, RLogicalType, RNullType, RStringType, RUnknownType } from '../../../src/typing/types';
 import { assertInferredType, assertInferredTypes } from '../_helper/typing/assert-inferred-type';
 import { Q } from '../../../src/search/flowr-search-builder';
 
@@ -8,8 +8,8 @@ describe('Infer types for builtin functions', () => {
 
 	assertInferredTypes(
 		'x <- 42\nget("x")',
-		{ query: Q.criterion('1@x').build(),   expectedType: new RIntegerType() },
-		{ query: Q.criterion('2@get').build(), expectedType: new RIntegerType() },
+		{ query: Q.criterion('1@x').build(),   expectedType: new RDoubleType() },
+		{ query: Q.criterion('2@get').build(), expectedType: new RDoubleType() },
 		{ query: Q.criterion('2@"x"').build(), expectedType: new RStringType() }
 	);
 
@@ -20,7 +20,7 @@ describe('Infer types for builtin functions', () => {
 		{ query: Q.criterion('1@TRUE').build(),  expectedType: new RLogicalType() }
 	);
 	
-	assertInferredType('list(1, 2, 3)', new RListType(new RIntegerType()));
+	assertInferredType('list(1, 2, 3)', new RListType(new RDoubleType()));
 
 	assertInferredTypes(
 		'c("Hello", "Flo", "!")',

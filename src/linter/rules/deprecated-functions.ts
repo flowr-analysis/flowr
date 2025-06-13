@@ -25,7 +25,7 @@ export interface DeprecatedFunctionsMetadata extends MergeableRecord {
 	totalDeprecatedFunctionDefinitions: number;
 }
 
-export const R1_DEPRECATED_FUNCTIONS = {
+export const DEPRECATED_FUNCTIONS = {
 	createSearch: (config) => Q.all()
 		.with(Enrichment.CallTargets, { onlyBuiltin: true })
 		.filter({

@@ -1,16 +1,16 @@
-import { R1_DEPRECATED_FUNCTIONS } from './rules/1-deprecated-functions';
+import { DEPRECATED_FUNCTIONS } from './rules/deprecated-functions';
 import type { LintingRule } from './linter-format';
-import { R2_FILE_PATH_VALIDITY } from './rules/2-file-path-validity';
-import { R3_SEEDED_RANDOMNESS } from './rules/3-seeded-randomness';
+import { FILE_PATH_VALIDITY } from './rules/file-path-validity';
+import { SEEDED_RANDOMNESS } from './rules/seeded-randomness';
 
 /**
  * The registry of currently supported linting rules.
  * A linting rule can be executed on a dataflow pipeline result using {@link executeLintingRule}.
  */
 export const LintingRules = {
-	'deprecated-functions': R1_DEPRECATED_FUNCTIONS,
-	'file-path-validity':   R2_FILE_PATH_VALIDITY,
-	'seeded-randomness':    R3_SEEDED_RANDOMNESS
+	'deprecated-functions': DEPRECATED_FUNCTIONS,
+	'file-path-validity':   FILE_PATH_VALIDITY,
+	'seeded-randomness':    SEEDED_RANDOMNESS
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules

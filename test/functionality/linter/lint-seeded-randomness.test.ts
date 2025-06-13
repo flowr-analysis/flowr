@@ -24,7 +24,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('condition true', parser, 'if(TRUE) { set.seed(17); }\nrunif(1);', 'seeded-randomness', [], { consumerCalls: 1, callsWithProducers: 1 });
 
 		assertLinter('non-constant seed', parser, 'num<-1 + 7;\nset.seed(num);\nrunif(1);', 'seeded-randomness', [], { consumerCalls: 1, callsWithProducers: 1 });
-		// TODO why does this one pass?
+		// TODO why does this one pass? -> check if seed arguments are constant using resolve value!
 		assertLinter('random seed', parser, 'set.seed(runif(1));\nrunif(1);', 'seeded-randomness', [], { consumerCalls: 2, callsWithProducers: 2 });
 
 		assertLinter('multiple seeds', parser, 'set.seed(1);\nset.seed(2);\nrunif(1);', 'seeded-randomness', [], { consumerCalls: 1, callsWithProducers: 1 });

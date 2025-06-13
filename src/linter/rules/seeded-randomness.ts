@@ -23,7 +23,7 @@ export interface SeededRandomnessMeta extends MergeableRecord {
 	callsWithProducers: number
 }
 
-export const R3_SEEDED_RANDOMNESS = {
+export const SEEDED_RANDOMNESS = {
 	createSearch: (config) => Q.all()
 		.with(Enrichment.CallTargets, { onlyBuiltin: true })
 		.filter({

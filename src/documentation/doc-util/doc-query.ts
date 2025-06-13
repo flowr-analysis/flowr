@@ -62,7 +62,7 @@ ${
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-${metaInfo}
+${metaInfo}	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to get those.
@@ -138,13 +138,13 @@ async function explainQuery(shell: RShell, { name, functionName, functionFile, b
 
 ${await buildExplanation(shell)}
 
-<details>
+<details> 
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the ${name} query is \`${functionName}\` in ${getFilePathMd(functionFile)}.
 
-</details>
+</details>	
 
 `;
 }

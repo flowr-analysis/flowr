@@ -27,7 +27,8 @@ export const R3_SEEDED_RANDOMNESS = {
 	createSearch: (config) => Q.all()
 		.with(Enrichment.CallTargets, { onlyBuiltin: true })
 		.filter({
-			name: FlowrFilter.MatchesEnrichment, args: {
+			name: FlowrFilter.MatchesEnrichment,
+			args: {
 				enrichment: Enrichment.CallTargets,
 				test:       new RegExp(`"(${config.randomnessConsumers.join('|')})"`)
 			}

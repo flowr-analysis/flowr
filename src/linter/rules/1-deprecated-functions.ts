@@ -1,12 +1,12 @@
 import type { LintingResult, LintingRule } from '../linter-format';
 import { LintingPrettyPrintContext , LintingCertainty } from '../linter-format';
-
 import { Q } from '../../search/flowr-search-builder';
 import type { MergeableRecord } from '../../util/objects';
 import { formatRange } from '../../util/mermaid/dfg';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { SourceRange } from '../../util/range';
 import type { Identifier } from '../../dataflow/environments/identifier';
+import { FlowrFilter } from '../../search/flowr-search-filters';
 
 export interface DeprecatedFunctionsResult extends LintingResult {
 	function: string
@@ -21,33 +21,36 @@ export interface DeprecatedFunctionsConfig extends MergeableRecord {
 }
 
 export interface DeprecatedFunctionsMetadata extends MergeableRecord {
-	totalRelevant:      number
-	totalNotDeprecated: number
+	totalDeprecatedCalls:               number;
+	totalDeprecatedFunctionDefinitions: number;
 }
 
 export const R1_DEPRECATED_FUNCTIONS = {
-	createSearch:        (_config) => Q.all().with(Enrichment.CallTargets, { onlyBuiltin: true }),
-	processSearchResult: (elements, config) => {
+	createSearch: (config) => Q.all()
+		.with(Enrichment.CallTargets, { onlyBuiltin: true })
+		.filter({
+			name: FlowrFilter.MatchesEnrichment,
+			args: {
+				enrichment: Enrichment.CallTargets,
+				test:       new RegExp(`"(${config.deprecatedFunctions.join('|')})"`)
+			}
+		}),
+	processSearchResult: (elements) => {
 		const metadata: DeprecatedFunctionsMetadata = {
-			totalRelevant:      0,
-			totalNotDeprecated: 0
+			totalDeprecatedCalls:               0,
+			totalDeprecatedFunctionDefinitions: 0
 		};
 		return {
 			results: elements.getElements()
-				.flatMap(element => enrichmentContent(element, Enrichment.CallTargets).targets.map(target => {
-					metadata.totalRelevant++;
-					return {
-						range:  element.node.info.fullRange as SourceRange,
-						target: target as Identifier
-					};
-				}))
-				.filter(element => {
-					if(config.deprecatedFunctions.includes(element.target)) {
-						return true;
-					} else {
-						metadata.totalNotDeprecated++;
-						return false;
-					}
+				.flatMap(element => {
+					metadata.totalDeprecatedCalls++;
+					return enrichmentContent(element, Enrichment.CallTargets).targets.map(target => {
+						metadata.totalDeprecatedFunctionDefinitions++;
+						return {
+							range:  element.node.info.fullRange as SourceRange,
+							target: target as Identifier
+						};
+					});
 				})
 				.map(element => ({
 					certainty: LintingCertainty.Definitely,

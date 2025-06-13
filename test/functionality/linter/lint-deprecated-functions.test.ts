@@ -9,7 +9,7 @@ describe('flowR linter', withTreeSitter(parser => {
 	describe('R1 deprecated functions', () => {
 		assertLinter('no function listed', parser, 'cat("hello")\nprint("hello")\nx <- 1\ncat(x)',
 			'deprecated-functions', [],
-			{ totalRelevant: 4, totalNotDeprecated: 4 },
+			{ totalDeprecatedCalls: 0, totalDeprecatedFunctionDefinitions: 0 },
 			{ deprecatedFunctions: [] }
 		);
 		assertLinter('cat', parser, 'cat("hello")\nprint("hello")\nx <- 1\ncat(x)',
@@ -17,27 +17,27 @@ describe('flowR linter', withTreeSitter(parser => {
 				{ certainty: LintingCertainty.Definitely, function: 'cat', range: [1, 1, 1, 12] },
 				{ certainty: LintingCertainty.Definitely, function: 'cat', range: [4, 1, 4, 6] },
 			],
-			{ totalRelevant: 4, totalNotDeprecated: 2 },
+			{ totalDeprecatedCalls: 2, totalDeprecatedFunctionDefinitions: 2 },
 			{ deprecatedFunctions: ['cat'] }
 		);
 		assertLinter('custom cat', parser, 'cat("hello")\nprint("hello")\ncat <- function(x) { }\nx <- 1\ncat(x)',
 			'deprecated-functions', [
 				{ certainty: LintingCertainty.Definitely, function: 'cat', range: [1, 1, 1, 12] }
 			],
-			{ totalRelevant: 5, totalNotDeprecated: 4 },
+			{ totalDeprecatedCalls: 1, totalDeprecatedFunctionDefinitions: 1 },
 			{ deprecatedFunctions: ['cat'] }
 		);
 		assertLinter('with defaults', parser, 'all_equal(foo)',
 			'deprecated-functions', [
 				{ certainty: LintingCertainty.Definitely, function: 'all_equal', range: [1, 1, 1, 14] }
 			],
-			{ totalRelevant: 1, totalNotDeprecated: 0 }
+			{ totalDeprecatedCalls: 1, totalDeprecatedFunctionDefinitions: 1 }
 		);
 		assertLinter('with defaults nested', parser, 'foo(all_equal(foo))',
 			'deprecated-functions', [
 				{ certainty: LintingCertainty.Definitely, function: 'all_equal', range: [1, 5, 1, 18] }
 			],
-			{ totalRelevant: 2, totalNotDeprecated: 1 }
+			{ totalDeprecatedCalls: 1, totalDeprecatedFunctionDefinitions: 1 }
 		);
 	});
 }));

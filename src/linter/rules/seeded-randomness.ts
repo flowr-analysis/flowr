@@ -12,6 +12,7 @@ import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/verte
 import { getReferenceOfArgument } from '../../dataflow/graph/graph';
 import { isNotUndefined } from '../../util/assert';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
+import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -45,6 +46,7 @@ export const SEEDED_RANDOMNESS = {
 			...[...assignments].map(a => ({ callName: a, cascadeIf: () => CascadeAction.Continue }))
 		]),
 	processSearchResult: (elements, config, { dataflow }) => {
+		const assignmentProducers = new Set<string>(config.randomnessProducers.filter(p => p.type == 'assignment').map(p => p.name));
 		const metadata: SeededRandomnessMeta = {
 			consumerCalls:                0,
 			callsWithFunctionProducers:   0,
@@ -74,11 +76,9 @@ export const SEEDED_RANDOMNESS = {
 					}
 
 					// assignments have to be queried for their destination
-					const assignmentDestinations = assignment
-						// TODO for -> and ->>, this needs to be the 1st arg, see swapSourceAndTarget in the default builtin config
-						?.map(a => getReferenceOfArgument(a.args[0])).filter(isNotUndefined)
-						.map(i => dataflow.graph.idMap?.get(i)).filter(isNotUndefined);
-					if(assignmentDestinations?.some(d => config.randomnessProducers.some(p => p.type === 'assignment' && p.name === d.lexeme))) {
+					// TODO for -> and ->>, this needs to be the 1st arg, see swapSourceAndTarget in the default builtin config
+					const assignmentDestinations = assignment?.map(a => getReferenceOfArgument(a.args[0])).filter(isNotUndefined);
+					if(assignmentDestinations?.some(d => assignmentProducers.has(recoverName(d, dataflow.graph.idMap) as string))) {
 						metadata.callsWithAssignmentProducers++;
 						return false;
 					}

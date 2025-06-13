@@ -37,7 +37,7 @@ export function executeDfShapeQuery({ dataflow: { graph }, ast }: BasicQueryData
 		}
 		const nodeId = slicingCriterionToId(query.criterion, ast.idMap);
 		const node = ast.idMap.get(nodeId);
-		const value = node ? resolveIdToAbstractValue(node?.info.id, graph) : undefined;
+		const value = resolveIdToAbstractValue(node?.info.id, graph);
 		result.set(query.criterion, value);
 	}
 

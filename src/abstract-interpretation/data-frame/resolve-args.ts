@@ -11,16 +11,16 @@ import { startAndEndsWith } from '../../util/text/strings';
 /**
  * Returns the argument name of a function argument
  */
-export function resolveIdToArgName(id: NodeId | RArgument<ParentInformation>, info: ResolveInfo): string | undefined {
+export function resolveIdToArgName(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): string | undefined {
 	const node = resolveIdToArgument(id, info);
 
 	return unescapeArgument(node?.name?.content);
 }
 
 /**
- * Resolves the value of a function argument as string, number, boolean, string vector, number vector, boolean vector, or mixed vector using {@link resolveIdToValue}
+ * Resolves the value of a function argument as string, number, boolean, or vector using {@link resolveIdToValue}
  */
-export function resolveIdToArgValue(id: NodeId | RArgument<ParentInformation>, info: ResolveInfo): string | number | boolean | string[] | number[] | boolean[] | (string | number | boolean)[] | undefined {
+export function resolveIdToArgValue(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): string | number | boolean | (string | number | boolean)[] | undefined {
 	const node = resolveIdToArgument(id, info);
 
 	if(node?.value !== undefined) {
@@ -39,7 +39,7 @@ export function resolveIdToArgValue(id: NodeId | RArgument<ParentInformation>, i
 /**
  * Resolves the value of a function argument to a string vector using {@link resolveIdToValue} and {@link unwrapRValueToString}
  */
-export function resolveIdToArgStringVector(id: NodeId | RArgument<ParentInformation>, info: ResolveInfo): string[] | undefined {
+export function resolveIdToArgStringVector(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): string[] | undefined {
 	const node = resolveIdToArgument(id, info);
 
 	if(node?.value !== undefined) {
@@ -60,7 +60,7 @@ export function resolveIdToArgStringVector(id: NodeId | RArgument<ParentInformat
 /**
  * Returns the symbol name or string value of the value of a function argument
  */
-export function resolveIdToArgValueSymbolName(id: NodeId | RArgument<ParentInformation>, info: ResolveInfo): string | undefined {
+export function resolveIdToArgValueSymbolName(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): string | undefined {
 	const node = resolveIdToArgument(id, info);
 
 	if(node?.value?.type === RType.Symbol) {
@@ -74,7 +74,7 @@ export function resolveIdToArgValueSymbolName(id: NodeId | RArgument<ParentInfor
 /**
  * Resolves the vector length of the value of a function argument using {@link resolveIdToValue}
  */
-export function resolveIdToArgVectorLength(id: NodeId | RArgument<ParentInformation>, info: ResolveInfo): number | undefined {
+export function resolveIdToArgVectorLength(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): number | undefined {
 	const node = resolveIdToArgument(id, info);
 
 	if(node?.value !== undefined) {
@@ -90,9 +90,9 @@ export function resolveIdToArgVectorLength(id: NodeId | RArgument<ParentInformat
 	return undefined;
 }
 
-function resolveIdToArgument(id: NodeId | RArgument<ParentInformation>, { graph, idMap }: ResolveInfo): RArgument<ParentInformation> | undefined {
+function resolveIdToArgument(id: NodeId | RArgument<ParentInformation> | undefined, { graph, idMap }: ResolveInfo): RArgument<ParentInformation> | undefined {
 	idMap ??= graph?.idMap;
-	const node = typeof id === 'object' ? id : idMap?.get(id);
+	const node = id === undefined || typeof id === 'object' ? id : idMap?.get(id);
 
 	if(node?.type === RType.Argument) {
 		return node;

@@ -136,7 +136,7 @@ export function resolveAsSeq(operator: RNodeWithParent, environment?: REnvironme
 	const rightValue = unliftRValue(rightArg);
 
 	if(isRNumberValue(leftValue) && isRNumberValue(rightValue)) {
-		return vectorFrom(createNumberSequence(leftValue, rightValue));
+		return vectorFrom(createNumberSequence(leftValue, rightValue).map(liftScalar));
 	}
 	return Top;
 }
@@ -156,7 +156,7 @@ export function resolveAsMinus(operator: RNodeWithParent, environment?: REnviron
 	return Top;
 }
 
-function createNumberSequence(start: RNumberValue, end: RNumberValue): ValueNumber[] {
+function createNumberSequence(start: RNumberValue, end: RNumberValue): RNumberValue[] {
 	const sequence: RNumberValue[] = [];
 	const min = Math.min(start.num, end.num);
 	const max = Math.max(start.num, end.num);
@@ -168,5 +168,5 @@ function createNumberSequence(start: RNumberValue, end: RNumberValue): ValueNumb
 	if(start > end) {
 		sequence.reverse();
 	}
-	return sequence.map(liftScalar);
+	return sequence;
 }

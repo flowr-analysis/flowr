@@ -10,7 +10,7 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
 import { resolveIdToAbstractValue } from '../absint-visitor';
 import { resolveIdToArgStringVector, resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
-import { isStringBasedAccess } from '../semantics-mapper';
+import { isStringBasedAccess } from '../util';
 import { mapDataFrameVariableAssignment } from './assignment-mapper';
 
 const DataFrameReplacementFunctionMapper = {
@@ -102,7 +102,7 @@ function mapDataFrameIndexColRowAssignment(
 	const colArg = args.length < 2 ? args[0] : args[1];
 
 	if(rowArg !== undefined && rowArg !== EmptyArgument) {
-		const rowValue: unknown = resolveIdToArgValue(rowArg, info);
+		const rowValue = resolveIdToArgValue(rowArg, info);
 		let rows: number[] | undefined = undefined;
 
 		if(typeof rowValue === 'number') {
@@ -117,7 +117,7 @@ function mapDataFrameIndexColRowAssignment(
 		});
 	}
 	if(colArg !== undefined && colArg !== EmptyArgument) {
-		const colValue: unknown = resolveIdToArgValue(colArg, info);
+		const colValue = resolveIdToArgValue(colArg, info);
 		let columns: string[] | number[] | undefined = undefined;
 
 		if(typeof colValue === 'string') {

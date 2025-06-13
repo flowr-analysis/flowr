@@ -216,11 +216,11 @@ export function performDataFrameAbsint(
 }
 
 export function resolveIdToAbstractValue(
-	id: RNode<ParentInformation & AbstractInterpretationInfo> | NodeId,
+	id: RNode<ParentInformation & AbstractInterpretationInfo> | NodeId | undefined,
 	dfg: DataflowGraph | undefined,
 	domain?: DataFrameStateDomain
 ): DataFrameDomain | undefined {
-	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = typeof id === 'object' ? id : dfg?.idMap?.get(id);
+	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = id === undefined || typeof id === 'object' ? id : dfg?.idMap?.get(id);
 	domain ??= node?.info.dataFrame?.domain;
 
 	if(dfg === undefined || node === undefined || domain === undefined) {

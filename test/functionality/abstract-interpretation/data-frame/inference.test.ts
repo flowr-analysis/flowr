@@ -240,6 +240,22 @@ result <- df[1, c(1, 2)]
 		[['2@result', { colnames: ['id', 'name'], cols: [2, 2], rows: [1, 1] }]]
 	);
 
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[1:2, c(1, 2)]
+		`.trim(),
+		[['2@result', { colnames: ['id', 'name'], cols: [2, 2], rows: [2, 2] }]]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[, 1:2]
+		`.trim(),
+		[['2@result', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]]
+	);
+
 	assertDataFrameDomain(
 		shell, `
 df <- data.frame(id = 1:3, name = 4:6)
@@ -278,6 +294,14 @@ df <- data.frame(id = 1:3, name = 4:6)
 result <- df[c(-1, -2), -1, drop = FALSE]
 		`.trim(),
 		[['2@result', { colnames: ['id', 'name'], cols: [1, 1], rows: [1, 1] }, { colnames: DomainMatchingType.Overapproximation }]]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
+result <- df[, -1]
+		`.trim(),
+		[['2@result', { colnames: ['id', 'name', 'score'], cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
 	);
 
 	testDataFrameDomain(
@@ -927,7 +951,7 @@ df <- merge(df1, df2, by = "id")
 	testDataFrameDomain(
 		`
 df <- data.frame(id = c(1, 2, 3, 1, 3), score = c(80, 75, 90, 70, 85))
-df <- aggregate(df, list(df$id), mean)
+df <- aggregate(df, list(group = df$id), mean)
 		`.trim(),
 		[
 			['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],

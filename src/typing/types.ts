@@ -216,31 +216,53 @@ export function resolveType(type: UnresolvedRDataType): RDataType {
 }
 
 
-export type PrimitiveRDataType
+export type RVectorType
 	= RLogicalType
 	| RIntegerType
 	| RDoubleType
 	| RComplexType
 	| RStringType
 	| RRawType
-	| RNullType
-	| REnvironmentType
-	| RLanguageType
 
+export function isVectorType(type: RDataType | UnresolvedRDataType): type is RVectorType {
+	return type.tag === RDataTypeTag.Logical
+		|| type.tag === RDataTypeTag.Integer
+		|| type.tag === RDataTypeTag.Double
+		|| type.tag === RDataTypeTag.Complex
+		|| type.tag === RDataTypeTag.String
+		|| type.tag === RDataTypeTag.Raw;
+}
+	
 export type CompoundRDataType = RFunctionType | RListType;
+
+export function isCompoundType(type: UnresolvedRDataType): type is UnresolvedCompoundRDataType
+export function isCompoundType(type: RDataType): type is CompoundRDataType
+export function isCompoundType(type: RDataType | UnresolvedRDataType): type is CompoundRDataType | UnresolvedCompoundRDataType {
+	return type.tag === RDataTypeTag.Function || type.tag === RDataTypeTag.List;
+}
 
 /**
  * The `RDataType` type is the union of all possible types that can be inferred
  * by the type inferencer for R objects.
  * It should be used whenever you either not care what kind of
  * type you are dealing with or if you want to handle all possible types.
- */
-export type RDataType = PrimitiveRDataType | CompoundRDataType | RErrorType | RUnknownType;
-
+*/
+export type RDataType
+	= RVectorType
+	| RNullType
+	| REnvironmentType
+	| RLanguageType
+	| CompoundRDataType
+	| RErrorType
+	| RUnknownType;
+	
 export type UnresolvedCompoundRDataType = UnresolvedRFunctionType | UnresolvedRListType;
-
+	
 export type UnresolvedRDataType
-	= PrimitiveRDataType
+	= RVectorType
+	| RNullType
+	| REnvironmentType
+	| RLanguageType
 	| UnresolvedCompoundRDataType
 	| RTypeVariable
 	| RErrorType

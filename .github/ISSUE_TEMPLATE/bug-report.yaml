@@ -60,5 +60,5 @@ body:
       options:
         - label: The issue is urgent
           required: false
-        - label: I used flowr as a docker image
+        - label: I used flowR as a docker image
           required: false

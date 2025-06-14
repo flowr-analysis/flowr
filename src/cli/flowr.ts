@@ -111,6 +111,8 @@ if(!usedConfig) {
 
 // for all options that we manually supply that have a config equivalent, set them in the config
 amendConfig(c => {
+	c.engines ??= [];
+
 	if(!options['engine.r-shell.disabled']) {
 		c.engines.push({ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] });
 	}

@@ -35,7 +35,7 @@ export function getAccessOperands<OtherInfo>(
 }
 
 /**
- * Resolves the passed name in the passed environment and returns the indicesCollection of the resolved definitions.
+ * Resolves the passed name within the passed environment and returns the indicesCollection of the resolved definitions.
  *
  * @param name - Name to resolve
  * @param environment - Environment in which name is resolved
@@ -51,9 +51,10 @@ export function resolveIndicesByName(name: Identifier, environment: REnvironment
  *
  * If no indices could be found that match the `accessArg`, the original indices are returned as overapproximation.
  *
- * @param accessedArg - The argument to resolve
- * @param accessArg - The argument which is used to filter the indices
- * @param environment - The environment in which {@link accessedArg} is resolved
+ * @param accessedArg        - The argument to resolve
+ * @param accessArg          - The argument which is used to filter the indices
+ * @param environment        - The environment in which {@link accessedArg} is resolved
+ * @param isIndexBasedAccess - Whether the access is index-based (e.g. `x[1]`) or name-based (e.g. `x$name`)
  * @returns The filtered {@link ContainerIndicesCollection} of the resolved {@link accessedArg}
  */
 export function resolveSingleIndex(
@@ -76,8 +77,9 @@ export function resolveSingleIndex(
 /**
  * Filters the single indices of the {@link indicesCollection} according to the lexeme of the {@link accessArg}.
  *
- * @param indicesCollection - The {@link ContainerIndicesCollection} to filter
- * @param accessArg - The argument which is used to filter {@link indicesCollection}
+ * @param indicesCollection  - The {@link ContainerIndicesCollection} to filter
+ * @param accessArg          - The argument which is used to filter {@link indicesCollection}
+ * @param isIndexBasedAccess - Whether the access is index-based (e.g. `x[1]`) or name-based (e.g. `x$name`)
  * @returns The filtered copy of {@link indicesCollection}
  */
 export function filterIndices(
@@ -111,8 +113,9 @@ export function filterIndices(
  * ```
  * would result in a list with the index `credentials`, which has the subIndex `username`.
  *
- * @param accessedArg - The top level argument that is accessed
- * @param leafIndices - The index at the end of the nested access i.e. `c` in `a$b$c`.
+ * @param accessedArg         - The top level argument that is accessed
+ * @param leafIndices         - The index at the end of the nested access i.e. `c` in `a$b$c`.
+ * @param constructIdentifier - A function that constructs the identifier for the index from the argument
  * @returns The constructed nested access
  */
 export function constructNestedAccess<OtherInfo>(
@@ -150,7 +153,7 @@ export function constructNestedAccess<OtherInfo>(
  * Adds the passed list of {@link leafSubIndices} to the leaf (sub-)indices of {@link indicesCollection}.
  *
  * @param indicesCollection - Indices where to add the sub indices.
- * @param leafSubIndices - Indices that are added to the leaf indices.
+ * @param leafSubIndices    - Indices that are added to the leaf indices.
  */
 export function addSubIndicesToLeafIndices(
 	indicesCollection: ContainerIndices[],

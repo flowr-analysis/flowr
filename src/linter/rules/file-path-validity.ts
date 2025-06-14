@@ -18,6 +18,7 @@ import { WriteFunctions } from '../../queries/catalog/dependencies-query/functio
 import { extractSimpleCfg } from '../../control-flow/extract-cfg';
 import { happensBefore } from '../../control-flow/happens-before';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
+import { LintingRuleTag } from '../linter-tags';
 
 export interface FilePathValidityResult extends LintingResult {
 	filePath: string,
@@ -114,11 +115,15 @@ export const FILE_PATH_VALIDITY = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint:   result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
-	defaultConfig: {
-		additionalReadFunctions:  [],
-		additionalWriteFunctions: [],
-		includeUnknown:           false
+	prettyPrint: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
+	info:        {
+		description:   'Checks whether file paths used in read and write operations are valid and point to existing files.',
+		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug],
+		defaultConfig: {
+			additionalReadFunctions:  [],
+			additionalWriteFunctions: [],
+			includeUnknown:           false
+		}
 	}
 } as const satisfies LintingRule<FilePathValidityResult, FilePathValidityMetadata, FilePathValidityConfig, ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]>;
 

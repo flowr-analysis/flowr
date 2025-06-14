@@ -13,6 +13,7 @@ import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import type { ControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
 import type { DataflowGraphVertexValue } from '../../../src/dataflow/graph/vertex';
 import type { RNumber } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
+import type { RSymbol } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 
@@ -62,5 +63,32 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 		}
 	}(), o => {
 		assert.isTrue(o.encounteredNull());
+	});
+
+	describe('Symbol constants', () => {
+		describe.each(['l <- list(1, 2, 3); l$a', 'library(foo)'])('For: %s', code => {
+			testSemanticVisitor(code, ({ dataflow, normalize }, controlFlow) => new class extends SemanticCfgGuidedVisitor {
+				private triggered = false;
+
+				constructor() {
+					super({
+						defaultVisitingOrder: 'forward',
+						controlFlow,
+						dfg:                  dataflow.graph,
+						normalizedAst:        normalize
+					});
+				}
+
+				protected onSymbolConstant(_data: { vertex: DataflowGraphVertexValue; node: RSymbol }) {
+					this.triggered = true;
+				}
+
+				public isTriggered(): boolean {
+					return this.triggered;
+				}
+			}(), o => {
+				assert.isTrue(o.isTriggered());
+			});
+		});
 	});
 }));

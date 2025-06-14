@@ -3,10 +3,8 @@ import { withTreeSitter } from '../_helper/shell';
 import { assertLinter } from '../_helper/linter';
 import { LintingCertainty } from '../../../src/linter/linter-format';
 
-
-
 describe('flowR linter', withTreeSitter(parser => {
-	describe('R1 deprecated functions', () => {
+	describe('deprecated functions', () => {
 		assertLinter('no function listed', parser, 'cat("hello")\nprint("hello")\nx <- 1\ncat(x)',
 			'deprecated-functions', [],
 			{ totalRelevant: 4, totalNotDeprecated: 4 },

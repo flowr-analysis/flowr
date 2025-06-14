@@ -251,8 +251,8 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 			full = false;
 		}
 	}
-	
-	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph: data.dataflow.graph, full: full }));
+
+	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph: data.dataflow.graph, full }));
 	if(resolved) {
 		const values: string[] = [];
 		for(const value of resolved.elements) {
@@ -327,6 +327,7 @@ function getArgumentValue(
 		if(valueNode?.type === RType.Argument) {
 			valueNode = valueNode.value;
 		}
+
 		if(valueNode) {
 			const values = resolveBasedOnConfig(data, vertex, valueNode, vertex.environment, graph.idMap, resolveValue) ?? [Unknown];
 			return new Map([[arg, new Set(values)]]);

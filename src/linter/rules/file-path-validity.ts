@@ -1,5 +1,6 @@
 import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingCertainty } from '../linter-format';
+import { LintingPrettyPrintContext , LintingCertainty } from '../linter-format';
+
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import type { SourceRange } from '../../util/range';
@@ -48,7 +49,7 @@ export interface FilePathValidityMetadata extends MergeableRecord {
 	totalValid:              number
 }
 
-export const R2_FILE_PATH_VALIDITY = {
+export const FILE_PATH_VALIDITY = {
 	createSearch: (config) => Q.fromQuery({
 		type:                   'dependencies',
 		// we only want to check read and write functions, so we explicitly clear all others
@@ -114,11 +115,15 @@ export const R2_FILE_PATH_VALIDITY = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint:   result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
 	defaultConfig: {
 		additionalReadFunctions:  [],
 		additionalWriteFunctions: [],
 		includeUnknown:           false
+	},
+	humanReadableName: 'File Path Validity',
+	prettyPrint:       {
+		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} does not point to a valid file`
 	}
 } as const satisfies LintingRule<FilePathValidityResult, FilePathValidityMetadata, FilePathValidityConfig, ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]>;
 

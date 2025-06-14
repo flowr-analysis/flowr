@@ -24,6 +24,26 @@ export type Tail2TypesOrUndefined<T extends AnyArray, U = undefined> = T extends
 export type LastOfArray<T extends AnyArray> = T extends [...infer _, infer L] ? L : never;
 
 /**
+ * Enforce an array to have no duplicates.
+ * Based on https://stackoverflow.com/a/64519702
+ */
+export type UniqueArray<T> =
+	T extends readonly [infer X, ...infer Rest]
+		? InArray<Rest, X> extends true
+			? ['Encountered value with duplicates:', X]
+			: readonly [X, ...UniqueArray<Rest>]
+		: T
+
+type InArray<T, X> =
+	T extends readonly [X, ...infer _Rest]
+		? true
+		: T extends readonly [X]
+			? true
+			: T extends readonly [infer _, ...infer Rest]
+				? InArray<Rest, X>
+				: false
+
+/**
  * Splits the array every time the given predicate fires.
  * The element the split appears on will not be included!
  *

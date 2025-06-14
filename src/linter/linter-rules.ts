@@ -1,6 +1,7 @@
 import { R1_DEPRECATED_FUNCTIONS } from './rules/1-deprecated-functions';
 import type { LintingRule } from './linter-format';
 import { R2_FILE_PATH_VALIDITY } from './rules/2-file-path-validity';
+import { NAMING_CONVENTION } from './rules/naming-convention';
 
 /**
  * The registry of currently supported linting rules.
@@ -8,7 +9,8 @@ import { R2_FILE_PATH_VALIDITY } from './rules/2-file-path-validity';
  */
 export const LintingRules = {
 	'deprecated-functions': R1_DEPRECATED_FUNCTIONS,
-	'file-path-validity':   R2_FILE_PATH_VALIDITY
+	'file-path-validity':   R2_FILE_PATH_VALIDITY,
+	'naming-convention':    NAMING_CONVENTION
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules

@@ -48,12 +48,6 @@ body:
     validations:
       required: true
   - type: textarea
-    id: code
-    attributes:
-      label: Related input code
-      description: If applicable, please copy and paste the input code here, best as a [MWE](https://stackoverflow.com/help/minimal-reproducible-example).
-      render: R
-  - type: textarea
     id: logs
     attributes:
       label: Relevant log output
@@ -64,7 +58,7 @@ body:
     attributes:
       label: Meta Information
       options:
-        - label: The Issue is Urgent
+        - label: The issue is urgent
           required: false
-        - label: I Used the Dockerized Version of flowr
+        - label: I used flowr as a docker image
           required: false

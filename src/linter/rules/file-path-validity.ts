@@ -48,7 +48,7 @@ export interface FilePathValidityMetadata extends MergeableRecord {
 	totalValid:              number
 }
 
-export const R2_FILE_PATH_VALIDITY = {
+export const FILE_PATH_VALIDITY = {
 	createSearch: (config) => Q.fromQuery({
 		type:                   'dependencies',
 		// we only want to check read and write functions, so we explicitly clear all others

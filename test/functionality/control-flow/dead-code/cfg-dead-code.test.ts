@@ -91,5 +91,18 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 		])('code after infinite loop', ({ prefix }) => {
 			assertDeadCode(`${prefix}{ foo }; 2`, { reachableFromStart: ['1@foo'],  unreachableFromStart: ['1@2'] });
 		});
+
+		describe('nested', () => {
+			const outers = ['while (TRUE)', 'repeat', 'for (i in 1:10)'];
+			const inners = ['break', 'return(42)', 'next', 'stop(42)'];
+
+			for(const outer of outers) {
+				for(const inner1 of inners) {
+					for(const inner2 of inners) {
+						assertDeadCode(`${outer} { 1; if(u) ${inner1} else ${inner2}; 2 }`, { reachableFromStart: ['1@1'], unreachableFromStart: ['1@2'] });
+					}
+				}
+			}
+		});
 	});
 }));

@@ -1,3 +1,5 @@
+import path from 'path';
+
 /**
  * Check if the given string starts and ends with the given letter
  */
@@ -49,4 +51,8 @@ export function joinWithLast(strs: readonly string[], { join = ', ', last = ', a
 		return strs.join(joinTwo);
 	}
 	return strs.slice(0, -1).join(join) + last + strs[strs.length - 1];
+}
+
+export function isAbsolutePath(p: string, regex: RegExp | undefined): boolean {
+	return regex?.test(p) || p.startsWith('/') || p.startsWith('\\') || path.normalize(p + '/') === path.normalize(path.resolve(p) + '/');
 }

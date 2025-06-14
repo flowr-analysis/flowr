@@ -10,7 +10,7 @@ import { deepMergeObject } from '../util/objects';
 
 export function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: { normalize: NormalizedAst, dataflow: DataflowInformation }, config?: DeepPartial<LintingRuleConfig<Name>>): LintingResults<Name> {
 	const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
-	const fullConfig = deepMergeObject<LintingRuleConfig<Name>>(rule.defaultConfig, config);
+	const fullConfig = deepMergeObject<LintingRuleConfig<Name>>(rule.info.defaultConfig, config);
 
 	const ruleSearch = rule.createSearch(fullConfig, input);
 

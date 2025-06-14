@@ -14,9 +14,4 @@ describe('flowR linter', withTreeSitter(parser => {
 			range:          [1, 1, 1, 7]
 		}]);
 	});
-
-
-    describe.each([
-        { name: }
-    ])
 }));

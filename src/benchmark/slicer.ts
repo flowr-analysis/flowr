@@ -313,7 +313,6 @@ export class BenchmarkSlicer {
 
 		const measurements = new Measurements<PerSliceMeasurements>();
 		const stats: PerSliceStats = {
-			 
 			measurements:                undefined as never,
 			slicingCriteria:             [],
 			numberOfDataflowNodesSliced: 0,

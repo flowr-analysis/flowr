@@ -1,4 +1,4 @@
-import type { DeepPartial, DeepRequired } from 'ts-essentials';
+import type { DeepPartial, DeepReadonly, DeepRequired } from 'ts-essentials';
 import { jsonReplacer } from './json';
 
 /**
@@ -12,13 +12,15 @@ export type MergeableRecord = Record<string, unknown>
 export type MergeableArray = unknown[]
 export type Mergeable = MergeableRecord | MergeableArray
 
+type OrReadonly<T> = T | Readonly<T> | DeepReadonly<T>;
+
 /**
  * Given two objects deeply merges them, if an object is an array it will merge the array values!
  * Guarantees some type safety by requiring objects to merge to be from the same type (allows undefined)
  */
-export function deepMergeObject<T extends Mergeable>(base: Required<T>, addon?: T | DeepPartial<T> | Partial<T>): Required<T>
-export function deepMergeObject<T extends Mergeable>(base: DeepRequired<T>, addon?: T | DeepPartial<T> | Partial<T>): DeepRequired<T>
-export function deepMergeObject<T extends Mergeable>(base: T, addon?: DeepPartial<T> | Partial<T>): T
+export function deepMergeObject<T extends Mergeable>(base: Required<OrReadonly<T>>, addon?: T | DeepPartial<T> | Partial<T>): Required<T>
+export function deepMergeObject<T extends Mergeable>(base: DeepRequired<OrReadonly<T>>, addon?: T | DeepPartial<T> | Partial<T>): DeepRequired<T>
+export function deepMergeObject<T extends Mergeable>(base: OrReadonly<T>, addon?: DeepPartial<T> | Partial<T>): T
 export function deepMergeObject(base: Mergeable, addon: Mergeable): Mergeable
 export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined
 export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined {

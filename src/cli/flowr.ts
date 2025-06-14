@@ -108,19 +108,22 @@ if(!usedConfig) {
 	setConfigFile(options['config-file'] ?? defaultConfigFile, undefined, true);
 }
 
+
 // for all options that we manually supply that have a config equivalent, set them in the config
 amendConfig(c => {
+	c.engines ??= [];
+
 	if(!options['engine.r-shell.disabled']) {
-		c.engines = [{ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] }];
+		c.engines.push({ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] });
 	}
 
 	if(!options['engine.tree-sitter.disabled']) {
-		c.engines = [{
+		c.engines.push({
 			type:               'tree-sitter',
 			wasmPath:           options['engine.tree-sitter.wasm-path'],
 			treeSitterWasmPath: options['engine.tree-sitter.tree-sitter-wasm-path'],
 			lax:                options['engine.tree-sitter.lax']
-		}];
+		});
 	}
 
 	if(options['default-engine']) {

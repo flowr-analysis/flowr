@@ -27,7 +27,7 @@ function genName(convention: CasingConvention): string {
 		case CasingConvention.CamelCase: // camelCase
 			return `${tokens[0]}${tokens.slice(1).map(firstUp).join('')}`;
 		case CasingConvention.PascalCase: // PascalCase
-			return tokens.map(firstUp).join();
+			return tokens.map(firstUp).join('');
 		case CasingConvention.SnakeCase: // snake_case
 			return tokens.join('_');
 		case CasingConvention.ConstantCase: // CONSTANT_CASE
@@ -69,15 +69,23 @@ describe('flowR linter', withTreeSitter(parser => {
 				assert.equal(detected, convention, `Expected to detect ${name} as ${convention}, but detected ${detected}`);
 			});	
 		});
+	});
 
-		describe('simple test', () => {
-			assertLinter('simple', parser, 'testVar <- 5', 'naming-convention', [{
-				name:           'testVar',
-				detectedCasing: CasingConvention.CamelCase,
-				suggestion:     'testVar',
-				range:          [1, 1, 1, 7],
-				certainty:      LintingCertainty.Definitely,
-			}]);
-		});
+	describe('rule', () => { 
+		assertLinter('simple', parser, 'testVar <- 5', 'naming-convention', [{
+			name:           'testVar',
+			detectedCasing: CasingConvention.CamelCase,
+			suggestion:     'TestVar',
+			range:          [1, 1, 1, 7],
+			certainty:      LintingCertainty.Definitely,
+		}], undefined, { caseing: CasingConvention.PascalCase });
+
+		assertLinter('only detect definition', parser, 'testVar <- 5\nprint(testVar)\n', 'naming-convention', [{
+			name:           'testVar',
+			detectedCasing: CasingConvention.CamelCase,
+			suggestion:     'TestVar',
+			range:          [1, 1, 1, 7],
+			certainty:      LintingCertainty.Definitely,
+		}], undefined, { caseing: CasingConvention.PascalCase });
 	});
 }));

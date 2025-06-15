@@ -1,5 +1,6 @@
 import { VertexType } from '../../dataflow/graph/vertex';
 import { Q } from '../../search/flowr-search-builder';
+import { assertUnreachable } from '../../util/assert';
 import { formatRange } from '../../util/mermaid/dfg';
 import type { MergeableRecord } from '../../util/objects';
 import type { SourceRange } from '../../util/range';
@@ -87,8 +88,35 @@ export function detectCasing(identifier: string): CasingConvention {
 	return CasingConvention.Unknown;
 }
 
-function tryFixCasing(identifier: string, _detectedCasing: CasingConvention, _wantedCasing: CasingConvention) {
-	return identifier; // TODO
+function tryFixCasing(identifier: string, convention: CasingConvention) {
+	const tokens = identifier.includes('_') ? 
+		identifier.split('_').map(s => s.toLowerCase()) :  
+		identifier.split(/(?=[A-Z])/).map(s => s.toLowerCase());
+
+	const firstUp = (s: string) => `${s[0].toUpperCase()}${s.substring(1)}`;
+
+	switch(convention) {
+		case CasingConvention.FlatCase: // flatcase
+			return tokens.join(''); 
+		case CasingConvention.Uppercase: // UPPERCASE
+			return tokens.join('').toUpperCase();
+		case CasingConvention.CamelCase: // camelCase
+			return `${tokens[0]}${tokens.slice(1).map(firstUp).join('')}`;
+		case CasingConvention.PascalCase: // PascalCase
+			return tokens.map(firstUp).join('');
+		case CasingConvention.SnakeCase: // snake_case
+			return tokens.join('_');
+		case CasingConvention.ConstantCase: // CONSTANT_CASE
+			return tokens.map(s => s.toUpperCase()).join('_');
+		case CasingConvention.CamelSnakeCase: // camel_Snake_Case
+			return `${tokens[0]}_${tokens.slice(1).map(firstUp).join('_')}`;
+		case CasingConvention.PascalSnakeCase: // Pascal_Snake_Case
+			return tokens.map(firstUp).join('_');
+		case CasingConvention.Unknown:
+			return identifier;
+		default:
+			assertUnreachable(convention);
+	}
 }
 
 export const NAMING_CONVENTION = {
@@ -104,7 +132,7 @@ export const NAMING_CONVENTION = {
 			.filter(m => m.detectedCasing !== config.caseing)
 			.map(m => ({
 				...m,
-				suggestion: tryFixCasing(m.name, m.detectedCasing, config.caseing)
+				suggestion: tryFixCasing(m.name, config.caseing)
 			}));
         
 		return {

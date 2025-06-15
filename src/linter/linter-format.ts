@@ -57,8 +57,11 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 	readonly info:        LinterRuleInformation<NoInfer<Config>>
 }
 
-export interface LintQuickFixReplacement {
-	readonly type:        'replace'
+interface BaseQuickFix {
+	/**
+	 * The type of the quick fix.
+	 */
+	readonly type:        string
 	/**
 	 * A short, human-readable description of the quick fix.
 	 */
@@ -67,13 +70,21 @@ export interface LintQuickFixReplacement {
 	 * The range of the text that should be replaced.
 	 */
 	readonly range:       SourceRange
+}
+
+export interface LintQuickFixReplacement extends BaseQuickFix {
+	readonly type:        'replace'
 	/**
 	 * The text that should replace the given range.
 	 */
 	readonly replacement: string
 }
 
-export type LintQuickFix = LintQuickFixReplacement
+export interface LintQuickFixRemove extends BaseQuickFix {
+	readonly type: 'remove'
+}
+
+export type LintQuickFix = LintQuickFixReplacement | LintQuickFixRemove;
 
 /**
  * A linting result for a single linting rule match.

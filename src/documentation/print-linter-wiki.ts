@@ -107,7 +107,7 @@ my_data <- read.csv("C:/Users/me/Documents/My R Scripts/Reproducible.csv")
 
 ${await rule(shell,
 	'absolute-file-paths', 'AbsoluteFilePathConfig',
-	'Absolute Path Config',
+	'Absolute Paths',
 	//'This rule finds absolute paths.', 
 	`
 read.csv("C:/Users/me/Documents/My R Scripts/Reproducible.csv")

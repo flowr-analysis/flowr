@@ -9,13 +9,30 @@ import { RShell } from '../r-bridge/shell';
 import { showQuery } from './doc-util/doc-query';
 import { getDocumentationForType, getTypesFromFolderAsMermaid, mermaidHide, shortLink } from './doc-util/doc-types';
 import path from 'path';
+import { documentReplSession } from './doc-util/doc-repl';
 
 async function getText(shell: RShell): Promise<string> {
 	const rVersion = (await shell.usedRVersion())?.format() ?? 'unknown';
 	return `${autoGenHeader({ filename: module.filename, purpose: 'linter', rVersion })}
 
 This page describes the flowR linter, which is a tool that utilizes flowR's dataflow analysis to find common issues in R scripts. The linter can currently be used through the linter [query](${FlowrWikiBaseRef}/Query%20API).
+For example:
 
+${await(async() => {
+	const code = 'read.csv("/root/x.txt")';
+	const res = await showQuery(shell, code, [{ type: 'linter' }], { showCode: false, collapseQuery: true, collapseResult: false });
+	return await documentReplSession(shell, [{
+		command:     `:query @linter ${JSON.stringify(code)}`,
+		description: `
+The linter will analyze the code and return any issues found.
+Formatted more nicely, this returns:
+
+${res}
+		`
+	}]
+	);
+})()}
+	
 ## Linting Rules
 
 The following linting rules are available:
@@ -35,6 +52,14 @@ ${await rule(shell,
 	'This rule finds places in the code where files are being read from. In such places, it checks whether the file path is valid and whether the file exists on disk.', `
 my_data <- read.csv("C:/Users/me/Documents/My R Scripts/Reproducible.csv")
 `)}
+
+${await rule(shell,
+	'absolute-file-paths', 'AbsoluteFilePathConfig',
+	'Absolute Path Config',
+	'This rule finds absolute paths.', `
+read.csv("C:/Users/me/Documents/My R Scripts/Reproducible.csv")
+`)}
+
 
     `.trim();
 }
@@ -57,7 +82,7 @@ ${description}
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below. The \`${name}\` rule accepts the following configuration options:
 
 ${
-	Object.getOwnPropertyNames(LintingRules[name].defaultConfig).sort().map(key => 
+	Object.getOwnPropertyNames(LintingRules[name].info.defaultConfig).sort().map(key => 
 		`- ${shortLink(`${configType}:::${key}`, types.info)}\\\n${getDocumentationForType(`${configType}::${key}`, types.info)}`
 	).join('\n')
 }

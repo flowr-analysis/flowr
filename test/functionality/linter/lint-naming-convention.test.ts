@@ -54,6 +54,22 @@ describe('flowR linter', withTreeSitter(parser => {
 			});	
 		});
 
+		describe('detect casing (static string)', () => {
+			test.each([
+				{ name: 'mycoolvar',        convention: CasingConvention.FlatCase },
+				{ name: 'FOOBAR',           convention: CasingConvention.Uppercase },
+				{ name: 'fooBar',           convention: CasingConvention.CamelCase },
+				{ name: 'FooBar',           convention: CasingConvention.PascalCase },
+				{ name: 'are_we_in_c',      convention: CasingConvention.SnakeCase },
+				{ name: 'THIS_IS_CONSTANT', convention: CasingConvention.ConstantCase },
+				{ name: 'my_Cool_Var',      convention: CasingConvention.CamelSnakeCase },
+				{ name: 'My_Cooler_Var',    convention: CasingConvention.PascalSnakeCase },
+			])('detect casing $name as $convention', ({ name, convention }) => {
+				const detected = detectCasing(name);
+				assert.equal(detected, convention, `Expected to detect ${name} as ${convention}, but detected ${detected}`);
+			});	
+		});
+
 		describe('simple test', () => {
 			assertLinter('simple', parser, 'testVar <- 5', 'naming-convention', [{
 				name:           'testVar',

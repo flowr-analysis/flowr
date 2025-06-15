@@ -193,7 +193,7 @@ export const ABSOLUTE_PATH = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
+	prettyPrint: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}` + (result.quickFix ? ' (quick fix available)' : ''),
 	info:        {
 		description:   'Checks whether file paths are absolute',
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell],

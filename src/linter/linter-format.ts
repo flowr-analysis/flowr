@@ -6,7 +6,26 @@ import type { TransformerNames } from '../search/search-executor/search-transfor
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from './linter-rules';
 import type { DataflowInformation } from '../dataflow/info';
-import type { DeepPartial } from 'ts-essentials';
+import type { DeepPartial, DeepReadonly } from 'ts-essentials';
+import type { LintingRuleTag } from './linter-tags';
+import type { SourceRange } from '../util/range';
+
+export interface LinterRuleInformation<Config extends MergeableRecord = never> {
+	/**
+	 * The default config for this linting rule.
+	 * This config is combined with the user config when executing the rule.
+	 */
+	readonly defaultConfig: NoInfer<DeepReadonly<Config>>;
+	/**
+	 * A short list of tags that describe and categorize the linting rule.
+	 */
+	readonly tags:          readonly LintingRuleTag[];
+	/**
+	 * A short description of the linting rule.
+	 * This is used to display the rule in the UI and to provide a brief overview of what the rule does.
+	 */
+	readonly description:   string;
+}
 
 /**
  * The base interface for a linting rule, which contains all of its relevant settings.
@@ -30,19 +49,41 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 	 * A function used to pretty-print the given linting result.
 	 * By default, the {@link LintingResult#certainty} is automatically printed alongside this information.
 	 */
-	readonly prettyPrint:   (result: Result, metadata: Metadata) => string
+	readonly prettyPrint: (result: Result, metadata: Metadata) => string
 	/**
 	 * The default config for this linting rule.
 	 * The default config is combined with the user config when executing the rule.
 	 */
-	readonly defaultConfig: NoInfer<Config>
+	readonly info:        LinterRuleInformation<NoInfer<Config>>
 }
+
+export interface LintQuickFixReplacement {
+	readonly type:        'replace'
+	/**
+	 * A short, human-readable description of the quick fix.
+	 */
+	readonly description: string
+	/**
+	 * The range of the text that should be replaced.
+	 */
+	readonly range:       SourceRange
+	/**
+	 * The text that should replace the given range.
+	 */
+	readonly replacement: string
+}
+
+export type LintQuickFix = LintQuickFixReplacement
 
 /**
  * A linting result for a single linting rule match.
  */
 export interface LintingResult {
 	readonly certainty: LintingCertainty
+	/**
+	 * If available, what to do to fix the linting result.
+	 */
+	readonly quickFix?: LintQuickFix[]
 }
 
 export interface ConfiguredLintingRule<Name extends LintingRuleNames = LintingRuleNames> {
@@ -56,6 +97,12 @@ export interface LintingResults<Name extends LintingRuleNames> {
 }
 
 export enum LintingCertainty {
+	/**
+	 * The linting rule cannot say for sure whether the result is correct or not.
+	 */
 	Maybe = 'maybe',
+	/**
+	 * The linting rule is certain that the reported lint is real.
+	 */
 	Definitely = 'definitely'
 }

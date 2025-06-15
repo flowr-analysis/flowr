@@ -164,6 +164,19 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 					return `${name}${escapeMarkdown(': ' + getType(member, typeChecker))}`;
 				})
 			});
+		} else if(ts.isEnumMember(node)) {
+			const typeName = node.parent.name?.getText(sourceFile) ?? '';
+			const enumName = dropGenericsFromType(typeName);
+			hierarchyList.push({
+				name:       dropGenericsFromType(node.name.getText(sourceFile)),
+				node,
+				kind:       'enum',
+				extends:    [enumName],
+				comments:   getTextualComments(node),
+				generics:   [],
+				filePath:   sourceFile.fileName,
+				lineNumber: getStartLine(node, sourceFile),
+			});
 		} else if(ts.isClassDeclaration(node)) {
 			const className = node.name?.getText(sourceFile) ?? '';
 			const baseTypes = node.heritageClauses?.flatMap(clause =>
@@ -428,16 +441,22 @@ export function printCodeOfElement({ program, info }: FnInfo, name: string): str
 	return `${codeBlock('ts', code)}\n<i>Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></i>\n`;
 }
 
-function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[]): [string | undefined, string, TypeElementInSource]| undefined {
+function fuzzyCompare(a: string, b: string): boolean {
+	const aStr = a.toLowerCase().replace(/[^a-z0-9]/g, '-').trim();
+	const bStr = b.toLowerCase().replace(/[^a-z0-9]/g, '-').trim();
+	return aStr === bStr || aStr.includes(bStr) || bStr.includes(aStr);
+}
+
+function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], fuzzy = false): [string | undefined, string, TypeElementInSource]| undefined {
 	let container: string | undefined = undefined;
 	if(name.includes('::')) {
 		[container, name] = name.split(/:::?/);
 	}
-	let node = hierarchy.filter(e => e.name === name);
+	let node = hierarchy.filter(e =>  fuzzy ? fuzzyCompare(e.name, name) : e.name === name);
 	if(node.length === 0) {
 		return undefined;
 	} else if(container) {
-		node = node.filter(n => n.extends.includes(container));
+		node = node.filter(n => fuzzy ? n.extends.some(n => fuzzyCompare(n, container)) : n.extends.includes(container));
 		if(node.length === 0) {
 			return undefined;
 		}
@@ -471,8 +490,8 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 	}${codeStyle ? '</code>' : ''}](${getTypePathLink(node)})`;
 }
 
-export function getDocumentationForType(name: string, hierarchy: TypeElementInSource[], prefix = ''): string {
-	const res = retrieveNode(name, hierarchy);
+export function getDocumentationForType(name: string, hierarchy: TypeElementInSource[], prefix = '', fuzzy = false): string {
+	const res = retrieveNode(name, hierarchy, fuzzy);
 	if(!res) {
 		return '';
 	}

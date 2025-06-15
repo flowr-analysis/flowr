@@ -14,7 +14,7 @@ import { Unknown } from '../../../src/queries/catalog/dependencies-query/depende
 import { withTreeSitter } from '../_helper/shell';
 
 describe('flowR linter', withTreeSitter(parser => {
-	describe('R2 file path validity', () => {
+	describe('file path validity', () => {
 		const files = ['file.csv', 'path/to/deep-file.csv', 'deep-file.csv'];
 		beforeAll(() => {
 			setSourceProvider(requestProviderFromText(Object.fromEntries(files.map(f => [f, '']))));

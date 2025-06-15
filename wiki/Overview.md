@@ -61,7 +61,8 @@ _flowR_ itself has two main ways to operate:
 - as a **server** which processes analysis and slicing requests (`--server` option)
 - as a **read-eval-print loop** (REPL) that can be accessed directly from the command line (default option)
 
-Besides these two ways, there is a [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) that allows you to use _flowR_ directly from within the editor. Similarly, we offer an [Addin for RStudio](https://github.com/flowr-analysis/rstudio-addin-flowr), as well as an [R package](https://github.com/flowr-analysis/flowr-r-adapter).
+Besides these two ways, there is a [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) that allows you to use _flowR_ directly from within the editor (it is available on [open-vsx](https://open-vsx.org/extension/code-inspect/vscode-flowr) as well).
+Similarly, we offer an [Addin for RStudio](https://github.com/flowr-analysis/rstudio-addin-flowr), as well as an [R package](https://github.com/flowr-analysis/flowr-r-adapter).
 
 🐳️ If you use the docker-version, simply starting the docker container in interactive mode drops you right into the REPL (`docker run -it --rm eagleoutice/flowr:latest`), while launching with the `--server` argument starts the server (`docker run -it --rm eagleoutice/flowr:latest --server`).\
 ⚒️ If you compile the _flowR_ sources yourself, you can access _flowR_ by first building the sources (`npm run build`) and executing then the root script (`node dist/src/flowr.js`).
@@ -71,7 +72,7 @@ Independent of your way of launching *flowr*, we will write simply `flowr` for e
 ### The Read-Eval-Print Loop (REPL)
 
 Once you launched _flowR_, you should see a small&nbsp;`R>` prompt. Use `:help` to receive instructions on how to use the REPL and what features are available (most prominently, you can access all [scripts](#calling-the-scripts-directly) simply by adding a colon before them).
-In general, all commands start with a colon (`:`), everything else is interpreted as a&nbsp;R expression which is directly evaluated by the underlying R shell (however, due to security concerns, you need to start _flowR_ with `--r-session-access` to allow this). The following GIF showcases a simple example session:
+In general, all commands start with a colon (`:`), everything else is interpreted as a&nbsp;R expression which is directly evaluated by the underlying R shell (however, due to security concerns, you need to start _flowR_ with `--r-session-access` and use the `r-shell` engine to allow this). The following GIF showcases a simple example session:
 
 ![Example of a simple REPL session](gif/repl-demo.gif)
 
@@ -92,7 +93,7 @@ Sleep 200ms
 Enter
 Sleep 4000ms
 
-Type ":slicer -c '11@prod' demo.R --diff"
+Type ":slicer -c '11@prod' demo.R --diffDataflowGraph"
 Sleep 400ms
 Enter
 Sleep 500ms

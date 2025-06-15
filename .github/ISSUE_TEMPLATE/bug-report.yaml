@@ -31,14 +31,14 @@ body:
       options:
 # START::Versions
         - <Older> (please consider updating)
-        - v2.2.5 (Feb 17, 2025)
-        - v2.2.6 (Feb 19, 2025)
-        - v2.2.7 (Feb 19, 2025)
         - v2.2.8 (Feb 19, 2025)
         - v2.2.9 (Feb 21, 2025)
         - v2.2.10 (Feb 23, 2025)
         - v2.2.11 (Mar 2, 2025)
         - v2.2.12 (Mar 17, 2025)
+        - v2.2.13 (May 27, 2025)
+        - v2.2.14 (May 31, 2025)
+        - v2.2.15 (Jun 2, 2025)
         - Unknown
         - Unreleased/Dev 
 # END::Versions
@@ -47,12 +47,6 @@ body:
 # END::DefaultVersion
     validations:
       required: true
-  - type: textarea
-    id: code
-    attributes:
-      label: Related input code
-      description: If applicable, please copy and paste the input code here, best as a [MWE](https://stackoverflow.com/help/minimal-reproducible-example).
-      render: R
   - type: textarea
     id: logs
     attributes:
@@ -64,7 +58,7 @@ body:
     attributes:
       label: Meta Information
       options:
-        - label: The Issue is Urgent
+        - label: The issue is urgent
           required: false
-        - label: I Used the Dockerized Version of flowr
+        - label: I used flowR as a docker image
           required: false

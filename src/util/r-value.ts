@@ -1,5 +1,8 @@
+import type { Value, ValueInterval, ValueLogical, ValueNumber, ValueString, ValueVector } from '../dataflow/eval/values/r-value';
+import { isValue } from '../dataflow/eval/values/r-value';
 import type { RLogicalValue } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { RFalse, RTrue, type RNumberValue, type RStringValue } from '../r-bridge/lang-4.x/convert-values';
+import { assertUnreachable, isNotUndefined } from './assert';
 
 function isRValue(value: unknown): value is RStringValue | RNumberValue | RLogicalValue | string | number {
 	return isRStringValue(value) || isRNumberValue(value) || isRLogicalValue(value) || typeof value === 'string' || typeof value === 'number';
@@ -70,5 +73,46 @@ export function unwrapRValueToString(value: RStringValue | RNumberValue | RLogic
 		return value.num.toString();
 	} else {
 		return undefined;
+	}
+}
+
+export function unliftRValue(value: ValueString): RStringValue | undefined;
+export function unliftRValue(value: ValueNumber | ValueInterval): RNumberValue | undefined;
+export function unliftRValue(value: ValueLogical): RLogicalValue | undefined;
+export function unliftRValue(value: ValueVector): (RStringValue | RNumberValue | RLogicalValue)[] | undefined;
+export function unliftRValue(value: Value): RStringValue | RNumberValue | boolean | (RStringValue | RNumberValue | RLogicalValue)[] | undefined;
+export function unliftRValue(value: Value): RStringValue | RNumberValue | boolean | (RStringValue | RNumberValue | RLogicalValue)[] | undefined {
+	if(!isValue(value)) {
+		return undefined;
+	}
+	const type = value.type;
+
+	switch(type) {
+		case 'string': {
+			return isValue(value.value) ? value.value : undefined;
+		}
+		case 'number': {
+			return isValue(value.value) ? value.value : undefined;
+		}
+		case 'logical': {
+			return isValue(value.value) && typeof value.value === 'boolean' ? value.value : undefined;
+		}
+		case 'interval': {
+			const start = unliftRValue(value.start);
+			const end = unliftRValue(value.end);
+			return start !== undefined && end !== undefined && start.num === end.num ? start : undefined;
+		}
+		case 'vector': {
+			const values = isValue(value.elements) ? value.elements.map(unliftRValue) : undefined;
+			return values?.every(isNotUndefined) ? values.flat() : undefined;
+		}
+		case 'set': {
+			return isValue(value.elements) && value.elements.length === 1 ? unliftRValue(value.elements[0]) : undefined;
+		}
+		case 'missing': {
+			return undefined;
+		}
+		default:
+			assertUnreachable(type);
 	}
 }

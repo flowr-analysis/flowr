@@ -11,10 +11,10 @@ import { NetServer, WebSocketServerWrapper } from './repl/server/net';
 import { flowrVersion } from '../util/version';
 import commandLineUsage from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
-import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/ansi';
+import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/text/ansi';
 import commandLineArgs from 'command-line-args';
 import type { EngineConfig, KnownEngines } from '../config';
-import { getConfig ,   amendConfig, getEngineConfig, parseConfig, setConfig, setConfigFile } from '../config';
+import { getConfig , amendConfig, getEngineConfig, parseConfig, setConfig, setConfigFile } from '../config';
 import { guard } from '../util/assert';
 import type { ScriptInformation } from './common/scripts-info';
 import { scripts } from './common/scripts-info';
@@ -108,21 +108,29 @@ if(!usedConfig) {
 	setConfigFile(options['config-file'] ?? defaultConfigFile, undefined, true);
 }
 
+
 // for all options that we manually supply that have a config equivalent, set them in the config
-if(!options['engine.r-shell.disabled']) {
-	amendConfig({ engines: [{ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] }] });
-}
-if(!options['engine.tree-sitter.disabled']){
-	amendConfig({ engines: [{
-		type:               'tree-sitter',
-		wasmPath:           options['engine.tree-sitter.wasm-path'],
-		treeSitterWasmPath: options['engine.tree-sitter.tree-sitter-wasm-path'],
-		lax:                options['engine.tree-sitter.lax']
-	}] });
-}
-if(options['default-engine']) {
-	amendConfig({ defaultEngine: options['default-engine'] as EngineConfig['type'] });
-}
+amendConfig(c => {
+	c.engines ??= [];
+
+	if(!options['engine.r-shell.disabled']) {
+		c.engines.push({ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] });
+	}
+
+	if(!options['engine.tree-sitter.disabled']) {
+		c.engines.push({
+			type:               'tree-sitter',
+			wasmPath:           options['engine.tree-sitter.wasm-path'],
+			treeSitterWasmPath: options['engine.tree-sitter.tree-sitter-wasm-path'],
+			lax:                options['engine.tree-sitter.lax']
+		});
+	}
+
+	if(options['default-engine']) {
+		c.defaultEngine = options['default-engine'] as EngineConfig['type'];
+	}
+});
+
 
 async function retrieveEngineInstances(): Promise<{ engines: KnownEngines, default: keyof KnownEngines }> {
 	const engines: KnownEngines = {};

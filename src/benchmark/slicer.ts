@@ -13,7 +13,7 @@ import type { SliceResult } from '../slicing/static/slicer-types';
 import type { ReconstructionResult } from '../reconstruct/reconstruct';
 import type { PipelineExecutor } from '../core/pipeline-executor';
 import { guard } from '../util/assert';
-import { withoutWhitespace } from '../util/strings';
+import { withoutWhitespace } from '../util/text/strings';
 import type {
 	BenchmarkMemoryMeasurement,
 	CommonSlicerMeasurements,
@@ -47,10 +47,10 @@ import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter
 import type { InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
 import type { ContainerIndicesCollection } from '../dataflow/graph/vertex';
 import { isParentContainerIndex } from '../dataflow/graph/vertex';
-import { equidistantSampling } from '../util/arrays';
-import { performDataFrameAbsint } from '../abstract-interpretation/data-frame/abstract-interpretation';
-import type { ControlFlowInformation } from '../util/cfg/cfg';
-import { extractCFG } from '../util/cfg/cfg';
+import { equidistantSampling } from '../util/collections/arrays';
+import { performDataFrameAbsint } from '../abstract-interpretation/data-frame/absint-visitor';
+import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
+import { extractCfg } from '../control-flow/extract-cfg';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { AbstractInterpretationInfo } from '../abstract-interpretation/data-frame/absint-info';
 import type { IntervalDomain } from '../abstract-interpretation/data-frame/domain';
@@ -381,7 +381,7 @@ export class BenchmarkSlicer {
 		const ast = this.normalizedAst;
 		const dfg = this.dataflow.graph;
 
-		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCFG(ast, dfg));
+		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, dfg));
 	}
 
 	/**
@@ -397,6 +397,7 @@ export class BenchmarkSlicer {
 		guard(this.dataflow !== undefined, 'dataflow should be defined for abstract interpretation');
 		guard(this.controlFlow !== undefined, 'controlFlow should be defined for abstract interpretation');
 
+		const ast = this.normalizedAst;
 		const dfg = this.dataflow.graph;
 		const cfinfo = this.controlFlow;
 
@@ -414,7 +415,7 @@ export class BenchmarkSlicer {
 			perNodeStats:              new Map()
 		};
 
-		const result = this.measureSimpleStep('perform abstract interpretation', () => performDataFrameAbsint(cfinfo, dfg));
+		const result = this.measureSimpleStep('perform abstract interpretation', () => performDataFrameAbsint(cfinfo, dfg, ast));
 		stats.numberOfResultConstraints = result.size;
 
 		for(const value of result.values()) {
@@ -433,9 +434,8 @@ export class BenchmarkSlicer {
 			}
 			stats.sizeOfInfo += safeSizeOf([node.info.dataFrame]);
 
-			const expression = 'type' in node.info.dataFrame && node.info.dataFrame?.type === 'expression' ? node.info.dataFrame : undefined;
-			const domain = node.info.dataFrame?.domain;
-			const value = domain?.get(node.info.id);
+			const expression = node.info.dataFrame?.type === 'expression' ? node.info.dataFrame : undefined;
+			const value = node.info.dataFrame.domain?.get(node.info.id);
 
 			// Only store per-node information for nodes representing expressions or nodes with abstract values
 			if(expression === undefined && value === undefined) {
@@ -443,7 +443,7 @@ export class BenchmarkSlicer {
 				return;
 			}
 			const nodeStats: PerNodeStatsAbsint = {
-				numberOfEntries: domain?.size ?? 0
+				numberOfEntries: node.info.dataFrame?.domain?.size ?? 0
 			};
 			if(expression !== undefined) {
 				nodeStats.mappedOperations = expression.operations.map(op => op.operation);

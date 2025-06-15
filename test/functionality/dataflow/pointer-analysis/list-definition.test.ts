@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe } from 'vitest';
+import { afterEach, beforeEach, describe } from 'vitest';
 import { assertContainerIndicesDefinition, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { Q } from '../../../../src/search/flowr-search-builder';
@@ -7,11 +7,11 @@ import { amendConfig, defaultConfigOptions, setConfig } from '../../../../src/co
 describe.sequential('List Definition', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'subsetting-multiple'] as const;
 
-	beforeAll(() => {
-		amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
+	beforeEach(() => {
+		amendConfig(c => c.solver.pointerTracking = true);
 	});
 
-	afterAll(() => {
+	afterEach(() => {
 		setConfig(defaultConfigOptions);
 	});
 
@@ -71,11 +71,10 @@ describe.sequential('List Definition', withShell(shell => {
 			);
 
 			describe('Skip if index threshold', () => {
-				beforeAll(() => {
-					setConfig({ ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, pointerTracking: { maxIndexCount: 1 } } });
+				beforeEach(() => {
+					amendConfig(c => c.solver.pointerTracking = { maxIndexCount: 1 });
 				});
-
-				afterAll(() => {
+				afterEach(() => {
 					setConfig(defaultConfigOptions);
 				});
 				assertContainerIndicesDefinition(

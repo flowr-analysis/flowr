@@ -15,8 +15,7 @@ import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequ
 import { requestExecuteReplExpressionMessage } from './messages/message-repl';
 import { replProcessAnswer } from '../core';
 import { LogLevel } from '../../../util/log';
-import type { ControlFlowInformation } from '../../../util/cfg/cfg';
-import { cfg2quads, extractCFG } from '../../../util/cfg/cfg';
+import { cfg2quads, extractCfg } from '../../../control-flow/extract-cfg';
 import type { QuadSerializationConfiguration } from '../../../util/quads';
 import { defaultQuadIdGenerator } from '../../../util/quads';
 import { printStepResult, StepOutputFormat } from '../../../core/print/print';
@@ -24,7 +23,7 @@ import type { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-pa
 import type { DataflowInformation } from '../../../dataflow/info';
 import type { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
 import type { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
-import { ansiFormatter, voidFormatter } from '../../../util/ansi';
+import { ansiFormatter, voidFormatter } from '../../../util/text/ansi';
 import { PipelineStepStage } from '../../../core/steps/pipeline-step';
 import { createSlicePipeline, DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import type { Pipeline, PipelineOutput } from '../../../core/steps/pipeline/pipeline';
@@ -46,6 +45,7 @@ import { executeQueries } from '../../../queries/query';
 import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 import type { PipelineExecutor } from '../../../core/pipeline-executor';
 import { compact } from './compact';
+import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -159,7 +159,7 @@ export class FlowRServerConnection {
 	private async sendFileAnalysisResponse(slicer: PipelineExecutor<Pipeline>, results: Partial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>>, message: FileAnalysisRequestMessage): Promise<void> {
 		let cfg: ControlFlowInformation | undefined = undefined;
 		if(message.cfg) {
-			cfg = extractCFG(results.normalize as NormalizedAst, results.dataflow?.graph);
+			cfg = extractCfg(results.normalize as NormalizedAst, results.dataflow?.graph);
 		}
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() });

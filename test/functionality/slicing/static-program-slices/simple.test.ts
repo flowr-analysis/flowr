@@ -9,7 +9,7 @@ describe.sequential('Simple', withShell(shell => {
 	for(const withPointer of [true, false]) {
 		describe(`Constant assignments (${withPointer ? 'with' : 'without'} pointer tracking)`, () => {
 			beforeAll(() => {
-				amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: withPointer } });
+				amendConfig(c => c.solver.pointerTracking = withPointer);
 			});
 			afterAll(() => {
 				setConfig(defaultConfigOptions);

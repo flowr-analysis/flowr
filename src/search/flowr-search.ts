@@ -3,6 +3,9 @@ import type { Pipeline, PipelineOutput, PipelineStepOutputWithName } from '../co
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowInformation } from '../dataflow/info';
+import type { BaseQueryResult } from '../queries/base-query-format';
+import type { Query } from '../queries/query';
+import type { MarkOptional } from 'ts-essentials';
 
 /**
  * Yes, for now we do technically not need a wrapper around the RNode, but this allows us to attach caches etc.
@@ -11,6 +14,13 @@ import type { DataflowInformation } from '../dataflow/info';
 export interface FlowrSearchElement<Info> {
     readonly node: RNode<Info>;
 }
+
+export interface FlowrSearchElementFromQuery<Info> extends FlowrSearchElement<Info> {
+	readonly query:       Query['type'];
+	readonly queryResult: BaseQueryResult;
+}
+
+export type FlowrSearchElementMaybeFromQuery<Info> = MarkOptional<FlowrSearchElementFromQuery<Info>, 'query' | 'queryResult'>
 
 export interface FlowrSearchNodeBase<Type extends string, Name extends string, Args extends Record<string, unknown> | undefined> {
     readonly type: Type;
@@ -78,7 +88,7 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 		return this;
 	}
 
-	public getElements(): readonly FlowrSearchElement<Info>[] {
+	public getElements(): Readonly<Elements> {
 		return this.elements;
 	}
 
@@ -87,4 +97,3 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 		return this;
 	}
 }
-

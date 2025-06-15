@@ -1,36 +1,36 @@
-import type { ResolveInfo } from '../../dataflow/environments/resolve-by-name';
-import { resolveIdToValue } from '../../dataflow/environments/resolve-by-name';
+import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
+import { resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
 import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { unwrapRValue, unwrapRValueToString, unwrapRVector } from '../../util/r-value';
-import { startAndEndsWith } from '../../util/strings';
+import { isNotUndefined } from '../../util/assert';
+import { unliftRValue, unwrapRValue, unwrapRValueToString, unwrapRVector } from '../../util/r-value';
+import { startAndEndsWith } from '../../util/text/strings';
 
 /**
  * Returns the argument name of a function argument
  */
-export function resolveIdToArgName(id: NodeId | RArgument<ParentInformation>, info: ResolveInfo): string | undefined {
+export function resolveIdToArgName(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): string | undefined {
 	const node = resolveIdToArgument(id, info);
 
 	return unescapeArgument(node?.name?.content);
 }
 
 /**
- * Resolves the value of a function argument as string, number, boolean, string vector, number vector, boolean vector, or mixed vector using {@link resolveIdToValue}
+ * Resolves the value of a function argument as string, number, boolean, or vector using {@link resolveIdToValue}
  */
-export function resolveIdToArgValue(id: NodeId | RArgument<ParentInformation>, info: ResolveInfo): string | number | boolean | string[] | number[] | boolean[] | (string | number | boolean)[] | undefined {
+export function resolveIdToArgValue(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): string | number | boolean | (string | number | boolean)[] | undefined {
 	const node = resolveIdToArgument(id, info);
 
 	if(node?.value !== undefined) {
 		const resolvedValue = resolveIdToValue(node.value, info);
+		const unliftedValue = unliftRValue(resolvedValue);
 
-		if(resolvedValue?.length === 1) {
-			if(Array.isArray(resolvedValue[0])) {
-				return unwrapRVector(resolvedValue[0]);
-			} else {
-				return unwrapRValue(resolvedValue[0]);
-			}
+		if(Array.isArray(unliftedValue)) {
+			return unwrapRVector(unliftedValue);
+		} else {
+			return unwrapRValue(unliftedValue);
 		}
 	}
 	return undefined;
@@ -39,21 +39,19 @@ export function resolveIdToArgValue(id: NodeId | RArgument<ParentInformation>, i
 /**
  * Resolves the value of a function argument to a string vector using {@link resolveIdToValue} and {@link unwrapRValueToString}
  */
-export function resolveIdToArgStringVector(id: NodeId | RArgument<ParentInformation>, info: ResolveInfo): string[] | undefined {
+export function resolveIdToArgStringVector(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): string[] | undefined {
 	const node = resolveIdToArgument(id, info);
 
 	if(node?.value !== undefined) {
 		const resolvedValue = resolveIdToValue(node.value, info);
+		const unliftedValue = unliftRValue(resolvedValue);
 
-		if(resolvedValue?.length === 1) {
-			if(Array.isArray(resolvedValue[0])) {
-				const array = resolvedValue[0].map(unwrapRValueToString);
-				return array.every(value => value !== undefined) ? array : undefined;
-			} else {
-				const value: unknown = resolvedValue[0];
-				const result = unwrapRValueToString(value);
-				return result !== undefined ? [result] : undefined;
-			}
+		if(Array.isArray(unliftedValue)) {
+			const array = unliftedValue.map(unwrapRValueToString);
+			return array.every(isNotUndefined) ? array : undefined;
+		} else {
+			const result = unwrapRValueToString(unliftedValue);
+			return result !== undefined ? [result] : undefined;
 		}
 	}
 	return undefined;
@@ -62,7 +60,7 @@ export function resolveIdToArgStringVector(id: NodeId | RArgument<ParentInformat
 /**
  * Returns the symbol name or string value of the value of a function argument
  */
-export function resolveIdToArgValueSymbolName(id: NodeId | RArgument<ParentInformation>, info: ResolveInfo): string | undefined {
+export function resolveIdToArgValueSymbolName(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): string | undefined {
 	const node = resolveIdToArgument(id, info);
 
 	if(node?.value?.type === RType.Symbol) {
@@ -76,26 +74,25 @@ export function resolveIdToArgValueSymbolName(id: NodeId | RArgument<ParentInfor
 /**
  * Resolves the vector length of the value of a function argument using {@link resolveIdToValue}
  */
-export function resolveIdToArgVectorLength(id: NodeId | RArgument<ParentInformation>, info: ResolveInfo): number | undefined {
+export function resolveIdToArgVectorLength(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): number | undefined {
 	const node = resolveIdToArgument(id, info);
 
 	if(node?.value !== undefined) {
 		const resolvedValue = resolveIdToValue(node.value, info);
+		const unliftedValue = unliftRValue(resolvedValue);
 
-		if(resolvedValue?.length === 1) {
-			if(Array.isArray(resolvedValue[0])) {
-				return resolvedValue[0].length;
-			} else if(unwrapRValue(resolvedValue[0]) !== undefined) {
-				return 1;
-			}
+		if(Array.isArray(unliftedValue)) {
+			return unliftedValue.length;
+		} else if(unwrapRValue(unliftedValue) !== undefined) {
+			return 1;
 		}
 	}
 	return undefined;
 }
 
-function resolveIdToArgument(id: NodeId | RArgument<ParentInformation>, { graph, idMap }: ResolveInfo): RArgument<ParentInformation> | undefined {
+function resolveIdToArgument(id: NodeId | RArgument<ParentInformation> | undefined, { graph, idMap }: ResolveInfo): RArgument<ParentInformation> | undefined {
 	idMap ??= graph?.idMap;
-	const node = typeof id === 'object' ? id : idMap?.get(id);
+	const node = id === undefined || typeof id === 'object' ? id : idMap?.get(id);
 
 	if(node?.type === RType.Argument) {
 		return node;

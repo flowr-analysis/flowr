@@ -8,13 +8,13 @@ import { requestFromInput } from '../../r-bridge/retriever';
 import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
-import type { DataflowDifferenceReport } from '../../dataflow/graph/diff';
-import { diffOfDataflowGraphs } from '../../dataflow/graph/diff';
+import { diffOfDataflowGraphs } from '../../dataflow/graph/diff-dataflow-graph';
 import { guard } from '../../util/assert';
 import { normalizedAstToMermaid } from '../../util/mermaid/ast';
-import { printAsMs } from '../../util/time';
+import { printAsMs } from '../../util/text/time';
 import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrWikiBaseRef } from './doc-files';
+import type { GraphDifferenceReport } from '../../util/diff-graph';
 
 export function printNormalizedAst(ast: RNodeWithParent, prefix = 'flowchart TD\n') {
 	return `
@@ -75,7 +75,7 @@ export async function verifyExpectedSubgraph(shell: RShell, code: string, expect
 
 	expectedSubgraph.setIdMap(info.normalize.idMap);
 	expectedSubgraph = resolveDataflowGraph(expectedSubgraph);
-	const report: DataflowDifferenceReport = diffOfDataflowGraphs(
+	const report: GraphDifferenceReport = diffOfDataflowGraphs(
 		{ name: 'expected', graph: expectedSubgraph },
 		{ name: 'got',      graph: info.dataflow.graph },
 		{

@@ -13,7 +13,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/environment';
 import type { ForceArguments } from '../common';
 import type { BuiltInMappingName } from '../../../../../environments/built-in';
-import { BuiltIn } from '../../../../../environments/built-in';
+import { builtInId } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
 import { ReferenceType } from '../../../../../environments/identifier';
 import type {
@@ -58,8 +58,8 @@ export function processAccess<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: { treatIndicesAsString: boolean } & ForceArguments
 ): DataflowInformation {
-	if(args.length < 2) {
-		dataflowLogger.warn(`Access ${name.content} has less than 2 arguments, skipping`);
+	if(args.length < 1) {
+		dataflowLogger.warn(`Access ${name.content} has less than 1 argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 	const head = args[0];
@@ -135,14 +135,15 @@ function processNumberBasedAccess<OtherInfo>(
 ) {
 	const existing = data.environment.current.memory.get(':=');
 	const outInfo = { definitionRootNodes: [] };
+	const tableAssignId = builtInId(':=-table');
 	data.environment.current.memory.set(':=', [{
 		type:                ReferenceType.BuiltInFunction,
-		definedAt:           BuiltIn,
+		definedAt:           tableAssignId,
 		controlDependencies: undefined,
 		processor:           (name, args, rootId, data) => tableAssignmentProcessor(name, args, rootId, data, outInfo),
 		config:              {},
 		name:                ':=',
-		nodeId:              BuiltIn,
+		nodeId:              tableAssignId
 	}]);
 
 	const fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'builtin:access' });

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe } from 'vitest';
+import { afterEach, beforeEach, describe } from 'vitest';
 import { assertContainerIndicesDefinition, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { Q } from '../../../../src/search/flowr-search-builder';
@@ -7,12 +7,12 @@ import { amendConfig, defaultConfigOptions, setConfig } from '../../../../src/co
 describe.sequential('Vector Definition', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'unnamed-arguments', 'subsetting-multiple'] as const;
 
-	beforeAll(() => {
-		amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
+	beforeEach(() => {
+		setConfig({ ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
 	});
 
-	afterAll(() => {
-		amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: false } });
+	afterEach(() => {
+		setConfig(defaultConfigOptions);
 	});
 
 	describe('Simple definition', () => {
@@ -56,11 +56,11 @@ describe.sequential('Vector Definition', withShell(shell => {
 		);
 
 		describe('Skip if index threshold', () => {
-			beforeAll(() => {
-				setConfig({ ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, pointerTracking: { maxIndexCount: 2 } } });
+			beforeEach(() => {
+				amendConfig(c => c.solver.pointerTracking = { maxIndexCount: 2 });
 			});
 
-			afterAll(() => {
+			afterEach(() => {
 				setConfig(defaultConfigOptions);
 			});
 			assertContainerIndicesDefinition(

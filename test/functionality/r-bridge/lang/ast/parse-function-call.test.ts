@@ -474,6 +474,77 @@ describe.sequential('Parse function calls', withShell(shell => {
 			})
 		);
 	});
+	describe('Intermixing Comments', () => {
+		assertAst(label('comment interspersed in arglist', ['name-normal', 'call-normal', 'numbers', 'comments']),
+			shell, 'data.frame(A = 1, # this is a comment\n' +
+			'                B = 2)', exprList({
+				type:     RType.FunctionCall,
+				named:    true,
+				location: rangeFrom(1, 1, 1, 10),
+				lexeme:   'data.frame',
+				info:     {
+					additionalTokens: [{
+						type:     RType.Comment,
+						location: rangeFrom(1, 19, 1, 37),
+						lexeme:   '# this is a comment',
+						content:  ' this is a comment',
+						info:     {}
+					}]
+				},
+				functionName: {
+					type:      RType.Symbol,
+					location:  rangeFrom(1, 1, 1, 10),
+					lexeme:    'data.frame',
+					content:   'data.frame',
+					namespace: undefined,
+					info:      {}
+				},
+				arguments: [
+					{
+						type:     RType.Argument,
+						location: rangeFrom(1, 12, 1, 12),
+						name:     {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 12, 1, 12),
+							lexeme:    'A',
+							content:   'A',
+							namespace: undefined,
+							info:      {}
+						},
+						info:   {},
+						lexeme: 'A',
+						value:  {
+							type:     RType.Number,
+							location: rangeFrom(1, 16, 1, 16),
+							lexeme:   '1',
+							content:  numVal(1),
+							info:     {}
+						}
+					}, {
+						type:     RType.Argument,
+						location: rangeFrom(2, 17, 2, 17),
+						name:     {
+							type: 	    RType.Symbol,
+							location:  rangeFrom(2, 17, 2, 17),
+							lexeme:    'B',
+							content:   'B',
+							namespace: undefined,
+							info:      {}
+						},
+						lexeme: 'B',
+						info:   {},
+						value:  {
+							type:     RType.Number,
+							location: rangeFrom(2, 21, 2, 21),
+							lexeme:   '2',
+							content:  numVal(2),
+							info:     {}
+						}
+					}
+				]
+			})
+		);
+	});
 	describe('Next and break as functions', () => {
 		assertAst(label('next()', ['name-normal', 'call-normal', 'next']),
 			shell, 'next()', exprList({

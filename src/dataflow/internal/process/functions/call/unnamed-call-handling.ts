@@ -13,6 +13,7 @@ import { dataflowLogger } from '../../../../logger';
 import { ReferenceType } from '../../../../environments/identifier';
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-';
+export const UnnamedFunctionCallOrigin = 'unnamed';
 
 export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const calledFunction = processDataflowFor(functionCall.calledFunction, data);
@@ -49,17 +50,18 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		onlyBuiltin: false,
 		cds:         data.controlDependencies,
 		args:        callArgs, // same reference
-		origin:      ['unnamed']
+		origin:      [UnnamedFunctionCallOrigin]
 	});
 
-	const inIds = remainingReadInArgs;
+	let inIds = remainingReadInArgs;
 	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependencies: data.controlDependencies, type: ReferenceType.Function });
 
 	if(functionCall.calledFunction.type === RType.FunctionDefinition) {
 		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph);
 	}
 	// push the called function to the ids:
-	inIds.push(...calledFunction.in, ...calledFunction.unknownReferences);
+
+	inIds = inIds.concat(calledFunction.in, calledFunction.unknownReferences);
 
 	return {
 		unknownReferences: [],

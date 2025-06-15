@@ -1,9 +1,9 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { executeCallContextQueries } from './call-context-query-executor';
-import type { OutputFormatter } from '../../../util/ansi';
-import { bold } from '../../../util/ansi';
-import { printAsMs } from '../../../util/time';
+import type { OutputFormatter } from '../../../util/text/ansi';
+import { bold } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 
 import { asciiCallContext } from '../../query-print';
@@ -63,7 +63,7 @@ export interface DefaultCallContextQueryFormat<RegexType extends RegExp | string
  * For now, this uses the static Control-Flow-Graph produced by flowR as the FD over-approximation is still not stable (see #1005).
  * In short, this means that we are unable to detect origins over function call boundaries but plan on being more precise in the future.
  */
-interface LinkToLastCall<CallName extends RegExp | string = RegExp | string> extends BaseQueryFormat {
+export interface LinkToLastCall<CallName extends RegExp | string = RegExp | string> extends BaseQueryFormat {
 	readonly type:       'link-to-last-call';
 	/** Regex regarding the function name of the last call. Similar to {@link DefaultCallContextQueryFormat#callName}, strings are interpreted as a `RegExp`. */
 	readonly callName:   CallName;
@@ -145,5 +145,9 @@ export const CallContextQueryDefinition = {
 			includeUndefinedFiles: Joi.boolean().optional().description('If `fileFilter` is set, but a nodes `file` attribute is `undefined`, should we include it in the results? Defaults to `true`.')
 		}).optional().description('Filter that, when set, a node\'s file attribute must match to be considered'),
 		linkTo: Joi.alternatives(CallContextQueryLinkTo, Joi.array().items(CallContextQueryLinkTo)).optional().description('Links the current call to the last call of the given kind. This way, you can link a call like `points` to the latest graphics plot etc.')
-	}).description('Call context query used to find calls in the dataflow graph')
+	}).description('Call context query used to find calls in the dataflow graph'),
+	flattenInvolvedNodes: (queryResults: BaseQueryResult) => {
+		const out = queryResults as CallContextQueryResult;
+		return Object.values(out.kinds).flatMap(({ subkinds }) => Object.values(subkinds).flatMap(subkinds => subkinds.map(subkind => subkind.id)));
+	}
 } as const;

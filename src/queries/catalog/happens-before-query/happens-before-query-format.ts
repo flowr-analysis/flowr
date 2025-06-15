@@ -1,6 +1,6 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import { bold } from '../../../util/ansi';
-import { printAsMs } from '../../../util/time';
+import { bold } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { executeHappensBefore } from './happens-before-query-executor';
@@ -31,5 +31,6 @@ export const HappensBeforeQueryDefinition = {
 		type: Joi.string().valid('happens-before').required().description('The type of the query.'),
 		a:    Joi.string().required().description('The first slicing criterion.'),
 		b:    Joi.string().required().description('The second slicing criterion.')
-	}).description('Happens-Before tracks whether a always happens before b.')
+	}).description('Happens-Before tracks whether a always happens before b.'),
+	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'happens-before'>;

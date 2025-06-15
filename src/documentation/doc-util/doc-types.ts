@@ -7,6 +7,7 @@ import { escapeMarkdown } from '../../util/mermaid/mermaid';
 import { codeBlock } from './doc-code';
 import { details } from './doc-structure';
 import { textWithTooltip } from '../../util/html-hover-over';
+import { prefixLines } from './doc-general';
 
 /* basics generated */
 
@@ -162,6 +163,19 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 					const name = member.name?.getText(sourceFile) ?? '';
 					return `${name}${escapeMarkdown(': ' + getType(member, typeChecker))}`;
 				})
+			});
+		} else if(ts.isEnumMember(node)) {
+			const typeName = node.parent.name?.getText(sourceFile) ?? '';
+			const enumName = dropGenericsFromType(typeName);
+			hierarchyList.push({
+				name:       dropGenericsFromType(node.name.getText(sourceFile)),
+				node,
+				kind:       'enum',
+				extends:    [enumName],
+				comments:   getTextualComments(node),
+				generics:   [],
+				filePath:   sourceFile.fileName,
+				lineNumber: getStartLine(node, sourceFile),
 			});
 		} else if(ts.isClassDeclaration(node)) {
 			const className = node.name?.getText(sourceFile) ?? '';
@@ -412,16 +426,37 @@ export function printHierarchy({ program, info, root, collapseFromNesting = 1, i
 	}
 }
 
-function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[]): [string | undefined, string, TypeElementInSource]| undefined {
+interface FnInfo {
+	info:    TypeElementInSource[],
+	program: ts.Program
+}
+
+export function printCodeOfElement({ program, info }: FnInfo, name: string): string {
+	const node = info.find(e => e.name === name);
+	if(!node) {
+		console.error(`Could not find node ${name} when resolving function!`);
+		return '';
+	}
+	const code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName));
+	return `${codeBlock('ts', code)}\n<i>Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></i>\n`;
+}
+
+function fuzzyCompare(a: string, b: string): boolean {
+	const aStr = a.toLowerCase().replace(/[^a-z0-9]/g, '-').trim();
+	const bStr = b.toLowerCase().replace(/[^a-z0-9]/g, '-').trim();
+	return aStr === bStr || aStr.includes(bStr) || bStr.includes(aStr);
+}
+
+function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], fuzzy = false): [string | undefined, string, TypeElementInSource]| undefined {
 	let container: string | undefined = undefined;
 	if(name.includes('::')) {
 		[container, name] = name.split(/:::?/);
 	}
-	let node = hierarchy.filter(e => e.name === name);
+	let node = hierarchy.filter(e =>  fuzzy ? fuzzyCompare(e.name, name) : e.name === name);
 	if(node.length === 0) {
 		return undefined;
 	} else if(container) {
-		node = node.filter(n => n.extends.includes(container));
+		node = node.filter(n => fuzzy ? n.extends.some(n => fuzzyCompare(n, container)) : n.extends.includes(container));
 		if(node.length === 0) {
 			return undefined;
 		}
@@ -455,11 +490,11 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 	}${codeStyle ? '</code>' : ''}](${getTypePathLink(node)})`;
 }
 
-export function getDocumentationForType(name: string, hierarchy: TypeElementInSource[]): string {
-	const res = retrieveNode(name, hierarchy);
+export function getDocumentationForType(name: string, hierarchy: TypeElementInSource[], prefix = '', fuzzy = false): string {
+	const res = retrieveNode(name, hierarchy, fuzzy);
 	if(!res) {
 		return '';
 	}
 	const [, , node] = res;
-	return node.comments?.join('\n') ?? '';
+	return prefixLines(node.comments?.join('\n') ?? '', prefix);
 }

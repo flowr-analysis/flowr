@@ -2,7 +2,7 @@ import type { NormalizerData } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
 import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta';
 import { guard, isNotUndefined } from '../../../../../../../util/assert';
-import { splitArrayOn } from '../../../../../../../util/arrays';
+import { splitArrayOn } from '../../../../../../../util/collections/arrays';
 import { tryNormalizeParameter } from './normalize-parameter';
 import type { RFunctionDefinition } from '../../../../model/nodes/r-function-definition';
 import { RawRType, RType } from '../../../../model/type';

@@ -1,3 +1,5 @@
+import { dropRawStringSurround } from '../../util/text/strings';
+
 class ValueConversionError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -151,7 +153,7 @@ export function string2ts(value: string): RStringValue {
 		const flags = value[1];
 		if(flags === '"' || flags === '\'') {
 			return {
-				str:    value.slice(2, -1),
+				str:    dropRawStringSurround(value.slice(2, -1)),
 				quotes: flags,
 				flag:   'raw'
 			};

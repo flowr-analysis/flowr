@@ -9,11 +9,11 @@ import { removeRQuotes } from '../../retriever';
 import { boolean2ts, number2ts, string2ts } from '../convert-values';
 import { ensureExpressionList } from '../ast/parser/main/normalize-meta';
 import type { RArgument } from '../ast/model/nodes/r-argument';
-import { splitArrayOn } from '../../../util/arrays';
+import { splitArrayOn } from '../../../util/collections/arrays';
 import { EmptyArgument } from '../ast/model/nodes/r-function-call';
 import type { RSymbol } from '../ast/model/nodes/r-symbol';
 import type { RString } from '../ast/model/nodes/r-string';
-import { startAndEndsWith } from '../../../util/strings';
+import { startAndEndsWith } from '../../../util/text/strings';
 import type { RParameter } from '../ast/model/nodes/r-parameter';
 import { getEngineConfig } from '../../../config';
 import { log } from '../../../util/log';
@@ -302,13 +302,20 @@ function convertTreeNode(node: SyntaxNode): RNode {
 					...defaultInfo
 				};
 			}
-			const args = splitArrayOn(nonErrorChildren(argsParentheses).slice(1, -1), x => x.type === 'comma');
+			const rawArgs = nonErrorChildren(argsParentheses);
+			const [comments, noCommentrawArgs] = splitComments(rawArgs);
+			const args = splitArrayOn(noCommentrawArgs.slice(1, -1), x => x.type === 'comma');
 			const funcRange = makeSourceRange(func);
+			const mappedArgs = args.map(n => n.length == 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument);
 			const call = {
-				arguments: args.map(n => n.length == 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument),
+				arguments: mappedArgs,
 				location:  funcRange,
 				lexeme:    func.text,
-				...defaultInfo
+				...defaultInfo,
+				info:      {
+					...defaultInfo.info,
+					additionalTokens: comments.map(c => c[1]),
+				}
 			};
 			if(func.type === TreeSitterType.Identifier || func.type === TreeSitterType.String || func.type === TreeSitterType.NamespaceOperator || func.type === TreeSitterType.Return) {
 				let funcNode = convertTreeNode(func) as RSymbol | RString;
@@ -483,6 +490,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			} else {
 				const [nameNode, /* = */, valueNode] = children;
 				let name = convertTreeNode(nameNode) as RString | RSymbol;
+
 				// unescape argument names
 				if(name.type === RType.String){
 					name = {
@@ -495,9 +503,10 @@ function convertTreeNode(node: SyntaxNode): RNode {
 					name.content = name.content.slice(1, -1);
 				}
 				const nameRange = makeSourceRange(nameNode);
+
 				return {
 					type:     RType.Argument,
-					name:     name,
+					name,
 					value:    valueNode ? convertTreeNode(valueNode) : undefined,
 					location: nameRange,
 					lexeme:   nameNode.text,

@@ -1,4 +1,4 @@
-import type { ResolveInfo } from '../../../dataflow/environments/resolve-by-name';
+import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
@@ -7,8 +7,9 @@ import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-func
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
+import { resolveIdToAbstractValue } from '../absint-visitor';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, unescapeArgument } from '../resolve-args';
-import { isStringBasedAccess } from '../semantics-mapper';
+import { isStringBasedAccess } from '../util';
 
 const SpecialAccessArgumentsMapper: Record<RIndexAccess['operator'], string[]> = {
 	'[':  ['drop'],
@@ -39,7 +40,7 @@ function mapDataFrameNamedColumnAccess(
 ): DataFrameOperations[] | undefined {
 	const dataFrame = access.accessed;
 
-	if(dataFrame.info.dataFrame?.domain?.get(dataFrame.info.id) === undefined) {
+	if(resolveIdToAbstractValue(dataFrame, info.graph) === undefined) {
 		return;
 	}
 	const argName = resolveIdToArgValueSymbolName(access.access[0], info);
@@ -57,7 +58,7 @@ function mapDataFrameIndexColRowAccess(
 ): DataFrameOperations[] | undefined {
 	const dataFrame = access.accessed;
 
-	if(dataFrame.info.dataFrame?.domain?.get(dataFrame.info.id) === undefined) {
+	if(resolveIdToAbstractValue(dataFrame, info.graph) === undefined) {
 		return;
 	}
 	const args = getEffectiveArgs(access.operator, access.access);
@@ -71,14 +72,14 @@ function mapDataFrameIndexColRowAccess(
 	}
 	const result: DataFrameOperations[] = [];
 	const dropArg = access.access.find(arg => resolveIdToArgName(arg, info) === 'drop');
-	const dropValue = dropArg !== undefined ? resolveIdToArgValue(dropArg, info) : undefined;
+	const dropValue = resolveIdToArgValue(dropArg, info);
 	const rowArg = args.length < 2 ? undefined : args[0];
 	const colArg = args.length < 2 ? args[0] : args[1];
 	let rows: number[] | undefined = undefined;
 	let columns: string[] | number[] | undefined = undefined;
 
 	if(rowArg !== undefined && rowArg !== EmptyArgument) {
-		const rowValue: unknown = resolveIdToArgValue(rowArg, info);
+		const rowValue = resolveIdToArgValue(rowArg, info);
 
 		if(typeof rowValue === 'number') {
 			rows = [rowValue];
@@ -92,7 +93,7 @@ function mapDataFrameIndexColRowAccess(
 		});
 	}
 	if(colArg !== undefined && colArg !== EmptyArgument) {
-		const colValue: unknown = resolveIdToArgValue(colArg, info);
+		const colValue = resolveIdToArgValue(colArg, info);
 
 		if(typeof colValue === 'string') {
 			columns = [colValue];
@@ -117,7 +118,7 @@ function mapDataFrameIndexColRowAccess(
 
 		if(rowArg !== undefined && rowArg !== EmptyArgument) {
 			result.push({
-				operation: rows === undefined || rows?.every(row => row >= 0) ? 'subsetRows' : 'removeRows',
+				operation: rows === undefined || rows.every(row => row >= 0) ? 'subsetRows' : 'removeRows',
 				operand:   operand?.info.id,
 				args:      { rows: rows?.length }
 			});
@@ -125,7 +126,7 @@ function mapDataFrameIndexColRowAccess(
 		}
 		if(colArg !== undefined && colArg !== EmptyArgument) {
 			result.push({
-				operation: columns === undefined || columns?.every(col => typeof col === 'string' || col >= 0) ? 'subsetCols' : 'removeCols',
+				operation: columns === undefined || columns.every(col => typeof col === 'string' || col >= 0) ? 'subsetCols' : 'removeCols',
 				operand:   operand?.info.id,
 				args:      { colnames: columns?.map(col => typeof col === 'string' ? col : undefined) }
 			});

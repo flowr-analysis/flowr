@@ -1,8 +1,8 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { executeNormalizedAstQuery } from './normalized-ast-query-executor';
-import { bold } from '../../../util/ansi';
-import { printAsMs } from '../../../util/time';
+import { bold } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
 import { normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
@@ -28,5 +28,6 @@ export const NormalizedAstQueryDefinition = {
 	},
 	schema: Joi.object({
 		type: Joi.string().valid('normalized-ast').required().description('The type of the query.'),
-	}).description('The normalized AST query simply returns the normalized AST, there is no need to pass it multiple times!')
+	}).description('The normalized AST query simply returns the normalized AST, there is no need to pass it multiple times!'),
+	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'normalized-ast'>;

@@ -4,7 +4,7 @@ import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/pr
 import type { CommonSlicerMeasurements } from '../../../src/benchmark/stats/stats';
 import { PerSliceMeasurements, RequiredSlicerMeasurements } from '../../../src/benchmark/stats/stats';
 import { describe, assert, test, beforeAll, afterAll } from 'vitest';
-import { amendConfig, defaultConfigOptions } from '../../../src/config';
+import { amendConfig } from '../../../src/config';
 import { DefaultAllVariablesFilter } from '../../../src/slicing/criterion/filters/all-variables';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { guard, isNotUndefined } from '../../../src/util/assert';
@@ -53,7 +53,7 @@ describe('Benchmark Slicer', () => {
 
 			assert.deepStrictEqual(stats.dataflow, {
 				numberOfNodes:               3,  // the defined variable, the reading ref, and the call
-				numberOfEdges:               4,  // the defined-by edge and the arguments
+				numberOfEdges:               5,  // the defined-by edge and the arguments, the built-in edge
 				numberOfCalls:               1,  // `<-`
 				numberOfFunctionDefinitions: 0,   // no definitions
 				sizeOfObject:                228,
@@ -123,7 +123,7 @@ cat(d)`
 			}, statInfo);
 			assert.deepStrictEqual(stats.dataflow, {
 				numberOfNodes:               23,
-				numberOfEdges:               29,
+				numberOfEdges:               38,
 				numberOfCalls:               9,
 				numberOfFunctionDefinitions: 0,
 				sizeOfObject:                1922,
@@ -163,11 +163,11 @@ cat(d)`
 
 		describe('Slicing with pointer-tracking enabled', () => {
 			beforeAll(() => {
-				amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
+				amendConfig(c => c.solver.pointerTracking = true );
 			});
 
 			afterAll(() => {
-				amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: false } });
+				amendConfig(c => c.solver.pointerTracking = false );
 			});
 
 			test('When indices are stored, then correct values are counted', async() => {

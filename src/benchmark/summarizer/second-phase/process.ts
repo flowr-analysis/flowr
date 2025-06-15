@@ -1,6 +1,6 @@
 import type { Reduction, SummarizedAbsintStats, SummarizedSlicerStats, TimePerToken, UltimateSlicerStats } from '../data';
 import { summarizeSummarizedReductions, summarizeSummarizedMeasurement, summarizeSummarizedTimePerToken, summarizeTimePerToken } from '../first-phase/process';
-import { DefaultMap } from '../../../util/defaultmap';
+import { DefaultMap } from '../../../util/collections/defaultmap';
 import type { SummarizedMeasurement } from '../../../util/summarizer';
 import { summarizeMeasurement } from '../../../util/summarizer';
 import { guard, isNotUndefined } from '../../../util/assert';
@@ -15,7 +15,7 @@ import {
 } from '../../stats/stats';
 import type { DataFrameOperationName } from '../../../abstract-interpretation/data-frame/semantics';
 import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
-import { arraySum } from '../../../util/arrays';
+import { arraySum } from '../../../util/collections/arrays';
 
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => []);

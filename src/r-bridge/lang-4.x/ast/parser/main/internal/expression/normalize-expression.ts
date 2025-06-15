@@ -1,7 +1,7 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { getWithTokenType, retrieveMetaStructure } from '../../normalize-meta';
 import { tryNormalizeAccess } from '../normalize-access';
-import { partition } from '../../../../../../../util/arrays';
+import { partition } from '../../../../../../../util/collections/arrays';
 import type { RNode } from '../../../../model/model';
 import { normalizeExpressions, splitComments } from '../structure/normalize-expressions';
 import { tryNormalizeFunctionCall } from '../functions/normalize-call';

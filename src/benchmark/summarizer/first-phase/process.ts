@@ -2,9 +2,9 @@ import * as tmp from 'tmp';
 import type { Reduction, SliceSizeCollection, SummarizedAbsintStats, SummarizedSlicerStats, TimePerToken } from '../data';
 
 import fs from 'fs';
-import { DefaultMap } from '../../../util/defaultmap';
+import { DefaultMap } from '../../../util/collections/defaultmap';
 import { log } from '../../../util/log';
-import { withoutWhitespace } from '../../../util/strings';
+import { withoutWhitespace } from '../../../util/text/strings';
 import type { SummarizedMeasurement } from '../../../util/summarizer';
 import { summarizeMeasurement } from '../../../util/summarizer';
 import { isNotUndefined } from '../../../util/assert';
@@ -14,7 +14,7 @@ import { RShell } from '../../../r-bridge/shell';
 import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse } from '../../../r-bridge/retriever';
 import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import { arraySum } from '../../../util/arrays';
+import { arraySum } from '../../../util/collections/arrays';
 import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
 
 const tempfile = (() => {

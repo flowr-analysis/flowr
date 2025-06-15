@@ -3,7 +3,7 @@ import type { MermaidMarkdownMark } from '../util/mermaid/dfg';
 import { RShell } from '../r-bridge/shell';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../dataflow/graph/vertex';
 import { VertexType } from '../dataflow/graph/vertex';
-import { EdgeType, edgeTypeToName } from '../dataflow/graph/edge';
+import { edgeIncludesType, EdgeType, edgeTypeToName, splitEdgeTypes } from '../dataflow/graph/edge';
 import { DataflowGraphBuilder, emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
 import { formatSideEffect, printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
@@ -16,26 +16,37 @@ import type { ExplanationParameters, SubExplanationParameters } from './data/dfg
 import { getAllEdges, getAllVertices } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import type { MermaidTypeReport } from './doc-util/doc-types';
-import { shortLink , getTypesFromFolderAsMermaid, printHierarchy } from './doc-util/doc-types';
-import { block, details } from './doc-util/doc-structure';
+import { getDocumentationForType, getTypesFromFolderAsMermaid, printHierarchy, shortLink } from './doc-util/doc-types';
+import { block, details, section } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import path from 'path';
 import { lastJoin, prefixLines } from './doc-util/doc-general';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { resolveByName, resolvesToBuiltInConstant } from '../dataflow/environments/resolve-by-name';
-import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
+import {
+	resolveByName,
+	resolvesToBuiltInConstant,
+} from '../dataflow/environments/resolve-by-name';
+import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
-import { nth } from '../util/text';
+import { nth } from '../util/text/text';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
+import { getValueOfArgument } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
+import { NewIssueUrl } from './doc-util/doc-issue';
+import {
+	UnnamedFunctionCallOrigin,
+	UnnamedFunctionCallPrefix
+} from '../dataflow/internal/process/functions/call/unnamed-call-handling';
+import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -83,7 +94,7 @@ async function explanation(
 <a id='${name.toLowerCase().replaceAll(' ', '-')}'> </a>
 ### ${index}) ${name}
 
-Type: \`${type}\`
+Type: \`${type}\` (this is the numeric value of the bit-flag encountered when looking at the serialized vertex type)
 
 ${await subExplanation(shell, { name, description, code, expectedSubgraph })}
 
@@ -95,8 +106,8 @@ function edgeTypeToId(edgeType: EdgeType): string {
 	return edgeTypeToName(edgeType).toLowerCase().replaceAll(' ', '-');
 }
 
-function linkEdgeName(edgeType: EdgeType): string {
-	return `[\`${edgeTypeToName(edgeType)}\`](#${edgeTypeToId(edgeType)})`;
+function linkEdgeName(edgeType: EdgeType, page = ''): string {
+	return `[\`${edgeTypeToName(edgeType)}\`](${page}#${edgeTypeToId(edgeType)})`;
 }
 
 async function getVertexExplanations(shell: RShell, vertexType: MermaidTypeReport): Promise<string> {
@@ -201,6 +212,16 @@ ${
 	details('Example: Reads Edge Identifying Multiple Definitions (side-effect)',
 		await printDfGraphForCode(shell, 'f <- function() x <<- 2\nx <- 2\nif(u) f()\nprint(x)', { mark: new Set([16, '16->1', '16->7']), codeOpen: true }))
 }
+
+${block({
+	type:    'IMPORTANT',
+	content: `
+	If you want to obtain the locations where a variable is defined, or read, or re-defined, refrain from tracking these details manually in the dataflow graph
+	as there are some edge-cases that require special attention.
+	In general, the ${shortLink(getOriginInDfg.name, vertexType.info)} function explained below in [working with the dataflow graph](${FlowrWikiBaseRef}/Working%20with%20the%20Dataflow%20Graph) will help you to get the information you need.
+	`
+})}
+
 `,
 		code:             'x',
 		expectedSubgraph: emptyGraph().use('1@x', 'x')
@@ -229,7 +250,7 @@ ${
 There is another element of potential interest to you, the \`origin\` property which records how flowR created the respective function call.
 These origins may hold the name of any processor that is part of the ${shortLink('BuiltInProcessorMapper', vertexType.info)} to signal that the respective processor was responsible for creating the vertex.
 The entry \`function\` signals that flowR used a processor for a user-defined function defined within the source code, \`unnamed\` signals that the function as an anonymous function definition.
-However, in general, flowR may use any fitting handler as an origin. For example, within a access definition, flowR will correspondingl yredefine the meaning of \`:=\` to that of the \`table:assign\`. 
+However, in general, flowR may use any fitting handler as an origin. For example, within a access definition, flowR will correspondingly redefine the meaning of \`:=\` to that of the \`table:assign\`. 
 
 
 
@@ -299,7 +320,7 @@ In this case, the call does not have a single ${linkEdgeName(EdgeType.Calls)} ed
 global beyond the scope of the given script. _flowR_ generally (theoretically at least) does not know if the call really refers to a built-in variable or function,
 as any code that is not part of the analysis could cause the semantics to change. 
 However, it is (in most cases) safe to assume we call a builtin if there is a builtin function with the given name and if there is no ${linkEdgeName(EdgeType.Calls)} edge attached to a call.
-If you want to check the resolve targets, refer to \`${resolveByName.name}\` which is defined in ${getFilePathMd('../dataflow/environments/resolve-by-name')}.
+If you want to check the resolve targets, refer to ${shortLink(resolveByName.name, vertexType.info)}.
 `)
 }
 
@@ -397,12 +418,14 @@ Similarly, trying to resolve the name with \`${resolveByName.name}\` using the e
 
 `)}
 
-				`
+
+Similar to finding the definitions read by a variable use, please use the ${shortLink(getAllFunctionCallTargets.name, vertexType.info)} function to find all possible definitions of a function call,
+as explained in the [working with the dataflow graph](${FlowrWikiBaseRef}/Working%20with%20the%20Dataflow%20Graph) section.`
 	})
 }
 
 Function calls are the most complicated mechanism in R as essentially everything is a function call.
-Even **control structures** like \`if(p) a else b\` are desugared into function calls (e.g., as \`if\`(p, a, b)).
+Even **control structures** like \`if(p) a else b\` are desugared into function calls (e.g., as \`\` \`if\`(p, a, b) \`\`).
 ${details('Example: <code>if</code> as a Function Call', await printDfGraphForCode(shell, 'if(p) a else b'))}
 
 Similarly, you should be aware of calls to **anonymous functions**, which may appear given directly (e.g. as \`(function() 1)()\`) or indirectly, with code
@@ -410,6 +433,21 @@ directly calling the return of another function call: \`foo()()\`.
 ${details('Example: Anonymous Function Call (given directly)', await printDfGraphForCode(shell, '(function() 1)()', { mark: new Set([6, '6->4']) }))}
 
 ${details('Example: Anonymous Function Call (given indirectly)', await printDfGraphForCode(shell, 'foo <- function() return(function() 3)\nfoo()()', { mark: new Set([12, '12->4']) }))}
+
+${block({
+	type:    'NOTE',
+	content: `Now you might be asking yourself how to differentiate anonymous and named functions and what you have to keep in mind when working with them?
+
+Unnamed functions have an array of signatures which you can use to identify them. 
+But in short - the \`origin\` attribute of the ${shortLink('DataflowGraphVertexFunctionCall', vertexType.info)} is \`${UnnamedFunctionCallOrigin}\`.
+Please be aware that unnamed functions still have a \`name\` property to give it a unique identifier that can be used for debugging and reference.
+This name _always_ starts with \`${UnnamedFunctionCallPrefix}\`.
+
+To identify these calls please do not rely on the [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST). An expression like \`1 + 1\` will be correctly
+identified as a syntactical binary operation. Yet, from a dataflow/semantic perspective this is equivalent to \`\` \`+\`(1, 1) \`\` (which is a named function call and marked as such in the dataflow graph).
+To know which function is called, please rely on the ${linkEdgeName(EdgeType.Calls)} edge.
+	`
+})}
 
 Another interesting case is a function with **side effects**, most prominently with the super-assignment \`<<-\`.
 In this case, you may encounter the ${linkEdgeName(EdgeType.SideEffectOnCall)} as exemplified below.
@@ -599,8 +637,9 @@ ${
 		content: `
 A ${linkEdgeName(EdgeType.Reads)} edge is not a transitive closure and only links the "directly read" definition(s).
 Our abstract domains resolving transitive ${linkEdgeName(EdgeType.Reads)} edges (and for that matter, following ${linkEdgeName(EdgeType.Returns)} as well)
-are currently tailored to what we need in _flowR_. Hence, we offer a function like ${shortLink(getAllFunctionCallTargets.name, vertexType.info)} (defined in ${getFilePathMd('../dataflow/internal/linker.ts')}),
-as well as ${shortLink(resolvesToBuiltInConstant.name, vertexType.info)} (defined in ${getFilePathMd('../dataflow/environments/resolve-by-name.ts')}) which do this for specific cases.
+are currently tailored to what we need in _flowR_. Hence, we offer a function like ${shortLink(getAllFunctionCallTargets.name, vertexType.info)},
+as well as ${shortLink(resolvesToBuiltInConstant.name, vertexType.info)} which do this for specific cases.
+Refer to ${shortLink(getOriginInDfg.name, vertexType.info)} for a more general solution, as explained in [working with the dataflow graph](${FlowrWikiBaseRef}/Working%20with%20the%20Dataflow%20Graph).
 
 ${details('Example: Multi-Level Reads', await printDfGraphForCode(shell,  'x <- 3\ny <- x\nprint(y)', { mark: new Set(['9->7', '7->3', '4->0']) }))}
 
@@ -610,6 +649,10 @@ ${details('Example: Cyclic Reads', await printDfGraphForCode(shell, 'for(i in v)
 				`
 	})
 }
+
+Reads edges may point to built-in definitions as well, to signal that something relates to a built-in element of flowR.
+Their targets are not part of the ${shortLink(DataflowGraph.name, vertexType.info)} but only markers to signal that the respective definition is a built-in.
+
  
 Please refer to the explanation of the respective vertices for more information.
 `,
@@ -632,7 +675,7 @@ Please refer to the explanation of the respective vertices for more information.
 		name:        'DefinedBy Edge', /* concat for link generation */
 		type:        EdgeType.DefinedBy,
 		description: `
-The source vertex is usually a [\`define variable vertex\`](#variable-definition-vertex) linking the defined symbol to the entry point of the resulting side.
+The source vertex is usually a [\`variable definition\`](#variable-definition-vertex) linking the defined symbol to the entry point of the resulting side.
 ${
 	details('In general, this does not have to be the right hand side of the operator.', await printDfGraphForCode(shell, '3 -> x', { mark: new Set([0]) }))
 }
@@ -656,20 +699,54 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 
 	edgeExplanations.set(EdgeType.Calls, [{
 		shell,
-		name:             'Calls Edge',
-		type:             EdgeType.Calls,
-		description:      'Link the [function call](#function-call-vertex) to the [function definition](#function-definition-vertex) that is called.',
+		name:        'Calls Edge',
+		type:        EdgeType.Calls,
+		description: `Link the [function call](#function-call-vertex) to the [function definition](#function-definition-vertex) that is called. To find all called definitions, 
+		please use the ${shortLink(getOriginInDfg.name, vertexType.info)} function, as explained in [working with the dataflow graph](${FlowrWikiBaseRef}/Working%20with%20the%20Dataflow%20Graph).`,
 		code:             'foo <- function() {}\nfoo()',
 		expectedSubgraph: emptyGraph().calls('2@foo', '1@function')
 	}, []]);
 
 	edgeExplanations.set(EdgeType.Returns, [{
 		shell,
-		name:             'Returns Edge',
-		type:             EdgeType.Returns,
-		description:      'Link the [function call](#function-call-vertex) to the exit points of the target definition (this may incorporate the call-context).',
+		name:        'Returns Edge',
+		type:        EdgeType.Returns,
+		description: `Link the [function call](#function-call-vertex) to the exit points of the target definition (this may incorporate the call-context).
+As you can see in the example, this happens for user-defined functions (like \`foo\`) as well as for built-in functions (like \`<-\`).
+However, these edges are specific to scenarios in which flowR knows that a specific element is returned. 
+For contrast, compare this to a use of, for example, \`+\`:
+		
+${details('Example: No returns edge for +', await printDfGraphForCode(shell,  '1 + 1'))}
+
+Here, we do not get a ${linkEdgeName(EdgeType.Returns)} edge as this function call creates a new value based on its arguments.
+In these scenarios you should rely on the \`args\` property of the ${shortLink('DataflowGraphVertexFunctionCall', vertexType.info)} 
+and use the arguments to calculate what you need to know. Alternatively, you can track the ${linkEdgeName(EdgeType.Argument)} edges.
+
+In general, the ${linkEdgeName(EdgeType.Returns)} edge already does most of the heavy lifting for you, by respecting control flow influences and
+(as long as flowR is able to detect it) dead code.
+
+${details('Example: Tricky Returns', 
+	`We show the _simplified_ DFG for simplicity and highlight all ${linkEdgeName(EdgeType.Returns)} edges involved in tracking the return of a call to \`f\` (as ${linkEdgeName(EdgeType.Returns)} are never transitive and must hence be followed):\n` + 
+	await printDfGraphForCode(shell,  'f <- function() { if(u) { return(3); 2 } else 42 }\nf()', { 
+		simplified: true,
+		mark:       new Set(['19->15', '15->14', '14->12', '14->11', '11->9', '9->7'])
+	})
+			+ '\n\n Note, that the `2` should be completely absent of the dataflow graph (recognized as dead code).'
+)}
+<br/>
+
+${block({
+	type:    'NOTE',
+	content: `You might find it an inconvenience that there is no ${linkEdgeName(EdgeType.Returns)} edge for _every_ function call. 
+If there is particular function for which you think flowR should be able to detect the return, please open a [new issue](${NewIssueUrl}).
+Yet the problem of flowR not tracking returns for functions that create new/transform existing values is a fundamental design decision &mdash; if this irritates you ~~you may be eligible for compensation~~, you may be interested in an
+alternative with the [Control Flow Graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph#cfg-exit-points) which not just tracks all possible execution orders of the program,
+but also the exit points of _all_ function calls. 
+`
+})}
+		`,
 		code:             'foo <- function() x\nfoo()',
-		expectedSubgraph: emptyGraph().returns('2@foo', '1@x')
+		expectedSubgraph: emptyGraph().returns('2@foo', '1@x').returns('1@<-', '1@foo').argument('1@<-', '1@foo')
 	}, []]);
 
 
@@ -687,7 +764,7 @@ f()
 		type:        EdgeType.DefinesOnCall,
 		description: `*This edge is usually joined with ${linkEdgeName(EdgeType.DefinedByOnCall)}!*
 
- Links an Argument to whichever parameter they cause to be defined if the related function call is invoked.
+ Links an argument to whichever parameter they cause to be defined if the related function call is invoked.
  
  In the context of functions which access their closure environment these edges play another tricky role as there are many cases 
  made more difficult by R's way of allowing closure environments to later receive variables.
@@ -812,18 +889,30 @@ async function getText(shell: RShell) {
 	});
 	return `${autoGenHeader({ filename: module.filename, purpose: 'dataflow graph', rVersion: rversion })}
 
-This page briefly summarizes flowR's dataflow graph, represented by the ${shortLink(DataflowGraph.name, vertexType.info)}.
+This page briefly summarizes flowR's dataflow graph, represented by the ${shortLink(DataflowGraph.name, vertexType.info)} class within the code.
 In case you want to manually build such a graph (e.g., for testing), you can use the ${shortLink(DataflowGraphBuilder.name, vertexType.info)}.
-This wiki page focuses on explaining what such a dataflow graph looks like!
+In summary, we discuss the following topics:
 
-Please be aware that the accompanied [dataflow information](#dataflow-information) returned by _flowR_ contains things besides the graph,
+- [Vertices](#vertices)
+- [Edges](#edges)
+- [Control Dependencies](#control-dependencies)
+- [Dataflow Information](#dataflow-information)
+	- [Unknown Side Effects](#unknown-side-effects)
+- [Working with the Dataflow Graph](#dfg-working)
+
+Please be aware that the accompanied [dataflow information](#dataflow-information) (${shortLink('DataflowInformation', vertexType.info)}) returned by _flowR_ contains things besides the graph,
 like the entry and exit points of the subgraphs, and currently active references (see [below](#dataflow-information)).
 Additionally, you may be interested in the set of [Unknown Side Effects](#unknown-side-effects) marking calls which _flowR_ is unable to handle correctly.
+
+Potentially, you are interested in another perspective that flowR provides, the [control flow graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph), so please check the correpsonding
+wiki page if you are unsure.
 
 > [!TIP]
 > If you want to investigate the dataflow graph,
 > you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('dataflow*')}
-> command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information). When using _flowR_ as a library, you may use the functions in ${getFilePathMd('../util/mermaid/dfg.ts')}.
+> command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information). 
+> There is also a simplified perspective available with ${getReplCommand('dataflowsimple*')} that does not show everything but is easier to read.
+> When using _flowR_ as a library, you may use the functions in ${getFilePathMd('../util/mermaid/dfg.ts')}.
 > 
 > If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](${FlowrWikiBaseRef}/Interface)), you can use ${shortLink(`${DataflowGraph.name}::${DataflowGraph.fromJson.name}`, vertexType.info, true, 'i')} to retrieve the graph from the JSON representation.
 
@@ -832,7 +921,8 @@ ${await printDfGraphForCode(shell,'x <- 3\ny <- x + 1\ny')}
 
 The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between ${getAllVertices().length} types of vertices V and
 ${getAllEdges().length} types of edges E allowing each vertex to have a single, and each edge to have multiple distinct types.
-Additionally, every node may have links to its [control dependencies](#control-dependencies) (which you may view as a ${nth(getAllEdges().length + 1)} edge type, although they are explicitly no data dependency).
+Additionally, every node may have links to its [control dependencies](#control-dependencies) (which you may view as a ${nth(getAllEdges().length + 1)} edge type, 
+although they are explicitly no data dependency and relate to the [Control Flow Graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph)).
 
 <details open>
 
@@ -875,18 +965,26 @@ ${prefixLines(codeBlock('ts', 'const node = graph.idMap.get(id);'), '> ')}
 > In case you just need the name (\`lexeme\`) of the respective vertex, ${shortLink(recoverName.name, vertexType.info)} can help you out:
 ${prefixLines(codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap);`), '> ')}
 
-## Vertices
+${section('Vertices', 2, 'vertices')}
+
+1. ${getAllVertices().map(
+	([k,v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
+).join('\n1. ')}
 
 ${await getVertexExplanations(shell, vertexType)}
 
-## Edges
+${section('Edges', 2, 'edges')}
+
+1. ${getAllEdges().map(
+	([k, v], index) => `[\`${k}\` (${v})](#${index + 1}-${k.toLowerCase().replace(/\s/g, '-')}-edge)`
+).join('\n1. ')}
 
 ${await getEdgesExplanations(shell, vertexType)}
 
-## Control Dependencies
+${section('Control Dependencies', 2, 'control-dependencies')}
 
 Each vertex may have a list of active control dependencies.
-They hold the \`id\` of all nodes that effect if the current vertex is part of the execution or not,
+They hold the ${shortLink('NodeId', vertexType.info)} of all nodes that effect if the current vertex is part of the execution or not,
 and a boolean flag \`when\` to indicate if the control dependency is active when the condition is \`true\` or \`false\`.
 
 As an example, consider the following dataflow graph:
@@ -902,7 +1000,8 @@ ${details('Example: Multiple Vertices (Assignment)', await printDfGraphForCode(s
 ${details('Example: Multiple Vertices (Arithmetic Expression)', await printDfGraphForCode(shell, 'if(p) 3 + 2'))}
 ${details('Example: Nested Conditionals', await printDfGraphForCode(shell, 'if(x) { if(y) a else b } else c'))}
 
-## Dataflow Information
+
+${section('Dataflow Information', 2, 'dataflow-information')}
 
 Using _flowR's_ code interface (see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more), you can generate the dataflow information
 for a given piece of R code (in this case \`x <- 1; x + 1\`) as follows (using the ${shortLink(RShell.name, vertexType.info)} and the ${shortLink(PipelineExecutor.name, vertexType.info)} classes):
@@ -1011,6 +1110,73 @@ Additionally, we express this by a ${linkEdgeName(EdgeType.Reads)} edge.
 	`;
 		})()}
  
+${section('Working with the Dataflow Graph', 2, 'dfg-working')}
+
+The ${shortLink('DataflowInformation', vertexType.info)} is the core result of _flowR_ and summarizes a lot of information.
+Depending on what you are interested in, there exists a plethora of functions and queries to help you out, answering the most important questions:
+
+* The **[Query API](${FlowrWikiBaseRef}/Query%20API)** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
+* The **[Search API](${FlowrWikiBaseRef}/Search%20API)** allows you to search for specific vertices or edges in the dataflow graph or the original program
+* ${shortLink(recoverName.name, vertexType.info)} and ${shortLink(recoverContent.name, vertexType.info)} to get the name or content of a vertex in the dataflow graph
+* ${shortLink(resolveIdToValue.name, vertexType.info)} to resolve the value of a variable or id (if possible, see [below](#dfg-resolving-values))
+* ${shortLink(edgeIncludesType.name, vertexType.info)} to check if an edge includes a specific type and ${shortLink(splitEdgeTypes.name, vertexType.info)} to split the bitmask of edges into its types (see [below](#dfg-resolving-values))
+* ${shortLink(getValueOfArgument.name, vertexType.info)} to get the (syntactical) value of an argument in a function call 
+* ${shortLink(getOriginInDfg.name, vertexType.info)} to get information about where a read, call, ... comes from (see [below](#dfg-resolving-values))
+
+Some of these functions have been explained in their respective wiki pages. However, some are part of the [Dataflow Graph API](${FlowrWikiBaseRef}/Dataflow%20Graph%20API) and so we explain them here.
+
+${section('Resolving Values', 3, 'dfg-resolving-values')}
+
+FlowR supports a [configurable](${FlowrWikiBaseRef}/Interface#configuring-flowr) level of value tracking&mdash;all with the goal of knowing the static value domain of a variable.
+These capabilities are exposed by the [resolve value Query](${FlowrWikiBaseRef}/Query-API#resolve-value-query) and backed by two important functions:
+
+${shortLink(resolveIdToValue.name, vertexType.info)} provides an environment-sensitive (see ${shortLink('REnvironmentInformation', vertexType.info)})
+value resolution depending on if the environment is provided.
+
+${section('Assessing Edges', 3, 'dfg-assess-edge')}
+
+The [edges](#edges) of the dataflow graph use bitmasks to represent an edge with multiple types. While this compacts the representation greatly, it makes it
+difficult to check whether a given edge is a read edge. 
+Consider the following example:
+
+${await printDfGraphForCode(shell, 'print(x)', { mark: new Set(['3->1']) })}
+
+Retrieving the _types_ of the edge from the print call to its argument returns:
+${await(async() => {
+			const dfg =  await createDataflowPipeline(shell, {
+				request: requestFromInput('print(x)')
+			}).allRemainingSteps();		
+			const edge = dfg.dataflow.graph.outgoingEdges(3);
+			if(edge) {
+				const wanted = edge.get(1);
+				if(wanted) {
+					return '`' + wanted.types + '`';
+				}
+			}
+			new Error('Could not find edge');
+		})()}&mdash;which is usually not very helpful.
+You can use ${shortLink(splitEdgeTypes.name, vertexType.info)} to get the individual bitmasks of all included types, and 
+${shortLink(edgeIncludesType.name, vertexType.info)} to check whether a specific type (or one of a collection of types) is included in the edge.
+
+${section('Handling Origins', 3, 'dfg-handling-origins')}
+
+If you are writing another analysis on top of the dataflow graph, you probably want to know all definitions that serve as the source of a read, all functions
+that are called by an invocation, and more.
+For this, the ${shortLink(getOriginInDfg.name, vertexType.info)} function provides you with a collection of ${shortLink('Origin', vertexType.info)} objects:
+
+${printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'Origin', openTop: true })}
+
+Their respective uses are documented alongside their implementation:
+
+${
+		['SimpleOrigin', 'FunctionCallOrigin', 'BuiltInFunctionOrigin'].sort().map(
+			key => `- ${shortLink(`${key}`, vertexType.info)}\\\n${getDocumentationForType(`${key}`, vertexType.info)}`
+		).join('\n')
+		}
+
+Please note, the current structure of this function is biased by what implementations already exist in flowR.
+Hence, we do not just track definitions and constants, but also the origins of function calls, albeit we do not yet track the origins of values (only resorting to
+a constant origin). If you are confused by this please start a discussion&mdash;in a way we are still deciding on a good API for this.
 
 	`;
 

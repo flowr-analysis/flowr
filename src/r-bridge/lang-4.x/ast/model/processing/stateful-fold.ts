@@ -52,7 +52,7 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
 		foldWhile:  (loop: RWhileLoop<Info>, condition: Up, body: Up, down: Down) => Up;
 		foldRepeat: (loop: RRepeatLoop<Info>, body: Up, down: Down) => Up;
 		foldNext:   (next: RNext<Info>, down: Down) => Up;
-		foldBreak:  (next: RBreak<Info>, down: Down) => Up;
+		foldBreak:  (brk: RBreak<Info>, down: Down) => Up;
 	};
 	other: {
 		foldComment:       (comment: RComment<Info>, down: Down) => Up;

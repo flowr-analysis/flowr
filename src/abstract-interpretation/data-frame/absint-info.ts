@@ -30,5 +30,5 @@ export interface DataFrameExpressionInfo {
 export type DataFrameInfo = DataFrameAssignmentInfo | DataFrameExpressionInfo;
 
 export interface AbstractInterpretationInfo {
-	dataFrame?: (DataFrameInfo & DataFrameInfoBase) | DataFrameInfoBase
+	dataFrame?: (DataFrameInfo | { type?: never }) & DataFrameInfoBase
 }

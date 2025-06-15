@@ -3,7 +3,7 @@ import fs from 'fs';
 import { processNextSummary, summarizeAllSummarizedStats } from '../second-phase/process';
 import { summarizeSlicerStats } from './process';
 import { guard } from '../../../util/assert';
-import { escape } from '../../../util/ansi';
+import { escape } from '../../../util/text/ansi';
 import { jsonReplacer } from '../../../util/json';
 import type { BenchmarkMemoryMeasurement, CommonSlicerMeasurements, PerNodeStatsAbsint, PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats/stats';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';

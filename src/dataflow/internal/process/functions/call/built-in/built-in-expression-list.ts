@@ -21,7 +21,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
-import { BuiltIn } from '../../../../../environments/built-in';
+import { builtInId, isBuiltIn } from '../../../../../environments/built-in';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -31,6 +31,7 @@ import { expensiveTrace } from '../../../../../../util/log';
 
 
 const dotDotDotAccess = /^\.\.\d+$/;
+
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
 	const readName = read.name && dotDotDotAccess.test(read.name) ? '...' : read.name;
 
@@ -57,6 +58,9 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 	for(const target of probableTarget) {
 		// we can stick with maybe even if readId.attribute is always
 		nextGraph.addEdge(read, target, EdgeType.Reads);
+		if((read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction) && (isBuiltIn(target.definedAt))) {
+			nextGraph.addEdge(read, target, EdgeType.Calls);
+		}
 	}
 }
 
@@ -93,7 +97,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 			while(current !== undefined && current.id !== BuiltInEnvironment.id) {
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
-						if(def.definedAt !== BuiltIn) {
+						if(!isBuiltIn(def.definedAt)) {
 							hasUpdate = true;
 							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall);
 						}
@@ -127,7 +131,7 @@ export function processExpressionList<OtherInfo>(
 	const remainingRead = new Map<string, IdentifierReference[]>();
 
 	const nextGraph = new DataflowGraph(data.completeAst.idMap);
-	const out = [];
+	let out: IdentifierReference[] = [];
 	const exitPoints: ExitPoint[] = [];
 
 	let expressionCounter = 0;
@@ -157,7 +161,7 @@ export function processExpressionList<OtherInfo>(
 
 		addNonDefaultExitPoints(exitPoints, processed.exitPoints);
 
-		out.push(...processed.out);
+		out = out.concat(processed.out);
 
 		expensiveTrace(dataflowLogger, () => `expression ${expressionCounter} of ${expressions.length} has ${processed.unknownReferences.length} unknown nodes`);
 
@@ -206,6 +210,9 @@ export function processExpressionList<OtherInfo>(
 			argumentProcessResult: processedExpressions,
 			origin:                'builtin:expression-list'
 		});
+
+		nextGraph.addEdge(rootId, builtInId('{'), EdgeType.Reads | EdgeType.Calls);
+
 		// process all exit points as potential returns:
 		for(const exit of exitPoints) {
 			if(exit.type === ExitPointType.Return || exit.type === ExitPointType.Default) {

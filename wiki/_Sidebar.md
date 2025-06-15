@@ -6,6 +6,7 @@
   * [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)
   * [Search API](https://github.com/flowr-analysis/flowr/wiki/Search-API)
   * [Engines](https://github.com/flowr-analysis/flowr/wiki/Engines)
+  * [Linting R](https://github.com/flowr-analysis/flowr/wiki/Linter)
 * [🌋 Core](https://github.com/flowr-analysis/flowr/wiki/Core)
   * [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)
   * [Control Flow Graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph)

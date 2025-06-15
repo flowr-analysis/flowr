@@ -6,7 +6,7 @@ import { envFingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
 import { handleReturns, sliceForCall } from './slice-call';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type {AstIdMap, NormalizedAst} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../criterion/parse';
 import { convertAllSlicingCriteriaToIds } from '../criterion/parse';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
@@ -15,6 +15,9 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { VertexType } from '../../dataflow/graph/vertex';
 import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import { getConfig } from '../../config';
+import {RoleInParent} from "../../r-bridge/lang-4.x/ast/model/processing/role";
+import {RType} from "../../r-bridge/lang-4.x/ast/model/type";
+import {collectAllIds} from "../../r-bridge/lang-4.x/ast/model/collect";
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -122,7 +125,7 @@ export function staticSlicing(
 		}
 	}
 
-	return { ...queue.status(), decodedCriteria };
+	return { ...queue.status(), decodedCriteria, result: extendSlices(queue.status().result, idMap)};
 }
 
 export function updatePotentialAddition(queue: VisitingQueue, id: NodeId, target: NodeId, baseEnvironment: REnvironmentInformation, envFingerprint: string): void {
@@ -141,4 +144,31 @@ export function updatePotentialAddition(queue: VisitingQueue, id: NodeId, target
 			onlyForSideEffects: false
 		}]);
 	}
+}
+
+const waitFor = new Set(['<-', '=', '->', '->>', '<<-']);
+export function extendSlices(
+	results: ReadonlySet<NodeId>,
+	ast: AstIdMap,
+): Set<NodeId> {
+	const res = new Set<NodeId>();
+	for(const id of results) {
+		res.add(id);
+		let parent = ast.get(id);
+
+		while(parent && parent.roleInParent !== RoleInParent.Root && (parent.type !== RType.BinaryOp || !waitFor.has(parent.lexeme ?? ''))) {
+			parent = parent.info.parent ? ast.get(parent.info.parent) : undefined;
+		}
+		if(!parent || parent.roleInParent === RoleInParent.Root || parent.type !== RType.BinaryOp) {
+			continue; // no parent, no need to extend
+		}
+		if(waitFor.has(parent.lexeme)) {
+			const allIds = collectAllIds(parent);
+			for(const id of allIds) {
+				res.add(id);
+			}
+		}
+
+	}
+	return res;
 }

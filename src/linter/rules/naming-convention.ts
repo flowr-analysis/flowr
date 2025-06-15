@@ -138,7 +138,7 @@ export const NAMING_CONVENTION = {
 			'.meta': { idk: 0 }
 		};   
 	},
-	prettyPrint:   result => `Identifier '${result.name}' at ${formatRange(result.range)} follows wrong casing convention. Suggestion: '${result.suggestion}'`,
+	prettyPrint:   result => `Identifier '${result.name}' at ${formatRange(result.range)} follows ${result.detectedCasing} convention. Suggestion: '${result.suggestion}'`,
 	defaultConfig: {
 		caseing: CasingConvention.PascalCase
 	}

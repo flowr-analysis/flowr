@@ -18,19 +18,18 @@ describe('flowR linter', withTreeSitter(parser => {
 		const files = ['file.csv', 'path/to/deep-file.csv', 'deep-file.csv'];
 		beforeAll(() => {
 			setSourceProvider(requestProviderFromText(Object.fromEntries(files.map(f => [f, '']))));
-			amendConfig({ solver: {
-				...defaultConfigOptions.solver,
-				resolveSource: {
+			amendConfig(c =>
+				c.solver.resolveSource = {
 					dropPaths:             DropPathsOption.Once,
 					ignoreCapitalization:  true,
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
 					searchPath:            []
 				}
-			} });
+			);
 		});
 		afterAll(() => {
 			setSourceProvider(requestProviderFromFile());
-			setConfig((defaultConfigOptions));
+			setConfig(defaultConfigOptions);
 		});
 
 		assertLinter('none', parser, 'cat("hello")', 'file-path-validity', [], { totalReads: 0, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 });

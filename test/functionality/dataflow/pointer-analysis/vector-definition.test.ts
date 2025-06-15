@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe } from 'vitest';
 import { assertContainerIndicesDefinition, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { Q } from '../../../../src/search/flowr-search-builder';
-import { defaultConfigOptions, setConfig } from '../../../../src/config';
+import { amendConfig, defaultConfigOptions, setConfig } from '../../../../src/config';
 
 describe.sequential('Vector Definition', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'unnamed-arguments', 'subsetting-multiple'] as const;
@@ -57,7 +57,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 
 		describe('Skip if index threshold', () => {
 			beforeEach(() => {
-				setConfig({ ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, pointerTracking: { maxIndexCount: 2 } } });
+				amendConfig(c => c.solver.pointerTracking = { maxIndexCount: 2 });
 			});
 
 			afterEach(() => {

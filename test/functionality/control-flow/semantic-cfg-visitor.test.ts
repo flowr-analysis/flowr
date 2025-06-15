@@ -13,6 +13,9 @@ import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import type { ControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
 import type { DataflowGraphVertexValue } from '../../../src/dataflow/graph/vertex';
 import type { RNumber } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
+import type { RSymbol } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
+import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 
 describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 
@@ -22,7 +25,13 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 			const cfg = extractCfg(data.normalize, data.dataflow.graph);
 			const v = visitor(data, cfg);
 			v.start();
-			assert(v);
+			try {
+				assert(v);
+			} catch(error) {
+				console.error('dfg: ', graphToMermaidUrl(data.dataflow.graph));
+				console.error('cfg: ', cfgToMermaidUrl(cfg, data.normalize));
+				throw error;
+			}
 		});
 	}
 
@@ -62,5 +71,50 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 		}
 	}(), o => {
 		assert.isTrue(o.encounteredNull());
+	});
+
+	describe('Symbol constants', () => {
+		describe.each(['l <- list(1, 2, 3); l$a', 'library(foo)'])('For: %s', code => {
+			testSemanticVisitor(code, ({ dataflow, normalize }, controlFlow) => new class extends SemanticCfgGuidedVisitor {
+				private triggered = false;
+
+				constructor() {
+					super({
+						defaultVisitingOrder: 'forward',
+						controlFlow,
+						dfg:                  dataflow.graph,
+						normalizedAst:        normalize
+					});
+				}
+
+				protected onSymbolConstant(_data: { vertex: DataflowGraphVertexValue; node: RSymbol }) {
+					this.triggered = true;
+				}
+
+				public isTriggered(): boolean {
+					return this.triggered;
+				}
+			}(), o => {
+				assert.isTrue(o.isTriggered());
+			});
+		});
+	});
+
+	testSemanticVisitor('v <- c(1,2,3)\nv[]', ({ dataflow, normalize }, controlFlow) => new class extends SemanticCfgGuidedVisitor {
+		private found = false;
+
+		constructor() {
+			super({ defaultVisitingOrder: 'forward', controlFlow, dfg: dataflow.graph, normalizedAst: normalize });
+		}
+
+		protected onAccessCall() {
+			this.found = true;
+		}
+
+		public foundAccess(): boolean {
+			return this.found;
+		}
+	}(), o => {
+		assert.isTrue(o.foundAccess());
 	});
 }));

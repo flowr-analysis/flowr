@@ -17,7 +17,7 @@ import type { FunctionInfo } from '../../queries/catalog/dependencies-query/func
 import { Enrichment } from '../../search/search-executor/search-enrichers';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { isFunctionCallVertex , VertexType } from '../../dataflow/graph/vertex';
+import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElementMaybeFromQuery } from '../../search/flowr-search';
 import type { QueryResults } from '../../queries/query';
@@ -74,7 +74,7 @@ function inferWd(file: string | undefined, wd: SupportedWd): string | undefined 
 }
 
 // this can be improved by respecting raw strings and supporting more scenarios
-function builtQuickFix(str: RNode | undefined, filePath: string, wd: string | undefined): LintQuickFixReplacement[] | undefined {
+function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | undefined): LintQuickFixReplacement[] | undefined {
 	if(!wd || !isRString(str)) {
 		return undefined;
 	}
@@ -149,7 +149,7 @@ export const ABSOLUTE_PATH = {
 							certainty: LintingCertainty.Maybe,
 							filePath:  node.content.str,
 							range:     node.info.fullRange ?? node.location,
-							quickFix:  builtQuickFix(node, node.content.str, wd)
+							quickFix:  buildQuickFix(node, node.content.str, wd)
 						}];
 					} else {
 						return [];
@@ -162,7 +162,7 @@ export const ABSOLUTE_PATH = {
 							certainty: LintingCertainty.Definitely,
 							filePath:  r.source,
 							range:     elem?.info.fullRange ?? elem?.location ?? rangeFrom(-1, -1, -1, -1),
-							quickFix:  builtQuickFix(elem, r.source, wd)
+							quickFix:  buildQuickFix(elem, r.source, wd)
 						};
 					});
 					if(mappedStrings.length > 0) {
@@ -196,7 +196,7 @@ export const ABSOLUTE_PATH = {
 	prettyPrint: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}` + (result.quickFix ? ' (quick fix available)' : ''),
 	info:        {
 		description:   'Checks whether file paths are absolute.',
-		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell],
+		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
 		defaultConfig: {
 			include: {
 				constructed: true,

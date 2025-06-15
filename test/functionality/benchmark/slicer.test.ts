@@ -1,10 +1,14 @@
 import { summarizeSlicerStats } from '../../../src/benchmark/summarizer/first-phase/process';
 import { BenchmarkSlicer } from '../../../src/benchmark/slicer';
 import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print';
-import { CommonSlicerMeasurements, PerSliceMeasurements } from '../../../src/benchmark/stats/stats';
+import type { CommonSlicerMeasurements } from '../../../src/benchmark/stats/stats';
+import { PerSliceMeasurements, RequiredSlicerMeasurements } from '../../../src/benchmark/stats/stats';
 import { describe, assert, test, beforeAll, afterAll } from 'vitest';
 import { amendConfig, defaultConfigOptions } from '../../../src/config';
 import { DefaultAllVariablesFilter } from '../../../src/slicing/criterion/filters/all-variables';
+import { requestFromInput } from '../../../src/r-bridge/retriever';
+import { guard, isNotUndefined } from '../../../src/util/assert';
+import { DataFrameOperationNames, type DataFrameOperationName } from '../../../src/abstract-interpretation/data-frame/semantics';
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
 	const { stats: rawStats } = slicer.finish();
@@ -12,7 +16,7 @@ async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: st
 	const statInfo = stats2string(stats);
 
 	assert.strictEqual(stats.request, request, statInfo);
-	assert.sameMembers([...stats.commonMeasurements.keys()], [...CommonSlicerMeasurements], `Must have all keys in common measurements ${statInfo}`);
+	assert.sameMembers([...stats.commonMeasurements.keys()], [...RequiredSlicerMeasurements], `Must have all keys in common measurements ${statInfo}`);
 	assert.sameMembers([...stats.perSliceMeasurements.measurements.keys()], [...PerSliceMeasurements], `Must have all keys in per-slice measurements ${statInfo}`);
 	return { stats, statInfo };
 }
@@ -271,6 +275,59 @@ e <- 5`,
 					},
 					'Correct slice sizes'
 				);
+			});
+		});
+		describe('Control flow graph and abstract interpretation', () => {
+			test('Abstract interpretation of data frames', async() => {
+				const slicer = new BenchmarkSlicer('tree-sitter');
+				const request = requestFromInput('df <- data.frame(id = 1:3, age = c(25, 30, 40))');
+				await slicer.init(request);
+				slicer.extractCFG();
+				slicer.abstractIntepretation();
+
+				const { stats: rawStats } = slicer.finish();
+				const stats = await summarizeSlicerStats(rawStats);
+				const statInfo = stats2string(stats);
+				guard(isNotUndefined(stats.absint), 'Abstact interpretation stats cannot be undefined');
+
+				const measurements: CommonSlicerMeasurements[] = [...RequiredSlicerMeasurements, 'extract control flow graph', 'perform abstract interpretation'];
+				assert.strictEqual(stats.request, request, statInfo);
+				assert.sameMembers([...stats.commonMeasurements.keys()], measurements, `Must have all keys in common measurements ${statInfo}`);
+
+				const { numberOfEmptyNodes: _numberOfEmptyNodes, sizeOfInfo: _sizeOfInfo, ...absintStats } = stats.absint;
+				assert.deepStrictEqual(absintStats, {
+					// checked manually
+					numberOfDataFrameFiles:    1,
+					numberOfNonDataFrameFiles: 0,
+					numberOfResultConstraints: 3,
+					numberOfResultingValues:   3,
+					numberOfResultingTop:      0,
+					numberOfResultingBottom:   0,
+					numberOfOperationNodes:    1,
+					numberOfValueNodes:        3,
+					numberOfEntriesPerNode:    { min: 1, max: 3, median: 2, mean: 2, std: Math.sqrt(2 / 3), total: 6 },
+					numberOfOperations:        1,
+					numberOfTotalValues:       3,
+					numberOfTotalTop:          0,
+					numberOfTotalBottom:       0,
+					inferredColNames:          { min: 2, max: 2, median: 2, mean: 2, std: 0, total: 6 },
+					numberOfColNamesValues:    3,
+					numberOfColNamesTop:       0,
+					numberOfColNamesBottom:    0,
+					inferredColCount:          { min: 2, max: 2, median: 2, mean: 2, std: 0, total: 6 },
+					numberOfColCountValues:    3,
+					numberOfColCountTop:       0,
+					numberOfColCountInfinite:  0,
+					numberOfColCountBottom:    0,
+					approxRangeColCount:       { min: 0, max: 0, median: 0, mean: 0, std: 0, total: 0 },
+					inferredRowCount:          { min: 3, max: 3, median: 3, mean: 3, std: 0, total: 9 },
+					numberOfRowCountValues:    3,
+					numberOfRowCountTop:       0,
+					numberOfRowCountInfinite:  0,
+					numberOfRowCountBottom:    0,
+					approxRangeRowCount:       { min: 0, max: 0, median: 0, mean: 0, std: 0, total: 0 },
+					perOperationNumber:        new Map([...DataFrameOperationNames.map<[DataFrameOperationName, number]>(name => [name, 0]), ['create', 1]])
+				}, statInfo);
 			});
 		});
 	});

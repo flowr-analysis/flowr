@@ -12,20 +12,20 @@ import { resolveIdToArgStringVector, resolveIdToArgValue, resolveIdToArgValueSym
 import { isStringBasedAccess } from '../semantics-mapper';
 import { mapDataFrameVariableAssignment } from './assignment-mapper';
 
-const DataFrameAssignmentFunctionMapper = {
+const DataFrameReplacementFunctionMapper = {
 	'colnames': mapDataFrameColNamesAssignment,
 	'names':    mapDataFrameColNamesAssignment,
 	'rownames': mapDataFrameRowNamesAssignment,
 	'dimnames': mapDataFrameDimNamesAssignment
-} as const satisfies Record<string, DataFrameAssignmentFunctionMapping>;
+} as const satisfies Record<string, DataFrameReplacementFunctionMapping>;
 
-type DataFrameAssignmentFunctionMapping = (
+type DataFrameReplacementFunctionMapping = (
     operand: RArgument<ParentInformation>,
     expression: RNode<ParentInformation>,
     info: ResolveInfo
 ) => DataFrameOperations[] | undefined;
 
-type DataFrameAssignmentFunction = keyof typeof DataFrameAssignmentFunctionMapper;
+type DataFrameReplacementFunction = keyof typeof DataFrameReplacementFunctionMapper;
 
 export function mapDataFrameReplacement(
 	node: RNode<ParentInformation>,
@@ -43,9 +43,9 @@ export function mapDataFrameReplacement(
 				operations = mapDataFrameIndexColRowAssignment(node.lhs, node.rhs, { graph: dfg, idMap: dfg.idMap, full: true });
 			}
 		} else if(node.lhs.type === RType.FunctionCall && node.lhs.named && node.lhs.arguments.length === 1 && node.lhs.arguments[0] !== EmptyArgument) {
-			if(node.lhs.functionName.content in DataFrameAssignmentFunctionMapper && node.lhs.arguments.length > 0) {
-				const functionName = node.lhs.functionName.content as DataFrameAssignmentFunction;
-				const functionMapping = DataFrameAssignmentFunctionMapper[functionName];
+			if(Object.prototype.hasOwnProperty.call(DataFrameReplacementFunctionMapper, node.lhs.functionName.content)) {
+				const functionName = node.lhs.functionName.content as DataFrameReplacementFunction;
+				const functionMapping = DataFrameReplacementFunctionMapper[functionName];
 
 				operations = functionMapping(node.lhs.arguments[0], node.rhs, { graph: dfg, idMap: dfg.idMap, full: true });
 			} else {
@@ -128,10 +128,13 @@ function mapDataFrameIndexColRowAssignment(
 }
 
 function mapDataFrameColNamesAssignment(
-	operand: RArgument<ParentInformation>,
+	operand: RArgument<ParentInformation & AbstractInterpretationInfo>,
 	expression: RNode<ParentInformation>,
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
+	if(operand.info.dataFrame?.domain?.get(operand.info.id) === undefined) {
+		return;
+	}
 	const argument = info.idMap !== undefined ? toUnnamedArgument(expression, info.idMap) : EmptyArgument;
 	const assignedNames = resolveIdToArgStringVector(argument, info);
 
@@ -143,12 +146,15 @@ function mapDataFrameColNamesAssignment(
 }
 
 function mapDataFrameRowNamesAssignment(): DataFrameOperations[] | undefined {
-	return undefined;
+	return;
 }
 
 function mapDataFrameDimNamesAssignment(
-	operand: RArgument<ParentInformation>
-): DataFrameOperations[] {
+	operand: RArgument<ParentInformation & AbstractInterpretationInfo>
+): DataFrameOperations[] | undefined {
+	if(operand.info.dataFrame?.domain?.get(operand.info.id) === undefined) {
+		return;
+	}
 	return [{
 		operation: 'setColNames',
 		operand:   operand.value?.info.id,
@@ -157,8 +163,11 @@ function mapDataFrameDimNamesAssignment(
 }
 
 function mapDataFrameUnknownAssignment(
-	operand: RArgument<ParentInformation>
-): DataFrameOperations[] {
+	operand: RArgument<ParentInformation & AbstractInterpretationInfo>
+): DataFrameOperations[] | undefined {
+	if(operand.info.dataFrame?.domain?.get(operand.info.id) === undefined) {
+		return;
+	}
 	return [{
 		operation: 'unknownModify',
 		operand:   operand.value?.info.id,

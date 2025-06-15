@@ -65,7 +65,8 @@ export type CfgEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge
 export class ControlFlowGraph {
 	private rootVertices:      Set<NodeId> = new Set<NodeId>();
 	private vertexInformation: Map<NodeId, CfgVertex> = new Map<NodeId, CfgVertex>();
-	private edgeInformation:   Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>();
+	private ingoingEdges:      Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>();
+	private outgoingEdges:     Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>();
 
 	addVertex(vertex: CfgVertex, rootVertex = true): this {
 		if(this.vertexInformation.has(vertex.id)) {
@@ -79,25 +80,23 @@ export class ControlFlowGraph {
 	}
 
 	addEdge(from: NodeId, to: NodeId, edge: CfgEdge): this {
-		if(!this.edgeInformation.has(from)) {
-			this.edgeInformation.set(from, new Map<NodeId, CfgEdge>());
+		if(!this.ingoingEdges.has(to)) {
+			this.ingoingEdges.set(to, new Map<NodeId, CfgEdge>());
 		}
-		this.edgeInformation.get(from)?.set(to, edge);
+		if(!this.outgoingEdges.has(from)) {
+			this.outgoingEdges.set(from, new Map<NodeId, CfgEdge>());
+		}
+		this.ingoingEdges.get(to)?.set(from, edge);
+		this.outgoingEdges.get(from)?.set(to, edge);
 		return this;
 	}
 
 	ingoing(node: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
-		const edges = new Map<NodeId, CfgEdge>();
-		for(const [source, outgoing] of this.edgeInformation.entries()) {
-			if(outgoing.has(node)) {
-				edges.set(source, outgoing.get(node) as CfgEdge);
-			}
-		}
-		return edges;
+		return this.ingoingEdges.get(node);
 	}
 
 	outgoing(node: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
-		return this.edgeInformation.get(node);
+		return this.outgoingEdges.get(node);
 	}
 
 	rootVertexIds(): ReadonlySet<NodeId> {
@@ -109,14 +108,14 @@ export class ControlFlowGraph {
 	}
 
 	edges(): ReadonlyMap<NodeId, ReadonlyMap<NodeId, CfgEdge>> {
-		return this.edgeInformation;
+		return this.outgoingEdges;
 	}
 
 	merge(other: ControlFlowGraph, forceNested = false): this {
 		for(const [id, node] of other.vertexInformation) {
 			this.addVertex(node, forceNested ? false : other.rootVertices.has(id));
 		}
-		for(const [from, edges] of other.edgeInformation) {
+		for(const [from, edges] of other.outgoingEdges) {
 			for(const [to, edge] of edges) {
 				this.addEdge(from, to, edge);
 			}
@@ -243,6 +242,15 @@ function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformatio
 		for(const entryPoint of otherwise?.entryPoints ?? []) {
 			graph.addEdge(entryPoint, exitPoint, { label: 'CD', when: RFalse, caused: ifNode.info.id });
 		}
+		if(then.entryPoints.length === 0) {
+			if(!otherwise || otherwise.entryPoints.length === 0) {
+				graph.addEdge(ifNode.info.id + '-exit', exitPoint, { label: 'FD' });
+			} else {
+				graph.addEdge(ifNode.info.id + '-exit', exitPoint, { label: 'CD', when: RTrue, caused: ifNode.info.id });
+			}
+		} else if(!otherwise || otherwise.entryPoints.length === 0) {
+			graph.addEdge(ifNode.info.id + '-exit', exitPoint, { label: 'CD', when: RFalse, caused: ifNode.info.id });
+		}
 	}
 	for(const entryPoint of condition.entryPoints) {
 		graph.addEdge(entryPoint, ifNode.info.id, { label: 'FD' });
@@ -251,7 +259,7 @@ function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformatio
 	for(const exit of [...then.exitPoints, ...otherwise?.exitPoints ?? []]) {
 		graph.addEdge(ifNode.info.id + '-exit', exit, { label: 'FD' });
 	}
-	if(!otherwise) {
+	if(then.entryPoints.length > 0 && !otherwise) {
 		for(const exitPoint of condition.exitPoints) {
 			graph.addEdge(ifNode.info.id + '-exit', exitPoint, { label: 'CD', when: RFalse, caused: ifNode.info.id });
 		}

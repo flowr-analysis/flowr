@@ -13,10 +13,12 @@ import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-c
 import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
 
-type CachedValues = Map<NodeId, Ternary>;
-
 class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
-	private readonly cachedConditions: CachedValues = new Map();
+	
+	private readonly cachedConditions: Map<NodeId, Ternary> = new Map();
+
+	private readonly cachedStatements: Map<NodeId, boolean> = new Map();
+
 
 	private getValue(id: NodeId): Ternary {
 		const has = this.cachedConditions.get(id);
@@ -25,6 +27,15 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		}
 		this.visitNode(id);
 		return this.cachedConditions.get(id) ?? Ternary.Maybe;
+	}
+
+	private isJump(id: NodeId): boolean {
+		const has = this.cachedStatements.get(id);
+		if(has) {
+			return has;
+		}
+		this.visitNode(id);
+		return this.cachedStatements.get(id) ?? false;
 	}
 
 	private unableToCalculateValue(id: NodeId): void {
@@ -44,6 +55,10 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 					if(og === Ternary.Always && edge.when === 'FALSE') {
 						this.config.controlFlow.graph.removeEdge(from, target);
 					} else if(og === Ternary.Never && edge.when === 'TRUE') {
+						this.config.controlFlow.graph.removeEdge(from, target);
+					}
+				} else if(edge.label === CfgEdgeType.Fd) {
+					if(this.isJump(target)) {
 						this.config.controlFlow.graph.removeEdge(from, target);
 					}
 				}
@@ -70,12 +85,25 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		this.handleValuesFor(id, typeof data.condition === 'object' ? data.condition.nodeId : data.condition);
 	}
 
+	private handleFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+		switch(data.call.name) {
+			case 'return':
+			case 'stop':
+				this.cachedStatements.set(data.call.id, true);
+				break;
+		}
+	}
+
 	protected onIfThenElseCall(data: { call: DataflowGraphVertexFunctionCall, condition?: NodeId }) {
 		this.handleWithCondition(data);
 	}
 
 	protected onWhileLoopCall(data: { call: DataflowGraphVertexFunctionCall, condition: FunctionArgument }) {
 		this.handleWithCondition(data);
+	}
+
+	protected onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+		this.handleFunctionCall(data);	
 	}
 }
 

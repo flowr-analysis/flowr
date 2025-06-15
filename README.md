@@ -12,6 +12,170 @@ available for [VSCode](https://marketplace.visualstudio.com/items?itemName=code-
 and [Docker](https://hub.docker.com/r/eagleoutice/flowr).
 It offers a wide variety of features, for example:
 
+* 🐞 **code linting**\
+   Analyze your R scripts for common issues and potential bugs (see the [wiki page](https://github.com/flowr-analysis/flowr/wiki/Linter) for more information on the currently supported linters).
+
+	    
+    <details><summary style="">Example: Linting code with flowR</summary>
+    
+    To lint your code, you can use the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl) or the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
+    	
+    
+    
+    ```shell
+    $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
+    flowR repl using flowR v2.2.15, R v4.5.0 (r-shell engine)
+    R> :query @linter "read.csv(\"/root/x.txt\")"
+    ```
+    
+    <details>
+    <summary style='color:gray'>Output</summary>
+    
+    
+    ```text
+    Query: [;1mlinter[0m (1 ms)
+       ╰ deprecated-functions:
+           ╰ _Metadata_: <code>{"totalRelevant":1,"totalNotDeprecated":1,"searchTimeMs":0,"processTimeMs":0}</code>
+       ╰ file-path-validity:
+           ╰ definitely:
+               ╰ Path `/root/x.txt` at 1.1-23
+           ╰ _Metadata_: <code>{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0,"searchTimeMs":0,"processTimeMs":0}</code>
+       ╰ absolute-file-paths:
+           ╰ definitely:
+               ╰ Path `/root/x.txt` at 1.1-23
+           ╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":1,"processTimeMs":0}</code>
+    [;3mAll queries together required ≈1 ms (1ms accuracy, total 3 ms)[0m[0m
+    ```
+    
+    
+    
+    The linter will analyze the code and return any issues found.
+    Formatted more nicely, this returns:
+    
+    
+    
+    
+    ```json
+    [ { "type": "linter" } ]
+    ```
+    
+    
+    
+    
+    _Results (prettified and summarized):_
+    
+    Query: **linter** (4 ms)\
+    &nbsp;&nbsp;&nbsp;╰ deprecated-functions:\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalRelevant":1,"totalNotDeprecated":1,"searchTimeMs":1,"processTimeMs":0}</code>\
+    &nbsp;&nbsp;&nbsp;╰ file-path-validity:\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ definitely:\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0,"searchTimeMs":1,"processTimeMs":1}</code>\
+    &nbsp;&nbsp;&nbsp;╰ absolute-file-paths:\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ definitely:\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":1,"processTimeMs":0}</code>\
+    _All queries together required ≈4 ms (1ms accuracy, total 77 ms)_
+    
+    <details> <summary style="color:gray">Show Detailed Results as Json</summary>
+    
+    The analysis required _76.8 ms_ (including parsing and normalization and the query) within the generation environment.	
+    
+    In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
+    Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+    
+    
+    
+    
+    ```json
+    {
+      "linter": {
+        "results": {
+          "deprecated-functions": {
+            "results": [],
+            ".meta": {
+              "totalRelevant": 1,
+              "totalNotDeprecated": 1,
+              "searchTimeMs": 1,
+              "processTimeMs": 0
+            }
+          },
+          "file-path-validity": {
+            "results": [
+              {
+                "range": [
+                  1,
+                  1,
+                  1,
+                  23
+                ],
+                "filePath": "/root/x.txt",
+                "certainty": "definitely"
+              }
+            ],
+            ".meta": {
+              "totalReads": 1,
+              "totalUnknown": 0,
+              "totalWritesBeforeAlways": 0,
+              "totalValid": 0,
+              "searchTimeMs": 1,
+              "processTimeMs": 1
+            }
+          },
+          "absolute-file-paths": {
+            "results": [
+              {
+                "certainty": "definitely",
+                "filePath": "/root/x.txt",
+                "range": [
+                  1,
+                  1,
+                  1,
+                  23
+                ]
+              }
+            ],
+            ".meta": {
+              "totalConsidered": 1,
+              "totalUnknown": 0,
+              "searchTimeMs": 1,
+              "processTimeMs": 0
+            }
+          }
+        },
+        ".meta": {
+          "timing": 4
+        }
+      },
+      ".meta": {
+        "timing": 4
+      }
+    }
+    ```
+    
+    
+    
+    </details>
+    
+    
+    
+    
+    
+    
+    
+    	
+    		
+    
+    </details>
+    
+    
+    	   
+    	   
+    
+    </details>
+        
+
+
 * 🍕 **program slicing**\
    Given a point of interest like the visualization of a plot, _flowR_ reduces the program to just the parts which are relevant
    for the computation of the point of interest.
@@ -144,6 +308,7 @@ It offers a wide variety of features, for example:
     
     ```text
     https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAgMShbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RmaWxlc1xuICAgICAgKDEpXG4gICAgICAqMS42LTE0KmBcIl0pXG4gICAgMltbXCJgIzkxO1JCaW5hcnlPcCM5MzsgL1xuICAgICAgKDIpXG4gICAgICAqMS4xLTE0KlxuICAgICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46X1tcImBCdWlsdC1Jbjpcbi9gXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46XyBzdHJva2U6Z3JheSxmaWxsOmxpZ2h0Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IGV4YW1wbGUuUlxuICAgICAgKDMpXG4gICAgICAqMS4xNi0yNCpgXCJdKVxuICAgIDRbW1wiYCM5MTtSQmluYXJ5T3AjOTM7IC9cbiAgICAgICg0KVxuICAgICAgKjEuMS0yNCpcbiAgICAoMiwgMylgXCJdXVxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDBcbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAxXG4gICAgMiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgMiBzdHJva2U6Z3JheTtcbiAgICA0IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAyXG4gICAgNCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgM1xuICAgIDQgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfXG4gICAgbGlua1N0eWxlIDUgc3Ryb2tlOmdyYXk7IiwibWVybWFpZCI6eyJhdXRvU3luYyI6dHJ1ZX19
+    Copied mermaid url to clipboard (dataflow: 1ms).
     ```
     
     
@@ -435,7 +600,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _22.4 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _6.2 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

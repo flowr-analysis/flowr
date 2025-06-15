@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { assertLinter } from '../_helper/linter';
 import { LintingCertainty } from '../../../src/linter/linter-format';
-import { CasingConvention, detectCasing } from '../../../src/linter/rules/naming-convention';
+import { CasingConvention, detectCasing, tryFixCasing } from '../../../src/linter/rules/naming-convention';
 import { assertUnreachable } from '../../../src/util/assert';
 
 function genName(convention: CasingConvention): string {
@@ -69,7 +69,28 @@ describe('flowR linter', withTreeSitter(parser => {
 				assert.equal(detected, convention, `Expected to detect ${name} as ${convention}, but detected ${detected}`);
 			});	
 		});
+
+		test.each([
+			{ name: 'MyCoOlVaR',        expected: 'mycoolvar',   convention: CasingConvention.FlatCase },
+			{ name: 'fOoBaR',           expected: 'FOOBAR',      convention: CasingConvention.Uppercase },
+			{ name: 'foo_bar',          expected: 'fooBar',      convention: CasingConvention.CamelCase },
+			{ name: 'FooBar',           expected: 'fooBar',      convention: CasingConvention.CamelCase },
+			{ name: 'foo_bar',          expected: 'FooBar',      convention: CasingConvention.PascalCase },
+			{ name: 'fooBar',           expected: 'FooBar',      convention: CasingConvention.PascalCase },
+			{ name: 'FooBarBaz',        expected: 'foo_bar_baz', convention: CasingConvention.SnakeCase },
+			{ name: 'Foo_Bar_Baz',      expected: 'foo_bar_baz', convention: CasingConvention.SnakeCase },
+			{ name: 'testVar',          expected: 'TEST_VAR',    convention: CasingConvention.ConstantCase },
+			{ name: 'test_Var',         expected: 'TEST_VAR',    convention: CasingConvention.ConstantCase },
+			{ name: 'fooBar',           expected: 'foo_Bar',     convention: CasingConvention.CamelSnakeCase },
+			{ name: 'foo_Bar',          expected: 'foo_Bar',     convention: CasingConvention.CamelSnakeCase },
+			{ name: 'fooBar',           expected: 'Foo_Bar',     convention: CasingConvention.PascalSnakeCase },
+			{ name: 'foo_Bar',          expected: 'Foo_Bar',     convention: CasingConvention.PascalSnakeCase },
+		])('fix casing $convention', ({ name, convention, expected }) => {
+			const fixed = tryFixCasing(name, convention);
+			assert.equal(fixed, expected, `Expected to convert '${name}' to '${expected}', but converted to '${fixed}'`);
+		});	
 	});
+
 
 	describe('rule', () => { 
 		assertLinter('simple', parser, 'testVar <- 5', 'naming-convention', [{

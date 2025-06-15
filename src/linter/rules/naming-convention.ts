@@ -88,10 +88,8 @@ export function detectCasing(identifier: string): CasingConvention {
 	return CasingConvention.Unknown;
 }
 
-function tryFixCasing(identifier: string, convention: CasingConvention) {
-	const tokens = identifier.includes('_') ? 
-		identifier.split('_').map(s => s.toLowerCase()) :  
-		identifier.split(/(?=[A-Z])/).map(s => s.toLowerCase());
+export function tryFixCasing(identifier: string, convention: CasingConvention) {
+	const tokens = identifier.split(/(?=[A-Z])|_/).map(s => s.toLowerCase());
 
 	const firstUp = (s: string) => `${s[0].toUpperCase()}${s.substring(1)}`;
 
@@ -140,7 +138,7 @@ export const NAMING_CONVENTION = {
 			'.meta': { idk: 0 }
 		};   
 	},
-	prettyPrint:   result => `Identifier '${result.name}' at ${formatRange(result.range)} follows wrong casing convention`,
+	prettyPrint:   result => `Identifier '${result.name}' at ${formatRange(result.range)} follows wrong casing convention. Suggestion: '${result.suggestion}'`,
 	defaultConfig: {
 		caseing: CasingConvention.PascalCase
 	}

@@ -30,7 +30,7 @@ const SpecialTagColors: Record<string, string> = {
 };
 
 function makeTagBadge(name: LintingRuleTag, info: TypeElementInSource[]): string {
-	const doc = getDocumentationForType('LintingRuleTag::' + name, info, '', true);
+	const doc = getDocumentationForType('LintingRuleTag::' + name, info, '', true).replaceAll('\n', ' ');
 	return textWithTooltip(`<a href='#${name}'>![` + name + '](https://img.shields.io/badge/' + name.toLowerCase() + `-${SpecialTagColors[name] ?? 'teal'}) </a>`, doc);
 }
 

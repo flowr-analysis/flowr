@@ -90,7 +90,7 @@ export class SemanticCfgGuidedVisitor<
 			case RType.Number:  return this.onNumberConstant({ vertex: val, node: astNode });
 			case RType.Logical: return this.onLogicalConstant({ vertex: val, node: astNode });
 			case RType.Symbol:
-				if(astNode.content === 'NULL') {
+				if(astNode.lexeme === 'NULL') {
 					return this.onNullConstant({ vertex: val, node: astNode as RSymbol<OtherInfo & ParentInformation, 'NULL'> });
 				} else {
 					return this.onSymbolConstant({ vertex: val, node: astNode });
@@ -316,11 +316,12 @@ export class SemanticCfgGuidedVisitor<
 		return getOriginInDfg(this.config.dfg, id);
 	}
 
-	/** Called for every occurrence of a `NULL` in the program. */
+	/**
+	 * Called for every occurrence of a `NULL` in the program.
+	 *
+	 * For other symbols that are not referenced as a variable, see {@link SemanticCfgGuidedVisitor#onSymbolConstant|`onSymbolConstant`}.
+	 */
 	protected onNullConstant(_data: { vertex: DataflowGraphVertexValue, node: RSymbol<OtherInfo & ParentInformation, 'NULL'> }) {}
-
-	/** Called for all symbols representing constants (e.g. in `library` calls) */
-	protected onSymbolConstant(_data: { vertex: DataflowGraphVertexValue, node: RSymbol<OtherInfo & ParentInformation> }) {}
 
 	/**
 	 * Called for every constant string value in the program.
@@ -342,6 +343,16 @@ export class SemanticCfgGuidedVisitor<
 	 * For example, `TRUE` in `if(TRUE) { ... }`.
 	 */
 	protected onLogicalConstant(_data: { vertex: DataflowGraphVertexValue, node: RLogical }) {}
+
+	/**
+	 * Called for every constant symbol value in the program.
+	 *
+	 * For example, `foo` in `library(foo)` or `a` in `l$a`. This most likely happens as part of non-standard-evaluation, i.e., the symbol is not evaluated to a value,
+	 * but used as a symbol in and of itself.
+	 *
+	 * Please note, that due to its special behaviors, `NULL` is handled in {@link SemanticCfgGuidedVisitor#onNullConstant|`onNullConstant`} and not here.
+	 */
+	protected onSymbolConstant(_data: { vertex: DataflowGraphVertexValue, node: RSymbol }) {}
 
 	/**
 	 * Called for every variable that is read within the program.

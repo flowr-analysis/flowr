@@ -4,7 +4,7 @@ import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/pr
 import type { CommonSlicerMeasurements } from '../../../src/benchmark/stats/stats';
 import { PerSliceMeasurements, RequiredSlicerMeasurements } from '../../../src/benchmark/stats/stats';
 import { describe, assert, test, beforeAll, afterAll } from 'vitest';
-import { amendConfig, defaultConfigOptions } from '../../../src/config';
+import { amendConfig } from '../../../src/config';
 import { DefaultAllVariablesFilter } from '../../../src/slicing/criterion/filters/all-variables';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { guard, isNotUndefined } from '../../../src/util/assert';
@@ -163,11 +163,11 @@ cat(d)`
 
 		describe('Slicing with pointer-tracking enabled', () => {
 			beforeAll(() => {
-				amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
+				amendConfig(c => c.solver.pointerTracking = true );
 			});
 
 			afterAll(() => {
-				amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: false } });
+				amendConfig(c => c.solver.pointerTracking = false );
 			});
 
 			test('When indices are stored, then correct values are counted', async() => {

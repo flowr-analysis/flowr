@@ -19,12 +19,13 @@ export function assertLinter<Name extends LintingRuleNames>(
 	ruleName: Name,
 	expected: LintingRuleResult<Name>[],
 	expectedMetadata?: LintingRuleMetadata<Name>,
-	config?: DeepPartial<LintingRuleConfig<Name>>
+	config?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string }
 ) {
 	test(decorateLabelContext(name, ['linter']), async() => {
 		const pipelineResults = await createDataflowPipeline(parser, {
-			request: requestFromInput(code),
-			getId:   deterministicCountingIdGenerator(0)
+			request:           requestFromInput(code),
+			getId:             deterministicCountingIdGenerator(0),
+			overwriteFilePath: config?.useAsFilePath
 		}).allRemainingSteps();
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;

@@ -14,7 +14,7 @@ import { getCurrentRequestFile } from './10-normalize';
 import type { ParseStepOutputTS } from './01-parse-tree-sitter';
 
 function processor(results: { 'parse'?: ParseStepOutputTS }, input: Partial<NormalizeRequiredInput>) {
-	return normalizeTreeSitter(results['parse'] as ParseStepOutputTS, input.getId, getCurrentRequestFile(input.request));
+	return normalizeTreeSitter(results['parse'] as ParseStepOutputTS, input.getId, input.overwriteFilePath ?? getCurrentRequestFile(input.request));
 }
 
 export const NORMALIZE_TREE_SITTER = {

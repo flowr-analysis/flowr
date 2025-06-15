@@ -18,9 +18,9 @@ import { resolveIdToValue } from './alias-tracking';
 
 /**
  * Helper function used by {@link resolveIdToValue}, please use that instead, if
- * you want to resolve the value of a identifier / node
+ * you want to resolve the value of an identifier / node
  *
- * This function converts an RNode to its Value, but also recursivly resolves
+ * This function converts an RNode to its Value, but also recursively resolves
  * aliases and vectors (in case of a vector).
  *
  * @param a     - Ast node to resolve
@@ -63,10 +63,10 @@ export function resolveNode(a: RNodeWithParent, env?: REnvironmentInformation, g
 
 /**
  * Helper function used by {@link resolveIdToValue}, please use that instead, if
- * you want to resolve the value of a identifier / node
+ * you want to resolve the value of an identifier / node
  *
- * This function converts an rnode to a Value Vector {@link vectorFrom}
- * It also recursivly resolves any symbols, values, function calls (only c), in
+ * This function converts an R node to a Value Vector {@link vectorFrom}
+ * It also recursively resolves any symbols, values, function calls (only c), in
  * order to construct the value of the vector to resolve by calling {@link resolveIdToValue}
  * or {@link resolveNode}
  *
@@ -107,7 +107,6 @@ export function resolveAsVector(a: RNodeWithParent, env?: REnvironmentInformatio
 
 			values.push(val);
 		}
-
 	}
 
 	return vectorFrom(flattenVectorElements(values));

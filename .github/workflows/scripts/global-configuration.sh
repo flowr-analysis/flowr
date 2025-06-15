@@ -10,5 +10,5 @@ function make_var {
    echo "$1=${2:-}" >> "$GITHUB_ENV"
 }
 
-make_var ACTION_NODE_VERSION "22.13.x"
-make_var ACTION_R_VERSION "4.4.3"
+make_var ACTION_NODE_VERSION "22.14.x"
+make_var ACTION_R_VERSION "4.5.0"

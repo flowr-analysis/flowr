@@ -24,14 +24,20 @@ There are several ways to generate mermaid diagrams based on the input data that
 
 ${qAndA('How do I create new wiki pages?', `
 To create an automatically generated wiki page, you can follow these steps:
-- Createa a new file in \`src/documentation\` with a name like \`print-my-page-wiki.ts\`.
+- Create a new file in \`src/documentation\` with a name like \`print-my-page-wiki.ts\`.
 - Add a new wiki generation script to the ${getFilePathMd('../../package.json')}. You can copy one of the existing ones of the form \`"wiki:my-page": "ts-node src/documentation/print-my-page-wiki.ts"\`.
 - Add the wiki generation script to the \`broken-links-and-wiki.yml\` GitHub workflow file to enable automatic generation through the CI. You can copy one of the existing ones of the form \`update_page wiki/"My page" wiki:my-page\`.
 
 You can test your page by piping the wiki generation script to a file. For example, you can run the following command:
 ${codeBlock('shell', 'npm run --silent wiki:my-page > __my-page.md')}
-`)}
+
 Remember not to commit this file, as it's only meant for testing.
+`)}
+
+${qAndA('Why can\'t I pass arguments when running flowR with npm?', `
+With \`npm\` you have to pass arguments in a specific way. The \`--\` operator is used to separate the \`npm\` arguments from the script arguments. For example, if you want to run \`flowR\` with the \`--help\` argument, you can use the following command:
+${codeBlock('shell', 'npm run flowR -- --help')}
+`)}
 
 ## 🇷 R FAQ
 

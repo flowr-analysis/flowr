@@ -6,22 +6,23 @@ import type { SourceRange } from '../../util/range';
 import { LintingCertainty, type LintingResult, type LintingRule } from '../linter-format';
 
 
-export const enum CasingConvention {
-    FlatCase,        // flatcase
-    Uppercase,       // UPPERCASE
-    CamelCase,       // camelCase
-    PascalCase,      // PascalCase
-    SnakeCase,       // snake_case
-    ConstantCase,    // CONSTANT_CASE
-    CamelSnakeCase,  // camel_Snake_Case
-    PascalSnakeCase, // Pascal_Snake_Case
-    Unknown
+export enum CasingConvention {
+    FlatCase        = 'flatcase',
+    Uppercase       = 'UPPERCASE',
+    CamelCase       = 'camelCase',
+    PascalCase      = 'PascalCase',
+    SnakeCase       = 'snake_case',
+    ConstantCase    = 'CONSTANT_CASE', 
+    CamelSnakeCase  = 'camel_Snake_Case', 
+    PascalSnakeCase = 'Pascal_Snake_Case',
+    Unknown         = 'unknown'
 }
 
 export interface NamingConventionResult extends LintingResult {
-    name:       string,
-    range:      SourceRange,
-    suggestion: string
+    name:           string,
+    detectedCasing: CasingConvention,
+    suggestion:     string,
+    range:          SourceRange,
 }
 
 export interface NamingConventionConfig extends MergeableRecord {
@@ -32,7 +33,11 @@ export interface NamingConventionMetadata extends MergeableRecord {
     idk: number
 }
 
-function detectCasing(identifier: string): CasingConvention {
+export function detectCasing(identifier: string): CasingConvention {
+	if(identifier.trim() === '') {
+		return CasingConvention.Unknown;
+	}
+
 	const upper = identifier.toUpperCase();
 	const lower = identifier.toLowerCase();
 	const isAllUpper = identifier === upper;
@@ -45,7 +50,8 @@ function detectCasing(identifier: string): CasingConvention {
 			return CasingConvention.SnakeCase;
 		} 
 
-		function expectUpper(identifier: string) {
+		// Returns true if the letter after an _ is uppercase
+		function expectUpperAfterScore(identifier: string) {
 			for(let i = 0; i < identifier.length - 1; i++) {
 				if(identifier[i] === '_') {
 					if(identifier[i+1] !== upper[i+1]) {
@@ -53,12 +59,14 @@ function detectCasing(identifier: string): CasingConvention {
 					}
 				}
 			}
+
+			return true;
 		}
 
-		if(identifier[0] === upper[0] && expectUpper(identifier)) {  // camel_Snake_Case
+		if(identifier[0] === lower[0] && expectUpperAfterScore(identifier)) {  // camel_Snake_Case
 			return CasingConvention.CamelSnakeCase; 
-		} else if(identifier[0] === lower[0] && expectUpper(identifier)) { // Pascal_Snake_Case
-			return CasingConvention.CamelCase;
+		} else if(identifier[0] === upper[0] && expectUpperAfterScore(identifier)) { // Pascal_Snake_Case
+			return CasingConvention.PascalSnakeCase;
 		} else {
 			return CasingConvention.Unknown;
 		}
@@ -104,7 +112,7 @@ export const NAMING_CONVENTION = {
 			'.meta': { idk: 0 }
 		};   
 	},
-	prettyPrint:   result => `Identifier '${result.name}' at ${formatRange(result.range)} has wrong naming convention`,
+	prettyPrint:   result => `Identifier '${result.name}' at ${formatRange(result.range)} follows wrong casing convention`,
 	defaultConfig: {
 		caseing: CasingConvention.PascalCase
 	}

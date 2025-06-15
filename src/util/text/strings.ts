@@ -54,5 +54,7 @@ export function joinWithLast(strs: readonly string[], { join = ', ', last = ', a
 }
 
 export function isAbsolutePath(p: string, regex: RegExp | undefined): boolean {
-	return regex?.test(p) || p.startsWith('/') || p.startsWith('\\') || path.normalize(p + '/') === path.normalize(path.resolve(p) + '/');
+	return regex?.test(p) || p.startsWith('/') || p.startsWith('\\') ||
+		/[a-zA-Z]:[\\/]/.test(p) || // Windows absolute path
+		path.normalize(p + '/') === path.normalize(path.resolve(p) + '/');
 }

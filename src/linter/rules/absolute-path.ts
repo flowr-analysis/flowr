@@ -3,6 +3,7 @@ import { LintingCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import type { SourceRange } from '../../util/range';
+import { rangeFrom } from '../../util/range';
 import { formatRange } from '../../util/mermaid/dfg';
 import { LintingRuleTag } from '../linter-tags';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -13,6 +14,12 @@ import { ReadFunctions } from '../../queries/catalog/dependencies-query/function
 import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
+import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
+import { VertexType } from '../../dataflow/graph/vertex';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { FlowrSearchElementMaybeFromQuery } from '../../search/flowr-search';
+import type { QueryResults } from '../../queries/query';
+import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 
 export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,
@@ -45,6 +52,7 @@ export interface AbsoluteFilePathConfig extends MergeableRecord {
 
 export interface AbsoluteFilePathMetadata extends MergeableRecord {
 	totalConsidered: number
+	totalUnknown:    number
 }
 
 
@@ -54,33 +62,57 @@ export const ABSOLUTE_PATH = {
 		if(config.include.allStrings) {
 			return Q.all().filter(RType.String);
 		}
-		const q = Q.fromQuery({
+		let q = Q.fromQuery({
 			type:                   'dependencies',
 			// we use the dependencies query to give us all functions that take a file path as input
 			ignoreDefaultFunctions: true,
-			readFunctions:          ReadFunctions.concat(WriteFunctions, config.additionalPathFunctions),
+			readFunctions:          ReadFunctions.concat(WriteFunctions, SourceFunctions, config.additionalPathFunctions),
 		});
 		if(config.include.constructed) {
-			q.merge(Q.all().with(Enrichment.CallTargets));
-			/* in the future we want to directly check whether this is one of the supported functions */}
-		return q;
+			q = q.merge(Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets));
+			/* in the future we want to directly check whether this is one of the supported functions */
+		}
+		return q.unique();
 	},
-	processSearchResult: (elements, config): { results: AbsoluteFilePathResult[], '.meta': AbsoluteFilePathMetadata } => {
+	processSearchResult: (elements, config, data): { results: AbsoluteFilePathResult[], '.meta': AbsoluteFilePathMetadata } => {
 		const metadata: AbsoluteFilePathMetadata = {
-			totalConsidered: 0
+			totalConsidered: 0,
+			totalUnknown:    0
 		};
 		const regex = config.absolutePathRegex ? new RegExp(config.absolutePathRegex) : undefined;
 		return {
 			results: elements.getElements().flatMap(element => {
 				metadata.totalConsidered++;
 				const node = element.node;
-				if(isRString(node) && isAbsolutePath(node.content.str, regex)) {
-					return {
-						certainty: LintingCertainty.Maybe,
-						filePath:  node.content.str,
-						range:     node.info.fullRange ?? node.location
-					};
+				if(isRString(node)) {
+					if(isAbsolutePath(node.content.str, regex)) {
+						return [{
+							certainty: LintingCertainty.Maybe,
+							filePath:  node.content.str,
+							range:     node.info.fullRange ?? node.location
+						}];
+					} else {
+						return [];
+					}
+				} else if(element.queryResult) {
+					const result = element.queryResult as QueryResults<'dependencies'>['dependencies'];
+					const mappedStrings = result.readData.filter(r => r.source !== Unknown && isAbsolutePath(r.source, regex)).map(r => {
+						const elem = data.normalize.idMap.get(r.nodeId);
+						return {
+							certainty: LintingCertainty.Definitely,
+							filePath:  r.source,
+							range:     elem?.info.fullRange ?? elem?.location ?? rangeFrom(-1, -1, -1, -1)
+						};
+					});
+					if(mappedStrings.length > 0) {
+						return mappedStrings;
+					} else if(result.readData.every(r => r.source !== Unknown)) {
+						// if we have no absolute paths, but all paths are known, we can return an empty array
+						return [];
+					}
 				}
+
+				metadata.totalUnknown++;
 				// TODO: check for paths
 				return undefined;
 			}).filter(isNotUndefined),
@@ -96,9 +128,10 @@ export const ABSOLUTE_PATH = {
 				constructed: true,
 				allStrings:  false
 			},
-			absolutePathRegex: undefined,
-			useAsWd:           '@cwd'
+			additionalPathFunctions: [],
+			absolutePathRegex:       undefined,
+			useAsWd:                 '@cwd'
 		}
 	}
-} as const satisfies LintingRule<AbsoluteFilePathResult, AbsoluteFilePathMetadata, AbsoluteFilePathConfig>;
+} as const satisfies LintingRule<AbsoluteFilePathResult, AbsoluteFilePathMetadata, AbsoluteFilePathConfig, ParentInformation, FlowrSearchElementMaybeFromQuery<ParentInformation>[]>;
 

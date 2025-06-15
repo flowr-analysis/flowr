@@ -195,7 +195,7 @@ export const ABSOLUTE_PATH = {
 	},
 	prettyPrint: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}` + (result.quickFix ? ' (quick fix available)' : ''),
 	info:        {
-		description:   'Checks whether file paths are absolute',
+		description:   'Checks whether file paths are absolute.',
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell],
 		defaultConfig: {
 			include: {

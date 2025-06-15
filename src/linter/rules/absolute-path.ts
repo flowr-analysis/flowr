@@ -1,6 +1,7 @@
-import type { LintingResult, LintingRule } from '../linter-format';
+import type { LintingResult, LintingRule, LintQuickFixReplacement } from '../linter-format';
 import { LintingCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
+import { compactRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import type { SourceRange } from '../../util/range';
 import { rangeFrom } from '../../util/range';
@@ -24,11 +25,14 @@ import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-q
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
 import path from 'path';
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,
 	range:    SourceRange
 }
+
+type SupportedWd = '@script' | '@home' | string;
 
 export interface AbsoluteFilePathConfig extends MergeableRecord {
 	/** Include paths that are built by functions, e.g., `file.path()` */
@@ -47,16 +51,39 @@ export interface AbsoluteFilePathConfig extends MergeableRecord {
 	additionalPathFunctions: FunctionInfo[]
 	/**
 	 * Which path should be considered to be the origin for relative paths.
-	 * `@cwd` is the current working directory. This is only relevant with quickfixes.
+	 * This is only relevant with quickfixes. In the future we may be sensitive to setwd etc.
 	 */
-	useAsWd:                 '@script' | '@project' | '@file' | '@cwd' | '@home' | string
-	// TODO: wd and constructed paths
-	// TODO: quickfix
+	useAsWd:                 SupportedWd
 }
 
 export interface AbsoluteFilePathMetadata extends MergeableRecord {
 	totalConsidered: number
 	totalUnknown:    number
+}
+
+function inferWd(file: string | undefined, wd: SupportedWd): string | undefined {
+	if(wd === '@script') {
+		// we can use the script path as the working directory
+		return file;
+	} else if(wd === '@home') {
+		// we can use the home directory as the working directory
+		return process.env.HOME || process.env.USERPROFILE || '';
+	} else {
+		return wd;
+	}
+}
+
+// this can be improved by respecting raw strings and supporting more scenarios
+function builtQuickFix(str: RNode | undefined, filePath: string, wd: string | undefined): LintQuickFixReplacement[] | undefined {
+	if(!wd || !isRString(str)) {
+		return undefined;
+	}
+	return [{
+		type:        'replace',
+		range:       str.location,
+		description: `Replace with a relative path to \`${filePath}\``,
+		replacement: str.content.quotes + '.' + path.sep + path.relative(wd, filePath) + str.content.quotes
+	}];
 }
 
 /** return all strings constructable by these functions */
@@ -115,12 +142,14 @@ export const ABSOLUTE_PATH = {
 			results: elements.getElements().flatMap(element => {
 				metadata.totalConsidered++;
 				const node = element.node;
+				const wd = inferWd(node.info.file, config.useAsWd);
 				if(isRString(node)) {
 					if(node.content.str.length >= 3 && isAbsolutePath(node.content.str, regex)) {
 						return [{
 							certainty: LintingCertainty.Maybe,
 							filePath:  node.content.str,
-							range:     node.info.fullRange ?? node.location
+							range:     node.info.fullRange ?? node.location,
+							quickFix:  builtQuickFix(node, node.content.str, wd)
 						}];
 					} else {
 						return [];
@@ -132,7 +161,8 @@ export const ABSOLUTE_PATH = {
 						return {
 							certainty: LintingCertainty.Definitely,
 							filePath:  r.source,
-							range:     elem?.info.fullRange ?? elem?.location ?? rangeFrom(-1, -1, -1, -1)
+							range:     elem?.info.fullRange ?? elem?.location ?? rangeFrom(-1, -1, -1, -1),
+							quickFix:  builtQuickFix(elem, r.source, wd)
 						};
 					});
 					if(mappedStrings.length > 0) {
@@ -159,7 +189,7 @@ export const ABSOLUTE_PATH = {
 
 				metadata.totalUnknown++;
 				return undefined;
-			}).filter(isNotUndefined),
+			}).filter(isNotUndefined).map(r => compactRecord(r) as AbsoluteFilePathResult),
 			'.meta': metadata
 		};
 	},
@@ -174,7 +204,7 @@ export const ABSOLUTE_PATH = {
 			},
 			additionalPathFunctions: [],
 			absolutePathRegex:       undefined,
-			useAsWd:                 '@cwd'
+			useAsWd:                 '@script'
 		}
 	}
 } as const satisfies LintingRule<AbsoluteFilePathResult, AbsoluteFilePathMetadata, AbsoluteFilePathConfig, ParentInformation, FlowrSearchElementMaybeFromQuery<ParentInformation>[]>;

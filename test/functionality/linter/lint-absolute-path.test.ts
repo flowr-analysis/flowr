@@ -22,6 +22,41 @@ describe('flowR linter', withTreeSitter(parser => {
 			});
 		});
 
+		describe('quickfixes', () => {
+			assertLinter('is relative to home', parser, '"/home/me/foo.bar"', 'absolute-file-paths', [{
+				certainty: LintingCertainty.Maybe,
+				filePath:  '/home/me/foo.bar',
+				range:     [1, 1, 1, 18],
+				quickFix:  [{
+					type:          'replace',
+					'description': 'Replace with a relative path to `/home/me/foo.bar`',
+					range:         [1, 1, 1, 18],
+					replacement:   '"./foo.bar"'
+				}]
+			}], { totalConsidered: 1, totalUnknown: 0 }, {
+				useAsFilePath: '/home/me',
+				include:       {
+					allStrings: true
+				}
+			});
+			assertLinter('is relative to home', parser, 'read.csv("/home/me/foo.bar")', 'absolute-file-paths', [{
+				certainty: LintingCertainty.Maybe,
+				filePath:  '/home/me/foo.bar',
+				range:     [1, 10, 1, 27],
+				quickFix:  [{
+					type:          'replace',
+					'description': 'Replace with a relative path to `/home/me/foo.bar`',
+					range:         [1, 10, 1, 27],
+					replacement:   '"./foo.bar"'
+				}]
+			}], { totalConsidered: 1, totalUnknown: 0 }, {
+				useAsFilePath: '/home/me',
+				include:       {
+					allStrings: true
+				}
+			});
+		});
+
 		assertLinter('none', parser, 'cat("hello")', 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 1 });
 		assertLinter('none with all strings', parser, 'cat("hello")', 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 }, {
 			include: {

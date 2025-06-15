@@ -35,7 +35,7 @@ function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]
 			libraries.push({
 				nodeId:       n.info.id,
 				functionName: (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
-				libraryName:  n.namespace
+				libraryName:  n.namespace,
 			});
 		}
 	});

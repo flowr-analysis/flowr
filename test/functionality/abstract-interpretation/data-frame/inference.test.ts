@@ -19,11 +19,11 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 	}
 
 	beforeAll(() => {
-		amendConfig({ solver: { pointerTracking: false } });
+		amendConfig(config => config.solver.pointerTracking = false);
 	});
 
 	afterAll(() => {
-		amendConfig({ solver: { pointerTracking: defaultConfigOptions.solver.pointerTracking } });
+		amendConfig(config => config.solver.pointerTracking = defaultConfigOptions.solver.pointerTracking);
 	});
 
 	testDataFrameDomain(

@@ -31,13 +31,14 @@ describe('flowR linter', withTreeSitter(parser => {
 		describe('With unused definitions', () => {
 			for(const [program, criteria, removableRange] of [
 				['x <- 2', '1@x', rangeFrom(1, 1, 1, 6)],
+				['x <- 2\nx <- 1\nprint(x)', '1@x', rangeFrom(1, 1, 1, 6)],
 				['x <- 1\ny <- 2\nprint(x + 1)',   '2@y', rangeFrom(2, 1, 2, 6)],
 				['x <- 4\ny <- foo(42)\nprint(y)', '1@x', rangeFrom(1, 1, 1, 6)],
 				['for(i in 1:10) 42;', '1@i', undefined],
 				['f <- function(x) { x + 1 }\nprint(2)', '1@f', rangeFrom(1, 1, 1, 26)], // ;1@function is included in f
 				['f <- function(v) { x <<- v * 2 }\nf(2)', '1@x', rangeFrom(1, 20, 1, 30)],
 				['function() { 42 }', '1@function', rangeFrom(1, 1, 1, 17)],
-				['f <- function() {\n function() { 42 } }\nprint(f())', '2@function', rangeFrom(2, 2, 2, 18)],
+				['f <- function() {\n function() { 42 } }\nprint(f())', '2@function', rangeFrom(2, 2, 2, 18)]
 			] as const satisfies readonly [string, string, SourceRange | undefined][]) {
 				assertLinter(program, parser, program, 'unused-definitions', (df, ast) => {
 					const ids = convertAllSlicingCriteriaToIds(criteria.split(';') as SlicingCriteria, ast.idMap);

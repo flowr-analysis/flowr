@@ -146,7 +146,6 @@ export function updatePotentialAddition(queue: VisitingQueue, id: NodeId, target
 	}
 }
 
-const waitFor = new Set(['<-', '=', '->', '->>', '<<-']);
 export function extendSlices(
 	results: ReadonlySet<NodeId>,
 	ast: AstIdMap,
@@ -156,19 +155,16 @@ export function extendSlices(
 		res.add(id);
 		let parent = ast.get(id);
 
-		while(parent && parent.roleInParent !== RoleInParent.Root && (parent.type !== RType.BinaryOp || !waitFor.has(parent.lexeme ?? ''))) {
+		while(parent && parent.info.role !== RoleInParent.Root && parent.info.role !== RoleInParent.ExpressionListChild) {
 			parent = parent.info.parent ? ast.get(parent.info.parent) : undefined;
 		}
-		if(!parent || parent.roleInParent === RoleInParent.Root || parent.type !== RType.BinaryOp) {
+		if(!parent) {
 			continue; // no parent, no need to extend
 		}
-		if(waitFor.has(parent.lexeme)) {
-			const allIds = collectAllIds(parent);
-			for(const id of allIds) {
-				res.add(id);
-			}
+		const allIds = collectAllIds(parent);
+		for(const id of allIds) {
+			res.add(id);
 		}
-
 	}
 	return res;
 }

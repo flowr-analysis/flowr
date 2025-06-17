@@ -9,7 +9,14 @@ import { builtInId } from '../../../../../src/dataflow/environments/built-in';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe, beforeAll, afterAll } from 'vitest';
-import { amendConfig, defaultConfigOptions, setConfig } from '../../../../../src/config';
+import type {
+	FlowrLaxSourcingOptions } from '../../../../../src/config';
+import {
+	amendConfig,
+	defaultConfigOptions,
+	setConfig
+} from '../../../../../src/config';
+import { deepMergeObject } from '../../../../../src/util/objects';
 
 describe.sequential('source', withShell(shell => {
 	const sources = {
@@ -21,7 +28,11 @@ describe.sequential('source', withShell(shell => {
 	};
 	beforeAll(() => {
 		setSourceProvider(requestProviderFromText(sources));
-		amendConfig({ solver: { resolveSource: { repeatedSourceLimit: 0 } } });
+		amendConfig(c =>
+			c.solver.resolveSource = deepMergeObject(
+				defaultConfigOptions.solver.resolveSource,
+				{ repeatedSourceLimit: 0 }) as FlowrLaxSourcingOptions
+		);
 	});
 	afterAll(() => {
 		setSourceProvider(requestProviderFromFile());
@@ -134,7 +145,11 @@ describe.sequential('source', withShell(shell => {
 
 	describe('Increase source limit', () => {
 		beforeAll(() => {
-			amendConfig({ solver: { resolveSource: { repeatedSourceLimit: 2 } } });
+			amendConfig(c =>
+				c.solver.resolveSource = deepMergeObject(
+					defaultConfigOptions.solver.resolveSource,
+					{ repeatedSourceLimit: 2 }) as FlowrLaxSourcingOptions
+			);
 		});
 		afterAll(() => {
 			setConfig(defaultConfigOptions);

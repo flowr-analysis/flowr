@@ -35,7 +35,7 @@ export const LinterQueryDefinition = {
 		result.push(`Query: ${bold('linter', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [ruleName, results] of Object.entries(out.results)) {
 			const rule = LintingRules[ruleName as LintingRuleNames];
-			result.push(`   ╰ **${rule.humanReadableName}** (${ruleName}):`);
+			result.push(`   ╰ **${rule.info.humanReadableName}** (${ruleName}):`);
 			for(const certainty of [LintingCertainty.Definitely, LintingCertainty.Maybe]) {
 				const certaintyResults = results.results.filter(r => r.certainty === certainty);
 				if(certaintyResults.length) {

@@ -252,6 +252,14 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	}
 
 	/**
+	 * Removes duplicate elements based on the ids of the elements.
+	 */
+	unique(): FlowrSearchBuilderOut<Generator, Transformers, Info, 'unique'> {
+		this.search.push({ type: 'transformer', name: 'unique', args: undefined });
+		return this;
+	}
+
+	/**
 	 * Construct the final search (this may happen automatically with most search handlers).
 	 *
 	 * @param shouldOptimize - This may optimize the search.

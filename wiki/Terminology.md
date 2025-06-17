@@ -16,11 +16,6 @@ Based on the explanations in the original [master's thesis](http://dx.doi.org/10
 
 For more information on different slicing variants, refer to Section&nbsp;2.1.3 of the original [master's thesis](http://dx.doi.org/10.18725/OPARU-50107).
 
-<details>
-<summary>Overview of the classification used within the thesis</summary>
-<img src="img/slice-classification.png" alt="feature diagram of thesis classification" width="300px">
-</details>
-
 ### Slicing Criterion
 
 A slicing criterion describes the location of a single variable or several variables of interest to slice for.
@@ -41,7 +36,7 @@ Based on a slicing criterion and a program, a program slice is a subset of the p
 1. might influence the values of the variables specified by the slicing criterion [backward slice](#backward-slice), or
 2. might be influenced by the values of the variables specified by the slicing criterion [forward slice](#forward-slice).
 
-There are many ways to slice a program. In other words, a slice is not unique - the complete program is always valid.
+There are many ways to slice a program. In other words, a slice is not unique—the complete program is always valid.
 However, as this is rarely useful, we are interested in minimal slices, i.e., slices that are as small as possible.<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a>
 
 To exemplify the term, let's look at a concrete example with the following code:

@@ -19,6 +19,7 @@ import { WriteFunctions } from '../../queries/catalog/dependencies-query/functio
 import { extractSimpleCfg } from '../../control-flow/extract-cfg';
 import { happensBefore } from '../../control-flow/happens-before';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
+import { LintingRuleTag } from '../linter-tags';
 
 export interface FilePathValidityResult extends LintingResult {
 	filePath: string,
@@ -115,13 +116,17 @@ export const FILE_PATH_VALIDITY = {
 			'.meta': metadata
 		};
 	},
-	defaultConfig: {
-		additionalReadFunctions:  [],
-		additionalWriteFunctions: [],
-		includeUnknown:           false
+	info: {
+		description:   'Checks whether file paths used in read and write operations are valid and point to existing files.',
+		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug],
+		defaultConfig: {
+			additionalReadFunctions:  [],
+			additionalWriteFunctions: [],
+			includeUnknown:           false
+		},
+		humanReadableName: 'File Path Validity',
 	},
-	humanReadableName: 'File Path Validity',
-	prettyPrint:       {
+	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
 		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} does not point to a valid file`
 	}

@@ -20,6 +20,7 @@ import type { EnrichedFlowrSearchElement, Enrichment, EnrichmentArguments } from
 import { enrich } from './search-enrichers';
 import type { Mapper, MapperArguments } from './search-mappers';
 import { map } from './search-mappers';
+import type { ElementOf } from 'ts-essentials';
 
 
 /**
@@ -50,6 +51,7 @@ export const transformers = {
 	skip:   getSkip,
 	filter: getFilter,
 	merge:  getMerge,
+	unique: getUnique,
 	select: getSelect,
 	with:   getWith,
 	map:    getMap
@@ -174,4 +176,16 @@ function getMerge<Elements extends FlowrSearchElement<ParentInformation>[], FSE 
 	data: FlowrSearchInput<Pipeline>, elements: FSE, other: { search: unknown[], generator: FlowrSearchGeneratorNode }): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
 	const resultOther = runSearch(other as FlowrSearch<ParentInformation>, data);
 	return elements.addAll(resultOther);
+}
+
+function getUnique<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
+	data: FlowrSearchInput<Pipeline>, elements: FSE): CascadeEmpty<Elements, Elements> {
+	return elements.mutate(e =>
+		e.reduce((acc, cur) => {
+			if(!acc.some(el => el.node.id === cur.node.id)) {
+				acc.push(cur as ElementOf<Elements>);
+			}
+			return acc;
+		}, [] as unknown as Elements)
+	) as unknown as CascadeEmpty<Elements, Elements>;
 }

@@ -13,6 +13,7 @@ import { getReferenceOfArgument } from '../../dataflow/graph/graph';
 import { isNotUndefined } from '../../util/assert';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { LintingRuleTag } from '../linter-tags';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -94,13 +95,17 @@ export const SEEDED_RANDOMNESS = {
 			'.meta': metadata
 		};
 	},
-	defaultConfig: {
-		randomnessProducers: [{ type: 'function', name: 'set.seed' }, { type: 'assignment', name: '.Random.seed' }],
-		randomnessConsumers: ['jitter', 'sample', 'sample.int', 'arima.sim', 'kmeans', 'princomp', 'rcauchy', 'rchisq', 'rexp', 'rgamma', 'rgeom', 'rlnorm', 'rlogis', 'rmultinom', 'rnbinom', 'rnorm', 'rpois', 'runif', 'pointLabel', 'some', 'rbernoulli',
-		],
+	info: {
+		defaultConfig: {
+			randomnessProducers: [{ type: 'function', name: 'set.seed' }, { type: 'assignment', name: '.Random.seed' }],
+			randomnessConsumers: ['jitter', 'sample', 'sample.int', 'arima.sim', 'kmeans', 'princomp', 'rcauchy', 'rchisq', 'rexp', 'rgamma', 'rgeom', 'rlnorm', 'rlogis', 'rmultinom', 'rnbinom', 'rnorm', 'rpois', 'runif', 'pointLabel', 'some', 'rbernoulli',
+			],
+		},
+		tags:              [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility],
+		humanReadableName: 'Seeded Randomness',
+		description:       'Checks whether randomness-based function calls are preceded by a random seed generation function like `set.seed`.'
 	},
-	humanReadableName: 'Seeded Randomness',
-	prettyPrint:       {
+	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: result => `Function \`${result.function}\` at ${formatRange(result.range)}`,
 		[LintingPrettyPrintContext.Full]:  result => `Function \`${result.function}\` at ${formatRange(result.range)} is called without a preceding random seed function like \`set.seed\``
 	}

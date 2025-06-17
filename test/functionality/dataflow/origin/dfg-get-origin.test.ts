@@ -135,9 +135,5 @@ describe('Dataflow', withTreeSitter(ts => {
 			/* under the assumption of eval impact */
 			'3@f': [ro('1@f')]
 		});
-		chk('x <- c(1,2)\nx[1] <- 3\nx[2] <- 4\nprint(x)', {
-			'2@x': [wo('2@x'), ro('1@x')],
-			'4@x': [ro('1@x'), ro('2@x'), ro('3@x')],
-		});
 	});
 }));

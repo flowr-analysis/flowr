@@ -20,13 +20,24 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: "🛒 Checkout Repository (Release Perm.)"
+      - name: "🛒 Checkout Repository (Release Perm. with lfs)"
+        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         uses: actions/checkout@v4
         with:
             submodules: true
             lfs:        true
             token:      ${{ secrets.RELEASE_TOKEN }}
             fetch-tags: true
+            fetch-depth: 0
+
+      - name: "🛒 Checkout Repository (Read Perm.)"
+        if: ${{ !((github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))) || failure() }}
+        uses: actions/checkout@v4
+        with:
+            submodules: true
+            lfs:        false
+            token:      ${{ secrets.RELEASE_TOKEN }}
+            fetch-tags: false
             fetch-depth: 0
 
       - name: "🌍 Load Versions to Use"
@@ -49,6 +60,7 @@ jobs:
         run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
 
       - name: "🛒 Checkout LFS"
+        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         # just as a time-proven safety measure
         run: git lfs checkout
 

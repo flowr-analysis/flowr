@@ -3,7 +3,7 @@ import { BenchmarkSlicer } from '../../../src/benchmark/slicer';
 import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print';
 import { CommonSlicerMeasurements, PerSliceMeasurements } from '../../../src/benchmark/stats/stats';
 import { describe, assert, test, beforeAll, afterAll } from 'vitest';
-import { amendConfig, defaultConfigOptions } from '../../../src/config';
+import { amendConfig } from '../../../src/config';
 import { DefaultAllVariablesFilter } from '../../../src/slicing/criterion/filters/all-variables';
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
@@ -159,11 +159,11 @@ cat(d)`
 
 		describe('Slicing with pointer-tracking enabled', () => {
 			beforeAll(() => {
-				amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
+				amendConfig(c => c.solver.pointerTracking = true );
 			});
 
 			afterAll(() => {
-				amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: false } });
+				amendConfig(c => c.solver.pointerTracking = false );
 			});
 
 			test('When indices are stored, then correct values are counted', async() => {

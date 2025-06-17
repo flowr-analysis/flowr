@@ -150,7 +150,7 @@ You can enter ${getReplCommand('help')} to gain more information on its capabili
 
 <summary>Example REPL session</summary>
 
-![Example of a simple REPL session](wiki/gif/repl-demo.gif)
+![Example of a simple REPL session](wiki/gif/repl-demo-opt.gif)
 
 </details>
 

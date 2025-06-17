@@ -185,8 +185,6 @@ See [test/performance](${RemoteFlowrFilePathBaseRef}test/performance) for more i
 Using the vitest Extension for Visual Studio Code, you can start tests directly from the definition and explore your suite in the Testing tab.
 To get started, install the [vitest Extension](https://marketplace.visualstudio.com/items?itemName=vitest.explorer).
 
-![vscode market place](img/vs-code-vitest.png)
-
 |               Testing Tab               | In Code                               |
 |:---------------------------------------:|:-------------------------------------:|
 | ![testing tab](img/testing-vs-code.png) | ![in code](img/testing-vs-code-2.png) |

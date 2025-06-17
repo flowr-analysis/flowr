@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "🛒 Checkout Repository (Release Perm. with lfs)"
-        if: ${{ env.CHANGED == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
+        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         uses: actions/checkout@v4
         with:
             submodules: true
@@ -31,7 +31,7 @@ jobs:
             fetch-depth: 0
 
       - name: "🛒 Checkout Repository (Read Perm.)"
-        if: ${{ !(env.CHANGED == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))) || failure() }}
+        if: ${{ !((github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))) || failure() }}
         uses: actions/checkout@v4
         with:
             submodules: true
@@ -60,6 +60,7 @@ jobs:
         run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
 
       - name: "🛒 Checkout LFS"
+        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         # just as a time-proven safety measure
         run: git lfs checkout
 

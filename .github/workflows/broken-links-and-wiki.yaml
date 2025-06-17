@@ -36,7 +36,7 @@ jobs:
         with:
             submodules: true
             lfs:        false
-            token:      ${{ secrets.READ_TOKEN }}
+            token:      ${{ secrets.RELEASE_TOKEN }}
             fetch-tags: false
             fetch-depth: 0
 

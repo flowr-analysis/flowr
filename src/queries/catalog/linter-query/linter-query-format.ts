@@ -60,7 +60,7 @@ function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, res
 			result.push(`       ╰ ${certainty}:`);
 			for(const res of certaintyResults) {
 				const pretty = rule.prettyPrint[LintingPrettyPrintContext.Query](res, results['.meta']);
-				result.push(`           ╰ ${pretty}${(res.quickFix ? ' (quick fix available)' : '')}`);
+				result.push(`           ╰ ${pretty}${res.quickFix ? ` (${res.quickFix.length} quick fix(es) available)` : ''}`);
 			}
 		}
 	}

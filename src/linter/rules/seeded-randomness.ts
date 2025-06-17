@@ -14,6 +14,7 @@ import { isNotUndefined } from '../../util/assert';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { LintingRuleTag } from '../linter-tags';
+import type { BuiltInFunctionDefinition } from '../../dataflow/environments/built-in-config';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -31,7 +32,10 @@ export interface SeededRandomnessMeta extends MergeableRecord {
 	callsWithAssignmentProducers: number
 }
 
-const assignments = new Set<Identifier>(DefaultBuiltinConfig.filter(b => b.type === 'function' && b.processor == 'builtin:assignment').flatMap(b => b.names));
+const assignments = DefaultBuiltinConfig.filter(b => b.type === 'function' && b.processor == 'builtin:assignment') as BuiltInFunctionDefinition<'builtin:assignment'>[];
+const assignmentSet = new Set<Identifier>(assignments.flatMap(b => b.names));
+const assignmentArgIndexes = new Map<string, number>(assignments.flatMap(a => a.names.map(n => ([n, a.config?.swapSourceAndTarget ? 1 : 0]))));
+
 export const SEEDED_RANDOMNESS = {
 	createSearch: (config) => Q.all()
 		.with(Enrichment.CallTargets, { onlyBuiltin: true })
@@ -44,7 +48,7 @@ export const SEEDED_RANDOMNESS = {
 		})
 		.with(Enrichment.LastCall,[
 			...config.randomnessProducers.filter(p => p.type === 'function').map(p => ({ callName: p.name })),
-			...[...assignments].map(a => ({ callName: a, cascadeIf: () => CascadeAction.Continue }))
+			...[...assignmentSet].map(a => ({ callName: a, cascadeIf: () => CascadeAction.Continue }))
 		]),
 	processSearchResult: (elements, config, { dataflow }) => {
 		const assignmentProducers = new Set<string>(config.randomnessProducers.filter(p => p.type == 'assignment').map(p => p.name));
@@ -68,7 +72,7 @@ export const SEEDED_RANDOMNESS = {
 				.filter(element => {
 					const producers = enrichmentContent(element.searchElement, Enrichment.LastCall).linkedIds
 						.map(e => dataflow.graph.getVertex(e.node.info.id) as DataflowGraphVertexFunctionCall);
-					const { assignment, func } = Object.groupBy(producers, f => assignments.has(f.name) ? 'assignment' : 'func');
+					const { assignment, func } = Object.groupBy(producers, f => assignmentSet.has(f.name) ? 'assignment' : 'func');
 
 					// function calls are already taken care of through the LastCall enrichment itself
 					if(func?.length) {
@@ -77,8 +81,7 @@ export const SEEDED_RANDOMNESS = {
 					}
 
 					// assignments have to be queried for their destination
-					// TODO for -> and ->>, this needs to be the 1st arg, see swapSourceAndTarget in the default builtin config
-					const assignmentDestinations = assignment?.map(a => getReferenceOfArgument(a.args[0])).filter(isNotUndefined);
+					const assignmentDestinations = assignment?.map(a => getReferenceOfArgument(a.args[assignmentArgIndexes.get(a.name) ?? 0])).filter(isNotUndefined);
 					if(assignmentDestinations?.some(d => assignmentProducers.has(recoverName(d, dataflow.graph.idMap) as string))) {
 						metadata.callsWithAssignmentProducers++;
 						return false;

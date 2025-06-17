@@ -100,6 +100,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				for(const inner1 of inners) {
 					for(const inner2 of inners) {
 						assertDeadCode(`${outer} { 1; if(u) ${inner1} else ${inner2}; 2 }`, { reachableFromStart: ['1@1'], unreachableFromStart: ['1@2'] });
+						assertDeadCode(`${outer} { 1; if(TRUE) ${inner1} else ${inner2}; 2 }`, { reachableFromStart: ['1@1'], unreachableFromStart: ['1@2'] });
 					}
 				}
 			}

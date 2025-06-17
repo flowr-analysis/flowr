@@ -13,11 +13,14 @@ import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-c
 import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
 
+type CachedValues<Val> = Map<NodeId, Val>;
+
 class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	
-	private readonly cachedConditions: Map<NodeId, Ternary> = new Map();
 
-	private readonly cachedStatements: Map<NodeId, boolean> = new Map();
+	private readonly cachedConditions: CachedValues<Ternary> = new Map();
+
+	private readonly cachedStatements: CachedValues<boolean> = new Map();
 
 
 	private getValue(id: NodeId): Ternary {
@@ -29,7 +32,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		return this.cachedConditions.get(id) ?? Ternary.Maybe;
 	}
 
-	private isJump(id: NodeId): boolean {
+	private isUnconditionalJump(id: NodeId): boolean {
 		const has = this.cachedStatements.get(id);
 		if(has) {
 			return has;
@@ -58,7 +61,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 						this.config.controlFlow.graph.removeEdge(from, target);
 					}
 				} else if(edge.label === CfgEdgeType.Fd) {
-					if(this.isJump(target)) {
+					if(this.isUnconditionalJump(target)) {
 						this.config.controlFlow.graph.removeEdge(from, target);
 					}
 				}
@@ -86,9 +89,9 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private handleFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
-		switch(data.call.name) {
-			case 'return':
-			case 'stop':
+		switch(data.call.origin[0]) {
+			case 'builtin:return':
+			case 'builtin:stop':
 				this.cachedStatements.set(data.call.id, true);
 				break;
 		}

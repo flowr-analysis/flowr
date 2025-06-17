@@ -88,12 +88,32 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		this.handleValuesFor(id, typeof data.condition === 'object' ? data.condition.nodeId : data.condition);
 	}
 
+	private getBoolArgValue(data: { call: DataflowGraphVertexFunctionCall }): boolean | undefined {
+		if(data.call.args.length !== 1 || data.call.args[0] === EmptyArgument) {
+			return undefined;
+		}
+
+		const values = valueSetGuard(resolveIdToValue(data.call.args[0].nodeId, { graph: this.config.dfg, full: true, idMap: this.config.normalizedAst.idMap }));
+		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
+			return undefined;
+		}
+
+		return Boolean(values.elements[0].value);
+	}
+
 	private handleFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
 		switch(data.call.origin[0]) {
 			case 'builtin:return':
 			case 'builtin:stop':
 				this.cachedStatements.set(data.call.id, true);
 				break;
+			case 'builtin:stopifnot': {
+				const arg = this.getBoolArgValue(data);
+				if(arg !== undefined) {
+					this.cachedStatements.set(data.call.id, !arg);
+				}
+				break;
+			}
 		}
 	}
 

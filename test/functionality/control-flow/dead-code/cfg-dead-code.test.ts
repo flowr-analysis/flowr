@@ -54,6 +54,10 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			assertDeadCode('if(FALSE) 1 else if (TRUE) 2 else 3',  { reachableFromStart: ['1@2'],  unreachableFromStart: ['1@1', '1@3'] });
 		});
 
+		describe('stopifnot(TRUE)', () => {
+			assertDeadCode('if(TRUE) 1; stopifnot(TRUE); 2',  { reachableFromStart: ['1@1', '1@2'],  unreachableFromStart: [] });
+		});
+
 		describe.each([
 			{ prefix: 'while(TRUE)', swap: false },
 			{ prefix: 'while(FALSE)', swap: true },
@@ -79,7 +83,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			{ prefix: 'if(TRUE)',      loop: false },
 			{ prefix: 'if(bar)',       loop: false },
 		])('code after return', ({ prefix, loop }) => {
-			const verbs = loop ? ['return(1)', 'break', 'next', 'stop(1)'] : ['return(1)', 'stop(1)'];
+			const verbs = loop ? ['return(1)', 'break', 'next', 'stop(1)', 'stopifnot(FALSE)'] : ['return(1)', 'stop(1)', 'stopifnot(FALSE)'];
 			for(const verb of verbs) {
 				assertDeadCode(`${prefix}{ foo; ${verb}; 2 }`, { reachableFromStart: ['1@foo'],  unreachableFromStart: ['1@2'] });
 			}
@@ -94,7 +98,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 
 		describe('nested', () => {
 			const outers = ['while (TRUE)', 'repeat', 'for (i in 1:10)'];
-			const inners = ['break', 'return(42)', 'next', 'stop(42)'];
+			const inners = ['break', 'return(42)', 'next', 'stop(42)', 'stopifnot(FALSE)'];
 
 			for(const outer of outers) {
 				for(const inner1 of inners) {

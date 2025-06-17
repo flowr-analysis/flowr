@@ -7,7 +7,10 @@ import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 describe.sequential('List Definition', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'subsetting-multiple'] as const;
 
-	const config = amendConfig(defaultConfigOptions, { solver: { pointerTracking: true } });
+	const config = amendConfig(defaultConfigOptions, c => {
+		c.solver.pointerTracking = true;
+		return c;
+	});
 
 	describe('Named Arguments', () => {
 		const capabilities = [...basicCapabilities, 'named-arguments'] as const;
@@ -69,7 +72,10 @@ describe.sequential('List Definition', withShell(shell => {
 			);
 
 			describe('Skip if index threshold', () => {
-				const config = amendConfig(defaultConfigOptions, { solver: { ...defaultConfigOptions.solver, pointerTracking: { maxIndexCount: 1 } } });
+				const config = amendConfig(defaultConfigOptions, c => {
+					c.solver.pointerTracking = { maxIndexCount: 1 };
+					return c;
+				});
 
 				assertContainerIndicesDefinition(
 					label('Over the limit (list)', capabilities),

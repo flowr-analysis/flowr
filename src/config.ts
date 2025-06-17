@@ -281,7 +281,8 @@ export function parseConfig(jsonString: string): FlowrConfigOptions | undefined 
 }
 
 export function amendConfig(config: FlowrConfigOptions, amendmentFunc: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions) {
-	return amendmentFunc(getConfig());
+	const newConfig = structuredClone(config);
+	return amendmentFunc(newConfig);
 }
 
 export function getConfig(configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfigOptions {

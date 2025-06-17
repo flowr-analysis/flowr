@@ -14,7 +14,7 @@ import { log, LogLevel } from '../util/log';
 import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/text/ansi';
 import commandLineArgs from 'command-line-args';
 import type { EngineConfig, FlowrConfigOptions, KnownEngines } from '../config';
-import { amendConfig, getConfig , getEngineConfig, parseConfig, setConfig, setConfigFile } from '../config';
+import { amendConfig, getConfig, getEngineConfig, parseConfig } from '../config';
 import { guard } from '../util/assert';
 import type { ScriptInformation } from './common/scripts-info';
 import { scripts } from './common/scripts-info';
@@ -109,27 +109,30 @@ function createConfig() : FlowrConfigOptions {
 		config = getConfig(options['config-file'] ?? defaultConfigFile);
 	}
 
-// for all options that we manually supply that have a config equivalent, set them in the config
-amendConfig(c => {
-	if(!options['engine.r-shell.disabled']) {
-		c.engines = [{ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] }];
-	}
+	// for all options that we manually supply that have a config equivalent, set them in the config
+	amendConfig(config, c => {
+		if(!options['engine.r-shell.disabled']) {
+			c.engines = [{ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] }];
+		}
 
-	if(!options['engine.tree-sitter.disabled']) {
-		c.engines = [{
-			type:               'tree-sitter',
-			wasmPath:           options['engine.tree-sitter.wasm-path'],
-			treeSitterWasmPath: options['engine.tree-sitter.tree-sitter-wasm-path'],
-			lax:                options['engine.tree-sitter.lax']
-		}];
-	}
+		if(!options['engine.tree-sitter.disabled']) {
+			c.engines = [{
+				type:               'tree-sitter',
+				wasmPath:           options['engine.tree-sitter.wasm-path'],
+				treeSitterWasmPath: options['engine.tree-sitter.tree-sitter-wasm-path'],
+				lax:                options['engine.tree-sitter.lax']
+			}];
+		}
 
-	if(options['default-engine']) {
-		c.defaultEngine = options['default-engine'] as EngineConfig['type'];
-	}
+		if(options['default-engine']) {
+			c.defaultEngine = options['default-engine'] as EngineConfig['type'];
+		}
 
-	return c;
-});
+		return c;
+	});
+
+	return config;
+}
 
 
 

@@ -252,7 +252,7 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 		}
 	}
 
-	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph: data.dataflow.graph, full: full }, data.config));
+	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph: data.dataflow.graph, full: full, resolve: data.config.solver.variables }));
 	if(resolved) {
 		const values: string[] = [];
 		for(const value of resolved.elements) {

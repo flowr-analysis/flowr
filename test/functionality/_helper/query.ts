@@ -1,5 +1,3 @@
-
-
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
@@ -15,9 +13,9 @@ import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-prin
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import { assert, test } from 'vitest';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
-import { extractCFG } from '../../../src/control-flow/extract-cfg';
 import { defaultConfigOptions } from '../../../src/config';
 import type { KnownParser } from '../../../src/r-bridge/parser';
+import { extractCfg } from '../../../src/control-flow/extract-cfg';
 
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
@@ -87,7 +85,7 @@ export function assertQuery<
 			assert.deepStrictEqual(normalized, expectedNormalized, 'The result of the query does not match the expected result');
 		} /* v8 ignore next 3 */ catch(e: unknown) {
 			console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(info.dataflow));
-			console.error('Control-Flow-Graph', cfgToMermaidUrl(extractCfg(info.normalize, info.dataflow.graph), info.normalize));
+			console.error('Control-Flow-Graph', cfgToMermaidUrl(extractCfg(info.normalize, defaultConfigOptions, info.dataflow.graph), info.normalize));
 			throw e;
 		}
 	});

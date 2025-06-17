@@ -24,10 +24,11 @@ import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import { isFunctionDefinitionVertex } from '../dataflow/graph/vertex';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { ControlFlowInformation } from './control-flow-graph';
-import { CfgEdgeType , CfgVertexType, ControlFlowGraph } from './control-flow-graph';
+import { CfgEdgeType, CfgVertexType, ControlFlowGraph } from './control-flow-graph';
 import type { CfgSimplificationPassName } from './cfg-simplification';
 import { simplifyControlFlowInformation } from './cfg-simplification';
 import { guard } from '../util/assert';
+import type { FlowrConfigOptions } from '../config';
 
 
 const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
@@ -72,10 +73,11 @@ function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInf
 
 /**
  * Given a normalized AST this approximates the control flow graph of the program.
- * This few is different from the computation of the dataflow graph and may differ,
+ * This view is different from the computation of the dataflow graph and may differ,
  * especially because it focuses on intra-procedural analysis.
  *
  * @param ast             - the normalized AST
+ * @param config          - the Flowr config
  * @param graph           - additional dataflow facts to consider by the control flow extraction
  * @param simplifications - a list of simplification passes to apply to the control flow graph
  *
@@ -83,10 +85,11 @@ function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInf
  */
 export function extractCfg<Info = ParentInformation>(
 	ast:    NormalizedAst<Info & ParentInformation>,
+	config: FlowrConfigOptions,
 	graph?: DataflowGraph,
 	simplifications?: readonly CfgSimplificationPassName[]
 ): ControlFlowInformation {
-	return simplifyControlFlowInformation(foldAst(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds), { ast, dfg: graph }, simplifications);
+	return simplifyControlFlowInformation(foldAst(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds), { ast, dfg: graph, config }, simplifications);
 }
 
 /**

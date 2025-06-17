@@ -28,7 +28,7 @@ function formatInfo(out: ReplOutput, type: string): string {
 async function produceAndPrintCfg(shell: KnownParser, remainingLine: string, output: ReplOutput, simplifications: readonly CfgSimplificationPassName[], cfgConverter: (cfg: ControlFlowInformation, ast: NormalizedAst) => string, config: FlowrConfigOptions) {
 	const result = await controlflow(shell, handleString(remainingLine), config);
 
-	const cfg = extractCfg(result.normalize, result.dataflow.graph, [...DefaultCfgSimplificationOrder, ...simplifications]);
+	const cfg = extractCfg(result.normalize, config, result.dataflow.graph, [...DefaultCfgSimplificationOrder, ...simplifications]);
 	const mermaid = cfgConverter(cfg, result.normalize);
 	output.stdout(mermaid);
 	try {

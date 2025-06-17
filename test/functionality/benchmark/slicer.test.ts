@@ -2,10 +2,8 @@ import { summarizeSlicerStats } from '../../../src/benchmark/summarizer/first-ph
 import { BenchmarkSlicer } from '../../../src/benchmark/slicer';
 import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print';
 import { CommonSlicerMeasurements, PerSliceMeasurements } from '../../../src/benchmark/stats/stats';
-import { assert, describe, test } from 'vitest';
 import { amendConfig, defaultConfigOptions } from '../../../src/config';
-import { describe, assert, test, beforeAll, afterAll } from 'vitest';
-import { amendConfig } from '../../../src/config';
+import { assert, describe, test } from 'vitest';
 import { DefaultAllVariablesFilter } from '../../../src/slicing/criterion/filters/all-variables';
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
@@ -181,7 +179,10 @@ print(person$age)`,
 					pointerTracking: true
 				};
 
-				await slicer.init(request, amendConfig(defaultConfigOptions, { solver: { ...defaultConfigOptions.solver, pointerTracking: true } }));
+				await slicer.init(request, amendConfig(defaultConfigOptions, c => {
+					c.solver.pointerTracking = true;
+					return c;
+				}));
 				await slicer.slice('14@print');
 
 				const { stats, statInfo } = await retrieveStatsSafe(slicer, request);

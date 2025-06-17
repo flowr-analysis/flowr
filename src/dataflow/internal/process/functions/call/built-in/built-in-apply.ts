@@ -89,7 +89,7 @@ export function processApply<OtherInfo>(
 	} else if(val.type === RType.Symbol) {
 		functionId = val.info.id;
 		if(resolveValue) {
-			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: data.environment, idMap: data.completeAst.idMap }, data.config.solver.variables));
+			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: data.environment, idMap: data.completeAst.idMap , resolve: data.config.solver.variables }));
 			if(resolved?.elements.length === 1 && resolved.elements[0].type === 'string') {
 				functionName = isValue(resolved.elements[0].value) ? resolved.elements[0].value.str : undefined;
 			}

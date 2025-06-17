@@ -4,19 +4,6 @@ import { Ternary } from '../../util/logic';
 import type { Identifier, IdentifierDefinition } from './identifier';
 import { isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
-import type { BuiltInIdentifierConstant } from './built-in';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { VertexType } from '../graph/vertex';
-import type { DataflowGraph } from '../graph/graph';
-import type { FlowrConfigOptions } from '../../config';
-import { VariableResolve } from '../../config';
-import { assertUnreachable, guard } from '../../util/assert';
-import type { AstIdMap, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { VisitingQueue } from '../../slicing/static/visiting-queue';
-import { envFingerprint } from '../../slicing/static/fingerprint';
-import { EdgeType } from '../graph/edge';
 
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;

@@ -4,7 +4,7 @@ import { assertDataflow, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { Q } from '../../../../src/search/flowr-search-builder';
-import { amendConfig } from '../../../../src/config';
+import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 
 describe.sequential('Container Single Index Based Access', withShell(shell => {
 	describe.each(
@@ -30,7 +30,10 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 			accessCapability,
 		] as const;
 
-		const config = amendConfig(defaultConfigOptions, { solver: { pointerTracking: true } });
+		const config = amendConfig(defaultConfigOptions, c => { 
+			c.solver.pointerTracking = true;
+			return c;
+		});
 
 		describe('Simple access', () => {
 			assertDataflow(

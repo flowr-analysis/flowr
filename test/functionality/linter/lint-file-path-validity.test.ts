@@ -1,13 +1,7 @@
-import { afterAll, beforeAll, describe } from 'vitest';
+import { beforeAll, describe } from 'vitest';
 import { setSourceProvider } from '../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
-import { requestProviderFromFile, requestProviderFromText } from '../../../src/r-bridge/retriever';
-import {
-	amendConfig,
-	defaultConfigOptions,
-	DropPathsOption,
-	InferWorkingDirectory,
-	setConfig
-} from '../../../src/config';
+import { requestProviderFromText } from '../../../src/r-bridge/retriever';
+import { amendConfig, defaultConfigOptions, DropPathsOption, InferWorkingDirectory } from '../../../src/config';
 import { assertLinter } from '../_helper/linter';
 import { LintingCertainty } from '../../../src/linter/linter-format';
 import { Unknown } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
@@ -18,18 +12,17 @@ describe('flowR linter', withTreeSitter(parser => {
 		const files = ['file.csv', 'path/to/deep-file.csv', 'deep-file.csv'];
 		beforeAll(() => {
 			setSourceProvider(requestProviderFromText(Object.fromEntries(files.map(f => [f, '']))));
-			amendConfig(c =>
-				c.solver.resolveSource = {
-					dropPaths:             DropPathsOption.Once,
-					ignoreCapitalization:  true,
-					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
-					searchPath:            []
-				}
-			);
 		});
-		afterAll(() => {
-			setSourceProvider(requestProviderFromFile());
-			setConfig(defaultConfigOptions);
+
+		// TODO Use
+		amendConfig(defaultConfigOptions, c => {
+			c.solver.resolveSource = {
+				dropPaths:             DropPathsOption.Once,
+				ignoreCapitalization:  true,
+				inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
+				searchPath:            []
+			};
+			return c;
 		});
 
 		assertLinter('none', parser, 'cat("hello")', 'file-path-validity', [], { totalReads: 0, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 });

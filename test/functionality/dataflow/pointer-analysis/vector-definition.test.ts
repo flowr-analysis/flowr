@@ -6,7 +6,10 @@ import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 
 describe.sequential('Vector Definition', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'unnamed-arguments', 'subsetting-multiple'] as const;
-	const config = amendConfig(defaultConfigOptions, { solver: { pointerTracking: true } });
+	const config = amendConfig(defaultConfigOptions, c => {
+		c.solver.pointerTracking = true;
+		return c;
+	});
 
 	describe('Simple definition', () => {
 		assertContainerIndicesDefinition(
@@ -56,7 +59,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 				'c(TRUE, FALSE, TRUE, FALSE)',
 				Q.criterion('1@c'),
 				undefined,
-				amendConfig(defaultConfigOptions, { solver: { pointerTracking: { maxIndexCount: 2 } } })
+				amendConfig(defaultConfigOptions, c => {
+					c.solver.pointerTracking = { maxIndexCount: 2 };
+					return c;
+				})
 			);
 		});
 	});

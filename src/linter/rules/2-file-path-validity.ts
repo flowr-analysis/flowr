@@ -11,7 +11,6 @@ import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-q
 
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { Ternary } from '../../util/logic';
-import { getConfig } from '../../config';
 import { requestFromInput } from '../../r-bridge/retriever';
 import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
@@ -89,7 +88,7 @@ export const R2_FILE_PATH_VALIDITY = {
 				}
 
 				// check if any write to the same file happens before the read, and exclude this case if so
-				const writesToFile = results.writtenData.filter(r => samePath(r.destination, matchingRead.source));
+				const writesToFile = results.writtenData.filter(r => samePath(r.destination, matchingRead.source, data.config.solver.resolveSource?.ignoreCapitalization));
 				const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, element.node.info.id));
 				if(writesBefore.some(w => w === Ternary.Always)) {
 					metadata.totalWritesBeforeAlways++;
@@ -97,7 +96,7 @@ export const R2_FILE_PATH_VALIDITY = {
 				}
 
 				// check if the file exists!
-				const paths = findSource(matchingRead.source, {
+				const paths = findSource(data.config.solver.resolveSource, matchingRead.source, {
 					referenceChain: element.node.info.file ? [requestFromInput(`file://${element.node.info.file}`)] : []
 				});
 				if(paths && paths.length) {
@@ -122,8 +121,8 @@ export const R2_FILE_PATH_VALIDITY = {
 	}
 } as const satisfies LintingRule<FilePathValidityResult, FilePathValidityMetadata, FilePathValidityConfig, ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]>;
 
-function samePath(a: string, b: string): boolean {
-	if(getConfig().solver.resolveSource?.ignoreCapitalization === true) {
+function samePath(a: string, b: string, ignoreCapitalization: boolean | undefined): boolean {
+	if(ignoreCapitalization === true) {
 		a = a.toLowerCase();
 		b = b.toLowerCase();
 	}

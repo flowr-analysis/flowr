@@ -1,4 +1,4 @@
-import { getConfig, VariableResolve } from '../../../config';
+import { VariableResolve } from '../../../config';
 import type { LinkTo } from '../../../queries/catalog/call-context-query/call-context-query-format';
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -45,6 +45,8 @@ export interface ResolveInfo {
 	graph?:       DataflowGraph;
 	/** Whether to track variables */
 	full?:        boolean;
+	/** Variable resolve mode */
+	resolve:      VariableResolve;
 }
 
 function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
@@ -143,8 +145,9 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
  * @param graph       - The graph to resolve in
  * @param idMap       - The id map to resolve the node if given as an id
  * @param full        - Whether to track aliases on resolve
+ * @param resolve     - Variable resolve mode
  */
-export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true } : ResolveInfo): ResolveResult {
+export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, resolve } : ResolveInfo): ResolveResult {
 	if(id === undefined) {
 		return Top;
 	}
@@ -159,14 +162,14 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 		case RType.Argument:
 		case RType.Symbol:
 			if(environment) {
-				return full ? trackAliasInEnvironments(node.lexeme, environment, graph, idMap) : Top;
-			} else if(graph && getConfig().solver.variables === VariableResolve.Alias) {
+				return full ? trackAliasInEnvironments(resolve, node.lexeme, environment, graph, idMap) : Top;
+			} else if(graph && resolve === VariableResolve.Alias) {
 				return full ? trackAliasesInGraph(node.info.id, graph, idMap) : Top;
 			} else {
 				return Top;
 			}
 		case RType.FunctionCall:
-			return setFrom(resolveNode(node, environment, graph, idMap));
+			return setFrom(resolveNode(resolve, node, environment, graph, idMap));
 		case RType.String:
 		case RType.Number:
 		case RType.Logical:
@@ -178,18 +181,19 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 
 /**
  * Please use {@link resolveIdToValue}
- * 
+ *
  * Uses the aliases that were tracked in the environments (by the
  * {@link getAliases} function) to resolve a node to a value.
- * 
- * 
+ *
+ *
+ * @param resolve    - Variable resolve mode
  * @param identifier - Identifier to resolve
  * @param use        - Environment to use
  * @param graph      - Dataflow graph
  * @param idMap      - id map of Dataflow graph
  * @returns Value of Identifier or Top
  */
-export function trackAliasInEnvironments(identifier: Identifier | undefined, use: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ResolveResult {
+export function trackAliasInEnvironments(resolve: VariableResolve, identifier: Identifier | undefined, use: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ResolveResult {
 	if(identifier === undefined) {
 		return Top;
 	}
@@ -214,7 +218,7 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, use
 			for(const alias of def.value) {
 				const definitionOfAlias = idMap?.get(alias);
 				if(definitionOfAlias !== undefined) {
-					const value = resolveNode(definitionOfAlias, use, graph, idMap);
+					const value = resolveNode(resolve, definitionOfAlias, use, graph, idMap);
 					if(isTop(value)) {
 						return Top;
 					} 

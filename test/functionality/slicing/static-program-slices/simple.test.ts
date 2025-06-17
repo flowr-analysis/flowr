@@ -8,7 +8,10 @@ import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 describe.sequential('Simple', withShell(shell => {
 	for(const withPointer of [true, false]) {
 		describe(`Constant assignments (${withPointer ? 'with' : 'without'} pointer tracking)`, () => {
-			const config = amendConfig(defaultConfigOptions, { solver: { ...defaultConfigOptions.solver, pointerTracking: withPointer } });
+			const config = amendConfig(defaultConfigOptions, c => {
+				c.solver.pointerTracking = withPointer;
+				return c;
+			});
 
 			for(const i of [1, 2, 3]) {
 				assertSliced(label(`slice constant assignment ${i}`, ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),

@@ -113,7 +113,7 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 		if(arg.value?.type === RType.String) {
 			return [arg.value.content.str];
 		} else if(arg.value?.type === RType.Symbol) {
-			const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, idMap: idMap }, config.solver.variables));
+			const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, idMap: idMap, resolve: config.solver.variables }));
 			if(resolved) {
 				return collectStrings(resolved.elements);
 			}
@@ -137,7 +137,7 @@ function getAsString(config: FlowrConfigOptions, val: RNode<ParentInformation> |
 	if(val.type === RType.String) {
 		return [val.content.str];
 	} else if(val.type === RType.Symbol) {
-		const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: env, idMap: idMap }, config.solver.variables));
+		const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: env, idMap: idMap, resolve: config.solver.variables }));
 		if(resolved) {
 			return collectStrings(resolved.elements);
 		}

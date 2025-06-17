@@ -1,25 +1,23 @@
 import { assert, describe, it } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { SemanticCfgGuidedVisitor } from '../../../src/control-flow/semantic-cfg-guided-visitor';
-import type {
-	TREE_SITTER_DATAFLOW_PIPELINE
-} from '../../../src/core/steps/pipeline/default-pipelines';
-import {
-	createDataflowPipeline
-} from '../../../src/core/steps/pipeline/default-pipelines';
+import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import type { ControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
 import type { DataflowGraphVertexValue } from '../../../src/dataflow/graph/vertex';
 import type { RNumber } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { defaultConfigOptions } from '../../../src/config';
 
 describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
+	const config = defaultConfigOptions;
 
 	function testSemanticVisitor<V extends SemanticCfgGuidedVisitor>(code: string, visitor: (o: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>, controlFlow: ControlFlowInformation) => V, assert: (obj: V) => void) {
 		it(code, async() => {
-			const data = await createDataflowPipeline(ts, { request: requestFromInput(code) }).allRemainingSteps();
-			const cfg = extractCfg(data.normalize, data.dataflow.graph);
+			const data = await createDataflowPipeline(ts, { request: requestFromInput(code) }, config).allRemainingSteps();
+			const cfg = extractCfg(data.normalize, config, data.dataflow.graph);
 			const v = visitor(data, cfg);
 			v.start();
 			assert(v);
@@ -30,7 +28,7 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 		private collect: number[] = [];
 
 		constructor() {
-			super({ defaultVisitingOrder: 'forward', controlFlow, dfg: dataflow.graph, normalizedAst: normalize });
+			super({ defaultVisitingOrder: 'forward', controlFlow, dfg: dataflow.graph, normalizedAst: normalize, flowrConfig: config });
 		}
 
 		protected onNumberConstant(d: { vertex: DataflowGraphVertexValue; node: RNumber }) {
@@ -50,7 +48,7 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 		private foundNull = false;
 
 		constructor() {
-			super({ defaultVisitingOrder: 'forward', controlFlow, dfg: dataflow.graph, normalizedAst: normalize });
+			super({ defaultVisitingOrder: 'forward', controlFlow, dfg: dataflow.graph, normalizedAst: normalize, flowrConfig: config });
 		}
 
 		protected onNullConstant() {

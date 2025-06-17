@@ -158,7 +158,7 @@ describe('flowr', () => {
 
 			const gotCfg = response.cfg;
 			assert.isDefined(gotCfg, 'Expected the cfg to be defined as we requested it');
-			const expectedCfg = extractCfg(response.results.normalize);
+			const expectedCfg = extractCfg(response.results.normalize, defaultConfigOptions);
 			assert.equal(JSON.stringify(gotCfg?.graph, jsonReplacer), JSON.stringify(expectedCfg.graph, jsonReplacer), 'Expected the cfg to be the same as the one extracted from the results');
 		}));
 

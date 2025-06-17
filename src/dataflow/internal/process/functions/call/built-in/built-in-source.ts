@@ -82,8 +82,9 @@ function applyReplacements(path: string, replacements: readonly Record<string, s
 
 /**
  * Tries to find sourced by a source request and returns the first path that exists
- * @param seed - the path originally requested in the `source` call
- * @param data - more information on the loading context
+ * @param resolveSource - options for lax file sourcing
+ * @param seed          - the path originally requested in the `source` call
+ * @param data          - more information on the loading context
  */
 export function findSource(resolveSource: FlowrLaxSourcingOptions | undefined, seed: string, data: { referenceChain: readonly RParseRequest[] }): string[] | undefined {
 	const capitalization = resolveSource?.ignoreCapitalization ?? false;
@@ -175,7 +176,7 @@ export function processSourceCall<OtherInfo>(
 	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
 		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
 	} else if(sourceFileArgument !== EmptyArgument) {
-		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap }, data.config.solver.variables));
+		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.config.solver.variables }));
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 

@@ -1,4 +1,9 @@
-import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from '../../../src/linter/linter-rules';
+import type {
+	LintingRuleConfig,
+	LintingRuleMetadata,
+	LintingRuleNames,
+	LintingRuleResult
+} from '../../../src/linter/linter-rules';
 import { LintingRules } from '../../../src/linter/linter-rules';
 import type { TestLabel } from './label';
 import { decorateLabelContext } from './label';
@@ -11,6 +16,7 @@ import type { LintingRule } from '../../../src/linter/linter-format';
 import { log } from '../../../src/util/log';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser } from '../../../src/r-bridge/parser';
+import { defaultConfigOptions } from '../../../src/config';
 
 export function assertLinter<Name extends LintingRuleNames>(
 	name: string | TestLabel,
@@ -25,10 +31,10 @@ export function assertLinter<Name extends LintingRuleNames>(
 		const pipelineResults = await createDataflowPipeline(parser, {
 			request: requestFromInput(code),
 			getId:   deterministicCountingIdGenerator(0)
-		}).allRemainingSteps();
+		}, defaultConfigOptions).allRemainingSteps();
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
-		const results = executeLintingRule(ruleName, pipelineResults, config);
+		const results = executeLintingRule(ruleName, { ...pipelineResults, config: defaultConfigOptions }, config);
 
 		for(const [type, printer] of Object.entries({
 			text: (result: LintingRuleResult<Name>, metadata: LintingRuleMetadata<Name>) => `${rule.prettyPrint(result, metadata)} (${result.certainty})`,

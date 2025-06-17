@@ -31,7 +31,7 @@ describe.sequential('Alias Tracking', withShell(shell => {
 		['x <- 1; while(x < 10) { if(runif(1)) x <- x + 1 }', 'x', Top]
 	])('%s should resolve %s to %o', async(code, identifier, expectedValues) => {
 		const result = await runPipeline(code, shell);
-		const values = trackAliasInEnvironments(identifier as Identifier, result.dataflow.environment, result.dataflow.graph, result.dataflow.graph.idMap);
+		const values = trackAliasInEnvironments(defaultConfigOptions.solver.variables, identifier as Identifier, result.dataflow.environment, result.dataflow.graph, result.dataflow.graph.idMap);
 		expect(values).toEqual(expectedValues);
 	});
 }));

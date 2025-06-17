@@ -1,7 +1,5 @@
 import { extractCfg } from '../../control-flow/extract-cfg';
-import {
-	createDataflowPipeline, createNormalizePipeline
-} from '../../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline, createNormalizePipeline } from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { KnownParser } from '../../r-bridge/parser';
@@ -29,7 +27,7 @@ export async function getCfg(parser: KnownParser, code: string, simplifications:
 	}, defaultConfigOptions).allRemainingSteps() : await createNormalizePipeline(parser, {
 		request: requestFromInput(code)
 	}, defaultConfigOptions).allRemainingSteps();
-	const cfg = extractCfg(result.normalize, useDfg ? (result as unknown as {dataflow: DataflowInformation}).dataflow.graph : undefined, [...DefaultCfgSimplificationOrder, ...simplifications]);
+	const cfg = extractCfg(result.normalize, defaultConfigOptions, useDfg ? (result as unknown as {dataflow: DataflowInformation}).dataflow.graph : undefined, [...DefaultCfgSimplificationOrder, ...simplifications]);
 	return {
 		info:     cfg,
 		ast:      result.normalize,

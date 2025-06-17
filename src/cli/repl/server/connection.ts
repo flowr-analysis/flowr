@@ -167,7 +167,7 @@ export class FlowRServerConnection {
 	private async sendFileAnalysisResponse(slicer: PipelineExecutor<Pipeline>, results: Partial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>>, message: FileAnalysisRequestMessage): Promise<void> {
 		let cfg: ControlFlowInformation | undefined = undefined;
 		if(message.cfg) {
-			cfg = extractCfg(results.normalize as NormalizedAst, results.dataflow?.graph);
+			cfg = extractCfg(results.normalize as NormalizedAst, this.config, results.dataflow?.graph);
 		}
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() });

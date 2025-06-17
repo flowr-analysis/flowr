@@ -516,7 +516,7 @@ export function assertSliced(
 			'cfg SAT properties',
 			function() {
 				const res = tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>;
-				const cfg = extractCfg(res.normalize, res.dataflow.graph);
+				const cfg = extractCfg(res.normalize, defaultConfigOptions, res.dataflow.graph);
 				const check = assertCfgSatisfiesProperties(cfg, userConfig?.cfgExcludeProperties);
 				try {
 					assert.isTrue(check, 'cfg fails properties: ' + check + ' is not satisfied');

@@ -72,7 +72,7 @@ export async function getStatsForSingleFile(options: StatsHelperCliOptions, conf
 	if(stats.outputs.size === 1) {
 		if(options['dump-json']) {
 			const [, output] = [...stats.outputs.entries()][0];
-			const cfg = extractCfg(output.normalize, output.dataflow.graph);
+			const cfg = extractCfg(output.normalize, config, output.dataflow.graph);
 			statisticsFileProvider.append('output-json', 'parse', await printStepResult(PARSE_WITH_R_SHELL_STEP, output.parse, StepOutputFormat.Json));
 			statisticsFileProvider.append('output-json', 'normalize', await printStepResult(NORMALIZE, output.normalize, StepOutputFormat.Json));
 			statisticsFileProvider.append('output-json', 'dataflow', await printStepResult(STATIC_DATAFLOW, output.dataflow, StepOutputFormat.Json));

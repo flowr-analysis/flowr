@@ -135,8 +135,8 @@ export const UNUSED_DEFINITION = {
 		};
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Definition of \`${result.variableName}\` at ${formatRange(result.range)}` + (result.quickFix ? ' (quick fix available)' : ''),
-		[LintingPrettyPrintContext.Full]:  result => `Definition of \`${result.variableName}\` at ${formatRange(result.range)} is unused` + (result.quickFix ? ' (quick fix available)' : '')
+		[LintingPrettyPrintContext.Query]: result => `Definition of \`${result.variableName}\` at ${formatRange(result.range)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Definition of \`${result.variableName}\` at ${formatRange(result.range)} is unused`
 	},
 	info: {
 		description:       'Checks for unused definitions.',

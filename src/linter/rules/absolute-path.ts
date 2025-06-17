@@ -195,8 +195,8 @@ export const ABSOLUTE_PATH = {
 		};
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}` + (result.quickFix ? ' (quick fix available)' : ''),
-		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} is not absolute` + (result.quickFix ? ' (quick fix available)' : '')
+		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} is not absolute`
 	},
 	info: {
 		description:       'Checks whether file paths are absolute.',

@@ -106,7 +106,7 @@ export const SEEDED_RANDOMNESS = {
 		description:       'Checks whether randomness-based function calls are preceded by a random seed generation function like `set.seed`.'
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Function \`${result.function}\` at ${formatRange(result.range)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Function \`${result.function}\` at ${formatRange(result.range)} is called without a preceding random seed function like \`set.seed\``
+		[LintingPrettyPrintContext.Query]: (result, _meta) => `Function \`${result.function}\` at ${formatRange(result.range)}`,
+		[LintingPrettyPrintContext.Full]:  (result, _meta) => `Function \`${result.function}\` at ${formatRange(result.range)} is called without a preceding random seed function like \`set.seed\``
 	}
 } as const satisfies LintingRule<SeededRandomnessResult, SeededRandomnessMeta, SeededRandomnessConfig>;

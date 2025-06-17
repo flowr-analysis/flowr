@@ -48,7 +48,7 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 	}
 	/**
 	 * A set of functions used to pretty-print the given linting result.
-	 * By default, the {@link LintingResult#certainty} is automatically printed alongside this information.
+	 * By default, the {@link LintingResult#certainty} and whether any {@link LintingResult#quickFix} values are available is automatically printed alongside this information.
 	 */
 	readonly prettyPrint: { [C in LintingPrettyPrintContext]: (result: Result, metadata: Metadata) => string }
 	readonly info:        LinterRuleInformation<NoInfer<Config>>

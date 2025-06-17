@@ -35,7 +35,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 		describe.each([
 			{ prefix: 'if(TRUE)', swap: false },
 			{ prefix: 'if(FALSE)', swap: true },
-			{ prefix: 'x <- TRUE; if(x)', swap: false },	
+			{ prefix: 'x <- TRUE; if(x)', swap: false },
 			{ prefix: 'x <- FALSE; if(x)', swap: true },
 		])('if-else branches', ({ prefix, swap }) => {
 			let reachableFromStart = ['1@1'];

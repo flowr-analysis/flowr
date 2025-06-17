@@ -96,39 +96,24 @@ export class RFunctionType {
 export class UnresolvedRListType {
 	readonly tag = RDataTypeTag.List;
 	readonly elementType = new RTypeVariable();
-	readonly namedElementTypes = new Map<string, RTypeVariable>();
 
 	constructor(elementType?: UnresolvedRDataType) {
 		if(elementType !== undefined) {
 			this.elementType.unify(elementType);
 		}
 	}
-
-	constrainElementTypeForName(name: string, type: UnresolvedRDataType): void {
-		if(!this.namedElementTypes.has(name)) {
-			this.namedElementTypes.set(name, new RTypeVariable());
-		}
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		this.namedElementTypes.get(name)!.unify(type);
-		this.elementType.unify(type);
-	}
 	
 	unify(other: UnresolvedRListType): void {
 		this.elementType.unify(other.elementType);
-		for(const [name, type] of other.namedElementTypes) {
-			this.constrainElementTypeForName(name, type);
-		}
 	}
 }
 
 export class RListType {
 	readonly tag = RDataTypeTag.List;
-	readonly elementType:       RDataType;
-	readonly namedElementTypes: Map<string, RDataType>;
+	readonly elementType: RDataType;
 
-	constructor(elementType: RDataType, namedElementTypes?: Map<string, RDataType>) {
+	constructor(elementType: RDataType) {
 		this.elementType = elementType;
-		this.namedElementTypes = namedElementTypes ?? new Map<string, RDataType>();
 	}
 }
 
@@ -151,6 +136,7 @@ export class RTypeVariable {
 		return this.boundType ?? this;
 	}
 
+	// TODO: Improve handling of error types
 	unify(other: UnresolvedRDataType): void {
 		const thisRep = this.find();
 		const otherRep = other instanceof RTypeVariable ? other.find() : other;
@@ -208,8 +194,7 @@ export function resolveType(type: UnresolvedRDataType): RDataType {
 		return new RFunctionType(resolvedParameterTypes, resolvedReturnType);
 	} else if(type instanceof UnresolvedRListType) {
 		const resolvedElementType = resolveType(type.elementType);
-		const resolvedNamedElementTypes = new Map(type.namedElementTypes.entries().toArray().map(([name, type]) => [name, resolveType(type)]));
-		return new RListType(resolvedElementType, resolvedNamedElementTypes);
+		return new RListType(resolvedElementType);
 	} else {
 		return type;
 	}

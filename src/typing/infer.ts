@@ -5,7 +5,7 @@ import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefini
 import type { DataflowInformation } from '../dataflow/info';
 import type { RLogical } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
-import { isRString, type RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RDataType } from './types';
@@ -16,7 +16,7 @@ import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { isPositionalArgument, type FunctionArgument } from '../dataflow/graph/graph';
+import type { FunctionArgument } from '../dataflow/graph/graph';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { CfgEdgeType, CfgVertexType } from '../control-flow/control-flow-graph';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -327,8 +327,12 @@ class TypeInferringCfgGuidedVisitor<
 
 			const argNode = this.getNormalizedAst(arg.nodeId);
 			guard(argNode !== undefined, 'Expected argument node to be defined');
-			if(arg.name !== undefined) {
-				listType.constrainElementTypeForName(arg.name, argNode.info.typeVariable);
+			if(argNode.type === RType.Argument) {
+				if(argNode.value === undefined) {
+					continue; // Skip arguments without a value
+				}
+
+				listType.elementType.unify(argNode.value.info.typeVariable);
 			} else {
 				listType.elementType.unify(argNode.info.typeVariable);
 			}
@@ -425,29 +429,23 @@ class TypeInferringCfgGuidedVisitor<
 		guard(firstArgNode !== undefined, 'Expected first argument node to be defined');
 		const firstArgType = firstArgNode.info.typeVariable;
 		const firstArgBoundType = firstArgType.find();
-
-		const secondArg = data.call.args.at(1);
-		const secondArgNode = secondArg !== undefined && isPositionalArgument(secondArg) ? this.getNormalizedAst(secondArg.nodeId) : undefined;
 		
-		console.log('Access call origin:', data.call.origin);
-		switch(data.call.origin) {
-			case ['builtin:[']:
+		switch(data.call.name) {
+			case '[':
 				// If the access call is a `[` operation, we can assume that the it returns a subset
 				// of the first argument's elements as another instance of the same container type
 				node.info.typeVariable.unify(firstArgNode.info.typeVariable);
 				break;
-			case ['builtin:[[']:
+			case '[[':
 				if(firstArgBoundType instanceof UnresolvedRListType) {
-					const retrievedElementType = (isRString(secondArgNode) ? firstArgBoundType.namedElementTypes.get(secondArgNode.content.str) : undefined) ?? firstArgBoundType.elementType;
-					node.info.typeVariable.unify(retrievedElementType);
+					node.info.typeVariable.unify(firstArgBoundType.elementType);
 				} else if(isVectorType(firstArgBoundType) || firstArgBoundType instanceof RNullType) {
 					node.info.typeVariable.unify(firstArgType);
 				}
 				break;
-			case ['builtin:$']:
+			case '$':
 				if(firstArgBoundType instanceof UnresolvedRListType) {
-					const retrievedElementType = (secondArgNode !== undefined && secondArgNode.type === RType.Symbol ? firstArgBoundType.namedElementTypes.get(secondArgNode.content) : undefined) ?? firstArgBoundType.elementType;
-					node.info.typeVariable.unify(retrievedElementType);
+					node.info.typeVariable.unify(firstArgBoundType.elementType);
 				}
 				break;
 		}

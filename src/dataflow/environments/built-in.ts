@@ -79,7 +79,7 @@ export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierRefere
 	value:     T
 }
 
-export type UseAsProcessors = ('builtin:default' | 'builtin:return' | 'builtin:stop');
+export type UseAsProcessors = 'builtin:default' | 'builtin:return' | 'builtin:stop';
 
 export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	readonly returnsNthArgument?:    number | 'last',

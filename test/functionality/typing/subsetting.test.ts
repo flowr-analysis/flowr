@@ -56,6 +56,6 @@ describe('Infer types for subsetting expressions', () => {
 	assertInferredTypes(
 		'l <- list(TRUE, a = 42, NULL); l$a',
 		{ query: Q.var('l').last().build(),                    expectedType: new RListType(new RErrorType([new RLogicalType(), new RDoubleType(), new RNullType()])) },
-		{ query: Q.all().filter(RType.Access).first().build(), expectedType: new RDoubleType() },
+		{ query: Q.all().filter(RType.Access).first().build(), expectedType: new RErrorType([new RLogicalType(), new RDoubleType(), new RNullType()]) },
 	);
 });

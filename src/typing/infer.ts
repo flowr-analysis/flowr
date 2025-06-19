@@ -75,9 +75,52 @@ class TypeInferringCfgGuidedVisitor<
 	Dataflow extends DataflowInformation                      = DataflowInformation,
 	Config extends TypeInferringCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dataflow> = TypeInferringCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dataflow>
 > extends SemanticCfgGuidedVisitor<UnresolvedTypeInfo & OtherInfo, ControlFlow, Ast, Dataflow['graph'], Config & { dataflow: Dataflow['graph'] }> {
+	protected visitedEventTriggered = new Map<NodeId, boolean>();
+
 	constructor(config: Config) {
 		super({ dataflow: config.dataflowInfo.graph, ...config });
 	}
+
+
+	protected override visitNode(node: NodeId): boolean {
+		if(this.visited.has(node)) {
+			return false;
+		}
+		// Override the order of the following two lines to ensure that the node is only marked as visited after it has actually been processed
+		this.onVisitNode(node);
+		this.visited.set(node, 1);
+		return true;
+	}
+
+	protected override onVisitNode(node: NodeId): void {
+		// Check if the node has already been visited to prevent duplicate processing due to the modification of the `visitFunctionCall` method
+		if(this.visitedEventTriggered.has(node)) {
+			return;
+		}
+		super.onVisitNode(node);
+		this.visitedEventTriggered.set(node, true);
+	}
+
+	protected override visitFunctionCall(vertex: DataflowGraphVertexFunctionCall) {
+		for(const arg of vertex.args.filter(arg => arg !== EmptyArgument)) {
+			this.onVisitNode(arg.nodeId);
+		}
+		super.visitFunctionCall(vertex);
+	}
+
+	protected override visitVariableUse(vertex: DataflowGraphVertexUse): void {
+		for(const origin of this.getOrigins(vertex.id)?.filter(origin => origin.type === OriginType.ReadVariableOrigin) ?? []) {
+			this.onVisitNode(origin.id);
+		}
+		const node = this.getNormalizedAst(vertex.id);
+		if(node?.type === RType.Argument) {
+			if(node.value !== undefined) {
+				this.onVisitNode(node.value.info.id);
+			}
+		}
+		super.visitVariableUse(vertex);
+	}
+
 
 	protected override onNullConstant(data: { vertex: DataflowGraphVertexValue; node: RSymbol<UnresolvedTypeInfo & ParentInformation, 'NULL'>; }): void {
 		data.node.info.typeVariable.unify(new RNullType());

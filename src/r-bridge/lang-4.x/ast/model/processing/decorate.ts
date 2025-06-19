@@ -518,8 +518,14 @@ export function mapAstInfo<OldInfo, Down, NewInfo>(ast: RNode<OldInfo>, down: Do
 	});
 }
 
-export function mapNormalizedAstInfo<OldInfo, Down, NewInfo>(normalizedAst: NormalizedAst<OldInfo>, down: Down, infoMapper: (node: RNode<OldInfo & ParentInformation>, down: Down) => NewInfo, downUpdater: (node: RNode<OldInfo>, down: Down) => Down = (_node, down) => down): NormalizedAst<NewInfo> {
-	const parentInfoPreservingMapper = (node: RNode<OldInfo & ParentInformation>, down: Down): NewInfo & ParentInformation => {
+export function mapNormalizedAstInfo<OldInfo, NewInfo>(normalizedAst: NormalizedAst<OldInfo>, infoMapper: (node: RNode<OldInfo & ParentInformation>) => NewInfo): NormalizedAst<NewInfo> {
+	const fullInfoMapper = (node: RNode<OldInfo & ParentInformation>): NewInfo & Source => {
+		const sourceInfo = {
+			...(node.info.fullRange !== undefined ? { fullRange: node.info.fullRange } : {}),
+			...(node.info.fullLexeme !== undefined ? { fullLexeme: node.info.fullLexeme } : {}),
+			...(node.info.additionalTokens !== undefined ? { additionalTokens: node.info.additionalTokens } : {}),
+			...(node.info.file !== undefined ? { file: node.info.file } : {})
+		};
 		const parentInfo = {
 			id:      node.info.id,
 			parent:  node.info.parent,
@@ -527,9 +533,13 @@ export function mapNormalizedAstInfo<OldInfo, Down, NewInfo>(normalizedAst: Norm
 			nesting: node.info.nesting,
 			index:   node.info.index
 		};
-		const mappedInfo = infoMapper(node, down);
-		return { ...parentInfo, ...mappedInfo };
+		const mappedInfo = infoMapper(node);
+		return { ...sourceInfo, ...parentInfo, ...mappedInfo };
 	};
-	mapAstInfo(normalizedAst.ast, down, parentInfoPreservingMapper, downUpdater);
+	
+	for(const node of normalizedAst.idMap.values()) {
+		(node.info as NewInfo) = fullInfoMapper(node);
+	}
+	
 	return normalizedAst as unknown as NormalizedAst<NewInfo>;
 }

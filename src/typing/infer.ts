@@ -112,7 +112,13 @@ class TypeInferringCfgGuidedVisitor<
 		}
 		
 		const node = this.getNormalizedAst(data.vertex.id);
-		guard(node !== undefined, 'Expected AST node to be defined');		
+		guard(node !== undefined, 'Expected AST node to be defined');
+		if(node.type === RType.Argument) {
+			if(node.value !== undefined) {
+				node.info.typeVariable.unify(node.value.info.typeVariable);
+			}
+			return;
+		}
 
 		const readOrigins = this.getOrigins(data.vertex.id)?.filter((origin) => origin.type === OriginType.ReadVariableOrigin);
 		if(readOrigins === undefined || readOrigins.length === 0) {
@@ -324,18 +330,9 @@ class TypeInferringCfgGuidedVisitor<
 			if(arg === EmptyArgument) {
 				continue; // Skip empty arguments
 			}
-
 			const argNode = this.getNormalizedAst(arg.nodeId);
 			guard(argNode !== undefined, 'Expected argument node to be defined');
-			if(argNode.type === RType.Argument) {
-				if(argNode.value === undefined) {
-					continue; // Skip arguments without a value
-				}
-
-				listType.elementType.unify(argNode.value.info.typeVariable);
-			} else {
-				listType.elementType.unify(argNode.info.typeVariable);
-			}
+			listType.elementType.unify(argNode.info.typeVariable);
 		}
 	}
 

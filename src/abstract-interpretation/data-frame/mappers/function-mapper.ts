@@ -2,16 +2,19 @@ import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking'
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { isUseVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
+import { findSource } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RFunctionArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import { requestFromInput } from '../../../r-bridge/retriever';
 import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
 import { resolveIdToAbstractValue } from '../absint-visitor';
 import { DataFrameTop } from '../domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeArgument } from '../resolve-args';
+import { readFileSync } from 'fs';
 
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
 
@@ -141,13 +144,73 @@ function mapDataFrameConvert(
 }
 
 function mapDataFrameRead(
-	_args: readonly RFunctionArgument<ParentInformation>[],
-	_params: { fileName: FunctionParameterLocation, header: FunctionParameterLocation, separator: FunctionParameterLocation }
+	args: readonly RFunctionArgument<ParentInformation>[],
+	params: { fileName: FunctionParameterLocation, header: FunctionParameterLocation, separator: FunctionParameterLocation },
+	info: ResolveInfo
 ): DataFrameOperations[] {
+	const fileNameArg = getFunctionArgument(args, params.fileName, info);
+	const fileName = resolveIdToArgValue(fileNameArg, info);
+
+	if(fileNameArg === undefined || fileNameArg === EmptyArgument || typeof fileName !== 'string') {
+		return [{
+			operation: 'create',
+			operand:   undefined,
+			args:      { colnames: undefined, rows: undefined }
+		}];
+	}
+	const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
+	const sources = findSource(fileName, { referenceChain: referenceChain });
+	const source = sources?.[0];
+
+	if(source === undefined) {
+		return [{
+			operation: 'create',
+			operand:   undefined,
+			args:      { colnames: undefined, rows: undefined }
+		}];
+	}
+	const headerArg = getFunctionArgument(args, params.header, info);
+	const separatorArg = getFunctionArgument(args, params.separator, info);
+	const headerValue = resolveIdToArgValue(headerArg, info);
+	const separatorValue = resolveIdToArgValue(separatorArg, info);
+	const header = typeof headerValue === 'boolean' ? headerValue : true;
+	const separator = typeof separatorValue === 'string' ? separatorValue : ',';
+
+	//const result = new Promise<DataFrameOperationArgs<'create'>>(resolve => {
+	//	const readline = createInterface({
+	//		input:     createReadStream(source),
+	//		crlfDelay: Infinity
+	//	});
+	//	let headerLine: string | undefined = undefined;
+	//	let rowCount = 0;
+	//
+	//	readline.on('line', line => {
+	//		if(header && headerLine === undefined) {
+	//			headerLine = line;
+	//		} else if(line.length > 0) {
+	//			rowCount++;
+	//		}
+	//	});
+	//	readline.on('close', () => {
+	//		resolve({
+	//			colnames: headerLine ? getEntriesFromCsvLine(headerLine, separator) : undefined,
+	//			rows:     rowCount
+	//		});
+	//	});
+	//});
+
+	const data = readFileSync(source, 'utf-8');
+	const lines = data.split('\n');
+	const headerLine = header ? lines[0] : undefined;
+	const rowCount = lines.slice(header ? 1 : 0).filter(line => line.length > 0).length;
+
 	return [{
-		operation: 'unknown',
+		operation: 'create',
 		operand:   undefined,
-		args:      {}
+		args:      {
+			colnames: headerLine ? getEntriesFromCsvLine(headerLine, separator) : undefined,
+			rows:     rowCount
+		}
 	}];
 }
 
@@ -699,6 +762,12 @@ function getEffectiveArgs(
 	excluded: string[]
 ): readonly RFunctionArgument<ParentInformation>[] {
 	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !excluded.includes(unescapeArgument(arg.name.content)));
+}
+
+function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = '"'): (string | undefined)[] {
+	const CsvEntryRegex = new RegExp(`(?:^|${sep})(?:${quote}((?:[^${quote}]|${quote}${quote})*)${quote}|([^${quote}${sep}]*))`, 'g');
+
+	return line.matchAll(CsvEntryRegex).map(match => match[1]?.replaceAll('""', '"') ?? match[2]).toArray();
 }
 
 function getUnresolvedSymbolsInExpression(

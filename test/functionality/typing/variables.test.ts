@@ -3,7 +3,7 @@ import { RDoubleType, RNullType } from '../../../src/typing/types';
 import { assertInferredType, assertInferredTypes } from '../_helper/typing/assert-inferred-type';
 import { Q } from '../../../src/search/flowr-search-builder';
 
-describe.only('Infer types for variables', () => {
+describe('Infer types for variables', () => {
 	assertInferredTypes(
 		'x <- 42; x',
 		{ query: Q.var('x').first().build(),  expectedType: new RDoubleType() },

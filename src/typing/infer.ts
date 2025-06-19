@@ -195,12 +195,11 @@ class TypeInferringCfgGuidedVisitor<
 			.filter(([_target, edge]) => edgeIncludesType(edge.types, EdgeType.Calls))
 			.map(([target, _edge]) => target)
 			.toArray();
-		guard(callTargets !== undefined && callTargets.length >= 1, 'Expected at least one target for default function call');
 		
 		const node = this.getNormalizedAst(data.call.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
 
-		for(const target of callTargets) {
+		for(const target of callTargets ?? []) {
 			const targetNode = this.getNormalizedAst(target);
 			if(targetNode !== undefined) {
 				const functionType = new UnresolvedRFunctionType();

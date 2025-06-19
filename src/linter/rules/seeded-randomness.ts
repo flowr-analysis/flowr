@@ -10,11 +10,12 @@ import { FlowrFilter } from '../../search/flowr-search-filters';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { getReferenceOfArgument } from '../../dataflow/graph/graph';
-import { isNotUndefined } from '../../util/assert';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { LintingRuleTag } from '../linter-tags';
 import type { BuiltInFunctionDefinition } from '../../dataflow/environments/built-in-config';
+import { getValueOfArgument } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -27,9 +28,10 @@ export interface SeededRandomnessConfig extends MergeableRecord {
 }
 
 export interface SeededRandomnessMeta extends MergeableRecord {
-	consumerCalls:                number
-	callsWithFunctionProducers:   number
-	callsWithAssignmentProducers: number
+	consumerCalls:                 number
+	callsWithFunctionProducers:    number
+	callsWithAssignmentProducers:  number
+	callsWithNonConstantProducers: number
 }
 
 const assignments = DefaultBuiltinConfig.filter(b => b.type === 'function' && b.processor == 'builtin:assignment') as BuiltInFunctionDefinition<'builtin:assignment'>[];
@@ -53,9 +55,10 @@ export const SEEDED_RANDOMNESS = {
 	processSearchResult: (elements, config, { dataflow }) => {
 		const assignmentProducers = new Set<string>(config.randomnessProducers.filter(p => p.type == 'assignment').map(p => p.name));
 		const metadata: SeededRandomnessMeta = {
-			consumerCalls:                0,
-			callsWithFunctionProducers:   0,
-			callsWithAssignmentProducers: 0
+			consumerCalls:                 0,
+			callsWithFunctionProducers:    0,
+			callsWithAssignmentProducers:  0,
+			callsWithNonConstantProducers: 0
 		};
 		return {
 			results: elements.getElements()
@@ -73,20 +76,35 @@ export const SEEDED_RANDOMNESS = {
 					const producers = enrichmentContent(element.searchElement, Enrichment.LastCall).linkedIds
 						.map(e => dataflow.graph.getVertex(e.node.info.id) as DataflowGraphVertexFunctionCall);
 					const { assignment, func } = Object.groupBy(producers, f => assignmentSet.has(f.name) ? 'assignment' : 'func');
+					let nonConstant = false;
 
 					// function calls are already taken care of through the LastCall enrichment itself
-					if(func?.length) {
-						metadata.callsWithFunctionProducers++;
-						return false;
+					for(const f of func ?? []) {
+						if(getValueOfArgument(dataflow.graph, f, { index: 0 }, [RType.Number, RType.String, RType.Logical]) !== undefined) {
+							metadata.callsWithFunctionProducers++;
+							return false;
+						} else {
+							nonConstant = true;
+						}
 					}
 
 					// assignments have to be queried for their destination
-					const assignmentDestinations = assignment?.map(a => getReferenceOfArgument(a.args[assignmentArgIndexes.get(a.name) ?? 0])).filter(isNotUndefined);
-					if(assignmentDestinations?.some(d => assignmentProducers.has(recoverName(d, dataflow.graph.idMap) as string))) {
-						metadata.callsWithAssignmentProducers++;
-						return false;
+					for(const a of assignment ?? []) {
+						const argIdx = assignmentArgIndexes.get(a.name) as number;
+						const dest = getReferenceOfArgument(a.args[argIdx]);
+						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)){
+							if(getValueOfArgument(dataflow.graph, a, { index: 1-argIdx }, [RType.Number, RType.String, RType.Logical]) !== undefined) {
+								metadata.callsWithAssignmentProducers++;
+								return false;
+							} else {
+								nonConstant = true;
+							}
+						}
 					}
 
+					if(nonConstant) {
+						metadata.callsWithNonConstantProducers++;
+					}
 					return true;
 				})
 

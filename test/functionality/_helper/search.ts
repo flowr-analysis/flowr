@@ -50,7 +50,7 @@ export function assertSearch(
 				const info = results;
 				search = getFlowrSearch(search, optimize);
 
-				const result = runSearch(search, info);
+				const result = runSearch(search,  { ...info, config: defaultConfigOptions });
 				try {
 					if(Array.isArray(expected)) {
 						expected = expected.map(id => {

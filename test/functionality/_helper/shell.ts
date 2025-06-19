@@ -587,7 +587,7 @@ export function assertContainerIndicesDefinition(
 			parser:  shell,
 			request: requestFromInput(input),
 		}, config).allRemainingSteps();
-		const result = runSearch(search, analysis);
+		const result = runSearch(search,  { ...analysis, config: defaultConfigOptions });
 		let findIndices: (id: NodeId) => ContainerIndex[] | undefined;
 		if(userConfig.searchIn === 'dfg') {
 			findIndices = id => findInDfg(id, analysis.dataflow.graph);

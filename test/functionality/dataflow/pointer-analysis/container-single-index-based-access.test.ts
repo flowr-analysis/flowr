@@ -42,7 +42,7 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 				`numbers <- ${def('1', '2')}
 				${acc('numbers', 2)}`,
 				(data) => emptyGraph()
-					.readsQuery(queryAccInLine(2), queryArg(2, '2', 1), data),
+					.readsQuery(queryAccInLine(2), queryArg(2, '2', 1),  { ...data, config: defaultConfigOptions }),
 				{
 					expectIsSubgraph:      true,
 					resolveIdsAsCriterion: true,
@@ -58,7 +58,7 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 					`numbers <- ${def('1', 'c(2, 3)', '4')}
 					${acc('numbers', 2)}`,
 					(data) => emptyGraph()
-						.readsQuery(queryAccInLine(2), queryUnnamedArg('2', 1), data),
+						.readsQuery(queryAccInLine(2), queryUnnamedArg('2', 1), { ...data, config: defaultConfigOptions }),
 					{
 						expectIsSubgraph:      true,
 						resolveIdsAsCriterion: true,
@@ -73,7 +73,7 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 					`numbers <- ${def('1', 'list(a = 2, b = 3)', '4')}
 					${acc('numbers', 2)}`,
 					(data) => emptyGraph()
-						.readsQuery(queryAccInLine(2), queryNamedArg('a', 1), data),
+						.readsQuery(queryAccInLine(2), queryNamedArg('a', 1), { ...data, config: defaultConfigOptions }),
 					{
 						expectIsSubgraph:      true,
 						resolveIdsAsCriterion: true,
@@ -88,7 +88,7 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 					`numbers <- ${def('1', 'list(2, 3)', '4')}
 					${acc('numbers', 2)}`,
 					(data) => emptyGraph()
-						.readsQuery(queryAccInLine(2), queryUnnamedArg('2', 1), data),
+						.readsQuery(queryAccInLine(2), queryUnnamedArg('2', 1), { ...data, config: defaultConfigOptions }),
 					{
 						expectIsSubgraph:      true,
 						resolveIdsAsCriterion: true,
@@ -105,7 +105,7 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 					`numbers <- ${def('1', ['2', '3'], '4')}
 					${acc('numbers', 2, 1)}`,
 					(data) =>  emptyGraph()
-						.readsQuery({ query: Q.varInLine(type, 2).last() }, queryArg(3, '2', 1), data),
+						.readsQuery({ query: Q.varInLine(type, 2).last() }, queryArg(3, '2', 1), { ...data, config: defaultConfigOptions }),
 					{
 						expectIsSubgraph:      true,
 						resolveIdsAsCriterion: true,
@@ -123,7 +123,7 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 						c <- ${def('b')}
 						${acc(acc(acc('c', 1), 42), 1)}`,
 						(data) =>  emptyGraph()
-							.readsQuery(queryAccInLine(4, (query => query.last())), queryArg(1, 'b', 3), data),
+							.readsQuery(queryAccInLine(4, (query => query.last())), queryArg(1, 'b', 3), { ...data, config: defaultConfigOptions }),
 						{
 							expectIsSubgraph:      true,
 							resolveIdsAsCriterion: true,
@@ -143,8 +143,8 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 				${acc('numbers', 1)} <- 5
 				${acc('numbers', 1)}`,
 				(data) =>  emptyGraph()
-					.readsQuery(queryAccInLine(3), queryArg(1, '1', 1), data)
-					.readsQuery(queryAccInLine(3), queryAccInLine(2), data),
+					.readsQuery(queryAccInLine(3), queryArg(1, '1', 1), { ...data, config: defaultConfigOptions })
+					.readsQuery(queryAccInLine(3), queryAccInLine(2), { ...data, config: defaultConfigOptions }),
 				{
 					expectIsSubgraph:      true,
 					resolveIdsAsCriterion: true,
@@ -163,8 +163,8 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 				${acc('numbers', 4)} <- 1
 				${acc('numbers', 1)}`,
 				(data) => emptyGraph()
-					.readsQuery(queryAccInLine(6), queryArg(1, '1', 1), data)
-					.readsQuery(queryAccInLine(6), queryAccInLine(2), data),
+					.readsQuery(queryAccInLine(6), queryArg(1, '1', 1), { ...data, config: defaultConfigOptions })
+					.readsQuery(queryAccInLine(6), queryAccInLine(2), { ...data, config: defaultConfigOptions }),
 				// not reads other indices
 				{
 					expectIsSubgraph:      true,
@@ -182,11 +182,11 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 				${acc('numbers', 1)} <- 1
 				print(${acc('numbers', 1)})`,
 				(data) => emptyGraph()
-					.readsQuery({ query: Q.varInLine('numbers', 2).last() }, { target: '1@numbers' }, data)
+					.readsQuery({ query: Q.varInLine('numbers', 2).last() }, { target: '1@numbers' }, { ...data, config: defaultConfigOptions })
 					.definedByQuery(
 						{ query: Q.varInLine('numbers', 2).first() },
 						{ query: Q.varInLine('numbers', 2).last() },
-						data,
+						{ ...data, config: defaultConfigOptions },
 					),
 				{
 					expectIsSubgraph:      true,
@@ -207,10 +207,10 @@ ${acc('numbers', 1)} <- 1
 ${acc('numbers', 2)} <- 2
 ${accS('numbers', 'foo()')}`,
 				(data) => emptyGraph()
-					.readsQuery(queryAccInLine(4), queryArg(1, '1', 1), data)
-					.readsQuery(queryAccInLine(4), queryArg(2, '2', 1), data)
-					.readsQuery(queryAccInLine(4), queryAccInLine(2), data)
-					.readsQuery(queryAccInLine(4), queryAccInLine(3), data)
+					.readsQuery(queryAccInLine(4), queryArg(1, '1', 1), { ...data, config: defaultConfigOptions })
+					.readsQuery(queryAccInLine(4), queryArg(2, '2', 1), { ...data, config: defaultConfigOptions })
+					.readsQuery(queryAccInLine(4), queryAccInLine(2), { ...data, config: defaultConfigOptions })
+					.readsQuery(queryAccInLine(4), queryAccInLine(3), { ...data, config: defaultConfigOptions })
 				,
 				{
 					expectIsSubgraph:      true,

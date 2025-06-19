@@ -26,7 +26,7 @@ export async function showSearch(shell: RShell, code: string, search: FlowrSearc
 		parser:  shell,
 		request: requestFromInput(code)
 	}, defaultConfigOptions).allRemainingSteps();
-	const result = runSearch(search, analysis);
+	const result = runSearch(search, { ...analysis, config: defaultConfigOptions });
 	const duration = performance.now() - now;
 
 	const metaInfo = `

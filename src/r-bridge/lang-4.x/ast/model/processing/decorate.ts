@@ -519,7 +519,7 @@ export function mapAstInfo<OldInfo, Down, NewInfo>(ast: RNode<OldInfo>, down: Do
 }
 
 export function mapNormalizedAstInfo<OldInfo, NewInfo>(normalizedAst: NormalizedAst<OldInfo>, infoMapper: (node: RNode<OldInfo & ParentInformation>) => NewInfo): NormalizedAst<NewInfo> {
-	const fullInfoMapper = (node: RNode<OldInfo & ParentInformation>): NewInfo & Source => {
+	const fullInfoMapper = (node: RNode<OldInfo & ParentInformation>): NewInfo & ParentInformation & Source => {
 		const sourceInfo = {
 			...(node.info.fullRange !== undefined ? { fullRange: node.info.fullRange } : {}),
 			...(node.info.fullLexeme !== undefined ? { fullLexeme: node.info.fullLexeme } : {}),
@@ -538,7 +538,7 @@ export function mapNormalizedAstInfo<OldInfo, NewInfo>(normalizedAst: Normalized
 	};
 	
 	for(const node of normalizedAst.idMap.values()) {
-		(node.info as NewInfo) = fullInfoMapper(node);
+		(node.info as unknown as NewInfo & ParentInformation & Source) = fullInfoMapper(node);
 	}
 	
 	return normalizedAst as unknown as NormalizedAst<NewInfo>;

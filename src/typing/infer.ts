@@ -49,11 +49,11 @@ export type DataTypeInfo = {
 }
 
 function decorateTypeVariables<OtherInfo>(ast: NormalizedAst<OtherInfo>): NormalizedAst<OtherInfo & UnresolvedTypeInfo> {
-	return mapNormalizedAstInfo(ast, {}, (node, _down) => ({ ...node.info, typeVariable: new RTypeVariable() }));
+	return mapNormalizedAstInfo(ast, node => ({ ...node.info, typeVariable: new RTypeVariable() }));
 }
 
 function resolveTypeVariables<Info extends UnresolvedTypeInfo>(ast: NormalizedAst<Info>): NormalizedAst<Omit<Info, keyof UnresolvedTypeInfo> & DataTypeInfo> {
-	return mapNormalizedAstInfo(ast, {}, (node, _down) => {
+	return mapNormalizedAstInfo(ast, node => {
 		const { typeVariable, ...rest } = node.info;
 		return { ...rest, inferredType: resolveType(typeVariable) };
 	});

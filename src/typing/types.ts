@@ -136,7 +136,6 @@ export class RTypeVariable {
 		return this.boundType ?? this;
 	}
 
-	// TODO: Improve handling of error types
 	unify(other: UnresolvedRDataType): void {
 		const thisRep = this.find();
 		const otherRep = other instanceof RTypeVariable ? other.find() : other;
@@ -154,16 +153,18 @@ export class RTypeVariable {
 		} else if(thisRep instanceof UnresolvedRListType && otherRep instanceof UnresolvedRListType) {
 			thisRep.unify(otherRep);
 		} else if(thisRep instanceof RErrorType && otherRep instanceof RErrorType) {
-			otherRep.conflictingTypes.push(...thisRep.conflictingTypes);
+			for(const type of otherRep.conflictingTypes) {
+				otherRep.conflictingTypes.add(type);
+			}
 			this.boundType = otherRep;
 		} else if(thisRep.tag !== otherRep.tag) {
 			if(thisRep instanceof RErrorType) {
-				thisRep.conflictingTypes.push(otherRep);
+				thisRep.conflictingTypes.add(otherRep);
 			} else if(otherRep instanceof RErrorType) {
-				otherRep.conflictingTypes.push(thisRep);
+				otherRep.conflictingTypes.add(thisRep);
 				this.boundType = otherRep;
 			} else {
-				this.boundType = new RErrorType([thisRep, otherRep]);
+				this.boundType = new RErrorType(thisRep, otherRep);
 			}
 		}
 	}
@@ -171,12 +172,14 @@ export class RTypeVariable {
 
 export class RErrorType {
 	readonly tag = RDataTypeTag.Error;
+	conflictingTypes = new Set<UnresolvedRDataType>();
 
-	constructor(conflictingTypes: UnresolvedRDataType[]) {
-		this.conflictingTypes = conflictingTypes;
+	constructor(...conflictingTypes: UnresolvedRDataType[]) {
+		for(const type of conflictingTypes) {
+			this.conflictingTypes.add(type);
+		}
 	}	
 
-	conflictingTypes: UnresolvedRDataType[];
 }
 
 export class RUnknownType {

@@ -281,7 +281,7 @@ export function parseConfig(jsonString: string): FlowrConfigOptions | undefined 
 }
 
 export function amendConfig(config: FlowrConfigOptions, amendmentFunc: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions) {
-	const newConfig = structuredClone(config);
+	const newConfig = deepMergeObject({}, config) as FlowrConfigOptions;
 	return amendmentFunc(newConfig);
 }
 

@@ -24,7 +24,7 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import type { NoInfo } from '../r-bridge/lang-4.x/ast/model/model';
 import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 
-export function inferDataTypes<Info extends { typeVariable?: undefined }>(ast: NormalizedAst<Info>, dataflowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
+export function inferDataTypes<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
 	const controlFlowInfo = extractCfg(astWithTypeVars, dataflowInfo.graph, ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code']);
 	const config = {
@@ -48,11 +48,11 @@ export type DataTypeInfo = {
 	inferredType: RDataType;
 }
 
-function decorateTypeVariables<OtherInfo>(ast: NormalizedAst<OtherInfo>): NormalizedAst<OtherInfo & UnresolvedTypeInfo> {
+function decorateTypeVariables<Info extends ParentInformation>(ast: NormalizedAst<Info>): NormalizedAst<Info & UnresolvedTypeInfo> {
 	return mapNormalizedAstInfo(ast, node => ({ ...node.info, typeVariable: new RTypeVariable() }));
 }
 
-function resolveTypeVariables<Info extends UnresolvedTypeInfo>(ast: NormalizedAst<Info>): NormalizedAst<Omit<Info, keyof UnresolvedTypeInfo> & DataTypeInfo> {
+function resolveTypeVariables<Info extends ParentInformation & UnresolvedTypeInfo>(ast: NormalizedAst<Info>): NormalizedAst<Omit<Info, keyof UnresolvedTypeInfo> & DataTypeInfo> {
 	return mapNormalizedAstInfo(ast, node => {
 		const { typeVariable, ...rest } = node.info;
 		return { ...rest, inferredType: resolveType(typeVariable) };

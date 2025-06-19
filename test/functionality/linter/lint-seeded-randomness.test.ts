@@ -37,6 +37,8 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		assertLinter('set .Random.seed', parser, '.Random.seed <- 17\nrunif(1)', 'seeded-randomness', [],
 			{ consumerCalls: 1, callsWithAssignmentProducers: 1, callsWithFunctionProducers: 0 });
+		assertLinter('set .Random.seed with assignment inbetween', parser, '.Random.seed <- 17\nx <- 7 \nrunif(1)', 'seeded-randomness', [],
+			{ consumerCalls: 1, callsWithAssignmentProducers: 1, callsWithFunctionProducers: 0 });
 		assertLinter('set .Random.seed reverse', parser, '17 -> .Random.seed\nrunif(1)', 'seeded-randomness', [],
 			{ consumerCalls: 1, callsWithAssignmentProducers: 1, callsWithFunctionProducers: 0 });
 		assertLinter('set .Random.seed override <-', parser, '`<-`<-function(){}\n.Random.seed <- 17\nrunif(1)', 'seeded-randomness',

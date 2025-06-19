@@ -121,7 +121,7 @@ export function identifyLinkToLastCallRelation(
 	graph: DataflowGraph,
 	{ callName, ignoreIf, cascadeIf }: LinkTo<RegExp>
 ): NodeId[] {
-	if(ignoreIf && ignoreIf(from, graph)) {
+	if(ignoreIf !== undefined && (typeof ignoreIf === 'function' ? ignoreIf(from, graph) : ignoreIf)) {
 		return [];
 	}
 
@@ -137,7 +137,7 @@ export function identifyLinkToLastCallRelation(
 			return;
 		}
 		if(callName.test(vertex.name)) {
-			const act = cascadeIf ? cascadeIf(vertex, from, graph) : CascadeAction.Stop;
+			const act = cascadeIf !== undefined ? typeof cascadeIf === 'function' ? cascadeIf(vertex, from, graph) : cascadeIf : CascadeAction.Stop;
 			if(act === CascadeAction.Skip) {
 				return;
 			}

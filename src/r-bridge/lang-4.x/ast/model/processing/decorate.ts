@@ -518,28 +518,12 @@ export function mapAstInfo<OldInfo, Down, NewInfo>(ast: RNode<OldInfo>, down: Do
 	});
 }
 
-export function mapNormalizedAstInfo<OldInfo, NewInfo>(normalizedAst: NormalizedAst<OldInfo>, infoMapper: (node: RNode<OldInfo & ParentInformation>) => NewInfo): NormalizedAst<NewInfo> {
-	const fullInfoMapper = (node: RNode<OldInfo & ParentInformation>): NewInfo & ParentInformation & Source => {
-		const sourceInfo = {
-			...(node.info.fullRange !== undefined ? { fullRange: node.info.fullRange } : {}),
-			...(node.info.fullLexeme !== undefined ? { fullLexeme: node.info.fullLexeme } : {}),
-			...(node.info.additionalTokens !== undefined ? { additionalTokens: node.info.additionalTokens } : {}),
-			...(node.info.file !== undefined ? { file: node.info.file } : {})
-		};
-		const parentInfo = {
-			id:      node.info.id,
-			parent:  node.info.parent,
-			role:    node.info.role,
-			nesting: node.info.nesting,
-			index:   node.info.index
-		};
-		const mappedInfo = infoMapper(node);
-		return { ...sourceInfo, ...parentInfo, ...mappedInfo };
-	};
-	
-	for(const node of normalizedAst.idMap.values()) {
-		(node.info as unknown as NewInfo & ParentInformation & Source) = fullInfoMapper(node);
+export function mapNormalizedAstInfo<OldInfo extends ParentInformation, NewInfo>(normalizedAst: NormalizedAst<OldInfo>, infoMapper: (node: RNode<OldInfo>) => NewInfo): NormalizedAst<NewInfo> {
+	for(const [id, node] of normalizedAst.idMap.entries()) {
+		if(id === node.info.id) { // we skip virtual nodes
+			(node.info as unknown as NewInfo) = infoMapper(node);
+		}
 	}
-	
+
 	return normalizedAst as unknown as NormalizedAst<NewInfo>;
 }

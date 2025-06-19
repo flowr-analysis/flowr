@@ -3,10 +3,8 @@ import { withTreeSitter } from '../_helper/shell';
 import { assertLinter } from '../_helper/linter';
 import { LintingCertainty } from '../../../src/linter/linter-format';
 
-
-
 describe('flowR linter', withTreeSitter(parser => {
-	describe('R1 deprecated functions', () => {
+	describe('deprecated functions', () => {
 		assertLinter('no function listed', parser, 'cat("hello")\nprint("hello")\nx <- 1\ncat(x)',
 			'deprecated-functions', [],
 			{ totalRelevant: 4, totalNotDeprecated: 4 },
@@ -39,5 +37,11 @@ describe('flowR linter', withTreeSitter(parser => {
 			],
 			{ totalRelevant: 2, totalNotDeprecated: 1 }
 		);
+		assertLinter('wiki example', parser, `
+first <- data.frame(x = c(1, 2, 3), y = c(1, 2, 3))
+second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))
+dplyr::all_equal(first, second)`, 'deprecated-functions',
+		[{ certainty: LintingCertainty.Definitely, function: 'dplyr::all_equal', range: [4,1,4,31] }],
+		{ totalRelevant: 9, totalNotDeprecated: 8 });
 	});
 }));

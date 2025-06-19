@@ -8,7 +8,7 @@ import { inferDataTypes } from '../../../typing/infer';
 export function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, queries: readonly DatatypeQuery[]): DatatypeQueryResult {
 	const start = Date.now();
 	const result: DatatypeQueryResult['inferredTypes'] = {};
-	const typedAst = inferDataTypes(ast as NormalizedAst< ParentInformation & { typeVariable?: undefined }>, dataflow);
+	const typedAst = inferDataTypes(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow);
 	
 	for(const { criterion } of queries) {
 		if(result[criterion ?? '1:1'] !== undefined) {

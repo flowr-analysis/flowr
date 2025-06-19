@@ -8,12 +8,13 @@ import { inferDataTypes } from '../../../typing/infer';
 export function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, queries: readonly DatatypeQuery[]): DatatypeQueryResult {
 	const start = Date.now();
 	const result: DatatypeQueryResult['inferredTypes'] = {};
+	const typedAst = inferDataTypes(ast as NormalizedAst< ParentInformation & { typeVariable?: undefined }>, dataflow);
+	
 	for(const { criterion } of queries) {
 		if(result[criterion ?? '1:1'] !== undefined) {
 			log.warn('Duplicate criterion in datatype query:', criterion);
 			continue;
 		}
-		const typedAst = inferDataTypes(ast as NormalizedAst< ParentInformation & { typeVariable?: undefined }>, dataflow);
 		const node = criterion !== undefined ? typedAst.idMap.get(slicingCriterionToId(criterion, typedAst.idMap)) : typedAst.ast;
 		if(node === undefined) {
 			log.warn('Criterion not found in normalized AST:', criterion);

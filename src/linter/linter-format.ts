@@ -15,16 +15,17 @@ export interface LinterRuleInformation<Config extends MergeableRecord = never> {
 	 * The default config for this linting rule.
 	 * This config is combined with the user config when executing the rule.
 	 */
-	readonly defaultConfig: NoInfer<DeepReadonly<Config>>;
+	readonly defaultConfig:     NoInfer<DeepReadonly<Config>>;
 	/**
 	 * A short list of tags that describe and categorize the linting rule.
 	 */
-	readonly tags:          readonly LintingRuleTag[];
+	readonly tags:              readonly LintingRuleTag[];
+	readonly humanReadableName: string
 	/**
 	 * A short description of the linting rule.
 	 * This is used to display the rule in the UI and to provide a brief overview of what the rule does.
 	 */
-	readonly description:   string;
+	readonly description:       string;
 }
 
 /**
@@ -46,14 +47,10 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 		'.meta': Metadata
 	}
 	/**
-	 * A function used to pretty-print the given linting result.
-	 * By default, the {@link LintingResult#certainty} is automatically printed alongside this information.
+	 * A set of functions used to pretty-print the given linting result.
+	 * By default, the {@link LintingResult#certainty} and whether any {@link LintingResult#quickFix} values are available is automatically printed alongside this information.
 	 */
-	readonly prettyPrint: (result: Result, metadata: Metadata) => string
-	/**
-	 * The default config for this linting rule.
-	 * The default config is combined with the user config when executing the rule.
-	 */
+	readonly prettyPrint: { [C in LintingPrettyPrintContext]: (result: Result, metadata: Metadata) => string }
 	readonly info:        LinterRuleInformation<NoInfer<Config>>
 }
 
@@ -116,4 +113,9 @@ export enum LintingCertainty {
 	 * The linting rule is certain that the reported lint is real.
 	 */
 	Definitely = 'definitely'
+}
+
+export enum LintingPrettyPrintContext {
+	Query = 'query',
+	Full = 'full'
 }

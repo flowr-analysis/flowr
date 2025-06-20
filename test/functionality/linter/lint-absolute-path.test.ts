@@ -31,7 +31,7 @@ describe('flowR linter', withTreeSitter(parser => {
 					type:          'replace',
 					'description': 'Replace with a relative path to `/home/me/foo.bar`',
 					range:         [1, 1, 1, 18],
-					replacement:   '"./foo.bar"'
+					replacement:   `".${path.sep}foo.bar"`
 				}]
 			}], { totalConsidered: 1, totalUnknown: 0 }, {
 				useAsFilePath: '/home/me',
@@ -47,7 +47,7 @@ describe('flowR linter', withTreeSitter(parser => {
 					type:          'replace',
 					'description': 'Replace with a relative path to `/home/me/foo.bar`',
 					range:         [1, 10, 1, 27],
-					replacement:   '"./foo.bar"'
+					replacement:   `".${path.sep}foo.bar"`
 				}]
 			}], { totalConsidered: 1, totalUnknown: 0 }, {
 				useAsFilePath: '/home/me',

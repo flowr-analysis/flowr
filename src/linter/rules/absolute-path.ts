@@ -1,5 +1,6 @@
 import type { LintingResult, LintingRule, LintQuickFixReplacement } from '../linter-format';
-import { LintingCertainty } from '../linter-format';
+import { LintingPrettyPrintContext , LintingCertainty } from '../linter-format';
+
 import type { MergeableRecord } from '../../util/objects';
 import { compactRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -193,11 +194,15 @@ export const ABSOLUTE_PATH = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}` + (result.quickFix ? ' (quick fix available)' : ''),
-	info:        {
-		description:   'Checks whether file paths are absolute.',
-		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
-		defaultConfig: {
+	prettyPrint: {
+		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} is not absolute`
+	},
+	info: {
+		description:       'Checks whether file paths are absolute.',
+		humanReadableName: 'Absolute Paths',
+		tags:              [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
+		defaultConfig:     {
 			include: {
 				constructed: true,
 				allStrings:  false
@@ -208,4 +213,3 @@ export const ABSOLUTE_PATH = {
 		}
 	}
 } as const satisfies LintingRule<AbsoluteFilePathResult, AbsoluteFilePathMetadata, AbsoluteFilePathConfig, ParentInformation, FlowrSearchElementMaybeFromQuery<ParentInformation>[]>;
-

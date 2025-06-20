@@ -36,6 +36,29 @@ describe('flowR search', withTreeSitter(parser => {
 		Q.var('x').filter(VertexType.Use).tail().last(),
 	);
 
+	describe('Filters', () => {
+		describe('matches enrichment', () => {
+			assertSearch('call-targets (none)', parser, "cat('hello')\nprint('world')", [],
+				Q.all().filter({ name: FlowrFilter.MatchesEnrichment, args: {
+					enrichment: Enrichment.CallTargets,
+					test:       /"print"/
+				} })
+			);
+			assertSearch('call-targets (other)', parser, "cat('hello')\nprint('world')", [],
+				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
+					enrichment: Enrichment.CallTargets,
+					test:       /"library"/
+				} })
+			);
+			assertSearch('call-targets (match)', parser, "cat('hello')\nprint('world')", ['2@print'],
+				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
+					enrichment: Enrichment.CallTargets,
+					test:       /"print"/
+				} })
+			);
+		});
+	});
+
 	describe('From Query', () => {
 		assertSearch('call-context', parser, 'if(x) { print <- function() {} }\nprint()', [12], Q.fromQuery({
 			type:        'call-context',

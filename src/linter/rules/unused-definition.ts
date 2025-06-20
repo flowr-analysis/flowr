@@ -1,5 +1,6 @@
 import type { LintingResult, LintingRule, LintQuickFixRemove } from '../linter-format';
-import { LintingCertainty } from '../linter-format';
+import { LintingPrettyPrintContext , LintingCertainty } from '../linter-format';
+
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import type { SourceRange } from '../../util/range';
@@ -133,13 +134,16 @@ export const UNUSED_DEFINITION = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint: result => `Definition of \`${result.variableName}\` at ${formatRange(result.range)}` + (result.quickFix ? ' (quick fix available)' : ''),
-	info:        {
-		description:   'Checks for unused definitions.',
-		tags:          [LintingRuleTag.Readability, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
-		defaultConfig: {
+	prettyPrint: {
+		[LintingPrettyPrintContext.Query]: result => `Definition of \`${result.variableName}\` at ${formatRange(result.range)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Definition of \`${result.variableName}\` at ${formatRange(result.range)} is unused`
+	},
+	info: {
+		description:       'Checks for unused definitions.',
+		humanReadableName: 'Unused Definitions',
+		tags:              [LintingRuleTag.Readability, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
+		defaultConfig:     {
 			includeFunctionDefinitions: true
 		}
 	}
 } as const satisfies LintingRule<UnusedDefinitionResult, UnusedDefinitionMetadata, UnusedDefinitionConfig>;
-

@@ -37,5 +37,11 @@ describe('flowR linter', withTreeSitter(parser => {
 			],
 			{ totalDeprecatedCalls: 1, totalDeprecatedFunctionDefinitions: 1 }
 		);
+		assertLinter('wiki example', parser, `
+first <- data.frame(x = c(1, 2, 3), y = c(1, 2, 3))
+second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))
+dplyr::all_equal(first, second)`, 'deprecated-functions',
+		[{ certainty: LintingCertainty.Definitely, function: 'dplyr::all_equal', range: [4,1,4,31] }],
+		{ totalRelevant: 9, totalNotDeprecated: 8 });
 	});
 }));

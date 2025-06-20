@@ -37,6 +37,8 @@ export const DEPRECATED_FUNCTIONS = {
 			}
 		}),
 	processSearchResult: (elements) => {
+		// we don't currently support package names so we strip them from the config and the elements!
+		const funcs = new Set<string>(config.deprecatedFunctions.map(stripPackageName));
 		const metadata: DeprecatedFunctionsMetadata = {
 			totalDeprecatedCalls:               0,
 			totalDeprecatedFunctionDefinitions: 0
@@ -52,6 +54,14 @@ export const DEPRECATED_FUNCTIONS = {
 							target: target as Identifier
 						};
 					});
+				})
+				.filter(element => {
+					if(funcs.has(stripPackageName(element.target))) {
+						return true;
+					} else {
+						metadata.totalNotDeprecated++;
+						return false;
+					}
 				})
 				.map(element => ({
 					certainty: LintingCertainty.Definitely,
@@ -74,3 +84,15 @@ export const DEPRECATED_FUNCTIONS = {
 		}
 	}
 } as const satisfies LintingRule<DeprecatedFunctionsResult, DeprecatedFunctionsMetadata, DeprecatedFunctionsConfig>;
+
+function stripPackageName(functionName: string): string {
+	const idx3 = functionName.indexOf(':::');
+	if(idx3 >= 0) {
+		return functionName.substring(idx3 + 3);
+	}
+	const idx2 = functionName.indexOf('::');
+	if(idx2 >= 0) {
+		return functionName.substring(idx2 + 2);
+	}
+	return functionName;
+}

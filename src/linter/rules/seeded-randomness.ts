@@ -45,7 +45,7 @@ export const SEEDED_RANDOMNESS = {
 			name: FlowrFilter.MatchesEnrichment,
 			args: {
 				enrichment: Enrichment.CallTargets,
-				test:       new RegExp(`"(${config.randomnessConsumers.join('|')})"`)
+				test:       new RegExp(`"(.+:::?)?(${config.randomnessConsumers.join('|')})"`)
 			}
 		})
 		.with(Enrichment.LastCall,[

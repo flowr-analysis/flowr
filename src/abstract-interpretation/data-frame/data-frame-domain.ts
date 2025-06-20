@@ -10,25 +10,25 @@ type DataFrameShape = {
 }
 
 export class DataFrameDomain extends ProductDomain<DataFrameShape> {
-	public create(value: DataFrameShape): DataFrameDomain {
+	public create(value: DataFrameShape, maxColNames?: number): DataFrameDomain {
 		return new DataFrameDomain({
-			colnames: new BoundedSetDomain(value.colnames.value),
+			colnames: new BoundedSetDomain(value.colnames.value, maxColNames),
 			cols:     new PosIntervalDomain(value.cols.value),
 			rows:     new PosIntervalDomain(value.rows.value)
 		});
 	}
 
-	public static bottom(): DataFrameDomain {
+	public static bottom(maxColNames?: number): DataFrameDomain {
 		return new DataFrameDomain({
-			colnames: BoundedSetDomain.bottom(),
+			colnames: BoundedSetDomain.bottom(maxColNames),
 			cols:     PosIntervalDomain.bottom(),
 			rows:     PosIntervalDomain.bottom()
 		});
 	}
 
-	public static top(): DataFrameDomain {
+	public static top(maxColNames?: number): DataFrameDomain {
 		return new DataFrameDomain({
-			colnames: BoundedSetDomain.top(),
+			colnames: BoundedSetDomain.top(maxColNames),
 			cols:     PosIntervalDomain.top(),
 			rows:     PosIntervalDomain.top()
 		});

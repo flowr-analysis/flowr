@@ -109,6 +109,12 @@ df2 <- as.data.frame(df1)
 
 	assertDataFrameDomain(
 		shell,
+		'df <- read.csv2("c.csv", header = FALSE)',
+		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
 		'df <- read.table("c.csv", header = FALSE, sep = ",")',
 		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [4, 4] }]]
 	);
@@ -116,6 +122,30 @@ df2 <- as.data.frame(df1)
 	assertDataFrameDomain(
 		shell,
 		'df <- read.table("c.csv", header = FALSE, sep = ";")',
+		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- readr::read_csv("a.csv")',
+		[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- readr::read_csv("c.csv", col_names = FALSE)',
+		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [4, 4] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- readr::read_csv2("c.csv", col_names = FALSE)',
+		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- readr::read_delim("c.csv", col_names = FALSE, delim = ";")',
 		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }]]
 	);
 

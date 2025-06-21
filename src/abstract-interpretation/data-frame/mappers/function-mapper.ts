@@ -27,6 +27,11 @@ const DataFrameFunctionMapper = {
 	'read.csv2':     mapDataFrameRead,
 	'read.delim':    mapDataFrameRead,
 	'read.delim2':   mapDataFrameRead,
+	'read_csv':      mapDataFrameRead,
+	'read_csv2':     mapDataFrameRead,
+	'read_tsv':      mapDataFrameRead,
+	'read_delim':    mapDataFrameRead,
+	'read_table':    mapDataFrameRead,
 	'cbind':         mapDataFrameColBind,
 	'rbind':         mapDataFrameRowBind,
 	'head':          mapDataFrameHeadTail,
@@ -48,16 +53,21 @@ const DataFrameFunctionMapper = {
 const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 	'data.frame':    { special: ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'] },
 	'as.data.frame': { dataFrame: { pos: 0, name: 'x' } },
-	'read.table':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header' }, separator: { pos: 2, name: 'sep' } },
-	'read.csv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header' }, separator: { pos: 2, name: 'sep' } },
-	'read.csv2':     { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header' }, separator: { pos: 2, name: 'sep' } },
-	'read.delim':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header' }, separator: { pos: 2, name: 'sep' } },
-	'read.delim2':   { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header' }, separator: { pos: 2, name: 'sep' } },
+	'read.table':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ' ' } },
+	'read.csv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ',' } },
+	'read.csv2':     { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ';' } },
+	'read.delim':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: '\t' } },
+	'read.delim2':   { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: '\t' } },
+	'read_table':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: ' ' } },
+	'read_csv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: ',' } },
+	'read_csv2':     { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: ';' } },
+	'read_tsv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: '\t' } },
+	'read_delim':    { fileName: { pos: 0, name: 'file' }, separator: { pos: 1, name: 'delim', default: '\t' }, header: { pos: 5, name: 'col_names', default: true } },
 	'cbind':         { special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
 	'rbind':         { special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
-	'head':          { dataFrame: { pos: 0, name: 'x' }, amount: { pos: 1, name: 'n' } },
-	'tail':          { dataFrame: { pos: 0, name: 'x' }, amount: { pos: 1, name: 'n' } },
-	'subset':        { dataFrame: { pos: 0, name: 'x' }, subset: { pos: 1, name: 'subset' }, select: { pos: 2, name: 'select' }, drop: { pos: 3, name: 'drop' } },
+	'head':          { dataFrame: { pos: 0, name: 'x' }, amount: { pos: 1, name: 'n', default: 6 } },
+	'tail':          { dataFrame: { pos: 0, name: 'x' }, amount: { pos: 1, name: 'n', default: 6 } },
+	'subset':        { dataFrame: { pos: 0, name: 'x' }, subset: { pos: 1, name: 'subset' }, select: { pos: 2, name: 'select' }, drop: { pos: 3, name: 'drop', default: false } },
 	'filter':        { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.preserve'] },
 	'select':        { dataFrame: { pos: 0, name: '.data' }, special: [] },
 	'transform':     { dataFrame: { pos: 0, name: '_data' }, special: [] },
@@ -84,9 +94,10 @@ type DataFrameFunctionParamsMapping = {
 	[Name in DataFrameFunction]: DataFrameFunctionParams<Name>
 }
 
-interface FunctionParameterLocation {
-	pos:   number,
-	name?: string
+interface FunctionParameterLocation<T = undefined> {
+	pos:      number,
+	name?:    string
+	default?: T
 }
 
 export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
@@ -146,7 +157,7 @@ function mapDataFrameConvert(
 
 function mapDataFrameRead(
 	args: readonly RFunctionArgument<ParentInformation>[],
-	params: { fileName: FunctionParameterLocation, header: FunctionParameterLocation, separator: FunctionParameterLocation },
+	params: { fileName: FunctionParameterLocation, header: FunctionParameterLocation<boolean>, separator: FunctionParameterLocation<string> },
 	info: ResolveInfo
 ): DataFrameOperations[] {
 	const fileNameArg = getFunctionArgument(args, params.fileName, info);
@@ -174,8 +185,8 @@ function mapDataFrameRead(
 	const separatorArg = getFunctionArgument(args, params.separator, info);
 	const headerValue = resolveIdToArgValue(headerArg, info);
 	const separatorValue = resolveIdToArgValue(separatorArg, info);
-	const header = typeof headerValue === 'boolean' ? headerValue : true;
-	const separator = typeof separatorValue === 'string' ? separatorValue : ',';
+	const header = typeof headerValue === 'boolean' ? headerValue : params.header.default;
+	const separator = typeof separatorValue === 'string' ? separatorValue : params.separator.default;
 
 	const request = getSourceProvider().createRequest(source);
 	let firstLine: (string | undefined)[] | undefined = undefined;
@@ -311,7 +322,7 @@ function mapDataFrameRowBind(
 
 function mapDataFrameHeadTail(
 	args: readonly RFunctionArgument<ParentInformation>[],
-	params: { dataFrame: FunctionParameterLocation, amount: FunctionParameterLocation },
+	params: { dataFrame: FunctionParameterLocation, amount: FunctionParameterLocation<number> },
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
@@ -327,7 +338,7 @@ function mapDataFrameHeadTail(
 	}
 	const result: DataFrameOperations[] = [];
 	const amountArg = getFunctionArgument(args, params.amount, info);
-	const amountValue = resolveIdToArgValue(amountArg, info);
+	const amountValue = resolveIdToArgValue(amountArg, info) ?? params.amount.default;
 	let rows: number | undefined = undefined;
 	let cols: number | undefined = undefined;
 
@@ -355,7 +366,7 @@ function mapDataFrameHeadTail(
 
 function mapDataFrameSubset(
 	args: readonly RFunctionArgument<ParentInformation>[],
-	params: { dataFrame: FunctionParameterLocation, subset: FunctionParameterLocation, select: FunctionParameterLocation, drop: FunctionParameterLocation },
+	params: { dataFrame: FunctionParameterLocation, subset: FunctionParameterLocation, select: FunctionParameterLocation, drop: FunctionParameterLocation<boolean> },
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
@@ -736,7 +747,7 @@ function getFunctionArguments(
 
 function getFunctionArgument(
 	args: readonly RFunctionArgument<ParentInformation>[],
-	argument: FunctionParameterLocation,
+	argument: FunctionParameterLocation<unknown>,
 	info: ResolveInfo
 ): RFunctionArgument<ParentInformation> | undefined {
 	const pos = argument.pos;
@@ -745,7 +756,7 @@ function getFunctionArgument(
 	if(argument.name !== undefined) {
 		arg = args.find(arg => resolveIdToArgName(arg, info) === argument.name);
 	}
-	if(arg === undefined && pos < args.length && args[pos] !== EmptyArgument && args[pos].name === undefined) {
+	if(arg === undefined && pos >= 0 && pos < args.length && args[pos] !== EmptyArgument && args[pos].name === undefined) {
 		arg = args[pos];
 	}
 	return arg;

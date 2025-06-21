@@ -39,11 +39,11 @@ It offers a wide variety of features, for example:
        ╰ file-path-validity:
            ╰ definitely:
                ╰ Path `/root/x.txt` at 1.1-23
-           ╰ _Metadata_: <code>{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0,"searchTimeMs":0,"processTimeMs":0}</code>
+           ╰ _Metadata_: <code>{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0,"searchTimeMs":0,"processTimeMs":1}</code>
        ╰ absolute-file-paths:
            ╰ definitely:
                ╰ Path `/root/x.txt` at 1.1-23
-           ╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":1,"processTimeMs":0}</code>
+           ╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ unused-definitions:
            ╰ _Metadata_: <code>{"totalConsidered":0,"searchTimeMs":0,"processTimeMs":0}</code>
     [;3mAll queries together required ≈1 ms (1ms accuracy, total 7 ms)[0m[0m
@@ -68,22 +68,22 @@ It offers a wide variety of features, for example:
     
     Query: **linter** (8 ms)\
     &nbsp;&nbsp;&nbsp;╰ deprecated-functions:\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalRelevant":1,"totalNotDeprecated":1,"searchTimeMs":0,"processTimeMs":0}</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalRelevant":1,"totalNotDeprecated":1,"searchTimeMs":0,"processTimeMs":1}</code>\
     &nbsp;&nbsp;&nbsp;╰ file-path-validity:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ definitely:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0,"searchTimeMs":4,"processTimeMs":1}</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0,"searchTimeMs":4,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ absolute-file-paths:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ definitely:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":2,"processTimeMs":0}</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":2,"processTimeMs":1}</code>\
     &nbsp;&nbsp;&nbsp;╰ unused-definitions:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalConsidered":0,"searchTimeMs":0,"processTimeMs":0}</code>\
-    _All queries together required ≈9 ms (1ms accuracy, total 202 ms)_
+    _All queries together required ≈9 ms (1ms accuracy, total 200 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _202.0 ms_ (including parsing and normalization and the query) within the generation environment.	
+    The analysis required _200.0 ms_ (including parsing and normalization and the query) within the generation environment.	
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -101,7 +101,7 @@ It offers a wide variety of features, for example:
               "totalRelevant": 1,
               "totalNotDeprecated": 1,
               "searchTimeMs": 0,
-              "processTimeMs": 0
+              "processTimeMs": 1
             }
           },
           "file-path-validity": {
@@ -123,7 +123,7 @@ It offers a wide variety of features, for example:
               "totalWritesBeforeAlways": 0,
               "totalValid": 0,
               "searchTimeMs": 4,
-              "processTimeMs": 1
+              "processTimeMs": 0
             }
           },
           "absolute-file-paths": {
@@ -143,7 +143,7 @@ It offers a wide variety of features, for example:
               "totalConsidered": 1,
               "totalUnknown": 0,
               "searchTimeMs": 2,
-              "processTimeMs": 0
+              "processTimeMs": 1
             }
           },
           "unused-definitions": {
@@ -611,7 +611,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _14.2 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _14.1 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

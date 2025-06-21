@@ -2,6 +2,8 @@ import { afterAll, beforeAll, describe } from 'vitest';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { ColNamesTop, DataFrameTop, IntervalTop } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { amendConfig, defaultConfigOptions } from '../../../../src/config';
+import { setSourceProvider } from '../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
+import { requestProviderFromFile, requestProviderFromText } from '../../../../src/r-bridge/retriever';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { withShell } from '../../_helper/shell';
 import type { DataFrameTestOptions } from './data-frame';
@@ -18,11 +20,19 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 		testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]));
 	}
 
+	const sources: Readonly<{[path: string]: string}> = {
+		'a.csv': 'id,name,score\n1,"A",95\n2,"B",80\n4,"A",85',
+		'b.csv': ',"id,number","""unique"" name"\n"1",1,6\n"2",2,7\n"3",3,8\n"4",4,9\n"5",5,10\n',
+		'c.csv': '1;3,5;banana\n2;7,8;apple\n3;4,2;peach\n4;1,9;grape\n'
+	};
+
 	beforeAll(() => {
+		setSourceProvider(requestProviderFromText(sources));
 		amendConfig(config => config.solver.pointerTracking = false);
 	});
 
 	afterAll(() => {
+		setSourceProvider(requestProviderFromFile());
 		amendConfig(config => config.solver.pointerTracking = defaultConfigOptions.solver.pointerTracking);
 	});
 
@@ -39,6 +49,11 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 	testDataFrameDomain(
 		'df <- data.frame(c(1, 2, 3:5, c(6, 7, c(8, 9))), c("a", "b", "c"))',
 		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [9, 9] }, { colnames: DomainMatchingType.Overapproximation }]]
+	);
+
+	testDataFrameDomain(
+		'df <- data.frame(1, 1:5)',
+		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]]
 	);
 
 	testDataFrameDomain(
@@ -74,14 +89,34 @@ df2 <- as.data.frame(df1)
 		]
 	);
 
-	testDataFrameDomain(
-		'df <- read.csv(text = "id,age\\n1,30\\n2,50\\n3,45")',
-		[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
+	assertDataFrameDomain(
+		shell,
+		'df <- read.csv("a.csv")',
+		[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
 	);
 
-	testDataFrameDomain(
-		'df <- eval(parse(text = "data.frame()"))',
-		[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
+	assertDataFrameDomain(
+		shell,
+		'df <- read.csv("b.csv")',
+		[['1@df', { colnames: ['','id,number','"unique" name'], cols: [3, 3], rows: [5, 5] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- read.csv("b.csv", header = FALSE)',
+		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [6, 6] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- read.table("c.csv", header = FALSE, sep = ",")',
+		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [4, 4] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- read.table("c.csv", header = FALSE, sep = ";")',
+		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }]]
 	);
 
 	testDataFrameDomain(

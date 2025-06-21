@@ -2,17 +2,21 @@ import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking'
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { isUseVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
+import { findSource, getSourceProvider } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RFunctionArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import { requestFromInput } from '../../../r-bridge/retriever';
+import { readLineByLineSync } from '../../../util/files';
 import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
 import { resolveIdToAbstractValue } from '../absint-visitor';
 import { DataFrameTop } from '../domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeArgument } from '../resolve-args';
 
+const MaxReadLines = 1e7;
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
 
 const DataFrameFunctionMapper = {
@@ -141,13 +145,65 @@ function mapDataFrameConvert(
 }
 
 function mapDataFrameRead(
-	_args: readonly RFunctionArgument<ParentInformation>[],
-	_params: { fileName: FunctionParameterLocation, header: FunctionParameterLocation, separator: FunctionParameterLocation }
+	args: readonly RFunctionArgument<ParentInformation>[],
+	params: { fileName: FunctionParameterLocation, header: FunctionParameterLocation, separator: FunctionParameterLocation },
+	info: ResolveInfo
 ): DataFrameOperations[] {
+	const fileNameArg = getFunctionArgument(args, params.fileName, info);
+	const fileName = resolveIdToArgValue(fileNameArg, info);
+
+	if(fileNameArg === undefined || fileNameArg === EmptyArgument || typeof fileName !== 'string') {
+		return [{
+			operation: 'create',
+			operand:   undefined,
+			args:      { colnames: undefined, rows: undefined }
+		}];
+	}
+	const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
+	const sources = findSource(fileName, { referenceChain: referenceChain });
+	const source = sources?.[0];
+
+	if(source === undefined) {
+		return [{
+			operation: 'create',
+			operand:   undefined,
+			args:      { colnames: undefined, rows: undefined }
+		}];
+	}
+	const headerArg = getFunctionArgument(args, params.header, info);
+	const separatorArg = getFunctionArgument(args, params.separator, info);
+	const headerValue = resolveIdToArgValue(headerArg, info);
+	const separatorValue = resolveIdToArgValue(separatorArg, info);
+	const header = typeof headerValue === 'boolean' ? headerValue : true;
+	const separator = typeof separatorValue === 'string' ? separatorValue : ',';
+
+	const request = getSourceProvider().createRequest(source);
+	let firstLine: (string | undefined)[] | undefined = undefined;
+	let rowCount = 0;
+	let allLines = true;
+
+	const parseLine = (line: Buffer | string, lineNumber: number) => {
+		if(firstLine === undefined) {
+			firstLine = getEntriesFromCsvLine(line.toString(), separator);
+		}
+		if((!header || lineNumber > 0) && line.length > 0) {
+			rowCount++;
+		}
+	};
+
+	if(request.request === 'text') {
+		request.content.split('\n').forEach(parseLine);
+	} else if(request.request === 'file') {
+		allLines = readLineByLineSync(request.content, parseLine, MaxReadLines);
+	}
+
 	return [{
-		operation: 'unknown',
+		operation: 'create',
 		operand:   undefined,
-		args:      {}
+		args:      {
+			colnames: header || firstLine === undefined ? firstLine : Array((firstLine as unknown[]).length).fill(undefined),
+			rows:     allLines ? rowCount : undefined
+		}
 	}];
 }
 
@@ -699,6 +755,12 @@ function getEffectiveArgs(
 	excluded: string[]
 ): readonly RFunctionArgument<ParentInformation>[] {
 	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !excluded.includes(unescapeArgument(arg.name.content)));
+}
+
+function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = '"'): (string | undefined)[] {
+	const CsvEntryRegex = new RegExp(`(?<=^|${sep})(?:${quote}((?:[^${quote}]|${quote}${quote})*)${quote}|([^${sep}]*))`, 'g');
+
+	return line.matchAll(CsvEntryRegex).map(match => match[1]?.replaceAll('""', '"') ?? match[2]).toArray();
 }
 
 function getUnresolvedSymbolsInExpression(

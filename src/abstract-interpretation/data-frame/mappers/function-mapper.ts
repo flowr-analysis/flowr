@@ -2,7 +2,7 @@ import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking'
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { isUseVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
-import { findSource } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import { findSource, getSourceProvider } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RFunctionArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -177,17 +177,25 @@ function mapDataFrameRead(
 	const header = typeof headerValue === 'boolean' ? headerValue : true;
 	const separator = typeof separatorValue === 'string' ? separatorValue : ',';
 
+	const request = getSourceProvider().createRequest(source);
 	let firstLine: (string | undefined)[] | undefined = undefined;
 	let rowCount = 0;
+	let allLines = true;
 
-	const allLines = readLineByLineSync(source, (line, lineNumber) => {
+	const parseLine = (line: Buffer | string, lineNumber: number) => {
 		if(firstLine === undefined) {
 			firstLine = getEntriesFromCsvLine(line.toString(), separator);
 		}
 		if((!header || lineNumber > 0) && line.length > 0) {
 			rowCount++;
 		}
-	}, MaxReadLines);
+	};
+
+	if(request.request === 'text') {
+		request.content.split('\n').forEach(parseLine);
+	} else if(request.request === 'file') {
+		allLines = readLineByLineSync(request.content, parseLine, MaxReadLines);
+	}
 
 	return [{
 		operation: 'create',
@@ -750,7 +758,7 @@ function getEffectiveArgs(
 }
 
 function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = '"'): (string | undefined)[] {
-	const CsvEntryRegex = new RegExp(`(?:^|${sep})(?:${quote}((?:[^${quote}]|${quote}${quote})*)${quote}|([^${quote}${sep}]*))`, 'g');
+	const CsvEntryRegex = new RegExp(`(?<=^|${sep})(?:${quote}((?:[^${quote}]|${quote}${quote})*)${quote}|([^${sep}]*))`, 'g');
 
 	return line.matchAll(CsvEntryRegex).map(match => match[1]?.replaceAll('""', '"') ?? match[2]).toArray();
 }

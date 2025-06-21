@@ -34,7 +34,7 @@ import { executeConfigQuery } from '../queries/catalog/config-query/config-query
 import { executeSearch } from '../queries/catalog/search-query/search-query-executor';
 import { Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
-import { getTypesFromFolderAsMermaid, shortLink } from './doc-util/doc-types';
+import { getTypesFromFolder, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
 import { printCfgCode } from './doc-util/doc-cfg';
@@ -643,9 +643,8 @@ registerQueryDocumentation('location-map', {
 	functionFile:     '../queries/catalog/location-map-query/location-map-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 
-		const types = getTypesFromFolderAsMermaid({
-			files:    [path.resolve('./src/util/range.ts')],
-			typeName: 'SourceRange'
+		const types = getTypesFromFolder({
+			files: [path.resolve('./src/util/range.ts')],
 		});
 		const exampleCode = 'x + 1\nx * 2';
 		return `

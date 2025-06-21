@@ -314,8 +314,11 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 	return collect;
 }
 
-function visualizeMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], options: GetTypesWithProgramOption) {
-	const { nodeLines, edgeLines } = generateMermaidClassDiagram(hierarchyList, options.typeName, options);
+function visualizeMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], options: GetTypesWithProgramOption): string | undefined {
+	if(!options.typeNameForMermaid) {
+		return undefined;
+	}
+	const { nodeLines, edgeLines } = generateMermaidClassDiagram(hierarchyList, options.typeNameForMermaid, options);
 	return nodeLines.length === 0 && edgeLines.length === 0 ? '' : `
 classDiagram
 direction RL
@@ -324,40 +327,44 @@ ${edgeLines.join('\n')}
 `;
 }
 
-function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMermaidOption): {
-	text:    string,
-	info:    TypeElementInSource[],
-	program: ts.Program
-} {
+function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMermaidOption): TypeReport {
 	const { files, program } = getSourceFiles(fileNames);
 	guard(files.length > 0, () => `No source files found for ${JSON.stringify(fileNames)}`);
 	const withProgram = { ...options, program };
 	const hierarchyList = collectHierarchyInformation(files, withProgram);
 	return {
-		text: visualizeMermaidClassDiagram(hierarchyList, withProgram),
-		info: hierarchyList,
+		mermaid: visualizeMermaidClassDiagram(hierarchyList, withProgram),
+		info:    hierarchyList,
 		program
 	};
 }
 
 export interface GetTypesAsMermaidOption {
-	readonly rootFolder?:  string;
-	readonly files?:       readonly string[];
-	readonly typeName:     string;
-	readonly inlineTypes?: readonly string[]
+	readonly rootFolder?:         string;
+	readonly files?:              readonly string[];
+	/** if you request a type name, we will generate a mermaid diagram for that type */
+	readonly typeNameForMermaid?: string;
+	readonly inlineTypes?:        readonly string[]
 }
 
 interface GetTypesWithProgramOption extends GetTypesAsMermaidOption {
 	readonly program: ts.Program;
 }
 
-export interface MermaidTypeReport {
-	text:    string,
+export interface TypeReport {
+	/** if you request a type name this will include the mermaid diagram for the type */
+	mermaid: string | undefined,
 	info:    TypeElementInSource[],
 	program: ts.Program
 }
 
-export function getTypesFromFolderAsMermaid(options: GetTypesAsMermaidOption): MermaidTypeReport {
+export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid: string }): (TypeReport & { mermaid: string })
+export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid?: undefined }): (TypeReport & { mermaid: undefined })
+export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport
+/**
+ * Inspect typescript source code for types and return a report.
+ */
+export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport {
 	guard(options.rootFolder !== undefined || options.files !== undefined, 'Either rootFolder or files must be provided');
 	const files = [...options.files ?? []];
 	if(options.rootFolder) {
@@ -484,10 +491,10 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 		pkg = undefined;
 	}
 	const comments = node.comments?.join('\n').replace(/\\?\n|```[a-zA-Z]*|\s\s*/g, ' ').replace(/<\/?code>|`/g, '').replace(/<\/?p\/?>/g, ' ').replace(/"/g, '\'') ?? '';
-	return `[${codeStyle ? '<code>' : ''}${
+	return `<a href="${getTypePathLink(node)}">${codeStyle ? '<code>' : ''}${
 		(node.comments?.length ?? 0) > 0 ?
 			textWithTooltip(pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) : node.name
-	}${codeStyle ? '</code>' : ''}](${getTypePathLink(node)})`;
+	}${codeStyle ? '</code>' : ''}</a>`;
 }
 
 export function getDocumentationForType(name: string, hierarchy: TypeElementInSource[], prefix = '', fuzzy = false): string {

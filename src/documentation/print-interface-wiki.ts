@@ -26,7 +26,7 @@ import { defaultConfigFile } from '../cli/flowr-main-options';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { PipelineExecutor } from '../core/pipeline-executor';
 import { block, details } from './doc-util/doc-structure';
-import { getTypesFromFolderAsMermaid, mermaidHide, shortLink } from './doc-util/doc-types';
+import { getTypesFromFolder, mermaidHide, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
@@ -264,10 +264,9 @@ ${describeSchema(flowrConfigFileSchema, markdownFormatter)}
 }
 
 function explainWritingCode(shell: RShell): string {
-	const types = getTypesFromFolderAsMermaid({
+	const types = getTypesFromFolder({
 		rootFolder:  path.resolve('./src/'),
 		files:       [path.resolve('./src/core/pipeline-executor.ts'), path.resolve('./src/core/steps/pipeline/default-pipelines.ts')],
-		typeName:    'RShell',
 		inlineTypes: mermaidHide
 	});
 

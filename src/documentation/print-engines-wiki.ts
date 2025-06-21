@@ -4,7 +4,7 @@ import { LogLevel } from '../util/log';
 
 
 import { autoGenHeader } from './doc-util/doc-auto-gen';
-import { getTypesFromFolderAsMermaid, mermaidHide, shortLink } from './doc-util/doc-types';
+import { getTypesFromFolder, mermaidHide, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { RShellExecutor } from '../r-bridge/shell-executor';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -15,10 +15,9 @@ import { block } from './doc-util/doc-structure';
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 
-	const types = getTypesFromFolderAsMermaid({
+	const types = getTypesFromFolder({
 		rootFolder:  path.resolve('src/r-bridge/lang-4.x/tree-sitter/'),
 		files:       [path.resolve('./src/config.ts'), path.resolve('./src/r-bridge/shell.ts'), path.resolve('./src/r-bridge/shell-executor.ts')],
-		typeName:    'FlowrConfigOptions',
 		inlineTypes: mermaidHide
 	});
 

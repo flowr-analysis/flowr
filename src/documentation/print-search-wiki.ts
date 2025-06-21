@@ -8,7 +8,7 @@ import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { showSearch } from './doc-util/doc-search';
 import { FlowrSearchBuilder, Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
-import { getDocumentationForType, getTypesFromFolderAsMermaid, mermaidHide, shortLink } from './doc-util/doc-types';
+import { getDocumentationForType, getTypesFromFolder, mermaidHide, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import type { FlowrSearchGeneratorNode } from '../search/search-executor/search-generators';
 import { runSearch } from '../search/flowr-search-executor';
@@ -16,9 +16,8 @@ import { runSearch } from '../search/flowr-search-executor';
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 
-	const types = getTypesFromFolderAsMermaid({
+	const types = getTypesFromFolder({
 		rootFolder:  path.resolve('./src/search/'),
-		typeName:    'FlowrSearchGenerator',
 		inlineTypes: mermaidHide
 	});
 

@@ -61,8 +61,8 @@ ${prefixLines(Object.keys(LintingRules).sort().map(name => {
       label: Meta Information
       description: Select any tags that you think apply to the linting rule you are suggesting. If you try to suggest a new linting rule, please only select those that you think apply after your suggestions.
       options:
-${prefixLines(Object.entries(LintingRuleTag).map(([name, tag]) => {
-	return `- label: '**${tag}**: ${summarizeIfTooLong(getDocumentationForType('LintingRuleTag::' + name, types.info).replaceAll(/\n/g, ' ').replaceAll('\'', '\\\'').trim())}'\n  required: false`;
+${prefixLines(Object.entries(LintingRuleTag).map(([name]) => {
+	return `- label: '**${name}**: ${summarizeIfTooLong(getDocumentationForType('LintingRuleTag::' + name, types.info).replaceAll(/\n/g, ' ').replaceAll('\'', '\\\'').trim())}'\n  required: false`;
 }).join('\n'), '        ')}
 `.trim();
 }

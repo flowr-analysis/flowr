@@ -40,7 +40,7 @@ function registerRules(shell: RShell, tagTypes: TypeElementInSource[]) {
 	const ruleExplanations = new Map<LintingRuleNames, () => Promise<string>>();
 
 	rule(shell,
-		'deprecated-functions', 'DeprecatedFunctionsConfig',
+		'deprecated-functions', 'DeprecatedFunctionsConfig', 'DEPRECATED_FUNCTIONS',
 		`
 first <- data.frame(x = c(1, 2, 3), y = c(1, 2, 3))
 second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))
@@ -48,19 +48,19 @@ dplyr::all_equal(first, second)
 `, tagTypes);
 
 	rule(shell,
-		'file-path-validity', 'FilePathValidityConfig',
+		'file-path-validity', 'FilePathValidityConfig', 'FILE_PATH_VALIDITY',
 		`
 my_data <- read.csv("C:/Users/me/Documents/My R Scripts/Reproducible.csv")
 `, tagTypes);
 
 	rule(shell,
-		'absolute-file-paths', 'AbsoluteFilePathConfig',
+		'absolute-file-paths', 'AbsoluteFilePathConfig', 'ABSOLUTE_PATH',
 		`
 read.csv("C:/Users/me/Documents/My R Scripts/Reproducible.csv")
 `, tagTypes);
 
 	rule(shell,
-		'unused-definitions', 'UnusedDefinitionConfig',
+		'unused-definitions', 'UnusedDefinitionConfig', 'UNUSED_DEFINITION',
 		`
 x <- 42
 y <- 3
@@ -68,11 +68,11 @@ print(x)
 `, tagTypes);
 
 
-	function rule(shell: RShell, name: LintingRuleNames, configType: string, example: string, types: TypeElementInSource[]) {
+	function rule(shell: RShell, name: LintingRuleNames, configType: string, ruleType: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 		ruleExplanations.set(name, async() => `
 ${section(`${rule.info.name} (${codeInline(name)})`, 3, name)}
-	
+
 ${rule.info.tags.toSorted((a, b) => {
 	// sort but specials first
 	if(a === b) {
@@ -87,7 +87,7 @@ ${rule.info.tags.toSorted((a, b) => {
 	}
 	return a.localeCompare(b);
 }).map(t => makeTagBadge(t, types)).join(' ')}\\
-${rule.info.description}
+${rule.info.description} _Implemented as ${shortLink(ruleType, types, false)}._
 
 <details>
 
@@ -159,7 +159,7 @@ ${section('Tags', 2, 'tags')}
 
 We use tags to categorize linting rules. The following tags are available:
 
-| Tag | Description |
+| Tag/Badge&emsp;&emsp; | Description |
 | --- | :-- |
 ${Object.entries(LintingRuleTag).map(([name, tag]) => {
 	return `| <a id="${tag}"></a> ${makeTagBadge(tag as LintingRuleTag, tagTypes.info)} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll(/\n/g, ' ')} (rule${getAllLintingRulesWitTag(tag).length === 1 ? '' : 's'}: ${

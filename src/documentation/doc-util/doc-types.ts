@@ -484,10 +484,10 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 		pkg = undefined;
 	}
 	const comments = node.comments?.join('\n').replace(/\\?\n|```[a-zA-Z]*|\s\s*/g, ' ').replace(/<\/?code>|`/g, '').replace(/<\/?p\/?>/g, ' ').replace(/"/g, '\'') ?? '';
-	return `[${codeStyle ? '<code>' : ''}${
+	return `<a href="${getTypePathLink(node)}">${codeStyle ? '<code>' : ''}${
 		(node.comments?.length ?? 0) > 0 ?
 			textWithTooltip(pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) : node.name
-	}${codeStyle ? '</code>' : ''}](${getTypePathLink(node)})`;
+	}${codeStyle ? '</code>' : ''}</a>`;
 }
 
 export function getDocumentationForType(name: string, hierarchy: TypeElementInSource[], prefix = '', fuzzy = false): string {

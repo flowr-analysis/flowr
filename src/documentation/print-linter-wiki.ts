@@ -12,7 +12,7 @@ import type {
 } from './doc-util/doc-types';
 import {
 	getDocumentationForType,
-	getTypesFromFolderAsMermaid,
+	getTypesFromFolder,
 	mermaidHide,
 	shortLink
 } from './doc-util/doc-types';
@@ -127,9 +127,8 @@ function linkToRule(name: LintingRuleNames): string {
 
 async function getText(shell: RShell): Promise<string> {
 	const rVersion = (await shell.usedRVersion())?.format() ?? 'unknown';
-	const tagTypes = getTypesFromFolderAsMermaid({
+	const tagTypes = getTypesFromFolder({
 		rootFolder:  path.resolve('./src/linter/'),
-		typeName:    'LintingRuleTag',
 		inlineTypes: mermaidHide
 	});
 

@@ -1,6 +1,6 @@
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
-import { getDocumentationForType, getTypesFromFolderAsMermaid } from './doc-util/doc-types';
+import { getDocumentationForType, getTypesFromFolder } from './doc-util/doc-types';
 import path from 'path';
 import { LintingRuleTag } from '../linter/linter-tags';
 import { prefixLines } from './doc-util/doc-general';
@@ -19,9 +19,8 @@ function summarizeIfTooLong(text: string, maxLength = 52): string {
 
 
 function getText() {
-	const types = getTypesFromFolderAsMermaid({
-		rootFolder: path.resolve('./src/linter/'),
-		typeName:   'LintingRuleTag'
+	const types = getTypesFromFolder({
+		rootFolder: path.resolve('./src/linter/')
 	});
 
 	return `

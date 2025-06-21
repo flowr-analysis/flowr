@@ -5,7 +5,7 @@ import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
 import {
 	mermaidHide,
-	getTypesFromFolderAsMermaid,
+	getTypesFromFolder,
 	shortLink,
 	printHierarchy,
 	printCodeOfElement,
@@ -154,15 +154,13 @@ class CollectSourcesSemanticVisitor extends SemanticCfgGuidedVisitor {
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 
-	const types = getTypesFromFolderAsMermaid({
+	const types = getTypesFromFolder({
 		rootFolder:  path.resolve('./src'),
-		typeName:    'RNode',
 		inlineTypes: mermaidHide
 	});
 
-	const testTypes = getTypesFromFolderAsMermaid({
+	const testTypes = getTypesFromFolder({
 		rootFolder:  path.resolve('./test'),
-		typeName:    'assertCfg',
 		inlineTypes: mermaidHide
 	});
 

@@ -154,9 +154,9 @@ function mapDataFrameRead(
 
 	if(fileNameArg === undefined || fileNameArg === EmptyArgument || typeof fileName !== 'string') {
 		return [{
-			operation: 'create',
+			operation: 'unknown',
 			operand:   undefined,
-			args:      { colnames: undefined, rows: undefined }
+			args:      {}
 		}];
 	}
 	const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
@@ -165,9 +165,9 @@ function mapDataFrameRead(
 
 	if(source === undefined) {
 		return [{
-			operation: 'create',
+			operation: 'read',
 			operand:   undefined,
-			args:      { colnames: undefined, rows: undefined }
+			args:      { file: fileName, colnames: undefined, rows: undefined }
 		}];
 	}
 	const headerArg = getFunctionArgument(args, params.header, info);
@@ -198,9 +198,10 @@ function mapDataFrameRead(
 	}
 
 	return [{
-		operation: 'create',
+		operation: 'read',
 		operand:   undefined,
 		args:      {
+			file:     source,
 			colnames: header || firstLine === undefined ? firstLine : Array((firstLine as unknown[]).length).fill(undefined),
 			rows:     allLines ? rowCount : undefined
 		}

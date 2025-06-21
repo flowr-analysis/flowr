@@ -69,6 +69,7 @@ export const DEPRECATED_FUNCTIONS = {
 	},
 	prettyPrint: result => `Function \`${result.function}\` at ${formatRange(result.range)}`,
 	info:        {
+		name:          'Deprecated Functions',
 		tags:          [LintingRuleTag.Deprecated, LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
 		description:   'Marks deprecated functions that should not be used anymore.',
 		defaultConfig: {

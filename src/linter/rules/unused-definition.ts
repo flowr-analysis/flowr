@@ -135,6 +135,7 @@ export const UNUSED_DEFINITION = {
 	},
 	prettyPrint: result => `Definition of \`${result.variableName}\` at ${formatRange(result.range)}` + (result.quickFix ? ' (quick fix available)' : ''),
 	info:        {
+		name:          'Unused Definitions',
 		description:   'Checks for unused definitions.',
 		tags:          [LintingRuleTag.Readability, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
 		defaultConfig: {

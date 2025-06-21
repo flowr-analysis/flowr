@@ -116,6 +116,7 @@ jobs:
           update_page wiki/"Onboarding" wiki:onboarding
           update_page wiki/"FAQ" wiki:faq
           update_page wiki/"Linter" wiki:linter
+          update_page .github/ISSUE_TEMPLATE/linting-rule.yaml gen:linter-issue
           update_page README gen:readme
           
           # check for an update in the versions! (including the updated name information)

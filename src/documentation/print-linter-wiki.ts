@@ -41,7 +41,6 @@ function registerRules(shell: RShell, tagTypes: TypeElementInSource[]) {
 
 	rule(shell,
 		'deprecated-functions', 'DeprecatedFunctionsConfig',
-		'Deprecated Functions',
 		`
 first <- data.frame(x = c(1, 2, 3), y = c(1, 2, 3))
 second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))
@@ -50,21 +49,18 @@ dplyr::all_equal(first, second)
 
 	rule(shell,
 		'file-path-validity', 'FilePathValidityConfig',
-		'File Path Validity',
 		`
 my_data <- read.csv("C:/Users/me/Documents/My R Scripts/Reproducible.csv")
 `, tagTypes);
 
 	rule(shell,
 		'absolute-file-paths', 'AbsoluteFilePathConfig',
-		'Absolute Paths',
 		`
 read.csv("C:/Users/me/Documents/My R Scripts/Reproducible.csv")
 `, tagTypes);
 
 	rule(shell,
 		'unused-definitions', 'UnusedDefinitionConfig',
-		'Unused Definitions',
 		`
 x <- 42
 y <- 3
@@ -72,10 +68,10 @@ print(x)
 `, tagTypes);
 
 
-	function rule(shell: RShell, name: LintingRuleNames, configType: string, friendlyName: string, example: string, types: TypeElementInSource[]) {
+	function rule(shell: RShell, name: LintingRuleNames, configType: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 		ruleExplanations.set(name, async() => `
-${section(`${friendlyName} (${codeInline(name)})`, 3, name)}
+${section(`${rule.info.name} (${codeInline(name)})`, 3, name)}
 	
 ${rule.info.tags.toSorted((a, b) => {
 	// sort but specials first

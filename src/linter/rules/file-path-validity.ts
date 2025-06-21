@@ -117,6 +117,7 @@ export const FILE_PATH_VALIDITY = {
 	},
 	prettyPrint: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
 	info:        {
+		name:          'File Path Validity',
 		description:   'Checks whether file paths used in read and write operations are valid and point to existing files.',
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug],
 		defaultConfig: {

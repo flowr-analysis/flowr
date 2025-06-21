@@ -10,12 +10,13 @@ import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-func
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { requestFromInput } from '../../../r-bridge/retriever';
+import { readLineByLineSync } from '../../../util/files';
 import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
 import { resolveIdToAbstractValue } from '../absint-visitor';
 import { DataFrameTop } from '../domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeArgument } from '../resolve-args';
-import { readFileSync } from 'fs';
 
+const MaxReadLines = 1e7;
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
 
 const DataFrameFunctionMapper = {
@@ -176,40 +177,24 @@ function mapDataFrameRead(
 	const header = typeof headerValue === 'boolean' ? headerValue : true;
 	const separator = typeof separatorValue === 'string' ? separatorValue : ',';
 
-	//const result = new Promise<DataFrameOperationArgs<'create'>>(resolve => {
-	//	const readline = createInterface({
-	//		input:     createReadStream(source),
-	//		crlfDelay: Infinity
-	//	});
-	//	let headerLine: string | undefined = undefined;
-	//	let rowCount = 0;
-	//
-	//	readline.on('line', line => {
-	//		if(header && headerLine === undefined) {
-	//			headerLine = line;
-	//		} else if(line.length > 0) {
-	//			rowCount++;
-	//		}
-	//	});
-	//	readline.on('close', () => {
-	//		resolve({
-	//			colnames: headerLine ? getEntriesFromCsvLine(headerLine, separator) : undefined,
-	//			rows:     rowCount
-	//		});
-	//	});
-	//});
+	let firstLine: (string | undefined)[] | undefined = undefined;
+	let rowCount = 0;
 
-	const data = readFileSync(source, 'utf-8');
-	const lines = data.split('\n');
-	const headerLine = header ? lines[0] : undefined;
-	const rowCount = lines.slice(header ? 1 : 0).filter(line => line.length > 0).length;
+	const allLines = readLineByLineSync(source, (line, lineNumber) => {
+		if(firstLine === undefined) {
+			firstLine = getEntriesFromCsvLine(line.toString(), separator);
+		}
+		if((!header || lineNumber > 0) && line.length > 0) {
+			rowCount++;
+		}
+	}, MaxReadLines);
 
 	return [{
 		operation: 'create',
 		operand:   undefined,
 		args:      {
-			colnames: headerLine ? getEntriesFromCsvLine(headerLine, separator) : undefined,
-			rows:     rowCount
+			colnames: header || firstLine === undefined ? firstLine : Array((firstLine as unknown[]).length).fill(undefined),
+			rows:     allLines ? rowCount : undefined
 		}
 	}];
 }

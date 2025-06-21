@@ -11,7 +11,7 @@ import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import type { ControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
-import type { DataflowGraphVertexValue } from '../../../src/dataflow/graph/vertex';
+import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../../../src/dataflow/graph/vertex';
 import type { RNumber } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RSymbol } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
@@ -116,5 +116,31 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 		}
 	}(), o => {
 		assert.isTrue(o.foundAccess());
+	});
+
+	testSemanticVisitor('v <- c(1,2,3)', ({ dataflow, normalize }, controlFlow) => new class extends SemanticCfgGuidedVisitor {
+		private lexemes: string[] = [];
+
+		constructor() {
+			super({ defaultVisitingOrder: 'forward', defaultVisitingType: 'exit', controlFlow, dfg: dataflow.graph, normalizedAst: normalize });
+		}
+
+		protected onNumberConstant(data: { vertex: DataflowGraphVertexValue, node: RNumber }) {
+			this.lexemes.push(data.node.lexeme);
+		}
+
+		protected onVectorCall(data: { call: DataflowGraphVertexFunctionCall }) {
+			this.lexemes.push(data.call.name);
+		}
+
+		protected onAssignmentCall(data: { call: DataflowGraphVertexFunctionCall }) {
+			this.lexemes.push(data.call.name);
+		}
+
+		public getLexemes(): string[] {
+			return this.lexemes;
+		}
+	}(), o => {
+		assert.deepStrictEqual(o.getLexemes(), ['1', '2', '3', 'c', '<-']);
 	});
 }));

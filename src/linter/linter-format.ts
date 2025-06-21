@@ -11,6 +11,8 @@ import type { LintingRuleTag } from './linter-tags';
 import type { SourceRange } from '../util/range';
 
 export interface LinterRuleInformation<Config extends MergeableRecord = never> {
+	/** Human-Readable name of the linting rule. */
+	readonly name:          string;
 	/**
 	 * The default config for this linting rule.
 	 * This config is combined with the user config when executing the rule.

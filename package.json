@@ -39,6 +39,7 @@
     "wiki:cfg": "ts-node src/documentation/print-cfg-wiki.ts",
     "wiki:linter": "ts-node src/documentation/print-linter-wiki.ts",
     "gen:readme": "ts-node src/documentation/print-readme.ts",
+    "gen:linter-issue": "ts-node src/documentation/print-linter-issue.ts",
     "build": "tsc --project .",
     "build-dev": "npm run build && npm run build:copy-wasm",
     "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --tree-shaking=true --bundle --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm",

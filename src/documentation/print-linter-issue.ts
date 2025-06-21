@@ -26,14 +26,14 @@ function getText() {
 
 	return `
 name: Linting Rule
-description: Suggest either a new linting rule or an improvement to an existing one. See the [Linter Wiki Page](${FlowrWikiBaseRef}/Linter) for more information.
+description: Suggest either a new linting rule or an improvement to an existing one. 
 title: "[Linter]: "
 labels: ["flowr linter"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thank you for suggesting a new linting rule or an improvement to an existing one. Please provide as much detail as possible to help us understand your request.
+        Thank you for suggesting a new linting rule or an improvement to an existing one. Please provide as much detail as possible to help us understand your request. See the [Linter Wiki Page](${FlowrWikiBaseRef}/Linter) for more information.
   - type: textarea
     id: description
     attributes:

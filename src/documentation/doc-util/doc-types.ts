@@ -256,9 +256,13 @@ interface MermaidCompact {
 	edgeLines: string[]
 }
 
-export function getTypePathLink({ filePath, lineNumber }: TypeElementInSource, prefix = RemoteFlowrFilePathBaseRef): string {
-	const fromSource = filePath.replace(/^.*\/src\//, 'src/').replace(/^.*\/test\//, 'test/');
-	return `${prefix}/${fromSource}#L${lineNumber}`;
+function getTypePath({ filePath }: TypeElementInSource) {
+	return filePath.replace(/^.*\/src\//, 'src/').replace(/^.*\/test\//, 'test/');
+}
+
+export function getTypePathLink(elem: TypeElementInSource, prefix = RemoteFlowrFilePathBaseRef): string {
+	const fromSource = getTypePath(elem);
+	return `${prefix}/${fromSource}#L${elem.lineNumber}`;
 }
 
 function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], rootName: string, options: GetTypesWithProgramOption, visited: Set<string> = new Set()): MermaidCompact {
@@ -495,6 +499,16 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 		(node.comments?.length ?? 0) > 0 ?
 			textWithTooltip(pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) : node.name
 	}${codeStyle ? '</code>' : ''}</a>`;
+}
+
+export function shortLinkFile(name: string, hierarchy: readonly TypeElementInSource[]): string {
+	const res = retrieveNode(name, hierarchy);
+	if(!res) {
+		console.error(`Could not find node ${name} when resolving short link!`);
+		return '';
+	}
+	const [,, node] = res;
+	return `<a href="${getTypePathLink(node)}">${getTypePath(node)}</a>`;
 }
 
 export function getDocumentationForType(name: string, hierarchy: TypeElementInSource[], prefix = '', fuzzy = false): string {

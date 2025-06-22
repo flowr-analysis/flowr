@@ -7,7 +7,8 @@ import { LintingRules } from '../linter/linter-rules';
 import { codeBlock, codeInline } from './doc-util/doc-code';
 import { RShell } from '../r-bridge/shell';
 import { showQuery } from './doc-util/doc-query';
-import type {
+import {
+	shortLinkFile,
 	TypeElementInSource
 } from './doc-util/doc-types';
 import {
@@ -87,8 +88,9 @@ ${rule.info.tags.toSorted((a, b) => {
 	}
 	return a.localeCompare(b);
 }).map(t => makeTagBadge(t, types)).join(' ')}\\
-${rule.info.description} _Implemented as ${shortLink(ruleType, types, false)}._
-
+${rule.info.description}\\
+_Implemented in ${shortLinkFile(ruleType, types)}_
+ 
 <details>
 
 #### Configuration

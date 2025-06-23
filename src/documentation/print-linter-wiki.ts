@@ -90,10 +90,10 @@ function buildSamplesFromLinterTestCases(shell: RShell, testFile: string): strin
 ${report.comments ? report.comments.map(c => `> ${c}`).join('\n') + '\n' : ''}
 Given the following input:
 ${codeBlock('r', args[2].getText(report.source).replace(/^['"]|['"]$/g, '').replace(/\\n/g, '\n'))}
-${args.length >= 7 ? `\nAnd using the following [configuration](#configuration): ${codeBlock('json', prettyPrintExpectedOutput(args[6].getText(report.source)))}` : ''}
+${args.length >= 7 ? `\nAnd using the following [configuration](#configuration): ${codeBlock('ts', prettyPrintExpectedOutput(args[6].getText(report.source)))}` : ''}
 
 We expect the linter to report the following:
-${codeBlock('typescript', prettyPrintExpectedOutput(args[4].getText(report.source)))}
+${codeBlock('ts', prettyPrintExpectedOutput(args[4].getText(report.source)))}
 
 See [here](${getTypePathLink({ filePath: report.source.fileName, lineNumber: report.lineNumber })}) for the test-case implementation.
 		`;

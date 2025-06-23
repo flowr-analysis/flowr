@@ -48,7 +48,8 @@ import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import type { CfgProperty } from '../../../src/control-flow/cfg-properties';
 import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
-import {cloneConfig, defaultConfigOptions, FlowrConfigOptions} from '../../../src/config';
+import type { FlowrConfigOptions } from '../../../src/config';
+import { cloneConfig, defaultConfigOptions } from '../../../src/config';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {

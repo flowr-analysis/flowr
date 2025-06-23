@@ -14,7 +14,7 @@ import { resolveIdToValue } from './alias-tracking';
 import { isValue } from '../values/r-value';
 import { RFalse, RTrue } from '../../../r-bridge/lang-4.x/convert-values';
 import { collectStrings } from '../values/string/string-constants';
-import {VariableResolve} from "../../../config";
+import type { VariableResolve } from '../../../config';
 
 /**
  * Get the values of all arguments matching the criteria.

@@ -12,8 +12,6 @@ import { log } from '../util/log';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
-import {VariableResolve} from "../config";
-import {guard} from "../util/assert";
 
 type CachedValues<Val> = Map<NodeId, Val>;
 

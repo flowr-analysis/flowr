@@ -26,7 +26,7 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
 import path from 'path';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import {FlowrConfigOptions} from "../../config";
+import type { FlowrConfigOptions } from '../../config';
 
 export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,

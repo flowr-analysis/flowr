@@ -44,7 +44,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	/**
 	 * The flowr configuration used for environment seeding, and precision control
 	 */
-	readonly flowrConfig:			           FlowrConfigOptions
+	readonly flowrConfig:			      FlowrConfigOptions
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation

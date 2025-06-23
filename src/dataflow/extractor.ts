@@ -113,7 +113,7 @@ export function produceDataFlowGraph<OtherInfo>(
 		currentRequest:      firstRequest,
 		controlDependencies: undefined,
 		referenceChain:      [firstRequest],
-		flowrConfig: config
+		flowrConfig:         config
 	};
 	let df = processDataflowFor<OtherInfo>(completeAst.ast, dfData);
 

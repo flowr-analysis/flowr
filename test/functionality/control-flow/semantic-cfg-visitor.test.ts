@@ -82,7 +82,7 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 						controlFlow,
 						dfg:                  dataflow.graph,
 						normalizedAst:        normalize,
-                        flowrConfig: config
+						flowrConfig:          config
 					});
 				}
 

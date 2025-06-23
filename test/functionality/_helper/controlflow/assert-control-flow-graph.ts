@@ -12,7 +12,7 @@ import { emptyControlFlowInformation } from '../../../../src/control-flow/contro
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
 import type { CfgProperty } from '../../../../src/control-flow/cfg-properties';
 import { assertCfgSatisfiesProperties } from '../../../../src/control-flow/cfg-properties';
-import {cloneConfig, defaultConfigOptions} from '../../../../src/config';
+import { cloneConfig, defaultConfigOptions } from '../../../../src/config';
 import type { CfgSimplificationPassName } from '../../../../src/control-flow/cfg-simplification';
 import { simplifyControlFlowInformation } from '../../../../src/control-flow/cfg-simplification';
 import type { DataflowInformation } from '../../../../src/dataflow/info';

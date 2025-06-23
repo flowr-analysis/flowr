@@ -5,6 +5,7 @@ import { formatRange } from '../../util/mermaid/dfg';
 import type { MergeableRecord } from '../../util/objects';
 import type { SourceRange } from '../../util/range';
 import { LintingCertainty, type LintingResult, type LintingRule } from '../linter-format';
+import { LintingRuleTag } from '../linter-tags';
 
 
 export enum CasingConvention {
@@ -138,9 +139,14 @@ export const NAMING_CONVENTION = {
 			'.meta': { idk: 0 }
 		};   
 	},
-	prettyPrint:   result => `Identifier '${result.name}' at ${formatRange(result.range)} follows ${result.detectedCasing} convention. Suggestion: '${result.suggestion}'`,
-	defaultConfig: {
-		caseing: CasingConvention.PascalCase
+	prettyPrint: result => `Identifier '${result.name}' at ${formatRange(result.range)} follows ${result.detectedCasing} convention. Suggestion: '${result.suggestion}'`,
+	info:        {
+		name:          'Naming Convention',
+		description:   'Checks wether the symbols conform to a certain naming convention',
+		tags:          [LintingRuleTag.Style, LintingRuleTag.QuickFix],
+		defaultConfig: {
+			caseing: CasingConvention.PascalCase
+		}
 	}
 } as const satisfies LintingRule<NamingConventionResult, NamingConventionMetadata, NamingConventionConfig>;
 

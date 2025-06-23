@@ -21,7 +21,13 @@ import type { LintingRule } from '../../../src/linter/linter-format';
 import { log } from '../../../src/util/log';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser } from '../../../src/r-bridge/parser';
-import { defaultConfigOptions } from '../../../src/config';
+import {
+	amendConfig,
+	cloneConfig,
+	defaultConfigOptions,
+	DropPathsOption,
+	FlowrLaxSourcingOptions
+} from '../../../src/config';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 
@@ -32,17 +38,24 @@ export function assertLinter<Name extends LintingRuleNames>(
 	ruleName: Name,
 	expected: LintingRuleResult<Name>[] | ((df: DataflowInformation, ast: NormalizedAst) => LintingRuleResult<Name>[]),
 	expectedMetadata?: LintingRuleMetadata<Name>,
-	config?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string }
+	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string }
 ) {
 	test(decorateLabelContext(name, ['linter']), async() => {
+		const flowrConfig = amendConfig(defaultConfigOptions, c => {
+			(c.solver.resolveSource as FlowrLaxSourcingOptions)  = {
+				...c.solver.resolveSource as FlowrLaxSourcingOptions,
+				dropPaths: DropPathsOption.All
+			}
+			return c;
+		})
 		const pipelineResults = await createDataflowPipeline(parser, {
 			request: requestFromInput(code),
 			getId:   deterministicCountingIdGenerator(0),
-            overwriteFilePath: config?.useAsFilePath
-        }, defaultConfigOptions).allRemainingSteps();
+            overwriteFilePath: lintingRuleConfig?.useAsFilePath
+        }, flowrConfig).allRemainingSteps();
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
-		const results = executeLintingRule(ruleName, { ...pipelineResults, config: defaultConfigOptions }, config);
+		const results = executeLintingRule(ruleName, { ...pipelineResults, config: flowrConfig }, lintingRuleConfig);
 
 		for(const [type, printer] of Object.entries({
 			text: (result: LintingRuleResult<Name>, metadata: LintingRuleMetadata<Name>) => `${rule.prettyPrint(result, metadata)} (${result.certainty})`,

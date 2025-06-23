@@ -8,7 +8,7 @@ describe.sequential('List Definition', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'subsetting-multiple'] as const;
 
 	const config = amendConfig(defaultConfigOptions, c => {
-		c.solver.pointerTracking = true;
+		(c.solver.pointerTracking as boolean) = true;
 		return c;
 	});
 
@@ -27,6 +27,7 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 3, lexeme: 'c' }, nodeId: 9, },
 					{ identifier: { index: 4, lexeme: 'd' }, nodeId: 12, },
 				],
+				undefined,
 				config
 			);
 
@@ -41,6 +42,7 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 3, lexeme: 'c' }, nodeId: 9, },
 					{ identifier: { index: 4, lexeme: 'd' }, nodeId: 12, },
 				],
+				undefined,
 				config
 			);
 
@@ -55,6 +57,7 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 3, lexeme: 'c' }, nodeId: 9, },
 					{ identifier: { index: 4, lexeme: 'd' }, nodeId: 12, },
 				],
+				undefined,
 				config
 			);
 
@@ -68,12 +71,13 @@ describe.sequential('List Definition', withShell(shell => {
 					// currently we are unable to track the new index
 					{ identifier: { index: undefined, lexeme: 'e' }, nodeId: 10 },
 				],
+				undefined,
 				config
 			);
 
 			describe('Skip if index threshold', () => {
 				const config = amendConfig(defaultConfigOptions, c => {
-					c.solver.pointerTracking = { maxIndexCount: 1 };
+					(c.solver.pointerTracking as { maxIndexCount: number }) = { maxIndexCount: 1 };
 					return c;
 				});
 
@@ -82,6 +86,7 @@ describe.sequential('List Definition', withShell(shell => {
 					shell,
 					'list(a = 1, b = 2.3, c = 3.1e4, d = 0xcafe)',
 					Q.criterion('1@list'),
+					undefined,
 					undefined,
 					config
 				);
@@ -93,6 +98,7 @@ describe.sequential('List Definition', withShell(shell => {
 					[
 						{ identifier: { index: 1, lexeme: 'a' }, nodeId: 3, },
 					],
+					undefined,
 					config
 				);
 			});
@@ -121,6 +127,7 @@ describe.sequential('List Definition', withShell(shell => {
 						]
 					},
 				],
+				undefined,
 				config
 			);
 
@@ -144,6 +151,7 @@ describe.sequential('List Definition', withShell(shell => {
 						]
 					},
 				],
+				undefined,
 				config
 			);
 
@@ -167,6 +175,7 @@ describe.sequential('List Definition', withShell(shell => {
 						]
 					},
 				],
+				undefined,
 				config
 			);
 
@@ -191,6 +200,7 @@ describe.sequential('List Definition', withShell(shell => {
 						]
 					},
 				],
+				undefined,
 				config
 			);
 		});
@@ -211,6 +221,7 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 3 }, nodeId: 5, },
 					{ identifier: { index: 4 }, nodeId: 7, },
 				],
+				undefined,
 				config
 			);
 
@@ -225,6 +236,7 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 3 }, nodeId: 5, },
 					{ identifier: { index: 4 }, nodeId: 7, },
 				],
+				undefined,
 				config
 			);
 
@@ -239,6 +251,7 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 3 }, nodeId: 5, },
 					{ identifier: { index: 4 }, nodeId: 7, },
 				],
+				undefined,
 				config
 			);
 		});
@@ -266,6 +279,7 @@ describe.sequential('List Definition', withShell(shell => {
 						]
 					},
 				],
+				undefined,
 				config
 			);
 
@@ -289,6 +303,7 @@ describe.sequential('List Definition', withShell(shell => {
 						]
 					},
 				],
+				undefined,
 				config
 			);
 
@@ -312,6 +327,7 @@ describe.sequential('List Definition', withShell(shell => {
 						]
 					},
 				],
+				undefined,
 				config
 			);
 
@@ -336,6 +352,7 @@ describe.sequential('List Definition', withShell(shell => {
 						]
 					},
 				],
+				undefined,
 				config
 			);
 		});

@@ -111,8 +111,8 @@ function createConfig() : FlowrConfigOptions {
 
 
     // for all options that we manually supply that have a config equivalent, set them in the config
-    amendConfig(config, c => {
-        c.engines ??= [];
+    config = amendConfig(config, c => {
+		(c.engines as EngineConfig[]) ??= [];
 
         if(!options['engine.r-shell.disabled']) {
             c.engines.push({ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] });
@@ -128,7 +128,7 @@ function createConfig() : FlowrConfigOptions {
         }
 
         if(options['default-engine']) {
-            c.defaultEngine = options['default-engine'] as EngineConfig['type'];
+			(c.defaultEngine as string) = options['default-engine'] as EngineConfig['type'];
         }
 
         return c;

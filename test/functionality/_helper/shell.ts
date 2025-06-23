@@ -48,7 +48,7 @@ import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import type { CfgProperty } from '../../../src/control-flow/cfg-properties';
 import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
-import { defaultConfigOptions } from '../../../src/config';
+import {cloneConfig, defaultConfigOptions, FlowrConfigOptions} from '../../../src/config';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -354,7 +354,7 @@ export function assertDataflow<P extends Pipeline>(
 	expected: DataflowGraph | ((data: PipelineOutput<P> & { normalize: NormalizedAst, dataflow: DataflowInformation }) => DataflowGraph),
 	userConfig?: Partial<DataflowTestConfiguration>,
 	startIndexForDeterministicIds = 0,
-	config = defaultConfigOptions
+	config = cloneConfig(defaultConfigOptions)
 ): void {
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
@@ -452,11 +452,11 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[] },
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[], flowrConfig: FlowrConfigOptions },
 	testCaseFailType?: TestCaseFailType,
-	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0),
-	config= defaultConfigOptions
+	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0)
 ) {
+	console.error('xxx', userConfig?.flowrConfig)
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const skip = skipTestBecauseConfigNotMet(userConfig);
 	if(skip || testCaseFailType === 'fail-both') {
@@ -473,7 +473,7 @@ export function assertSliced(
 				parser:       shell,
 				criterion:    criteria,
 				autoSelectIf: userConfig?.autoSelectIf,
-			}, config).allRemainingSteps();
+			}, cloneConfig(userConfig?.flowrConfig ?? defaultConfigOptions)).allRemainingSteps();
 			if(!userConfig?.skipTreeSitter) {
 				tsResult = await new PipelineExecutor(TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE, {
 					getId:        getId(),
@@ -481,7 +481,7 @@ export function assertSliced(
 					parser:       new TreeSitterExecutor(),
 					criterion:    criteria,
 					autoSelectIf: userConfig?.autoSelectIf
-				}, config).allRemainingSteps();
+				}, cloneConfig(userConfig?.flowrConfig ?? defaultConfigOptions)).allRemainingSteps();
 			}
 		});
 
@@ -578,8 +578,8 @@ export function assertContainerIndicesDefinition(
 	input: string,
 	search: FlowrSearchLike,
 	expectedIndices: ContainerIndex[] | undefined,
-	userConfig: Partial<TestConfiguration & { searchIn: 'dfg' | 'env' | 'both' }> = { searchIn: 'both' },
-	config = defaultConfigOptions,
+	userConfig: Partial<TestConfiguration> & { searchIn: 'dfg' | 'env' | 'both' } = { searchIn: 'both' },
+	config = cloneConfig(defaultConfigOptions),
 ) {
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {

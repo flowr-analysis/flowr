@@ -7,7 +7,7 @@ import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 describe.sequential('Vector Definition', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'unnamed-arguments', 'subsetting-multiple'] as const;
 	const config = amendConfig(defaultConfigOptions, c => {
-		c.solver.pointerTracking = true;
+		(c.solver.pointerTracking as boolean) = true;
 		return c;
 	});
 
@@ -23,6 +23,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 3 }, nodeId: 5, },
 				{ identifier: { index: 4 }, nodeId: 7, },
 			],
+			undefined,
 			config
 		);
 
@@ -59,8 +60,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				'c(TRUE, FALSE, TRUE, FALSE)',
 				Q.criterion('1@c'),
 				undefined,
+				undefined,
 				amendConfig(defaultConfigOptions, c => {
-					c.solver.pointerTracking = { maxIndexCount: 2 };
+					(c.solver.pointerTracking as { maxIndexCount: number }) = { maxIndexCount: 2 };
 					return c;
 				})
 			);
@@ -79,6 +81,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 3 }, nodeId: 8, },
 				{ identifier: { index: 4 }, nodeId: 10, },
 			],
+			undefined,
 			config
 		);
 
@@ -93,6 +96,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 3 }, nodeId: 6, },
 				{ identifier: { index: 4 }, nodeId: 10, },
 			],
+			undefined,
 			config
 		);
 
@@ -107,6 +111,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 3 }, nodeId: 6, },
 				{ identifier: { index: 4 }, nodeId: 8, },
 			],
+			undefined,
 			config
 		);
 
@@ -121,6 +126,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 3 }, nodeId: 9, },
 				{ identifier: { index: 4 }, nodeId: 11, },
 			],
+			undefined,
 			config
 		);
 
@@ -135,6 +141,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 3 }, nodeId: 8, },
 				{ identifier: { index: 4 }, nodeId: 10, },
 			],
+			undefined,
 			config
 		);
 
@@ -148,6 +155,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 1 }, nodeId: 2, },
 				{ identifier: { index: 2 }, nodeId: 4, },
 			],
+			undefined,
 			config
 		);
 	});
@@ -166,6 +174,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 3 }, nodeId: 10, },
 				{ identifier: { index: 4 }, nodeId: 12, },
 			],
+			undefined,
 			config
 		);
 
@@ -180,6 +189,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 3 }, nodeId: 9, },
 				{ identifier: { index: 4 }, nodeId: 12, },
 			],
+			undefined,
 			config
 		);
 
@@ -194,6 +204,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 3 }, nodeId: 8, },
 				{ identifier: { index: 4 }, nodeId: 11, },
 			],
+			undefined,
 			config
 		);
 
@@ -208,6 +219,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 3 }, nodeId: 13, },
 				{ identifier: { index: 4 }, nodeId: 16, },
 			],
+			undefined,
 			config
 		);
 
@@ -221,6 +233,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 1 }, nodeId: 4, },
 				{ identifier: { index: 2 }, nodeId: 7, },
 			],
+			undefined,
 			config
 		);
 	});
@@ -237,6 +250,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 3 }, nodeId: 8, },
 				{ identifier: { index: 4 }, nodeId: 10, },
 			],
+			undefined,
 			config
 		);
 
@@ -251,6 +265,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 3 }, nodeId: 6, },
 				{ identifier: { index: 4 }, nodeId: 10, },
 			],
+			undefined,
 			config
 		);
 
@@ -265,6 +280,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 3 }, nodeId: 6, },
 				{ identifier: { index: 4 }, nodeId: 8, },
 			],
+			undefined,
 			config
 		);
 
@@ -279,6 +295,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 3 }, nodeId: 9, },
 				{ identifier: { index: 4 }, nodeId: 11, },
 			],
+			undefined,
 			config
 		);
 
@@ -292,6 +309,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 1 }, nodeId: 2, },
 				{ identifier: { index: 2 }, nodeId: 4, },
 			],
+			undefined,
 			config
 		);
 	});

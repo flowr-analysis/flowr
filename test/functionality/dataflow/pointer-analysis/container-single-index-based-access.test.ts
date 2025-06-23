@@ -7,6 +7,11 @@ import { Q } from '../../../../src/search/flowr-search-builder';
 import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 
 describe.sequential('Container Single Index Based Access', withShell(shell => {
+	const config = amendConfig(defaultConfigOptions, c => {
+		(c.solver.pointerTracking as boolean) = true;
+		return c;
+	});
+
 	describe.each(
 		[
 			{ container: ContainerType.Vector, type: AccessType.DoubleBracket, hasNamedArguments: false },
@@ -30,10 +35,6 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 			accessCapability,
 		] as const;
 
-		const config = amendConfig(defaultConfigOptions, c => { 
-			c.solver.pointerTracking = true;
-			return c;
-		});
 
 		describe('Simple access', () => {
 			assertDataflow(

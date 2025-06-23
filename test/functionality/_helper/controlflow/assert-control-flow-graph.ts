@@ -12,7 +12,7 @@ import { emptyControlFlowInformation } from '../../../../src/control-flow/contro
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
 import type { CfgProperty } from '../../../../src/control-flow/cfg-properties';
 import { assertCfgSatisfiesProperties } from '../../../../src/control-flow/cfg-properties';
-import { defaultConfigOptions } from '../../../../src/config';
+import {cloneConfig, defaultConfigOptions} from '../../../../src/config';
 import type { CfgSimplificationPassName } from '../../../../src/control-flow/cfg-simplification';
 import { simplifyControlFlowInformation } from '../../../../src/control-flow/cfg-simplification';
 import type { DataflowInformation } from '../../../../src/dataflow/info';
@@ -37,7 +37,7 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 	// shallow copy is important to avoid killing the CFG :c
 	const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected };
 	return test(code, async()=> {
-		const config = defaultConfigOptions;
+		const config = cloneConfig(defaultConfigOptions);
 		const result = await createDataflowPipeline(parser, {
 			request: requestFromInput(code)
 		}, config).allRemainingSteps();
@@ -51,7 +51,7 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 
 		let diff: GraphDifferenceReport | undefined;
 		try {
-			if(!config?.expectIsSubgraph) {
+			if(!options?.expectIsSubgraph) {
 				assert.deepStrictEqual(normAllIds(cfg.entryPoints), normAllIds(expected.entryPoints), 'entry points differ');
 				assert.deepStrictEqual(normAllIds(cfg.exitPoints), normAllIds(expected.exitPoints), 'exit points differ');
 				assert.deepStrictEqual(normAllIds(cfg.breaks), normAllIds(expected.breaks), 'breaks differ');

@@ -280,9 +280,15 @@ export function parseConfig(jsonString: string): FlowrConfigOptions | undefined 
 	}
 }
 
+/**
+ * Creates a new flowr config that has the updated values.
+ */
 export function amendConfig(config: FlowrConfigOptions, amendmentFunc: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions) {
-	const newConfig = deepMergeObject({}, config) as FlowrConfigOptions;
-	return amendmentFunc(newConfig);
+	return amendmentFunc(cloneConfig(config) as DeepWritable<FlowrConfigOptions>);
+}
+
+export function cloneConfig(config: FlowrConfigOptions): FlowrConfigOptions {
+	return JSON.parse(JSON.stringify(config)) as FlowrConfigOptions;
 }
 
 export function getConfig(configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfigOptions {

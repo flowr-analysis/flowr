@@ -1,7 +1,7 @@
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
-import { FlowrWikiBaseRef } from './doc-util/doc-files';
+import { FlowrWikiBaseRef, linkFlowRSourceFile } from './doc-util/doc-files';
 import type { LintingRuleNames } from '../linter/linter-rules';
 import { LintingRules } from '../linter/linter-rules';
 import { codeBlock } from './doc-util/doc-code';
@@ -11,6 +11,8 @@ import type {
 	TypeElementInSource, TypeReport
 } from './doc-util/doc-types';
 import {
+	getTypePathLink
+	,
 	shortLinkFile
 	,
 	getDocumentationForType,
@@ -26,6 +28,7 @@ import { textWithTooltip } from '../util/html-hover-over';
 import { joinWithLast } from '../util/text/strings';
 import { guard } from '../util/assert';
 import { writeWikiTo } from './doc-util/doc-print';
+import { getFunctionsFromFolder } from './doc-util/doc-functions';
 
 const SpecialTagColors: Record<string, string> = {
 	[LintingRuleTag.Bug]:      'red',
@@ -39,11 +42,71 @@ function makeTagBadge(name: LintingRuleTag, info: TypeElementInSource[]): string
 	return textWithTooltip(`<a href='#${name}'>![` + name + '](https://img.shields.io/badge/' + name.toLowerCase() + `-${SpecialTagColors[name] ?? 'teal'}) </a>`, doc);
 }
 
+function prettyPrintExpectedOutput(expected: string): string {
+	if(expected.trim() === '[]') {
+		return '* no lints';
+	}
+	let lines = expected.trim().split('\n');
+	if(lines.length <= 1) {
+		return expected;
+	}
+
+	//
+	lines = expected.trim().replace(/^\s*\[+\s*{*/m, '').replace(/\s*}*\s*]+\s*$/, '').split('\n').filter(l => l.trim() !== '');
+	/* take the indentation of the last line and remove it from all but the first: */
+	const indentation = lines[lines.length - 1].match(/^\s*/)?.[0] ?? '';
+	return lines.map((line, i) => {
+		if(i === 0) {
+			return line;
+		}
+		return line.replace(new RegExp('^' + indentation, 'g'), '');
+	}).join('\n');
+}
+
+function buildSamplesFromLinterTestCases(shell: RShell, testFile: string): string {
+	const reports = getFunctionsFromFolder({ files: [path.resolve('test/functionality/linter/' + testFile)], fname: /assertLinter/ });
+	if(reports.info.length === 0) {
+		return '';
+	}
+	let result = `#### Additional Examples
+	
+	These examples are synthesized from the test cases in: ${linkFlowRSourceFile(testFile)}\n\n`;
+
+	for(const report of reports.info) {
+		const args = report.arguments;
+		if(args.length < 5) {
+			console.error('Test case for linter rule ' + report.name + ' does not have enough arguments! Expected at least 5, got ' + args.length);
+			continue;
+		}
+		const testName = args[0].getText(report.source);
+		if(report.comments?.some(c => c.includes('@ignore-in-wiki'))) {
+			console.warn(`Skipping test case for linter rule ${testName} (${testFile}) as it is marked with @ignore-in-wiki`);
+			continue;
+		}
+		// drop any quotes around the test name
+		const testNameClean = testName.replace(/^['"]|['"]$/g, '');
+		result += `\n${section('Test Case: ' + testNameClean, 4)}
+
+${report.comments ? report.comments.map(c => `> ${c}`).join('\n') + '\n' : ''}
+Given the following input:
+${codeBlock('r', args[2].getText(report.source).replace(/^['"]|['"]$/g, '').replace(/\\n/g, '\n'))}
+${args.length >= 7 ? `\nAnd using the following [configuration](#configuration): ${codeBlock('json', prettyPrintExpectedOutput(args[6].getText(report.source)))}` : ''}
+
+We expect the linter to report the following:
+${codeBlock('typescript', prettyPrintExpectedOutput(args[4].getText(report.source)))}
+
+See [here](${getTypePathLink({ filePath: report.source.fileName, lineNumber: report.lineNumber })}) for the test-case implementation.
+		`;
+	}
+
+	return result;
+}
+
 function registerRules(rVersion: string, shell: RShell, tagTypes: TypeElementInSource[], format: 'short' | 'long' = 'short') {
 	const ruleExplanations = new Map<LintingRuleNames, () => Promise<string>>();
 
 	rule(shell,
-		'deprecated-functions', 'DeprecatedFunctionsConfig', 'DEPRECATED_FUNCTIONS',
+		'deprecated-functions', 'DeprecatedFunctionsConfig', 'DEPRECATED_FUNCTIONS', 'lint-deprecated-functions',
 		`
 first <- data.frame(x = c(1, 2, 3), y = c(1, 2, 3))
 second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))
@@ -51,19 +114,19 @@ dplyr::all_equal(first, second)
 `, tagTypes);
 
 	rule(shell,
-		'file-path-validity', 'FilePathValidityConfig', 'FILE_PATH_VALIDITY',
+		'file-path-validity', 'FilePathValidityConfig', 'FILE_PATH_VALIDITY', 'lint-file-path-validity',
 		`
 my_data <- read.csv("C:/Users/me/Documents/My R Scripts/Reproducible.csv")
 `, tagTypes);
 
 	rule(shell,
-		'absolute-file-paths', 'AbsoluteFilePathConfig', 'ABSOLUTE_PATH',
+		'absolute-file-paths', 'AbsoluteFilePathConfig', 'ABSOLUTE_PATH', 'lint-absolute-path',
 		`
 read.csv("C:/Users/me/Documents/My R Scripts/Reproducible.csv")
 `, tagTypes);
 
 	rule(shell,
-		'unused-definitions', 'UnusedDefinitionConfig', 'UNUSED_DEFINITION',
+		'unused-definitions', 'UnusedDefinitionConfig', 'UNUSED_DEFINITION', 'lint-unused-definition',
 		`
 x <- 42
 y <- 3
@@ -71,7 +134,7 @@ print(x)
 `, tagTypes);
 
 
-	function rule(shell: RShell, name: LintingRuleNames, configType: string, ruleType: string, example: string, types: TypeElementInSource[]) {
+	function rule(shell: RShell, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 
 		const tags = rule.info.tags.toSorted((a, b) => {
@@ -107,7 +170,7 @@ ${rule.info.description}\\
 _This linting rule is implemented in ${shortLinkFile(ruleType, types)}._
 
 
-#### Configuration
+### Configuration
 
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The \`${name}\` rule accepts the following configuration options:
@@ -118,7 +181,7 @@ ${
 	).join('\n')
 }
 
-#### Example
+### Examples
 
 ${codeBlock('r', example)}
 
@@ -126,6 +189,7 @@ The linting query can be used to run this rule on the above example:
 
 ${await showQuery(shell, example, [{ type: 'linter', rules: [{ name, config: {} as never }] }], { collapseQuery: true })}
 
+${buildSamplesFromLinterTestCases(shell, `${testfile}.test.ts`)}
 
 		`.trim());
 		}
@@ -226,7 +290,7 @@ async function getTexts(shell: RShell): Promise<Record<string, string> & { main:
 if(require.main === module) {
 	setMinLevelOfAllLogs(LogLevel.Fatal);
 	const shell = new RShell();
-	void getTexts(shell).then(data => {
+	void (getTexts(shell).then(data => {
 		console.log(data['main']);
 		for(const [file, content] of Object.entries(data)) {
 			if(file === 'main') {
@@ -237,5 +301,5 @@ if(require.main === module) {
 		}
 	}).finally(() => {
 		shell.close();
-	});
+	}));
 }

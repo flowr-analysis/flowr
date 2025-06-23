@@ -23,6 +23,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		});
 
 		describe('quickfixes', () => {
+			/* Given an absolute path and assuming a home directory of `/home/me`, we expect the linter to suggest a relative path */
 			assertLinter('is relative to home', parser, '"/home/me/foo.bar"', 'absolute-file-paths', [{
 				certainty: LintingCertainty.Maybe,
 				filePath:  '/home/me/foo.bar',
@@ -39,6 +40,7 @@ describe('flowR linter', withTreeSitter(parser => {
 					allStrings: true
 				}
 			});
+			/* Replacing absolute paths with relative paths should work within function calls as well */
 			assertLinter('is relative to home', parser, 'read.csv("/home/me/foo.bar")', 'absolute-file-paths', [{
 				certainty: LintingCertainty.Maybe,
 				filePath:  '/home/me/foo.bar',
@@ -57,7 +59,9 @@ describe('flowR linter', withTreeSitter(parser => {
 			});
 		});
 
+		/* If the script contains no function that reads a file path, we expect no issues */
 		assertLinter('none', parser, 'cat("hello")', 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 1 });
+		/* If the script contains no file paths, but we include all strings, we expect no issues either */
 		assertLinter('none with all strings', parser, 'cat("hello")', 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 }, {
 			include: {
 				allStrings: true
@@ -66,12 +70,7 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		describe('all strings', () => {
 			describe('relative paths', () => {
-				assertLinter('none with all strings', parser, 'cat("hello")', 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 }, {
-					include: {
-						allStrings: true
-					}
-				});
-
+				/* if we consider all strings for absolute paths, and the string contains something that might be a path, yet we deem it too short, we expect no issues */
 				assertLinter('too short', parser, '"/x"', 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 }, {
 					include: {
 						allStrings: true
@@ -80,6 +79,7 @@ describe('flowR linter', withTreeSitter(parser => {
 
 
 				for(const relPath of ['./file.csv', '../file.csv', 'file.csv', 'a\\b\\c.csv']) {
+					/* @ignore-in-wiki */
 					assertLinter(`"${relPath}"`, parser, `x <- "${relPath}"`, 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 }, {
 						include: {
 							allStrings: true
@@ -89,6 +89,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			});
 			describe('absolute paths', () => {
 				for(const absPath of ['/absolute/path/file.csv', 'C:\\absolute\\path\\file.csv', 'G:\\absolute\\path\\file.txt']) {
+					/* @ignore-in-wiki */
 					assertLinter(`"${absPath}"`, parser, `x <- "${absPath}"`, 'absolute-file-paths', [
 						{
 							certainty: LintingCertainty.Maybe,
@@ -108,14 +109,17 @@ describe('flowR linter', withTreeSitter(parser => {
 			describe.each(['read.csv', 'source', 'png'])('%s', fn => {
 				describe('relative paths', () => {
 					for(const relPath of ['./file.csv', '../file.csv', 'file.csv', 'a\\b\\c.csv']) {
+						/* @ignore-in-wiki */
 						assertLinter(`"${relPath}"`, parser, `${fn}("${relPath}")`, 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 });
 					}
 				});
 				describe('raw strings', () => {
+					/* @ignore-in-wiki */
 					assertLinter('R()', parser, `${fn}(R"(./x)")`, 'absolute-file-paths', [], {
 						totalConsidered: 1,
 						totalUnknown:    0
 					});
+					/* @ignore-in-wiki */
 					assertLinter('--[]--', parser, `${fn}(R"--[./x]--")`, 'absolute-file-paths', [], {
 						totalConsidered: 1,
 						totalUnknown:    0
@@ -123,11 +127,13 @@ describe('flowR linter', withTreeSitter(parser => {
 				});
 				describe('unknown paths', () => {
 					for(const relPath of ['x', 'paste0("a", u)', 'runif(42)']) {
+						/* @ignore-in-wiki */
 						assertLinter(`${relPath}`, parser, `${fn}(${relPath})`, 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 1 });
 					}
 				});
 				describe('absolute paths', () => {
 					for(const absPath of ['/absolute/path/file.csv', 'C:\\absolute\\path\\file.csv', 'G:\\absolute\\path\\file.txt']) {
+						/* @ignore-in-wiki */
 						assertLinter(`"${absPath}"`, parser, `${fn}("${absPath}")`, 'absolute-file-paths', [
 							{
 								certainty: LintingCertainty.Definitely,
@@ -137,6 +143,7 @@ describe('flowR linter', withTreeSitter(parser => {
 						], { totalConsidered: 1, totalUnknown: 0 });
 					}
 					describe('raw strings', () => {
+						/* @ignore-in-wiki */
 						assertLinter('R()', parser, `${fn}(R"(/x/y)")`, 'absolute-file-paths', [{
 							certainty: LintingCertainty.Definitely,
 							filePath:  '/x/y',
@@ -145,6 +152,7 @@ describe('flowR linter', withTreeSitter(parser => {
 							totalConsidered: 1,
 							totalUnknown:    0
 						});
+						/* @ignore-in-wiki */
 						assertLinter('--[]--', parser, `${fn}(R"--[C:\\hello.txt]--")`, 'absolute-file-paths', [{
 							certainty: LintingCertainty.Definitely,
 							filePath:  'C:\\hello.txt',
@@ -163,14 +171,17 @@ describe('flowR linter', withTreeSitter(parser => {
 				describe('relative paths', () => {
 					for(const components of [['a', 'b', 'c'], ['a/b/c', 'd/e/f'], ['a\\b\\c', 'd\\e\\f']] as const) {
 						const command = `file.path(${components.map(c => `"${c}"`).join(', ')})`;
+						/* @ignore-in-wiki */
 						assertLinter(command, parser, command, 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 });
 					}
+					/* As we also incorporate the `file.path` function, we should be able to detect relative paths with a given separator */
 					assertLinter('change fsep', parser, 'file.path("a", "b", fsep="\\\\")', 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 });
 					assertLinter('skrewed fsep', parser, 'file.path("a", "b", fsep="")', 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 });
 				});
 				describe('unknown paths', () => {
 					for(const components of [['a', Unknown, 'c'], ['a/b/c', 'd/e/f', Unknown], [Unknown, 'a\\b\\c', 'd\\e\\f']] as const) {
 						const command = `file.path(${components.map(c => c === Unknown ? 'u' : `"${c}"`).join(', ')})`;
+						/* @ignore-in-wiki */
 						assertLinter(command, parser, command, 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 1 });
 					}
 					assertLinter('skrewed fsep', parser, 'file.path("a", "b", fsep=u)', 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 1 });
@@ -178,6 +189,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				describe('absolute paths', () => {
 					for(const components of [['/absolute/path', 'file.csv'], ['G:', 'a', 'b.txt'], ['', 'a.txt'], ['C:\\absolute\\path', 'file.csv'], ['G:\\absolute\\path', 'file.txt']] as const) {
 						const command = `file.path(${components.map(c => `"${c}"`).join(', ')})`;
+						/* @ignore-in-wiki */
 						assertLinter(command, parser, command, 'absolute-file-paths', [
 							{
 								certainty: LintingCertainty.Maybe,
@@ -193,6 +205,7 @@ describe('flowR linter', withTreeSitter(parser => {
 							range:     [1, 1, 1, 31]
 						}
 					], { totalConsidered: 1, totalUnknown: 0 });
+					/* If someone constructs an absolute path due to a (cursed) fsep, we should still be able to detect it */
 					assertLinter('skrewed fsep', parser, 'file.path("C", "b", fsep=":/")', 'absolute-file-paths', [
 						{
 							certainty: LintingCertainty.Maybe,

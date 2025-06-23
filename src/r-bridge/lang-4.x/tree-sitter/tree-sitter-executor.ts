@@ -22,6 +22,7 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 
 	/**
 	 * Initializes the underlying tree-sitter parser. This only needs to be called once globally.
+	 * @param config - The configuration for the tree-sitter engine, which can include paths to the wasm files.
 	 * @param overrideWasmPath - The path to the tree-sitter-r wasm file, which takes precedence over the config and default paths if set.
 	 * @param overrideTreeSitterWasmPath - The path to the tree-sitter wasm file, which takes precedence over the config and default paths if set.
 	 */

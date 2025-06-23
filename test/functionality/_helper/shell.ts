@@ -453,7 +453,7 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[], flowrConfig: FlowrConfigOptions },
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[], flowrConfig?: FlowrConfigOptions },
 	testCaseFailType?: TestCaseFailType,
 	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0)
 ) {

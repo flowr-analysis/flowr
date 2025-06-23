@@ -538,7 +538,7 @@ Executing it with the CFG and Dataflow of the expression \`x <- 2; 3 -> x; assig
 
 ${await (async() => {
 	const res = await getCfg(shell, 'x <- 2; 3 -> x; assign("x", 42 + 21)');
-	const visitor = new CollectSourcesSemanticVisitor(res.info, res.ast, res.dataflow.graph);
+	const visitor = new CollectSourcesSemanticVisitor(res.info, res.ast, res.dataflow.graph, defaultConfigOptions);
 	visitor.start();
 	const collected = visitor.getSources();
 	return collected.map(n => '\n- `' + n + '`').join('');

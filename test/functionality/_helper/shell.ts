@@ -456,7 +456,6 @@ export function assertSliced(
 	testCaseFailType?: TestCaseFailType,
 	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0)
 ) {
-	console.error('xxx', userConfig?.flowrConfig)
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const skip = skipTestBecauseConfigNotMet(userConfig);
 	if(skip || testCaseFailType === 'fail-both') {

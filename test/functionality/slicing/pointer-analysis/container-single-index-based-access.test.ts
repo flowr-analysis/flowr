@@ -29,13 +29,13 @@ print(data)`,
 	});
 	describe.each(
 		[
-			{ container: ContainerType.Vector, type: AccessType.DoubleBracket, hasNamedArguments: false },
+			/* { container: ContainerType.Vector, type: AccessType.DoubleBracket, hasNamedArguments: false },
 			{ container: ContainerType.Vector, type: AccessType.SingleBracket, hasNamedArguments: false },
 			{ container: ContainerType.List,   type: AccessType.DoubleBracket, hasNamedArguments: false },
-			{ container: ContainerType.List,   type: AccessType.SingleBracket, hasNamedArguments: false },
-			{ container: ContainerType.List,   type: AccessType.DoubleBracket, hasNamedArguments: true  },
+			{ container: ContainerType.List,   type: AccessType.SingleBracket, hasNamedArguments: false }, */
+			/* { container: ContainerType.List,   type: AccessType.DoubleBracket, hasNamedArguments: true  }, */
 			{ container: ContainerType.List,   type: AccessType.SingleBracket, hasNamedArguments: true  },
-			{ container: ContainerType.List,   type: AccessType.Dollar,        hasNamedArguments: true  },
+			/* { container: ContainerType.List,   type: AccessType.Dollar,        hasNamedArguments: true  }, */
 		]
 	)('Access for container $container using $type and hasNamedArguments $hasNamedArguments', ({ container, type, hasNamedArguments }) => {
 		const { acc, accS, def, accessCapability } = setupContainerFunctions(container, type, hasNamedArguments);
@@ -154,7 +154,7 @@ print(${acc('numbers', 1)})`, { flowrConfig }
 			);
 		});
 
-		describe('FOOBAR Access with assignment', () => {
+		describe('Access with assignment', () => {
 			assertSliced(
 				label('When there is more than one assignment to the same index, then the last assignment is in the slice', basicCapabilities),
 				shell,

@@ -165,7 +165,7 @@ export function processSourceCall<OtherInfo>(
 
 	const sourceFileArgument = args[0];
 
-	if(!config.forceFollow && data.config.ignoreSourceCalls) {
+	if(!config.forceFollow && data.flowrConfig.ignoreSourceCalls) {
 		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFileArgument)} (disabled in config file)`);
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
@@ -176,13 +176,13 @@ export function processSourceCall<OtherInfo>(
 	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
 		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
 	} else if(sourceFileArgument !== EmptyArgument) {
-		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.config.solver.variables }));
+		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.flowrConfig.solver.variables }));
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 
 	if(sourceFile && sourceFile.length === 1) {
 		const path = removeRQuotes(sourceFile[0]);
-		let filepath = path ? findSource(data.config.solver.resolveSource, path, data) : path;
+		let filepath = path ? findSource(data.flowrConfig.solver.resolveSource, path, data) : path;
 
 		if(Array.isArray(filepath)) {
 			filepath = filepath?.[0];
@@ -191,7 +191,7 @@ export function processSourceCall<OtherInfo>(
 			const request = sourceProvider.createRequest(filepath);
 
 			// check if the sourced file has already been dataflow analyzed, and if so, skip it
-			const limit = data.config.solver.resolveSource?.repeatedSourceLimit ?? 0;
+			const limit = data.flowrConfig.solver.resolveSource?.repeatedSourceLimit ?? 0;
 			const findCount = data.referenceChain.filter(e => e.request === request.request && e.content === request.content).length;
 			if(findCount > limit) {
 				dataflowLogger.warn(`Found cycle (>=${limit + 1}) in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
@@ -225,7 +225,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 		const file = request.request === 'file' ? request.content : undefined;
 		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(request);
 		normalized = (typeof parsed !== 'string' ?
-			normalizeTreeSitter({ parsed }, getId, data.config, file) : normalize({ parsed }, getId, file)) as NormalizedAst<OtherInfo & ParentInformation>;
+			normalizeTreeSitter({ parsed }, getId, data.flowrConfig, file) : normalize({ parsed }, getId, file)) as NormalizedAst<OtherInfo & ParentInformation>;
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
 			currentRequest: request,

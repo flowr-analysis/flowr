@@ -42,6 +42,7 @@ import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { getAliases } from '../../../../../eval/resolve/alias-tracking';
+import {dataflowGraphToMermaid, dataflowGraphToMermaidUrl} from "../../../../../../core/print/dataflow-printer";
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -317,7 +318,7 @@ export function markAsAssignment(
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
 	config: FlowrConfigOptions,
-	assignmentConfig?: AssignmentConfiguration  ,
+	assignmentConfig?: AssignmentConfiguration
 ) {
 	if(config.solver.pointerTracking) {
 		let indicesCollection: ContainerIndicesCollection = undefined;
@@ -392,7 +393,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
-		markAsAssignment(information, write, [source.info.id], rootId, data.config, config);
+		markAsAssignment(information, write, [source.info.id], rootId, data.flowrConfig, config);
 	}
 
 	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);

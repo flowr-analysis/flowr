@@ -5,7 +5,7 @@ import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 
 // Tests that cannot be generalized and are not covered by other tests
 describe.sequential('Special Cases', withShell(shell => {
-	const config = amendConfig(defaultConfigOptions, c => {
+	const flowrConfig = amendConfig(defaultConfigOptions, c => {
 		c.solver.pointerTracking = true;
 		return c;
 	});
@@ -22,6 +22,6 @@ print(data)`,
 data$count = 1 : nrow(data)
 data <- data[order(-age), ]
 print(data)`,
-		config
+		{ flowrConfig }
 	);
 }));

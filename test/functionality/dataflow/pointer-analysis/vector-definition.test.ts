@@ -37,7 +37,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 3, },
 				{ identifier: { index: 3 }, nodeId: 5, },
 				{ identifier: { index: 4 }, nodeId: 7, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -50,7 +52,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 3, },
 				{ identifier: { index: 3 }, nodeId: 5, },
 				{ identifier: { index: 4 }, nodeId: 7, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		describe('Skip if index threshold', () => {

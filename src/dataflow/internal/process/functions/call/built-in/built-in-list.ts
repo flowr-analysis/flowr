@@ -27,7 +27,7 @@ export function processList<OtherInfo>(
 ): DataflowInformation {
 	const fnCall = processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:list' });
 
-	if(!data.config.solver.pointerTracking) {
+	if(!data.flowrConfig.solver.pointerTracking) {
 		return fnCall.information;
 	}
 
@@ -82,7 +82,7 @@ export function processList<OtherInfo>(
 	}
 
 
-	if(isOverPointerAnalysisThreshold(data.config, listArgs.length)) {
+	if(isOverPointerAnalysisThreshold(data.flowrConfig, listArgs.length)) {
 		return fnCall.information;
 	}
 

@@ -151,11 +151,11 @@ function processNumberBasedAccess<OtherInfo>(
 	if(head.value && outInfo.definitionRootNodes.length > 0) {
 		markAsAssignment(fnCall.information, { type: ReferenceType.Variable, name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, controlDependencies: [] },
 			outInfo.definitionRootNodes,
-			rootId, data.config
+			rootId, data.flowrConfig
 		);
 	}
 
-	if(data.config.solver.pointerTracking) {
+	if(data.flowrConfig.solver.pointerTracking) {
 		referenceAccessedIndices(args, data, fnCall, rootId, true);
 	}
 
@@ -208,7 +208,7 @@ function processStringBasedAccess<OtherInfo>(
 		origin:    'builtin:access' satisfies BuiltInMappingName
 	});
 
-	if(data.config.solver.pointerTracking) {
+	if(data.flowrConfig.solver.pointerTracking) {
 		referenceAccessedIndices(newArgs, data, fnCall, rootId, false);
 	}
 

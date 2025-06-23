@@ -27,7 +27,7 @@ export function processVector<OtherInfo>(
 ): DataflowInformation {
 	const fnCall = processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:vector' });
 
-	if(!data.config.solver.pointerTracking) {
+	if(!data.flowrConfig.solver.pointerTracking) {
 		return fnCall.information;
 	}
 
@@ -65,7 +65,7 @@ export function processVector<OtherInfo>(
 		}
 	}
 
-	if(isOverPointerAnalysisThreshold(data.config, vectorArgs.length)) {
+	if(isOverPointerAnalysisThreshold(data.flowrConfig, vectorArgs.length)) {
 		return fnCall.information;
 	}
 

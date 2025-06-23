@@ -104,7 +104,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	private output:          PipelineOutput<P> = {} as PipelineOutput<P>;
 	private currentExecutionStage = PipelineStepStage.OncePerFile;
 	private stepCounter = 0;
-	private readonly config: FlowrConfigOptions;
+	private readonly flowrConfig: FlowrConfigOptions;
 
 	/**
 	 * Construct a new pipeline executor.
@@ -114,14 +114,14 @@ export class PipelineExecutor<P extends Pipeline> {
 	 *
 	 * @param pipeline - The {@link Pipeline} to execute, probably created with {@link createPipeline}.
 	 * @param input    - External {@link PipelineInput|configuration and input} required to execute the given pipeline.
-	 * @param config   - The flowr config containing the built-in definitions
+	 * @param flowrConfig   - The flowr config containing the built-in definitions
 	 */
-	constructor(pipeline: P, input: PipelineInput<P>, config: FlowrConfigOptions) {
+	constructor(pipeline: P, input: PipelineInput<P>, flowrConfig: FlowrConfigOptions) {
 		this.pipeline = pipeline;
 		this.length = pipeline.order.length;
 		this.input = input;
-		this.config = config;
-		const builtIns = config.semantics.environment.overwriteBuiltIns;
+		this.flowrConfig = flowrConfig;
+		const builtIns = flowrConfig.semantics.environment.overwriteBuiltIns;
 		if(!builtIns.loadDefaults) {
 			BuiltInMemory.clear();
 			EmptyBuiltInMemory.clear();
@@ -223,7 +223,7 @@ export class PipelineExecutor<P extends Pipeline> {
 			guard(step.name === expectedStepName, () => `Cannot execute next step, expected step ${JSON.stringify(expectedStepName)} but got ${step.name}.`);
 		}
 
-		return [step.name, step.processor(this.output, this.input, this.config) as PipelineStepOutputWithName<P, PipelineStepName>];
+		return [step.name, step.processor(this.output, this.input, this.flowrConfig) as PipelineStepOutputWithName<P, PipelineStepName>];
 	}
 
 	/**

@@ -1,11 +1,11 @@
 import type {
-	FlowrSearchElement, FlowrSearchElementFromQuery,
+	FlowrSearchElement,
+	FlowrSearchElementFromQuery,
 	FlowrSearchGeneratorNodeBase,
 	FlowrSearchGetFilter,
 	FlowrSearchInput
 } from '../flowr-search';
-import { FlowrSearchElements
-} from '../flowr-search';
+import { FlowrSearchElements } from '../flowr-search';
 import type { Pipeline } from '../../core/steps/pipeline/pipeline';
 import type { TailTypesOrUndefined } from '../../util/collections/arrays';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -90,9 +90,9 @@ function generateFrom(data: FlowrSearchInput<Pipeline>, args: { from: FlowrSearc
 	return new FlowrSearchElements(Array.isArray(args.from) ? args.from : [args.from]);
 }
 
-function generateFromQuery(data: FlowrSearchInput<Pipeline>, args: { from: readonly Query[] }): FlowrSearchElements<ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]> {
+function generateFromQuery(data: FlowrSearchInput<Pipeline>, args: { from: readonly Query[] } ): FlowrSearchElements<ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]> {
 	const nodes = new Set<FlowrSearchElementFromQuery<ParentInformation>>();
-	const result = executeQueries({ ast: data.normalize, dataflow: data.dataflow }, args.from);
+	const result = executeQueries({ ast: data.normalize, dataflow: data.dataflow, config: data.config }, args.from);
 	for(const [query, content] of Object.entries(result)) {
 		if(query === '.meta') {
 			continue;

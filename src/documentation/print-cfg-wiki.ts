@@ -4,12 +4,12 @@ import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
 import {
+	getDocumentationForType,
 	mermaidHide,
 	getTypesFromFolder,
-	shortLink,
-	printHierarchy,
 	printCodeOfElement,
-	getDocumentationForType
+	printHierarchy,
+	shortLink
 } from './doc-util/doc-types';
 import path from 'path';
 import { FlowrWikiBaseRef } from './doc-util/doc-files';
@@ -37,16 +37,14 @@ import { recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
 import { DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-visitor';
 import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
-import type {
-	SemanticCfgGuidedVisitorConfiguration
-} from '../control-flow/semantic-cfg-guided-visitor';
-import {
-	SemanticCfgGuidedVisitor
-} from '../control-flow/semantic-cfg-guided-visitor';
+import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
+import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { EdgeType, edgeTypeToName } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
 import type { DataflowGraph } from '../dataflow/graph/graph';
+import type { FlowrConfigOptions } from '../config';
+import { defaultConfigOptions } from '../config';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -136,8 +134,8 @@ class CollectNumbersDataflowVisitor extends DataflowAwareCfgGuidedVisitor {
 class CollectSourcesSemanticVisitor extends SemanticCfgGuidedVisitor {
 	private sources: string[] = [];
 
-	constructor(controlFlow: ControlFlowInformation, normalizedAst: NormalizedAst, dataflow: DataflowGraph) {
-		super({ controlFlow, normalizedAst, dfg: dataflow, defaultVisitingOrder: 'forward' });
+	constructor(controlFlow: ControlFlowInformation, normalizedAst: NormalizedAst, dataflow: DataflowGraph, config: FlowrConfigOptions) {
+		super({ controlFlow, normalizedAst, dfg: dataflow, flowrConfig: config, defaultVisitingOrder: 'forward' });
 	}
 
 	protected override onAssignmentCall({ source }: { source?: NodeId }): void {
@@ -540,7 +538,7 @@ Executing it with the CFG and Dataflow of the expression \`x <- 2; 3 -> x; assig
 
 ${await (async() => {
 	const res = await getCfg(shell, 'x <- 2; 3 -> x; assign("x", 42 + 21)');
-	const visitor = new CollectSourcesSemanticVisitor(res.info, res.ast, res.dataflow.graph);
+	const visitor = new CollectSourcesSemanticVisitor(res.info, res.ast, res.dataflow.graph, defaultConfigOptions);
 	visitor.start();
 	const collected = visitor.getSources();
 	return collected.map(n => '\n- `' + n + '`').join('');

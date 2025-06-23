@@ -5,7 +5,8 @@ import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { decorateAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
-import { describe, assert, test } from 'vitest';
+import { assert, describe, test } from 'vitest';
+import { defaultConfigOptions } from '../../../src/config';
 
 describe.sequential('Quads', withShell(shell => {
 	const context = 'test';
@@ -39,7 +40,7 @@ describe.sequential('Quads', withShell(shell => {
 		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 			request: requestFromInput(code),
 			parser:  shell
-		}).allRemainingSteps();
+		}, defaultConfigOptions).allRemainingSteps();
 
 		const serialized = dataflowGraphToQuads(info.dataflow, { context, domain, getId: defaultQuadIdGenerator() });
 		assert.strictEqual(serialized.trim(), expected.trim());

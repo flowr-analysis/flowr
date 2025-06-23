@@ -5,6 +5,7 @@ import type { Identifier, IdentifierDefinition } from './identifier';
 import { isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 
+
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
 const VariableTargetTypes = ReferenceType.Variable | ReferenceType.Parameter | ReferenceType.Argument | ReferenceType.Unknown;
 const ConstantTargetTypes = ReferenceType.Constant | ReferenceType.BuiltInConstant | ReferenceType.Unknown;

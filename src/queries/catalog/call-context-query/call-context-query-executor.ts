@@ -200,7 +200,7 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
  *    This happens during the main resolution!
  * 4. Attach `linkTo` calls to the respective calls.
  */
-export function executeCallContextQueries({ dataflow: { graph }, ast }: BasicQueryData, queries: readonly CallContextQuery[]): CallContextQueryResult {
+export function executeCallContextQueries({ dataflow: { graph }, ast, config }: BasicQueryData, queries: readonly CallContextQuery[]): CallContextQueryResult {
 	/* omit performance page load */
 	const now = Date.now();
 	/* the node id and call targets if present */
@@ -211,7 +211,7 @@ export function executeCallContextQueries({ dataflow: { graph }, ast }: BasicQue
 
 	let cfg = undefined;
 	if(requiresCfg) {
-		cfg = extractCfg(ast, graph, []);
+		cfg = extractCfg(ast, config, graph, []);
 	}
 
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);

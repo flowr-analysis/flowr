@@ -47,6 +47,7 @@ import {
 	UnnamedFunctionCallPrefix
 } from '../dataflow/internal/process/functions/call/unnamed-call-handling';
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
+import { defaultConfigOptions } from '../config';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -868,7 +869,7 @@ async function dummyDataflow(): Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_P
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
 		request: requestFromInput('x <- 1\nx + 1')
-	}).allRemainingSteps();
+	}, defaultConfigOptions).allRemainingSteps();
 	shell.close();
 	return result;
 }
@@ -1144,7 +1145,7 @@ Retrieving the _types_ of the edge from the print call to its argument returns:
 ${await(async() => {
 			const dfg =  await createDataflowPipeline(shell, {
 				request: requestFromInput('print(x)')
-			}).allRemainingSteps();		
+			}, defaultConfigOptions).allRemainingSteps();		
 			const edge = dfg.dataflow.graph.outgoingEdges(3);
 			if(edge) {
 				const wanted = edge.get(1);

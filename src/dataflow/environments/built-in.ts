@@ -41,6 +41,7 @@ import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
 import { resolveAsVector } from '../eval/resolve/resolve';
 import type { DataflowGraph } from '../graph/graph';
+import type { VariableResolve } from '../../config';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -95,7 +96,7 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 }
 
 
-export type BuiltInEvalHandler = (a: RNodeWithParent, env: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap) => Value;
+export type BuiltInEvalHandler = (resolve: VariableResolve, a: RNodeWithParent, env: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap) => Value;
 
 function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

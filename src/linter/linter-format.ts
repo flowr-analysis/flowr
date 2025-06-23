@@ -6,6 +6,7 @@ import type { TransformerNames } from '../search/search-executor/search-transfor
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from './linter-rules';
 import type { DataflowInformation } from '../dataflow/info';
+import type { FlowrConfigOptions } from '../config';
 import type { DeepPartial, DeepReadonly } from 'ts-essentials';
 import type { LintingRuleTag } from './linter-tags';
 import type { SourceRange } from '../util/range';
@@ -43,7 +44,7 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 	 * Processes the search results of the search created through {@link createSearch}.
 	 * This function is expected to return the linting results from this rule for the given search, ie usually the given script file.
 	 */
-	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation }) => {
+	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions }) => {
 		results: Result[],
 		'.meta': Metadata
 	}

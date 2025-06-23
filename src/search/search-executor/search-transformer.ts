@@ -1,10 +1,9 @@
 import type {
 	FlowrSearchElement,
 	FlowrSearchElements,
-	FlowrSearchInput, FlowrSearchTransformerNodeBase
+	FlowrSearchInput,
+	FlowrSearchTransformerNodeBase
 } from '../flowr-search';
-
-
 
 
 import type { Pipeline } from '../../core/steps/pipeline/pipeline';

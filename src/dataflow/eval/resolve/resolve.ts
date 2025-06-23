@@ -54,7 +54,7 @@ export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, env?: 
  * Helper function used by {@link resolveIdToValue}, please use that instead, if
  * you want to resolve the value of an identifier / node
  *
- * This function converts a rnode to a Value Vector {@link vectorFrom}
+ * This function converts an r-node to a Value Vector {@link vectorFrom}
  * It also recursively resolves any symbols, values, function calls (only c), in
  * order to construct the value of the vector to resolve by calling {@link resolveIdToValue}
  * or {@link resolveNode}

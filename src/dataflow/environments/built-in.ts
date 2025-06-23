@@ -80,13 +80,19 @@ export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierRefere
 	value:     T
 }
 
+export type UseAsProcessors = 'builtin:default' | 'builtin:return' | 'builtin:stop';
+
 export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	readonly returnsNthArgument?:    number | 'last',
 	readonly cfg?:                   ExitPointType,
 	readonly readAllArguments?:      boolean,
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
 	/** record mapping the actual function name called to the arguments that should be treated as function calls */
-	readonly treatAsFnCall?:         Record<string, readonly string[]>
+	readonly treatAsFnCall?:         Record<string, readonly string[]>,
+	/** Name that should be used for the origin (useful when needing to differentiate between 
+	 * functions like 'return' that use the default builtin processor) 
+	 */
+	readonly useAsProcessor?:        UseAsProcessors
 }
 
 
@@ -99,7 +105,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
-	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'builtin:default' });
+	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: config.useAsProcessor ?? 'builtin:default' });
 	if(config.returnsNthArgument !== undefined) {
 		const arg = config.returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[config.returnsNthArgument];
 		if(arg !== undefined) {
@@ -146,7 +152,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 					environment: data.environment,
 					onlyBuiltin: false,
 					cds:         data.controlDependencies,
-					origin:      ['builtin:default']
+					origin:      [config.useAsProcessor ?? 'builtin:default']
 				});
 			}
 		}

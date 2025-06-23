@@ -349,14 +349,19 @@ function convertTreeNode(node: SyntaxNode): RNode {
 		}
 		case TreeSitterType.FunctionDefinition: {
 			const [name, paramsParens, body] = nonErrorChildren(node);
-			const params = splitArrayOn(paramsParens.children.slice(1, -1), x => x.type === 'comma');
+			const [comments, noCommentRawParams] = splitComments(paramsParens.children.slice(1, -1));
+
+			const params = splitArrayOn(noCommentRawParams, x => x.type === 'comma');
 			return {
 				type:       RType.FunctionDefinition,
 				parameters: params.map(n => convertTreeNode(n[0]) as RParameter),
 				body:       ensureExpressionList(convertTreeNode(body)),
 				location:   makeSourceRange(name),
 				lexeme:     name.text,
-				...defaultInfo
+				info:       {
+					...defaultInfo.info,
+					additionalTokens: comments.map(c => c[1]),
+				}
 			};
 		}
 		case TreeSitterType.String:

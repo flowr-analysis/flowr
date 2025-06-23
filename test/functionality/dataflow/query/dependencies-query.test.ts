@@ -73,7 +73,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '1@require', functionName: 'require', libraryName: 'c' }
 		] });
 
-		testQuery('Given Require with Character Only', 'require(c, character.only=TRUE)', { libraries: [
+		testQuery('Given Require with character only', 'require(c, character.only=TRUE)', { libraries: [
 			{ nodeId: '1@require', functionName: 'require', libraryName: 'unknown', lexemeOfArgument: 'c' }
 		] });
 
@@ -100,19 +100,19 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '2@y', functionName: ':::', libraryName: 'bar' }
 		] });
 
-		testQuery('Using a vector without chracter.only', 'lapply(c("a", "b", "c"), library)', { libraries: [
+		testQuery('Using a vector without character.only', 'lapply(c("a", "b", "c"), library)', { libraries: [
 			{ nodeId: '1@library', functionName: 'library', libraryName: '"a"' },
 			{ nodeId: '1@library', functionName: 'library', libraryName: '"b"' },
 			{ nodeId: '1@library', functionName: 'library', libraryName: '"c"' }
 		] });
 
 		testQuery('Using a vector to load (missing elements)', 'lapply(c("x", u), library, character.only = TRUE)', { libraries: [
-			// We currently don't suppert resolving that "x" and some unknown library is loaded
+			// We currently don't support resolving that "x" and some unknown library is loaded
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'unknown', lexemeOfArgument: 'c("x", u)' },
 		] });
 
 		testQuery('Using an aliased vector to load (missing elements)', 'x <- c("x", u)\nlapply(x, library, character.only = TRUE)', { libraries: [
-			// We currently don't suppert resolving that "x" and some unknown library is loaded
+			// We currently don't support resolving that "x" and some unknown library is loaded
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'unknown', lexemeOfArgument: 'x' },
 		] });
 
@@ -127,6 +127,24 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'c' }
 		] });
+		
+		testQuery('Intermix another library call', 'library(foo)\nv <- c("a", "b", "c")\nlapply(v, library, character.only = TRUE)', {
+			libraries: [
+				{ nodeId: '1@library', functionName: 'library', libraryName: 'foo' },
+				{ nodeId: '3@library', functionName: 'library', libraryName: 'a' },
+				{ nodeId: '3@library', functionName: 'library', libraryName: 'b' },
+				{ nodeId: '3@library', functionName: 'library', libraryName: 'c' }
+			]
+		});
+		/* // not until we are able to track the side effects of loading a library
+			testQuery('Intermix another library call', 'v <- c("a", "b", "c")\nlibrary(foo)\nlapply(v, library, character.only = TRUE)', {
+				libraries: [
+					{ nodeId: '1@library', functionName: 'library', libraryName: 'foo' },
+					{ nodeId: '3@library', functionName: 'library', libraryName: 'a' },
+					{ nodeId: '3@library', functionName: 'library', libraryName: 'b' },
+					{ nodeId: '3@library', functionName: 'library', libraryName: 'c' }
+				]
+			}); */
 
 		testQuery('Using a nested vector to load', 'lapply(c(c("a", "b"), "c"), library, character.only = TRUE)', { libraries: [
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'a' },

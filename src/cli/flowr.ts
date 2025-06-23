@@ -109,31 +109,33 @@ function createConfig() : FlowrConfigOptions {
 		config = getConfig(options['config-file'] ?? defaultConfigFile);
 	}
 
-	// for all options that we manually supply that have a config equivalent, set them in the config
-	amendConfig(config, c => {
-		if(!options['engine.r-shell.disabled']) {
-			c.engines = [{ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] }];
-		}
 
-		if(!options['engine.tree-sitter.disabled']) {
-			c.engines = [{
-				type:               'tree-sitter',
-				wasmPath:           options['engine.tree-sitter.wasm-path'],
-				treeSitterWasmPath: options['engine.tree-sitter.tree-sitter-wasm-path'],
-				lax:                options['engine.tree-sitter.lax']
-			}];
-		}
+    // for all options that we manually supply that have a config equivalent, set them in the config
+    amendConfig(config, c => {
+        c.engines ??= [];
 
-		if(options['default-engine']) {
-			c.defaultEngine = options['default-engine'] as EngineConfig['type'];
-		}
+        if(!options['engine.r-shell.disabled']) {
+            c.engines.push({ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] });
+        }
 
-		return c;
-	});
+        if(!options['engine.tree-sitter.disabled']) {
+            c.engines.push({
+                type:               'tree-sitter',
+                wasmPath:           options['engine.tree-sitter.wasm-path'],
+                treeSitterWasmPath: options['engine.tree-sitter.tree-sitter-wasm-path'],
+                lax:                options['engine.tree-sitter.lax']
+            });
+        }
+
+        if(options['default-engine']) {
+            c.defaultEngine = options['default-engine'] as EngineConfig['type'];
+        }
+
+        return c;
+    });
 
 	return config;
 }
-
 
 
 async function retrieveEngineInstances(config: FlowrConfigOptions): Promise<{ engines: KnownEngines, default: keyof KnownEngines }> {

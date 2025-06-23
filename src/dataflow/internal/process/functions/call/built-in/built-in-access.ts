@@ -54,8 +54,8 @@ export function processAccess<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: { treatIndicesAsString: boolean } & ForceArguments
 ): DataflowInformation {
-	if(args.length < 2) {
-		dataflowLogger.warn(`Access ${name.content} has less than 2 arguments, skipping`);
+	if(args.length < 1) {
+		dataflowLogger.warn(`Access ${name.content} has less than 1 argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 	const head = args[0];

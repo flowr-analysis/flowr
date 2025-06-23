@@ -13,10 +13,15 @@ import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-c
 import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
 
-type CachedValues = Map<NodeId, Ternary>;
+type CachedValues<Val> = Map<NodeId, Val>;
 
 class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
-	private readonly cachedConditions: CachedValues = new Map();
+	
+
+	private readonly cachedConditions: CachedValues<Ternary> = new Map();
+
+	private readonly cachedStatements: CachedValues<boolean> = new Map();
+
 
 	private getValue(id: NodeId): Ternary {
 		const has = this.cachedConditions.get(id);
@@ -25,6 +30,15 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		}
 		this.visitNode(id);
 		return this.cachedConditions.get(id) ?? Ternary.Maybe;
+	}
+
+	private isUnconditionalJump(id: NodeId): boolean {
+		const has = this.cachedStatements.get(id);
+		if(has) {
+			return has;
+		}
+		this.visitNode(id);
+		return this.cachedStatements.get(id) ?? false;
 	}
 
 	private unableToCalculateValue(id: NodeId): void {
@@ -44,6 +58,10 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 					if(og === Ternary.Always && edge.when === 'FALSE') {
 						this.config.controlFlow.graph.removeEdge(from, target);
 					} else if(og === Ternary.Never && edge.when === 'TRUE') {
+						this.config.controlFlow.graph.removeEdge(from, target);
+					}
+				} else if(edge.label === CfgEdgeType.Fd) {
+					if(this.isUnconditionalJump(target)) {
 						this.config.controlFlow.graph.removeEdge(from, target);
 					}
 				}
@@ -70,12 +88,45 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		this.handleValuesFor(id, typeof data.condition === 'object' ? data.condition.nodeId : data.condition);
 	}
 
+	private getBoolArgValue(data: { call: DataflowGraphVertexFunctionCall }): boolean | undefined {
+		if(data.call.args.length !== 1 || data.call.args[0] === EmptyArgument) {
+			return undefined;
+		}
+
+		const values = valueSetGuard(resolveIdToValue(data.call.args[0].nodeId, { graph: this.config.dfg, full: true, idMap: this.config.normalizedAst.idMap }));
+		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
+			return undefined;
+		}
+
+		return Boolean(values.elements[0].value);
+	}
+
+	private handleFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+		switch(data.call.origin[0]) {
+			case 'builtin:return':
+			case 'builtin:stop':
+				this.cachedStatements.set(data.call.id, true);
+				break;
+			case 'builtin:stopifnot': {
+				const arg = this.getBoolArgValue(data);
+				if(arg !== undefined) {
+					this.cachedStatements.set(data.call.id, !arg);
+				}
+				break;
+			}
+		}
+	}
+
 	protected onIfThenElseCall(data: { call: DataflowGraphVertexFunctionCall, condition?: NodeId }) {
 		this.handleWithCondition(data);
 	}
 
 	protected onWhileLoopCall(data: { call: DataflowGraphVertexFunctionCall, condition: FunctionArgument }) {
 		this.handleWithCondition(data);
+	}
+
+	protected onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+		this.handleFunctionCall(data);	
 	}
 }
 

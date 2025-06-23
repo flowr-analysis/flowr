@@ -86,7 +86,7 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 	 * - `foo bar.R` (original name)
 	 * - `main.R` (replaced with main.R)
 	 * - `foo_bar.R` (replaced spaces)
-	 * - `foo-bar.R` (replaced spaces and oo)
+	 * - `faa-bar.R` (replaced spaces and oo)
 	 */
 	readonly applyReplacements?:    Record<string, string>[]
 }

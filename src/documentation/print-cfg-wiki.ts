@@ -5,8 +5,8 @@ import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
 import {
 	getDocumentationForType,
-	getTypesFromFolderAsMermaid,
 	mermaidHide,
+	getTypesFromFolder,
 	printCodeOfElement,
 	printHierarchy,
 	shortLink
@@ -152,15 +152,13 @@ class CollectSourcesSemanticVisitor extends SemanticCfgGuidedVisitor {
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 
-	const types = getTypesFromFolderAsMermaid({
+	const types = getTypesFromFolder({
 		rootFolder:  path.resolve('./src'),
-		typeName:    'RNode',
 		inlineTypes: mermaidHide
 	});
 
-	const testTypes = getTypesFromFolderAsMermaid({
+	const testTypes = getTypesFromFolder({
 		rootFolder:  path.resolve('./test'),
-		typeName:    'assertCfg',
 		inlineTypes: mermaidHide
 	});
 
@@ -540,7 +538,7 @@ Executing it with the CFG and Dataflow of the expression \`x <- 2; 3 -> x; assig
 
 ${await (async() => {
 	const res = await getCfg(shell, 'x <- 2; 3 -> x; assign("x", 42 + 21)');
-	const visitor = new CollectSourcesSemanticVisitor(res.info, res.ast, res.dataflow.graph, defaultConfigOptions);
+	const visitor = new CollectSourcesSemanticVisitor(res.info, res.ast, res.dataflow.graph);
 	visitor.start();
 	const collected = visitor.getSources();
 	return collected.map(n => '\n- `' + n + '`').join('');

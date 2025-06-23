@@ -5,7 +5,7 @@ import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { block, details } from './doc-util/doc-structure';
 import { FlowrWikiBaseRef, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { getCliLongOptionOf, getReplCommand } from './doc-util/doc-cli-option';
-import { getTypesFromFolderAsMermaid, mermaidHide, printHierarchy, shortLink } from './doc-util/doc-types';
+import { getTypesFromFolder, mermaidHide, printHierarchy, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { codeBlock } from './doc-util/doc-code';
 import { produceDataFlowGraph } from '../dataflow/extractor';
@@ -47,9 +47,8 @@ import { defaultConfigOptions } from '../config';
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 	const sampleCode = 'x <- 1; print(x)';
-	const { info, program } = getTypesFromFolderAsMermaid({
+	const { info, program } = getTypesFromFolder({
 		rootFolder:  path.resolve('./src'),
-		typeName:    RShell.name,
 		inlineTypes: mermaidHide
 	});
 

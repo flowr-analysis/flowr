@@ -6,6 +6,7 @@ import type { DataflowInformation } from '../dataflow/info';
 import type { BaseQueryResult } from '../queries/base-query-format';
 import type { Query } from '../queries/query';
 import type { FlowrConfigOptions } from '../config';
+import type { MarkOptional } from 'ts-essentials';
 
 /**
  * Yes, for now we do technically not need a wrapper around the RNode, but this allows us to attach caches etc.
@@ -19,6 +20,8 @@ export interface FlowrSearchElementFromQuery<Info> extends FlowrSearchElement<In
 	readonly query:       Query['type'];
 	readonly queryResult: BaseQueryResult;
 }
+
+export type FlowrSearchElementMaybeFromQuery<Info> = MarkOptional<FlowrSearchElementFromQuery<Info>, 'query' | 'queryResult'>
 
 export interface FlowrSearchNodeBase<Type extends string, Name extends string, Args extends Record<string, unknown> | undefined> {
     readonly type: Type;

@@ -25,6 +25,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				'(function() { x <- 42; print(x) })()',
 				'f <- function() {\n function() { 42 } }\nprint(f()())',
 			]) {
+				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', []);
 			}
 		});
@@ -40,6 +41,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				['function() { 42 }', '1@function', rangeFrom(1, 1, 1, 17)],
 				['f <- function() {\n function() { 42 } }\nprint(f())', '2@function', rangeFrom(2, 2, 2, 18)]
 			] as const satisfies readonly [string, string, SourceRange | undefined][]) {
+				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', (df, ast) => {
 					const ids = convertAllSlicingCriteriaToIds(criteria.split(';') as SlicingCriteria, ast.idMap);
 					return ids.map(({ id }) => {

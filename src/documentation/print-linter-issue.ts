@@ -1,6 +1,6 @@
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
-import { getDocumentationForType, getTypesFromFolderAsMermaid } from './doc-util/doc-types';
+import { getDocumentationForType, getTypesFromFolder } from './doc-util/doc-types';
 import path from 'path';
 import { LintingRuleTag } from '../linter/linter-tags';
 import { prefixLines } from './doc-util/doc-general';
@@ -19,9 +19,8 @@ function summarizeIfTooLong(text: string, maxLength = 52): string {
 
 
 function getText() {
-	const types = getTypesFromFolderAsMermaid({
-		rootFolder: path.resolve('./src/linter/'),
-		typeName:   'LintingRuleTag'
+	const types = getTypesFromFolder({
+		rootFolder: path.resolve('./src/linter/')
 	});
 
 	return `
@@ -61,8 +60,8 @@ ${prefixLines(Object.keys(LintingRules).sort().map(name => {
       label: Meta Information
       description: Select any tags that you think apply to the linting rule you are suggesting. If you try to suggest a new linting rule, please only select those that you think apply after your suggestions.
       options:
-${prefixLines(Object.entries(LintingRuleTag).map(([name, tag]) => {
-	return `- label: '**${tag}**: ${summarizeIfTooLong(getDocumentationForType('LintingRuleTag::' + name, types.info).replaceAll(/\n/g, ' ').replaceAll('\'', '\\\'').trim())}'\n  required: false`;
+${prefixLines(Object.entries(LintingRuleTag).map(([name]) => {
+	return `- label: '**${name}**: ${summarizeIfTooLong(getDocumentationForType('LintingRuleTag::' + name, types.info).replaceAll(/\n/g, ' ').replaceAll('\'', '\\\'').trim())}'\n  required: false`;
 }).join('\n'), '        ')}
 `.trim();
 }

@@ -103,6 +103,10 @@ export function equalVertex(a: CfgSimpleVertex, b: CfgSimpleVertex): boolean {
 	return true;
 }
 
+export function isMarkerVertex(vertex: CfgSimpleVertex): vertex is CfgMidMarkerVertex | CfgEndMarkerVertex {
+	return vertex.type === CfgVertexType.MidMarker || vertex.type === CfgVertexType.EndMarker;
+}
+
 interface CfgFlowDependencyEdge extends MergeableRecord {
     label: CfgEdgeType.Fd
 }

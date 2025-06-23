@@ -11,13 +11,13 @@ import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-q
 
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { Ternary } from '../../util/logic';
-import { getConfig } from '../../config';
 import { requestFromInput } from '../../r-bridge/retriever';
 import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 import { extractSimpleCfg } from '../../control-flow/extract-cfg';
 import { happensBefore } from '../../control-flow/happens-before';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
+import { LintingRuleTag } from '../linter-tags';
 
 export interface FilePathValidityResult extends LintingResult {
 	filePath: string,
@@ -48,7 +48,7 @@ export interface FilePathValidityMetadata extends MergeableRecord {
 	totalValid:              number
 }
 
-export const R2_FILE_PATH_VALIDITY = {
+export const FILE_PATH_VALIDITY = {
 	createSearch: (config) => Q.fromQuery({
 		type:                   'dependencies',
 		// we only want to check read and write functions, so we explicitly clear all others
@@ -89,7 +89,7 @@ export const R2_FILE_PATH_VALIDITY = {
 				}
 
 				// check if any write to the same file happens before the read, and exclude this case if so
-				const writesToFile = results.writtenData.filter(r => samePath(r.destination, matchingRead.source));
+				const writesToFile = results.writtenData.filter(r => samePath(r.destination, matchingRead.source, data.config.solver.resolveSource?.ignoreCapitalization));
 				const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, element.node.info.id));
 				if(writesBefore.some(w => w === Ternary.Always)) {
 					metadata.totalWritesBeforeAlways++;
@@ -97,7 +97,7 @@ export const R2_FILE_PATH_VALIDITY = {
 				}
 
 				// check if the file exists!
-				const paths = findSource(matchingRead.source, {
+				const paths = findSource(data.config.solver.resolveSource, matchingRead.source, {
 					referenceChain: element.node.info.file ? [requestFromInput(`file://${element.node.info.file}`)] : []
 				});
 				if(paths && paths.length) {
@@ -114,16 +114,21 @@ export const R2_FILE_PATH_VALIDITY = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint:   result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
-	defaultConfig: {
-		additionalReadFunctions:  [],
-		additionalWriteFunctions: [],
-		includeUnknown:           false
+	prettyPrint: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
+	info:        {
+		name:          'File Path Validity',
+		description:   'Checks whether file paths used in read and write operations are valid and point to existing files.',
+		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug],
+		defaultConfig: {
+			additionalReadFunctions:  [],
+			additionalWriteFunctions: [],
+			includeUnknown:           false
+		}
 	}
 } as const satisfies LintingRule<FilePathValidityResult, FilePathValidityMetadata, FilePathValidityConfig, ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]>;
 
-function samePath(a: string, b: string): boolean {
-	if(getConfig().solver.resolveSource?.ignoreCapitalization === true) {
+function samePath(a: string, b: string, ignoreCapitalization: boolean | undefined): boolean {
+	if(ignoreCapitalization === true) {
 		a = a.toLowerCase();
 		b = b.toLowerCase();
 	}

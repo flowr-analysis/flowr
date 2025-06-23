@@ -5,10 +5,12 @@ import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { visitCfgInOrder } from './simple-visitor';
 import { cfgAnalyzeDeadCode } from './cfg-dead-code';
+import type { FlowrConfigOptions } from '../config';
 
 export interface CfgPassInfo {
-	ast?: NormalizedAst,
-	dfg?: DataflowGraph
+	ast?:   NormalizedAst,
+	dfg?:   DataflowGraph,
+	config: FlowrConfigOptions
 }
 export type CfgSimplificationPass = (cfg: ControlFlowInformation, info: CfgPassInfo) => ControlFlowInformation;
 

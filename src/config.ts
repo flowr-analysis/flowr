@@ -86,7 +86,7 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 	 * - `foo bar.R` (original name)
 	 * - `main.R` (replaced with main.R)
 	 * - `foo_bar.R` (replaced spaces)
-	 * - `foo-bar.R` (replaced spaces and oo)
+	 * - `faa-bar.R` (replaced spaces and oo)
 	 */
 	readonly applyReplacements?:    Record<string, string>[]
 }
@@ -264,22 +264,6 @@ export const flowrConfigFileSchema = Joi.object({
 	}).description('How to resolve constants, constraints, cells, ...')
 }).description('The configuration file format for flowR.');
 
-// we don't load from a config file at all by default unless setConfigFile is called
-let configFile: string | undefined                = undefined;
-let configWorkingDirectory                        = process.cwd();
-let currentConfig: FlowrConfigOptions | undefined = undefined;
-
-export function setConfigFile(file: string | undefined, workingDirectory = process.cwd(), forceLoad = false) {
-	configFile             = file;
-	configWorkingDirectory = workingDirectory;
-
-	// reset the config so it gets reloaded
-	currentConfig = undefined;
-	if(forceLoad) {
-		getConfig();
-	}
-}
-
 export function parseConfig(jsonString: string): FlowrConfigOptions | undefined {
 	try {
 		const parsed   = JSON.parse(jsonString) as FlowrConfigOptions;
@@ -296,47 +280,46 @@ export function parseConfig(jsonString: string): FlowrConfigOptions | undefined 
 	}
 }
 
-export function setConfig(config: FlowrConfigOptions) {
-	currentConfig = config;
+/**
+ * Creates a new flowr config that has the updated values.
+ */
+export function amendConfig(config: FlowrConfigOptions, amendmentFunc: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions) {
+	return amendmentFunc(cloneConfig(config) as DeepWritable<FlowrConfigOptions>);
 }
 
-export function amendConfig(amendmentFunc: (config: DeepWritable<FlowrConfigOptions>) => void) {
-	amendmentFunc(getConfig());
+export function cloneConfig(config: FlowrConfigOptions): FlowrConfigOptions {
+	return JSON.parse(JSON.stringify(config)) as FlowrConfigOptions;
 }
 
-export function getConfig(): FlowrConfigOptions {
-	// lazy-load the config based on the current settings
-	if(currentConfig === undefined) {
-		try {
-			setConfig(loadConfigFromFile(configFile, configWorkingDirectory));
-		} catch(e) {
-			log.error(`Failed to load config: ${(e as Error).message}`);
-			setConfig(defaultConfigOptions);
-		}
+export function getConfig(configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfigOptions {
+	try {
+		return loadConfigFromFile(configFile, configWorkingDirectory);
+	} catch(e) {
+		log.error(`Failed to load config: ${(e as Error).message}`);
+		return defaultConfigOptions;
 	}
-	return currentConfig as FlowrConfigOptions;
 }
 
-export function getEngineConfig<T extends EngineConfig['type']>(engine: T): EngineConfig & { type: T } | undefined {
-	const config = getConfig().engines;
-	if(!config.length) {
+export function getEngineConfig<T extends EngineConfig['type']>(config: FlowrConfigOptions, engine: T): EngineConfig & { type: T } | undefined {
+	const engines = config.engines;
+	if(!engines.length) {
 		return defaultEngineConfigs[engine];
 	} else {
-		return config.find(e => e.type == engine) as EngineConfig & { type: T } | undefined;
+		return engines.find(e => e.type == engine) as EngineConfig & { type: T } | undefined;
 	}
 }
 
-function getPointerAnalysisThreshold(): number | 'unlimited' | 'disabled' {
-	const config = getConfig().solver.pointerTracking;
-	if(typeof config === 'object') {
-		return config.maxIndexCount;
+function getPointerAnalysisThreshold(config: FlowrConfigOptions): number | 'unlimited' | 'disabled' {
+	const pointerTracking = config.solver.pointerTracking;
+	if(typeof pointerTracking === 'object') {
+		return pointerTracking.maxIndexCount;
 	} else {
-		return config ? 'unlimited' : 'disabled';
+		return pointerTracking ? 'unlimited' : 'disabled';
 	}
 }
 
-export function isOverPointerAnalysisThreshold(count: number): boolean {
-	const threshold = getPointerAnalysisThreshold();
+export function isOverPointerAnalysisThreshold(config: FlowrConfigOptions, count: number): boolean {
+	const threshold = getPointerAnalysisThreshold(config);
 	return threshold !== 'unlimited' && (threshold === 'disabled' || count > threshold);
 }
 

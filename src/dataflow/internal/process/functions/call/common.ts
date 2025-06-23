@@ -131,7 +131,7 @@ export function processAllArguments<OtherInfo>(
 					// When only a single index is referenced, we don't need to reference the whole object
 					const resolvedInGraphDef = resolved as InGraphIdentifierDefinition;
 					const isContainer = checkForContainer(resolvedInGraphDef?.indicesCollection);
-					if(isContainer || isContainer === undefined) {
+					if(isContainer !== false) {
 						finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
 					}
 				}

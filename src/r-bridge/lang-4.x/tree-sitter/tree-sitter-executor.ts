@@ -3,7 +3,7 @@ import Parser from 'web-tree-sitter';
 import type { RParseRequest } from '../../retriever';
 import fs from 'fs';
 import type { SyncParser } from '../../parser';
-import { getEngineConfig } from '../../../config';
+import type { TreeSitterEngineConfig } from '../../../config';
 import { log } from '../../../util/log';
 
 export const DEFAULT_TREE_SITTER_R_WASM_PATH = './node_modules/@eagleoutice/tree-sitter-r/tree-sitter-r.wasm';
@@ -22,11 +22,12 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 
 	/**
 	 * Initializes the underlying tree-sitter parser. This only needs to be called once globally.
+	 * @param config - The configuration for the tree-sitter engine, which can include paths to the wasm files.
 	 * @param overrideWasmPath - The path to the tree-sitter-r wasm file, which takes precedence over the config and default paths if set.
 	 * @param overrideTreeSitterWasmPath - The path to the tree-sitter wasm file, which takes precedence over the config and default paths if set.
 	 */
-	public static async initTreeSitter(overrideWasmPath?: string, overrideTreeSitterWasmPath?: string): Promise<void> {
-		const treeSitterWasmPath = overrideTreeSitterWasmPath ?? getEngineConfig('tree-sitter')?.treeSitterWasmPath ?? DEFAULT_TREE_SITTER_WASM_PATH;
+	public static async initTreeSitter(config?: TreeSitterEngineConfig, overrideWasmPath?: string, overrideTreeSitterWasmPath?: string): Promise<void> {
+		const treeSitterWasmPath = overrideTreeSitterWasmPath ?? config?.treeSitterWasmPath ?? DEFAULT_TREE_SITTER_WASM_PATH;
 		// noinspection JSUnusedGlobalSymbols - this is used by emscripten, see https://emscripten.org/docs/api_reference/module.html
 		await Parser.init({
 			locateFile: treeSitterWasmPath ? (path: string, prefix: string) => {
@@ -40,7 +41,7 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 			print:    (s: string) => wasmLog.debug(s),
 			printErr: (s: string) => wasmLog.error(s)
 		});
-		const wasmPath = overrideWasmPath ?? getEngineConfig('tree-sitter')?.wasmPath ?? DEFAULT_TREE_SITTER_R_WASM_PATH;
+		const wasmPath = overrideWasmPath ?? config?.wasmPath ?? DEFAULT_TREE_SITTER_R_WASM_PATH;
 		TreeSitterExecutor.language = await Parser.Language.load(wasmPath);
 	}
 

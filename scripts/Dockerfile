@@ -9,6 +9,9 @@ COPY ./src /app/src
 COPY ./test /app/test
 COPY ./package.json ./package-lock.json ./tsconfig.json /app/
 
+# install python and build tools for node-gyp
+RUN apk add --no-cache python3 make g++
+
 # install and build all modules
 RUN npm ci && npm run build:bundle-flowr
 
@@ -25,6 +28,9 @@ COPY ./scripts/demo.R LICENSE /app/
 
 # copy all package.jsons so we can install them (see below)
 COPY ./package.json ./package-lock.json /app/
+
+# install python and build tools for node-gyp
+RUN apk add --no-cache python3 make g++
 
 # install all modules so that we have dependencies in here too
 # (we don't copy them from the builder because builder modules include dev deps too)

@@ -14,6 +14,7 @@ import { codeBlock, jsonWithLimit } from './doc-code';
 import { printAsMs } from '../../util/text/time';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
 import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
+import { defaultConfigOptions } from '../../config';
 
 export interface ShowQueryOptions<Base extends SupportedQueryTypes> {
 	readonly showCode?:       boolean;
@@ -30,8 +31,8 @@ export async function showQuery<
 	const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
 		request: requestFromInput(code)
-	}).allRemainingSteps();
-	const results = executeQueries({ dataflow: analysis.dataflow, ast: analysis.normalize }, queries);
+	}, defaultConfigOptions).allRemainingSteps();
+	const results = executeQueries({ dataflow: analysis.dataflow, ast: analysis.normalize, config: defaultConfigOptions }, queries);
 	const duration = performance.now() - now;
 
 	const metaInfo = `

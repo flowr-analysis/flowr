@@ -1,8 +1,6 @@
 import type { FlowrSearch, FlowrSearchLike, SearchOutput } from './flowr-search-builder';
 import { getFlowrSearch } from './flowr-search-builder';
-import type { FlowrSearchElements,
-	FlowrSearchInput
-} from './flowr-search';
+import type { FlowrSearchElements, FlowrSearchInput } from './flowr-search';
 
 
 import type { Pipeline } from '../core/steps/pipeline/pipeline';

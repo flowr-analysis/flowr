@@ -208,7 +208,7 @@ function mapDataFrameRead(
 	}
 	const LineCommentRegex = new RegExp(`\\s*[${comment}].*`);
 	const request = getSourceProvider().createRequest(source);
-	let firstLine: (string | undefined)[] | undefined = undefined;
+	let firstLine = undefined as (string | undefined)[] | undefined;
 	let firstLineNumber = 0;
 	let rowCount = 0;
 	let allLines = true;
@@ -232,15 +232,20 @@ function mapDataFrameRead(
 	} else if(request.request === 'file') {
 		allLines = readLineByLineSync(request.content, parseLine, MaxReadLines);
 	}
+	let colnames: (string | undefined)[] | undefined;
 
+	if(header || firstLine === undefined) {
+		// map all invalid column names to top
+		colnames = firstLine?.map(entry => isValidColName(entry) ? entry : undefined);
+		// map all duplicate column names to top
+		colnames = colnames?.map((entry, _, list) => entry && list.filter(other => other === entry).length === 1 ? entry : undefined );
+	} else {
+		colnames = Array((firstLine as unknown[]).length).fill(undefined);
+	}
 	return [{
 		operation: 'read',
 		operand:   undefined,
-		args:      {
-			file:     source,
-			colnames: header || firstLine === undefined ? firstLine : Array((firstLine as unknown[]).length).fill(undefined),
-			rows:     allLines ? rowCount : undefined
-		}
+		args:      { file: source, colnames: colnames, rows: allLines ? rowCount : undefined }
 	}];
 }
 
@@ -276,7 +281,7 @@ function mapDataFrameColBind(
 					args:      { other: otherDataFrame }
 				});
 				operand = undefined;
-			// Added columns are undefined if argument cannot be resolved to constant (vector-like) value
+			// added columns are top if argument cannot be resolved to constant (vector-like) value
 			} else if(resolveIdToArgValue(arg, info) !== undefined) {
 				const colname = resolveIdToArgName(arg, info);
 				colnames?.push(colname);
@@ -327,7 +332,7 @@ function mapDataFrameRowBind(
 					args:      { other: otherDataFrame }
 				});
 				operand = undefined;
-			// Number of added rows is undefined if arguments cannot be resolved to constant (vector-like) value
+			// number of added rows is top if arguments cannot be resolved to constant (vector-like) value
 			} else if(resolveIdToArgValue(arg, info) !== undefined) {
 				rows = rows !== undefined ? rows + 1 : undefined;
 			} else {
@@ -798,7 +803,7 @@ function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = 
 	sep = escapeRegExp(sep, true);  // only allow tokens like `\s`, `\t`, or `\n` in separator, quote, and comment chars
 	quote = escapeRegExp(quote, true);
 	comment = escapeRegExp(comment, true);
-	const quantifier = sep === '\\s' ? '+' : '*';  // don't allow unquoted empty entries in whitespace-sparated files
+	const quantifier = sep === '\\s' ? '+' : '*';  // do not allow unquoted empty entries in whitespace-sparated files
 
 	const LineCommentRegex = new RegExp(`\\s*[${comment}].*`);
 	const CsvEntryRegex = new RegExp(`(?<=^|[${sep}])(?:[${quote}]((?:[^${quote}]|[${quote}]{2})*)[${quote}]|([^${sep}]${quantifier}))`, 'g');

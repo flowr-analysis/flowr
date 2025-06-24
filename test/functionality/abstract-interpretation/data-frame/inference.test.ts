@@ -26,7 +26,7 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 		'c.csv': '# this is a comment :D\n\n,"id,number","""unique"" name" #this is a comment\n\n"1",1,6\n\n"2",2,7\n\n"3",3,8\n\n"4",4,9\n\n"5",5,10\n',
 		'd.csv': '1;3,5;banana\n2;7,8;apple\n3;4,2;peach\n4;1,9;grape\n',
 		'e.csv': 'first last     state phone\nJohn  Smith    WA    418-Y11-4111\nMary  Hartford CA    319-Z19-4341\nEvan  Nolan    IL    219-532-c301\n',
-		'f.csv': 'first\tlast\tstate\tphone\nJohn\tSmith\tWA\t418-Y11-4111\nMary\tHartford\tCA\t319-Z19-4341\nEvan\tNolan\tIL\t219-532-c301'
+		'f.csv': 'name\tname\tstate\tphone\nJohn\tSmith\tWA\t418-Y11-4111\nMary\tHartford\tCA\t319-Z19-4341\nEvan\tNolan\tIL\t219-532-c301'
 	};
 
 	beforeAll(() => {
@@ -107,7 +107,7 @@ df2 <- as.data.frame(df1)
 	assertDataFrameDomain(
 		shell,
 		'df <- read.csv("c.csv", comment.char = "#", check.names = FALSE)',
-		[['1@df', { colnames: ['','id,number','"unique" name'], cols: [3, 3], rows: [5, 5] }]]
+		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }]]
 	);
 
 	assertDataFrameDomain(
@@ -143,7 +143,7 @@ df2 <- as.data.frame(df1)
 	assertDataFrameDomain(
 		shell,
 		'df <- read.delim("f.csv")',
-		[['1@df', { colnames: ['first', 'last', 'state', 'phone'], cols: [4, 4], rows: [3, 3] }]]
+		[['1@df', { colnames: ColNamesTop, cols: [4, 4], rows: [3, 3] }]]
 	);
 
 	assertDataFrameDomain(
@@ -161,7 +161,7 @@ df2 <- as.data.frame(df1)
 	assertDataFrameDomain(
 		shell,
 		'df <- readr::read_csv("c.csv", comment = "#")',
-		[['1@df', { colnames: ['','id,number','"unique" name'], cols: [3, 3], rows: [5, 5] }]]
+		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }]]
 	);
 
 	assertDataFrameDomain(
@@ -197,31 +197,7 @@ df2 <- as.data.frame(df1)
 	assertDataFrameDomain(
 		shell,
 		'df <- readr::read_tsv("f.csv")',
-		[['1@df', { colnames: ['first', 'last', 'state', 'phone'], cols: [4, 4], rows: [3, 3] }]]
-	);
-
-	assertDataFrameDomain(
-		shell,
-		'df <- readr::read_csv("a.csv")',
-		[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
-	);
-
-	assertDataFrameDomain(
-		shell,
-		'df <- readr::read_csv("d.csv", col_names = FALSE)',
-		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [4, 4] }]]
-	);
-
-	assertDataFrameDomain(
-		shell,
-		'df <- readr::read_csv2("d.csv", col_names = FALSE)',
-		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }]]
-	);
-
-	assertDataFrameDomain(
-		shell,
-		'df <- readr::read_delim("d.csv", col_names = FALSE, delim = ";")',
-		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }]]
+		[['1@df', { colnames: ColNamesTop, cols: [4, 4], rows: [3, 3] }]]
 	);
 
 	testDataFrameDomain(

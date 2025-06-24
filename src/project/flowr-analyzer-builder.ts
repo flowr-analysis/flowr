@@ -10,7 +10,7 @@ export class FlowrAnalyzerBuilder {
 	private flowrConfig:      DeepWritable<FlowrConfigOptions> = cloneConfig(defaultConfigOptions);
 	private readonly request: RParseRequests;
 
-	public amendConfig(func: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions) : FlowrAnalyzerBuilder {
+	public amendConfig(func: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions) : this {
 		this.flowrConfig = amendConfig(this.flowrConfig, func);
 		return this;
 	}

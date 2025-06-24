@@ -1,10 +1,7 @@
 import type { FlowrConfigOptions } from '../config';
-import { cloneConfig, defaultConfigOptions } from '../config';
 import type { RParseRequests } from '../r-bridge/retriever';
 import { requestFromInput } from '../r-bridge/retriever';
-import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import { createDataflowPipeline, createSlicePipeline } from '../core/steps/pipeline/default-pipelines';
-import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import { FlowrAnalyzerBuilder } from './flowr-analyzer-builder';
 import { graphToMermaidUrl } from '../util/mermaid/dfg';
 import type { KnownParser } from '../r-bridge/parser';
@@ -15,7 +12,7 @@ import type { DataflowInformation } from '../dataflow/info';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 export class FlowrAnalyzer {
-	private readonly flowrConfig: FlowrConfigOptions = cloneConfig(defaultConfigOptions);
+	private readonly flowrConfig: FlowrConfigOptions;
 	private readonly request:     RParseRequests;
 	private readonly parser:      KnownParser;
 	private ast = undefined as unknown as NormalizedAst;
@@ -27,7 +24,7 @@ export class FlowrAnalyzer {
 		this.parser = parser;
 	}
 
-	public async dataflow() : Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> {
+	public async dataflow() {
 		const result = await createDataflowPipeline(
 			this.parser,
 			{ request: this.request },
@@ -76,4 +73,6 @@ async function main() {
 	console.log(query);
 }
 
-void main();
+if(require.main === module) {
+	void main();
+}

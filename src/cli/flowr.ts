@@ -11,24 +11,23 @@ import { NetServer, WebSocketServerWrapper } from './repl/server/net';
 import { flowrVersion } from '../util/version';
 import commandLineUsage from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
-import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/text/ansi';
+import { FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/text/ansi';
 import commandLineArgs from 'command-line-args';
 import type { EngineConfig, FlowrConfigOptions, KnownEngines } from '../config';
-import { amendConfig, getConfig, getEngineConfig, parseConfig } from '../config';
+import { amendConfig, getConfig, parseConfig } from '../config';
 import { guard } from '../util/assert';
 import type { ScriptInformation } from './common/scripts-info';
 import { scripts } from './common/scripts-info';
-import { RShell, RShellReviveOptions } from '../r-bridge/shell';
 import { waitOnScript } from './repl/execute';
 import { standardReplOutput } from './repl/commands/repl-main';
 import { repl, replProcessAnswer } from './repl/core';
 import { printVersionInformation } from './repl/commands/repl-version';
 import { printVersionRepl } from './repl/print-version';
 import { defaultConfigFile, flowrMainOptionDefinitions, getScriptsText } from './flowr-main-options';
-import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { KnownParser } from '../r-bridge/parser';
 import fs from 'fs';
 import path from 'path';
+import { retrieveEngineInstances } from '../engines';
 
 export const toolName = 'flowr';
 
@@ -135,33 +134,6 @@ function createConfig() : FlowrConfigOptions {
 	});
 
 	return config;
-}
-
-
-async function retrieveEngineInstances(config: FlowrConfigOptions): Promise<{ engines: KnownEngines, default: keyof KnownEngines }> {
-	const engines: KnownEngines = {};
-	if(getEngineConfig(config, 'r-shell')) {
-		// we keep an active shell session to allow other parse investigations :)
-		engines['r-shell'] = new RShell(getEngineConfig(config, 'r-shell'), {
-			revive:   RShellReviveOptions.Always,
-			onRevive: (code, signal) => {
-				const signalText = signal == null ? '' : ` and signal ${signal}`;
-				console.log(formatter.format(`R process exited with code ${code}${signalText}. Restarting...`, { color: Colors.Magenta, effect: ColorEffect.Foreground }));
-				console.log(italic(`If you want to exit, press either Ctrl+C twice, or enter ${bold(':quit')}`));
-			}
-		});
-	}
-	if(getEngineConfig(config, 'tree-sitter')) {
-		await TreeSitterExecutor.initTreeSitter(getEngineConfig(config, 'tree-sitter'));
-		engines['tree-sitter'] = new TreeSitterExecutor();
-	}
-	let defaultEngine = config.defaultEngine;
-	if(!defaultEngine || !engines[defaultEngine]) {
-		// if a default engine isn't specified, we just take the first one we have
-		defaultEngine = Object.keys(engines)[0] as keyof KnownEngines;
-	}
-	log.info(`Using engines ${Object.keys(engines).join(', ')} with default ${defaultEngine}`);
-	return { engines, default: defaultEngine };
 }
 
 function hookSignalHandlers(engines: { engines: KnownEngines; default: keyof KnownEngines }) {

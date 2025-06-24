@@ -21,9 +21,12 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 	}
 
 	const sources: Readonly<{[path: string]: string}> = {
-		'a.csv': 'id,name,score\n1,"A",95\n2,"B",80\n4,"A",85',
-		'b.csv': ',"id,number","""unique"" name"\n"1",1,6\n"2",2,7\n"3",3,8\n"4",4,9\n"5",5,10\n',
-		'c.csv': '1;3,5;banana\n2;7,8;apple\n3;4,2;peach\n4;1,9;grape\n'
+		'a.csv': 'id,name,"score"\n1,"A",95\n2,"B",80\n4,"A",85',
+		'b.csv': 'id,name,\'score\'\n1,\'A\',95\n2,\'B\',80\n4,\'A\',85',
+		'c.csv': '# this is a comment :D\n\n,"id,number","""unique"" name" #this is a comment\n\n"1",1,6\n\n"2",2,7\n\n"3",3,8\n\n"4",4,9\n\n"5",5,10\n',
+		'd.csv': '1;3,5;banana\n2;7,8;apple\n3;4,2;peach\n4;1,9;grape\n',
+		'e.csv': 'first last     state phone\nJohn  Smith    WA    418-Y11-4111\nMary  Hartford CA    319-Z19-4341\nEvan  Nolan    IL    219-532-c301\n',
+		'f.csv': 'first\tlast\tstate\tphone\nJohn\tSmith\tWA\t418-Y11-4111\nMary\tHartford\tCA\t319-Z19-4341\nEvan\tNolan\tIL\t219-532-c301'
 	};
 
 	beforeAll(() => {
@@ -97,32 +100,50 @@ df2 <- as.data.frame(df1)
 
 	assertDataFrameDomain(
 		shell,
-		'df <- read.csv("b.csv")',
+		'df <- read.csv("b.csv", quote = "\'")',
+		[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- read.csv("c.csv", comment.char = "#", check.names = FALSE)',
 		[['1@df', { colnames: ['','id,number','"unique" name'], cols: [3, 3], rows: [5, 5] }]]
 	);
 
 	assertDataFrameDomain(
 		shell,
-		'df <- read.csv("b.csv", header = FALSE)',
-		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [6, 6] }]]
+		'df <- read.csv("c.csv", header = FALSE, skip = 4)',
+		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }]]
 	);
 
 	assertDataFrameDomain(
 		shell,
-		'df <- read.csv2("c.csv", header = FALSE)',
+		'df <- read.csv2("d.csv", header = FALSE)',
 		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }]]
 	);
 
 	assertDataFrameDomain(
 		shell,
-		'df <- read.table("c.csv", header = FALSE, sep = ",")',
+		'df <- read.delim("d.csv", header = FALSE, sep = ",")',
 		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [4, 4] }]]
 	);
 
 	assertDataFrameDomain(
 		shell,
-		'df <- read.table("c.csv", header = FALSE, sep = ";")',
+		'df <- read.delim2("d.csv", header = FALSE, sep = ";")',
 		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- read.table("e.csv", header = TRUE)',
+		[['1@df', { colnames: ['first', 'last', 'state', 'phone'], cols: [4, 4], rows: [3, 3] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- read.delim("f.csv")',
+		[['1@df', { colnames: ['first', 'last', 'state', 'phone'], cols: [4, 4], rows: [3, 3] }]]
 	);
 
 	assertDataFrameDomain(
@@ -133,19 +154,73 @@ df2 <- as.data.frame(df1)
 
 	assertDataFrameDomain(
 		shell,
-		'df <- readr::read_csv("c.csv", col_names = FALSE)',
-		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [4, 4] }]]
+		'df <- readr::read_csv("b.csv", quote = "\'")',
+		[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
 	);
 
 	assertDataFrameDomain(
 		shell,
-		'df <- readr::read_csv2("c.csv", col_names = FALSE)',
+		'df <- readr::read_csv("c.csv", comment = "#")',
+		[['1@df', { colnames: ['','id,number','"unique" name'], cols: [3, 3], rows: [5, 5] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- readr::read_csv("c.csv", col_names = FALSE, skip = 4)',
+		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- readr::read_csv2("d.csv", col_names = FALSE)',
 		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }]]
 	);
 
 	assertDataFrameDomain(
 		shell,
-		'df <- readr::read_delim("c.csv", col_names = FALSE, delim = ";")',
+		'df <- readr::read_delim("d.csv", delim = ",", col_names = FALSE)',
+		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [4, 4] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- readr::read_delim("d.csv", delim = ";", col_names = FALSE)',
+		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- readr::read_table("e.csv")',
+		[['1@df', { colnames: ['first', 'last', 'state', 'phone'], cols: [4, 4], rows: [3, 3] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- readr::read_tsv("f.csv")',
+		[['1@df', { colnames: ['first', 'last', 'state', 'phone'], cols: [4, 4], rows: [3, 3] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- readr::read_csv("a.csv")',
+		[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- readr::read_csv("d.csv", col_names = FALSE)',
+		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [4, 4] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- readr::read_csv2("d.csv", col_names = FALSE)',
+		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- readr::read_delim("d.csv", col_names = FALSE, delim = ";")',
 		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }]]
 	);
 
@@ -271,6 +346,13 @@ df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1]
 		`.trim(),
 		[['2@result', { colnames: ['id', 'name'], cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
+	);
+
+	testDataFrameDomain(
+		`
+result <- (data.frame(id = 1:3, name = 4:6))["id"]
+		`.trim(),
+		[['1@result', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]]
 	);
 
 	assertDataFrameDomain(
@@ -696,6 +778,17 @@ df <- head(df, n = -c(2, 1))
 	testDataFrameDomain(
 		`
 df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
+df <- head(df, n = c(-1, 1))
+		`.trim(),
+		[
+			['1@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [3, 5] }, DataFrameTestOverapproximation],
+			['2@df', { colnames: ['id', 'name'], cols: [1, 1], rows: [2, 4] }, DataFrameTestOverapproximation]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
 df <- tail(df, n = 3)
 		`.trim(),
 		[
@@ -734,6 +827,17 @@ df <- tail(df, n = -c(2, 1))
 		[
 			['1@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [3, 5] }, DataFrameTestOverapproximation],
 			['2@df', { colnames: ['id', 'name'], cols: [0, 1], rows: [1, 3] }, DataFrameTestOverapproximation]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
+df <- tail(df, n = c(-1, 1))
+		`.trim(),
+		[
+			['1@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [3, 5] }, DataFrameTestOverapproximation],
+			['2@df', { colnames: ['id', 'name'], cols: [1, 1], rows: [2, 4] }, DataFrameTestOverapproximation]
 		]
 	);
 
@@ -935,13 +1039,13 @@ library(dplyr)
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
 df <- df |>
 	group_by(category) |>
-	summarise(score = mean(score), sum = sum(score)) |>
+	summarize(score = mean(score), sum = sum(score)) |>
 	as.data.frame()
 print(df)
 		`.trim(),
 			[
 				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
-				['7@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [0, 6] }, DataFrameTestOverapproximation]
+				['7@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 6] }, DataFrameTestOverapproximation]
 			]
 		);
 
@@ -950,13 +1054,13 @@ print(df)
 library(dplyr)
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
 df <- df |>
-	summarise(score = mean(score), sum = sum(score)) |>
+	summarize(score = mean(score), sum = sum(score)) |>
 	as.data.frame()
 print(df)
 		`.trim(),
 			[
 				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
-				['6@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 1] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
+				['6@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 6] }, DataFrameTestOverapproximation]
 			]
 		);
 

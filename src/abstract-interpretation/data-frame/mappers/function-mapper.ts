@@ -27,11 +27,11 @@ const DataFrameFunctionMapper = {
 	'read.csv2':     mapDataFrameRead,
 	'read.delim':    mapDataFrameRead,
 	'read.delim2':   mapDataFrameRead,
+	'read_table':    mapDataFrameRead,
 	'read_csv':      mapDataFrameRead,
 	'read_csv2':     mapDataFrameRead,
 	'read_tsv':      mapDataFrameRead,
 	'read_delim':    mapDataFrameRead,
-	'read_table':    mapDataFrameRead,
 	'cbind':         mapDataFrameColBind,
 	'rbind':         mapDataFrameRowBind,
 	'head':          mapDataFrameHeadTail,
@@ -39,8 +39,8 @@ const DataFrameFunctionMapper = {
 	'subset':        mapDataFrameSubset,
 	'filter':        mapDataFrameFilter,
 	'select':        mapDataFrameSelect,
-	'transform':     mapDataFrameMutate,
 	'mutate':        mapDataFrameMutate,
+	'transform':     mapDataFrameMutate,
 	'group_by':      mapDataFrameGroupBy,
 	'summarise':     mapDataFrameSummarize,
 	'summarize':     mapDataFrameSummarize,
@@ -53,16 +53,16 @@ const DataFrameFunctionMapper = {
 const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 	'data.frame':    { special: ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'] },
 	'as.data.frame': { dataFrame: { pos: 0, name: 'x' } },
-	'read.table':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ' ' } },
-	'read.csv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ',' } },
-	'read.csv2':     { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ';' } },
-	'read.delim':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: '\t' } },
-	'read.delim2':   { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: '\t' } },
-	'read_table':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: ' ' } },
-	'read_csv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: ',' } },
-	'read_csv2':     { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: ';' } },
-	'read_tsv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: '\t' } },
-	'read_delim':    { fileName: { pos: 0, name: 'file' }, separator: { pos: 1, name: 'delim', default: '\t' }, header: { pos: 5, name: 'col_names', default: true } },
+	'read.table':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: false }, separator: { pos: 2, name: 'sep', default: '\\s' }, quote: { pos: 3, name: 'quote', default: '"\'' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '#' } },
+	'read.csv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ',' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' } },
+	'read.csv2':     { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ';' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' } },
+	'read.delim':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: '\\t' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' } },
+	'read.delim2':   { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: '\\t' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' } },
+	'read_table':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: '\\s' }, quote: { pos: -1, default: '"' }, skipLines: { pos: 5, name: 'skip', default: 0 }, comment: { pos: 9, name: 'comment', default: '' } },
+	'read_csv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: ',' }, quote: { pos: 8, name: 'quote', default: '"' }, comment: { pos: 9, name: 'comment', default: '' }, skipLines: { pos: 11, name: 'skip', default: 0 } },
+	'read_csv2':     { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: ';' }, quote: { pos: 8, name: 'quote', default: '"' }, comment: { pos: 9, name: 'comment', default: '' }, skipLines: { pos: 11, name: 'skip', default: 0 } },
+	'read_tsv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: '\\t' }, quote: { pos: 8, name: 'quote', default: '"' }, comment: { pos: 9, name: 'comment', default: '' }, skipLines: { pos: 11, name: 'skip', default: 0 } },
+	'read_delim':    { fileName: { pos: 0, name: 'file' }, separator: { pos: 1, name: 'delim', default: '\t' }, quote: { pos: 2, name: 'quote', default: '"' }, header: { pos: 5, name: 'col_names', default: true }, comment: { pos: 12, name: 'comment', default: '' }, skipLines: { pos: 14, name: 'skip', default: 0 } },
 	'cbind':         { special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
 	'rbind':         { special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
 	'head':          { dataFrame: { pos: 0, name: 'x' }, amount: { pos: 1, name: 'n', default: 6 } },
@@ -70,8 +70,8 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 	'subset':        { dataFrame: { pos: 0, name: 'x' }, subset: { pos: 1, name: 'subset' }, select: { pos: 2, name: 'select' }, drop: { pos: 3, name: 'drop', default: false } },
 	'filter':        { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.preserve'] },
 	'select':        { dataFrame: { pos: 0, name: '.data' }, special: [] },
-	'transform':     { dataFrame: { pos: 0, name: '_data' }, special: [] },
 	'mutate':        { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.keep', '.before', '.after'] },
+	'transform':     { dataFrame: { pos: 0, name: '_data' }, special: [] },
 	'group_by':      { dataFrame: { pos: 0, name: '.data' }, by: { pos: 1 }, special: ['.add', '.drop'] },
 	'summarise':     { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.groups'] },
 	'summarize':     { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.groups'] },
@@ -157,7 +157,14 @@ function mapDataFrameConvert(
 
 function mapDataFrameRead(
 	args: readonly RFunctionArgument<ParentInformation>[],
-	params: { fileName: FunctionParameterLocation, header: FunctionParameterLocation<boolean>, separator: FunctionParameterLocation<string> },
+	params: {
+		fileName:  FunctionParameterLocation,
+		header:    FunctionParameterLocation<boolean>,
+		separator: FunctionParameterLocation<string>,
+		quote:     FunctionParameterLocation<string>,
+		comment:   FunctionParameterLocation<string>,
+		skipLines: FunctionParameterLocation<number>
+	},
 	info: ResolveInfo
 ): DataFrameOperations[] {
 	const fileNameArg = getFunctionArgument(args, params.fileName, info);
@@ -181,24 +188,35 @@ function mapDataFrameRead(
 			args:      { file: fileName, colnames: undefined, rows: undefined }
 		}];
 	}
-	const headerArg = getFunctionArgument(args, params.header, info);
-	const separatorArg = getFunctionArgument(args, params.separator, info);
-	const headerValue = resolveIdToArgValue(headerArg, info);
-	const separatorValue = resolveIdToArgValue(separatorArg, info);
+	const headerValue = resolveIdToArgValue(getFunctionArgument(args, params.header, info), info);
+	const separatorValue = resolveIdToArgValue(getFunctionArgument(args, params.separator, info), info);
+	const quoteValue = resolveIdToArgValue(getFunctionArgument(args, params.quote, info), info);
+	const commentValue = resolveIdToArgValue(getFunctionArgument(args, params.comment, info), info);
+	const skipLinesValue = resolveIdToArgValue(getFunctionArgument(args, params.skipLines, info), info);
 	const header = typeof headerValue === 'boolean' ? headerValue : params.header.default;
-	const separator = typeof separatorValue === 'string' ? separatorValue : params.separator.default;
+	const separator = typeof separatorValue === 'string' ? escapeRegExp(separatorValue) : params.separator.default;
+	const quote = typeof quoteValue === 'string' ? escapeRegExp(quoteValue) : params.quote.default;
+	const comment = typeof commentValue === 'string' ? escapeRegExp(commentValue) : params.comment.default;
+	const skipLines = typeof skipLinesValue === 'number' ? skipLinesValue : params.skipLines.default;
 
+	const LineCommentRegex = new RegExp(`\\s*[${comment}].*`);
 	const request = getSourceProvider().createRequest(source);
 	let firstLine: (string | undefined)[] | undefined = undefined;
+	let firstLineNumber = 0;
 	let rowCount = 0;
 	let allLines = true;
 
 	const parseLine = (line: Buffer | string, lineNumber: number) => {
-		if(firstLine === undefined) {
-			firstLine = getEntriesFromCsvLine(line.toString(), separator);
-		}
-		if((!header || lineNumber > 0) && line.length > 0) {
-			rowCount++;
+		const text = comment ? line.toString().replace(LineCommentRegex, '') : line.toString();
+
+		if(text.length > 0 && lineNumber >= (skipLines ?? 0)) {
+			if(firstLine === undefined) {
+				firstLine = getEntriesFromCsvLine(text, separator, quote, comment);
+				firstLineNumber = lineNumber;
+			}
+			if(!header || lineNumber > firstLineNumber) {
+				rowCount++;
+			}
 		}
 	};
 
@@ -401,7 +419,7 @@ function mapDataFrameSubset(
 				} else if(arg !== EmptyArgument && (arg.value?.type === RType.Symbol || arg.value?.type === RType.String)) {
 					selectedCols?.push(resolveIdToArgValueSymbolName(arg, info));
 				} else {
-					selectedCols?.push(undefined);
+					selectedCols = undefined;
 				}
 			});
 		} else if(selectArg.value?.type === RType.UnaryOp && selectArg.value.operator === '-' && info.idMap !== undefined) {
@@ -769,10 +787,20 @@ function getEffectiveArgs(
 	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !excluded.includes(unescapeArgument(arg.name.content)));
 }
 
-function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = '"'): (string | undefined)[] {
-	const CsvEntryRegex = new RegExp(`(?<=^|${sep})(?:${quote}((?:[^${quote}]|${quote}${quote})*)${quote}|([^${sep}]*))`, 'g');
+function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = '"', comment = ''): (string | undefined)[] {
+	sep = escapeRegExp(sep, true);  // only allow tokens like `\s`, `\t`, or `\n` in separator, quote, and comment chars
+	quote = escapeRegExp(quote, true);
+	comment = escapeRegExp(comment, true);
+	const quantifier = sep === '\\s' ? '+' : '*';  // don't allow unquoted empty entries in whitespace-sparated files
 
-	return line.matchAll(CsvEntryRegex).map(match => match[1]?.replaceAll('""', '"') ?? match[2]).toArray();
+	const LineCommentRegex = new RegExp(`\\s*[${comment}].*`);
+	const CsvEntryRegex = new RegExp(`(?<=^|[${sep}])(?:[${quote}]((?:[^${quote}]|[${quote}]{2})*)[${quote}]|([^${sep}]${quantifier}))`, 'g');
+	const DoubleQuoteRegex = new RegExp(`([${quote}])\\1`, 'g');
+
+	return (comment ? line.replace(LineCommentRegex, '') : line)
+		.matchAll(CsvEntryRegex)
+		.map(match => match[1]?.replace(DoubleQuoteRegex, '$1') ?? match[2])
+		.toArray();
 }
 
 function getUnresolvedSymbolsInExpression(
@@ -817,4 +845,12 @@ function isDataFrameArgument(
 
 function isValidColName(colname: string | undefined): boolean {
 	return colname !== undefined && ColNamesRegex.test(colname);
+}
+
+function escapeRegExp(text: string, allowTokens: boolean = false) {
+	if(allowTokens) {
+		return text.replace(/[.*+?^${}()|[\]]/g, '\\$&');
+	} else {
+		return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}
 }

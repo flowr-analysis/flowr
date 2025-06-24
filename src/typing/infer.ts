@@ -164,11 +164,7 @@ class TypeInferringCfgGuidedVisitor<
 		}
 
 		const readOrigins = this.getOrigins(data.vertex.id)?.filter((origin) => origin.type === OriginType.ReadVariableOrigin);
-		if(readOrigins === undefined || readOrigins.length === 0) {
-			node.info.typeVariable.unify(new RNullType());
-			return;
-		}
-		for(const readOrigin of readOrigins) {
+		for(const readOrigin of readOrigins ?? []) {
 			const readNode = this.getNormalizedAst(readOrigin.id);
 			guard(readNode !== undefined, 'Expected read node to be defined');
 			node.info.typeVariable.unify(readNode.info.typeVariable);

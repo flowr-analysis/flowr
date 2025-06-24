@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
-import { RDoubleType, RNullType } from '../../../src/typing/types';
-import { assertInferredType, assertInferredTypes } from '../_helper/typing/assert-inferred-type';
+import { RDoubleType } from '../../../src/typing/types';
+import { assertInferredTypes } from '../_helper/typing/assert-inferred-type';
 import { Q } from '../../../src/search/flowr-search-builder';
 
 describe('Infer types for variables', () => {
@@ -10,5 +10,4 @@ describe('Infer types for variables', () => {
 		{ query: Q.criterion('1@<-').build(), expectedType: new RDoubleType() },
 		{ query: Q.var('x').last().build(),   expectedType: new RDoubleType() }
 	);
-	assertInferredType('y', new RNullType());
 });

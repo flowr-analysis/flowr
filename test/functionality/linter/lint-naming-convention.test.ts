@@ -20,10 +20,6 @@ function genName(convention: CasingConvention): string {
 	const tokens = [randToken(), randToken(), randToken()];
 	
 	switch(convention) {
-		case CasingConvention.FlatCase: // flatcase
-			return tokens.join('');
-		case CasingConvention.Uppercase: // UPPERCASE
-			return tokens.join('').toUpperCase();
 		case CasingConvention.CamelCase: // camelCase
 			return `${tokens[0]}${tokens.slice(1).map(firstUp).join('')}`;
 		case CasingConvention.PascalCase: // PascalCase
@@ -56,8 +52,6 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		describe('detect casing (static string)', () => {
 			test.each([
-				{ name: 'mycoolvar',        convention: CasingConvention.FlatCase },
-				{ name: 'FOOBAR',           convention: CasingConvention.Uppercase },
 				{ name: 'fooBar',           convention: CasingConvention.CamelCase },
 				{ name: 'FooBar',           convention: CasingConvention.PascalCase },
 				{ name: 'are_we_in_c',      convention: CasingConvention.SnakeCase },
@@ -71,8 +65,6 @@ describe('flowR linter', withTreeSitter(parser => {
 		});
 
 		test.each([
-			{ name: 'MyCoOlVaR',        expected: 'mycoolvar',   convention: CasingConvention.FlatCase },
-			{ name: 'fOoBaR',           expected: 'FOOBAR',      convention: CasingConvention.Uppercase },
 			{ name: 'foo_bar',          expected: 'fooBar',      convention: CasingConvention.CamelCase },
 			{ name: 'FooBar',           expected: 'fooBar',      convention: CasingConvention.CamelCase },
 			{ name: 'foo_bar',          expected: 'FooBar',      convention: CasingConvention.PascalCase },
@@ -108,5 +100,13 @@ describe('flowR linter', withTreeSitter(parser => {
 			range:          [1, 1, 1, 7],
 			certainty:      LintingCertainty.Definitely,
 		}], undefined, { caseing: CasingConvention.PascalCase });
+
+		assertLinter('detect casing', parser, 'testVar <- 5\ntestVarTwo <- 5\ntest_var <- 5\n', 'naming-convention', [{
+			name:           'test_var',
+			detectedCasing: CasingConvention.SnakeCase,
+			suggestion:     'testVar',
+			range:          [3,1,3,8,],
+			certainty:      LintingCertainty.Definitely,
+		}], undefined, { caseing: 'auto' });
 	});
 }));

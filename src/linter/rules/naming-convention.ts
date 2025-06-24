@@ -9,8 +9,6 @@ import { LintingRuleTag } from '../linter-tags';
 
 
 export enum CasingConvention {
-    FlatCase        = 'flatcase',
-    Uppercase       = 'UPPERCASE',
     CamelCase       = 'camelCase',
     PascalCase      = 'PascalCase',
     SnakeCase       = 'snake_case',
@@ -27,8 +25,11 @@ export interface NamingConventionResult extends LintingResult {
     range:          SourceRange,
 }
 
+/**
+ * It is planned to have a config like ESLint
+ */
 export interface NamingConventionConfig extends MergeableRecord {
-    caseing: CasingConvention
+    caseing: CasingConvention | 'auto'
 }
 
 export interface NamingConventionMetadata extends MergeableRecord {
@@ -69,24 +70,27 @@ export function detectCasing(identifier: string): CasingConvention {
 			return CasingConvention.CamelSnakeCase; 
 		} else if(identifier[0] === upper[0] && expectUpperAfterScore(identifier)) { // Pascal_Snake_Case
 			return CasingConvention.PascalSnakeCase;
-		} else {
-			return CasingConvention.Unknown;
+		}
+	} else {	
+		if(identifier[0] === lower[0]) { // camelCase
+			return CasingConvention.CamelCase;
+		} else if(identifier[0] === upper[0]) { // PascalCase
+			return CasingConvention.PascalCase;
 		}
 	}  
 
-	if(isAllUpper) { // UPPERCASE
-		return CasingConvention.Uppercase;
-	} else if(isAllLower) { // flatcase
-		return CasingConvention.FlatCase; 
-	} 
+	return CasingConvention.Unknown;
+}
 
-	if(identifier[0] === lower[0]) { // camelCase
-		return CasingConvention.CamelCase;
-	} else if(identifier[0] === upper[0]) { // PascalCase
-		return CasingConvention.PascalCase;
+export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[] ): CasingConvention {
+	const map = new Map<CasingConvention, number>();
+
+	for(const symbol of symbols) {
+		const o = map.get(symbol.detectedCasing) ?? 0;
+		map.set(symbol.detectedCasing, o + 1);
 	}
 
-	return CasingConvention.Unknown;
+	return [...map].reduce((p, c) => p[1] > c[1] ? p : c)[0];
 }
 
 export function tryFixCasing(identifier: string, convention: CasingConvention) {
@@ -95,10 +99,6 @@ export function tryFixCasing(identifier: string, convention: CasingConvention) {
 	const firstUp = (s: string) => `${s[0].toUpperCase()}${s.substring(1)}`;
 
 	switch(convention) {
-		case CasingConvention.FlatCase: // flatcase
-			return tokens.join(''); 
-		case CasingConvention.Uppercase: // UPPERCASE
-			return tokens.join('').toUpperCase();
 		case CasingConvention.CamelCase: // camelCase
 			return `${tokens[0]}${tokens.slice(1).map(firstUp).join('')}`;
 		case CasingConvention.PascalCase: // PascalCase
@@ -121,25 +121,27 @@ export function tryFixCasing(identifier: string, convention: CasingConvention) {
 export const NAMING_CONVENTION = {
 	createSearch:        (_config) => Q.all().filter(VertexType.VariableDefinition),
 	processSearchResult: (elements, config) =>  {
-		const results = elements.getElements()
+		const symbols = elements.getElements()
 			.map(m => ({
 				certainty:      LintingCertainty.Definitely,
 				detectedCasing: detectCasing(m.node.content as string),
 				name:           m.node.content as string,
 				range:          m.node.info.fullRange as SourceRange
-			}))
-			.filter(m => m.detectedCasing !== config.caseing)
+			}));
+		
+		const casing = config.caseing === 'auto' ? getMostUsedCasing(symbols) : config.caseing;
+		const results = symbols.filter(m => m.detectedCasing !== casing)
 			.map(m => ({
 				...m,
-				suggestion: tryFixCasing(m.name, config.caseing)
+				suggestion: tryFixCasing(m.name, casing)
 			}));
-        
+		
 		return {
 			results: results,
 			'.meta': { idk: 0 }
 		};   
 	},
-	prettyPrint: result => `Identifier '${result.name}' at ${formatRange(result.range)} follows ${result.detectedCasing} convention. Suggestion: '${result.suggestion}'`,
+	prettyPrint: result => `Identifier '${result.name}' at ${formatRange(result.range)} follows wrong convention (${result.detectedCasing}). Suggestion: '${result.suggestion}'`,
 	info:        {
 		name:          'Naming Convention',
 		description:   'Checks wether the symbols conform to a certain naming convention',

@@ -9,12 +9,13 @@ import type { RFunctionArgument, RFunctionCall } from '../../../r-bridge/lang-4.
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import type { RParseRequest } from '../../../r-bridge/retriever';
 import { requestFromInput } from '../../../r-bridge/retriever';
 import { readLineByLineSync } from '../../../util/files';
 import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
 import { resolveIdToAbstractValue } from '../absint-visitor';
 import { DataFrameTop } from '../domain';
-import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeArgument } from '../resolve-args';
+import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unquoteArgument, unescapeSpecialChars } from '../resolve-args';
 
 const MaxReadLines = 1e7;
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
@@ -53,11 +54,11 @@ const DataFrameFunctionMapper = {
 const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 	'data.frame':    { special: ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'] },
 	'as.data.frame': { dataFrame: { pos: 0, name: 'x' } },
-	'read.table':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: false }, separator: { pos: 2, name: 'sep', default: '\\s' }, quote: { pos: 3, name: 'quote', default: '"\'' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '#' } },
-	'read.csv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ',' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' } },
-	'read.csv2':     { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ';' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' } },
-	'read.delim':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: '\\t' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' } },
-	'read.delim2':   { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: '\\t' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' } },
+	'read.table':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: false }, separator: { pos: 2, name: 'sep', default: '\\s' }, quote: { pos: 3, name: 'quote', default: '"\'' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '#' }, text: { pos: 23, name: 'text' } },
+	'read.csv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ',' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' }, text: { pos: 23, name: 'text' } },
+	'read.csv2':     { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ';' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' }, text: { pos: 23, name: 'text' } },
+	'read.delim':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: '\\t' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' }, text: { pos: 23, name: 'text' } },
+	'read.delim2':   { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: '\\t' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' }, text: { pos: 23, name: 'text' } },
 	'read_table':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: '\\s' }, quote: { pos: -1, default: '"' }, skipLines: { pos: 5, name: 'skip', default: 0 }, comment: { pos: 9, name: 'comment', default: '' } },
 	'read_csv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: ',' }, quote: { pos: 8, name: 'quote', default: '"' }, comment: { pos: 9, name: 'comment', default: '' }, skipLines: { pos: 11, name: 'skip', default: 0 } },
 	'read_csv2':     { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: ';' }, quote: { pos: 8, name: 'quote', default: '"' }, comment: { pos: 9, name: 'comment', default: '' }, skipLines: { pos: 11, name: 'skip', default: 0 } },
@@ -163,29 +164,44 @@ function mapDataFrameRead(
 		separator: FunctionParameterLocation<string>,
 		quote:     FunctionParameterLocation<string>,
 		comment:   FunctionParameterLocation<string>,
-		skipLines: FunctionParameterLocation<number>
+		skipLines: FunctionParameterLocation<number>,
+		text?:     FunctionParameterLocation
 	},
 	info: ResolveInfo
 ): DataFrameOperations[] {
 	const fileNameArg = getFunctionArgument(args, params.fileName, info);
-	const fileName = resolveIdToArgValue(fileNameArg, info);
+	const textArg = params.text ? getFunctionArgument(args, params.text, info) : undefined;
+	let source: string | undefined;
+	let request: RParseRequest | undefined;
 
-	if(fileNameArg === undefined || fileNameArg === EmptyArgument || typeof fileName !== 'string') {
-		return [{
-			operation: 'read',
-			operand:   undefined,
-			args:      { file: undefined, colnames: undefined, rows: undefined }
-		}];
+	if(fileNameArg !== undefined && fileNameArg !== EmptyArgument) {
+		const fileName = resolveIdToArgValue(fileNameArg, info);
+
+		if(typeof fileName === 'string') {
+			source = fileName;
+			const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
+			const sources = findSource(fileName, { referenceChain: referenceChain });
+
+			if(sources?.length === 1) {
+				source = sources[0];
+				request = getSourceProvider().createRequest(source);  // create request from resolved source file path
+			} else if(params.text === undefined && unescapeSpecialChars(fileName).includes('\n')) {
+				request = requestFromInput(unescapeSpecialChars(fileName));  // create request from string if file name argument contains newline
+			}
+		}
+	} else if(textArg !== undefined && textArg !== EmptyArgument) {
+		const text = resolveIdToArgValue(textArg, info);
+
+		if(typeof text === 'string') {
+			source = text;
+			request = requestFromInput(unescapeSpecialChars(text));
+		}
 	}
-	const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
-	const sources = findSource(fileName, { referenceChain: referenceChain });
-	const source = sources?.[0];
-
-	if(source === undefined) {
+	if(request === undefined) {
 		return [{
 			operation: 'read',
 			operand:   undefined,
-			args:      { file: fileName, colnames: undefined, rows: undefined }
+			args:      { source: source, colnames: undefined, rows: undefined }
 		}];
 	}
 	const headerArg = getFunctionArgument(args, params.header, info);
@@ -203,11 +219,10 @@ function mapDataFrameRead(
 		return [{
 			operation: 'read',
 			operand:   undefined,
-			args:      { file: source, colnames: undefined, rows: undefined }
+			args:      { source: source, colnames: undefined, rows: undefined }
 		}];
 	}
 	const LineCommentRegex = new RegExp(`\\s*[${comment}].*`);
-	const request = getSourceProvider().createRequest(source);
 	let firstLine = undefined as (string | undefined)[] | undefined;
 	let firstLineNumber = 0;
 	let rowCount = 0;
@@ -245,7 +260,7 @@ function mapDataFrameRead(
 	return [{
 		operation: 'read',
 		operand:   undefined,
-		args:      { file: source, colnames: colnames, rows: allLines ? rowCount : undefined }
+		args:      { source: source, colnames: colnames, rows: allLines ? rowCount : undefined }
 	}];
 }
 
@@ -796,7 +811,7 @@ function getEffectiveArgs(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	excluded: string[]
 ): readonly RFunctionArgument<ParentInformation>[] {
-	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !excluded.includes(unescapeArgument(arg.name.content)));
+	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !excluded.includes(unquoteArgument(arg.name.content)));
 }
 
 function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = '"', comment = ''): (string | undefined)[] {
@@ -839,7 +854,7 @@ function getUnresolvedSymbolsInExpression(
 			return [...getUnresolvedSymbolsInExpression(expression.value, info)];
 		case RType.Symbol:
 			if(isUseVertex(info.graph.getVertex(expression.info.id)) && (info.graph.outgoingEdges(expression.info.id)?.size ?? 0) === 0) {
-				return [unescapeArgument(expression.content)];
+				return [unquoteArgument(expression.content)];
 			} else {
 				return [];
 			}

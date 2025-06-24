@@ -77,7 +77,7 @@ function applyCreateSemantics(
 
 function applyReadSemantics(
 	value: DataFrameDomain,
-	{ colnames, rows }: { file: string | undefined, colnames: (string | undefined)[] | undefined, rows: number | undefined }
+	{ colnames, rows }: { source: string | undefined, colnames: (string | undefined)[] | undefined, rows: number | undefined }
 ): DataFrameDomain {
 	return applyCreateSemantics(value, { colnames, rows });
 }

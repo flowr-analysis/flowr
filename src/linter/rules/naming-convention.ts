@@ -21,7 +21,6 @@ export enum CasingConvention {
 export interface NamingConventionResult extends LintingResult {
     name:           string,
     detectedCasing: CasingConvention,
-    suggestion:     string,
     range:          SourceRange,
 }
 
@@ -33,7 +32,12 @@ export interface NamingConventionConfig extends MergeableRecord {
 }
 
 export interface NamingConventionMetadata extends MergeableRecord {
-    idk: number
+	/** number of symbols matching the casing convetion */
+    numMatches: number
+
+	/** number of symbols breaking the casing convetion */
+	numBreak: number;
+
 }
 
 export function detectCasing(identifier: string): CasingConvention {
@@ -93,7 +97,7 @@ export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[
 	return [...map].reduce((p, c) => p[1] > c[1] ? p : c)[0];
 }
 
-export function tryFixCasing(identifier: string, convention: CasingConvention) {
+export function fixCasing(identifier: string, convention: CasingConvention): string {
 	const tokens = identifier.split(/(?=[A-Z])|_/).map(s => s.toLowerCase());
 
 	const firstUp = (s: string) => `${s[0].toUpperCase()}${s.substring(1)}`;
@@ -128,20 +132,27 @@ export const NAMING_CONVENTION = {
 				name:           m.node.content as string,
 				range:          m.node.info.fullRange as SourceRange
 			}));
-		
 		const casing = config.caseing === 'auto' ? getMostUsedCasing(symbols) : config.caseing;
 		const results = symbols.filter(m => m.detectedCasing !== casing)
 			.map(m => ({
 				...m,
-				suggestion: tryFixCasing(m.name, casing)
+				quickFix: [{ 
+					type:        'replace',
+					replacement: fixCasing(m.name, casing) ,
+					description: `Change casing from ${m.detectedCasing} to ${casing}`,
+					range:       m.range
+				} as const]
 			}));
 		
 		return {
 			results: results,
-			'.meta': { idk: 0 }
+			'.meta': { 
+				numMatches: symbols.length - results.length,
+				numBreak:   results.length
+			}
 		};   
 	},
-	prettyPrint: result => `Identifier '${result.name}' at ${formatRange(result.range)} follows wrong convention (${result.detectedCasing}). Suggestion: '${result.suggestion}'`,
+	prettyPrint: result => `Identifier '${result.name}' at ${formatRange(result.range)} follows wrong convention: ${result.detectedCasing} ${result.quickFix ? '(quick fix available)' : ''}`,
 	info:        {
 		name:          'Naming Convention',
 		description:   'Checks wether the symbols conform to a certain naming convention',

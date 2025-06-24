@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { assertLinter } from '../_helper/linter';
 import { LintingCertainty } from '../../../src/linter/linter-format';
-import { CasingConvention, detectCasing, tryFixCasing } from '../../../src/linter/rules/naming-convention';
+import { CasingConvention, detectCasing, fixCasing } from '../../../src/linter/rules/naming-convention';
 import { assertUnreachable } from '../../../src/util/assert';
 
 function genName(convention: CasingConvention): string {
@@ -78,17 +78,16 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ name: 'fooBar',           expected: 'Foo_Bar',     convention: CasingConvention.PascalSnakeCase },
 			{ name: 'foo_Bar',          expected: 'Foo_Bar',     convention: CasingConvention.PascalSnakeCase },
 		])('fix casing $convention', ({ name, convention, expected }) => {
-			const fixed = tryFixCasing(name, convention);
+			const fixed = fixCasing(name, convention);
 			assert.equal(fixed, expected, `Expected to convert '${name}' to '${expected}', but converted to '${fixed}'`);
 		});	
 	});
-
 
 	describe('rule', () => { 
 		assertLinter('simple', parser, 'testVar <- 5', 'naming-convention', [{
 			name:           'testVar',
 			detectedCasing: CasingConvention.CamelCase,
-			suggestion:     'TestVar',
+			quickFix:       [{ type: 'replace', replacement: 'TestVar', range: [1, 1, 1, 7], description: 'Change casing from camelCase to PascalCase' } as const],
 			range:          [1, 1, 1, 7],
 			certainty:      LintingCertainty.Definitely,
 		}], undefined, { caseing: CasingConvention.PascalCase });
@@ -96,7 +95,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('only detect definition', parser, 'testVar <- 5\nprint(testVar)\n', 'naming-convention', [{
 			name:           'testVar',
 			detectedCasing: CasingConvention.CamelCase,
-			suggestion:     'TestVar',
+			quickFix:       [{ type: 'replace', replacement: 'TestVar', range: [1, 1, 1, 7], description: 'Change casing from camelCase to PascalCase' } as const],
 			range:          [1, 1, 1, 7],
 			certainty:      LintingCertainty.Definitely,
 		}], undefined, { caseing: CasingConvention.PascalCase });
@@ -104,8 +103,8 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('detect casing', parser, 'testVar <- 5\ntestVarTwo <- 5\ntest_var <- 5\n', 'naming-convention', [{
 			name:           'test_var',
 			detectedCasing: CasingConvention.SnakeCase,
-			suggestion:     'testVar',
-			range:          [3,1,3,8,],
+			quickFix:       [{ type: 'replace', replacement: 'testVar', range: [3,1,3,8], description: 'Change casing from snake_case to camelCase' } as const],
+			range:          [3,1,3,8],
 			certainty:      LintingCertainty.Definitely,
 		}], undefined, { caseing: 'auto' });
 	});

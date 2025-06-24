@@ -172,9 +172,9 @@ function mapDataFrameRead(
 
 	if(fileNameArg === undefined || fileNameArg === EmptyArgument || typeof fileName !== 'string') {
 		return [{
-			operation: 'unknown',
+			operation: 'read',
 			operand:   undefined,
-			args:      {}
+			args:      { file: undefined, colnames: undefined, rows: undefined }
 		}];
 	}
 	const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
@@ -188,17 +188,24 @@ function mapDataFrameRead(
 			args:      { file: fileName, colnames: undefined, rows: undefined }
 		}];
 	}
-	const headerValue = resolveIdToArgValue(getFunctionArgument(args, params.header, info), info);
-	const separatorValue = resolveIdToArgValue(getFunctionArgument(args, params.separator, info), info);
-	const quoteValue = resolveIdToArgValue(getFunctionArgument(args, params.quote, info), info);
-	const commentValue = resolveIdToArgValue(getFunctionArgument(args, params.comment, info), info);
-	const skipLinesValue = resolveIdToArgValue(getFunctionArgument(args, params.skipLines, info), info);
-	const header = typeof headerValue === 'boolean' ? headerValue : params.header.default;
-	const separator = typeof separatorValue === 'string' ? escapeRegExp(separatorValue) : params.separator.default;
-	const quote = typeof quoteValue === 'string' ? escapeRegExp(quoteValue) : params.quote.default;
-	const comment = typeof commentValue === 'string' ? escapeRegExp(commentValue) : params.comment.default;
-	const skipLines = typeof skipLinesValue === 'number' ? skipLinesValue : params.skipLines.default;
+	const headerArg = getFunctionArgument(args, params.header, info);
+	const separatorArg = getFunctionArgument(args, params.separator, info);
+	const quoteArg = getFunctionArgument(args, params.quote, info);
+	const commentArg = getFunctionArgument(args, params.comment, info);
+	const skipLinesArg = getFunctionArgument(args, params.skipLines, info);
+	const header = headerArg ? resolveIdToArgValue(headerArg, info) : params.header.default;
+	const separator = separatorArg ? resolveIdToArgValue(separatorArg, info) : params.separator.default;
+	const quote = quoteArg ? resolveIdToArgValue(quoteArg, info) : params.quote.default;
+	const comment = commentArg ? resolveIdToArgValue(commentArg, info) : params.comment.default;
+	const skipLines = skipLinesArg ? resolveIdToArgValue(skipLinesArg, info) : params.skipLines.default;
 
+	if(typeof header !== 'boolean' || typeof separator !== 'string' || typeof quote !== 'string' || typeof comment !== 'string' || typeof skipLines !== 'number') {
+		return [{
+			operation: 'read',
+			operand:   undefined,
+			args:      { file: source, colnames: undefined, rows: undefined }
+		}];
+	}
 	const LineCommentRegex = new RegExp(`\\s*[${comment}].*`);
 	const request = getSourceProvider().createRequest(source);
 	let firstLine: (string | undefined)[] | undefined = undefined;
@@ -356,7 +363,7 @@ function mapDataFrameHeadTail(
 	}
 	const result: DataFrameOperations[] = [];
 	const amountArg = getFunctionArgument(args, params.amount, info);
-	const amountValue = resolveIdToArgValue(amountArg, info) ?? params.amount.default;
+	const amountValue = amountArg ? resolveIdToArgValue(amountArg, info) : params.amount.default;
 	let rows: number | undefined = undefined;
 	let cols: number | undefined = undefined;
 

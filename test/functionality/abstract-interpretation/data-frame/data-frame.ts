@@ -1,7 +1,7 @@
 import { assert, beforeAll, test } from 'vitest';
 import { performDataFrameAbsint, resolveIdToAbstractValue } from '../../../../src/abstract-interpretation/data-frame/absint-visitor';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
-import { DataFrameTop, equalColNames, equalInterval, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
+import { equalColNames, equalInterval, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
 import type { DEFAULT_DATAFLOW_PIPELINE, TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
@@ -26,38 +26,35 @@ export enum DomainMatchingType {
 
 export type DataFrameTestOptions = Record<keyof DataFrameDomain, DomainMatchingType>;
 
-export const DataFrameTestExact = {
+export const DataFrameTestExact: DataFrameTestOptions = {
 	colnames: DomainMatchingType.Exact,
 	cols:     DomainMatchingType.Exact,
 	rows:     DomainMatchingType.Exact
 };
 
-export const DataFrameTestOverapproximation = {
+export const DataFrameTestOverapproximation: DataFrameTestOptions = {
 	colnames: DomainMatchingType.Overapproximation,
 	cols:     DomainMatchingType.Overapproximation,
 	rows:     DomainMatchingType.Overapproximation
 };
 
-type DomainPredicateMapping = {
-	[K in keyof DataFrameDomain]: (X1: DataFrameDomain[K], X2: DataFrameDomain[K]) => boolean
+type DomainComparisonMapping = {
+	[K in keyof DataFrameDomain]: {
+		equal: (value1: DataFrameDomain[K], value2: DataFrameDomain[K]) => boolean,
+		leq:   (value1: DataFrameDomain[K], value2: DataFrameDomain[K]) => boolean
+	}
 }
 
-const EqualFunctions: DomainPredicateMapping = {
-	colnames: equalColNames,
-	cols:     equalInterval,
-	rows:     equalInterval
-};
-
-const LeqFunctions: DomainPredicateMapping = {
-	colnames: leqColNames,
-	cols:     leqInterval,
-	rows:     leqInterval
+const ComparisonFunctions: DomainComparisonMapping = {
+	colnames: { equal: equalColNames, leq: leqColNames },
+	cols:     { equal: equalInterval, leq: leqInterval },
+	rows:     { equal: equalInterval, leq: leqInterval }
 };
 
 /** Stores the inferred data frame constraints and AST node for a tested slicing criterion */
 interface CriterionTestEntry {
 	criterion:  SingleSlicingCriterion,
-	value:      DataFrameDomain,
+	inferred:   DataFrameDomain | undefined,
 	node:       RSymbol<ParentInformation>,
 	lineNumber: number,
 	options:    DataFrameTestOptions
@@ -80,7 +77,7 @@ interface CriterionTestEntry {
 export function testDataFrameDomain(
 	shell: RShell,
 	code: string,
-	criteria: ([SingleSlicingCriterion, DataFrameDomain] | [SingleSlicingCriterion, DataFrameDomain, Partial<DataFrameTestOptions>])[],
+	criteria: ([SingleSlicingCriterion, DataFrameDomain | undefined] | [SingleSlicingCriterion, DataFrameDomain | undefined, Partial<DataFrameTestOptions>])[],
 	parser: KnownParser = shell,
 	name: string | TestLabel = code
 ) {
@@ -99,7 +96,7 @@ export function testDataFrameDomain(
 export function assertDataFrameDomain(
 	parser: KnownParser,
 	code: string,
-	expected: [SingleSlicingCriterion, DataFrameDomain][],
+	expected: [SingleSlicingCriterion, DataFrameDomain | undefined][],
 	name: string | TestLabel = code
 ) {
 	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
@@ -110,11 +107,8 @@ export function assertDataFrameDomain(
 
 	test.each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
-		const [value] = getInferredDomainForCriterion(result, criterion);
-
-		assertDomainMatching('colnames', value.colnames, expect.colnames, DomainMatchingType.Exact);
-		assertDomainMatching('cols', value.cols, expect.cols, DomainMatchingType.Exact);
-		assertDomainMatching('rows', value.rows, expect.rows, DomainMatchingType.Exact);
+		const [inferred] = getInferredDomainForCriterion(result, criterion);
+		assertDomainMatches(inferred, expect, DataFrameTestExact);
 	});
 }
 
@@ -147,7 +141,7 @@ export function testDataFrameDomainAgainstReal(
 		for(const entry of criteria) {
 			const criterion = Array.isArray(entry) ? entry[0] : entry;
 			const options = { ...DataFrameTestExact, ...(Array.isArray(entry) ? entry[1] : {}) };
-			const [value, node] = getInferredDomainForCriterion(result, criterion);
+			const [inferred, node] = getInferredDomainForCriterion(result, criterion);
 
 			if(node.type !== RType.Symbol) {
 				throw new Error(`slicing criterion ${criterion} does not refer to a R symbol`);
@@ -157,44 +151,51 @@ export function testDataFrameDomainAgainstReal(
 			if(lineNumber === undefined) {
 				throw new Error(`cannot resolve line of criterion ${criterion}`);
 			}
-			testEntries.push({ criterion, value, node, lineNumber, options });
+			testEntries.push({ criterion, inferred, node, lineNumber, options });
 		}
 		testEntries.sort((a, b) => b.lineNumber - a.lineNumber);
 		const lines = code.split('\n');
 
 		for(const { criterion, node, lineNumber } of testEntries) {
-			const outputCode = [
-				createCodeForOutput('colnames', criterion, node.content),
-				createCodeForOutput('cols', criterion, node.content),
-				createCodeForOutput('rows', criterion, node.content)
-			];
-			lines.splice(lineNumber, 0, ...outputCode);
+			const outputCode = createCodeForOutput(criterion, node.content);
+			lines.splice(lineNumber, 0, outputCode);
 		}
-		const instrumentedCode = lines.join('\n');
-
 		shell.clearEnvironment();
+		const instrumentedCode = lines.join('\n');
 		const output = await shell.sendCommandWithOutput(instrumentedCode);
 
-		for(const { criterion, value, options } of testEntries) {
-			const colnames = getRealDomainFromOutput('colnames', criterion, output);
-			const cols = getRealDomainFromOutput('cols', criterion, output);
-			const rows = getRealDomainFromOutput('rows', criterion, output);
-
-			assertDomainMatching('colnames', value.colnames, colnames, options.colnames);
-			assertDomainMatching('cols', value.cols, cols, options.cols);
-			assertDomainMatching('rows', value.rows, rows, options.rows);
+		for(const { criterion, inferred, options } of testEntries) {
+			const expected = getRealDomainFromOutput(criterion, output);
+			assertDomainMatches(inferred, expected, options);
 		}
 	});
 }
 
-function assertDomainMatching<K extends keyof DataFrameDomain, T extends DataFrameDomain[K]>(
+function assertDomainMatches(
+	inferred: DataFrameDomain | undefined,
+	expected: DataFrameDomain | undefined,
+	options: DataFrameTestOptions
+): void {
+	if(Object.values(options).some(type => type === DomainMatchingType.Exact)) {
+		assert.ok(inferred === expected || (inferred !== undefined && expected !== undefined), `result differs: expected ${JSON.stringify(inferred)} to equal ${JSON.stringify(expected)}`);
+	} else {
+		assert.ok(inferred === undefined || expected !== undefined, `result is no over-approximation: : expected ${JSON.stringify(inferred)} to be an over-approximation of ${JSON.stringify(expected)}`);
+	}
+	if(inferred !== undefined && expected !== undefined) {
+		assertPropertyMatches('colnames', inferred.colnames, expected.colnames, options.colnames);
+		assertPropertyMatches('cols', inferred.cols, expected.cols, options.cols);
+		assertPropertyMatches('rows', inferred.rows, expected.rows, options.rows);
+	}
+}
+
+function assertPropertyMatches<K extends keyof DataFrameDomain, T extends DataFrameDomain[K]>(
 	type: K,
 	inferred: T,
 	expected: T,
 	matchingType: DomainMatchingType
 ): void {
-	const equalFunction = EqualFunctions[type];
-	const leqFunction = LeqFunctions[type];
+	const equalFunction = ComparisonFunctions[type].equal;
+	const leqFunction = ComparisonFunctions[type].leq;
 
 	switch(matchingType) {
 		case DomainMatchingType.Exact:
@@ -207,26 +208,17 @@ function assertDomainMatching<K extends keyof DataFrameDomain, T extends DataFra
 }
 
 function createCodeForOutput(
-	type: keyof DataFrameDomain,
 	criterion: SingleSlicingCriterion,
 	symbol: string
 ): string {
-	switch(type) {
-		case 'colnames':
-			return `cat("${getMarker(type, criterion)}", colnames(${symbol}), "\\n")`;
-		case 'cols':
-			return `cat("${getMarker(type, criterion)}", ncol(${symbol}), "\\n")`;
-		case 'rows':
-			return `cat("${getMarker(type, criterion)}", nrow(${symbol}), "\\n")`;
-		default:
-			assertUnreachable(type);
-	}
+	const marker = getOutputMarker(criterion);
+	return `cat(sprintf("${marker} %s,[%s],%s,%s\\n", is.data.frame(${symbol}), paste(names(${symbol}), collapse = ","), paste(ncol(${symbol}), collapse = ""), paste(nrow(${symbol}), collapse = "")))`;
 }
 
 function getInferredDomainForCriterion(
 	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
 	criterion: SingleSlicingCriterion
-): [DataFrameDomain, RNode<ParentInformation>] {
+): [DataFrameDomain | undefined, RNode<ParentInformation>] {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
 	const nodeId = slicingCriterionToId(criterion, idMap);
 	const node = idMap.get(nodeId);
@@ -236,37 +228,35 @@ function getInferredDomainForCriterion(
 	}
 	const cfg = extractCfg(result.normalize, result.dataflow.graph);
 	performDataFrameAbsint(cfg, result.dataflow.graph, result.normalize);
-	const value = resolveIdToAbstractValue(node, result.dataflow.graph) ?? DataFrameTop;
+	const value = resolveIdToAbstractValue(node, result.dataflow.graph);
 
 	return [value, node];
 }
 
-function getRealDomainFromOutput<K extends keyof DataFrameDomain>(
-	type: K,
+function getRealDomainFromOutput(
 	criterion: SingleSlicingCriterion,
 	output: string[]
-): DataFrameDomain[K] {
-	const marker = getMarker(type, criterion);
+): DataFrameDomain | undefined {
+	const marker = getOutputMarker(criterion);
 	const line = output.find(line => line.startsWith(marker))?.replace(marker, '').trim();
 
 	if(line === undefined) {
-		throw new Error(`cannot parse ${type} output of instrumented code for ${criterion}`);
+		throw new Error(`cannot parse output of instrumented code for ${criterion}`);
 	}
-	switch(type) {
-		case 'colnames': {
-			const value = line.length > 0 ? line.split(' ') : [];
-			return value as DataFrameDomain[K];
-		}
-		case 'cols':
-		case 'rows': {
-			const value = Number.parseInt(line);
-			return [value, value] as DataFrameDomain[K];
-		}
-		default:
-			assertUnreachable(type);
+	const OutputRegex = /(?<=^|,)(?:\[([^\]]*)\]|([^,]*))/g;
+	const result = line.matchAll(OutputRegex)?.map(match => match[1] ?? match[2]).toArray();
+
+	if(result?.length === 4) {
+		const dataFrame = result[0] === 'TRUE';
+		const colnames = result[1].length > 0 ? result[1].split(',') : [];
+		const cols = Number.parseInt(result[2]);
+		const rows = Number.parseInt(result[3]);
+
+		return dataFrame ? { colnames: colnames, cols: [cols, cols], rows: [rows, rows] } : undefined;
 	}
+	return undefined;
 }
 
-function getMarker(type: keyof DataFrameDomain, criterion: SingleSlicingCriterion): string {
-	return `${type.toUpperCase()} ${criterion}`;
+function getOutputMarker(criterion: SingleSlicingCriterion): string {
+	return `SHAPE INFERENCE ${criterion}:`;
 }

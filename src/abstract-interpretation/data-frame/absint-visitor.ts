@@ -237,7 +237,7 @@ export function resolveIdToAbstractValue(
 			?.filter(entry => entry.type === OriginType.ReadVariableOrigin)
 			.map(entry => resolveIdToAbstractValue(entry.id, dfg, domain));
 
-		if(values?.every(isNotUndefined)) {
+		if(values?.length !== 0 && values?.every(isNotUndefined)) {
 			return joinDataFrames(...values);
 		}
 	} else if(node.type === RType.Argument && node.value !== undefined) {

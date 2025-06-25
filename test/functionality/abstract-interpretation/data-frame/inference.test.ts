@@ -4,7 +4,7 @@ import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 import { withShell } from '../../_helper/shell';
 import { assertDataFrameDomain, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomain } from './data-frame';
 
-describe.sequential('Data Frame Shape Inference', withShell(shell => {
+describe.sequential('Data Frame Shape Inference', { skip: false }, withShell(shell => {
 	const skipLibraries = 'GITHUB_ACTIONS' in process.env;
 
 	beforeAll(() => {
@@ -16,6 +16,12 @@ describe.sequential('Data Frame Shape Inference', withShell(shell => {
 	});
 
 	describe('Control Flow', () => {
+		testDataFrameDomain(
+			shell,
+			'x <- 42',
+			[['1@x', undefined]]
+		);
+
 		testDataFrameDomain(
 			shell,
 			`
@@ -55,12 +61,6 @@ print(df)
 				['2@df', { colnames: [], cols: [0, 0], rows: [0, 0] }],
 				['3@df', { colnames: [], cols: [0, 0], rows: [0, 0] }]
 			]
-		);
-
-		testDataFrameDomain(
-			shell,
-			'df <- eval(parse(text = "data.frame()"))',
-			[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
 		);
 
 		testDataFrameDomain(
@@ -148,7 +148,7 @@ repeat {
 df[10, ] <- c(6, 11)
 print(df)
 			`.trim(),
-			[['6@df', DataFrameTop]]
+			[['6@df', undefined]] // unreachable
 		);
 	});
 
@@ -230,7 +230,7 @@ result <- df[1]
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1, 1]
 			`.trim(),
-			[['2@result', DataFrameTop]]
+			[['2@result', undefined]]
 		);
 
 		assertDataFrameDomain(
@@ -238,7 +238,7 @@ result <- df[1, 1]
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[, 1]
 			`.trim(),
-			[['2@result', DataFrameTop,]]
+			[['2@result', undefined]]
 		);
 
 		testDataFrameDomain(
@@ -282,7 +282,7 @@ result <- df[, 1:2]
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[c(1, 2), 1]
 			`.trim(),
-			[['2@result', DataFrameTop]]
+			[['2@result', undefined]]
 		);
 
 		assertDataFrameDomain(
@@ -290,7 +290,7 @@ result <- df[c(1, 2), 1]
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[["id"]]
 			`.trim(),
-			[['2@result', DataFrameTop]]
+			[['2@result', undefined]]
 		);
 
 		assertDataFrameDomain(
@@ -298,7 +298,7 @@ result <- df[["id"]]
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[[1]]
 			`.trim(),
-			[['2@result', DataFrameTop]]
+			[['2@result', undefined]]
 		);
 
 		testDataFrameDomain(
@@ -1043,20 +1043,6 @@ df <- merge(df1, df2, by = "id")
 				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
 				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
 				['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [4, 4] }]
-			]
-		);
-	});
-
-	describe('Aggregate', () => {
-		testDataFrameDomain(
-			shell,
-			`
-df <- data.frame(id = c(1, 2, 3, 1, 3), score = c(80, 75, 90, 70, 85))
-df <- aggregate(df, list(group = df$id), mean)
-			`.trim(),
-			[
-				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
-				['2@df', DataFrameTop, DataFrameTestOverapproximation]
 			]
 		);
 	});

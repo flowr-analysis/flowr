@@ -1,5 +1,5 @@
 import type { StaticSliceQuery, StaticSliceQueryResult } from './static-slice-query-format';
-import { staticBackwardSlice, staticForwardSlice } from '../../../slicing/static/static-slicer';
+import { staticSlice } from '../../../slicing/static/static-slicer';
 import { reconstructToCode } from '../../../reconstruct/reconstruct';
 import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-defaults';
 import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments';
@@ -21,7 +21,7 @@ export function executeStaticSliceQuery({ dataflow: { graph }, ast }: BasicQuery
 		}
 		const { criteria, noReconstruction, noMagicComments } = query;
 		const sliceStart = Date.now();
-		const slice = query.direction === SliceDirection.Forward ? staticForwardSlice(graph, ast, criteria) : staticBackwardSlice(graph, ast, criteria);
+		const slice = staticSlice(graph, ast, criteria, query.direction ?? SliceDirection.Backward);
 		const sliceEnd = Date.now();
 		if(noReconstruction) {
 			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };

@@ -23,7 +23,6 @@ import { processAccess } from '../dataflow/internal/process/functions/call/built
 import { processForLoop } from '../dataflow/internal/process/functions/call/built-in/built-in-for-loop';
 import { processRepeatLoop } from '../dataflow/internal/process/functions/call/built-in/built-in-repeat-loop';
 import { linkCircularRedefinitionsWithinALoop } from '../dataflow/internal/linker';
-import { staticBackwardSlice } from '../slicing/static/static-slicer';
 import { filterOutLoopExitPoints, initializeCleanDataflowInformation } from '../dataflow/info';
 import { processDataflowFor } from '../dataflow/processor';
 import {
@@ -41,6 +40,7 @@ import { tryNormalizeFor } from '../r-bridge/lang-4.x/ast/parser/main/internal/l
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { PipelineExecutor } from '../core/pipeline-executor';
 import { createPipeline } from '../core/steps/pipeline/pipeline';
+import { staticSlice } from '../slicing/static/static-slicer';
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -380,7 +380,7 @@ Of course, all of these endeavors work not just with the ${shortLink(RShell.name
 The slicing is available as an extra step as you can see by inspecting he ${shortLink('DEFAULT_SLICING_PIPELINE', info)}.
 Besides ${shortLink('STATIC_SLICE', info)} it contains a ${shortLink('NAIVE_RECONSTRUCT', info)} to print the slice as (executable) R code.
 
-Your main point of interesting here is the ${shortLink(staticBackwardSlice.name, info)} function which relies on a modified
+Your main point of interesting here is the ${shortLink(staticSlice.name, info)} function which relies on a modified
 breadth-first search to collect all nodes which are part of the slice. 
 For more information on how the slicing works, please refer to the [tool demonstration (Section 3.2)](https://doi.org/10.1145/3691620.3695359),
 or the [original master's thesis (Chapter 4)](https://doi.org/10.18725/OPARU-50107).

@@ -1,22 +1,11 @@
 import { afterAll, beforeAll, describe } from 'vitest';
-import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { ColNamesTop, DataFrameTop, IntervalTop } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { amendConfig, defaultConfigOptions } from '../../../../src/config';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { withShell } from '../../_helper/shell';
-import type { DataFrameTestOptions } from './data-frame';
-import { assertDataFrameDomain, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomainAgainstReal } from './data-frame';
+import { assertDataFrameDomain, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomain } from './data-frame';
 
 describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 	const skipDplyr = true;
-
-	function testDataFrameDomain(
-		code: string,
-		criteria: ([SingleSlicingCriterion, DataFrameDomain] | [SingleSlicingCriterion, DataFrameDomain, Partial<DataFrameTestOptions>])[]
-	) {
-		assertDataFrameDomain(shell, code, criteria.map(entry => [entry[0], entry[1]]));
-		testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]));
-	}
 
 	beforeAll(() => {
 		amendConfig(config => config.solver.pointerTracking = false);
@@ -27,26 +16,31 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 	});
 
 	testDataFrameDomain(
+		shell,
 		'df <- data.frame(id = 1:5, age = c(25, 32, 35, 40, 45), score = c(90, 85, 88, 92, 95), row.names = NULL)',
 		[['1@df', { colnames: ['id', 'age', 'score'], cols: [3, 3], rows: [5, 5] }]]
 	);
 
 	testDataFrameDomain(
+		shell,
 		'df <- data.frame(id = c(1, 2, 3, 5, 6, 7), category = c("A", "B", "A", "A", "B", "B"))',
 		[['1@df', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }]]
 	);
 
 	testDataFrameDomain(
+		shell,
 		'df <- data.frame(c(1, 2, 3:5, c(6, 7, c(8, 9))), c("a", "b", "c"))',
 		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [9, 9] }, { colnames: DomainMatchingType.Overapproximation }]]
 	);
 
 	testDataFrameDomain(
+		shell,
 		'df <- data.frame()',
 		[['1@df', { colnames: [], cols: [0, 0], rows: [0, 0] }]]
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df1 <- data.frame(id = 1:5)
 df2 <- df1
@@ -59,11 +53,13 @@ df2 <- df1
 	);
 
 	testDataFrameDomain(
+		shell,
 		'df <- as.data.frame(c(1, 2, 3))',
 		[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df1 <- data.frame(id = 1:3, label = c("A", "B", "C"))
 df2 <- as.data.frame(df1)
@@ -75,16 +71,19 @@ df2 <- as.data.frame(df1)
 	);
 
 	testDataFrameDomain(
+		shell,
 		'df <- read.csv(text = "id,age\\n1,30\\n2,50\\n3,45")',
 		[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
 	);
 
 	testDataFrameDomain(
+		shell,
 		'df <- eval(parse(text = "data.frame()"))',
 		[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, type = c("A", "B", "C"))
 df <- data.frame()
@@ -98,6 +97,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, type = c("A", "B", "C"))
 print(df <- data.frame())
@@ -111,6 +111,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		'df <- 1:3 |> data.frame(type = c("A", "B", "C"))',
 		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
 	);
@@ -122,11 +123,13 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		'df <- if (runif(1) >= 0.5) data.frame(id = 1:5) else data.frame(id = 1:10, name = "A")',
 		[['1@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [5, 10] }, DataFrameTestOverapproximation]]
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 if(runif(1) >= 0.5) {
 	df <- data.frame(id = 1:5)
@@ -139,6 +142,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 i <- 5
 df <- if (i == 0) {
@@ -156,6 +160,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:5)
 for (i in 1:5) {
@@ -168,6 +173,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:5)
 while (TRUE) {
@@ -193,6 +199,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df["id"]
@@ -201,6 +208,7 @@ result <- df["id"]
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1]
@@ -225,6 +233,7 @@ result <- df[, 1]
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1, ]
@@ -233,6 +242,7 @@ result <- df[1, ]
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1, c(1, 2)]
@@ -241,6 +251,7 @@ result <- df[1, c(1, 2)]
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1:2, c(1, 2)]
@@ -249,6 +260,7 @@ result <- df[1:2, c(1, 2)]
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[, 1:2]
@@ -281,6 +293,7 @@ result <- df[[1]]
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[-1, "id", drop = FALSE]
@@ -289,6 +302,7 @@ result <- df[-1, "id", drop = FALSE]
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[c(-1, -2), -1, drop = FALSE]
@@ -297,6 +311,7 @@ result <- df[c(-1, -2), -1, drop = FALSE]
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
 result <- df[, -1]
@@ -305,6 +320,7 @@ result <- df[, -1]
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[,]
@@ -316,6 +332,7 @@ result <- df[,]
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3)
 df$id <- "A"
@@ -329,6 +346,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3)
 df$name <- "A"
@@ -341,6 +359,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3)
 df[["name"]] <- "A"
@@ -353,6 +372,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3)
 df[1] <- "A"
@@ -365,6 +385,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3)
 df[2] <- "A"
@@ -377,6 +398,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3)
 df[, "name"] <- "A"
@@ -389,6 +411,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3)
 df[4, ] <- 4
@@ -401,6 +424,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3)
 df[4, 1] <- 4
@@ -413,6 +437,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(1:5, 6:10)
 colnames(df) <- c("id", "name")
@@ -425,6 +450,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:5, name = 6:10)
 colnames(df) <- runif(2)
@@ -437,6 +463,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(1:5, 6:10)
 names(df) <- c("id", "name")
@@ -449,6 +476,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:5, name = 6:10)
 names(df) <- runif(2)
@@ -461,6 +489,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6)
 rownames(df) <- c("row1", "row2", "row3")
@@ -473,6 +502,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6)
 dimnames(df) <- list(c("row1", "row2", "row3"), c("col1", "col2"))
@@ -485,6 +515,7 @@ print(df)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:5)
 df <- cbind(df, name = 6:10, label = c("A", "B", "C", "D", "E"))
@@ -496,6 +527,7 @@ df <- cbind(df, name = 6:10, label = c("A", "B", "C", "D", "E"))
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df1 <- data.frame(id = 1:5)
 df2 <- data.frame(name = 6:10)
@@ -511,6 +543,7 @@ df <- cbind(df1, df2, df3)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df1 <- data.frame(id = 1:5)
 df2 <- data.frame(name = 6:10)
@@ -524,6 +557,7 @@ df <- cbind(df1, df2, label = c("A", "B", "C", "D", "E"))
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:5)
 df <- cbind(df, label = list(name = 6:10))
@@ -535,6 +569,7 @@ df <- cbind(df, label = list(name = 6:10))
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1, name = "A", score = 20)
 df <- rbind(df, c(2, "B", 30), c(4, "C", 25))
@@ -546,6 +581,7 @@ df <- rbind(df, c(2, "B", 30), c(4, "C", 25))
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df1 <- data.frame(id = 1:3, name = c("A", "B", "C"), score = c(20, 30, 25))
 df2 <- data.frame(id = 4, name = "D", score = 20)
@@ -561,6 +597,7 @@ df <- rbind(df1, df2, df3)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df1 <- data.frame(id = 1:3, name = c("A", "B", "C"), score = c(20, 30, 25))
 df2 <- data.frame(id = 4, name = "D", score = 20)
@@ -574,6 +611,7 @@ df <- rbind(df1, df2, label = c(5, "E", 40))
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:5)
 df <- rbind(df, list(id = 6:10))
@@ -585,6 +623,7 @@ df <- rbind(df, list(id = 6:10))
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
 df <- head(df, n = 3)
@@ -596,6 +635,7 @@ df <- head(df, n = 3)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
 df <- head(df, c(2, 1))
@@ -607,6 +647,7 @@ df <- head(df, c(2, 1))
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
 df <- head(df, -2)
@@ -618,6 +659,7 @@ df <- head(df, -2)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
 df <- head(df, n = -c(2, 1))
@@ -629,6 +671,7 @@ df <- head(df, n = -c(2, 1))
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
 df <- tail(df, n = 3)
@@ -640,6 +683,7 @@ df <- tail(df, n = 3)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
 df <- tail(df, c(2, 1))
@@ -651,6 +695,7 @@ df <- tail(df, c(2, 1))
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
 df <- tail(df, -2)
@@ -662,6 +707,7 @@ df <- tail(df, -2)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
 df <- tail(df, n = -c(2, 1))
@@ -674,6 +720,7 @@ df <- tail(df, n = -c(2, 1))
 
 	describe.skipIf(skipDplyr)('dplyr Functions', () => {
 		testDataFrameDomain(
+			shell,
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df <- dplyr::filter(df, TRUE)
@@ -685,6 +732,7 @@ df <- dplyr::filter(df, TRUE)
 		);
 
 		testDataFrameDomain(
+			shell,
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df <- dplyr::filter(df, FALSE)
@@ -696,6 +744,7 @@ df <- dplyr::filter(df, FALSE)
 		);
 
 		testDataFrameDomain(
+			shell,
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df <- dplyr::filter(df, id == 2)
@@ -707,6 +756,7 @@ df <- dplyr::filter(df, id == 2)
 		);
 
 		testDataFrameDomain(
+			shell,
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, id, name)
@@ -718,6 +768,7 @@ df <- dplyr::select(df, id, name)
 		);
 
 		testDataFrameDomain(
+			shell,
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, -name)
@@ -729,6 +780,7 @@ df <- dplyr::select(df, -name)
 		);
 
 		testDataFrameDomain(
+			shell,
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, -name, -label)
@@ -740,6 +792,7 @@ df <- dplyr::select(df, -name, -label)
 		);
 
 		testDataFrameDomain(
+			shell,
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, id, -name)
@@ -752,6 +805,7 @@ df <- dplyr::select(df, id, -name)
 	});
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, TRUE, select = c(id, name))
@@ -763,6 +817,7 @@ df <- subset(df, TRUE, select = c(id, name))
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, FALSE, id)
@@ -774,6 +829,7 @@ df <- subset(df, FALSE, id)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, id == 2, -label)
@@ -785,6 +841,7 @@ df <- subset(df, id == 2, -label)
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, id > 1, select = c(-name, -label))
@@ -796,6 +853,7 @@ df <- subset(df, id > 1, select = c(-name, -label))
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = c(-id, -name))
@@ -808,6 +866,7 @@ df <- subset(df, select = c(-id, -name))
 
 	describe.skipIf(skipDplyr)('dplyr Functions', () => {
 		testDataFrameDomain(
+			shell,
 			`
 df <- data.frame(id = 1:5)
 df <- dplyr::mutate(df, id = c(letters[1:5]))
@@ -819,6 +878,7 @@ df <- dplyr::mutate(df, id = c(letters[1:5]))
 		);
 
 		testDataFrameDomain(
+			shell,
 			`
 df <- data.frame(id = 1:5)
 df <- dplyr::mutate(df, name = c(letters[1:5]))
@@ -831,6 +891,7 @@ df <- dplyr::mutate(df, name = c(letters[1:5]))
 	});
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:5)
 df <- transform(df, id = c(letters[1:5]))
@@ -842,6 +903,7 @@ df <- transform(df, id = c(letters[1:5]))
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:5)
 df <- transform(df, name = c(letters[1:5]))
@@ -854,6 +916,7 @@ df <- transform(df, name = c(letters[1:5]))
 
 	describe.skipIf(skipDplyr)('dplyr Functions', () => {
 		testDataFrameDomain(
+			shell,
 			`
 df <- data.frame(id = 1:5, score = c(80, 75, 90, 70, 85))
 df <- dplyr::group_by(df, id) |> as.data.frame()
@@ -865,6 +928,7 @@ df <- dplyr::group_by(df, id) |> as.data.frame()
 		);
 
 		testDataFrameDomain(
+			shell,
 			`
 library(dplyr)
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
@@ -881,6 +945,7 @@ print(df)
 		);
 
 		testDataFrameDomain(
+			shell,
 			`
 library(dplyr)
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
@@ -896,6 +961,7 @@ print(df)
 		);
 
 		testDataFrameDomain(
+			shell,
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
@@ -909,6 +975,7 @@ df <- dplyr::left_join(df1, df2, by = "id")
 		);
 
 		testDataFrameDomain(
+			shell,
 			`
 df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df2 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
@@ -923,6 +990,7 @@ df <- dplyr::left_join(df1, df2, by = "id")
 	});
 
 	testDataFrameDomain(
+		shell,
 		`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
@@ -936,6 +1004,7 @@ df <- merge(df1, df2, by = "id")
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df2 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
@@ -949,6 +1018,7 @@ df <- merge(df1, df2, by = "id")
 	);
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = c(1, 2, 3, 1, 3), score = c(80, 75, 90, 70, 85))
 df <- aggregate(df, list(group = df$id), mean)
@@ -961,6 +1031,7 @@ df <- aggregate(df, list(group = df$id), mean)
 
 	describe.skipIf(skipDplyr)('dplyr Functions', () => {
 		testDataFrameDomain(
+			shell,
 			`
 df <- data.frame(id = 1:5, category = c("A", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85))
 df <- dplyr::relocate(df, score, .before = category)
@@ -972,6 +1043,7 @@ df <- dplyr::relocate(df, score, .before = category)
 		);
 
 		testDataFrameDomain(
+			shell,
 			`
 df <- data.frame(id = 1:5, category = c("A", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85))
 df <- dplyr::arrange(df, -score, id)
@@ -983,6 +1055,7 @@ df <- dplyr::arrange(df, -score, id)
 		);
 
 		testDataFrameDomain(
+			shell,
 			`
 library(dplyr)
 
@@ -1005,6 +1078,7 @@ print(df3$level)
 	});
 
 	testDataFrameDomain(
+		shell,
 		`
 df <- data.frame(id = 1:3, age = c(25, 30, 40))
 df <- df |> subset(age < 30)

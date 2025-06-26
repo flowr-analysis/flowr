@@ -2,9 +2,9 @@ import { afterAll, beforeAll, describe } from 'vitest';
 import { ColNamesTop, DataFrameTop, IntervalTop } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 import { withShell } from '../../_helper/shell';
-import { assertDataFrameDomain, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomain } from './data-frame';
+import { assertDataFrameDomain, assertDataFrameOperation, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomain } from './data-frame';
 
-describe.sequential('Data Frame Shape Inference', { skip: false }, withShell(shell => {
+describe.sequential('Data Frame Shape Inference', withShell(shell => {
 	const skipLibraries = 'GITHUB_ACTIONS' in process.env;
 
 	beforeAll(() => {
@@ -20,6 +20,42 @@ describe.sequential('Data Frame Shape Inference', { skip: false }, withShell(she
 			shell,
 			'x <- 42',
 			[['1@x', undefined]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:5)
+data.frame(id = 1:5) -> df2
+df3 <<- data.frame(id = 1:5)
+data.frame(id = 1:5) ->> df4
+df5 = data.frame(id = 1:5)
+assign("df6", data.frame(id = 1:5))
+print(df6)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+				['2@df2', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+				['3@df3', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+				['4@df4', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+				['5@df5', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+				['7@df6', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+\`df1\` <- data.frame(id = 1:5)
+'df2' <- data.frame(id = 1:5)
+"df3" <- data.frame(id = 1:5)
+df <- cbind(df1, df2, df3)
+			`.trim(),
+			[
+				['4@df1', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+				['4@df2', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+				['4@df3', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }]
+			]
 		);
 
 		testDataFrameDomain(
@@ -129,6 +165,22 @@ print(df)
 			shell,
 			`
 df <- data.frame(id = 1:5)
+while (nrow(df) < 10) {
+	if (ncol(df) == 1) {
+		df <- cbind(df, name = "A")
+		next
+	}
+	df <- rbind(df, c(6, "A"))
+}
+print(df)
+			`.trim(),
+			[['9@df', { colnames: ['id', 'name'], cols: [1, Infinity], rows: [5, Infinity] }, DataFrameTestOverapproximation]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:5)
 while (TRUE) {
 	df[2] <- 6:10
 	break
@@ -161,8 +213,23 @@ print(df)
 
 		testDataFrameDomain(
 			shell,
-			'df <- data.frame(id = c(1, 2, 3, 5, 6, 7), category = c("A", "B", "A", "A", "B", "B"))',
+			'df <- data.frame("id" = c(1, 2, 3, 5, 6, 7), `category` = c("A", "B", "A", "A", "B", "B"))',
 			[['1@df', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'df <- data.frame(1:5, c("A", "B", "C", "D", "E"), TRUE)',
+			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+a = 1; b = "A"
+df <- data.frame(id = a, name = b)
+			`.trim(),
+			[['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [1, 1] }]]
 		);
 
 		testDataFrameDomain(
@@ -173,15 +240,95 @@ print(df)
 
 		testDataFrameDomain(
 			shell,
+			'df <- data.frame(1)',
+			[['1@df', { colnames: ColNamesTop, cols: [1, 1], rows: [1, 1] }, { colnames: DomainMatchingType.Overapproximation }]]
+		);
+
+		testDataFrameDomain(
+			shell,
 			'df <- data.frame()',
 			[['1@df', { colnames: [], cols: [0, 0], rows: [0, 0] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'df <- data.frame(id = NULL)',
+			[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'df <- data.frame(data.frame(1:3))',
+			[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'df <- data.frame(list(id = 1:3))',
+			[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'df <- data.frame(id = list(num = 1:3, name = 3:1))',
+			[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'df <- data.frame(`:D` = 1:3)',
+			[['1@df', { colnames: ColNamesTop, cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
+		);
+
+		describe('Currently Unsupported', { fails: true }, () => {
+			testDataFrameDomain(
+				shell,
+				'df <- data.frame(id = 1:3, id = 4:6)',
+				[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
+			);
+
+			testDataFrameDomain(
+				shell,
+				'df <- data.frame(id = 1:3, name = 6:8, row.names = "id")',
+				[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
+			);
+		});
+
+		testDataFrameDomain(
+			shell,
+			'df <- data.frame(`:D` = 1:3, check.names = FALSE)',
+			[['1@df', { colnames: ColNamesTop, cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'df <- data.frame(1:3, fix.empty.names = FALSE)',
+			[['1@df', { colnames: ColNamesTop, cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
 		);
 	});
 
 	describe('Convert', () => {
 		testDataFrameDomain(
 			shell,
+			'df <- as.data.frame(data.frame(1:3))',
+			[['1@df', { colnames: ColNamesTop, cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'df <- as.data.frame(list(id = 1:3))',
+			[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
+		);
+
+		testDataFrameDomain(
+			shell,
 			'df <- as.data.frame(c(1, 2, 3))',
+			[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'df <- as.data.frame(1)',
 			[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
 		);
 
@@ -196,6 +343,36 @@ df2 <- as.data.frame(df1)
 				['2@df2', { colnames: ['id', 'label'], cols: [2, 2], rows: [3, 3] }]
 			]
 		);
+
+		testDataFrameDomain(
+			shell,
+			'df <- as.data.frame(data.frame(id = 1:3, name = 4:6), optional = TRUE)',
+			[['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'df <- as.data.frame(data.frame(id = 1:3, name = 4:6), cut.names = 3)',
+			[['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'df <- as.data.frame(data.frame(id = 1:3, name = 4:6), col.names = c("col1", "col2"))',
+			[['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'df <- as.data.frame(data.frame(id = 1:3, name = 4:6), fix.empty.names = FALSE)',
+			[['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'df <- as.data.frame(optional = TRUE, fix.empty.names = FALSE, x = data.frame(id = 1:3, name = 4:6))',
+			[['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]]
+		);
 	});
 
 	describe('Read', () => {
@@ -207,6 +384,94 @@ df2 <- as.data.frame(df1)
 	});
 
 	describe('Col/Row Access', () => {
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+df$id
+df$\`id\`
+df$"id"
+df$'id'
+			`.trim(),
+			[
+				['2@$', { accessCols: { columns: ['id'] } }],
+				['3@$', { accessCols: { columns: ['id'] } }],
+				['4@$', { accessCols: { columns: ['id'] } }],
+				['5@$', { accessCols: { columns: ['id'] } }]
+			]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+df["id"]
+df[, "id"]
+df[["id"]]
+df[1]
+df[, 1]
+df[[1]]
+df[1, ]
+			`.trim(),
+			[
+				['2@[', { accessCols: { columns: ['id'] }, subsetCols: { colnames: ['id'] } }],
+				['3@[', { accessCols: { columns: ['id'] } }],
+				['4@[[', { accessCols: { columns: ['id'] } }],
+				['5@[', { accessCols: { columns: [1] }, subsetCols: { colnames: [undefined] } }],
+				['6@[', { accessCols: { columns: [1] } }],
+				['7@[[', { accessCols: { columns: [1] } }],
+				['8@[', { accessRows: { rows: [1] }, subsetRows: { rows: 1 } }]
+			]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+df[1, "id"]
+df[[1, "id"]]
+df[1, 1]
+df[[1, 1]]
+			`.trim(),
+			[
+				['2@[', { accessRows: { rows: [1] }, accessCols: { columns: ['id'] } }],
+				['3@[[', { accessRows: { rows: [1] }, accessCols: { columns: ['id'] } }],
+				['4@[', { accessRows: { rows: [1] }, accessCols: { columns: [1] } }],
+				['5@[[', { accessRows: { rows: [1] }, accessCols: { columns: [1] } }]
+			]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+df[c("id", "name")]
+df[c(1, 2)]
+df[1:2]
+df[c(1, 2), ]
+df[1:2, ]
+df[1, c("id", "name")]
+df[1, 1:2]
+df[1:2, "id"]
+df[1:2, 1]
+df[1:2, c("id", "name")]
+df[c(1, 3), 1:2]
+			`.trim(),
+			[
+				['2@[', { accessCols: { columns: ['id', 'name'] }, subsetCols: { colnames: ['id', 'name'] } }],
+				['3@[', { accessCols: { columns: [1, 2] }, subsetCols: { colnames: [undefined, undefined] } }],
+				['4@[', { accessCols: { columns: [1, 2] }, subsetCols: { colnames: [undefined, undefined] } }],
+				['5@[', { accessRows: { rows: [1, 2] }, subsetRows: { rows: 2 } }],
+				['6@[', { accessRows: { rows: [1, 2] }, subsetRows: { rows: 2 } }],
+				['7@[', { accessRows: { rows: [1] }, accessCols: { columns: ['id', 'name'] }, subsetRows: { rows: 1 }, subsetCols: { colnames: ['id', 'name'] } }],
+				['8@[', { accessRows: { rows: [1] }, accessCols: { columns: [1, 2] }, subsetRows: { rows: 1 }, subsetCols: { colnames: [undefined, undefined] } }],
+				['9@[', { accessRows: { rows: [1, 2] }, accessCols: { columns: ['id'] } }],
+				['10@[', { accessRows: { rows: [1, 2] },  accessCols: { columns: [1] } }],
+				['11@[', { accessRows: { rows: [1, 2] }, accessCols: { columns: ['id', 'name'] }, subsetRows: { rows: 2 }, subsetCols: { colnames: ['id', 'name'] } }],
+				['12@[', { accessRows: { rows: [1, 3] }, accessCols: { columns: [1, 2] }, subsetRows: { rows: 2 }, subsetCols: { colnames: [undefined, undefined] } }]
+			]
+		);
+
 		testDataFrameDomain(
 			shell,
 			`
@@ -254,6 +519,15 @@ result <- df[1, ]
 			shell,
 			`
 df <- data.frame(id = 1:3, name = 4:6)
+result <- df[1, c("id", "name")]
+			`.trim(),
+			[['2@result', { colnames: ['id', 'name'], cols: [2, 2], rows: [1, 1] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1, c(1, 2)]
 			`.trim(),
 			[['2@result', { colnames: ['id', 'name'], cols: [2, 2], rows: [1, 1] }]]
@@ -277,7 +551,16 @@ result <- df[, 1:2]
 			[['2@result', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]]
 		);
 
-		assertDataFrameDomain(
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[1:2, ]
+			`.trim(),
+			[['2@result', { colnames: ['id', 'name'], cols: [2, 2], rows: [2, 2] }]]
+		);
+
+		testDataFrameDomain(
 			shell, `
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[c(1, 2), 1]
@@ -285,7 +568,7 @@ result <- df[c(1, 2), 1]
 			[['2@result', undefined]]
 		);
 
-		assertDataFrameDomain(
+		testDataFrameDomain(
 			shell, `
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[["id"]]
@@ -293,12 +576,44 @@ result <- df[["id"]]
 			[['2@result', undefined]]
 		);
 
-		assertDataFrameDomain(
+		testDataFrameDomain(
 			shell, `
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[[1]]
 			`.trim(),
 			[['2@result', undefined]]
+		);
+
+		testDataFrameDomain(
+			shell, `
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[[1, "id"]]
+			`.trim(),
+			[['2@result', undefined]]
+		);
+
+		testDataFrameDomain(
+			shell, `
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[[1, 1]]
+			`.trim(),
+			[['2@result', undefined]]
+		);
+
+		testDataFrameDomain(
+			shell, `
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df["id", drop = TRUE]
+			`.trim(),
+			[['2@result', { colnames: ['id'], cols: [1,1], rows: [3, 3] }]]
+		);
+
+		testDataFrameDomain(
+			shell, `
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[, "id", drop = FALSE]
+			`.trim(),
+			[['2@result', { colnames: ['id'], cols: [1,1], rows: [3, 3] }]]
 		);
 
 		testDataFrameDomain(
@@ -332,12 +647,177 @@ result <- df[, -1]
 			shell,
 			`
 df <- data.frame(id = 1:3, name = 4:6)
+result <- df[]
+			`.trim(),
+			[['2@result', { colnames: ['id','name'], cols: [2, 2], rows: [3, 3] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
 result <- df[,]
 			`.trim(),
-			[
-				['1@df', { colnames: ['id','name'], cols: [2, 2], rows: [3, 3] }],
-				['2@result', { colnames: ['id','name'], cols: [2, 2], rows: [3, 3] }],
-			]
+			[['2@result', { colnames: ['id','name'], cols: [2, 2], rows: [3, 3] }]]
+		);
+
+		describe('Currently Unsupported', { fails: true }, () => {
+			testDataFrameDomain(
+				shell,
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[0]
+			`.trim(),
+				[['2@result', { colnames: [], cols: [0, 0], rows: [3, 3] }]]
+			);
+
+			testDataFrameDomain(
+				shell,
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[0, ]
+			`.trim(),
+				[['2@result', { colnames: ['id','name'], cols: [2, 2], rows: [0, 0] }]]
+			);
+
+			testDataFrameDomain(
+				shell,
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[0, 0]
+			`.trim(),
+				[['2@result', { colnames: [], cols: [0, 0], rows: [0, 0] }]]
+			);
+		});
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[c(TRUE, FALSE)]
+			`.trim(),
+			[['2@result', { colnames: ['id', 'name'], cols: [0, 2], rows: [3, 3] }, DataFrameTestOverapproximation]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[TRUE]
+			`.trim(),
+			[['2@result', { colnames: ['id', 'name'], cols: [0, 2], rows: [3, 3] }, DataFrameTestOverapproximation]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[c(TRUE, FALSE), ]
+			`.trim(),
+			[['2@result', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 3] }, DataFrameTestOverapproximation]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[df$id == 2, ]
+			`.trim(),
+			[['2@result', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 3] }, DataFrameTestOverapproximation]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[df$id == 2, "name", drop = FALSE]
+			`.trim(),
+			[['2@result', { colnames: ['name'], cols: [1, 1], rows: [0, 3] }, DataFrameTestOverapproximation]]
+		);
+
+		describe('Currently Unsupported', { fails: true }, () => {
+			assertDataFrameOperation(
+				shell,
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+df[["nam", exact = FALSE]]
+				`.trim(),
+				[['2@[[', { accessCols: { columns: undefined } }]]
+			);
+
+			assertDataFrameOperation(
+				shell,
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+df$id[1]
+df$id[[1]]
+df[["id"]][1]
+df[[1]][1]
+				`.trim(),
+				[
+					['2@$', { accessRows: { rows: [1] }, accessCols: { columns: ['id'] } }],
+					['3@$', { accessRows: { rows: [1] }, accessCols: { columns: ['id'] } }],
+					['4@[[', { accessRows: { rows: [1] }, accessCols: { columns: ['id'] } }],
+					['5@[[', { accessRows: { rows: [1] }, accessCols: { columns: [1] } }]
+				]
+			);
+
+			assertDataFrameOperation(
+				shell,
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+df[[c(1, 1)]]
+				`.trim(),
+				[['2@[[', { accessRows: { rows: [1] }, accessCols: { columns: [1] } }]]
+			);
+
+			testDataFrameDomain(
+				shell,
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[c("id", "id")]
+				`.trim(),
+				[['2@result', { colnames: ColNamesTop, cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
+			);
+
+			testDataFrameDomain(
+				shell,
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[c(1, 1, 1)]
+				`.trim(),
+				[['2@result', { colnames: ColNamesTop, cols: [3, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
+			);
+
+			testDataFrameDomain(
+				shell,
+				`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[c(1, 1, 1)]
+				`.trim(),
+				[['2@result', { colnames: ColNamesTop, cols: [3, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
+			);
+		});
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[c(1, 1), ]
+			`.trim(),
+			[['2@result', { colnames: ['id', 'name'], cols: [2, 2], rows: [2, 2] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'result <- data.frame(id = 1:3, name = 4:6)["id"]',
+			[['1@result', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'result <- cbind(data.frame(id = 1:3), name = 4:6)[2]',
+			[['1@result', { colnames: ['id', 'name'], cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
 		);
 	});
 

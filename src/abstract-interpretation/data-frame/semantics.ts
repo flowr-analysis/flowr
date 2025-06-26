@@ -225,7 +225,7 @@ function applySubsetColsSemantics(
 	return {
 		...value,
 		colnames: colnames?.every(col => col !== undefined) ? meetColNames(value.colnames, colnames) : value.colnames,
-		cols:     colnames !== undefined ? minInterval(value.cols, [colnames.length, colnames.length]) : value.cols
+		cols:     colnames !== undefined ? minInterval(value.cols, [colnames.length, colnames.length]) : extendIntervalToZero(value.cols)
 	};
 }
 
@@ -235,7 +235,7 @@ function applySubsetRowsSemantics(
 ): DataFrameDomain {
 	return {
 		...value,
-		rows: rows !== undefined ? minInterval(value.rows, [rows, rows]) : value.rows
+		rows: rows !== undefined ? minInterval(value.rows, [rows, rows]) : extendIntervalToZero(value.rows)
 	};
 }
 

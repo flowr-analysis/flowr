@@ -1,7 +1,9 @@
 import { assert, beforeAll, test } from 'vitest';
+import type { AbstractInterpretationInfo, DataFrameOperation, DataFrameOperations } from '../../../../src/abstract-interpretation/data-frame/absint-info';
 import { performDataFrameAbsint, resolveIdToAbstractValue } from '../../../../src/abstract-interpretation/data-frame/absint-visitor';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { equalColNames, equalInterval, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
+import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../../src/abstract-interpretation/data-frame/semantics';
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
 import type { DEFAULT_DATAFLOW_PIPELINE, TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
@@ -37,6 +39,12 @@ export const DataFrameTestOverapproximation: DataFrameTestOptions = {
 	cols:     DomainMatchingType.Overapproximation,
 	rows:     DomainMatchingType.Overapproximation
 };
+
+type DataFrameOperationTypes = {
+	[Name in DataFrameOperationName]: {
+		[Operation in DataFrameOperation<Name>['operation']]?: DataFrameOperationArgs<Name>
+	}
+}[DataFrameOperationName];
 
 type DomainComparisonMapping = {
 	[K in keyof DataFrameDomain]: {
@@ -109,6 +117,34 @@ export function assertDataFrameDomain(
 		guard(isNotUndefined(result), 'Result cannot be undefined');
 		const [inferred] = getInferredDomainForCriterion(result, criterion);
 		assertDomainMatches(inferred, expect, DataFrameTestExact);
+	});
+}
+
+/**
+ * Asserts an inferred abstract data frame operation for given slicing criteria.
+ *
+ * @param parser   - The parser to use for the data flow graph creation
+ * @param code     - The code to test
+ * @param expected - The expected abstract data frame operation for each slicing criterion
+ * @param name     - An optional name or test label for the test (defaults to the code)
+ */
+export function assertDataFrameOperation(
+	parser: KnownParser,
+	code: string,
+	expected: [SingleSlicingCriterion, DataFrameOperationTypes][],
+	name: string | TestLabel = code
+) {
+	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
+
+	beforeAll(async() => {
+		result = await createDataflowPipeline(parser, { request: requestFromInput(code) }).allRemainingSteps();
+	});
+
+	test.each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
+		guard(isNotUndefined(result), 'Result cannot be undefined');
+		const operations = Object.fromEntries(getInferredOperationsForCriterion(result, criterion)
+			.map(op => [op.operation, { ...op.args }]));
+		assert.deepStrictEqual(operations, expect, `expected ${JSON.stringify(operations)} to equal ${JSON.stringify(expect)}`);
 	});
 }
 
@@ -231,6 +267,23 @@ function getInferredDomainForCriterion(
 	const value = resolveIdToAbstractValue(node, result.dataflow.graph);
 
 	return [value, node];
+}
+
+function getInferredOperationsForCriterion(
+	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
+	criterion: SingleSlicingCriterion
+): DataFrameOperations[] {
+	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
+	const nodeId = slicingCriterionToId(criterion, idMap);
+	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = idMap.get(nodeId);
+
+	if(node === undefined) {
+		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
+	}
+	const cfg = extractCfg(result.normalize, result.dataflow.graph);
+	performDataFrameAbsint(cfg, result.dataflow.graph, result.normalize);
+
+	return node.info.dataFrame?.type === 'expression' ? node.info.dataFrame.operations : [];
 }
 
 function getRealDomainFromOutput(

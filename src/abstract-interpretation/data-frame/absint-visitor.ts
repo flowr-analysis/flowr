@@ -4,7 +4,7 @@ import type { SemanticCfgGuidedVisitorConfiguration } from '../../control-flow/s
 import { SemanticCfgGuidedVisitor } from '../../control-flow/semantic-cfg-guided-visitor';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { VertexType } from '../../dataflow/graph/vertex';
+import { isVariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -19,7 +19,7 @@ import { mapDataFrameAccess } from './mappers/access-mapper';
 import { mapDataFrameVariableAssignment } from './mappers/assignment-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
 import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
-import { applySemantics, getConstraintType, ConstraintType } from './semantics';
+import { applySemantics, ConstraintType, getConstraintType } from './semantics';
 import { isRSingleNode } from './util';
 
 export interface DataFrameAbsintVisitorConfiguration<
@@ -56,12 +56,10 @@ class DataFrameAbsintVisitor<
 		const predecessors = this.getPredecessorNodes(vertex.id);
 		this.newDomain = joinDataFrameStates(...predecessors.map(node => node.info.dataFrame?.domain ?? new Map()));
 		this.onVisitNode(nodeId);
+
 		const visitedCount = this.visited.get(vertex.id) ?? 0;
 		this.visited.set(vertex.id, visitedCount + 1);
 
-		if(visitedCount >= (this.config.wideningThreshold ?? DefaultWideningThreshold)) {
-			this.newDomain = wideningDataFrameStates(this.oldDomain, this.newDomain);
-		}
 		return visitedCount === 0 || !equalDataFrameState(this.oldDomain, this.newDomain);
 	}
 
@@ -94,7 +92,12 @@ class DataFrameAbsintVisitor<
 	private onProcessNode(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>, node: RNode<ParentInformation & AbstractInterpretationInfo>): void {
 		this.oldDomain = node.info.dataFrame?.domain ?? new Map<NodeId, DataFrameDomain>();
 		this.onExprOrStmtNode(vertex);
-		node.info.dataFrame ??= {};
+
+		if((this.visited.get(vertex.id) ?? 0) >= (this.config.wideningThreshold ?? DefaultWideningThreshold)) {
+			this.newDomain = wideningDataFrameStates(this.oldDomain, this.newDomain);
+		}
+		// mark variable definitions as "unassigned", since the evaluation of the assigned value is delayed until processing the assignment
+		node.info.dataFrame ??= isVariableDefinitionVertex(this.getDataflowGraph(vertex.id)) ? { type: 'unassigned' } : {};
 		node.info.dataFrame.domain = this.newDomain;
 	}
 
@@ -146,7 +149,8 @@ class DataFrameAbsintVisitor<
 				const identifier = this.getNormalizedAst(node.info.dataFrame.identifier);
 
 				if(identifier !== undefined) {
-					identifier.info.dataFrame ??= {};
+					// remove "unassigned" markers from variable definitons and update domain
+					identifier.info.dataFrame = {};
 					identifier.info.dataFrame.domain = new Map(this.newDomain);
 				}
 				this.newDomain.set(node.info.id, value);
@@ -235,9 +239,11 @@ export function resolveIdToAbstractValue(
 	if(node.type === RType.Symbol) {
 		const values = getOriginInDfg(dfg, node.info.id)
 			?.filter(entry => entry.type === OriginType.ReadVariableOrigin)
-			.map(entry => resolveIdToAbstractValue(entry.id, dfg, domain));
+			.map<RNode<ParentInformation & AbstractInterpretationInfo> | undefined>(entry => dfg.idMap?.get(entry.id))
+			.filter(entry => entry?.info.dataFrame?.domain !== undefined && entry.info.dataFrame.type !== 'unassigned')
+			.map(entry => resolveIdToAbstractValue(entry, dfg, domain));
 
-		if(values?.length !== 0 && values?.every(isNotUndefined)) {
+		if(values !== undefined && values.length > 0 && values.every(isNotUndefined)) {
 			return joinDataFrames(...values);
 		}
 	} else if(node.type === RType.Argument && node.value !== undefined) {

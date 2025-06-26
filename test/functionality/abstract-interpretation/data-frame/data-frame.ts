@@ -1,5 +1,5 @@
 import { assert, beforeAll, test } from 'vitest';
-import type { AbstractInterpretationInfo, DataFrameOperation, DataFrameOperations } from '../../../../src/abstract-interpretation/data-frame/absint-info';
+import type { AbstractInterpretationInfo, DataFrameOperations } from '../../../../src/abstract-interpretation/data-frame/absint-info';
 import { performDataFrameAbsint, resolveIdToAbstractValue } from '../../../../src/abstract-interpretation/data-frame/absint-visitor';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { equalColNames, equalInterval, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
@@ -40,10 +40,8 @@ export const DataFrameTestOverapproximation: DataFrameTestOptions = {
 	rows:     DomainMatchingType.Overapproximation
 };
 
-type DataFrameOperationTypes = {
-	[Name in DataFrameOperationName]: {
-		[Operation in DataFrameOperation<Name>['operation']]?: DataFrameOperationArgs<Name>
-	}
+type DataFrameOperationType = {
+	[Name in DataFrameOperationName]: { operation: Name } & DataFrameOperationArgs<Name>
 }[DataFrameOperationName];
 
 type DomainComparisonMapping = {
@@ -131,7 +129,7 @@ export function assertDataFrameDomain(
 export function assertDataFrameOperation(
 	parser: KnownParser,
 	code: string,
-	expected: [SingleSlicingCriterion, DataFrameOperationTypes][],
+	expected: [SingleSlicingCriterion, DataFrameOperationType[]][],
 	name: string | TestLabel = code
 ) {
 	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
@@ -142,8 +140,8 @@ export function assertDataFrameOperation(
 
 	test.each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
-		const operations = Object.fromEntries(getInferredOperationsForCriterion(result, criterion)
-			.map(op => [op.operation, { ...op.args }]));
+		const operations = getInferredOperationsForCriterion(result, criterion)
+			.map(op => ({ operation: op.operation, ...op.args }));
 		assert.deepStrictEqual(operations, expect, `expected ${JSON.stringify(operations)} to equal ${JSON.stringify(expect)}`);
 	});
 }

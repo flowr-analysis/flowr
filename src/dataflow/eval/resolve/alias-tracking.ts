@@ -404,5 +404,3 @@ export function resolveToConstants(name: Identifier | undefined, environment: RE
 	definitions.forEach(def => values.add(valueFromTsValue((def as BuiltInIdentifierConstant).value ?? Top)));
 	return setFrom(...values);
 }
-
-

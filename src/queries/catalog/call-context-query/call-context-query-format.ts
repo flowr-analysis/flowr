@@ -69,14 +69,14 @@ export interface LinkToLastCall<CallName extends RegExp | string = RegExp | stri
 	readonly callName:   CallName;
 	/**
 	 * Should we ignore this (source) call?
-	 * Currently, there is no well working serialization for this.
+	 * Currently, there is no well working serialization for this if a function is supplied.
 	 */
-	readonly ignoreIf?:  (id: NodeId, graph: DataflowGraph) => boolean;
+	readonly ignoreIf?:  ((id: NodeId, graph: DataflowGraph) => boolean) | boolean;
 	/**
 	 * Should we continue searching after the link was created?
-	 * Currently, there is no well working serialization for this.
+	 * Currently, there is no well working serialization for this if a function is supplied.
 	 */
-	readonly cascadeIf?: (target: DataflowGraphVertexInfo, from: NodeId, graph: DataflowGraph) => CascadeAction;
+	readonly cascadeIf?: ((target: DataflowGraphVertexInfo, from: NodeId, graph: DataflowGraph) => CascadeAction) | CascadeAction;
 }
 
 export type LinkTo<CallName extends RegExp | string = RegExp | string, AttachLinkInfo = NoInfo> = (LinkToLastCall<CallName>) & { attachLinkInfo?: AttachLinkInfo };

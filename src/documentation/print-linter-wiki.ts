@@ -132,6 +132,10 @@ x <- 42
 y <- 3
 print(x)
 `, tagTypes);
+	rule(shell,
+		'seeded-randomness', 'SeededRandomnessConfig', 'SEEDED_RANDOMNESS', 'lint-seeded-randomness',
+		'runif(1)',
+		tagTypes);
 
 
 	function rule(shell: RShell, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {

@@ -87,22 +87,9 @@ print(x)`);
 	describe('Access', () => {
 		assertSlicedF(label('constant', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
 			shell, 'a <- list(1,2)\na[3]', ['1@a'], 'a <- list(1,2)\na');
-		// TODO doesn't include a[i], just i
-		//  - we found out that the node for [ is included, but not the node for a, so the reconstruction strips out the a[] part entirely
-		//  -> technically, a is not directly influenced by the value of i (just the access is), but the reconstruction strips out the loose access because it's not syntactically correct
-		//  -> BUT eventually, we may want to traverse reverse edges in both directions to "fix this issue" when forward slicing on slicer level (but that may not work for all cases)
-		//  (this appears to be the same for all other commented out tests that use an access-like operator)
-		/*assertSlicedF(label('variable', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
-			shell, 'i <- 4\na <- list(1,2)\nb <- a[i]', ['1@i'], 'i <- 4\na <- list(1,2)\nb <- a[i]');*/
-		// TODO better name for this one
-		assertSlicedF(label('variable but with a dependent on i', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
+		assertSlicedF(label('variable with owner dependency', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
 			shell, 'i <- 4\na <- list(1,2,i)\nb <- a[i]', ['1@i'], 'i <- 4\na <- list(1,2,i)\nb <- a[i]');
-		// TODO doesn't include the full a[1:i,] part, just the i
-		/*assertSlicedF(label('subset sequence', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'empty-arguments', 'single-bracket-access', 'subsetting-multiple']),
-			shell, 'i <- 4\na <- list(1,2)\n b <- a[1:i,]', ['1@i'], 'i <- 4\nb <- a[1:i,]');*/
-		// TODO just includes a in the second line (and then again in the third!)
-		/*assertSlicedF(label('range assignment', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'empty-arguments', 'single-bracket-access', 'subsetting-multiple', 'range-assignment']),
-			shell, 'a <- 1:10\na[1:5] <- 3\na', ['1@a'], 'a <- 1:10\na[1:5] <- 3\na');*/
+
 		describe('Definitions', () => {
 			describe('[[', () => {
 				const code = `
@@ -114,12 +101,6 @@ cat(a)
 a <- list(3,4)
 cat(a)
 `;
-				// TODO doesn't include the [[1]] = 2 and [[2]] = 3 parts, just the a in both lines
-				/*assertSlicedF(label('Repeated named access and definition', ['name-normal', 'numbers', 'double-bracket-access', 'unnamed-arguments', 'function-calls', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments']),
-					shell, code, ['2@a'], `a <- list(1,2)
-a[[1]] = 2
-a[[2]] = 3
-cat(a)`);*/
 				assertSlicedF(label('Full redefinitions still apply', ['name-normal', 'numbers', 'double-bracket-access', 'unnamed-arguments', 'function-calls', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments']),
 					shell, code, ['7@a'], `a <- list(3,4)
 cat(a)`);
@@ -134,13 +115,6 @@ cat(a)
 a <- list(a=3,b=4)
 cat(a)
 `;
-
-				// TODO doesn't include the $a = 2 and $b = 3 parts, just the a in both lines
-				/*assertSlicedF(label('Repeated named access and definition', ['name-normal', 'function-calls', 'named-arguments', 'unnamed-arguments', 'dollar-access', ...OperatorDatabase['<-'].capabilities, 'numbers']),
-					shell, codeB, ['2@a'], `a <- list(a=1,b=2)
-a$a = 2
-a$b = 3
-cat(a)`);*/
 				assertSlicedF(label('Full redefinitions still apply', ['name-normal', 'function-calls', 'named-arguments', 'unnamed-arguments', 'dollar-access', ...OperatorDatabase['<-'].capabilities, 'numbers']),
 					shell, codeB, ['7@a'], `a <- list(a=3,b=4)
 cat(a)`);
@@ -154,4 +128,24 @@ cat(a)`);
 a <- 5
     `, ['3@a'], 'a <- 5', { skipTreeSitter: true /* directives aren't supported yet! */ });
 	});
+
+	//  the node for [ is included, but not the node for a, so the reconstruction strips out the a[] part entirely
+	//  -> technically, a is not directly influenced by the value of i (just the access is), but the reconstruction strips out the loose access because it's not syntactically correct
+	//  -> BUT eventually, we may want to traverse reverse edges in both directions to "fix this issue" when forward slicing on slicer level (but that may not work for all cases)
+	/*assertSlicedF(label('variable', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
+		shell, 'i <- 4\na <- list(1,2)\nb <- a[i]', ['1@i'], 'i <- 4\na <- list(1,2)\nb <- a[i]');*/
+	/*assertSlicedF(label('subset sequence', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'empty-arguments', 'single-bracket-access', 'subsetting-multiple']),
+		shell, 'i <- 4\na <- list(1,2)\n b <- a[1:i,]', ['1@i'], 'i <- 4\nb <- a[1:i,]');*/
+	/*assertSlicedF(label('range assignment', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'empty-arguments', 'single-bracket-access', 'subsetting-multiple', 'range-assignment']),
+		shell, 'a <- 1:10\na[1:5] <- 3\na', ['1@a'], 'a <- 1:10\na[1:5] <- 3\na');*/
+	/*assertSlicedF(label('Repeated named access and definition', ['name-normal', 'numbers', 'double-bracket-access', 'unnamed-arguments', 'function-calls', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments']),
+				shell, code, ['2@a'], `a <- list(1,2)
+a[[1]] = 2
+a[[2]] = 3
+cat(a)`);*/
+	/*assertSlicedF(label('Repeated named access and definition', ['name-normal', 'function-calls', 'named-arguments', 'unnamed-arguments', 'dollar-access', ...OperatorDatabase['<-'].capabilities, 'numbers']),
+					shell, codeB, ['2@a'], `a <- list(a=1,b=2)
+a$a = 2
+a$b = 3
+cat(a)`);*/
 }));

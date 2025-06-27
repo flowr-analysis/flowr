@@ -122,7 +122,7 @@ export async function readLineByLine(filePath: string, onLine: (line: Buffer, li
  * The `lineNumber` starts at `0`.
  * The `maxLines` option limits the maximum number of read lines and is `Infinity` by default.
  *
- * @returns Whether all lines have been successfully read (`false` if `maxLines` was reached)
+ * @returns Whether the file exists and all lines have been successfully read (`false` if `maxLines` was reached)
  *
  * See {@link readLineByLine} for an asynchronous version.
  */

@@ -11,11 +11,12 @@ import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/pro
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RParseRequest } from '../../../r-bridge/retriever';
 import { requestFromInput } from '../../../r-bridge/retriever';
+import { assertUnreachable } from '../../../util/assert';
 import { readLineByLineSync } from '../../../util/files';
 import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
 import { resolveIdToAbstractValue } from '../absint-visitor';
 import { DataFrameTop } from '../domain';
-import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unquoteArgument, unescapeSpecialChars } from '../resolve-args';
+import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars, unquoteArgument } from '../resolve-args';
 
 const MaxReadLines = 1e7;
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
@@ -171,37 +172,13 @@ function mapDataFrameRead(
 ): DataFrameOperations[] {
 	const fileNameArg = getFunctionArgument(args, params.fileName, info);
 	const textArg = params.text ? getFunctionArgument(args, params.text, info) : undefined;
-	let source: string | undefined;
-	let request: RParseRequest | undefined;
+	const { source, request } = getRequestFromRead(fileNameArg, textArg, params, info);
 
-	if(fileNameArg !== undefined && fileNameArg !== EmptyArgument) {
-		const fileName = resolveIdToArgValue(fileNameArg, info);
-
-		if(typeof fileName === 'string') {
-			source = fileName;
-			const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
-			const sources = findSource(fileName, { referenceChain: referenceChain });
-
-			if(sources?.length === 1) {
-				source = sources[0];
-				request = getSourceProvider().createRequest(source);  // create request from resolved source file path
-			} else if(params.text === undefined && unescapeSpecialChars(fileName).includes('\n')) {
-				request = requestFromInput(unescapeSpecialChars(fileName));  // create request from string if file name argument contains newline
-			}
-		}
-	} else if(textArg !== undefined && textArg !== EmptyArgument) {
-		const text = resolveIdToArgValue(textArg, info);
-
-		if(typeof text === 'string') {
-			source = text;
-			request = requestFromInput(unescapeSpecialChars(text));
-		}
-	}
 	if(request === undefined) {
 		return [{
 			operation: 'read',
 			operand:   undefined,
-			args:      { source: source, colnames: undefined, rows: undefined }
+			args:      { source, colnames: undefined, rows: undefined }
 		}];
 	}
 	const headerArg = getFunctionArgument(args, params.header, info);
@@ -219,14 +196,13 @@ function mapDataFrameRead(
 		return [{
 			operation: 'read',
 			operand:   undefined,
-			args:      { source: source, colnames: undefined, rows: undefined }
+			args:      { source, colnames: undefined, rows: undefined }
 		}];
 	}
-	const LineCommentRegex = new RegExp(`\\s*[${comment}].*`);
+	const LineCommentRegex = new RegExp(`\\s*[${escapeRegExp(comment, true)}].*`);
 	let firstLine = undefined as (string | undefined)[] | undefined;
 	let firstLineNumber = 0;
 	let rowCount = 0;
-	let allLines = true;
 
 	const parseLine = (line: Buffer | string, lineNumber: number) => {
 		const text = comment ? line.toString().replace(LineCommentRegex, '') : line.toString();
@@ -241,27 +217,74 @@ function mapDataFrameRead(
 			}
 		}
 	};
-
-	if(request.request === 'text') {
-		request.content.split('\n').forEach(parseLine);
-	} else if(request.request === 'file') {
-		allLines = readLineByLineSync(request.content, parseLine, MaxReadLines);
-	}
+	const allLines = parseRequestContent(request, parseLine);
 	let colnames: (string | undefined)[] | undefined;
 
-	if(header || firstLine === undefined) {
+	if(header) {
 		// map all invalid column names to top
 		colnames = firstLine?.map(entry => isValidColName(entry) ? entry : undefined);
 		// map all duplicate column names to top
 		colnames = colnames?.map((entry, _, list) => entry && list.filter(other => other === entry).length === 1 ? entry : undefined );
-	} else {
+	} else if(firstLine !== undefined) {
 		colnames = Array((firstLine as unknown[]).length).fill(undefined);
 	}
 	return [{
 		operation: 'read',
 		operand:   undefined,
-		args:      { source: source, colnames: colnames, rows: allLines ? rowCount : undefined }
+		args:      { source, colnames, rows: allLines ? rowCount : undefined }
 	}];
+}
+
+function getRequestFromRead(
+	fileNameArg: RFunctionArgument<ParentInformation> | undefined,
+	textArg: RFunctionArgument<ParentInformation> | undefined,
+	params: DataFrameFunctionParams<'read.table'>,
+	info: ResolveInfo
+) {
+	let source: string | undefined;
+	let request: RParseRequest | undefined;
+
+	if(fileNameArg !== undefined && fileNameArg !== EmptyArgument) {
+		const fileName = resolveIdToArgValue(fileNameArg, info);
+
+		if(typeof fileName === 'string') {
+			source = fileName;
+			const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
+			const sources = findSource(fileName, { referenceChain: referenceChain });
+
+			if(sources?.length === 1) {
+				source = sources[0];
+				// create request from resolved source file path
+				request = getSourceProvider().createRequest(source);
+			} else if(params.text === undefined && unescapeSpecialChars(fileName).includes('\n')) {
+				// create request from string if file name argument contains newline
+				request = requestFromInput(unescapeSpecialChars(fileName));
+			}
+		}
+	} else if(textArg !== undefined && textArg !== EmptyArgument) {
+		const text = resolveIdToArgValue(textArg, info);
+
+		if(typeof text === 'string') {
+			source = text;
+			request = requestFromInput(unescapeSpecialChars(text));
+		}
+	}
+	return { source, request };
+}
+
+function parseRequestContent(
+	request: RParseRequest,
+	parser: (line: Buffer | string, lineNumber: number) => void
+): boolean {
+	const requestType = request.request;
+
+	if(requestType === 'text') {
+		request.content.split('\n').forEach(parser);
+		return true;
+	} else if(requestType === 'file') {
+		return readLineByLineSync(request.content, parser, MaxReadLines);
+	}
+	assertUnreachable(requestType);
 }
 
 function mapDataFrameColBind(
@@ -814,19 +837,20 @@ function getEffectiveArgs(
 	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !excluded.includes(unquoteArgument(arg.name.content)));
 }
 
-function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = '"', comment = ''): (string | undefined)[] {
+function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = '"', comment: string = '', trim: boolean = true): (string | undefined)[] {
 	sep = escapeRegExp(sep, true);  // only allow tokens like `\s`, `\t`, or `\n` in separator, quote, and comment chars
 	quote = escapeRegExp(quote, true);
 	comment = escapeRegExp(comment, true);
 	const quantifier = sep === '\\s' ? '+' : '*';  // do not allow unquoted empty entries in whitespace-sparated files
 
-	const LineCommentRegex = new RegExp(`\\s*[${comment}].*`);
+	const LineCommentRegex = new RegExp(`[${comment}].*`);
 	const CsvEntryRegex = new RegExp(`(?<=^|[${sep}])(?:[${quote}]((?:[^${quote}]|[${quote}]{2})*)[${quote}]|([^${sep}]${quantifier}))`, 'g');
 	const DoubleQuoteRegex = new RegExp(`([${quote}])\\1`, 'g');
 
 	return (comment ? line.replace(LineCommentRegex, '') : line)
 		.matchAll(CsvEntryRegex)
 		.map(match => match[1]?.replace(DoubleQuoteRegex, '$1') ?? match[2])
+		.map(entry => trim ? entry.trim() : entry)
 		.toArray();
 }
 

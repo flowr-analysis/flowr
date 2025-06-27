@@ -23,7 +23,15 @@ export interface SeededRandomnessResult extends LintingResult {
 }
 
 export interface SeededRandomnessConfig extends MergeableRecord {
+	/**
+	 * A set of functions and variables whose invocation or assignment causes a random seeded to be set.
+	 * Each entry has a `type`, which is either `function` or `assignment`, and a `name`, which is the name of the function or variable.
+	 * The default value for this is the function `set.seed` and the variable `.Random.seed`.
+	 */
     randomnessProducers: {type: 'function' | 'assignment', name: string }[]
+	/**
+	 * A set of randomness consumer function names that require a seed to be set prior to invocation.
+	 */
     randomnessConsumers: string[]
 }
 

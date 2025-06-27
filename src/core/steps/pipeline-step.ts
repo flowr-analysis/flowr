@@ -6,6 +6,7 @@
 
 import type { MergeableRecord } from '../../util/objects';
 import type { InternalStepPrinter, IPipelineStepPrinter, StepOutputFormat } from '../print/print';
+import type { FlowrConfigOptions } from '../../config';
 
 /**
  * This represents the format of a step processor which retrieves two things:
@@ -19,7 +20,7 @@ import type { InternalStepPrinter, IPipelineStepPrinter, StepOutputFormat } from
  * already covered transitively.
  */
 export type StepProcessingFunction =
-	(results: Record<string, unknown>, input: Record<string, unknown>) => unknown
+	(results: Record<string, unknown>, input: Record<string, unknown>, config: FlowrConfigOptions) => unknown
 /**
  * This represents the required execution frequency of a step.
  */

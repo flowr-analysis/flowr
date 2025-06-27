@@ -121,9 +121,9 @@ export const SEEDED_RANDOMNESS = {
 			randomnessProducers: [{ type: 'function', name: 'set.seed' }, { type: 'assignment', name: '.Random.seed' }],
 			randomnessConsumers: ['jitter', 'sample', 'sample.int', 'arima.sim', 'kmeans', 'princomp', 'rcauchy', 'rchisq', 'rexp', 'rgamma', 'rgeom', 'rlnorm', 'rlogis', 'rmultinom', 'rnbinom', 'rnorm', 'rpois', 'runif', 'pointLabel', 'some', 'rbernoulli', 'rdunif', 'generateSeedVectors'],
 		},
-		tags:              [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility],
-		humanReadableName: 'Seeded Randomness',
-		description:       'Checks whether randomness-based function calls are preceded by a random seed generation function like `set.seed`.'
+		tags:        [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility],
+		name:        'Seeded Randomness',
+		description: 'Checks whether randomness-based function calls are preceded by a random seed generation function like `set.seed`.'
 	},
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: (result, _meta) => `Function \`${result.function}\` at ${formatRange(result.range)}`,

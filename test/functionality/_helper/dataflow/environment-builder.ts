@@ -9,6 +9,7 @@ import { define } from '../../../../src/dataflow/environments/define';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping';
 import { appendEnvironment } from '../../../../src/dataflow/environments/append';
 import type { ControlDependency } from '../../../../src/dataflow/info';
+import { defaultConfigOptions } from '../../../../src/config';
 
 export function variable(name: string, definedAt: NodeId): IdentifierDefinition {
 	return { name, type: ReferenceType.Variable, nodeId: '_0', definedAt, controlDependencies: undefined };
@@ -130,7 +131,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 			definedAt:           normalizeIdToNumberIfPossible(def.definedAt),
 			nodeId:              normalizeIdToNumberIfPossible(def.nodeId),
 			controlDependencies: def.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) }))
-		} as IdentifierDefinition, superAssignment, this);
+		} as IdentifierDefinition, superAssignment, this, defaultConfigOptions);
 		return new EnvironmentBuilder(envWithDefinition.current, envWithDefinition.level);
 	}
 

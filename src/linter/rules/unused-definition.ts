@@ -139,10 +139,10 @@ export const UNUSED_DEFINITION = {
 		[LintingPrettyPrintContext.Full]:  result => `Definition of \`${result.variableName}\` at ${formatRange(result.range)} is unused`
 	},
 	info: {
-		description:       'Checks for unused definitions.',
-		humanReadableName: 'Unused Definitions',
-		tags:              [LintingRuleTag.Readability, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
-		defaultConfig:     {
+		name:          'Unused Definitions',
+		description:   'Checks for unused definitions.',
+		tags:          [LintingRuleTag.Readability, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
+		defaultConfig: {
 			includeFunctionDefinitions: true
 		}
 	}

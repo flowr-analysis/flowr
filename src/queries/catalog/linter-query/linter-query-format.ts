@@ -53,7 +53,7 @@ export const LinterQueryDefinition = {
 
 function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, results: LintingResults<Name>, result: string[]) {
 	const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
-	result.push(`   ╰ **${rule.info.humanReadableName}** (${ruleName}):`);
+	result.push(`   ╰ **${rule.info.name}** (${ruleName}):`);
 	for(const certainty of [LintingCertainty.Definitely, LintingCertainty.Maybe]) {
 		const certaintyResults = results.results.filter(r => r.certainty === certainty) as LintingRuleResult<Name>[];
 		if(certaintyResults.length) {

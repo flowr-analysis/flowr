@@ -9,12 +9,13 @@ import { handleUnknownSideEffect, onUnknownSideEffect } from '../../../../src/da
 import { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { EmptyBuiltInEnvironment, Environment } from '../../../../src/dataflow/environments/environment';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { defaultConfigOptions } from '../../../../src/config';
 
 async function runDataflowPipeline(code: string) {
 	await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  new RShell(),
 		request: requestFromInput(code.trim())
-	}).allRemainingSteps();
+	}, defaultConfigOptions).allRemainingSteps();
 }
 
 describe('unknown-replacement', () =>  {

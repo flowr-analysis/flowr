@@ -6,6 +6,7 @@ import type { DataflowInformation } from '../../../../dataflow/info';
 import type { SlicingCriteria } from '../../../../slicing/criterion/parse';
 import { staticSlicing } from '../../../../slicing/static/static-slicer';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { FlowrConfigOptions } from '../../../../config';
 
 export interface SliceRequiredInput {
 	/** The slicing criterion is only of interest if you actually want to slice the R code */
@@ -14,8 +15,8 @@ export interface SliceRequiredInput {
 	readonly threshold?: number
 }
 
-function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>) {
-	return staticSlicing((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold);
+function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>, config: FlowrConfigOptions) {
+	return staticSlicing((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold ?? config.solver.slicer?.threshold);
 }
 
 export const STATIC_SLICE = {

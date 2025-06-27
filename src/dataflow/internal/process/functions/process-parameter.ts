@@ -26,7 +26,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 	for(const writtenNode of writtenNodes) {
 		log.trace(`parameter ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' no default value'}`);
 		graph.setDefinitionOfVertex(writtenNode);
-		environment = define(writtenNode, false, environment);
+		environment = define(writtenNode, false, environment, data.flowrConfig);
 
 		if(defaultValue !== undefined) {
 			if(parameter.defaultValue?.type === RType.FunctionDefinition) {

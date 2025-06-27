@@ -27,6 +27,7 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
 import path from 'path';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { FlowrConfigOptions } from '../../config';
 
 export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,
@@ -88,9 +89,9 @@ function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | un
 }
 
 /** return all strings constructable by these functions */
-const PathFunctions: Record<string, (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall) => string[] | undefined> = {
-	'file.path': (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall): string[] | undefined => {
-		const fsep = getArgumentStringValue(
+const PathFunctions: Record<string, (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, config: FlowrConfigOptions) => string[] | undefined> = {
+	'file.path': (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, config: FlowrConfigOptions): string[] | undefined => {
+		const fsep = getArgumentStringValue(config.solver.variables,
 			df, vtx, undefined, 'fsep', true
 		);
 		// in the future we can access `.Platform$file.sep` here
@@ -99,7 +100,7 @@ const PathFunctions: Record<string, (df: DataflowGraph, vtx: DataflowGraphVertex
 			// if we have no fsep, we cannot construct a path
 			return undefined;
 		}
-		const args = getArgumentStringValue(df, vtx, 'unnamed', undefined, true);
+		const args = getArgumentStringValue(config.solver.variables, df, vtx, 'unnamed', undefined, true);
 		const argValues = args ? Array.from(args.values()).flatMap(v => [...v]) : [];
 		if(!argValues || argValues.length === 0 || argValues.some(v => v === Unknown || isUndefined(v))) {
 			// if we have no arguments, we cannot construct a path
@@ -176,7 +177,7 @@ export const ABSOLUTE_PATH = {
 					const dfNode = data.dataflow.graph.getVertex(node.info.id);
 					if(isFunctionCallVertex(dfNode)) {
 						const handler = PathFunctions[dfNode.name ?? ''];
-						const strings = handler ? handler(data.dataflow.graph, dfNode) : [];
+						const strings = handler ? handler(data.dataflow.graph, dfNode, data.config) : [];
 						if(strings) {
 							return strings.filter(s => isAbsolutePath(s, regex)).map(str => ({
 								certainty: LintingCertainty.Maybe,
@@ -199,10 +200,10 @@ export const ABSOLUTE_PATH = {
 		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} is not absolute`
 	},
 	info: {
-		description:       'Checks whether file paths are absolute.',
-		humanReadableName: 'Absolute Paths',
-		tags:              [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
-		defaultConfig:     {
+		name:          'Absolute Paths',
+		description:   'Checks whether file paths are absolute.',
+		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
+		defaultConfig: {
 			include: {
 				constructed: true,
 				allStrings:  false

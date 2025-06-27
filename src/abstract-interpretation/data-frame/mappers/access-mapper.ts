@@ -8,7 +8,7 @@ import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/pro
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
 import { resolveIdToAbstractValue } from '../absint-visitor';
-import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, unescapeArgument } from '../resolve-args';
+import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, unquoteArgument } from '../resolve-args';
 import { isStringBasedAccess } from '../util';
 
 const SpecialAccessArgumentsMapper: Record<RIndexAccess['operator'], string[]> = {
@@ -142,5 +142,5 @@ function getEffectiveArgs(
 ): readonly RFunctionArgument<ParentInformation>[] {
 	const specialArgs = SpecialAccessArgumentsMapper[operator];
 
-	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !specialArgs.includes(unescapeArgument(arg.name.content)));
+	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !specialArgs.includes(unquoteArgument(arg.name.content)));
 }

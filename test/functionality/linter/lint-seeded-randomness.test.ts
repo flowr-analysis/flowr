@@ -16,8 +16,6 @@ describe('flowR linter', withTreeSitter(parser => {
 			[{ range: [1,1,1,8], function: 'runif', certainty: LintingCertainty.Definitely }], { consumerCalls: 1, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0 });
 
 		assertLinter('loop valid', parser, 'for(i in 1:10) { set.seed(17); runif(1); }', 'seeded-randomness', [], { consumerCalls: 1, callsWithFunctionProducers: 1, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0 });
-		// TODO why does this one pass?
-		assertLinter('loop invalid', parser, 'for(i in 1:10) { runif(1); set.seed(17); }', 'seeded-randomness', [], { consumerCalls: 1, callsWithFunctionProducers: 1, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0 });
 
 		assertLinter('condition', parser, 'if(FALSE) { set.seed(17); }\nrunif(1);', 'seeded-randomness',
 			[{ range: [2,1,2,8], function: 'runif', certainty: LintingCertainty.Definitely }], { consumerCalls: 1, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0 });
@@ -36,8 +34,6 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		assertLinter('custom set.seed', parser, 'set.seed <- function(x) {}\nset.seed(17)\nrunif(1)', 'seeded-randomness',
 			[{ range: [3,1,3,8], function: 'runif', certainty: LintingCertainty.Definitely }], { consumerCalls: 1, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0 });
-		// TODO this quote one shouldn't fail!
-		//assertLinter('set.seed in quote', parser, 'quote(runif(1))', 'seeded-randomness', []);
 
 		assertLinter('set .Random.seed', parser, '.Random.seed <- 17\nrunif(1)', 'seeded-randomness', [],
 			{ consumerCalls: 1, callsWithAssignmentProducers: 1, callsWithFunctionProducers: 0, callsWithNonConstantProducers: 0 });
@@ -55,6 +51,8 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ range: [1,7,1,14], function: 'runif', certainty: LintingCertainty.Definitely },
 			{ range: [1,1,1,15], function: 'runif', certainty: LintingCertainty.Definitely }]);
 
+		// additional tests we could add here (sorry for denglish)
+		//
 		// 10. Using RNGversion to set versions
 		// 11. zumindest dokumentieren wo das nicht geht: parallel, scoping, withr::with_seed, future with seed
 		// 12. Maybe also warn if set.seed is used without a kind? (das wäre ne separate regel, aber ich hab gerade rasugefudnen, dass die den default manchmal ändern)
@@ -63,5 +61,9 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		// we don't track aliases yet!
 		// assertLinter('set.seed alias', parser, 'setseed <- set.seed\nsetseed(17)\nrunif(1)', 'seeded-randomness', [], { consumerCalls: 1, callsWithProducers: 1 });
+		// we don't support loop analyses yet
+		// assertLinter('loop invalid', parser, 'for(i in 1:10) { runif(1); set.seed(17); }', 'seeded-randomness', [], { consumerCalls: 1, callsWithFunctionProducers: 1, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0 });
+		// we don't support quote yet
+		// assertLinter('set.seed in quote', parser, 'quote(runif(1))', 'seeded-randomness', []);
 	});
 }));

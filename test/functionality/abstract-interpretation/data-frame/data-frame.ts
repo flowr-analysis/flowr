@@ -2,7 +2,7 @@ import { assert, beforeAll, test } from 'vitest';
 import type { AbstractInterpretationInfo, DataFrameOperations } from '../../../../src/abstract-interpretation/data-frame/absint-info';
 import { performDataFrameAbsint, resolveIdToAbstractValue } from '../../../../src/abstract-interpretation/data-frame/absint-visitor';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
-import { equalColNames, equalInterval, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
+import { ColNamesTop, equalColNames, equalInterval, IntervalBottom, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
 import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../../src/abstract-interpretation/data-frame/semantics';
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
 import type { DEFAULT_DATAFLOW_PIPELINE, TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
@@ -87,6 +87,20 @@ export function testDataFrameDomain(
 	parser: KnownParser = shell,
 	name: string | TestLabel = code
 ) {
+	for(const [criterion, domain, options] of criteria) {
+		if(domain !== undefined) {
+			if(domain.colnames === ColNamesTop) {
+				guard(options?.colnames === DomainMatchingType.Overapproximation, `Domain matching type for column names of "${criterion}" must be \`Overapproximation\` if expected column names are top`);
+			} else if(domain.cols !== IntervalBottom && domain.cols[0] !== domain.cols[1]) {
+				guard(options?.cols === DomainMatchingType.Overapproximation, `Domain matching type for number of columns of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element`);
+			} else if(domain.rows !== IntervalBottom && domain.rows[0] !== domain.rows[1]) {
+				guard(options?.rows === DomainMatchingType.Overapproximation, `Domain matching type for number of rows of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element`);
+			} else {
+				guard(options?.cols === undefined || options.cols === DomainMatchingType.Exact, `Domain matching type for number of columns of "${criterion}" must be \`Exact\` if expected interval has only 1 element`);
+				guard(options?.rows === undefined || options.rows === DomainMatchingType.Exact, `Domain matching type for number of rows of "${criterion}" must be \`Exact\` if expected interval has only 1 element`);
+			}
+		}
+	}
 	assertDataFrameDomain(parser, code, criteria.map(entry => [entry[0], entry[1]]), name);
 	testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]), parser, name);
 }

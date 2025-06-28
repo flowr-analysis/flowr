@@ -1,5 +1,5 @@
 import type { DataFrameDomain } from './domain';
-import { addInterval, ColNamesTop, DataFrameTop, extendIntervalToInfinity, extendIntervalToZero, IntervalBottom, IntervalTop, joinColNames, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
+import { addInterval, ColNamesTop, DataFrameTop, extendIntervalToInfinity, extendIntervalToZero, IntervalTop, joinColNames, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
 
 export enum ConstraintType {
 	/** The inferred constraints must hold for the operand at the point of the operation */
@@ -278,7 +278,7 @@ function applySummarizeSemantics(
 		...value,
 		colnames: colnames?.every(col => col !== undefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
 		cols:     colnames !== undefined ? minInterval(addInterval(value.cols, [0, colnames.length]), [colnames.length, Infinity]) : extendIntervalToInfinity(value.rows),
-		rows:     value.rows !== IntervalBottom && value.rows[0] > 0 ? [1, 1] : value.rows
+		rows:     maxInterval(minInterval(value.rows, [1, Infinity]), [1, 1])
 	};
 }
 

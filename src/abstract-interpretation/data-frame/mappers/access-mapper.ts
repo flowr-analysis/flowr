@@ -132,8 +132,8 @@ function mapDataFrameIndexColRowAccess(
 			});
 			operand = undefined;
 		}
-		return result;
 	}
+	return result;
 }
 
 function getEffectiveArgs(

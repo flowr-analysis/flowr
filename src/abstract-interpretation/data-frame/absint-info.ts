@@ -16,6 +16,10 @@ interface DataFrameInfoBase {
 	domain?: DataFrameStateDomain
 }
 
+export interface DataFrameUnassignedInfo {
+	type: 'unassigned'
+}
+
 export interface DataFrameAssignmentInfo {
 	type:       'assignment',
 	identifier: NodeId,
@@ -27,7 +31,7 @@ export interface DataFrameExpressionInfo {
 	operations: DataFrameOperations[]
 }
 
-export type DataFrameInfo = DataFrameAssignmentInfo | DataFrameExpressionInfo;
+export type DataFrameInfo = DataFrameAssignmentInfo | DataFrameExpressionInfo | DataFrameUnassignedInfo;
 
 export interface AbstractInterpretationInfo {
 	dataFrame?: (DataFrameInfo | { type?: never }) & DataFrameInfoBase

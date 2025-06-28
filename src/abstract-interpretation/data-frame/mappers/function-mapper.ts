@@ -261,12 +261,6 @@ function mapDataFrameHeadTail(
 
 	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
-	} else if(args.length === 1) {
-		return [{
-			operation: 'identity',
-			operand:   dataFrame.value.info.id,
-			args:      {}
-		}];
 	}
 	const result: DataFrameOperations[] = [];
 	const amountArg = getFunctionArgument(args, params.amount, info);
@@ -333,7 +327,7 @@ function mapDataFrameSubset(
 				} else if(arg !== EmptyArgument && (arg.value?.type === RType.Symbol || arg.value?.type === RType.String)) {
 					selectedCols?.push(resolveIdToArgValueSymbolName(arg, info));
 				} else {
-					selectedCols?.push(undefined);
+					selectedCols = undefined;
 				}
 			});
 		} else if(selectArg.value?.type === RType.UnaryOp && selectArg.value.operator === '-' && info.idMap !== undefined) {

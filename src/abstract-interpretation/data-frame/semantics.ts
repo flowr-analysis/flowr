@@ -1,5 +1,5 @@
 import type { DataFrameDomain } from './domain';
-import { addInterval, ColNamesTop, DataFrameTop, extendIntervalToInfinity, extendIntervalToZero, IntervalBottom, IntervalTop, joinColNames, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
+import { addInterval, ColNamesTop, DataFrameTop, extendIntervalToInfinity, extendIntervalToZero, IntervalTop, joinColNames, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
 
 export enum ConstraintType {
 	/** The inferred constraints must hold for the operand at the point of the operation */
@@ -69,7 +69,7 @@ function applyCreateSemantics(
 ): DataFrameDomain {
 	return {
 		colnames: colnames?.every(name => name !== undefined) ? colnames : ColNamesTop,
-		cols:     colnames ? [colnames.length, colnames.length] : IntervalTop,
+		cols:     colnames !== undefined ? [colnames.length, colnames.length] : IntervalTop,
 		rows:     rows !== undefined ? [rows, rows] : IntervalTop
 	};
 }
@@ -162,7 +162,7 @@ function applyAddColsSemantics(
 	return {
 		...value,
 		colnames: colnames?.every(col => col !== undefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
-		cols:     colnames !== undefined ? addInterval(value.cols, [colnames.length, colnames.length]) : IntervalTop
+		cols:     colnames !== undefined ? addInterval(value.cols, [colnames.length, colnames.length]) : extendIntervalToInfinity(value.cols)
 	};
 }
 
@@ -172,7 +172,7 @@ function applyAddRowsSemantics(
 ): DataFrameDomain {
 	return {
 		...value,
-		rows: rows !== undefined ? addInterval(value.rows, [rows, rows]) : IntervalTop
+		rows: rows !== undefined ? addInterval(value.rows, [rows, rows]) : extendIntervalToInfinity(value.rows)
 	};
 }
 
@@ -225,7 +225,7 @@ function applySubsetColsSemantics(
 	return {
 		...value,
 		colnames: colnames?.every(col => col !== undefined) ? meetColNames(value.colnames, colnames) : value.colnames,
-		cols:     colnames !== undefined ? minInterval(value.cols, [colnames.length, colnames.length]) : value.cols
+		cols:     colnames !== undefined ? minInterval(value.cols, [colnames.length, colnames.length]) : extendIntervalToZero(value.cols)
 	};
 }
 
@@ -235,7 +235,7 @@ function applySubsetRowsSemantics(
 ): DataFrameDomain {
 	return {
 		...value,
-		rows: rows !== undefined ? minInterval(value.rows, [rows, rows]) : value.rows
+		rows: rows !== undefined ? minInterval(value.rows, [rows, rows]) : extendIntervalToZero(value.rows)
 	};
 }
 
@@ -278,7 +278,7 @@ function applySummarizeSemantics(
 		...value,
 		colnames: colnames?.every(col => col !== undefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
 		cols:     colnames !== undefined ? minInterval(addInterval(value.cols, [0, colnames.length]), [colnames.length, Infinity]) : extendIntervalToInfinity(value.rows),
-		rows:     value.rows !== IntervalBottom && value.rows[0] > 0 ? [1, 1] : value.rows
+		rows:     maxInterval(minInterval(value.rows, [1, Infinity]), [1, 1])
 	};
 }
 

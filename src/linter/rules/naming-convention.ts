@@ -1,10 +1,14 @@
+import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { VertexType } from '../../dataflow/graph/vertex';
+import { getAllRefsToSymbol } from '../../dataflow/origin/dfg-get-symbol-refs';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Q } from '../../search/flowr-search-builder';
 import { assertUnreachable } from '../../util/assert';
 import { formatRange } from '../../util/mermaid/dfg';
 import type { MergeableRecord } from '../../util/objects';
 import type { SourceRange } from '../../util/range';
-import { LintingCertainty, type LintingResult, type LintingRule } from '../linter-format';
+import type { LintQuickFixReplacement, LintingResult, LintingRule } from '../linter-format';
+import { LintingCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
 
@@ -29,6 +33,7 @@ export interface NamingConventionResult extends LintingResult {
  */
 export interface NamingConventionConfig extends MergeableRecord {
     caseing: CasingConvention | 'auto'
+	// TODO: strict
 }
 
 export interface NamingConventionMetadata extends MergeableRecord {
@@ -122,26 +127,48 @@ export function fixCasing(identifier: string, convention: CasingConvention): str
 	}
 }
 
+export function createQuickFixes(graph: DataflowGraph, nodeId: NodeId, replacement: string, conv: CasingConvention): LintQuickFixReplacement[] | undefined {
+	const refs = getAllRefsToSymbol(graph, nodeId);
+	const idMap = graph.idMap;
+	if(refs === undefined || idMap === undefined) {
+		return undefined;
+	}
+
+	const result: LintQuickFixReplacement[] = [];
+	for(const ref of refs) {
+		const range = idMap.get(ref)?.info.fullRange;
+		if(range) {
+			result.push(
+				{
+					type:        'replace',
+					replacement: replacement,
+					description: `Rename to match naming convention ${conv}`,
+					range:       range
+				} satisfies LintQuickFixReplacement
+			);
+		}
+	}
+
+	return result.length === 0 ? undefined : result;
+}
+
 export const NAMING_CONVENTION = {
 	createSearch:        (_config) => Q.all().filter(VertexType.VariableDefinition),
-	processSearchResult: (elements, config) =>  {
+	processSearchResult: (elements, config, data) =>  {
 		const symbols = elements.getElements()
 			.map(m => ({
 				certainty:      LintingCertainty.Definitely,
 				detectedCasing: detectCasing(m.node.content as string),
 				name:           m.node.content as string,
-				range:          m.node.info.fullRange as SourceRange
+				range:          m.node.info.fullRange as SourceRange,
+				id:             m.node.info.id
 			}));
+		// TODO: Yeet when builtin
 		const casing = config.caseing === 'auto' ? getMostUsedCasing(symbols) : config.caseing;
 		const results = symbols.filter(m => m.detectedCasing !== casing)
-			.map(m => ({
+			.map(({ id, ...m }) => ({
 				...m,
-				quickFix: [{ 
-					type:        'replace',
-					replacement: fixCasing(m.name, casing) ,
-					description: `Change casing from ${m.detectedCasing} to ${casing}`,
-					range:       m.range
-				} as const]
+				quickFix: createQuickFixes(data.dataflow.graph, id, fixCasing(m.name, casing), casing)
 			}));
 		
 		return {

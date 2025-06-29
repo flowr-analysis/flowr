@@ -87,7 +87,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('simple', parser, 'testVar <- 5', 'naming-convention', [{
 			name:           'testVar',
 			detectedCasing: CasingConvention.CamelCase,
-			quickFix:       [{ type: 'replace', replacement: 'TestVar', range: [1, 1, 1, 7], description: 'Change casing from camelCase to PascalCase' } as const],
+			quickFix:       [{ type: 'replace', replacement: 'TestVar', range: [1, 1, 1, 7], description: 'Rename to match naming convention PascalCase' } as const],
 			range:          [1, 1, 1, 7],
 			certainty:      LintingCertainty.Definitely,
 		}], undefined, { caseing: CasingConvention.PascalCase });
@@ -95,15 +95,18 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('only detect definition', parser, 'testVar <- 5\nprint(testVar)\n', 'naming-convention', [{
 			name:           'testVar',
 			detectedCasing: CasingConvention.CamelCase,
-			quickFix:       [{ type: 'replace', replacement: 'TestVar', range: [1, 1, 1, 7], description: 'Change casing from camelCase to PascalCase' } as const],
-			range:          [1, 1, 1, 7],
-			certainty:      LintingCertainty.Definitely,
+			quickFix:       [
+				{ type: 'replace', replacement: 'TestVar', range: [1, 1, 1, 7], description: 'Rename to match naming convention PascalCase' } as const,
+				{ type: 'replace', replacement: 'TestVar', range: [2, 7, 2, 13,], description: 'Rename to match naming convention PascalCase' } as const
+			],
+			range:     [1, 1, 1, 7],
+			certainty: LintingCertainty.Definitely,
 		}], undefined, { caseing: CasingConvention.PascalCase });
 
 		assertLinter('detect casing', parser, 'testVar <- 5\ntestVarTwo <- 5\ntest_var <- 5\n', 'naming-convention', [{
 			name:           'test_var',
 			detectedCasing: CasingConvention.SnakeCase,
-			quickFix:       [{ type: 'replace', replacement: 'testVar', range: [3,1,3,8], description: 'Change casing from snake_case to camelCase' } as const],
+			quickFix:       [{ type: 'replace', replacement: 'testVar', range: [3,1,3,8], description: 'Rename to match naming convention camelCase' } as const],
 			range:          [3,1,3,8],
 			certainty:      LintingCertainty.Definitely,
 		}], undefined, { caseing: 'auto' });

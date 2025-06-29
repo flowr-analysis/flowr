@@ -1,5 +1,4 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { EdgeTypeBits } from '../graph/edge';
 import { edgeIncludesType, EdgeType } from '../graph/edge';
 import type { DataflowGraph } from '../graph/graph';
 import { happensInEveryBranch } from '../info';

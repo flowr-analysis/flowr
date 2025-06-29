@@ -1,21 +1,17 @@
 import { assert, describe, test } from 'vitest';
-import { withShell } from '../../_helper/shell';
-import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
+import { withTreeSitter } from '../../_helper/shell';
+import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { defaultConfigOptions } from '../../../../src/config';
 import { getAllRefsToSymbol } from '../../../../src/dataflow/origin/dfg-get-symbol-refs';
 import type { SingleSlicingCriterion, SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 
-describe.sequential('Get Symbol Refs Test', withShell(shell => {
+describe.sequential('Get Symbol Refs Test', withTreeSitter(shell => {
 	function testCode(name: string, criterion: SingleSlicingCriterion, code: string, expected: SlicingCriteria | undefined) {
 		test(name, async() => {
-			// TODO: use createDataflowPipline()
-			const { dataflow, normalize } = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-				parser:  shell,
-				request: requestFromInput(code.trim()),
-			}, defaultConfigOptions).allRemainingSteps();  
+			const { dataflow, normalize } = 
+			await createDataflowPipeline(shell, { request: requestFromInput(code.trim()) }, defaultConfigOptions).allRemainingSteps();
 
 			const refs = getAllRefsToSymbol(dataflow.graph, slicingCriterionToId(criterion, normalize.idMap));
 			if(expected !== undefined) {

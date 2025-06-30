@@ -32,10 +32,7 @@ export interface NamingConventionResult extends LintingResult {
  * It is planned to have a config like ESLint
  */
 export interface NamingConventionConfig extends MergeableRecord {
-    caseing: CasingConvention | 'auto',
-
-	/** wheter to strictly check humps of cases  */
-	strict: boolean
+    caseing: CasingConvention | 'auto'
 }
 
 export interface NamingConventionMetadata extends MergeableRecord {
@@ -188,8 +185,7 @@ export const NAMING_CONVENTION = {
 		description:   'Checks wether the symbols conform to a certain naming convention',
 		tags:          [LintingRuleTag.Style, LintingRuleTag.QuickFix],
 		defaultConfig: {
-			caseing: CasingConvention.PascalCase,
-			strict:  true
+			caseing: CasingConvention.PascalCase
 		}
 	}
 } as const satisfies LintingRule<NamingConventionResult, NamingConventionMetadata, NamingConventionConfig>;

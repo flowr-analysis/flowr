@@ -96,8 +96,8 @@ describe('flowR linter', withTreeSitter(parser => {
 			name:           'testVar',
 			detectedCasing: CasingConvention.CamelCase,
 			quickFix:       [
-				{ type: 'replace', replacement: 'TestVar', range: [1, 1, 1, 7], description: 'Rename to match naming convention PascalCase' } as const,
-				{ type: 'replace', replacement: 'TestVar', range: [2, 7, 2, 13,], description: 'Rename to match naming convention PascalCase' } as const
+				{ type: 'replace', replacement: 'TestVar', range: [2, 7, 2, 13,], description: 'Rename to match naming convention PascalCase' } as const,
+				{ type: 'replace', replacement: 'TestVar', range: [1, 1, 1, 7],   description: 'Rename to match naming convention PascalCase' } as const
 			],
 			range:     [1, 1, 1, 7],
 			certainty: LintingCertainty.Definitely,

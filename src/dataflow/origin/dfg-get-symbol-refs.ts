@@ -7,6 +7,17 @@ import { getOriginInDfg } from './dfg-get-origin';
 /**
  * Finds the definition of a Symbol and all other uses from that point on 
  * 
+ * For example, for the following code
+ * ```ts
+ *   y <- 5
+ *   f <- function() {
+ *     y <- 8
+ *     print(y)
+ *   }
+ * ```
+ * 
+ * getAllRefsToSymbol('3\@y') will return ['3\@y', '4\@y'] 
+ * 
  * @param graph  - Dataflow Graph
  * @param nodeId - NodeId of Symbol to resolve
  * @returns List including the Definitions and Refereneces to that definition

@@ -32,8 +32,10 @@ export interface NamingConventionResult extends LintingResult {
  * It is planned to have a config like ESLint
  */
 export interface NamingConventionConfig extends MergeableRecord {
-    caseing: CasingConvention | 'auto'
-	// TODO: strict
+    caseing: CasingConvention | 'auto',
+
+	/** wheter to strictly check humps of cases  */
+	strict: boolean
 }
 
 export interface NamingConventionMetadata extends MergeableRecord {
@@ -165,7 +167,6 @@ export const NAMING_CONVENTION = {
 				range:          m.node.info.fullRange as SourceRange,
 				id:             m.node.info.id
 			}));
-		// TODO: Yeet when builtin
 		const casing = config.caseing === 'auto' ? getMostUsedCasing(symbols) : config.caseing;
 		const results = symbols.filter(m => m.detectedCasing !== casing)
 			.map(({ id, ...m }) => ({
@@ -187,7 +188,8 @@ export const NAMING_CONVENTION = {
 		description:   'Checks wether the symbols conform to a certain naming convention',
 		tags:          [LintingRuleTag.Style, LintingRuleTag.QuickFix],
 		defaultConfig: {
-			caseing: CasingConvention.PascalCase
+			caseing: CasingConvention.PascalCase,
+			strict:  true
 		}
 	}
 } as const satisfies LintingRule<NamingConventionResult, NamingConventionMetadata, NamingConventionConfig>;

@@ -3,8 +3,8 @@ import { BenchmarkSlicer } from '../../../src/benchmark/slicer';
 import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print';
 import type { CommonSlicerMeasurements } from '../../../src/benchmark/stats/stats';
 import { PerSliceMeasurements, RequiredSlicerMeasurements } from '../../../src/benchmark/stats/stats';
-import { describe, assert, test, beforeAll, afterAll } from 'vitest';
-import { amendConfig } from '../../../src/config';
+import { amendConfig, defaultConfigOptions } from '../../../src/config';
+import { assert, describe, test } from 'vitest';
 import { DefaultAllVariablesFilter } from '../../../src/slicing/criterion/filters/all-variables';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { guard, isNotUndefined } from '../../../src/util/assert';
@@ -34,7 +34,7 @@ describe('Benchmark Slicer', () => {
 		test('Simple slice for simple line', { timeout: 15 * 60 * 1000 }, async() => {
 			const slicer = new BenchmarkSlicer('r-shell');
 			const request = { request: 'text' as const, content: 'a <- b' };
-			await slicer.init(request);
+			await slicer.init(request, defaultConfigOptions);
 			await slicer.slice('1@a');
 			const { stats, statInfo } = await retrieveStatsSafe(slicer, request);
 
@@ -102,7 +102,7 @@ d <- b + 5
 cat(c, d)
 cat(d)`
 			};
-			await slicer.init(request);
+			await slicer.init(request, defaultConfigOptions);
 			await slicer.slice('2@a');
 			await slicer.slice('2@a', '4@c');
 			await slicer.slice('7@d');
@@ -162,14 +162,6 @@ cat(d)`
 		});
 
 		describe('Slicing with pointer-tracking enabled', () => {
-			beforeAll(() => {
-				amendConfig(c => c.solver.pointerTracking = true );
-			});
-
-			afterAll(() => {
-				amendConfig(c => c.solver.pointerTracking = false );
-			});
-
 			test('When indices are stored, then correct values are counted', async() => {
 				const slicer = new BenchmarkSlicer('r-shell');
 				const request = {
@@ -191,7 +183,10 @@ print(person$age)`,
 					pointerTracking: true
 				};
 
-				await slicer.init(request);
+				await slicer.init(request, amendConfig(defaultConfigOptions, c => {
+					c.solver.pointerTracking = true;
+					return c;
+				}));
 				await slicer.slice('14@print');
 
 				const { stats, statInfo } = await retrieveStatsSafe(slicer, request);
@@ -219,7 +214,7 @@ d <- 4
 e <- 5`,
 				};
 
-				await slicer.init(request);
+				await slicer.init(request, defaultConfigOptions);
 				const slicedCount = await slicer.sliceForAll(DefaultAllVariablesFilter, (_1, _2, criteria) => {
 					assert.deepStrictEqual(criteria, [['$0'], ['$6'], ['$12']], 'Correct criteria');
 				}, { sampleCount: 3, sampleStrategy: 'equidistant' });
@@ -254,7 +249,7 @@ d <- 4
 e <- 5`,
 				};
 
-				await slicer.init(request);
+				await slicer.init(request, defaultConfigOptions);
 				const slicedCount = await slicer.sliceForAll(DefaultAllVariablesFilter, (_1, _2, criteria) => {
 					assert.equal(criteria.length, 3, '3 criteria are sliced');
 				}, { sampleCount: 3, sampleStrategy: 'random' });
@@ -281,7 +276,7 @@ e <- 5`,
 			test('Abstract interpretation of data frames', async() => {
 				const slicer = new BenchmarkSlicer('tree-sitter');
 				const request = requestFromInput('df <- data.frame(id = 1:3, age = c(25, 30, 40))');
-				await slicer.init(request);
+				await slicer.init(request, defaultConfigOptions);
 				slicer.extractCFG();
 				slicer.abstractIntepretation();
 

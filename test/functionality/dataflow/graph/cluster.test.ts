@@ -2,16 +2,17 @@ import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import type { DataflowGraphCluster, DataflowGraphClusters } from '../../../../src/dataflow/cluster';
 import { findAllClusters } from '../../../../src/dataflow/cluster';
 import type { SlicingCriteria } from '../../../../src/slicing/criterion/parse';
+import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { deterministicCountingIdGenerator } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { withShell } from '../../_helper/shell';
-import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowGraphToMermaidUrl } from '../../../../src/core/print/dataflow-printer';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
-import { describe, assert, test } from 'vitest';
+import { assert, describe, test } from 'vitest';
+import { defaultConfigOptions } from '../../../../src/config';
 
 describe('Graph Clustering', () => {
 	describe('Simple Graph Tests', () => {
@@ -40,7 +41,7 @@ describe('Graph Clustering', () => {
 					parser:  shell,
 					request: requestFromInput(code),
 					getId:   deterministicCountingIdGenerator(0)
-				}).allRemainingSteps();
+				}, defaultConfigOptions).allRemainingSteps();
 
 				const graph = info.dataflow.graph;
 

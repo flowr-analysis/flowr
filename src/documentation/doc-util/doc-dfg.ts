@@ -15,6 +15,7 @@ import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrWikiBaseRef } from './doc-files';
 import { codeBlock } from './doc-code';
 import type { GraphDifferenceReport } from '../../util/diff-graph';
+import { defaultConfigOptions } from '../../config';
 
 export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>, simplified = false) {
 	return `
@@ -50,7 +51,7 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, { s
 	const now = performance.now();
 	const result = await createDataflowPipeline(parser, {
 		request: requestFromInput(code)
-	}).allRemainingSteps();
+	}, defaultConfigOptions).allRemainingSteps();
 	const duration = performance.now() - now;
 
 	if(switchCodeAndGraph) {
@@ -93,7 +94,7 @@ export async function verifyExpectedSubgraph(shell: RShell, code: string, expect
 		parser:  shell,
 		request: requestFromInput(code),
 		getId:   deterministicCountingIdGenerator(0)
-	}).allRemainingSteps();
+	}, defaultConfigOptions).allRemainingSteps();
 
 	expectedSubgraph.setIdMap(info.normalize.idMap);
 	expectedSubgraph = resolveDataflowGraph(expectedSubgraph);

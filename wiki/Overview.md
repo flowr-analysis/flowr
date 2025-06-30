@@ -74,11 +74,11 @@ Independent of your way of launching *flowr*, we will write simply `flowr` for e
 Once you launched _flowR_, you should see a small&nbsp;`R>` prompt. Use `:help` to receive instructions on how to use the REPL and what features are available (most prominently, you can access all [scripts](#calling-the-scripts-directly) simply by adding a colon before them).
 In general, all commands start with a colon (`:`), everything else is interpreted as a&nbsp;R expression which is directly evaluated by the underlying R shell (however, due to security concerns, you need to start _flowR_ with `--r-session-access` and use the `r-shell` engine to allow this). The following GIF showcases a simple example session:
 
-![Example of a simple REPL session](gif/repl-demo.gif)
+![Example of a simple REPL session](gif/repl-demo-opt.gif)
 
 <!--
 # Use https://github.com/charmbracelet/vhs
-Output repl-demo.gif
+Output repl-demo-opt.gif
 
 Set FontSize 30
 Set Width 1600

@@ -189,6 +189,62 @@ describe.sequential('Parse function definitions', withShell(shell => {
 			}
 		);
 	});
+
+	assertAst(label('With comments in parameter', ['normal-definition', 'comments', 'grouping']),
+		shell, `function(x=3, # hehehe
+  foo) { }`, exprList({
+			type:       RType.FunctionDefinition,
+			location:   rangeFrom(1, 1, 1, 8),
+			lexeme:     'function',
+			parameters: [
+				parameter('x', rangeFrom(1, 10, 1, 10), {
+					type:     RType.Number,
+					location: rangeFrom(1, 12, 1, 12),
+					lexeme:   '3',
+					content:  numVal(3),
+					info:     {}
+				}),
+				parameter('foo', rangeFrom(2, 3, 2, 5))
+			],
+			body: {
+				type:     RType.ExpressionList,
+				grouping: [{
+					type:      RType.Symbol,
+					location:  rangeFrom(2, 8, 2, 8),
+					lexeme:    '{',
+					content:   '{',
+					info:      {},
+					namespace: undefined
+				}, {
+					type:      RType.Symbol,
+					location:  rangeFrom(2, 10, 2, 10),
+					lexeme:    '}',
+					content:   '}',
+					info:      {},
+					namespace: undefined
+				}],
+				location: undefined,
+				lexeme:   undefined,
+				children: [],
+				info:     {}
+			},
+			info: {
+				additionalTokens: [
+					{
+						type:      RType.Comment,
+						location:  rangeFrom(1, 15, 1, 22),
+						lexeme:    '# hehehe',
+						content:   ' hehehe',
+						namespace: undefined,
+						info:      {}
+					}
+				]
+			},
+		}), {
+			ignoreAdditionalTokens: false
+		}
+	);
+
 	describe('With Special Parameters (...)', () => {
 		assertAst(label('As Single Argument', ['normal-definition', 'formals-dot-dot-dot', 'grouping']),
 			shell, 'function(...) { }', exprList({

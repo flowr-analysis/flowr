@@ -26,7 +26,7 @@ import type {
 } from './stats/stats';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
-import type { TREE_SITTER_SLICING_PIPELINE, DEFAULT_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
+import type { DEFAULT_SLICING_PIPELINE, TREE_SITTER_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import { createSlicePipeline } from '../core/steps/pipeline/default-pipelines';
 
 
@@ -48,6 +48,8 @@ import type { InGraphIdentifierDefinition } from '../dataflow/environments/ident
 import type { ContainerIndicesCollection } from '../dataflow/graph/vertex';
 import { isParentContainerIndex } from '../dataflow/graph/vertex';
 import { equidistantSampling } from '../util/collections/arrays';
+import type { FlowrConfigOptions } from '../config';
+import { getEngineConfig } from '../config';
 import { performDataFrameAbsint } from '../abstract-interpretation/data-frame/absint-visitor';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
@@ -113,6 +115,7 @@ export class BenchmarkSlicer {
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>();
 	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>();
 	private readonly parserName: KnownParserName;
+	private config:              FlowrConfigOptions | undefined;
 	private stats:               SlicerStats | undefined;
 	private loadedXml:           KnownParserType | undefined;
 	private dataflow:            DataflowInformation | undefined;
@@ -133,16 +136,18 @@ export class BenchmarkSlicer {
 	 * Initialize the slicer on the given request.
 	 * Can only be called once for each instance.
 	 */
-	public async init(request: RParseRequestFromFile | RParseRequestFromText, autoSelectIf?: AutoSelectPredicate, threshold?: number) {
+	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfigOptions,
+		autoSelectIf?: AutoSelectPredicate, threshold?: number) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice');
+		this.config = config;
 
 		// we know these are in sync so we just cast to one of them
 		this.parser = await this.commonMeasurements.measure(
 			'initialize R session', async() => {
 				if(this.parserName === 'r-shell') {
-					return new RShell();
+					return new RShell(getEngineConfig(config, 'r-shell'));
 				} else {
-					await TreeSitterExecutor.initTreeSitter();
+					await TreeSitterExecutor.initTreeSitter(getEngineConfig(config, 'tree-sitter'));
 					return new TreeSitterExecutor();
 				}
 			}
@@ -152,7 +157,7 @@ export class BenchmarkSlicer {
 			criterion: [],
 			autoSelectIf,
 			threshold,
-		});
+		}, config);
 
 		this.loadedXml = (await this.measureCommonStep('parse', 'retrieve AST from R code')).parsed;
 		this.normalizedAst = await this.measureCommonStep('normalize', 'normalize R AST');
@@ -377,11 +382,13 @@ export class BenchmarkSlicer {
 		this.guardActive();
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined for control flow extraction');
 		guard(this.dataflow !== undefined, 'dataflow should be defined for control flow extraction');
+		guard(this.config !== undefined, 'config should be defined for control flow extraction');
 
 		const ast = this.normalizedAst;
 		const dfg = this.dataflow.graph;
+		const config = this.config;
 
-		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, dfg));
+		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, config, dfg));
 	}
 
 	/**

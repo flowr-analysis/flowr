@@ -21,6 +21,7 @@ import { documentReplSession } from './doc-util/doc-repl';
 import { fileNameForGenHeader } from './doc-util/doc-auto-gen';
 import { prefixLines } from './doc-util/doc-general';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
+import { showQuery } from './doc-util/doc-query';
 
 async function getText(shell: RShell) {
 	const dateOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
@@ -39,6 +40,29 @@ _flowR_ is a sophisticated, static [dataflow analyzer](https://en.wikipedia.org/
 available for [VSCode](${FlowrVsCode}), [Positron](${FlowrPositron}), [RStudio](${FlowrGithubBaseRef}/rstudio-addin-flowr),
 and [Docker](${FlowrDockerRef}).
 It offers a wide variety of features, for example:
+
+* 🐞 **code linting**\\
+   Analyze your R scripts for common issues and potential bugs (see the [wiki page](${FlowrGithubBaseRef}/flowr/wiki/Linter) for more information on the currently supported linters).
+
+	${prefixLines(details('Example: Linting code with flowR', `To lint your code, you can use the [REPL](${FlowrWikiBaseRef}/Interface#using-the-repl) or the [Visual Studio Code extension](${FlowrVsCode}) (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
+	
+${await(async() => {
+	const code = 'read.csv("/root/x.txt")';
+	const res = await showQuery(shell, code, [{ type: 'linter' }], { showCode: false, collapseQuery: true, collapseResult: false });
+	return await documentReplSession(shell, [{
+		command:     `:query @linter ${JSON.stringify(code)}`,
+		description: `
+The linter will analyze the code and return any issues found.
+Formatted more nicely, this returns:
+
+${res}
+		`
+	}]
+	);
+})()}
+	   
+	   `), '    ')}
+
 
 * 🍕 **program slicing**\\
    Given a point of interest like the visualization of a plot, _flowR_ reduces the program to just the parts which are relevant
@@ -126,7 +150,7 @@ You can enter ${getReplCommand('help')} to gain more information on its capabili
 
 <summary>Example REPL session</summary>
 
-![Example of a simple REPL session](wiki/gif/repl-demo.gif)
+![Example of a simple REPL session](wiki/gif/repl-demo-opt.gif)
 
 </details>
 

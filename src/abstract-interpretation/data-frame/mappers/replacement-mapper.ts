@@ -1,3 +1,4 @@
+import { VariableResolve } from '../../../config';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
@@ -42,24 +43,25 @@ export function mapDataFrameReplacementFunction(
 	expression: RNode<ParentInformation>,
 	dfg: DataflowGraph
 ): DataFrameInfo | undefined {
+	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
 	let operations: DataFrameOperations[] | undefined;
 
 	if(node.type === RType.Access) {
 		if(node.accessed.type === RType.Symbol && node.access.every(access => access === EmptyArgument)) {
 			return mapDataFrameVariableAssignment(node.accessed, expression, dfg);
 		} else if(isStringBasedAccess(node)) {
-			operations = mapDataFrameNamedColumnAssignment(node, expression, { graph: dfg, idMap: dfg.idMap, full: true });
+			operations = mapDataFrameNamedColumnAssignment(node, expression, resolveInfo);
 		} else {
-			operations = mapDataFrameIndexColRowAssignment(node, expression, { graph: dfg, idMap: dfg.idMap, full: true });
+			operations = mapDataFrameIndexColRowAssignment(node, expression, resolveInfo);
 		}
 	} else if(node.type === RType.FunctionCall && node.named && node.arguments.length === 1 && node.arguments[0] !== EmptyArgument) {
 		if(Object.prototype.hasOwnProperty.call(DataFrameReplacementFunctionMapper, node.functionName.content)) {
 			const functionName = node.functionName.content as DataFrameReplacementFunction;
 			const functionMapping = DataFrameReplacementFunctionMapper[functionName];
 
-			operations = functionMapping(node.arguments[0], expression, { graph: dfg, idMap: dfg.idMap, full: true });
+			operations = functionMapping(node.arguments[0], expression, resolveInfo);
 		} else {
-			operations = mapDataFrameUnknownAssignment(node.arguments[0], expression, { graph: dfg, idMap: dfg.idMap, full: true });
+			operations = mapDataFrameUnknownAssignment(node.arguments[0], expression, resolveInfo);
 		}
 	}
 	if(operations !== undefined) {

@@ -1,7 +1,8 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { initializeCleanDataflowInformation } from '../../../../../info';
-import { DropPathsOption, getConfig, InferWorkingDirectory } from '../../../../../../config';
+import type { FlowrLaxSourcingOptions } from '../../../../../../config';
+import { DropPathsOption, InferWorkingDirectory } from '../../../../../../config';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { RParseRequest, RParseRequestProvider } from '../../../../../../r-bridge/retriever';
 import { removeRQuotes, requestProviderFromFile } from '../../../../../../r-bridge/retriever';
@@ -34,6 +35,10 @@ import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effec
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 
 let sourceProvider = requestProviderFromFile();
+
+export function getSourceProvider(): RParseRequestProvider {
+	return sourceProvider;
+}
 
 export function setSourceProvider(provider: RParseRequestProvider): void {
 	sourceProvider = provider;
@@ -81,20 +86,20 @@ function applyReplacements(path: string, replacements: readonly Record<string, s
 
 /**
  * Tries to find sourced by a source request and returns the first path that exists
- * @param seed - the path originally requested in the `source` call
- * @param data - more information on the loading context
+ * @param resolveSource - options for lax file sourcing
+ * @param seed          - the path originally requested in the `source` call
+ * @param data          - more information on the loading context
  */
-export function findSource(seed: string, data: { referenceChain: readonly RParseRequest[] }): string[] | undefined {
-	const config = getConfig().solver.resolveSource;
-	const capitalization = config?.ignoreCapitalization ?? false;
+export function findSource(resolveSource: FlowrLaxSourcingOptions | undefined, seed: string, data: { referenceChain: readonly RParseRequest[] }): string[] | undefined {
+	const capitalization = resolveSource?.ignoreCapitalization ?? false;
 
 	const explorePaths = [
-		...(config?.searchPath ?? []),
-		...(inferWdFromScript(config?.inferWorkingDirectory ?? InferWorkingDirectory.No, data.referenceChain))
+		...(resolveSource?.searchPath ?? []),
+		...(inferWdFromScript(resolveSource?.inferWorkingDirectory ?? InferWorkingDirectory.No, data.referenceChain))
 	];
 
 	let tryPaths = [seed];
-	switch(config?.dropPaths ?? DropPathsOption.No) {
+	switch(resolveSource?.dropPaths ?? DropPathsOption.No) {
 		case DropPathsOption.Once: {
 			const first = platformBasename(seed);
 			tryPaths.push(first);
@@ -117,8 +122,8 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 			break;
 	}
 
-	if(config?.applyReplacements) {
-		const r = config.applyReplacements;
+	if(resolveSource?.applyReplacements) {
+		const r = resolveSource.applyReplacements;
 		tryPaths = tryPaths.flatMap(t => applyReplacements(t, r));
 	}
 
@@ -164,7 +169,7 @@ export function processSourceCall<OtherInfo>(
 
 	const sourceFileArgument = args[0];
 
-	if(!config.forceFollow && getConfig().ignoreSourceCalls) {
+	if(!config.forceFollow && data.flowrConfig.ignoreSourceCalls) {
 		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFileArgument)} (disabled in config file)`);
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
@@ -175,13 +180,13 @@ export function processSourceCall<OtherInfo>(
 	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
 		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
 	} else if(sourceFileArgument !== EmptyArgument) {
-		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap }));
+		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.flowrConfig.solver.variables }));
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 
 	if(sourceFile && sourceFile.length === 1) {
 		const path = removeRQuotes(sourceFile[0]);
-		let filepath = path ? findSource(path, data) : path;
+		let filepath = path ? findSource(data.flowrConfig.solver.resolveSource, path, data) : path;
 
 		if(Array.isArray(filepath)) {
 			filepath = filepath?.[0];
@@ -190,7 +195,7 @@ export function processSourceCall<OtherInfo>(
 			const request = sourceProvider.createRequest(filepath);
 
 			// check if the sourced file has already been dataflow analyzed, and if so, skip it
-			const limit = getConfig().solver.resolveSource?.repeatedSourceLimit ?? 0;
+			const limit = data.flowrConfig.solver.resolveSource?.repeatedSourceLimit ?? 0;
 			const findCount = data.referenceChain.filter(e => e.request === request.request && e.content === request.content).length;
 			if(findCount > limit) {
 				dataflowLogger.warn(`Found cycle (>=${limit + 1}) in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
@@ -224,7 +229,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 		const file = request.request === 'file' ? request.content : undefined;
 		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(request);
 		normalized = (typeof parsed !== 'string' ?
-			normalizeTreeSitter({ parsed }, getId, file) : normalize({ parsed }, getId, file)) as NormalizedAst<OtherInfo & ParentInformation>;
+			normalizeTreeSitter({ parsed }, getId, data.flowrConfig, file) : normalize({ parsed }, getId, file)) as NormalizedAst<OtherInfo & ParentInformation>;
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
 			currentRequest: request,

@@ -7,14 +7,14 @@ import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/domain';
 
-export function executeDfShapeQuery({ dataflow: { graph }, ast }: BasicQueryData, queries: readonly DfShapeQuery[]): DfShapeQueryResult {
+export function executeDfShapeQuery({ dataflow: { graph }, ast, config }: BasicQueryData, queries: readonly DfShapeQuery[]): DfShapeQueryResult {
 	if(queries.length !== 1 && queries.some(query => query.criterion === undefined)) {
 		log.warn('The dataframe shape query expects only up to one query without slicing criterion, but got', queries.length);
 		queries = [{ type: 'df-shape' }];
 	}
 
 	const start = Date.now();
-	const cfg = extractCfg(ast, graph);
+	const cfg = extractCfg(ast, config, graph);
 	const domains = performDataFrameAbsint(cfg, graph, ast);
 
 	if(queries.length === 1 && queries[0].criterion === undefined) {

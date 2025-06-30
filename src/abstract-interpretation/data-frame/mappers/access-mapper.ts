@@ -1,3 +1,4 @@
+import { VariableResolve } from '../../../config';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
@@ -8,7 +9,7 @@ import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/pro
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
 import { resolveIdToAbstractValue } from '../absint-visitor';
-import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, unescapeArgument } from '../resolve-args';
+import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, unquoteArgument } from '../resolve-args';
 import { isStringBasedAccess } from '../util';
 
 const SpecialAccessArgumentsMapper: Record<RIndexAccess['operator'], string[]> = {
@@ -24,9 +25,9 @@ export function mapDataFrameAccess(
 		let operations: DataFrameOperations[] | undefined;
 
 		if(isStringBasedAccess(node)) {
-			operations = mapDataFrameNamedColumnAccess(node, { graph: dfg, idMap: dfg.idMap, full: true });
+			operations = mapDataFrameNamedColumnAccess(node, { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias });
 		} else {
-			operations = mapDataFrameIndexColRowAccess(node, { graph: dfg, idMap: dfg.idMap, full: true });
+			operations = mapDataFrameIndexColRowAccess(node, { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias });
 		}
 		if(operations !== undefined) {
 			return { type: 'expression', operations: operations };
@@ -142,5 +143,5 @@ function getEffectiveArgs(
 ): readonly RFunctionArgument<ParentInformation>[] {
 	const specialArgs = SpecialAccessArgumentsMapper[operator];
 
-	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !specialArgs.includes(unescapeArgument(arg.name.content)));
+	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !specialArgs.includes(unquoteArgument(arg.name.content)));
 }

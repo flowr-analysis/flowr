@@ -6,11 +6,14 @@ import type { TransformerNames } from '../search/search-executor/search-transfor
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from './linter-rules';
 import type { DataflowInformation } from '../dataflow/info';
+import type { FlowrConfigOptions } from '../config';
 import type { DeepPartial, DeepReadonly } from 'ts-essentials';
 import type { LintingRuleTag } from './linter-tags';
 import type { SourceRange } from '../util/range';
 
 export interface LinterRuleInformation<Config extends MergeableRecord = never> {
+	/** Human-Readable name of the linting rule. */
+	readonly name:          string;
 	/**
 	 * The default config for this linting rule.
 	 * This config is combined with the user config when executing the rule.
@@ -41,7 +44,7 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 	 * Processes the search results of the search created through {@link createSearch}.
 	 * This function is expected to return the linting results from this rule for the given search, ie usually the given script file.
 	 */
-	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation }) => {
+	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions }) => {
 		results: Result[],
 		'.meta': Metadata
 	}
@@ -57,8 +60,11 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 	readonly info:        LinterRuleInformation<NoInfer<Config>>
 }
 
-export interface LintQuickFixReplacement {
-	readonly type:        'replace'
+interface BaseQuickFix {
+	/**
+	 * The type of the quick fix.
+	 */
+	readonly type:        string
 	/**
 	 * A short, human-readable description of the quick fix.
 	 */
@@ -67,13 +73,21 @@ export interface LintQuickFixReplacement {
 	 * The range of the text that should be replaced.
 	 */
 	readonly range:       SourceRange
+}
+
+export interface LintQuickFixReplacement extends BaseQuickFix {
+	readonly type:        'replace'
 	/**
 	 * The text that should replace the given range.
 	 */
 	readonly replacement: string
 }
 
-export type LintQuickFix = LintQuickFixReplacement
+export interface LintQuickFixRemove extends BaseQuickFix {
+	readonly type: 'remove'
+}
+
+export type LintQuickFix = LintQuickFixReplacement | LintQuickFixRemove;
 
 /**
  * A linting result for a single linting rule match.

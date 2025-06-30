@@ -14,7 +14,6 @@ import { initializeCleanEnvironments } from '../../dataflow/environments/environ
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
-import { getConfig } from '../../config';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -25,7 +24,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  *
  * @param graph     - The dataflow graph to conduct the slicing on.
  * @param ast       - The normalized AST of the code (used to get static nesting information of the lexemes in case of control flow dependencies that may have no effect on the slicing scope).
- * @param criteria  - The criterias to slice on.
+ * @param criteria  - The criteria to slice on.
  * @param threshold - The maximum number of nodes to visit in the graph. If the threshold is reached, the slice will side with inclusion and drop its minimal guarantee. The limit ensures that the algorithm halts.
  * @param cache     - A cache to store the results of the slice. If provided, the slice may use this cache to speed up the slicing process.
  */
@@ -33,7 +32,7 @@ export function staticSlicing(
 	graph: DataflowGraph,
 	{ idMap }: NormalizedAst,
 	criteria: SlicingCriteria,
-	threshold = getConfig().solver.slicer?.threshold ?? 75,
+	threshold = 75,
 	cache?: Map<Fingerprint, Set<NodeId>>
 ): Readonly<SliceResult> {
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice');

@@ -4,6 +4,8 @@ import { performDataFrameAbsint, resolveIdToAbstractValue } from '../../../../sr
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { ColNamesTop, equalColNames, equalInterval, IntervalBottom, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
 import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../../src/abstract-interpretation/data-frame/semantics';
+import type { FlowrConfigOptions } from '../../../../src/config';
+import { defaultConfigOptions } from '../../../../src/config';
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
 import type { DEFAULT_DATAFLOW_PIPELINE, TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
@@ -85,7 +87,8 @@ export function testDataFrameDomain(
 	code: string,
 	criteria: ([SingleSlicingCriterion, DataFrameDomain | undefined] | [SingleSlicingCriterion, DataFrameDomain | undefined, Partial<DataFrameTestOptions>])[],
 	parser: KnownParser = shell,
-	name: string | TestLabel = code
+	name: string | TestLabel = code,
+	config: FlowrConfigOptions = defaultConfigOptions
 ) {
 	for(const [criterion, domain, options] of criteria) {
 		if(domain !== undefined) {
@@ -101,8 +104,8 @@ export function testDataFrameDomain(
 			}
 		}
 	}
-	assertDataFrameDomain(parser, code, criteria.map(entry => [entry[0], entry[1]]), name);
-	testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]), parser, name);
+	assertDataFrameDomain(parser, code, criteria.map(entry => [entry[0], entry[1]]), name, config);
+	testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]), parser, name, config);
 }
 
 /**
@@ -117,17 +120,18 @@ export function assertDataFrameDomain(
 	parser: KnownParser,
 	code: string,
 	expected: [SingleSlicingCriterion, DataFrameDomain | undefined][],
-	name: string | TestLabel = code
+	name: string | TestLabel = code,
+	config: FlowrConfigOptions = defaultConfigOptions
 ) {
 	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
 
 	beforeAll(async() => {
-		result = await createDataflowPipeline(parser, { request: requestFromInput(code) }).allRemainingSteps();
+		result = await createDataflowPipeline(parser, { request: requestFromInput(code) }, config).allRemainingSteps();
 	});
 
 	test.each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
-		const [inferred] = getInferredDomainForCriterion(result, criterion);
+		const [inferred] = getInferredDomainForCriterion(result, criterion, config);
 		assertDomainMatches(inferred, expect, DataFrameTestExact);
 	});
 }
@@ -144,17 +148,18 @@ export function assertDataFrameOperation(
 	parser: KnownParser,
 	code: string,
 	expected: [SingleSlicingCriterion, DataFrameOperationType[]][],
-	name: string | TestLabel = code
+	name: string | TestLabel = code,
+	config: FlowrConfigOptions = defaultConfigOptions
 ) {
 	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
 
 	beforeAll(async() => {
-		result = await createDataflowPipeline(parser, { request: requestFromInput(code) }).allRemainingSteps();
+		result = await createDataflowPipeline(parser, { request: requestFromInput(code) }, config).allRemainingSteps();
 	});
 
 	test.each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
-		const operations = getInferredOperationsForCriterion(result, criterion)
+		const operations = getInferredOperationsForCriterion(result, criterion, config)
 			.map(op => ({ operation: op.operation, ...op.args }));
 		assert.deepStrictEqual(operations, expect, `expected ${JSON.stringify(operations)} to equal ${JSON.stringify(expect)}`);
 	});
@@ -180,16 +185,17 @@ export function testDataFrameDomainAgainstReal(
 	/** The options describe whether the inferred properties should match exacly the actual properties or can be an over-approximation (defaults to exact for all properties) */
 	criteria: (SingleSlicingCriterion | [SingleSlicingCriterion, Partial<DataFrameTestOptions>])[],
 	parser: KnownParser = shell,
-	name: string | TestLabel = code
+	name: string | TestLabel = code,
+	config: FlowrConfigOptions = defaultConfigOptions
 ): void {
 	test(decorateLabelContext(name, ['absint']), async()=> {
-		const result = await createDataflowPipeline(parser, { request: requestFromInput(code) }).allRemainingSteps();
+		const result = await createDataflowPipeline(parser, { request: requestFromInput(code) }, config).allRemainingSteps();
 		const testEntries: CriterionTestEntry[] = [];
 
 		for(const entry of criteria) {
 			const criterion = Array.isArray(entry) ? entry[0] : entry;
 			const options = { ...DataFrameTestExact, ...(Array.isArray(entry) ? entry[1] : {}) };
-			const [inferred, node] = getInferredDomainForCriterion(result, criterion);
+			const [inferred, node] = getInferredDomainForCriterion(result, criterion, config);
 
 			if(node.type !== RType.Symbol) {
 				throw new Error(`slicing criterion ${criterion} does not refer to a R symbol`);
@@ -265,7 +271,8 @@ function createCodeForOutput(
 
 function getInferredDomainForCriterion(
 	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
-	criterion: SingleSlicingCriterion
+	criterion: SingleSlicingCriterion,
+	config: FlowrConfigOptions
 ): [DataFrameDomain | undefined, RNode<ParentInformation>] {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
 	const nodeId = slicingCriterionToId(criterion, idMap);
@@ -274,7 +281,7 @@ function getInferredDomainForCriterion(
 	if(node === undefined) {
 		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
 	}
-	const cfg = extractCfg(result.normalize, result.dataflow.graph);
+	const cfg = extractCfg(result.normalize, config, result.dataflow.graph);
 	performDataFrameAbsint(cfg, result.dataflow.graph, result.normalize);
 	const value = resolveIdToAbstractValue(node, result.dataflow.graph);
 
@@ -283,7 +290,8 @@ function getInferredDomainForCriterion(
 
 function getInferredOperationsForCriterion(
 	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
-	criterion: SingleSlicingCriterion
+	criterion: SingleSlicingCriterion,
+	config: FlowrConfigOptions
 ): DataFrameOperations[] {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
 	const nodeId = slicingCriterionToId(criterion, idMap);
@@ -292,7 +300,7 @@ function getInferredOperationsForCriterion(
 	if(node === undefined) {
 		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
 	}
-	const cfg = extractCfg(result.normalize, result.dataflow.graph);
+	const cfg = extractCfg(result.normalize, config, result.dataflow.graph);
 	performDataFrameAbsint(cfg, result.dataflow.graph, result.normalize);
 
 	return node.info.dataFrame?.type === 'expression' ? node.info.dataFrame.operations : [];

@@ -12,6 +12,7 @@ export enum ConstraintType {
 
 const DataFrameSemanticsMapper = {
 	'create':        { apply: applyCreateSemantics,      type: ConstraintType.ResultPostcondition },
+	'read':          { apply: applyReadSemantics,        type: ConstraintType.ResultPostcondition },
 	'accessCols':    { apply: applyAccessColsSemantics,  type: ConstraintType.OperandPrecondition },
 	'accessRows':    { apply: applyAccessRowsSemantics,  type: ConstraintType.OperandPrecondition },
 	'assignCols':    { apply: applyAssignColsSemantics,  type: ConstraintType.OperandModification },
@@ -72,6 +73,13 @@ function applyCreateSemantics(
 		cols:     colnames !== undefined ? [colnames.length, colnames.length] : IntervalTop,
 		rows:     rows !== undefined ? [rows, rows] : IntervalTop
 	};
+}
+
+function applyReadSemantics(
+	value: DataFrameDomain,
+	{ colnames, rows }: { source: string | undefined, colnames: (string | undefined)[] | undefined, rows: number | undefined }
+): DataFrameDomain {
+	return applyCreateSemantics(value, { colnames, rows });
 }
 
 function applyAccessColsSemantics(

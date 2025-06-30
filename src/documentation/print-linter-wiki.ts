@@ -154,7 +154,7 @@ print(x)
 
 		if(format === 'short') {
 			ruleExplanations.set(name, () => Promise.resolve(`
-	**[${rule.info.name}](${FlowrWikiBaseRef}/linter-rules/${name}):** ${rule.info.description} [see ${shortLinkFile(ruleType, types)}]\\
+	**[${rule.info.name}](${FlowrWikiBaseRef}/lint-${name}):** ${rule.info.description} [see ${shortLinkFile(ruleType, types)}]\\
 	${tags}
 
 		`.trim()));
@@ -203,7 +203,7 @@ function getAllLintingRulesWitTag(tag: LintingRuleTag): LintingRuleNames[] {
 }
 
 function linkToRule(name: LintingRuleNames): string {
-	return `[${name}](${FlowrWikiBaseRef}/linter-rules/${name})`;
+	return `[${name}](${FlowrWikiBaseRef}/lint-${name})`;
 }
 
 
@@ -265,7 +265,7 @@ async function getRulesPages(shell: RShell, tagTypes: TypeReport, rVersion: stri
 	const result: Record<string, string> = {} as Record<string, string>;
 
 	for(const [name, rule] of rules) {
-		const filepath = path.resolve('./wiki/linter-rules', `${name}.md`);
+		const filepath = path.resolve('./wiki', `lint-${name}.md`);
 		result[filepath] = await rule();
 	}
 
@@ -296,7 +296,7 @@ if(require.main === module) {
 			if(file === 'main') {
 				continue; // main is printed above
 			}
-			const filepath = path.resolve('./wiki/linter-rules', file);
+			const filepath = path.resolve('./wiki', file);
 			writeWikiTo(content, filepath);
 		}
 	}).finally(() => {

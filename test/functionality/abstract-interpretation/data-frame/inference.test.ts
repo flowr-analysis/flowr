@@ -16,7 +16,7 @@ describe.sequential('Data Frame Shape Inference', withShell(shell => {
 		await installPackage('magrittr', 'tidyverse');
 		await installPackage('readr', 'tidyverse');
 		shell.clearEnvironment();
-	}, 60000);
+	}, 300_000);
 
 	afterAll(() => {
 		amendConfig(config => config.solver.pointerTracking = defaultConfigOptions.solver.pointerTracking);

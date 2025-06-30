@@ -1460,7 +1460,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
   "results": {
     "call-context": {
       ".meta": {
-        "timing": 0
+        "timing": 1
       },
       "kinds": {
         "visualize": {

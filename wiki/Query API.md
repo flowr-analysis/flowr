@@ -18,7 +18,7 @@ In general, we separate two types of queries:
 1. **Active Queries**: Are exactly what you would expect from a query (e.g., the [Call-Context Query](#call-context-query)). They fetch information from the dataflow graph.
 2. **Virtual Queries**: Are used to structure your queries (e.g., the [Compound Query](#compound-query)).
 
-We separate these from a concept perspective. 
+We separate these from a concept perspective.
 For now, we support the following **active** queries (which we will refer to simply as a `query`):
 
 1. [Call-Context Query](#call-context-query) (`call-context`):\
@@ -31,6 +31,8 @@ For now, we support the following **active** queries (which we will refer to sim
     Calculates and returns all the clusters present in the dataflow graph.
 1. [Dataflow Query](#dataflow-query) (`dataflow`):\
     Returns the dataflow graph of the given code.
+1. [Dataframe Shape Inference Query](#dataframe-shape-inference-query) (`df-shape`):\
+    Returns the shapes inferred for all dataframes in the code.
 1. [Dependencies Query](#dependencies-query) (`dependencies`):\
     Returns all direct dependencies (in- and outputs) of a given R script
 1. [Happens-Before Query](#happens-before-query) (`happens-before`):\
@@ -56,7 +58,7 @@ For now, we support the following **active** queries (which we will refer to sim
 1. [Static Slice Query](#static-slice-query) (`static-slice`):\
     Slice the dataflow graph reducing the code to just the parts relevant for the given criteria.
 
-Similarly, we support the following **virtual** queries: 
+Similarly, we support the following **virtual** queries:
 
 1. [Compound Query](#compound-query) (`compound`):\
     Combines multiple queries of the same type into one, specifying common arguments.
@@ -68,14 +70,14 @@ Similarly, we support the following **virtual** queries:
 
 Although it is probably better to consult the detailed explanations below, if you want to have a look at the scehma, here is its description:
 
-- **.** array 
+- **.** array
     _Queries to run on the file analysis information (in the form of an array)_
 Valid item types:
-    - **.** alternatives 
+    - **.** alternatives
         _Any query_
-        - **.** alternatives 
+        - **.** alternatives
             _Supported queries_
-            - **.** object 
+            - **.** object
                 _Call context query used to find calls in the dataflow graph_
                 - **type** string [required]
                     _The type of the query._
@@ -103,7 +105,7 @@ Valid item types:
                         _If `fileFilter` is set, but a nodes `file` attribute is `undefined`, should we include it in the results? Defaults to `true`._
                 - **linkTo** alternatives [optional]
                     _Links the current call to the last call of the given kind. This way, you can link a call like `points` to the latest graphics plot etc._
-                    - **.** object 
+                    - **.** object
                         - **type** string [required]
                             _The type of the linkTo sub-query._
                             Allows only the values: 'link-to-last-call'
@@ -115,9 +117,9 @@ Valid item types:
                             _Should we continue searching after the link was created? Currently, there is no well working serialization for this._
                         - **attachLinkInfo** object [optional]
                             _Additional information to attach to the link._
-                    - **.** array 
+                    - **.** array
                     Valid item types:
-                        - **.** object 
+                        - **.** object
                             - **type** string [required]
                                 _The type of the linkTo sub-query._
                                 Allows only the values: 'link-to-last-call'
@@ -129,7 +131,7 @@ Valid item types:
                                 _Should we continue searching after the link was created? Currently, there is no well working serialization for this._
                             - **attachLinkInfo** object [optional]
                                 _Additional information to attach to the link._
-            - **.** object 
+            - **.** object
                 _The config query retrieves the current configuration of the flowR instance._
                 - **type** string [required]
                     _The type of the query._
@@ -151,27 +153,32 @@ Valid item types:
                 - **type** string [required]
                     _The type of the query._
                     Allows only the values: 'dataflow'
-            - **.** object 
+            - **.** object
                 _The dataflow-lens query returns a simplified view on the dataflow graph_
                 - **type** string [required]
                     _The type of the query._
                     Allows only the values: 'dataflow-lens'
-            - **.** object 
+            - **.** object
+                _Retrieve information on the dataframe shapes_
+                - **type** string [required]
+                    _The type of the query._
+                    Allows only the values: 'df-shape'
+            - **.** object
                 _The id map query retrieves the id map from the normalized AST._
                 - **type** string [required]
                     _The type of the query._
                     Allows only the values: 'id-map'
-            - **.** object 
+            - **.** object
                 _The normalized AST query simply returns the normalized AST, there is no need to pass it multiple times!_
                 - **type** string [required]
                     _The type of the query._
                     Allows only the values: 'normalized-ast'
-            - **.** object 
+            - **.** object
                 _The cluster query calculates and returns all clusters in the dataflow graph._
                 - **type** string [required]
                     _The type of the query._
                     Allows only the values: 'dataflow-cluster'
-            - **.** object 
+            - **.** object
                 _Slice query used to slice the dataflow graph_
                 - **type** string [required]
                     _The type of the query._
@@ -179,19 +186,19 @@ Valid item types:
                 - **criteria** array [required]
                     _The slicing criteria to use._
                 Valid item types:
-                    - **.** string 
+                    - **.** string
                 - **noReconstruction** boolean [optional]
                     _Do not reconstruct the slice into readable code._
                 - **noMagicComments** boolean [optional]
                     _Should the magic comments (force-including lines within the slice) be ignored?_
-            - **.** object 
+            - **.** object
                 _Lineage query used to find the lineage of a node in the dataflow graph_
                 - **type** string [required]
                     _The type of the query._
                     Allows only the values: 'lineage'
                 - **criterion** string [required]
                     _The slicing criterion of the node to get the lineage of._
-            - **.** object 
+            - **.** object
                 _The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data._
                 - **type** string [required]
                     _The type of the query._
@@ -201,7 +208,7 @@ Valid item types:
                 - **libraryFunctions** array [optional]
                     _The set of library functions to search for._
                 Valid item types:
-                    - **.** object 
+                    - **.** object
                         - **name** string [required]
                             _The name of the library function._
                         - **package** string [optional]
@@ -213,7 +220,7 @@ Valid item types:
                 - **sourceFunctions** array [optional]
                     _The set of source functions to search for._
                 Valid item types:
-                    - **.** object 
+                    - **.** object
                         - **name** string [required]
                             _The name of the library function._
                         - **package** string [optional]
@@ -225,7 +232,7 @@ Valid item types:
                 - **readFunctions** array [optional]
                     _The set of data reading functions to search for._
                 Valid item types:
-                    - **.** object 
+                    - **.** object
                         - **name** string [required]
                             _The name of the library function._
                         - **package** string [optional]
@@ -237,7 +244,7 @@ Valid item types:
                 - **writeFunctions** array [optional]
                     _The set of data writing functions to search for._
                 Valid item types:
-                    - **.** object 
+                    - **.** object
                         - **name** string [required]
                             _The name of the library function._
                         - **package** string [optional]
@@ -246,19 +253,19 @@ Valid item types:
                             _The index of the argument that contains the library name._
                         - **argName** string [optional]
                             _The name of the argument that contains the library name._
-            - **.** object 
+            - **.** object
                 _The location map query retrieves the location of every id in the ast._
                 - **type** string [required]
                     _The type of the query._
                     Allows only the values: 'location-map'
-            - **.** object 
+            - **.** object
                 _The search query searches the normalized AST and dataflow graph for nodes that match the given search query._
                 - **type** string [required]
                     _The type of the query._
                     Allows only the values: 'search'
                 - **search** object [required]
                     _The search query to execute._
-            - **.** object 
+            - **.** object
                 _Happens-Before tracks whether a always happens before b._
                 - **type** string [required]
                     _The type of the query._
@@ -267,7 +274,7 @@ Valid item types:
                     _The first slicing criterion._
                 - **b** string [required]
                     _The second slicing criterion._
-            - **.** object 
+            - **.** object
                 _The resolve value query used to get definitions of an identifier_
                 - **type** string [required]
                     _The type of the query._
@@ -275,8 +282,8 @@ Valid item types:
                 - **criteria** array [required]
                     _The slicing criteria to use._
                 Valid item types:
-                    - **.** string 
-            - **.** object 
+                    - **.** string
+            - **.** object
                 _The project query provides information on the analyzed project._
                 - **type** string [required]
                     _The type of the query._
@@ -304,7 +311,7 @@ Valid item types:
                         - **config** object 
         - **.** alternatives 
             _Virtual queries (used for structure)_
-            - **.** object 
+            - **.** object
                 _Compound query used to combine queries of the same type_
                 - **type** string [required]
                     _The type of the query._
@@ -316,7 +323,7 @@ Valid item types:
                 - **arguments** array [required]
                     _Arguments for each query._
                 Valid item types:
-                    - **.** object 
+                    - **.** object
 
 </details>
 
@@ -333,16 +340,16 @@ library(readr)
 data <- read_csv('data.csv')
 data2 <- read_csv('data2.csv')
 
-m <- mean(data$x) 
+m <- mean(data$x)
 print(m)
 
 data %>%
 	ggplot(aes(x = x, y = y)) +
 	geom_point()
-	
+
 plot(data2$x, data2$y)
 points(data2$x, data2$y)
-	
+
 print(mean(data2$k))
 ```
 
@@ -372,7 +379,7 @@ library`"]
       (7)
       *2.1-14*
     (5)`"]]
-    style 7 stroke:red,stroke-width:5px; 
+    style 7 stroke:red,stroke-width:5px;
     9{{"`#91;RSymbol#93; readr
       (9)
       *3.9-13*`"}}
@@ -380,7 +387,7 @@ library`"]
       (11)
       *3.1-14*
     (9)`"]]
-    style 11 stroke:red,stroke-width:5px; 
+    style 11 stroke:red,stroke-width:5px;
     14{{"`#91;RString#93; #39;data.csv#39;
       (14)
       *6.18-27*`"}}
@@ -692,7 +699,7 @@ points`"]
 Additionally, consider that you are interested in all function calls which loads data with `read_csv`.
 A simple `regex`-based query could look like this: `^read_csv$`.
 However, this fails to incorporate
- 
+
 1. Syntax-based information (comments, strings, used as a variable, called as a higher-order function, ...)
 2. Semantic information (e.g., `read_csv` is overwritten by a function with the same name)
 3. Context information (e.g., calls like `points` may link to the current plot)
@@ -716,6 +723,8 @@ Just as an example, the following [Call-Context Query](#call-context-query) find
   }
 ]
 ```
+
+
 
 
 
@@ -763,7 +772,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 1
+    "timing": 0
   }
 }
 ```
@@ -839,6 +848,8 @@ all calls that start with `read_` to the kind `input` but only if they are not l
   }
 ]
 ```
+
+
 
 
 
@@ -931,12 +942,12 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 
 As you can see, all kinds and subkinds with the same name are grouped together.
 Yet, re-stating common arguments and kinds may be cumbersome (although you can already use clever regex patterns).
-See the [Compound Query](#compound-query) for a way to structure your queries more compactly if you think it gets too verbose. 
+See the [Compound Query](#compound-query) for a way to structure your queries more compactly if you think it gets too verbose.
 
 
 <details><summary style="">Alias Example</summary>
 
-Consider the following code: 
+Consider the following code:
 ```r
 foo <- my_test_function
 foo()
@@ -957,6 +968,8 @@ Now let's say we want to query _all_ uses of the `my_test_function`:
   }
 ]
 ```
+
+
 
 
 
@@ -1026,16 +1039,16 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 
 </details>
-    
-		
 
-<details> 
+
+
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Call-Context Query query is `executeCallContextQueries` in [`./src/queries/catalog/call-context-query/call-context-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/call-context-query/call-context-query-executor.ts).
 
-</details>	
+</details>
 
 
 -----
@@ -1046,13 +1059,1088 @@ Responsible for the execution of the Call-Context Query query is `executeCallCon
 
 This query provides access to the current configuration of the flowR instance. See the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on what the configuration represents.
 
-<details> 
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Config Query query is `executeConfigQuery` in [`./src/queries/catalog/config-query/config-query-format.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/config-query/config-query-format.ts).
 
-</details>	
+</details>
+
+
+-----
+
+
+### Control-Flow Query
+
+
+This control-flow query provides you access to the control flow graph.
+
+In other words, if you have a script simply reading: `if(TRUE) 1 else 2`, the following query returns the CFG:
+
+
+
+```json
+[ { "type": "control-flow" } ]
+```
+
+
+ <details> <summary style="color:gray">Show Results</summary>
+
+_Results (prettified and summarized):_
+
+Query: **control-flow** (0ms)\
+&nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgbjYoW1wiYFJFeHByZXNzaW9uTGlzdCAoNilgXCJdKVxuICAgIG41W1wiYFJJZlRoZW5FbHNlICg1KVxuIzM0O2lmKFRSVUUpIDEgZWxzZSAyIzM0O2BcIl1cbiAgICBuNS1jb25kaXRpb25bWzUtY29uZGl0aW9uXV1cbiAgICBuNS1leGl0KCg1LWV4aXQpKVxuICAgIG4wKFtcImBSTG9naWNhbCAoMClcbiMzNDtUUlVFIzM0O2BcIl0pXG4gICAgbjIoW1wiYFJFeHByZXNzaW9uTGlzdCAoMilcbiMzNDsxIzM0O2BcIl0pXG4gICAgbjEoW1wiYFJOdW1iZXIgKDEpXG4jMzQ7MSMzNDtgXCJdKVxuICAgIG4yLWV4aXQoKDItZXhpdCkpXG4gICAgbjQoW1wiYFJFeHByZXNzaW9uTGlzdCAoNClcbiMzNDsyIzM0O2BcIl0pXG4gICAgbjMoW1wiYFJOdW1iZXIgKDMpXG4jMzQ7MiMzNDtgXCJdKVxuICAgIG40LWV4aXQoKDQtZXhpdCkpXG4gICAgbjYtZXhpdCgoNi1leGl0KSlcbiAgICBuNSAtLi0+fFwiRkRcInwgbjZcbiAgICBuMSAtLi0+fFwiRkRcInwgbjJcbiAgICBuMi1leGl0IC0uLT58XCJGRFwifCBuMVxuICAgIG4zIC0uLT58XCJGRFwifCBuNFxuICAgIG40LWV4aXQgLS4tPnxcIkZEXCJ8IG4zXG4gICAgbjUtY29uZGl0aW9uIC0uLT58XCJGRFwifCBuMFxuICAgIG4yIC0tPnxcIkNEIChUUlVFKVwifCBuNS1jb25kaXRpb25cbiAgICBuNCAtLT58XCJDRCAoRkFMU0UpXCJ8IG41LWNvbmRpdGlvblxuICAgIG4wIC0uLT58XCJGRFwifCBuNVxuICAgIG41LWV4aXQgLS4tPnxcIkZEXCJ8IG4yLWV4aXRcbiAgICBuNS1leGl0IC0uLT58XCJGRFwifCBuNC1leGl0XG4gICAgbjYtZXhpdCAtLi0+fFwiRkRcInwgbjUtZXhpdFxuICAgIHN0eWxlIG42IHN0cm9rZTpjeWFuLHN0cm9rZS13aWR0aDo2LjVweDsgICAgc3R5bGUgbjYtZXhpdCBzdHJva2U6Z3JlZW4sc3Ryb2tlLXdpZHRoOjYuNXB4OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==\
+_All queries together required ≈0 ms (1ms accuracy, total 2 ms)_
+
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+
+The analysis required _2.5 ms_ (including parsing and normalization and the query) within the generation environment.
+
+In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
+Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+
+
+_As the code is pretty long, we inhibit pretty printing and syntax highlighting (JSON, hiding built-in):_
+
+```text
+{"control-flow":{".meta":{"timing":0},"controlFlow":{"returns":[],"entryPoints":[6],"exitPoints":["6-exit"],"breaks":[],"nexts":[],"graph":{"rootVertices":[6,5,"5-condition","5-exit",0,2,1,"2-exit",4,3,"4-exit","6-exit"],"vertexInformation":[[6,{"id":6,"type":"expr","end":["6-exit"]}],[5,{"id":5,"type":"stm","mid":["5-condition"],"end":["5-exit"]}],["5-condition",{"id":"5-condition","kind":"condition","type":"mid","root":5}],["5-exit",{"id":"5-exit","type":"end","root":5}],[0,{"id":0,"type":"expr"}],[2,{"id":2,"type":"expr","end":["2-exit"]}],[1,{"id":1,"type":"expr"}],["2-exit",{"id":"2-exit","type":"end","root":2}],[4,{"id":4,"type":"expr","end":["4-exit"]}],[3,{"id":3,"type":"expr"}],["4-exit",{"id":"4-exit","type":"end","root":4}],["6-exit",{"id":"6-exit","type":"end","root":6}]],"bbChildren":[],"edgeInformation":[[5,[[6,{"label":0}]]],[1,[[2,{"label":0}]]],["2-exit",[[1,{"label":0}]]],[3,[[4,{"label":0}]]],["4-exit",[[3,{"label":0}]]],["5-condition",[[0,{"label":0}]]],[2,[["5-condition",{"label":1,"when":"TRUE","caused":5}]]],[4,[["5-condition",{"label":1,"when":"FALSE","caused":5}]]],[0,[[5,{"label":0}]]],["5-exit",[["2-exit",{"label":0}],["4-exit",{"label":0}]]],["6-exit",[["5-exit",{"label":0}]]]],"_mayHaveBasicBlocks":false}}},".meta":{"timing":0}}
+```
+
+
+
+</details>
+
+
+
+</details>
+
+
+
+
+
+You can also overwrite the simplification passes to tune the perspective. for example, if you want to have basic blocks:
+
+
+
+```json
+[
+  {
+    "type": "control-flow",
+    "config": {
+      "simplificationPasses": [
+        "unique-cf-sets",
+        "to-basic-blocks"
+      ]
+    }
+  }
+]
+```
+
+
+ <details> <summary style="color:gray">Show Results</summary>
+
+_Results (prettified and summarized):_
+
+Query: **control-flow** (1ms)\
+&nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgc3ViZ3JhcGggbmJiLTUtY29uZGl0aW9uIFtCbG9jayBiYi01LWNvbmRpdGlvbl1cbiAgICAgICAgZGlyZWN0aW9uIEJUXG4gICAgbjUtY29uZGl0aW9uW1s1LWNvbmRpdGlvbl1dXG4gICAgbjBbXCJgUkxvZ2ljYWwgKDApXG4jMzQ7VFJVRSMzNDtgXCJdXG4gICAgbjUtY29uZGl0aW9uIC0uLT4gbjBcbiAgICBuNVtcImBSSWZUaGVuRWxzZSAoNSlcbiMzNDtpZihUUlVFKSAxIGVsc2UgMiMzNDtgXCJdXG4gICAgbjAgLS4tPiBuNVxuICAgIG42W1wiYFJFeHByZXNzaW9uTGlzdCAoNilgXCJdXG4gICAgbjUgLS4tPiBuNlxuICAgIGVuZFxuICAgIHN1YmdyYXBoIG5iYi0yLWV4aXQgW0Jsb2NrIGJiLTItZXhpdF1cbiAgICAgICAgZGlyZWN0aW9uIEJUXG4gICAgbjItZXhpdCgoMi1leGl0KSlcbiAgICBuMVtcImBSTnVtYmVyICgxKVxuIzM0OzEjMzQ7YFwiXVxuICAgIG4yLWV4aXQgLS4tPiBuMVxuICAgIG4yW1wiYFJFeHByZXNzaW9uTGlzdCAoMilcbiMzNDsxIzM0O2BcIl1cbiAgICBuMSAtLi0+IG4yXG4gICAgZW5kXG4gICAgc3ViZ3JhcGggbmJiLTQtZXhpdCBbQmxvY2sgYmItNC1leGl0XVxuICAgICAgICBkaXJlY3Rpb24gQlRcbiAgICBuNC1leGl0KCg0LWV4aXQpKVxuICAgIG4zW1wiYFJOdW1iZXIgKDMpXG4jMzQ7MiMzNDtgXCJdXG4gICAgbjQtZXhpdCAtLi0+IG4zXG4gICAgbjRbXCJgUkV4cHJlc3Npb25MaXN0ICg0KVxuIzM0OzIjMzQ7YFwiXVxuICAgIG4zIC0uLT4gbjRcbiAgICBlbmRcbiAgICBzdWJncmFwaCBuYmItNi1leGl0IFtCbG9jayBiYi02LWV4aXRdXG4gICAgICAgIGRpcmVjdGlvbiBCVFxuICAgIG42LWV4aXQoKDYtZXhpdCkpXG4gICAgbjUtZXhpdCgoNS1leGl0KSlcbiAgICBuNi1leGl0IC0uLT4gbjUtZXhpdFxuICAgIGVuZFxuICAgIG5iYi02LWV4aXQgLS4tPnxcIkZEXCJ8IG5iYi0yLWV4aXRcbiAgICBuYmItNi1leGl0IC0uLT58XCJGRFwifCBuYmItNC1leGl0XG4gICAgbmJiLTItZXhpdCAtLT58XCJDRCAoVFJVRSlcInwgbmJiLTUtY29uZGl0aW9uXG4gICAgbmJiLTQtZXhpdCAtLT58XCJDRCAoRkFMU0UpXCJ8IG5iYi01LWNvbmRpdGlvblxuICAgIHN0eWxlIG5iYi01LWNvbmRpdGlvbiBzdHJva2U6Y3lhbixzdHJva2Utd2lkdGg6Ni41cHg7ICAgIHN0eWxlIG5iYi02LWV4aXQgc3Ryb2tlOmdyZWVuLHN0cm9rZS13aWR0aDo2LjVweDsiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=\
+_All queries together required ≈1 ms (1ms accuracy, total 2 ms)_
+
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+
+The analysis required _2.4 ms_ (including parsing and normalization and the query) within the generation environment.
+
+In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
+Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+
+
+
+
+```json
+{
+  "control-flow": {
+    ".meta": {
+      "timing": 1
+    },
+    "controlFlow": {
+      "returns": [],
+      "entryPoints": [
+        "bb-5-condition"
+      ],
+      "exitPoints": [
+        "bb-6-exit"
+      ],
+      "breaks": [],
+      "nexts": [],
+      "graph": {
+        "rootVertices": [
+          "bb-5-condition",
+          "bb-2-exit",
+          "bb-4-exit",
+          "bb-6-exit"
+        ],
+        "vertexInformation": [
+          [
+            "bb-5-condition",
+            {
+              "type": "blk",
+              "elems": [
+                {
+                  "id": "5-condition",
+                  "kind": "condition",
+                  "type": "mid",
+                  "root": 5
+                },
+                {
+                  "id": 0,
+                  "type": "expr"
+                },
+                {
+                  "id": 5,
+                  "type": "stm",
+                  "mid": [
+                    "5-condition"
+                  ],
+                  "end": [
+                    "5-exit"
+                  ]
+                },
+                {
+                  "id": 6,
+                  "type": "expr",
+                  "end": [
+                    "6-exit"
+                  ]
+                }
+              ],
+              "id": "bb-5-condition"
+            }
+          ],
+          [
+            "bb-2-exit",
+            {
+              "type": "blk",
+              "elems": [
+                {
+                  "id": "2-exit",
+                  "type": "end",
+                  "root": 2
+                },
+                {
+                  "id": 1,
+                  "type": "expr"
+                },
+                {
+                  "id": 2,
+                  "type": "expr",
+                  "end": [
+                    "2-exit"
+                  ]
+                }
+              ],
+              "id": "bb-2-exit"
+            }
+          ],
+          [
+            "bb-4-exit",
+            {
+              "type": "blk",
+              "elems": [
+                {
+                  "id": "4-exit",
+                  "type": "end",
+                  "root": 4
+                },
+                {
+                  "id": 3,
+                  "type": "expr"
+                },
+                {
+                  "id": 4,
+                  "type": "expr",
+                  "end": [
+                    "4-exit"
+                  ]
+                }
+              ],
+              "id": "bb-4-exit"
+            }
+          ],
+          [
+            "bb-6-exit",
+            {
+              "type": "blk",
+              "elems": [
+                {
+                  "id": "6-exit",
+                  "type": "end",
+                  "root": 6
+                },
+                {
+                  "id": "5-exit",
+                  "type": "end",
+                  "root": 5
+                }
+              ],
+              "id": "bb-6-exit"
+            }
+          ]
+        ],
+        "bbChildren": [
+          [
+            6,
+            "bb-5-condition"
+          ],
+          [
+            5,
+            "bb-5-condition"
+          ],
+          [
+            "5-condition",
+            "bb-5-condition"
+          ],
+          [
+            "5-exit",
+            "bb-6-exit"
+          ],
+          [
+            0,
+            "bb-5-condition"
+          ],
+          [
+            2,
+            "bb-2-exit"
+          ],
+          [
+            1,
+            "bb-2-exit"
+          ],
+          [
+            "2-exit",
+            "bb-2-exit"
+          ],
+          [
+            4,
+            "bb-4-exit"
+          ],
+          [
+            3,
+            "bb-4-exit"
+          ],
+          [
+            "4-exit",
+            "bb-4-exit"
+          ],
+          [
+            "6-exit",
+            "bb-6-exit"
+          ]
+        ],
+        "edgeInformation": [
+          [
+            "bb-6-exit",
+            [
+              [
+                "bb-2-exit",
+                {
+                  "label": 0
+                }
+              ],
+              [
+                "bb-4-exit",
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ],
+          [
+            "bb-2-exit",
+            [
+              [
+                "bb-5-condition",
+                {
+                  "label": 1,
+                  "when": "TRUE",
+                  "caused": 5
+                }
+              ]
+            ]
+          ],
+          [
+            "bb-4-exit",
+            [
+              [
+                "bb-5-condition",
+                {
+                  "label": 1,
+                  "when": "FALSE",
+                  "caused": 5
+                }
+              ]
+            ]
+          ]
+        ],
+        "_mayHaveBasicBlocks": true
+      }
+    }
+  },
+  ".meta": {
+    "timing": 1
+  }
+}
+```
+
+
+
+</details>
+
+
+
+</details>
+
+
+
+
+
+this produces:
+
+
+
+
+
+```mermaid
+flowchart RL
+    subgraph nbb-5-condition [Block bb-5-condition]
+        direction RL
+    n5-condition[[5-condition]]
+    n0["`RLogical (0)
+#34;TRUE#34;`"]
+    n5-condition -.-> n0
+    n5["`RIfThenElse (5)
+#34;if(TRUE) 1 else 2#34;`"]
+    n0 -.-> n5
+    n6["`RExpressionList (6)`"]
+    n5 -.-> n6
+    end
+    subgraph nbb-2-exit [Block bb-2-exit]
+        direction RL
+    n2-exit((2-exit))
+    n1["`RNumber (1)
+#34;1#34;`"]
+    n2-exit -.-> n1
+    n2["`RExpressionList (2)
+#34;1#34;`"]
+    n1 -.-> n2
+    end
+    subgraph nbb-4-exit [Block bb-4-exit]
+        direction RL
+    n4-exit((4-exit))
+    n3["`RNumber (3)
+#34;2#34;`"]
+    n4-exit -.-> n3
+    n4["`RExpressionList (4)
+#34;2#34;`"]
+    n3 -.-> n4
+    end
+    subgraph nbb-6-exit [Block bb-6-exit]
+        direction RL
+    n6-exit((6-exit))
+    n5-exit((5-exit))
+    n6-exit -.-> n5-exit
+    end
+    nbb-6-exit -.->|"FD"| nbb-2-exit
+    nbb-6-exit -.->|"FD"| nbb-4-exit
+    nbb-2-exit -->|"CD (TRUE)"| nbb-5-condition
+    nbb-4-exit -->|"CD (FALSE)"| nbb-5-condition
+    style nbb-5-condition stroke:cyan,stroke-width:6.5px;    style nbb-6-exit stroke:green,stroke-width:6.5px;
+```
+
+
+_(The analysis required _1.8 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+We used the following simplifications: `unique-cf-sets`, `to-basic-blocks` .
+	)_
+
+
+
+
+If, on the other hand, you want to prune dead code edges:
+
+
+
+```json
+[
+  {
+    "type": "control-flow",
+    "config": {
+      "simplificationPasses": [
+        "unique-cf-sets",
+        "analyze-dead-code"
+      ]
+    }
+  }
+]
+```
+
+
+ <details> <summary style="color:gray">Show Results</summary>
+
+_Results (prettified and summarized):_
+
+Query: **control-flow** (1ms)\
+&nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgbjYoW1wiYFJFeHByZXNzaW9uTGlzdCAoNilgXCJdKVxuICAgIG41W1wiYFJJZlRoZW5FbHNlICg1KVxuIzM0O2lmKFRSVUUpIDEgZWxzZSAyIzM0O2BcIl1cbiAgICBuNS1jb25kaXRpb25bWzUtY29uZGl0aW9uXV1cbiAgICBuNS1leGl0KCg1LWV4aXQpKVxuICAgIG4wKFtcImBSTG9naWNhbCAoMClcbiMzNDtUUlVFIzM0O2BcIl0pXG4gICAgbjIoW1wiYFJFeHByZXNzaW9uTGlzdCAoMilcbiMzNDsxIzM0O2BcIl0pXG4gICAgbjEoW1wiYFJOdW1iZXIgKDEpXG4jMzQ7MSMzNDtgXCJdKVxuICAgIG4yLWV4aXQoKDItZXhpdCkpXG4gICAgbjQoW1wiYFJFeHByZXNzaW9uTGlzdCAoNClcbiMzNDsyIzM0O2BcIl0pXG4gICAgbjMoW1wiYFJOdW1iZXIgKDMpXG4jMzQ7MiMzNDtgXCJdKVxuICAgIG40LWV4aXQoKDQtZXhpdCkpXG4gICAgbjYtZXhpdCgoNi1leGl0KSlcbiAgICBuNSAtLi0+fFwiRkRcInwgbjZcbiAgICBuMSAtLi0+fFwiRkRcInwgbjJcbiAgICBuMi1leGl0IC0uLT58XCJGRFwifCBuMVxuICAgIG4zIC0uLT58XCJGRFwifCBuNFxuICAgIG40LWV4aXQgLS4tPnxcIkZEXCJ8IG4zXG4gICAgbjUtY29uZGl0aW9uIC0uLT58XCJGRFwifCBuMFxuICAgIG4yIC0tPnxcIkNEIChUUlVFKVwifCBuNS1jb25kaXRpb25cbiAgICBuMCAtLi0+fFwiRkRcInwgbjVcbiAgICBuNS1leGl0IC0uLT58XCJGRFwifCBuMi1leGl0XG4gICAgbjUtZXhpdCAtLi0+fFwiRkRcInwgbjQtZXhpdFxuICAgIG42LWV4aXQgLS4tPnxcIkZEXCJ8IG41LWV4aXRcbiAgICBzdHlsZSBuNiBzdHJva2U6Y3lhbixzdHJva2Utd2lkdGg6Ni41cHg7ICAgIHN0eWxlIG42LWV4aXQgc3Ryb2tlOmdyZWVuLHN0cm9rZS13aWR0aDo2LjVweDsiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=\
+_All queries together required ≈1 ms (1ms accuracy, total 2 ms)_
+
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+
+The analysis required _2.2 ms_ (including parsing and normalization and the query) within the generation environment.
+
+In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
+Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+
+
+
+
+```json
+{
+  "control-flow": {
+    ".meta": {
+      "timing": 1
+    },
+    "controlFlow": {
+      "returns": [],
+      "entryPoints": [
+        6
+      ],
+      "exitPoints": [
+        "6-exit"
+      ],
+      "breaks": [],
+      "nexts": [],
+      "graph": {
+        "rootVertices": [
+          6,
+          5,
+          "5-condition",
+          "5-exit",
+          0,
+          2,
+          1,
+          "2-exit",
+          4,
+          3,
+          "4-exit",
+          "6-exit"
+        ],
+        "vertexInformation": [
+          [
+            6,
+            {
+              "id": 6,
+              "type": "expr",
+              "end": [
+                "6-exit"
+              ]
+            }
+          ],
+          [
+            5,
+            {
+              "id": 5,
+              "type": "stm",
+              "mid": [
+                "5-condition"
+              ],
+              "end": [
+                "5-exit"
+              ]
+            }
+          ],
+          [
+            "5-condition",
+            {
+              "id": "5-condition",
+              "kind": "condition",
+              "type": "mid",
+              "root": 5
+            }
+          ],
+          [
+            "5-exit",
+            {
+              "id": "5-exit",
+              "type": "end",
+              "root": 5
+            }
+          ],
+          [
+            0,
+            {
+              "id": 0,
+              "type": "expr"
+            }
+          ],
+          [
+            2,
+            {
+              "id": 2,
+              "type": "expr",
+              "end": [
+                "2-exit"
+              ]
+            }
+          ],
+          [
+            1,
+            {
+              "id": 1,
+              "type": "expr"
+            }
+          ],
+          [
+            "2-exit",
+            {
+              "id": "2-exit",
+              "type": "end",
+              "root": 2
+            }
+          ],
+          [
+            4,
+            {
+              "id": 4,
+              "type": "expr",
+              "end": [
+                "4-exit"
+              ]
+            }
+          ],
+          [
+            3,
+            {
+              "id": 3,
+              "type": "expr"
+            }
+          ],
+          [
+            "4-exit",
+            {
+              "id": "4-exit",
+              "type": "end",
+              "root": 4
+            }
+          ],
+          [
+            "6-exit",
+            {
+              "id": "6-exit",
+              "type": "end",
+              "root": 6
+            }
+          ]
+        ],
+        "bbChildren": [],
+        "edgeInformation": [
+          [
+            5,
+            [
+              [
+                6,
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ],
+          [
+            1,
+            [
+              [
+                2,
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ],
+          [
+            "2-exit",
+            [
+              [
+                1,
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ],
+          [
+            3,
+            [
+              [
+                4,
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ],
+          [
+            "4-exit",
+            [
+              [
+                3,
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ],
+          [
+            "5-condition",
+            [
+              [
+                0,
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ],
+          [
+            2,
+            [
+              [
+                "5-condition",
+                {
+                  "label": 1,
+                  "when": "TRUE",
+                  "caused": 5
+                }
+              ]
+            ]
+          ],
+          [
+            0,
+            [
+              [
+                5,
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ],
+          [
+            "5-exit",
+            [
+              [
+                "2-exit",
+                {
+                  "label": 0
+                }
+              ],
+              [
+                "4-exit",
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ],
+          [
+            "6-exit",
+            [
+              [
+                "5-exit",
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ]
+        ],
+        "_mayHaveBasicBlocks": false
+      }
+    }
+  },
+  ".meta": {
+    "timing": 1
+  }
+}
+```
+
+
+
+</details>
+
+
+
+</details>
+
+
+
+
+
+this produces:
+
+
+
+
+
+```mermaid
+flowchart RL
+    n6(["`RExpressionList (6)`"])
+    n5["`RIfThenElse (5)
+#34;if(TRUE) 1 else 2#34;`"]
+    n5-condition[[5-condition]]
+    n5-exit((5-exit))
+    n0(["`RLogical (0)
+#34;TRUE#34;`"])
+    n2(["`RExpressionList (2)
+#34;1#34;`"])
+    n1(["`RNumber (1)
+#34;1#34;`"])
+    n2-exit((2-exit))
+    n4(["`RExpressionList (4)
+#34;2#34;`"])
+    n3(["`RNumber (3)
+#34;2#34;`"])
+    n4-exit((4-exit))
+    n6-exit((6-exit))
+    n5 -.->|"FD"| n6
+    n1 -.->|"FD"| n2
+    n2-exit -.->|"FD"| n1
+    n3 -.->|"FD"| n4
+    n4-exit -.->|"FD"| n3
+    n5-condition -.->|"FD"| n0
+    n2 -->|"CD (TRUE)"| n5-condition
+    n0 -.->|"FD"| n5
+    n5-exit -.->|"FD"| n2-exit
+    n5-exit -.->|"FD"| n4-exit
+    n6-exit -.->|"FD"| n5-exit
+    style n6 stroke:cyan,stroke-width:6.5px;    style n6-exit stroke:green,stroke-width:6.5px;
+```
+
+
+_(The analysis required _2.3 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+We used the following simplifications: `unique-cf-sets`, `analyze-dead-code` .
+	)_
+
+
+
+
+Or, completely remove dead code:
+
+
+
+```json
+[
+  {
+    "type": "control-flow",
+    "config": {
+      "simplificationPasses": [
+        "unique-cf-sets",
+        "analyze-dead-code",
+        "remove-dead-code"
+      ]
+    }
+  }
+]
+```
+
+
+ <details> <summary style="color:gray">Show Results</summary>
+
+_Results (prettified and summarized):_
+
+Query: **control-flow** (0ms)\
+&nbsp;&nbsp;&nbsp;╰ CFG: https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgbjYoW1wiYFJFeHByZXNzaW9uTGlzdCAoNilgXCJdKVxuICAgIG41W1wiYFJJZlRoZW5FbHNlICg1KVxuIzM0O2lmKFRSVUUpIDEgZWxzZSAyIzM0O2BcIl1cbiAgICBuNS1jb25kaXRpb25bWzUtY29uZGl0aW9uXV1cbiAgICBuNS1leGl0KCg1LWV4aXQpKVxuICAgIG4wKFtcImBSTG9naWNhbCAoMClcbiMzNDtUUlVFIzM0O2BcIl0pXG4gICAgbjIoW1wiYFJFeHByZXNzaW9uTGlzdCAoMilcbiMzNDsxIzM0O2BcIl0pXG4gICAgbjEoW1wiYFJOdW1iZXIgKDEpXG4jMzQ7MSMzNDtgXCJdKVxuICAgIG4yLWV4aXQoKDItZXhpdCkpXG4gICAgbjYtZXhpdCgoNi1leGl0KSlcbiAgICBuNSAtLi0+fFwiRkRcInwgbjZcbiAgICBuMSAtLi0+fFwiRkRcInwgbjJcbiAgICBuMi1leGl0IC0uLT58XCJGRFwifCBuMVxuICAgIG41LWNvbmRpdGlvbiAtLi0+fFwiRkRcInwgbjBcbiAgICBuMiAtLT58XCJDRCAoVFJVRSlcInwgbjUtY29uZGl0aW9uXG4gICAgbjAgLS4tPnxcIkZEXCJ8IG41XG4gICAgbjUtZXhpdCAtLi0+fFwiRkRcInwgbjItZXhpdFxuICAgIG42LWV4aXQgLS4tPnxcIkZEXCJ8IG41LWV4aXRcbiAgICBzdHlsZSBuNiBzdHJva2U6Y3lhbixzdHJva2Utd2lkdGg6Ni41cHg7ICAgIHN0eWxlIG42LWV4aXQgc3Ryb2tlOmdyZWVuLHN0cm9rZS13aWR0aDo2LjVweDsiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=\
+_All queries together required ≈0 ms (1ms accuracy, total 2 ms)_
+
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+
+The analysis required _2.0 ms_ (including parsing and normalization and the query) within the generation environment.
+
+In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
+Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+
+
+
+
+```json
+{
+  "control-flow": {
+    ".meta": {
+      "timing": 0
+    },
+    "controlFlow": {
+      "returns": [],
+      "entryPoints": [
+        6
+      ],
+      "exitPoints": [
+        "6-exit"
+      ],
+      "breaks": [],
+      "nexts": [],
+      "graph": {
+        "rootVertices": [
+          6,
+          5,
+          "5-condition",
+          "5-exit",
+          0,
+          2,
+          1,
+          "2-exit",
+          "6-exit"
+        ],
+        "vertexInformation": [
+          [
+            6,
+            {
+              "id": 6,
+              "type": "expr",
+              "end": [
+                "6-exit"
+              ]
+            }
+          ],
+          [
+            5,
+            {
+              "id": 5,
+              "type": "stm",
+              "mid": [
+                "5-condition"
+              ],
+              "end": [
+                "5-exit"
+              ]
+            }
+          ],
+          [
+            "5-condition",
+            {
+              "id": "5-condition",
+              "kind": "condition",
+              "type": "mid",
+              "root": 5
+            }
+          ],
+          [
+            "5-exit",
+            {
+              "id": "5-exit",
+              "type": "end",
+              "root": 5
+            }
+          ],
+          [
+            0,
+            {
+              "id": 0,
+              "type": "expr"
+            }
+          ],
+          [
+            2,
+            {
+              "id": 2,
+              "type": "expr",
+              "end": [
+                "2-exit"
+              ]
+            }
+          ],
+          [
+            1,
+            {
+              "id": 1,
+              "type": "expr"
+            }
+          ],
+          [
+            "2-exit",
+            {
+              "id": "2-exit",
+              "type": "end",
+              "root": 2
+            }
+          ],
+          [
+            "6-exit",
+            {
+              "id": "6-exit",
+              "type": "end",
+              "root": 6
+            }
+          ]
+        ],
+        "bbChildren": [],
+        "edgeInformation": [
+          [
+            5,
+            [
+              [
+                6,
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ],
+          [
+            1,
+            [
+              [
+                2,
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ],
+          [
+            "2-exit",
+            [
+              [
+                1,
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ],
+          [
+            "5-condition",
+            [
+              [
+                0,
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ],
+          [
+            2,
+            [
+              [
+                "5-condition",
+                {
+                  "label": 1,
+                  "when": "TRUE",
+                  "caused": 5
+                }
+              ]
+            ]
+          ],
+          [
+            0,
+            [
+              [
+                5,
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ],
+          [
+            "5-exit",
+            [
+              [
+                "2-exit",
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ],
+          [
+            "6-exit",
+            [
+              [
+                "5-exit",
+                {
+                  "label": 0
+                }
+              ]
+            ]
+          ]
+        ],
+        "_mayHaveBasicBlocks": false
+      }
+    }
+  },
+  ".meta": {
+    "timing": 0
+  }
+}
+```
+
+
+
+</details>
+
+
+
+</details>
+
+
+
+
+
+this produces:
+
+
+
+
+
+```mermaid
+flowchart RL
+    n6(["`RExpressionList (6)`"])
+    n5["`RIfThenElse (5)
+#34;if(TRUE) 1 else 2#34;`"]
+    n5-condition[[5-condition]]
+    n5-exit((5-exit))
+    n0(["`RLogical (0)
+#34;TRUE#34;`"])
+    n2(["`RExpressionList (2)
+#34;1#34;`"])
+    n1(["`RNumber (1)
+#34;1#34;`"])
+    n2-exit((2-exit))
+    n6-exit((6-exit))
+    n5 -.->|"FD"| n6
+    n1 -.->|"FD"| n2
+    n2-exit -.->|"FD"| n1
+    n5-condition -.->|"FD"| n0
+    n2 -->|"CD (TRUE)"| n5-condition
+    n0 -.->|"FD"| n5
+    n5-exit -.->|"FD"| n2-exit
+    n6-exit -.->|"FD"| n5-exit
+    style n6 stroke:cyan,stroke-width:6.5px;    style n6-exit stroke:green,stroke-width:6.5px;
+```
+
+
+_(The analysis required _1.7 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+We used the following simplifications: `unique-cf-sets`, `analyze-dead-code`, `remove-dead-code` .
+	)_
+
+
+
+
+
+<details>
+
+<summary style="color:gray">Implementation Details</summary>
+
+Responsible for the execution of the Control-Flow Query query is `executeControlFlowQuery` in [`./src/queries/catalog/control-flow-query/control-flow-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/control-flow-query/control-flow-query-executor.ts).
+
+</details>
 
 
 -----
@@ -2136,11 +3224,11 @@ Responsible for the execution of the Control-Flow Query query is `executeControl
 ### Dataflow Cluster Query
 
 
-This query automatically calculates clusters in flowR's dataflow graph 
-and returns a list of all clusters found. 
+This query automatically calculates clusters in flowR's dataflow graph
+and returns a list of all clusters found.
 Clusters are to be interpreted as literal clusters on the graph traversing
-edges in both directions. From this perspective, 
-the code `x <- 1; x` has one cluster (given that all code is related), 
+edges in both directions. From this perspective,
+the code `x <- 1; x` has one cluster (given that all code is related),
 while the code `x <- 1; y` has two clusters (given that the `y` has no relation to the previous definition).
 
 
@@ -2158,11 +3246,13 @@ while the code `x <- 1; y` has two clusters (given that the `y` has no relation 
 ```
 
 
+(This query can be shortened to `@dataflow-cluster` when used within the REPL command <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span>).
+
 
 
 _Results (prettified and summarized):_
 
-Query: **dataflow-cluster** (0ms)\
+Query: **dataflow-cluster** (1ms)\
 &nbsp;&nbsp;&nbsp;╰ Found 1 cluster\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰  {3, 0, 1, 2} ([marked](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMXt7XCJgIzkxO1JOdW1iZXIjOTM7IDFcbiAgICAgICgxKVxuICAgICAgKjEuNipgXCJ9fVxuICAgIDBbXCJgIzkxO1JTeW1ib2wjOTM7IHhcbiAgICAgICgwKVxuICAgICAgKjEuMSpgXCJdXG4gICAgMltbXCJgIzkxO1JCaW5hcnlPcCM5MzsgIzYwOyM0NTtcbiAgICAgICgyKVxuICAgICAgKjEuMS02KlxuICAgICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46Xy1bXCJgQnVpbHQtSW46XG4jNjA7IzQ1O2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpfLSBzdHJva2U6Z3JheSxmaWxsOmxpZ2h0Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IHhcbiAgICAgICgzKVxuICAgICAgKjEuOSpgXCJdKVxuICAgIDAgLS0+fFwiZGVmaW5lZC1ieVwifCAxXG4gICAgMCAtLT58XCJkZWZpbmVkLWJ5XCJ8IDJcbiAgICAyIC0tPnxcImFyZ3VtZW50XCJ8IDFcbiAgICAyIC0tPnxcInJldHVybnMsIGFyZ3VtZW50XCJ8IDBcbiAgICAyIC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46Xy1cbiAgICBsaW5rU3R5bGUgNCBzdHJva2U6Z3JheTtcbiAgICAzIC0tPnxcInJlYWRzXCJ8IDAiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=))\
 _All queries together required ≈0 ms (1ms accuracy, total 2 ms)_
@@ -2181,7 +3271,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "dataflow-cluster": {
     ".meta": {
-      "timing": 0
+      "timing": 1
     },
     "clusters": [
       {
@@ -2197,7 +3287,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     ]
   },
   ".meta": {
-    "timing": 0
+    "timing": 1
   }
 }
 ```
@@ -2215,7 +3305,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 
 </details>
-    
+
 
 <details><summary style="">Example <code>x <- 1; y</code></summary>
 
@@ -2230,6 +3320,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 ]
 ```
 
+
+(This query can be shortened to `@dataflow-cluster` when used within the REPL command <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span>).
 
 
 
@@ -2295,7 +3387,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 
 </details>
-    
+
 
 Using the example code from above, the following query returns all clusters:
 
@@ -2305,6 +3397,8 @@ Using the example code from above, the following query returns all clusters:
 [ { "type": "dataflow-cluster" } ]
 ```
 
+
+(This query can be shortened to `@dataflow-cluster` when used within the REPL command <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span>).
 
 
 
@@ -2438,13 +3532,17 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 		
 
-<details> 
+
+
+
+
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Dataflow Cluster Query query is `executeDataflowClusterQuery` in [`./src/queries/catalog/cluster-query/cluster-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/cluster-query/cluster-query-executor.ts).
 
-</details>	
+</details>
 
 
 -----
@@ -2464,6 +3562,8 @@ Using the example code `x + 1`, the following query returns the dataflow graph o
 [ { "type": "dataflow" } ]
 ```
 
+
+(This query can be shortened to `@dataflow` when used within the REPL command <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span>).
 
 
 
@@ -2531,15 +3631,14 @@ flowchart LR
     linkStyle 2 stroke:gray;
 ```
 
-	
-
-
-</details>
 
 
 
 </details>
-	
+
+
+
+</details>
 
 
 
@@ -2548,13 +3647,270 @@ flowchart LR
 	
 		
 
-<details> 
+
+
+
+
+
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Dataflow Query query is `executeDataflowQuery` in [`./src/queries/catalog/dataflow-query/dataflow-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/dataflow-query/dataflow-query-executor.ts).
 
-</details>	
+</details>
+
+
+-----
+
+
+### Dataframe Shape Inference Query
+
+
+This query infers all shapes of dataframes within the code. For example, you can use:
+
+
+
+```json
+[ { "type": "df-shape" } ]
+```
+
+
+(This query can be shortened to `@df-shape` when used within the REPL command <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span>).
+
+
+
+_Results (prettified and summarized):_
+
+Query: **df-shape** (2 ms)\
+&nbsp;&nbsp;&nbsp;╰ 7: {"colnames":["a"],"cols":[1,1],"rows":[3,3]}\
+&nbsp;&nbsp;&nbsp;╰ 0: {"colnames":["a"],"cols":[1,1],"rows":[3,3]}\
+&nbsp;&nbsp;&nbsp;╰ 8: {"colnames":["a"],"cols":[1,1],"rows":[3,3]}\
+&nbsp;&nbsp;&nbsp;╰ 10: {"colnames":["a"],"cols":[1,1],"rows":[3,3]}\
+&nbsp;&nbsp;&nbsp;╰ 11: {"colnames":["a"],"cols":[1,1],"rows":[3,3]}\
+&nbsp;&nbsp;&nbsp;╰ 14: {"colnames":["a"],"cols":[1,1],"rows":[0,0]}\
+_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
+
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+
+The analysis required _2.43 ms_ (including parsing and normalization and the query) within the generation environment.
+
+In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
+Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+
+
+
+
+```json
+{
+  "df-shape": {
+    ".meta": {
+      "timing": 2
+    },
+    "domains": [
+      [
+        7,
+        {
+          "colnames": [
+            "a"
+          ],
+          "cols": [
+            1,
+            1
+          ],
+          "rows": [
+            3,
+            3
+          ]
+        }
+      ],
+      [
+        0,
+        {
+          "colnames": [
+            "a"
+          ],
+          "cols": [
+            1,
+            1
+          ],
+          "rows": [
+            3,
+            3
+          ]
+        }
+      ],
+      [
+        8,
+        {
+          "colnames": [
+            "a"
+          ],
+          "cols": [
+            1,
+            1
+          ],
+          "rows": [
+            3,
+            3
+          ]
+        }
+      ],
+      [
+        10,
+        {
+          "colnames": [
+            "a"
+          ],
+          "cols": [
+            1,
+            1
+          ],
+          "rows": [
+            3,
+            3
+          ]
+        }
+      ],
+      [
+        11,
+        {
+          "colnames": [
+            "a"
+          ],
+          "cols": [
+            1,
+            1
+          ],
+          "rows": [
+            3,
+            3
+          ]
+        }
+      ],
+      [
+        14,
+        {
+          "colnames": [
+            "a"
+          ],
+          "cols": [
+            1,
+            1
+          ],
+          "rows": [
+            0,
+            0
+          ]
+        }
+      ]
+    ]
+  },
+  ".meta": {
+    "timing": 2
+  }
+}
+```
+
+
+
+</details>
+
+
+<details> <summary style="color:gray">Original Code</summary>
+
+
+
+
+```r
+x <- data.frame(a=1:3)
+filter(x, FALSE)
+```
+
+<details>
+
+<summary style="color:gray">Dataflow Graph of the R Code</summary>
+
+The analysis required _1.04 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+We encountered no unknown side effects during the analysis.
+
+
+
+```mermaid
+flowchart LR
+    3{{"`#91;RNumber#93; 1
+      (3)
+      *1.19*`"}}
+    4{{"`#91;RNumber#93; 3
+      (4)
+      *1.21*`"}}
+    5[["`#91;RBinaryOp#93; #58;
+      (5)
+      *1.19-21*
+    (3, 4)`"]]
+    6(["`#91;RArgument#93; a
+      (6)
+      *1.17*`"])
+    7[["`#91;RFunctionCall#93; data.frame
+      (7)
+      *1.6-22*
+    (a (6))`"]]
+    0["`#91;RSymbol#93; x
+      (0)
+      *1.1*`"]
+    8[["`#91;RBinaryOp#93; #60;#45;
+      (8)
+      *1.1-22*
+    (0, 7)`"]]
+    10(["`#91;RSymbol#93; x
+      (10)
+      *2.8*`"])
+    12{{"`#91;RLogical#93; FALSE
+      (12)
+      *2.11-15*`"}}
+    %% Environment of 14 [level: 0]:
+    %% Built-in
+    %% 539----------------------------------------
+    %%   x: {**x** (id: 0, type: Unknown, def. @8)}
+    14[["`#91;RFunctionCall#93; filter
+      (14)
+      *2.1-16*
+    (10, 12)`"]]
+    5 -->|"reads, argument"| 3
+    5 -->|"reads, argument"| 4
+    6 -->|"reads"| 5
+    7 -->|"reads, argument"| 6
+    0 -->|"defined-by"| 7
+    0 -->|"defined-by"| 8
+    8 -->|"argument"| 7
+    8 -->|"returns, argument"| 0
+    10 -->|"reads"| 0
+    14 -->|"reads, argument"| 10
+    14 -->|"argument"| 12
+```
+
+
+
+
+</details>
+
+
+
+</details>
+
+
+
+
+
+
+
+<details>
+
+<summary style="color:gray">Implementation Details</summary>
+
+Responsible for the execution of the Dataframe Shape Inference Query query is `executeDfShapeQuery` in [`./src/queries/catalog/df-shape-query/df-shape-query-format.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/df-shape-query/df-shape-query-format.ts).
+
+</details>
 
 
 -----
@@ -2575,11 +3931,13 @@ In other words, if you have a script simply reading: `library(x)`, the following
 ```
 
 
+(This query can be shortened to `@dependencies` when used within the REPL command <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span>).
+
 
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (2 ms)\
+Query: **dependencies** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ Libraries\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ `library`\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Node Id: 3, `x`\
@@ -2599,7 +3957,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "dependencies": {
     ".meta": {
-      "timing": 2
+      "timing": 1
     },
     "libraries": [
       {
@@ -2613,7 +3971,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     "writtenData": []
   },
   ".meta": {
-    "timing": 2
+    "timing": 1
   }
 }
 ```
@@ -2654,6 +4012,8 @@ The following query returns the dependencies of the script.
 [ { "type": "dependencies" } ]
 ```
 
+
+(This query can be shortened to `@dependencies` when used within the REPL command <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span>).
 
  <details> <summary style="color:gray">Show Results</summary>
 
@@ -2781,6 +4141,8 @@ In the meantime we offer several properties to overwrite the default behavior (e
 ```
 
 
+
+
  <details> <summary style="color:gray">Show Results</summary>
 
 _Results (prettified and summarized):_
@@ -2837,15 +4199,15 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 
 Here, `resolveValue` tells the dependency query to resolve the value of this argument in case it is not a constant.
-		
 
-<details> 
+
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Dependencies Query query is `executeDependenciesQuery` in [`./src/queries/catalog/dependencies-query/dependencies-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/dependencies-query/dependencies-query-executor.ts).
 
-</details>	
+</details>
 
 
 -----
@@ -2878,6 +4240,8 @@ the following query returns that the first assignment happens always before the 
   }
 ]
 ```
+
+
 
 
 
@@ -2977,15 +4341,14 @@ flowchart LR
     linkStyle 9 stroke:gray;
 ```
 
-	
-
-
-</details>
 
 
 
 </details>
-	
+
+
+
+</details>
 
 
 
@@ -2994,13 +4357,18 @@ flowchart LR
 	
 		
 
-<details> 
+
+
+
+
+
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Happens-Before Query query is `executeSearch` in [`./src/queries/catalog/happens-before-query/happens-before-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/happens-before-query/happens-before-query-executor.ts).
 
-</details>	
+</details>
 
 
 -----
@@ -3009,7 +4377,7 @@ Responsible for the execution of the Happens-Before Query query is `executeSearc
 ### Id-Map Query
 
 
-This query provides access to all nodes in the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized%20AST) as a mapping from their id to the node itself. 
+This query provides access to all nodes in the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized%20AST) as a mapping from their id to the node itself.
 
 Using the example code `x + 1`, the following query returns all nodes from the code:
 
@@ -3019,6 +4387,8 @@ Using the example code `x + 1`, the following query returns all nodes from the c
 [ { "type": "id-map" } ]
 ```
 
+
+(This query can be shortened to `@id-map` when used within the REPL command <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span>).
 
 
 
@@ -3086,15 +4456,14 @@ flowchart LR
     linkStyle 2 stroke:gray;
 ```
 
-	
-
-
-</details>
 
 
 
 </details>
-	
+
+
+
+</details>
 
 
 
@@ -3103,13 +4472,18 @@ flowchart LR
 	
 		
 
-<details> 
+
+
+
+
+
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Id-Map Query query is `executeIdMapQuery` in [`./src/queries/catalog/id-map-query/id-map-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/id-map-query/id-map-query-executor.ts).
 
-</details>	
+</details>
 
 
 -----
@@ -3128,9 +4502,9 @@ x <- 1
 x
 ```
 
- 
+
 For this, we use the criterion `2@x` (which is the first use of `x` in the second line).
- 
+
 
 
 
@@ -3142,6 +4516,8 @@ For this, we use the criterion `2@x` (which is the first use of `x` in the secon
   }
 ]
 ```
+
+
 
 
 
@@ -3196,21 +4572,146 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 
 	
 
-In this simple scenario, the _lineage_ is equivalent to the slice (and in-fact the complete code). 
-In general the lineage is smaller and makes no guarantees on executability. 
+
+
+
+In this simple scenario, the _lineage_ is equivalent to the slice (and in-fact the complete code).
+In general the lineage is smaller and makes no guarantees on executability.
 It is just a quick and neither complete nor sound way to get information on where the variable originates from.
 
 This query replaces the old [`request-lineage`](https://github.com/flowr-analysis/flowr/wiki/Interface#message-request-lineage) message.
 
-		
 
-<details> 
+
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Lineage Query query is `executeLineageQuery` in [`./src/queries/catalog/lineage-query/lineage-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/lineage-query/lineage-query-executor.ts).
 
-</details>	
+</details>
+
+
+-----
+
+
+### Linter Query
+
+
+This query lints a given R script for common issues, such as missing files, unused variables, and more.
+
+In other words, if you have a script simply reading: `read.csv("i_do_not_exist.csv")`, the following query returns all smells detected:
+
+
+
+```json
+[ { "type": "linter" } ]
+```
+
+
+
+
+_Results (prettified and summarized):_
+
+Query: **linter** (3 ms)\
+&nbsp;&nbsp;&nbsp;╰ deprecated-functions:\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalRelevant":1,"totalNotDeprecated":1,"searchTimeMs":1,"processTimeMs":0}</code>\
+&nbsp;&nbsp;&nbsp;╰ file-path-validity:\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ definitely:\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `i_do_not_exist.csv` at 1.1-30\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0,"searchTimeMs":1,"processTimeMs":0}</code>\
+&nbsp;&nbsp;&nbsp;╰ absolute-file-paths:\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":1,"processTimeMs":0}</code>\
+_All queries together required ≈3 ms (1ms accuracy, total 4 ms)_
+
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+
+The analysis required _3.1 ms_ (including parsing and normalization and the query) within the generation environment.
+
+In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
+Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+
+
+
+
+```json
+{
+  "linter": {
+    "results": {
+      "deprecated-functions": {
+        "results": [],
+        ".meta": {
+          "totalRelevant": 1,
+          "totalNotDeprecated": 1,
+          "searchTimeMs": 1,
+          "processTimeMs": 0
+        }
+      },
+      "file-path-validity": {
+        "results": [
+          {
+            "range": [
+              1,
+              1,
+              1,
+              30
+            ],
+            "filePath": "i_do_not_exist.csv",
+            "certainty": "definitely"
+          }
+        ],
+        ".meta": {
+          "totalReads": 1,
+          "totalUnknown": 0,
+          "totalWritesBeforeAlways": 0,
+          "totalValid": 0,
+          "searchTimeMs": 1,
+          "processTimeMs": 0
+        }
+      },
+      "absolute-file-paths": {
+        "results": [],
+        ".meta": {
+          "totalConsidered": 1,
+          "totalUnknown": 0,
+          "searchTimeMs": 1,
+          "processTimeMs": 0
+        }
+      }
+    },
+    ".meta": {
+      "timing": 3
+    }
+  },
+  ".meta": {
+    "timing": 3
+  }
+}
+```
+
+
+
+</details>
+
+
+
+
+
+
+
+
+
+You can also configure which rules to apply and what settings to use for these rules.
+We welcome any feedback and suggestions for new rules on this (consider opening a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose)).
+
+
+<details>
+
+<summary style="color:gray">Implementation Details</summary>
+
+Responsible for the execution of the Linter Query query is `executeDependenciesQuery` in [`./src/queries/catalog/linter-query/linter-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/linter-query/linter-query-executor.ts).
+
+</details>
 
 
 -----
@@ -3352,7 +4853,7 @@ Responsible for the execution of the Linter Query query is `executeDependenciesQ
 
 
 A query like the [Id-Map Query](#id-map-query) query can return a huge result, especially for larger scripts.
-If you are not interested in all of the information contained within the full map, you can use the location map query to get a simple mapping of ids to their location in the source file.   
+If you are not interested in all of the information contained within the full map, you can use the location map query to get a simple mapping of ids to their location in the source file.
 
 Consider you have the following code:
 
@@ -3372,6 +4873,8 @@ The following query then gives you the aforementioned mapping:
 [ { "type": "location-map" } ]
 ```
 
+
+(This query can be shortened to `@location-map` when used within the REPL command <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span>).
 
 
 
@@ -3516,7 +5019,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 0
+    "timing": 1
   }
 }
 ```
@@ -3535,15 +5038,19 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 
 All locations are given as a <a href="https://github.com/flowr-analysis/flowr/tree/main//src/util/range.ts#L28"><code><span title="Describe the start and end source position of an element.">SourceRange</span></code></a> paired with the file id in the format `[file-id, [start-line, start-column, end-line, end-column]]`.	
 
-		
 
-<details> 
+
+All locations are given as a [<code><span title="Describe the start and end source position of an element.">SourceRange</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/util/range.ts#L28) paired with the file id in the format `[file-id, [start-line, start-column, end-line, end-column]]`.
+
+
+
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Location Map Query query is `executeLocationMapQuery` in [`./src/queries/catalog/location-map-query/location-map-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/location-map-query/location-map-query-executor.ts).
 
-</details>	
+</details>
 
 
 -----
@@ -3564,6 +5071,8 @@ Using the example code `x + 1`, the following query returns the normalized AST o
 ```
 
 
+(This query can be shortened to `@normalized-ast` when used within the REPL command <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span>).
+
 
 
 _Results (prettified and summarized):_
@@ -3583,7 +5092,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 _As the code is pretty long, we inhibit pretty printing and syntax highlighting (JSON, hiding built-in):_
 
 ```text
-{"normalized-ast":{".meta":{"timing":0},"normalized":{"ast":{"type":"RExpressionList","children":[{"type":"RBinaryOp","location":[1,3,1,3],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,5,1,5],"lexeme":"1","info":{"fullRange":[1,5,1,5],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[1,1,1,5],"additionalTokens":[],"id":2,"parent":3,"nesting":0,"index":0,"role":"expr-list-child"}}],"info":{"additionalTokens":[],"id":3,"nesting":0,"role":"root","index":0}},"idMap":{"size":7,"k2v":[[0,{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],[1,{"location":[1,5,1,5],"lexeme":"1","info":{"fullRange":[1,5,1,5],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[2,{"type":"RBinaryOp","location":[1,3,1,3],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,5,1,5],"lexeme":"1","info":{"fullRange":[1,5,1,5],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[1,1,1,5],"additionalTokens":[],"id":2,"parent":3,"nesting":0,"index":0,"role":"expr-list-child"}}],[3,{"type":"RExpressionList","children":[{"type":"RBinaryOp","location":[1,3,1,3],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,5,1,5],"lexeme":"1","info":{"fullRange":[1,5,1,5],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[1,1,1,5],"additionalTokens":[],"id":2,"parent":3,"nesting":0,"index":0,"role":"expr-list-child"}}],"info":{"additionalTokens":[],"id":3,"nesting":0,"role":"root","index":0}}],["2-arg",{"type":"RBinaryOp","location":[1,3,1,3],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,5,1,5],"lexeme":"1","info":{"fullRange":[1,5,1,5],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[1,1,1,5],"additionalTokens":[],"id":2,"parent":3,"nesting":0,"index":0,"role":"expr-list-child"}}],["0-arg",{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],["1-arg",{"location":[1,5,1,5],"lexeme":"1","info":{"fullRange":[1,5,1,5],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}]],"v2k":{}},".meta":{"timing":0}}},".meta":{"timing":0}}
+{"normalized-ast":{".meta":{"timing":0},"normalized":{"ast":{"type":"RExpressionList","children":[{"type":"RBinaryOp","location":[1,3,1,3],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,5,1,5],"lexeme":"1","info":{"fullRange":[1,5,1,5],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[1,1,1,5],"additionalTokens":[],"id":2,"parent":3,"nesting":0,"index":0,"role":"expr-list-child"}}],"info":{"additionalTokens":[],"id":3,"nesting":0,"role":"root","index":0}},"idMap":{"size":7,"k2v":[[0,{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],[1,{"location":[1,5,1,5],"lexeme":"1","info":{"fullRange":[1,5,1,5],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[2,{"type":"RBinaryOp","location":[1,3,1,3],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,5,1,5],"lexeme":"1","info":{"fullRange":[1,5,1,5],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[1,1,1,5],"additionalTokens":[],"id":2,"parent":3,"nesting":0,"index":0,"role":"expr-list-child"}}],[3,{"type":"RExpressionList","children":[{"type":"RBinaryOp","location":[1,3,1,3],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,5,1,5],"lexeme":"1","info":{"fullRange":[1,5,1,5],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[1,1,1,5],"additionalTokens":[],"id":2,"parent":3,"nesting":0,"index":0,"role":"expr-list-child"}}],"info":{"additionalTokens":[],"id":3,"nesting":0,"role":"root","index":0}}],["2-arg",{"type":"RBinaryOp","location":[1,3,1,3],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,5,1,5],"lexeme":"1","info":{"fullRange":[1,5,1,5],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[1,1,1,5],"additionalTokens":[],"id":2,"parent":3,"nesting":0,"index":0,"role":"expr-list-child"}}],["0-arg",{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],["1-arg",{"location":[1,5,1,5],"lexeme":"1","info":{"fullRange":[1,5,1,5],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}]],"v2k":{}},".meta":{"timing":1}}},".meta":{"timing":0}}
 ```
 
 
@@ -3630,15 +5139,14 @@ flowchart LR
     linkStyle 2 stroke:gray;
 ```
 
-	
-
-
-</details>
 
 
 
 </details>
-	
+
+
+
+</details>
 
 
 
@@ -3647,13 +5155,169 @@ flowchart LR
 	
 		
 
-<details> 
+
+
+
+
+
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Normalized AST Query query is `executeNormalizedAstQuery` in [`./src/queries/catalog/normalized-ast-query/normalized-ast-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/normalized-ast-query/normalized-ast-query-executor.ts).
 
-</details>	
+</details>
+
+
+-----
+
+
+### Origin Query
+
+
+With this query you can use flowR's origin tracking to find out the read origins of a variable,
+the functions called by a call, and more.
+
+Using the example code `x <- 1
+print(x)` (with the `print(x)` in the second line), the following query returns the origins of `x` in the code:
+
+
+
+```json
+[
+  {
+    "type": "origin",
+    "criterion": "2@x"
+  }
+]
+```
+
+
+
+
+_Results (prettified and summarized):_
+
+Query: **origin** (0 ms)\
+&nbsp;&nbsp;&nbsp;╰ Origins for {2@x}\
+&nbsp;&nbsp;&nbsp;	╰ {"type":0,"id":0}\
+_All queries together required ≈1 ms (1ms accuracy, total 2 ms)_
+
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+
+The analysis required _1.9 ms_ (including parsing and normalization and the query) within the generation environment.
+
+In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
+Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+
+
+
+
+```json
+{
+  "origin": {
+    ".meta": {
+      "timing": 0
+    },
+    "results": {
+      "2@x": [
+        {
+          "type": 0,
+          "id": 0
+        }
+      ]
+    }
+  },
+  ".meta": {
+    "timing": 1
+  }
+}
+```
+
+
+
+</details>
+
+
+<details> <summary style="color:gray">Original Code</summary>
+
+
+
+
+```r
+x <- 1
+print(x)
+```
+
+<details>
+
+<summary style="color:gray">Dataflow Graph of the R Code</summary>
+
+The analysis required _1.5 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
+
+
+
+```mermaid
+flowchart LR
+    1{{"`#91;RNumber#93; 1
+      (1)
+      *1.6*`"}}
+    0["`#91;RSymbol#93; x
+      (0)
+      *1.1*`"]
+    2[["`#91;RBinaryOp#93; #60;#45;
+      (2)
+      *1.1-6*
+    (0, 1)`"]]
+    built-in:_-["`Built-In:
+#60;#45;`"]
+    style built-in:_- stroke:gray,fill:lightgray,stroke-width:2px,opacity:.8;
+    4(["`#91;RSymbol#93; x
+      (4)
+      *2.7*`"])
+    6[["`#91;RFunctionCall#93; print
+      (6)
+      *2.1-8*
+    (4)`"]]
+    built-in:print["`Built-In:
+print`"]
+    style built-in:print stroke:gray,fill:lightgray,stroke-width:2px,opacity:.8;
+    0 -->|"defined-by"| 1
+    0 -->|"defined-by"| 2
+    2 -->|"argument"| 1
+    2 -->|"returns, argument"| 0
+    2 -.->|"reads, calls"| built-in:_-
+    linkStyle 4 stroke:gray;
+    4 -->|"reads"| 0
+    6 -->|"reads, returns, argument"| 4
+    6 -.->|"reads, calls"| built-in:print
+    linkStyle 7 stroke:gray;
+```
+
+
+
+
+</details>
+
+
+
+</details>
+
+
+
+
+
+
+
+
+
+<details>
+
+<summary style="color:gray">Implementation Details</summary>
+
+Responsible for the execution of the Origin Query query is `executeSearch` in [`./src/queries/catalog/origin-query/origin-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/origin-query/origin-query-executor.ts).
+
+</details>
 
 
 -----
@@ -3824,6 +5488,8 @@ Currently, this is only the list of file paths included.
 ```
 
 
+(This query can be shortened to `@project` when used within the REPL command <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span>).
+
 
 
 _Results (prettified and summarized):_
@@ -3903,15 +5569,14 @@ flowchart LR
     linkStyle 2 stroke:gray;
 ```
 
-	
-
-
-</details>
 
 
 
 </details>
-	
+
+
+
+</details>
 
 
 
@@ -3920,13 +5585,18 @@ flowchart LR
 	
 		
 
-<details> 
+
+
+
+
+
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Project Query query is `executeDataflowQuery` in [`./src/queries/catalog/project-query/project-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/project-query/project-query-executor.ts).
 
-</details>	
+</details>
 
 
 -----
@@ -3953,6 +5623,8 @@ print(x)` (with the `print(x)` in the second line), the following query returns 
   }
 ]
 ```
+
+
 
 
 
@@ -4080,15 +5752,14 @@ print`"]
     linkStyle 7 stroke:gray;
 ```
 
-	
-
-
-</details>
 
 
 
 </details>
-	
+
+
+
+</details>
 
 
 
@@ -4097,13 +5768,18 @@ print`"]
 	
 		
 
-<details> 
+
+
+
+
+
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Resolve Value Query query is `executeSearch` in [`./src/queries/catalog/resolve-value-query/resolve-value-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/resolve-value-query/resolve-value-query-executor.ts).
 
-</details>	
+</details>
 
 
 -----
@@ -4112,7 +5788,7 @@ Responsible for the execution of the Resolve Value Query query is `executeSearch
 ### Search Query
 
 
-With this query you can use the [Search API](https://github.com/flowr-analysis/flowr/wiki/Search%20API) to conduct searches on the flowR analysis result. 
+With this query you can use the [Search API](https://github.com/flowr-analysis/flowr/wiki/Search%20API) to conduct searches on the flowR analysis result.
 
 Using the example code `x + 1`, the following query returns all uses of 'x' in the code:
 
@@ -4145,6 +5821,8 @@ Using the example code `x + 1`, the following query returns all uses of 'x' in t
   }
 ]
 ```
+
+
 
 
 
@@ -4249,15 +5927,14 @@ flowchart LR
     linkStyle 2 stroke:gray;
 ```
 
-	
-
-
-</details>
 
 
 
 </details>
-	
+
+
+
+</details>
 
 
 
@@ -4266,13 +5943,18 @@ flowchart LR
 	
 		
 
-<details> 
+
+
+
+
+
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Search Query query is `executeSearch` in [`./src/queries/catalog/search-query/search-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/search-query/search-query-executor.ts).
 
-</details>	
+</details>
 
 
 -----
@@ -4282,7 +5964,7 @@ Responsible for the execution of the Search Query query is `executeSearch` in [`
 
 
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
-return of the call) that you want to slice the dataflow graph for. 
+return of the call) that you want to slice the dataflow graph for.
 Given this, the slice is essentially the subpart of the program that may influence the value of the variables you are interested in.
 To specify a variable of interest, you have to present flowR with a [slicing criterion](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) (or, respectively, an array of them).
 
@@ -4313,12 +5995,14 @@ If you are interested in the parts required for the use of `x` in the last line,
 
 
 
+
+
 _Results (prettified and summarized):_
 
 Query: **static-slice** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ Slice for {3@x} \
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Code (newline as <code>&#92;n</code>): <code>x <- 1\\nx</code>\
-_All queries together required ≈2 ms (1ms accuracy, total 4 ms)_
+_All queries together required ≈1 ms (1ms accuracy, total 4 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
@@ -4361,14 +6045,14 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "code": "x <- 1\nx",
           "linesWithAutoSelected": 0,
           ".meta": {
-            "timing": 1
+            "timing": 0
           }
         }
       }
     }
   },
   ".meta": {
-    "timing": 2
+    "timing": 1
   }
 }
 ```
@@ -4409,9 +6093,11 @@ you can use the `noReconstruction` flag.
 
 
 
+
+
 _Results (prettified and summarized):_
 
-Query: **static-slice** (0 ms)\
+Query: **static-slice** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ Slice for {3@x} no reconstruction\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Id List: {<span title="[6,0,1,2,'built-in:<-']">6, 0, 1, 2, built-in:<-, </span>}\
 _All queries together required ≈0 ms (1ms accuracy, total 2 ms)_
@@ -4430,7 +6116,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "static-slice": {
     ".meta": {
-      "timing": 0
+      "timing": 1
     },
     "results": {
       "{\"type\":\"static-slice\",\"criteria\":[\"3@x\"],\"noReconstruction\":true}": {
@@ -4450,14 +6136,14 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             }
           ],
           ".meta": {
-            "timing": 0
+            "timing": 1
           }
         }
       }
     }
   },
   ".meta": {
-    "timing": 0
+    "timing": 1
   }
 }
 ```
@@ -4475,19 +6161,19 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 
 </details>
-    
+
 
 You can disable [magic comments](https://github.com/flowr-analysis/flowr/wiki/Interface#slice-magic-comments) using the `noMagicComments` flag.
 This query replaces the old [`request-slice`](https://github.com/flowr-analysis/flowr/wiki/Interface#message-request-slice) message.
-		
 
-<details> 
+
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Static Slice Query query is `executeStaticSliceQuery` in [`./src/queries/catalog/static-slice-query/static-slice-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/static-slice-query/static-slice-query-executor.ts).
 
-</details>	
+</details>
 
 
 
@@ -4528,6 +6214,8 @@ assigned to the kind `visualize` and the subkind `text` (using the example code 
   }
 ]
 ```
+
+
 
 
 
@@ -4615,11 +6303,13 @@ Of course, in this specific scenario, the following query would be equivalent:
 ```
 
 
+
+
  <details> <summary style="color:gray">Show Results</summary>
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (0 ms)\
+Query: **call-context** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **visualize**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text**: _`mean`_ (L.9), _`print`_ (L.10), _`mean`_ (L.19), _`print`_ (L.19)\
 _All queries together required ≈0 ms (1ms accuracy, total 7 ms)_
@@ -4638,7 +6328,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "call-context": {
     ".meta": {
-      "timing": 0
+      "timing": 1
     },
     "kinds": {
       "visualize": {
@@ -4666,7 +6356,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 0
+    "timing": 1
   }
 }
 ```
@@ -4717,9 +6407,11 @@ want to resolve to a local definition:
 
 
 
+
+
 _Results (prettified and summarized):_
 
-Query: **call-context** (0 ms)\
+Query: **call-context** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **visualize**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text**: _`mean`_ (L.9) with 1 call (UNKNOWN: built-in (info: undefined)), _`mean`_ (L.19) with 1 call (UNKNOWN: built-in (info: undefined))\
 _All queries together required ≈0 ms (1ms accuracy, total 6 ms)_
@@ -4738,7 +6430,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "call-context": {
     ".meta": {
-      "timing": 0
+      "timing": 1
     },
     "kinds": {
       "visualize": {
@@ -4764,7 +6456,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 0
+    "timing": 1
   }
 }
 ```
@@ -4783,15 +6475,15 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 
 Now, the results no longer contain calls to `plot` that are not defined locally.
 
-		
 
-<details> 
+
+<details>
 
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Compound Query query is `executeCompoundQueries` in [`./src/queries/virtual-query/compound-query.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/virtual-query/compound-query.ts).
 
-</details>	
+</details>
 
 
 

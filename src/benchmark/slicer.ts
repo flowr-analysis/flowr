@@ -18,11 +18,13 @@ import type {
 	BenchmarkMemoryMeasurement,
 	CommonSlicerMeasurements,
 	ElapsedTime,
+	PerNodeStatsAbsint,
 	PerSliceMeasurements,
 	PerSliceStats,
-	SlicerStats
+	SlicerStats,
+	SlicerStatsAbsint
 } from './stats/stats';
-import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
 import type { DEFAULT_SLICING_PIPELINE, TREE_SITTER_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import { createSlicePipeline } from '../core/steps/pipeline/default-pipelines';
@@ -35,7 +37,7 @@ import type { SlicingCriteriaFilter } from '../slicing/criterion/collect-all';
 import { collectAllSlicingCriteria } from '../slicing/criterion/collect-all';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
-import { getSizeOfDfGraph } from './stats/size-of';
+import { getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
 import type { AutoSelectPredicate } from '../reconstruct/auto-select/auto-select-defaults';
 import type { KnownParser, KnownParserName, KnownParserType } from '../r-bridge/parser';
 import type { SyntaxNode, Tree } from 'web-tree-sitter';
@@ -48,6 +50,13 @@ import { isParentContainerIndex } from '../dataflow/graph/vertex';
 import { equidistantSampling } from '../util/collections/arrays';
 import type { FlowrConfigOptions } from '../config';
 import { getEngineConfig } from '../config';
+import { performDataFrameAbsint } from '../abstract-interpretation/data-frame/absint-visitor';
+import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
+import { extractCfg } from '../control-flow/extract-cfg';
+import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import type { AbstractInterpretationInfo } from '../abstract-interpretation/data-frame/absint-info';
+import type { IntervalDomain } from '../abstract-interpretation/data-frame/domain';
+import { ColNamesTop, DataFrameBottom, DataFrameTop, equalDataFrameDomain, equalInterval, IntervalBottom, IntervalTop } from '../abstract-interpretation/data-frame/domain';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -106,10 +115,12 @@ export class BenchmarkSlicer {
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>();
 	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>();
 	private readonly parserName: KnownParserName;
+	private config:              FlowrConfigOptions | undefined;
 	private stats:               SlicerStats | undefined;
 	private loadedXml:           KnownParserType | undefined;
 	private dataflow:            DataflowInformation | undefined;
 	private normalizedAst:       NormalizedAst | undefined;
+	private controlFlow:         ControlFlowInformation | undefined;
 	private totalStopwatch:      IStoppableStopwatch;
 	private finished = false;
 	// Yes, this is unclean, but we know that we assign the executor during the initialization and this saves us from having to check for nullability every time
@@ -128,6 +139,7 @@ export class BenchmarkSlicer {
 	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfigOptions,
 		autoSelectIf?: AutoSelectPredicate, threshold?: number) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice');
+		this.config = config;
 
 		// we know these are in sync so we just cast to one of them
 		this.parser = await this.commonMeasurements.measure(
@@ -316,7 +328,6 @@ export class BenchmarkSlicer {
 
 		const measurements = new Measurements<PerSliceMeasurements>();
 		const stats: PerSliceStats = {
-			 
 			measurements:                undefined as never,
 			slicingCriteria:             [],
 			numberOfDataflowNodesSliced: 0,
@@ -362,6 +373,120 @@ export class BenchmarkSlicer {
 		};
 	}
 
+	/**
+	 * Extract the control flow graph using {@link extractCFG}
+	 */
+	public extractCFG(): void {
+		benchmarkLogger.trace('try to extract the control flow graph');
+
+		this.guardActive();
+		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined for control flow extraction');
+		guard(this.dataflow !== undefined, 'dataflow should be defined for control flow extraction');
+		guard(this.config !== undefined, 'config should be defined for control flow extraction');
+
+		const ast = this.normalizedAst;
+		const dfg = this.dataflow.graph;
+		const config = this.config;
+
+		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, config, dfg));
+	}
+
+	/**
+	 * Perform abstract interpretation of data frames using {@link performDataFrameAbsint}
+	 *
+	 * @returns The statistics of the abstract iterpretation
+	 */
+	public abstractIntepretation(): SlicerStatsAbsint {
+		benchmarkLogger.trace('try to perform abstract interpretation for data frames');
+
+		guard(this.stats !== undefined && !this.finished, 'need to call init before, and can not do after finish!');
+		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined for abstract interpretation');
+		guard(this.dataflow !== undefined, 'dataflow should be defined for abstract interpretation');
+		guard(this.controlFlow !== undefined, 'controlFlow should be defined for abstract interpretation');
+
+		const ast = this.normalizedAst;
+		const dfg = this.dataflow.graph;
+		const cfinfo = this.controlFlow;
+
+		const stats: SlicerStatsAbsint = {
+			numberOfDataFrameFiles:    0,
+			numberOfNonDataFrameFiles: 0,
+			numberOfResultConstraints: 0,
+			numberOfResultingValues:   0,
+			numberOfResultingTop:      0,
+			numberOfResultingBottom:   0,
+			numberOfEmptyNodes:        0,
+			numberOfOperationNodes:    0,
+			numberOfValueNodes:        0,
+			sizeOfInfo:                0,
+			perNodeStats:              new Map()
+		};
+
+		const result = this.measureSimpleStep('perform abstract interpretation', () => performDataFrameAbsint(cfinfo, dfg, ast));
+		stats.numberOfResultConstraints = result.size;
+
+		for(const value of result.values()) {
+			if(equalDataFrameDomain(value, DataFrameTop)) {
+				stats.numberOfResultingTop++;
+			} else if(equalDataFrameDomain(value, DataFrameBottom)) {
+				stats.numberOfResultingBottom++;
+			} else {
+				stats.numberOfResultingValues++;
+			}
+		}
+
+		visitAst(this.normalizedAst.ast, (node: RNode<ParentInformation & AbstractInterpretationInfo>) => {
+			if(node.info.dataFrame === undefined) {
+				return;
+			}
+			stats.sizeOfInfo += safeSizeOf([node.info.dataFrame]);
+
+			const expression = node.info.dataFrame?.type === 'expression' ? node.info.dataFrame : undefined;
+			const value = node.info.dataFrame.domain?.get(node.info.id);
+
+			// Only store per-node information for nodes representing expressions or nodes with abstract values
+			if(expression === undefined && value === undefined) {
+				stats.numberOfEmptyNodes++;
+				return;
+			}
+			const nodeStats: PerNodeStatsAbsint = {
+				numberOfEntries: node.info.dataFrame?.domain?.size ?? 0
+			};
+			if(expression !== undefined) {
+				nodeStats.mappedOperations = expression.operations.map(op => op.operation);
+				stats.numberOfOperationNodes++;
+			}
+			if(value !== undefined) {
+				nodeStats.inferredColNames = value.colnames === ColNamesTop ? 'top' : value.colnames.length;
+				nodeStats.inferredColCount = this.getInferredSize(value.cols);
+				nodeStats.inferredRowCount = this.getInferredSize(value.rows);
+				nodeStats.approxRangeColCount = value.cols === IntervalBottom ? 0 : value.cols[1] - value.cols[0];
+				nodeStats.approxRangeRowCount = value.rows === IntervalBottom ? 0 : value.rows[1] - value.rows[0];
+				stats.numberOfValueNodes++;
+			}
+			stats.perNodeStats.set(node.info.id, nodeStats);
+		});
+		if(stats.numberOfOperationNodes > 0) {
+			stats.numberOfDataFrameFiles = 1;
+		} else {
+			stats.numberOfNonDataFrameFiles = 1;
+		}
+		this.stats.absint = stats;
+
+		return stats;
+	}
+
+	private getInferredSize(value: IntervalDomain): number | 'bottom' | 'infinite' | 'top' {
+		if(equalInterval(value, IntervalTop)) {
+			return 'top';
+		} else if(value === IntervalBottom) {
+			return 'bottom';
+		} else if(!isFinite(value[1])) {
+			return 'infinite';
+		}
+		return Math.floor((value[0] + value[1]) / 2);
+	}
+
 	/** Bridging the gap between the new internal and the old names for the benchmarking */
 	private async measureCommonStep<Step extends PipelineStepNames<SupportedPipelines>>(
 		expectedStep: Step,
@@ -379,6 +504,24 @@ export class BenchmarkSlicer {
 			buffs:    memoryEnd.arrayBuffers - memoryInit.arrayBuffers
 		});
 		return result as PipelineStepOutputWithName<SupportedPipelines, Step>;
+	}
+
+	private measureSimpleStep<Out>(
+		keyToMeasure: CommonSlicerMeasurements,
+		measurement: () => Out
+	): Out {
+		const memoryInit = process.memoryUsage();
+		const result = this.commonMeasurements.measure(
+			keyToMeasure, measurement
+		);
+		const memoryEnd = process.memoryUsage();
+		this.deltas.set(keyToMeasure, {
+			heap:     memoryEnd.heapUsed - memoryInit.heapUsed,
+			rss:      memoryEnd.rss - memoryInit.rss,
+			external: memoryEnd.external - memoryInit.external,
+			buffs:    memoryEnd.arrayBuffers - memoryInit.arrayBuffers
+		});
+		return result;
 	}
 
 	private async measureSliceStep<Step extends PipelineStepNames<SupportedPipelines>>(
@@ -461,6 +604,9 @@ export class BenchmarkSlicer {
 		const retrieveTime = Number(this.stats.commonMeasurements.get('retrieve AST from R code'));
 		const normalizeTime = Number(this.stats.commonMeasurements.get('normalize R AST'));
 		const dataflowTime = Number(this.stats.commonMeasurements.get('produce dataflow information'));
+		const controlFlowTime = Number(this.stats.commonMeasurements.get('extract control flow graph'));
+		const absintTime = Number(this.stats.commonMeasurements.get('perform abstract interpretation'));
+
 		this.stats.retrieveTimePerToken = {
 			raw:        retrieveTime / this.stats.input.numberOfRTokens,
 			normalized: retrieveTime / this.stats.input.numberOfNormalizedTokens
@@ -473,10 +619,19 @@ export class BenchmarkSlicer {
 			raw:        dataflowTime / this.stats.input.numberOfRTokens,
 			normalized: dataflowTime / this.stats.input.numberOfNormalizedTokens
 		};
-		this.stats.totalCommonTimePerToken= {
+		this.stats.totalCommonTimePerToken = {
 			raw:        (retrieveTime + normalizeTime + dataflowTime) / this.stats.input.numberOfRTokens,
 			normalized: (retrieveTime + normalizeTime + dataflowTime) / this.stats.input.numberOfNormalizedTokens
 		};
+		this.stats.controlFlowTimePerToken = !isNaN(controlFlowTime) ? {
+			raw:        controlFlowTime / this.stats.input.numberOfRTokens,
+			normalized: controlFlowTime / this.stats.input.numberOfNormalizedTokens,
+		} : undefined;
+		this.stats.absintTimePerToken = !isNaN(absintTime) ? {
+			raw:        absintTime / this.stats.input.numberOfRTokens,
+			normalized: absintTime / this.stats.input.numberOfNormalizedTokens,
+		} : undefined;
+
 		return {
 			stats:     this.stats,
 			parse:     typeof this.loadedXml === 'string' ? this.loadedXml : JSON.stringify(this.loadedXml),

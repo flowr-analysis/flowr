@@ -2,13 +2,15 @@ import { afterAll, beforeAll, describe } from 'vitest';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { ColNamesTop, DataFrameTop, IntervalTop } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { amendConfig, defaultConfigOptions } from '../../../../src/config';
+import { setSourceProvider } from '../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
+import { requestProviderFromFile, requestProviderFromText } from '../../../../src/r-bridge/retriever';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { withShell } from '../../_helper/shell';
 import type { DataFrameTestOptions } from './data-frame';
 import { assertDataFrameDomain, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomainAgainstReal } from './data-frame';
 
 describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
-	const skipDplyr = true;
+	const skipLibraries = true;
 
 	function testDataFrameDomain(
 		code: string,
@@ -18,11 +20,35 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 		testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]));
 	}
 
+	function testDataFrameDomainWithSource(
+		fileArg: string, textArg: string,
+		getCode: (arg: string) => string,
+		criteria: ([SingleSlicingCriterion, DataFrameDomain] | [SingleSlicingCriterion, DataFrameDomain, Partial<DataFrameTestOptions>])[]
+	) {
+		assertDataFrameDomain(shell, getCode(fileArg), criteria.map(entry => [entry[0], entry[1]]));
+		testDataFrameDomain(getCode(textArg), criteria);
+	}
+
+	const sources = {
+		'a.csv': 'id,name,"score"\n1,"A",95\n2,"B",80\n4,"A",85',
+		'b.csv': 'id,name,\'score\'\n1,\'A\',95\n2,\'B\',80\n4,\'A\',85',
+		'c.csv': '# this is a comment :D\n\n,"id,number","""unique"" name" #this is a comment\n\n"1",1,6\n\n"2",2,7\n\n"3",3,8\n\n"4",4,9\n\n"5",5,10\n',
+		'd.csv': '1;3,5;banana\n2;7,8;apple\n3;4,2;peach\n4;1,9;grape\n',
+		'e.csv': 'first last     state phone\nJohn  Smith    WA    418-Y11-4111\nMary  Hartford CA    319-Z19-4341\nEvan  Nolan    IL    219-532-c301\n',
+		'f.csv': 'name\tname\tstate\tphone\nJohn\tSmith\tWA\t418-Y11-4111\nMary\tHartford\tCA\t319-Z19-4341\nEvan\tNolan\tIL\t219-532-c301'
+	} as const satisfies Readonly<{[path: string]: string}>;
+
+	const getFileContent = (source: keyof typeof sources) => {
+		return sources[source].replaceAll('\n', '\\n').replaceAll('\t', ' \\t').replaceAll('"', '\\"');
+	};
+
 	beforeAll(() => {
+		setSourceProvider(requestProviderFromText(sources));
 		amendConfig(config => config.solver.pointerTracking = false);
 	});
 
 	afterAll(() => {
+		setSourceProvider(requestProviderFromFile());
 		amendConfig(config => config.solver.pointerTracking = defaultConfigOptions.solver.pointerTracking);
 	});
 
@@ -39,6 +65,11 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 	testDataFrameDomain(
 		'df <- data.frame(c(1, 2, 3:5, c(6, 7, c(8, 9))), c("a", "b", "c"))',
 		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [9, 9] }, { colnames: DomainMatchingType.Overapproximation }]]
+	);
+
+	testDataFrameDomain(
+		'df <- data.frame(1, 1:5)',
+		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]]
 	);
 
 	testDataFrameDomain(
@@ -74,15 +105,127 @@ df2 <- as.data.frame(df1)
 		]
 	);
 
-	testDataFrameDomain(
-		'df <- read.csv(text = "id,age\\n1,30\\n2,50\\n3,45")',
-		[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
+	testDataFrameDomainWithSource(
+		'"a.csv"', `text = "${getFileContent('a.csv')}"`,
+		source => `df <- read.csv(${source})`,
+		[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
 	);
 
-	testDataFrameDomain(
-		'df <- eval(parse(text = "data.frame()"))',
-		[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
+	testDataFrameDomainWithSource(
+		'"a.csv"', `text = "${getFileContent('a.csv')}"`,
+		source => `df <- read.table(${source}, header = TRUE, sep = ",")`,
+		[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
 	);
+
+	testDataFrameDomainWithSource(
+		'"b.csv"', `text = "${getFileContent('b.csv')}"`,
+		source => `df <- read.csv(${source}, quote = "'")`,
+		[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
+	);
+
+	testDataFrameDomainWithSource(
+		'"b.csv"', `text = "${getFileContent('b.csv')}"`,
+		source => `df <- read.table(${source}, header = TRUE, sep = ",")`,
+		[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
+	);
+
+	testDataFrameDomainWithSource(
+		'"c.csv"', `text = "${getFileContent('c.csv')}"`,
+		source => `df <- read.csv(${source}, comment.char = "#", check.names = FALSE)`,
+		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]]
+	);
+
+	testDataFrameDomainWithSource(
+		'"c.csv"', `text = "${getFileContent('c.csv')}"`,
+		source => `df <- read.csv(${source}, header = FALSE, skip = 4)`,
+		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]]
+	);
+
+	testDataFrameDomainWithSource(
+		'"d.csv"', `text = "${getFileContent('d.csv')}"`,
+		source => `df <- read.csv2(${source}, header = FALSE)`,
+		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]]
+	);
+
+	testDataFrameDomainWithSource(
+		'"d.csv"', `text = "${getFileContent('d.csv')}"`,
+		source => `df <- read.delim(${source}, header = FALSE, sep = ",")`,
+		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]]
+	);
+
+	testDataFrameDomainWithSource(
+		'"d.csv"', `text = "${getFileContent('d.csv')}"`,
+		source => `df <- read.delim2(${source}, header = FALSE, sep = ";")`,
+		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]]
+	);
+
+	testDataFrameDomainWithSource(
+		'"e.csv"', `text = "${getFileContent('e.csv')}"`,
+		source => `df <- read.table(${source}, header = TRUE)`,
+		[['1@df', { colnames: ['first', 'last', 'state', 'phone'], cols: [4, 4], rows: [3, 3] }]]
+	);
+
+	testDataFrameDomainWithSource(
+		'"f.csv"', `text = "${getFileContent('f.csv')}"`,
+		source => `df <- read.delim(${source})`,
+		[['1@df', { colnames: ColNamesTop, cols: [4, 4], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
+	);
+
+	describe.skipIf(skipLibraries)('readr Functions', () => {
+		testDataFrameDomainWithSource(
+			'"a.csv"', `"${getFileContent('a.csv')}"`,
+			source => `df <- readr::read_csv(${source})`,
+			[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
+		);
+
+		testDataFrameDomainWithSource(
+			'"b.csv"', `"${getFileContent('b.csv')}"`,
+			source => `df <- readr::read_csv(${source}, quote = "'")`,
+			[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
+		);
+
+		testDataFrameDomainWithSource(
+			'"c.csv"', `"${getFileContent('c.csv')}"`,
+			source => `df <- readr::read_csv(${source}, comment = "#")`,
+			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]]
+		);
+
+		testDataFrameDomainWithSource(
+			'"c.csv"', `"${getFileContent('c.csv')}"`,
+			source => `df <- readr::read_csv(${source}, col_names = FALSE, skip = 4)`,
+			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]]
+		);
+
+		testDataFrameDomainWithSource(
+			'"d.csv"', `"${getFileContent('d.csv')}"`,
+			source => `df <- readr::read_csv2(${source}, col_names = FALSE)`,
+			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]]
+		);
+
+		testDataFrameDomainWithSource(
+			'"d.csv"', `"${getFileContent('d.csv')}"`,
+			source => `df <- readr::read_delim(${source}, delim = ",", col_names = FALSE)`,
+			[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]]
+		);
+
+		testDataFrameDomainWithSource(
+			'"d.csv"', `"${getFileContent('d.csv')}"`,
+			source => `df <- readr::read_delim(${source}, delim = ";", col_names = FALSE)`,
+			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]]
+		);
+
+		testDataFrameDomainWithSource(
+			'"e.csv"', `"${getFileContent('e.csv')}"`,
+			source => `df <- readr::read_table(${source})`,
+			[['1@df', { colnames: ['first', 'last', 'state', 'phone'], cols: [4, 4], rows: [3, 3] }]]
+		);
+
+		testDataFrameDomainWithSource(
+			'"f.csv"', `"${getFileContent('f.csv')}"`,
+			source => `df <- readr::read_tsv(${source})`,
+			[['1@df', { colnames: ColNamesTop, cols: [4, 4], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
+		);
+	});
 
 	testDataFrameDomain(
 		`
@@ -206,6 +349,13 @@ df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1]
 		`.trim(),
 		[['2@result', { colnames: ['id', 'name'], cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
+	);
+
+	testDataFrameDomain(
+		`
+result <- (data.frame(id = 1:3, name = 4:6))["id"]
+		`.trim(),
+		[['1@result', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]]
 	);
 
 	assertDataFrameDomain(
@@ -631,6 +781,17 @@ df <- head(df, n = -c(2, 1))
 	testDataFrameDomain(
 		`
 df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
+df <- head(df, n = c(-1, 1))
+		`.trim(),
+		[
+			['1@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [3, 5] }, DataFrameTestOverapproximation],
+			['2@df', { colnames: ['id', 'name'], cols: [1, 1], rows: [2, 4] }, DataFrameTestOverapproximation]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
 df <- tail(df, n = 3)
 		`.trim(),
 		[
@@ -672,7 +833,18 @@ df <- tail(df, n = -c(2, 1))
 		]
 	);
 
-	describe.skipIf(skipDplyr)('dplyr Functions', () => {
+	testDataFrameDomain(
+		`
+df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
+df <- tail(df, n = c(-1, 1))
+		`.trim(),
+		[
+			['1@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [3, 5] }, DataFrameTestOverapproximation],
+			['2@df', { colnames: ['id', 'name'], cols: [1, 1], rows: [2, 4] }, DataFrameTestOverapproximation]
+		]
+	);
+
+	describe.skipIf(skipLibraries)('dplyr Functions', () => {
 		testDataFrameDomain(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
@@ -806,7 +978,7 @@ df <- subset(df, select = c(-id, -name))
 		]
 	);
 
-	describe.skipIf(skipDplyr)('dplyr Functions', () => {
+	describe.skipIf(skipLibraries)('dplyr Functions', () => {
 		testDataFrameDomain(
 			`
 df <- data.frame(id = 1:5)
@@ -852,11 +1024,11 @@ df <- transform(df, name = c(letters[1:5]))
 		]
 	);
 
-	describe.skipIf(skipDplyr)('dplyr Functions', () => {
+	describe.skipIf(skipLibraries)('dplyr Functions', () => {
 		testDataFrameDomain(
 			`
 df <- data.frame(id = 1:5, score = c(80, 75, 90, 70, 85))
-df <- dplyr::group_by(df, id) |> as.data.frame()
+df <- dplyr::group_by(df, id)
 		`.trim(),
 			[
 				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
@@ -870,13 +1042,12 @@ library(dplyr)
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
 df <- df |>
 	group_by(category) |>
-	summarise(score = mean(score), sum = sum(score)) |>
-	as.data.frame()
+	summarize(score = mean(score), sum = sum(score))
 print(df)
 		`.trim(),
 			[
 				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
-				['7@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [0, 6] }, DataFrameTestOverapproximation]
+				['6@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 6] }, DataFrameTestOverapproximation]
 			]
 		);
 
@@ -884,14 +1055,12 @@ print(df)
 			`
 library(dplyr)
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
-df <- df |>
-	summarise(score = mean(score), sum = sum(score)) |>
-	as.data.frame()
+df <- df |> summarize(score = mean(score), sum = sum(score))
 print(df)
 		`.trim(),
 			[
 				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
-				['6@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 1] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
+				['4@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 6] }, DataFrameTestOverapproximation]
 			]
 		);
 
@@ -959,7 +1128,7 @@ df <- aggregate(df, list(group = df$id), mean)
 		]
 	);
 
-	describe.skipIf(skipDplyr)('dplyr Functions', () => {
+	describe.skipIf(skipLibraries)('dplyr Functions', () => {
 		testDataFrameDomain(
 			`
 df <- data.frame(id = 1:5, category = c("A", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85))

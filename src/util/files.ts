@@ -95,10 +95,13 @@ export function writeTableAsCsv(table: Table, file: string, sep = ',', newline =
 /**
  * Reads a file line by line and calls the given function for each line.
  * The `lineNumber` starts at `0`.
+ * The `maxLines` option limits the maximum number of read lines and is `Infinity` by default.
+ *
+ * @returns Whether all lines have been successfully read (`false` if `maxLines` was reached)
  *
  * See {@link readLineByLineSync} for a synchronous version.
  */
-export async function readLineByLine(filePath: string, onLine: (line: Buffer, lineNumber: number) => Promise<void>): Promise<void> {
+export async function readLineByLine(filePath: string, onLine: (line: Buffer, lineNumber: number) => Promise<void>, maxLines: number = Infinity): Promise<boolean> {
 	const reader = new LineByLine(filePath);
 
 	let line: false | Buffer;
@@ -106,20 +109,27 @@ export async function readLineByLine(filePath: string, onLine: (line: Buffer, li
 	let counter = 0;
 	// eslint-disable-next-line no-cond-assign
 	while(line = reader.next()) {
+		if(counter >= maxLines) {
+			return false;
+		}
 		await onLine(line, counter++);
 	}
+	return true;
 }
 
 /**
  * Reads a file line by line and calls the given function for each line.
  * The `lineNumber` starts at `0`.
+ * The `maxLines` option limits the maximum number of read lines and is `Infinity` by default.
+ *
+ * @returns Whether the file exists and all lines have been successfully read (`false` if `maxLines` was reached)
  *
  * See {@link readLineByLine} for an asynchronous version.
  */
-export function readLineByLineSync(filePath: string, onLine: (line: Buffer, lineNumber: number) => void): void {
+export function readLineByLineSync(filePath: string, onLine: (line: Buffer, lineNumber: number) => void, maxLines: number = Infinity): boolean {
 	if(!fs.existsSync(filePath)) {
 		log.warn(`File ${filePath} does not exist`);
-		return;
+		return false;
 	}
 	const reader = new LineByLine(filePath);
 
@@ -128,8 +138,12 @@ export function readLineByLineSync(filePath: string, onLine: (line: Buffer, line
 	let counter = 0;
 	// eslint-disable-next-line no-cond-assign
 	while(line = reader.next()) {
+		if(counter >= maxLines) {
+			return false;
+		}
 		onLine(line, counter++);
 	}
+	return true;
 }
 
 /**

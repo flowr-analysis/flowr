@@ -2,17 +2,23 @@ import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking'
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { isUseVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
+import { findSource, getSourceProvider } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RFunctionArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import type { RParseRequest } from '../../../r-bridge/retriever';
+import { requestFromInput } from '../../../r-bridge/retriever';
+import { assertUnreachable } from '../../../util/assert';
+import { readLineByLineSync } from '../../../util/files';
 import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
 import { resolveIdToAbstractValue } from '../absint-visitor';
 import { DataFrameTop } from '../domain';
-import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeArgument } from '../resolve-args';
+import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars, unquoteArgument } from '../resolve-args';
 
+const MaxReadLines = 1e7;
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
 
 const DataFrameFunctionMapper = {
@@ -23,6 +29,11 @@ const DataFrameFunctionMapper = {
 	'read.csv2':     mapDataFrameRead,
 	'read.delim':    mapDataFrameRead,
 	'read.delim2':   mapDataFrameRead,
+	'read_table':    mapDataFrameRead,
+	'read_csv':      mapDataFrameRead,
+	'read_csv2':     mapDataFrameRead,
+	'read_tsv':      mapDataFrameRead,
+	'read_delim':    mapDataFrameRead,
 	'cbind':         mapDataFrameColBind,
 	'rbind':         mapDataFrameRowBind,
 	'head':          mapDataFrameHeadTail,
@@ -30,8 +41,8 @@ const DataFrameFunctionMapper = {
 	'subset':        mapDataFrameSubset,
 	'filter':        mapDataFrameFilter,
 	'select':        mapDataFrameSelect,
-	'transform':     mapDataFrameMutate,
 	'mutate':        mapDataFrameMutate,
+	'transform':     mapDataFrameMutate,
 	'group_by':      mapDataFrameGroupBy,
 	'summarise':     mapDataFrameSummarize,
 	'summarize':     mapDataFrameSummarize,
@@ -44,20 +55,25 @@ const DataFrameFunctionMapper = {
 const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 	'data.frame':    { special: ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'] },
 	'as.data.frame': { dataFrame: { pos: 0, name: 'x' } },
-	'read.table':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header' }, separator: { pos: 2, name: 'sep' } },
-	'read.csv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header' }, separator: { pos: 2, name: 'sep' } },
-	'read.csv2':     { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header' }, separator: { pos: 2, name: 'sep' } },
-	'read.delim':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header' }, separator: { pos: 2, name: 'sep' } },
-	'read.delim2':   { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header' }, separator: { pos: 2, name: 'sep' } },
+	'read.table':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: false }, separator: { pos: 2, name: 'sep', default: '\\s' }, quote: { pos: 3, name: 'quote', default: '"\'' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '#' }, text: { pos: 23, name: 'text' } },
+	'read.csv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ',' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' }, text: { pos: 23, name: 'text' } },
+	'read.csv2':     { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ';' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' }, text: { pos: 23, name: 'text' } },
+	'read.delim':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: '\\t' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' }, text: { pos: 23, name: 'text' } },
+	'read.delim2':   { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: '\\t' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' }, text: { pos: 23, name: 'text' } },
+	'read_table':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: '\\s' }, quote: { pos: -1, default: '"' }, skipLines: { pos: 5, name: 'skip', default: 0 }, comment: { pos: 9, name: 'comment', default: '' } },
+	'read_csv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: ',' }, quote: { pos: 8, name: 'quote', default: '"' }, comment: { pos: 9, name: 'comment', default: '' }, skipLines: { pos: 11, name: 'skip', default: 0 } },
+	'read_csv2':     { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: ';' }, quote: { pos: 8, name: 'quote', default: '"' }, comment: { pos: 9, name: 'comment', default: '' }, skipLines: { pos: 11, name: 'skip', default: 0 } },
+	'read_tsv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: '\\t' }, quote: { pos: 8, name: 'quote', default: '"' }, comment: { pos: 9, name: 'comment', default: '' }, skipLines: { pos: 11, name: 'skip', default: 0 } },
+	'read_delim':    { fileName: { pos: 0, name: 'file' }, separator: { pos: 1, name: 'delim', default: '\t' }, quote: { pos: 2, name: 'quote', default: '"' }, header: { pos: 5, name: 'col_names', default: true }, comment: { pos: 12, name: 'comment', default: '' }, skipLines: { pos: 14, name: 'skip', default: 0 } },
 	'cbind':         { special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
 	'rbind':         { special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
-	'head':          { dataFrame: { pos: 0, name: 'x' }, amount: { pos: 1, name: 'n' } },
-	'tail':          { dataFrame: { pos: 0, name: 'x' }, amount: { pos: 1, name: 'n' } },
-	'subset':        { dataFrame: { pos: 0, name: 'x' }, subset: { pos: 1, name: 'subset' }, select: { pos: 2, name: 'select' }, drop: { pos: 3, name: 'drop' } },
+	'head':          { dataFrame: { pos: 0, name: 'x' }, amount: { pos: 1, name: 'n', default: 6 } },
+	'tail':          { dataFrame: { pos: 0, name: 'x' }, amount: { pos: 1, name: 'n', default: 6 } },
+	'subset':        { dataFrame: { pos: 0, name: 'x' }, subset: { pos: 1, name: 'subset' }, select: { pos: 2, name: 'select' }, drop: { pos: 3, name: 'drop', default: false } },
 	'filter':        { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.preserve'] },
 	'select':        { dataFrame: { pos: 0, name: '.data' }, special: [] },
-	'transform':     { dataFrame: { pos: 0, name: '_data' }, special: [] },
 	'mutate':        { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.keep', '.before', '.after'] },
+	'transform':     { dataFrame: { pos: 0, name: '_data' }, special: [] },
 	'group_by':      { dataFrame: { pos: 0, name: '.data' }, by: { pos: 1 }, special: ['.add', '.drop'] },
 	'summarise':     { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.groups'] },
 	'summarize':     { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.groups'] },
@@ -80,9 +96,10 @@ type DataFrameFunctionParamsMapping = {
 	[Name in DataFrameFunction]: DataFrameFunctionParams<Name>
 }
 
-interface FunctionParameterLocation {
-	pos:   number,
-	name?: string
+interface FunctionParameterLocation<T = undefined> {
+	pos:      number,
+	name?:    string
+	default?: T
 }
 
 export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
@@ -141,14 +158,133 @@ function mapDataFrameConvert(
 }
 
 function mapDataFrameRead(
-	_args: readonly RFunctionArgument<ParentInformation>[],
-	_params: { fileName: FunctionParameterLocation, header: FunctionParameterLocation, separator: FunctionParameterLocation }
+	args: readonly RFunctionArgument<ParentInformation>[],
+	params: {
+		fileName:  FunctionParameterLocation,
+		header:    FunctionParameterLocation<boolean>,
+		separator: FunctionParameterLocation<string>,
+		quote:     FunctionParameterLocation<string>,
+		comment:   FunctionParameterLocation<string>,
+		skipLines: FunctionParameterLocation<number>,
+		text?:     FunctionParameterLocation
+	},
+	info: ResolveInfo
 ): DataFrameOperations[] {
+	const fileNameArg = getFunctionArgument(args, params.fileName, info);
+	const textArg = params.text ? getFunctionArgument(args, params.text, info) : undefined;
+	const { source, request } = getRequestFromRead(fileNameArg, textArg, params, info);
+
+	if(request === undefined) {
+		return [{
+			operation: 'read',
+			operand:   undefined,
+			args:      { source, colnames: undefined, rows: undefined }
+		}];
+	}
+	const headerArg = getFunctionArgument(args, params.header, info);
+	const separatorArg = getFunctionArgument(args, params.separator, info);
+	const quoteArg = getFunctionArgument(args, params.quote, info);
+	const commentArg = getFunctionArgument(args, params.comment, info);
+	const skipLinesArg = getFunctionArgument(args, params.skipLines, info);
+	const header = headerArg ? resolveIdToArgValue(headerArg, info) : params.header.default;
+	const separator = separatorArg ? resolveIdToArgValue(separatorArg, info) : params.separator.default;
+	const quote = quoteArg ? resolveIdToArgValue(quoteArg, info) : params.quote.default;
+	const comment = commentArg ? resolveIdToArgValue(commentArg, info) : params.comment.default;
+	const skipLines = skipLinesArg ? resolveIdToArgValue(skipLinesArg, info) : params.skipLines.default;
+
+	if(typeof header !== 'boolean' || typeof separator !== 'string' || typeof quote !== 'string' || typeof comment !== 'string' || typeof skipLines !== 'number') {
+		return [{
+			operation: 'read',
+			operand:   undefined,
+			args:      { source, colnames: undefined, rows: undefined }
+		}];
+	}
+	const LineCommentRegex = new RegExp(`\\s*[${escapeRegExp(comment, true)}].*`);
+	let firstLine = undefined as (string | undefined)[] | undefined;
+	let firstLineNumber = 0;
+	let rowCount = 0;
+
+	const parseLine = (line: Buffer | string, lineNumber: number) => {
+		const text = comment ? line.toString().replace(LineCommentRegex, '') : line.toString();
+
+		if(text.length > 0 && lineNumber >= (skipLines ?? 0)) {
+			if(firstLine === undefined) {
+				firstLine = getEntriesFromCsvLine(text, separator, quote, comment);
+				firstLineNumber = lineNumber;
+			}
+			if(!header || lineNumber > firstLineNumber) {
+				rowCount++;
+			}
+		}
+	};
+	const allLines = parseRequestContent(request, parseLine);
+	let colnames: (string | undefined)[] | undefined;
+
+	if(header) {
+		// map all invalid column names to top
+		colnames = firstLine?.map(entry => isValidColName(entry) ? entry : undefined);
+		// map all duplicate column names to top
+		colnames = colnames?.map((entry, _, list) => entry && list.filter(other => other === entry).length === 1 ? entry : undefined );
+	} else if(firstLine !== undefined) {
+		colnames = Array((firstLine as unknown[]).length).fill(undefined);
+	}
 	return [{
-		operation: 'unknown',
+		operation: 'read',
 		operand:   undefined,
-		args:      {}
+		args:      { source, colnames, rows: allLines ? rowCount : undefined }
 	}];
+}
+
+function getRequestFromRead(
+	fileNameArg: RFunctionArgument<ParentInformation> | undefined,
+	textArg: RFunctionArgument<ParentInformation> | undefined,
+	params: DataFrameFunctionParams<'read.table'>,
+	info: ResolveInfo
+) {
+	let source: string | undefined;
+	let request: RParseRequest | undefined;
+
+	if(fileNameArg !== undefined && fileNameArg !== EmptyArgument) {
+		const fileName = resolveIdToArgValue(fileNameArg, info);
+
+		if(typeof fileName === 'string') {
+			source = fileName;
+			const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
+			const sources = findSource(fileName, { referenceChain: referenceChain });
+
+			if(sources?.length === 1) {
+				source = sources[0];
+				// create request from resolved source file path
+				request = getSourceProvider().createRequest(source);
+			} else if(params.text === undefined && unescapeSpecialChars(fileName).includes('\n')) {
+				// create request from string if file name argument contains newline
+				request = requestFromInput(unescapeSpecialChars(fileName));
+			}
+		}
+	} else if(textArg !== undefined && textArg !== EmptyArgument) {
+		const text = resolveIdToArgValue(textArg, info);
+
+		if(typeof text === 'string') {
+			source = text;
+			request = requestFromInput(unescapeSpecialChars(text));
+		}
+	}
+	return { source, request };
+}
+
+function parseRequestContent(
+	request: RParseRequest,
+	parser: (line: Buffer | string, lineNumber: number) => void
+): boolean {
+	const requestType = request.request;
+
+	if(requestType === 'text') {
+		request.content.split('\n').forEach(parser);
+		return true;
+	} else if(requestType === 'file') {
+		return readLineByLineSync(request.content, parser, MaxReadLines);
+	}
+	assertUnreachable(requestType);
 }
 
 function mapDataFrameColBind(
@@ -183,7 +319,7 @@ function mapDataFrameColBind(
 					args:      { other: otherDataFrame }
 				});
 				operand = undefined;
-			// Added columns are undefined if argument cannot be resolved to constant (vector-like) value
+			// added columns are top if argument cannot be resolved to constant (vector-like) value
 			} else if(resolveIdToArgValue(arg, info) !== undefined) {
 				const colname = resolveIdToArgName(arg, info);
 				colnames?.push(colname);
@@ -234,7 +370,7 @@ function mapDataFrameRowBind(
 					args:      { other: otherDataFrame }
 				});
 				operand = undefined;
-			// Number of added rows is undefined if arguments cannot be resolved to constant (vector-like) value
+			// number of added rows is top if arguments cannot be resolved to constant (vector-like) value
 			} else if(resolveIdToArgValue(arg, info) !== undefined) {
 				rows = rows !== undefined ? rows + 1 : undefined;
 			} else {
@@ -254,7 +390,7 @@ function mapDataFrameRowBind(
 
 function mapDataFrameHeadTail(
 	args: readonly RFunctionArgument<ParentInformation>[],
-	params: { dataFrame: FunctionParameterLocation, amount: FunctionParameterLocation },
+	params: { dataFrame: FunctionParameterLocation, amount: FunctionParameterLocation<number> },
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
@@ -270,7 +406,7 @@ function mapDataFrameHeadTail(
 	}
 	const result: DataFrameOperations[] = [];
 	const amountArg = getFunctionArgument(args, params.amount, info);
-	const amountValue = resolveIdToArgValue(amountArg, info);
+	const amountValue = amountArg ? resolveIdToArgValue(amountArg, info) : params.amount.default;
 	let rows: number | undefined = undefined;
 	let cols: number | undefined = undefined;
 
@@ -298,7 +434,7 @@ function mapDataFrameHeadTail(
 
 function mapDataFrameSubset(
 	args: readonly RFunctionArgument<ParentInformation>[],
-	params: { dataFrame: FunctionParameterLocation, subset: FunctionParameterLocation, select: FunctionParameterLocation, drop: FunctionParameterLocation },
+	params: { dataFrame: FunctionParameterLocation, subset: FunctionParameterLocation, select: FunctionParameterLocation, drop: FunctionParameterLocation<boolean> },
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
@@ -333,7 +469,7 @@ function mapDataFrameSubset(
 				} else if(arg !== EmptyArgument && (arg.value?.type === RType.Symbol || arg.value?.type === RType.String)) {
 					selectedCols?.push(resolveIdToArgValueSymbolName(arg, info));
 				} else {
-					selectedCols?.push(undefined);
+					selectedCols = undefined;
 				}
 			});
 		} else if(selectArg.value?.type === RType.UnaryOp && selectArg.value.operator === '-' && info.idMap !== undefined) {
@@ -679,7 +815,7 @@ function getFunctionArguments(
 
 function getFunctionArgument(
 	args: readonly RFunctionArgument<ParentInformation>[],
-	argument: FunctionParameterLocation,
+	argument: FunctionParameterLocation<unknown>,
 	info: ResolveInfo
 ): RFunctionArgument<ParentInformation> | undefined {
 	const pos = argument.pos;
@@ -688,7 +824,7 @@ function getFunctionArgument(
 	if(argument.name !== undefined) {
 		arg = args.find(arg => resolveIdToArgName(arg, info) === argument.name);
 	}
-	if(arg === undefined && pos < args.length && args[pos] !== EmptyArgument && args[pos].name === undefined) {
+	if(arg === undefined && pos >= 0 && pos < args.length && args[pos] !== EmptyArgument && args[pos].name === undefined) {
 		arg = args[pos];
 	}
 	return arg;
@@ -698,7 +834,24 @@ function getEffectiveArgs(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	excluded: string[]
 ): readonly RFunctionArgument<ParentInformation>[] {
-	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !excluded.includes(unescapeArgument(arg.name.content)));
+	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !excluded.includes(unquoteArgument(arg.name.content)));
+}
+
+function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = '"', comment: string = '', trim: boolean = true): (string | undefined)[] {
+	sep = escapeRegExp(sep, true);  // only allow tokens like `\s`, `\t`, or `\n` in separator, quote, and comment chars
+	quote = escapeRegExp(quote, true);
+	comment = escapeRegExp(comment, true);
+	const quantifier = sep === '\\s' ? '+' : '*';  // do not allow unquoted empty entries in whitespace-sparated files
+
+	const LineCommentRegex = new RegExp(`[${comment}].*`);
+	const CsvEntryRegex = new RegExp(`(?<=^|[${sep}])(?:[${quote}]((?:[^${quote}]|[${quote}]{2})*)[${quote}]|([^${sep}]${quantifier}))`, 'g');
+	const DoubleQuoteRegex = new RegExp(`([${quote}])\\1`, 'g');
+
+	return (comment ? line.replace(LineCommentRegex, '') : line)
+		.matchAll(CsvEntryRegex)
+		.map(match => match[1]?.replace(DoubleQuoteRegex, '$1') ?? match[2])
+		.map(entry => trim ? entry.trim() : entry)
+		.toArray();
 }
 
 function getUnresolvedSymbolsInExpression(
@@ -725,7 +878,7 @@ function getUnresolvedSymbolsInExpression(
 			return [...getUnresolvedSymbolsInExpression(expression.value, info)];
 		case RType.Symbol:
 			if(isUseVertex(info.graph.getVertex(expression.info.id)) && (info.graph.outgoingEdges(expression.info.id)?.size ?? 0) === 0) {
-				return [unescapeArgument(expression.content)];
+				return [unquoteArgument(expression.content)];
 			} else {
 				return [];
 			}
@@ -743,4 +896,12 @@ function isDataFrameArgument(
 
 function isValidColName(colname: string | undefined): boolean {
 	return colname !== undefined && ColNamesRegex.test(colname);
+}
+
+function escapeRegExp(text: string, allowTokens: boolean = false) {
+	if(allowTokens) {
+		return text.replace(/[.*+?^${}()|[\]]/g, '\\$&');
+	} else {
+		return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}
 }

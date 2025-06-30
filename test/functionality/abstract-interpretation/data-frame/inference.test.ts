@@ -1,29 +1,12 @@
 import { afterAll, beforeAll, describe } from 'vitest';
-import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { ColNamesTop, DataFrameTop } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 import { setSourceProvider } from '../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
 import { requestProviderFromFile, requestProviderFromText } from '../../../../src/r-bridge/retriever';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { withShell } from '../../_helper/shell';
-import type { DataFrameTestOptions } from './data-frame';
-import { assertDataFrameDomain, assertDataFrameOperation, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomain } from './data-frame';
+import { assertDataFrameDomain, assertDataFrameOperation, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomain, testDataFrameDomainWithSource } from './data-frame';
 
 describe.sequential('Data Frame Shape Inference', withShell(shell => {
-	async function installPackage(packageName: string, ...alternatives: string[]) {
-		const check = [packageName, ...alternatives ?? []].map(name => `!require("${name}")`).join(' && ');
-		await shell.sendCommandWithOutput(`if (${check}) install.packages("${packageName}")`);
-	}
-
-	function testDataFrameDomainWithSource(
-		fileArg: string, textArg: string,
-		getCode: (arg: string) => string,
-		criteria: ([SingleSlicingCriterion, DataFrameDomain] | [SingleSlicingCriterion, DataFrameDomain, Partial<DataFrameTestOptions>])[]
-	) {
-		assertDataFrameDomain(shell, getCode(fileArg), criteria.map(entry => [entry[0], entry[1]]));
-		testDataFrameDomain(shell, getCode(textArg), criteria);
-	}
-
 	const sources = {
 		'a.csv': 'id,name,"score"\n1,"A",95\n2,"B",80\n4,"A",85',
 		'b.csv': 'id,name,\'score\'\n1,\'A\',95\n2,\'B\',80\n4,\'A\',85',
@@ -33,9 +16,14 @@ describe.sequential('Data Frame Shape Inference', withShell(shell => {
 		'f.csv': 'name\tname\tstate\tphone\nJohn\tSmith\tWA\t418-Y11-4111\nMary\tHartford\tCA\t319-Z19-4341\nEvan\tNolan\tIL\t219-532-c301'
 	} as const satisfies Readonly<{[path: string]: string}>;
 
-	const getFileContent = (source: keyof typeof sources) => {
+	function getFileContent(source: keyof typeof sources) {
 		return sources[source].replaceAll('\n', '\\n').replaceAll('\t', ' \\t').replaceAll('"', '\\"');
 	};
+
+	async function installPackage(packageName: string, ...alternatives: string[]) {
+		const check = [packageName, ...alternatives ?? []].map(name => `!require("${name}")`).join(' && ');
+		await shell.sendCommandWithOutput(`if (${check}) install.packages("${packageName}")`);
+	}
 
 	beforeAll(async() => {
 		setSourceProvider(requestProviderFromText(sources));
@@ -419,120 +407,140 @@ df2 <- as.data.frame(df1)
 
 	describe('Read', () => {
 		testDataFrameDomainWithSource(
+			shell,
 			'"a.csv"', `text = "${getFileContent('a.csv')}"`,
 			source => `df <- read.csv(${source})`,
 			[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"a.csv"', `text = "${getFileContent('a.csv')}"`,
 			source => `df <- read.table(${source}, header = TRUE, sep = ",")`,
 			[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"b.csv"', `text = "${getFileContent('b.csv')}"`,
 			source => `df <- read.csv(${source}, quote = "'")`,
 			[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"b.csv"', `text = "${getFileContent('b.csv')}"`,
 			source => `df <- read.table(${source}, header = TRUE, sep = ",")`,
 			[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"c.csv"', `text = "${getFileContent('c.csv')}"`,
 			source => `df <- read.csv(${source}, comment.char = "#", check.names = FALSE)`,
 			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"c.csv"', `text = "${getFileContent('c.csv')}"`,
 			source => `df <- read.csv(${source}, header = FALSE, skip = 4)`,
 			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"d.csv"', `text = "${getFileContent('d.csv')}"`,
 			source => `df <- read.csv2(${source}, header = FALSE)`,
 			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"d.csv"', `text = "${getFileContent('d.csv')}"`,
 			source => `df <- read.delim(${source}, header = FALSE, sep = ",")`,
 			[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"d.csv"', `text = "${getFileContent('d.csv')}"`,
 			source => `df <- read.delim2(${source}, header = FALSE, sep = ";")`,
 			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"e.csv"', `text = "${getFileContent('e.csv')}"`,
 			source => `df <- read.table(${source}, header = TRUE)`,
 			[['1@df', { colnames: ['first', 'last', 'state', 'phone'], cols: [4, 4], rows: [3, 3] }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"f.csv"', `text = "${getFileContent('f.csv')}"`,
 			source => `df <- read.delim(${source})`,
 			[['1@df', { colnames: ColNamesTop, cols: [4, 4], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"a.csv"', `"${getFileContent('a.csv')}"`,
 			source => `df <- readr::read_csv(${source})`,
 			[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"b.csv"', `"${getFileContent('b.csv')}"`,
 			source => `df <- readr::read_csv(${source}, quote = "'")`,
 			[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"c.csv"', `"${getFileContent('c.csv')}"`,
 			source => `df <- readr::read_csv(${source}, comment = "#")`,
 			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"c.csv"', `"${getFileContent('c.csv')}"`,
 			source => `df <- readr::read_csv(${source}, col_names = FALSE, skip = 4)`,
 			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"d.csv"', `"${getFileContent('d.csv')}"`,
 			source => `df <- readr::read_csv2(${source}, col_names = FALSE)`,
 			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"d.csv"', `"${getFileContent('d.csv')}"`,
 			source => `df <- readr::read_delim(${source}, delim = ",", col_names = FALSE)`,
 			[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"d.csv"', `"${getFileContent('d.csv')}"`,
 			source => `df <- readr::read_delim(${source}, delim = ";", col_names = FALSE)`,
 			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"e.csv"', `"${getFileContent('e.csv')}"`,
 			source => `df <- readr::read_table(${source})`,
 			[['1@df', { colnames: ['first', 'last', 'state', 'phone'], cols: [4, 4], rows: [3, 3] }]]
 		);
 
 		testDataFrameDomainWithSource(
+			shell,
 			'"f.csv"', `"${getFileContent('f.csv')}"`,
 			source => `df <- readr::read_tsv(${source})`,
 			[['1@df', { colnames: ColNamesTop, cols: [4, 4], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]

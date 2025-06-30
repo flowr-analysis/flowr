@@ -81,6 +81,7 @@ interface CriterionTestEntry {
  * @param criteria - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameTestExact})
  * @param parser   - The parser to use for the data flow graph creation (defaults to the R shell)
  * @param name     - An optional name or test label for the test (defaults to the code)
+ * @param config   - The config to use for the test (defaults to {@link defaultConfigOptions})
  */
 export function testDataFrameDomain(
 	shell: RShell,
@@ -109,12 +110,44 @@ export function testDataFrameDomain(
 }
 
 /**
+ * Combined test for code reading data from external files with one run for the file argument using {@link assertDataFrameDomain} and
+ * another run for the text argument using {@link testDataFrameDomain}.
+ * This ensures that the code is only executed for the text argument.
+ * Only slicing criteria for symbols are allowed (e.g. no function calls or operators).
+ *
+ * Note that this functions inserts print statements for the shape properties in the line after each slicing criterion.
+ * Make sure that this does not break the provided code.
+ *
+ * @param shell    - The R shell to use to run the code
+ * @param fileArg  - The argument for the assert run
+ * @param textArg  - The argument for the full test run where the code is executed
+ * @param getCode  - The function to get the code for `fileArg` or `textArg`
+ * @param criteria - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameTestExact})
+ * @param parser   - The parser to use for the data flow graph creation (defaults to the R shell)
+ * @param name     - An optional name or test label for the test (defaults to the code)
+ * @param config   - The config to use for the test (defaults to {@link defaultConfigOptions})
+ */
+export function testDataFrameDomainWithSource(
+	shell: RShell,
+	fileArg: string, textArg: string,
+	getCode: (arg: string) => string,
+	criteria: ([SingleSlicingCriterion, DataFrameDomain] | [SingleSlicingCriterion, DataFrameDomain, Partial<DataFrameTestOptions>])[],
+	parser: KnownParser = shell,
+	name?: string | TestLabel,
+	config: FlowrConfigOptions = defaultConfigOptions
+) {
+	assertDataFrameDomain(parser, getCode(fileArg), criteria.map(entry => [entry[0], entry[1]]), name ?? getCode(fileArg), config);
+	testDataFrameDomain(shell, getCode(textArg), criteria, parser, name ?? getCode(textArg), config);
+}
+
+/**
  * Asserts inferred data frame shape constraints for given slicing criteria.
  *
  * @param parser   - The parser to use for the data flow graph creation
  * @param code     - The code to test
  * @param expected - The expected data frame shape constraints for each slicing criterion
  * @param name     - An optional name or test label for the test (defaults to the code)
+ * @param config   - The config to use for the test (defaults to {@link defaultConfigOptions})
  */
 export function assertDataFrameDomain(
 	parser: KnownParser,
@@ -143,6 +176,7 @@ export function assertDataFrameDomain(
  * @param code     - The code to test
  * @param expected - The expected abstract data frame operation for each slicing criterion
  * @param name     - An optional name or test label for the test (defaults to the code)
+ * @param config   - The config to use for the test (defaults to {@link defaultConfigOptions})
  */
 export function assertDataFrameOperation(
 	parser: KnownParser,
@@ -178,6 +212,7 @@ export function assertDataFrameOperation(
  * @param criteria - The slicing criteria to test including the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameTestExact})
  * @param parser   - The parser to use for the data flow graph creation (defaults to the R shell)
  * @param name     - An optional name or test label for the test (defaults to the code)
+ * @param config   - The config to use for the test (defaults to {@link defaultConfigOptions})
  */
 export function testDataFrameDomainAgainstReal(
 	shell: RShell,

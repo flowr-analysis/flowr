@@ -44,12 +44,18 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 
 	beforeAll(() => {
 		setSourceProvider(requestProviderFromText(sources));
-		amendConfig(config => config.solver.pointerTracking = false);
+		amendConfig(defaultConfigOptions, config => {
+			config.solver.pointerTracking = false;
+			return config;
+		});
 	});
 
 	afterAll(() => {
 		setSourceProvider(requestProviderFromFile());
-		amendConfig(config => config.solver.pointerTracking = defaultConfigOptions.solver.pointerTracking);
+		amendConfig(defaultConfigOptions, config => {
+			config.solver.pointerTracking = defaultConfigOptions.solver.pointerTracking;
+			return config;
+		});
 	});
 
 	testDataFrameDomain(

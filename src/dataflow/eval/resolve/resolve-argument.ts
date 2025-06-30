@@ -14,11 +14,13 @@ import { resolveIdToValue } from './alias-tracking';
 import { isValue } from '../values/r-value';
 import { RFalse, RTrue } from '../../../r-bridge/lang-4.x/convert-values';
 import { collectStrings } from '../values/string/string-constants';
+import type { VariableResolve } from '../../../config';
 
 /**
  * Get the values of all arguments matching the criteria.
  */
 export function getArgumentStringValue(
+	variableResolve: VariableResolve,
 	graph: DataflowGraph,
 	vertex: DataflowGraphVertexFunctionCall,
 	argumentIndex: number | 'unnamed' | undefined,
@@ -47,7 +49,7 @@ export function getArgumentStringValue(
 			}
 			if(valueNode) {
 				// this should be evaluated in the callee-context
-				const values = resolveBasedOnConfig(graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue) ?? [Unknown];
+				const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue) ?? [Unknown];
 				map.set(ref, new Set(values));
 			}
 		}
@@ -64,7 +66,7 @@ export function getArgumentStringValue(
 		}
 
 		if(valueNode) {
-			const values = resolveBasedOnConfig(graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue) ?? [Unknown];
+			const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue) ?? [Unknown];
 			return new Map([[arg, new Set(values)]]);
 		}
 	}
@@ -72,11 +74,11 @@ export function getArgumentStringValue(
 }
 
 
-function hasCharacterOnly(graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, idMap: Map<NodeId, RNode> | undefined): boolean | 'maybe' {
+function hasCharacterOnly(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, idMap: Map<NodeId, RNode> | undefined): boolean | 'maybe' {
 	if(!vertex.args || vertex.args.length === 0 || !idMap) {
 		return false;
 	}
-	const treatAsChar = getArgumentStringValue(graph, vertex, 5, 'character.only', true);
+	const treatAsChar = getArgumentStringValue(variableResolve, graph, vertex, 5, 'character.only', true);
 	if(!treatAsChar) {
 		return false;
 	}
@@ -88,14 +90,15 @@ function hasCharacterOnly(graph: DataflowGraph, vertex: DataflowGraphVertexFunct
 		return hasTrue;
 	}
 }
-function resolveBasedOnConfig(graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, environment: REnvironmentInformation | undefined, idMap: Map<NodeId, RNode> | undefined, resolveValue : boolean | 'library' | undefined): string[] | undefined {
+
+function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, environment: REnvironmentInformation | undefined, idMap: Map<NodeId, RNode> | undefined, resolveValue : boolean | 'library' | undefined): string[] | undefined {
 	let full = true;
 	if(!resolveValue) {
 		full = false;
 	}
 
 	if(resolveValue === 'library') {
-		const hasChar = hasCharacterOnly(graph, vertex, idMap);
+		const hasChar = hasCharacterOnly(variableResolve, graph, vertex, idMap);
 		if(hasChar === false) {
 			if(argument.type === RType.Symbol) {
 				return [argument.lexeme];
@@ -104,7 +107,7 @@ function resolveBasedOnConfig(graph: DataflowGraph, vertex: DataflowGraphVertexF
 		}
 	}
 
-	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph, full }));
+	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph, full, resolve: variableResolve }));
 	if(resolved) {
 		const values: string[] = [];
 		for(const value of resolved.elements) {

@@ -3,16 +3,16 @@ import { LogLevel } from '../util/log';
 import { codeBlock } from './doc-util/doc-code';
 import { FlowrCodecovRef, FlowrDockerRef, FlowrGithubBaseRef, FlowrSiteBaseRef, FlowrWikiBaseRef, getFilePathMd, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { block } from './doc-util/doc-structure';
-import { getTypesFromFolderAsMermaid, mermaidHide, shortLink } from './doc-util/doc-types';
+import { getTypesFromFolder, mermaidHide, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 
 function getText() {
-	const { info } = getTypesFromFolderAsMermaid({
-		rootFolder:  path.resolve('./test'),
-		files:       [path.resolve('./src/dataflow/graph/dataflowgraph-builder.ts')],
-		typeName:    'parameter',
-		inlineTypes: mermaidHide
+	const { info } = getTypesFromFolder({
+		rootFolder:         path.resolve('./test'),
+		files:              [path.resolve('./src/dataflow/graph/dataflowgraph-builder.ts')],
+		typeNameForMermaid: 'parameter',
+		inlineTypes:        mermaidHide
 	});
 	return `${autoGenHeader({ filename: module.filename, purpose: 'linting and testing definitions' })}
 
@@ -184,8 +184,6 @@ See [test/performance](${RemoteFlowrFilePathBaseRef}test/performance) for more i
 
 Using the vitest Extension for Visual Studio Code, you can start tests directly from the definition and explore your suite in the Testing tab.
 To get started, install the [vitest Extension](https://marketplace.visualstudio.com/items?itemName=vitest.explorer).
-
-![vscode market place](img/vs-code-vitest.png)
 
 |               Testing Tab               | In Code                               |
 |:---------------------------------------:|:-------------------------------------:|

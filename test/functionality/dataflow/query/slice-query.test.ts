@@ -15,6 +15,7 @@ import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { doNotAutoSelect } from '../../../../src/reconstruct/auto-select/auto-select-defaults';
 import { makeMagicCommentHandler } from '../../../../src/reconstruct/auto-select/magic-comments';
 import { describe } from 'vitest';
+import { defaultConfigOptions } from '../../../../src/config';
 
 describe.sequential('Static Slice Query', withShell(shell => {
 	function testQuery(name: string, code: string, queries: readonly StaticSliceQuery[]) {
@@ -26,7 +27,7 @@ describe.sequential('Static Slice Query', withShell(shell => {
 					request:      requestFromInput(code),
 					criterion:    query.criteria,
 					autoSelectIf: query.noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
-				}).allRemainingSteps();
+				}, defaultConfigOptions).allRemainingSteps();
 				const key = fingerPrintOfQuery(query);
 				results[key] = query.noReconstruction ? { slice: out.slice } : { slice: out.slice, reconstruct: out.reconstruct };
 			}

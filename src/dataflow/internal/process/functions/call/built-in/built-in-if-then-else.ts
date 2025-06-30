@@ -52,7 +52,7 @@ export function processIfThenElse<OtherInfo>(
 	let makeThenMaybe = false;
 
 	// we should defer this to the abstract interpretation
-	const values = resolveIdToValue(condArg?.info.id, { environment: data.environment, idMap: data.completeAst.idMap });
+	const values = resolveIdToValue(condArg?.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.flowrConfig.solver.variables });
 	const conditionIsAlwaysFalse = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
 	const conditionIsAlwaysTrue = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 

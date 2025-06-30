@@ -15,7 +15,6 @@ import type { RSymbol } from '../ast/model/nodes/r-symbol';
 import type { RString } from '../ast/model/nodes/r-string';
 import { startAndEndsWith } from '../../../util/text/strings';
 import type { RParameter } from '../ast/model/nodes/r-parameter';
-import { getEngineConfig } from '../../../config';
 import { log } from '../../../util/log';
 
 type SyntaxAndRNode = [SyntaxNode, RNode];
@@ -23,8 +22,7 @@ type SyntaxAndRNode = [SyntaxNode, RNode];
 /**
  * @param tree - The tree to normalize
  */
-export function normalizeTreeSitterTreeToAst(tree: Tree): RExpressionList {
-	const lax = getEngineConfig('tree-sitter')?.lax;
+export function normalizeTreeSitterTreeToAst(tree: Tree, lax?: boolean): RExpressionList {
 	if(lax) {
 		makeTreeSitterLax();
 	} else {
@@ -351,14 +349,19 @@ function convertTreeNode(node: SyntaxNode): RNode {
 		}
 		case TreeSitterType.FunctionDefinition: {
 			const [name, paramsParens, body] = nonErrorChildren(node);
-			const params = splitArrayOn(paramsParens.children.slice(1, -1), x => x.type === 'comma');
+			const [comments, noCommentRawParams] = splitComments(paramsParens.children.slice(1, -1));
+
+			const params = splitArrayOn(noCommentRawParams, x => x.type === 'comma');
 			return {
 				type:       RType.FunctionDefinition,
 				parameters: params.map(n => convertTreeNode(n[0]) as RParameter),
 				body:       ensureExpressionList(convertTreeNode(body)),
 				location:   makeSourceRange(name),
 				lexeme:     name.text,
-				...defaultInfo
+				info:       {
+					...defaultInfo.info,
+					additionalTokens: comments.map(c => c[1]),
+				}
 			};
 		}
 		case TreeSitterType.String:

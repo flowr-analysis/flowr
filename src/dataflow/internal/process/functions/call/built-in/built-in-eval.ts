@@ -1,7 +1,6 @@
 import { type DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { initializeCleanDataflowInformation } from '../../../../../info';
-import { getConfig } from '../../../../../../config';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { requestFromInput } from '../../../../../../r-bridge/retriever';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -27,6 +26,7 @@ import { collectStrings } from '../../../../../eval/values/string/string-constan
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { cartesianProduct } from '../../../../../../util/collections/arrays';
+import type { FlowrConfigOptions } from '../../../../../../config';
 
 export function processEvalCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -56,13 +56,13 @@ export function processEvalCall<OtherInfo>(
 		);
 	}
 
-	if(!getConfig().solver.evalStrings) {
+	if(!data.flowrConfig.solver.evalStrings) {
 		expensiveTrace(dataflowLogger, () => `Skipping eval call ${JSON.stringify(evalArgument)} (disabled in config file)`);
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
 
-	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, data.environment, data.completeAst.idMap);
+	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, data.environment, data.completeAst.idMap, data.flowrConfig);
 
 	if(code) {
 		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId, name.location);
@@ -99,7 +99,7 @@ export function processEvalCall<OtherInfo>(
 	return information;
 }
 
-function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, env: REnvironmentInformation, idMap: AstIdMap): string[] | undefined {
+function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, env: REnvironmentInformation, idMap: AstIdMap, config: FlowrConfigOptions): string[] | undefined {
 	const val = evalArgument;
 
 	if(
@@ -113,12 +113,12 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 		if(arg.value?.type === RType.String) {
 			return [arg.value.content.str];
 		} else if(arg.value?.type === RType.Symbol) {
-			const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, idMap: idMap }));
+			const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, idMap: idMap, resolve: config.solver.variables }));
 			if(resolved) {
 				return collectStrings(resolved.elements);
 			}
 		} else if(arg.value?.type === RType.FunctionCall && arg.value.named && ['paste', 'paste0'].includes(arg.value.functionName.content)) {
-			return handlePaste(arg.value.arguments, env, idMap, arg.value.functionName.content === 'paste' ? [' '] : ['']);
+			return handlePaste(config, arg.value.arguments, env, idMap, arg.value.functionName.content === 'paste' ? [' '] : ['']);
 		}
 		return undefined;
 	} else if(val.type === RType.Symbol) {
@@ -130,14 +130,14 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 	}
 }
 
-function getAsString(val: RNode<ParentInformation> | undefined, env: REnvironmentInformation, idMap: AstIdMap): string[] | undefined {
+function getAsString(config: FlowrConfigOptions, val: RNode<ParentInformation> | undefined, env: REnvironmentInformation, idMap: AstIdMap): string[] | undefined {
 	if(!val) {
 		return undefined;
 	}
 	if(val.type === RType.String) {
 		return [val.content.str];
 	} else if(val.type === RType.Symbol) {
-		const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: env, idMap: idMap }));
+		const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: env, idMap: idMap, resolve: config.solver.variables }));
 		if(resolved) {
 			return collectStrings(resolved.elements);
 		}
@@ -145,10 +145,10 @@ function getAsString(val: RNode<ParentInformation> | undefined, env: REnvironmen
 	return undefined;
 }
 
-function handlePaste(args: readonly RFunctionArgument<ParentInformation>[], env: REnvironmentInformation, idMap: AstIdMap, sepDefault: string[]): string[] | undefined {
+function handlePaste(config: FlowrConfigOptions, args: readonly RFunctionArgument<ParentInformation>[], env: REnvironmentInformation, idMap: AstIdMap, sepDefault: string[]): string[] | undefined {
 	const sepArg = args.find(v => v !== EmptyArgument && v.name?.content === 'sep');
 	if(sepArg) {
-		const res = sepArg !== EmptyArgument && sepArg.value ? getAsString(sepArg.value, env, idMap) : undefined;
+		const res = sepArg !== EmptyArgument && sepArg.value ? getAsString(config, sepArg.value, env, idMap) : undefined;
 		if(!res) {
 			// sep not resolvable clearly / unknown
 			return undefined;
@@ -158,7 +158,7 @@ function handlePaste(args: readonly RFunctionArgument<ParentInformation>[], env:
 
 	const allArgs = args
 		.filter(v => v !== EmptyArgument && v.name?.content !== 'sep' && v.value)
-		.map(v => getAsString((v as RArgument<ParentInformation>).value, env, idMap));
+		.map(v => getAsString(config, (v as RArgument<ParentInformation>).value, env, idMap));
 	if(allArgs.some(isUndefined)) {
 		return undefined;
 	}

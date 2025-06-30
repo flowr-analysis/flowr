@@ -4,23 +4,25 @@ import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10
 import { guard, isNotUndefined } from '../../../src/util/assert';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import type { TestLabel, TestLabelContext } from './label';
-import { dropTestLabel , modifyLabelName , decorateLabelContext } from './label';
+import { decorateLabelContext, dropTestLabel, modifyLabelName } from './label';
 import { printAsBuilder } from './dataflow/dataflow-builder-printer';
 import { RShell } from '../../../src/r-bridge/shell';
 import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
 import type { fileProtocol, RParseRequests } from '../../../src/r-bridge/retriever';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type {
-	AstIdMap, IdGenerator, NormalizedAst,
+	AstIdMap,
+	IdGenerator,
+	NormalizedAst,
 	RNodeWithParent
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
-	deterministicCountingIdGenerator
-} from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE,
-	DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
 	DEFAULT_DATAFLOW_PIPELINE,
-	DEFAULT_NORMALIZE_PIPELINE, TREE_SITTER_NORMALIZE_PIPELINE
+	DEFAULT_NORMALIZE_PIPELINE,
+	DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
+	TREE_SITTER_NORMALIZE_PIPELINE,
+	TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff-dataflow-graph';
@@ -31,10 +33,10 @@ import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
 import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph';
-import { assert, test, describe, afterAll, beforeAll } from 'vitest';
+import { afterAll, assert, beforeAll, describe, test } from 'vitest';
 import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import type { PipelineOutput , Pipeline } from '../../../src/core/steps/pipeline/pipeline';
+import type { Pipeline, PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
 import { runSearch } from '../../../src/search/flowr-search-executor';
 import type { ContainerIndex } from '../../../src/dataflow/graph/vertex';
@@ -46,6 +48,8 @@ import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import type { CfgProperty } from '../../../src/control-flow/cfg-properties';
 import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
+import type { FlowrConfigOptions } from '../../../src/config';
+import { cloneConfig, defaultConfigOptions } from '../../../src/config';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -139,7 +143,7 @@ export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileP
 	return (await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 		parser:	shell,
 		request
-	}).allRemainingSteps()).normalize;
+	}, defaultConfigOptions).allRemainingSteps()).normalize;
 };
 
 export interface TestConfiguration extends MergeableRecord {
@@ -256,7 +260,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 		const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			parser:  shell,
 			request: requestFromInput(input)
-		});
+		}, defaultConfigOptions);
 		const result = await pipeline.allRemainingSteps();
 		return result.normalize.ast;
 	}
@@ -265,7 +269,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 		const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
 			parser:  new TreeSitterExecutor(),
 			request: requestFromInput(input)
-		});
+		}, defaultConfigOptions);
 		const result = await pipeline.allRemainingSteps();
 		return result.normalize.ast;
 	}
@@ -278,7 +282,7 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds),
 			parser:  shell,
 			request: requestFromInput(input),
-		}).allRemainingSteps();
+		}, defaultConfigOptions).allRemainingSteps();
 
 		const ast = result.normalize.ast;
 
@@ -350,7 +354,8 @@ export function assertDataflow<P extends Pipeline>(
 	input: string | RParseRequests,
 	expected: DataflowGraph | ((data: PipelineOutput<P> & { normalize: NormalizedAst, dataflow: DataflowInformation }) => DataflowGraph),
 	userConfig?: Partial<DataflowTestConfiguration>,
-	startIndexForDeterministicIds = 0
+	startIndexForDeterministicIds = 0,
+	config = cloneConfig(defaultConfigOptions)
 ): void {
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
@@ -358,7 +363,7 @@ export function assertDataflow<P extends Pipeline>(
 			parser:  shell,
 			request: typeof input === 'string' ? requestFromInput(input) : input,
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
-		}).allRemainingSteps();
+		}, config).allRemainingSteps();
 
 		if(typeof expected === 'function') {
 			expected = expected(info);
@@ -415,7 +420,7 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 			getId:   getId,
 			request: requestFromInput(input),
 			parser:  shell
-		}).allRemainingSteps();
+		}, defaultConfigOptions).allRemainingSteps();
 		const reconstructed = NAIVE_RECONSTRUCT.processor({
 			normalize: result.normalize,
 			slice:     {
@@ -448,9 +453,9 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[] },
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[], flowrConfig?: FlowrConfigOptions },
 	testCaseFailType?: TestCaseFailType,
-	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0),
+	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0)
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const skip = skipTestBecauseConfigNotMet(userConfig);
@@ -468,7 +473,7 @@ export function assertSliced(
 				parser:       shell,
 				criterion:    criteria,
 				autoSelectIf: userConfig?.autoSelectIf,
-			}).allRemainingSteps();
+			}, cloneConfig(userConfig?.flowrConfig ?? defaultConfigOptions)).allRemainingSteps();
 			if(!userConfig?.skipTreeSitter) {
 				tsResult = await new PipelineExecutor(TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE, {
 					getId:        getId(),
@@ -476,7 +481,7 @@ export function assertSliced(
 					parser:       new TreeSitterExecutor(),
 					criterion:    criteria,
 					autoSelectIf: userConfig?.autoSelectIf
-				}).allRemainingSteps();
+				}, cloneConfig(userConfig?.flowrConfig ?? defaultConfigOptions)).allRemainingSteps();
 			}
 		});
 
@@ -511,7 +516,7 @@ export function assertSliced(
 			'cfg SAT properties',
 			function() {
 				const res = tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>;
-				const cfg = extractCfg(res.normalize, res.dataflow.graph);
+				const cfg = extractCfg(res.normalize, defaultConfigOptions, res.dataflow.graph);
 				const check = assertCfgSatisfiesProperties(cfg, userConfig?.cfgExcludeProperties);
 				try {
 					assert.isTrue(check, 'cfg fails properties: ' + check + ' is not satisfied');
@@ -573,15 +578,16 @@ export function assertContainerIndicesDefinition(
 	input: string,
 	search: FlowrSearchLike,
 	expectedIndices: ContainerIndex[] | undefined,
-	userConfig: Partial<TestConfiguration & { searchIn: 'dfg' | 'env' | 'both' }> = { searchIn: 'both' },
+	userConfig: Partial<TestConfiguration> & { searchIn: 'dfg' | 'env' | 'both' } = { searchIn: 'both' },
+	config = cloneConfig(defaultConfigOptions),
 ) {
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
 		const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 			parser:  shell,
 			request: requestFromInput(input),
-		}).allRemainingSteps();
-		const result = runSearch(search, analysis);
+		}, config).allRemainingSteps();
+		const result = runSearch(search,  { ...analysis, config: defaultConfigOptions });
 		let findIndices: (id: NodeId) => ContainerIndex[] | undefined;
 		if(userConfig.searchIn === 'dfg') {
 			findIndices = id => findInDfg(id, analysis.dataflow.graph);

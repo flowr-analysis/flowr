@@ -9,7 +9,7 @@ import { BenchmarkSlicer } from '../benchmark/slicer';
 import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables';
 import path from 'path';
 import type { KnownParserName } from '../r-bridge/parser';
-import { amendConfig } from '../config';
+import { amendConfig, getConfig } from '../config';
 
 export interface SingleBenchmarkCliOptions {
 	verbose:                   boolean
@@ -60,7 +60,11 @@ async function benchmark() {
 	}
 
 	// Enable pointer analysis if requested, otherwise disable it
-	amendConfig(c => c.solver.pointerTracking = options['enable-pointer-tracking']);
+	const config = getConfig();
+	amendConfig(config, c => {
+		c.solver.pointerTracking = options['enable-pointer-tracking'];
+		return c;
+	});
 
 	// ensure the file exists
 	const fileStat = fs.statSync(options.input);
@@ -71,7 +75,7 @@ async function benchmark() {
 	const maxSlices = options['max-slices'] ?? -1;
 	const slicer = new BenchmarkSlicer(options.parser);
 	try {
-		await slicer.init(request, undefined, options.threshold);
+		await slicer.init(request, config, undefined, options.threshold);
 
 		// ${escape}1F${escape}1G${escape}2K for line reset
 		if(options.slice === 'all') {

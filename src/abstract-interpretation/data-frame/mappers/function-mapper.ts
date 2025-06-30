@@ -1,3 +1,4 @@
+import { defaultConfigOptions, VariableResolve } from '../../../config';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { isUseVertex, VertexType } from '../../../dataflow/graph/vertex';
@@ -111,7 +112,7 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 		const mapper = DataFrameFunctionMapper[functionName] as DataFrameFunctionMapping<DataFrameFunctionParams<Name>>;
 		const params = DataFrameFunctionParamsMapper[functionName] as DataFrameFunctionParams<Name>;
 		const args = getFunctionArguments(node, dfg);
-		const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true };
+		const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
 
 		const operations = mapper(args, params, resolveInfo);
 
@@ -250,7 +251,7 @@ function getRequestFromRead(
 		if(typeof fileName === 'string') {
 			source = fileName;
 			const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
-			const sources = findSource(fileName, { referenceChain: referenceChain });
+			const sources = findSource(defaultConfigOptions.solver.resolveSource, fileName, { referenceChain: referenceChain });
 
 			if(sources?.length === 1) {
 				source = sources[0];

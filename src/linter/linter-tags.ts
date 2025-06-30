@@ -72,5 +72,9 @@ export enum LintingRuleTag {
      * This rule is used to detect issues that are related to the (re-)usability of the code.
      * For example, missing or incorrect error handling, or missing or incorrect user interface elements.
      */
-    Usability = 'usability'
+    Usability = 'usability',
+    /**
+     * This rule may provide quickfixes to automatically fix the issues it detects.
+     */
+    QuickFix = 'quickfix'
 }

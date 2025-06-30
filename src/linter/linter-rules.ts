@@ -2,6 +2,7 @@ import { DEPRECATED_FUNCTIONS } from './rules/deprecated-functions';
 import type { LintingRule } from './linter-format';
 import { FILE_PATH_VALIDITY } from './rules/file-path-validity';
 import { ABSOLUTE_PATH } from './rules/absolute-path';
+import { UNUSED_DEFINITION } from './rules/unused-definition';
 
 /**
  * The registry of currently supported linting rules.
@@ -10,7 +11,8 @@ import { ABSOLUTE_PATH } from './rules/absolute-path';
 export const LintingRules = {
 	'deprecated-functions': DEPRECATED_FUNCTIONS,
 	'file-path-validity':   FILE_PATH_VALIDITY,
-	'absolute-file-paths':  ABSOLUTE_PATH
+	'absolute-file-paths':  ABSOLUTE_PATH,
+	'unused-definitions':   UNUSED_DEFINITION
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules

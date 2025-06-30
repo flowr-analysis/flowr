@@ -1,5 +1,6 @@
-import type { CfgBasicBlockVertex, CfgEndMarkerVertex, CfgExpressionVertex, CfgMidMarkerVertex, CfgSimpleVertex, CfgStatementVertex, ControlFlowInformation } from '../../control-flow/control-flow-graph';
-import { CfgVertexType, isCfgMarkerNode } from '../../control-flow/control-flow-graph';
+import { defaultConfigOptions } from '../../config';
+import type { CfgBasicBlockVertex, CfgSimpleVertex, ControlFlowInformation } from '../../control-flow/control-flow-graph';
+import { CfgVertexType, isMarkerVertex } from '../../control-flow/control-flow-graph';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../../control-flow/semantic-cfg-guided-visitor';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -19,7 +20,7 @@ import { mapDataFrameAccess } from './mappers/access-mapper';
 import { mapDataFrameVariableAssignment } from './mappers/assignment-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
 import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
-import { applySemantics, getConstraintType, ConstraintType } from './semantics';
+import { applySemantics, ConstraintType, getConstraintType } from './semantics';
 import { isRSingleNode } from './util';
 
 export interface DataFrameAbsintVisitorConfiguration<
@@ -27,7 +28,7 @@ export interface DataFrameAbsintVisitorConfiguration<
 	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst<OtherInfo>       = NormalizedAst<OtherInfo>,
 	Dfg extends DataflowGraph                  = DataflowGraph
-> extends Omit<SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg>, 'defaultVisitingOrder'> {
+> extends Omit<SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg>, 'defaultVisitingOrder' | 'defaultVisitingType'> {
     readonly wideningThreshold?: number;
 }
 
@@ -39,12 +40,12 @@ class DataFrameAbsintVisitor<
 	Ast extends NormalizedAst<OtherInfo & AbstractInterpretationInfo> = NormalizedAst<OtherInfo & AbstractInterpretationInfo>,
 	Dfg extends DataflowGraph = DataflowGraph,
 	Config extends DataFrameAbsintVisitorConfiguration<OtherInfo & AbstractInterpretationInfo, ControlFlow, Ast, Dfg> = DataFrameAbsintVisitorConfiguration<OtherInfo & AbstractInterpretationInfo, ControlFlow, Ast, Dfg>
-> extends SemanticCfgGuidedVisitor<OtherInfo & AbstractInterpretationInfo, ControlFlow, Ast, Dfg, Config & { defaultVisitingOrder: 'forward' }> {
+> extends SemanticCfgGuidedVisitor<OtherInfo & AbstractInterpretationInfo, ControlFlow, Ast, Dfg, Config & { defaultVisitingOrder: 'forward' } & { defaultVisitingType: 'exit' }> {
 	private oldDomain: DataFrameStateDomain = new Map();
 	private newDomain: DataFrameStateDomain = new Map();
 
 	constructor(config: Config) {
-		super({ ...config, defaultVisitingOrder: 'forward' });
+		super({ ...config, defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' });
 	}
 
 	protected override visitNode(nodeId: NodeId): boolean {
@@ -64,38 +65,16 @@ class DataFrameAbsintVisitor<
 		}
 		return visitedCount === 0 || !equalDataFrameState(this.oldDomain, this.newDomain);
 	}
+	
+	protected override visitDataflowNode(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): void {
+		const node = this.getNormalizedAst(isMarkerVertex(vertex) ? vertex.root : vertex.id);
 
-	protected override onExpressionNode(vertex: CfgExpressionVertex): void {
-		const node = this.getNormalizedAst(vertex.id);
-
-		if(node !== undefined && isRSingleNode(node)) {
-			this.onProcessNode(vertex, node);
+		if(node !== undefined) {
+			this.oldDomain = node.info.dataFrame?.domain ?? new Map<NodeId, DataFrameDomain>();
+			super.visitDataflowNode(vertex);
+			node.info.dataFrame ??= {};
+			node.info.dataFrame.domain = this.newDomain;
 		}
-	}
-
-	protected override onStatementNode(vertex: CfgStatementVertex): void {
-		const node = this.getNormalizedAst(vertex.id);
-
-		if(node !== undefined && isRSingleNode(node)) {
-			this.onProcessNode(vertex, node);
-		}
-	}
-
-	protected override onMidMarkerNode(_vertex: CfgMidMarkerVertex): void {}
-
-	protected override onEndMarkerNode(vertex: CfgEndMarkerVertex): void {
-		const node = this.getNormalizedAst(vertex.root);
-
-		if(node !== undefined && !isRSingleNode(node)) {
-			this.onProcessNode(vertex, node);
-		}
-	}
-
-	private onProcessNode(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>, node: RNode<ParentInformation & AbstractInterpretationInfo>): void {
-		this.oldDomain = node.info.dataFrame?.domain ?? new Map<NodeId, DataFrameDomain>();
-		this.onExprOrStmtNode(vertex);
-		node.info.dataFrame ??= {};
-		node.info.dataFrame.domain = this.newDomain;
 	}
 
 	protected override onAssignmentCall({ call, target, source }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
@@ -206,10 +185,10 @@ export function performDataFrameAbsint(
 	dfg: DataflowGraph,
 	ast: NormalizedAst<ParentInformation & AbstractInterpretationInfo>
 ): DataFrameStateDomain {
-	const visitor = new DataFrameAbsintVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast });
+	const visitor = new DataFrameAbsintVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, flowrConfig: defaultConfigOptions });
 	visitor.start();
 	const exitPoints = cfinfo.exitPoints.map(id => cfinfo.graph.getVertex(id)).filter(isNotUndefined);
-	const exitNodes = exitPoints.map(vertex => ast.idMap.get(isCfgMarkerNode(vertex) ? vertex.root : vertex.id)).filter(isNotUndefined);
+	const exitNodes = exitPoints.map(vertex => ast.idMap.get(isMarkerVertex(vertex) ? vertex.root : vertex.id)).filter(isNotUndefined);
 	const result = exitNodes.map(node => node.info.dataFrame?.domain ?? new Map());
 
 	return joinDataFrameStates(...result);

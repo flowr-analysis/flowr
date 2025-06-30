@@ -13,6 +13,7 @@ import { runSearch } from '../../search/flowr-search-executor';
 import { flowrSearchToCode, flowrSearchToMermaid } from '../../search/flowr-search-printer';
 import { recoverContent } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { formatRange } from '../../util/mermaid/dfg';
+import { defaultConfigOptions } from '../../config';
 
 export interface ShowSearchOptions {
 	readonly showCode?:       boolean;
@@ -24,8 +25,8 @@ export async function showSearch(shell: RShell, code: string, search: FlowrSearc
 	const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
 		request: requestFromInput(code)
-	}).allRemainingSteps();
-	const result = runSearch(search, analysis);
+	}, defaultConfigOptions).allRemainingSteps();
+	const result = runSearch(search, { ...analysis, config: defaultConfigOptions });
 	const duration = performance.now() - now;
 
 	const metaInfo = `

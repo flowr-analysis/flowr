@@ -151,7 +151,7 @@ function getResults<T extends DependencyInfo>(data: BasicQueryData, results: Cal
 		const vertex = data.dataflow.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
 		const info = functions.find(f => f.name === name) as FunctionInfo;
 
-		const args = getArgumentStringValue(data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
+		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
 		const linkedArgs = collectValuesFromLinks(args, data, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
 
 		const foundValues = linkedArgs ?? args;
@@ -195,7 +195,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undef
 		if(vertex === undefined || vertex.tag !== VertexType.FunctionCall) {
 			continue;
 		}
-		const args = getArgumentStringValue(data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
+		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
 		if(args === undefined) {
 			continue;
 		}
@@ -209,7 +209,6 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undef
 	}
 	return map.size ? map : undefined;
 }
-
 
 function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
 	let functions: FunctionInfo[] = ignoreDefaultFunctions ? [] : [...defaultFunctions];

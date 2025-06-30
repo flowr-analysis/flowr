@@ -11,13 +11,14 @@ import {
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { RNumber } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RLogical } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-logical';
+import { defaultConfigOptions } from '../../../../src/config';
 
 describe.sequential('Retrieve fitting Argument', withShell(shell => {
 	async function retrieveArgOfCode(code: string, index: number, name?: string) {
 		const dfg = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 			parser:  shell,
 			request: requestFromInput(code)
-		}).allRemainingSteps();
+		}, defaultConfigOptions).allRemainingSteps();
 		// we assume that the entry point of the graph is the function call
 		const graph = dfg.dataflow.graph;
 		const call = graph.getVertex(dfg.dataflow.entryPoint);
@@ -34,7 +35,7 @@ describe.sequential('Retrieve fitting Argument', withShell(shell => {
 		}
 	});
 	describe('Mixed with named Arguments', () => {
-		for(const [index, name, value] of [[0, undefined, 1], [1, 'peter', 2], [1, 'xylophon', 3]] as const) {
+		for(const [index, name, value] of [[0, undefined, 1], [1, 'peter', 2], [1, 'xylophone', 3]] as const) {
 			test(`${name ?? 'Unnamed'} at index ${index}`, async() => {
 				const val = await retrieveArgOfCode('foo(1, walter=4, peter=2, 3)', index, name);
 				assert.strictEqual(val?.type, RType.Number);

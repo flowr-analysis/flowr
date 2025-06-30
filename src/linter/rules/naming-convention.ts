@@ -127,7 +127,7 @@ export function fixCasing(identifier: string, convention: CasingConvention): str
 	}
 }
 
-export function createQuickFixes(graph: DataflowGraph, nodeId: NodeId, replacement: string, conv: CasingConvention): LintQuickFixReplacement[] | undefined {
+export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: NodeId, replacement: string, conv: CasingConvention): LintQuickFixReplacement[] | undefined {
 	const refs = getAllRefsToSymbol(graph, nodeId);
 	const idMap = graph.idMap;
 	if(refs === undefined || idMap === undefined) {
@@ -149,7 +149,9 @@ export function createQuickFixes(graph: DataflowGraph, nodeId: NodeId, replaceme
 		}
 	}
 
-	return result.length === 0 ? undefined : result;
+	return result.length === 0 ? 
+		undefined : // We sort so that when applied in order the fixes will start from the end of the line to avoid conflicts
+		result.sort((a, b) => a.range[0] == b.range[0] ? b.range[1] - a.range[1] : b.range[0] - a.range[0]);
 }
 
 export const NAMING_CONVENTION = {
@@ -168,7 +170,7 @@ export const NAMING_CONVENTION = {
 		const results = symbols.filter(m => m.detectedCasing !== casing)
 			.map(({ id, ...m }) => ({
 				...m,
-				quickFix: createQuickFixes(data.dataflow.graph, id, fixCasing(m.name, casing), casing)
+				quickFix: createNamingConventionQuickFixes(data.dataflow.graph, id, fixCasing(m.name, casing), casing)
 			}));
 		
 		return {

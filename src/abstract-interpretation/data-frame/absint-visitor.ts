@@ -167,10 +167,9 @@ class DataFrameAbsintVisitor<
 					getOriginInDfg(this.config.dfg, operation.operand)
 						?.filter(origin => origin.type === OriginType.ReadVariableOrigin)
 						.forEach(origin => this.newDomain.set(origin.id, value));
+				} else if(getConstraintType(operation.operation) === ConstraintType.ResultPostcondition) {
+					this.newDomain.set(node.info.id, value);
 				}
-			}
-			if(node.info.dataFrame.operations.some(operation => getConstraintType(operation.operation) === ConstraintType.ResultPostcondition)) {
-				this.newDomain.set(node.info.id, value);
 			}
 		}
 	}

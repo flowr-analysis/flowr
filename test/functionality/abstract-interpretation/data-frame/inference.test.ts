@@ -5,11 +5,18 @@ import { withShell } from '../../_helper/shell';
 import { assertDataFrameDomain, assertDataFrameOperation, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomain } from './data-frame';
 
 describe.sequential('Data Frame Shape Inference', withShell(shell => {
-	const skipLibraries = 'GITHUB_ACTIONS' in process.env;
+	async function installPackage(packageName: string, ...alternatives: string[]) {
+		const check = [packageName, ...alternatives ?? []].map(name => `!require("${name}")`).join(' && ');
+		await shell.sendCommandWithOutput(`if (${check}) install.packages("${packageName}")`);
+	}
 
-	beforeAll(() => {
+	beforeAll(async() => {
 		amendConfig(config => config.solver.pointerTracking = false);
-	});
+		await installPackage('dplyr', 'tidyverse');
+		await installPackage('magrittr', 'tidyverse');
+		await installPackage('readr', 'tidyverse');
+		shell.clearEnvironment();
+	}, 60000);
 
 	afterAll(() => {
 		amendConfig(config => config.solver.pointerTracking = defaultConfigOptions.solver.pointerTracking);
@@ -2305,7 +2312,7 @@ df <- subset(df, select = c(id, name), drop = TRUE)
 		);
 	});
 
-	describe('Filter', { skip: skipLibraries }, () => {
+	describe('Filter', () => {
 		testDataFrameDomain(
 			shell,
 			`
@@ -2380,7 +2387,7 @@ df <- dplyr::filter(df, FALSE, .preserve = TRUE)
 		);
 	});
 
-	describe('Select', { skip: skipLibraries }, () => {
+	describe('Select', () => {
 		testDataFrameDomain(
 			shell,
 			`
@@ -2684,14 +2691,14 @@ df <- transform(df)
 		);
 
 		describe('Currently Unsupported', { fails: true }, () => {
-			testDataFrameDomain(
+			assertDataFrameDomain(
 				shell,
 				`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- transform(df, \`:D\` = 11:15)
 				`.trim(),
 				[
-					['2@df', { colnames: ColNamesTop, cols: [2, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
+					['2@df', { colnames: ColNamesTop, cols: [2, 3], rows: [5, 5] }]
 				]
 			);
 
@@ -2730,7 +2737,7 @@ df <- transform(df, "A")
 		});
 	});
 
-	describe('Mutate', { skip: skipLibraries }, () => {
+	describe('Mutate', () => {
 		testDataFrameDomain(
 			shell,
 			`
@@ -2851,7 +2858,7 @@ df <- dplyr::mutate(df, label = "A", .keep = "all")
 		);
 	});
 
-	describe('Group By', { skip: skipLibraries }, () => {
+	describe('Group By', () => {
 		testDataFrameDomain(
 			shell,
 			`
@@ -3024,7 +3031,7 @@ df <- dplyr::summarize(df, score = mean(score), sum = sum(score), .groups = "dro
 		);
 	});
 
-	describe('Left Join', { skip: skipLibraries }, () => {
+	describe('Left Join', () => {
 		testDataFrameDomain(
 			shell,
 			`
@@ -3342,7 +3349,7 @@ df <- merge(df1, df2, "id", no.dups = FALSE)
 		});
 	});
 
-	describe('Rearrange', { skip: skipLibraries }, () => {
+	describe('Rearrange', () => {
 		testDataFrameDomain(
 			shell,
 			`
@@ -3405,7 +3412,7 @@ df <- dplyr::arrange(df, desc(score))
 		);
 	});
 
-	describe('General', { skip: skipLibraries }, () => {
+	describe('General', () => {
 		testDataFrameDomain(
 			shell,
 			`

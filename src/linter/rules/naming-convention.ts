@@ -159,8 +159,8 @@ export const NAMING_CONVENTION = {
 		const symbols = elements.getElements()
 			.map(m => ({
 				certainty:      LintingCertainty.Definitely,
-				detectedCasing: detectCasing(m.node.content as string),
-				name:           m.node.content as string,
+				detectedCasing: detectCasing(m.node.lexeme as string),
+				name:           m.node.lexeme as string,
 				range:          m.node.info.fullRange as SourceRange,
 				id:             m.node.info.id
 			}));

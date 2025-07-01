@@ -21,7 +21,6 @@ import { mapDataFrameVariableAssignment } from './mappers/assignment-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
 import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
 import { applySemantics, ConstraintType, getConstraintType } from './semantics';
-import { isRSingleNode } from './util';
 
 export interface DataFrameAbsintVisitorConfiguration<
 	OtherInfo = NoInfo,
@@ -65,7 +64,7 @@ class DataFrameAbsintVisitor<
 		}
 		return visitedCount === 0 || !equalDataFrameState(this.oldDomain, this.newDomain);
 	}
-	
+
 	protected override visitDataflowNode(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): void {
 		const node = this.getNormalizedAst(isMarkerVertex(vertex) ? vertex.root : vertex.id);
 
@@ -152,14 +151,7 @@ class DataFrameAbsintVisitor<
 
 	// We only process vertices of leaf nodes and exit vertices (no entry nodes of complex nodes)
 	private shouldSkipVertex(vertex: CfgSimpleVertex) {
-		if(vertex.type === CfgVertexType.EndMarker) {
-			return false;
-		} else if(vertex.type === CfgVertexType.MidMarker) {
-			return true;
-		}
-		const node = this.getNormalizedAst(vertex.id);
-
-		return node === undefined || !isRSingleNode(node);
+		return isMarkerVertex(vertex) ? vertex.type !== CfgVertexType.EndMarker : vertex.end !== undefined;
 	}
 
 	private getPredecessorNodes(vertexId: NodeId): RNode<ParentInformation & AbstractInterpretationInfo>[] {

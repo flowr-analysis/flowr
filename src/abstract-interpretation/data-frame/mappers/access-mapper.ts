@@ -2,7 +2,7 @@ import { VariableResolve } from '../../../config';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import type { RAccess, RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -10,7 +10,6 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
 import { resolveIdToAbstractValue } from '../absint-visitor';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, unquoteArgument } from '../resolve-args';
-import { isStringBasedAccess } from '../util';
 
 const SpecialAccessArgumentsMapper: Record<RIndexAccess['operator'], string[]> = {
 	'[':  ['drop'],
@@ -144,4 +143,10 @@ function getEffectiveArgs(
 	const specialArgs = SpecialAccessArgumentsMapper[operator];
 
 	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !specialArgs.includes(unquoteArgument(arg.name.content)));
+}
+
+export function isStringBasedAccess(
+	access: RAccess<ParentInformation>
+): access is RNamedAccess<ParentInformation> {
+	return access.operator === '$' || access.operator === '@';
 }

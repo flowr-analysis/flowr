@@ -8,7 +8,7 @@ import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-arg
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
+import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperation } from '../absint-info';
 import { resolveIdToAbstractValue } from '../absint-visitor';
 import { resolveIdToArgStringVector, resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
 import { isStringBasedAccess } from './access-mapper';
@@ -25,7 +25,7 @@ type DataFrameReplacementFunctionMapping = (
     operand: RArgument<ParentInformation>,
     expression: RNode<ParentInformation>,
     info: ResolveInfo
-) => DataFrameOperations[] | undefined;
+) => DataFrameOperation[] | undefined;
 
 type DataFrameReplacementFunction = keyof typeof DataFrameReplacementFunctionMapper;
 
@@ -44,7 +44,7 @@ export function mapDataFrameReplacementFunction(
 	dfg: DataflowGraph
 ): DataFrameInfo | undefined {
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
-	let operations: DataFrameOperations[] | undefined;
+	let operations: DataFrameOperation[] | undefined;
 
 	if(node.type === RType.Access) {
 		if(node.accessed.type === RType.Symbol && node.access.every(access => access === EmptyArgument)) {
@@ -73,7 +73,7 @@ function mapDataFrameNamedColumnAssignment(
 	access: RNamedAccess<ParentInformation & AbstractInterpretationInfo>,
 	expression: RNode<ParentInformation>,
 	info: ResolveInfo
-): DataFrameOperations[] | undefined {
+): DataFrameOperation[] | undefined {
 	const dataFrame = access.accessed;
 
 	if(resolveIdToAbstractValue(dataFrame, info.graph) === undefined) {
@@ -84,7 +84,7 @@ function mapDataFrameNamedColumnAssignment(
 	return [{
 		operation: 'assignCols',
 		operand:   dataFrame.info.id,
-		args:      { columns: argName ? [argName] : undefined }
+		columns:   argName ? [argName] : undefined
 	}];
 }
 
@@ -92,14 +92,14 @@ function mapDataFrameIndexColRowAssignment(
 	access: RIndexAccess<ParentInformation & AbstractInterpretationInfo>,
 	expression: RNode<ParentInformation>,
 	info: ResolveInfo
-): DataFrameOperations[] | undefined {
+): DataFrameOperation[] | undefined {
 	const dataFrame = access.accessed;
 	const args = access.access;
 
 	if(resolveIdToAbstractValue(dataFrame, info.graph) === undefined || args.every(arg => arg === EmptyArgument)) {
 		return;
 	}
-	const result: DataFrameOperations[] = [];
+	const result: DataFrameOperation[] = [];
 	const rowArg = args.length < 2 ? undefined : args[0];
 	const colArg = args.length < 2 ? args[0] : args[1];
 
@@ -115,7 +115,7 @@ function mapDataFrameIndexColRowAssignment(
 		result.push({
 			operation: 'assignRows',
 			operand:   dataFrame.info.id,
-			args:      { rows: rows }
+			rows
 		});
 	}
 	if(colArg !== undefined && colArg !== EmptyArgument) {
@@ -132,7 +132,7 @@ function mapDataFrameIndexColRowAssignment(
 		result.push({
 			operation: 'assignCols',
 			operand:   dataFrame.info.id,
-			args:      { columns: columns }
+			columns
 		});
 	}
 	return result;
@@ -142,7 +142,7 @@ function mapDataFrameColNamesAssignment(
 	operand: RArgument<ParentInformation & AbstractInterpretationInfo>,
 	expression: RNode<ParentInformation>,
 	info: ResolveInfo
-): DataFrameOperations[] | undefined {
+): DataFrameOperation[] | undefined {
 	if(resolveIdToAbstractValue(operand, info.graph) === undefined) {
 		return;
 	}
@@ -152,11 +152,11 @@ function mapDataFrameColNamesAssignment(
 	return [{
 		operation: 'setColNames',
 		operand:   operand.value?.info.id,
-		args:      { colnames: assignedNames }
+		colnames:  assignedNames
 	}];
 }
 
-function mapDataFrameRowNamesAssignment(): DataFrameOperations[] | undefined {
+function mapDataFrameRowNamesAssignment(): DataFrameOperation[] | undefined {
 	return;
 }
 
@@ -164,14 +164,14 @@ function mapDataFrameDimNamesAssignment(
 	operand: RArgument<ParentInformation & AbstractInterpretationInfo>,
 	expression: RNode<ParentInformation>,
 	info: ResolveInfo
-): DataFrameOperations[] | undefined {
+): DataFrameOperation[] | undefined {
 	if(resolveIdToAbstractValue(operand, info.graph) === undefined) {
 		return;
 	}
 	return [{
 		operation: 'setColNames',
 		operand:   operand.value?.info.id,
-		args:      { colnames: undefined }
+		colnames:  undefined
 	}];
 }
 
@@ -179,13 +179,12 @@ function mapDataFrameUnknownAssignment(
 	operand: RArgument<ParentInformation & AbstractInterpretationInfo>,
 	expression: RNode<ParentInformation>,
 	info: ResolveInfo
-): DataFrameOperations[] | undefined {
+): DataFrameOperation[] | undefined {
 	if(resolveIdToAbstractValue(operand, info.graph) === undefined) {
 		return;
 	}
 	return [{
 		operation: 'unknownModify',
-		operand:   operand.value?.info.id,
-		args:      {}
+		operand:   operand.value?.info.id
 	}];
 }

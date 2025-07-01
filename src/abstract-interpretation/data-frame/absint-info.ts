@@ -2,14 +2,11 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { DataFrameStateDomain } from './domain';
 import type { DataFrameOperationArgs, DataFrameOperationName } from './semantics';
 
-export interface DataFrameOperation<Name extends DataFrameOperationName> {
-	operation: Name,
-	operand:   NodeId | undefined,
-	args:      DataFrameOperationArgs<Name>
-}
-
-export type DataFrameOperations = {
-    [Name in DataFrameOperationName]: DataFrameOperation<Name>;
+export type DataFrameOperation = {
+    [Name in DataFrameOperationName]: {
+		operation: Name,
+		operand:   NodeId | undefined
+	} & DataFrameOperationArgs<Name>;
 }[DataFrameOperationName];
 
 interface DataFrameInfoBase {
@@ -24,7 +21,7 @@ export interface DataFrameAssignmentInfo {
 
 export interface DataFrameExpressionInfo {
 	type:       'expression',
-	operations: DataFrameOperations[]
+	operations: DataFrameOperation[]
 }
 
 export type DataFrameInfo = DataFrameAssignmentInfo | DataFrameExpressionInfo;

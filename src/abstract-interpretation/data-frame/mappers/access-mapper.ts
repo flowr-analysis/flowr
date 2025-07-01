@@ -7,7 +7,7 @@ import type { RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nod
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
+import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperation } from '../absint-info';
 import { resolveIdToAbstractValue } from '../absint-visitor';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, unquoteArgument } from '../resolve-args';
 
@@ -21,7 +21,7 @@ export function mapDataFrameAccess(
 	dfg: DataflowGraph
 ): DataFrameInfo | undefined {
 	if(node.type === RType.Access) {
-		let operations: DataFrameOperations[] | undefined;
+		let operations: DataFrameOperation[] | undefined;
 
 		if(isStringBasedAccess(node)) {
 			operations = mapDataFrameNamedColumnAccess(node, { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias });
@@ -37,7 +37,7 @@ export function mapDataFrameAccess(
 function mapDataFrameNamedColumnAccess(
 	access: RNamedAccess<ParentInformation & AbstractInterpretationInfo>,
 	info: ResolveInfo
-): DataFrameOperations[] | undefined {
+): DataFrameOperation[] | undefined {
 	const dataFrame = access.accessed;
 
 	if(resolveIdToAbstractValue(dataFrame, info.graph) === undefined) {
@@ -48,14 +48,14 @@ function mapDataFrameNamedColumnAccess(
 	return [{
 		operation: 'accessCols',
 		operand:   dataFrame.info.id,
-		args:      { columns: argName ? [argName] : undefined }
+		columns:   argName ? [argName] : undefined
 	}];
 }
 
 function mapDataFrameIndexColRowAccess(
 	access: RIndexAccess<ParentInformation & AbstractInterpretationInfo>,
 	info: ResolveInfo
-): DataFrameOperations[] | undefined {
+): DataFrameOperation[] | undefined {
 	const dataFrame = access.accessed;
 
 	if(resolveIdToAbstractValue(dataFrame, info.graph) === undefined) {
@@ -66,11 +66,10 @@ function mapDataFrameIndexColRowAccess(
 	if(args.every(arg => arg === EmptyArgument)) {
 		return [{
 			operation: 'identity',
-			operand:   dataFrame.info.id,
-			args:      {}
+			operand:   dataFrame.info.id
 		}];
 	}
-	const result: DataFrameOperations[] = [];
+	const result: DataFrameOperation[] = [];
 	const dropArg = access.access.find(arg => resolveIdToArgName(arg, info) === 'drop');
 	const dropValue = resolveIdToArgValue(dropArg, info);
 	const rowArg = args.length < 2 ? undefined : args[0];
@@ -89,7 +88,7 @@ function mapDataFrameIndexColRowAccess(
 		result.push({
 			operation: 'accessRows',
 			operand:   dataFrame.info.id,
-			args:      { rows: rows?.map(Math.abs) }
+			rows:      rows?.map(Math.abs)
 		});
 	}
 	if(colArg !== undefined && colArg !== EmptyArgument) {
@@ -105,7 +104,7 @@ function mapDataFrameIndexColRowAccess(
 		result.push({
 			operation: 'accessCols',
 			operand:   dataFrame.info.id,
-			args:      { columns: columns?.every(col => typeof col === 'number') ? columns.map(Math.abs) : columns }
+			columns:   columns?.every(col => typeof col === 'number') ? columns.map(Math.abs) : columns
 		});
 	}
 	// The data frame extent is dropped if the operator `[[` is used, the argument `drop` is true, or only one column is accessed
@@ -120,7 +119,7 @@ function mapDataFrameIndexColRowAccess(
 			result.push({
 				operation: rows === undefined || rows.every(row => row >= 0) ? 'subsetRows' : 'removeRows',
 				operand:   operand?.info.id,
-				args:      { rows: rows?.length }
+				rows:      rows?.length
 			});
 			operand = undefined;
 		}
@@ -128,7 +127,7 @@ function mapDataFrameIndexColRowAccess(
 			result.push({
 				operation: columns === undefined || columns.every(col => typeof col === 'string' || col >= 0) ? 'subsetCols' : 'removeCols',
 				operand:   operand?.info.id,
-				args:      { colnames: columns?.map(col => typeof col === 'string' ? col : undefined) }
+				colnames:  columns?.map(col => typeof col === 'string' ? col : undefined)
 			});
 			operand = undefined;
 		}

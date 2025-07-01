@@ -304,14 +304,16 @@ function applyLeftJoinSemantics(
 
 function applyIdentitySemantics(
 	value: DataFrameDomain,
-	_args: Record<string, never>
+	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+	_args: {}
 ): DataFrameDomain {
 	return value;
 }
 
 function applyUnknownSemantics(
 	_value: DataFrameDomain,
-	_args: Record<string, never>
+	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+	_args: {}
 ): DataFrameDomain {
 	return DataFrameTop;
 }

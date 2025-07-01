@@ -54,40 +54,263 @@ const DataFrameFunctionMapper = {
 	'summarise':     { mapper: mapDataFrameSummarize, library: 'dplyr' },
 	'summarize':     { mapper: mapDataFrameSummarize, library: 'dplyr' },
 	'left_join':     { mapper: mapDataFrameLeftJoin, library: 'dplyr' },
-	'merge':         { mapper: mapDataFrameMerge },
+	'merge':         { mapper: mapDataFrameLeftJoin },
 	'relocate':      { mapper: mapDataFrameIdentity, library: 'dplyr' },
 	'arrange':       { mapper: mapDataFrameIdentity, library: 'dplyr' }
 } as const satisfies Record<string, DataFrameFunctionMapperInfo<never>>;
 
 const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
-	'data.frame':    { special: ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'] },
-	'as.data.frame': { dataFrame: { pos: 0, name: 'x' } },
-	'read.table':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: false }, separator: { pos: 2, name: 'sep', default: '\\s' }, quote: { pos: 3, name: 'quote', default: '"\'' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '#' }, text: { pos: 23, name: 'text' } },
-	'read.csv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ',' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' }, text: { pos: 23, name: 'text' } },
-	'read.csv2':     { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: ';' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' }, text: { pos: 23, name: 'text' } },
-	'read.delim':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: '\\t' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' }, text: { pos: 23, name: 'text' } },
-	'read.delim2':   { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'header', default: true }, separator: { pos: 2, name: 'sep', default: '\\t' }, quote: { pos: 3, name: 'quote', default: '"' }, skipLines: { pos: 12, name: 'skip', default: 0 }, comment: { pos: 17, name: 'comment.char', default: '' }, text: { pos: 23, name: 'text' } },
-	'read_table':    { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: '\\s' }, quote: { pos: -1, default: '"' }, skipLines: { pos: 5, name: 'skip', default: 0 }, comment: { pos: 9, name: 'comment', default: '' } },
-	'read_csv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: ',' }, quote: { pos: 8, name: 'quote', default: '"' }, comment: { pos: 9, name: 'comment', default: '' }, skipLines: { pos: 11, name: 'skip', default: 0 } },
-	'read_csv2':     { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: ';' }, quote: { pos: 8, name: 'quote', default: '"' }, comment: { pos: 9, name: 'comment', default: '' }, skipLines: { pos: 11, name: 'skip', default: 0 } },
-	'read_tsv':      { fileName: { pos: 0, name: 'file' }, header: { pos: 1, name: 'col_names', default: true }, separator: { pos: -1, default: '\\t' }, quote: { pos: 8, name: 'quote', default: '"' }, comment: { pos: 9, name: 'comment', default: '' }, skipLines: { pos: 11, name: 'skip', default: 0 } },
-	'read_delim':    { fileName: { pos: 0, name: 'file' }, separator: { pos: 1, name: 'delim', default: '\t' }, quote: { pos: 2, name: 'quote', default: '"' }, header: { pos: 5, name: 'col_names', default: true }, comment: { pos: 12, name: 'comment', default: '' }, skipLines: { pos: 14, name: 'skip', default: 0 } },
-	'cbind':         { special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
-	'rbind':         { special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
-	'head':          { dataFrame: { pos: 0, name: 'x' }, amount: { pos: 1, name: 'n', default: 6 } },
-	'tail':          { dataFrame: { pos: 0, name: 'x' }, amount: { pos: 1, name: 'n', default: 6 } },
-	'subset':        { dataFrame: { pos: 0, name: 'x' }, subset: { pos: 1, name: 'subset' }, select: { pos: 2, name: 'select' }, drop: { pos: 3, name: 'drop', default: false } },
-	'filter':        { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.preserve'] },
-	'select':        { dataFrame: { pos: 0, name: '.data' }, special: [] },
-	'mutate':        { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.keep', '.before', '.after'] },
-	'transform':     { dataFrame: { pos: 0, name: '_data' }, special: [] },
-	'group_by':      { dataFrame: { pos: 0, name: '.data' }, by: { pos: 1 }, special: ['.add', '.drop'] },
-	'summarise':     { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.groups'] },
-	'summarize':     { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.groups'] },
-	'left_join':     { dataFrame: { pos: 0, name: 'x' }, otherDataFrame: { pos: 1, name: 'y' }, by: { pos: 3, name: 'by' } },
-	'merge':         { dataFrame: { pos: 0, name: 'x' }, otherDataFrame: { pos: 1, name: 'y' }, by: { pos: 3, name: 'by' } },
-	'relocate':      { dataFrame: { pos: 0, name: '.data' }, special: ['.before', '.after'] },
-	'arrange':       { dataFrame: { pos: 0, name: '.data' }, special: ['.by_group', '.locale'] }
+	'data.frame': {
+		special:  ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'],
+		critical: [{ pos: -1, name: 'row.names' }]
+	},
+	'as.data.frame': {
+		critical:  [],
+		dataFrame: { pos: 0, name: 'x' }
+	},
+	'read.table': {
+		fileName:  { pos: 0, name: 'file' },
+		header:    { pos: 1, name: 'header', default: false },
+		separator: { pos: 2, name: 'sep', default: '\\s' },
+		quote:     { pos: 3, name: 'quote', default: '"\'' },
+		skipLines: { pos: 12, name: 'skip', default: 0 },
+		comment:   { pos: 17, name: 'comment.char', default: '#' },
+		text:      { pos: 23, name: 'text' },
+		critical:  [
+			{ pos: 6, name: 'row.names' },
+			{ pos: 7, name: 'col.names' },
+			{ pos: 11, name: 'nrows', default: -1 },
+			{ pos: 15, name: 'strip.white', default: false },
+			{ pos: 16, name: 'blank.lines.skip', default: true },
+			{ pos: 18, name: 'allow.escapes', default: false },
+		]
+	},
+	'read.csv': {
+		fileName:  { pos: 0, name: 'file' },
+		header:    { pos: 1, name: 'header', default: true },
+		separator: { pos: 2, name: 'sep', default: ',' },
+		quote:     { pos: 3, name: 'quote', default: '"' },
+		comment:   { pos: 6, name: 'comment.char', default: '' },
+		skipLines: { pos: -1, name: 'skip', default: 0 },
+		text:      { pos: -1, name: 'text' },
+		critical:  [
+			{ pos: -1, name: 'row.names' },
+			{ pos: -1, name: 'col.names' },
+			{ pos: -1, name: 'nrows', default: -1 },
+			{ pos: -1, name: 'strip.white', default: false },
+			{ pos: -1, name: 'blank.lines.skip', default: true },
+			{ pos: -1, name: 'allow.escapes', default: false },
+		]
+	},
+	'read.csv2': {
+		fileName:  { pos: 0, name: 'file' },
+		header:    { pos: 1, name: 'header', default: true },
+		separator: { pos: 2, name: 'sep', default: ';' },
+		quote:     { pos: 3, name: 'quote', default: '"' },
+		comment:   { pos: 6, name: 'comment.char', default: '' },
+		skipLines: { pos: -1, name: 'skip', default: 0 },
+		text:      { pos: -1, name: 'text' },
+		critical:  [
+			{ pos: -1, name: 'row.names' },
+			{ pos: -1, name: 'col.names' },
+			{ pos: -1, name: 'nrows', default: -1 },
+			{ pos: -1, name: 'strip.white', default: false },
+			{ pos: -1, name: 'blank.lines.skip', default: true },
+			{ pos: -1, name: 'allow.escapes', default: false },
+		]
+	},
+	'read.delim': {
+		fileName:  { pos: 0, name: 'file' },
+		header:    { pos: 1, name: 'header', default: true },
+		separator: { pos: 2, name: 'sep', default: '\\t' },
+		quote:     { pos: 3, name: 'quote', default: '"' },
+		comment:   { pos: 6, name: 'comment.char', default: '' },
+		skipLines: { pos: -1, name: 'skip', default: 0 },
+		text:      { pos: -1, name: 'text' },
+		critical:  [
+			{ pos: -1, name: 'row.names' },
+			{ pos: -1, name: 'col.names' },
+			{ pos: -1, name: 'nrows', default: -1 },
+			{ pos: -1, name: 'strip.white', default: false },
+			{ pos: -1, name: 'blank.lines.skip', default: true },
+			{ pos: -1, name: 'allow.escapes', default: false },
+		]
+	},
+	'read.delim2': {
+		fileName:  { pos: 0, name: 'file' },
+		header:    { pos: 1, name: 'header', default: true },
+		separator: { pos: 2, name: 'sep', default: '\\t' },
+		quote:     { pos: 3, name: 'quote', default: '"' },
+		comment:   { pos: 6, name: 'comment.char', default: '' },
+		skipLines: { pos: -1, name: 'skip', default: 0 },
+		text:      { pos: -1, name: 'text' },
+		critical:  [
+			{ pos: -1, name: 'row.names' },
+			{ pos: -1, name: 'col.names' },
+			{ pos: -1, name: 'nrows', default: -1 },
+			{ pos: -1, name: 'strip.white', default: false },
+			{ pos: -1, name: 'blank.lines.skip', default: true },
+			{ pos: -1, name: 'allow.escapes', default: false },
+		]
+	},
+	'read_table': {
+		fileName:  { pos: 0, name: 'file' },
+		header:    { pos: 1, name: 'col_names', default: true },
+		separator: { pos: -1, default: '\\s' },
+		quote:     { pos: -1, default: '"' },
+		skipLines: { pos: 5, name: 'skip', default: 0 },
+		comment:   { pos: 9, name: 'comment', default: '' },
+		critical:  [
+			{ pos: 6, name: 'n_max', default: Infinity },
+			{ pos: 11, name: 'skip_empty_rows', default: true }
+		]
+	},
+	'read_csv': {
+		fileName:  { pos: 0, name: 'file' },
+		header:    { pos: 1, name: 'col_names', default: true },
+		separator: { pos: -1, default: ',' },
+		quote:     { pos: 8, name: 'quote', default: '"' },
+		comment:   { pos: 9, name: 'comment', default: '' },
+		skipLines: { pos: 11, name: 'skip', default: 0 },
+		critical:  [
+			{ pos: 3, name: 'col_select' },
+			{ pos: 4, name: 'id' },
+			{ pos: 10, name: 'trim_ws', default: true },
+			{ pos: 12, name: 'n_max', default: Infinity },
+			{ pos: 14, name: 'name_repair', default: 'unique' },
+			{ pos: 18, name: 'skip_empty_rows', default: true }
+		]
+	},
+	'read_csv2': {
+		fileName:  { pos: 0, name: 'file' },
+		header:    { pos: 1, name: 'col_names', default: true },
+		separator: { pos: -1, default: ';' },
+		quote:     { pos: 8, name: 'quote', default: '"' },
+		comment:   { pos: 9, name: 'comment', default: '' },
+		skipLines: { pos: 11, name: 'skip', default: 0 },
+		critical:  [
+			{ pos: 3, name: 'col_select' },
+			{ pos: 4, name: 'id' },
+			{ pos: 10, name: 'trim_ws', default: true },
+			{ pos: 12, name: 'n_max', default: Infinity },
+			{ pos: 14, name: 'name_repair', default: 'unique' },
+			{ pos: 18, name: 'skip_empty_rows', default: true }
+		]
+	},
+	'read_tsv': {
+		fileName:  { pos: 0, name: 'file' },
+		header:    { pos: 1, name: 'col_names', default: true },
+		separator: { pos: -1, default: '\\t' },
+		quote:     { pos: 8, name: 'quote', default: '"' },
+		comment:   { pos: 9, name: 'comment', default: '' },
+		skipLines: { pos: 11, name: 'skip', default: 0 },
+		critical:  [
+			{ pos: 3, name: 'col_select' },
+			{ pos: 4, name: 'id' },
+			{ pos: 10, name: 'trim_ws', default: true },
+			{ pos: 12, name: 'n_max', default: Infinity },
+			{ pos: 14, name: 'name_repair', default: 'unique' },
+			{ pos: 18, name: 'skip_empty_rows', default: true }
+		]
+	},
+	'read_delim': {
+		fileName:  { pos: 0, name: 'file' },
+		separator: { pos: 1, name: 'delim', default: '\t' },
+		quote:     { pos: 2, name: 'quote', default: '"' },
+		header:    { pos: 5, name: 'col_names', default: true },
+		comment:   { pos: 12, name: 'comment', default: '' },
+		skipLines: { pos: 14, name: 'skip', default: 0 },
+		critical:  [
+			{ pos: 7, name: 'col_select' },
+			{ pos: 8, name: 'id' },
+			{ pos: 13, name: 'trim_ws', default: false },
+			{ pos: 15, name: 'n_max', default: Infinity },
+			{ pos: 17, name: 'name_repair', default: 'unique' },
+			{ pos: 21, name: 'skip_empty_rows', default: true }
+		]
+	},
+	'cbind': {
+		special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude']
+	},
+	'rbind': {
+		special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude']
+	},
+	'head': {
+		dataFrame: { pos: 0, name: 'x' },
+		amount:    { pos: 1, name: 'n', default: 6 }
+	},
+	'tail': {
+		dataFrame: { pos: 0, name: 'x' },
+		amount:    { pos: 1, name: 'n', default: 6 }
+	},
+	'subset': {
+		dataFrame: { pos: 0, name: 'x' },
+		subset:    { pos: 1, name: 'subset' },
+		select:    { pos: 2, name: 'select' },
+		drop:      { pos: 3, name: 'drop', default: false }
+	},
+	'filter': {
+		dataFrame: { pos: 0, name: '.data' },
+		special:   ['.by', '.preserve']
+	},
+	'select': {
+		dataFrame: { pos: 0, name: '.data' },
+		special:   []
+	},
+	'mutate': {
+		dataFrame: { pos: 0, name: '.data' },
+		special:   ['.by', '.keep', '.before', '.after'],
+		critical:  [{ pos: -1, name: '.keep' }]
+	},
+	'transform': {
+		dataFrame: { pos: 0, name: '_data' },
+		special:   []
+	},
+	'group_by': {
+		dataFrame: { pos: 0, name: '.data' },
+		by:        { pos: 1 },
+		special:   ['.add', '.drop']
+	},
+	'summarise': {
+		dataFrame: { pos: 0, name: '.data' },
+		special:   ['.by', '.groups']
+	},
+	'summarize': {
+		dataFrame: { pos: 0, name: '.data' },
+		special:   ['.by', '.groups']
+	},
+	'left_join': {
+		dataFrame:      { pos: 0, name: 'x' },
+		otherDataFrame: { pos: 1, name: 'y' },
+		by:             { pos: 2, name: 'by' },
+		critical:       [
+			{ pos: 4, name: 'suffix', default: ['.x', '.y'] },
+			{ pos: -1, name: 'keep' }
+		]
+	},
+	'merge': {
+		dataFrame:      { pos: 0, name: 'x' },
+		otherDataFrame: { pos: 1, name: 'y' },
+		by:             { pos: 3, name: 'by' },
+		minRows:        true,
+		critical:       [
+			{ pos: 3, name: 'by.x' },
+			{ pos: 4, name: 'by.y' },
+			{ pos: 5, name: 'all' },
+			{ pos: 6, name: 'all.x' },
+			{ pos: 7, name: 'all.y' },
+			{ pos: 9, name: 'suffixes' },
+			{ pos: 10, name: 'no.dups' }
+		]
+	},
+	'relocate': {
+		dataFrame: { pos: 0, name: '.data' },
+		special:   ['.before', '.after']
+	},
+	'arrange': {
+		dataFrame: { pos: 0, name: '.data' },
+		special:   ['.by_group', '.locale']
+	}
 };
 
 type DataFrameFunctionMapping<Params extends object> = (
@@ -106,7 +329,7 @@ type DataFrameFunction = keyof typeof DataFrameFunctionMapper;
 type DataFrameFunctionParams<N extends DataFrameFunction> = Parameters<typeof DataFrameFunctionMapper[N]['mapper']>[1];
 
 type DataFrameFunctionParamsMapping = {
-	[Name in DataFrameFunction]: DataFrameFunctionParams<Name>
+	[Name in DataFrameFunction]: DataFrameFunctionParams<Name> & { critical?: FunctionParameterLocation<unknown>[] }
 }
 
 interface FunctionParameterLocation<T = undefined> {
@@ -124,10 +347,15 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 		const mapper = DataFrameFunctionMapper[functionName].mapper as DataFrameFunctionMapping<DataFrameFunctionParams<Name>>;
 		const params = DataFrameFunctionParamsMapper[functionName] as DataFrameFunctionParams<Name>;
 		const args = getFunctionArguments(node, dfg);
+		const critical = (params as { critical?: FunctionParameterLocation<unknown>[] }).critical;
 		const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
+		let operations: DataFrameOperations[] | undefined;
 
-		const operations = mapper(args, params, resolveInfo);
-
+		if(hasCriticalArgument(args, critical, resolveInfo)) {
+			operations = [{ operation: 'unknown', operand: undefined, args: {} }];
+		} else {
+			operations = mapper(args, params, resolveInfo);
+		}
 		if(operations !== undefined) {
 			return { type: 'expression', operations: operations };
 		}
@@ -161,7 +389,11 @@ function mapDataFrameConvert(
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
 	if(dataFrame === EmptyArgument || dataFrame?.value === undefined) {
-		return;
+		return [{
+			operation: 'unknown',
+			operand:   undefined,
+			args:      {}
+		}];
 	}
 	return [{
 		operation: 'identity',
@@ -187,13 +419,6 @@ function mapDataFrameRead(
 	const textArg = params.text ? getFunctionArgument(args, params.text, info) : undefined;
 	const { source, request } = getRequestFromRead(fileNameArg, textArg, params, info);
 
-	if(request === undefined) {
-		return [{
-			operation: 'read',
-			operand:   undefined,
-			args:      { source, colnames: undefined, rows: undefined }
-		}];
-	}
 	const headerArg = getFunctionArgument(args, params.header, info);
 	const separatorArg = getFunctionArgument(args, params.separator, info);
 	const quoteArg = getFunctionArgument(args, params.quote, info);
@@ -205,7 +430,7 @@ function mapDataFrameRead(
 	const comment = commentArg ? resolveIdToArgValue(commentArg, info) : params.comment.default;
 	const skipLines = skipLinesArg ? resolveIdToArgValue(skipLinesArg, info) : params.skipLines.default;
 
-	if(typeof header !== 'boolean' || typeof separator !== 'string' || typeof quote !== 'string' || typeof comment !== 'string' || typeof skipLines !== 'number') {
+	if(request === undefined || typeof header !== 'boolean' || typeof separator !== 'string' || typeof quote !== 'string' || typeof comment !== 'string' || typeof skipLines !== 'number') {
 		return [{
 			operation: 'read',
 			operand:   undefined,
@@ -410,12 +635,6 @@ function mapDataFrameHeadTail(
 
 	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
-	} else if(args.length === 1) {
-		return [{
-			operation: 'identity',
-			operand:   dataFrame.value.info.id,
-			args:      {}
-		}];
 	}
 	const result: DataFrameOperations[] = [];
 	const amountArg = getFunctionArgument(args, params.amount, info);
@@ -447,7 +666,12 @@ function mapDataFrameHeadTail(
 
 function mapDataFrameSubset(
 	args: readonly RFunctionArgument<ParentInformation>[],
-	params: { dataFrame: FunctionParameterLocation, subset: FunctionParameterLocation, select: FunctionParameterLocation, drop: FunctionParameterLocation<boolean> },
+	params: {
+		dataFrame: FunctionParameterLocation,
+		subset:    FunctionParameterLocation,
+		select:    FunctionParameterLocation,
+		drop:      FunctionParameterLocation<boolean>
+	},
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
@@ -669,7 +893,11 @@ function mapDataFrameMutate(
 
 function mapDataFrameGroupBy(
 	args: readonly RFunctionArgument<ParentInformation>[],
-	params: { dataFrame: FunctionParameterLocation, by: FunctionParameterLocation, special: string[] },
+	params: {
+		dataFrame: FunctionParameterLocation,
+		by:        FunctionParameterLocation,
+		special:   string[]
+	},
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
 	args = getEffectiveArgs(args, params.special);
@@ -743,9 +971,13 @@ function mapDataFrameSummarize(
 
 function mapDataFrameLeftJoin(
 	args: readonly RFunctionArgument<ParentInformation & AbstractInterpretationInfo>[],
-	params: { dataFrame: FunctionParameterLocation, otherDataFrame: FunctionParameterLocation, by: FunctionParameterLocation },
-	info: ResolveInfo,
-	minRows?: boolean
+	params: {
+		dataFrame:      FunctionParameterLocation,
+		otherDataFrame: FunctionParameterLocation,
+		by:             FunctionParameterLocation,
+		minRows?:       boolean
+	},
+	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
@@ -778,18 +1010,10 @@ function mapDataFrameLeftJoin(
 		args:      {
 			other:   otherDataFrame ?? DataFrameTop,
 			by:      byName,
-			minRows: minRows
+			minRows: params.minRows
 		}
 	});
 	return result;
-}
-
-function mapDataFrameMerge(
-	args: readonly RFunctionArgument<ParentInformation & AbstractInterpretationInfo>[],
-	params: { dataFrame: FunctionParameterLocation, otherDataFrame: FunctionParameterLocation, by: FunctionParameterLocation },
-	info: ResolveInfo
-): DataFrameOperations[] | undefined {
-	return mapDataFrameLeftJoin(args, params, info, true);
 }
 
 function mapDataFrameIdentity(
@@ -828,14 +1052,15 @@ function getFunctionArguments(
 
 function getFunctionArgument(
 	args: readonly RFunctionArgument<ParentInformation>[],
-	argument: FunctionParameterLocation<unknown>,
+	argument: FunctionParameterLocation<unknown> | string,
 	info: ResolveInfo
 ): RFunctionArgument<ParentInformation> | undefined {
-	const pos = argument.pos;
+	const pos = typeof argument !== 'string' ? argument.pos : -1;
+	const name = typeof argument !== 'string' ? argument.name : argument;
 	let arg = undefined;
 
-	if(argument.name !== undefined) {
-		arg = args.find(arg => resolveIdToArgName(arg, info) === argument.name);
+	if(name !== undefined) {
+		arg = args.find(arg => resolveIdToArgName(arg, info) === name);
 	}
 	if(arg === undefined && pos >= 0 && pos < args.length && args[pos] !== EmptyArgument && args[pos].name === undefined) {
 		arg = args[pos];
@@ -898,6 +1123,28 @@ function getUnresolvedSymbolsInExpression(
 		default:
 			return [];
 	}
+}
+
+function hasCriticalArgument(
+	args: readonly RFunctionArgument<ParentInformation>[],
+	critical: (FunctionParameterLocation<unknown> | string)[] | undefined,
+	info: ResolveInfo
+): boolean {
+	for(const param of critical ?? []) {
+		const arg = getFunctionArgument(args, param, info);
+
+		if(arg === undefined) {
+			continue;
+		} else if(typeof param !== 'string' && param.default !== undefined) {
+			const value = resolveIdToArgValue(arg, info);
+
+			if(value !== undefined && value === param.default) {
+				continue;
+			}
+		}
+		return true;
+	}
+	return false;
 }
 
 function isDataFrameArgument(

@@ -59,7 +59,7 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 	});
 
 	testDataFrameDomain(
-		'df <- data.frame(id = 1:5, age = c(25, 32, 35, 40, 45), score = c(90, 85, 88, 92, 95), row.names = NULL)',
+		'df <- data.frame(id = 1:5, age = c(25, 32, 35, 40, 45), score = c(90, 85, 88, 92, 95), check.names = FALSE)',
 		[['1@df', { colnames: ['id', 'age', 'score'], cols: [3, 3], rows: [5, 5] }]]
 	);
 
@@ -114,6 +114,18 @@ df2 <- as.data.frame(df1)
 	testDataFrameDomainWithSource(
 		'"a.csv"', `text = "${getFileContent('a.csv')}"`,
 		source => `df <- read.csv(${source})`,
+		[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
+	);
+
+	testDataFrameDomainWithSource(
+		'"a.csv"', `text = "${getFileContent('a.csv')}"`,
+		source => `df <- read.csv(${source}, nrows = 1)`,
+		[['1@df', DataFrameTop, DataFrameTestOverapproximation]]
+	);
+
+	testDataFrameDomainWithSource(
+		'"a.csv"', `text = "${getFileContent('a.csv')}"`,
+		source => `df <- read.csv(${source}, nrows = -1)`,
 		[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
 	);
 

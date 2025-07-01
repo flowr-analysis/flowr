@@ -79,6 +79,16 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 	);
 
 	testDataFrameDomain(
+		'df <- data.frame(`:D` = 42)',
+		[['1@df', { colnames: ColNamesTop, cols: [1, 1], rows: [1, 1] }, { colnames: DomainMatchingType.Overapproximation }]]
+	);
+
+	testDataFrameDomain(
+		'df <- data.frame(`:D` = 42, check.names = FALSE)',
+		[['1@df', { colnames: [':D'], cols: [1, 1], rows: [1, 1] }]]
+	);
+
+	testDataFrameDomain(
 		'df <- data.frame()',
 		[['1@df', { colnames: [], cols: [0, 0], rows: [0, 0] }]]
 	);
@@ -150,7 +160,7 @@ df2 <- as.data.frame(df1)
 	testDataFrameDomainWithSource(
 		'"c.csv"', `text = "${getFileContent('c.csv')}"`,
 		source => `df <- read.csv(${source}, comment.char = "#", check.names = FALSE)`,
-		[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]]
+		[['1@df', { colnames: ['', 'id,number', '"unique" name' ], cols: [3, 3], rows: [5, 5] }]]
 	);
 
 	testDataFrameDomainWithSource(

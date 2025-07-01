@@ -169,7 +169,7 @@ function createCodeForOutput(
 ): string {
 	switch(type) {
 		case 'colnames':
-			return `cat("${getMarker(type, criterion)}", colnames(${symbol}), "\\n")`;
+			return `cat("${getMarker(type, criterion)}", paste(colnames(${symbol}), collapse = ";"), "\\n")`;
 		case 'cols':
 			return `cat("${getMarker(type, criterion)}", ncol(${symbol}), "\\n")`;
 		case 'rows':
@@ -211,7 +211,7 @@ function getRealDomainFromOutput<K extends keyof DataFrameDomain>(
 	}
 	switch(type) {
 		case 'colnames': {
-			const value = line.length > 0 ? line.split(' ') : [];
+			const value = line.length > 0 ? line.split(';') : [];
 			return value as DataFrameDomain[K];
 		}
 		case 'cols':

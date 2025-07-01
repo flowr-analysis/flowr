@@ -61,22 +61,26 @@ const DataFrameFunctionMapper = {
 
 const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 	'data.frame': {
-		special:  ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'],
-		critical: [{ pos: -1, name: 'row.names' }]
+		checkNames: { pos: -1, name: 'check.names', default: true },
+		noDupNames: { pos: -1, name: 'check.names', default: true },
+		special:    ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'],
+		critical:   [{ pos: -1, name: 'row.names' }]
 	},
 	'as.data.frame': {
 		critical:  [],
 		dataFrame: { pos: 0, name: 'x' }
 	},
 	'read.table': {
-		fileName:  { pos: 0, name: 'file' },
-		header:    { pos: 1, name: 'header', default: false },
-		separator: { pos: 2, name: 'sep', default: '\\s' },
-		quote:     { pos: 3, name: 'quote', default: '"\'' },
-		skipLines: { pos: 12, name: 'skip', default: 0 },
-		comment:   { pos: 17, name: 'comment.char', default: '#' },
-		text:      { pos: 23, name: 'text' },
-		critical:  [
+		fileName:   { pos: 0, name: 'file' },
+		header:     { pos: 1, name: 'header', default: false },
+		separator:  { pos: 2, name: 'sep', default: '\\s' },
+		quote:      { pos: 3, name: 'quote', default: '"\'' },
+		skipLines:  { pos: 12, name: 'skip', default: 0 },
+		checkNames: { pos: 13, name: 'check.names', default: true },
+		noDupNames: { pos: 13, name: 'check.names', default: true },
+		comment:    { pos: 17, name: 'comment.char', default: '#' },
+		text:       { pos: 23, name: 'text' },
+		critical:   [
 			{ pos: 6, name: 'row.names' },
 			{ pos: 7, name: 'col.names' },
 			{ pos: 11, name: 'nrows', default: -1 },
@@ -86,14 +90,16 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 		]
 	},
 	'read.csv': {
-		fileName:  { pos: 0, name: 'file' },
-		header:    { pos: 1, name: 'header', default: true },
-		separator: { pos: 2, name: 'sep', default: ',' },
-		quote:     { pos: 3, name: 'quote', default: '"' },
-		comment:   { pos: 6, name: 'comment.char', default: '' },
-		skipLines: { pos: -1, name: 'skip', default: 0 },
-		text:      { pos: -1, name: 'text' },
-		critical:  [
+		fileName:   { pos: 0, name: 'file' },
+		header:     { pos: 1, name: 'header', default: true },
+		separator:  { pos: 2, name: 'sep', default: ',' },
+		quote:      { pos: 3, name: 'quote', default: '"' },
+		comment:    { pos: 6, name: 'comment.char', default: '' },
+		skipLines:  { pos: -1, name: 'skip', default: 0 },
+		checkNames: { pos: -1, name: 'check.names', default: true },
+		noDupNames: { pos: -1, name: 'check.names', default: true },
+		text:       { pos: -1, name: 'text' },
+		critical:   [
 			{ pos: -1, name: 'row.names' },
 			{ pos: -1, name: 'col.names' },
 			{ pos: -1, name: 'nrows', default: -1 },
@@ -103,14 +109,16 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 		]
 	},
 	'read.csv2': {
-		fileName:  { pos: 0, name: 'file' },
-		header:    { pos: 1, name: 'header', default: true },
-		separator: { pos: 2, name: 'sep', default: ';' },
-		quote:     { pos: 3, name: 'quote', default: '"' },
-		comment:   { pos: 6, name: 'comment.char', default: '' },
-		skipLines: { pos: -1, name: 'skip', default: 0 },
-		text:      { pos: -1, name: 'text' },
-		critical:  [
+		fileName:   { pos: 0, name: 'file' },
+		header:     { pos: 1, name: 'header', default: true },
+		separator:  { pos: 2, name: 'sep', default: ';' },
+		quote:      { pos: 3, name: 'quote', default: '"' },
+		comment:    { pos: 6, name: 'comment.char', default: '' },
+		skipLines:  { pos: -1, name: 'skip', default: 0 },
+		checkNames: { pos: -1, name: 'check.names', default: true },
+		noDupNames: { pos: -1, name: 'check.names', default: true },
+		text:       { pos: -1, name: 'text' },
+		critical:   [
 			{ pos: -1, name: 'row.names' },
 			{ pos: -1, name: 'col.names' },
 			{ pos: -1, name: 'nrows', default: -1 },
@@ -120,14 +128,16 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 		]
 	},
 	'read.delim': {
-		fileName:  { pos: 0, name: 'file' },
-		header:    { pos: 1, name: 'header', default: true },
-		separator: { pos: 2, name: 'sep', default: '\\t' },
-		quote:     { pos: 3, name: 'quote', default: '"' },
-		comment:   { pos: 6, name: 'comment.char', default: '' },
-		skipLines: { pos: -1, name: 'skip', default: 0 },
-		text:      { pos: -1, name: 'text' },
-		critical:  [
+		fileName:   { pos: 0, name: 'file' },
+		header:     { pos: 1, name: 'header', default: true },
+		separator:  { pos: 2, name: 'sep', default: '\\t' },
+		quote:      { pos: 3, name: 'quote', default: '"' },
+		comment:    { pos: 6, name: 'comment.char', default: '' },
+		skipLines:  { pos: -1, name: 'skip', default: 0 },
+		checkNames: { pos: -1, name: 'check.names', default: true },
+		noDupNames: { pos: -1, name: 'check.names', default: true },
+		text:       { pos: -1, name: 'text' },
+		critical:   [
 			{ pos: -1, name: 'row.names' },
 			{ pos: -1, name: 'col.names' },
 			{ pos: -1, name: 'nrows', default: -1 },
@@ -137,14 +147,16 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 		]
 	},
 	'read.delim2': {
-		fileName:  { pos: 0, name: 'file' },
-		header:    { pos: 1, name: 'header', default: true },
-		separator: { pos: 2, name: 'sep', default: '\\t' },
-		quote:     { pos: 3, name: 'quote', default: '"' },
-		comment:   { pos: 6, name: 'comment.char', default: '' },
-		skipLines: { pos: -1, name: 'skip', default: 0 },
-		text:      { pos: -1, name: 'text' },
-		critical:  [
+		fileName:   { pos: 0, name: 'file' },
+		header:     { pos: 1, name: 'header', default: true },
+		separator:  { pos: 2, name: 'sep', default: '\\t' },
+		quote:      { pos: 3, name: 'quote', default: '"' },
+		comment:    { pos: 6, name: 'comment.char', default: '' },
+		skipLines:  { pos: -1, name: 'skip', default: 0 },
+		checkNames: { pos: -1, name: 'check.names', default: true },
+		noDupNames: { pos: -1, name: 'check.names', default: true },
+		text:       { pos: -1, name: 'text' },
+		critical:   [
 			{ pos: -1, name: 'row.names' },
 			{ pos: -1, name: 'col.names' },
 			{ pos: -1, name: 'nrows', default: -1 },
@@ -154,80 +166,95 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 		]
 	},
 	'read_table': {
-		fileName:  { pos: 0, name: 'file' },
-		header:    { pos: 1, name: 'col_names', default: true },
-		separator: { pos: -1, default: '\\s' },
-		quote:     { pos: -1, default: '"' },
-		skipLines: { pos: 5, name: 'skip', default: 0 },
-		comment:   { pos: 9, name: 'comment', default: '' },
-		critical:  [
+		fileName:   { pos: 0, name: 'file' },
+		header:     { pos: 1, name: 'col_names', default: true },
+		separator:  { pos: -1, default: '\\s' },
+		quote:      { pos: -1, default: '"' },
+		skipLines:  { pos: 5, name: 'skip', default: 0 },
+		comment:    { pos: 9, name: 'comment', default: '' },
+		checkNames: { pos: -1, default: false },
+		noDupNames: { pos: -1, default: true },
+		critical:   [
 			{ pos: 6, name: 'n_max', default: Infinity },
 			{ pos: 11, name: 'skip_empty_rows', default: true }
-		]
+		],
+		noEmptyNames: true
 	},
 	'read_csv': {
-		fileName:  { pos: 0, name: 'file' },
-		header:    { pos: 1, name: 'col_names', default: true },
-		separator: { pos: -1, default: ',' },
-		quote:     { pos: 8, name: 'quote', default: '"' },
-		comment:   { pos: 9, name: 'comment', default: '' },
-		skipLines: { pos: 11, name: 'skip', default: 0 },
-		critical:  [
+		fileName:   { pos: 0, name: 'file' },
+		header:     { pos: 1, name: 'col_names', default: true },
+		separator:  { pos: -1, default: ',' },
+		quote:      { pos: 8, name: 'quote', default: '"' },
+		comment:    { pos: 9, name: 'comment', default: '' },
+		skipLines:  { pos: 11, name: 'skip', default: 0 },
+		checkNames: { pos: -1, default: false },
+		noDupNames: { pos: -1, default: true },
+		critical:   [
 			{ pos: 3, name: 'col_select' },
 			{ pos: 4, name: 'id' },
 			{ pos: 10, name: 'trim_ws', default: true },
 			{ pos: 12, name: 'n_max', default: Infinity },
 			{ pos: 14, name: 'name_repair', default: 'unique' },
 			{ pos: 18, name: 'skip_empty_rows', default: true }
-		]
+		],
+		noEmptyNames: true
 	},
 	'read_csv2': {
-		fileName:  { pos: 0, name: 'file' },
-		header:    { pos: 1, name: 'col_names', default: true },
-		separator: { pos: -1, default: ';' },
-		quote:     { pos: 8, name: 'quote', default: '"' },
-		comment:   { pos: 9, name: 'comment', default: '' },
-		skipLines: { pos: 11, name: 'skip', default: 0 },
-		critical:  [
+		fileName:   { pos: 0, name: 'file' },
+		header:     { pos: 1, name: 'col_names', default: true },
+		separator:  { pos: -1, default: ';' },
+		quote:      { pos: 8, name: 'quote', default: '"' },
+		comment:    { pos: 9, name: 'comment', default: '' },
+		skipLines:  { pos: 11, name: 'skip', default: 0 },
+		checkNames: { pos: -1, default: false },
+		noDupNames: { pos: -1, default: true },
+		critical:   [
 			{ pos: 3, name: 'col_select' },
 			{ pos: 4, name: 'id' },
 			{ pos: 10, name: 'trim_ws', default: true },
 			{ pos: 12, name: 'n_max', default: Infinity },
 			{ pos: 14, name: 'name_repair', default: 'unique' },
 			{ pos: 18, name: 'skip_empty_rows', default: true }
-		]
+		],
+		noEmptyNames: true
 	},
 	'read_tsv': {
-		fileName:  { pos: 0, name: 'file' },
-		header:    { pos: 1, name: 'col_names', default: true },
-		separator: { pos: -1, default: '\\t' },
-		quote:     { pos: 8, name: 'quote', default: '"' },
-		comment:   { pos: 9, name: 'comment', default: '' },
-		skipLines: { pos: 11, name: 'skip', default: 0 },
-		critical:  [
+		fileName:   { pos: 0, name: 'file' },
+		header:     { pos: 1, name: 'col_names', default: true },
+		separator:  { pos: -1, default: '\\t' },
+		quote:      { pos: 8, name: 'quote', default: '"' },
+		comment:    { pos: 9, name: 'comment', default: '' },
+		skipLines:  { pos: 11, name: 'skip', default: 0 },
+		checkNames: { pos: -1, default: false },
+		noDupNames: { pos: -1, default: true },
+		critical:   [
 			{ pos: 3, name: 'col_select' },
 			{ pos: 4, name: 'id' },
 			{ pos: 10, name: 'trim_ws', default: true },
 			{ pos: 12, name: 'n_max', default: Infinity },
 			{ pos: 14, name: 'name_repair', default: 'unique' },
 			{ pos: 18, name: 'skip_empty_rows', default: true }
-		]
+		],
+		noEmptyNames: true
 	},
 	'read_delim': {
-		fileName:  { pos: 0, name: 'file' },
-		separator: { pos: 1, name: 'delim', default: '\t' },
-		quote:     { pos: 2, name: 'quote', default: '"' },
-		header:    { pos: 5, name: 'col_names', default: true },
-		comment:   { pos: 12, name: 'comment', default: '' },
-		skipLines: { pos: 14, name: 'skip', default: 0 },
-		critical:  [
+		fileName:   { pos: 0, name: 'file' },
+		separator:  { pos: 1, name: 'delim', default: '\t' },
+		quote:      { pos: 2, name: 'quote', default: '"' },
+		header:     { pos: 5, name: 'col_names', default: true },
+		comment:    { pos: 12, name: 'comment', default: '' },
+		skipLines:  { pos: 14, name: 'skip', default: 0 },
+		checkNames: { pos: -1, default: false },
+		noDupNames: { pos: -1, default: true },
+		critical:   [
 			{ pos: 7, name: 'col_select' },
 			{ pos: 8, name: 'id' },
 			{ pos: 13, name: 'trim_ws', default: false },
 			{ pos: 15, name: 'n_max', default: Infinity },
 			{ pos: 17, name: 'name_repair', default: 'unique' },
 			{ pos: 21, name: 'skip_empty_rows', default: true }
-		]
+		],
+		noEmptyNames: true
 	},
 	'cbind': {
 		special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude']
@@ -364,21 +391,37 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 
 function mapDataFrameCreate(
 	args: readonly RFunctionArgument<ParentInformation>[],
-	params: { special: string[] },
+	params: {
+		checkNames: FunctionParameterLocation<boolean>,
+		noDupNames: FunctionParameterLocation<boolean>,
+		special:    string[]
+	},
 	info: ResolveInfo
 ): DataFrameOperation[] {
+	const checkNames = getArgumentValue(args, params.checkNames, info);
+	const noDupNames = getArgumentValue(args, params.noDupNames, info);
 	args = getEffectiveArgs(args, params.special);
+
 	const argNames = args.map(arg => resolveIdToArgName(arg, info));
 	const argLengths = args.map(arg => resolveIdToArgVectorLength(arg, info));
 	const allVectors = argLengths.every(len => len !== undefined);
-	const colnames = argNames.map(arg => isValidColName(arg) ? arg : undefined);
-	const rows = allVectors ? Math.max(...argLengths, 0) : undefined;
+	let colnames: (string | undefined)[] | undefined = argNames;
 
+	if(typeof checkNames !== 'boolean' || typeof noDupNames !== 'boolean') {
+		colnames = undefined;
+	} else {
+		if(checkNames) {  // map all invalid column names to top
+			colnames = colnames.map(entry => isValidColName(entry) ? entry : undefined);
+		}
+		if(noDupNames) {  // map all duplicate column names to top
+			colnames = colnames.map((entry, _, list) => entry !== undefined && list.filter(other => other === entry).length === 1 ? entry : undefined);
+		}
+	}
 	return [{
 		operation: 'create',
 		operand:   undefined,
 		colnames:  allVectors ? colnames : undefined,
-		rows:      rows
+		rows:      allVectors ? Math.max(...argLengths, 0) : undefined
 	}];
 }
 
@@ -404,13 +447,16 @@ function mapDataFrameConvert(
 function mapDataFrameRead(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	params: {
-		fileName:  FunctionParameterLocation,
-		header:    FunctionParameterLocation<boolean>,
-		separator: FunctionParameterLocation<string>,
-		quote:     FunctionParameterLocation<string>,
-		comment:   FunctionParameterLocation<string>,
-		skipLines: FunctionParameterLocation<number>,
-		text?:     FunctionParameterLocation
+		fileName:      FunctionParameterLocation,
+		text?:         FunctionParameterLocation,
+		header:        FunctionParameterLocation<boolean>,
+		separator:     FunctionParameterLocation<string>,
+		quote:         FunctionParameterLocation<string>,
+		comment:       FunctionParameterLocation<string>,
+		skipLines:     FunctionParameterLocation<number>,
+		checkNames:    FunctionParameterLocation<boolean>,
+		noDupNames:    FunctionParameterLocation<boolean>,
+		noEmptyNames?: boolean
 	},
 	info: ResolveInfo
 ): DataFrameOperation[] {
@@ -418,18 +464,15 @@ function mapDataFrameRead(
 	const textArg = params.text ? getFunctionArgument(args, params.text, info) : undefined;
 	const { source, request } = getRequestFromRead(fileNameArg, textArg, params, info);
 
-	const headerArg = getFunctionArgument(args, params.header, info);
-	const separatorArg = getFunctionArgument(args, params.separator, info);
-	const quoteArg = getFunctionArgument(args, params.quote, info);
-	const commentArg = getFunctionArgument(args, params.comment, info);
-	const skipLinesArg = getFunctionArgument(args, params.skipLines, info);
-	const header = headerArg ? resolveIdToArgValue(headerArg, info) : params.header.default;
-	const separator = separatorArg ? resolveIdToArgValue(separatorArg, info) : params.separator.default;
-	const quote = quoteArg ? resolveIdToArgValue(quoteArg, info) : params.quote.default;
-	const comment = commentArg ? resolveIdToArgValue(commentArg, info) : params.comment.default;
-	const skipLines = skipLinesArg ? resolveIdToArgValue(skipLinesArg, info) : params.skipLines.default;
+	const header = getArgumentValue(args, params.header, info);
+	const separator = getArgumentValue(args, params.separator, info);
+	const quote = getArgumentValue(args, params.quote, info);
+	const comment = getArgumentValue(args, params.comment, info);
+	const skipLines = getArgumentValue(args, params.skipLines, info);
+	const checkNames = getArgumentValue(args, params.checkNames, info);
+	const noDupNames = getArgumentValue(args, params.noDupNames, info);
 
-	if(request === undefined || typeof header !== 'boolean' || typeof separator !== 'string' || typeof quote !== 'string' || typeof comment !== 'string' || typeof skipLines !== 'number') {
+	if(request === undefined || typeof header !== 'boolean' || typeof separator !== 'string' || typeof quote !== 'string' || typeof comment !== 'string' || typeof skipLines !== 'number' || typeof checkNames !== 'boolean' || typeof noDupNames !== 'boolean') {
 		return [{
 			operation: 'read',
 			operand:   undefined,
@@ -460,10 +503,17 @@ function mapDataFrameRead(
 	let colnames: (string | undefined)[] | undefined;
 
 	if(header) {
-		// map all invalid column names to top
-		colnames = firstLine?.map(entry => isValidColName(entry) ? entry : undefined);
-		// map all duplicate column names to top
-		colnames = colnames?.map((entry, _, list) => entry && list.filter(other => other === entry).length === 1 ? entry : undefined );
+		colnames = firstLine;
+
+		if(checkNames) {  // map all invalid column names to top
+			colnames = colnames?.map(entry => isValidColName(entry) ? entry : undefined);
+		}
+		if(noDupNames) {  // map all duplicate column names to top
+			colnames = colnames?.map((entry, _, list) => entry !== undefined && list.filter(other => other === entry).length === 1 ? entry : undefined);
+		}
+		if(params.noEmptyNames) {  // map all empty column names to top
+			colnames = colnames?.map(entry => entry?.length === 0 ? undefined : entry);
+		}
 	} else if(firstLine !== undefined) {
 		colnames = Array((firstLine as unknown[]).length).fill(undefined);
 	}
@@ -638,16 +688,15 @@ function mapDataFrameHeadTail(
 		return;
 	}
 	const result: DataFrameOperation[] = [];
-	const amountArg = getFunctionArgument(args, params.amount, info);
-	const amountValue = amountArg ? resolveIdToArgValue(amountArg, info) : params.amount.default;
+	const amount = getArgumentValue(args, params.amount, info);
 	let rows: number | undefined = undefined;
 	let cols: number | undefined = undefined;
 
-	if(typeof amountValue === 'number') {
-		rows = amountValue;
-	} else if(Array.isArray(amountValue) && amountValue.length <= 2 && amountValue.every(value => typeof value === 'number')) {
-		rows = amountValue[0];
-		cols = amountValue[1];
+	if(typeof amount === 'number') {
+		rows = amount;
+	} else if(Array.isArray(amount) && amount.length <= 2 && amount.every(value => typeof value === 'number')) {
+		rows = amount[0];
+		cols = amount[1];
 	}
 	result.push({
 		operation: rows === undefined || rows >= 0 ? 'subsetRows' : 'removeRows',
@@ -1023,6 +1072,16 @@ function mapDataFrameIdentity(
 		operation: 'identity',
 		operand:   dataFrame.value.info.id
 	}];
+}
+
+function getArgumentValue<T>(
+	args: readonly RFunctionArgument<ParentInformation>[],
+	argument: FunctionParameterLocation<T>,
+	info: ResolveInfo
+) {
+	const arg = getFunctionArgument(args, argument, info);
+
+	return arg !== undefined ? resolveIdToArgValue(arg, info) : argument.default;
 }
 
 function getFunctionArguments(

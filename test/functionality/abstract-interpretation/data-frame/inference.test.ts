@@ -7,6 +7,9 @@ import { withShell } from '../../_helper/shell';
 import { assertDataFrameDomain, assertDataFrameOperation, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomain, testDataFrameDomainWithSource } from './data-frame';
 
 describe.sequential('Data Frame Shape Inference', withShell(shell => {
+	let librariesInstalled = false;
+	const skipLibraries = () => !librariesInstalled;
+
 	const sources = {
 		'a.csv': 'id,name,"score"\n1,"A",95\n2,"B",80\n4,"A",85',
 		'b.csv': 'id,name,\'score\'\n1,\'A\',95\n2,\'B\',80\n4,\'A\',85',
@@ -20,22 +23,15 @@ describe.sequential('Data Frame Shape Inference', withShell(shell => {
 		return sources[source].replaceAll('\n', '\\n').replaceAll('\t', ' \\t').replaceAll('"', '\\"');
 	};
 
-	async function installPackage(packageName: string, ...alternatives: string[]) {
-		const check = [packageName, ...alternatives ?? []].map(name => `!require("${name}")`).join(' && ');
-		await shell.sendCommandWithOutput(`if (${check}) install.packages("${packageName}")`);
-	}
-
 	beforeAll(async() => {
 		setSourceProvider(requestProviderFromText(sources));
 		amendConfig(defaultConfigOptions, config => {
 			config.solver.pointerTracking = false;
 			return config;
 		});
-		await installPackage('dplyr', 'tidyverse');
-		await installPackage('magrittr', 'tidyverse');
-		await installPackage('readr', 'tidyverse');
+		librariesInstalled = await shell.isPackageInstalled('dplyr') && await shell.isPackageInstalled('readr');
 		shell.clearEnvironment();
-	}, 300_000);
+	});
 
 	afterAll(() => {
 		setSourceProvider(requestProviderFromFile());
@@ -487,63 +483,72 @@ df2 <- as.data.frame(df1)
 			shell,
 			'"a.csv"', `"${getFileContent('a.csv')}"`,
 			source => `df <- readr::read_csv(${source})`,
-			[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
+			[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]],
+			skipLibraries
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"b.csv"', `"${getFileContent('b.csv')}"`,
 			source => `df <- readr::read_csv(${source}, quote = "'")`,
-			[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]]
+			[['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]],
+			skipLibraries
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"c.csv"', `"${getFileContent('c.csv')}"`,
 			source => `df <- readr::read_csv(${source}, comment = "#")`,
-			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]]
+			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]],
+			skipLibraries
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"c.csv"', `"${getFileContent('c.csv')}"`,
 			source => `df <- readr::read_csv(${source}, col_names = FALSE, skip = 4)`,
-			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]]
+			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]],
+			skipLibraries
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"d.csv"', `"${getFileContent('d.csv')}"`,
 			source => `df <- readr::read_csv2(${source}, col_names = FALSE)`,
-			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]]
+			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]],
+			skipLibraries
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"d.csv"', `"${getFileContent('d.csv')}"`,
 			source => `df <- readr::read_delim(${source}, delim = ",", col_names = FALSE)`,
-			[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]]
+			[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]],
+			skipLibraries
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"d.csv"', `"${getFileContent('d.csv')}"`,
 			source => `df <- readr::read_delim(${source}, delim = ";", col_names = FALSE)`,
-			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]]
+			[['1@df', { colnames: ColNamesTop, cols: [3, 3], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]],
+			skipLibraries
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"e.csv"', `"${getFileContent('e.csv')}"`,
 			source => `df <- readr::read_table(${source})`,
-			[['1@df', { colnames: ['first', 'last', 'state', 'phone'], cols: [4, 4], rows: [3, 3] }]]
+			[['1@df', { colnames: ['first', 'last', 'state', 'phone'], cols: [4, 4], rows: [3, 3] }]],
+			skipLibraries
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"f.csv"', `"${getFileContent('f.csv')}"`,
 			source => `df <- readr::read_tsv(${source})`,
-			[['1@df', { colnames: ColNamesTop, cols: [4, 4], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
+			[['1@df', { colnames: ColNamesTop, cols: [4, 4], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]],
+			skipLibraries
 		);
 	});
 
@@ -2475,7 +2480,8 @@ df <- dplyr::filter(df, TRUE)
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
 				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -2487,7 +2493,8 @@ df <- dplyr::filter(df, FALSE)
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
 				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 0] }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -2499,7 +2506,8 @@ df <- dplyr::filter(df, id == 2)
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
 				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 3] }, { rows: DomainMatchingType.Overapproximation }]
-			]
+			],
+			skipLibraries
 		);
 
 		describe('Currently Unsupported', { fails: true }, () => {
@@ -2511,7 +2519,8 @@ df <- dplyr::filter(df, TRUE, FALSE)
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
-				]
+				],
+				skipLibraries
 			);
 		});
 
@@ -2524,7 +2533,8 @@ df <- dplyr::filter(df)
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
 				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -2536,7 +2546,8 @@ df <- dplyr::filter(df, FALSE, .preserve = TRUE)
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
 				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 0] }]
-			]
+			],
+			skipLibraries
 		);
 	});
 
@@ -2550,7 +2561,8 @@ df <- dplyr::select(df, id, name)
 			[
 				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
 				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -2562,7 +2574,8 @@ df <- dplyr::select(df, "id", "name")
 			[
 				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
 				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -2574,7 +2587,8 @@ df <- dplyr::select(df, 1, 3)
 			[
 				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
 				['2@df', { colnames: ['id', 'name', 'label'], cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
-			]
+			],
+			skipLibraries
 		);
 
 		describe('Currently Unsupported', { fails: true }, () => {
@@ -2586,7 +2600,8 @@ df <- dplyr::select(df, c(id, name))
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -2597,7 +2612,8 @@ df <- dplyr::select(df, c("id", "name"))
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -2608,7 +2624,8 @@ df <- dplyr::select(df, 1:2)
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'name', 'label'], cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -2619,7 +2636,8 @@ df <- dplyr::select(df, id:name)
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -2630,7 +2648,8 @@ df <- dplyr::select(df, sample(1:3, 2))
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -2641,7 +2660,8 @@ df <- dplyr::select(df)
 				`.trim(),
 				[
 					['2@df', { colnames: [], cols: [0, 0], rows: [3, 3] }]
-				]
+				],
+				skipLibraries
 			);
 		});
 
@@ -2654,7 +2674,8 @@ df <- dplyr::select(df, -name)
 			[
 				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
 				['2@df', { colnames: ['id', 'label'], cols: [2, 2], rows: [3, 3] }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -2666,7 +2687,8 @@ df <- dplyr::select(df, -name, -label)
 			[
 				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
 				['2@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -2678,7 +2700,8 @@ df <- dplyr::select(df, id, -name)
 			[
 				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
 				['2@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]
-			]
+			],
+			skipLibraries
 		);
 
 		describe('Currently Unsupported', { fails: true }, () => {
@@ -2690,7 +2713,8 @@ df <- dplyr::select(df, c(-id, -name))
 				`.trim(),
 				[
 					['2@df', { colnames: ['score'], cols: [1, 1], rows: [3, 3] }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -2701,7 +2725,8 @@ df <- dplyr::select(df, -c(id, name))
 				`.trim(),
 				[
 					['2@df', { colnames: ['score'], cols: [1, 1], rows: [3, 3] }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -2712,7 +2737,8 @@ df <- dplyr::select(df, -c(1, 2))
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'name', 'score'], cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -2723,7 +2749,8 @@ df <- dplyr::select(df, id, "name", 2)
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -2734,7 +2761,8 @@ df <- dplyr::select(df, id, \`id\`, "id")
 				`.trim(),
 				[
 					['2@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -2745,7 +2773,8 @@ df <- dplyr::select(df, 1, 1, 1)
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'name', 'label'], cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -2756,7 +2785,8 @@ df <- dplyr::select(df, !name)
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -2767,7 +2797,8 @@ df <- dplyr::select(df, id | 2)
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -2778,7 +2809,8 @@ df <- dplyr::select(df, c(id, name) & 1:3)
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -2789,7 +2821,8 @@ df <- dplyr::select(df, contains("a"))
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 		});
 	});
@@ -2900,7 +2933,8 @@ df <- dplyr::mutate(df, id = letters[1:5])
 			[
 				['1@df', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
 				['2@df', { colnames: ['id'], cols: [1, 2], rows: [5, 5] }, { cols: DomainMatchingType.Overapproximation }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -2912,7 +2946,8 @@ df <- dplyr::mutate(df, "name" = letters[1:5])
 			[
 				['1@df', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
 				['2@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [5, 5] }, { cols: DomainMatchingType.Overapproximation }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -2924,7 +2959,8 @@ df <- dplyr::mutate(df, 6:10, 11:15)
 			[
 				['1@df', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
 				['2@df', { colnames: ColNamesTop, cols: [2, 3], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -2936,7 +2972,8 @@ df <- dplyr::mutate(df, name = letters[id], level = score^2)
 			[
 				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
 				['2@df', { colnames: ['id', 'score', 'name', 'level'], cols: [2, 4], rows: [5, 5] }, { cols: DomainMatchingType.Overapproximation }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -2948,7 +2985,8 @@ df <- dplyr::mutate(df)
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }],
 				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -2960,7 +2998,8 @@ df <- dplyr::mutate(df, \`:D\` = 11:15)
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }],
 				['2@df', { colnames: ['id', 'name', ':D'], cols: [2, 3], rows: [5, 5] }, { cols: DomainMatchingType.Overapproximation }]
-			]
+			],
+			skipLibraries
 		);
 
 		describe('Currently Unsupported', { fails: true }, () => {
@@ -2983,7 +3022,8 @@ df <- dplyr::mutate(df, name = NULL)
 				`.trim(),
 				[
 					['2@df', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -2994,7 +3034,8 @@ df <- dplyr::mutate(df, new = NULL)
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }]
-				]
+				],
+				skipLibraries
 			);
 		});
 
@@ -3007,7 +3048,8 @@ df <- dplyr::mutate(df, label = "A", .keep = "all")
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }],
 				['2@df', { colnames: ['id', 'name', 'label'], cols: [2, 3], rows: [5, 5] }, { cols: DomainMatchingType.Overapproximation }]
-			]
+			],
+			skipLibraries
 		);
 	});
 
@@ -3021,7 +3063,8 @@ df <- dplyr::group_by(df, id)
 			[
 				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
 				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [0, 5] }, { rows: DomainMatchingType.Overapproximation }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -3033,7 +3076,8 @@ df <- dplyr::group_by(df, \`id\`)
 			[
 				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
 				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [0, 5] }, { rows: DomainMatchingType.Overapproximation }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -3045,7 +3089,8 @@ df <- dplyr::group_by(df, id, name)
 			[
 				['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [5, 5] }],
 				['2@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [0, 5] }, { rows: DomainMatchingType.Overapproximation }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -3057,7 +3102,8 @@ df <- dplyr::group_by(df)
 			[
 				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
 				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }]
-			]
+			],
+			skipLibraries
 		);
 
 		describe('Currently Unsupported', { fails: true }, () => {
@@ -3069,7 +3115,8 @@ df <- dplyr::group_by(df, group = id + name)
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'name', 'score', 'group'], cols: [3, 4], rows: [0, 5] }, { cols: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -3080,7 +3127,8 @@ df <- dplyr::group_by(df, id + name)
 				`.trim(),
 				[
 					['2@df', { colnames: ColNamesTop, cols: [3, 4], rows: [0, 5] }, DataFrameTestOverapproximation]
-				]
+				],
+				skipLibraries
 			);
 		});
 
@@ -3093,7 +3141,8 @@ df <- dplyr::group_by(df, id, .add = TRUE)
 			[
 				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
 				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [0, 5] }, { rows: DomainMatchingType.Overapproximation }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -3105,7 +3154,8 @@ df <- dplyr::summarize(df, score = mean(score), sum = sum(score))
 			[
 				['1@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
 				['2@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 6] }, DataFrameTestOverapproximation]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -3118,7 +3168,8 @@ df <- group_by(df, category) |> summarize(score = mean(score), sum = sum(score))
 			[
 				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
 				['3@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 6] }, DataFrameTestOverapproximation]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -3131,7 +3182,8 @@ df <- group_by(df, id, category) |> summarize(score = mean(score), sum = sum(sco
 			[
 				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
 				['3@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 6] }, { cols: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -3143,7 +3195,8 @@ df <- dplyr::summarize(df, 1)
 			[
 				['1@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
 				['2@df', { colnames: ColNamesTop, cols: [1, 4], rows: [1, 6] }, DataFrameTestOverapproximation]
-			]
+			],
+			skipLibraries
 		);
 
 		describe('Currently Unsupported', { fails: true }, () => {
@@ -3155,7 +3208,8 @@ df <- dplyr::summarize(df)
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'category', 'score'], cols: [0, 3], rows: [1, 6] }, DataFrameTestOverapproximation]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -3167,7 +3221,8 @@ df <- group_by(df, category) |> summarize()
 				`.trim(),
 				[
 					['3@df', { colnames: ['id', 'category', 'score'], cols: [0, 3], rows: [1, 6] }, DataFrameTestOverapproximation]
-				]
+				],
+				skipLibraries
 			);
 		});
 
@@ -3180,7 +3235,8 @@ df <- dplyr::summarize(df, score = mean(score), sum = sum(score), .groups = "dro
 			[
 				['1@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
 				['2@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 6] }, DataFrameTestOverapproximation]
-			]
+			],
+			skipLibraries
 		);
 	});
 
@@ -3196,7 +3252,8 @@ df <- dplyr::left_join(df1, df2, by = "id")
 				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
 				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
 				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [4, 4] }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -3210,7 +3267,8 @@ df <- dplyr::left_join(df1, df2, by = "id")
 				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
 				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
 				['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -3224,7 +3282,8 @@ df <- dplyr::left_join(df1, df2)
 				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
 				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
 				['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }]
-			]
+			],
+			skipLibraries
 		);
 
 		describe('Currently Unsupported', { fails: true }, () => {
@@ -3237,7 +3296,8 @@ df <- dplyr::left_join(df1, df2, by = c("id", "name"))
 				`.trim(),
 				[
 					['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [4, 4], rows: [4, 4] }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -3249,7 +3309,8 @@ df <- dplyr::left_join(df1, df2)
 				`.trim(),
 				[
 					['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [3, 6], rows: [4, 4] }, { cols: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -3261,7 +3322,8 @@ df <- dplyr::left_join(df1, df2, "id")
 				`.trim(),
 				[
 					['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -3273,7 +3335,8 @@ df <- dplyr::left_join(df1, df2, join_by(id == nr, name))
 				`.trim(),
 				[
 					['3@df', { colnames: ColNamesTop, cols: [3, 6], rows: [4, Infinity] }, DataFrameTestOverapproximation]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -3285,7 +3348,8 @@ df <- dplyr::left_join(df1, df2, join_by(score >= level))
 				`.trim(),
 				[
 					['3@df', { colnames: ColNamesTop, cols: [2, 5], rows: [4, Infinity] }, DataFrameTestOverapproximation]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -3297,7 +3361,8 @@ df <- dplyr::left_join(df1, df2, "id", suffix = c(".df1", ".df2"))
 				`.trim(),
 				[
 					['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -3309,7 +3374,8 @@ df <- dplyr::left_join(df1, df2, "id", keep = TRUE)
 				`.trim(),
 				[
 					['3@df', { colnames: ColNamesTop, cols: [2, 4], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 
 			testDataFrameDomain(
@@ -3321,7 +3387,8 @@ df <- dplyr::left_join(df1, df2, by = sample(colnames(df1)[1:3], 2))
 				`.trim(),
 				[
 					['3@df', { colnames: ColNamesTop, cols: [4, 8], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				]
+				],
+				skipLibraries
 			);
 		});
 	});
@@ -3512,7 +3579,8 @@ df <- dplyr::relocate(df, category)
 			[
 				['1@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }],
 				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -3524,7 +3592,8 @@ df <- dplyr::relocate(df, score, .before = category)
 			[
 				['1@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }],
 				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }]
-			]
+			],
+			skipLibraries
 		);
 
 		describe('Currently Unsupported', { fails: true }, () => {
@@ -3536,7 +3605,8 @@ df <- dplyr::relocate(df, label = category)
 				`.trim(),
 				[
 					['2@df', { colnames: ['id', 'label', 'score'], cols: [3, 3], rows: [5, 5] }]
-				]
+				],
+				skipLibraries
 			);
 		});
 
@@ -3549,7 +3619,8 @@ df <- dplyr::arrange(df, -score, id)
 			[
 				['1@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }],
 				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -3561,7 +3632,8 @@ df <- dplyr::arrange(df, desc(score))
 			[
 				['1@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }],
 				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }]
-			]
+			],
+			skipLibraries
 		);
 	});
 
@@ -3585,7 +3657,8 @@ print(df3$level)
 				['3@df1', { colnames: ['id', 'age', 'score'], cols: [3, 3], rows: [5, 5] }],
 				['4@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
 				['11@df3', { colnames: ['id', 'score', 'level', 'category'], cols: [3, 4], rows: [0, 5] }, { cols: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(

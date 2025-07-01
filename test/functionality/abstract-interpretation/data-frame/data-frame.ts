@@ -79,6 +79,7 @@ interface CriterionTestEntry {
  * @param shell    - The R shell to use to run the code
  * @param code     - The code to test
  * @param criteria - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameTestExact})
+ * @param skipRun  - Whether the real test with the execution of the R code should be skipped (defaults to `false`)
  * @param parser   - The parser to use for the data flow graph creation (defaults to the R shell)
  * @param name     - An optional name or test label for the test (defaults to the code)
  * @param config   - The config to use for the test (defaults to {@link defaultConfigOptions})
@@ -87,26 +88,14 @@ export function testDataFrameDomain(
 	shell: RShell,
 	code: string,
 	criteria: ([SingleSlicingCriterion, DataFrameDomain | undefined] | [SingleSlicingCriterion, DataFrameDomain | undefined, Partial<DataFrameTestOptions>])[],
+	skipRun: boolean | (() => boolean) = false,
 	parser: KnownParser = shell,
 	name: string | TestLabel = code,
 	config: FlowrConfigOptions = defaultConfigOptions
 ) {
-	for(const [criterion, domain, options] of criteria) {
-		if(domain !== undefined) {
-			if(domain.colnames === ColNamesTop) {
-				guard(options?.colnames === DomainMatchingType.Overapproximation, `Domain matching type for column names of "${criterion}" must be \`Overapproximation\` if expected column names are top`);
-			} else if(domain.cols !== IntervalBottom && domain.cols[0] !== domain.cols[1]) {
-				guard(options?.cols === DomainMatchingType.Overapproximation, `Domain matching type for number of columns of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element`);
-			} else if(domain.rows !== IntervalBottom && domain.rows[0] !== domain.rows[1]) {
-				guard(options?.rows === DomainMatchingType.Overapproximation, `Domain matching type for number of rows of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element`);
-			} else {
-				guard(options?.cols === undefined || options.cols === DomainMatchingType.Exact, `Domain matching type for number of columns of "${criterion}" must be \`Exact\` if expected interval has only 1 element`);
-				guard(options?.rows === undefined || options.rows === DomainMatchingType.Exact, `Domain matching type for number of rows of "${criterion}" must be \`Exact\` if expected interval has only 1 element`);
-			}
-		}
-	}
+	guardValidCriteria(criteria);
 	assertDataFrameDomain(parser, code, criteria.map(entry => [entry[0], entry[1]]), name, config);
-	testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]), parser, name, config);
+	testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]), skipRun, parser, name, config);
 }
 
 /**
@@ -123,6 +112,7 @@ export function testDataFrameDomain(
  * @param textArg  - The argument for the full test run where the code is executed
  * @param getCode  - The function to get the code for `fileArg` or `textArg`
  * @param criteria - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameTestExact})
+ * @param skipRun  - Whether the real test with the execution of the R code should be skipped (defaults to `false`)
  * @param parser   - The parser to use for the data flow graph creation (defaults to the R shell)
  * @param name     - An optional name or test label for the test (defaults to the code)
  * @param config   - The config to use for the test (defaults to {@link defaultConfigOptions})
@@ -132,12 +122,14 @@ export function testDataFrameDomainWithSource(
 	fileArg: string, textArg: string,
 	getCode: (arg: string) => string,
 	criteria: ([SingleSlicingCriterion, DataFrameDomain] | [SingleSlicingCriterion, DataFrameDomain, Partial<DataFrameTestOptions>])[],
+	skipRun: boolean | (() => boolean) = false,
 	parser: KnownParser = shell,
 	name?: string | TestLabel,
 	config: FlowrConfigOptions = defaultConfigOptions
 ) {
+	guardValidCriteria(criteria);
 	assertDataFrameDomain(parser, getCode(fileArg), criteria.map(entry => [entry[0], entry[1]]), name ?? getCode(fileArg), config);
-	testDataFrameDomain(shell, getCode(textArg), criteria, parser, name ?? getCode(textArg), config);
+	testDataFrameDomain(shell, getCode(textArg), criteria, skipRun, parser, name ?? getCode(textArg), config);
 }
 
 /**
@@ -210,6 +202,7 @@ export function assertDataFrameOperation(
  * @param shell    - The R shell to use to run the instrumented code
  * @param code     - The code to test
  * @param criteria - The slicing criteria to test including the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameTestExact})
+ * @param skipRun  - Whether the test should be skipped (defaults to `false`)
  * @param parser   - The parser to use for the data flow graph creation (defaults to the R shell)
  * @param name     - An optional name or test label for the test (defaults to the code)
  * @param config   - The config to use for the test (defaults to {@link defaultConfigOptions})
@@ -219,11 +212,15 @@ export function testDataFrameDomainAgainstReal(
 	code: string,
 	/** The options describe whether the inferred properties should match exacly the actual properties or can be an over-approximation (defaults to exact for all properties) */
 	criteria: (SingleSlicingCriterion | [SingleSlicingCriterion, Partial<DataFrameTestOptions>])[],
+	skipRun: boolean | (() => boolean) = false,
 	parser: KnownParser = shell,
 	name: string | TestLabel = code,
 	config: FlowrConfigOptions = defaultConfigOptions
-): void {
-	test(decorateLabelContext(name, ['absint']), async()=> {
+) {
+	test(decorateLabelContext(name, ['absint']), async({ skip })=> {
+		if(typeof skipRun === 'boolean' ? skipRun : skipRun()) {
+			skip();
+		}
 		const result = await createDataflowPipeline(parser, { request: requestFromInput(code) }, config).allRemainingSteps();
 		const testEntries: CriterionTestEntry[] = [];
 
@@ -367,4 +364,23 @@ function getRealDomainFromOutput(
 
 function getOutputMarker(criterion: SingleSlicingCriterion): string {
 	return `SHAPE INFERENCE ${criterion}:`;
+}
+
+function guardValidCriteria(
+	criteria: ([SingleSlicingCriterion, DataFrameDomain | undefined] | [SingleSlicingCriterion, DataFrameDomain | undefined, Partial<DataFrameTestOptions>])[]
+): void {
+	for(const [criterion, domain, options] of criteria) {
+		if(domain !== undefined) {
+			if(domain.colnames === ColNamesTop) {
+				guard(options?.colnames === DomainMatchingType.Overapproximation, `Domain matching type for column names of "${criterion}" must be \`Overapproximation\` if expected column names are top`);
+			} else if(domain.cols !== IntervalBottom && domain.cols[0] !== domain.cols[1]) {
+				guard(options?.cols === DomainMatchingType.Overapproximation, `Domain matching type for number of columns of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element`);
+			} else if(domain.rows !== IntervalBottom && domain.rows[0] !== domain.rows[1]) {
+				guard(options?.rows === DomainMatchingType.Overapproximation, `Domain matching type for number of rows of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element`);
+			} else {
+				guard(options?.cols === undefined || options.cols === DomainMatchingType.Exact, `Domain matching type for number of columns of "${criterion}" must be \`Exact\` if expected interval has only 1 element`);
+				guard(options?.rows === undefined || options.rows === DomainMatchingType.Exact, `Domain matching type for number of rows of "${criterion}" must be \`Exact\` if expected interval has only 1 element`);
+			}
+		}
+	}
 }

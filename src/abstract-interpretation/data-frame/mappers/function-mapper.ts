@@ -19,39 +19,45 @@ import { resolveIdToAbstractValue } from '../absint-visitor';
 import { DataFrameTop } from '../domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars, unquoteArgument } from '../resolve-args';
 
+enum DataFrameType {
+	DataFrame = 'data.frame',
+	Tibble = 'tibble',
+	DataTable = 'data.table'
+}
+
 const MaxReadLines = 1e7;
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
 
 const DataFrameFunctionMapper = {
-	'data.frame':    mapDataFrameCreate,
-	'as.data.frame': mapDataFrameConvert,
-	'read.table':    mapDataFrameRead,
-	'read.csv':      mapDataFrameRead,
-	'read.csv2':     mapDataFrameRead,
-	'read.delim':    mapDataFrameRead,
-	'read.delim2':   mapDataFrameRead,
-	'read_table':    mapDataFrameRead,
-	'read_csv':      mapDataFrameRead,
-	'read_csv2':     mapDataFrameRead,
-	'read_tsv':      mapDataFrameRead,
-	'read_delim':    mapDataFrameRead,
-	'cbind':         mapDataFrameColBind,
-	'rbind':         mapDataFrameRowBind,
-	'head':          mapDataFrameHeadTail,
-	'tail':          mapDataFrameHeadTail,
-	'subset':        mapDataFrameSubset,
-	'filter':        mapDataFrameFilter,
-	'select':        mapDataFrameSelect,
-	'mutate':        mapDataFrameMutate,
-	'transform':     mapDataFrameMutate,
-	'group_by':      mapDataFrameGroupBy,
-	'summarise':     mapDataFrameSummarize,
-	'summarize':     mapDataFrameSummarize,
-	'left_join':     mapDataFrameLeftJoin,
-	'merge':         mapDataFrameMerge,
-	'relocate':      mapDataFrameIdentity,
-	'arrange':       mapDataFrameIdentity
-} as const satisfies Record<string, DataFrameFunctionMapping<never>>;
+	'data.frame':    { mapper: mapDataFrameCreate },
+	'as.data.frame': { mapper: mapDataFrameConvert },
+	'read.table':    { mapper: mapDataFrameRead },
+	'read.csv':      { mapper: mapDataFrameRead },
+	'read.csv2':     { mapper: mapDataFrameRead },
+	'read.delim':    { mapper: mapDataFrameRead },
+	'read.delim2':   { mapper: mapDataFrameRead },
+	'read_table':    { mapper: mapDataFrameRead, library: 'readr', type: DataFrameType.Tibble },
+	'read_csv':      { mapper: mapDataFrameRead, library: 'readr', type: DataFrameType.Tibble },
+	'read_csv2':     { mapper: mapDataFrameRead, library: 'readr', type: DataFrameType.Tibble },
+	'read_tsv':      { mapper: mapDataFrameRead, library: 'readr', type: DataFrameType.Tibble },
+	'read_delim':    { mapper: mapDataFrameRead, library: 'readr', type: DataFrameType.Tibble },
+	'cbind':         { mapper: mapDataFrameColBind },
+	'rbind':         { mapper: mapDataFrameRowBind },
+	'head':          { mapper: mapDataFrameHeadTail },
+	'tail':          { mapper: mapDataFrameHeadTail },
+	'subset':        { mapper: mapDataFrameSubset },
+	'filter':        { mapper: mapDataFrameFilter, library: 'dplyr' },
+	'select':        { mapper: mapDataFrameSelect, library: 'dplyr' },
+	'mutate':        { mapper: mapDataFrameMutate, library: 'dplyr' },
+	'transform':     { mapper: mapDataFrameMutate },
+	'group_by':      { mapper: mapDataFrameGroupBy, library: 'dplyr', type: DataFrameType.Tibble },
+	'summarise':     { mapper: mapDataFrameSummarize, library: 'dplyr' },
+	'summarize':     { mapper: mapDataFrameSummarize, library: 'dplyr' },
+	'left_join':     { mapper: mapDataFrameLeftJoin, library: 'dplyr' },
+	'merge':         { mapper: mapDataFrameMerge },
+	'relocate':      { mapper: mapDataFrameIdentity, library: 'dplyr' },
+	'arrange':       { mapper: mapDataFrameIdentity, library: 'dplyr' }
+} as const satisfies Record<string, DataFrameFunctionMapperInfo<never>>;
 
 const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 	'data.frame':    { special: ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'] },
@@ -90,8 +96,14 @@ type DataFrameFunctionMapping<Params extends object> = (
     info: ResolveInfo
 ) => DataFrameOperations[] | undefined;
 
+type DataFrameFunctionMapperInfo<Params extends object> = {
+	readonly mapper:   DataFrameFunctionMapping<Params>,
+	readonly library?: string,
+	readonly type?:    Exclude<DataFrameType, DataFrameType.DataFrame>
+};
+
 type DataFrameFunction = keyof typeof DataFrameFunctionMapper;
-type DataFrameFunctionParams<N extends DataFrameFunction> = Parameters<typeof DataFrameFunctionMapper[N]>[1];
+type DataFrameFunctionParams<N extends DataFrameFunction> = Parameters<typeof DataFrameFunctionMapper[N]['mapper']>[1];
 
 type DataFrameFunctionParamsMapping = {
 	[Name in DataFrameFunction]: DataFrameFunctionParams<Name>
@@ -109,7 +121,7 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 ): DataFrameInfo | undefined {
 	if(node.type === RType.FunctionCall && node.named && Object.prototype.hasOwnProperty.call(DataFrameFunctionMapper, node.functionName.content)) {
 		const functionName = node.functionName.content as Name;
-		const mapper = DataFrameFunctionMapper[functionName] as DataFrameFunctionMapping<DataFrameFunctionParams<Name>>;
+		const mapper = DataFrameFunctionMapper[functionName].mapper as DataFrameFunctionMapping<DataFrameFunctionParams<Name>>;
 		const params = DataFrameFunctionParamsMapper[functionName] as DataFrameFunctionParams<Name>;
 		const args = getFunctionArguments(node, dfg);
 		const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };

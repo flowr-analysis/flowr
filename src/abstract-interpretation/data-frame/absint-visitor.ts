@@ -55,7 +55,7 @@ class DataFrameAbsintVisitor<
 			return true;
 		}
 		const predecessors = this.getPredecessorNodes(vertex.id);
-		this.newDomain = joinDataFrameStates(...predecessors.map(node => node.info.dataFrame?.domain ?? new Map()));
+		this.newDomain = joinDataFrameStates(...predecessors.map(node => node.info.dataFrame?.domain ?? new Map<NodeId, DataFrameDomain>()));
 		this.onVisitNode(nodeId);
 
 		const visitedCount = this.visited.get(vertex.id) ?? 0;
@@ -67,17 +67,19 @@ class DataFrameAbsintVisitor<
 	protected override visitDataflowNode(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): void {
 		const node = this.getNormalizedAst(isMarkerVertex(vertex) ? vertex.root : vertex.id);
 
-		if(node !== undefined) {
-			this.oldDomain = node.info.dataFrame?.domain ?? new Map<NodeId, DataFrameDomain>();
-			super.visitDataflowNode(vertex);
-
-			if((this.visited.get(vertex.id) ?? 0) >= (this.config.wideningThreshold ?? DefaultWideningThreshold)) {
-				this.newDomain = wideningDataFrameStates(this.oldDomain, this.newDomain);
-			}
-			// mark variable definitions as "unassigned", since the evaluation of the assigned value is delayed until processing the assignment
-			node.info.dataFrame ??= isVariableDefinitionVertex(this.getDataflowGraph(vertex.id)) ? { type: 'unassigned' } : {};
-			node.info.dataFrame.domain = this.newDomain;
+		if(node === undefined) {
+			return;
 		}
+		this.oldDomain = node.info.dataFrame?.domain ?? new Map<NodeId, DataFrameDomain>();
+		super.visitDataflowNode(vertex);
+
+		if(this.shouldWiden(vertex)) {
+			this.newDomain = wideningDataFrameStates(this.oldDomain, this.newDomain);
+		}
+		// mark variable definitions as "unassigned", as the evaluation of the assigned expression is delayed until processing the assignment
+		const variableDefinition = isVariableDefinitionVertex(this.getDataflowGraph(vertex.id));
+		node.info.dataFrame ??= variableDefinition ? { type: 'unassigned' } : {};
+		node.info.dataFrame.domain = this.newDomain;
 	}
 
 	protected override onAssignmentCall({ call, target, source }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
@@ -88,6 +90,7 @@ class DataFrameAbsintVisitor<
 		if(node !== undefined && (targetNode?.type === RType.Symbol || targetNode?.type === RType.String) && sourceNode !== undefined) {
 			node.info.dataFrame = mapDataFrameVariableAssignment(targetNode, sourceNode, this.config.dfg);
 			this.processOperation(node);
+			this.clearUnassignedInfo(targetNode);
 		}
 	}
 
@@ -109,13 +112,15 @@ class DataFrameAbsintVisitor<
 		}
 	}
 
-	protected override onReplacementCall({ call, source }: { call: DataflowGraphVertexFunctionCall, source: NodeId | undefined, target: NodeId | undefined }): void {
+	protected override onReplacementCall({ call, source, target }: { call: DataflowGraphVertexFunctionCall, source: NodeId | undefined, target: NodeId | undefined }): void {
 		const node = this.getNormalizedAst(call.id);
+		const targetNode = target !== undefined ? this.getNormalizedAst(target) : undefined;
 		const sourceNode = source !== undefined ? this.getNormalizedAst(source) : undefined;
 
-		if(node !== undefined && sourceNode !== undefined) {
+		if(node !== undefined && targetNode !== undefined && sourceNode !== undefined) {
 			node.info.dataFrame = mapDataFrameReplacementFunction(node, sourceNode, this.config.dfg);
 			this.processOperation(node);
+			this.clearUnassignedInfo(targetNode);
 		}
 	}
 
@@ -128,8 +133,7 @@ class DataFrameAbsintVisitor<
 				const identifier = this.getNormalizedAst(node.info.dataFrame.identifier);
 
 				if(identifier !== undefined) {
-					// remove "unassigned" markers from variable definitons and update domain
-					identifier.info.dataFrame = {};
+					identifier.info.dataFrame ??= {};
 					identifier.info.dataFrame.domain = new Map(this.newDomain);
 				}
 				this.newDomain.set(node.info.id, value);
@@ -143,9 +147,7 @@ class DataFrameAbsintVisitor<
 
 				if(operation.operand !== undefined && getConstraintType(operation.operation) === ConstraintType.OperandModification) {
 					this.newDomain.set(operation.operand, value);
-					getOriginInDfg(this.config.dfg, operation.operand)
-						?.filter(origin => origin.type === OriginType.ReadVariableOrigin)
-						.forEach(origin => this.newDomain.set(origin.id, value));
+					this.updateValueOfOrigins(operation.operand, value);
 				} else if(getConstraintType(operation.operation) === ConstraintType.ResultPostcondition) {
 					this.newDomain.set(node.info.id, value);
 				}
@@ -181,6 +183,26 @@ class DataFrameAbsintVisitor<
 			.filter(node => node !== undefined)
 			.toArray() ?? [];
 	}
+
+	private shouldWiden(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): boolean {
+		return (this.visited.get(vertex.id) ?? 0) >= (this.config.wideningThreshold ?? DefaultWideningThreshold);
+	}
+
+	private updateValueOfOrigins(identifier: NodeId, value: DataFrameDomain) {
+		getOriginInDfg(this.config.dfg, identifier)
+			?.filter(origin => origin.type === OriginType.ReadVariableOrigin)
+			.forEach(origin => this.newDomain.set(origin.id, value));
+	}
+
+	private clearUnassignedInfo(node: RNode<ParentInformation & AbstractInterpretationInfo>) {
+		if(node.info.dataFrame?.type === 'unassigned') {
+			if(node.info.dataFrame.domain !== undefined) {
+				node.info.dataFrame = { domain: node.info.dataFrame.domain };
+			} else {
+				delete node.info.dataFrame;
+			}
+		}
+	}
 }
 
 export function performDataFrameAbsint(
@@ -192,7 +214,7 @@ export function performDataFrameAbsint(
 	visitor.start();
 	const exitPoints = cfinfo.exitPoints.map(id => cfinfo.graph.getVertex(id)).filter(isNotUndefined);
 	const exitNodes = exitPoints.map(vertex => ast.idMap.get(isMarkerVertex(vertex) ? vertex.root : vertex.id)).filter(isNotUndefined);
-	const result = exitNodes.map(node => node.info.dataFrame?.domain ?? new Map());
+	const result = exitNodes.map(node => node.info.dataFrame?.domain ?? new Map<NodeId, DataFrameDomain>());
 
 	return joinDataFrameStates(...result);
 }
@@ -215,11 +237,7 @@ export function resolveIdToAbstractValue(
 	const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 	if(node.type === RType.Symbol) {
-		const values = getOriginInDfg(dfg, node.info.id)
-			?.filter(entry => entry.type === OriginType.ReadVariableOrigin)
-			.map<RNode<ParentInformation & AbstractInterpretationInfo> | undefined>(entry => dfg.idMap?.get(entry.id))
-			.filter(entry => entry?.info.dataFrame?.domain !== undefined && entry.info.dataFrame.type !== 'unassigned')
-			.map(entry => resolveIdToAbstractValue(entry, dfg, domain));
+		const values = getAbstractValuesOfOrigins(node, domain, dfg);
 
 		if(values !== undefined && values.length > 0 && values.every(isNotUndefined)) {
 			return joinDataFrames(...values);
@@ -257,4 +275,13 @@ export function resolveIdToAbstractValue(
 			}
 		}
 	}
+}
+
+function getAbstractValuesOfOrigins(node: RNode<ParentInformation>, domain: DataFrameStateDomain, dfg: DataflowGraph) {
+	// get the abstract value for each origin that has already been visited and whose assignment has already been processed
+	return getOriginInDfg(dfg, node.info.id)
+		?.filter(entry => entry.type === OriginType.ReadVariableOrigin)
+		.map<RNode<ParentInformation & AbstractInterpretationInfo> | undefined>(entry => dfg.idMap?.get(entry.id))
+		.filter(entry => entry?.info.dataFrame?.domain !== undefined && entry.info.dataFrame.type !== 'unassigned')
+		.map(entry => resolveIdToAbstractValue(entry, dfg, domain));
 }

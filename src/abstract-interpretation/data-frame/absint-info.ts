@@ -16,16 +16,25 @@ interface DataFrameInfoBase {
 	domain?: DataFrameStateDomain
 }
 
+/**
+ * Marks the target symbol of assignments as "unassigned" until the assigned expression is evaluated
+ */
 export interface DataFrameUnassignedInfo {
 	type: 'unassigned'
 }
 
+/**
+ * Represents a symbol assignment with a target identifier (symbol) and assigned expression
+ */
 export interface DataFrameAssignmentInfo {
 	type:       'assignment',
 	identifier: NodeId,
 	expression: NodeId
 }
 
+/**
+ * Represents a data frame expression with mapped abstract operations
+ */
 export interface DataFrameExpressionInfo {
 	type:       'expression',
 	operations: DataFrameOperations[]

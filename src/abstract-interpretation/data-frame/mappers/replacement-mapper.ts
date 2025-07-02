@@ -80,7 +80,8 @@ function mapDataFrameNamedColumnAssignment(
 			operation: 'removeCols',
 			operand:   dataFrame.info.id,
 			colnames:  argName ? [argName] : undefined,
-			type:      ConstraintType.OperandModification
+			type:      ConstraintType.OperandModification,
+			options:   { maybe: true }
 		}];
 	} else {
 		return [{
@@ -116,19 +117,11 @@ function mapDataFrameIndexColRowAssignment(
 		} else if(Array.isArray(rowValue) && rowValue.every(row => typeof row === 'number')) {
 			rows = rowValue;
 		}
-		if(nullValue) {
-			result.push({
-				operation: 'removeRows',
-				operand:   dataFrame.info.id,
-				rows:      rows?.length
-			});
-		} else {
-			result.push({
-				operation: 'assignRows',
-				operand:   dataFrame.info.id,
-				rows
-			});
-		}
+		result.push({
+			operation: 'assignRows',
+			operand:   dataFrame.info.id,
+			rows
+		});
 	}
 	if(colArg !== undefined && colArg !== EmptyArgument) {
 		const colValue = resolveIdToArgValue(colArg, info);
@@ -146,7 +139,8 @@ function mapDataFrameIndexColRowAssignment(
 				operation: 'removeCols',
 				operand:   dataFrame.info.id,
 				colnames:  columns?.map(col => typeof col === 'string' ? col : undefined),
-				type:      ConstraintType.OperandModification
+				type:      ConstraintType.OperandModification,
+				options:   { maybe: true }
 			});
 		} else {
 			result.push({

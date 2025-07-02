@@ -96,9 +96,9 @@ function mapDataFrameIndexColRowAccess(
 	if(colArg !== undefined && colArg !== EmptyArgument) {
 		const colValue = resolveIdToArgValue(colArg, info);
 
-		if(typeof colValue === 'string') {
+		if(typeof colValue === 'number') {
 			columns = [colValue];
-		} else if(typeof colValue === 'number') {
+		} else if(typeof colValue === 'string' && exactValue !== false) {
 			columns = [colValue];
 		} else if(Array.isArray(colValue) && colValue.every(col => typeof col === 'number')) {
 			columns = colValue;
@@ -150,8 +150,8 @@ function mapDataFrameIndexColRowAccess(
 			}
 			operand = undefined;
 		}
-		return result;
 	}
+	return result;
 }
 
 function getEffectiveArgs(

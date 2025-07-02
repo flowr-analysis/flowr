@@ -135,8 +135,16 @@ export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: N
 
 	const result: LintQuickFixReplacement[] = [];
 	for(const ref of refs) {
-		const range = idMap.get(ref)?.info.fullRange;
+		const node  = idMap.get(ref);
+		if(node === undefined) {
+			continue;
+		}
+
+		const range = node.info.fullRange;
 		if(range) {
+			// In case of a function call we only need to include the name, not the '()'
+			range[3] = range[1] + (node.lexeme as string).length - 1;
+
 			result.push(
 				{
 					type:        'replace',

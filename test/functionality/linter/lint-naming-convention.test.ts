@@ -103,6 +103,29 @@ describe('flowR linter', withTreeSitter(parser => {
 			certainty: LintingCertainty.Definitely,
 		}], undefined, { caseing: CasingConvention.PascalCase });
 
+		assertLinter('function and call', parser, 'foo_Bar <- function(arg) arg\nfoo_Bar()', 'naming-convention', [
+			{
+				name:           'foo_Bar',
+				detectedCasing: CasingConvention.CamelSnakeCase,
+				quickFix:       [
+				{ type: 'replace', replacement: 'FooBar', range: [2, 1, 2, 7,], description: 'Rename to match naming convention PascalCase' } as const,
+				{ type: 'replace', replacement: 'FooBar', range: [1, 1, 1, 7],   description: 'Rename to match naming convention PascalCase' } as const
+				],
+				range:     [1, 1, 1, 7],
+				certainty: LintingCertainty.Definitely,
+			},
+			{
+				name:           'arg',
+				detectedCasing: CasingConvention.CamelCase,
+				quickFix:       [
+				{ type: 'replace', replacement: 'Arg', range: [1, 26, 1, 28,], description: 'Rename to match naming convention PascalCase' } as const,
+				{ type: 'replace', replacement: 'Arg', range: [1, 21, 1, 23],   description: 'Rename to match naming convention PascalCase' } as const
+				],
+				range:     [1, 21, 1, 23],
+				certainty: LintingCertainty.Definitely,
+			},
+		], undefined, { caseing: CasingConvention.PascalCase });
+
 		assertLinter('detect casing', parser, 'testVar <- 5\ntestVarTwo <- 5\ntest_var <- 5\n', 'naming-convention', [{
 			name:           'test_var',
 			detectedCasing: CasingConvention.SnakeCase,

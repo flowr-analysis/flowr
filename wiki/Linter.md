@@ -16,9 +16,9 @@ R> :query @linter "read.csv(\"/root/x.txt\")"
 
 
 ```text
-Query: [;1mlinter[0m (1 ms)
+Query: [;1mlinter[0m (2 ms)
    ╰ deprecated-functions:
-       ╰ _Metadata_: <code>{"totalRelevant":1,"totalNotDeprecated":1,"searchTimeMs":0,"processTimeMs":0}</code>
+       ╰ _Metadata_: <code>{"totalRelevant":1,"totalNotDeprecated":1,"searchTimeMs":1,"processTimeMs":0}</code>
    ╰ file-path-validity:
        ╰ definitely:
            ╰ Path `/root/x.txt` at 1.1-23
@@ -26,7 +26,7 @@ Query: [;1mlinter[0m (1 ms)
    ╰ absolute-file-paths:
        ╰ definitely:
            ╰ Path `/root/x.txt` at 1.1-23
-       ╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":0,"processTimeMs":0}</code>
+       ╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":1,"processTimeMs":0}</code>
    ╰ unused-definitions:
        ╰ _Metadata_: <code>{"totalConsidered":0,"searchTimeMs":0,"processTimeMs":0}</code>
 [;3mAll queries together required ≈1 ms (1ms accuracy, total 4 ms)[0m[0m
@@ -51,7 +51,7 @@ _Results (prettified and summarized):_
 
 Query: **linter** (4 ms)\
 &nbsp;&nbsp;&nbsp;╰ deprecated-functions:\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalRelevant":1,"totalNotDeprecated":1,"searchTimeMs":0,"processTimeMs":0}</code>\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalRelevant":1,"totalNotDeprecated":1,"searchTimeMs":1,"processTimeMs":0}</code>\
 &nbsp;&nbsp;&nbsp;╰ file-path-validity:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ definitely:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
@@ -83,7 +83,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "totalRelevant": 1,
           "totalNotDeprecated": 1,
-          "searchTimeMs": 0,
+          "searchTimeMs": 1,
           "processTimeMs": 0
         }
       },

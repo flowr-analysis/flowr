@@ -348,14 +348,14 @@ function getRealDomainFromOutput(
 	if(line === undefined) {
 		throw new Error(`cannot parse output of instrumented code for ${criterion}`);
 	}
-	const OutputRegex = /(?<=^|,)(?:\[([^\]]*)\]|([^,]*))/g;
-	const result = line.matchAll(OutputRegex)?.map(match => match[1] ?? match[2]).toArray();
+	const OutputRegex = /^(TRUE|FALSE),\[(.*)\],(\w*),(\w*)$/;
+	const result = line.match(OutputRegex);
 
-	if(result?.length === 4) {
-		const dataFrame = result[0] === 'TRUE';
-		const colnames = result[1].length > 0 ? result[1].split(',') : [];
-		const cols = Number.parseInt(result[2]);
-		const rows = Number.parseInt(result[3]);
+	if(result?.length === 5) {
+		const dataFrame = result[1] === 'TRUE';
+		const colnames = result[2].length > 0 ? result[2].split(',') : [];
+		const cols = Number.parseInt(result[3]);
+		const rows = Number.parseInt(result[4]);
 
 		return dataFrame ? { colnames: colnames, cols: [cols, cols], rows: [rows, rows] } : undefined;
 	}

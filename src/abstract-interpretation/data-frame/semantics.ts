@@ -70,7 +70,7 @@ function applyCreateSemantics(
 ): DataFrameDomain {
 	return {
 		colnames: colnames?.every(name => name !== undefined) ? colnames : ColNamesTop,
-		cols:     colnames ? [colnames.length, colnames.length] : IntervalTop,
+		cols:     colnames !== undefined ? [colnames.length, colnames.length] : IntervalTop,
 		rows:     rows !== undefined ? [rows, rows] : IntervalTop
 	};
 }
@@ -170,7 +170,7 @@ function applyAddColsSemantics(
 	return {
 		...value,
 		colnames: colnames?.every(col => col !== undefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
-		cols:     colnames !== undefined ? addInterval(value.cols, [colnames.length, colnames.length]) : IntervalTop
+		cols:     colnames !== undefined ? addInterval(value.cols, [colnames.length, colnames.length]) : extendIntervalToInfinity(value.cols)
 	};
 }
 
@@ -180,7 +180,7 @@ function applyAddRowsSemantics(
 ): DataFrameDomain {
 	return {
 		...value,
-		rows: rows !== undefined ? addInterval(value.rows, [rows, rows]) : IntervalTop
+		rows: rows !== undefined ? addInterval(value.rows, [rows, rows]) : extendIntervalToInfinity(value.rows)
 	};
 }
 

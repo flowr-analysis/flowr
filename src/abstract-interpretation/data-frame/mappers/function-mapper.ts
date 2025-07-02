@@ -398,12 +398,6 @@ function mapDataFrameHeadTail(
 
 	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
-	} else if(args.length === 1) {
-		return [{
-			operation: 'identity',
-			operand:   dataFrame.value.info.id,
-			args:      {}
-		}];
 	}
 	const result: DataFrameOperations[] = [];
 	const amountArg = getFunctionArgument(args, params.amount, info);

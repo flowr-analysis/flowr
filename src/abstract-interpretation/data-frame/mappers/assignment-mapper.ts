@@ -3,6 +3,7 @@ import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { AbstractInterpretationInfo, DataFrameAssignmentInfo } from '../absint-info';
 import { resolveIdToAbstractValue } from '../absint-visitor';
 
@@ -19,4 +20,8 @@ export function mapDataFrameVariableAssignment(
 		identifier: identifier.info.id,
 		expression: expression.info.id
 	};
+}
+
+export function isAssignmentTarget(node: RNode<ParentInformation> | undefined): node is RSymbol<ParentInformation> | RString<ParentInformation> {
+	return node?.type === RType.Symbol || node?.type === RType.String;
 }

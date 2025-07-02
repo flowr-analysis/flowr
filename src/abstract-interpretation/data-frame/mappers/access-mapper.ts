@@ -72,6 +72,8 @@ function mapDataFrameIndexColRowAccess(
 	const result: DataFrameOperation[] = [];
 	const dropArg = access.access.find(arg => resolveIdToArgName(arg, info) === 'drop');
 	const dropValue = resolveIdToArgValue(dropArg, info);
+	const exactArg = access.access.find(arg => resolveIdToArgName(arg, info) === 'exact');
+	const exactValue = resolveIdToArgValue(exactArg, info);
 	const rowArg = args.length < 2 ? undefined : args[0];
 	const colArg = args.length < 2 ? args[0] : args[1];
 	let rows: number[] | undefined = undefined;
@@ -98,7 +100,9 @@ function mapDataFrameIndexColRowAccess(
 			columns = [colValue];
 		} else if(typeof colValue === 'number') {
 			columns = [colValue];
-		} else if(Array.isArray(colValue) && (colValue.every(col => typeof col === 'string') || colValue.every(col => typeof col === 'number'))) {
+		} else if(Array.isArray(colValue) && colValue.every(col => typeof col === 'number')) {
+			columns = colValue;
+		} else if(Array.isArray(colValue) && colValue.every(col => typeof col === 'string') && exactValue !== false) {
 			columns = colValue;
 		}
 		result.push({
@@ -113,22 +117,38 @@ function mapDataFrameIndexColRowAccess(
 			rowArg !== undefined && columns?.length === 1 && (typeof columns[0] === 'string' || columns[0] > 0);
 
 	if(!dropExtent) {
+		const rowSubset = rows === undefined || rows.every(row => row >= 0);
+		const rowZero = rows?.length === 1 && rows[0] === 0;
+		const colSubset = columns === undefined || columns.every(col => typeof col === 'string' || col >= 0);
+		const colZero = columns?.length === 1 && columns[0] === 0;
+		const colnamesChange = columns?.some((col, _, list) => list.filter(other => other === col).length > 1);
+
 		let operand: RNode<ParentInformation> | undefined = dataFrame;
 
 		if(rowArg !== undefined && rowArg !== EmptyArgument) {
 			result.push({
-				operation: rows === undefined || rows.every(row => row >= 0) ? 'subsetRows' : 'removeRows',
+				operation: rowSubset ? 'subsetRows' : 'removeRows',
 				operand:   operand?.info.id,
-				rows:      rows?.length
+				rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length
 			});
 			operand = undefined;
 		}
 		if(colArg !== undefined && colArg !== EmptyArgument) {
-			result.push({
-				operation: columns === undefined || columns.every(col => typeof col === 'string' || col >= 0) ? 'subsetCols' : 'removeCols',
-				operand:   operand?.info.id,
-				colnames:  columns?.map(col => typeof col === 'string' ? col : undefined)
-			});
+			if(colSubset) {
+				result.push({
+					operation: 'subsetCols',
+					operand:   operand?.info.id,
+					colnames:  colZero ? [] : columns?.map(col => typeof col === 'string' ? col : undefined),
+					...(colnamesChange ? { options: { colnamesChange } } : {})
+				});
+				console.log(result.at(-1));
+			} else {
+				result.push({
+					operation: 'removeCols',
+					operand:   operand?.info.id,
+					colnames:  columns?.map(col => typeof col === 'string' ? col : undefined)
+				});
+			}
 			operand = undefined;
 		}
 		return result;

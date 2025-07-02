@@ -1,11 +1,13 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataFrameStateDomain } from './domain';
-import type { DataFrameOperationArgs, DataFrameOperationName } from './semantics';
+import type { ConstraintType, DataFrameOperationArgs, DataFrameOperationName, DataFrameOperationOptions } from './semantics';
 
 export type DataFrameOperation = {
     [Name in DataFrameOperationName]: {
 		operation: Name,
-		operand:   NodeId | undefined
+		operand:   NodeId | undefined,
+		type?:     ConstraintType,
+		options?:  DataFrameOperationOptions<Name>
 	} & DataFrameOperationArgs<Name>;
 }[DataFrameOperationName];
 

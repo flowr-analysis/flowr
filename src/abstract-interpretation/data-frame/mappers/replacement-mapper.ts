@@ -11,6 +11,7 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperation } from '../absint-info';
 import { resolveIdToAbstractValue } from '../absint-visitor';
 import { resolveIdToArgStringVector, resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
+import { ConstraintType } from '../semantics';
 import { isStringBasedAccess } from './access-mapper';
 import { mapDataFrameVariableAssignment } from './assignment-mapper';
 
@@ -184,7 +185,8 @@ function mapDataFrameUnknownAssignment(
 		return;
 	}
 	return [{
-		operation: 'unknownModify',
-		operand:   operand.value?.info.id
+		operation: 'unknown',
+		operand:   operand.value?.info.id,
+		type:      ConstraintType.OperandModification
 	}];
 }

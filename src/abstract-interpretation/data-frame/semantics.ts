@@ -11,53 +11,55 @@ export enum ConstraintType {
 }
 
 const DataFrameSemanticsMapper = {
-	'create':        { apply: applyCreateSemantics,      type: ConstraintType.ResultPostcondition },
-	'read':          { apply: applyReadSemantics,        type: ConstraintType.ResultPostcondition },
-	'accessCols':    { apply: applyAccessColsSemantics,  type: ConstraintType.OperandPrecondition },
-	'accessRows':    { apply: applyAccessRowsSemantics,  type: ConstraintType.OperandPrecondition },
-	'assignCols':    { apply: applyAssignColsSemantics,  type: ConstraintType.OperandModification },
-	'assignRows':    { apply: applyAssignRowsSemantics,  type: ConstraintType.OperandModification },
-	'setColNames':   { apply: applySetColNamesSemantics, type: ConstraintType.OperandModification },
-	'unknownModify': { apply: applyUnknownSemantics,     type: ConstraintType.OperandModification },
-	'addCols':       { apply: applyAddColsSemantics,     type: ConstraintType.ResultPostcondition },
-	'addRows':       { apply: applyAddRowsSemantics,     type: ConstraintType.ResultPostcondition },
-	'removeCols':    { apply: applyRemoveColsSemantics,  type: ConstraintType.ResultPostcondition },
-	'removeRows':    { apply: applyRemoveRowsSemantics,  type: ConstraintType.ResultPostcondition },
-	'concatCols':    { apply: applyConcatColsSemantics,  type: ConstraintType.ResultPostcondition },
-	'concatRows':    { apply: applyConcatRowsSemantics,  type: ConstraintType.ResultPostcondition },
-	'subsetCols':    { apply: applySubsetColsSemantics,  type: ConstraintType.ResultPostcondition },
-	'subsetRows':    { apply: applySubsetRowsSemantics,  type: ConstraintType.ResultPostcondition },
-	'filterRows':    { apply: applyFilterRowsSemantics,  type: ConstraintType.ResultPostcondition },
-	'mutateCols':    { apply: applyMutateColsSemantics,  type: ConstraintType.ResultPostcondition },
-	'groupBy':       { apply: applyGroupBySemantics,     type: ConstraintType.ResultPostcondition },
-	'summarize':     { apply: applySummarizeSemantics,   type: ConstraintType.ResultPostcondition },
-	'leftJoin':      { apply: applyLeftJoinSemantics,    type: ConstraintType.ResultPostcondition },
-	'unknown':       { apply: applyUnknownSemantics,     type: ConstraintType.ResultPostcondition },
-	'identity':      { apply: applyIdentitySemantics,    type: ConstraintType.ResultPostcondition }
-} as const satisfies Record<string, DataFrameSemanticsMapperInfo<never>>;
+	'create':      { apply: applyCreateSemantics,      type: ConstraintType.ResultPostcondition },
+	'read':        { apply: applyReadSemantics,        type: ConstraintType.ResultPostcondition },
+	'accessCols':  { apply: applyAccessColsSemantics,  type: ConstraintType.OperandPrecondition },
+	'accessRows':  { apply: applyAccessRowsSemantics,  type: ConstraintType.OperandPrecondition },
+	'assignCols':  { apply: applyAssignColsSemantics,  type: ConstraintType.OperandModification },
+	'assignRows':  { apply: applyAssignRowsSemantics,  type: ConstraintType.OperandModification },
+	'setColNames': { apply: applySetColNamesSemantics, type: ConstraintType.OperandModification },
+	'addCols':     { apply: applyAddColsSemantics,     type: ConstraintType.ResultPostcondition },
+	'addRows':     { apply: applyAddRowsSemantics,     type: ConstraintType.ResultPostcondition },
+	'removeCols':  { apply: applyRemoveColsSemantics,  type: ConstraintType.ResultPostcondition },
+	'removeRows':  { apply: applyRemoveRowsSemantics,  type: ConstraintType.ResultPostcondition },
+	'concatCols':  { apply: applyConcatColsSemantics,  type: ConstraintType.ResultPostcondition },
+	'concatRows':  { apply: applyConcatRowsSemantics,  type: ConstraintType.ResultPostcondition },
+	'subsetCols':  { apply: applySubsetColsSemantics,  type: ConstraintType.ResultPostcondition },
+	'subsetRows':  { apply: applySubsetRowsSemantics,  type: ConstraintType.ResultPostcondition },
+	'filterRows':  { apply: applyFilterRowsSemantics,  type: ConstraintType.ResultPostcondition },
+	'mutateCols':  { apply: applyMutateColsSemantics,  type: ConstraintType.ResultPostcondition },
+	'groupBy':     { apply: applyGroupBySemantics,     type: ConstraintType.ResultPostcondition },
+	'summarize':   { apply: applySummarizeSemantics,   type: ConstraintType.ResultPostcondition },
+	'leftJoin':    { apply: applyLeftJoinSemantics,    type: ConstraintType.ResultPostcondition },
+	'unknown':     { apply: applyUnknownSemantics,     type: ConstraintType.ResultPostcondition },
+	'identity':    { apply: applyIdentitySemantics,    type: ConstraintType.ResultPostcondition }
+} as const satisfies Record<string, DataFrameSemanticsMapperInfo<never, never>>;
 
-type DataFrameSemanticsMapperInfo<Arguments extends object> = {
-	readonly apply: DataFrameSemanticsApplier<Arguments>,
+type DataFrameSemanticsMapperInfo<Arguments extends object, Options extends object | undefined> = {
+	readonly apply: DataFrameSemanticsApplier<Arguments, Options>,
 	readonly type:  ConstraintType
 }
 
-type DataFrameSemanticsApplier<Arguments extends object> = (
+type DataFrameSemanticsApplier<Arguments extends object, Options extends object | undefined> = (
 	value: DataFrameDomain,
-	args: Arguments
+	args: Arguments,
+	options?: Options
 ) => DataFrameDomain;
 
 export type DataFrameOperationName = keyof typeof DataFrameSemanticsMapper;
 export const DataFrameOperationNames = Object.keys(DataFrameSemanticsMapper) as DataFrameOperationName[];
 export type DataFrameOperationArgs<N extends DataFrameOperationName> = Parameters<typeof DataFrameSemanticsMapper[N]['apply']>[1];
+export type DataFrameOperationOptions<N extends DataFrameOperationName> = Parameters<typeof DataFrameSemanticsMapper[N]['apply']>[2];
 
 export function applySemantics<Name extends DataFrameOperationName>(
 	operation: Name,
 	value: DataFrameDomain,
-	args: DataFrameOperationArgs<Name>
+	args: DataFrameOperationArgs<Name>,
+	options?: DataFrameOperationOptions<Name>
 ): DataFrameDomain {
-	const applier = DataFrameSemanticsMapper[operation] as DataFrameSemanticsMapperInfo<DataFrameOperationArgs<Name>>;
+	const applier = DataFrameSemanticsMapper[operation] as DataFrameSemanticsMapperInfo<DataFrameOperationArgs<Name>, DataFrameOperationOptions<Name>>;
 
-	return applier.apply(value, args);
+	return applier.apply(value, args, options);
 }
 
 export function getConstraintType(operation: DataFrameOperationName): ConstraintType {
@@ -228,12 +230,13 @@ function applyConcatRowsSemantics(
 
 function applySubsetColsSemantics(
 	value: DataFrameDomain,
-	{ colnames }: { colnames: (string | undefined)[] | undefined }
+	{ colnames }: { colnames: (string | undefined)[] | undefined },
+	options?: { colnamesChange: boolean }
 ): DataFrameDomain {
 	return {
 		...value,
-		colnames: colnames?.every(col => col !== undefined) ? meetColNames(value.colnames, colnames) : value.colnames,
-		cols:     colnames !== undefined ? minInterval(value.cols, [colnames.length, colnames.length]) : extendIntervalToZero(value.cols)
+		colnames: options?.colnamesChange ? ColNamesTop : colnames?.every(col => col !== undefined) ? meetColNames(value.colnames, colnames) : value.colnames,
+		cols:     colnames !== undefined ? [colnames.length, colnames.length] : extendIntervalToZero(value.cols)
 	};
 }
 
@@ -292,13 +295,14 @@ function applySummarizeSemantics(
 
 function applyLeftJoinSemantics(
 	value: DataFrameDomain,
-	{ other, minRows }: { other: DataFrameDomain, by: string | undefined, minRows?: boolean }
+	{ other }: { other: DataFrameDomain, by: string | undefined },
+	options?: { minRows?: boolean }
 ): DataFrameDomain {
 	return {
 		...value,
 		colnames: joinColNames(value.colnames, other.colnames),
 		cols:     subtractInterval(addInterval(value.cols, other.cols), [1, 1]),
-		rows:     minRows ? minInterval(value.rows, other.rows) : value.rows
+		rows:     options?.minRows ? minInterval(value.rows, other.rows) : value.rows
 	};
 }
 

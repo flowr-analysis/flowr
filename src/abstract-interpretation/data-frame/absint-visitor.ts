@@ -132,19 +132,19 @@ class DataFrameAbsintVisitor<
 		} else if(node.info.dataFrame?.type === 'expression') {
 			let value = DataFrameTop;
 
-			for(const { operation, operand, ...args } of node.info.dataFrame.operations) {
+			for(const { operation, operand, type, options, ...args } of node.info.dataFrame.operations) {
 				const operandValue = operand !== undefined ? resolveIdToAbstractValue(operand, this.config.dfg, this.newDomain) : value;
-				value = applySemantics(operation, operandValue ?? DataFrameTop, args);
+				value = applySemantics(operation, operandValue ?? DataFrameTop, args, options);
+				const constraintType = type ?? getConstraintType(operation);
 
-				if(operand !== undefined && getConstraintType(operation) === ConstraintType.OperandModification) {
+				if(operand !== undefined && constraintType === ConstraintType.OperandModification) {
 					this.newDomain.set(operand, value);
 					getOriginInDfg(this.config.dfg, operand)
 						?.filter(origin => origin.type === OriginType.ReadVariableOrigin)
 						.forEach(origin => this.newDomain.set(origin.id, value));
+				} else if(constraintType === ConstraintType.ResultPostcondition) {
+					this.newDomain.set(node.info.id, value);
 				}
-			}
-			if(node.info.dataFrame.operations.some(({ operation }) => getConstraintType(operation) === ConstraintType.ResultPostcondition)) {
-				this.newDomain.set(node.info.id, value);
 			}
 		}
 	}

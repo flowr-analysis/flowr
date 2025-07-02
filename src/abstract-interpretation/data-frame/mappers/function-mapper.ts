@@ -247,6 +247,8 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 		checkNames: { pos: -1, default: false },
 		noDupNames: { pos: -1, default: true },
 		critical:   [
+			{ pos: 3, name: 'escape_backslash', default: false },
+			{ pos: 4, name: 'escape_double', default: true },
 			{ pos: 7, name: 'col_select' },
 			{ pos: 8, name: 'id' },
 			{ pos: 13, name: 'trim_ws', default: false },
@@ -1052,7 +1054,7 @@ function mapDataFrameLeftJoin(
 		operand:   dataFrame.value.info.id,
 		other:     otherDataFrame ?? DataFrameTop,
 		by:        byName,
-		minRows:   params.minRows
+		options:   { minRows: params.minRows }
 	});
 	return result;
 }

@@ -8,6 +8,7 @@ import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-arg
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperation } from '../absint-info';
 import { resolveIdToAbstractValue } from '../absint-visitor';
 import { resolveIdToArgStringVector, resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
@@ -31,15 +32,6 @@ type DataFrameReplacementFunctionMapping = (
 type DataFrameReplacementFunction = keyof typeof DataFrameReplacementFunctionMapper;
 
 export function mapDataFrameReplacement(
-	node: RNode<ParentInformation>,
-	dfg: DataflowGraph
-): DataFrameInfo | undefined {
-	if(node.type === RType.BinaryOp && node.lhs !== undefined && node.rhs !== undefined) {
-		return mapDataFrameReplacementFunction(node.lhs, node.rhs, dfg);
-	}
-}
-
-export function mapDataFrameReplacementFunction(
 	node: RNode<ParentInformation>,
 	expression: RNode<ParentInformation>,
 	dfg: DataflowGraph
@@ -81,12 +73,22 @@ function mapDataFrameNamedColumnAssignment(
 		return;
 	}
 	const argName = resolveIdToArgValueSymbolName(access.access[0], info);
+	const nullValue = expression.type === RType.Symbol && expression.content === RNull;
 
-	return [{
-		operation: 'assignCols',
-		operand:   dataFrame.info.id,
-		columns:   argName ? [argName] : undefined
-	}];
+	if(nullValue) {
+		return [{
+			operation: 'removeCols',
+			operand:   dataFrame.info.id,
+			colnames:  argName ? [argName] : undefined,
+			type:      ConstraintType.OperandModification
+		}];
+	} else {
+		return [{
+			operation: 'assignCols',
+			operand:   dataFrame.info.id,
+			columns:   argName ? [argName] : undefined
+		}];
+	}
 }
 
 function mapDataFrameIndexColRowAssignment(
@@ -103,6 +105,7 @@ function mapDataFrameIndexColRowAssignment(
 	const result: DataFrameOperation[] = [];
 	const rowArg = args.length < 2 ? undefined : args[0];
 	const colArg = args.length < 2 ? args[0] : args[1];
+	const nullValue = expression.type === RType.Symbol && expression.content === RNull;
 
 	if(rowArg !== undefined && rowArg !== EmptyArgument) {
 		const rowValue = resolveIdToArgValue(rowArg, info);
@@ -113,11 +116,19 @@ function mapDataFrameIndexColRowAssignment(
 		} else if(Array.isArray(rowValue) && rowValue.every(row => typeof row === 'number')) {
 			rows = rowValue;
 		}
-		result.push({
-			operation: 'assignRows',
-			operand:   dataFrame.info.id,
-			rows
-		});
+		if(nullValue) {
+			result.push({
+				operation: 'removeRows',
+				operand:   dataFrame.info.id,
+				rows:      rows?.length
+			});
+		} else {
+			result.push({
+				operation: 'assignRows',
+				operand:   dataFrame.info.id,
+				rows
+			});
+		}
 	}
 	if(colArg !== undefined && colArg !== EmptyArgument) {
 		const colValue = resolveIdToArgValue(colArg, info);
@@ -130,11 +141,20 @@ function mapDataFrameIndexColRowAssignment(
 		} else if(Array.isArray(colValue) && (colValue.every(col => typeof col === 'string') || colValue.every(col => typeof col === 'number'))) {
 			columns = colValue;
 		}
-		result.push({
-			operation: 'assignCols',
-			operand:   dataFrame.info.id,
-			columns
-		});
+		if(nullValue) {
+			result.push({
+				operation: 'removeCols',
+				operand:   dataFrame.info.id,
+				colnames:  columns?.map(col => typeof col === 'string' ? col : undefined),
+				type:      ConstraintType.OperandModification
+			});
+		} else {
+			result.push({
+				operation: 'assignCols',
+				operand:   dataFrame.info.id,
+				columns
+			});
+		}
 	}
 	return result;
 }

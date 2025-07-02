@@ -141,7 +141,6 @@ function mapDataFrameIndexColRowAccess(
 					colnames:  colZero ? [] : columns?.map(col => typeof col === 'string' ? col : undefined),
 					...(colnamesChange ? { options: { colnamesChange } } : {})
 				});
-				console.log(result.at(-1));
 			} else {
 				result.push({
 					operation: 'removeCols',

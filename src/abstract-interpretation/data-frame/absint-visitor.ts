@@ -19,7 +19,7 @@ import { DataFrameTop, equalDataFrameState, joinDataFrames, joinDataFrameStates,
 import { mapDataFrameAccess } from './mappers/access-mapper';
 import { mapDataFrameVariableAssignment } from './mappers/assignment-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
-import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
+import { mapDataFrameReplacement } from './mappers/replacement-mapper';
 import { applySemantics, ConstraintType, getConstraintType } from './semantics';
 
 export interface DataFrameAbsintVisitorConfiguration<
@@ -110,7 +110,7 @@ class DataFrameAbsintVisitor<
 		const sourceNode = source !== undefined ? this.getNormalizedAst(source) : undefined;
 
 		if(node !== undefined && sourceNode !== undefined) {
-			node.info.dataFrame = mapDataFrameReplacementFunction(node, sourceNode, this.config.dfg);
+			node.info.dataFrame = mapDataFrameReplacement(node, sourceNode, this.config.dfg);
 			this.processOperation(node);
 		}
 	}

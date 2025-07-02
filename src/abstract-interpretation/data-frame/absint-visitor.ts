@@ -17,7 +17,7 @@ import type { AbstractInterpretationInfo } from './absint-info';
 import type { DataFrameDomain, DataFrameStateDomain } from './domain';
 import { DataFrameTop, equalDataFrameState, joinDataFrames, joinDataFrameStates, wideningDataFrameStates } from './domain';
 import { mapDataFrameAccess } from './mappers/access-mapper';
-import { mapDataFrameVariableAssignment } from './mappers/assignment-mapper';
+import { isAssignmentTarget, mapDataFrameVariableAssignment } from './mappers/assignment-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
 import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
 import { applySemantics, ConstraintType, getConstraintType } from './semantics';
@@ -87,7 +87,7 @@ class DataFrameAbsintVisitor<
 		const targetNode = target !== undefined ? this.getNormalizedAst(target) : undefined;
 		const sourceNode = source !== undefined ? this.getNormalizedAst(source) : undefined;
 
-		if(node !== undefined && (targetNode?.type === RType.Symbol || targetNode?.type === RType.String) && sourceNode !== undefined) {
+		if(node !== undefined && isAssignmentTarget(targetNode) && sourceNode !== undefined) {
 			node.info.dataFrame = mapDataFrameVariableAssignment(targetNode, sourceNode, this.config.dfg);
 			this.processOperation(node);
 			this.clearUnassignedInfo(targetNode);
@@ -239,7 +239,7 @@ export function resolveIdToAbstractValue(
 	if(node.type === RType.Symbol) {
 		const values = getAbstractValuesOfOrigins(node, domain, dfg);
 
-		if(values !== undefined && values.length > 0 && values.every(isNotUndefined)) {
+		if(hasOriginValues(values)) {
 			return joinDataFrames(...values);
 		}
 	} else if(node.type === RType.Argument && node.value !== undefined) {
@@ -275,6 +275,10 @@ export function resolveIdToAbstractValue(
 			}
 		}
 	}
+}
+
+function hasOriginValues(values: (DataFrameDomain | undefined)[] | undefined): values is DataFrameDomain[] {
+	return values !== undefined && values.length > 0 && values.every(isNotUndefined);
 }
 
 function getAbstractValuesOfOrigins(node: RNode<ParentInformation>, domain: DataFrameStateDomain, dfg: DataflowGraph) {

@@ -82,7 +82,7 @@ print(x)`;
 	//         Shell   Name             Code     to rename  expected renames
 	testRename(shell, 'Super assign 1', testCode, '1@f',    ['1@f', '5@f']);
 	testRename(shell, 'Super assign 2', testCode, '2@x',    ['2@x']);
-	testRename(shell, 'Super assign 3', testCode, '3@x',    ['2@x', '3@x']);
+	testRename(shell, 'Super assign 3', testCode, '3@x',    ['3@x']);
 	testRename(shell, 'Super assign 4', testCode, '5@g',    ['5@g', '6@g', '7@g']);
 	testRename(shell, 'Super assign 5', testCode, '7@x',    ['7@x', '8@x']);
 }));

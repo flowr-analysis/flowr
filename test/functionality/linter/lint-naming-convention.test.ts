@@ -84,6 +84,7 @@ describe('flowR linter', withTreeSitter(parser => {
 	});
 
 	describe('rule', () => { 
+		/** Given a symbol definition `testVar <- 5` the linter checks if it matches the configured casing rule (default is PascalCase) and provides a quick fix `TestVar <- 5` */
 		assertLinter('simple', parser, 'testVar <- 5', 'naming-convention', [{
 			name:           'testVar',
 			detectedCasing: CasingConvention.CamelCase,
@@ -92,6 +93,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			certainty:      LintingCertainty.Definitely,
 		}], undefined, { caseing: CasingConvention.PascalCase });
 
+		/** The casing of the definition is checked, and quick fixes for all usages (and the definition) are provided */
 		assertLinter('only detect definition', parser, 'testVar <- 5\nprint(testVar)\n', 'naming-convention', [{
 			name:           'testVar',
 			detectedCasing: CasingConvention.CamelCase,
@@ -103,6 +105,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			certainty: LintingCertainty.Definitely,
 		}], undefined, { caseing: CasingConvention.PascalCase });
 
+		/** Arguments will be checked for correct casing convention as well */
 		assertLinter('function and call', parser, 'foo_Bar <- function(arg) arg\nfoo_Bar()', 'naming-convention', [
 			{
 				name:           'foo_Bar',
@@ -126,6 +129,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			},
 		], undefined, { caseing: CasingConvention.PascalCase });
 
+		/** The rule can be configured to automaticaly detect the most used casing style. The file will be linted according to the detected style */
 		assertLinter('detect casing', parser, 'testVar <- 5\ntestVarTwo <- 5\ntest_var <- 5\n', 'naming-convention', [{
 			name:           'test_var',
 			detectedCasing: CasingConvention.SnakeCase,

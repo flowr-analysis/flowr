@@ -133,6 +133,13 @@ y <- 3
 print(x)
 `, tagTypes);
 
+	rule(shell, 
+		'naming-convention', 'NamingConventionConfig', 'NAMING_CONVENTION', 'lint-naming-convention',
+		`
+myVar <- 42
+print(myVar)
+`, tagTypes);
+
 
 	function rule(shell: RShell, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];

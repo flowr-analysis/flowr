@@ -1,12 +1,15 @@
 import { VariableResolve } from '../../../config';
+import type { BuiltInMappingName } from '../../../dataflow/environments/built-in';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { isFunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperation } from '../absint-info';
@@ -26,7 +29,8 @@ const DataFrameReplacementFunctionMapper = {
 type DataFrameReplacementFunctionMapping = (
     operand: RArgument<ParentInformation>,
     expression: RNode<ParentInformation>,
-    info: ResolveInfo
+    info: ResolveInfo,
+	parent?: RNode<ParentInformation>
 ) => DataFrameOperation[] | undefined;
 
 type DataFrameReplacementFunction = keyof typeof DataFrameReplacementFunctionMapper;
@@ -36,6 +40,7 @@ export function mapDataFrameReplacement(
 	expression: RNode<ParentInformation>,
 	dfg: DataflowGraph
 ): DataFrameInfo | undefined {
+	const parent = hasParentReplacement(node, dfg) ? dfg.idMap?.get(node.info.parent) : undefined;
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
 	let operations: DataFrameOperation[] | undefined;
 
@@ -52,7 +57,7 @@ export function mapDataFrameReplacement(
 			const functionName = node.functionName.content as DataFrameReplacementFunction;
 			const functionMapping = DataFrameReplacementFunctionMapper[functionName];
 
-			operations = functionMapping(node.arguments[0], expression, resolveInfo);
+			operations = functionMapping(node.arguments[0], expression, resolveInfo, parent);
 		} else {
 			operations = mapDataFrameUnknownAssignment(node.arguments[0], expression, resolveInfo);
 		}
@@ -156,7 +161,8 @@ function mapDataFrameIndexColRowAssignment(
 function mapDataFrameColNamesAssignment(
 	operand: RArgument<ParentInformation & AbstractInterpretationInfo>,
 	expression: RNode<ParentInformation>,
-	info: ResolveInfo
+	info: ResolveInfo,
+	parent?: RNode<ParentInformation>
 ): DataFrameOperation[] | undefined {
 	if(resolveIdToAbstractValue(operand, info.graph) === undefined) {
 		return;
@@ -167,7 +173,8 @@ function mapDataFrameColNamesAssignment(
 	return [{
 		operation: 'setColNames',
 		operand:   operand.value?.info.id,
-		colnames:  assignedNames
+		colnames:  assignedNames,
+		...(parent !== undefined ? { options: { partial: true } } : {})
 	}];
 }
 
@@ -203,4 +210,10 @@ function mapDataFrameUnknownAssignment(
 		operand:   operand.value?.info.id,
 		type:      ConstraintType.OperandModification
 	}];
+}
+
+function hasParentReplacement(node: RNode<ParentInformation>, dfg: DataflowGraph): node is RNode<ParentInformation & { parent: NodeId }> {
+	const parentVertex = node.info.parent ? dfg.getVertex(node.info.parent) : undefined;
+
+	return isFunctionCallVertex(parentVertex) && parentVertex.origin.includes('builtin:replacement' satisfies BuiltInMappingName);
 }

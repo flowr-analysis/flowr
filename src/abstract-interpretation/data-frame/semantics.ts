@@ -1,5 +1,6 @@
+import { isNotUndefined } from '../../util/assert';
 import type { DataFrameDomain } from './domain';
-import { addInterval, ColNamesTop, DataFrameTop, extendIntervalToInfinity, extendIntervalToZero, IntervalTop, joinColNames, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
+import { addInterval, ColNamesTop, DataFrameTop, extendIntervalToInfinity, extendIntervalToZero, IntervalBottom, IntervalTop, joinColNames, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
 
 export enum ConstraintType {
 	/** The inferred constraints must hold for the operand at the point of the operation */
@@ -70,9 +71,11 @@ function applyCreateSemantics(
 	value: DataFrameDomain,
 	{ colnames, rows }: { colnames: (string | undefined)[] | undefined, rows: number | undefined }
 ): DataFrameDomain {
+	const cols = colnames?.length;
+
 	return {
-		colnames: colnames?.every(name => name !== undefined) ? colnames : ColNamesTop,
-		cols:     colnames !== undefined ? [colnames.length, colnames.length] : IntervalTop,
+		colnames: colnames?.every(isNotUndefined) ? colnames : ColNamesTop,
+		cols:     cols !== undefined ? [cols, cols] : IntervalTop,
 		rows:     rows !== undefined ? [rows, rows] : IntervalTop
 	};
 }
@@ -120,10 +123,12 @@ function applyAssignColsSemantics(
 	{ columns }: { columns: string[] | number[] | undefined }
 ): DataFrameDomain {
 	if(columns?.every(col => typeof col === 'string')) {
+		const cols = columns.length;
+
 		return {
 			...value,
 			colnames: joinColNames(value.colnames, columns),
-			cols:     maxInterval(addInterval(value.cols, [0, columns.length]), [columns.length, columns.length])
+			cols:     maxInterval(addInterval(value.cols, [0, cols]), [cols, cols])
 		};
 	} else if(columns?.every(col => typeof col === 'number')) {
 		return {
@@ -157,11 +162,21 @@ function applyAssignRowsSemantics(
 
 function applySetColNamesSemantics(
 	value: DataFrameDomain,
-	{ colnames }: { colnames: (string | undefined)[] | undefined }
+	{ colnames }: { colnames: (string | undefined)[] | undefined },
+	options?: { partial?: boolean }
 ): DataFrameDomain {
+	if(options?.partial) {
+		return {
+			...value,
+			colnames: colnames?.every(isNotUndefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
+		};
+	}
+	const cols = colnames?.length;
+	const allColNames = value.cols != IntervalBottom && cols !== undefined && cols >= value.cols[1];
+
 	return {
 		...value,
-		colnames: colnames?.every(name => name !== undefined) ? colnames : ColNamesTop,
+		colnames: allColNames && colnames?.every(isNotUndefined) ? colnames : ColNamesTop,
 	};
 }
 
@@ -169,10 +184,12 @@ function applyAddColsSemantics(
 	value: DataFrameDomain,
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
+	const cols = colnames?.length;
+
 	return {
 		...value,
-		colnames: colnames?.every(col => col !== undefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
-		cols:     colnames !== undefined ? addInterval(value.cols, [colnames.length, colnames.length]) : extendIntervalToInfinity(value.cols)
+		colnames: colnames?.every(isNotUndefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
+		cols:     cols !== undefined ? addInterval(value.cols, [cols, cols]) : extendIntervalToInfinity(value.cols)
 	};
 }
 
@@ -191,17 +208,19 @@ function applyRemoveColsSemantics(
 	{ colnames }: { colnames: (string | undefined)[] | undefined },
 	options?: { maybe?: boolean }
 ): DataFrameDomain {
+	const cols = colnames?.length;
+
 	if(options?.maybe) {
 		return {
 			...value,
 			colnames: colnames !== undefined ? subtractColNames(value.colnames, colnames.filter(col => col !== undefined)) : value.colnames,
-			cols:     colnames !== undefined ? subtractInterval(value.cols, [colnames.length, 0]) : extendIntervalToZero(value.cols)
+			cols:     cols !== undefined ? subtractInterval(value.cols, [cols, 0]) : extendIntervalToZero(value.cols)
 		};
 	}
 	return {
 		...value,
-		colnames: colnames !== undefined ? subtractColNames(value.colnames, colnames.filter(col => col !== undefined)) : value.colnames,
-		cols:     colnames !== undefined ? subtractInterval(value.cols, [colnames.length, colnames.length]) : extendIntervalToZero(value.cols)
+		colnames: colnames !== undefined ? subtractColNames(value.colnames, colnames.filter(isNotUndefined)) : value.colnames,
+		cols:     cols !== undefined ? subtractInterval(value.cols, [cols, cols]) : extendIntervalToZero(value.cols)
 	};
 }
 
@@ -241,10 +260,19 @@ function applySubsetColsSemantics(
 	{ colnames }: { colnames: (string | undefined)[] | undefined },
 	options?: { colnamesChange: boolean }
 ): DataFrameDomain {
+	const cols = colnames?.length;
+
+	if(options?.colnamesChange) {
+		return {
+			...value,
+			colnames: ColNamesTop,
+			cols:     cols !== undefined ? [cols, cols] : extendIntervalToZero(value.cols)
+		};
+	}
 	return {
 		...value,
-		colnames: options?.colnamesChange ? ColNamesTop : colnames?.every(col => col !== undefined) ? meetColNames(value.colnames, colnames) : value.colnames,
-		cols:     colnames !== undefined ? [colnames.length, colnames.length] : extendIntervalToZero(value.cols)
+		colnames: colnames?.every(isNotUndefined) ? meetColNames(value.colnames, colnames) : value.colnames,
+		cols:     cols !== undefined ? [cols, cols] : extendIntervalToZero(value.cols)
 	};
 }
 
@@ -272,10 +300,12 @@ function applyMutateColsSemantics(
 	value: DataFrameDomain,
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
+	const cols = colnames?.length;
+
 	return {
 		...value,
-		colnames: colnames?.every(col => col !== undefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
-		cols:     colnames !== undefined ? maxInterval(addInterval(value.cols, [0, colnames.length]), [colnames.length, colnames.length]): extendIntervalToInfinity(value.rows)
+		colnames: colnames?.every(isNotUndefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
+		cols:     cols !== undefined ? maxInterval(addInterval(value.cols, [0, cols]), [cols, cols]): extendIntervalToInfinity(value.cols)
 	};
 }
 
@@ -293,10 +323,12 @@ function applySummarizeSemantics(
 	value: DataFrameDomain,
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
+	const cols = colnames?.length;
+
 	return {
 		...value,
-		colnames: colnames?.every(col => col !== undefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
-		cols:     colnames !== undefined ? minInterval(addInterval(value.cols, [0, colnames.length]), [colnames.length, Infinity]) : extendIntervalToInfinity(value.rows),
+		colnames: colnames?.every(isNotUndefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
+		cols:     cols !== undefined ? minInterval(addInterval(value.cols, [0, cols]), [cols, Infinity]) : extendIntervalToInfinity(value.rows),
 		rows:     maxInterval(minInterval(value.rows, [1, Infinity]), [1, 1])
 	};
 }

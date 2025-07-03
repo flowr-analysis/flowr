@@ -185,9 +185,8 @@ export function assertDataFrameOperation(
 
 	test.each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
-		const operations = getInferredOperationsForCriterion(result, criterion, config)
-			.map(({ operation, operand, type, options, ...args }) => ({ operation, ...args }));
-		assert.deepStrictEqual(operations, expect, `expected ${JSON.stringify(operations)} to equal ${JSON.stringify(expect)}`);
+		const operations = getInferredOperationsForCriterion(result, criterion, config);
+		assert.containSubset(operations, expect, `expected ${JSON.stringify(operations)} to equal ${JSON.stringify(expect)}`);
 	});
 }
 

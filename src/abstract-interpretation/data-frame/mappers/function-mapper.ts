@@ -813,11 +813,11 @@ function mapDataFrameFilter(
 	}
 	const result: DataFrameOperation[] = [];
 
-	const filterArg = args[1];
-	const filterValue = resolveIdToArgValue(filterArg, info);
+	const filterArgs = args.filter(arg => arg !== dataFrame);
+	const filterValues = filterArgs.map(arg => resolveIdToArgValue(arg, info));
 
-	const accessedNames = args.filter(arg => arg !== dataFrame).flatMap(arg => getUnresolvedSymbolsInExpression(arg, info));
-	const condition = typeof filterValue === 'boolean' && args.length === 2 ? filterValue : undefined;
+	const accessedNames = filterArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info));
+	const condition = filterValues.every(value => typeof value === 'boolean') ? filterValues.every(cond => cond) : undefined;
 
 	if(accessedNames.length > 0) {
 		result.push({
@@ -857,7 +857,7 @@ function mapDataFrameSelect(
 	const mixedAccess = accessedCols.some(col => typeof col === 'string') && accessedCols.some(col => typeof col === 'number');
 	const duplicateAccess = accessedCols.some((col, _, list) => col !== undefined && list.filter(other => other === col).length > 1);
 
-	// map to top if columns are selected mixed by string and number
+	// map to top if columns are selected mixed by string and number, or are selected duplicate
 	if(mixedAccess || duplicateAccess) {
 		selectedCols = undefined;
 		unselectedCols = [];

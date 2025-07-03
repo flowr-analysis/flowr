@@ -2495,19 +2495,31 @@ df <- dplyr::filter(df, id == 2)
 			skipLibraries
 		);
 
-		describe('Currently Unsupported', { fails: true }, () => {
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6)
-df <- dplyr::filter(df, TRUE, FALSE)
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
-				],
-				skipLibraries
-			);
-		});
+df <- dplyr::filter(df, TRUE, TRUE)
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+df <- dplyr::filter(df, TRUE, FALSE, TRUE)
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 0] }]
+			],
+			skipLibraries
+		);
 
 		testDataFrameDomain(
 			shell,

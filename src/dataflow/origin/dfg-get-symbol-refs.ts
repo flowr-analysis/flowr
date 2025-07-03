@@ -16,7 +16,7 @@ import { getOriginInDfg } from './dfg-get-origin';
  *   }
  * ```
  * 
- * @example getAllRefsToSymbol('3\@y') will return ['3\@y', '4\@y'] 
+ * @example getAllRefsToSymbol('3\@y') returns ['3\@y', '4\@y'] 
  * 
  * @param graph  - Dataflow Graph
  * @param nodeId - NodeId of Symbol to resolve

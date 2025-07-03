@@ -121,7 +121,7 @@ function mapDataFrameIndexColRowAccess(
 		const rowZero = rows?.length === 1 && rows[0] === 0;
 		const colSubset = columns === undefined || columns.every(col => typeof col === 'string' || col >= 0);
 		const colZero = columns?.length === 1 && columns[0] === 0;
-		const colnamesChange = columns?.some((col, _, list) => list.filter(other => other === col).length > 1);
+		const duplicateCols = columns?.some((col, _, list) => list.filter(other => other === col).length > 1);
 
 		let operand: RNode<ParentInformation> | undefined = dataFrame;
 
@@ -139,7 +139,7 @@ function mapDataFrameIndexColRowAccess(
 					operation: 'subsetCols',
 					operand:   operand?.info.id,
 					colnames:  colZero ? [] : columns?.map(col => typeof col === 'string' ? col : undefined),
-					...(colnamesChange ? { options: { colnamesChange } } : {})
+					...(duplicateCols ? { options: { colnamesChange: true } } : {})
 				});
 			} else {
 				result.push({

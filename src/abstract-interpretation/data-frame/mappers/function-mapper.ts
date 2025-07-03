@@ -1,5 +1,5 @@
 import { defaultConfigOptions, VariableResolve } from '../../../config';
-import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
+import { type ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { isUseVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
@@ -742,39 +742,26 @@ function mapDataFrameSubset(
 	const filterArg = getFunctionArgument(args, params.subset, info);
 	const filterValue = resolveIdToArgValue(filterArg, info);
 	const selectArg = getFunctionArgument(args, params.select, info);
+	const dropArg = getFunctionArgument(args, params.drop, info);
 
-	const accessedNames = [...getUnresolvedSymbolsInExpression(filterArg, info), ...getUnresolvedSymbolsInExpression(selectArg, info)];
 	const condition = typeof filterValue === 'boolean' ? filterValue : undefined;
-	let selectedCols: (string | undefined)[] | undefined = [];
-	let unselectedCols: (string | undefined)[] = [];
+	const { selectedCols, unselectedCols } = getSelectedColumns([selectArg], info);
+	const accessedCols = [...selectedCols ?? [], ...unselectedCols ?? []];
 
-	if(selectArg !== undefined && selectArg !== EmptyArgument) {
-		if(selectArg.value?.type === RType.FunctionCall && selectArg.value.named && selectArg.value.functionName.content === 'c') {
-			selectArg.value.arguments.forEach(arg => {
-				if(arg !== EmptyArgument && arg.value?.type === RType.UnaryOp && arg.value.operator === '-' && info.idMap !== undefined) {
-					const operandArg = toUnnamedArgument(arg.value.operand, info.idMap);
-					unselectedCols?.push(resolveIdToArgValueSymbolName(operandArg, info));
-				} else if(arg !== EmptyArgument && (arg.value?.type === RType.Symbol || arg.value?.type === RType.String)) {
-					selectedCols?.push(resolveIdToArgValueSymbolName(arg, info));
-				} else {
-					selectedCols = undefined;
-				}
-			});
-		} else if(selectArg.value?.type === RType.UnaryOp && selectArg.value.operator === '-' && info.idMap !== undefined) {
-			const operandArg = toUnnamedArgument(selectArg.value.operand, info.idMap);
-			unselectedCols = [resolveIdToArgValueSymbolName(operandArg, info)];
-		} else if(selectArg.value?.type === RType.Symbol || selectArg.value?.type === RType.String) {
-			selectedCols = [resolveIdToArgValueSymbolName(selectArg, info)];
-		} else {
-			selectedCols = undefined;
-		}
-	}
+	const duplicateCols = accessedCols.some((col, _, list) => col !== undefined && list.filter(other => other === col).length > 1);
 
-	if(accessedNames.length > 0) {
+	if(accessedCols.some(col => typeof col === 'string')) {
 		result.push({
 			operation: 'accessCols',
 			operand:   operand?.info.id,
-			columns:   accessedNames
+			columns:   accessedCols.filter(col => typeof col === 'string')
+		});
+	}
+	if(accessedCols.some(col => typeof col === 'number')) {
+		result.push({
+			operation: 'accessCols',
+			operand:   operand?.info.id,
+			columns:   accessedCols.filter(col => typeof col === 'number')
 		});
 	}
 
@@ -786,22 +773,24 @@ function mapDataFrameSubset(
 		});
 		operand = undefined;
 	}
-
-	if(unselectedCols.length > 0) {
-		result.push({
-			operation: 'removeCols',
-			operand:   operand?.info.id,
-			colnames:  unselectedCols
-		});
-		operand = undefined;
-	}
-	if(selectedCols === undefined || selectedCols.length > 0) {
-		result.push({
-			operation: 'subsetCols',
-			operand:   operand?.info.id,
-			colnames:  selectedCols
-		});
-		operand = undefined;
+	if(!dropArg || accessedCols.length > 1) {
+		if(unselectedCols === undefined || unselectedCols.length > 0) {
+			result.push({
+				operation: 'removeCols',
+				operand:   operand?.info.id,
+				colnames:  unselectedCols?.map(col => typeof col === 'string' ? col : undefined)
+			});
+			operand = undefined;
+		}
+		if(selectedCols === undefined || selectedCols.length > 0) {
+			result.push({
+				operation: 'subsetCols',
+				operand:   operand?.info.id,
+				colnames:  selectedCols?.map(col => typeof col === 'string' ? col : undefined),
+				...(duplicateCols ? { options: { colnamesChange: true } } : {})
+			});
+			operand = undefined;
+		}
 	}
 	return result;
 }
@@ -823,8 +812,10 @@ function mapDataFrameFilter(
 		}];
 	}
 	const result: DataFrameOperation[] = [];
+
 	const filterArg = args[1];
 	const filterValue = resolveIdToArgValue(filterArg, info);
+
 	const accessedNames = args.filter(arg => arg !== dataFrame).flatMap(arg => getUnresolvedSymbolsInExpression(arg, info));
 	const condition = typeof filterValue === 'boolean' && args.length === 2 ? filterValue : undefined;
 
@@ -854,49 +845,51 @@ function mapDataFrameSelect(
 
 	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
-	} else if(args.length === 1) {
-		return [{
-			operation: 'identity',
-			operand:   dataFrame.value.info.id
-		}];
 	}
 	const result: DataFrameOperation[] = [];
 	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
-	const selectedCols: (string | undefined)[] = [];
-	const unselectedCols: (string | undefined)[] = [];
 
-	for(const arg of args) {
-		if(arg !== dataFrame && arg !== EmptyArgument) {
-			if(arg.value?.type === RType.UnaryOp && arg.value.operator === '-' && info.idMap !== undefined) {
-				const operandArg = toUnnamedArgument(arg.value.operand, info.idMap);
-				unselectedCols.push(resolveIdToArgValueSymbolName(operandArg, info));
-			} else {
-				selectedCols.push(resolveIdToArgValueSymbolName(arg, info));
-			}
-		}
+	const selectArgs = args.filter(arg => arg !== dataFrame);
+
+	let { selectedCols, unselectedCols } = getSelectedColumns(selectArgs, info);
+	const accessedCols = [...selectedCols ?? [], ...unselectedCols ?? []];
+
+	const mixedAccess = accessedCols.some(col => typeof col === 'string') && accessedCols.some(col => typeof col === 'number');
+	const duplicateAccess = accessedCols.some((col, _, list) => col !== undefined && list.filter(other => other === col).length > 1);
+
+	// map to top if columns are selected mixed by string and number
+	if(mixedAccess || duplicateAccess) {
+		selectedCols = undefined;
+		unselectedCols = [];
 	}
-
-	if([...selectedCols, ...unselectedCols].some(col => col !== undefined)) {
+	if(accessedCols.some(col => typeof col === 'string')) {
 		result.push({
 			operation: 'accessCols',
 			operand:   operand?.info.id,
-			columns:   [...selectedCols, ...unselectedCols].filter(col => col !== undefined)
+			columns:   accessedCols.filter(col => typeof col === 'string')
+		});
+	}
+	if(accessedCols.some(col => typeof col === 'number')) {
+		result.push({
+			operation: 'accessCols',
+			operand:   operand?.info.id,
+			columns:   accessedCols.filter(col => typeof col === 'number')
 		});
 	}
 
-	if(unselectedCols.length > 0) {
+	if(unselectedCols === undefined || unselectedCols.length > 0) {
 		result.push({
 			operation: 'removeCols',
 			operand:   operand?.info.id,
-			colnames:  unselectedCols
+			colnames:  unselectedCols?.map(col => typeof col === 'string' ? col : undefined)
 		});
 		operand = undefined;
 	}
-	if(selectedCols.length > 0) {
+	if(selectedCols === undefined || selectedCols.length > 0 || unselectedCols?.length === 0) {
 		result.push({
 			operation: 'subsetCols',
 			operand:   operand?.info.id,
-			colnames:  selectedCols
+			colnames:  selectedCols?.map(col => typeof col === 'string' ? col : undefined)
 		});
 		operand = undefined;
 	}
@@ -1054,7 +1047,7 @@ function mapDataFrameLeftJoin(
 		operand:   dataFrame.value.info.id,
 		other:     otherDataFrame ?? DataFrameTop,
 		by:        byName,
-		options:   { minRows: params.minRows }
+		...(params.minRows ? { options: { minRows: true } } : {})
 	});
 	return result;
 }
@@ -1216,4 +1209,41 @@ function escapeRegExp(text: string, allowTokens: boolean = false) {
 	} else {
 		return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	}
+}
+
+function getSelectedColumns(args: readonly (RFunctionArgument<ParentInformation> | undefined)[], info: ResolveInfo) {
+	let selectedCols: (string | number | undefined)[] | undefined = [];
+	let unselectedCols: (string | number | undefined)[] | undefined = [];
+	const joinColumns = (columns1: (string | number | undefined)[] | undefined, columns2: (string | number | undefined)[] | undefined) =>
+		columns1 !== undefined && columns2 !== undefined ? [...columns1, ...columns2] : undefined;
+
+	for(const arg of args) {
+		if(arg !== undefined && arg !== EmptyArgument) {
+			if(arg.value?.type === RType.FunctionCall && arg.value.named && arg.value.functionName.content === 'c') {
+				const result = getSelectedColumns(arg.value.arguments, info);
+				selectedCols = joinColumns(selectedCols, result.selectedCols);
+				unselectedCols = joinColumns(unselectedCols, result.unselectedCols);
+			} else if(arg.value?.type === RType.UnaryOp && arg.value.operator === '-' && info.idMap !== undefined) {
+				const result = getSelectedColumns([toUnnamedArgument(arg.value.operand, info.idMap)], info);
+				selectedCols = joinColumns(selectedCols, result.unselectedCols);
+				unselectedCols = joinColumns(unselectedCols, result.selectedCols);
+			} else if(arg.value?.type === RType.BinaryOp && arg.value.operator === ':' && info.idMap !== undefined) {
+				const values = resolveIdToArgValue(toUnnamedArgument(arg.value, info.idMap), { ...info, resolve: VariableResolve.Disabled });
+
+				if(Array.isArray(values) && values.every(value => typeof value === 'number')) {
+					selectedCols = joinColumns(selectedCols, values.filter(value => value >= 0));
+					unselectedCols = joinColumns(unselectedCols, values.filter(value => value < 0).map(Math.abs));
+				} else {
+					selectedCols = undefined;
+				}
+			} else if(arg.value?.type === RType.Symbol || arg.value?.type === RType.String) {
+				selectedCols?.push(resolveIdToArgValueSymbolName(arg, info));
+			} else if(arg.value?.type === RType.Number) {
+				selectedCols?.push(arg.value.content.num);
+			} else {
+				selectedCols = undefined;
+			}
+		}
+	}
+	return { selectedCols, unselectedCols };
 }

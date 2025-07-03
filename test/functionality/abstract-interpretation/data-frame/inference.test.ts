@@ -2215,18 +2215,17 @@ df <- subset(df, select = "id")
 			]
 		);
 
-		describe('Currently Unsupported', { fails: true }, () => {
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = 1)
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name', 'label'], cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
-				]
-			);
-		});
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
+			]
+		);
 
 		testDataFrameDomain(
 			shell,
@@ -2252,29 +2251,29 @@ df <- subset(df, select = c("id", "name"))
 			]
 		);
 
-		describe('Currently Unsupported', { fails: true }, () => {
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = 1:2)
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name', 'label'], cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
-				]
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
+			]
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = c(id, 2))
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name', 'label'], cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
-				]
-			);
-		});
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
+			]
+		);
 
 		testDataFrameDomain(
 			shell,
@@ -2348,29 +2347,29 @@ df <- subset(df, id > 1, select = c(-name, -label))
 			]
 		);
 
-		describe('Currently Unsupported', { fails: true }, () => {
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = -c(id, name))
-				`.trim(),
-				[
-					['2@df', { colnames: ['label'], cols: [1, 1], rows: [3, 3] }]
-				]
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['label'], cols: [1, 1], rows: [3, 3] }]
+			]
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = -c(1, 2))
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name', 'label'], cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
-				]
-			);
-		});
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
+			]
+		);
 
 		testDataFrameDomain(
 			shell,
@@ -2408,39 +2407,40 @@ df <- subset(df, TRUE, TRUE)
 			]
 		);
 
-		describe('Currently Unsupported', { fails: true }, () => {
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = c(id, id))
-				`.trim(),
-				[
-					['2@df', { colnames: ColNamesTop, cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
-				]
-			);
-			testDataFrameDomain(
-				shell,
-				`
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ColNamesTop, cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
+			]
+		);
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = c(1, 1, 1))
-				`.trim(),
-				[
-					['2@df', { colnames: ColNamesTop, cols: [3, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
-				]
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ColNamesTop, cols: [3, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
+			]
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df, select = id, drop = TRUE)
-				`.trim(),
-				[
-					['2@df', undefined]
-				]
-			);
-		});
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', undefined]
+			]
+		);
 
 		testDataFrameDomain(
 			shell,
@@ -2576,79 +2576,83 @@ df <- dplyr::select(df, 1, 3)
 			skipLibraries
 		);
 
-		describe('Currently Unsupported', { fails: true }, () => {
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, c(id, name))
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, c("id", "name"))
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, 1:2)
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name', 'label'], cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, id:name)
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, sample(1:3, 2))
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df)
-				`.trim(),
-				[
-					['2@df', { colnames: [], cols: [0, 0], rows: [3, 3] }]
-				],
-				skipLibraries
-			);
-		});
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: [], cols: [0, 0], rows: [3, 3] }]
+			],
+			skipLibraries
+		);
 
 		testDataFrameDomain(
 			shell,
@@ -2689,127 +2693,135 @@ df <- dplyr::select(df, id, -name)
 			skipLibraries
 		);
 
-		describe('Currently Unsupported', { fails: true }, () => {
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, c(-id, -name))
-				`.trim(),
-				[
-					['2@df', { colnames: ['score'], cols: [1, 1], rows: [3, 3] }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['label'], cols: [1, 1], rows: [3, 3] }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, -c(id, name))
-				`.trim(),
-				[
-					['2@df', { colnames: ['score'], cols: [1, 1], rows: [3, 3] }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['label'], cols: [1, 1], rows: [3, 3] }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, -c(1, 2))
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name', 'score'], cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, id, "name", 2)
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, id, \`id\`, "id")
-				`.trim(),
-				[
-					['2@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, 1, 1, 1)
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name', 'label'], cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, !name)
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, id | 2)
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, c(id, name) & 1:3)
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- dplyr::select(df, contains("a"))
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				],
-				skipLibraries
-			);
-		});
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [0, 3], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
 	});
 
 	describe('Transform', () => {

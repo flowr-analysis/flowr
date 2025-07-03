@@ -226,8 +226,15 @@ function applyRemoveColsSemantics(
 
 function applyRemoveRowsSemantics(
 	value: DataFrameDomain,
-	{ rows }: { rows: number | undefined }
+	{ rows }: { rows: number | undefined },
+	options?: { maybe?: boolean }
 ): DataFrameDomain {
+	if(options?.maybe) {
+		return {
+			...value,
+			cols: rows !== undefined ? subtractInterval(value.cols, [rows, 0]) : extendIntervalToZero(value.cols)
+		};
+	}
 	return {
 		...value,
 		rows: rows !== undefined ? subtractInterval(value.rows, [rows, rows]) : extendIntervalToZero(value.rows)

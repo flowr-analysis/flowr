@@ -1,5 +1,5 @@
 import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingPrettyPrintContext , LintingCertainty } from '../linter-format';
+import { LintingCertainty, LintingPrettyPrintContext } from '../linter-format';
 import type { SourceRange } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -8,14 +8,18 @@ import { Enrichment, enrichmentContent } from '../../search/search-executor/sear
 import type { Identifier } from '../../dataflow/environments/identifier';
 import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
+import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { getReferenceOfArgument } from '../../dataflow/graph/graph';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { LintingRuleTag } from '../linter-tags';
 import type { BuiltInFunctionDefinition } from '../../dataflow/environments/built-in-config';
-import { getValueOfArgument } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
+import { valueSetGuard } from '../../dataflow/eval/values/general';
+import { VariableResolve } from '../../config';
+import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { asValue } from '../../dataflow/eval/values/r-value';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -85,7 +89,7 @@ export const SEEDED_RANDOMNESS = {
 
 					// function calls are already taken care of through the LastCall enrichment itself
 					for(const f of func ?? []) {
-						if(getValueOfArgument(dataflow.graph, f, { index: 0 }, [RType.Number, RType.String, RType.Logical]) !== undefined) {
+						if(isConstantArgument(dataflow.graph, f, 0)) {
 							metadata.callsWithFunctionProducers++;
 							return false;
 						} else {
@@ -98,7 +102,7 @@ export const SEEDED_RANDOMNESS = {
 						const argIdx = assignmentArgIndexes.get(a.name) as number;
 						const dest = getReferenceOfArgument(a.args[argIdx]);
 						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)){
-							if(getValueOfArgument(dataflow.graph, a, { index: 1-argIdx }, [RType.Number, RType.String, RType.Logical]) !== undefined) {
+							if(isConstantArgument(dataflow.graph, a, 1-argIdx)) {
 								metadata.callsWithAssignmentProducers++;
 								return false;
 							} else {
@@ -138,4 +142,15 @@ export const SEEDED_RANDOMNESS = {
 
 function getDefaultAssignments(): BuiltInFunctionDefinition<'builtin:assignment'>[] {
 	return DefaultBuiltinConfig.filter(b => b.type === 'function' && b.processor == 'builtin:assignment') as BuiltInFunctionDefinition<'builtin:assignment'>[];
+}
+
+function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, argIndex: number): boolean {
+	const args = call.args.filter(arg => arg !== EmptyArgument && !arg.name).map(getReferenceOfArgument);
+	const values = valueSetGuard(resolveIdToValue(args[argIndex], { graph: graph, resolve: VariableResolve.Alias }));
+	return values?.elements.every(v =>
+		v.type === 'number' ||
+		v.type === 'logical' ||
+		v.type === 'string' ||
+		v.type === 'interval' && v.startInclusive && v.endInclusive && v.start.type === 'number' && v.end.type === 'number' && asValue(v.start.value).num === asValue(v.end.value).num)
+	       ?? false;
 }

@@ -39,6 +39,10 @@ export interface MatchesEnrichmentArgs<E extends Enrichment> extends MergeableRe
 	test:       RegExp
 }
 
+export function testFunctionsIgnoringPackage(functions: string[]): RegExp {
+	return new RegExp(`"(.+:::?)?(${functions.join('|')})"`);
+}
+
 type ValidFilterTypes<F extends FlowrFilter = FlowrFilter> = FlowrFilterName | FlowrFilterWithArgs<F, FlowrFilterArgs<F>> | RType | VertexType;
 /**
  * By default, we provide filter for every {@link RType} and {@link VertexType}.

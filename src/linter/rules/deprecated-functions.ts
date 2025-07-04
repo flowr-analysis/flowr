@@ -6,7 +6,7 @@ import { formatRange } from '../../util/mermaid/dfg';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { SourceRange } from '../../util/range';
 import type { Identifier } from '../../dataflow/environments/identifier';
-import { FlowrFilter } from '../../search/flowr-search-filters';
+import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
 import { LintingRuleTag } from '../linter-tags';
 
 export interface DeprecatedFunctionsResult extends LintingResult {
@@ -33,8 +33,7 @@ export const DEPRECATED_FUNCTIONS = {
 			name: FlowrFilter.MatchesEnrichment,
 			args: {
 				enrichment: Enrichment.CallTargets,
-				// we don't currently support package names so we allow any here
-				test:       new RegExp(`"(.+:::?)?(${config.deprecatedFunctions.join('|')})"`)
+				test:       testFunctionsIgnoringPackage(config.deprecatedFunctions)
 			}
 		}),
 	processSearchResult: (elements) => {

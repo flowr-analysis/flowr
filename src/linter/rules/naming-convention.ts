@@ -8,7 +8,8 @@ import { formatRange } from '../../util/mermaid/dfg';
 import type { MergeableRecord } from '../../util/objects';
 import type { SourceRange } from '../../util/range';
 import type { LintQuickFixReplacement, LintingResult, LintingRule } from '../linter-format';
-import { LintingCertainty } from '../linter-format';
+import { LintingPrettyPrintContext , LintingCertainty } from '../linter-format';
+
 import { LintingRuleTag } from '../linter-tags';
 
 
@@ -187,8 +188,11 @@ export const NAMING_CONVENTION = {
 			}
 		};   
 	},
-	prettyPrint: result => `Identifier '${result.name}' at ${formatRange(result.range)} follows wrong convention: ${result.detectedCasing} ${result.quickFix ? '(quick fix available)' : ''}`,
-	info:        {
+	prettyPrint: {
+		[LintingPrettyPrintContext.Query]: result => `Identifier '${result.name}' at ${formatRange(result.range)} (${result.detectedCasing})`,
+		[LintingPrettyPrintContext.Full]:  result => `Identifier '${result.name}' at ${formatRange(result.range)} follows wrong convention: ${result.detectedCasing}`
+	},
+	info: {
 		name:          'Naming Convention',
 		description:   'Checks wether the symbols conform to a certain naming convention',
 		tags:          [LintingRuleTag.Style, LintingRuleTag.QuickFix],
@@ -197,4 +201,3 @@ export const NAMING_CONVENTION = {
 		}
 	}
 } as const satisfies LintingRule<NamingConventionResult, NamingConventionMetadata, NamingConventionConfig>;
-

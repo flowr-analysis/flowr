@@ -70,7 +70,7 @@ function buildSamplesFromLinterTestCases(shell: RShell, testFile: string): strin
 	}
 	let result = `#### Additional Examples
 	
-	These examples are synthesized from the test cases in: ${linkFlowRSourceFile(testFile)}\n\n`;
+These examples are synthesized from the test cases in: ${linkFlowRSourceFile(testFile)}\n\n`;
 
 	for(const report of reports.info) {
 		const args = report.arguments;
@@ -136,6 +136,13 @@ print(x)
 		'seeded-randomness', 'SeededRandomnessConfig', 'SEEDED_RANDOMNESS', 'lint-seeded-randomness',
 		'runif(1)',
 		tagTypes);
+
+	rule(shell, 
+		'naming-convention', 'NamingConventionConfig', 'NAMING_CONVENTION', 'lint-naming-convention',
+		`
+myVar <- 42
+print(myVar)
+`, tagTypes);
 
 
 	function rule(shell: RShell, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {

@@ -128,7 +128,7 @@ export const SEEDED_RANDOMNESS = {
 		},
 		tags:        [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility],
 		name:        'Seeded Randomness',
-		description: 'Checks whether randomness-based function calls are preceded by a random seed generation function like `set.seed`.'
+		description: 'Checks whether randomness-based function calls are preceded by a random seed generation function. For consistent reproducibility, functions that use randomness should only be called after a constant random seed is set using a function like `set.seed`.'
 	},
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: (result, _meta) => `Function \`${result.function}\` at ${formatRange(result.range)}`,

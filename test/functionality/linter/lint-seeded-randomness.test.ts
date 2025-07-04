@@ -50,20 +50,5 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('get in function call', parser, 'runif(runif(1))', 'seeded-randomness', [
 			{ range: [1,7,1,14], function: 'runif', certainty: LintingCertainty.Definitely },
 			{ range: [1,1,1,15], function: 'runif', certainty: LintingCertainty.Definitely }]);
-
-		// additional tests we could add here (sorry for denglish)
-		//
-		// 10. Using RNGversion to set versions
-		// 11. zumindest dokumentieren wo das nicht geht: parallel, scoping, withr::with_seed, future with seed
-		// 12. Maybe also warn if set.seed is used without a kind? (das wäre ne separate regel, aber ich hab gerade rasugefudnen, dass die den default manchmal ändern)
-		// 13. set.seed oder irgendein use wo die control-flow abhängigkeit auch zufällig ist. also als doofes Besipiel if(runif(1) > 0.5) set.seed(...)
-		// + versions of those with störvariablen, aliases etc.
-
-		// we don't track aliases yet!
-		// assertLinter('set.seed alias', parser, 'setseed <- set.seed\nsetseed(17)\nrunif(1)', 'seeded-randomness', [], { consumerCalls: 1, callsWithProducers: 1 });
-		// we don't support loop analyses yet
-		// assertLinter('loop invalid', parser, 'for(i in 1:10) { runif(1); set.seed(17); }', 'seeded-randomness', [], { consumerCalls: 1, callsWithFunctionProducers: 1, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0 });
-		// we don't support quote yet
-		// assertLinter('set.seed in quote', parser, 'quote(runif(1))', 'seeded-randomness', []);
 	});
 }));

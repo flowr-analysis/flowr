@@ -15,7 +15,16 @@ interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends Flowr
 }
 
 export enum FlowrFilter {
+	/**
+	 * Drops search elements that represent empty arguments. Specifically, all nodes that are arguments and have an undefined name are skipped.
+	 * This filter does not accept any arguments.
+	 */
 	DropEmptyArguments = 'drop-empty-arguments',
+	/**
+	 * Only returns search elements whose enrichments' JSON representations match a given test regular expression.
+	 * This filter accepts {@link MatchesEnrichmentArgs}, which includes the enrichment to match for, as well as the regular expression to test the enrichment's (non-pretty-printed) JSON representation for.
+	 * To test for included function names in an enrichment like {@link Enrichment.CallTargets}, the helper function {@link testFunctionsIgnoringPackage} can be used.
+	 */
 	MatchesEnrichment = 'matches-enrichment'
 }
 export type FlowrFilterFunction <T extends MergeableRecord> = (e: FlowrSearchElement<ParentInformation>, args: T) => boolean;

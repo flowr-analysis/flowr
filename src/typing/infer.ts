@@ -237,11 +237,7 @@ class TypeInferringCfgGuidedVisitor<
 		guard(node !== undefined, 'Expected AST node to be defined');
 
 		const varReadOrigins = this.getOrigins(varName.nodeId)?.filter((origin) => origin.type === OriginType.ReadVariableOrigin);
-		if(varReadOrigins === undefined || varReadOrigins.length === 0) {
-			node.info.typeVariable.unify(new RNullType());
-			return;
-		}
-		for(const readOrigin of varReadOrigins) {
+		for(const readOrigin of varReadOrigins ?? []) {
 			const readNode = this.getNormalizedAst(readOrigin.id);
 			guard(readNode !== undefined, 'Expected read node to be defined');
 			node.info.typeVariable.unify(readNode.info.typeVariable);

@@ -265,7 +265,7 @@ function applyConcatRowsSemantics(
 function applySubsetColsSemantics(
 	value: DataFrameDomain,
 	{ colnames }: { colnames: (string | undefined)[] | undefined },
-	options?: { duplicateCols: boolean }
+	options?: { duplicateCols?: boolean }
 ): DataFrameDomain {
 	const cols = colnames?.length;
 
@@ -286,7 +286,7 @@ function applySubsetColsSemantics(
 function applySubsetRowsSemantics(
 	value: DataFrameDomain,
 	{ rows }: { rows: number | undefined },
-	options?: { duplicateRows: boolean }
+	options?: { duplicateRows?: boolean }
 ): DataFrameDomain {
 	if(options?.duplicateRows) {
 		return {
@@ -325,8 +325,17 @@ function applyMutateColsSemantics(
 
 function applyGroupBySemantics(
 	value: DataFrameDomain,
-	_args: { by: string | undefined }
+	{ by }: { by: (string | undefined)[] },
+	options?: { mutatedCols?: boolean }
 ): DataFrameDomain {
+	if(options?.mutatedCols) {
+		return {
+			...value,
+			colnames: by.every(isNotUndefined) ? joinColNames(value.colnames, by) : ColNamesTop,
+			cols:     addInterval(value.cols, [0, by.length]),
+			rows:     extendIntervalToZero(value.rows)
+		};
+	}
 	return {
 		...value,
 		rows: extendIntervalToZero(value.rows)

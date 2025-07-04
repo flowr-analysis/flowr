@@ -748,6 +748,7 @@ function mapDataFrameSubset(
 	const { selectedCols, unselectedCols } = getSelectedColumns([selectArg], info);
 	const accessedCols = [...selectedCols ?? [], ...unselectedCols ?? []];
 
+	const mixedAccess = accessedCols.some(col => typeof col === 'string') && accessedCols.some(col => typeof col === 'number');
 	const duplicateCols = accessedCols.some((col, _, list) => col !== undefined && list.filter(other => other === col).length > 1);
 
 	if(accessedCols.some(col => typeof col === 'string')) {
@@ -787,7 +788,7 @@ function mapDataFrameSubset(
 				operation: 'subsetCols',
 				operand:   operand?.info.id,
 				colnames:  selectedCols?.map(col => typeof col === 'string' ? col : undefined),
-				...(duplicateCols ? { options: { colnamesChange: true } } : {})
+				...(duplicateCols || mixedAccess ? { options: { duplicateCols: true } } : {})
 			});
 			operand = undefined;
 		}

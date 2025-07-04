@@ -118,19 +118,29 @@ function mapDataFrameIndexColRowAccess(
 
 	if(!dropExtent) {
 		const rowSubset = rows === undefined || rows.every(row => row >= 0);
-		const rowZero = rows?.length === 1 && rows[0] === 0;
 		const colSubset = columns === undefined || columns.every(col => typeof col === 'string' || col >= 0);
+		const rowZero = rows?.length === 1 && rows[0] === 0;
 		const colZero = columns?.length === 1 && columns[0] === 0;
 		const duplicateCols = columns?.some((col, _, list) => list.filter(other => other === col).length > 1);
+		const duplicateRows = rows?.some((row, _, list) => list.filter(other => other === row).length > 1);
 
 		let operand: RNode<ParentInformation> | undefined = dataFrame;
 
 		if(rowArg !== undefined && rowArg !== EmptyArgument) {
-			result.push({
-				operation: rowSubset ? 'subsetRows' : 'removeRows',
-				operand:   operand?.info.id,
-				rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length
-			});
+			if(rowSubset) {
+				result.push({
+					operation: 'subsetRows',
+					operand:   operand?.info.id,
+					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length,
+					...(duplicateRows ? { options: { duplicateRows: true } } : {})
+				});
+			} else {
+				result.push({
+					operation: 'removeRows',
+					operand:   operand?.info.id,
+					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length
+				});
+			}
 			operand = undefined;
 		}
 		if(colArg !== undefined && colArg !== EmptyArgument) {
@@ -139,7 +149,7 @@ function mapDataFrameIndexColRowAccess(
 					operation: 'subsetCols',
 					operand:   operand?.info.id,
 					colnames:  colZero ? [] : columns?.map(col => typeof col === 'string' ? col : undefined),
-					...(duplicateCols ? { options: { colnamesChange: true } } : {})
+					...(duplicateCols ? { options: { duplicateCols: true } } : {})
 				});
 			} else {
 				result.push({

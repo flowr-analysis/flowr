@@ -265,28 +265,35 @@ function applyConcatRowsSemantics(
 function applySubsetColsSemantics(
 	value: DataFrameDomain,
 	{ colnames }: { colnames: (string | undefined)[] | undefined },
-	options?: { colnamesChange: boolean }
+	options?: { duplicateCols: boolean }
 ): DataFrameDomain {
 	const cols = colnames?.length;
 
-	if(options?.colnamesChange) {
+	if(options?.duplicateCols) {
 		return {
 			...value,
 			colnames: ColNamesTop,
-			cols:     cols !== undefined ? [cols, cols] : extendIntervalToZero(value.cols)
+			cols:     cols !== undefined ? [cols, cols] : IntervalTop
 		};
 	}
 	return {
 		...value,
 		colnames: colnames?.every(isNotUndefined) ? meetColNames(value.colnames, colnames) : value.colnames,
-		cols:     cols !== undefined ? [cols, cols] : extendIntervalToZero(value.cols)
+		cols:     cols !== undefined ? minInterval(value.cols, [cols, cols]) : extendIntervalToZero(value.cols)
 	};
 }
 
 function applySubsetRowsSemantics(
 	value: DataFrameDomain,
-	{ rows }: { rows: number | undefined }
+	{ rows }: { rows: number | undefined },
+	options?: { duplicateRows: boolean }
 ): DataFrameDomain {
+	if(options?.duplicateRows) {
+		return {
+			...value,
+			rows: rows !== undefined ? [rows, rows] : IntervalTop
+		};
+	}
 	return {
 		...value,
 		rows: rows !== undefined ? minInterval(value.rows, [rows, rows]) : extendIntervalToZero(value.rows)

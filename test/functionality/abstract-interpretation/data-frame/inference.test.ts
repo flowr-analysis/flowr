@@ -981,6 +981,15 @@ result <- df[c(1, 1), ]
 
 		testDataFrameDomain(
 			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[c(1, 1, 1, 1, 1), ]
+			`.trim(),
+			[['2@result', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
 			'result <- data.frame(id = 1:3, name = 4:6)["id"]',
 			[['1@result', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]]
 		);
@@ -1966,6 +1975,18 @@ df <- head(df, n = 12)
 		testDataFrameDomain(
 			shell,
 			`
+df <- data.frame(id = 1:5, name = 6:10)
+df <- head(df, n = 12)
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }],
+				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
 df <- if (runif(1) >= 0.5) data.frame(id = 1:3) else data.frame(id = 1:5, name = 6:10)
 df <- head(df, n = 3)
 			`.trim(),
@@ -2055,6 +2076,18 @@ df <- tail(df, n = 12)
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [50, 50] }],
 				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [12, 12] }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:5, name = 6:10)
+df <- tail(df, n = 12)
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }],
+				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }]
 			]
 		);
 
@@ -2271,7 +2304,19 @@ df <- subset(df, select = c(id, 2))
 			`.trim(),
 			[
 				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
-				['2@df', { colnames: ['id', 'name', 'label'], cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
+				['2@df', { colnames: ColNamesTop, cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:3)
+df <- subset(df, select = c(id, 1))
+			`.trim(),
+			[
+				['1@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }],
+				['2@df', { colnames: ColNamesTop, cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
 			]
 		);
 

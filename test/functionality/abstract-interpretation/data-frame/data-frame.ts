@@ -264,7 +264,7 @@ function assertDomainMatches(
 	if(Object.values(options).some(type => type === DomainMatchingType.Exact)) {
 		assert.ok(inferred === expected || (inferred !== undefined && expected !== undefined), `result differs: expected ${JSON.stringify(inferred)} to equal ${JSON.stringify(expected)}`);
 	} else {
-		assert.ok(inferred === undefined || expected !== undefined, `result is no over-approximation: : expected ${JSON.stringify(inferred)} to be an over-approximation of ${JSON.stringify(expected)}`);
+		assert.ok(inferred === undefined || expected !== undefined, `result is no over-approximation: expected ${JSON.stringify(inferred)} to be an over-approximation of ${JSON.stringify(expected)}`);
 	}
 	if(inferred !== undefined && expected !== undefined) {
 		assertPropertyMatches('colnames', inferred.colnames, expected.colnames, options.colnames);

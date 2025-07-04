@@ -25,7 +25,7 @@ export enum RDataTypeTag {
     Environment = 'REnvironmentType',
     /** {@link RLanguageType} */
     Language = 'RLanguageType',
-	/** {@link RNeverType} */
+	/** {@link RTypeVariable} */
     Variable = 'RTypeVariable',
 	/** {@link RErrorType} */
 	Error = 'RErrorType',
@@ -127,13 +127,13 @@ export class RLanguageType {
 
 export class RTypeVariable {
 	readonly tag = RDataTypeTag.Variable;
-	private boundType: UnresolvedRDataType | undefined;
+	private boundType: UnresolvedRDataType = new RUnknownType();
 
 	find(): UnresolvedRDataType {
 		if(this.boundType instanceof RTypeVariable) {
 			this.boundType = this.boundType.find();
 		}
-		return this.boundType ?? this;
+		return this.boundType.tag !== RDataTypeTag.Unknown ? this.boundType : this;
 	}
 
 	unify(other: UnresolvedRDataType): void {
@@ -159,12 +159,12 @@ export class RTypeVariable {
 			this.boundType = otherRep;
 		} else if(thisRep.tag !== otherRep.tag) {
 			if(thisRep instanceof RErrorType) {
-				thisRep.conflictingTypes.add(otherRep);
+				thisRep.conflictingTypes.add(resolveType(otherRep));
 			} else if(otherRep instanceof RErrorType) {
-				otherRep.conflictingTypes.add(thisRep);
+				otherRep.conflictingTypes.add(resolveType(thisRep));
 				this.boundType = otherRep;
 			} else {
-				this.boundType = new RErrorType(thisRep, otherRep);
+				this.boundType = new RErrorType(resolveType(thisRep), resolveType(otherRep));
 			}
 		}
 	}
@@ -172,9 +172,9 @@ export class RTypeVariable {
 
 export class RErrorType {
 	readonly tag = RDataTypeTag.Error;
-	conflictingTypes = new Set<UnresolvedRDataType>();
+	conflictingTypes = new Set<RDataType>();
 
-	constructor(...conflictingTypes: UnresolvedRDataType[]) {
+	constructor(...conflictingTypes: RDataType[]) {
 		for(const type of conflictingTypes) {
 			this.conflictingTypes.add(type);
 		}

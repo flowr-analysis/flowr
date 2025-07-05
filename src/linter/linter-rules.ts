@@ -3,6 +3,7 @@ import type { LintingRule } from './linter-format';
 import { FILE_PATH_VALIDITY } from './rules/file-path-validity';
 import { ABSOLUTE_PATH } from './rules/absolute-path';
 import { UNUSED_DEFINITION } from './rules/unused-definition';
+import { SEEDED_RANDOMNESS } from './rules/seeded-randomness';
 import { NAMING_CONVENTION } from './rules/naming-convention';
 
 /**
@@ -12,6 +13,7 @@ import { NAMING_CONVENTION } from './rules/naming-convention';
 export const LintingRules = {
 	'deprecated-functions': DEPRECATED_FUNCTIONS,
 	'file-path-validity':   FILE_PATH_VALIDITY,
+	'seeded-randomness':    SEEDED_RANDOMNESS,
 	'absolute-file-paths':  ABSOLUTE_PATH,
 	'unused-definitions':   UNUSED_DEFINITION,
 	'naming-convention':    NAMING_CONVENTION

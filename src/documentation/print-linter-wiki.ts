@@ -132,6 +132,10 @@ x <- 42
 y <- 3
 print(x)
 `, tagTypes);
+	rule(shell,
+		'seeded-randomness', 'SeededRandomnessConfig', 'SEEDED_RANDOMNESS', 'lint-seeded-randomness',
+		'runif(1)',
+		tagTypes);
 
 	rule(shell, 
 		'naming-convention', 'NamingConventionConfig', 'NAMING_CONVENTION', 'lint-naming-convention',

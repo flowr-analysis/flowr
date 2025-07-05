@@ -152,7 +152,7 @@ function getSkip<Elements extends FlowrSearchElement<ParentInformation>[], FSE e
 function getFilter<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
 	data: FlowrSearchInput<Pipeline>, elements: FSE, { filter }: { filter: FlowrFilterExpression }): CascadeEmpty<Elements, Elements | []> {
 	return elements.mutate(
-		e => e.filter(({ node }) => evalFilter(filter, { node, normalize: data.normalize, dataflow: data.dataflow })) as Elements
+		e => e.filter(e => evalFilter(filter, { element: e, normalize: data.normalize, dataflow: data.dataflow })) as Elements
 	) as unknown as CascadeEmpty<Elements, Elements | []>;
 }
 

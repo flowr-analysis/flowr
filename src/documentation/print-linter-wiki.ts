@@ -70,7 +70,7 @@ function buildSamplesFromLinterTestCases(shell: RShell, testFile: string): strin
 	}
 	let result = `#### Additional Examples
 	
-These examples are synthesized from the test cases in: ${linkFlowRSourceFile(testFile)}\n\n`;
+These examples are synthesized from the test cases in: ${linkFlowRSourceFile('test/functionality/linter/' + testFile)}\n\n`;
 
 	for(const report of reports.info) {
 		const args = report.arguments;

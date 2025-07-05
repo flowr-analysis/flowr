@@ -4,7 +4,7 @@ import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 import { setSourceProvider } from '../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
 import { requestProviderFromFile, requestProviderFromText } from '../../../../src/r-bridge/retriever';
 import { withShell } from '../../_helper/shell';
-import { assertDataFrameDomain, assertDataFrameOperation, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomain, testDataFrameDomainWithSource } from './data-frame';
+import { assertDataFrameDomain, assertDataFrameOperation, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomain, testDataFrameDomainAgainstReal, testDataFrameDomainWithSource } from './data-frame';
 
 describe.sequential('Data Frame Shape Inference', withShell(shell => {
 	let librariesInstalled = false;
@@ -842,17 +842,6 @@ result <- df[sample(1:3, 1), , drop = FALSE]
 			[['2@result', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [0, 3] }, { rows: DomainMatchingType.Overapproximation }]]
 		);
 
-		describe('Currently Unsupported', { fails: true }, () => {
-			testDataFrameDomain(
-				shell,
-				`
-df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
-result <- df[sample(1:3, 1), sample(1:3, 1)]
-				`.trim(),
-				[['2@result', undefined, DataFrameTestOverapproximation]]
-			);
-		});
-
 		testDataFrameDomain(
 			shell,
 			`
@@ -999,6 +988,35 @@ result <- df[c(1, 1, 1, 1, 1), ]
 			'result <- cbind(data.frame(id = 1:3), name = 4:6)[2]',
 			[['1@result', { colnames: ['id', 'name'], cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
 		);
+
+		describe('Unsupported', { fails: true }, () => {
+			testDataFrameDomainAgainstReal(
+				shell,
+				`
+df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
+result <- df[sample(1:3, 1), sample(1:3, 1)]
+				`.trim(),
+				[['2@result', DataFrameTestOverapproximation]]
+			);
+
+			testDataFrameDomainAgainstReal(
+				shell,
+				`
+df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
+result <- df[rep("id", times = 12)]
+				`.trim(),
+				[['2@result', DataFrameTestOverapproximation]]
+			);
+
+			testDataFrameDomainAgainstReal(
+				shell,
+				`
+df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
+result <- df[rep(1, times = 12), ]
+				`.trim(),
+				[['2@result', DataFrameTestOverapproximation]]
+			);
+		});
 	});
 
 	describe('Col/Row Assignment', () => {
@@ -1495,6 +1513,41 @@ print(df)
 				['3@df', { colnames: ColNamesTop, cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
 			]
 		);
+
+		describe('Unsupported', { fails: true }, () => {
+			testDataFrameDomainAgainstReal(
+				shell,
+				`
+null <- \\() NULL
+df <- data.frame(id = 1:3, name = 4:6)
+df$name <- null()
+print(df)
+				`.trim(),
+				[['4@df', DataFrameTestOverapproximation]]
+			);
+
+			testDataFrameDomainAgainstReal(
+				shell,
+				`
+null <- \\() NULL
+df <- data.frame(id = 1:3, name = 4:6)
+df["name"] <- null()
+print(df)
+				`.trim(),
+				[['4@df', DataFrameTestOverapproximation]]
+			);
+
+			testDataFrameDomainAgainstReal(
+				shell,
+				`
+null <- \\() NULL
+df <- data.frame(id = 1:3, name = 4:6)
+df[[1]] <- null()
+print(df)
+				`.trim(),
+				[['4@df', DataFrameTestOverapproximation]]
+			);
+		});
 	});
 
 	describe('Set Names', () => {
@@ -2502,6 +2555,26 @@ df <- subset(df, select = c(id, name), drop = TRUE)
 				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
 			]
 		);
+
+		describe('Unsupported', { fails: true }, () => {
+			testDataFrameDomainAgainstReal(
+				shell,
+				`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- subset(df, select = rep("id", times = 12))
+				`.trim(),
+				[['2@result', DataFrameTestOverapproximation]]
+			);
+
+			testDataFrameDomainAgainstReal(
+				shell,
+				`
+df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
+result <- subset(TRUE, FALSE, x = df)
+				`.trim(),
+				[['2@result', DataFrameTestOverapproximation]]
+			);
+		});
 	});
 
 	describe('Filter', () => {
@@ -4519,7 +4592,7 @@ df <- dplyr::relocate(df, score, .before = category)
 			skipLibraries
 		);
 
-		describe('Currently Unsupported', { fails: true }, () => {
+		describe('Unsupported', { fails: true }, () => {
 			testDataFrameDomain(
 				shell,
 				`

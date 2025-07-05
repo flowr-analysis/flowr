@@ -313,7 +313,7 @@ function getInferredDomainForCriterion(
 		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
 	}
 	const cfg = extractCfg(result.normalize, config, result.dataflow.graph);
-	performDataFrameAbsint(cfg, result.dataflow.graph, result.normalize);
+	performDataFrameAbsint(cfg, result.dataflow.graph, result.normalize, config);
 	const value = resolveIdToAbstractValue(node, result.dataflow.graph);
 
 	return [value, node];
@@ -332,7 +332,7 @@ function getInferredOperationsForCriterion(
 		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
 	}
 	const cfg = extractCfg(result.normalize, config, result.dataflow.graph);
-	performDataFrameAbsint(cfg, result.dataflow.graph, result.normalize);
+	performDataFrameAbsint(cfg, result.dataflow.graph, result.normalize, config);
 
 	return node.info.dataFrame?.type === 'expression' ? node.info.dataFrame.operations : [];
 }

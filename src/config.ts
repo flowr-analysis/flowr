@@ -155,6 +155,28 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			readonly threshold?: number
 		}
 	}
+	/**
+	 * Configuration options for abstract interpretation
+	 */
+	readonly abstractInterpretation: {
+		/**
+		 * The configuration of the shape inference for data frames
+		 */
+		readonly dataFrame: {
+			/**
+			 * The maximum number of columns names to infer for data frames before over-approximating the column names to top
+			 */
+			readonly maxColNames:       number;
+			/**
+			 * The maximum number of lines to read when extracting data frame shapes from imported external files, such as CSV files
+			 */
+			readonly maxReadLines:      number;
+			/**
+			 * The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration
+			 */
+			readonly wideningThreshold: number;
+		}
+	}
 }
 
 export interface TreeSitterEngineConfig extends MergeableRecord {
@@ -214,6 +236,13 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 		},
 		slicer: {
 			threshold: 50
+		}
+	},
+	abstractInterpretation: {
+		dataFrame: {
+			maxColNames:       50,
+			maxReadLines:      1e7,
+			wideningThreshold: 4
 		}
 	}
 };

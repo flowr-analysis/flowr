@@ -1,3 +1,4 @@
+import type { FlowrConfigOptions } from '../../config';
 import { defaultConfigOptions } from '../../config';
 import type { CfgBasicBlockVertex, CfgSimpleVertex, ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import { CfgVertexType, isMarkerVertex } from '../../control-flow/control-flow-graph';
@@ -22,16 +23,12 @@ import { mapDataFrameFunctionCall } from './mappers/function-mapper';
 import { mapDataFrameReplacement } from './mappers/replacement-mapper';
 import { applySemantics, ConstraintType, getConstraintType } from './semantics';
 
-export interface DataFrameAbsintVisitorConfiguration<
+export type DataFrameAbsintVisitorConfiguration<
 	OtherInfo = NoInfo,
 	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst<OtherInfo>       = NormalizedAst<OtherInfo>,
 	Dfg extends DataflowGraph                  = DataflowGraph
-> extends Omit<SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg>, 'defaultVisitingOrder' | 'defaultVisitingType'> {
-    readonly wideningThreshold?: number;
-}
-
-const DefaultWideningThreshold = 4;
+> = Omit<SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
 
 class DataFrameAbsintVisitor<
 	OtherInfo = NoInfo,
@@ -178,7 +175,7 @@ class DataFrameAbsintVisitor<
 	}
 
 	private shouldWiden(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): boolean {
-		return (this.visited.get(vertex.id) ?? 0) >= (this.config.wideningThreshold ?? DefaultWideningThreshold);
+		return (this.visited.get(vertex.id) ?? 0) >= this.config.flowrConfig.abstractInterpretation.dataFrame.wideningThreshold;
 	}
 
 	private updateValueOfOrigins(identifier: NodeId, value: DataFrameDomain) {
@@ -201,9 +198,10 @@ class DataFrameAbsintVisitor<
 export function performDataFrameAbsint(
 	cfinfo: ControlFlowInformation,
 	dfg: DataflowGraph,
-	ast: NormalizedAst<ParentInformation & AbstractInterpretationInfo>
+	ast: NormalizedAst<ParentInformation & AbstractInterpretationInfo>,
+	config: FlowrConfigOptions = defaultConfigOptions
 ): DataFrameStateDomain {
-	const visitor = new DataFrameAbsintVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, flowrConfig: defaultConfigOptions });
+	const visitor = new DataFrameAbsintVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, flowrConfig: config });
 	visitor.start();
 	const exitPoints = cfinfo.exitPoints.map(id => cfinfo.graph.getVertex(id)).filter(isNotUndefined);
 	const exitNodes = exitPoints.map(vertex => ast.idMap.get(isMarkerVertex(vertex) ? vertex.root : vertex.id)).filter(isNotUndefined);

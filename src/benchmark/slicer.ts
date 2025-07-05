@@ -403,10 +403,12 @@ export class BenchmarkSlicer {
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined for abstract interpretation');
 		guard(this.dataflow !== undefined, 'dataflow should be defined for abstract interpretation');
 		guard(this.controlFlow !== undefined, 'controlFlow should be defined for abstract interpretation');
+		guard(this.config !== undefined, 'config should be defined for abstract interpretation');
 
 		const ast = this.normalizedAst;
 		const dfg = this.dataflow.graph;
 		const cfinfo = this.controlFlow;
+		const config = this.config;
 
 		const stats: SlicerStatsAbsint = {
 			numberOfDataFrameFiles:    0,
@@ -422,7 +424,7 @@ export class BenchmarkSlicer {
 			perNodeStats:              new Map()
 		};
 
-		const result = this.measureSimpleStep('perform abstract interpretation', () => performDataFrameAbsint(cfinfo, dfg, ast));
+		const result = this.measureSimpleStep('perform abstract interpretation', () => performDataFrameAbsint(cfinfo, dfg, ast, config));
 		stats.numberOfResultConstraints = result.size;
 
 		for(const value of result.values()) {

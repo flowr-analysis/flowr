@@ -4620,19 +4620,18 @@ df <- dplyr::relocate(df, score, .before = category)
 			skipLibraries
 		);
 
-		describe('Unsupported', { fails: true }, () => {
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:5, category = c("A", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85))
 df <- dplyr::relocate(df, label = category)
-				`.trim(),
-				[
-					['2@df', { colnames: ['id', 'label', 'score'], cols: [3, 3], rows: [5, 5] }]
-				],
-				skipLibraries
-			);
-		});
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }],
+				['2@df', DataFrameTop, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
 
 		testDataFrameDomain(
 			shell,

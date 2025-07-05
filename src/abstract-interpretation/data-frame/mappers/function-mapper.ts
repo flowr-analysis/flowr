@@ -366,8 +366,9 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 		]
 	},
 	'relocate': {
-		dataFrame: { pos: 0, name: '.data' },
-		special:   ['.before', '.after']
+		dataFrame:      { pos: 0, name: '.data' },
+		special:        ['.before', '.after'],
+		allowNamedArgs: false
 	},
 	'arrange': {
 		dataFrame: { pos: 0, name: '.data' },
@@ -1165,7 +1166,7 @@ function getJoinType(joinAll: boolean, joinLeft: boolean, joinRight: boolean): '
 
 function mapDataFrameIdentity(
 	args: readonly RFunctionArgument<ParentInformation>[],
-	params: { dataFrame: FunctionParameterLocation, special: string[] },
+	params: { dataFrame: FunctionParameterLocation, special: string[], allowNamedArgs?: boolean },
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	args = getEffectiveArgs(args, params.special);
@@ -1173,6 +1174,8 @@ function mapDataFrameIdentity(
 
 	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
+	} else if(!params.allowNamedArgs && args.some(isNamedArgument)) {
+		return [{ operation: 'unknown', operand: dataFrame.value.info.id }];
 	}
 	return [{
 		operation: 'identity',

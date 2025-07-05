@@ -19,9 +19,8 @@ import { DataFrameTop, equalDataFrameState, joinDataFrames, joinDataFrameStates,
 import { mapDataFrameAccess } from './mappers/access-mapper';
 import { isAssignmentTarget, mapDataFrameVariableAssignment } from './mappers/assignment-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
-import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
+import { mapDataFrameReplacement } from './mappers/replacement-mapper';
 import { applySemantics, ConstraintType, getConstraintType } from './semantics';
-import { isRSingleNode } from './util';
 
 export interface DataFrameAbsintVisitorConfiguration<
 	OtherInfo = NoInfo,
@@ -118,7 +117,7 @@ class DataFrameAbsintVisitor<
 		const sourceNode = source !== undefined ? this.getNormalizedAst(source) : undefined;
 
 		if(node !== undefined && targetNode !== undefined && sourceNode !== undefined) {
-			node.info.dataFrame = mapDataFrameReplacementFunction(node, sourceNode, this.config.dfg);
+			node.info.dataFrame = mapDataFrameReplacement(node, sourceNode, this.config.dfg);
 			this.processOperation(node);
 			this.clearUnassignedInfo(targetNode);
 		}
@@ -141,14 +140,15 @@ class DataFrameAbsintVisitor<
 		} else if(node.info.dataFrame?.type === 'expression') {
 			let value = DataFrameTop;
 
-			for(const operation of node.info.dataFrame.operations) {
-				const operandValue = operation.operand ? resolveIdToAbstractValue(operation.operand, this.config.dfg, this.newDomain) : value;
-				value = applySemantics(operation.operation, operandValue ?? DataFrameTop, operation.args);
+			for(const { operation, operand, type, options, ...args } of node.info.dataFrame.operations) {
+				const operandValue = operand !== undefined ? resolveIdToAbstractValue(operand, this.config.dfg, this.newDomain) : value;
+				value = applySemantics(operation, operandValue ?? DataFrameTop, args, options);
+				const constraintType = type ?? getConstraintType(operation);
 
-				if(operation.operand !== undefined && getConstraintType(operation.operation) === ConstraintType.OperandModification) {
-					this.newDomain.set(operation.operand, value);
-					this.updateValueOfOrigins(operation.operand, value);
-				} else if(getConstraintType(operation.operation) === ConstraintType.ResultPostcondition) {
+				if(operand !== undefined && constraintType === ConstraintType.OperandModification) {
+					this.newDomain.set(operand, value);
+					this.updateValueOfOrigins(operand, value);
+				} else if(constraintType === ConstraintType.ResultPostcondition) {
 					this.newDomain.set(node.info.id, value);
 				}
 			}
@@ -157,14 +157,7 @@ class DataFrameAbsintVisitor<
 
 	// We only process vertices of leaf nodes and exit vertices (no entry nodes of complex nodes)
 	private shouldSkipVertex(vertex: CfgSimpleVertex) {
-		if(vertex.type === CfgVertexType.EndMarker) {
-			return false;
-		} else if(vertex.type === CfgVertexType.MidMarker) {
-			return true;
-		}
-		const node = this.getNormalizedAst(vertex.id);
-
-		return node === undefined || !isRSingleNode(node);
+		return isMarkerVertex(vertex) ? vertex.type !== CfgVertexType.EndMarker : vertex.end !== undefined;
 	}
 
 	private getPredecessorNodes(vertexId: NodeId): RNode<ParentInformation & AbstractInterpretationInfo>[] {

@@ -1,5 +1,6 @@
-import type { DataFrameDomain } from './domain';
-import { addInterval, ColNamesTop, DataFrameTop, extendIntervalToInfinity, extendIntervalToZero, IntervalTop, joinColNames, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
+import { assertUnreachable, isNotUndefined } from '../../util/assert';
+import type { DataFrameDomain, IntervalDomain } from './domain';
+import { addInterval, ColNamesTop, DataFrameTop, extendIntervalToInfinity, extendIntervalToZero, IntervalBottom, IntervalTop, joinColNames, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
 
 export enum ConstraintType {
 	/** The inferred constraints must hold for the operand at the point of the operation */
@@ -11,53 +12,55 @@ export enum ConstraintType {
 }
 
 const DataFrameSemanticsMapper = {
-	'create':        { apply: applyCreateSemantics,      type: ConstraintType.ResultPostcondition },
-	'read':          { apply: applyReadSemantics,        type: ConstraintType.ResultPostcondition },
-	'accessCols':    { apply: applyAccessColsSemantics,  type: ConstraintType.OperandPrecondition },
-	'accessRows':    { apply: applyAccessRowsSemantics,  type: ConstraintType.OperandPrecondition },
-	'assignCols':    { apply: applyAssignColsSemantics,  type: ConstraintType.OperandModification },
-	'assignRows':    { apply: applyAssignRowsSemantics,  type: ConstraintType.OperandModification },
-	'setColNames':   { apply: applySetColNamesSemantics, type: ConstraintType.OperandModification },
-	'unknownModify': { apply: applyUnknownSemantics,     type: ConstraintType.OperandModification },
-	'addCols':       { apply: applyAddColsSemantics,     type: ConstraintType.ResultPostcondition },
-	'addRows':       { apply: applyAddRowsSemantics,     type: ConstraintType.ResultPostcondition },
-	'removeCols':    { apply: applyRemoveColsSemantics,  type: ConstraintType.ResultPostcondition },
-	'removeRows':    { apply: applyRemoveRowsSemantics,  type: ConstraintType.ResultPostcondition },
-	'concatCols':    { apply: applyConcatColsSemantics,  type: ConstraintType.ResultPostcondition },
-	'concatRows':    { apply: applyConcatRowsSemantics,  type: ConstraintType.ResultPostcondition },
-	'subsetCols':    { apply: applySubsetColsSemantics,  type: ConstraintType.ResultPostcondition },
-	'subsetRows':    { apply: applySubsetRowsSemantics,  type: ConstraintType.ResultPostcondition },
-	'filterRows':    { apply: applyFilterRowsSemantics,  type: ConstraintType.ResultPostcondition },
-	'mutateCols':    { apply: applyMutateColsSemantics,  type: ConstraintType.ResultPostcondition },
-	'groupBy':       { apply: applyGroupBySemantics,     type: ConstraintType.ResultPostcondition },
-	'summarize':     { apply: applySummarizeSemantics,   type: ConstraintType.ResultPostcondition },
-	'leftJoin':      { apply: applyLeftJoinSemantics,    type: ConstraintType.ResultPostcondition },
-	'unknown':       { apply: applyUnknownSemantics,     type: ConstraintType.ResultPostcondition },
-	'identity':      { apply: applyIdentitySemantics,    type: ConstraintType.ResultPostcondition }
-} as const satisfies Record<string, DataFrameSemanticsMapperInfo<never>>;
+	'create':      { apply: applyCreateSemantics,      type: ConstraintType.ResultPostcondition },
+	'read':        { apply: applyReadSemantics,        type: ConstraintType.ResultPostcondition },
+	'accessCols':  { apply: applyAccessColsSemantics,  type: ConstraintType.OperandPrecondition },
+	'accessRows':  { apply: applyAccessRowsSemantics,  type: ConstraintType.OperandPrecondition },
+	'assignCols':  { apply: applyAssignColsSemantics,  type: ConstraintType.OperandModification },
+	'assignRows':  { apply: applyAssignRowsSemantics,  type: ConstraintType.OperandModification },
+	'setColNames': { apply: applySetColNamesSemantics, type: ConstraintType.OperandModification },
+	'addCols':     { apply: applyAddColsSemantics,     type: ConstraintType.ResultPostcondition },
+	'addRows':     { apply: applyAddRowsSemantics,     type: ConstraintType.ResultPostcondition },
+	'removeCols':  { apply: applyRemoveColsSemantics,  type: ConstraintType.ResultPostcondition },
+	'removeRows':  { apply: applyRemoveRowsSemantics,  type: ConstraintType.ResultPostcondition },
+	'concatCols':  { apply: applyConcatColsSemantics,  type: ConstraintType.ResultPostcondition },
+	'concatRows':  { apply: applyConcatRowsSemantics,  type: ConstraintType.ResultPostcondition },
+	'subsetCols':  { apply: applySubsetColsSemantics,  type: ConstraintType.ResultPostcondition },
+	'subsetRows':  { apply: applySubsetRowsSemantics,  type: ConstraintType.ResultPostcondition },
+	'filterRows':  { apply: applyFilterRowsSemantics,  type: ConstraintType.ResultPostcondition },
+	'mutateCols':  { apply: applyMutateColsSemantics,  type: ConstraintType.ResultPostcondition },
+	'groupBy':     { apply: applyGroupBySemantics,     type: ConstraintType.ResultPostcondition },
+	'summarize':   { apply: applySummarizeSemantics,   type: ConstraintType.ResultPostcondition },
+	'join':        { apply: applyJoinSemantics,        type: ConstraintType.ResultPostcondition },
+	'unknown':     { apply: applyUnknownSemantics,     type: ConstraintType.ResultPostcondition },
+	'identity':    { apply: applyIdentitySemantics,    type: ConstraintType.ResultPostcondition }
+} as const satisfies Record<string, DataFrameSemanticsMapperInfo<never, never>>;
 
-type DataFrameSemanticsMapperInfo<Arguments extends object> = {
-	readonly apply: DataFrameSemanticsApplier<Arguments>,
+type DataFrameSemanticsMapperInfo<Arguments extends object, Options extends object | undefined> = {
+	readonly apply: DataFrameSemanticsApplier<Arguments, Options>,
 	readonly type:  ConstraintType
 }
 
-type DataFrameSemanticsApplier<Arguments extends object> = (
+type DataFrameSemanticsApplier<Arguments extends object, Options extends object | undefined> = (
 	value: DataFrameDomain,
-	args: Arguments
+	args: Arguments,
+	options?: Options
 ) => DataFrameDomain;
 
 export type DataFrameOperationName = keyof typeof DataFrameSemanticsMapper;
 export const DataFrameOperationNames = Object.keys(DataFrameSemanticsMapper) as DataFrameOperationName[];
 export type DataFrameOperationArgs<N extends DataFrameOperationName> = Parameters<typeof DataFrameSemanticsMapper[N]['apply']>[1];
+export type DataFrameOperationOptions<N extends DataFrameOperationName> = Parameters<typeof DataFrameSemanticsMapper[N]['apply']>[2];
 
 export function applySemantics<Name extends DataFrameOperationName>(
 	operation: Name,
 	value: DataFrameDomain,
-	args: DataFrameOperationArgs<Name>
+	args: DataFrameOperationArgs<Name>,
+	options?: DataFrameOperationOptions<Name>
 ): DataFrameDomain {
-	const applier = DataFrameSemanticsMapper[operation] as DataFrameSemanticsMapperInfo<DataFrameOperationArgs<Name>>;
+	const applier = DataFrameSemanticsMapper[operation] as DataFrameSemanticsMapperInfo<DataFrameOperationArgs<Name>, DataFrameOperationOptions<Name>>;
 
-	return applier.apply(value, args);
+	return applier.apply(value, args, options);
 }
 
 export function getConstraintType(operation: DataFrameOperationName): ConstraintType {
@@ -68,9 +71,11 @@ function applyCreateSemantics(
 	value: DataFrameDomain,
 	{ colnames, rows }: { colnames: (string | undefined)[] | undefined, rows: number | undefined }
 ): DataFrameDomain {
+	const cols = colnames?.length;
+
 	return {
-		colnames: colnames?.every(name => name !== undefined) ? colnames : ColNamesTop,
-		cols:     colnames !== undefined ? [colnames.length, colnames.length] : IntervalTop,
+		colnames: colnames?.every(isNotUndefined) ? colnames : ColNamesTop,
+		cols:     cols !== undefined ? [cols, cols] : IntervalTop,
 		rows:     rows !== undefined ? [rows, rows] : IntervalTop
 	};
 }
@@ -118,10 +123,12 @@ function applyAssignColsSemantics(
 	{ columns }: { columns: string[] | number[] | undefined }
 ): DataFrameDomain {
 	if(columns?.every(col => typeof col === 'string')) {
+		const cols = columns.length;
+
 		return {
 			...value,
 			colnames: joinColNames(value.colnames, columns),
-			cols:     maxInterval(addInterval(value.cols, [0, columns.length]), [columns.length, columns.length])
+			cols:     maxInterval(addInterval(value.cols, [0, cols]), [cols, cols])
 		};
 	} else if(columns?.every(col => typeof col === 'number')) {
 		return {
@@ -155,11 +162,21 @@ function applyAssignRowsSemantics(
 
 function applySetColNamesSemantics(
 	value: DataFrameDomain,
-	{ colnames }: { colnames: (string | undefined)[] | undefined }
+	{ colnames }: { colnames: (string | undefined)[] | undefined },
+	options?: { partial?: boolean }
 ): DataFrameDomain {
+	if(options?.partial) {
+		return {
+			...value,
+			colnames: colnames?.every(isNotUndefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
+		};
+	}
+	const cols = colnames?.length;
+	const allColNames = value.cols != IntervalBottom && cols !== undefined && cols >= value.cols[1];
+
 	return {
 		...value,
-		colnames: colnames?.every(name => name !== undefined) ? colnames : ColNamesTop,
+		colnames: allColNames && colnames?.every(isNotUndefined) ? colnames : ColNamesTop,
 	};
 }
 
@@ -167,10 +184,12 @@ function applyAddColsSemantics(
 	value: DataFrameDomain,
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
+	const cols = colnames?.length;
+
 	return {
 		...value,
-		colnames: colnames?.every(col => col !== undefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
-		cols:     colnames !== undefined ? addInterval(value.cols, [colnames.length, colnames.length]) : extendIntervalToInfinity(value.cols)
+		colnames: colnames?.every(isNotUndefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
+		cols:     cols !== undefined ? addInterval(value.cols, [cols, cols]) : extendIntervalToInfinity(value.cols)
 	};
 }
 
@@ -186,19 +205,36 @@ function applyAddRowsSemantics(
 
 function applyRemoveColsSemantics(
 	value: DataFrameDomain,
-	{ colnames }: { colnames: (string | undefined)[] | undefined }
+	{ colnames }: { colnames: (string | undefined)[] | undefined },
+	options?: { maybe?: boolean }
 ): DataFrameDomain {
+	const cols = colnames?.length;
+
+	if(options?.maybe) {
+		return {
+			...value,
+			colnames: colnames !== undefined ? subtractColNames(value.colnames, colnames.filter(col => col !== undefined)) : value.colnames,
+			cols:     cols !== undefined ? subtractInterval(value.cols, [cols, 0]) : extendIntervalToZero(value.cols)
+		};
+	}
 	return {
 		...value,
-		colnames: colnames !== undefined ? subtractColNames(value.colnames, colnames.filter(col => col !== undefined)) : value.colnames,
-		cols:     colnames !== undefined ? subtractInterval(value.cols, [colnames.length, colnames.length]) : extendIntervalToZero(value.cols)
+		colnames: colnames !== undefined ? subtractColNames(value.colnames, colnames.filter(isNotUndefined)) : value.colnames,
+		cols:     cols !== undefined ? subtractInterval(value.cols, [cols, cols]) : extendIntervalToZero(value.cols)
 	};
 }
 
 function applyRemoveRowsSemantics(
 	value: DataFrameDomain,
-	{ rows }: { rows: number | undefined }
+	{ rows }: { rows: number | undefined },
+	options?: { maybe?: boolean }
 ): DataFrameDomain {
+	if(options?.maybe) {
+		return {
+			...value,
+			cols: rows !== undefined ? subtractInterval(value.cols, [rows, 0]) : extendIntervalToZero(value.cols)
+		};
+	}
 	return {
 		...value,
 		rows: rows !== undefined ? subtractInterval(value.rows, [rows, rows]) : extendIntervalToZero(value.rows)
@@ -228,19 +264,42 @@ function applyConcatRowsSemantics(
 
 function applySubsetColsSemantics(
 	value: DataFrameDomain,
-	{ colnames }: { colnames: (string | undefined)[] | undefined }
+	{ colnames }: { colnames: (string | undefined)[] | undefined },
+	options?: { duplicateCols?: boolean, renamedCols?: boolean }
 ): DataFrameDomain {
+	const cols = colnames?.length;
+
+	if(options?.duplicateCols) {
+		return {
+			...value,
+			colnames: ColNamesTop,
+			cols:     cols !== undefined ? [cols, cols] : IntervalTop
+		};
+	} else if(options?.renamedCols) {
+		return {
+			...value,
+			colnames: ColNamesTop,
+			cols:     cols !== undefined ? minInterval(value.cols, [cols, cols]) : extendIntervalToZero(value.cols)
+		};
+	}
 	return {
 		...value,
-		colnames: colnames?.every(col => col !== undefined) ? meetColNames(value.colnames, colnames) : value.colnames,
-		cols:     colnames !== undefined ? minInterval(value.cols, [colnames.length, colnames.length]) : extendIntervalToZero(value.cols)
+		colnames: colnames?.every(isNotUndefined) ? meetColNames(value.colnames, colnames) : value.colnames,
+		cols:     cols !== undefined ? minInterval(value.cols, [cols, cols]) : extendIntervalToZero(value.cols)
 	};
 }
 
 function applySubsetRowsSemantics(
 	value: DataFrameDomain,
-	{ rows }: { rows: number | undefined }
+	{ rows }: { rows: number | undefined },
+	options?: { duplicateRows?: boolean }
 ): DataFrameDomain {
+	if(options?.duplicateRows) {
+		return {
+			...value,
+			rows: rows !== undefined ? [rows, rows] : IntervalTop
+		};
+	}
 	return {
 		...value,
 		rows: rows !== undefined ? minInterval(value.rows, [rows, rows]) : extendIntervalToZero(value.rows)
@@ -261,17 +320,28 @@ function applyMutateColsSemantics(
 	value: DataFrameDomain,
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
+	const cols = colnames?.length;
+
 	return {
 		...value,
-		colnames: colnames?.every(col => col !== undefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
-		cols:     colnames !== undefined ? maxInterval(addInterval(value.cols, [0, colnames.length]), [colnames.length, colnames.length]): extendIntervalToInfinity(value.rows)
+		colnames: colnames?.every(isNotUndefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
+		cols:     cols !== undefined ? maxInterval(addInterval(value.cols, [0, cols]), [cols, cols]): extendIntervalToInfinity(value.cols)
 	};
 }
 
 function applyGroupBySemantics(
 	value: DataFrameDomain,
-	_args: { by: string | undefined }
+	{ by }: { by: (string | undefined)[] },
+	options?: { mutatedCols?: boolean }
 ): DataFrameDomain {
+	if(options?.mutatedCols) {
+		return {
+			...value,
+			colnames: by.every(isNotUndefined) ? joinColNames(value.colnames, by) : ColNamesTop,
+			cols:     addInterval(value.cols, [0, by.length]),
+			rows:     extendIntervalToZero(value.rows)
+		};
+	}
 	return {
 		...value,
 		rows: extendIntervalToZero(value.rows)
@@ -282,36 +352,96 @@ function applySummarizeSemantics(
 	value: DataFrameDomain,
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
+	const cols = colnames?.length;
+
 	return {
 		...value,
-		colnames: colnames?.every(col => col !== undefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
-		cols:     colnames !== undefined ? minInterval(addInterval(value.cols, [0, colnames.length]), [colnames.length, Infinity]) : extendIntervalToInfinity(value.rows),
+		colnames: colnames?.every(isNotUndefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
+		cols:     cols !== undefined ? minInterval(addInterval(value.cols, [0, cols]), [cols, Infinity]) : extendIntervalToInfinity(value.rows),
 		rows:     maxInterval(minInterval(value.rows, [1, Infinity]), [1, 1])
 	};
 }
 
-function applyLeftJoinSemantics(
+function applyJoinSemantics(
 	value: DataFrameDomain,
-	{ other, minRows }: { other: DataFrameDomain, by: string | undefined, minRows?: boolean }
+	{ other, by }: { other: DataFrameDomain, by: (string | undefined)[] | undefined },
+	options?: { join?: 'inner' | 'left' | 'right' | 'full', natural?: boolean }
 ): DataFrameDomain {
+	const mergeInterval = (interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain => {
+		if(interval1 === IntervalBottom || interval2 === IntervalBottom) {
+			return IntervalBottom;
+		} else {
+			return [Math.max(interval1[0], interval2[0]), interval1[1] + interval2[1]];
+		}
+	};
+	const productInterval = (lower: IntervalDomain, interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain => {
+		if(lower === IntervalBottom || interval1 === IntervalBottom || interval2 === IntervalBottom) {
+			return IntervalBottom;
+		} else {
+			return [lower[0], interval1[1] * interval2[1]];
+		}
+	};
+	const commonCols = meetColNames(value.colnames, other.colnames);
+	let duplicateCols: boolean;  // whether columns may be renamed due to occurance in both data frames
+	let productRows: boolean;  // whether the resulting rows may be a Cartesian product of the rows of the data frames
+
+	if(options?.natural) {
+		duplicateCols = false;
+		productRows = commonCols.length === 0;
+	} else if(by === undefined) {
+		duplicateCols = true;
+		productRows = true;
+	} else if(by.length === 0) {
+		duplicateCols = commonCols.length > 0;
+		productRows = true;
+	} else if(by.every(isNotUndefined)) {
+		duplicateCols = subtractColNames(commonCols, by).length > 0;
+		productRows = false;
+	} else {
+		duplicateCols = true;
+		productRows = false;
+	}
+	const joinType = options?.join ?? 'inner';
+	let rows: IntervalDomain;
+
+	switch(joinType) {
+		case 'inner':
+			rows = extendIntervalToZero(minInterval(value.rows, other.rows));
+			break;
+		case 'left':
+			rows = value.rows;
+			break;
+		case 'right':
+			rows = other.rows;
+			break;
+		case 'full':
+			rows = mergeInterval(value.rows, other.rows);
+			break;
+		default:
+			assertUnreachable(joinType);
+	}
+	const byCols = by?.length;
+
 	return {
 		...value,
-		colnames: joinColNames(value.colnames, other.colnames),
-		cols:     subtractInterval(addInterval(value.cols, other.cols), [1, 1]),
-		rows:     minRows ? minInterval(value.rows, other.rows) : value.rows
+		colnames: duplicateCols ? ColNamesTop : joinColNames(value.colnames, other.colnames),
+		cols:     byCols !== undefined ? subtractInterval(addInterval(value.cols, other.cols), [byCols, byCols]) : mergeInterval(value.cols, other.cols),
+		rows:     productRows ? productInterval(rows, value.rows, other.rows) : rows
 	};
 }
 
 function applyIdentitySemantics(
 	value: DataFrameDomain,
-	_args: Record<string, never>
+	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+	_args: {}
 ): DataFrameDomain {
 	return value;
 }
 
 function applyUnknownSemantics(
 	_value: DataFrameDomain,
-	_args: Record<string, never>
+	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+	_args: {}
 ): DataFrameDomain {
 	return DataFrameTop;
 }

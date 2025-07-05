@@ -1124,8 +1124,12 @@ function mapDataFrameJoin(
 
 		if(typeof byValue === 'string') {
 			byNames = [byValue];
+		} else if(typeof byValue === 'number') {
+			byNames = [undefined];
 		} else if(Array.isArray(byValue) && byValue.every(by => typeof by === 'string')) {
 			byNames = byValue;
+		} else if(Array.isArray(byValue) && byValue.every(by => typeof by === 'number')) {
+			byNames = Array(byValue.length).fill(undefined);
 		}
 	}
 

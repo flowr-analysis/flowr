@@ -4303,6 +4303,20 @@ df <- merge(df1, df2, "id")
 		testDataFrameDomain(
 			shell,
 			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
+df <- merge(df1, df2, 1)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [3, 3], rows: [0, 4] }, { colnames: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
 df <- merge(df1, df2, by = c("id", "name"))
@@ -4311,6 +4325,20 @@ df <- merge(df1, df2, by = c("id", "name"))
 				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
 				['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [4, 4], rows: [0, 4] }, { rows: DomainMatchingType.Overapproximation }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
+df <- merge(df1, df2, by = 1:2)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [4, 4], rows: [0, 4] }, { colnames: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
 			]
 		);
 

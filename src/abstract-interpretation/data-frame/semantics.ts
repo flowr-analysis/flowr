@@ -1,5 +1,5 @@
-import { isNotUndefined } from '../../util/assert';
-import type { DataFrameDomain } from './domain';
+import { assertUnreachable, isNotUndefined } from '../../util/assert';
+import type { DataFrameDomain, IntervalDomain } from './domain';
 import { addInterval, ColNamesTop, DataFrameTop, extendIntervalToInfinity, extendIntervalToZero, IntervalBottom, IntervalTop, joinColNames, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
 
 export enum ConstraintType {
@@ -31,7 +31,7 @@ const DataFrameSemanticsMapper = {
 	'mutateCols':  { apply: applyMutateColsSemantics,  type: ConstraintType.ResultPostcondition },
 	'groupBy':     { apply: applyGroupBySemantics,     type: ConstraintType.ResultPostcondition },
 	'summarize':   { apply: applySummarizeSemantics,   type: ConstraintType.ResultPostcondition },
-	'leftJoin':    { apply: applyLeftJoinSemantics,    type: ConstraintType.ResultPostcondition },
+	'join':        { apply: applyJoinSemantics,        type: ConstraintType.ResultPostcondition },
 	'unknown':     { apply: applyUnknownSemantics,     type: ConstraintType.ResultPostcondition },
 	'identity':    { apply: applyIdentitySemantics,    type: ConstraintType.ResultPostcondition }
 } as const satisfies Record<string, DataFrameSemanticsMapperInfo<never, never>>;
@@ -265,7 +265,7 @@ function applyConcatRowsSemantics(
 function applySubsetColsSemantics(
 	value: DataFrameDomain,
 	{ colnames }: { colnames: (string | undefined)[] | undefined },
-	options?: { duplicateCols?: boolean }
+	options?: { duplicateCols?: boolean, renamedCols?: boolean }
 ): DataFrameDomain {
 	const cols = colnames?.length;
 
@@ -274,6 +274,12 @@ function applySubsetColsSemantics(
 			...value,
 			colnames: ColNamesTop,
 			cols:     cols !== undefined ? [cols, cols] : IntervalTop
+		};
+	} else if(options?.renamedCols) {
+		return {
+			...value,
+			colnames: ColNamesTop,
+			cols:     cols !== undefined ? minInterval(value.cols, [cols, cols]) : extendIntervalToZero(value.cols)
 		};
 	}
 	return {
@@ -356,16 +362,71 @@ function applySummarizeSemantics(
 	};
 }
 
-function applyLeftJoinSemantics(
+function applyJoinSemantics(
 	value: DataFrameDomain,
-	{ other }: { other: DataFrameDomain, by: string | undefined },
-	options?: { minRows?: boolean }
+	{ other, by }: { other: DataFrameDomain, by: (string | undefined)[] | undefined },
+	options?: { join?: 'inner' | 'left' | 'right' | 'full', natural?: boolean }
 ): DataFrameDomain {
+	const mergeInterval = (interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain => {
+		if(interval1 === IntervalBottom || interval2 === IntervalBottom) {
+			return IntervalBottom;
+		} else {
+			return [Math.max(interval1[0], interval2[0]), interval1[1] + interval2[1]];
+		}
+	};
+	const productInterval = (lower: IntervalDomain, interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain => {
+		if(lower === IntervalBottom || interval1 === IntervalBottom || interval2 === IntervalBottom) {
+			return IntervalBottom;
+		} else {
+			return [lower[0], interval1[1] * interval2[1]];
+		}
+	};
+	const commonCols = meetColNames(value.colnames, other.colnames);
+	let duplicateCols: boolean;  // whether columns may be renamed due to occurance in both data frames
+	let productRows: boolean;  // whether the resulting rows may be a Cartesian product of the rows of the data frames
+
+	if(options?.natural) {
+		duplicateCols = false;
+		productRows = commonCols.length === 0;
+	} else if(by === undefined) {
+		duplicateCols = true;
+		productRows = true;
+	} else if(by.length === 0) {
+		duplicateCols = commonCols.length > 0;
+		productRows = true;
+	} else if(by.every(isNotUndefined)) {
+		duplicateCols = subtractColNames(commonCols, by).length > 0;
+		productRows = false;
+	} else {
+		duplicateCols = true;
+		productRows = false;
+	}
+	const joinType = options?.join ?? 'inner';
+	let rows: IntervalDomain;
+
+	switch(joinType) {
+		case 'inner':
+			rows = extendIntervalToZero(minInterval(value.rows, other.rows));
+			break;
+		case 'left':
+			rows = value.rows;
+			break;
+		case 'right':
+			rows = other.rows;
+			break;
+		case 'full':
+			rows = mergeInterval(value.rows, other.rows);
+			break;
+		default:
+			assertUnreachable(joinType);
+	}
+	const byCols = by?.length;
+
 	return {
 		...value,
-		colnames: joinColNames(value.colnames, other.colnames),
-		cols:     subtractInterval(addInterval(value.cols, other.cols), [1, 1]),
-		rows:     options?.minRows ? minInterval(value.rows, other.rows) : value.rows
+		colnames: duplicateCols ? ColNamesTop : joinColNames(value.colnames, other.colnames),
+		cols:     byCols !== undefined ? subtractInterval(addInterval(value.cols, other.cols), [byCols, byCols]) : mergeInterval(value.cols, other.cols),
+		rows:     productRows ? productInterval(rows, value.rows, other.rows) : rows
 	};
 }
 

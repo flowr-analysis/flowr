@@ -575,10 +575,10 @@ df$"id"
 df$'id'
 			`.trim(),
 			[
-				['2@$', [{ operation: 'accessCols',  columns: ['id'] }]],
-				['3@$', [{ operation: 'accessCols',  columns: ['id'] }]],
-				['4@$', [{ operation: 'accessCols',  columns: ['id'] }]],
-				['5@$', [{ operation: 'accessCols',  columns: ['id'] }]]
+				['2@$', [{ operation: 'accessCols', columns: ['id'] }]],
+				['3@$', [{ operation: 'accessCols', columns: ['id'] }]],
+				['4@$', [{ operation: 'accessCols', columns: ['id'] }]],
+				['5@$', [{ operation: 'accessCols', columns: ['id'] }]]
 			]
 		);
 
@@ -595,13 +595,13 @@ df[[1]]
 df[1, ]
 			`.trim(),
 			[
-				['2@[', [{ operation: 'accessCols',  columns: ['id'] }, { operation: 'subsetCols', colnames: ['id'] }]],
-				['3@[', [{ operation: 'accessCols',  columns: ['id'] }]],
-				['4@[[', [{ operation: 'accessCols',  columns: ['id'] }]],
-				['5@[', [{ operation: 'accessCols',  columns: [1] }, { operation: 'subsetCols', colnames: [undefined] }]],
-				['6@[', [{ operation: 'accessCols',  columns: [1] }]],
-				['7@[[', [{ operation: 'accessCols',  columns: [1] }]],
-				['8@[', [{ operation: 'accessRows',  rows: [1] }, { operation: 'subsetRows', rows: 1 }]]
+				['2@[', [{ operation: 'accessCols', columns: ['id'] }, { operation: 'subsetCols', colnames: ['id'] }]],
+				['3@[', [{ operation: 'accessCols', columns: ['id'] }]],
+				['4@[[', [{ operation: 'accessCols', columns: ['id'] }]],
+				['5@[', [{ operation: 'accessCols', columns: [1] }, { operation: 'subsetCols', colnames: [undefined] }]],
+				['6@[', [{ operation: 'accessCols', columns: [1] }]],
+				['7@[[', [{ operation: 'accessCols', columns: [1] }]],
+				['8@[', [{ operation: 'accessRows', rows: [1] }, { operation: 'subsetRows', rows: 1 }]]
 			]
 		);
 
@@ -615,10 +615,10 @@ df[1, 1]
 df[[1, 1]]
 			`.trim(),
 			[
-				['2@[', [{ operation: 'accessRows',  rows: [1] }, { operation: 'accessCols', columns: ['id'] }]],
-				['3@[[', [{ operation: 'accessRows',  rows: [1] }, { operation: 'accessCols', columns: ['id'] }]],
-				['4@[', [{ operation: 'accessRows',  rows: [1] }, { operation: 'accessCols', columns: [1] }]],
-				['5@[[', [{ operation: 'accessRows',  rows: [1] }, { operation: 'accessCols', columns: [1] }]]
+				['2@[', [{ operation: 'accessRows', rows: [1] }, { operation: 'accessCols', columns: ['id'] }]],
+				['3@[[', [{ operation: 'accessRows', rows: [1] }, { operation: 'accessCols', columns: ['id'] }]],
+				['4@[', [{ operation: 'accessRows', rows: [1] }, { operation: 'accessCols', columns: [1] }]],
+				['5@[[', [{ operation: 'accessRows', rows: [1] }, { operation: 'accessCols', columns: [1] }]]
 			]
 		);
 
@@ -639,17 +639,17 @@ df[1:2, c("id", "name")]
 df[c(1, 3), 1:2]
 			`.trim(),
 			[
-				['2@[', [{ operation: 'accessCols',  columns: ['id', 'name'] }, { operation: 'subsetCols', colnames: ['id', 'name'] }]],
-				['3@[', [{ operation: 'accessCols',  columns: [1, 2] }, { operation: 'subsetCols', colnames: [undefined, undefined] }]],
-				['4@[', [{ operation: 'accessCols',  columns: [1, 2] }, { operation: 'subsetCols', colnames: [undefined, undefined] }]],
-				['5@[', [{ operation: 'accessRows',  rows: [1, 2] }, { operation: 'subsetRows', rows: 2 }]],
-				['6@[', [{ operation: 'accessRows',  rows: [1, 2] }, { operation: 'subsetRows', rows: 2 }]],
-				['7@[', [{ operation: 'accessRows',  rows: [1] }, { operation: 'accessCols', columns: ['id', 'name'] }, { operation: 'subsetRows', rows: 1 }, { operation: 'subsetCols', colnames: ['id', 'name'] }]],
-				['8@[', [{ operation: 'accessRows',  rows: [1] }, { operation: 'accessCols', columns: [1, 2] }, { operation: 'subsetRows', rows: 1 }, { operation: 'subsetCols', colnames: [undefined, undefined] }]],
-				['9@[', [{ operation: 'accessRows',  rows: [1, 2] }, { operation: 'accessCols', columns: ['id'] }]],
-				['10@[', [{ operation: 'accessRows',  rows: [1, 2] },  { operation: 'accessCols', columns: [1] }]],
-				['11@[', [{ operation: 'accessRows',  rows: [1, 2] }, { operation: 'accessCols', columns: ['id', 'name'] }, { operation: 'subsetRows', rows: 2 }, { operation: 'subsetCols', colnames: ['id', 'name'] }]],
-				['12@[', [{ operation: 'accessRows',  rows: [1, 3] }, { operation: 'accessCols', columns: [1, 2] }, { operation: 'subsetRows', rows: 2 }, { operation: 'subsetCols', colnames: [undefined, undefined] }]]
+				['2@[', [{ operation: 'accessCols', columns: ['id', 'name'] }, { operation: 'subsetCols', colnames: ['id', 'name'] }]],
+				['3@[', [{ operation: 'accessCols', columns: [1, 2] }, { operation: 'subsetCols', colnames: [undefined, undefined] }]],
+				['4@[', [{ operation: 'accessCols', columns: [1, 2] }, { operation: 'subsetCols', colnames: [undefined, undefined] }]],
+				['5@[', [{ operation: 'accessRows', rows: [1, 2] }, { operation: 'subsetRows', rows: 2 }]],
+				['6@[', [{ operation: 'accessRows', rows: [1, 2] }, { operation: 'subsetRows', rows: 2 }]],
+				['7@[', [{ operation: 'accessRows', rows: [1] }, { operation: 'accessCols', columns: ['id', 'name'] }, { operation: 'subsetRows', rows: 1 }, { operation: 'subsetCols', colnames: ['id', 'name'] }]],
+				['8@[', [{ operation: 'accessRows', rows: [1] }, { operation: 'accessCols', columns: [1, 2] }, { operation: 'subsetRows', rows: 1 }, { operation: 'subsetCols', colnames: [undefined, undefined] }]],
+				['9@[', [{ operation: 'accessRows', rows: [1, 2] }, { operation: 'accessCols', columns: ['id'] }]],
+				['10@[', [{ operation: 'accessRows', rows: [1, 2] }, { operation: 'accessCols', columns: [1] }]],
+				['11@[', [{ operation: 'accessRows', rows: [1, 2] }, { operation: 'accessCols', columns: ['id', 'name'] }, { operation: 'subsetRows', rows: 2 }, { operation: 'subsetCols', colnames: ['id', 'name'] }]],
+				['12@[', [{ operation: 'accessRows', rows: [1, 3] }, { operation: 'accessCols', columns: [1, 2] }, { operation: 'subsetRows', rows: 2 }, { operation: 'subsetCols', colnames: [undefined, undefined] }]]
 			]
 		);
 
@@ -949,7 +949,7 @@ result <- df[df$id == 2, "name", drop = FALSE]
 df <- data.frame(id = 1:3, name = 4:6)
 df[["nam", exact = FALSE]]
 			`.trim(),
-			[['2@[[', [{ operation: 'accessCols',  columns: undefined }]]]
+			[['2@[[', [{ operation: 'accessCols', columns: undefined }]]]
 		);
 
 		testDataFrameDomain(
@@ -3084,7 +3084,8 @@ df <- dplyr::mutate(df, score = 31:35, \`score\` = 36:40)
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }],
 				['2@df', { colnames: ['id', 'name', 'score'], cols: [2, 4], rows: [5, 5] }, { cols: DomainMatchingType.Overapproximation }]
-			]
+			],
+			skipLibraries
 		);
 
 		testDataFrameDomain(
@@ -3327,7 +3328,217 @@ df <- dplyr::summarize(df, score = mean(score), sum = sum(score), .groups = "dro
 		);
 	});
 
-	describe('Left Join', () => {
+	describe('Join', () => {
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::inner_join(df1, df2, by = "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [0, 4] }, { rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df2 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df <- dplyr::inner_join(df1, df2, by = "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [0, 4] }, { rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df2 <- data.frame(id = 5:8, score = c(80, 75, 90, 70))
+df <- dplyr::inner_join(df1, df2)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['3@df', { colnames: ['id', 'category', 'score'], cols: [2, 4], rows: [0, 4] }, { cols: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::inner_join(df1, df2, "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [0, 4] }, { rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::inner_join(df1, df2, by = c("id", "name"))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [4, 4], rows: [0, 4] }, { rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::inner_join(df1, df2)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [3, 6], rows: [0, 4] }, { cols: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::inner_join(df1, df2, "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [0, 4] }, { colnames: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::inner_join(df1, df2, list(x = "id", y = "nr"))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['nr', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [2, 4], rows: [0, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::inner_join(df1, df2, dplyr::join_by(id == nr))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['nr', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [2, 4], rows: [0, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, level = 80, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::inner_join(df1, df2, dplyr::join_by(score >= level))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'level', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [3, 5], rows: [0, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(nr = 5:10, level = 80, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::inner_join(df1, df2, dplyr::join_by(id <= nr))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['nr', 'level', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [3, 5], rows: [0, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::inner_join(df1, df2, "id", suffix = c(".df1", ".df2"))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [0, 4] }, { colnames: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::inner_join(df1, df2, "id", keep = TRUE)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', DataFrameTop, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "X", category = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "Y", category = c("A", "B", "B", "A", "C", "B"), amount = 16)
+df <- dplyr::inner_join(df1, df2, by = sample(colnames(df1)[1:3], 2))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'category', 'score'], cols: [4, 4], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category', 'amount'], cols: [4, 4], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [4, 8], rows: [0, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
 		testDataFrameDomain(
 			shell,
 			`
@@ -3362,122 +3573,601 @@ df <- dplyr::left_join(df1, df2, by = "id")
 			shell,
 			`
 df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df2 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 5:8, score = c(80, 75, 90, 70))
 df <- dplyr::left_join(df1, df2)
 			`.trim(),
 			[
 				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
 				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
-				['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }]
+				['3@df', { colnames: ['id', 'category', 'score'], cols: [2, 4], rows: [6, 6] }, { cols: DomainMatchingType.Overapproximation }]
 			],
 			skipLibraries
 		);
 
-		describe('Currently Unsupported', { fails: true }, () => {
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::left_join(df1, df2, "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [4, 4] }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
 df <- dplyr::left_join(df1, df2, by = c("id", "name"))
-				`.trim(),
-				[
-					['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [4, 4], rows: [4, 4] }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [4, 4], rows: [4, 4] }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
 df <- dplyr::left_join(df1, df2)
-				`.trim(),
-				[
-					['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [3, 6], rows: [4, 4] }, { cols: DomainMatchingType.Overapproximation }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [3, 6], rows: [4, 4] }, { cols: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
 df <- dplyr::left_join(df1, df2, "id")
-				`.trim(),
-				[
-					['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
-df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
-df2 <- data.frame(nr = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::left_join(df1, df2, join_by(id == nr, name))
-				`.trim(),
-				[
-					['3@df', { colnames: ColNamesTop, cols: [3, 6], rows: [4, Infinity] }, DataFrameTestOverapproximation]
-				],
-				skipLibraries
-			);
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::left_join(df1, df2, list(x = "id", y = "nr"))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['nr', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [2, 4], rows: [4, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::left_join(df1, df2, dplyr::join_by(id == nr))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['nr', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [2, 4], rows: [4, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, level = 80, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::left_join(df1, df2, join_by(score >= level))
-				`.trim(),
-				[
-					['3@df', { colnames: ColNamesTop, cols: [2, 5], rows: [4, Infinity] }, DataFrameTestOverapproximation]
-				],
-				skipLibraries
-			);
+df <- dplyr::left_join(df1, df2, dplyr::join_by(score >= level))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'level', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [3, 5], rows: [4, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(nr = 5:10, level = 80, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::left_join(df1, df2, dplyr::join_by(id <= nr))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['nr', 'level', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [3, 5], rows: [4, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
 df <- dplyr::left_join(df1, df2, "id", suffix = c(".df1", ".df2"))
-				`.trim(),
-				[
-					['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df <- dplyr::left_join(df1, df2, "id", keep = TRUE)
-				`.trim(),
-				[
-					['3@df', { colnames: ColNamesTop, cols: [2, 4], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				],
-				skipLibraries
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', DataFrameTop, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, name = "X", category = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "Y", category = c("A", "B", "B", "A", "C", "B"), amount = 16)
 df <- dplyr::left_join(df1, df2, by = sample(colnames(df1)[1:3], 2))
-				`.trim(),
-				[
-					['3@df', { colnames: ColNamesTop, cols: [4, 8], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
-				],
-				skipLibraries
-			);
-		});
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'category', 'score'], cols: [4, 4], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category', 'amount'], cols: [4, 4], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [4, 8], rows: [4, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::right_join(df1, df2, by = "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 6] }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df2 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df <- dplyr::right_join(df1, df2, by = "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [4, 4] }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df2 <- data.frame(id = 5:8, score = c(80, 75, 90, 70))
+df <- dplyr::right_join(df1, df2)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['3@df', { colnames: ['id', 'category', 'score'], cols: [2, 4], rows: [4, 4] }, { cols: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::right_join(df1, df2, "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 6] }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::right_join(df1, df2, by = c("id", "name"))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [4, 4], rows: [6, 6] }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::right_join(df1, df2)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [3, 6], rows: [6, 6] }, { cols: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::right_join(df1, df2, "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [6, 6] }, { colnames: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::right_join(df1, df2, list(x = "id", y = "nr"))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['nr', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [2, 4], rows: [6, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::right_join(df1, df2, dplyr::join_by(id == nr))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['nr', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [2, 4], rows: [6, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, level = 80, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::right_join(df1, df2, dplyr::join_by(score >= level))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'level', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [3, 5], rows: [6, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(nr = 5:10, level = 80, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::right_join(df1, df2, dplyr::join_by(id <= nr))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['nr', 'level', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [3, 5], rows: [6, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::right_join(df1, df2, "id", suffix = c(".df1", ".df2"))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [6, 6] }, { colnames: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::right_join(df1, df2, "id", keep = TRUE)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', DataFrameTop, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "X", category = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "Y", category = c("A", "B", "B", "A", "C", "B"), amount = 16)
+df <- dplyr::right_join(df1, df2, by = sample(colnames(df1)[1:3], 2))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'category', 'score'], cols: [4, 4], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category', 'amount'], cols: [4, 4], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [4, 8], rows: [6, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::full_join(df1, df2, by = "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 10] }, { rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df2 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df <- dplyr::full_join(df1, df2, by = "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 10] }, { rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df2 <- data.frame(id = 5:8, score = c(80, 75, 90, 70))
+df <- dplyr::full_join(df1, df2)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['3@df', { colnames: ['id', 'category', 'score'], cols: [2, 4], rows: [6, 10] }, { cols: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::full_join(df1, df2, "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 10] }, { rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::full_join(df1, df2, by = c("id", "name"))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [4, 4], rows: [6, 10] }, { rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::full_join(df1, df2)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [3, 6], rows: [6, 10] }, { cols: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::full_join(df1, df2, "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [6, 10] }, { colnames: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::full_join(df1, df2, list(x = "id", y = "nr"))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['nr', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [2, 4], rows: [6, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(nr = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::full_join(df1, df2, dplyr::join_by(id == nr))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['nr', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [2, 4], rows: [6, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, level = 80, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::full_join(df1, df2, dplyr::join_by(score >= level))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'level', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [3, 5], rows: [6, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(nr = 5:10, level = 80, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::full_join(df1, df2, dplyr::join_by(id <= nr))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['nr', 'level', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [3, 5], rows: [6, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::full_join(df1, df2, "id", suffix = c(".df1", ".df2"))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [6, 10] }, { colnames: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::full_join(df1, df2, "id", keep = TRUE)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', DataFrameTop, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "X", category = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "Y", category = c("A", "B", "B", "A", "C", "B"), amount = 16)
+df <- dplyr::full_join(df1, df2, by = sample(colnames(df1)[1:3], 2))
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'category', 'score'], cols: [4, 4], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category', 'amount'], cols: [4, 4], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [4, 8], rows: [6, 24] }, DataFrameTestOverapproximation]
+			],
+			skipLibraries
+		);
 	});
 
 	describe('Merge', () => {
@@ -3491,7 +4181,7 @@ df <- merge(df1, df2, by = "id")
 			[
 				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
 				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
-				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [4, 4] }]
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [0, 4] }, { rows: DomainMatchingType.Overapproximation }]
 			]
 		);
 
@@ -3505,155 +4195,301 @@ df <- merge(df1, df2, by = "id")
 			[
 				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
 				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
-				['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [4, 4] }]
+				['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [0, 4] }, { rows: DomainMatchingType.Overapproximation }]
 			]
 		);
 
-		describe('Currently Unsupported', { fails: true }, () => {
-			assertDataFrameDomain(
-				shell,
-				`
-df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df2 <- data.frame(id = 5:8, score = c(80, 75, 90, 70))
 df <- merge(df1, df2)
-				`.trim(),
-				[
-					['3@df', { colnames: ['id', 'score', 'category'], cols: [2, 4], rows: [4, Infinity] }]
-				]
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [2, 4], rows: [0, 4] }, { cols: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			]
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
+df <- merge(df1, df2, "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [0, 4] }, { rows: DomainMatchingType.Overapproximation }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
 df <- merge(df1, df2, by = c("id", "name"))
-				`.trim(),
-				[
-					['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [4, 4], rows: [4, 4] }]
-				]
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [4, 4], rows: [0, 4] }, { rows: DomainMatchingType.Overapproximation }]
+			]
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
 df <- merge(df1, df2)
-				`.trim(),
-				[
-					['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [3, 6], rows: [4, Infinity] }, { cols: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
-				]
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'name', 'score', 'category'], cols: [3, 6], rows: [0, 4] }, { cols: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			]
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(name = "A", category = c("A", "B", "B", "A", "C", "B"))
 df <- merge(df1, df2)
-				`.trim(),
-				[
-					['3@df', { colnames: ['id', 'score', 'name', 'category'], cols: [2, 4], rows: [4, Infinity] }, { cols: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
-				]
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['name', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'name', 'category'], cols: [2, 4], rows: [0, 24] }, { cols: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			]
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df <- merge(df1, df2, by = c())
-				`.trim(),
-				[
-					['3@df', { colnames: ColNamesTop, cols: [2, 4], rows: [4, Infinity] }, DataFrameTestOverapproximation]
-				]
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [4, 4], rows: [0, 24] }, { colnames: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			]
+		);
 
-			assertDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-lst <- list(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+lst <- list(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
 df <- merge(df1, lst, by = "id")
-				`.trim(),
-				[
-					['3@df', { colnames: ColNamesTop, cols: [2, Infinity], rows: [4, Infinity] }]
-				]
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['3@df', { colnames: ColNamesTop, cols: [1, Infinity], rows: [0, 4] }, DataFrameTestOverapproximation]
+			]
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+lst <- list(id = 3:8, category = c("A", "B", "B", "A", "C", "B"))
+df <- merge(df1, lst, by = "id", all = TRUE)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['3@df', { colnames: ColNamesTop, cols: [1, Infinity], rows: [4, Infinity] }, DataFrameTestOverapproximation]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
 df <- merge(df1, df2, "id")
-				`.trim(),
-				[
-					['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]
-				]
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [0, 4] }, { colnames: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			]
+		);
 
-			assertDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(nr = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
 df <- merge(df1, df2, by.x = "id", by.y = "nr")
-				`.trim(),
-				[
-					['3@df', { colnames: ColNamesTop, cols: [3, 6], rows: [4, Infinity] }]
-				]
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['nr', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', DataFrameTop, DataFrameTestOverapproximation]
+			]
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df2 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df <- merge(df1, df2, "id", all.x = TRUE)
-				`.trim(),
-				[
-					['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 6] }]
-				]
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 6] }]
+			]
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df2 <- data.frame(id = 5:8, score = c(80, 75, 90, 70))
+df <- merge(df1, df2, "id", all.x = TRUE)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 6] }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df2 <- data.frame(id = 7:10, score = c(80, 75, 90, 70))
+df <- merge(df1, df2, "id", all.x = TRUE)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 6] }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df <- merge(df1, df2, "id", all.y = TRUE)
-				`.trim(),
-				[
-					['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 6] }]
-				]
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 6] }]
+			]
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 3:8, category = c("A", "B", "B", "A", "C", "B"))
+df <- merge(df1, df2, "id", all.y = TRUE)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 6] }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
+df <- merge(df1, df2, "id", all.y = TRUE)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 6] }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- merge(df1, df2, "id", all = runif(1) >= 0.5)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', DataFrameTop, DataFrameTestOverapproximation]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df <- merge(df1, df2, "id", all = TRUE)
-				`.trim(),
-				[
-					['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 6] }]
-				]
-			);
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 10] }, { rows: DomainMatchingType.Overapproximation }]
+			]
+		);
 
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 3:8, category = c("A", "B", "B", "A", "C", "B"))
+df <- merge(df1, df2, "id", all = TRUE)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 10] }, { rows: DomainMatchingType.Overapproximation }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 5:10, category = c("A", "B", "B", "A", "C", "B"))
+df <- merge(df1, df2, "id", all = TRUE)
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [6, 10] }, { rows: DomainMatchingType.Overapproximation }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "B", category = c("A", "B", "B", "A", "C", "B"))
 df <- merge(df1, df2, "id", no.dups = FALSE)
-				`.trim(),
-				[
-					['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]
-				]
-			);
-		});
+			`.trim(),
+			[
+				['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ColNamesTop, cols: [5, 5], rows: [0, 4] }, { colnames: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			]
+		);
 	});
 
 	describe('Rearrange', () => {
@@ -3744,6 +4580,37 @@ print(df3$level)
 				['3@df1', { colnames: ['id', 'age', 'score'], cols: [3, 3], rows: [5, 5] }],
 				['4@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
 				['11@df3', { colnames: ['id', 'score', 'level', 'category'], cols: [3, 4], rows: [0, 5] }, { cols: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]
+			],
+			skipLibraries
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+library(dplyr)
+
+df <- data.frame(
+    id = 1:10,
+    name = c("Alice", "Bob", "Charlie", "David", "Eva", "Frank", "Grace", "Hannah", "Ian", "Jack"),
+    age = c(23, 30, 22, 35, 28, 40, 29, 31, 24, 27),
+    score = c(85, 90, 78, 88, 92, 95, 80, 75, 89, 84)
+)
+
+result <- df %>% select(-name)
+result <- result %>% filter(age > 25)
+result <- result %>% group_by(age)
+result <- result %>% summarize(avg_score = mean(score))
+result <- result %>% mutate(grade = ifelse(avg_score >= 90, "Excellent", ifelse(avg_score >= 80, "Good", "Average")))
+result <- result %>% arrange(desc(avg_score))
+			`.trim(),
+			[
+				['10@df', { colnames: ['id', 'name', 'age', 'score'], cols: [4, 4], rows: [10, 10] }],
+				['10@result', { colnames: ['id', 'age', 'score'], cols: [3, 3], rows: [10, 10] }],
+				['11@result', { colnames: ['id', 'age', 'score'], cols: [3, 3], rows: [0, 10] }, { rows: DomainMatchingType.Overapproximation }],
+				['12@result', { colnames: ['id', 'age', 'score'], cols: [3, 3], rows: [0, 10] }, { rows: DomainMatchingType.Overapproximation }],
+				['13@result', { colnames: ['id', 'age', 'score', 'avg_score'], cols: [1, 4], rows: [1, 10] }, DataFrameTestOverapproximation],
+				['14@result', { colnames: ['id', 'age', 'score', 'avg_score', 'grade'], cols: [1, 5], rows: [1, 10] }, DataFrameTestOverapproximation],
+				['15@result', { colnames: ['id', 'age', 'score', 'avg_score', 'grade'], cols: [1, 5], rows: [1, 10] }, DataFrameTestOverapproximation]
 			],
 			skipLibraries
 		);

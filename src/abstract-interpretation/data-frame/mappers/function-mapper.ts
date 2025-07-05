@@ -55,8 +55,11 @@ const DataFrameFunctionMapper = {
 	'group_by':      { mapper: mapDataFrameGroupBy, library: 'dplyr', type: DataFrameType.Tibble },
 	'summarise':     { mapper: mapDataFrameSummarize, library: 'dplyr' },
 	'summarize':     { mapper: mapDataFrameSummarize, library: 'dplyr' },
-	'left_join':     { mapper: mapDataFrameLeftJoin, library: 'dplyr' },
-	'merge':         { mapper: mapDataFrameLeftJoin },
+	'inner_join':    { mapper: mapDataFrameJoin, library: 'dplyr' },
+	'left_join':     { mapper: mapDataFrameJoin, library: 'dplyr' },
+	'right_join':    { mapper: mapDataFrameJoin, library: 'dplyr' },
+	'full_join':     { mapper: mapDataFrameJoin, library: 'dplyr' },
+	'merge':         { mapper: mapDataFrameJoin },
 	'relocate':      { mapper: mapDataFrameIdentity, library: 'dplyr' },
 	'arrange':       { mapper: mapDataFrameIdentity, library: 'dplyr' }
 } as const satisfies Record<string, DataFrameFunctionMapperInfo<never>>;
@@ -314,28 +317,52 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 		dataFrame: { pos: 0, name: '.data' },
 		special:   ['.by', '.groups']
 	},
+	'inner_join': {
+		dataFrame:      { pos: 0, name: 'x' },
+		otherDataFrame: { pos: 1, name: 'y' },
+		by:             { pos: 2, name: 'by' },
+		joinAll:        { pos: -1, default: false },
+		joinLeft:       { pos: -1, default: false },
+		joinRight:      { pos: -1, default: false },
+		critical:       [{ pos: -1, name: 'keep' }]
+	},
 	'left_join': {
 		dataFrame:      { pos: 0, name: 'x' },
 		otherDataFrame: { pos: 1, name: 'y' },
 		by:             { pos: 2, name: 'by' },
-		critical:       [
-			{ pos: 4, name: 'suffix', default: ['.x', '.y'] },
-			{ pos: -1, name: 'keep' }
-		]
+		joinAll:        { pos: -1, default: false },
+		joinLeft:       { pos: -1, default: true },
+		joinRight:      { pos: -1, default: false },
+		critical:       [{ pos: -1, name: 'keep' }]
+	},
+	'right_join': {
+		dataFrame:      { pos: 0, name: 'x' },
+		otherDataFrame: { pos: 1, name: 'y' },
+		by:             { pos: 2, name: 'by' },
+		joinAll:        { pos: -1, default: false },
+		joinLeft:       { pos: -1, default: false },
+		joinRight:      { pos: -1, default: true },
+		critical:       [{ pos: -1, name: 'keep' }]
+	},
+	'full_join': {
+		dataFrame:      { pos: 0, name: 'x' },
+		otherDataFrame: { pos: 1, name: 'y' },
+		by:             { pos: 2, name: 'by' },
+		joinAll:        { pos: -1, default: true },
+		joinLeft:       { pos: -1, default: false },
+		joinRight:      { pos: -1, default: false },
+		critical:       [{ pos: -1, name: 'keep' }]
 	},
 	'merge': {
 		dataFrame:      { pos: 0, name: 'x' },
 		otherDataFrame: { pos: 1, name: 'y' },
-		by:             { pos: 3, name: 'by' },
-		minRows:        true,
+		by:             { pos: 2, name: 'by' },
+		joinAll:        { pos: 5, name: 'all', default: false },
+		joinLeft:       { pos: 6, name: 'all.x', default: false },
+		joinRight:      { pos: 7, name: 'all.y', default: false },
 		critical:       [
 			{ pos: 3, name: 'by.x' },
-			{ pos: 4, name: 'by.y' },
-			{ pos: 5, name: 'all' },
-			{ pos: 6, name: 'all.x' },
-			{ pos: 7, name: 'all.y' },
-			{ pos: 9, name: 'suffixes' },
-			{ pos: 10, name: 'no.dups' }
+			{ pos: 4, name: 'by.y' }
 		]
 	},
 	'relocate': {
@@ -898,7 +925,7 @@ function mapDataFrameSelect(
 			operation: 'subsetCols',
 			operand:   operand?.info.id,
 			colnames:  selectedCols?.map(col => typeof col === 'string' ? col : undefined),
-			...(renamedCols ? { options: { duplicateCols: true } } : {})
+			...(renamedCols ? { options: { renamedCols: true } } : {})
 		});
 		operand = undefined;
 	}
@@ -1050,13 +1077,15 @@ function mapDataFrameSummarize(
 	return result;
 }
 
-function mapDataFrameLeftJoin(
+function mapDataFrameJoin(
 	args: readonly RFunctionArgument<ParentInformation & AbstractInterpretationInfo>[],
 	params: {
 		dataFrame:      FunctionParameterLocation,
 		otherDataFrame: FunctionParameterLocation,
 		by:             FunctionParameterLocation,
-		minRows?:       boolean
+		joinAll:        FunctionParameterLocation<boolean>,
+		joinLeft:       FunctionParameterLocation<boolean>,
+		joinRight:      FunctionParameterLocation<boolean>
 	},
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
@@ -1070,28 +1099,64 @@ function mapDataFrameLeftJoin(
 			operand:   dataFrame.value.info.id
 		}];
 	}
-	const result: DataFrameOperation[] = [];
-	const otherArg = getFunctionArgument(args, params.otherDataFrame, info);
-	const otherDataFrame = resolveIdToAbstractValue(otherArg, info.graph);
-	const byArg = getFunctionArgument(args, params.by, info);
-	const byName = resolveIdToArgValueSymbolName(byArg, info);
+	const joinAll = getArgumentValue(args, params.joinAll, info);
+	const joinLeft = getArgumentValue(args, params.joinLeft, info);
+	const joinRight = getArgumentValue(args, params.joinRight, info);
 
-	if(byName !== undefined) {
+	if(typeof joinAll !== 'boolean' || typeof joinLeft !== 'boolean' || typeof joinRight !== 'boolean') {
+		return [{
+			operation: 'unknown',
+			operand:   dataFrame.value.info.id
+		}];
+	}
+	const result: DataFrameOperation[] = [];
+
+	const otherArg = getFunctionArgument(args, params.otherDataFrame, info);
+	const byArg = getFunctionArgument(args, params.by, info);
+
+	const otherDataFrame = resolveIdToAbstractValue(otherArg, info.graph) ?? DataFrameTop;
+	let byNames: (string | undefined)[] | undefined;
+
+	const joinType = getJoinType(joinAll, joinLeft, joinRight);
+
+	if(byArg !== undefined) {
+		const byValue = resolveIdToArgValue(byArg, info);
+
+		if(typeof byValue === 'string') {
+			byNames = [byValue];
+		} else if(Array.isArray(byValue) && byValue.every(by => typeof by === 'string')) {
+			byNames = byValue;
+		}
+	}
+
+	if(byNames?.some(isNotUndefined)) {
 		result.push({
 			operation: 'accessCols',
 			operand:   dataFrame.value.info.id,
-			columns:   [byName]
+			columns:   byNames.filter(isNotUndefined)
 		});
 	}
 
 	result.push({
-		operation: 'leftJoin',
+		operation: 'join',
 		operand:   dataFrame.value.info.id,
-		other:     otherDataFrame ?? DataFrameTop,
-		by:        byName,
-		...(params.minRows ? { options: { minRows: true } } : {})
+		other:     otherDataFrame,
+		by:        byNames,
+		options:   { join: joinType, natural: byArg === undefined }
 	});
 	return result;
+}
+
+function getJoinType(joinAll: boolean, joinLeft: boolean, joinRight: boolean): 'inner' | 'left' | 'right' | 'full' {
+	if(joinAll || (joinLeft && joinRight)) {
+		return 'full';
+	} else if(joinLeft) {
+		return 'left';
+	} else if(joinRight) {
+		return 'right';
+	} else {
+		return 'inner';
+	}
 }
 
 function mapDataFrameIdentity(

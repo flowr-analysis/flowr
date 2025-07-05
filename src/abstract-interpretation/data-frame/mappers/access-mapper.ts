@@ -7,9 +7,9 @@ import type { RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nod
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperation } from '../absint-info';
-import { resolveIdToAbstractValue } from '../absint-visitor';
-import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, unquoteArgument } from '../resolve-args';
+import type { DataFrameInfo, DataFrameOperation } from '../absint-info';
+import { resolveIdToArgValue, resolveIdToArgValueSymbolName, unquoteArgument } from '../resolve-args';
+import { getArgumentValue, isDataFrameArgument } from './arguments';
 
 const SpecialAccessArgumentsMapper: Record<RIndexAccess['operator'], string[]> = {
 	'[':  ['drop'],
@@ -21,12 +21,13 @@ export function mapDataFrameAccess(
 	dfg: DataflowGraph
 ): DataFrameInfo | undefined {
 	if(node.type === RType.Access) {
+		const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
 		let operations: DataFrameOperation[] | undefined;
 
 		if(isStringBasedAccess(node)) {
-			operations = mapDataFrameNamedColumnAccess(node, { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias });
+			operations = mapDataFrameNamedColumnAccess(node, resolveInfo);
 		} else {
-			operations = mapDataFrameIndexColRowAccess(node, { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias });
+			operations = mapDataFrameIndexColRowAccess(node, resolveInfo);
 		}
 		if(operations !== undefined) {
 			return { type: 'expression', operations: operations };
@@ -35,45 +36,39 @@ export function mapDataFrameAccess(
 }
 
 function mapDataFrameNamedColumnAccess(
-	access: RNamedAccess<ParentInformation & AbstractInterpretationInfo>,
+	access: RNamedAccess<ParentInformation>,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	const dataFrame = access.accessed;
 
-	if(resolveIdToAbstractValue(dataFrame, info.graph) === undefined) {
+	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
 	}
-	const argName = resolveIdToArgValueSymbolName(access.access[0], info);
+	const colname = resolveIdToArgValueSymbolName(access.access[0], info);
 
 	return [{
 		operation: 'accessCols',
 		operand:   dataFrame.info.id,
-		columns:   argName ? [argName] : undefined
+		columns:   colname ? [colname] : undefined
 	}];
 }
 
 function mapDataFrameIndexColRowAccess(
-	access: RIndexAccess<ParentInformation & AbstractInterpretationInfo>,
+	access: RIndexAccess<ParentInformation>,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	const dataFrame = access.accessed;
-
-	if(resolveIdToAbstractValue(dataFrame, info.graph) === undefined) {
-		return;
-	}
+	const drop = getArgumentValue(access.access, 'drop', info);
+	const exact = getArgumentValue(access.access, 'exact', info);
 	const args = getEffectiveArgs(access.operator, access.access);
 
-	if(args.every(arg => arg === EmptyArgument)) {
-		return [{
-			operation: 'identity',
-			operand:   dataFrame.info.id
-		}];
+	if(!isDataFrameArgument(dataFrame, info)) {
+		return;
+	} else if(args.every(arg => arg === EmptyArgument)) {
+		return [{ operation: 'identity', operand: dataFrame.info.id }];
 	}
 	const result: DataFrameOperation[] = [];
-	const dropArg = access.access.find(arg => resolveIdToArgName(arg, info) === 'drop');
-	const dropValue = resolveIdToArgValue(dropArg, info);
-	const exactArg = access.access.find(arg => resolveIdToArgName(arg, info) === 'exact');
-	const exactValue = resolveIdToArgValue(exactArg, info);
+
 	const rowArg = args.length < 2 ? undefined : args[0];
 	const colArg = args.length < 2 ? args[0] : args[1];
 	let rows: number[] | undefined = undefined;
@@ -98,11 +93,11 @@ function mapDataFrameIndexColRowAccess(
 
 		if(typeof colValue === 'number') {
 			columns = [colValue];
-		} else if(typeof colValue === 'string' && exactValue !== false) {
+		} else if(typeof colValue === 'string' && exact !== false) {
 			columns = [colValue];
 		} else if(Array.isArray(colValue) && colValue.every(col => typeof col === 'number')) {
 			columns = colValue;
-		} else if(Array.isArray(colValue) && colValue.every(col => typeof col === 'string') && exactValue !== false) {
+		} else if(Array.isArray(colValue) && colValue.every(col => typeof col === 'string') && exact !== false) {
 			columns = colValue;
 		}
 		result.push({
@@ -113,21 +108,19 @@ function mapDataFrameIndexColRowAccess(
 	}
 	// The data frame extent is dropped if the operator `[[` is used, the argument `drop` is true, or only one column is accessed
 	const dropExtent = access.operator === '[[' ? true :
-		args.length === 2 && typeof dropValue === 'boolean' ? dropValue :
+		args.length === 2 && typeof drop === 'boolean' ? drop :
 			rowArg !== undefined && columns?.length === 1 && (typeof columns[0] === 'string' || columns[0] > 0);
 
 	if(!dropExtent) {
-		const rowSubset = rows === undefined || rows.every(row => row >= 0);
-		const colSubset = columns === undefined || columns.every(col => typeof col === 'string' || col >= 0);
 		const rowZero = rows?.length === 1 && rows[0] === 0;
 		const colZero = columns?.length === 1 && columns[0] === 0;
-		const duplicateCols = columns?.some((col, _, list) => list.filter(other => other === col).length > 1);
-		const duplicateRows = rows?.some((row, _, list) => list.filter(other => other === row).length > 1);
+		const duplicateCols = columns?.some((col, index, list) => list.indexOf(col as never) !== index);
+		const duplicateRows = rows?.some((row, index, list) => list.indexOf(row as never) !== index);
 
 		let operand: RNode<ParentInformation> | undefined = dataFrame;
 
 		if(rowArg !== undefined && rowArg !== EmptyArgument) {
-			if(rowSubset) {
+			if(rows === undefined || rows.every(row => row >= 0)) {
 				result.push({
 					operation: 'subsetRows',
 					operand:   operand?.info.id,
@@ -144,7 +137,7 @@ function mapDataFrameIndexColRowAccess(
 			operand = undefined;
 		}
 		if(colArg !== undefined && colArg !== EmptyArgument) {
-			if(colSubset) {
+			if(columns === undefined || columns.every(col => typeof col === 'string' || col >= 0)) {
 				result.push({
 					operation: 'subsetCols',
 					operand:   operand?.info.id,

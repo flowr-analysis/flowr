@@ -2273,6 +2273,18 @@ df <- subset(df, id > 1)
 			shell,
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
+df <- subset(df, c(TRUE, FALSE))
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [0, 3] }, { rows: DomainMatchingType.Overapproximation }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
 df <- subset(df)
 			`.trim(),
 			[

@@ -11,12 +11,11 @@ import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-func
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
-import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperation } from '../absint-info';
-import { resolveIdToAbstractValue } from '../absint-visitor';
+import type { DataFrameInfo, DataFrameOperation } from '../absint-info';
 import { resolveIdToArgStringVector, resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
 import { ConstraintType } from '../semantics';
 import { isStringBasedAccess } from './access-mapper';
+import { isDataFrameArgument, isRNull } from './arguments';
 import { mapDataFrameVariableAssignment } from './assignment-mapper';
 
 const DataFrameReplacementFunctionMapper = {
@@ -53,8 +52,8 @@ export function mapDataFrameReplacement(
 			operations = mapDataFrameIndexColRowAssignment(node, expression, resolveInfo);
 		}
 	} else if(node.type === RType.FunctionCall && node.named && node.arguments.length === 1 && node.arguments[0] !== EmptyArgument) {
-		if(Object.prototype.hasOwnProperty.call(DataFrameReplacementFunctionMapper, node.functionName.content)) {
-			const functionName = node.functionName.content as DataFrameReplacementFunction;
+		if(isDataFrameReplacement(node.functionName.content)) {
+			const functionName = node.functionName.content;
 			const functionMapping = DataFrameReplacementFunctionMapper[functionName];
 
 			operations = functionMapping(node.arguments[0], expression, resolveInfo, parent);
@@ -67,24 +66,33 @@ export function mapDataFrameReplacement(
 	}
 }
 
+function isDataFrameReplacement(functionName: string): functionName is DataFrameReplacementFunction {
+	return Object.prototype.hasOwnProperty.call(DataFrameReplacementFunctionMapper, functionName);
+}
+
+function hasParentReplacement(node: RNode<ParentInformation>, dfg: DataflowGraph): node is RNode<ParentInformation & { parent: NodeId }> {
+	const parentVertex = node.info.parent ? dfg.getVertex(node.info.parent) : undefined;
+
+	return isFunctionCallVertex(parentVertex) && parentVertex.origin.includes('builtin:replacement' satisfies BuiltInMappingName);
+}
+
 function mapDataFrameNamedColumnAssignment(
-	access: RNamedAccess<ParentInformation & AbstractInterpretationInfo>,
+	access: RNamedAccess<ParentInformation>,
 	expression: RNode<ParentInformation>,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	const dataFrame = access.accessed;
 
-	if(resolveIdToAbstractValue(dataFrame, info.graph) === undefined) {
+	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
 	}
-	const argName = resolveIdToArgValueSymbolName(access.access[0], info);
-	const nullValue = expression.type === RType.Symbol && expression.content === RNull;
+	const colname = resolveIdToArgValueSymbolName(access.access[0], info);
 
-	if(nullValue) {
+	if(isRNull(expression)) {
 		return [{
 			operation: 'removeCols',
 			operand:   dataFrame.info.id,
-			colnames:  argName ? [argName] : undefined,
+			colnames:  colname ? [colname] : undefined,
 			type:      ConstraintType.OperandModification,
 			options:   { maybe: true }
 		}];
@@ -92,26 +100,25 @@ function mapDataFrameNamedColumnAssignment(
 		return [{
 			operation: 'assignCols',
 			operand:   dataFrame.info.id,
-			columns:   argName ? [argName] : undefined
+			columns:   colname ? [colname] : undefined
 		}];
 	}
 }
 
 function mapDataFrameIndexColRowAssignment(
-	access: RIndexAccess<ParentInformation & AbstractInterpretationInfo>,
+	access: RIndexAccess<ParentInformation>,
 	expression: RNode<ParentInformation>,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	const dataFrame = access.accessed;
 	const args = access.access;
 
-	if(resolveIdToAbstractValue(dataFrame, info.graph) === undefined || args.every(arg => arg === EmptyArgument)) {
+	if(!isDataFrameArgument(dataFrame, info) || args.every(arg => arg === EmptyArgument)) {
 		return;
 	}
 	const result: DataFrameOperation[] = [];
 	const rowArg = args.length < 2 ? undefined : args[0];
 	const colArg = args.length < 2 ? args[0] : args[1];
-	const nullValue = expression.type === RType.Symbol && expression.content === RNull;
 
 	if(rowArg !== undefined && rowArg !== EmptyArgument) {
 		const rowValue = resolveIdToArgValue(rowArg, info);
@@ -139,7 +146,7 @@ function mapDataFrameIndexColRowAssignment(
 		} else if(Array.isArray(colValue) && (colValue.every(col => typeof col === 'string') || colValue.every(col => typeof col === 'number'))) {
 			columns = colValue;
 		}
-		if(nullValue) {
+		if(isRNull(expression)) {
 			result.push({
 				operation: 'removeCols',
 				operand:   dataFrame.info.id,
@@ -159,12 +166,12 @@ function mapDataFrameIndexColRowAssignment(
 }
 
 function mapDataFrameColNamesAssignment(
-	operand: RArgument<ParentInformation & AbstractInterpretationInfo>,
+	operand: RArgument<ParentInformation>,
 	expression: RNode<ParentInformation>,
 	info: ResolveInfo,
 	parent?: RNode<ParentInformation>
 ): DataFrameOperation[] | undefined {
-	if(resolveIdToAbstractValue(operand, info.graph) === undefined) {
+	if(!isDataFrameArgument(operand, info)) {
 		return;
 	}
 	const argument = info.idMap !== undefined ? toUnnamedArgument(expression, info.idMap) : EmptyArgument;
@@ -183,11 +190,11 @@ function mapDataFrameRowNamesAssignment(): DataFrameOperation[] | undefined {
 }
 
 function mapDataFrameDimNamesAssignment(
-	operand: RArgument<ParentInformation & AbstractInterpretationInfo>,
+	operand: RArgument<ParentInformation>,
 	expression: RNode<ParentInformation>,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
-	if(resolveIdToAbstractValue(operand, info.graph) === undefined) {
+	if(!isDataFrameArgument(operand, info)) {
 		return;
 	}
 	return [{
@@ -198,11 +205,11 @@ function mapDataFrameDimNamesAssignment(
 }
 
 function mapDataFrameUnknownAssignment(
-	operand: RArgument<ParentInformation & AbstractInterpretationInfo>,
+	operand: RArgument<ParentInformation>,
 	expression: RNode<ParentInformation>,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
-	if(resolveIdToAbstractValue(operand, info.graph) === undefined) {
+	if(!isDataFrameArgument(operand, info)) {
 		return;
 	}
 	return [{
@@ -210,10 +217,4 @@ function mapDataFrameUnknownAssignment(
 		operand:   operand.value?.info.id,
 		type:      ConstraintType.OperandModification
 	}];
-}
-
-function hasParentReplacement(node: RNode<ParentInformation>, dfg: DataflowGraph): node is RNode<ParentInformation & { parent: NodeId }> {
-	const parentVertex = node.info.parent ? dfg.getVertex(node.info.parent) : undefined;
-
-	return isFunctionCallVertex(parentVertex) && parentVertex.origin.includes('builtin:replacement' satisfies BuiltInMappingName);
 }

@@ -135,7 +135,6 @@ class DataFrameAbsintVisitor<
 					identifier.info.dataFrame ??= {};
 					identifier.info.dataFrame.domain = new Map(this.newDomain);
 				}
-				this.newDomain.set(node.info.id, value);
 			}
 		} else if(node.info.dataFrame?.type === 'expression') {
 			let value = DataFrameTop;
@@ -147,7 +146,7 @@ class DataFrameAbsintVisitor<
 
 				if(operand !== undefined && constraintType === ConstraintType.OperandModification) {
 					this.newDomain.set(operand, value);
-					this.updateValueOfOrigins(operand, value);
+					getVariableOrigins(operand, this.config.dfg).forEach(origin => this.newDomain.set(origin.info.id, value));
 				} else if(constraintType === ConstraintType.ResultPostcondition) {
 					this.newDomain.set(node.info.id, value);
 				}
@@ -179,12 +178,6 @@ class DataFrameAbsintVisitor<
 
 	private shouldWiden(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): boolean {
 		return (this.visited.get(vertex.id) ?? 0) >= (this.config.wideningThreshold ?? DefaultWideningThreshold);
-	}
-
-	private updateValueOfOrigins(identifier: NodeId, value: DataFrameDomain) {
-		getOriginInDfg(this.config.dfg, identifier)
-			?.filter(origin => origin.type === OriginType.ReadVariableOrigin)
-			.forEach(origin => this.newDomain.set(origin.id, value));
 	}
 
 	private clearUnassignedInfo(node: RNode<ParentInformation & AbstractInterpretationInfo>) {
@@ -230,9 +223,9 @@ export function resolveIdToAbstractValue(
 	const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 	if(node.type === RType.Symbol) {
-		const values = getAbstractValuesOfOrigins(node, domain, dfg);
+		const values = getVariableOrigins(node.info.id, dfg).map(origin => domain.get(origin.info.id));
 
-		if(hasOriginValues(values)) {
+		if(values.length > 0 && values.every(isNotUndefined)) {
 			return joinDataFrames(...values);
 		}
 	} else if(node.type === RType.Argument && node.value !== undefined) {
@@ -253,7 +246,7 @@ export function resolveIdToAbstractValue(
 		} else {
 			const values = [node.then, node.otherwise].map(entry => resolveIdToAbstractValue(entry, dfg, domain));
 
-			if(values.every(isNotUndefined)) {
+			if(values.length > 0 && values.every(isNotUndefined)) {
 				return joinDataFrames(...values);
 			}
 		}
@@ -263,22 +256,18 @@ export function resolveIdToAbstractValue(
 		} else if(call.args.length === 3) {
 			const values = call.args.slice(1, 3).map(entry => resolveIdToAbstractValue(entry.nodeId, dfg, domain));
 
-			if(values.every(isNotUndefined)) {
+			if(values.length > 0 && values.every(isNotUndefined)) {
 				return joinDataFrames(...values);
 			}
 		}
 	}
 }
 
-function hasOriginValues(values: (DataFrameDomain | undefined)[] | undefined): values is DataFrameDomain[] {
-	return values !== undefined && values.length > 0 && values.every(isNotUndefined);
-}
-
-function getAbstractValuesOfOrigins(node: RNode<ParentInformation>, domain: DataFrameStateDomain, dfg: DataflowGraph) {
-	// get the abstract value for each origin that has already been visited and whose assignment has already been processed
-	return getOriginInDfg(dfg, node.info.id)
+function getVariableOrigins(node: NodeId, dfg: DataflowGraph): RNode<ParentInformation & AbstractInterpretationInfo>[] {
+	// get each variable origin that has already been visited and whose assignment has already been processed
+	return getOriginInDfg(dfg, node)
 		?.filter(entry => entry.type === OriginType.ReadVariableOrigin)
 		.map<RNode<ParentInformation & AbstractInterpretationInfo> | undefined>(entry => dfg.idMap?.get(entry.id))
-		.filter(entry => entry?.info.dataFrame?.domain !== undefined && entry.info.dataFrame.type !== 'unassigned')
-		.map(entry => resolveIdToAbstractValue(entry, dfg, domain));
+		.filter(isNotUndefined)
+		.filter(entry => entry.info.dataFrame?.domain !== undefined && entry.info.dataFrame.type !== 'unassigned') ?? [];
 }

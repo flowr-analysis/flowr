@@ -1401,7 +1401,20 @@ print(df)
 			shell,
 			`
 df <- data.frame(id = 1:3, name = 4:6)
-df[] <- 0
+df[] <- NULL
+print(df)
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
+				['3@df', { colnames: [], cols: [0, 0], rows: [3, 3] }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+df[,] <- 0
 print(df)
 			`.trim(),
 			[

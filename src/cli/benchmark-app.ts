@@ -103,6 +103,7 @@ async function benchmark() {
 		'--max-slices', `${options['max-file-slices']}`,
 		...(options.threshold ? ['--threshold', `${options.threshold}`] : []),
 		'--sampling-strategy', options['sampling-strategy'],
+		...(options.seed ? ['--seed', options.seed] : []),
 	]);
 
 	const runs = options.runs ?? 1;

@@ -132,5 +132,17 @@ describe('Dataflow', withTreeSitter(ts => {
 			/* under the assumption of eval impact */
 			'3@f': [ro('1@f')]
 		});
+		describe('Super Assignments Overwriting their Targets', () => {
+		// should return the position it iis to overwrite
+			chk('x <- 2\nx <<- 3', {
+				'2@x': [wo('2@x'), wo('1@x')]
+			});
+			chk('x <- 2\nf <- function() { x <<- 2 }\nf()', {
+				'2@x': [wo('2@x'), wo('1@x')]
+			});
+			chk('f <- function() { x <- 2\nfunction() x <<- 2 }', {
+				'2@x': [wo('2@x'), wo('1@x')]
+			});
+		});
 	});
 }));

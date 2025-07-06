@@ -112,15 +112,17 @@ function mapDataFrameIndexColRowAccess(
 			rowArg !== undefined && columns?.length === 1 && (typeof columns[0] === 'string' || columns[0] > 0);
 
 	if(!dropExtent) {
+		const rowSubset = rows === undefined || rows.every(row => row >= 0);
+		const colSubset = columns === undefined || columns.every(col => typeof col === 'string' || col >= 0);
 		const rowZero = rows?.length === 1 && rows[0] === 0;
 		const colZero = columns?.length === 1 && columns[0] === 0;
-		const duplicateCols = columns?.some((col, index, list) => list.indexOf(col as never) !== index);
 		const duplicateRows = rows?.some((row, index, list) => list.indexOf(row as never) !== index);
+		const duplicateCols = columns?.some((col, index, list) => list.indexOf(col as never) !== index);
 
 		let operand: RNode<ParentInformation> | undefined = dataFrame;
 
 		if(rowArg !== undefined && rowArg !== EmptyArgument) {
-			if(rows === undefined || rows.every(row => row >= 0)) {
+			if(rowSubset) {
 				result.push({
 					operation: 'subsetRows',
 					operand:   operand?.info.id,
@@ -137,7 +139,7 @@ function mapDataFrameIndexColRowAccess(
 			operand = undefined;
 		}
 		if(colArg !== undefined && colArg !== EmptyArgument) {
-			if(columns === undefined || columns.every(col => typeof col === 'string' || col >= 0)) {
+			if(colSubset) {
 				result.push({
 					operation: 'subsetCols',
 					operand:   operand?.info.id,

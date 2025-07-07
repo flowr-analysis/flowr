@@ -26,6 +26,7 @@ export const benchmarkOptions: OptionDefinition[] = [
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process (if given, this will choose these files randomly and add the chosen names to the output' },
 	{ name: 'runs',         alias: 'r', type: Number,  description: 'The amount of benchmark runs that should be done, out of which an average will be calculated' },
+	{ name: 'seed',                     type: String,  description: 'The random seed for sampling the files if a limit is set, and for sampling the slicing criteria if a maximum is set' },
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from. Alternatively, pass a single JSON file that contains a list of paths.', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
 	{ name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
 	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction. Numbers will indicate: sample X random slices from all.', defaultValue: 'all', typeLabel: '{underline all/no}' },
@@ -51,6 +52,7 @@ export const benchmarkHelperOptions: OptionDefinition[] = [
 	{ name: 'max-slices',               type: Number,  description: 'If file has more than passed number of slices, the file is not processed', defaultValue: -1, typeLabel: '{underline number}' },
 	{ name: 'threshold',    alias: 't', type: Number,  description: 'How many re-visits of the same node are ok?', defaultValue: undefined, typeLabel: '{underline number}' },
 	{ name: 'sampling-strategy',        type: String,  description: 'Which strategy to use, when sampling is enabled', defaultValue: 'random', typeLabel: '{underline random/equidistant}' },
+	{ name: 'seed',                     type: String,  description: 'The random seed for sampling the slicing criteria if a maximum is set' },
 ];
 
 export const exportQuadsOptions: OptionDefinition[] = [

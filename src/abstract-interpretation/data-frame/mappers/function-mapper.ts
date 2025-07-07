@@ -497,7 +497,10 @@ function mapDataFrameRead(
 	const checkNames = getArgumentValue(args, params.checkNames, info);
 	const noDupNames = getArgumentValue(args, params.noDupNames, info);
 
-	if(request === undefined || typeof header !== 'boolean' || typeof separator !== 'string' || typeof quote !== 'string' || typeof comment !== 'string' || typeof skipLines !== 'number' || typeof checkNames !== 'boolean' || typeof noDupNames !== 'boolean') {
+	const validArguments = typeof header === 'boolean' && typeof separator === 'string' && typeof quote === 'string' && typeof comment === 'string' &&
+		typeof skipLines === 'number' && typeof checkNames === 'boolean' && typeof noDupNames === 'boolean';
+
+	if(request === undefined || !config.abstractInterpretation.dataFrame.readLoadedData || !validArguments) {
 		return [{
 			operation: 'read',
 			operand:   undefined,

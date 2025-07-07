@@ -168,13 +168,17 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			 */
 			readonly maxColNames:       number;
 			/**
-			 * The maximum number of lines to read when extracting data frame shapes from imported external files, such as CSV files
-			 */
-			readonly maxReadLines:      number;
-			/**
 			 * The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration
 			 */
 			readonly wideningThreshold: number;
+			/**
+			 * Whether data frame shapes should be extracted from loaded external files, such as CSV files
+			 */
+			readonly readLoadedData:    boolean;
+			/**
+			 * The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files
+			 */
+			readonly maxReadLines:      number;
 		}
 	}
 }
@@ -241,8 +245,9 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 	abstractInterpretation: {
 		dataFrame: {
 			maxColNames:       50,
+			wideningThreshold: 4,
+			readLoadedData:    true,
 			maxReadLines:      1e7,
-			wideningThreshold: 4
 		}
 	}
 };

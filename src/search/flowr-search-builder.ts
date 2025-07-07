@@ -1,6 +1,6 @@
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FlowrSearchElement, FlowrSearchElementFromQuery, FlowrSearchElements, FlowrSearchGetFilter } from './flowr-search';
-import type { FlowrFilterExpression } from './flowr-search-filters';
+import type { FlowrFilter, FlowrFilterExpression } from './flowr-search-filters';
 import type { FlowrSearchGeneratorNode, GeneratorNames } from './search-executor/search-generators';
 import type {
 	FlowrSearchTransformerNode,
@@ -152,8 +152,8 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	/**
 	 * only returns the elements that match the given filter.
 	 */
-	filter(filter: FlowrFilterExpression): FlowrSearchBuilderOut<Generator, Transformers, Info, 'filter'> {
-		this.search.push({ type: 'transformer', name: 'filter', args: { filter: filter } });
+	filter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter> ): FlowrSearchBuilderOut<Generator, Transformers, Info, 'filter'> {
+		this.search.push({ type: 'transformer', name: 'filter', args: { filter: filter as FlowrFilterExpression } });
 		return this;
 	}
 

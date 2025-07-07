@@ -39,9 +39,9 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
+import { resolveAsVector, resolveAsSeq, resolveAsMinus } from '../eval/resolve/resolve';
 import type { DataflowGraph } from '../graph/graph';
 import type { VariableResolve } from '../../config';
-import { resolveAsVector, resolveAsSeq, resolveAsMinus } from '../eval/resolve/resolve';
 
 export type BuiltIn = `built-in:${string}`;
 

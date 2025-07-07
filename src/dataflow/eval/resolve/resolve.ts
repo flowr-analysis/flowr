@@ -24,10 +24,11 @@ import { liftScalar } from '../values/scalar/scalar-consatnts';
  * This function converts an RNode to its Value, but also recursively resolves
  * aliases and vectors (in case of a vector).
  *
- * @param a     - Ast node to resolve
- * @param env   - Environment to use
- * @param graph - Dataflow Graph to use
- * @param map   - Idmap of Dataflow Graph
+ * @param a       - Ast node to resolve
+ * @param resolve - Variable resolve mode
+ * @param env     - Environment to use
+ * @param graph   - Dataflow Graph to use
+ * @param map     - Idmap of Dataflow Graph
  * @returns resolved value or top/bottom
  */
 export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap): Value {
@@ -39,7 +40,6 @@ export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, env?: 
 		return a.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
 	} else if((a.type === RType.FunctionCall || a.type === RType.BinaryOp || a.type === RType.UnaryOp) && graph) {
 		const origin = getOriginInDfg(graph, a.info.id)?.[0];
-
 		if(origin === undefined || origin.type !== OriginType.BuiltInFunctionOrigin) {
 			return Top;
 		}
@@ -66,7 +66,7 @@ export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, env?: 
  * Helper function used by {@link resolveIdToValue}, please use that instead, if
  * you want to resolve the value of an identifier / node
  *
- * This function converts an R node to a Value Vector {@link vectorFrom}
+ * This function converts an RNode to a Value Vector {@link vectorFrom}
  * It also recursively resolves any symbols, values, function calls (only c), in
  * order to construct the value of the vector to resolve by calling {@link resolveIdToValue}
  * or {@link resolveNode}
@@ -121,6 +121,7 @@ export function resolveAsVector(resolve: VariableResolve, a: RNodeWithParent, en
  * This function resolves a {@link Value} Vector for the binary sequence operator `:`
  * by recursively resolving the values of the arguments
  *
+ * @param resolve  - Variable resolve mode
  * @param operator - Node of the sequence operator to resolve
  * @param env      - Environment to use
  * @param graph    - Dataflow graph

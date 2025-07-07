@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import seedrandom from 'seedrandom';
 import { guard } from '../util/assert';
 import { allRFiles } from '../util/files';
 import { log } from '../util/log';
@@ -17,6 +18,7 @@ export interface BenchmarkCliOptions {
 	parallel:                  number
 	limit?:                    number
 	runs?:                     number
+	seed?:                     string
 	parser:                    KnownParserName
 	'abstract-interpretation': boolean
 	'enable-pointer-tracking': boolean
@@ -85,8 +87,9 @@ async function benchmark() {
 
 	if(options.limit) {
 		log.info(`limiting to ${options.limit} files`);
+		const random = options.seed ? seedrandom(options.seed) : Math.random;
 		// shuffle and limit
-		files.sort(() => Math.random() - 0.5);
+		files.sort(() => random() - 0.5);
 	}
 	const limit = options.limit ?? files.length;
 
@@ -102,6 +105,7 @@ async function benchmark() {
 		'--max-slices', `${options['max-file-slices']}`,
 		...(options.threshold ? ['--threshold', `${options.threshold}`] : []),
 		'--sampling-strategy', options['sampling-strategy'],
+		...(options.seed ? ['--seed', options.seed] : []),
 	]);
 
 	const runs = options.runs ?? 1;

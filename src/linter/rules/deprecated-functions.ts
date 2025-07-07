@@ -1,11 +1,12 @@
 import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingCertainty } from '../linter-format';
+import { LintingPrettyPrintContext , LintingCertainty } from '../linter-format';
 import { Q } from '../../search/flowr-search-builder';
 import type { MergeableRecord } from '../../util/objects';
 import { formatRange } from '../../util/mermaid/dfg';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { SourceRange } from '../../util/range';
 import type { Identifier } from '../../dataflow/environments/identifier';
+import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
 import { LintingRuleTag } from '../linter-tags';
 
 export interface DeprecatedFunctionsResult extends LintingResult {
@@ -21,43 +22,36 @@ export interface DeprecatedFunctionsConfig extends MergeableRecord {
 }
 
 export interface DeprecatedFunctionsMetadata extends MergeableRecord {
-	totalRelevant:      number
-	totalNotDeprecated: number
+	totalDeprecatedCalls:               number;
+	totalDeprecatedFunctionDefinitions: number;
 }
 
 export const DEPRECATED_FUNCTIONS = {
-	createSearch:        (_config) => Q.all().with(Enrichment.CallTargets),
-	processSearchResult: (elements, config) => {
-		// we don't currently support package names so we strip them from the config and the elements!
-		const funcs = new Set<string>(config.deprecatedFunctions.map(stripPackageName));
+	createSearch: (config) => Q.all()
+		.with(Enrichment.CallTargets, { onlyBuiltin: true })
+		.filter({
+			name: FlowrFilter.MatchesEnrichment,
+			args: {
+				enrichment: Enrichment.CallTargets,
+				test:       testFunctionsIgnoringPackage(config.deprecatedFunctions)
+			}
+		}),
+	processSearchResult: (elements) => {
 		const metadata: DeprecatedFunctionsMetadata = {
-			totalRelevant:      0,
-			totalNotDeprecated: 0
+			totalDeprecatedCalls:               0,
+			totalDeprecatedFunctionDefinitions: 0
 		};
 		return {
 			results: elements.getElements()
 				.flatMap(element => {
-					const targets = enrichmentContent(element, Enrichment.CallTargets).targets;
-					// if there is a call target that is not built-in (ie a custom function), we don't want to mark it as deprecated
-					// eventually we'd want to solve this with an argument to the CallTargets enrichment like satisfiesCallTargets does!
-					if(targets.some(t => typeof t !== 'string')) {
-						return [];
-					}
-					return targets.map(target => {
-						metadata.totalRelevant++;
+					metadata.totalDeprecatedCalls++;
+					return enrichmentContent(element, Enrichment.CallTargets).targets.map(target => {
+						metadata.totalDeprecatedFunctionDefinitions++;
 						return {
 							range:  element.node.info.fullRange as SourceRange,
 							target: target as Identifier
 						};
 					});
-				})
-				.filter(element => {
-					if(funcs.has(stripPackageName(element.target))) {
-						return true;
-					} else {
-						metadata.totalNotDeprecated++;
-						return false;
-					}
 				})
 				.map(element => ({
 					certainty: LintingCertainty.Definitely,
@@ -67,8 +61,11 @@ export const DEPRECATED_FUNCTIONS = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint: result => `Function \`${result.function}\` at ${formatRange(result.range)}`,
-	info:        {
+	prettyPrint: {
+		[LintingPrettyPrintContext.Query]: result => `Function \`${result.function}\` at ${formatRange(result.range)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Function \`${result.function}\` called at ${formatRange(result.range)} is deprecated`
+	},
+	info: {
 		name:          'Deprecated Functions',
 		tags:          [LintingRuleTag.Deprecated, LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
 		description:   'Marks deprecated functions that should not be used anymore.',
@@ -77,15 +74,3 @@ export const DEPRECATED_FUNCTIONS = {
 		}
 	}
 } as const satisfies LintingRule<DeprecatedFunctionsResult, DeprecatedFunctionsMetadata, DeprecatedFunctionsConfig>;
-
-function stripPackageName(functionName: string): string {
-	const idx3 = functionName.indexOf(':::');
-	if(idx3 >= 0) {
-		return functionName.substring(idx3 + 3);
-	}
-	const idx2 = functionName.indexOf('::');
-	if(idx2 >= 0) {
-		return functionName.substring(idx2 + 2);
-	}
-	return functionName;
-}

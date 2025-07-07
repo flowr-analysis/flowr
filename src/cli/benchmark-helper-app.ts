@@ -25,6 +25,7 @@ export interface SingleBenchmarkCliOptions {
 	'max-slices':              number
 	threshold?:                number
 	'sampling-strategy':       string
+	seed?:                     string
 }
 
 const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [],{
@@ -95,7 +96,7 @@ async function benchmark() {
 			const count = await slicer.sliceForAll(
 				DefaultAllVariablesFilter,
 				(i, total, arr) => console.log(`${prefix} Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`),
-				{ sampleCount: limit, maxSliceCount: maxSlices, sampleStrategy: options['sampling-strategy'] as SamplingStrategy },
+				{ sampleCount: limit, maxSliceCount: maxSlices, sampleStrategy: options['sampling-strategy'] as SamplingStrategy, seed: options.seed },
 			);
 			console.log(`${prefix} Completed Slicing`);
 			guard(count >= 0, `Number of slices exceeded limit of ${maxSlices} with ${-count} slices, skipping in count`);

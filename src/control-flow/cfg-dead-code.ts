@@ -141,7 +141,7 @@ export function cfgAnalyzeDeadCode(cfg: ControlFlowInformation, info: CfgPassInf
 		controlFlow:          cfg,
 		normalizedAst:        info.ast,
 		dfg:                  info.dfg,
-		flowrConfig:          info.config,
+		flowrConfig:			       info.config,
 		defaultVisitingOrder: 'forward',
 	});
 	visitor.start();

@@ -269,6 +269,17 @@ describe.sequential('Function Definition', withShell(shell => {
 				environment:       defaultEnv().pushEnv().defineVariable('x', '5', '7')
 			})
 		);
+		assertDataflow(label('overwrite a side-effect', ['normal-definition', 'name-normal', 'numbers', ...OperatorDatabase['<<-'].capabilities, 'semicolons', 'side-effects-in-function-call']), shell,
+			`f <- function() {
+  x <- 2
+  function() { x <<- 3 }
+}
+
+x <- f()()
+print(x)`,  emptyGraph()
+				.reads('7@x', '6@x'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
 	});
 	describe('Scoping of parameters', () => {
 		assertDataflow(label('parameter shadows', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'formals-named', 'implicit-return']), shell, 'x <- 3; function(x) { x }',  emptyGraph()

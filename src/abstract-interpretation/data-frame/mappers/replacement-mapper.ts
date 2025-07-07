@@ -5,7 +5,7 @@ import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { isFunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import type { RAccess, RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -16,7 +16,6 @@ import { resolveIdToArgStringVector, resolveIdToArgValue, resolveIdToArgValueSym
 import { ConstraintType } from '../semantics';
 import { isStringBasedAccess } from './access-mapper';
 import { isDataFrameArgument, isRNull } from './arguments';
-import { mapDataFrameVariableAssignment } from './assignment-mapper';
 
 const DataFrameReplacementFunctionMapper = {
 	'colnames': mapDataFrameColNamesAssignment,
@@ -44,8 +43,8 @@ export function mapDataFrameReplacement(
 	let operations: DataFrameOperation[] | undefined;
 
 	if(node.type === RType.Access) {
-		if(node.accessed.type === RType.Symbol && node.access.every(access => access === EmptyArgument)) {
-			return mapDataFrameVariableAssignment(node.accessed, expression, dfg);
+		if(node.access.every(access => access === EmptyArgument)) {
+			operations = mapDataFrameContentAssignment(node, expression, resolveInfo);
 		} else if(isStringBasedAccess(node)) {
 			operations = mapDataFrameNamedColumnAssignment(node, expression, resolveInfo);
 		} else {
@@ -74,6 +73,32 @@ function hasParentReplacement(node: RNode<ParentInformation>, dfg: DataflowGraph
 	const parentVertex = node.info.parent ? dfg.getVertex(node.info.parent) : undefined;
 
 	return isFunctionCallVertex(parentVertex) && parentVertex.origin.includes('builtin:replacement' satisfies BuiltInMappingName);
+}
+
+function mapDataFrameContentAssignment(
+	access: RAccess<ParentInformation>,
+	expression: RNode<ParentInformation>,
+	info: ResolveInfo
+): DataFrameOperation[] | undefined {
+	const dataFrame = access.accessed;
+
+	if(!isDataFrameArgument(dataFrame, info)) {
+		return;
+	}
+	if(isRNull(expression)) {
+		return [{
+			operation: 'subsetCols',
+			operand:   dataFrame.info.id,
+			colnames:  [],
+			type:      ConstraintType.OperandModification
+		}];
+	} else {
+		return [{
+			operation: 'identity',
+			operand:   dataFrame.info.id,
+			type:      ConstraintType.OperandModification
+		}];
+	}
 }
 
 function mapDataFrameNamedColumnAssignment(
@@ -185,8 +210,19 @@ function mapDataFrameColNamesAssignment(
 	}];
 }
 
-function mapDataFrameRowNamesAssignment(): DataFrameOperation[] | undefined {
-	return;
+function mapDataFrameRowNamesAssignment(
+	operand: RArgument<ParentInformation>,
+	expression: RNode<ParentInformation>,
+	info: ResolveInfo,
+): DataFrameOperation[] | undefined {
+	if(!isDataFrameArgument(operand, info)) {
+		return;
+	}
+	return [{
+		operation: 'identity',
+		operand:   operand.value?.info.id,
+		type:      ConstraintType.OperandModification
+	}];
 }
 
 function mapDataFrameDimNamesAssignment(

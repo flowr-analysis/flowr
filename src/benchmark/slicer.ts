@@ -6,6 +6,7 @@
 import type { IStoppableStopwatch } from './stopwatch';
 import { Measurements } from './stopwatch';
 import fs from 'fs';
+import seedrandom from 'seedrandom';
 import { log, LogLevel } from '../util/log';
 import type { MergeableRecord } from '../util/objects';
 import type { DataflowInformation } from '../dataflow/info';
@@ -559,7 +560,8 @@ export class BenchmarkSlicer {
 		options: {
 			sampleCount?:    number,
 			maxSliceCount?:  number,
-			sampleStrategy?: SamplingStrategy
+			sampleStrategy?: SamplingStrategy,
+			seed?:           string
 		} = {},
 	): Promise<number> {
 		const { sampleCount, maxSliceCount, sampleStrategy } = { sampleCount: -1, maxSliceCount: -1, sampleStrategy: 'random', ...options };
@@ -574,7 +576,8 @@ export class BenchmarkSlicer {
 			if(sampleStrategy === 'equidistant') {
 				allCriteria = equidistantSampling(allCriteria, sampleCount, 'ceil');
 			} else {
-				allCriteria.sort(() => Math.random() - 0.5);
+				const random = options.seed ? seedrandom(options.seed) : Math.random;
+				allCriteria.sort(() => random() - 0.5);
 				allCriteria.length = Math.min(allCriteria.length, sampleCount);
 			}
 		}

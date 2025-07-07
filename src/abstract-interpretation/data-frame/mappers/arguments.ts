@@ -38,7 +38,7 @@ export function escapeRegExp(text: string, allowTokens: boolean = false): string
 }
 
 /**
- * Maps all invalid, duplictae or empty column names to top depending on the provided arguments.
+ * Maps all invalid, duplicate, or empty column names to top depending on the provided arguments.
  *
  * @param colnames     - The columns names to filter
  * @param checkNames   - Whether to map all invalid column names to top (`undefined`)
@@ -117,7 +117,9 @@ export function getFunctionArgument(
 	if(name !== undefined) {
 		arg = args.find(arg => resolveIdToArgName(arg, info) === name);
 	}
-	if(arg === undefined && pos >= 0 && pos < args.length && args[pos] !== EmptyArgument && args[pos].name === undefined) {
+	const hasArgPos = arg === undefined && pos >= 0 && pos < args.length && args[pos] !== EmptyArgument && args[pos].name === undefined;
+
+	if(hasArgPos) {
 		arg = args[pos];
 	}
 	return arg;

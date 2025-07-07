@@ -295,7 +295,15 @@ export const flowrConfigFileSchema = Joi.object({
 		slicer: Joi.object({
 			threshold: Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.')
 		}).optional().description('The configuration for the slicer.')
-	}).description('How to resolve constants, constraints, cells, ...')
+	}).description('How to resolve constants, constraints, cells, ...'),
+	abstractInterpretation: Joi.object({
+		dataFrame: Joi.object({
+			maxColNames:       Joi.number().min(1).description('The maximum number of columns names to infer for data frames before over-approximating the column names to top.'),
+			wideningThreshold: Joi.number().min(1).description('The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration.'),
+			readLoadedData:    Joi.boolean().description('Whether data frame shapes should be extracted from loaded external files, such as CSV files.'),
+			maxReadLines:      Joi.number().min(1).description('The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files.')
+		}).description('The configuration of the shape inference for data frames.')
+	}).description('The configuration options for abstract interpretation.')
 }).description('The configuration file format for flowR.');
 
 export function parseConfig(jsonString: string): FlowrConfigOptions | undefined {

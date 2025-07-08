@@ -1,5 +1,5 @@
 import { assert, beforeAll, test } from 'vitest';
-import type { AbstractInterpretationInfo, DataFrameOperation } from '../../../../src/abstract-interpretation/data-frame/absint-info';
+import { hasDataFrameExpressionInfo, type AbstractInterpretationInfo, type DataFrameOperation } from '../../../../src/abstract-interpretation/data-frame/absint-info';
 import { performDataFrameAbsint, resolveIdToAbstractValue } from '../../../../src/abstract-interpretation/data-frame/absint-visitor';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { ColNamesTop, equalColNames, equalInterval, IntervalBottom, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
@@ -42,7 +42,7 @@ export const DataFrameTestOverapproximation: DataFrameTestOptions = {
 	rows:     DomainMatchingType.Overapproximation
 };
 
-type DataFrameOperationType = {
+type ExpectedDataFrameOperation = {
 	[Name in DataFrameOperationName]: { operation: Name } & DataFrameOperationArgs<Name>
 }[DataFrameOperationName];
 
@@ -173,7 +173,7 @@ export function assertDataFrameDomain(
 export function assertDataFrameOperation(
 	parser: KnownParser,
 	code: string,
-	expected: [SingleSlicingCriterion, DataFrameOperationType[]][],
+	expected: [SingleSlicingCriterion, ExpectedDataFrameOperation[]][],
 	name: string | TestLabel = code,
 	config: FlowrConfigOptions = defaultConfigOptions
 ) {
@@ -334,7 +334,7 @@ function getInferredOperationsForCriterion(
 	const cfg = extractCfg(result.normalize, config, result.dataflow.graph);
 	performDataFrameAbsint(cfg, result.dataflow.graph, result.normalize);
 
-	return node.info.dataFrame?.type === 'expression' ? node.info.dataFrame.operations : [];
+	return hasDataFrameExpressionInfo(node) ? node.info.dataFrame.operations : [];
 }
 
 function getRealDomainFromOutput(

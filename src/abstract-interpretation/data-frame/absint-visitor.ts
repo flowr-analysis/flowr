@@ -13,7 +13,7 @@ import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/a
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isNotUndefined } from '../../util/assert';
-import type { AbstractInterpretationInfo } from './absint-info';
+import { hasDataFrameAssignmentInfo, hasDataFrameExpressionInfo, type AbstractInterpretationInfo } from './absint-info';
 import type { DataFrameDomain, DataFrameStateDomain } from './domain';
 import { DataFrameTop, equalDataFrameState, joinDataFrames, joinDataFrameStates, wideningDataFrameStates } from './domain';
 import { mapDataFrameAccess } from './mappers/access-mapper';
@@ -124,7 +124,7 @@ class DataFrameAbsintVisitor<
 	}
 
 	private processOperation(node: RNode<ParentInformation & AbstractInterpretationInfo>) {
-		if(node.info.dataFrame?.type === 'assignment') {
+		if(hasDataFrameAssignmentInfo(node)) {
 			const value = resolveIdToAbstractValue(node.info.dataFrame.expression, this.config.dfg, this.newDomain);
 
 			if(value !== undefined) {
@@ -136,7 +136,7 @@ class DataFrameAbsintVisitor<
 					identifier.info.dataFrame.domain = new Map(this.newDomain);
 				}
 			}
-		} else if(node.info.dataFrame?.type === 'expression') {
+		} else if(hasDataFrameExpressionInfo(node)) {
 			let value = DataFrameTop;
 
 			for(const { operation, operand, type, options, ...args } of node.info.dataFrame.operations) {

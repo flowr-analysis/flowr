@@ -1,15 +1,24 @@
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataFrameStateDomain } from './domain';
 import type { ConstraintType, DataFrameOperationArgs, DataFrameOperationName, DataFrameOperationOptions } from './semantics';
 
-export type DataFrameOperation = {
-    [Name in DataFrameOperationName]: {
+export type DataFrameOperationType<OperationName extends DataFrameOperationName = DataFrameOperationName> = {
+	[Name in OperationName]: {
+		operation: Name,
+		operand:   NodeId | undefined
+	} & DataFrameOperationArgs<Name>
+}[OperationName];
+
+export type DataFrameOperation<OperationName extends DataFrameOperationName = DataFrameOperationName> = {
+    [Name in OperationName]: {
 		operation: Name,
 		operand:   NodeId | undefined,
 		type?:     ConstraintType,
 		options?:  DataFrameOperationOptions<Name>
 	} & DataFrameOperationArgs<Name>;
-}[DataFrameOperationName];
+}[OperationName];
 
 interface DataFrameInfoBase {
 	domain?: DataFrameStateDomain
@@ -43,4 +52,16 @@ export type DataFrameInfo = DataFrameAssignmentInfo | DataFrameExpressionInfo | 
 
 export interface AbstractInterpretationInfo {
 	dataFrame?: (DataFrameInfo | { type?: never }) & DataFrameInfoBase
+}
+
+export function hasDataFrameAssignmentInfo(
+	node: RNode<ParentInformation & AbstractInterpretationInfo>
+): node is RNode<ParentInformation & AbstractInterpretationInfo & { dataFrame: DataFrameAssignmentInfo }> {
+	return node.info.dataFrame?.type === 'assignment';
+}
+
+export function hasDataFrameExpressionInfo(
+	node: RNode<ParentInformation & AbstractInterpretationInfo>
+): node is RNode<ParentInformation & AbstractInterpretationInfo & { dataFrame: DataFrameExpressionInfo }> {
+	return node.info.dataFrame?.type === 'expression';
 }

@@ -74,6 +74,10 @@ export function wideningColNames(set1: ColNamesDomain, set2: ColNamesDomain): Co
 	return leqColNames(set1, set2) ? set2 : ColNamesTop;
 }
 
+export function satisfiesColsNames(set: ColNamesDomain, value: string) {
+	return set === ColNamesTop || set.includes(value);
+}
+
 export function equalInterval(interval1: IntervalDomain, interval2: IntervalDomain): boolean {
 	return interval1 === interval2 || (interval1 !== IntervalBottom && interval1[0] === interval2[0] && interval1[1] === interval2[1]);
 }
@@ -158,6 +162,14 @@ export function wideningInterval(interval1: IntervalDomain, interval2: IntervalD
 	} else {
 		return [interval1[0] <= interval2[0] ? interval1[0] : 0, interval1[1] >= interval2[1] ? interval1[1] : Infinity];
 	}
+}
+
+export function satisfiesInterval(interval: IntervalDomain, value: number) {
+	return interval !== IntervalBottom && interval[0] <= value && value <= interval[1];
+}
+
+export function satisfiesLeqInterval(interval: IntervalDomain, value: number) {
+	return interval !== IntervalBottom && value <= interval[1];
 }
 
 export function equalDataFrameDomain(value1: DataFrameDomain, value2: DataFrameDomain): boolean {

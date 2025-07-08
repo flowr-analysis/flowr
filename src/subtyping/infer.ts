@@ -8,8 +8,8 @@ import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RDataType, UnresolvedRDataType } from './types';
-import { UnresolvedRTypeVariable, RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, UnresolvedRListType, RLanguageType, UnresolvedRFunctionType, RNoneType, UnresolvedRVectorType } from './types';
+import type { DataType, UnresolvedDataType } from './types';
+import { UnresolvedRTypeVariable, RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, UnresolvedRListType, RLanguageType, UnresolvedRFunctionType, RNoneType, UnresolvedRAtomicVectorType, UnresolvedRVectorType } from './types';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../util/assert';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
@@ -45,7 +45,7 @@ type UnresolvedTypeInfo = {
 };
 
 export type DataTypeInfo = {
-	inferredType: RDataType;
+	inferredType: DataType;
 }
 
 function decorateTypeVariables<Info extends ParentInformation>(ast: NormalizedAst<Info>): NormalizedAst<Info & UnresolvedTypeInfo> {
@@ -82,7 +82,7 @@ class TypeInferringCfgGuidedVisitor<
 	}
 
 
-	protected constrainNodeTypeWithUpperBound(id: NodeId, upperBound: UnresolvedRDataType): void {
+	protected constrainNodeTypeWithUpperBound(id: NodeId, upperBound: UnresolvedDataType): void {
 		const node = this.getNormalizedAst(id);
 		guard(node !== undefined, 'Expected AST node to be defined');
 		node.info.typeVariable.constrainWithUpperBound(upperBound);
@@ -262,12 +262,14 @@ class TypeInferringCfgGuidedVisitor<
 	}
 
 	override onForLoopCall(data: { call: DataflowGraphVertexFunctionCall, variable: FunctionArgument, vector: FunctionArgument, body: FunctionArgument }) {
-		// guard(data.variable !== EmptyArgument && data.vector !== EmptyArgument, 'Expected variable and vector arguments to be defined');
-		// const variableNode = this.getNormalizedAst(data.variable.nodeId);
-		// const vectorNode = this.getNormalizedAst(data.vector.nodeId);
+		guard(data.variable !== EmptyArgument && data.vector !== EmptyArgument, 'Expected variable and vector arguments to be defined');
+		const variableNode = this.getNormalizedAst(data.variable.nodeId);
+		const vectorNode = this.getNormalizedAst(data.vector.nodeId);
+		guard(variableNode !== undefined && vectorNode !== undefined, 'Expected variable and vector nodes to be defined');
 		
-		// guard(variableNode !== undefined && vectorNode !== undefined, 'Expected variable and vector nodes to be defined');
-		// variableNode.info.typeVariable.constrainWithLowerBound(vectorNode.info.typeVariable);
+		const vectorType = new UnresolvedRVectorType();
+		vectorNode.info.typeVariable.constrainWithUpperBound(vectorType);
+		variableNode.info.typeVariable.constrainWithLowerBound(vectorType.elementType);
 
 		this.onLoopCall(data);
 	}
@@ -410,7 +412,8 @@ class TypeInferringCfgGuidedVisitor<
 			return;
 		}
 		
-		const vectorType = new UnresolvedRVectorType();
+		// TODO: Handle flattening behavior of `c` function
+		const vectorType = new UnresolvedRAtomicVectorType();
 		node.info.typeVariable.constrainFromBothSides(vectorType);
 		
 		for(const arg of args) {

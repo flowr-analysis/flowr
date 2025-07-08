@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { RAnyType, RIntegerType, RLanguageType, RListType, RLogicalType, RNoneType, RNullType, RStringType, RTypeVariable, RVectorType } from '../../../src/subtyping/types';
+import { RAnyType, RIntegerType, RLanguageType, RListType, RLogicalType, RNoneType, RNullType, RStringType, RTypeVariable, RAtomicVectorType } from '../../../src/subtyping/types';
 import { assertInferredType, assertInferredTypes } from '../_helper/subtyping/assert-inferred-type';
 import { Q } from '../../../src/search/flowr-search-builder';
 
@@ -24,7 +24,7 @@ describe('Infer types for builtin functions', () => {
 
 	assertInferredTypes(
 		'c("Hello", "Flo", "!")',
-		{ query: Q.criterion('1@c').build(),       expectedType: new RVectorType(new RTypeVariable(new RStringType(), new RAnyType())) },
+		{ query: Q.criterion('1@c').build(),       expectedType: new RAtomicVectorType(new RTypeVariable(new RStringType(), new RAnyType())) },
 		{ query: Q.criterion('1@"Hello"').build(), expectedType: new RStringType() },
 	);
 });

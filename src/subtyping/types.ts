@@ -1,8 +1,12 @@
 /**
  * This enum lists a tag for each of the possible R data types inferred by the
- * type inferencer. It is mainly used to identify subtypes of {@link RDataType}.
+ * type inferencer. It is mainly used to identify subtypes of {@link DataType}.
  */
 export enum RDataTypeTag {
+	/** {@link RAtomicVectorType} */
+	Vector = 'RVectorType',
+	/** {@link RAtomicVectorType} */
+	AtomicVector = 'RAtomicVectorType',
     /** {@link RLogicalType} */
     Logical = 'RLogicalType',
     /** {@link RIntegerType} */
@@ -15,14 +19,12 @@ export enum RDataTypeTag {
     String = 'RStringType',
     /** {@link RRawType} */
     Raw = 'RRawType',
-	/** {@link RVectorType} */
-	Vector = 'RVectorType',
+    /** {@link RListType} */
+    List = 'RListType',
     /** {@link RNullType} */
 	Null = 'RNullType',
     /** {@link RFunctionType} */
     Function = 'RFunctionType',
-    /** {@link RListType} */
-    List = 'RListType',
     /** {@link REnvironmentType} */
     Environment = 'REnvironmentType',
     /** {@link RLanguageType} */
@@ -35,6 +37,62 @@ export enum RDataTypeTag {
 	Any = 'RAnyType',
 	/** {@link RNoneType} */
 	None = 'RNoneType',
+}
+
+export class UnresolvedRVectorType {
+	readonly tag = RDataTypeTag.Vector;
+	readonly elementType = new UnresolvedRTypeVariable();
+
+	constructor(elementType?: UnresolvedDataType) {
+		if(elementType !== undefined) {
+			this.elementType.constrainWithLowerBound(elementType);
+		}
+	}
+
+	constrainWithLowerBound(bound: UnresolvedRAtomicVectorType): void {
+		this.elementType.constrainWithLowerBound(bound.elementType);
+	}
+
+	constrainWithUpperBound(bound: UnresolvedRAtomicVectorType): void {
+		this.elementType.constrainWithUpperBound(bound.elementType);
+	}
+}
+
+export class RVectorType {
+	readonly tag = RDataTypeTag.Vector;
+	readonly elementType: DataType;
+
+	constructor(elementType: DataType) {
+		this.elementType = elementType;
+	}
+}
+
+export class UnresolvedRAtomicVectorType /*extends UnresolvedRVectorType*/ {
+	readonly tag = RDataTypeTag.AtomicVector;
+	readonly elementType = new UnresolvedRTypeVariable();
+
+	constructor(elementType?: UnresolvedDataType) {
+		if(elementType !== undefined) {
+			this.elementType.constrainWithLowerBound(elementType);
+		}
+	}
+
+	constrainWithLowerBound(bound: UnresolvedRAtomicVectorType): void {
+		this.elementType.constrainWithLowerBound(bound.elementType);
+	}
+
+	constrainWithUpperBound(bound: UnresolvedRAtomicVectorType): void {
+		this.elementType.constrainWithUpperBound(bound.elementType);
+	}
+}
+
+export class RAtomicVectorType {
+	readonly tag = RDataTypeTag.AtomicVector;
+	readonly elementType: DataType;
+
+	constructor(elementType: DataType) {
+		this.elementType = elementType;
+	}
 }
 
 export class RLogicalType {
@@ -61,30 +119,30 @@ export class RRawType {
 	readonly tag = RDataTypeTag.Raw;
 }
 
-export class UnresolvedRVectorType {
-	readonly tag = RDataTypeTag.Vector;
+export class UnresolvedRListType {
+	readonly tag = RDataTypeTag.List;
 	readonly elementType = new UnresolvedRTypeVariable();
 
-	constructor(elementType?: UnresolvedRDataType) {
+	constructor(elementType?: UnresolvedDataType) {
 		if(elementType !== undefined) {
 			this.elementType.constrainWithLowerBound(elementType);
 		}
 	}
-
-	constrainWithLowerBound(bound: UnresolvedRVectorType): void {
+	
+	constrainWithLowerBound(bound: UnresolvedRListType): void {
 		this.elementType.constrainWithLowerBound(bound.elementType);
 	}
 
-	constrainWithUpperBound(bound: UnresolvedRVectorType): void {
+	constrainWithUpperBound(bound: UnresolvedRListType): void {
 		this.elementType.constrainWithUpperBound(bound.elementType);
 	}
 }
 
-export class RVectorType {
-	readonly tag = RDataTypeTag.Vector;
-	readonly elementType: RDataType;
+export class RListType {
+	readonly tag = RDataTypeTag.List;
+	readonly elementType: DataType;
 
-	constructor(elementType: RDataType) {
+	constructor(elementType: DataType) {
 		this.elementType = elementType;
 	}
 }
@@ -123,40 +181,12 @@ export class UnresolvedRFunctionType {
 
 export class RFunctionType {
 	readonly tag = RDataTypeTag.Function;
-	readonly parameterTypes: Map<number | string, RDataType>;
-	readonly returnType:     RDataType;
+	readonly parameterTypes: Map<number | string, DataType>;
+	readonly returnType:     DataType;
 
-	constructor(parameterTypes: Map<number | string, RDataType>, returnType: RDataType) {
+	constructor(parameterTypes: Map<number | string, DataType>, returnType: DataType) {
 		this.parameterTypes = parameterTypes;
 		this.returnType = returnType;
-	}
-}
-
-export class UnresolvedRListType {
-	readonly tag = RDataTypeTag.List;
-	readonly elementType = new UnresolvedRTypeVariable();
-
-	constructor(elementType?: UnresolvedRDataType) {
-		if(elementType !== undefined) {
-			this.elementType.constrainWithLowerBound(elementType);
-		}
-	}
-	
-	constrainWithLowerBound(bound: UnresolvedRListType): void {
-		this.elementType.constrainWithLowerBound(bound.elementType);
-	}
-
-	constrainWithUpperBound(bound: UnresolvedRListType): void {
-		this.elementType.constrainWithUpperBound(bound.elementType);
-	}
-}
-
-export class RListType {
-	readonly tag = RDataTypeTag.List;
-	readonly elementType: RDataType;
-
-	constructor(elementType: RDataType) {
-		this.elementType = elementType;
 	}
 }
 
@@ -170,10 +200,10 @@ export class RLanguageType {
 
 export class UnresolvedRTypeVariable {
 	readonly tag = RDataTypeTag.Variable;
-	readonly lowerBounds: Set<UnresolvedRDataType> = new Set();
-	readonly upperBounds: Set<UnresolvedRDataType> = new Set();
+	readonly lowerBounds: Set<UnresolvedDataType> = new Set();
+	readonly upperBounds: Set<UnresolvedDataType> = new Set();
 
-	constrainWithLowerBound(bound: UnresolvedRDataType): void {
+	constrainWithLowerBound(bound: UnresolvedDataType): void {
 		this.lowerBounds.add(bound);
 		
 		for(const upperBound of this.upperBounds) {
@@ -185,13 +215,13 @@ export class UnresolvedRTypeVariable {
 				upperBound.constrainWithLowerBound(bound);
 			} else if(upperBound instanceof UnresolvedRListType && bound instanceof UnresolvedRListType && upperBound !== bound) {
 				upperBound.constrainWithLowerBound(bound);
-			} else if(upperBound instanceof UnresolvedRVectorType && bound instanceof UnresolvedRVectorType && upperBound !== bound) {
+			} else if(upperBound instanceof UnresolvedRAtomicVectorType && bound instanceof UnresolvedRAtomicVectorType && upperBound !== bound) {
 				upperBound.constrainWithLowerBound(bound);
 			}
 		}
 	}
 
-	constrainWithUpperBound(bound: UnresolvedRDataType): void {
+	constrainWithUpperBound(bound: UnresolvedDataType): void {
 		this.upperBounds.add(bound);
 
 		for(const lowerBound of this.lowerBounds) {
@@ -203,13 +233,13 @@ export class UnresolvedRTypeVariable {
 				lowerBound.constrainWithUpperBound(bound);
 			} else if(lowerBound instanceof UnresolvedRListType && bound instanceof UnresolvedRListType && lowerBound !== bound) {
 				lowerBound.constrainWithUpperBound(bound);
-			} else if(lowerBound instanceof UnresolvedRVectorType && bound instanceof UnresolvedRVectorType && lowerBound !== bound) {
+			} else if(lowerBound instanceof UnresolvedRAtomicVectorType && bound instanceof UnresolvedRAtomicVectorType && lowerBound !== bound) {
 				lowerBound.constrainWithUpperBound(bound);
 			}
 		}
 	}
 
-	constrainFromBothSides(other: UnresolvedRDataType): void {
+	constrainFromBothSides(other: UnresolvedDataType): void {
 		this.constrainWithLowerBound(other);
 		this.constrainWithUpperBound(other);
 	}
@@ -217,10 +247,10 @@ export class UnresolvedRTypeVariable {
 
 export class RTypeVariable {
 	readonly tag = RDataTypeTag.Variable;
-	readonly lowerBound: RDataType;
-	readonly upperBound: RDataType;
+	readonly lowerBound: DataType;
+	readonly upperBound: DataType;
 	
-	constructor(lowerBound: RDataType, upperBound: RDataType) {
+	constructor(lowerBound: DataType, upperBound: DataType) {
 		this.lowerBound = lowerBound;
 		this.upperBound = upperBound;
 	}
@@ -228,9 +258,9 @@ export class RTypeVariable {
 
 export class RErrorType {
 	readonly tag = RDataTypeTag.Error;
-	conflictingBounds: [RDataType, RDataType];
+	conflictingBounds: [DataType, DataType];
 
-	constructor(...conflictingBounds: [RDataType, RDataType]) {
+	constructor(...conflictingBounds: [DataType, DataType]) {
 		this.conflictingBounds = conflictingBounds;
 	}
 }
@@ -244,14 +274,14 @@ export class RNoneType {
 }
 
 
-export function resolveType(type: UnresolvedRDataType): RDataType {
+export function resolveType(type: UnresolvedDataType): DataType {
 	if(type instanceof UnresolvedRTypeVariable) {
-		let lowerBound: RDataType = new RNoneType();
+		let lowerBound: DataType = new RNoneType();
 		for(const bound of type.lowerBounds) {
 			const resolvedBound = resolveType(bound);
 			lowerBound = union(lowerBound, resolvedBound);
 		}
-		let upperBound: RDataType = new RAnyType();
+		let upperBound: DataType = new RAnyType();
 		for(const bound of type.upperBounds) {
 			const resolvedBound = resolveType(bound);
 			upperBound = intersection(upperBound, resolvedBound);
@@ -271,18 +301,21 @@ export function resolveType(type: UnresolvedRDataType): RDataType {
 		const resolvedParameterTypes = new Map(type.parameterTypes.entries().toArray().map(([key, type]) => [key, resolveType(type)]));
 		const resolvedReturnType = resolveType(type.returnType);
 		return new RFunctionType(resolvedParameterTypes, resolvedReturnType);
-	} else if(type instanceof UnresolvedRListType) {
-		const resolvedElementType = resolveType(type.elementType);
-		return new RListType(resolvedElementType);
 	} else if(type instanceof UnresolvedRVectorType) {
 		const resolvedElementType = resolveType(type.elementType);
 		return new RVectorType(resolvedElementType);
+	} else if(type instanceof UnresolvedRAtomicVectorType) {
+		const resolvedElementType = resolveType(type.elementType);
+		return new RAtomicVectorType(resolvedElementType);
+	} else if(type instanceof UnresolvedRListType) {
+		const resolvedElementType = resolveType(type.elementType);
+		return new RListType(resolvedElementType);
 	} else {
 		return type;
 	}
 }
 
-function subsumes(subtype: RDataType, supertype: RDataType): boolean {
+function subsumes(subtype: DataType, supertype: DataType): boolean {
 	if(subtype === supertype) {
 		return true;
 	} else if(subtype instanceof RErrorType || supertype instanceof RErrorType) {
@@ -293,17 +326,13 @@ function subsumes(subtype: RDataType, supertype: RDataType): boolean {
 		return subsumes(subtype.lowerBound, supertype) && subsumes(subtype.upperBound, supertype);
 	} else if(supertype instanceof RTypeVariable) {
 		return subsumes(supertype.lowerBound, subtype) && subsumes(subtype, supertype.upperBound);
-	} else if(subtype instanceof RListType && supertype instanceof RListType) {
+	} else if(subtype instanceof RListType && (supertype instanceof RListType || supertype instanceof RVectorType)) {
 		return subsumes(subtype.elementType, supertype.elementType);
-	} else if(supertype instanceof RVectorType) {
-		if(subtype instanceof RVectorType) {
-			return subsumes(subtype.elementType, supertype.elementType);
-		} else if(subtype instanceof RLogicalType || subtype instanceof RIntegerType || subtype instanceof RDoubleType || subtype instanceof RComplexType || subtype instanceof RStringType || subtype instanceof RRawType) {
-			// A scalar subsumes a vector type if it subsumes the element type of the vector
-			return subsumes(subtype, supertype.elementType);
-		} else {
-			return false; // A non-vector type cannot subsume a vector type
-		}
+	} else if(subtype instanceof RAtomicVectorType && (supertype instanceof RAtomicVectorType || supertype instanceof RVectorType)) {
+		return subsumes(subtype.elementType, supertype.elementType);
+	} else if(isAtomicVectorElementType(subtype) && (supertype instanceof RAtomicVectorType || supertype instanceof RVectorType)) {
+		// A scalar subsumes a vector type if it subsumes the element type of the vector
+		return subsumes(subtype, supertype.elementType);
 	} else if(subtype instanceof RFunctionType && supertype instanceof RFunctionType) {
 		return subsumes(subtype.returnType, supertype.returnType) && subtype.parameterTypes.entries().every(([key, type]) => {
 			const supertypeParameter = supertype.parameterTypes.get(key);
@@ -326,16 +355,19 @@ function subsumesByTag(subtype: RDataTypeTag, supertype: RDataTypeTag): boolean 
 		|| subtype === RDataTypeTag.Integer && supertype === RDataTypeTag.Complex
 		|| subtype === RDataTypeTag.Double && supertype === RDataTypeTag.Complex
 		|| subtype === RDataTypeTag.None || supertype === RDataTypeTag.Any
-		|| subtype === RDataTypeTag.Variable || supertype === RDataTypeTag.Variable;
+		|| subtype === RDataTypeTag.Variable || supertype === RDataTypeTag.Variable
+		|| [RDataTypeTag.Logical, RDataTypeTag.Integer, RDataTypeTag.Double, RDataTypeTag.Complex, RDataTypeTag.String, RDataTypeTag.Raw].includes(subtype) && (supertype === RDataTypeTag.AtomicVector || supertype === RDataTypeTag.Vector)
+		|| subtype === RDataTypeTag.AtomicVector && supertype === RDataTypeTag.Vector
+		|| subtype === RDataTypeTag.List && supertype === RDataTypeTag.Vector;
 }
 
-function union(type1: RDataType, type2: RDataType): RDataType {
+function union(type1: DataType, type2: DataType): DataType {
 	if(type1 instanceof RErrorType) {
 		return type1;
 	} else if(type2 instanceof RErrorType) {
 		return type2;
 	} else if(type1 instanceof RFunctionType && type2 instanceof RFunctionType) {
-		const parameterTypes = new Map<number | string, RDataType>();
+		const parameterTypes = new Map<number | string, DataType>();
 		const keys1 = new Set(type1.parameterTypes.keys());
 		const keys2 = new Set(type2.parameterTypes.keys());
 		for(const key of keys1.union(keys2)) {
@@ -347,6 +379,22 @@ function union(type1: RDataType, type2: RDataType): RDataType {
 		return new RFunctionType(parameterTypes, returnType);
 	} else if(type1 instanceof RListType && type2 instanceof RListType) {
 		return new RListType(union(type1.elementType, type2.elementType));
+	} else if(type1 instanceof RAtomicVectorType && type2 instanceof RAtomicVectorType) {
+		return new RAtomicVectorType(union(type1.elementType, type2.elementType));
+	} else if(isVectorType(type1) && isVectorType(type2)) {
+		return new RVectorType(union(type1.elementType, type2.elementType));
+	} else if(isAtomicVectorElementType(type1) && (type2.tag === RDataTypeTag.AtomicVector || type2.tag === RDataTypeTag.Vector)) {
+		if(type2 instanceof RAtomicVectorType) {
+			return new RAtomicVectorType(union(type1, type2.elementType));
+		} else {
+			return new RVectorType(union(type1, type2.elementType));
+		}
+	} else if(isAtomicVectorElementType(type2) && (type1.tag === RDataTypeTag.AtomicVector || type1.tag === RDataTypeTag.Vector)) {
+		if(type1 instanceof RAtomicVectorType) {
+			return new RAtomicVectorType(union(type2, type1.elementType));
+		} else {
+			return new RVectorType(union(type2, type1.elementType));
+		}
 	} else if(subsumesByTag(type1.tag, type2.tag)) {
 		return type2;
 	} else if(subsumesByTag(type2.tag, type1.tag)) {
@@ -355,13 +403,13 @@ function union(type1: RDataType, type2: RDataType): RDataType {
 	return new RAnyType();
 }
 
-function intersection(type1: RDataType, type2: RDataType): RDataType {
+function intersection(type1: DataType, type2: DataType): DataType {
 	if(type1 instanceof RErrorType) {
 		return type1;
 	} else if(type2 instanceof RErrorType) {
 		return type2;
 	} else if(type1 instanceof RFunctionType && type2 instanceof RFunctionType) {
-		const parameterTypes = new Map<number | string, RDataType>();
+		const parameterTypes = new Map<number | string, DataType>();
 		const keys1 = new Set(type1.parameterTypes.keys());
 		const keys2 = new Set(type2.parameterTypes.keys());
 		for(const key of keys1.intersection(keys2)) {
@@ -371,8 +419,16 @@ function intersection(type1: RDataType, type2: RDataType): RDataType {
 		}
 		const returnType = intersection(type1.returnType, type2.returnType);
 		return new RFunctionType(parameterTypes, returnType);
-	} else if(type1 instanceof RListType && type2 instanceof RListType) {
+	} else if(isVectorType(type1) && isVectorType(type2) && (type1 instanceof RListType || type2 instanceof RListType)) {
 		return new RListType(intersection(type1.elementType, type2.elementType));
+	} else if(isVectorType(type1) && isVectorType(type2) && (type1 instanceof RAtomicVectorType || type2 instanceof RAtomicVectorType)) {
+		return new RAtomicVectorType(intersection(type1.elementType, type2.elementType));
+	} else if(type1 instanceof RVectorType && type2 instanceof RVectorType) {
+		return new RVectorType(intersection(type1.elementType, type2.elementType));
+	} else if(isAtomicVectorElementType(type1) && (type2.tag === RDataTypeTag.AtomicVector || type2.tag === RDataTypeTag.Vector)) {
+		return intersection(type1, type2.elementType);
+	} else if(isAtomicVectorElementType(type2) && (type1.tag === RDataTypeTag.AtomicVector || type1.tag === RDataTypeTag.Vector)) {
+		return intersection(type2, type1.elementType);
 	} else if(subsumesByTag(type1.tag, type2.tag)) {
 		return type1;
 	} else if(subsumesByTag(type2.tag, type1.tag)) {
@@ -382,7 +438,7 @@ function intersection(type1: RDataType, type2: RDataType): RDataType {
 }
 
 
-export type RVectorElementType
+export type AtomicVectorElementType
 	= RLogicalType
 	| RIntegerType
 	| RDoubleType
@@ -390,7 +446,7 @@ export type RVectorElementType
 	| RStringType
 	| RRawType
 
-export function isVectorType(type: RDataType | UnresolvedRDataType): type is RVectorElementType {
+export function isAtomicVectorElementType(type: DataType | UnresolvedDataType): type is AtomicVectorElementType {
 	return type.tag === RDataTypeTag.Logical
 		|| type.tag === RDataTypeTag.Integer
 		|| type.tag === RDataTypeTag.Double
@@ -399,12 +455,14 @@ export function isVectorType(type: RDataType | UnresolvedRDataType): type is RVe
 		|| type.tag === RDataTypeTag.Raw;
 }
 	
-export type CompoundRDataType = RVectorType | RFunctionType | RListType;
+export type VectorType = RVectorType | RAtomicVectorType | RListType;
 
-export function isCompoundType(type: UnresolvedRDataType): type is UnresolvedCompoundRDataType
-export function isCompoundType(type: RDataType): type is CompoundRDataType
-export function isCompoundType(type: RDataType | UnresolvedRDataType): type is CompoundRDataType | UnresolvedCompoundRDataType {
-	return type.tag === RDataTypeTag.Vector || type.tag === RDataTypeTag.Function || type.tag === RDataTypeTag.List;
+export type UnresolvedVectorType = UnresolvedRVectorType | UnresolvedRAtomicVectorType | UnresolvedRListType;
+
+export function isVectorType(type: UnresolvedDataType): type is UnresolvedVectorType
+export function isVectorType(type: DataType): type is VectorType
+export function isVectorType(type: DataType | UnresolvedDataType): type is VectorType | UnresolvedVectorType {
+	return type.tag === RDataTypeTag.Vector || type.tag === RDataTypeTag.AtomicVector || type.tag === RDataTypeTag.List;
 }
 
 /**
@@ -413,25 +471,25 @@ export function isCompoundType(type: RDataType | UnresolvedRDataType): type is C
  * It should be used whenever you either not care what kind of
  * type you are dealing with or if you want to handle all possible types.
 */
-export type RDataType
-	= RVectorElementType
+export type DataType
+	= AtomicVectorElementType
+	| VectorType
 	| RNullType
 	| REnvironmentType
 	| RLanguageType
-	| CompoundRDataType
+	| RFunctionType
 	| RTypeVariable
 	| RErrorType
 	| RAnyType
 	| RNoneType;
-	
-export type UnresolvedCompoundRDataType = UnresolvedRVectorType | UnresolvedRFunctionType | UnresolvedRListType;
-	
-export type UnresolvedRDataType
-	= RVectorElementType
+
+export type UnresolvedDataType
+	= AtomicVectorElementType
+	| UnresolvedVectorType
 	| RNullType
 	| REnvironmentType
 	| RLanguageType
-	| UnresolvedCompoundRDataType
+	| UnresolvedRFunctionType
 	| UnresolvedRTypeVariable
 	// | RErrorType
 	| RAnyType

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { RAnyType, RNoneType, RTypeVariable, type RDataType } from '../../../../src/subtyping/types';
+import { RAnyType, RNoneType, RTypeVariable, type DataType } from '../../../../src/subtyping/types';
 import type { DataTypeInfo } from '../../../../src/subtyping/infer';
 import { inferDataTypes } from '../../../../src/subtyping/infer';
 import { type FlowrSearch } from '../../../../src/search/flowr-search-builder';
@@ -10,12 +10,12 @@ import { runSearch } from '../../../../src/search/flowr-search-executor';
 import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 
-export function assertInferredType(input: string, expectedType: { expectedType: RDataType } | { lowerBound?: RDataType, upperBound?: RDataType }): void {
+export function assertInferredType(input: string, expectedType: { expectedType: DataType } | { lowerBound?: DataType, upperBound?: DataType }): void {
 	assertInferredTypes(input, expectedType);
 }
 export function assertInferredTypes(
 	input: string,
-	...expectations: ({ query?: FlowrSearch } & ({ expectedType: RDataType } | { lowerBound?: RDataType, upperBound?: RDataType }))[]
+	...expectations: ({ query?: FlowrSearch } & ({ expectedType: DataType } | { lowerBound?: DataType, upperBound?: DataType }))[]
 ): void {
 	describe(`Infer types for ${input}`, async() => {
 		const executor = new TreeSitterExecutor();

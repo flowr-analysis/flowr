@@ -15,6 +15,8 @@ export enum RDataTypeTag {
     String = 'RStringType',
     /** {@link RRawType} */
     Raw = 'RRawType',
+	/** {@link RVectorType} */
+	Vector = 'RVectorType',
     /** {@link RNullType} */
 	Null = 'RNullType',
     /** {@link RFunctionType} */
@@ -57,6 +59,34 @@ export class RStringType {
 
 export class RRawType {
 	readonly tag = RDataTypeTag.Raw;
+}
+
+export class UnresolvedRVectorType {
+	readonly tag = RDataTypeTag.Vector;
+	readonly elementType = new UnresolvedRTypeVariable();
+
+	constructor(elementType?: UnresolvedRDataType) {
+		if(elementType !== undefined) {
+			this.elementType.constrainWithLowerBound(elementType);
+		}
+	}
+
+	constrainWithLowerBound(bound: UnresolvedRVectorType): void {
+		this.elementType.constrainWithLowerBound(bound.elementType);
+	}
+
+	constrainWithUpperBound(bound: UnresolvedRVectorType): void {
+		this.elementType.constrainWithUpperBound(bound.elementType);
+	}
+}
+
+export class RVectorType {
+	readonly tag = RDataTypeTag.Vector;
+	readonly elementType: RDataType;
+
+	constructor(elementType: RDataType) {
+		this.elementType = elementType;
+	}
 }
 
 export class RNullType {
@@ -155,6 +185,8 @@ export class UnresolvedRTypeVariable {
 				upperBound.constrainWithLowerBound(bound);
 			} else if(upperBound instanceof UnresolvedRListType && bound instanceof UnresolvedRListType && upperBound !== bound) {
 				upperBound.constrainWithLowerBound(bound);
+			} else if(upperBound instanceof UnresolvedRVectorType && bound instanceof UnresolvedRVectorType && upperBound !== bound) {
+				upperBound.constrainWithLowerBound(bound);
 			}
 		}
 	}
@@ -170,6 +202,8 @@ export class UnresolvedRTypeVariable {
 			} else if(lowerBound instanceof UnresolvedRFunctionType && bound instanceof UnresolvedRFunctionType && lowerBound !== bound) {
 				lowerBound.constrainWithUpperBound(bound);
 			} else if(lowerBound instanceof UnresolvedRListType && bound instanceof UnresolvedRListType && lowerBound !== bound) {
+				lowerBound.constrainWithUpperBound(bound);
+			} else if(lowerBound instanceof UnresolvedRVectorType && bound instanceof UnresolvedRVectorType && lowerBound !== bound) {
 				lowerBound.constrainWithUpperBound(bound);
 			}
 		}
@@ -240,6 +274,9 @@ export function resolveType(type: UnresolvedRDataType): RDataType {
 	} else if(type instanceof UnresolvedRListType) {
 		const resolvedElementType = resolveType(type.elementType);
 		return new RListType(resolvedElementType);
+	} else if(type instanceof UnresolvedRVectorType) {
+		const resolvedElementType = resolveType(type.elementType);
+		return new RVectorType(resolvedElementType);
 	} else {
 		return type;
 	}
@@ -258,6 +295,15 @@ function subsumes(subtype: RDataType, supertype: RDataType): boolean {
 		return subsumes(supertype.lowerBound, subtype) && subsumes(subtype, supertype.upperBound);
 	} else if(subtype instanceof RListType && supertype instanceof RListType) {
 		return subsumes(subtype.elementType, supertype.elementType);
+	} else if(supertype instanceof RVectorType) {
+		if(subtype instanceof RVectorType) {
+			return subsumes(subtype.elementType, supertype.elementType);
+		} else if(subtype instanceof RLogicalType || subtype instanceof RIntegerType || subtype instanceof RDoubleType || subtype instanceof RComplexType || subtype instanceof RStringType || subtype instanceof RRawType) {
+			// A scalar subsumes a vector type if it subsumes the element type of the vector
+			return subsumes(subtype, supertype.elementType);
+		} else {
+			return false; // A non-vector type cannot subsume a vector type
+		}
 	} else if(subtype instanceof RFunctionType && supertype instanceof RFunctionType) {
 		return subsumes(subtype.returnType, supertype.returnType) && subtype.parameterTypes.entries().every(([key, type]) => {
 			const supertypeParameter = supertype.parameterTypes.get(key);
@@ -336,7 +382,7 @@ function intersection(type1: RDataType, type2: RDataType): RDataType {
 }
 
 
-export type RVectorType
+export type RVectorElementType
 	= RLogicalType
 	| RIntegerType
 	| RDoubleType
@@ -344,7 +390,7 @@ export type RVectorType
 	| RStringType
 	| RRawType
 
-export function isVectorType(type: RDataType | UnresolvedRDataType): type is RVectorType {
+export function isVectorType(type: RDataType | UnresolvedRDataType): type is RVectorElementType {
 	return type.tag === RDataTypeTag.Logical
 		|| type.tag === RDataTypeTag.Integer
 		|| type.tag === RDataTypeTag.Double
@@ -353,12 +399,12 @@ export function isVectorType(type: RDataType | UnresolvedRDataType): type is RVe
 		|| type.tag === RDataTypeTag.Raw;
 }
 	
-export type CompoundRDataType = RFunctionType | RListType;
+export type CompoundRDataType = RVectorType | RFunctionType | RListType;
 
 export function isCompoundType(type: UnresolvedRDataType): type is UnresolvedCompoundRDataType
 export function isCompoundType(type: RDataType): type is CompoundRDataType
 export function isCompoundType(type: RDataType | UnresolvedRDataType): type is CompoundRDataType | UnresolvedCompoundRDataType {
-	return type.tag === RDataTypeTag.Function || type.tag === RDataTypeTag.List;
+	return type.tag === RDataTypeTag.Vector || type.tag === RDataTypeTag.Function || type.tag === RDataTypeTag.List;
 }
 
 /**
@@ -368,7 +414,7 @@ export function isCompoundType(type: RDataType | UnresolvedRDataType): type is C
  * type you are dealing with or if you want to handle all possible types.
 */
 export type RDataType
-	= RVectorType
+	= RVectorElementType
 	| RNullType
 	| REnvironmentType
 	| RLanguageType
@@ -378,10 +424,10 @@ export type RDataType
 	| RAnyType
 	| RNoneType;
 	
-export type UnresolvedCompoundRDataType = UnresolvedRFunctionType | UnresolvedRListType;
+export type UnresolvedCompoundRDataType = UnresolvedRVectorType | UnresolvedRFunctionType | UnresolvedRListType;
 	
 export type UnresolvedRDataType
-	= RVectorType
+	= RVectorElementType
 	| RNullType
 	| REnvironmentType
 	| RLanguageType

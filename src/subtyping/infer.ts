@@ -9,7 +9,7 @@ import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RDataType, UnresolvedRDataType } from './types';
-import { UnresolvedRTypeVariable, RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, UnresolvedRListType, RLanguageType, UnresolvedRFunctionType, RNoneType } from './types';
+import { UnresolvedRTypeVariable, RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, UnresolvedRListType, RLanguageType, UnresolvedRFunctionType, RNoneType, UnresolvedRVectorType } from './types';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../util/assert';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
@@ -262,12 +262,12 @@ class TypeInferringCfgGuidedVisitor<
 	}
 
 	override onForLoopCall(data: { call: DataflowGraphVertexFunctionCall, variable: FunctionArgument, vector: FunctionArgument, body: FunctionArgument }) {
-		guard(data.variable !== EmptyArgument && data.vector !== EmptyArgument, 'Expected variable and vector arguments to be defined');
-		const variableNode = this.getNormalizedAst(data.variable.nodeId);
-		const vectorNode = this.getNormalizedAst(data.vector.nodeId);
+		// guard(data.variable !== EmptyArgument && data.vector !== EmptyArgument, 'Expected variable and vector arguments to be defined');
+		// const variableNode = this.getNormalizedAst(data.variable.nodeId);
+		// const vectorNode = this.getNormalizedAst(data.vector.nodeId);
 		
-		guard(variableNode !== undefined && vectorNode !== undefined, 'Expected variable and vector nodes to be defined');
-		variableNode.info.typeVariable.constrainWithLowerBound(vectorNode.info.typeVariable);
+		// guard(variableNode !== undefined && vectorNode !== undefined, 'Expected variable and vector nodes to be defined');
+		// variableNode.info.typeVariable.constrainWithLowerBound(vectorNode.info.typeVariable);
 
 		this.onLoopCall(data);
 	}
@@ -386,6 +386,7 @@ class TypeInferringCfgGuidedVisitor<
 	override onListCall(data: { call: DataflowGraphVertexFunctionCall }) {
 		const node = this.getNormalizedAst(data.call.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
+		
 		const listType = new UnresolvedRListType();
 		node.info.typeVariable.constrainFromBothSides(listType);
 
@@ -408,10 +409,14 @@ class TypeInferringCfgGuidedVisitor<
 			node.info.typeVariable.constrainFromBothSides(new RNullType());
 			return;
 		}
+		
+		const vectorType = new UnresolvedRVectorType();
+		node.info.typeVariable.constrainFromBothSides(vectorType);
+		
 		for(const arg of args) {
 			const argNode = this.getNormalizedAst(arg.nodeId);
 			guard(argNode !== undefined, 'Expected argument node to be defined');
-			node.info.typeVariable.constrainWithLowerBound(argNode.info.typeVariable);
+			vectorType.elementType.constrainWithLowerBound(argNode.info.typeVariable);
 		}
 	}
 

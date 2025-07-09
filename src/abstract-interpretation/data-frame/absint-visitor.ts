@@ -13,13 +13,13 @@ import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/a
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isNotUndefined } from '../../util/assert';
-import type { AbstractInterpretationInfo } from './absint-info';
+import { DataFrameInfoMarker, type AbstractInterpretationInfo } from './absint-info';
 import type { DataFrameDomain, DataFrameStateDomain } from './domain';
 import { DataFrameTop, equalDataFrameState, joinDataFrames, joinDataFrameStates, wideningDataFrameStates } from './domain';
 import { mapDataFrameAccess } from './mappers/access-mapper';
 import { isAssignmentTarget, mapDataFrameVariableAssignment } from './mappers/assignment-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
-import { mapDataFrameReplacement } from './mappers/replacement-mapper';
+import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
 import { applySemantics, ConstraintType, getConstraintType } from './semantics';
 
 export interface DataFrameAbsintVisitorConfiguration<
@@ -77,7 +77,7 @@ class DataFrameAbsintVisitor<
 		}
 		// mark variable definitions as "unassigned", as the evaluation of the assigned expression is delayed until processing the assignment
 		const variableDefinition = isVariableDefinitionVertex(this.getDataflowGraph(vertex.id));
-		node.info.dataFrame ??= variableDefinition ? { type: 'unassigned' } : {};
+		node.info.dataFrame ??= variableDefinition ? { marker: DataFrameInfoMarker.Unassigned } : {};
 		node.info.dataFrame.domain = this.newDomain;
 	}
 
@@ -117,7 +117,7 @@ class DataFrameAbsintVisitor<
 		const sourceNode = source !== undefined ? this.getNormalizedAst(source) : undefined;
 
 		if(node !== undefined && targetNode !== undefined && sourceNode !== undefined) {
-			node.info.dataFrame = mapDataFrameReplacement(node, sourceNode, this.config.dfg);
+			node.info.dataFrame = mapDataFrameReplacementFunction(node, sourceNode, this.config.dfg);
 			this.processOperation(node);
 			this.clearUnassignedInfo(targetNode);
 		}
@@ -181,7 +181,7 @@ class DataFrameAbsintVisitor<
 	}
 
 	private clearUnassignedInfo(node: RNode<ParentInformation & AbstractInterpretationInfo>) {
-		if(node.info.dataFrame?.type === 'unassigned') {
+		if(node.info.dataFrame?.type === undefined && node.info.dataFrame?.marker === DataFrameInfoMarker.Unassigned) {
 			if(node.info.dataFrame.domain !== undefined) {
 				node.info.dataFrame = { domain: node.info.dataFrame.domain };
 			} else {
@@ -269,5 +269,6 @@ function getVariableOrigins(node: NodeId, dfg: DataflowGraph): RNode<ParentInfor
 		?.filter(entry => entry.type === OriginType.ReadVariableOrigin)
 		.map<RNode<ParentInformation & AbstractInterpretationInfo> | undefined>(entry => dfg.idMap?.get(entry.id))
 		.filter(isNotUndefined)
-		.filter(entry => entry.info.dataFrame?.domain !== undefined && entry.info.dataFrame.type !== 'unassigned') ?? [];
+		.filter(entry => entry.info.dataFrame?.domain !== undefined)
+		.filter(entry => entry.info.dataFrame?.type !== undefined || entry.info.dataFrame?.marker !== DataFrameInfoMarker.Unassigned) ?? [];
 }

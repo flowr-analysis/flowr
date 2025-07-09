@@ -10,11 +10,11 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isNotUndefined } from '../../util/assert';
 import { type AbstractInterpretationInfo, DataFrameInfoMarker, hasDataFrameInfoMarker } from './absint-info';
-import { DataFrameAbsintVisitor } from './absint-visitor';
+import { DataFrameShapeInferenceVisitor } from './absint-visitor';
 import { type DataFrameDomain, type DataFrameStateDomain, DataFrameTop, joinDataFrames, joinDataFrameStates } from './domain';
 
 /**
- * Performs abstract interpretation to infer the shape of data frames using the control flow graph of a program.
+ * Infers the shape of data frames by performing abstract interpretation using the control flow graph of a program.
  * This directly attaches the inferred data frames shapes to the AST (see {@link AbstractInterpretationInfo}).
  *
  * @param cfinfo - The control flow information containing the control flow graph
@@ -28,7 +28,7 @@ export function inferDataFrameShapes(
 	dfg: DataflowGraph,
 	ast: NormalizedAst<ParentInformation & AbstractInterpretationInfo>
 ): DataFrameStateDomain {
-	const visitor = new DataFrameAbsintVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, flowrConfig: defaultConfigOptions });
+	const visitor = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, flowrConfig: defaultConfigOptions });
 	visitor.start();
 	const exitPoints = cfinfo.exitPoints.map(id => cfinfo.graph.getVertex(id)).filter(isNotUndefined);
 	const exitNodes = exitPoints.map(vertex => ast.idMap.get(isMarkerVertex(vertex) ? vertex.root : vertex.id)).filter(isNotUndefined);

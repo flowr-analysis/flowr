@@ -63,7 +63,6 @@ export interface DataFrameExpressionInfo extends DataFrameInfoBase {
  */
 export type DataFrameInfo = DataFrameEmptyInfo | DataFrameAssignmentInfo | DataFrameExpressionInfo;
 
-
 /**
  * Represents the abstract interpretation information attached to AST nodes
  */
@@ -79,7 +78,6 @@ export function hasDataFrameAssignmentInfo(
 ): node is RNode<ParentInformation & AbstractInterpretationInfo & { dataFrame: DataFrameAssignmentInfo }> {
 	return node.info.dataFrame?.type === 'assignment';
 }
-
 
 /**
  * Checks whether an AST node has attached data frame expression information.

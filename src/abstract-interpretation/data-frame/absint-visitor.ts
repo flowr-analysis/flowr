@@ -18,7 +18,7 @@ import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
 import { applySemantics, ConstraintType, getConstraintType } from './semantics';
 import { getVariableOrigins, resolveIdToDataFrameShape } from './shape-inference';
 
-export interface DataFrameAbsintVisitorConfiguration<
+export interface DataFrameShapeInferenceVisitorConfiguration<
 	OtherInfo = NoInfo,
 	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst<OtherInfo & AbstractInterpretationInfo> = NormalizedAst<OtherInfo & AbstractInterpretationInfo>,
@@ -30,14 +30,14 @@ export interface DataFrameAbsintVisitorConfiguration<
 const DefaultWideningThreshold = 4;
 
 /**
- * The control flow graph visitor to perform abstract interpretation on the shape of data frames
+ * The control flow graph visitor to infer the shape of data frames using abstract interpretation
  */
-export class DataFrameAbsintVisitor<
+export class DataFrameShapeInferenceVisitor<
 	OtherInfo = NoInfo,
 	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst<OtherInfo & AbstractInterpretationInfo> = NormalizedAst<OtherInfo & AbstractInterpretationInfo>,
 	Dfg extends DataflowGraph = DataflowGraph,
-	Config extends DataFrameAbsintVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg> = DataFrameAbsintVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg>
+	Config extends DataFrameShapeInferenceVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg> = DataFrameShapeInferenceVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg>
 > extends SemanticCfgGuidedVisitor<OtherInfo & AbstractInterpretationInfo, ControlFlow, Ast, Dfg, Config & { defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' }> {
 	/** The old domain of an AST node before proccessing the node */
 	private oldDomain: DataFrameStateDomain = new Map();

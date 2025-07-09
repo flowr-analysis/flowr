@@ -8,7 +8,6 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { DataFrameAssignmentInfo } from '../absint-info';
 import { isDataFrameArgument } from './arguments';
 
-
 /**
  * Maps a concrete data frame assignment to data frame assignment info containing the ids of the identifier and assigned expression.
  *

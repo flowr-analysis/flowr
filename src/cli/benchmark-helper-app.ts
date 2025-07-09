@@ -12,20 +12,20 @@ import type { KnownParserName } from '../r-bridge/parser';
 import { amendConfig, getConfig } from '../config';
 
 export interface SingleBenchmarkCliOptions {
-	verbose:                   boolean
-	help:                      boolean
-	input?:                    string
-	'file-id'?:                number
-	'run-num'?:                number
-	slice:                     string
-	output?:                   string
-	parser:                    KnownParserName
-	'abstract-interpretation': boolean
-	'enable-pointer-tracking': boolean
-	'max-slices':              number
-	threshold?:                number
-	'sampling-strategy':       string
-	seed?:                     string
+	verbose:                     boolean
+	help:                        boolean
+	input?:                      string
+	'file-id'?:                  number
+	'run-num'?:                  number
+	slice:                       string
+	output?:                     string
+	parser:                      KnownParserName
+	'dataframe-shape-inference': boolean
+	'enable-pointer-tracking':   boolean
+	'max-slices':                number
+	threshold?:                  number
+	'sampling-strategy':         string
+	seed?:                       string
 }
 
 const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [],{
@@ -103,13 +103,13 @@ async function benchmark() {
 			guard(count > 0, `No possible slices found for ${options.input}, skipping in count`);
 		}
 
-		if(options['abstract-interpretation']) {
-			console.log(`${prefix} Extracting control flow graph for abstract interpretation`);
+		if(options['dataframe-shape-inference']) {
+			console.log(`${prefix} Extracting control flow graph for data frame shape inference`);
 			slicer.extractCFG();
 
-			console.log(`${prefix} Performing abstract interpretation for data frames`);
-			slicer.abstractIntepretation();
-			console.log(`${prefix} Completed abstract interpretation`);
+			console.log(`${prefix} Performing shape inference for data frames`);
+			slicer.inferDataFrameShapes();
+			console.log(`${prefix} Completed data frame shape inference`);
 		}
 
 		const { stats } = slicer.finish();

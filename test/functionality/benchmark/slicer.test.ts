@@ -272,25 +272,25 @@ e <- 5`,
 				);
 			});
 		});
-		describe('Control flow graph and abstract interpretation', () => {
-			test('Abstract interpretation of data frames', async() => {
+		describe('Control flow graph and data frame shape inference', () => {
+			test('Data frame shape inference', async() => {
 				const slicer = new BenchmarkSlicer('tree-sitter');
 				const request = requestFromInput('df <- data.frame(id = 1:3, age = c(25, 30, 40))');
 				await slicer.init(request, defaultConfigOptions);
 				slicer.extractCFG();
-				slicer.abstractIntepretation();
+				slicer.inferDataFrameShapes();
 
 				const { stats: rawStats } = slicer.finish();
 				const stats = await summarizeSlicerStats(rawStats);
 				const statInfo = stats2string(stats);
-				guard(isNotUndefined(stats.absint), 'Abstact interpretation stats cannot be undefined');
+				guard(isNotUndefined(stats.dataFrameShape), 'Abstact interpretation stats cannot be undefined');
 
-				const measurements: CommonSlicerMeasurements[] = [...RequiredSlicerMeasurements, 'extract control flow graph', 'perform abstract interpretation'];
+				const measurements: CommonSlicerMeasurements[] = [...RequiredSlicerMeasurements, 'extract control flow graph', 'infer data frame shapes'];
 				assert.strictEqual(stats.request, request, statInfo);
 				assert.sameMembers([...stats.commonMeasurements.keys()], measurements, `Must have all keys in common measurements ${statInfo}`);
 
-				const { numberOfEmptyNodes: _numberOfEmptyNodes, sizeOfInfo: _sizeOfInfo, ...absintStats } = stats.absint;
-				assert.deepStrictEqual(absintStats, {
+				const { numberOfEmptyNodes: _numberOfEmptyNodes, sizeOfInfo: _sizeOfInfo, ...dataFrameShapeStats } = stats.dataFrameShape;
+				assert.deepStrictEqual(dataFrameShapeStats, {
 					// checked manually
 					numberOfDataFrameFiles:    1,
 					numberOfNonDataFrameFiles: 0,

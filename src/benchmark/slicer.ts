@@ -51,11 +51,11 @@ import { isParentContainerIndex } from '../dataflow/graph/vertex';
 import { equidistantSampling } from '../util/collections/arrays';
 import type { FlowrConfigOptions } from '../config';
 import { getEngineConfig } from '../config';
-import { performDataFrameAbsint } from '../abstract-interpretation/data-frame/absint-visitor';
+import { inferDataFrameShapes } from '../abstract-interpretation/data-frame/shape-inference';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
-import type { AbstractInterpretationInfo } from '../abstract-interpretation/data-frame/absint-info';
+import { hasDataFrameExpressionInfo, type AbstractInterpretationInfo } from '../abstract-interpretation/data-frame/absint-info';
 import type { IntervalDomain } from '../abstract-interpretation/data-frame/domain';
 import { ColNamesTop, DataFrameBottom, DataFrameTop, equalDataFrameDomain, equalInterval, IntervalBottom, IntervalTop } from '../abstract-interpretation/data-frame/domain';
 
@@ -393,7 +393,7 @@ export class BenchmarkSlicer {
 	}
 
 	/**
-	 * Perform abstract interpretation of data frames using {@link performDataFrameAbsint}
+	 * Perform abstract interpretation of data frames using {@link inferDataFrameShapes}
 	 *
 	 * @returns The statistics of the abstract iterpretation
 	 */
@@ -423,7 +423,7 @@ export class BenchmarkSlicer {
 			perNodeStats:              new Map()
 		};
 
-		const result = this.measureSimpleStep('perform abstract interpretation', () => performDataFrameAbsint(cfinfo, dfg, ast));
+		const result = this.measureSimpleStep('perform abstract interpretation', () => inferDataFrameShapes(cfinfo, dfg, ast));
 		stats.numberOfResultConstraints = result.size;
 
 		for(const value of result.values()) {
@@ -442,7 +442,7 @@ export class BenchmarkSlicer {
 			}
 			stats.sizeOfInfo += safeSizeOf([node.info.dataFrame]);
 
-			const expression = node.info.dataFrame?.type === 'expression' ? node.info.dataFrame : undefined;
+			const expression = hasDataFrameExpressionInfo(node) ? node.info.dataFrame : undefined;
 			const value = node.info.dataFrame.domain?.get(node.info.id);
 
 			// Only store per-node information for nodes representing expressions or nodes with abstract values

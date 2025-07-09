@@ -13,7 +13,7 @@ import { requestFromInput } from '../../../r-bridge/retriever';
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../util/assert';
 import { readLineByLineSync } from '../../../util/files';
 import type { DataFrameExpressionInfo, DataFrameOperation } from '../absint-info';
-import { resolveIdToAbstractValue } from '../absint-visitor';
+import { resolveIdToDataFrameShape } from '../shape-inference';
 import { DataFrameTop } from '../domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from '../resolve-args';
 import type { FunctionParameterLocation } from './arguments';
@@ -589,7 +589,7 @@ function mapDataFrameColBind(
 
 	for(const arg of args) {
 		if(arg !== dataFrame && arg !== EmptyArgument) {
-			const otherDataFrame = resolveIdToAbstractValue(arg.value, info.graph);
+			const otherDataFrame = resolveIdToDataFrameShape(arg.value, info.graph);
 
 			if(otherDataFrame !== undefined) {
 				result.push({
@@ -636,7 +636,7 @@ function mapDataFrameRowBind(
 
 	for(const arg of args) {
 		if(arg !== dataFrame && arg !== EmptyArgument) {
-			const otherDataFrame = resolveIdToAbstractValue(arg.value, info.graph);
+			const otherDataFrame = resolveIdToDataFrameShape(arg.value, info.graph);
 
 			if(otherDataFrame !== undefined) {
 				result.push({
@@ -1049,7 +1049,7 @@ function mapDataFrameJoin(
 	const otherArg = getFunctionArgument(args, params.otherDataFrame, info);
 	const byArg = getFunctionArgument(args, params.by, info);
 
-	const otherDataFrame = resolveIdToAbstractValue(otherArg, info.graph) ?? DataFrameTop;
+	const otherDataFrame = resolveIdToDataFrameShape(otherArg, info.graph) ?? DataFrameTop;
 	let byNames: (string | undefined)[] | undefined;
 
 	const joinType = getJoinType(joinAll, joinLeft, joinRight);

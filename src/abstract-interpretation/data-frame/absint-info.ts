@@ -1,3 +1,5 @@
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataFrameStateDomain } from './domain';
 import type { ConstraintType, DataFrameOperationArgs, DataFrameOperationName, DataFrameOperationOptions } from './semantics';
@@ -67,4 +69,33 @@ export type DataFrameInfo = DataFrameEmptyInfo | DataFrameAssignmentInfo | DataF
  */
 export interface AbstractInterpretationInfo {
 	dataFrame?: DataFrameInfo
+}
+
+/**
+ * Checks whether an AST node has attached data frame assignment information.
+ */
+export function hasDataFrameAssignmentInfo(
+	node: RNode<ParentInformation & AbstractInterpretationInfo>
+): node is RNode<ParentInformation & AbstractInterpretationInfo & { dataFrame: DataFrameAssignmentInfo }> {
+	return node.info.dataFrame?.type === 'assignment';
+}
+
+
+/**
+ * Checks whether an AST node has attached data frame expression information.
+ */
+export function hasDataFrameExpressionInfo(
+	node: RNode<ParentInformation & AbstractInterpretationInfo>
+): node is RNode<ParentInformation & AbstractInterpretationInfo & { dataFrame: DataFrameExpressionInfo }> {
+	return node.info.dataFrame?.type === 'expression';
+}
+
+/**
+ * Checks whether an AST node has an attached data frame info marker.
+ */
+export function hasDataFrameInfoMarker(
+	node: RNode<ParentInformation & AbstractInterpretationInfo>,
+	marker: DataFrameInfoMarker
+): boolean {
+	return node.info.dataFrame?.type === undefined && node.info.dataFrame?.marker === marker;
 }

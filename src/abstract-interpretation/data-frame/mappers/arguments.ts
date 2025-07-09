@@ -11,7 +11,7 @@ import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/pro
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import type { AbstractInterpretationInfo } from '../absint-info';
-import { resolveIdToAbstractValue } from '../absint-visitor';
+import { resolveIdToDataFrameShape } from '../shape-inference';
 import { resolveIdToArgName, resolveIdToArgValue, unquoteArgument } from '../resolve-args';
 
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
@@ -229,7 +229,7 @@ export function isDataFrameArgument(arg: RNode<ParentInformation> | undefined, i
 export function isDataFrameArgument(arg: RFunctionArgument<ParentInformation> | undefined, info: ResolveInfo):
 	arg is RArgument<ParentInformation & Required<AbstractInterpretationInfo>> & { value: RNode<ParentInformation & Required<AbstractInterpretationInfo>> };
 export function isDataFrameArgument(arg: RNode<ParentInformation> | RFunctionArgument<ParentInformation> | undefined, info: ResolveInfo): boolean {
-	return arg !== EmptyArgument && resolveIdToAbstractValue(arg, info.graph) !== undefined;
+	return arg !== EmptyArgument && resolveIdToDataFrameShape(arg, info.graph) !== undefined;
 }
 
 /**

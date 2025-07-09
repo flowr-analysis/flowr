@@ -2,7 +2,6 @@ import { hasDataFrameExpressionInfo, type AbstractInterpretationInfo, type DataF
 import { performDataFrameAbsint, resolveIdToAbstractValue } from '../../abstract-interpretation/data-frame/absint-visitor';
 import { satisfiesColsNames, satisfiesLeqInterval, type DataFrameDomain } from '../../abstract-interpretation/data-frame/domain';
 import { extractCfg } from '../../control-flow/extract-cfg';
-import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -11,7 +10,7 @@ import { Q } from '../../search/flowr-search-builder';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
 import { formatRange } from '../../util/mermaid/dfg';
 import type { MergeableRecord } from '../../util/objects';
-import type { SourceRange } from '../../util/range';
+import { rangeFrom, type SourceRange } from '../../util/range';
 import type { LintingResult, LintingRule } from '../linter-format';
 import { LintingCertainty, LintingPrettyPrintContext } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
@@ -77,7 +76,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 			numAccesses:   operations.length,
 			totalAccessed: operations
 				.map(operation => operation.operation === 'accessCols' ? operation.columns?.length ?? 0 : operation.rows?.length ?? 0)
-				.reduce((a, b) => a + b)
+				.reduce((a, b) => a + b, 0)
 		};
 
 		const results: DataFrameAccessValidationResult[] = accesses
@@ -86,14 +85,14 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 			)
 			.map(({ nodeId, operand, ...accessed }) => ({
 				...accessed,
-				node:    data.normalize.idMap.get(nodeId) as RNode,
+				node:    data.normalize.idMap.get(nodeId),
 				operand: operand !== undefined ? data.normalize.idMap.get(operand) : undefined,
 			}))
 			.map(({ node, operand, ...accessed }) => ({
 				...accessed,
-				access:    node.lexeme ?? '???',
+				access:    node?.lexeme ?? '???',
 				operand:   operand?.type === RType.Symbol ? operand.content : undefined,
-				range:     node.info.fullRange ?? node.location as SourceRange,
+				range:     node?.info.fullRange ?? node?.location ?? rangeFrom(-1, -1, -1, -1),
 				certainty: LintingCertainty.Definitely
 			}));
 
@@ -136,7 +135,7 @@ function findInvalidDataFrameAccesses(
 ): DataFrameAccess[] {
 	const invalidAccesses: DataFrameAccess[] = [];
 
-	if(operandShape) {
+	if(operandShape !== undefined) {
 		for(const row of accessedRows ?? []) {
 			if(!satisfiesLeqInterval(operandShape.rows, row)) {
 				invalidAccesses.push({ type: 'row',accessed: row });

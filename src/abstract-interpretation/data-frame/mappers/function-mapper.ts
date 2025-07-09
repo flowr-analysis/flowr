@@ -695,8 +695,9 @@ function mapDataFrameSubset(
 	const dropArg = getFunctionArgument(args, params.drop, info);
 
 	const condition = typeof filterValue === 'boolean' ? filterValue : undefined;
+	const filterNames = getUnresolvedSymbolsInExpression(filterArg, info.graph);
 	const { selectedCols, unselectedCols } = getSelectedColumns([selectArg], info);
-	const accessedCols = [...selectedCols ?? [], ...unselectedCols ?? []];
+	const accessedCols = [...filterNames, ...selectedCols ?? [], ...unselectedCols ?? []];
 
 	const mixedAccess = accessedCols.some(col => typeof col === 'string') && accessedCols.some(col => typeof col === 'number');
 	const duplicateCols = accessedCols.some((col, index, list) => col !== undefined && list.indexOf(col) !== index);
@@ -712,7 +713,7 @@ function mapDataFrameSubset(
 		result.push({
 			operation: 'accessCols',
 			operand:   operand?.info.id,
-			columns:   accessedCols.filter(col => typeof col === 'number')
+			columns:   accessedCols.filter(col => typeof col === 'number').map(Math.abs)
 		});
 	}
 
@@ -824,7 +825,7 @@ function mapDataFrameSelect(
 		result.push({
 			operation: 'accessCols',
 			operand:   operand?.info.id,
-			columns:   accessedCols.filter(col => typeof col === 'number')
+			columns:   accessedCols.filter(col => typeof col === 'number').map(Math.abs)
 		});
 	}
 
@@ -1017,29 +1018,32 @@ function mapDataFrameJoin(
 	const byArg = getFunctionArgument(args, params.by, info);
 
 	const otherDataFrame = resolveIdToAbstractValue(otherArg, info.graph) ?? DataFrameTop;
-	let byNames: (string | undefined)[] | undefined;
+	let byCols: (string | number | undefined)[] | undefined;
 
 	const joinType = getJoinType(joinAll, joinLeft, joinRight);
 
 	if(byArg !== undefined) {
 		const byValue = resolveIdToArgValue(byArg, info);
 
-		if(typeof byValue === 'string') {
-			byNames = [byValue];
-		} else if(typeof byValue === 'number') {
-			byNames = [undefined];
-		} else if(Array.isArray(byValue) && byValue.every(by => typeof by === 'string')) {
-			byNames = byValue;
-		} else if(Array.isArray(byValue) && byValue.every(by => typeof by === 'number')) {
-			byNames = Array(byValue.length).fill(undefined);
+		if(typeof byValue === 'string' || typeof byValue === 'number') {
+			byCols = [byValue];
+		} else if(Array.isArray(byValue) && (byValue.every(by => typeof by === 'string') || byValue.every(by => typeof by === 'number'))) {
+			byCols = byValue;
 		}
 	}
 
-	if(byNames?.some(isNotUndefined)) {
+	if(byCols?.some(by => typeof by === 'string')) {
 		result.push({
 			operation: 'accessCols',
 			operand:   dataFrame.value.info.id,
-			columns:   byNames.filter(isNotUndefined)
+			columns:   byCols.filter(by => typeof by === 'string')
+		});
+	}
+	if(byCols?.some(by => typeof by === 'number')) {
+		result.push({
+			operation: 'accessCols',
+			operand:   dataFrame.value.info.id,
+			columns:   byCols.filter(by => typeof by === 'number')
 		});
 	}
 
@@ -1047,7 +1051,7 @@ function mapDataFrameJoin(
 		operation: 'join',
 		operand:   dataFrame.value.info.id,
 		other:     otherDataFrame,
-		by:        byNames,
+		by:        byCols?.map(by => typeof by === 'string' ? by : undefined),
 		options:   { join: joinType, natural: byArg === undefined }
 	});
 	return result;

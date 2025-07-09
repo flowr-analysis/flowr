@@ -23,33 +23,51 @@ import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/a
 import { getRangeEnd } from '../../../../src/util/range';
 import { decorateLabelContext, type TestLabel } from '../../_helper/label';
 
+/**
+ * Whether the inferred values should match the actual values exactly, or should be an over-approximation of the actual values.
+ */
 export enum DomainMatchingType {
     Exact = 'exact',
     Overapproximation = 'overapproximation'
 }
 
+/**
+ * The data frame test options defining which data frame shape property should match exactly, and which should be an over-approximation.
+ */
 export type DataFrameTestOptions = Record<keyof DataFrameDomain, DomainMatchingType>;
 
-export const ColNamesOverapproximation: Partial<DataFrameTestOptions> = {
-	colnames: DomainMatchingType.Overapproximation
-};
-
+/**
+ * Data frame tests options defining that every shape property should exactly match the actual value.
+ */
 export const DataFrameShapeExact: DataFrameTestOptions = {
 	colnames: DomainMatchingType.Exact,
 	cols:     DomainMatchingType.Exact,
 	rows:     DomainMatchingType.Exact
 };
 
+/**
+ * Data frame tests options defining that every shape property should be an over-approximation of the actual value.
+ */
 export const DataFrameShapeOverapproximation: DataFrameTestOptions = {
 	colnames: DomainMatchingType.Overapproximation,
 	cols:     DomainMatchingType.Overapproximation,
 	rows:     DomainMatchingType.Overapproximation
 };
 
+/**
+ * Data frame tests options defining that the inferred columns names should be an over-approximation of the actual value.
+ */
+export const ColNamesOverapproximation: Partial<DataFrameTestOptions> = {
+	colnames: DomainMatchingType.Overapproximation
+};
+
 type DataFrameOperationType = {
 	[Name in DataFrameOperationName]: { operation: Name } & DataFrameOperationArgs<Name>
 }[DataFrameOperationName];
 
+/**
+ * The mapper type for mapping each data frame shape property to an equality and ordering functon
+ */
 type DomainComparisonMapping = {
 	[K in keyof DataFrameDomain]: {
 		equal: (value1: DataFrameDomain[K], value2: DataFrameDomain[K]) => boolean,
@@ -57,13 +75,18 @@ type DomainComparisonMapping = {
 	}
 }
 
+/**
+ * The equality and ordering comparison functons for each data frame shape property
+ */
 const ComparisonFunctions: DomainComparisonMapping = {
 	colnames: { equal: equalColNames, leq: leqColNames },
 	cols:     { equal: equalInterval, leq: leqInterval },
 	rows:     { equal: equalInterval, leq: leqInterval }
 };
 
-/** Stores the inferred data frame constraints and AST node for a tested slicing criterion */
+/**
+ * Stores the inferred data frame constraints and AST node for a tested slicing criterion.
+ */
 interface CriterionTestEntry {
 	criterion:  SingleSlicingCriterion,
 	inferred:   DataFrameDomain | undefined,
@@ -97,7 +120,7 @@ export function testDataFrameDomain(
 	name: string | TestLabel = code,
 	config: FlowrConfigOptions = defaultConfigOptions
 ) {
-	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getFinalOptions(expected, options)]);
+	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getDefaultTestOptions(expected, options)]);
 	guardValidCriteria(criteria);
 	assertDataFrameDomain(parser, code, criteria.map(entry => [entry[0], entry[1]]), name, config);
 	testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]), skipRun, parser, name, config);
@@ -132,7 +155,7 @@ export function testDataFrameDomainWithSource(
 	name?: string | TestLabel,
 	config: FlowrConfigOptions = defaultConfigOptions
 ) {
-	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getFinalOptions(expected, options)]);
+	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getDefaultTestOptions(expected, options)]);
 	guardValidCriteria(criteria);
 	assertDataFrameDomain(parser, getCode(fileArg), criteria.map(entry => [entry[0], entry[1]]), name ?? getCode(fileArg), config);
 	testDataFrameDomain(shell, getCode(textArg), criteria, skipRun, parser, name ?? getCode(textArg), config);
@@ -306,7 +329,7 @@ function createCodeForOutput(
 	return `cat(sprintf("${marker} %s,[%s],%s,%s\\n", is.data.frame(${symbol}), paste(names(${symbol}), collapse = ";"), paste(ncol(${symbol}), collapse = ""), paste(nrow(${symbol}), collapse = "")))`;
 }
 
-function getFinalOptions(expected: DataFrameDomain | undefined, options?: Partial<DataFrameTestOptions>): Partial<DataFrameTestOptions> {
+function getDefaultTestOptions(expected: DataFrameDomain | undefined, options?: Partial<DataFrameTestOptions>): Partial<DataFrameTestOptions> {
 	let finalOptions: Partial<DataFrameTestOptions> = { ...options };
 
 	if(expected === undefined) {

@@ -14,8 +14,15 @@ import type { AbstractInterpretationInfo } from '../absint-info';
 import { resolveIdToDataFrameShape } from '../shape-inference';
 import { resolveIdToArgName, resolveIdToArgValue, unquoteArgument } from '../resolve-args';
 
+/** Regular expresion representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
 
+/**
+ * The location of a function parameter for mapping function call arguments to function parameters.
+ * - `pos` contains the position of the function parameter (use `-1` for non-existent or non-positional arguments)
+ * - `name` optionally contains the name of the function parameter
+ * - `default` optionally contains the default value of the function parameter
+ */
 export interface FunctionParameterLocation<T = undefined> {
     pos:      number,
     name?:    string

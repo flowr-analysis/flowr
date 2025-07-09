@@ -2,6 +2,9 @@ import { assertUnreachable, isNotUndefined } from '../../util/assert';
 import type { DataFrameDomain, IntervalDomain } from './domain';
 import { addInterval, ColNamesTop, DataFrameTop, extendIntervalToInfinity, extendIntervalToZero, IntervalBottom, IntervalTop, joinColNames, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
 
+/**
+ * Represents the different types of resulting constraints that are inferred by abstract data frame operations.
+ */
 export enum ConstraintType {
 	/** The inferred constraints must hold for the operand at the point of the operation */
 	OperandPrecondition,
@@ -11,6 +14,10 @@ export enum ConstraintType {
 	ResultPostcondition
 }
 
+/**
+ * Mapper for defining the abstract data frame operations and mapping them to semantics applier functions,
+ * including information about the type of the resulting constraints that are inferred by the operation.
+ */
 const DataFrameSemanticsMapper = {
 	'create':      { apply: applyCreateSemantics,      type: ConstraintType.ResultPostcondition },
 	'read':        { apply: applyReadSemantics,        type: ConstraintType.ResultPostcondition },
@@ -41,17 +48,40 @@ type DataFrameSemanticsMapperInfo<Arguments extends object, Options extends obje
 	readonly type:  ConstraintType
 }
 
+/**
+ * Data frame semantics applier for applying the abstract semantics of an abstract data frame operation with respect to the data frame shape domain.
+ * - `value` contains the abstract data frame shape of operand of the abstract operation
+ * - `args` contains the arguments required for the abstract operation
+ * - `options` optionally contains additional options to change the behavior or the abstract operation
+ */
 type DataFrameSemanticsApplier<Arguments extends object, Options extends object | undefined> = (
 	value: DataFrameDomain,
 	args: Arguments,
 	options?: Options
 ) => DataFrameDomain;
 
+/** All available abstract data frame operations */
 export type DataFrameOperationName = keyof typeof DataFrameSemanticsMapper;
+
+/** The names of all abstract data frame operations */
 export const DataFrameOperationNames = Object.keys(DataFrameSemanticsMapper) as DataFrameOperationName[];
+
+/** The required arguments for an abstract data frame operation */
 export type DataFrameOperationArgs<N extends DataFrameOperationName> = Parameters<typeof DataFrameSemanticsMapper[N]['apply']>[1];
+
+/** The optional addition options for an abstract data frame operation */
 export type DataFrameOperationOptions<N extends DataFrameOperationName> = Parameters<typeof DataFrameSemanticsMapper[N]['apply']>[2];
 
+/**
+ * Applies the abstract semantics of an abstract data frame operation with respect to the data frame shape domain.
+ *
+ * @param operation - The name of the abstract operation to apply the semantics of
+ * @param value     - The abstract data frame shape of the operand of the abstract operation
+ * @param args      - The arguments for applying the abstract semantics of the abstract operation
+ * @param options   - The optional additional options of the abstract operation
+ * @returns The resulting new data frame shape constraints.
+ * The semantic type of the resulting constraints depends on the {@link ConstraintType} of the abstract operation.
+ */
 export function applySemantics<Name extends DataFrameOperationName>(
 	operation: Name,
 	value: DataFrameDomain,
@@ -63,6 +93,9 @@ export function applySemantics<Name extends DataFrameOperationName>(
 	return applier.apply(value, args, options);
 }
 
+/**
+ * Gets the default resulting constraint type for an abstract data frame operation.
+ */
 export function getConstraintType(operation: DataFrameOperationName): ConstraintType {
 	return DataFrameSemanticsMapper[operation].type;
 }
@@ -367,6 +400,7 @@ function applyJoinSemantics(
 	{ other, by }: { other: DataFrameDomain, by: (string | undefined)[] | undefined },
 	options?: { join?: 'inner' | 'left' | 'right' | 'full', natural?: boolean }
 ): DataFrameDomain {
+	// Merge two intervals by creating the maximum of the lower bounds and adding the upper bounds
 	const mergeInterval = (interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain => {
 		if(interval1 === IntervalBottom || interval2 === IntervalBottom) {
 			return IntervalBottom;
@@ -374,6 +408,7 @@ function applyJoinSemantics(
 			return [Math.max(interval1[0], interval2[0]), interval1[1] + interval2[1]];
 		}
 	};
+	// Creating the Cartesian product of two intervals by keeping the lower bound and multiplying the upper bounds
 	const productInterval = (lower: IntervalDomain, interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain => {
 		if(lower === IntervalBottom || interval1 === IntervalBottom || interval2 === IntervalBottom) {
 			return IntervalBottom;
@@ -387,15 +422,16 @@ function applyJoinSemantics(
 
 	if(options?.natural) {
 		duplicateCols = false;
-		productRows = commonCols.length === 0;
+		productRows = commonCols !== ColNamesTop && commonCols.length === 0;
 	} else if(by === undefined) {
 		duplicateCols = true;
 		productRows = true;
 	} else if(by.length === 0) {
-		duplicateCols = commonCols.length > 0;
+		duplicateCols = commonCols === ColNamesTop || commonCols.length > 0;
 		productRows = true;
 	} else if(by.every(isNotUndefined)) {
-		duplicateCols = subtractColNames(commonCols, by).length > 0;
+		const remainingCols = subtractColNames(commonCols, by);
+		duplicateCols = remainingCols === ColNamesTop || remainingCols.length > 0;
 		productRows = false;
 	} else {
 		duplicateCols = true;

@@ -383,6 +383,12 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 	}
 };
 
+type DataFrameFunctionMapperInfo<Params extends object> = {
+	readonly mapper:   DataFrameFunctionMapping<Params>,
+	readonly library?: string,
+	readonly type?:    Exclude<DataFrameType, DataFrameType.DataFrame>
+};
+
 /**
  * Data frame function mapper for mapping a concrete data frame function to abstract data frame operations.
  * - `args` contains the function call arguments
@@ -395,14 +401,9 @@ type DataFrameFunctionMapping<Params extends object> = (
     info: ResolveInfo
 ) => DataFrameOperation[] | undefined;
 
-type DataFrameFunctionMapperInfo<Params extends object> = {
-	readonly mapper:   DataFrameFunctionMapping<Params>,
-	readonly library?: string,
-	readonly type?:    Exclude<DataFrameType, DataFrameType.DataFrame>
-};
-
 /** All currently supported data frame functions */
 type DataFrameFunction = keyof typeof DataFrameFunctionMapper;
+
 /** The required mapping parameters for a data frame function */
 type DataFrameFunctionParams<N extends DataFrameFunction> = Parameters<typeof DataFrameFunctionMapper[N]['mapper']>[1];
 

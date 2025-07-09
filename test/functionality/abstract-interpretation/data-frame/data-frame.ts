@@ -30,13 +30,17 @@ export enum DomainMatchingType {
 
 export type DataFrameTestOptions = Record<keyof DataFrameDomain, DomainMatchingType>;
 
-export const DataFrameTestExact: DataFrameTestOptions = {
+export const ColNamesOverapproximation: Partial<DataFrameTestOptions> = {
+	colnames: DomainMatchingType.Overapproximation
+};
+
+export const DataFrameShapeExact: DataFrameTestOptions = {
 	colnames: DomainMatchingType.Exact,
 	cols:     DomainMatchingType.Exact,
 	rows:     DomainMatchingType.Exact
 };
 
-export const DataFrameTestOverapproximation: DataFrameTestOptions = {
+export const DataFrameShapeOverapproximation: DataFrameTestOptions = {
 	colnames: DomainMatchingType.Overapproximation,
 	cols:     DomainMatchingType.Overapproximation,
 	rows:     DomainMatchingType.Overapproximation
@@ -78,7 +82,7 @@ interface CriterionTestEntry {
  *
  * @param shell    - The R shell to use to run the code
  * @param code     - The code to test
- * @param criteria - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameTestExact})
+ * @param criteria - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameShapeExact})
  * @param skipRun  - Whether the real test with the execution of the R code should be skipped (defaults to `false`)
  * @param parser   - The parser to use for the data flow graph creation (defaults to the R shell)
  * @param name     - An optional name or test label for the test (defaults to the code)
@@ -93,6 +97,7 @@ export function testDataFrameDomain(
 	name: string | TestLabel = code,
 	config: FlowrConfigOptions = defaultConfigOptions
 ) {
+	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getFinalOptions(expected, options)]);
 	guardValidCriteria(criteria);
 	assertDataFrameDomain(parser, code, criteria.map(entry => [entry[0], entry[1]]), name, config);
 	testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]), skipRun, parser, name, config);
@@ -111,7 +116,7 @@ export function testDataFrameDomain(
  * @param fileArg  - The argument for the assert run
  * @param textArg  - The argument for the full test run where the code is executed
  * @param getCode  - The function to get the code for `fileArg` or `textArg`
- * @param criteria - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameTestExact})
+ * @param criteria - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameShapeExact})
  * @param skipRun  - Whether the real test with the execution of the R code should be skipped (defaults to `false`)
  * @param parser   - The parser to use for the data flow graph creation (defaults to the R shell)
  * @param name     - An optional name or test label for the test (defaults to the code)
@@ -127,6 +132,7 @@ export function testDataFrameDomainWithSource(
 	name?: string | TestLabel,
 	config: FlowrConfigOptions = defaultConfigOptions
 ) {
+	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getFinalOptions(expected, options)]);
 	guardValidCriteria(criteria);
 	assertDataFrameDomain(parser, getCode(fileArg), criteria.map(entry => [entry[0], entry[1]]), name ?? getCode(fileArg), config);
 	testDataFrameDomain(shell, getCode(textArg), criteria, skipRun, parser, name ?? getCode(textArg), config);
@@ -157,7 +163,7 @@ export function assertDataFrameDomain(
 	test.each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
 		const [inferred] = getInferredDomainForCriterion(result, criterion, config);
-		assertDomainMatches(inferred, expect, DataFrameTestExact);
+		assertDomainMatches(inferred, expect, DataFrameShapeExact);
 	});
 }
 
@@ -200,7 +206,7 @@ export function assertDataFrameOperation(
  *
  * @param shell    - The R shell to use to run the instrumented code
  * @param code     - The code to test
- * @param criteria - The slicing criteria to test including the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameTestExact})
+ * @param criteria - The slicing criteria to test including the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameShapeExact})
  * @param skipRun  - Whether the test should be skipped (defaults to `false`)
  * @param parser   - The parser to use for the data flow graph creation (defaults to the R shell)
  * @param name     - An optional name or test label for the test (defaults to the code)
@@ -225,7 +231,7 @@ export function testDataFrameDomainAgainstReal(
 
 		for(const entry of criteria) {
 			const criterion = Array.isArray(entry) ? entry[0] : entry;
-			const options = { ...DataFrameTestExact, ...(Array.isArray(entry) ? entry[1] : {}) };
+			const options = { ...DataFrameShapeExact, ...(Array.isArray(entry) ? entry[1] : {}) };
 			const [inferred, node] = getInferredDomainForCriterion(result, criterion, config);
 
 			if(node.type !== RType.Symbol) {
@@ -298,6 +304,35 @@ function createCodeForOutput(
 ): string {
 	const marker = getOutputMarker(criterion);
 	return `cat(sprintf("${marker} %s,[%s],%s,%s\\n", is.data.frame(${symbol}), paste(names(${symbol}), collapse = ";"), paste(ncol(${symbol}), collapse = ""), paste(nrow(${symbol}), collapse = "")))`;
+}
+
+function getFinalOptions(expected: DataFrameDomain | undefined, options?: Partial<DataFrameTestOptions>): Partial<DataFrameTestOptions> {
+	let finalOptions: Partial<DataFrameTestOptions> = { ...options };
+
+	if(expected === undefined) {
+		if(options === undefined) {
+			finalOptions = DataFrameShapeOverapproximation;
+		}
+	} else {
+		if(options?.colnames === undefined && expected.colnames === ColNamesTop) {
+			finalOptions.colnames = DomainMatchingType.Overapproximation;
+		}
+		if(options?.cols === undefined) {
+			if(expected.cols === IntervalBottom || expected.cols[0] === expected.cols[1]) {
+				finalOptions.cols = DomainMatchingType.Exact;
+			} else {
+				finalOptions.cols = DomainMatchingType.Overapproximation;
+			}
+		}
+		if(options?.rows === undefined) {
+			if(expected.rows === IntervalBottom || expected.rows[0] === expected.rows[1]) {
+				finalOptions.rows = DomainMatchingType.Exact;
+			} else {
+				finalOptions.rows = DomainMatchingType.Overapproximation;
+			}
+		}
+	}
+	return finalOptions;
 }
 
 function getInferredDomainForCriterion(

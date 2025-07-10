@@ -8,6 +8,14 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { DataFrameAssignmentInfo } from '../absint-info';
 import { isDataFrameArgument } from './arguments';
 
+/**
+ * Maps a concrete data frame assignment to data frame assignment info containing the ids of the identifier and assigned expression.
+ *
+ * @param identifier - The R node of the variable identifier
+ * @param expression - The R node of the assigned expression
+ * @param dfg  - The data flow graph for resolving the arguments
+ * @returns Data frame assignment info containing the IDs of the identifier and expression, or `undefined` if the node does not represent a data frame assignment
+ */
 export function mapDataFrameVariableAssignment(
 	identifier: RSymbol<ParentInformation> | RString<ParentInformation>,
 	expression: RNode<ParentInformation>,
@@ -25,6 +33,9 @@ export function mapDataFrameVariableAssignment(
 	};
 }
 
+/**
+ * Checks whether a R node represents an assignment target, i.e. is a `RSymbol` or `RString`.
+ */
 export function isAssignmentTarget(node: RNode<ParentInformation> | undefined): node is RSymbol<ParentInformation> | RString<ParentInformation> {
 	return node?.type === RType.Symbol || node?.type === RType.String;
 }

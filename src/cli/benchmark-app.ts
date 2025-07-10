@@ -10,22 +10,22 @@ import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import type { KnownParserName } from '../r-bridge/parser';
 
 export interface BenchmarkCliOptions {
-	verbose:                   boolean
-	help:                      boolean
-	input:                     string[]
-	output:                    string
-	slice:                     string
-	parallel:                  number
-	limit?:                    number
-	runs?:                     number
-	seed?:                     string
-	parser:                    KnownParserName
-	'abstract-interpretation': boolean
-	'enable-pointer-tracking': boolean
-	'max-file-slices':         number
-	threshold?:                number
-	'per-file-time-limit'?:    number
-	'sampling-strategy':       string
+	verbose:                     boolean
+	help:                        boolean
+	input:                       string[]
+	output:                      string
+	slice:                       string
+	parallel:                    number
+	limit?:                      number
+	runs?:                       number
+	seed?:                       string
+	parser:                      KnownParserName
+	'dataframe-shape-inference': boolean
+	'enable-pointer-tracking':   boolean
+	'max-file-slices':           number
+	threshold?:                  number
+	'per-file-time-limit'?:      number
+	'sampling-strategy':         string
 }
 
 const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [],{
@@ -100,7 +100,7 @@ async function benchmark() {
 		'--output', path.join(options.output, path.relative(f.baseDir, `${f.request.content}.json`)),
 		'--slice', options.slice, ...verboseAdd,
 		'--parser', options.parser,
-		...(options['abstract-interpretation'] ? ['--abstract-interpretation'] : []),
+		...(options['dataframe-shape-inference'] ? ['--dataframe-shape-inference'] : []),
 		...(options['enable-pointer-tracking'] ? ['--enable-pointer-tracking'] : []),
 		'--max-slices', `${options['max-file-slices']}`,
 		...(options.threshold ? ['--threshold', `${options.threshold}`] : []),

@@ -1,6 +1,6 @@
 import { hasDataFrameExpressionInfo, type AbstractInterpretationInfo, type DataFrameOperationType } from '../../abstract-interpretation/data-frame/absint-info';
-import { performDataFrameAbsint, resolveIdToAbstractValue } from '../../abstract-interpretation/data-frame/absint-visitor';
 import { satisfiesColsNames, satisfiesLeqInterval, type DataFrameDomain } from '../../abstract-interpretation/data-frame/domain';
+import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../abstract-interpretation/data-frame/shape-inference';
 import { extractCfg } from '../../control-flow/extract-cfg';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -46,7 +46,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 	createSearch:        () => Q.all().with(Enrichment.CallTargets, { onlyBuiltin: true }),
 	processSearchResult: (elements, _config, data) => {
 		const cfg = extractCfg(data.normalize, data.config, data.dataflow.graph);
-		performDataFrameAbsint(cfg, data.dataflow.graph, data.normalize);
+		inferDataFrameShapes(cfg, data.dataflow.graph, data.normalize, data.config);
 
 		const accessOperations = getAccessOperations(elements);
 		const accesses: DataFrameAccessOperation[] = [];
@@ -56,7 +56,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 
 			for(const operation of operations) {
 				access.operand ??= operation.operand;
-				access.operandShape ??= resolveIdToAbstractValue(operation.operand, data.dataflow.graph);
+				access.operandShape ??= resolveIdToDataFrameShape(operation.operand, data.dataflow.graph);
 
 				if(operation.operation === 'accessCols' && operation.columns !== undefined) {
 					access.accessedCols ??= [];

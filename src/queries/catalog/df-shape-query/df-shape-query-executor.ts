@@ -2,7 +2,7 @@ import type { DfShapeQuery, DfShapeQueryResult } from './df-shape-query-format';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import { extractCfg } from '../../../control-flow/extract-cfg';
-import { performDataFrameAbsint, resolveIdToAbstractValue } from '../../../abstract-interpretation/data-frame/absint-visitor';
+import { inferDataFrameShapes , resolveIdToDataFrameShape } from '../../../abstract-interpretation/data-frame/shape-inference';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/domain';
@@ -15,7 +15,7 @@ export function executeDfShapeQuery({ dataflow: { graph }, ast, config }: BasicQ
 
 	const start = Date.now();
 	const cfg = extractCfg(ast, config, graph);
-	const domains = performDataFrameAbsint(cfg, graph, ast);
+	const domains = inferDataFrameShapes(cfg, graph, ast, config);
 
 	if(queries.length === 1 && queries[0].criterion === undefined) {
 		return {
@@ -37,7 +37,7 @@ export function executeDfShapeQuery({ dataflow: { graph }, ast, config }: BasicQ
 		}
 		const nodeId = slicingCriterionToId(query.criterion, ast.idMap);
 		const node = ast.idMap.get(nodeId);
-		const value = resolveIdToAbstractValue(node?.info.id, graph);
+		const value = resolveIdToDataFrameShape(node?.info.id, graph);
 		result.set(query.criterion, value);
 	}
 

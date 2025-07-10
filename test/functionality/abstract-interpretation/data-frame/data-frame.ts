@@ -1,6 +1,6 @@
 import { assert, beforeAll, test } from 'vitest';
 import { hasDataFrameExpressionInfo, type AbstractInterpretationInfo, type DataFrameOperation } from '../../../../src/abstract-interpretation/data-frame/absint-info';
-import { performDataFrameAbsint, resolveIdToAbstractValue } from '../../../../src/abstract-interpretation/data-frame/absint-visitor';
+import { inferDataFrameShapes , resolveIdToDataFrameShape } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { ColNamesTop, equalColNames, equalInterval, IntervalBottom, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
 import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../../src/abstract-interpretation/data-frame/semantics';
@@ -23,29 +23,51 @@ import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/a
 import { getRangeEnd } from '../../../../src/util/range';
 import { decorateLabelContext, type TestLabel } from '../../_helper/label';
 
+/**
+ * Whether the inferred values should match the actual values exactly, or should be an over-approximation of the actual values.
+ */
 export enum DomainMatchingType {
     Exact = 'exact',
     Overapproximation = 'overapproximation'
 }
 
+/**
+ * The data frame test options defining which data frame shape property should match exactly, and which should be an over-approximation.
+ */
 export type DataFrameTestOptions = Record<keyof DataFrameDomain, DomainMatchingType>;
 
-export const DataFrameTestExact: DataFrameTestOptions = {
+/**
+ * Data frame tests options defining that every shape property should exactly match the actual value.
+ */
+export const DataFrameShapeExact: DataFrameTestOptions = {
 	colnames: DomainMatchingType.Exact,
 	cols:     DomainMatchingType.Exact,
 	rows:     DomainMatchingType.Exact
 };
 
-export const DataFrameTestOverapproximation: DataFrameTestOptions = {
+/**
+ * Data frame tests options defining that every shape property should be an over-approximation of the actual value.
+ */
+export const DataFrameShapeOverapproximation: DataFrameTestOptions = {
 	colnames: DomainMatchingType.Overapproximation,
 	cols:     DomainMatchingType.Overapproximation,
 	rows:     DomainMatchingType.Overapproximation
+};
+
+/**
+ * Data frame tests options defining that the inferred columns names should be an over-approximation of the actual value.
+ */
+export const ColNamesOverapproximation: Partial<DataFrameTestOptions> = {
+	colnames: DomainMatchingType.Overapproximation
 };
 
 type ExpectedDataFrameOperation = {
 	[Name in DataFrameOperationName]: { operation: Name } & DataFrameOperationArgs<Name>
 }[DataFrameOperationName];
 
+/**
+ * The mapper type for mapping each data frame shape property to an equality and ordering functon
+ */
 type DomainComparisonMapping = {
 	[K in keyof DataFrameDomain]: {
 		equal: (value1: DataFrameDomain[K], value2: DataFrameDomain[K]) => boolean,
@@ -53,13 +75,18 @@ type DomainComparisonMapping = {
 	}
 }
 
+/**
+ * The equality and ordering comparison functons for each data frame shape property
+ */
 const ComparisonFunctions: DomainComparisonMapping = {
 	colnames: { equal: equalColNames, leq: leqColNames },
 	cols:     { equal: equalInterval, leq: leqInterval },
 	rows:     { equal: equalInterval, leq: leqInterval }
 };
 
-/** Stores the inferred data frame constraints and AST node for a tested slicing criterion */
+/**
+ * Stores the inferred data frame constraints and AST node for a tested slicing criterion.
+ */
 interface CriterionTestEntry {
 	criterion:  SingleSlicingCriterion,
 	inferred:   DataFrameDomain | undefined,
@@ -78,7 +105,7 @@ interface CriterionTestEntry {
  *
  * @param shell    - The R shell to use to run the code
  * @param code     - The code to test
- * @param criteria - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameTestExact})
+ * @param criteria - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameShapeExact})
  * @param skipRun  - Whether the real test with the execution of the R code should be skipped (defaults to `false`)
  * @param parser   - The parser to use for the data flow graph creation (defaults to the R shell)
  * @param name     - An optional name or test label for the test (defaults to the code)
@@ -93,6 +120,7 @@ export function testDataFrameDomain(
 	name: string | TestLabel = code,
 	config: FlowrConfigOptions = defaultConfigOptions
 ) {
+	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getDefaultTestOptions(expected, options)]);
 	guardValidCriteria(criteria);
 	assertDataFrameDomain(parser, code, criteria.map(entry => [entry[0], entry[1]]), name, config);
 	testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]), skipRun, parser, name, config);
@@ -111,7 +139,7 @@ export function testDataFrameDomain(
  * @param fileArg  - The argument for the assert run
  * @param textArg  - The argument for the full test run where the code is executed
  * @param getCode  - The function to get the code for `fileArg` or `textArg`
- * @param criteria - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameTestExact})
+ * @param criteria - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameShapeExact})
  * @param skipRun  - Whether the real test with the execution of the R code should be skipped (defaults to `false`)
  * @param parser   - The parser to use for the data flow graph creation (defaults to the R shell)
  * @param name     - An optional name or test label for the test (defaults to the code)
@@ -127,6 +155,7 @@ export function testDataFrameDomainWithSource(
 	name?: string | TestLabel,
 	config: FlowrConfigOptions = defaultConfigOptions
 ) {
+	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getDefaultTestOptions(expected, options)]);
 	guardValidCriteria(criteria);
 	assertDataFrameDomain(parser, getCode(fileArg), criteria.map(entry => [entry[0], entry[1]]), name ?? getCode(fileArg), config);
 	testDataFrameDomain(shell, getCode(textArg), criteria, skipRun, parser, name ?? getCode(textArg), config);
@@ -157,7 +186,7 @@ export function assertDataFrameDomain(
 	test.each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
 		const [inferred] = getInferredDomainForCriterion(result, criterion, config);
-		assertDomainMatches(inferred, expect, DataFrameTestExact);
+		assertDomainMatches(inferred, expect, DataFrameShapeExact);
 	});
 }
 
@@ -200,7 +229,7 @@ export function assertDataFrameOperation(
  *
  * @param shell    - The R shell to use to run the instrumented code
  * @param code     - The code to test
- * @param criteria - The slicing criteria to test including the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameTestExact})
+ * @param criteria - The slicing criteria to test including the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameShapeExact})
  * @param skipRun  - Whether the test should be skipped (defaults to `false`)
  * @param parser   - The parser to use for the data flow graph creation (defaults to the R shell)
  * @param name     - An optional name or test label for the test (defaults to the code)
@@ -225,7 +254,7 @@ export function testDataFrameDomainAgainstReal(
 
 		for(const entry of criteria) {
 			const criterion = Array.isArray(entry) ? entry[0] : entry;
-			const options = { ...DataFrameTestExact, ...(Array.isArray(entry) ? entry[1] : {}) };
+			const options = { ...DataFrameShapeExact, ...(Array.isArray(entry) ? entry[1] : {}) };
 			const [inferred, node] = getInferredDomainForCriterion(result, criterion, config);
 
 			if(node.type !== RType.Symbol) {
@@ -300,6 +329,35 @@ function createCodeForOutput(
 	return `cat(sprintf("${marker} %s,[%s],%s,%s\\n", is.data.frame(${symbol}), paste(names(${symbol}), collapse = ";"), paste(ncol(${symbol}), collapse = ""), paste(nrow(${symbol}), collapse = "")))`;
 }
 
+function getDefaultTestOptions(expected: DataFrameDomain | undefined, options?: Partial<DataFrameTestOptions>): Partial<DataFrameTestOptions> {
+	let finalOptions: Partial<DataFrameTestOptions> = { ...options };
+
+	if(expected === undefined) {
+		if(options === undefined) {
+			finalOptions = DataFrameShapeOverapproximation;
+		}
+	} else {
+		if(options?.colnames === undefined && expected.colnames === ColNamesTop) {
+			finalOptions.colnames = DomainMatchingType.Overapproximation;
+		}
+		if(options?.cols === undefined) {
+			if(expected.cols === IntervalBottom || expected.cols[0] === expected.cols[1]) {
+				finalOptions.cols = DomainMatchingType.Exact;
+			} else {
+				finalOptions.cols = DomainMatchingType.Overapproximation;
+			}
+		}
+		if(options?.rows === undefined) {
+			if(expected.rows === IntervalBottom || expected.rows[0] === expected.rows[1]) {
+				finalOptions.rows = DomainMatchingType.Exact;
+			} else {
+				finalOptions.rows = DomainMatchingType.Overapproximation;
+			}
+		}
+	}
+	return finalOptions;
+}
+
 function getInferredDomainForCriterion(
 	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
 	criterion: SingleSlicingCriterion,
@@ -313,8 +371,8 @@ function getInferredDomainForCriterion(
 		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
 	}
 	const cfg = extractCfg(result.normalize, config, result.dataflow.graph);
-	performDataFrameAbsint(cfg, result.dataflow.graph, result.normalize);
-	const value = resolveIdToAbstractValue(node, result.dataflow.graph);
+	inferDataFrameShapes(cfg, result.dataflow.graph, result.normalize, config);
+	const value = resolveIdToDataFrameShape(node, result.dataflow.graph);
 
 	return [value, node];
 }
@@ -332,7 +390,7 @@ function getInferredOperationsForCriterion(
 		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
 	}
 	const cfg = extractCfg(result.normalize, config, result.dataflow.graph);
-	performDataFrameAbsint(cfg, result.dataflow.graph, result.normalize);
+	inferDataFrameShapes(cfg, result.dataflow.graph, result.normalize, config);
 
 	return hasDataFrameExpressionInfo(node) ? node.info.dataFrame.operations : [];
 }

@@ -19,11 +19,11 @@ import type {
 	BenchmarkMemoryMeasurement,
 	CommonSlicerMeasurements,
 	ElapsedTime,
-	PerNodeStatsAbsint,
+	PerNodeStatsDfShape,
 	PerSliceMeasurements,
 	PerSliceStats,
 	SlicerStats,
-	SlicerStatsAbsint
+	SlicerStatsDfShape
 } from './stats/stats';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
@@ -51,13 +51,13 @@ import { isParentContainerIndex } from '../dataflow/graph/vertex';
 import { equidistantSampling } from '../util/collections/arrays';
 import type { FlowrConfigOptions } from '../config';
 import { getEngineConfig } from '../config';
-import { performDataFrameAbsint } from '../abstract-interpretation/data-frame/absint-visitor';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { hasDataFrameExpressionInfo, type AbstractInterpretationInfo } from '../abstract-interpretation/data-frame/absint-info';
 import type { IntervalDomain } from '../abstract-interpretation/data-frame/domain';
 import { ColNamesTop, DataFrameBottom, DataFrameTop, equalDataFrameDomain, equalInterval, IntervalBottom, IntervalTop } from '../abstract-interpretation/data-frame/domain';
+import { inferDataFrameShapes } from '../abstract-interpretation/data-frame/shape-inference';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -393,23 +393,25 @@ export class BenchmarkSlicer {
 	}
 
 	/**
-	 * Perform abstract interpretation of data frames using {@link performDataFrameAbsint}
+	 * Infer the shape of data frames using abstract interpretation with {@link inferDataFrameShapes}
 	 *
-	 * @returns The statistics of the abstract iterpretation
+	 * @returns The statistics of the data frame shape inference
 	 */
-	public abstractIntepretation(): SlicerStatsAbsint {
-		benchmarkLogger.trace('try to perform abstract interpretation for data frames');
+	public inferDataFrameShapes(): SlicerStatsDfShape {
+		benchmarkLogger.trace('try to infer shapes for data frames');
 
 		guard(this.stats !== undefined && !this.finished, 'need to call init before, and can not do after finish!');
-		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined for abstract interpretation');
-		guard(this.dataflow !== undefined, 'dataflow should be defined for abstract interpretation');
-		guard(this.controlFlow !== undefined, 'controlFlow should be defined for abstract interpretation');
+		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined for data frame shape inference');
+		guard(this.dataflow !== undefined, 'dataflow should be defined for data frame shape inference');
+		guard(this.controlFlow !== undefined, 'controlFlow should be defined for data frame shape inference');
+		guard(this.config !== undefined, 'config should be defined for data frame shape inference');
 
 		const ast = this.normalizedAst;
 		const dfg = this.dataflow.graph;
 		const cfinfo = this.controlFlow;
+		const config = this.config;
 
-		const stats: SlicerStatsAbsint = {
+		const stats: SlicerStatsDfShape = {
 			numberOfDataFrameFiles:    0,
 			numberOfNonDataFrameFiles: 0,
 			numberOfResultConstraints: 0,
@@ -423,7 +425,7 @@ export class BenchmarkSlicer {
 			perNodeStats:              new Map()
 		};
 
-		const result = this.measureSimpleStep('perform abstract interpretation', () => performDataFrameAbsint(cfinfo, dfg, ast));
+		const result = this.measureSimpleStep('infer data frame shapes', () => inferDataFrameShapes(cfinfo, dfg, ast, config));
 		stats.numberOfResultConstraints = result.size;
 
 		for(const value of result.values()) {
@@ -450,7 +452,7 @@ export class BenchmarkSlicer {
 				stats.numberOfEmptyNodes++;
 				return;
 			}
-			const nodeStats: PerNodeStatsAbsint = {
+			const nodeStats: PerNodeStatsDfShape = {
 				numberOfEntries: node.info.dataFrame?.domain?.size ?? 0
 			};
 			if(expression !== undefined) {
@@ -472,7 +474,7 @@ export class BenchmarkSlicer {
 		} else {
 			stats.numberOfNonDataFrameFiles = 1;
 		}
-		this.stats.absint = stats;
+		this.stats.dataFrameShape = stats;
 
 		return stats;
 	}
@@ -608,7 +610,7 @@ export class BenchmarkSlicer {
 		const normalizeTime = Number(this.stats.commonMeasurements.get('normalize R AST'));
 		const dataflowTime = Number(this.stats.commonMeasurements.get('produce dataflow information'));
 		const controlFlowTime = Number(this.stats.commonMeasurements.get('extract control flow graph'));
-		const absintTime = Number(this.stats.commonMeasurements.get('perform abstract interpretation'));
+		const dataFrameShapeTime = Number(this.stats.commonMeasurements.get('infer data frame shapes'));
 
 		this.stats.retrieveTimePerToken = {
 			raw:        retrieveTime / this.stats.input.numberOfRTokens,
@@ -630,9 +632,9 @@ export class BenchmarkSlicer {
 			raw:        controlFlowTime / this.stats.input.numberOfRTokens,
 			normalized: controlFlowTime / this.stats.input.numberOfNormalizedTokens,
 		} : undefined;
-		this.stats.absintTimePerToken = !isNaN(absintTime) ? {
-			raw:        absintTime / this.stats.input.numberOfRTokens,
-			normalized: absintTime / this.stats.input.numberOfNormalizedTokens,
+		this.stats.dataFrameShapeTimePerToken = !isNaN(dataFrameShapeTime) ? {
+			raw:        dataFrameShapeTime / this.stats.input.numberOfRTokens,
+			normalized: dataFrameShapeTime / this.stats.input.numberOfNormalizedTokens,
 		} : undefined;
 
 		return {

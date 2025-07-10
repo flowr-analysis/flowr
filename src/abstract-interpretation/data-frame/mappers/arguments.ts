@@ -11,11 +11,18 @@ import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/pro
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import type { AbstractInterpretationInfo } from '../absint-info';
-import { resolveIdToAbstractValue } from '../absint-visitor';
+import { resolveIdToDataFrameShape } from '../shape-inference';
 import { resolveIdToArgName, resolveIdToArgValue, unquoteArgument } from '../resolve-args';
 
+/** Regular expresion representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
 
+/**
+ * The location of a function parameter for mapping function call arguments to function parameters.
+ * - `pos` contains the position of the function parameter (use `-1` for non-existent or non-positional arguments)
+ * - `name` optionally contains the name of the function parameter
+ * - `default` optionally contains the default value of the function parameter
+ */
 export interface FunctionParameterLocation<T = undefined> {
     pos:      number,
     name?:    string
@@ -229,7 +236,7 @@ export function isDataFrameArgument(arg: RNode<ParentInformation> | undefined, i
 export function isDataFrameArgument(arg: RFunctionArgument<ParentInformation> | undefined, info: ResolveInfo):
 	arg is RArgument<ParentInformation & Required<AbstractInterpretationInfo>> & { value: RNode<ParentInformation & Required<AbstractInterpretationInfo>> };
 export function isDataFrameArgument(arg: RNode<ParentInformation> | RFunctionArgument<ParentInformation> | undefined, info: ResolveInfo): boolean {
-	return arg !== EmptyArgument && resolveIdToAbstractValue(arg, info.graph) !== undefined;
+	return arg !== EmptyArgument && resolveIdToDataFrameShape(arg, info.graph) !== undefined;
 }
 
 /**

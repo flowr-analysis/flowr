@@ -1,3 +1,4 @@
+import type { FlowrConfigOptions } from '../../../config';
 import { defaultConfigOptions, VariableResolve } from '../../../config';
 import { type ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
@@ -12,21 +13,26 @@ import type { RParseRequest } from '../../../r-bridge/retriever';
 import { requestFromInput } from '../../../r-bridge/retriever';
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../util/assert';
 import { readLineByLineSync } from '../../../util/files';
-import type { DataFrameInfo, DataFrameOperation } from '../absint-info';
-import { resolveIdToAbstractValue } from '../absint-visitor';
+import type { DataFrameExpressionInfo, DataFrameOperation } from '../absint-info';
+import { resolveIdToDataFrameShape } from '../shape-inference';
 import { DataFrameTop } from '../domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from '../resolve-args';
 import type { FunctionParameterLocation } from './arguments';
 import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isNamedArgument, isRNull } from './arguments';
 
+/**
+ * Represents the different types of data frames in R
+ */
 enum DataFrameType {
 	DataFrame = 'data.frame',
 	Tibble = 'tibble',
 	DataTable = 'data.table'
 }
 
-const MaxReadLines = 1e7;
-
+/**
+ * Mapper for mapping the supported concrete data frame functions to mapper functions,
+ * including information about the origin library of the functions and the type of the returned data frame.
+ */
 const DataFrameFunctionMapper = {
 	'data.frame':    { mapper: mapDataFrameCreate },
 	'as.data.frame': { mapper: mapDataFrameConvert },
@@ -61,6 +67,9 @@ const DataFrameFunctionMapper = {
 	'arrange':       { mapper: mapDataFrameIdentity, library: 'dplyr' }
 } as const satisfies Record<string, DataFrameFunctionMapperInfo<never>>;
 
+/**
+ * Mapper for defining the location of all relevant function parameters for each supported data frame function of {@link DataFrameFunctionMapper}.
+ */
 const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 	'data.frame': {
 		checkNames: { pos: -1, name: 'check.names', default: true },
@@ -373,29 +382,53 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 	}
 };
 
-type DataFrameFunctionMapping<Params extends object> = (
-    args: readonly RFunctionArgument<ParentInformation>[],
-	params: Params,
-    info: ResolveInfo
-) => DataFrameOperation[] | undefined;
-
 type DataFrameFunctionMapperInfo<Params extends object> = {
 	readonly mapper:   DataFrameFunctionMapping<Params>,
 	readonly library?: string,
 	readonly type?:    Exclude<DataFrameType, DataFrameType.DataFrame>
 };
 
+/**
+ * Data frame function mapper for mapping a concrete data frame function to abstract data frame operations.
+ * - `args` contains the function call arguments
+ * - `params` contains the expected argument location for each parameter of the function
+ * - `info` contains the resolve information
+ * - `config` contains the flowR configuration
+ */
+type DataFrameFunctionMapping<Params extends object> = (
+    args: readonly RFunctionArgument<ParentInformation>[],
+	params: Params,
+    info: ResolveInfo,
+	config?: FlowrConfigOptions
+) => DataFrameOperation[] | undefined;
+
+/** All currently supported data frame functions */
 type DataFrameFunction = keyof typeof DataFrameFunctionMapper;
+
+/** The required mapping parameters for a data frame function */
 type DataFrameFunctionParams<N extends DataFrameFunction> = Parameters<typeof DataFrameFunctionMapper[N]['mapper']>[1];
 
+/**
+ * Mapper type for mapping each supported data frame function of {@link DataFrameFunctionMapper} to the parameters required for the respective data frame function mapper.
+ * - `critical` contains all function parameters in which case the function call is unsupported and has to be over-approximated by the abstract operation `unknown`
+ */
 type DataFrameFunctionParamsMapping = {
 	[Name in DataFrameFunction]: DataFrameFunctionParams<Name> & { critical?: FunctionParameterLocation<unknown>[] }
 }
 
+/**
+ * Maps a concrete data frame function call to abstract data frame operations.
+ *
+ * @param node   - The R node of the function call
+ * @param dfg    - The data flow graph for resolving the arguments
+ * @param config - The flowr configuration to use
+ * @returns Data frame expression info containing the mapped abstract data frame operations, or `undefined` if the node does not represent a data frame function call
+ */
 export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 	node: RNode<ParentInformation>,
-	dfg: DataflowGraph
-): DataFrameInfo | undefined {
+	dfg: DataflowGraph,
+	config: FlowrConfigOptions = defaultConfigOptions
+): DataFrameExpressionInfo | undefined {
 	if(node.type === RType.FunctionCall && node.named && isDataFrameFunction(node.functionName.content)) {
 		const functionName = node.functionName.content as Name;
 		const mapper = DataFrameFunctionMapper[functionName].mapper as DataFrameFunctionMapping<DataFrameFunctionParams<Name>>;
@@ -408,7 +441,7 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 		if(hasCriticalArgument(args, critical, resolveInfo)) {
 			operations = [{ operation: 'unknown', operand: undefined }];
 		} else {
-			operations = mapper(args, params, resolveInfo);
+			operations = mapper(args, params, resolveInfo, config);
 		}
 		if(operations !== undefined) {
 			return { type: 'expression', operations: operations };
@@ -417,6 +450,7 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 }
 
 function isDataFrameFunction(functionName: string): functionName is DataFrameFunction {
+	// a check with `functionName in DataFrameFunctionMapper` would return true for "toString"
 	return Object.prototype.hasOwnProperty.call(DataFrameFunctionMapper, functionName);
 }
 
@@ -438,6 +472,7 @@ function mapDataFrameCreate(
 	const allVectors = argLengths.every(isNotUndefined);
 	let colnames: (string | undefined)[] | undefined = argNames;
 
+	// over-approximate the column names if arguments are present but cannot be resolved to values
 	if(typeof checkNames !== 'boolean' || typeof noDupNames !== 'boolean') {
 		colnames = undefined;
 	} else {
@@ -481,11 +516,12 @@ function mapDataFrameRead(
 		noDupNames:    FunctionParameterLocation<boolean>,
 		noEmptyNames?: boolean
 	},
-	info: ResolveInfo
+	info: ResolveInfo,
+	config: FlowrConfigOptions = defaultConfigOptions
 ): DataFrameOperation[] {
 	const fileNameArg = getFunctionArgument(args, params.fileName, info);
 	const textArg = params.text ? getFunctionArgument(args, params.text, info) : undefined;
-	const { source, request } = getRequestFromRead(fileNameArg, textArg, params, info);
+	const { source, request } = getRequestFromRead(fileNameArg, textArg, params, info, config);
 
 	const header = getArgumentValue(args, params.header, info);
 	const separator = getArgumentValue(args, params.separator, info);
@@ -495,7 +531,10 @@ function mapDataFrameRead(
 	const checkNames = getArgumentValue(args, params.checkNames, info);
 	const noDupNames = getArgumentValue(args, params.noDupNames, info);
 
-	if(request === undefined || typeof header !== 'boolean' || typeof separator !== 'string' || typeof quote !== 'string' || typeof comment !== 'string' || typeof skipLines !== 'number' || typeof checkNames !== 'boolean' || typeof noDupNames !== 'boolean') {
+	const validArguments = typeof header === 'boolean' && typeof separator === 'string' && typeof quote === 'string' && typeof comment === 'string' &&
+		typeof skipLines === 'number' && typeof checkNames === 'boolean' && typeof noDupNames === 'boolean';
+
+	if(request === undefined || !config.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles || !validArguments) {
 		return [{
 			operation: 'read',
 			operand:   undefined,
@@ -522,7 +561,7 @@ function mapDataFrameRead(
 			}
 		}
 	};
-	const allLines = parseRequestContent(request, parseLine, MaxReadLines);
+	const allLines = parseRequestContent(request, parseLine, config.abstractInterpretation.dataFrame.readLoadedData.maxReadLines);
 	let colnames: (string | undefined)[] | undefined;
 
 	if(header) {
@@ -558,7 +597,7 @@ function mapDataFrameColBind(
 
 	for(const arg of args) {
 		if(arg !== dataFrame && arg !== EmptyArgument) {
-			const otherDataFrame = resolveIdToAbstractValue(arg.value, info.graph);
+			const otherDataFrame = resolveIdToDataFrameShape(arg.value, info.graph);
 
 			if(otherDataFrame !== undefined) {
 				result.push({
@@ -605,7 +644,7 @@ function mapDataFrameRowBind(
 
 	for(const arg of args) {
 		if(arg !== dataFrame && arg !== EmptyArgument) {
-			const otherDataFrame = resolveIdToAbstractValue(arg.value, info.graph);
+			const otherDataFrame = resolveIdToDataFrameShape(arg.value, info.graph);
 
 			if(otherDataFrame !== undefined) {
 				result.push({
@@ -878,6 +917,8 @@ function mapDataFrameMutate(
 	let mutatedCols: (string | undefined)[] | undefined = mutateArgs
 		.filter(arg => !isRNull(arg))
 		.map(arg => resolveIdToArgName(arg, info));
+
+	// only column names that are not created by mutation are preconditions on the operand
 	const accessedNames = mutateArgs
 		.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph))
 		.filter(arg => !mutatedCols?.includes(arg));
@@ -1017,7 +1058,7 @@ function mapDataFrameJoin(
 	const otherArg = getFunctionArgument(args, params.otherDataFrame, info);
 	const byArg = getFunctionArgument(args, params.by, info);
 
-	const otherDataFrame = resolveIdToAbstractValue(otherArg, info.graph) ?? DataFrameTop;
+	const otherDataFrame = resolveIdToDataFrameShape(otherArg, info.graph) ?? DataFrameTop;
 	let byCols: (string | number | undefined)[] | undefined;
 
 	const joinType = getJoinType(joinAll, joinLeft, joinRight);
@@ -1080,7 +1121,8 @@ function getRequestFromRead(
 	fileNameArg: RFunctionArgument<ParentInformation> | undefined,
 	textArg: RFunctionArgument<ParentInformation> | undefined,
 	params: DataFrameFunctionParams<'read.table'>,
-	info: ResolveInfo
+	info: ResolveInfo,
+	config: FlowrConfigOptions = defaultConfigOptions
 ) {
 	let source: string | undefined;
 	let request: RParseRequest | undefined;
@@ -1091,7 +1133,7 @@ function getRequestFromRead(
 		if(typeof fileName === 'string') {
 			source = fileName;
 			const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
-			const sources = findSource(defaultConfigOptions.solver.resolveSource, fileName, { referenceChain: referenceChain });
+			const sources = findSource(config.solver.resolveSource, fileName, { referenceChain: referenceChain });
 
 			if(sources?.length === 1) {
 				source = sources[0];
@@ -1131,6 +1173,9 @@ function parseRequestContent(
 	}
 }
 
+/**
+ * Gets all entries from a line of a CSV file using a custom separator char, quote char, and comment char
+ */
 function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = '"', comment: string = '', trim: boolean = true): (string | undefined)[] {
 	sep = escapeRegExp(sep, true);  // only allow tokens like `\s`, `\t`, or `\n` in separator, quote, and comment chars
 	quote = escapeRegExp(quote, true);
@@ -1148,6 +1193,9 @@ function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = 
 		.toArray();
 }
 
+/**
+ * Resolves all selected columns in a select expression, such as `id`, `"id"`, `1`, `c(id, name)`, `c("id", "name")`, `1:2`, `-id`, `-1`, `-c(id, name)`, `c(-1, -2)`, etc.
+ */
 function getSelectedColumns(args: readonly (RFunctionArgument<ParentInformation> | undefined)[], info: ResolveInfo) {
 	let selectedCols: (string | number | undefined)[] | undefined = [];
 	let unselectedCols: (string | number | undefined)[] | undefined = [];

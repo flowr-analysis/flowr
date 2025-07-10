@@ -487,35 +487,33 @@ class TypeInferringCfgGuidedVisitor<
 		}
 	}
 
-	// override onAccessCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
-	// 	const node = this.getNormalizedAst(data.call.id);
-	// 	guard(node !== undefined, 'Expected AST node to be defined');
+	override onAccessCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+		const node = this.getNormalizedAst(data.call.id);
+		guard(node !== undefined, 'Expected AST node to be defined');
 
-	// 	const firstArg = data.call.args.at(0);
-	// 	guard(firstArg !== undefined && firstArg !== EmptyArgument, 'Expected first argument of access call to be defined');
-	// 	const firstArgNode = this.getNormalizedAst(firstArg.nodeId);
-	// 	guard(firstArgNode !== undefined, 'Expected first argument node to be defined');
-	// 	const firstArgType = firstArgNode.info.typeVariable;
-	// 	const firstArgBoundType = firstArgType.find();
+		const firstArg = data.call.args.at(0);
+		guard(firstArg !== undefined && firstArg !== EmptyArgument, 'Expected first argument of access call to be defined');
+		const firstArgNode = this.getNormalizedAst(firstArg.nodeId);
+		guard(firstArgNode !== undefined, 'Expected first argument node to be defined');
+
+		// TODO: Handle subsetting for other operand types, in particular for scalars and null
+		const vectorType = new UnresolvedRVectorType();
+		firstArgNode.info.typeVariable.constrainWithUpperBound(vectorType);
 		
-	// 	switch(data.call.name) {
-	// 		case '[':
-	// 			// If the access call is a `[` operation, we can assume that the it returns a subset
-	// 			// of the first argument's elements as another instance of the same container type
-	// 			node.info.typeVariable.constrainWithLowerBound(firstArgNode.info.typeVariable);
-	// 			break;
-	// 		case '[[':
-	// 			if(firstArgBoundType instanceof UnresolvedRListType) {
-	// 				node.info.typeVariable.constrainWithLowerBound(firstArgBoundType.elementType);
-	// 			} else if(isVectorType(firstArgBoundType) || firstArgBoundType instanceof RNullType) {
-	// 				node.info.typeVariable.constrainWithLowerBound(firstArgType);
-	// 			}
-	// 			break;
-	// 		case '$':
-	// 			if(firstArgBoundType instanceof UnresolvedRListType) {
-	// 				node.info.typeVariable.constrainWithLowerBound(firstArgBoundType.elementType);
-	// 			}
-	// 			break;
-	// 	}
-	// }
+		switch(data.call.name) {
+			case '[':
+				// If the access call is a `[` operation, we can assume that the it returns a subset
+				// of the first argument's elements as another instance of the same container type
+				node.info.typeVariable.constrainWithLowerBound(firstArgNode.info.typeVariable);
+				break;
+			case '[[':
+				node.info.typeVariable.constrainWithLowerBound(vectorType.elementType);
+				break;
+			case '$': {
+				firstArgNode.info.typeVariable.constrainWithUpperBound(new UnresolvedRListType(vectorType.elementType));
+				node.info.typeVariable.constrainWithLowerBound(vectorType.elementType);
+				break;
+			}
+		}
+	}
 }

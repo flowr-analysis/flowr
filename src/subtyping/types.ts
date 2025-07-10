@@ -49,11 +49,15 @@ export class UnresolvedRVectorType {
 		}
 	}
 
-	constrainWithLowerBound(bound: UnresolvedRAtomicVectorType): void {
-		this.elementType.constrainWithLowerBound(bound.elementType);
+	constrainWithLowerBound(bound: UnresolvedVectorType | AtomicVectorElementType): void {
+		if(isVectorType(bound)) {
+			this.elementType.constrainWithLowerBound(bound.elementType);
+		} else {
+			this.elementType.constrainWithLowerBound(bound);
+		}
 	}
 
-	constrainWithUpperBound(bound: UnresolvedRAtomicVectorType): void {
+	constrainWithUpperBound(bound: UnresolvedRVectorType): void {
 		this.elementType.constrainWithUpperBound(bound.elementType);
 	}
 }
@@ -77,11 +81,15 @@ export class UnresolvedRAtomicVectorType /*extends UnresolvedRVectorType*/ {
 		}
 	}
 
-	constrainWithLowerBound(bound: UnresolvedRAtomicVectorType): void {
-		this.elementType.constrainWithLowerBound(bound.elementType);
+	constrainWithLowerBound(bound: UnresolvedRAtomicVectorType | AtomicVectorElementType): void {
+		if(bound instanceof UnresolvedRAtomicVectorType) {
+			this.elementType.constrainWithLowerBound(bound.elementType);
+		} else {
+			this.elementType.constrainWithLowerBound(bound);
+		}
 	}
 
-	constrainWithUpperBound(bound: UnresolvedRAtomicVectorType): void {
+	constrainWithUpperBound(bound: UnresolvedRAtomicVectorType | UnresolvedRVectorType): void {
 		this.elementType.constrainWithUpperBound(bound.elementType);
 	}
 }
@@ -133,7 +141,7 @@ export class UnresolvedRListType {
 		this.elementType.constrainWithLowerBound(bound.elementType);
 	}
 
-	constrainWithUpperBound(bound: UnresolvedRListType): void {
+	constrainWithUpperBound(bound: UnresolvedRListType | UnresolvedRVectorType): void {
 		this.elementType.constrainWithUpperBound(bound.elementType);
 	}
 }
@@ -213,9 +221,11 @@ export class UnresolvedRTypeVariable {
 				bound.constrainWithUpperBound(upperBound);
 			} else if(upperBound instanceof UnresolvedRFunctionType && bound instanceof UnresolvedRFunctionType && upperBound !== bound) {
 				upperBound.constrainWithLowerBound(bound);
-			} else if(upperBound instanceof UnresolvedRListType && bound instanceof UnresolvedRListType && upperBound !== bound) {
+			} else if(upperBound instanceof UnresolvedRVectorType && (isVectorType(bound) || isAtomicVectorElementType(bound)) && upperBound !== bound) {
 				upperBound.constrainWithLowerBound(bound);
-			} else if(upperBound instanceof UnresolvedRAtomicVectorType && bound instanceof UnresolvedRAtomicVectorType && upperBound !== bound) {
+			} else if(upperBound instanceof UnresolvedRAtomicVectorType && (bound instanceof UnresolvedRAtomicVectorType || isAtomicVectorElementType(bound)) && upperBound !== bound) {
+				upperBound.constrainWithLowerBound(bound);
+			} else if(upperBound instanceof UnresolvedRListType && bound instanceof UnresolvedRListType && upperBound !== bound) {
 				upperBound.constrainWithLowerBound(bound);
 			}
 		}
@@ -231,9 +241,11 @@ export class UnresolvedRTypeVariable {
 				bound.constrainWithLowerBound(lowerBound);
 			} else if(lowerBound instanceof UnresolvedRFunctionType && bound instanceof UnresolvedRFunctionType && lowerBound !== bound) {
 				lowerBound.constrainWithUpperBound(bound);
-			} else if(lowerBound instanceof UnresolvedRListType && bound instanceof UnresolvedRListType && lowerBound !== bound) {
+			} else if(lowerBound instanceof UnresolvedRVectorType && bound instanceof UnresolvedRVectorType && lowerBound !== bound) {
 				lowerBound.constrainWithUpperBound(bound);
-			} else if(lowerBound instanceof UnresolvedRAtomicVectorType && bound instanceof UnresolvedRAtomicVectorType && lowerBound !== bound) {
+			} else if(lowerBound instanceof UnresolvedRAtomicVectorType && (bound instanceof UnresolvedRAtomicVectorType || bound instanceof UnresolvedRVectorType) && lowerBound !== bound) {
+				lowerBound.constrainWithUpperBound(bound);
+			} else if(lowerBound instanceof UnresolvedRListType && (bound instanceof UnresolvedRListType || bound instanceof UnresolvedRVectorType) && lowerBound !== bound) {
 				lowerBound.constrainWithUpperBound(bound);
 			}
 		}
@@ -366,6 +378,10 @@ function union(type1: DataType, type2: DataType): DataType {
 		return type1;
 	} else if(type2 instanceof RErrorType) {
 		return type2;
+	} else if(type1 instanceof RTypeVariable) {
+		return union(type1.lowerBound, type2);
+	} else if(type2 instanceof RTypeVariable) {
+		return union(type1, type2.lowerBound);
 	} else if(type1 instanceof RFunctionType && type2 instanceof RFunctionType) {
 		const parameterTypes = new Map<number | string, DataType>();
 		const keys1 = new Set(type1.parameterTypes.keys());
@@ -408,6 +424,10 @@ function intersection(type1: DataType, type2: DataType): DataType {
 		return type1;
 	} else if(type2 instanceof RErrorType) {
 		return type2;
+	} else if(type1 instanceof RTypeVariable) {
+		return intersection(type1.upperBound, type2);
+	} else if(type2 instanceof RTypeVariable) {
+		return intersection(type1, type2.upperBound);
 	} else if(type1 instanceof RFunctionType && type2 instanceof RFunctionType) {
 		const parameterTypes = new Map<number | string, DataType>();
 		const keys1 = new Set(type1.parameterTypes.keys());

@@ -1,5 +1,5 @@
 import * as tmp from 'tmp';
-import type { Reduction, SliceSizeCollection, SummarizedAbsintStats, SummarizedSlicerStats, TimePerToken } from '../data';
+import type { Reduction, SliceSizeCollection, SummarizedDfShapeStats, SummarizedSlicerStats, TimePerToken } from '../data';
 
 import fs from 'fs';
 import { DefaultMap } from '../../../util/collections/defaultmap';
@@ -8,7 +8,7 @@ import { withoutWhitespace } from '../../../util/text/strings';
 import type { SummarizedMeasurement } from '../../../util/summarizer';
 import { summarizeMeasurement } from '../../../util/summarizer';
 import { isNotUndefined } from '../../../util/assert';
-import type { PerNodeStatsAbsint, PerSliceMeasurements, PerSliceStats, SlicerStats, SlicerStatsAbsint, SlicerStatsDataflow, SlicerStatsInput } from '../../stats/stats';
+import type { PerNodeStatsDfShape, PerSliceMeasurements, PerSliceStats, SlicerStats, SlicerStatsDfShape, SlicerStatsDataflow, SlicerStatsInput } from '../../stats/stats';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import { RShell } from '../../../r-bridge/shell';
 import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse } from '../../../r-bridge/retriever';
@@ -236,11 +236,11 @@ export async function summarizeSlicerStats(
 				dataflowNodes:                     summarizeMeasurement(sliceSize.dataflowNodes)
 			}
 		},
-		absint: stats.absint ? summarizeAbsintStats(stats.absint) : undefined
+		dataFrameShape: stats.dataFrameShape ? summarizeDfShapeStats(stats.dataFrameShape) : undefined
 	};
 }
 
-function summarizeAbsintStats({ perNodeStats, ...stats }: SlicerStatsAbsint): SummarizedAbsintStats {
+function summarizeDfShapeStats({ perNodeStats, ...stats }: SlicerStatsDfShape): SummarizedDfShapeStats {
 	const nodeStats = perNodeStats.values().toArray();
 
 	const isTop = (value?: number | 'top' | 'infinite' | 'bottom') => value === 'top';
@@ -275,7 +275,7 @@ function summarizeAbsintStats({ perNodeStats, ...stats }: SlicerStatsAbsint): Su
 	};
 }
 
-function summarizePerOperationStats(nodeStats: PerNodeStatsAbsint[]): SummarizedAbsintStats['perOperationNumber'] {
+function summarizePerOperationStats(nodeStats: PerNodeStatsDfShape[]): SummarizedDfShapeStats['perOperationNumber'] {
 	const perOperationNumber = new Map(DataFrameOperationNames.map(name => [name, 0]));
 
 	for(const stat of nodeStats) {

@@ -5,7 +5,7 @@ import { summarizeSlicerStats } from './process';
 import { guard } from '../../../util/assert';
 import { escape } from '../../../util/text/ansi';
 import { jsonReplacer } from '../../../util/json';
-import type { BenchmarkMemoryMeasurement, CommonSlicerMeasurements, PerNodeStatsAbsint, PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats/stats';
+import type { BenchmarkMemoryMeasurement, CommonSlicerMeasurements, PerNodeStatsDfShape, PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats/stats';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import { stats2string } from '../../stats/print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -40,9 +40,9 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 				(got.stats.perSliceMeasurements as unknown as [SlicingCriteria, PerSliceStats][])
 					.map(([k, v]) => mapPerSliceStats(k, v))
 			),
-			absint: got.stats.absint !== undefined ? {
-				...got.stats.absint,
-				perNodeStats: new Map(got.stats.absint.perNodeStats as unknown as [NodeId, PerNodeStatsAbsint][])
+			dataFrameShape: got.stats.dataFrameShape !== undefined ? {
+				...got.stats.dataFrameShape,
+				perNodeStats: new Map(got.stats.dataFrameShape.perNodeStats as unknown as [NodeId, PerNodeStatsDfShape][])
 			} : undefined
 		}
 	};

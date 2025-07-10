@@ -1,6 +1,6 @@
 import { assertUnreachable, isNotUndefined } from '../../util/assert';
 import type { DataFrameDomain, IntervalDomain } from './domain';
-import { addInterval, ColNamesTop, DataFrameTop, extendIntervalToInfinity, extendIntervalToZero, IntervalBottom, IntervalTop, joinColNames, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
+import { addInterval, ColNamesTop, DataFrameTop, extendIntervalToInfinity, extendIntervalToZero, IntervalBottom, IntervalTop, joinColNames, joinInterval, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
 
 /**
  * Represents the different types of resulting constraints that are inferred by abstract data frame operations.
@@ -289,6 +289,14 @@ function applyConcatRowsSemantics(
 	value: DataFrameDomain,
 	{ other }: { other: DataFrameDomain }
 ): DataFrameDomain {
+	if(value.cols !== IntervalBottom && value.cols[0] === 0) {
+		return {
+			...value,
+			colnames: joinColNames(value.colnames, other.colnames),
+			cols:     joinInterval(value.cols, other.cols),
+			rows:     addInterval(value.rows, other.rows)
+		};
+	}
 	return {
 		...value,
 		rows: addInterval(value.rows, other.rows)

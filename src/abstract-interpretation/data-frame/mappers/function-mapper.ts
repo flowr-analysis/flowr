@@ -470,19 +470,22 @@ function mapDataFrameCreate(
 	const argNames = args.map(arg => resolveIdToArgName(arg, info));
 	const argLengths = args.map(arg => resolveIdToArgVectorLength(arg, info));
 	const allVectors = argLengths.every(isNotUndefined);
+	const rows = allVectors ? Math.max(...argLengths, 0) : undefined;
 	let colnames: (string | undefined)[] | undefined = argNames;
 
 	// over-approximate the column names if arguments are present but cannot be resolved to values
-	if(typeof checkNames !== 'boolean' || typeof noDupNames !== 'boolean') {
+	if(!allVectors || typeof checkNames !== 'boolean' || typeof noDupNames !== 'boolean') {
 		colnames = undefined;
+	} else if(rows === 0) {
+		colnames = [];
 	} else {
 		colnames = filterValidNames(colnames, checkNames, noDupNames);
 	}
 	return [{
 		operation: 'create',
 		operand:   undefined,
-		colnames:  allVectors ? colnames : undefined,
-		rows:      allVectors ? Math.max(...argLengths, 0) : undefined
+		colnames,
+		rows
 	}];
 }
 

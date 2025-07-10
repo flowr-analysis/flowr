@@ -278,6 +278,12 @@ df <- data.frame(id = a, name = b)
 
 		testDataFrameDomain(
 			shell,
+			'df <- data.frame(id = c(), name = c())',
+			[['1@df', { colnames: [], cols: [0, 0], rows: [0, 0] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
 			'df <- data.frame(id = NULL)',
 			[['1@df', DataFrameTop]]
 		);
@@ -2018,6 +2024,18 @@ df <- rbind(6, df)
 			shell,
 			'df <- rbind(1:2, "X", data.frame(id = 1:3, score = c(90, 75, 80)), c("A", "B"))',
 			[['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [6, 6] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = c(), name = c())
+df <- rbind(df, data.frame(id = 1:5, name = "A"))
+			`.trim(),
+			[
+				['1@df', { colnames: [], cols: [0, 0], rows: [0, 0] }],
+				['2@df', { colnames: ['id', 'name'], cols: [0, 2], rows: [5, 5] }]
+			]
 		);
 
 		testDataFrameDomain(

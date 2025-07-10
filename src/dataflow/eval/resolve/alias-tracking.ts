@@ -169,6 +169,8 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 				return Top;
 			}
 		case RType.FunctionCall:
+		case RType.BinaryOp:
+		case RType.UnaryOp:
 			return setFrom(resolveNode(resolve, node, environment, graph, idMap));
 		case RType.String:
 		case RType.Number:

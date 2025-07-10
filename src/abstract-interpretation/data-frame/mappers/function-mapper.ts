@@ -500,7 +500,7 @@ function mapDataFrameRead(
 	const validArguments = typeof header === 'boolean' && typeof separator === 'string' && typeof quote === 'string' && typeof comment === 'string' &&
 		typeof skipLines === 'number' && typeof checkNames === 'boolean' && typeof noDupNames === 'boolean';
 
-	if(request === undefined || !config.abstractInterpretation.dataFrame.readLoadedData || !validArguments) {
+	if(request === undefined || !config.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles || !validArguments) {
 		return [{
 			operation: 'read',
 			operand:   undefined,
@@ -527,7 +527,7 @@ function mapDataFrameRead(
 			}
 		}
 	};
-	const allLines = parseRequestContent(request, parseLine, config.abstractInterpretation.dataFrame.maxReadLines);
+	const allLines = parseRequestContent(request, parseLine, config.abstractInterpretation.dataFrame.readLoadedData.maxReadLines);
 	let colnames: (string | undefined)[] | undefined;
 
 	if(header) {

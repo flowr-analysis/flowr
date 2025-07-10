@@ -172,13 +172,18 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			 */
 			readonly wideningThreshold: number;
 			/**
-			 * Whether data frame shapes should be extracted from loaded external files, such as CSV files
+			 * Configuration options for reading data frame shapes from loaded external data files, such as CSV files
 			 */
-			readonly readLoadedData:    boolean;
-			/**
-			 * The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files
-			 */
-			readonly maxReadLines:      number;
+			readonly readLoadedData: {
+				/**
+				 * Whether data frame shapes should be extracted from loaded external data files, such as CSV files
+				 */
+				readonly readExternalFiles: boolean;
+				/**
+				 * The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files
+				 */
+				readonly maxReadLines:      number;
+			}
 		}
 	}
 }
@@ -246,8 +251,10 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 		dataFrame: {
 			maxColNames:       50,
 			wideningThreshold: 4,
-			readLoadedData:    true,
-			maxReadLines:      1e7,
+			readLoadedData:    {
+				readExternalFiles: true,
+				maxReadLines:      1e7
+			}
 		}
 	}
 };
@@ -298,10 +305,12 @@ export const flowrConfigFileSchema = Joi.object({
 	}).description('How to resolve constants, constraints, cells, ...'),
 	abstractInterpretation: Joi.object({
 		dataFrame: Joi.object({
-			maxColNames:       Joi.number().min(1).description('The maximum number of columns names to infer for data frames before over-approximating the column names to top.'),
+			maxColNames:       Joi.number().min(0).description('The maximum number of columns names to infer for data frames before over-approximating the column names to top.'),
 			wideningThreshold: Joi.number().min(1).description('The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration.'),
-			readLoadedData:    Joi.boolean().description('Whether data frame shapes should be extracted from loaded external files, such as CSV files.'),
-			maxReadLines:      Joi.number().min(1).description('The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files.')
+			readLoadedData:    Joi.object({
+				readExternalFiles: Joi.boolean().description('Whether data frame shapes should be extracted from loaded external files, such as CSV files.'),
+				maxReadLines:      Joi.number().min(1).description('The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files.')
+			}).description('Configuration options for reading data frame shapes from loaded external data files, such as CSV files.')
 		}).description('The configuration of the shape inference for data frames.')
 	}).description('The configuration options for abstract interpretation.')
 }).description('The configuration file format for flowR.');

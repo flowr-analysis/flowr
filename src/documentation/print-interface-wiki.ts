@@ -232,8 +232,10 @@ ${codeBlock('json', JSON.stringify(
 				dataFrame: {
 					maxColNames:       20,
 					wideningThreshold: 4,
-					readLoadedData:    true,
-					maxReadLines:      10_000_000,
+					readLoadedData:    {
+						readExternalFiles: true,
+						maxReadLines:      10_000_000
+					}
 				}
 			}
 		} satisfies FlowrConfigOptions,

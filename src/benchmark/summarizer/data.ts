@@ -4,7 +4,7 @@ import type {
 	CommonSlicerMeasurements,
 	PerSliceMeasurements,
 	SlicerStats,
-	SlicerStatsAbsint,
+	SlicerStatsDfShape,
 	SlicerStatsDataflow,
 	SlicerStatsInput
 } from '../stats/stats';
@@ -32,8 +32,8 @@ export interface SliceSizeCollection {
  */
 export type SummarizedSlicerStats = {
 	perSliceMeasurements: SummarizedPerSliceStats,
-	absint?:              SummarizedAbsintStats
-} & Omit<SlicerStats, 'perSliceMeasurements' | 'absint'>
+	dataFrameShape?:      SummarizedDfShapeStats
+} & Omit<SlicerStats, 'perSliceMeasurements' | 'dataFrameShape'>
 
 export interface Reduction<T = number> {
 	numberOfLines:                   T
@@ -70,32 +70,32 @@ export interface SummarizedPerSliceStats {
 }
 
 export interface UltimateSlicerStats {
-	totalRequests:             number
-	totalSlices:               number
-	commonMeasurements:        Map<CommonSlicerMeasurements, SummarizedMeasurement>
-	perSliceMeasurements:      Map<PerSliceMeasurements, SummarizedMeasurement>
-	retrieveTimePerToken:      TimePerToken
-	normalizeTimePerToken:     TimePerToken
-	dataflowTimePerToken:      TimePerToken
-	totalCommonTimePerToken:   TimePerToken
-	controlFlowTimePerToken?:  TimePerToken
-	absintTimePerToken?:       TimePerToken
-	sliceTimePerToken:         TimePerToken
-	reconstructTimePerToken:   TimePerToken
-	totalPerSliceTimePerToken: TimePerToken
+	totalRequests:               number
+	totalSlices:                 number
+	commonMeasurements:          Map<CommonSlicerMeasurements, SummarizedMeasurement>
+	perSliceMeasurements:        Map<PerSliceMeasurements, SummarizedMeasurement>
+	retrieveTimePerToken:        TimePerToken
+	normalizeTimePerToken:       TimePerToken
+	dataflowTimePerToken:        TimePerToken
+	totalCommonTimePerToken:     TimePerToken
+	controlFlowTimePerToken?:    TimePerToken
+	dataFrameShapeTimePerToken?: TimePerToken
+	sliceTimePerToken:           TimePerToken
+	reconstructTimePerToken:     TimePerToken
+	totalPerSliceTimePerToken:   TimePerToken
 	/** sum */
-	failedToRepParse:          number
+	failedToRepParse:            number
 	/** sum */
-	timesHitThreshold:         number
-	reduction:                 Reduction<SummarizedMeasurement>
+	timesHitThreshold:           number
+	reduction:                   Reduction<SummarizedMeasurement>
 	/** reduction, but without taking into account comments and empty lines */
-	reductionNoFluff:          Reduction<SummarizedMeasurement>
-	input:                     SlicerStatsInput<SummarizedMeasurement>
-	dataflow:                  SlicerStatsDataflow<SummarizedMeasurement>
-	absint?:                   SummarizedAbsintStats<SummarizedMeasurement>
+	reductionNoFluff:            Reduction<SummarizedMeasurement>
+	input:                       SlicerStatsInput<SummarizedMeasurement>
+	dataflow:                    SlicerStatsDataflow<SummarizedMeasurement>
+	dataFrameShape?:             SummarizedDfShapeStats<SummarizedMeasurement>
 }
 
-export interface SummarizedAbsintStats<T = number> extends Omit<SlicerStatsAbsint<T>, 'perNodeStats'> {
+export interface SummarizedDfShapeStats<T = number> extends Omit<SlicerStatsDfShape<T>, 'perNodeStats'> {
 	numberOfEntriesPerNode:   SummarizedMeasurement,
 	numberOfOperations:       T,
 	numberOfTotalValues:      T,

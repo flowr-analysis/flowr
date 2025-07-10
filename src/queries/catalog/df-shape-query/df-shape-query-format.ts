@@ -10,7 +10,7 @@ import { executeDfShapeQuery } from './df-shape-query-executor';
 import { jsonReplacer } from '../../../util/json';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 
-/** Performs abstract interpretation to retrieve the shape of data frames. */
+/** Infer the shape of data frames using abstract interpretation. */
 export interface DfShapeQuery extends BaseQueryFormat {
 	readonly type:       'df-shape';
 	readonly criterion?: SingleSlicingCriterion;
@@ -36,6 +36,6 @@ export const DfShapeQueryDefinition = {
 	schema: Joi.object({
 		type:      Joi.string().valid('df-shape').required().description('The type of the query.'),
 		criterion: Joi.string().optional().description('The slicing criterion of the node to get the dataframe shape for.')
-	}).description('Retrieve information on the dataframe shapes'),
+	}).description('The df-shape query retrieves information on the shape of dataframes'),
 	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'df-shape'>;

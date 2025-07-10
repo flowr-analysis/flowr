@@ -7,19 +7,29 @@ import type { RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nod
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { DataFrameInfo, DataFrameOperation } from '../absint-info';
+import type { DataFrameExpressionInfo, DataFrameOperation } from '../absint-info';
 import { resolveIdToArgValue, resolveIdToArgValueSymbolName, unquoteArgument } from '../resolve-args';
 import { getArgumentValue, isDataFrameArgument } from './arguments';
 
+/**
+ * Special named arguments of index-based access operators
+ */
 const SpecialAccessArgumentsMapper: Record<RIndexAccess['operator'], string[]> = {
 	'[':  ['drop'],
 	'[[': ['exact']
 };
 
+/**
+ * Maps a concrete data frame access to abstract data frame operations.
+ *
+ * @param node - The R node of the access
+ * @param dfg  - The data flow graph for resolving the arguments
+ * @returns Data frame expression info containing the mapped abstract data frame operations, or `undefined` if the node does not represent a data frame access
+ */
 export function mapDataFrameAccess(
 	node: RNode<ParentInformation>,
 	dfg: DataflowGraph
-): DataFrameInfo | undefined {
+): DataFrameExpressionInfo | undefined {
 	if(node.type === RType.Access) {
 		const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
 		let operations: DataFrameOperation[] | undefined;
@@ -168,6 +178,9 @@ function getEffectiveArgs(
 	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !specialArgs.includes(unquoteArgument(arg.name.content)));
 }
 
+/**
+ * Checks whether an access node represents a string-based access (`$` or `@`), and no index-based access (`[` or `[[`).
+ */
 export function isStringBasedAccess(
 	access: RAccess<ParentInformation>
 ): access is RNamedAccess<ParentInformation> {

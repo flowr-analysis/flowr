@@ -11,12 +11,13 @@ import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-func
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { DataFrameInfo, DataFrameOperation } from '../absint-info';
+import type { DataFrameExpressionInfo, DataFrameOperation } from '../absint-info';
 import { resolveIdToArgStringVector, resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
 import { ConstraintType } from '../semantics';
 import { isStringBasedAccess } from './access-mapper';
 import { isDataFrameArgument, isRNull } from './arguments';
 
+/** Mapper for mapping the supported data frame replacement functions to mapper functions */
 const DataFrameReplacementFunctionMapper = {
 	'colnames': mapDataFrameColNamesAssignment,
 	'names':    mapDataFrameColNamesAssignment,
@@ -24,6 +25,13 @@ const DataFrameReplacementFunctionMapper = {
 	'dimnames': mapDataFrameDimNamesAssignment
 } as const satisfies Record<string, DataFrameReplacementFunctionMapping>;
 
+/**
+ * Data frame function mapper for mapping a concrete data frame function function to abstract data frame operations.
+ * - `operand` contains the data frame operand of the replacement function
+ * - `expression` contains the assigned expression of the replacement function
+ * - `info` contains the resolve information
+ * - `parent` optionally contains a parent replacement function, such as the access `[` in `colnames(df)[1:2] <- ...`
+ */
 type DataFrameReplacementFunctionMapping = (
     operand: RArgument<ParentInformation>,
     expression: RNode<ParentInformation>,
@@ -31,19 +39,27 @@ type DataFrameReplacementFunctionMapping = (
 	parent?: RNode<ParentInformation>
 ) => DataFrameOperation[] | undefined;
 
+/** All currently supported data frame replacement functions */
 type DataFrameReplacementFunction = keyof typeof DataFrameReplacementFunctionMapper;
 
-export function mapDataFrameReplacement(
+/**
+ * Maps a concrete data frame replacement function to abstract data frame operations.
+ *
+ * @param node - The R node of the replacement function
+ * @param dfg  - The data flow graph for resolving the arguments
+ * @returns Data frame expression info containing the mapped abstract data frame operations, or `undefined` if the node does not represent a data frame replacement function
+ */
+export function mapDataFrameReplacementFunction(
 	node: RNode<ParentInformation>,
 	expression: RNode<ParentInformation>,
 	dfg: DataflowGraph
-): DataFrameInfo | undefined {
+): DataFrameExpressionInfo | undefined {
 	const parent = hasParentReplacement(node, dfg) ? dfg.idMap?.get(node.info.parent) : undefined;
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
 	let operations: DataFrameOperation[] | undefined;
 
 	if(node.type === RType.Access) {
-		if(node.access.every(access => access === EmptyArgument)) {
+		if(node.access.every(arg => arg === EmptyArgument)) {
 			operations = mapDataFrameContentAssignment(node, expression, resolveInfo);
 		} else if(isStringBasedAccess(node)) {
 			operations = mapDataFrameNamedColumnAssignment(node, expression, resolveInfo);
@@ -66,6 +82,7 @@ export function mapDataFrameReplacement(
 }
 
 function isDataFrameReplacement(functionName: string): functionName is DataFrameReplacementFunction {
+	// a check with `functionName in DataFrameReplacementFunctionMapper` would return true for "toString"
 	return Object.prototype.hasOwnProperty.call(DataFrameReplacementFunctionMapper, functionName);
 }
 

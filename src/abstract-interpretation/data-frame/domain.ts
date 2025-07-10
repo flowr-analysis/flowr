@@ -5,42 +5,66 @@ const MaxColNames = 50;
 
 type Interval = [number, number];
 
-export const IntervalBottom = 'bottom';
+/** The bottom element (least element) of the positive interval domain representing no possible values, explicitly given as "bottom". */
+export const IntervalBottom = Symbol('bottom');
+/** The top element (greatest element) of the positive interval domain representing all possible values, defined as the interval from 0 to infinity. */
 export const IntervalTop: Interval = [0, Infinity];
+/** The positive interval domain representing possible integer values. */
 export type IntervalDomain = Interval | typeof IntervalBottom;
 
+/** The bottom element (least element) of the column names domain representing no possible column name, defined as the empty list []. */
 export const ColNamesBottom: string[] = [];
-export const ColNamesTop = 'top';
+/** The top element (greatest element) of the column names domain representing all possible values, explicitly given as "top". */
+export const ColNamesTop = Symbol('top');
+/** The column names domain defined as bounded string set domain representing possible column names. */
 export type ColNamesDomain = string[] | typeof ColNamesTop;
 
+/**
+ * The data frame shape domain representing possible data frame shapes, defined as product domain of
+ * the {@link ColNamesDomain} for the columns names and {@link IntervalDomain} for the number of columns and rows.
+ * */
 export interface DataFrameDomain {
     colnames: ColNamesDomain,
     cols:     IntervalDomain,
     rows:     IntervalDomain
 }
 
+/**
+ * The bottom element (least element) of the data frame shape domain representing no possible value, mapping the columns names to {@link ColNamesBottom}
+ * and the number of columns and rows to {@link IntervalBottom}.
+ */
 export const DataFrameBottom: DataFrameDomain = {
 	colnames: ColNamesBottom,
 	cols:     IntervalBottom,
 	rows:     IntervalBottom
 };
 
+/**
+ * The top element (greatest element) of the data frame shape domain representing all possible value, mapping the columns names to {@link ColNamesTop}
+ * and the number of columns and rows to {@link IntervalTop}.
+ */
 export const DataFrameTop: DataFrameDomain = {
 	colnames: ColNamesTop,
 	cols:     IntervalTop,
 	rows:     IntervalTop
 };
 
+/**
+ * The data frame shape state domain representing possible memory states, mapping AST node IDs to data frame shape values of the {@link DataFrameDomain}.
+ */
 export type DataFrameStateDomain = Map<NodeId, DataFrameDomain>;
 
+/** Checks if two abstract values of the column names domain are equal. */
 export function equalColNames(set1: ColNamesDomain, set2: ColNamesDomain): boolean {
-	return set1 === set2 || (set1 !== ColNamesTop && setEquals(new Set(set1), new Set(set2)));
+	return set1 === set2 || (set1 !== ColNamesTop && set2 !== ColNamesTop && setEquals(new Set(set1), new Set(set2)));
 }
 
+/** Checks if two abstract values of the column names domain are ordered according to the partial ordering of the column names lattice. */
 export function leqColNames(set1: ColNamesDomain, set2: ColNamesDomain): boolean {
 	return set2 === ColNamesTop || (set1 !== ColNamesTop && new Set(set1).isSubsetOf(new Set(set2)));
 }
 
+/** Joins two abstract values of the columns names domain according to the column names lattice by creating the least upper bound (LUB). */
 export function joinColNames(set1: ColNamesDomain, set2: ColNamesDomain): ColNamesDomain {
 	if(set1 === ColNamesTop || set2 === ColNamesTop) {
 		return ColNamesTop;
@@ -50,6 +74,7 @@ export function joinColNames(set1: ColNamesDomain, set2: ColNamesDomain): ColNam
 	return join.length > MaxColNames ? ColNamesTop : join;
 }
 
+/** Meets two abstract values of the columns names domain according to the column names lattice by creating the greatest lower bound (GLB). */
 export function meetColNames(set1: ColNamesDomain, set2: ColNamesDomain): ColNamesDomain {
 	if(set1 === ColNamesTop) {
 		return set2;
@@ -60,6 +85,7 @@ export function meetColNames(set1: ColNamesDomain, set2: ColNamesDomain): ColNam
 	}
 }
 
+/** Subtracts an abstract value from another abstract value of the column names domain by performing a set minus. */
 export function subtractColNames(set1: ColNamesDomain, set2: ColNamesDomain): ColNamesDomain {
 	if(set1 === ColNamesTop) {
 		return ColNamesTop;
@@ -70,18 +96,27 @@ export function subtractColNames(set1: ColNamesDomain, set2: ColNamesDomain): Co
 	}
 }
 
+/**
+ * Widens two abstract values of the column names domain via naive widening to soundly over-approximate the join in (possibly infinite) fixpoint iterations.
+ *
+ * This is technically not necessary, as the join is limited by the maximum number of inferred column names.
+ * However, this speeds up the iteration in larger loops significantly, as we are over-approximating the column names much earlier.
+ */
 export function wideningColNames(set1: ColNamesDomain, set2: ColNamesDomain): ColNamesDomain {
 	return leqColNames(set1, set2) ? set2 : ColNamesTop;
 }
 
+/** Checks if two abstract values of the positive interval domain are equal. */
 export function equalInterval(interval1: IntervalDomain, interval2: IntervalDomain): boolean {
-	return interval1 === interval2 || (interval1 !== IntervalBottom && interval1[0] === interval2[0] && interval1[1] === interval2[1]);
+	return interval1 === interval2 || (interval1 !== IntervalBottom && interval2 !== IntervalBottom && interval1[0] === interval2[0] && interval1[1] === interval2[1]);
 }
 
+/** Checks if two abstract values of the positive interval domain are ordered according to the partial ordering of the positive interval lattice. */
 export function leqInterval(interval1: IntervalDomain, interval2: IntervalDomain): boolean {
 	return interval1 === IntervalBottom || (interval2 !== IntervalBottom && interval2[0] <= interval1[0] && interval1[1] <= interval2[1]);
 }
 
+/** Joins two abstract values of the positive interval domain according to the positive interval lattice by creating the least upper bound (LUB). */
 export function joinInterval(interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain {
 	if(interval1 === IntervalBottom) {
 		return interval2;
@@ -92,6 +127,7 @@ export function joinInterval(interval1: IntervalDomain, interval2: IntervalDomai
 	}
 }
 
+/** Meets two abstract values of the positive interval domain according to the positive interval lattice by creating the greatest lower bound (GLB). */
 export function meetInterval(interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain {
 	if(interval1 === IntervalBottom || interval2 === IntervalBottom) {
 		return IntervalBottom;
@@ -102,6 +138,7 @@ export function meetInterval(interval1: IntervalDomain, interval2: IntervalDomai
 	}
 }
 
+/** Adds two abstract values of the positive interval domain, by adding the lower bounds and upper bounds. */
 export function addInterval(interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain {
 	if(interval1 === IntervalBottom || interval2 === IntervalBottom) {
 		return IntervalBottom;
@@ -110,6 +147,7 @@ export function addInterval(interval1: IntervalDomain, interval2: IntervalDomain
 	}
 }
 
+/** Subtracts an abstract value from another abstract values of the positive interval domain, by subtracting the lower bounds and upper bounds. */
 export function subtractInterval(interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain {
 	if(interval1 === IntervalBottom || interval2 === IntervalBottom) {
 		return IntervalBottom;
@@ -118,6 +156,7 @@ export function subtractInterval(interval1: IntervalDomain, interval2: IntervalD
 	}
 }
 
+/** Creates the minium of two abstract values of the positive interval domain, by creating the minimum of the lower bounds and upper bounds. */
 export function minInterval(interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain {
 	if(interval1 === IntervalBottom || interval2 === IntervalBottom) {
 		return IntervalBottom;
@@ -126,6 +165,7 @@ export function minInterval(interval1: IntervalDomain, interval2: IntervalDomain
 	}
 }
 
+/** Creates the maximum of two abstract values of the positive interval domain, by creating the maximum of the lower bounds and upper bounds. */
 export function maxInterval(interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain {
 	if(interval1 === IntervalBottom || interval2 === IntervalBottom) {
 		return IntervalBottom;
@@ -134,6 +174,7 @@ export function maxInterval(interval1: IntervalDomain, interval2: IntervalDomain
 	}
 }
 
+/** Extrends the lower bound of an abstract value of the positive interval domain to 0. */
 export function extendIntervalToZero(interval: IntervalDomain): IntervalDomain {
 	if(interval === IntervalBottom) {
 		return IntervalBottom;
@@ -142,6 +183,7 @@ export function extendIntervalToZero(interval: IntervalDomain): IntervalDomain {
 	}
 }
 
+/** Extrends the upper bound of an abstract value of the positive interval domain to infinity. */
 export function extendIntervalToInfinity(interval: IntervalDomain): IntervalDomain {
 	if(interval === IntervalBottom) {
 		return IntervalBottom;
@@ -150,6 +192,7 @@ export function extendIntervalToInfinity(interval: IntervalDomain): IntervalDoma
 	}
 }
 
+/** Widens two abstract values of the positive interval domain via naive widening to soundly over-approximate the join in (possibly infinite) fixpoint iterations. */
 export function wideningInterval(interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain {
 	if(interval1 === IntervalBottom) {
 		return interval2;
@@ -160,10 +203,12 @@ export function wideningInterval(interval1: IntervalDomain, interval2: IntervalD
 	}
 }
 
+/** Checks if two abstract values of the data frame shape domain are equal. */
 export function equalDataFrameDomain(value1: DataFrameDomain, value2: DataFrameDomain): boolean {
 	return value1 === value2 || (equalColNames(value1.colnames, value2.colnames) && equalInterval(value1.cols, value2.cols) && equalInterval(value1.rows, value2.rows));
 }
 
+/** Joins multiple abstract values of the data frame shape domain by creating the least upper bound (LUB). */
 export function joinDataFrames(...values: DataFrameDomain[]): DataFrameDomain {
 	let result = values[0] ?? DataFrameTop;
 
@@ -177,6 +222,7 @@ export function joinDataFrames(...values: DataFrameDomain[]): DataFrameDomain {
 	return result;
 }
 
+/** Meets multiple abstract values of the data frame shape domain by creating the greatest lower bound (GLB). */
 export function meetDataFrames(...values: DataFrameDomain[]): DataFrameDomain {
 	let result = values[0] ?? DataFrameTop;
 
@@ -190,6 +236,7 @@ export function meetDataFrames(...values: DataFrameDomain[]): DataFrameDomain {
 	return result;
 }
 
+/** Widens two abstract values of the data frame shape domain by widening the column names and number of columns and rows. */
 export function wideningDataFrames(value1: DataFrameDomain, value2: DataFrameDomain): DataFrameDomain {
 	return {
 		colnames: wideningColNames(value1.colnames, value2.colnames),
@@ -198,6 +245,7 @@ export function wideningDataFrames(value1: DataFrameDomain, value2: DataFrameDom
 	};
 }
 
+/** Checks if two abstract states of the data frame shape state domain are equal. */
 export function equalDataFrameState(state1: DataFrameStateDomain, state2: DataFrameStateDomain): boolean {
 	if(state1 === state2) {
 		return true;
@@ -213,6 +261,7 @@ export function equalDataFrameState(state1: DataFrameStateDomain, state2: DataFr
 	return true;
 }
 
+/** Joins multiple abstract states of the data frame shape state domain by joining each data frame shape of the states. */
 export function joinDataFrameStates(...states: DataFrameStateDomain[]): DataFrameStateDomain {
 	const result = new Map(states[0]);
 
@@ -228,6 +277,7 @@ export function joinDataFrameStates(...states: DataFrameStateDomain[]): DataFram
 	return result;
 }
 
+/** Meets multiple abstract states of the data frame shape state domain by meeting each data frame shape of the states. */
 export function meetDataFrameStates(...states: DataFrameStateDomain[]): DataFrameStateDomain {
 	const result = new Map(states[0]);
 
@@ -243,6 +293,7 @@ export function meetDataFrameStates(...states: DataFrameStateDomain[]): DataFram
 	return result;
 }
 
+/** Widens two abstract states of the data frame shape state domain by widening each data frame shape of the states. */
 export function wideningDataFrameStates(state1: DataFrameStateDomain, state2: DataFrameStateDomain): DataFrameStateDomain {
 	const result = new Map(state1);
 

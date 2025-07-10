@@ -7,7 +7,7 @@ import type { MergeableRecord } from '../../util/objects';
 import type { DataFrameOperationName } from '../../abstract-interpretation/data-frame/semantics';
 
 export const RequiredSlicerMeasurements = ['initialize R session', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'close R session', 'total'] as const;
-export const OptionalSlicerMeasurements = ['extract control flow graph', 'perform abstract interpretation'] as const;
+export const OptionalSlicerMeasurements = ['extract control flow graph', 'infer data frame shapes'] as const;
 export const CommonSlicerMeasurements = [...RequiredSlicerMeasurements, ...OptionalSlicerMeasurements] as const;
 export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number]
 
@@ -50,7 +50,7 @@ export interface SlicerStatsDataflow<T = number> {
 	overwrittenIndices:          T
 }
 
-export interface SlicerStatsAbsint<T = number> {
+export interface SlicerStatsDfShape<T = number> {
 	numberOfDataFrameFiles:    T extends number ? 0 | 1 : number,
 	numberOfNonDataFrameFiles: T extends number ? 0 | 1 : number,
 	numberOfResultConstraints: T,
@@ -61,10 +61,10 @@ export interface SlicerStatsAbsint<T = number> {
 	numberOfOperationNodes:    T,
 	numberOfValueNodes:        T,
 	sizeOfInfo:                T,
-	perNodeStats:              Map<NodeId, PerNodeStatsAbsint<T>>
+	perNodeStats:              Map<NodeId, PerNodeStatsDfShape<T>>
 }
 
-export interface PerNodeStatsAbsint<T = number> {
+export interface PerNodeStatsDfShape<T = number> {
 	numberOfEntries:      T,
 	mappedOperations?:    DataFrameOperationName[]
 	inferredColNames?:    T | 'top',
@@ -94,17 +94,17 @@ export interface BenchmarkMemoryMeasurement<T = number> extends MergeableRecord 
  * The statistics that are collected by the {@link BenchmarkSlicer} and used for benchmarking.
  */
 export interface SlicerStats {
-	commonMeasurements:       Map<CommonSlicerMeasurements, ElapsedTime>
-	perSliceMeasurements:     Map<SlicingCriteria, PerSliceStats>
-	memory:                   Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>,
-	request:                  RParseRequestFromFile | RParseRequestFromText
-	input:                    SlicerStatsInput
-	dataflow:                 SlicerStatsDataflow
-	absint?:                  SlicerStatsAbsint
-	retrieveTimePerToken:     TimePerToken<number>
-	normalizeTimePerToken:    TimePerToken<number>
-	dataflowTimePerToken:     TimePerToken<number>
-	totalCommonTimePerToken:  TimePerToken<number>
-	controlFlowTimePerToken?: TimePerToken<number>
-	absintTimePerToken?:      TimePerToken<number>
+	commonMeasurements:          Map<CommonSlicerMeasurements, ElapsedTime>
+	perSliceMeasurements:        Map<SlicingCriteria, PerSliceStats>
+	memory:                      Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>,
+	request:                     RParseRequestFromFile | RParseRequestFromText
+	input:                       SlicerStatsInput
+	dataflow:                    SlicerStatsDataflow
+	dataFrameShape?:             SlicerStatsDfShape
+	retrieveTimePerToken:        TimePerToken<number>
+	normalizeTimePerToken:       TimePerToken<number>
+	dataflowTimePerToken:        TimePerToken<number>
+	totalCommonTimePerToken:     TimePerToken<number>
+	controlFlowTimePerToken?:    TimePerToken<number>
+	dataFrameShapeTimePerToken?: TimePerToken<number>
 }

@@ -18,16 +18,12 @@ import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
 import { applySemantics, ConstraintType, getConstraintType } from './semantics';
 import { getVariableOrigins, resolveIdToDataFrameShape } from './shape-inference';
 
-export interface DataFrameShapeInferenceVisitorConfiguration<
+export type DataFrameShapeInferenceVisitorConfiguration<
 	OtherInfo = NoInfo,
 	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst<OtherInfo & AbstractInterpretationInfo> = NormalizedAst<OtherInfo & AbstractInterpretationInfo>,
 	Dfg extends DataflowGraph = DataflowGraph
-> extends Omit<SemanticCfgGuidedVisitorConfiguration<OtherInfo & AbstractInterpretationInfo, ControlFlow, Ast, Dfg>, 'defaultVisitingOrder' | 'defaultVisitingType'> {
-    readonly wideningThreshold?: number;
-}
-
-const DefaultWideningThreshold = 4;
+> = Omit<SemanticCfgGuidedVisitorConfiguration<OtherInfo & AbstractInterpretationInfo, ControlFlow, Ast, Dfg>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
 
 /**
  * The control flow graph visitor to infer the shape of data frames using abstract interpretation
@@ -188,7 +184,7 @@ export class DataFrameShapeInferenceVisitor<
 	}
 
 	private shouldWiden(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): boolean {
-		return (this.visited.get(vertex.id) ?? 0) >= (this.config.wideningThreshold ?? DefaultWideningThreshold);
+		return (this.visited.get(vertex.id) ?? 0) >= this.config.flowrConfig.abstractInterpretation.dataFrame.wideningThreshold;
 	}
 
 	private clearUnassignedInfo(node: RNode<ParentInformation & AbstractInterpretationInfo>) {

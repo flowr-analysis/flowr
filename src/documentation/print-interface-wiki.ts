@@ -193,6 +193,7 @@ The following summarizes the configuration options:
 - \`solver\`: allows to configure how _flowR_ resolves variables and their values (currently we support: ${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}), as well as if pointer analysis should be active.
 - \`engines\`: allows to configure the engines used by _flowR_ to interact with R code. See the [Engines wiki page](${FlowrWikiBaseRef}/Engines) for more information.
 - \`defaultEngine\`: allows to specify the default engine to use for interacting with R code. If not set, an arbitrary engine from the specified list will be used.
+- \`abstractInterpretation\`: allows to configure how _flowR_ performs abstract interpretation, although we currently only support data frame shape inference through abstract interpretation.
 
 So you can configure _flowR_ by adding a file like the following:
 
@@ -225,6 +226,16 @@ ${codeBlock('json', JSON.stringify(
 				},
 				slicer: {
 					threshold: 50
+				}
+			},
+			abstractInterpretation: {
+				dataFrame: {
+					maxColNames:       20,
+					wideningThreshold: 4,
+					readLoadedData:    {
+						readExternalFiles: true,
+						maxReadLines:      10_000_000
+					}
 				}
 			}
 		} satisfies FlowrConfigOptions,

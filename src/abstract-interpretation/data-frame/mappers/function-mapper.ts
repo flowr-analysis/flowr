@@ -1,3 +1,4 @@
+import type { FlowrConfigOptions } from '../../../config';
 import { defaultConfigOptions, VariableResolve } from '../../../config';
 import { type ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
@@ -27,8 +28,6 @@ enum DataFrameType {
 	Tibble = 'tibble',
 	DataTable = 'data.table'
 }
-
-const MaxReadLines = 1e7;
 
 /**
  * Mapper for mapping the supported concrete data frame functions to mapper functions,
@@ -394,11 +393,13 @@ type DataFrameFunctionMapperInfo<Params extends object> = {
  * - `args` contains the function call arguments
  * - `params` contains the expected argument location for each parameter of the function
  * - `info` contains the resolve information
+ * - `config` contains the flowR configuration
  */
 type DataFrameFunctionMapping<Params extends object> = (
     args: readonly RFunctionArgument<ParentInformation>[],
 	params: Params,
-    info: ResolveInfo
+    info: ResolveInfo,
+	config?: FlowrConfigOptions
 ) => DataFrameOperation[] | undefined;
 
 /** All currently supported data frame functions */
@@ -424,7 +425,8 @@ type DataFrameFunctionParamsMapping = {
  */
 export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 	node: RNode<ParentInformation>,
-	dfg: DataflowGraph
+	dfg: DataflowGraph,
+	config: FlowrConfigOptions = defaultConfigOptions
 ): DataFrameExpressionInfo | undefined {
 	if(node.type === RType.FunctionCall && node.named && isDataFrameFunction(node.functionName.content)) {
 		const functionName = node.functionName.content as Name;
@@ -438,7 +440,7 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 		if(hasCriticalArgument(args, critical, resolveInfo)) {
 			operations = [{ operation: 'unknown', operand: undefined }];
 		} else {
-			operations = mapper(args, params, resolveInfo);
+			operations = mapper(args, params, resolveInfo, config);
 		}
 		if(operations !== undefined) {
 			return { type: 'expression', operations: operations };
@@ -513,11 +515,12 @@ function mapDataFrameRead(
 		noDupNames:    FunctionParameterLocation<boolean>,
 		noEmptyNames?: boolean
 	},
-	info: ResolveInfo
+	info: ResolveInfo,
+	config: FlowrConfigOptions = defaultConfigOptions
 ): DataFrameOperation[] {
 	const fileNameArg = getFunctionArgument(args, params.fileName, info);
 	const textArg = params.text ? getFunctionArgument(args, params.text, info) : undefined;
-	const { source, request } = getRequestFromRead(fileNameArg, textArg, params, info);
+	const { source, request } = getRequestFromRead(fileNameArg, textArg, params, info, config);
 
 	const header = getArgumentValue(args, params.header, info);
 	const separator = getArgumentValue(args, params.separator, info);
@@ -527,7 +530,10 @@ function mapDataFrameRead(
 	const checkNames = getArgumentValue(args, params.checkNames, info);
 	const noDupNames = getArgumentValue(args, params.noDupNames, info);
 
-	if(request === undefined || typeof header !== 'boolean' || typeof separator !== 'string' || typeof quote !== 'string' || typeof comment !== 'string' || typeof skipLines !== 'number' || typeof checkNames !== 'boolean' || typeof noDupNames !== 'boolean') {
+	const validArguments = typeof header === 'boolean' && typeof separator === 'string' && typeof quote === 'string' && typeof comment === 'string' &&
+		typeof skipLines === 'number' && typeof checkNames === 'boolean' && typeof noDupNames === 'boolean';
+
+	if(request === undefined || !config.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles || !validArguments) {
 		return [{
 			operation: 'read',
 			operand:   undefined,
@@ -554,7 +560,7 @@ function mapDataFrameRead(
 			}
 		}
 	};
-	const allLines = parseRequestContent(request, parseLine, MaxReadLines);
+	const allLines = parseRequestContent(request, parseLine, config.abstractInterpretation.dataFrame.readLoadedData.maxReadLines);
 	let colnames: (string | undefined)[] | undefined;
 
 	if(header) {
@@ -1110,7 +1116,8 @@ function getRequestFromRead(
 	fileNameArg: RFunctionArgument<ParentInformation> | undefined,
 	textArg: RFunctionArgument<ParentInformation> | undefined,
 	params: DataFrameFunctionParams<'read.table'>,
-	info: ResolveInfo
+	info: ResolveInfo,
+	config: FlowrConfigOptions = defaultConfigOptions
 ) {
 	let source: string | undefined;
 	let request: RParseRequest | undefined;
@@ -1121,7 +1128,7 @@ function getRequestFromRead(
 		if(typeof fileName === 'string') {
 			source = fileName;
 			const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
-			const sources = findSource(defaultConfigOptions.solver.resolveSource, fileName, { referenceChain: referenceChain });
+			const sources = findSource(config.solver.resolveSource, fileName, { referenceChain: referenceChain });
 
 			if(sources?.length === 1) {
 				source = sources[0];

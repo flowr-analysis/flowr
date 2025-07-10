@@ -1,7 +1,8 @@
+import { defaultConfigOptions } from '../../config';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { setEquals } from '../../util/collections/set';
 
-const MaxColNames = 50;
+const MaxColNames = defaultConfigOptions.abstractInterpretation.dataFrame.maxColNames;
 
 type Interval = [number, number];
 
@@ -65,13 +66,13 @@ export function leqColNames(set1: ColNamesDomain, set2: ColNamesDomain): boolean
 }
 
 /** Joins two abstract values of the columns names domain according to the column names lattice by creating the least upper bound (LUB). */
-export function joinColNames(set1: ColNamesDomain, set2: ColNamesDomain): ColNamesDomain {
+export function joinColNames(set1: ColNamesDomain, set2: ColNamesDomain, maxColNames: number = MaxColNames): ColNamesDomain {
 	if(set1 === ColNamesTop || set2 === ColNamesTop) {
 		return ColNamesTop;
 	}
 	const join = Array.from(new Set(set1).union(new Set(set2)));
 
-	return join.length > MaxColNames ? ColNamesTop : join;
+	return join.length > maxColNames ? ColNamesTop : join;
 }
 
 /** Meets two abstract values of the columns names domain according to the column names lattice by creating the greatest lower bound (GLB). */

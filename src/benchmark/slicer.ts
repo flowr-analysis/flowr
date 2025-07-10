@@ -51,13 +51,13 @@ import { isParentContainerIndex } from '../dataflow/graph/vertex';
 import { equidistantSampling } from '../util/collections/arrays';
 import type { FlowrConfigOptions } from '../config';
 import { getEngineConfig } from '../config';
-import { inferDataFrameShapes } from '../abstract-interpretation/data-frame/shape-inference';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { hasDataFrameExpressionInfo, type AbstractInterpretationInfo } from '../abstract-interpretation/data-frame/absint-info';
 import type { IntervalDomain } from '../abstract-interpretation/data-frame/domain';
 import { ColNamesTop, DataFrameBottom, DataFrameTop, equalDataFrameDomain, equalInterval, IntervalBottom, IntervalTop } from '../abstract-interpretation/data-frame/domain';
+import { inferDataFrameShapes } from '../abstract-interpretation/data-frame/shape-inference';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -404,10 +404,12 @@ export class BenchmarkSlicer {
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined for data frame shape inference');
 		guard(this.dataflow !== undefined, 'dataflow should be defined for data frame shape inference');
 		guard(this.controlFlow !== undefined, 'controlFlow should be defined for data frame shape inference');
+		guard(this.config !== undefined, 'config should be defined for data frame shape inference');
 
 		const ast = this.normalizedAst;
 		const dfg = this.dataflow.graph;
 		const cfinfo = this.controlFlow;
+		const config = this.config;
 
 		const stats: SlicerStatsDfShape = {
 			numberOfDataFrameFiles:    0,
@@ -423,7 +425,7 @@ export class BenchmarkSlicer {
 			perNodeStats:              new Map()
 		};
 
-		const result = this.measureSimpleStep('infer data frame shapes', () => inferDataFrameShapes(cfinfo, dfg, ast));
+		const result = this.measureSimpleStep('infer data frame shapes', () => inferDataFrameShapes(cfinfo, dfg, ast, config));
 		stats.numberOfResultConstraints = result.size;
 
 		for(const value of result.values()) {

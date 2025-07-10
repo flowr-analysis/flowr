@@ -1,3 +1,4 @@
+import type { FlowrConfigOptions } from '../../config';
 import { defaultConfigOptions } from '../../config';
 import { type ControlFlowInformation, isMarkerVertex } from '../../control-flow/control-flow-graph';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -20,15 +21,17 @@ import { type DataFrameDomain, type DataFrameStateDomain, DataFrameTop, joinData
  * @param cfinfo - The control flow information containing the control flow graph
  * @param dfg    - The data flow graph to resolve variable origins and function arguments
  * @param ast    - The abstract syntax tree to resolve node IDs to AST nodes
+ * @param config - The flowR configuration to use for the shape inference
  * @returns The abstract data frame state at the exit node of the control flow graph (see {@link DataFrameStateDomain}).
  * The abstract data frame states for all other nodes are attached to the AST.
  */
 export function inferDataFrameShapes(
 	cfinfo: ControlFlowInformation,
 	dfg: DataflowGraph,
-	ast: NormalizedAst<ParentInformation & AbstractInterpretationInfo>
+	ast: NormalizedAst<ParentInformation & AbstractInterpretationInfo>,
+	config: FlowrConfigOptions = defaultConfigOptions
 ): DataFrameStateDomain {
-	const visitor = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, flowrConfig: defaultConfigOptions });
+	const visitor = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, flowrConfig: config });
 	visitor.start();
 	const exitPoints = cfinfo.exitPoints.map(id => cfinfo.graph.getVertex(id)).filter(isNotUndefined);
 	const exitNodes = exitPoints.map(vertex => ast.idMap.get(isMarkerVertex(vertex) ? vertex.root : vertex.id)).filter(isNotUndefined);

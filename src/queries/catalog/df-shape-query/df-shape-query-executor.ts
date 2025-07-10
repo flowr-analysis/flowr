@@ -15,7 +15,7 @@ export function executeDfShapeQuery({ dataflow: { graph }, ast, config }: BasicQ
 
 	const start = Date.now();
 	const cfg = extractCfg(ast, config, graph);
-	const domains = inferDataFrameShapes(cfg, graph, ast);
+	const domains = inferDataFrameShapes(cfg, graph, ast, config);
 
 	if(queries.length === 1 && queries[0].criterion === undefined) {
 		return {

@@ -330,13 +330,9 @@ function createCodeForOutput(
 }
 
 function getDefaultTestOptions(expected: DataFrameDomain | undefined, options?: Partial<DataFrameTestOptions>): Partial<DataFrameTestOptions> {
-	let finalOptions: Partial<DataFrameTestOptions> = { ...options };
+	const finalOptions: Partial<DataFrameTestOptions> = { ...options };
 
-	if(expected === undefined) {
-		if(options === undefined) {
-			finalOptions = DataFrameShapeOverapproximation;
-		}
-	} else {
+	if(expected !== undefined) {
 		if(options?.colnames === undefined && expected.colnames === ColNamesTop) {
 			finalOptions.colnames = DomainMatchingType.Overapproximation;
 		}

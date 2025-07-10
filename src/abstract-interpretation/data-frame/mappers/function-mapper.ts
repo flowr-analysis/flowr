@@ -574,7 +574,7 @@ function mapDataFrameRead(
 		operand:   undefined,
 		source,
 		colnames,
-		rows:      allLines ? rowCount : undefined
+		rows:      allLines ? rowCount : [rowCount, Infinity]
 	}];
 }
 
@@ -1133,7 +1133,7 @@ function getRequestFromRead(
 		if(typeof fileName === 'string') {
 			source = fileName;
 			const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
-			const sources = findSource(config.solver.resolveSource, fileName, { referenceChain: referenceChain });
+			const sources = findSource(config.solver.resolveSource, fileName, { referenceChain });
 
 			if(sources?.length === 1) {
 				source = sources[0];

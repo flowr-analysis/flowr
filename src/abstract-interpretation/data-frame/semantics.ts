@@ -102,20 +102,20 @@ export function getConstraintType(operation: DataFrameOperationName): Constraint
 
 function applyCreateSemantics(
 	value: DataFrameDomain,
-	{ colnames, rows }: { colnames: (string | undefined)[] | undefined, rows: number | undefined }
+	{ colnames, rows }: { colnames: (string | undefined)[] | undefined, rows: number | [number, number] | undefined }
 ): DataFrameDomain {
 	const cols = colnames?.length;
 
 	return {
 		colnames: colnames?.every(isNotUndefined) ? colnames : ColNamesTop,
 		cols:     cols !== undefined ? [cols, cols] : IntervalTop,
-		rows:     rows !== undefined ? [rows, rows] : IntervalTop
+		rows:     Array.isArray(rows) ? rows : typeof rows === 'number' ? [rows, rows] : IntervalTop
 	};
 }
 
 function applyReadSemantics(
 	value: DataFrameDomain,
-	{ colnames, rows }: { source: string | undefined, colnames: (string | undefined)[] | undefined, rows: number | undefined }
+	{ colnames, rows }: { source: string | undefined, colnames: (string | undefined)[] | undefined, rows: number | [number, number] | undefined }
 ): DataFrameDomain {
 	return applyCreateSemantics(value, { colnames, rows });
 }
@@ -205,7 +205,7 @@ function applySetColNamesSemantics(
 		};
 	}
 	const cols = colnames?.length;
-	const allColNames = value.cols != IntervalBottom && cols !== undefined && cols >= value.cols[1];
+	const allColNames = value.cols !== IntervalBottom && cols !== undefined && cols >= value.cols[1];
 
 	return {
 		...value,

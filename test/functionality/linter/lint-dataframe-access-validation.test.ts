@@ -73,6 +73,7 @@ print(df3${access})
 			];
 
 			for(const test of testCases) {
+				/* @ignore-in-wiki */
 				assertLinter(test, parser, test, 'dataframe-access-validation', []);
 			}
 		});
@@ -123,6 +124,7 @@ print(df3${access})
 			];
 
 			for(const [test, result] of testCases) {
+				/* @ignore-in-wiki */
 				assertLinter(test, parser, test, 'dataframe-access-validation', [{ ...result, certainty: LintingCertainty.Definitely }]);
 			}
 		});

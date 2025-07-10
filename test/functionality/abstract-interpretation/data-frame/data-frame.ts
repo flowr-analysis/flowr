@@ -61,7 +61,7 @@ export const ColNamesOverapproximation: Partial<DataFrameTestOptions> = {
 	colnames: DomainMatchingType.Overapproximation
 };
 
-type DataFrameOperationType = {
+type ExpectedDataFrameOperation = {
 	[Name in DataFrameOperationName]: { operation: Name } & DataFrameOperationArgs<Name>
 }[DataFrameOperationName];
 
@@ -202,7 +202,7 @@ export function assertDataFrameDomain(
 export function assertDataFrameOperation(
 	parser: KnownParser,
 	code: string,
-	expected: [SingleSlicingCriterion, DataFrameOperationType[]][],
+	expected: [SingleSlicingCriterion, ExpectedDataFrameOperation[]][],
 	name: string | TestLabel = code,
 	config: FlowrConfigOptions = defaultConfigOptions
 ) {

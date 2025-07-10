@@ -5,6 +5,19 @@ import type { DataFrameStateDomain } from './domain';
 import type { ConstraintType, DataFrameOperationArgs, DataFrameOperationName, DataFrameOperationOptions } from './semantics';
 
 /**
+ * An abstract data frame operation without additional options.
+ * - `operation` contains the type of the abstract operations (see {@link DataFrameOperationName})
+ * - `operand` contains the ID of the data frame operand of the operations (may be `undefined`)
+ * - `...args` contains the arguments of the abstract operation (see {@link DataFrameOperationArgs})
+ */
+export type DataFrameOperationType<OperationName extends DataFrameOperationName = DataFrameOperationName> = {
+	[Name in OperationName]: {
+		operation: Name,
+		operand:   NodeId | undefined
+	} & DataFrameOperationArgs<Name>
+}[OperationName];
+
+/**
  * An abstract data frame operation.
  * - `operation` contains the type of the abstract operations (see {@link DataFrameOperationName})
  * - `operand` contains the ID of the data frame operand of the operations (may be `undefined`)
@@ -12,14 +25,14 @@ import type { ConstraintType, DataFrameOperationArgs, DataFrameOperationName, Da
  * - `options` optionally contains additional options for the abstract operation (see {@link DataFrameOperationOptions})
  * - `...args` contains the arguments of the abstract operation (see {@link DataFrameOperationArgs})
  */
-export type DataFrameOperation = {
-    [Name in DataFrameOperationName]: {
+export type DataFrameOperation<OperationName extends DataFrameOperationName = DataFrameOperationName> = {
+    [Name in OperationName]: {
 		operation: Name,
 		operand:   NodeId | undefined,
 		type?:     ConstraintType,
 		options?:  DataFrameOperationOptions<Name>
 	} & DataFrameOperationArgs<Name>;
-}[DataFrameOperationName];
+}[OperationName];
 
 interface DataFrameInfoBase {
 	type?:   string,

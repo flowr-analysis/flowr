@@ -107,6 +107,11 @@ export function wideningColNames(set1: ColNamesDomain, set2: ColNamesDomain): Co
 	return leqColNames(set1, set2) ? set2 : ColNamesTop;
 }
 
+/** Checks whether an abstract value of the column names domain satisfies a column name */
+export function satisfiesColsNames(set: ColNamesDomain, value: string) {
+	return set === ColNamesTop || set.includes(value);
+}
+
 /** Checks if two abstract values of the positive interval domain are equal. */
 export function equalInterval(interval1: IntervalDomain, interval2: IntervalDomain): boolean {
 	return interval1 === interval2 || (interval1 !== IntervalBottom && interval2 !== IntervalBottom && interval1[0] === interval2[0] && interval1[1] === interval2[1]);
@@ -202,6 +207,16 @@ export function wideningInterval(interval1: IntervalDomain, interval2: IntervalD
 	} else {
 		return [interval1[0] <= interval2[0] ? interval1[0] : 0, interval1[1] >= interval2[1] ? interval1[1] : Infinity];
 	}
+}
+
+/** Checks whether an abstract value of the positive interval domain satisfies a numeric value. */
+export function satisfiesInterval(interval: IntervalDomain, value: number) {
+	return interval !== IntervalBottom && interval[0] <= value && value <= interval[1];
+}
+
+/** Checks whether a numeric value satisfies the less-than relation with an abstract value of the positive interval domain. */
+export function satisfiesLeqInterval(interval: IntervalDomain, value: number) {
+	return interval !== IntervalBottom && value <= interval[1];
 }
 
 /** Checks if two abstract values of the data frame shape domain are equal. */

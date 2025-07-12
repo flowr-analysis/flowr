@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { RAnyType, RNoneType, RTypeVariable, type DataType } from '../../../../src/subtyping/types';
+import { RTypeIntersection, RTypeUnion, RTypeVariable, type DataType } from '../../../../src/subtyping/types';
 import type { DataTypeInfo } from '../../../../src/subtyping/infer';
 import { inferDataTypes } from '../../../../src/subtyping/infer';
 import { type FlowrSearch } from '../../../../src/search/flowr-search-builder';
@@ -26,7 +26,7 @@ export function assertInferredTypes(
 			query,
 			expectedType: 'expectedType' in rest
 				? rest.expectedType
-				: new RTypeVariable(rest.lowerBound ?? new RNoneType(), rest.upperBound ?? new RAnyType())
+				: new RTypeVariable(rest.lowerBound ?? new RTypeUnion(), rest.upperBound ?? new RTypeIntersection())
 		}));
 
 		describe.each(expectedTypes)('Infer $expectedType.tag for query $query', ({ query, expectedType }) => {

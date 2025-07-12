@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { RAnyType, RIntegerType, RLanguageType, RListType, RLogicalType, RNoneType, RNullType, RStringType, RTypeVariable, RAtomicVectorType } from '../../../src/subtyping/types';
+import { RTypeIntersection, RIntegerType, RLanguageType, RListType, RLogicalType, RTypeUnion, RNullType, RStringType, RTypeVariable, RAtomicVectorType } from '../../../src/subtyping/types';
 import { assertInferredType, assertInferredTypes } from '../_helper/subtyping/assert-inferred-type';
 import { Q } from '../../../src/search/flowr-search-builder';
 
@@ -15,16 +15,16 @@ describe('Infer types for builtin functions', () => {
 
 	assertInferredTypes(
 		'eval(quote(TRUE))',
-		{ query: Q.criterion('1@eval').build(),  lowerBound: new RNoneType(), upperBound: new RAnyType() },
+		{ query: Q.criterion('1@eval').build(),  lowerBound: new RTypeUnion(), upperBound: new RTypeIntersection() },
 		{ query: Q.criterion('1@quote').build(), expectedType: new RLanguageType() },
 		{ query: Q.criterion('1@TRUE').build(),  expectedType: new RLogicalType() }
 	);
 	
-	assertInferredType('list(1, 2, 3)', { expectedType: new RListType(new RTypeVariable(new RIntegerType(), new RAnyType())) });
+	assertInferredType('list(1, 2, 3)', { expectedType: new RListType(new RTypeVariable(new RIntegerType(), new RTypeIntersection())) });
 
 	assertInferredTypes(
 		'c("Hello", "Flo", "!")',
-		{ query: Q.criterion('1@c').build(),       expectedType: new RAtomicVectorType(new RTypeVariable(new RStringType(), new RAnyType())) },
+		{ query: Q.criterion('1@c').build(),       expectedType: new RAtomicVectorType(new RTypeVariable(new RStringType(), new RTypeIntersection())) },
 		{ query: Q.criterion('1@"Hello"').build(), expectedType: new RStringType() },
 	);
 });

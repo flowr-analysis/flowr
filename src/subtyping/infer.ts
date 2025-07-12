@@ -9,7 +9,7 @@ import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataType, UnresolvedDataType } from './types';
-import { UnresolvedRTypeVariable, RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, UnresolvedRListType, RLanguageType, UnresolvedRFunctionType, RNoneType, UnresolvedRAtomicVectorType, UnresolvedRVectorType } from './types';
+import { UnresolvedRTypeVariable, RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, UnresolvedRListType, RLanguageType, UnresolvedRFunctionType, UnresolvedRAtomicVectorType, UnresolvedRTypeUnion } from './types';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../util/assert';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
@@ -267,9 +267,10 @@ class TypeInferringCfgGuidedVisitor<
 		const vectorNode = this.getNormalizedAst(data.vector.nodeId);
 		guard(variableNode !== undefined && vectorNode !== undefined, 'Expected variable and vector nodes to be defined');
 		
-		const vectorType = new UnresolvedRVectorType();
+		const elementType = new UnresolvedRTypeVariable();
+		const vectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(elementType), new UnresolvedRListType(elementType));
 		vectorNode.info.typeVariable.constrainWithUpperBound(vectorType);
-		variableNode.info.typeVariable.constrainWithLowerBound(vectorType.elementType);
+		variableNode.info.typeVariable.constrainWithLowerBound(elementType);
 
 		this.onLoopCall(data);
 	}
@@ -297,7 +298,7 @@ class TypeInferringCfgGuidedVisitor<
 		const isInfinite = (cfgVertex.end ?? []).reduce((prevCount, id) => prevCount + (this.config.controlFlow.graph.outgoingEdges(id)?.size ?? 0), 0) === 0;
 
 		if(isInfinite) {
-			node.info.typeVariable.constrainFromBothSides(new RNoneType());
+			node.info.typeVariable.constrainFromBothSides(new UnresolvedRTypeUnion());
 		} else {
 			node.info.typeVariable.constrainFromBothSides(new RNullType());
 		}
@@ -360,7 +361,7 @@ class TypeInferringCfgGuidedVisitor<
 		}
 		if(!isThenBranchReachable && !isElseBranchReachable) {
 			// If neither branch is reachable, we can assume that the type is none
-			node.info.typeVariable.constrainFromBothSides(new RNoneType());
+			node.info.typeVariable.constrainFromBothSides(new UnresolvedRTypeUnion());
 		}	
 	}
 	
@@ -497,7 +498,8 @@ class TypeInferringCfgGuidedVisitor<
 		guard(firstArgNode !== undefined, 'Expected first argument node to be defined');
 
 		// TODO: Handle subsetting for other operand types, in particular for scalars and null
-		const vectorType = new UnresolvedRVectorType();
+		const elementType = new UnresolvedRTypeVariable();
+		const vectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(elementType), new UnresolvedRListType(elementType));
 		firstArgNode.info.typeVariable.constrainWithUpperBound(vectorType);
 		
 		switch(data.call.name) {
@@ -507,11 +509,11 @@ class TypeInferringCfgGuidedVisitor<
 				node.info.typeVariable.constrainWithLowerBound(firstArgNode.info.typeVariable);
 				break;
 			case '[[':
-				node.info.typeVariable.constrainWithLowerBound(vectorType.elementType);
+				node.info.typeVariable.constrainWithLowerBound(elementType);
 				break;
 			case '$': {
-				firstArgNode.info.typeVariable.constrainWithUpperBound(new UnresolvedRListType(vectorType.elementType));
-				node.info.typeVariable.constrainWithLowerBound(vectorType.elementType);
+				firstArgNode.info.typeVariable.constrainWithUpperBound(new UnresolvedRListType(elementType));
+				node.info.typeVariable.constrainWithLowerBound(elementType);
 				break;
 			}
 		}

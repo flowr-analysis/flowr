@@ -1,10 +1,10 @@
+import { guard } from '../util/assert';
+
 /**
  * This enum lists a tag for each of the possible R data types inferred by the
  * type inferencer. It is mainly used to identify subtypes of {@link DataType}.
  */
 export enum RDataTypeTag {
-	/** {@link RAtomicVectorType} */
-	Vector = 'RVectorType',
 	/** {@link RAtomicVectorType} */
 	AtomicVector = 'RAtomicVectorType',
     /** {@link RLogicalType} */
@@ -29,68 +29,24 @@ export enum RDataTypeTag {
     Environment = 'REnvironmentType',
     /** {@link RLanguageType} */
     Language = 'RLanguageType',
+	/** {@link UnresolvedRTypeUnion} */
+	Union = 'RTypeUnion',
+	/** {@link UnresolvedRTypeIntersection} */
+	Intersection = 'RTypeIntersection',
 	/** {@link UnresolvedRTypeVariable} */
     Variable = 'RTypeVariable',
 	/** {@link RErrorType} */
 	Error = 'RErrorType',
-	/** {@link RAnyType} */
-	Any = 'RAnyType',
-	/** {@link RNoneType} */
-	None = 'RNoneType',
 }
 
-export class UnresolvedRVectorType {
-	readonly tag = RDataTypeTag.Vector;
-	readonly elementType = new UnresolvedRTypeVariable();
-
-	constructor(elementType?: UnresolvedDataType) {
-		if(elementType !== undefined) {
-			this.elementType.constrainWithLowerBound(elementType);
-		}
-	}
-
-	constrainWithLowerBound(bound: UnresolvedVectorType | AtomicVectorElementType): void {
-		if(isVectorType(bound)) {
-			this.elementType.constrainWithLowerBound(bound.elementType);
-		} else {
-			this.elementType.constrainWithLowerBound(bound);
-		}
-	}
-
-	constrainWithUpperBound(bound: UnresolvedRVectorType): void {
-		this.elementType.constrainWithUpperBound(bound.elementType);
-	}
-}
-
-export class RVectorType {
-	readonly tag = RDataTypeTag.Vector;
-	readonly elementType: DataType;
-
-	constructor(elementType: DataType) {
-		this.elementType = elementType;
-	}
-}
-
-export class UnresolvedRAtomicVectorType /*extends UnresolvedRVectorType*/ {
+export class UnresolvedRAtomicVectorType {
 	readonly tag = RDataTypeTag.AtomicVector;
 	readonly elementType = new UnresolvedRTypeVariable();
 
-	constructor(elementType?: UnresolvedDataType) {
+	constructor(elementType?: UnresolvedRTypeVariable) {
 		if(elementType !== undefined) {
-			this.elementType.constrainWithLowerBound(elementType);
+			this.elementType = elementType;
 		}
-	}
-
-	constrainWithLowerBound(bound: UnresolvedRAtomicVectorType | AtomicVectorElementType): void {
-		if(bound instanceof UnresolvedRAtomicVectorType) {
-			this.elementType.constrainWithLowerBound(bound.elementType);
-		} else {
-			this.elementType.constrainWithLowerBound(bound);
-		}
-	}
-
-	constrainWithUpperBound(bound: UnresolvedRAtomicVectorType | UnresolvedRVectorType): void {
-		this.elementType.constrainWithUpperBound(bound.elementType);
 	}
 }
 
@@ -131,18 +87,10 @@ export class UnresolvedRListType {
 	readonly tag = RDataTypeTag.List;
 	readonly elementType = new UnresolvedRTypeVariable();
 
-	constructor(elementType?: UnresolvedDataType) {
+	constructor(elementType?: UnresolvedRTypeVariable) {
 		if(elementType !== undefined) {
-			this.elementType.constrainWithLowerBound(elementType);
+			this.elementType = elementType;
 		}
-	}
-	
-	constrainWithLowerBound(bound: UnresolvedRListType): void {
-		this.elementType.constrainWithLowerBound(bound.elementType);
-	}
-
-	constrainWithUpperBound(bound: UnresolvedRListType | UnresolvedRVectorType): void {
-		this.elementType.constrainWithUpperBound(bound.elementType);
 	}
 }
 
@@ -171,20 +119,6 @@ export class UnresolvedRFunctionType {
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		return this.parameterTypes.get(indexOrName)!;
 	}
-
-	constrainWithLowerBound(bound: UnresolvedRFunctionType): void {
-		for(const [key, type] of bound.parameterTypes) {
-			this.getParameterType(key).constrainWithUpperBound(type);
-		}
-		this.returnType.constrainWithLowerBound(bound.returnType);
-	}
-
-	constrainWithUpperBound(bound: UnresolvedRFunctionType): void {
-		for(const [key, type] of bound.parameterTypes) {
-			this.getParameterType(key).constrainWithLowerBound(type);
-		}
-		this.returnType.constrainWithUpperBound(bound.returnType);
-	}
 }
 
 export class RFunctionType {
@@ -206,49 +140,67 @@ export class RLanguageType {
 	readonly tag = RDataTypeTag.Language;
 }
 
+export class UnresolvedRTypeUnion {
+	readonly tag = RDataTypeTag.Union;
+	readonly types: Set<UnresolvedDataType> = new Set();
+
+	constructor(...types: UnresolvedDataType[]) {
+		for(const type of types) {
+			guard(type !== this, 'Union cannot contain itself');
+			this.types.add(type);
+		}
+	}
+}
+
+export class RTypeUnion {
+	readonly tag = RDataTypeTag.Union;
+	readonly types: Set<DataType> = new Set();
+
+	constructor(...types: DataType[]) {
+		for(const type of types) {
+			guard(type !== this, 'Union cannot contain itself');
+			this.types.add(type);
+		}
+	}
+}
+
+export class UnresolvedRTypeIntersection {
+	readonly tag = RDataTypeTag.Intersection;
+	readonly types: Set<UnresolvedDataType> = new Set();
+
+	constructor(...types: UnresolvedDataType[]) {
+		for(const type of types) {
+			guard(type !== this, 'Intersection cannot contain itself');
+			this.types.add(type);
+		}
+	}
+}
+
+export class RTypeIntersection {
+	readonly tag = RDataTypeTag.Intersection;
+	readonly types: Set<DataType> = new Set();
+
+	constructor(...types: DataType[]) {
+		for(const type of types) {
+			guard(type !== this, 'Intersection cannot contain itself');
+			this.types.add(type);
+		}
+	}
+}
+
 export class UnresolvedRTypeVariable {
 	readonly tag = RDataTypeTag.Variable;
-	readonly lowerBounds: Set<UnresolvedDataType> = new Set();
-	readonly upperBounds: Set<UnresolvedDataType> = new Set();
+	readonly lowerBound = new UnresolvedRTypeUnion();
+	readonly upperBound = new UnresolvedRTypeIntersection();
 
 	constrainWithLowerBound(bound: UnresolvedDataType): void {
-		this.lowerBounds.add(bound);
-		
-		for(const upperBound of this.upperBounds) {
-			if(upperBound instanceof UnresolvedRTypeVariable && upperBound !== bound) {
-				upperBound.constrainWithLowerBound(bound);
-			} else if(bound instanceof UnresolvedRTypeVariable && bound !== upperBound) {
-				bound.constrainWithUpperBound(upperBound);
-			} else if(upperBound instanceof UnresolvedRFunctionType && bound instanceof UnresolvedRFunctionType && upperBound !== bound) {
-				upperBound.constrainWithLowerBound(bound);
-			} else if(upperBound instanceof UnresolvedRVectorType && (isVectorType(bound) || isAtomicVectorElementType(bound)) && upperBound !== bound) {
-				upperBound.constrainWithLowerBound(bound);
-			} else if(upperBound instanceof UnresolvedRAtomicVectorType && (bound instanceof UnresolvedRAtomicVectorType || isAtomicVectorElementType(bound)) && upperBound !== bound) {
-				upperBound.constrainWithLowerBound(bound);
-			} else if(upperBound instanceof UnresolvedRListType && bound instanceof UnresolvedRListType && upperBound !== bound) {
-				upperBound.constrainWithLowerBound(bound);
-			}
-		}
+		guard(bound !== this, 'Lower bound cannot be the type variable itself');
+		constrainWithLowerBound(this, bound);
 	}
 
 	constrainWithUpperBound(bound: UnresolvedDataType): void {
-		this.upperBounds.add(bound);
-
-		for(const lowerBound of this.lowerBounds) {
-			if(lowerBound instanceof UnresolvedRTypeVariable && lowerBound !== bound) {
-				lowerBound.constrainWithUpperBound(bound);
-			} else if(bound instanceof UnresolvedRTypeVariable && bound !== lowerBound) {
-				bound.constrainWithLowerBound(lowerBound);
-			} else if(lowerBound instanceof UnresolvedRFunctionType && bound instanceof UnresolvedRFunctionType && lowerBound !== bound) {
-				lowerBound.constrainWithUpperBound(bound);
-			} else if(lowerBound instanceof UnresolvedRVectorType && bound instanceof UnresolvedRVectorType && lowerBound !== bound) {
-				lowerBound.constrainWithUpperBound(bound);
-			} else if(lowerBound instanceof UnresolvedRAtomicVectorType && (bound instanceof UnresolvedRAtomicVectorType || bound instanceof UnresolvedRVectorType) && lowerBound !== bound) {
-				lowerBound.constrainWithUpperBound(bound);
-			} else if(lowerBound instanceof UnresolvedRListType && (bound instanceof UnresolvedRListType || bound instanceof UnresolvedRVectorType) && lowerBound !== bound) {
-				lowerBound.constrainWithUpperBound(bound);
-			}
-		}
+		guard(bound !== this, 'Upper bound cannot be the type variable itself');
+		constrainWithUpperBound(this, bound);
 	}
 
 	constrainFromBothSides(other: UnresolvedDataType): void {
@@ -263,7 +215,9 @@ export class RTypeVariable {
 	readonly upperBound: DataType;
 	
 	constructor(lowerBound: DataType, upperBound: DataType) {
+		guard(lowerBound !== this, 'Lower bound cannot be the type variable itself');
 		this.lowerBound = lowerBound;
+		guard(upperBound !== this, 'Upper bound cannot be the type variable itself');
 		this.upperBound = upperBound;
 	}
 }
@@ -277,45 +231,160 @@ export class RErrorType {
 	}
 }
 
-export class RAnyType {
-	readonly tag = RDataTypeTag.Any;
+
+export function constrainWithLowerBound(type: UnresolvedDataType, bound: UnresolvedDataType): void {
+	// console.debug('constraining', type, 'with lower bound', bound);
+
+	if(type === bound) {
+		return; // No need to constrain if both types are the same
+	}
+
+	if(type instanceof UnresolvedRTypeVariable) {
+		type.lowerBound.types.add(bound);
+		for(const upperBound of type.upperBound.types) {
+			constrainWithLowerBound(upperBound, bound);
+		}
+	} else if(bound instanceof UnresolvedRTypeVariable) {
+		// constrainWithUpperBound(bound, type);
+		bound.upperBound.types.add(type);
+		for(const lowerBound of bound.lowerBound.types) {
+			constrainWithLowerBound(type, lowerBound);
+		}
+	} else if(type instanceof UnresolvedRTypeUnion) {
+		for(const subtype of type.types.values()) {
+			if(!subsumes(bound, subtype)) {
+				type.types.delete(subtype);
+			} else {
+				constrainWithLowerBound(subtype, bound);
+			}
+		}
+	} else if(bound instanceof UnresolvedRTypeUnion) {
+		// constrainWithUpperBound(bound, type);
+		for(const subtype of bound.types) {
+			constrainWithLowerBound(type, subtype);
+		}
+	} else if(type instanceof UnresolvedRTypeIntersection) {
+		for(const subtype of type.types) {
+			constrainWithLowerBound(subtype, bound);
+		}
+	} else if(bound instanceof UnresolvedRTypeIntersection) {
+		// constrainWithUpperBound(bound, type);
+		for(const subtype of bound.types.values()) {
+			if(!subsumes(subtype, type)) {
+				bound.types.delete(subtype);
+			} else {
+				constrainWithLowerBound(type, subtype);
+			}
+		}
+	} else if(type instanceof UnresolvedRFunctionType && bound instanceof UnresolvedRFunctionType) {
+		for(const [key, paramType] of bound.parameterTypes) {
+			constrainWithUpperBound(type.getParameterType(key), paramType);
+		}
+		constrainWithLowerBound(type.returnType, bound.returnType);
+	} else if(type instanceof UnresolvedRAtomicVectorType && bound instanceof UnresolvedRAtomicVectorType) {
+		constrainWithLowerBound(type.elementType, bound.elementType);
+	} else if(type instanceof UnresolvedRAtomicVectorType && isAtomicVectorElementType(bound)) {
+		constrainWithLowerBound(type.elementType, bound);
+	} else if(type instanceof UnresolvedRListType && bound instanceof UnresolvedRListType) {
+		constrainWithLowerBound(type.elementType, bound.elementType);
+	}
 }
 
-export class RNoneType {
-	readonly tag = RDataTypeTag.None;
+export function constrainWithUpperBound(type: UnresolvedDataType, bound: UnresolvedDataType): void {
+	// console.debug('constraining', type, 'with upper bound', bound);
+
+	if(type === bound) {
+		return; // No need to constrain if both types are the same
+	}
+
+	if(type instanceof UnresolvedRTypeVariable) {
+		type.upperBound.types.add(bound);
+		for(const lowerBound of type.lowerBound.types) {
+			constrainWithUpperBound(lowerBound, bound);
+		}
+	} else if(bound instanceof UnresolvedRTypeVariable) {
+		// constrainWithLowerBound(bound, type);
+		bound.lowerBound.types.add(type);
+		for(const upperBound of bound.upperBound.types) {
+			constrainWithUpperBound(type, upperBound);
+		}
+	} else if(type instanceof UnresolvedRTypeUnion) {
+		for(const subtype of type.types) {
+			constrainWithUpperBound(subtype, bound);
+		}
+	} else if(bound instanceof UnresolvedRTypeUnion) {
+		// constrainWithLowerBound(bound, type);
+		for(const subtype of bound.types.values()) {
+			if(!subsumes(type, subtype)) {
+				bound.types.delete(subtype);
+			} else {
+				constrainWithUpperBound(type, subtype);
+			}
+		}
+	} else if(type instanceof UnresolvedRTypeIntersection) {
+		for(const subtype of type.types.values()) {
+			if(!subsumes(subtype, bound)) {
+				type.types.delete(subtype);
+			} else {
+				constrainWithUpperBound(subtype, bound);
+			}
+		}
+	} else if(bound instanceof UnresolvedRTypeIntersection) {
+		// constrainWithLowerBound(bound, type);
+		for(const subtype of bound.types) {
+			constrainWithUpperBound(type, subtype);
+		}
+	} else if(type instanceof UnresolvedRFunctionType && bound instanceof UnresolvedRFunctionType) {
+		for(const [key, paramType] of bound.parameterTypes) {
+			constrainWithLowerBound(type.getParameterType(key), paramType);
+		}
+		constrainWithUpperBound(type.returnType, bound.returnType);
+	} else if(type instanceof UnresolvedRAtomicVectorType && bound instanceof UnresolvedRAtomicVectorType) {
+		constrainWithUpperBound(type.elementType, bound.elementType);
+	} else if(type instanceof UnresolvedRListType && bound instanceof UnresolvedRListType) {
+		constrainWithUpperBound(type.elementType, bound.elementType);
+	}
 }
 
 
 export function resolveType(type: UnresolvedDataType): DataType {
 	if(type instanceof UnresolvedRTypeVariable) {
-		let lowerBound: DataType = new RNoneType();
-		for(const bound of type.lowerBounds) {
-			const resolvedBound = resolveType(bound);
-			lowerBound = union(lowerBound, resolvedBound);
-		}
-		let upperBound: DataType = new RAnyType();
-		for(const bound of type.upperBounds) {
-			const resolvedBound = resolveType(bound);
-			upperBound = intersection(upperBound, resolvedBound);
-		}
+		const lowerBound = resolveType(type.lowerBound);
+		const upperBound = resolveType(type.upperBound);
 
 		if(!subsumes(lowerBound, upperBound)) {
 			return new RErrorType(lowerBound, upperBound);
-		} else if(subsumes(lowerBound, upperBound) && subsumes(upperBound, lowerBound)) {
-			return lowerBound; // If both bounds are equal, return one of them
-		} else {
-			return new RTypeVariable(
-				lowerBound instanceof RTypeVariable ? lowerBound.lowerBound : lowerBound,
-				upperBound instanceof RTypeVariable ? upperBound.upperBound : upperBound
-			);
 		}
+		
+		if(subsumes(lowerBound, upperBound) && subsumes(upperBound, lowerBound)) {
+			return lowerBound; // If both bounds are equal, return one of them
+		}
+		
+		return new RTypeVariable(
+			lowerBound instanceof RTypeVariable ? lowerBound.lowerBound : lowerBound,
+			upperBound instanceof RTypeVariable ? upperBound.upperBound : upperBound
+		);
+	} else if(type instanceof UnresolvedRTypeUnion) {
+		let resolvedType: DataType = new RTypeUnion();
+		for(const subtype of type.types) {
+			const resolvedSubtype = resolveType(subtype);
+			// console.debug('Resolved subtype', subtype, 'to', resolvedSubtype);
+			// console.debug('Joining type', resolvedType, 'with subtype', resolvedSubtype);
+			resolvedType = join(resolvedType, resolvedSubtype);
+			// console.debug('Joined type is now', resolvedType);
+		}
+		return resolvedType;
+	} else if(type instanceof UnresolvedRTypeIntersection) {
+		let resolvedType: DataType = new RTypeIntersection();
+		for(const subtype of type.types) {
+			const resolvedSubtype = resolveType(subtype);
+			resolvedType = meet(resolvedType, resolvedSubtype);
+		}
+		return resolvedType;
 	} else if(type instanceof UnresolvedRFunctionType) {
 		const resolvedParameterTypes = new Map(type.parameterTypes.entries().toArray().map(([key, type]) => [key, resolveType(type)]));
 		const resolvedReturnType = resolveType(type.returnType);
 		return new RFunctionType(resolvedParameterTypes, resolvedReturnType);
-	} else if(type instanceof UnresolvedRVectorType) {
-		const resolvedElementType = resolveType(type.elementType);
-		return new RVectorType(resolvedElementType);
 	} else if(type instanceof UnresolvedRAtomicVectorType) {
 		const resolvedElementType = resolveType(type.elementType);
 		return new RAtomicVectorType(resolvedElementType);
@@ -332,17 +401,23 @@ function subsumes(subtype: DataType, supertype: DataType): boolean {
 		return true;
 	} else if(subtype instanceof RErrorType || supertype instanceof RErrorType) {
 		return false; // Error types do not subsume and are not subsumed by any other type
-	} else if(subtype instanceof RNoneType || supertype instanceof RAnyType) {
-		return true; // None subsumes any type, Any is subsumed by any type
 	} else if(subtype instanceof RTypeVariable) {
 		return subsumes(subtype.lowerBound, supertype) && subsumes(subtype.upperBound, supertype);
 	} else if(supertype instanceof RTypeVariable) {
 		return subsumes(supertype.lowerBound, subtype) && subsumes(subtype, supertype.upperBound);
-	} else if(subtype instanceof RListType && (supertype instanceof RListType || supertype instanceof RVectorType)) {
+	} else if(subtype instanceof RTypeUnion) {
+		return subtype.types.values().every(subtype => subsumes(subtype, supertype));
+	} else if(supertype instanceof RTypeUnion) {
+		return supertype.types.values().some(supertype => subsumes(subtype, supertype));
+	} else if(supertype instanceof RTypeIntersection) {
+		return supertype.types.values().every(supertype => subsumes(subtype, supertype));
+	} else if(subtype instanceof RTypeIntersection) {
+		return subtype.types.values().some(subtype => subsumes(subtype, supertype));
+	} else if(subtype instanceof RListType && supertype instanceof RListType) {
 		return subsumes(subtype.elementType, supertype.elementType);
-	} else if(subtype instanceof RAtomicVectorType && (supertype instanceof RAtomicVectorType || supertype instanceof RVectorType)) {
+	} else if(subtype instanceof RAtomicVectorType && supertype instanceof RAtomicVectorType) {
 		return subsumes(subtype.elementType, supertype.elementType);
-	} else if(isAtomicVectorElementType(subtype) && (supertype instanceof RAtomicVectorType || supertype instanceof RVectorType)) {
+	} else if(isAtomicVectorElementType(subtype) && supertype instanceof RAtomicVectorType) {
 		// A scalar subsumes a vector type if it subsumes the element type of the vector
 		return subsumes(subtype, supertype.elementType);
 	} else if(subtype instanceof RFunctionType && supertype instanceof RFunctionType) {
@@ -366,95 +441,151 @@ function subsumesByTag(subtype: RDataTypeTag, supertype: RDataTypeTag): boolean 
 		|| subtype === RDataTypeTag.Integer && supertype === RDataTypeTag.Double
 		|| subtype === RDataTypeTag.Integer && supertype === RDataTypeTag.Complex
 		|| subtype === RDataTypeTag.Double && supertype === RDataTypeTag.Complex
-		|| subtype === RDataTypeTag.None || supertype === RDataTypeTag.Any
-		|| subtype === RDataTypeTag.Variable || supertype === RDataTypeTag.Variable
-		|| [RDataTypeTag.Logical, RDataTypeTag.Integer, RDataTypeTag.Double, RDataTypeTag.Complex, RDataTypeTag.String, RDataTypeTag.Raw].includes(subtype) && (supertype === RDataTypeTag.AtomicVector || supertype === RDataTypeTag.Vector)
-		|| subtype === RDataTypeTag.AtomicVector && supertype === RDataTypeTag.Vector
-		|| subtype === RDataTypeTag.List && supertype === RDataTypeTag.Vector;
+		|| [RDataTypeTag.Logical, RDataTypeTag.Integer, RDataTypeTag.Double, RDataTypeTag.Complex, RDataTypeTag.String, RDataTypeTag.Raw].includes(subtype) && supertype === RDataTypeTag.AtomicVector;
 }
 
-function union(type1: DataType, type2: DataType): DataType {
+function join(type1: DataType, type2: DataType): DataType {
 	if(type1 instanceof RErrorType) {
 		return type1;
 	} else if(type2 instanceof RErrorType) {
 		return type2;
 	} else if(type1 instanceof RTypeVariable) {
-		return union(type1.lowerBound, type2);
+		return join(type1.lowerBound, type2);
 	} else if(type2 instanceof RTypeVariable) {
-		return union(type1, type2.lowerBound);
+		return join(type1, type2.lowerBound);
+	} else if(type1 instanceof RTypeUnion) {
+		if(type1.types.size === 0) {
+			return type2; // If type1 is an empty union, return type2
+		}
+
+		// ? Use type1.types.values().flatMap(...); instead?
+		const types = new Set<DataType>();
+		for(const subtype of type1.types) {
+			const joinedType = join(subtype, type2);
+			if(joinedType instanceof RErrorType) {
+				return joinedType; // If any subtype resolves to an error, return the error
+			} else if(joinedType instanceof RTypeUnion) {
+				joinedType.types.forEach(type => types.add(type));
+			} else {
+				types.add(joinedType);
+			}
+		}
+		return types.size === 1 ? [...types][0] : new RTypeUnion(...types);
+	} else if(type2 instanceof RTypeUnion) {
+		return join(type2, type1);
+	// } else if(type1 instanceof RTypeIntersection) {
+	// 	// ? Use type1.types.values().flatMap(...); instead?
+	// 	const types = new Set<DataType>();
+	// 	for(const subtype of type1.types) {
+	// 		const joinedType = join(subtype, type2);
+	// 		if(joinedType instanceof RErrorType) {
+	// 			return joinedType; // If any subtype resolves to an error, return the error
+	// 		} else if(joinedType instanceof RTypeIntersection) {
+	// 			joinedType.types.forEach(type => types.add(type));
+	// 		} else {
+	// 			types.add(joinedType);
+	// 		}
+	// 	}
+	// 	return types.size === 1 ? [...types][0] : new RTypeIntersection(...types);
+	// } else if(type2 instanceof RTypeIntersection) {
+	// 	return join(type2, type1);
 	} else if(type1 instanceof RFunctionType && type2 instanceof RFunctionType) {
 		const parameterTypes = new Map<number | string, DataType>();
 		const keys1 = new Set(type1.parameterTypes.keys());
 		const keys2 = new Set(type2.parameterTypes.keys());
 		for(const key of keys1.union(keys2)) {
-			const parameterType1 = type1.parameterTypes.get(key) ?? new RNoneType();
-			const parameterType2 = type2.parameterTypes.get(key) ?? new RNoneType();
-			parameterTypes.set(key, intersection(parameterType1, parameterType2));
+			const parameterType1 = type1.parameterTypes.get(key) ?? new RTypeUnion();
+			const parameterType2 = type2.parameterTypes.get(key) ?? new RTypeUnion();
+			parameterTypes.set(key, meet(parameterType1, parameterType2));
 		}
-		const returnType = union(type1.returnType, type2.returnType);
+		const returnType = join(type1.returnType, type2.returnType);
 		return new RFunctionType(parameterTypes, returnType);
 	} else if(type1 instanceof RListType && type2 instanceof RListType) {
-		return new RListType(union(type1.elementType, type2.elementType));
+		return new RListType(join(type1.elementType, type2.elementType));
 	} else if(type1 instanceof RAtomicVectorType && type2 instanceof RAtomicVectorType) {
-		return new RAtomicVectorType(union(type1.elementType, type2.elementType));
-	} else if(isVectorType(type1) && isVectorType(type2)) {
-		return new RVectorType(union(type1.elementType, type2.elementType));
-	} else if(isAtomicVectorElementType(type1) && (type2.tag === RDataTypeTag.AtomicVector || type2.tag === RDataTypeTag.Vector)) {
-		if(type2 instanceof RAtomicVectorType) {
-			return new RAtomicVectorType(union(type1, type2.elementType));
-		} else {
-			return new RVectorType(union(type1, type2.elementType));
-		}
-	} else if(isAtomicVectorElementType(type2) && (type1.tag === RDataTypeTag.AtomicVector || type1.tag === RDataTypeTag.Vector)) {
-		if(type1 instanceof RAtomicVectorType) {
-			return new RAtomicVectorType(union(type2, type1.elementType));
-		} else {
-			return new RVectorType(union(type2, type1.elementType));
-		}
+		return new RAtomicVectorType(join(type1.elementType, type2.elementType));
+	} else if(isAtomicVectorElementType(type1) && type2.tag === RDataTypeTag.AtomicVector) {
+		return new RAtomicVectorType(join(type1, type2.elementType));
+	} else if(isAtomicVectorElementType(type2) && type1.tag === RDataTypeTag.AtomicVector) {
+		return new RAtomicVectorType(join(type2, type1.elementType));
 	} else if(subsumesByTag(type1.tag, type2.tag)) {
 		return type2;
 	} else if(subsumesByTag(type2.tag, type1.tag)) {
 		return type1;
 	}
-	return new RAnyType();
+	return new RTypeUnion(type1, type2);
 }
 
-function intersection(type1: DataType, type2: DataType): DataType {
+function meet(type1: DataType, type2: DataType): DataType {
 	if(type1 instanceof RErrorType) {
 		return type1;
 	} else if(type2 instanceof RErrorType) {
 		return type2;
 	} else if(type1 instanceof RTypeVariable) {
-		return intersection(type1.upperBound, type2);
+		return meet(type1.upperBound, type2);
 	} else if(type2 instanceof RTypeVariable) {
-		return intersection(type1, type2.upperBound);
+		return meet(type1, type2.upperBound);
+	// } else if(type1 instanceof RTypeUnion) {
+	// 	// ? Use type1.types.values().flatMap(...); instead?
+	// 	const types = new Set<DataType>();
+	// 	for(const subtype of type1.types) {
+	// 		const metType = meet(subtype, type2);
+	// 		if(metType instanceof RErrorType) {
+	// 			return metType; // If any subtype resolves to an error, return the error
+	// 		} else if(metType instanceof RTypeUnion) {
+	// 			metType.types.forEach(type => types.add(type));
+	// 		} else {
+	// 			types.add(metType);
+	// 		}
+	// 	}
+	// 	return types.size === 1 ? [...types][0] : new RTypeUnion(...types);
+	// } else if(type2 instanceof RTypeUnion) {
+	// 	return meet(type2, type1);
+	} else if(type1 instanceof RTypeIntersection) {
+		if(type1.types.size === 0) {
+			return type2; // If type1 is an empty intersection, return type2
+		}
+
+		// ? Use type1.types.values().flatMap(...); instead?
+		const types = new Set<DataType>();
+		for(const subtype of type1.types) {
+			const metType = meet(subtype, type2);
+			if(metType instanceof RErrorType) {
+				return metType; // If any subtype resolves to an error, return the error
+			} else if(metType instanceof RTypeIntersection) {
+				metType.types.forEach(type => types.add(type));
+			} else {
+				types.add(metType);
+			}
+		}
+		return types.size === 1 ? [...types][0] : new RTypeIntersection(...types);
+	} else if(type2 instanceof RTypeIntersection) {
+		return meet(type2, type1);
 	} else if(type1 instanceof RFunctionType && type2 instanceof RFunctionType) {
 		const parameterTypes = new Map<number | string, DataType>();
 		const keys1 = new Set(type1.parameterTypes.keys());
 		const keys2 = new Set(type2.parameterTypes.keys());
 		for(const key of keys1.intersection(keys2)) {
-			const parameterType1 = type1.parameterTypes.get(key) ?? new RAnyType();
-			const parameterType2 = type2.parameterTypes.get(key) ?? new RAnyType();
-			parameterTypes.set(key, union(parameterType1, parameterType2));
+			const parameterType1 = type1.parameterTypes.get(key) ?? new RTypeIntersection();
+			const parameterType2 = type2.parameterTypes.get(key) ?? new RTypeIntersection();
+			parameterTypes.set(key, join(parameterType1, parameterType2));
 		}
-		const returnType = intersection(type1.returnType, type2.returnType);
+		const returnType = meet(type1.returnType, type2.returnType);
 		return new RFunctionType(parameterTypes, returnType);
-	} else if(isVectorType(type1) && isVectorType(type2) && (type1 instanceof RListType || type2 instanceof RListType)) {
-		return new RListType(intersection(type1.elementType, type2.elementType));
-	} else if(isVectorType(type1) && isVectorType(type2) && (type1 instanceof RAtomicVectorType || type2 instanceof RAtomicVectorType)) {
-		return new RAtomicVectorType(intersection(type1.elementType, type2.elementType));
-	} else if(type1 instanceof RVectorType && type2 instanceof RVectorType) {
-		return new RVectorType(intersection(type1.elementType, type2.elementType));
-	} else if(isAtomicVectorElementType(type1) && (type2.tag === RDataTypeTag.AtomicVector || type2.tag === RDataTypeTag.Vector)) {
-		return intersection(type1, type2.elementType);
-	} else if(isAtomicVectorElementType(type2) && (type1.tag === RDataTypeTag.AtomicVector || type1.tag === RDataTypeTag.Vector)) {
-		return intersection(type2, type1.elementType);
+	} else if(type1 instanceof RListType && type2 instanceof RListType) {
+		return new RListType(meet(type1.elementType, type2.elementType));
+	} else if(type1 instanceof RAtomicVectorType && type2 instanceof RAtomicVectorType) {
+		return new RAtomicVectorType(meet(type1.elementType, type2.elementType));
+	} else if(isAtomicVectorElementType(type1) && type2.tag === RDataTypeTag.AtomicVector) {
+		return meet(type1, type2.elementType);
+	} else if(isAtomicVectorElementType(type2) && type1.tag === RDataTypeTag.AtomicVector) {
+		return meet(type2, type1.elementType);
 	} else if(subsumesByTag(type1.tag, type2.tag)) {
 		return type1;
 	} else if(subsumesByTag(type2.tag, type1.tag)) {
 		return type2;
 	}
-	return new RNoneType();
+	return new RTypeIntersection(type1, type2);
 }
 
 
@@ -475,14 +606,14 @@ export function isAtomicVectorElementType(type: DataType | UnresolvedDataType): 
 		|| type.tag === RDataTypeTag.Raw;
 }
 	
-export type VectorType = RVectorType | RAtomicVectorType | RListType;
+export type VectorType = RAtomicVectorType | RListType;
 
-export type UnresolvedVectorType = UnresolvedRVectorType | UnresolvedRAtomicVectorType | UnresolvedRListType;
+export type UnresolvedVectorType = UnresolvedRAtomicVectorType | UnresolvedRListType;
 
 export function isVectorType(type: UnresolvedDataType): type is UnresolvedVectorType
 export function isVectorType(type: DataType): type is VectorType
 export function isVectorType(type: DataType | UnresolvedDataType): type is VectorType | UnresolvedVectorType {
-	return type.tag === RDataTypeTag.Vector || type.tag === RDataTypeTag.AtomicVector || type.tag === RDataTypeTag.List;
+	return type.tag === RDataTypeTag.AtomicVector || type.tag === RDataTypeTag.List;
 }
 
 /**
@@ -493,24 +624,26 @@ export function isVectorType(type: DataType | UnresolvedDataType): type is Vecto
 */
 export type DataType
 	= AtomicVectorElementType
-	| VectorType
+	| RAtomicVectorType
+	| RListType
 	| RNullType
 	| REnvironmentType
 	| RLanguageType
 	| RFunctionType
+	| RTypeUnion
+	| RTypeIntersection
 	| RTypeVariable
-	| RErrorType
-	| RAnyType
-	| RNoneType;
+	| RErrorType;
 
 export type UnresolvedDataType
 	= AtomicVectorElementType
-	| UnresolvedVectorType
+	| UnresolvedRAtomicVectorType
+	| UnresolvedRListType
 	| RNullType
 	| REnvironmentType
 	| RLanguageType
 	| UnresolvedRFunctionType
+	| UnresolvedRTypeUnion
+	| UnresolvedRTypeIntersection
 	| UnresolvedRTypeVariable
-	// | RErrorType
-	| RAnyType
-	| RNoneType;
+	| RErrorType;

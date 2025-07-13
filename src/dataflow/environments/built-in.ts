@@ -96,7 +96,7 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 }
 
 
-export type BuiltInEvalHandler = (resolve: VariableResolve, a: RNodeWithParent, env: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap) => Value;
+export type BuiltInEvalHandler = (resolve: VariableResolve, a: RNodeWithParent, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap) => Value;
 
 function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

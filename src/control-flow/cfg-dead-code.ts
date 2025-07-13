@@ -125,6 +125,25 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		this.handleWithCondition(data);
 	}
 
+	protected onForLoopCall(data: { call: DataflowGraphVertexFunctionCall; variable: FunctionArgument; vector: FunctionArgument; body: FunctionArgument; }): void {
+		if(data.vector === EmptyArgument || data.body === EmptyArgument) {
+			return;
+		}
+
+		const values = valueSetGuard(resolveIdToValue(data.vector.nodeId, { graph: this.config.dfg, environment: data.call.environment, full: true, idMap: this.config.normalizedAst.idMap, resolve: this.config.flowrConfig.solver.variables  }));
+		if(values === undefined) {
+			return;
+		}
+
+		const isEmptyVector = 
+		  values.elements.length === 1 && 
+		  values.elements[0].type === 'vector' && 
+		  isValue(values.elements[0].elements) && 
+		  values.elements[0].elements.length === 0;
+
+		this.cachedStatements.set(data.body.nodeId, isEmptyVector);
+	}
+
 	protected onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
 		this.handleFunctionCall(data);	
 	}

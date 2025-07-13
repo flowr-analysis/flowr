@@ -36,7 +36,7 @@ export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, env?: 
 		return intervalFrom(a.content.num, a.content.num);	
 	} else if(a.type === RType.Logical) {
 		return a.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
-	} else if(a.type === RType.FunctionCall && env && graph) {
+	} else if(a.type === RType.FunctionCall && graph) {
 		const origin = getOriginInDfg(graph, a.info.id)?.[0];
 		if(origin === undefined || origin.type !== OriginType.BuiltInFunctionOrigin) {
 			return Top;
@@ -66,7 +66,7 @@ export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, env?: 
  * @param map     - Idmap of Dataflow Graph
  * @returns ValueVector or Top
  */
-export function resolveAsVector(resolve: VariableResolve, a: RNodeWithParent, env: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap): Value {
+export function resolveAsVector(resolve: VariableResolve, a: RNodeWithParent, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap): Value {
 	guard(a.type === RType.FunctionCall);
 
 	const values: Value[] = [];

@@ -353,7 +353,6 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 
 		const isFn = vertex.tag === VertexType.FunctionCall;
 
-
 		// travel all read and defined-by edges
 		for(const [targetId, edge] of outgoingEdges) {
 			if(isFn) {

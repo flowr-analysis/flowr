@@ -197,7 +197,7 @@ export const NAMING_CONVENTION = {
 		description:   'Checks wether the symbols conform to a certain naming convention',
 		tags:          [LintingRuleTag.Style, LintingRuleTag.QuickFix],
 		defaultConfig: {
-			caseing: CasingConvention.PascalCase
+			caseing: 'auto'
 		}
 	}
 } as const satisfies LintingRule<NamingConventionResult, NamingConventionMetadata, NamingConventionConfig>;

@@ -26,6 +26,8 @@ body:
         - Absolute Paths
         - Deprecated Functions
         - File Path Validity
+        - Naming Convention
+        - Seeded Randomness
         - Unused Definitions
       default: 0
   - type: checkboxes

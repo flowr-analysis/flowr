@@ -28,6 +28,7 @@ import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { dataflowLogger } from '../../../../../logger';
 import { expensiveTrace } from '../../../../../../util/log';
+import { removeAll } from '../../../../../environments/remove';
 
 
 const dotDotDotAccess = /^\.\.\d+$/;
@@ -81,7 +82,7 @@ function processNextExpression(
 function updateSideEffectsForCalledFunctions(calledEnvs: {
 	functionCall: NodeId;
 	called:       readonly DataflowGraphVertexInfo[]
-}[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph) {
+}[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[]) {
 	for(const { functionCall, called } of calledEnvs) {
 		const callDependencies = nextGraph.getVertex(functionCall, true)?.cds;
 		for(const calledFn of called) {
@@ -107,6 +108,10 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 			}
 			if(hasUpdate) {
 				// we update all definitions to be linked with the corresponding function call
+				// we, however, have to ignore expression-local writes!
+				if(localDefs.length > 0) {
+					environment = removeAll(localDefs, environment);
+				}
 				inputEnvironment = overwriteEnvironment(inputEnvironment, environment, callDependencies);
 			}
 		}
@@ -171,7 +176,7 @@ export function processExpressionList<OtherInfo>(
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph);
 		// if the called function has global redefinitions, we have to keep them within our environment
-		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph);
+		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out);
 
 		for(const { nodeId } of processed.out) {
 			listEnvironments.add(nodeId);

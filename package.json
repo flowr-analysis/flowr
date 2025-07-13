@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.2.15",
+  "version": "2.2.16",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -185,6 +185,7 @@
     "@types/n-readlines": "^1.0.6",
     "@types/n3": "^1.21.1",
     "@types/object-hash": "^3.0.6",
+    "@types/seedrandom": "^3.0.8",
     "@types/semver": "^7.5.8",
     "@types/tmp": "^0.2.6",
     "@types/ws": "^8.5.14",
@@ -216,6 +217,7 @@
     "object-hash": "^3.0.0",
     "object-sizeof": "^2.6.5",
     "rotating-file-stream": "^3.2.6",
+    "seedrandom": "^3.0.5",
     "semver": "^7.7.1",
     "tar": "^7.4.3",
     "tmp": "^0.2.3",

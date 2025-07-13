@@ -1,5 +1,6 @@
 import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingCertainty } from '../linter-format';
+import { LintingPrettyPrintContext , LintingCertainty } from '../linter-format';
+
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import type { SourceRange } from '../../util/range';
@@ -114,8 +115,7 @@ export const FILE_PATH_VALIDITY = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
-	info:        {
+	info: {
 		name:          'File Path Validity',
 		description:   'Checks whether file paths used in read and write operations are valid and point to existing files.',
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug],
@@ -124,6 +124,10 @@ export const FILE_PATH_VALIDITY = {
 			additionalWriteFunctions: [],
 			includeUnknown:           false
 		}
+	},
+	prettyPrint: {
+		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} does not point to a valid file`
 	}
 } as const satisfies LintingRule<FilePathValidityResult, FilePathValidityMetadata, FilePathValidityConfig, ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]>;
 

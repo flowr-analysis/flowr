@@ -1,4 +1,4 @@
-import { type LintingResult , LintingCertainty, type LintingRule } from '../linter-format';
+import { type LintingResult, LintingCertainty, type LintingRule, LintingPrettyPrintContext } from '../linter-format';
 import type { SourceRange } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -27,8 +27,11 @@ export const DEAD_CODE = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint: result => `at ${formatRange(result.range)}`,
-	info:        {
+	prettyPrint: {
+		[LintingPrettyPrintContext.Full]:  result => `at ${formatRange(result.range)}`,
+		[LintingPrettyPrintContext.Query]: result => `at ${formatRange(result.range)}`,
+	},
+	info: {
 		name:          'Dead Code',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
 		description:   'Marks areas of code that are never reached or whose invocation has no effect.',

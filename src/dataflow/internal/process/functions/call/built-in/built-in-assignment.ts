@@ -388,7 +388,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten
 	];
 
-	information.environment = overwriteEnvironment(targetArg.environment, sourceArg.environment);
+	information.environment = overwriteEnvironment(sourceArg.environment, targetArg.environment);
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {

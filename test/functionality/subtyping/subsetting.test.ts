@@ -4,7 +4,7 @@ import { assertInferredTypes } from '../_helper/subtyping/assert-inferred-type';
 import { Q } from '../../../src/search/flowr-search-builder';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 
-describe.only('Infer types for subsetting expressions', () => {
+describe('Infer types for subsetting expressions', () => {
 	assertInferredTypes(
 		'v <- c(1, 2, 3); v[2]',
 		{ query: Q.var('v').last().build(),                    expectedType: new RAtomicVectorType(new RTypeVariable(new RIntegerType(), new RTypeIntersection())) },

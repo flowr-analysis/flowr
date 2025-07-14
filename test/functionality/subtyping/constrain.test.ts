@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { constrainWithLowerBound, constrainWithUpperBound, RComplexType, RDoubleType, resolveType, RIntegerType, RListType, RStringType, RTypeIntersection, RTypeVariable, UnresolvedRAtomicVectorType, UnresolvedRListType, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from '../../../src/subtyping/types';
 
-describe.only('Constrain types with lower and upper bounds', () => {
+describe('Constrain types with lower and upper bounds', () => {
 	test('Constrain with numeric bounds', () => {
 		const typeVar = new UnresolvedRTypeVariable();
 		constrainWithLowerBound(typeVar, new RIntegerType());

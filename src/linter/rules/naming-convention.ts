@@ -92,6 +92,10 @@ export function detectCasing(identifier: string): CasingConvention {
 }
 
 export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[] ): CasingConvention {
+	if(symbols.length === 0) {
+		return CasingConvention.Unknown;
+	}
+
 	const map = new Map<CasingConvention, number>();
 
 	for(const symbol of symbols) {
@@ -99,6 +103,7 @@ export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[
 		map.set(symbol.detectedCasing, o + 1);
 	}
 
+	// Return element with most occurances 
 	return [...map].reduce((p, c) => p[1] > c[1] ? p : c)[0];
 }
 

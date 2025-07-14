@@ -34,8 +34,8 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 
 	describe('Dead Code Removal', () => {
 		describe('Empty Vector', () => {
-			assertDeadCode('x<-1\nfor (i in c())\n{ print(i) }', { reachableFromStart: ['1@x'], unreachableFromStart: ['2@i'] });
-			assertDeadCode('x<-1; y <- c()\nfor (i in y)\n{ print(i) }', { reachableFromStart: ['1@x'], unreachableFromStart: ['2@i'] });
+			assertDeadCode('x<-1\nfor (i in c())\n{ print(i) }', { reachableFromStart: ['1@x', '2@i'], unreachableFromStart: ['3@i'] });
+			assertDeadCode('x<-1; y <- c()\nfor (i in y)\n{ print(i) }', { reachableFromStart: ['1@x', '2@i'], unreachableFromStart: ['3@i'] });
 			// c <- function() 1:10
 			// ------
 			// f <- function(p = c()) { for(i in p) { x <- 2} } --> not dead 

@@ -1,5 +1,5 @@
 /* currently this does not do work on function definitions */
-import type { ControlFlowInformation } from './control-flow-graph';
+import type { CfgMidMarkerVertex, ControlFlowInformation } from './control-flow-graph';
 import { CfgEdgeType } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../util/logic';
@@ -141,7 +141,11 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		  isValue(values.elements[0].elements) && 
 		  values.elements[0].elements.length === 0;
 
-		this.cachedStatements.set(data.body.nodeId, isEmptyVector);
+		this.cachedConditions.set(data.call.id, isEmptyVector ? Ternary.Never : Ternary.Always);
+	}
+
+	protected onMidMarkerNode(_node: CfgMidMarkerVertex): void {
+		
 	}
 
 	protected onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {

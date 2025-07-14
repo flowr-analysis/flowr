@@ -127,7 +127,7 @@ class TypeInferringCfgGuidedVisitor<
 		guard(node !== undefined, 'Expected AST node to be defined');
 		if(node.type === RType.Argument) {
 			if(node.value !== undefined) {
-				node.info.typeVariable.constrainWithLowerBound(node.value.info.typeVariable);
+				node.info.typeVariable.constrainFromBothSides(node.value.info.typeVariable);
 			}
 			return;
 		}
@@ -351,13 +351,19 @@ class TypeInferringCfgGuidedVisitor<
 		const listType = new UnresolvedRListType();
 		node.info.typeVariable.constrainFromBothSides(listType);
 
-		for(const arg of data.call.args) {
+		// TODO: Handle flattening behavior of `list` function
+		for(const [index, arg] of data.call.args.entries()) {
 			if(arg === EmptyArgument) {
 				continue; // Skip empty arguments
 			}
+			
 			const argNode = this.getNormalizedAst(arg.nodeId);
 			guard(argNode !== undefined, 'Expected argument node to be defined');
-			listType.elementType.constrainWithLowerBound(argNode.info.typeVariable);
+			listType.getIndexedElementType(index).constrainWithLowerBound(argNode.info.typeVariable);
+
+			if(arg.name !== undefined) {
+				listType.getIndexedElementType(arg.name).constrainWithLowerBound(argNode.info.typeVariable);
+			}
 		}
 	}
 

@@ -86,20 +86,34 @@ export class RRawType {
 export class UnresolvedRListType {
 	readonly tag = RDataTypeTag.List;
 	readonly elementType = new UnresolvedRTypeVariable();
+	readonly indexedElementTypes = new Map<number | string, UnresolvedRTypeVariable>();
 
 	constructor(elementType?: UnresolvedRTypeVariable) {
 		if(elementType !== undefined) {
 			this.elementType = elementType;
 		}
 	}
+
+	getIndexedElementType(indexOrName: number | string): UnresolvedRTypeVariable {
+		let elementType = this.indexedElementTypes.get(indexOrName);
+		if(elementType === undefined) {
+			elementType = new UnresolvedRTypeVariable();
+			elementType.constrainWithUpperBound(this.elementType.upperBound);
+			this.indexedElementTypes.set(indexOrName, elementType);
+			this.elementType.constrainWithLowerBound(elementType);
+		}
+		return elementType;
+	}
 }
 
 export class RListType {
 	readonly tag = RDataTypeTag.List;
-	readonly elementType: DataType;
+	readonly elementType:         DataType;
+	readonly indexedElementTypes: ReadonlyMap<number | string, DataType>;
 
-	constructor(elementType: DataType) {
+	constructor(elementType: DataType, indexedElementTypes: Map<number | string, DataType> = new Map()) {
 		this.elementType = elementType;
+		this.indexedElementTypes = indexedElementTypes;
 	}
 }
 
@@ -112,12 +126,19 @@ export class UnresolvedRFunctionType {
 	readonly parameterTypes = new Map<number | string, UnresolvedRTypeVariable>();
 	readonly returnType = new UnresolvedRTypeVariable();
 
-	getParameterType(indexOrName: number | string): UnresolvedRTypeVariable {
-		if(!this.parameterTypes.has(indexOrName)) {
-			this.parameterTypes.set(indexOrName, new UnresolvedRTypeVariable());
+	constructor(returnType?: UnresolvedRTypeVariable) {
+		if(returnType !== undefined) {
+			this.returnType = returnType;
 		}
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		return this.parameterTypes.get(indexOrName)!;
+	}
+
+	getParameterType(indexOrName: number | string): UnresolvedRTypeVariable {
+		let parameterType = this.parameterTypes.get(indexOrName);
+		if(parameterType === undefined) {
+			parameterType = new UnresolvedRTypeVariable();
+			this.parameterTypes.set(indexOrName, parameterType);
+		}
+		return parameterType;
 	}
 }
 
@@ -394,7 +415,8 @@ export function resolveType(type: UnresolvedDataType): DataType {
 		return new RAtomicVectorType(resolvedElementType);
 	} else if(type instanceof UnresolvedRListType) {
 		const resolvedElementType = resolveType(type.elementType);
-		return new RListType(resolvedElementType);
+		const resolvedIndexedElementTypes = new Map(type.indexedElementTypes.entries().map(([indexOrName, elementType]) => [indexOrName, resolveType(elementType)]));
+		return new RListType(resolvedElementType, resolvedIndexedElementTypes);
 	} else {
 		return type;
 	}
@@ -507,7 +529,15 @@ function join(type1: DataType, type2: DataType): DataType {
 		const returnType = join(type1.returnType, type2.returnType);
 		return new RFunctionType(parameterTypes, returnType);
 	} else if(type1 instanceof RListType && type2 instanceof RListType) {
-		return new RListType(join(type1.elementType, type2.elementType));
+		const indexedElementTypes = new Map<number | string, DataType>();
+		const keys1 = new Set(type1.indexedElementTypes.keys());
+		const keys2 = new Set(type2.indexedElementTypes.keys());
+		for(const key of keys1.intersection(keys2)) {
+			const elementType1 = type1.indexedElementTypes.get(key) ?? new RTypeIntersection();
+			const elementType2 = type2.indexedElementTypes.get(key) ?? new RTypeIntersection();
+			indexedElementTypes.set(key, join(elementType1, elementType2));
+		}
+		return new RListType(join(type1.elementType, type2.elementType), indexedElementTypes);
 	} else if(type1 instanceof RAtomicVectorType && type2 instanceof RAtomicVectorType) {
 		return new RAtomicVectorType(join(type1.elementType, type2.elementType));
 	} else if(isAtomicVectorElementType(type1) && type2.tag === RDataTypeTag.AtomicVector) {
@@ -579,7 +609,15 @@ function meet(type1: DataType, type2: DataType): DataType {
 		const returnType = meet(type1.returnType, type2.returnType);
 		return new RFunctionType(parameterTypes, returnType);
 	} else if(type1 instanceof RListType && type2 instanceof RListType) {
-		return new RListType(meet(type1.elementType, type2.elementType));
+		const indexedElementTypes = new Map<number | string, DataType>();
+		const keys1 = new Set(type1.indexedElementTypes.keys());
+		const keys2 = new Set(type2.indexedElementTypes.keys());
+		for(const key of keys1.union(keys2)) {
+			const elementType1 = type1.indexedElementTypes.get(key) ?? new RTypeUnion();
+			const elementType2 = type2.indexedElementTypes.get(key) ?? new RTypeUnion();
+			indexedElementTypes.set(key, meet(elementType1, elementType2));
+		}
+		return new RListType(meet(type1.elementType, type2.elementType), indexedElementTypes);
 	} else if(type1 instanceof RAtomicVectorType && type2 instanceof RAtomicVectorType) {
 		return new RAtomicVectorType(meet(type1.elementType, type2.elementType));
 	} else if(isAtomicVectorElementType(type1) && type2.tag === RDataTypeTag.AtomicVector) {

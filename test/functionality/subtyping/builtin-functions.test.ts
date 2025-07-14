@@ -20,7 +20,8 @@ describe('Infer types for builtin functions', () => {
 		{ query: Q.criterion('1@TRUE').build(),  expectedType: new RLogicalType() }
 	);
 	
-	assertInferredType('list(1, 2, 3)', { expectedType: new RListType(new RTypeVariable(new RIntegerType(), new RTypeIntersection())) });
+	const elementType = new RTypeVariable(new RIntegerType(), new RTypeIntersection());
+	assertInferredType('list(1, 2, 3)', { expectedType: new RListType(elementType, new Map([[0, elementType], [1, elementType], [2, elementType]])) });
 
 	assertInferredTypes(
 		'c("Hello", "Flo", "!")',

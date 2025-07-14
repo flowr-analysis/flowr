@@ -253,6 +253,7 @@ export function constrainWithLowerBound(type: UnresolvedDataType, bound: Unresol
 	} else if(type instanceof UnresolvedRTypeUnion) {
 		for(const subtype of type.types.values()) {
 			if(!subsumes(bound, subtype)) {
+				// console.debug('Removing subtype', subtype, 'from union', type, 'because it does not subsume the bound', bound);
 				type.types.delete(subtype);
 			} else {
 				constrainWithLowerBound(subtype, bound);
@@ -271,6 +272,7 @@ export function constrainWithLowerBound(type: UnresolvedDataType, bound: Unresol
 		// constrainWithUpperBound(bound, type);
 		for(const subtype of bound.types.values()) {
 			if(!subsumes(subtype, type)) {
+				// console.debug('Removing subtype', subtype, 'from intersection', bound, 'because it does not subsume the type', type);
 				bound.types.delete(subtype);
 			} else {
 				constrainWithLowerBound(type, subtype);
@@ -316,6 +318,7 @@ export function constrainWithUpperBound(type: UnresolvedDataType, bound: Unresol
 		// constrainWithLowerBound(bound, type);
 		for(const subtype of bound.types.values()) {
 			if(!subsumes(type, subtype)) {
+				// console.debug('Removing subtype', subtype, 'from union', bound, 'because it does not subsume the type', type);
 				bound.types.delete(subtype);
 			} else {
 				constrainWithUpperBound(type, subtype);
@@ -324,6 +327,7 @@ export function constrainWithUpperBound(type: UnresolvedDataType, bound: Unresol
 	} else if(type instanceof UnresolvedRTypeIntersection) {
 		for(const subtype of type.types.values()) {
 			if(!subsumes(subtype, bound)) {
+				// console.debug('Removing subtype', subtype, 'from intersection', type, 'because it does not subsume the bound', bound);
 				type.types.delete(subtype);
 			} else {
 				constrainWithUpperBound(subtype, bound);
@@ -396,31 +400,33 @@ export function resolveType(type: UnresolvedDataType): DataType {
 	}
 }
 
-function subsumes(subtype: DataType, supertype: DataType): boolean {
+function subsumes(subtype: DataType | UnresolvedDataType, supertype: DataType | UnresolvedDataType): boolean {
+	// console.debug('Checking if', subtype, 'subsumes', supertype);
+
 	if(subtype === supertype) {
 		return true;
-	} else if(subtype instanceof RErrorType || supertype instanceof RErrorType) {
+	} else if(subtype.tag === RDataTypeTag.Error || supertype.tag === RDataTypeTag.Error) {
 		return false; // Error types do not subsume and are not subsumed by any other type
-	} else if(subtype instanceof RTypeVariable) {
+	} else if(subtype.tag === RDataTypeTag.Variable) {
 		return subsumes(subtype.lowerBound, supertype) && subsumes(subtype.upperBound, supertype);
-	} else if(supertype instanceof RTypeVariable) {
+	} else if(supertype.tag === RDataTypeTag.Variable) {
 		return subsumes(supertype.lowerBound, subtype) && subsumes(subtype, supertype.upperBound);
-	} else if(subtype instanceof RTypeUnion) {
+	} else if(subtype.tag === RDataTypeTag.Union) {
 		return subtype.types.values().every(subtype => subsumes(subtype, supertype));
-	} else if(supertype instanceof RTypeUnion) {
+	} else if(supertype.tag === RDataTypeTag.Union) {
 		return supertype.types.values().some(supertype => subsumes(subtype, supertype));
-	} else if(supertype instanceof RTypeIntersection) {
+	} else if(supertype.tag === RDataTypeTag.Intersection) {
 		return supertype.types.values().every(supertype => subsumes(subtype, supertype));
-	} else if(subtype instanceof RTypeIntersection) {
+	} else if(subtype.tag === RDataTypeTag.Intersection) {
 		return subtype.types.values().some(subtype => subsumes(subtype, supertype));
-	} else if(subtype instanceof RListType && supertype instanceof RListType) {
+	} else if(subtype.tag === RDataTypeTag.List && supertype.tag === RDataTypeTag.List) {
 		return subsumes(subtype.elementType, supertype.elementType);
-	} else if(subtype instanceof RAtomicVectorType && supertype instanceof RAtomicVectorType) {
+	} else if(subtype.tag === RDataTypeTag.AtomicVector && supertype.tag === RDataTypeTag.AtomicVector) {
 		return subsumes(subtype.elementType, supertype.elementType);
-	} else if(isAtomicVectorElementType(subtype) && supertype instanceof RAtomicVectorType) {
+	} else if(isAtomicVectorElementType(subtype) && supertype.tag === RDataTypeTag.AtomicVector) {
 		// A scalar subsumes a vector type if it subsumes the element type of the vector
 		return subsumes(subtype, supertype.elementType);
-	} else if(subtype instanceof RFunctionType && supertype instanceof RFunctionType) {
+	} else if(subtype.tag === RDataTypeTag.Function && supertype.tag === RDataTypeTag.Function) {
 		return subsumes(subtype.returnType, supertype.returnType) && subtype.parameterTypes.entries().every(([key, type]) => {
 			const supertypeParameter = supertype.parameterTypes.get(key);
 			if(supertypeParameter === undefined) {

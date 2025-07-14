@@ -127,7 +127,7 @@ export async function readLineByLine(filePath: string, onLine: (line: Buffer, li
  * See {@link readLineByLine} for an asynchronous version.
  */
 export function readLineByLineSync(filePath: string, onLine: (line: Buffer, lineNumber: number) => void, maxLines: number = Infinity): boolean {
-	if(fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+	if(!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
 		log.warn(`File ${filePath} does not exist`);
 		return false;
 	}

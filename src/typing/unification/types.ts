@@ -152,34 +152,19 @@ export class RTypeVariable {
 			thisRep.unify(otherRep);
 		} else if(thisRep instanceof UnresolvedRListType && otherRep instanceof UnresolvedRListType) {
 			thisRep.unify(otherRep);
-		} else if(thisRep instanceof RErrorType && otherRep instanceof RErrorType) {
-			for(const type of otherRep.conflictingTypes) {
-				otherRep.conflictingTypes.add(type);
-			}
-			this.boundType = otherRep;
-		} else if(thisRep.tag !== otherRep.tag) {
-			if(thisRep instanceof RErrorType) {
-				thisRep.conflictingTypes.add(resolveType(otherRep));
-			} else if(otherRep instanceof RErrorType) {
-				otherRep.conflictingTypes.add(resolveType(thisRep));
-				this.boundType = otherRep;
-			} else {
-				this.boundType = new RErrorType(resolveType(thisRep), resolveType(otherRep));
-			}
+		} else if(thisRep instanceof RErrorType || thisRep.tag !== otherRep.tag) {
+			this.boundType = new RErrorType(resolveType(thisRep), resolveType(otherRep));
 		}
 	}
 }
 
 export class RErrorType {
 	readonly tag = RDataTypeTag.Error;
-	conflictingTypes = new Set<RDataType>();
+	conflictingBounds: [RDataType, RDataType];
 
-	constructor(...conflictingTypes: RDataType[]) {
-		for(const type of conflictingTypes) {
-			this.conflictingTypes.add(type);
-		}
-	}	
-
+	constructor(...conflictingBounds: [RDataType, RDataType]) {
+		this.conflictingBounds = conflictingBounds;
+	}
 }
 
 export class RUnknownType {

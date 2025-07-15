@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { RDoubleType, RErrorType, RListType, RLogicalType, RNullType } from '../../../../src/typing/unification/types';
+import { RDoubleType, RTypeError, RListType, RLogicalType, RNullType } from '../../../../src/typing/types';
 import { assertInferredTypes } from '../../_helper/typing/unification/assert-inferred-type';
 import { Q } from '../../../../src/search/flowr-search-builder';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
@@ -55,7 +55,7 @@ describe('Infer types for subsetting expressions', () => {
 	
 	assertInferredTypes(
 		'l <- list(TRUE, a = 42, NULL); l$a',
-		{ query: Q.var('l').last().build(),                    expectedType: new RListType(new RErrorType(new RErrorType(new RLogicalType(), new RDoubleType()), new RNullType())) },
-		{ query: Q.all().filter(RType.Access).first().build(), expectedType: new RErrorType(new RErrorType(new RLogicalType(), new RDoubleType()), new RNullType()) },
+		{ query: Q.var('l').last().build(),                    expectedType: new RListType(new RTypeError(new RTypeError(new RLogicalType(), new RDoubleType()), new RNullType())) },
+		{ query: Q.all().filter(RType.Access).first().build(), expectedType: new RTypeError(new RTypeError(new RLogicalType(), new RDoubleType()), new RNullType()) },
 	);
 });

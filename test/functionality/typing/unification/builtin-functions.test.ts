@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { RDoubleType, RLanguageType, RListType, RLogicalType, RNullType, RStringType, RUnknownType } from '../../../../src/typing/unification/types';
+import { RDoubleType, RLanguageType, RListType, RLogicalType, RNullType, RStringType, RTypeVariable } from '../../../../src/typing/types';
 import { assertInferredType, assertInferredTypes } from '../../_helper/typing/unification/assert-inferred-type';
 import { Q } from '../../../../src/search/flowr-search-builder';
 
@@ -15,7 +15,7 @@ describe('Infer types for builtin functions', () => {
 
 	assertInferredTypes(
 		'eval(quote(TRUE))',
-		{ query: Q.criterion('1@eval').build(),  expectedType: new RUnknownType() },
+		{ query: Q.criterion('1@eval').build(),  expectedType: new RTypeVariable() },
 		{ query: Q.criterion('1@quote').build(), expectedType: new RLanguageType() },
 		{ query: Q.criterion('1@TRUE').build(),  expectedType: new RLogicalType() }
 	);

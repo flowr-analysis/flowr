@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { constrainWithLowerBound, constrainWithUpperBound, RComplexType, RDoubleType, resolveType, RIntegerType, RListType, RStringType, RTypeIntersection, RTypeVariable, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeIntersection, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from '../../../../src/typing/subtyping/types';
+import { constrainWithLowerBound, constrainWithUpperBound, resolveType, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeIntersection, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from '../../../../src/typing/subtyping/types';
+import { RIntegerType, RComplexType, RTypeVariable, RDoubleType, RStringType, RListType, RTypeIntersection } from '../../../../src/typing/types';
 
 describe('Constrain types with lower and upper bounds', () => {
 	test('Constrain with numeric bounds', () => {

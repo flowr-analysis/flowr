@@ -8,8 +8,8 @@ import type { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { DataType, UnresolvedDataType } from './types';
-import { UnresolvedRTypeVariable, RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, UnresolvedRListType, RLanguageType, UnresolvedRFunctionType, UnresolvedRAtomicVectorType, UnresolvedRTypeUnion } from './types';
+import type { DataTypeInfo } from '../types';
+import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, RNullType, RLanguageType } from '../types';
 import type { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../../util/assert';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
@@ -23,6 +23,8 @@ import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
+import type { UnresolvedDataType } from './types';
+import { resolveType, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from './types';
 
 export function inferDataTypes<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
@@ -43,10 +45,6 @@ export function inferDataTypes<Info extends ParentInformation & { typeVariable?:
 type UnresolvedTypeInfo = {
 	typeVariable: UnresolvedRTypeVariable;
 };
-
-export type DataTypeInfo = {
-	inferredType: DataType;
-}
 
 function decorateTypeVariables<Info extends ParentInformation>(ast: NormalizedAst<Info>): NormalizedAst<Info & UnresolvedTypeInfo> {
 	return mapNormalizedAstInfo(ast, node => ({ ...node.info, typeVariable: new UnresolvedRTypeVariable() }));

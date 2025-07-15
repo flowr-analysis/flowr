@@ -8,8 +8,8 @@ import type { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RDataType } from './types';
-import { RTypeVariable, RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType, UnresolvedRListType, RLanguageType, UnresolvedRFunctionType, isVectorType } from './types';
+import type { DataType, DataTypeInfo } from '../types';
+import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, RNullType, RLanguageType, isAtomicVectorBaseType } from '../types';
 import type { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../../util/assert';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
@@ -23,6 +23,7 @@ import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
+import { resolveType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeVariable } from './types';
 
 export function inferDataTypes<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
@@ -41,15 +42,11 @@ export function inferDataTypes<Info extends ParentInformation & { typeVariable?:
 }
 
 type UnresolvedTypeInfo = {
-	typeVariable: RTypeVariable;
+	typeVariable: UnresolvedRTypeVariable;
 };
 
-export type DataTypeInfo = {
-	inferredType: RDataType;
-}
-
 function decorateTypeVariables<Info extends ParentInformation>(ast: NormalizedAst<Info>): NormalizedAst<Info & UnresolvedTypeInfo> {
-	return mapNormalizedAstInfo(ast, node => ({ ...node.info, typeVariable: new RTypeVariable() }));
+	return mapNormalizedAstInfo(ast, node => ({ ...node.info, typeVariable: new UnresolvedRTypeVariable() }));
 }
 
 function resolveTypeVariables<Info extends ParentInformation & UnresolvedTypeInfo>(ast: NormalizedAst<Info>): NormalizedAst<Omit<Info, keyof UnresolvedTypeInfo> & DataTypeInfo> {
@@ -210,9 +207,9 @@ class TypeInferringCfgGuidedVisitor<
 					guard(argNode !== undefined, 'Expected argument node to be defined');
 
 					if(arg.name !== undefined) {
-						functionType.constrainParameterType(arg.name, argNode.info.typeVariable);
+						functionType.getParameterType(arg.name).unify(argNode.info.typeVariable);
 					} else {
-						functionType.constrainParameterType(index, argNode.info.typeVariable);
+						functionType.getParameterType(index).unify(argNode.info.typeVariable);
 					}
 				}
 
@@ -402,9 +399,9 @@ class TypeInferringCfgGuidedVisitor<
 
 			if(!dotsEncountered) {
 				// Only constrain the parameter type positionally if no `...` has been encountered yet
-				functionType.constrainParameterType(index, param.info.typeVariable);
+				functionType.getParameterType(index).unify(param.info.typeVariable);
 			}
-			functionType.constrainParameterType(param.name.lexeme, param.info.typeVariable);
+			functionType.getParameterType(param.name.lexeme).unify(param.info.typeVariable);
 			
 			if(param.defaultValue !== undefined) {
 				param.info.typeVariable.unify(param.defaultValue.info.typeVariable);
@@ -470,7 +467,7 @@ class TypeInferringCfgGuidedVisitor<
 			case '[[':
 				if(firstArgBoundType instanceof UnresolvedRListType) {
 					node.info.typeVariable.unify(firstArgBoundType.elementType);
-				} else if(isVectorType(firstArgBoundType) || firstArgBoundType instanceof RNullType) {
+				} else if(isAtomicVectorBaseType(firstArgBoundType as DataType) || firstArgBoundType instanceof RNullType) {
 					node.info.typeVariable.unify(firstArgType);
 				}
 				break;

@@ -2,12 +2,12 @@ import { describe, expect, test } from 'vitest';
 import { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { createDataflowPipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../../src/r-bridge/retriever';
-import type { RDataType } from '../../../../../src/typing/unification/types';
+import type { DataType } from '../../../../../src/typing/types';
 import { inferDataTypes } from '../../../../../src/typing/unification/infer';
 import type { FlowrSearch } from '../../../../../src/search/flowr-search-builder';
 import { runSearch } from '../../../../../src/search/flowr-search-executor';
 
-export function assertInferredType(input: string, expectedType: RDataType): void {
+export function assertInferredType(input: string, expectedType: DataType): void {
 	test(`Infer ${expectedType.tag} for ${input}`, async() => {
 		const executor = new TreeSitterExecutor();
 		const result = await createDataflowPipeline(executor, { request: requestFromInput(input) }).allRemainingSteps();
@@ -18,7 +18,7 @@ export function assertInferredType(input: string, expectedType: RDataType): void
 }
 export function assertInferredTypes(
 	input: string,
-	...expectations: { query: FlowrSearch, expectedType: RDataType }[]
+	...expectations: { query: FlowrSearch, expectedType: DataType }[]
 ): void {
 	describe(`Infer types for ${input}`, async() => {
 		const executor = new TreeSitterExecutor();

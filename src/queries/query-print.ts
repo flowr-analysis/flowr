@@ -10,7 +10,7 @@ import type { CallContextQuerySubKindResult } from './catalog/call-context-query
 import type { BaseQueryMeta, BaseQueryResult } from './base-query-format';
 import { printAsMs } from '../util/text/time';
 import { isBuiltIn } from '../dataflow/environments/built-in';
-import { RDataTypeTag, type RDataType } from '../typing/unification/types';
+import { DataTypeTag, type DataType } from '../typing/types';
 
 function nodeString(nodeId: NodeId | { id: NodeId, info?: object}, formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
 	const isObj = typeof nodeId === 'object' && nodeId !== null && 'id' in nodeId;
@@ -77,10 +77,10 @@ export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly 
 	return formatter === markdownFormatter ? textWithTooltip(acc, JSON.stringify(ids)) : acc;
 }
 
-export function asciiDataType(type: RDataType): string {
-	if(type.tag === RDataTypeTag.Function) {
+export function asciiDataType(type: DataType): string {
+	if(type.tag === DataTypeTag.Function) {
 		return `Function(${type.parameterTypes.entries().toArray().map(([key, type]) => `${key}: ${asciiDataType(type)}`).join(', ')}) -> ${asciiDataType(type.returnType)}`;
-	} else if(type.tag === RDataTypeTag.List) {
+	} else if(type.tag === DataTypeTag.List) {
 		return `List(${asciiDataType(type.elementType)})`;
 	} else {
 		return type.tag;

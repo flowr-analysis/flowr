@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { RTypeIntersection, RTypeUnion, RTypeVariable } from '../../../../src/typing/subtyping/types';
+import { RTypeIntersection, RTypeUnion, RTypeVariable } from '../../../../src/typing/types';
 import { assertInferredType } from '../../_helper/typing/subtyping/assert-inferred-type';
 
 describe('Infer no type information for currently unsupported R expressions', () => {

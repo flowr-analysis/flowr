@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { RIntegerType } from '../../../../src/typing/subtyping/types';
+import { RIntegerType } from '../../../../src/typing/types';
 import { assertInferredTypes } from '../../_helper/typing/subtyping/assert-inferred-type';
 import { Q } from '../../../../src/search/flowr-search-builder';
 

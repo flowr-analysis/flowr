@@ -7,7 +7,7 @@ import Joi from 'joi';
 import { executeDatatypeQuery } from './datatype-query-executor';
 
 import { asciiDataType } from '../../query-print';
-import type { RDataType } from '../../../typing/unification/types';
+import type { DataType } from '../../../typing/types';
 
 /**
  * Calculates the inferred data type for the given criterion.
@@ -19,7 +19,7 @@ export interface DatatypeQuery extends BaseQueryFormat {
 
 export interface DatatypeQueryResult extends BaseQueryResult {
 	/** Maps each criterion to the inferred data type, duplicates are ignored. */
-	readonly inferredTypes: Record<SingleSlicingCriterion, RDataType>;
+	readonly inferredTypes: Record<SingleSlicingCriterion, DataType>;
 }
 
 export const DatatypeQueryDefinition = {

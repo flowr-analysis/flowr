@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
-import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RNullType, RStringType } from '../../../src/typing/unification/types';
-import { assertInferredType } from '../_helper/typing/assert-inferred-type';
+import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RNullType, RStringType } from '../../../../src/typing/unification/types';
+import { assertInferredType } from '../../_helper/typing/unification/assert-inferred-type';
 
 describe.each([
 	{ description: 'logical constant',        input: 'TRUE',            expectedType: new RLogicalType() },

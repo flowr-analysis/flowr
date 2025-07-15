@@ -1,7 +1,7 @@
 import { describe } from 'vitest';
-import { RTypeIntersection, RIntegerType, RLanguageType, RListType, RLogicalType, RTypeUnion, RNullType, RStringType, RTypeVariable, RAtomicVectorType } from '../../../src/typing/subtyping/types';
-import { assertInferredType, assertInferredTypes } from '../_helper/subtyping/assert-inferred-type';
-import { Q } from '../../../src/search/flowr-search-builder';
+import { RTypeIntersection, RIntegerType, RLanguageType, RListType, RLogicalType, RTypeUnion, RNullType, RStringType, RTypeVariable, RAtomicVectorType } from '../../../../src/typing/subtyping/types';
+import { assertInferredType, assertInferredTypes } from '../../_helper/typing/subtyping/assert-inferred-type';
+import { Q } from '../../../../src/search/flowr-search-builder';
 
 describe('Infer types for builtin functions', () => {
 	assertInferredType('rm(x)', { expectedType: new RNullType() });

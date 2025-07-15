@@ -1,9 +1,9 @@
 import { describe } from 'vitest';
-import type { DataType } from '../../../src/typing/subtyping/types';
-import { RTypeIntersection, RAtomicVectorType, RIntegerType, RListType, RTypeVariable, RTypeUnion, RNullType, RLogicalType } from '../../../src/typing/subtyping/types';
-import { assertInferredTypes } from '../_helper/subtyping/assert-inferred-type';
-import { Q } from '../../../src/search/flowr-search-builder';
-import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
+import type { DataType } from '../../../../src/typing/subtyping/types';
+import { RTypeIntersection, RAtomicVectorType, RIntegerType, RListType, RTypeVariable, RTypeUnion, RNullType, RLogicalType } from '../../../../src/typing/subtyping/types';
+import { assertInferredTypes } from '../../_helper/typing/subtyping/assert-inferred-type';
+import { Q } from '../../../../src/search/flowr-search-builder';
+import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 
 describe('Infer types for subsetting expressions', () => {
 	assertInferredTypes(

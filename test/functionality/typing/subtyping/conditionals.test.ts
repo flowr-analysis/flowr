@@ -1,8 +1,8 @@
 import { describe } from 'vitest';
-import { RLogicalType, RTypeUnion, RNullType, RStringType } from '../../../src/typing/subtyping/types';
-import { assertInferredType, assertInferredTypes } from '../_helper/subtyping/assert-inferred-type';
-import { Q } from '../../../src/search/flowr-search-builder';
-import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
+import { RLogicalType, RTypeUnion, RNullType, RStringType } from '../../../../src/typing/subtyping/types';
+import { assertInferredType, assertInferredTypes } from '../../_helper/typing/subtyping/assert-inferred-type';
+import { Q } from '../../../../src/search/flowr-search-builder';
+import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 
 describe('Infer types for if statements', () => {
 	describe.each([

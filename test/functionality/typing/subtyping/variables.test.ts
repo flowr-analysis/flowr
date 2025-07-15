@@ -1,7 +1,7 @@
 import { describe } from 'vitest';
-import { RIntegerType } from '../../../src/typing/subtyping/types';
-import { assertInferredTypes } from '../_helper/subtyping/assert-inferred-type';
-import { Q } from '../../../src/search/flowr-search-builder';
+import { RIntegerType } from '../../../../src/typing/subtyping/types';
+import { assertInferredTypes } from '../../_helper/typing/subtyping/assert-inferred-type';
+import { Q } from '../../../../src/search/flowr-search-builder';
 
 describe('Infer types for variables', () => {
 	assertInferredTypes(

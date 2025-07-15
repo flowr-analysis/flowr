@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RNullType, RStringType } from '../../../src/subtyping/types';
+import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RNullType, RStringType } from '../../../src/typing/subtyping/types';
 import { assertInferredType } from '../_helper/subtyping/assert-inferred-type';
 
 describe('Infer types for constants', () => {

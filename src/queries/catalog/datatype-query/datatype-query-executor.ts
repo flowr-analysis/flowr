@@ -3,7 +3,7 @@ import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
-import { inferDataTypes } from '../../../typing/infer';
+import { inferDataTypes } from '../../../typing/unification/infer';
 
 export function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, queries: readonly DatatypeQuery[]): DatatypeQueryResult {
 	const start = Date.now();

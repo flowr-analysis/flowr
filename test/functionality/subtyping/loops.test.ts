@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { RLogicalType, RTypeUnion, RNullType } from '../../../src/subtyping/types';
+import { RLogicalType, RTypeUnion, RNullType } from '../../../src/typing/subtyping/types';
 import { assertInferredType, assertInferredTypes } from '../_helper/subtyping/assert-inferred-type';
 import { Q } from '../../../src/search/flowr-search-builder';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';

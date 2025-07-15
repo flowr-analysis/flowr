@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { RDoubleType, RLanguageType, RListType, RLogicalType, RNullType, RStringType, RUnknownType } from '../../../src/typing/types';
+import { RDoubleType, RLanguageType, RListType, RLogicalType, RNullType, RStringType, RUnknownType } from '../../../src/typing/unification/types';
 import { assertInferredType, assertInferredTypes } from '../_helper/typing/assert-inferred-type';
 import { Q } from '../../../src/search/flowr-search-builder';
 

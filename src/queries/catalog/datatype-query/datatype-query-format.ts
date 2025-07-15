@@ -7,7 +7,7 @@ import Joi from 'joi';
 import { executeDatatypeQuery } from './datatype-query-executor';
 
 import { asciiDataType } from '../../query-print';
-import type { RDataType } from '../../../typing/types';
+import type { RDataType } from '../../../typing/unification/types';
 
 /**
  * Calculates the inferred data type for the given criterion.

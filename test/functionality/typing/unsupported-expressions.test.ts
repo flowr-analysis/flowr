@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { RUnknownType } from '../../../src/typing/types';
+import { RUnknownType } from '../../../src/typing/unification/types';
 import { assertInferredType } from '../_helper/typing/assert-inferred-type';
 
 describe('Infer no type information for currently unsupported R expressions', () => {

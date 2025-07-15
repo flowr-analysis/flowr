@@ -1,4 +1,4 @@
-import { guard } from '../util/assert';
+import { guard } from '../../util/assert';
 
 /**
  * This enum lists a tag for each of the possible R data types inferred by the

@@ -10,7 +10,7 @@ import type { CallContextQuerySubKindResult } from './catalog/call-context-query
 import type { BaseQueryMeta, BaseQueryResult } from './base-query-format';
 import { printAsMs } from '../util/text/time';
 import { isBuiltIn } from '../dataflow/environments/built-in';
-import { RDataTypeTag, type RDataType } from '../typing/types';
+import { RDataTypeTag, type RDataType } from '../typing/unification/types';
 
 function nodeString(nodeId: NodeId | { id: NodeId, info?: object}, formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
 	const isObj = typeof nodeId === 'object' && nodeId !== null && 'id' in nodeId;

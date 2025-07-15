@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RNullType, RStringType } from '../../../src/typing/types';
+import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RNullType, RStringType } from '../../../src/typing/unification/types';
 import { assertInferredType } from '../_helper/typing/assert-inferred-type';
 
 describe.each([

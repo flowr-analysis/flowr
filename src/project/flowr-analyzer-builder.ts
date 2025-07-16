@@ -24,23 +24,17 @@ export class FlowrAnalyzerBuilder {
 
 	constructor(request: RParseRequests, plugins?: AnyFlowrAnalyzerPlugin[]) {
 		this.request = request;
-		this.plugins = plugins ? plugins : [];
+		this.plugins = plugins ?? [];
 	}
 
-	public registerPlugin(plugin: AnyFlowrAnalyzerPlugin | AnyFlowrAnalyzerPlugin[]): void {
-		if(Array.isArray(plugin)){
-			this.plugins.push(...plugin);
-		} else {
-			this.plugins.push(plugin);
-		}
+	public registerPlugin(plugin: [...AnyFlowrAnalyzerPlugin[]]): this {
+		this.plugins.push(...plugin);
+		return this;
 	}
 
-	public unregisterPlugin(plugin: AnyFlowrAnalyzerPlugin | AnyFlowrAnalyzerPlugin[]): void {
-		if(Array.isArray(plugin)){
-			this.plugins = this.plugins.filter(p => !plugin.includes(p));
-		} else {
-			this.plugins = this.plugins.filter(p => p !== plugin);
-		}
+	public unregisterPlugin(plugin: [...AnyFlowrAnalyzerPlugin[]]): this {
+		this.plugins = this.plugins.filter(p => !plugin.includes(p));
+		return this;
 	}
 
 	public async build(): Promise<FlowrAnalyzer> {

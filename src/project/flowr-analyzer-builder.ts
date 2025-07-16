@@ -1,4 +1,4 @@
-import type { FlowrConfigOptions } from '../config';
+import type { EngineConfig, FlowrConfigOptions } from '../config';
 import { amendConfig, cloneConfig, defaultConfigOptions } from '../config';
 import type { DeepWritable } from 'ts-essentials';
 import type { RParseRequests } from '../r-bridge/retriever';
@@ -17,7 +17,7 @@ export class FlowrAnalyzerBuilder {
 		return this;
 	}
 
-	public setEngine(engine : 'tree-sitter' | 'r-shell') {
+	public setEngine(engine : EngineConfig['type']) {
 		this.flowrConfig.defaultEngine = engine;
 		return this;
 	}

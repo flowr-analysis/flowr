@@ -453,19 +453,18 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[], flowrConfig?: FlowrConfigOptions },
-	testCaseFailType?: TestCaseFailType,
-	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0)
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[], flowrConfig?: FlowrConfigOptions, testCaseFailType?: TestCaseFailType, getId?: () => IdGenerator<NoInfo> },
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const skip = skipTestBecauseConfigNotMet(userConfig);
-	if(skip || testCaseFailType === 'fail-both') {
+	if(skip || userConfig?.testCaseFailType === 'fail-both') {
 		// drop it again because the test is not to be counted
 		dropTestLabel(name);
 	}
 	describe.skipIf(skip)(fullname, () => {
 		let shellResult: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
 		let tsResult: PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
+		const getId = userConfig?.getId ?? (() => deterministicCountingIdGenerator(0));
 		beforeAll(async() => {
 			shellResult = await new PipelineExecutor(DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE, {
 				getId:        getId(),
@@ -487,16 +486,16 @@ export function assertSliced(
 
 		testWrapper(
 			false,
-			testCaseFailType === 'fail-both' || testCaseFailType === 'fail-shell',
+			userConfig?.testCaseFailType === 'fail-both' || userConfig?.testCaseFailType === 'fail-shell',
 			'shell',
-			() => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>, testCaseFailType !== 'fail-both' && testCaseFailType !== 'fail-shell'),
+			() => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>, userConfig?.testCaseFailType !== 'fail-both' && userConfig?.testCaseFailType !== 'fail-shell'),
 		);
 
 		testWrapper(
 			userConfig?.skipTreeSitter,
-			testCaseFailType === 'fail-both' || testCaseFailType === 'fail-tree-sitter',
+			userConfig?.testCaseFailType === 'fail-both' || userConfig?.testCaseFailType === 'fail-tree-sitter',
 			'tree-sitter',
-			() => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, testCaseFailType !== 'fail-both' && testCaseFailType !== 'fail-tree-sitter'),
+			() => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, userConfig?.testCaseFailType !== 'fail-both' && userConfig?.testCaseFailType !== 'fail-tree-sitter'),
 		);
 
 		testWrapper(

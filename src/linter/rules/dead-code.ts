@@ -46,8 +46,8 @@ export const DEAD_CODE = {
 		};
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Full]:  result => `at ${formatRange(result.range)}`,
-		[LintingPrettyPrintContext.Query]: result => `at ${formatRange(result.range)}`,
+		[LintingPrettyPrintContext.Query]: result => `Code at ${formatRange(result.range)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Code at ${formatRange(result.range)} will never be executed`,
 	},
 	info: {
 		name:          'Dead Code',

@@ -3,6 +3,7 @@ import type { LintingRule } from './linter-format';
 import { FILE_PATH_VALIDITY } from './rules/file-path-validity';
 import { ABSOLUTE_PATH } from './rules/absolute-path';
 import { UNUSED_DEFINITION } from './rules/unused-definition';
+import { DEAD_CODE } from './rules/dead-code';
 import { SEEDED_RANDOMNESS } from './rules/seeded-randomness';
 import { NAMING_CONVENTION } from './rules/naming-convention';
 
@@ -15,8 +16,9 @@ export const LintingRules = {
 	'file-path-validity':   FILE_PATH_VALIDITY,
 	'seeded-randomness':    SEEDED_RANDOMNESS,
 	'absolute-file-paths':  ABSOLUTE_PATH,
+	'naming-convention':    NAMING_CONVENTION,
 	'unused-definitions':   UNUSED_DEFINITION,
-	'naming-convention':    NAMING_CONVENTION
+	'dead-code':            DEAD_CODE
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules

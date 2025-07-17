@@ -27,12 +27,12 @@ export class FlowrAnalyzerBuilder {
 		this.plugins = plugins ?? [];
 	}
 
-	public registerPlugin(plugin: [...AnyFlowrAnalyzerPlugin[]]): this {
+	public registerPlugin(...plugin: AnyFlowrAnalyzerPlugin[]): this {
 		this.plugins.push(...plugin);
 		return this;
 	}
 
-	public unregisterPlugin(plugin: [...AnyFlowrAnalyzerPlugin[]]): this {
+	public unregisterPlugin(...plugin: AnyFlowrAnalyzerPlugin[]): this {
 		this.plugins = this.plugins.filter(p => !plugin.includes(p));
 		return this;
 	}

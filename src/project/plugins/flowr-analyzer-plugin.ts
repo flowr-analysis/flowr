@@ -23,7 +23,7 @@ export abstract class FlowrAnalyzerPlugin implements FlowrAnalyzerPluginInterfac
     public abstract dependencies:         FlowrAnalyzerPlugin[];
     public rootPath: PathLike | undefined;
 
-    public setRootPath(rootPath: PathLike): void {
+    public setRootPath(rootPath: PathLike | undefined): void {
     	this.rootPath = rootPath;
     }
 

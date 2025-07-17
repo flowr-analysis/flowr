@@ -5,12 +5,12 @@ import type { RParseRequests } from '../r-bridge/retriever';
 import { FlowrAnalyzer } from './flowr-analyzer';
 import { retrieveEngineInstances } from '../engines';
 import type { KnownParser } from '../r-bridge/parser';
-import type { AnyFlowrAnalyzerPlugin } from './plugins/flowr-analyzer-plugin';
+import type { FlowrAnalyzerPlugin } from './plugins/flowr-analyzer-plugin';
 
 export class FlowrAnalyzerBuilder {
 	private flowrConfig:      DeepWritable<FlowrConfigOptions> = cloneConfig(defaultConfigOptions);
 	private readonly request: RParseRequests;
-	private plugins:          AnyFlowrAnalyzerPlugin[];
+	private plugins:          FlowrAnalyzerPlugin[];
 
 	public amendConfig(func: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions) : this {
 		this.flowrConfig = amendConfig(this.flowrConfig, func);
@@ -22,17 +22,17 @@ export class FlowrAnalyzerBuilder {
 		return this;
 	}
 
-	constructor(request: RParseRequests, plugins?: AnyFlowrAnalyzerPlugin[]) {
+	constructor(request: RParseRequests, plugins?: FlowrAnalyzerPlugin[]) {
 		this.request = request;
 		this.plugins = plugins ?? [];
 	}
 
-	public registerPlugin(...plugin: AnyFlowrAnalyzerPlugin[]): this {
+	public registerPlugin(...plugin: FlowrAnalyzerPlugin[]): this {
 		this.plugins.push(...plugin);
 		return this;
 	}
 
-	public unregisterPlugin(...plugin: AnyFlowrAnalyzerPlugin[]): this {
+	public unregisterPlugin(...plugin: FlowrAnalyzerPlugin[]): this {
 		this.plugins = this.plugins.filter(p => !plugin.includes(p));
 		return this;
 	}

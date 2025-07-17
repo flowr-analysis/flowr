@@ -1,5 +1,7 @@
-import { type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingCertainty } from '../linter-format';
+import { LintingCertainty, LintingPrettyPrintContext, type LintingResult, type LintingRule } from '../linter-format';
 import type { SourceRange } from '../../util/range';
+import { rangeIsSubsetOf } from '../../util/range';
+
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { formatRange } from '../../util/mermaid/dfg';
@@ -17,10 +19,6 @@ export interface DeadCodeConfig extends MergeableRecord {
 	analyzeDeadCode: boolean
 }
 
-export interface DeadCodeMetadata extends MergeableRecord {
-	totalReachable: number
-}
-
 export const DEAD_CODE = {
 	createSearch:        (_config) => Q.all(),
 	processSearchResult: (elements, config, data) => {
@@ -28,16 +26,10 @@ export const DEAD_CODE = {
 		if(config.analyzeDeadCode) {
 			cfg = cfgAnalyzeDeadCode(cfg, { ast: data.normalize, dfg: data.dataflow.graph, config: data.config });
 		}
-
-		// see cfgRemoveDeadCode
 		const reachable = new Set<NodeId>();
 		visitCfgInOrder(cfg.graph, cfg.entryPoints, node => {
 			reachable.add(node);
 		});
-
-		const metadata: DeadCodeMetadata = {
-			totalReachable: reachable.size
-		};
 		return {
 			results: combineRanges(
 				elements.getElements()
@@ -50,7 +42,7 @@ export const DEAD_CODE = {
 					certainty: LintingCertainty.Definitely,
 					range
 				})),
-			'.meta': metadata
+			'.meta': undefined as never
 		};
 	},
 	prettyPrint: {
@@ -65,8 +57,9 @@ export const DEAD_CODE = {
 			analyzeDeadCode: true
 		}
 	}
-} as const satisfies LintingRule<DeadCodeResult, DeadCodeMetadata, DeadCodeConfig>;
+} as const satisfies LintingRule<DeadCodeResult, never, DeadCodeConfig>;
 
 function combineRanges(ranges: SourceRange[]): SourceRange[] {
-	return [...new Set<SourceRange>(ranges)];
+	const unique = [...new Set<SourceRange>(ranges)];
+	return unique.filter(range => !unique.some(other => range !== other && rangeIsSubsetOf(range, other)));
 }

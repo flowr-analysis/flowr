@@ -16,7 +16,9 @@ export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin{
 	dependencies: FlowrAnalyzerPlugin[] = [];
 
 	public async processor(analyzer: FlowrAnalyzer, pluginConfig: FlowrConfigOptions): Promise<void> {
-		await fetch('');
+		await Promise.resolve();
 		this.content.set('','');
+		console.log(analyzer);
+		console.log(pluginConfig);
 	}
 }

@@ -23,17 +23,17 @@ export class UnresolvedRListType {
 			this.elementType = elementType;
 		}
 	}
+}
 
-	getIndexedElementType(indexOrName: number | string): UnresolvedRTypeVariable {
-		let elementType = this.indexedElementTypes.get(indexOrName);
-		if(elementType === undefined) {
-			elementType = new UnresolvedRTypeVariable();
-			elementType.constrainWithUpperBound(this.elementType.upperBound);
-			this.indexedElementTypes.set(indexOrName, elementType);
-			this.elementType.constrainWithLowerBound(elementType);
-		}
-		return elementType;
+export function getIndexedElementTypeFromList(list: UnresolvedRListType, indexOrName: number | string, constraintCache: Map<UnresolvedDataType, { lowerBounds: Set<UnresolvedDataType>, upperBounds: Set<UnresolvedDataType> }>): UnresolvedRTypeVariable {
+	let elementType = list.indexedElementTypes.get(indexOrName);
+	if(elementType === undefined) {
+		elementType = new UnresolvedRTypeVariable();
+		constrainWithUpperBound(elementType, list.elementType.upperBound, constraintCache);
+		list.indexedElementTypes.set(indexOrName, elementType);
+		constrainWithLowerBound(list.elementType, elementType, constraintCache);
 	}
+	return elementType;
 }
 
 export class UnresolvedRFunctionType {
@@ -46,15 +46,15 @@ export class UnresolvedRFunctionType {
 			this.returnType = returnType;
 		}
 	}
+}
 
-	getParameterType(indexOrName: number | string): UnresolvedRTypeVariable {
-		let parameterType = this.parameterTypes.get(indexOrName);
-		if(parameterType === undefined) {
-			parameterType = new UnresolvedRTypeVariable();
-			this.parameterTypes.set(indexOrName, parameterType);
-		}
-		return parameterType;
+export function getParameterTypeFromFunction(func: UnresolvedRFunctionType, indexOrName: number | string): UnresolvedRTypeVariable {
+	let parameterType = func.parameterTypes.get(indexOrName);
+	if(parameterType === undefined) {
+		parameterType = new UnresolvedRTypeVariable();
+		func.parameterTypes.set(indexOrName, parameterType);
 	}
+	return parameterType;
 }
 
 export class UnresolvedRTypeUnion {
@@ -85,41 +85,36 @@ export class UnresolvedRTypeVariable {
 	readonly tag = DataTypeTag.Variable;
 	readonly lowerBound = new UnresolvedRTypeUnion();
 	readonly upperBound = new UnresolvedRTypeIntersection();
-
-	constrainWithLowerBound(bound: UnresolvedDataType): void {
-		guard(bound !== this, 'Lower bound cannot be the type variable itself');
-		constrainWithLowerBound(this, bound);
-	}
-
-	constrainWithUpperBound(bound: UnresolvedDataType): void {
-		guard(bound !== this, 'Upper bound cannot be the type variable itself');
-		constrainWithUpperBound(this, bound);
-	}
-
-	constrainFromBothSides(other: UnresolvedDataType): void {
-		this.constrainWithLowerBound(other);
-		this.constrainWithUpperBound(other);
-	}
 }
 
 
-export function constrainWithLowerBound(type: UnresolvedDataType, bound: UnresolvedDataType): void {
+export function constrainWithLowerBound(type: UnresolvedDataType, bound: UnresolvedDataType, cache: Map<UnresolvedDataType, { lowerBounds: Set<UnresolvedDataType>, upperBounds: Set<UnresolvedDataType> }>): void {
 	// console.debug('constraining', type, 'with lower bound', bound);
 
 	if(type === bound) {
 		return; // No need to constrain if both types are the same
 	}
 
+	const cachedConstraints = cache.get(type);
+	if(cachedConstraints?.lowerBounds.has(bound)) {
+		return; // Avoid infinite recursion
+	}
+	if(cachedConstraints !== undefined) {
+		cachedConstraints.lowerBounds.add(bound);
+	} else {
+		cache.set(type, { lowerBounds: new Set([bound]), upperBounds: new Set() });
+	}
+
 	if(type instanceof UnresolvedRTypeVariable) {
 		type.lowerBound.types.add(bound);
 		for(const upperBound of type.upperBound.types) {
-			constrainWithLowerBound(upperBound, bound);
+			constrainWithLowerBound(upperBound, bound, cache);
 		}
 	} else if(bound instanceof UnresolvedRTypeVariable) {
 		// constrainWithUpperBound(bound, type);
 		bound.upperBound.types.add(type);
 		for(const lowerBound of bound.lowerBound.types) {
-			constrainWithLowerBound(type, lowerBound);
+			constrainWithLowerBound(type, lowerBound, cache);
 		}
 	} else if(type instanceof UnresolvedRTypeUnion) {
 		for(const subtype of type.types.values()) {
@@ -127,17 +122,17 @@ export function constrainWithLowerBound(type: UnresolvedDataType, bound: Unresol
 				// console.debug('Removing subtype', subtype, 'from union', type, 'because it does not subsume the bound', bound);
 				type.types.delete(subtype);
 			} else {
-				constrainWithLowerBound(subtype, bound);
+				constrainWithLowerBound(subtype, bound, cache);
 			}
 		}
 	} else if(bound instanceof UnresolvedRTypeUnion) {
 		// constrainWithUpperBound(bound, type);
 		for(const subtype of bound.types) {
-			constrainWithLowerBound(type, subtype);
+			constrainWithLowerBound(type, subtype, cache);
 		}
 	} else if(type instanceof UnresolvedRTypeIntersection) {
 		for(const subtype of type.types) {
-			constrainWithLowerBound(subtype, bound);
+			constrainWithLowerBound(subtype, bound, cache);
 		}
 	} else if(bound instanceof UnresolvedRTypeIntersection) {
 		// constrainWithUpperBound(bound, type);
@@ -146,44 +141,54 @@ export function constrainWithLowerBound(type: UnresolvedDataType, bound: Unresol
 				// console.debug('Removing subtype', subtype, 'from intersection', bound, 'because it does not subsume the type', type);
 				bound.types.delete(subtype);
 			} else {
-				constrainWithLowerBound(type, subtype);
+				constrainWithLowerBound(type, subtype, cache);
 			}
 		}
 	} else if(type instanceof UnresolvedRFunctionType && bound instanceof UnresolvedRFunctionType) {
 		for(const [key, paramType] of bound.parameterTypes) {
-			constrainWithUpperBound(type.getParameterType(key), paramType);
+			constrainWithUpperBound(getParameterTypeFromFunction(type, key), paramType, cache);
 		}
-		constrainWithLowerBound(type.returnType, bound.returnType);
+		constrainWithLowerBound(type.returnType, bound.returnType, cache);
 	} else if(type instanceof UnresolvedRAtomicVectorType && bound instanceof UnresolvedRAtomicVectorType) {
-		constrainWithLowerBound(type.elementType, bound.elementType);
+		constrainWithLowerBound(type.elementType, bound.elementType, cache);
 	} else if(type instanceof UnresolvedRAtomicVectorType && isAtomicVectorBaseType(bound)) {
-		constrainWithLowerBound(type.elementType, bound);
+		constrainWithLowerBound(type.elementType, bound, cache);
 	} else if(type instanceof UnresolvedRListType && bound instanceof UnresolvedRListType) {
-		constrainWithLowerBound(type.elementType, bound.elementType);
+		constrainWithLowerBound(type.elementType, bound.elementType, cache);
 	}
 }
 
-export function constrainWithUpperBound(type: UnresolvedDataType, bound: UnresolvedDataType): void {
+export function constrainWithUpperBound(type: UnresolvedDataType, bound: UnresolvedDataType, cache: Map<UnresolvedDataType, { lowerBounds: Set<UnresolvedDataType>, upperBounds: Set<UnresolvedDataType> }>): void {
 	// console.debug('constraining', type, 'with upper bound', bound);
 
 	if(type === bound) {
 		return; // No need to constrain if both types are the same
 	}
 
+	const cachedConstraints = cache.get(type);
+	if(cachedConstraints?.upperBounds.has(bound)) {
+		return; // Avoid infinite recursion
+	}
+	if(cachedConstraints !== undefined) {
+		cachedConstraints.upperBounds.add(bound);
+	} else {
+		cache.set(type, { lowerBounds: new Set(), upperBounds: new Set([bound]) });
+	}
+
 	if(type instanceof UnresolvedRTypeVariable) {
 		type.upperBound.types.add(bound);
 		for(const lowerBound of type.lowerBound.types) {
-			constrainWithUpperBound(lowerBound, bound);
+			constrainWithUpperBound(lowerBound, bound, cache);
 		}
 	} else if(bound instanceof UnresolvedRTypeVariable) {
 		// constrainWithLowerBound(bound, type);
 		bound.lowerBound.types.add(type);
 		for(const upperBound of bound.upperBound.types) {
-			constrainWithUpperBound(type, upperBound);
+			constrainWithUpperBound(type, upperBound, cache);
 		}
 	} else if(type instanceof UnresolvedRTypeUnion) {
 		for(const subtype of type.types) {
-			constrainWithUpperBound(subtype, bound);
+			constrainWithUpperBound(subtype, bound, cache);
 		}
 	} else if(bound instanceof UnresolvedRTypeUnion) {
 		// constrainWithLowerBound(bound, type);
@@ -192,7 +197,7 @@ export function constrainWithUpperBound(type: UnresolvedDataType, bound: Unresol
 				// console.debug('Removing subtype', subtype, 'from union', bound, 'because it does not subsume the type', type);
 				bound.types.delete(subtype);
 			} else {
-				constrainWithUpperBound(type, subtype);
+				constrainWithUpperBound(type, subtype, cache);
 			}
 		}
 	} else if(type instanceof UnresolvedRTypeIntersection) {
@@ -201,73 +206,95 @@ export function constrainWithUpperBound(type: UnresolvedDataType, bound: Unresol
 				// console.debug('Removing subtype', subtype, 'from intersection', type, 'because it does not subsume the bound', bound);
 				type.types.delete(subtype);
 			} else {
-				constrainWithUpperBound(subtype, bound);
+				constrainWithUpperBound(subtype, bound, cache);
 			}
 		}
 	} else if(bound instanceof UnresolvedRTypeIntersection) {
 		// constrainWithLowerBound(bound, type);
 		for(const subtype of bound.types) {
-			constrainWithUpperBound(type, subtype);
+			constrainWithUpperBound(type, subtype, cache);
 		}
 	} else if(type instanceof UnresolvedRFunctionType && bound instanceof UnresolvedRFunctionType) {
 		for(const [key, paramType] of bound.parameterTypes) {
-			constrainWithLowerBound(type.getParameterType(key), paramType);
+			constrainWithLowerBound(getParameterTypeFromFunction(type, key), paramType, cache);
 		}
-		constrainWithUpperBound(type.returnType, bound.returnType);
+		constrainWithUpperBound(type.returnType, bound.returnType, cache);
 	} else if(type instanceof UnresolvedRAtomicVectorType && bound instanceof UnresolvedRAtomicVectorType) {
-		constrainWithUpperBound(type.elementType, bound.elementType);
+		constrainWithUpperBound(type.elementType, bound.elementType, cache);
 	} else if(type instanceof UnresolvedRListType && bound instanceof UnresolvedRListType) {
-		constrainWithUpperBound(type.elementType, bound.elementType);
+		constrainWithUpperBound(type.elementType, bound.elementType, cache);
 	}
 }
 
 
-export function resolveType(type: UnresolvedDataType): DataType {
+export function resolveType(type: UnresolvedDataType, cache: Map<UnresolvedDataType, DataType> = new Map()): DataType {
+	const cachedType = cache.get(type);
+	if(cachedType !== undefined) {
+		return cachedType;
+	}
+
 	if(type instanceof UnresolvedRTypeVariable) {
-		const lowerBound = resolveType(type.lowerBound);
-		const upperBound = resolveType(type.upperBound);
+		cache.set(type, new RTypeVariable()); // Prevent infinite recursion
+
+		const lowerBound = resolveType(type.lowerBound, cache);
+		const upperBound = resolveType(type.upperBound, cache);
 
 		if(!subsumes(lowerBound, upperBound)) {
-			return new RTypeError(lowerBound, upperBound);
+			const errorType = new RTypeError(lowerBound, upperBound);
+			cache.set(type, errorType);
+			return errorType;
 		}
 		
 		if(subsumes(lowerBound, upperBound) && subsumes(upperBound, lowerBound)) {
+			cache.set(type, lowerBound);
 			return lowerBound; // If both bounds are equal, return one of them
 		}
 		
-		return new RTypeVariable(
+		const resolvedType = new RTypeVariable(
 			lowerBound instanceof RTypeVariable ? lowerBound.lowerBound : lowerBound,
 			upperBound instanceof RTypeVariable ? upperBound.upperBound : upperBound
 		);
+		cache.set(type, resolvedType);
+		return resolvedType;
 	} else if(type instanceof UnresolvedRTypeUnion) {
+		cache.set(type, new RTypeUnion()); // Prevent infinite recursion
+
 		let resolvedType: DataType = new RTypeUnion();
 		for(const subtype of type.types) {
-			const resolvedSubtype = resolveType(subtype);
-			// console.debug('Resolved subtype', subtype, 'to', resolvedSubtype);
-			// console.debug('Joining type', resolvedType, 'with subtype', resolvedSubtype);
+			const resolvedSubtype = resolveType(subtype, cache);
 			resolvedType = join(resolvedType, resolvedSubtype);
-			// console.debug('Joined type is now', resolvedType);
 		}
+		cache.set(type, resolvedType);
 		return resolvedType;
 	} else if(type instanceof UnresolvedRTypeIntersection) {
+		cache.set(type, new RTypeIntersection()); // Prevent infinite recursion
+
 		let resolvedType: DataType = new RTypeIntersection();
 		for(const subtype of type.types) {
-			const resolvedSubtype = resolveType(subtype);
+			const resolvedSubtype = resolveType(subtype, cache);
 			resolvedType = meet(resolvedType, resolvedSubtype);
 		}
+		cache.set(type, resolvedType);
 		return resolvedType;
 	} else if(type instanceof UnresolvedRFunctionType) {
-		const resolvedParameterTypes = new Map(type.parameterTypes.entries().toArray().map(([key, type]) => [key, resolveType(type)]));
-		const resolvedReturnType = resolveType(type.returnType);
-		return new RFunctionType(resolvedParameterTypes, resolvedReturnType);
+		const resolvedParameterTypes = new Map(type.parameterTypes.entries().toArray().map(([key, type]) => [key, resolveType(type, cache)]));
+		const resolvedReturnType = resolveType(type.returnType, cache);
+		const resolvedType = new RFunctionType(resolvedParameterTypes, resolvedReturnType);
+		cache.set(type, resolvedType);
+		return resolvedType;
 	} else if(type instanceof UnresolvedRAtomicVectorType) {
-		const resolvedElementType = resolveType(type.elementType);
-		return new RAtomicVectorType(resolvedElementType);
+		const resolvedElementType = resolveType(type.elementType, cache);
+		const resolvedType = new RAtomicVectorType(resolvedElementType);
+		cache.set(type, resolvedType);
+		return resolvedType;
 	} else if(type instanceof UnresolvedRListType) {
-		const resolvedElementType = resolveType(type.elementType);
-		const resolvedIndexedElementTypes = new Map(type.indexedElementTypes.entries().map(([indexOrName, elementType]) => [indexOrName, resolveType(elementType)]));
-		return new RListType(resolvedElementType, resolvedIndexedElementTypes);
+		const resolvedElementType = resolveType(type.elementType, cache);
+		const resolvedIndexedElementTypes = new Map(type.indexedElementTypes.entries().map(([indexOrName, elementType]) => [indexOrName, resolveType(elementType, cache)]));
+		const resolvedType = new RListType(resolvedElementType, resolvedIndexedElementTypes);
+		cache.set(type, resolvedType);
+		return resolvedType;
 	} else {
+		cache.set(type, type);
 		return type;
 	}
 }

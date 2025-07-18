@@ -8,7 +8,7 @@ import type { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { DataTypeInfo } from '../types';
+import type { DataType, DataTypeInfo } from '../types';
 import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, RNullType, RLanguageType } from '../types';
 import type { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../../util/assert';
@@ -21,10 +21,10 @@ import type { ControlFlowInformation } from '../../control-flow/control-flow-gra
 import { CfgEdgeType, CfgVertexType } from '../../control-flow/control-flow-graph';
 import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import type { UnresolvedDataType } from './types';
-import { resolveType, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from './types';
+import { constrainWithLowerBound, constrainWithUpperBound, getIndexedElementTypeFromList, getParameterTypeFromFunction, resolveType, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from './types';
 
 export function inferDataTypes<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
@@ -51,9 +51,10 @@ function decorateTypeVariables<Info extends ParentInformation>(ast: NormalizedAs
 }
 
 function resolveTypeVariables<Info extends ParentInformation & UnresolvedTypeInfo>(ast: NormalizedAst<Info>): NormalizedAst<Omit<Info, keyof UnresolvedTypeInfo> & DataTypeInfo> {
+	const cache = new Map<UnresolvedDataType, DataType>();
 	return mapNormalizedAstInfo(ast, node => {
 		const { typeVariable, ...rest } = node.info;
-		return { ...rest, inferredType: resolveType(typeVariable) };
+		return { ...rest, inferredType: resolveType(typeVariable, cache) };
 	});
 }
 
@@ -77,38 +78,47 @@ class TypeInferringCfgGuidedVisitor<
 		super({ dataflow: config.dataflowInfo.graph, ...config });
 	}
 
+	protected constraintCache: Map<UnresolvedDataType, { lowerBounds: Set<UnresolvedDataType>, upperBounds: Set<UnresolvedDataType> }> = new Map();
 
-	protected constrainNodeTypeWithUpperBound(id: NodeId, upperBound: UnresolvedDataType): void {
-		const node = this.getNormalizedAst(id);
+
+	protected constrainNodeType(nodeOrId: RNode<UnresolvedTypeInfo> | NodeId, constraint: UnresolvedDataType | { lowerBound?: UnresolvedDataType, upperBound?: UnresolvedDataType }): void {
+		const node = typeof nodeOrId === 'object' ? nodeOrId : this.getNormalizedAst(nodeOrId);
 		guard(node !== undefined, 'Expected AST node to be defined');
-		node.info.typeVariable.constrainWithUpperBound(upperBound);
+
+		const lowerBound = 'tag' in constraint ? constraint : constraint.lowerBound;
+		const upperBound = 'tag' in constraint ? constraint : constraint.upperBound;
+
+		if(lowerBound !== undefined) {
+			constrainWithLowerBound(node.info.typeVariable, lowerBound, this.constraintCache);
+		}
+		if(upperBound !== undefined) {
+			constrainWithUpperBound(node.info.typeVariable, upperBound, this.constraintCache);
+		}
 	}
 
 
-	protected override onNullConstant(data: { vertex: DataflowGraphVertexValue; node: RSymbol<UnresolvedTypeInfo & ParentInformation, 'NULL'>; }): void {
-		data.node.info.typeVariable.constrainFromBothSides(new RNullType());
+	protected override onNullConstant(data: { vertex: DataflowGraphVertexValue, node: RSymbol<UnresolvedTypeInfo, 'NULL'>; }): void {
+		this.constrainNodeType(data.node, new RNullType());
 	}
 
 	override onLogicalConstant(data: { vertex: DataflowGraphVertexValue, node: RLogical<UnresolvedTypeInfo> }): void {
-		data.node.info.typeVariable.constrainFromBothSides(new RLogicalType());
+		this.constrainNodeType(data.node, new RLogicalType());
 	}
 
 	override onNumberConstant(data: { vertex: DataflowGraphVertexValue, node: RNumber<UnresolvedTypeInfo> }): void {
 		if(data.node.content.complexNumber) {
-			data.node.info.typeVariable.constrainFromBothSides(new RComplexType());
+			this.constrainNodeType(data.node, new RComplexType());
 		} else if(data.node.content.markedAsInt) {
-			data.node.info.typeVariable.constrainFromBothSides(new RIntegerType());
+			this.constrainNodeType(data.node, new RIntegerType());
 		} else if(data.node.content.num % 1 === 0) {
-			data.node.info.typeVariable.constrainWithLowerBound(new RIntegerType());
-			data.node.info.typeVariable.constrainWithUpperBound(new RComplexType());
+			this.constrainNodeType(data.node, { lowerBound: new RIntegerType(), upperBound: new RComplexType() });
 		} else {
-			data.node.info.typeVariable.constrainWithLowerBound(new RDoubleType());
-			data.node.info.typeVariable.constrainWithUpperBound(new RComplexType());
+			this.constrainNodeType(data.node, { lowerBound: new RDoubleType(), upperBound: new RComplexType() });
 		}
 	}
 
 	override onStringConstant(data: { vertex: DataflowGraphVertexValue, node: RString<UnresolvedTypeInfo> }): void {
-		data.node.info.typeVariable.constrainFromBothSides(new RStringType());
+		this.constrainNodeType(data.node, new RStringType());
 	}
 
 	override onVariableUse(data: { vertex: DataflowGraphVertexUse }): void {
@@ -125,7 +135,7 @@ class TypeInferringCfgGuidedVisitor<
 		guard(node !== undefined, 'Expected AST node to be defined');
 		if(node.type === RType.Argument) {
 			if(node.value !== undefined) {
-				node.info.typeVariable.constrainFromBothSides(node.value.info.typeVariable);
+				this.constrainNodeType(data.vertex.id, node.value.info.typeVariable);
 			}
 			return;
 		}
@@ -134,7 +144,7 @@ class TypeInferringCfgGuidedVisitor<
 		for(const readOrigin of readOrigins ?? []) {
 			const readNode = this.getNormalizedAst(readOrigin.id);
 			guard(readNode !== undefined, 'Expected read node to be defined');
-			node.info.typeVariable.constrainWithLowerBound(readNode.info.typeVariable);
+			this.constrainNodeType(data.vertex.id, { lowerBound: readNode.info.typeVariable });
 		}
 	}
 
@@ -143,13 +153,11 @@ class TypeInferringCfgGuidedVisitor<
 			return; // Malformed assignment
 		}
 		
-		const variableNode = this.getNormalizedAst(data.target);
 		const valueNode = this.getNormalizedAst(data.source);
-		const assignmentNode = this.getNormalizedAst(data.call.id);
-		guard(variableNode !== undefined && valueNode !== undefined && assignmentNode !== undefined, 'Expected AST nodes to be defined');
-		
-		variableNode.info.typeVariable.constrainWithLowerBound(valueNode.info.typeVariable);
-		assignmentNode.info.typeVariable.constrainWithLowerBound(variableNode.info.typeVariable);
+		guard(valueNode !== undefined, 'Expected AST node to be defined');
+
+		this.constrainNodeType(data.target, { lowerBound: valueNode.info.typeVariable });
+		this.constrainNodeType(data.call.id, { lowerBound: valueNode.info.typeVariable });
 	}
 
 	override onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall }): void {
@@ -158,15 +166,12 @@ class TypeInferringCfgGuidedVisitor<
 			.filter(([_target, edge]) => edgeIncludesType(edge.types, EdgeType.Calls))
 			.map(([target, _edge]) => target)
 			.toArray();
-		
-		const node = this.getNormalizedAst(data.call.id);
-		guard(node !== undefined, 'Expected AST node to be defined');
 
 		for(const target of callTargets ?? []) {
 			const targetNode = this.getNormalizedAst(target);
 			if(targetNode !== undefined) {
 				const functionType = new UnresolvedRFunctionType();
-				targetNode.info.typeVariable.constrainWithLowerBound(functionType);
+				this.constrainNodeType(targetNode, { lowerBound: functionType });
 
 				for(const [index, arg] of data.call.args.entries()) {
 					if(arg === EmptyArgument) {
@@ -177,13 +182,13 @@ class TypeInferringCfgGuidedVisitor<
 					guard(argNode !== undefined, 'Expected argument node to be defined');
 
 					if(arg.name !== undefined) {
-						functionType.getParameterType(arg.name).constrainWithLowerBound(argNode.info.typeVariable);
+						constrainWithLowerBound(getParameterTypeFromFunction(functionType, arg.name), argNode.info.typeVariable, this.constraintCache);
 					} else {
-						functionType.getParameterType(index).constrainWithLowerBound(argNode.info.typeVariable);
+						constrainWithLowerBound(getParameterTypeFromFunction(functionType, index), argNode.info.typeVariable, this.constraintCache);
 					}
 				}
 
-				node.info.typeVariable.constrainFromBothSides(functionType.returnType);
+				this.constrainNodeType(data.call.id, functionType.returnType);
 			} else {
 				// TODO: Handle builtin functions that are not represented in the AST
 			}
@@ -195,48 +200,33 @@ class TypeInferringCfgGuidedVisitor<
 		const varName = data.call.args.at(0);
 		
 		guard(varName !== undefined && varName !== EmptyArgument, 'Expected argument of get call to be defined');
-		const varNameNode = this.getNormalizedAst(varName.nodeId);
-
-		guard(varNameNode !== undefined, 'Expected variable name node to be defined');
-		varNameNode.info.typeVariable.constrainWithUpperBound(new RStringType());
-
-		const node = this.getNormalizedAst(data.call.id);
-		guard(node !== undefined, 'Expected AST node to be defined');
+		this.constrainNodeType(varName.nodeId, { upperBound: new RStringType() });
 
 		const varReadOrigins = this.getOrigins(varName.nodeId)?.filter((origin) => origin.type === OriginType.ReadVariableOrigin);
 		for(const readOrigin of varReadOrigins ?? []) {
 			const readNode = this.getNormalizedAst(readOrigin.id);
 			guard(readNode !== undefined, 'Expected read node to be defined');
-			node.info.typeVariable.constrainWithLowerBound(readNode.info.typeVariable);
+			this.constrainNodeType(data.call.id, { lowerBound: readNode.info.typeVariable });
 		}
 	}
 
 	override onRmCall(data: { call: DataflowGraphVertexFunctionCall }) {
-		const node = this.getNormalizedAst(data.call.id);
-		guard(node !== undefined, 'Expected AST node to be defined');
-		node.info.typeVariable.constrainFromBothSides(new RNullType());
+		this.constrainNodeType(data.call.id, new RNullType());
 	}
 
 	override onForLoopCall(data: { call: DataflowGraphVertexFunctionCall, variable: FunctionArgument, vector: FunctionArgument, body: FunctionArgument }) {
 		guard(data.variable !== EmptyArgument && data.vector !== EmptyArgument, 'Expected variable and vector arguments to be defined');
-		const variableNode = this.getNormalizedAst(data.variable.nodeId);
-		const vectorNode = this.getNormalizedAst(data.vector.nodeId);
-		guard(variableNode !== undefined && vectorNode !== undefined, 'Expected variable and vector nodes to be defined');
-		
 		const elementType = new UnresolvedRTypeVariable();
 		const vectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(elementType), new UnresolvedRListType(elementType));
-		vectorNode.info.typeVariable.constrainWithUpperBound(vectorType);
-		variableNode.info.typeVariable.constrainWithLowerBound(elementType);
+		this.constrainNodeType(data.vector.nodeId, { upperBound: vectorType });
+		this.constrainNodeType(data.variable.nodeId, { lowerBound: elementType });
 
 		this.onLoopCall(data);
 	}
 
 	override onWhileLoopCall(data: { call: DataflowGraphVertexFunctionCall, condition: FunctionArgument, body: FunctionArgument }) {
 		guard(data.condition !== EmptyArgument, 'Expected condition argument to be defined');
-		const conditionNode = this.getNormalizedAst(data.condition.nodeId);
-		
-		guard(conditionNode !== undefined, 'Expected condition node to be defined');
-		conditionNode.info.typeVariable.constrainWithUpperBound(new RLogicalType());
+		this.constrainNodeType(data.condition.nodeId, { upperBound: new RLogicalType() });
 
 		this.onLoopCall(data);
 	}
@@ -246,27 +236,21 @@ class TypeInferringCfgGuidedVisitor<
 	}
 
 	protected onLoopCall(data: { call: DataflowGraphVertexFunctionCall, body: FunctionArgument }) {
-		const node = this.getNormalizedAst(data.call.id);
-		guard(node !== undefined, 'Expected AST node to be defined');
-
 		const cfgVertex = this.config.controlFlow.graph.getVertex(data.call.id);
 		guard(cfgVertex !== undefined && cfgVertex.type === CfgVertexType.Statement, 'Expected statement vertex for loop');
 		const isInfinite = (cfgVertex.end ?? []).reduce((prevCount, id) => prevCount + (this.config.controlFlow.graph.outgoingEdges(id)?.size ?? 0), 0) === 0;
 
 		if(isInfinite) {
-			node.info.typeVariable.constrainFromBothSides(new UnresolvedRTypeUnion());
+			this.constrainNodeType(data.call.id, new UnresolvedRTypeUnion());
 		} else {
-			node.info.typeVariable.constrainFromBothSides(new RNullType());
+			this.constrainNodeType(data.call.id, new RNullType());
 		}
 	}
 
 	override onIfThenElseCall(data: { call: DataflowGraphVertexFunctionCall, condition: NodeId | undefined, then: NodeId | undefined, else: NodeId | undefined }) {
 		guard(data.condition !== undefined, 'Expected condition argument to be defined');
-		const conditionNode = this.getNormalizedAst(data.condition);
-		
-		guard(conditionNode !== undefined, 'Expected condition node to be defined');
-		conditionNode.info.typeVariable.constrainWithUpperBound(new RLogicalType());
-		
+		this.constrainNodeType(data.condition, { upperBound: new RLogicalType() });
+
 		const cfgVertex = this.config.controlFlow.graph.getVertex(data.call.id);
 		guard(cfgVertex !== undefined && (cfgVertex.type === CfgVertexType.Statement || cfgVertex.type === CfgVertexType.Expression),
 			'Expected statement or expression vertex for if-then-else');
@@ -279,23 +263,20 @@ class TypeInferringCfgGuidedVisitor<
 		const isElseBranchReachable = this.config.controlFlow.graph.outgoingEdges(data.else ?? cfgEndVertexId)?.values().some((edge) =>{
 			return edge.label === CfgEdgeType.Cd && edge.when === RFalse;
 		}) ?? false;
-
-		const node = this.getNormalizedAst(data.call.id);
-		guard(node !== undefined, 'Expected AST node to be defined');
 		
 		if(isThenBranchReachable) {
 			if(data.then !== undefined) {	
 				const thenNode = this.getNormalizedAst(data.then);
 				guard(thenNode !== undefined, 'Expected then node to be defined');
-				node.info.typeVariable.constrainWithLowerBound(thenNode.info.typeVariable);
+				this.constrainNodeType(data.call.id, { lowerBound: thenNode.info.typeVariable });
 				if(!isElseBranchReachable) {
-					node.info.typeVariable.constrainWithUpperBound(thenNode.info.typeVariable);
+					this.constrainNodeType(data.call.id, { upperBound: thenNode.info.typeVariable });
 				}
 			} else {
 				// If there is no then branch, we can assume that the type is null
-				node.info.typeVariable.constrainWithLowerBound(new RNullType());
+				this.constrainNodeType(data.call.id, { lowerBound: new RNullType() });
 				if(!isElseBranchReachable) {
-					node.info.typeVariable.constrainWithUpperBound(new RNullType());
+					this.constrainNodeType(data.call.id, { upperBound: new RNullType() });
 				}
 			}
 		}
@@ -303,51 +284,38 @@ class TypeInferringCfgGuidedVisitor<
 			if(data.else !== undefined) {
 				const elseNode = this.getNormalizedAst(data.else);
 				guard(elseNode !== undefined, 'Expected else node to be defined');
-				node.info.typeVariable.constrainWithLowerBound(elseNode.info.typeVariable);
+				this.constrainNodeType(data.call.id, { lowerBound: elseNode.info.typeVariable });
 				if(!isThenBranchReachable) {
-					node.info.typeVariable.constrainWithUpperBound(elseNode.info.typeVariable);
+					this.constrainNodeType(data.call.id, { upperBound: elseNode.info.typeVariable });
 				}
 			} else {
 				// If there is no else branch, we can assume that the type is null
-				node.info.typeVariable.constrainWithLowerBound(new RNullType());
+				this.constrainNodeType(data.call.id, { lowerBound: new RNullType() });
 				if(!isThenBranchReachable) {
-					node.info.typeVariable.constrainWithUpperBound(new RNullType());
+					this.constrainNodeType(data.call.id, { upperBound: new RNullType() });
 				}
 			}
 		}
 		if(!isThenBranchReachable && !isElseBranchReachable) {
 			// If neither branch is reachable, we can assume that the type is none
-			node.info.typeVariable.constrainFromBothSides(new UnresolvedRTypeUnion());
-		}	
+			this.constrainNodeType(data.call.id, new UnresolvedRTypeUnion());
+		}
 	}
 	
 	override onQuoteCall(data: { call: DataflowGraphVertexFunctionCall }) {
-		guard(data.call.args.length === 1, 'Expected exactly one argument for quote call');
-		const arg = data.call.args.at(0);
-		guard(arg !== undefined && arg !== EmptyArgument, 'Expected argument of quote call to be defined');
-
-		const node = this.getNormalizedAst(data.call.id);
-		guard(node !== undefined, 'Expected AST node to be defined');
-		node.info.typeVariable.constrainFromBothSides(new RLanguageType());
+		this.constrainNodeType(data.call.id, new RLanguageType());
 	}
 
 	override onEvalFunctionCall(data: { call: DataflowGraphVertexFunctionCall }) {
 		guard(data.call.args.length === 1, 'Expected exactly one argument for eval call');
 		const arg = data.call.args.at(0);
-		
 		guard(arg !== undefined && arg !== EmptyArgument, 'Expected argument of eval call to be defined');
-		const argNode = this.getNormalizedAst(arg.nodeId);
-		
-		guard(argNode !== undefined, 'Expected argument node to be defined');
-		argNode.info.typeVariable.constrainWithUpperBound(new RLanguageType());
+		this.constrainNodeType(arg.nodeId, { upperBound: new RLanguageType() });
 	}
 
 	override onListCall(data: { call: DataflowGraphVertexFunctionCall }) {
-		const node = this.getNormalizedAst(data.call.id);
-		guard(node !== undefined, 'Expected AST node to be defined');
-		
 		const listType = new UnresolvedRListType();
-		node.info.typeVariable.constrainFromBothSides(listType);
+		this.constrainNodeType(data.call.id, listType);
 
 		// TODO: Handle flattening behavior of `list` function
 		for(const [index, arg] of data.call.args.entries()) {
@@ -357,32 +325,30 @@ class TypeInferringCfgGuidedVisitor<
 			
 			const argNode = this.getNormalizedAst(arg.nodeId);
 			guard(argNode !== undefined, 'Expected argument node to be defined');
-			listType.getIndexedElementType(index).constrainWithLowerBound(argNode.info.typeVariable);
+
+			constrainWithLowerBound(getIndexedElementTypeFromList(listType, index, this.constraintCache), argNode.info.typeVariable, this.constraintCache);
 
 			if(arg.name !== undefined) {
-				listType.getIndexedElementType(arg.name).constrainWithLowerBound(argNode.info.typeVariable);
+				constrainWithLowerBound(getIndexedElementTypeFromList(listType, arg.name, this.constraintCache), argNode.info.typeVariable, this.constraintCache);
 			}
 		}
 	}
 
 	override onVectorCall(data: { call: DataflowGraphVertexFunctionCall }) {
-		const node = this.getNormalizedAst(data.call.id);
-		guard(node !== undefined, 'Expected AST node to be defined');
-		
 		const args = data.call.args.filter((arg) => arg !== EmptyArgument);
 		if(args.length === 0) {
-			node.info.typeVariable.constrainFromBothSides(new RNullType());
+			this.constrainNodeType(data.call.id, new RNullType());
 			return;
 		}
 		
 		// TODO: Handle flattening behavior of `c` function
 		const vectorType = new UnresolvedRAtomicVectorType();
-		node.info.typeVariable.constrainFromBothSides(vectorType);
-		
+		this.constrainNodeType(data.call.id, vectorType);
+
 		for(const arg of args) {
 			const argNode = this.getNormalizedAst(arg.nodeId);
 			guard(argNode !== undefined, 'Expected argument node to be defined');
-			vectorType.elementType.constrainWithLowerBound(argNode.info.typeVariable);
+			constrainWithLowerBound(vectorType.elementType, argNode.info.typeVariable, this.constraintCache);
 		}
 	}
 
@@ -391,7 +357,7 @@ class TypeInferringCfgGuidedVisitor<
 		guard(node !== undefined && node.type === RType.FunctionDefinition, 'Expected AST node to be a function definition');
 
 		const functionType = new UnresolvedRFunctionType();
-		node.info.typeVariable.constrainWithLowerBound(functionType);
+		this.constrainNodeType(node, { lowerBound: functionType });
 
 		let dotsEncountered = false;
 		for(const [index, param] of node.parameters.entries()) {
@@ -402,12 +368,12 @@ class TypeInferringCfgGuidedVisitor<
 
 			if(!dotsEncountered) {
 				// Only constrain the parameter type positionally if no `...` has been encountered yet
-				functionType.getParameterType(index).constrainWithUpperBound(param.info.typeVariable);
+				constrainWithUpperBound(getParameterTypeFromFunction(functionType, index), param.info.typeVariable, this.constraintCache);
 			}
-			functionType.getParameterType(param.name.lexeme).constrainWithUpperBound(param.info.typeVariable);
-			
+			constrainWithUpperBound(getParameterTypeFromFunction(functionType, param.name.lexeme), param.info.typeVariable, this.constraintCache);
+
 			if(param.defaultValue !== undefined) {
-				param.info.typeVariable.constrainWithLowerBound(param.defaultValue.info.typeVariable);
+				this.constrainNodeType(param, { lowerBound: param.defaultValue.info.typeVariable });
 			}
 		}
 	}
@@ -417,21 +383,18 @@ class TypeInferringCfgGuidedVisitor<
 		const evalCandidates = exitPoints.map((exitPoint) => exitPoint.nodeId);
 
 		if(evalCandidates.length === 0) {
-			node.info.typeVariable.constrainFromBothSides(new RNullType());
+			this.constrainNodeType(node, new RNullType());
 			return;
 		}
 
 		for(const candidateId of evalCandidates) {
 			const candidate = this.getNormalizedAst(candidateId);
 			guard(candidate !== undefined, 'Expected target node to be defined');
-			node.info.typeVariable.constrainWithLowerBound(candidate.info.typeVariable);
+			this.constrainNodeType(node, { lowerBound: candidate.info.typeVariable });
 		}
 	}
 
 	override onExpressionList(data: { call: DataflowGraphVertexFunctionCall }) {
-		const node = this.getNormalizedAst(data.call.id);
-		guard(node !== undefined, 'Expected AST node to be defined');
-
 		const outgoing = this.config.dataflowInfo.graph.outgoingEdges(data.call.id);
 		const evalCandidates = outgoing?.entries()
 			.filter(([_target, edge]) => edgeIncludesType(edge.types, EdgeType.Returns))
@@ -439,21 +402,18 @@ class TypeInferringCfgGuidedVisitor<
 			.toArray();
 
 		if(evalCandidates === undefined || evalCandidates.length === 0) {
-			node.info.typeVariable.constrainFromBothSides(new RNullType());
+			this.constrainNodeType(data.call.id, new RNullType());
 			return;
 		}
 
 		for(const candidateId of evalCandidates) {
 			const candidate = this.getNormalizedAst(candidateId);
 			guard(candidate !== undefined, 'Expected target node to be defined');
-			node.info.typeVariable.constrainWithLowerBound(candidate.info.typeVariable);
+			this.constrainNodeType(data.call.id, { lowerBound: candidate.info.typeVariable });
 		}
 	}
 
 	override onAccessCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
-		const node = this.getNormalizedAst(data.call.id);
-		guard(node !== undefined, 'Expected AST node to be defined');
-
 		const firstArg = data.call.args.at(0);
 		guard(firstArg !== undefined && firstArg !== EmptyArgument, 'Expected first argument of access call to be defined');
 		const firstArgNode = this.getNormalizedAst(firstArg.nodeId);
@@ -462,20 +422,20 @@ class TypeInferringCfgGuidedVisitor<
 		// TODO: Handle subsetting for other operand types, in particular for scalars and null
 		const elementType = new UnresolvedRTypeVariable();
 		const vectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(elementType), new UnresolvedRListType(elementType));
-		firstArgNode.info.typeVariable.constrainWithUpperBound(vectorType);
-		
+		this.constrainNodeType(firstArgNode, { upperBound: vectorType });
+
 		switch(data.call.name) {
 			case '[':
 				// If the access call is a `[` operation, we can assume that the it returns a subset
 				// of the first argument's elements as another instance of the same container type
-				node.info.typeVariable.constrainWithLowerBound(firstArgNode.info.typeVariable);
+				this.constrainNodeType(data.call.id, { lowerBound: firstArgNode.info.typeVariable });
 				break;
 			case '[[':
-				node.info.typeVariable.constrainWithLowerBound(elementType);
+				this.constrainNodeType(data.call.id, { lowerBound: elementType });
 				break;
 			case '$': {
-				firstArgNode.info.typeVariable.constrainWithUpperBound(new UnresolvedRListType(elementType));
-				node.info.typeVariable.constrainWithLowerBound(elementType);
+				this.constrainNodeType(firstArgNode, { upperBound: new UnresolvedRListType(elementType) });
+				this.constrainNodeType(data.call.id, { lowerBound: elementType });
 				break;
 			}
 		}

@@ -317,7 +317,7 @@ class TypeInferringCfgGuidedVisitor<
 		const listType = new UnresolvedRListType();
 		this.constrainNodeType(data.call.id, listType);
 
-		// TODO: Handle flattening behavior of `list` function
+		// TODO: Handle flattening behavior of `list` function (?)
 		for(const [index, arg] of data.call.args.entries()) {
 			if(arg === EmptyArgument) {
 				continue; // Skip empty arguments
@@ -341,14 +341,15 @@ class TypeInferringCfgGuidedVisitor<
 			return;
 		}
 		
-		// TODO: Handle flattening behavior of `c` function
+		// TODO: Handle behavior of `c` function for non-vector arguments
 		const vectorType = new UnresolvedRAtomicVectorType();
 		this.constrainNodeType(data.call.id, vectorType);
 
 		for(const arg of args) {
 			const argNode = this.getNormalizedAst(arg.nodeId);
 			guard(argNode !== undefined, 'Expected argument node to be defined');
-			constrainWithLowerBound(vectorType.elementType, argNode.info.typeVariable, this.constraintCache);
+			this.constrainNodeType(argNode, { upperBound: new UnresolvedRAtomicVectorType() });
+			constrainWithLowerBound(vectorType, argNode.info.typeVariable, this.constraintCache);
 		}
 	}
 

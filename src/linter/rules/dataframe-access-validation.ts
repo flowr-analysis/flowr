@@ -1,6 +1,7 @@
 import { hasDataFrameExpressionInfo, type AbstractInterpretationInfo, type DataFrameOperationType } from '../../abstract-interpretation/data-frame/absint-info';
 import { satisfiesColsNames, satisfiesLeqInterval, type DataFrameDomain } from '../../abstract-interpretation/data-frame/domain';
 import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../abstract-interpretation/data-frame/shape-inference';
+import { amendConfig } from '../../config';
 import { extractCfg } from '../../control-flow/extract-cfg';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -9,7 +10,7 @@ import type { FlowrSearchElements } from '../../search/flowr-search';
 import { Q } from '../../search/flowr-search-builder';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
 import { formatRange } from '../../util/mermaid/dfg';
-import type { MergeableRecord } from '../../util/objects';
+import { type MergeableRecord } from '../../util/objects';
 import { rangeFrom, type SourceRange } from '../../util/range';
 import type { LintingResult, LintingRule } from '../linter-format';
 import { LintingCertainty, LintingPrettyPrintContext } from '../linter-format';
@@ -34,19 +35,31 @@ export interface DataFrameAccessValidationResult extends LintingResult, DataFram
     range:    SourceRange
 }
 
-export type DataFrameAccessValidationConfig = Record<string, never>;
+export interface DataFrameAccessValidationConfig extends MergeableRecord {
+	/** Whether data frame shapes should be extracted from loaded external data files, such as CSV files (defaults to the option in the flowR config if `undefined`) */
+	readLoadedData?: boolean
+}
 
 export interface DataFrameAccessValidationMetadata extends MergeableRecord {
+	/** The number of data frame functions and operations containing inferred column or row accesses */
 	numOperations:    number,
+	/** The number of inferred abstract column or row access operations */
     numAccesses:   number,
+	/** The total number of inferred accessed columns and rows */
     totalAccessed: number
 }
 
 export const DATA_FRAME_ACCESS_VALIDATION = {
 	createSearch:        () => Q.all().with(Enrichment.CallTargets, { onlyBuiltin: true }),
-	processSearchResult: (elements, _config, data) => {
-		const cfg = extractCfg(data.normalize, data.config, data.dataflow.graph);
-		inferDataFrameShapes(cfg, data.dataflow.graph, data.normalize, data.config);
+	processSearchResult: (elements, config, data) => {
+		const flowrConfig = amendConfig(data.config, flowrConfig => {
+			if(config.readLoadedData !== undefined) {
+				flowrConfig.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles = config.readLoadedData;
+			}
+			return flowrConfig;
+		});
+		const cfg = extractCfg(data.normalize, flowrConfig, data.dataflow.graph);
+		inferDataFrameShapes(cfg, data.dataflow.graph, data.normalize, flowrConfig);
 
 		const accessOperations = getAccessOperations(elements);
 		const accesses: DataFrameAccessOperation[] = [];
@@ -110,7 +123,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 		name:          'Dataframe Access Validation',
 		tags:          [LintingRuleTag.Bug, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
 		description:   'Validates the existance of accessed columns and rows of dataframes.',
-		defaultConfig: {}
+		defaultConfig: { readLoadedData: false }
 	}
 } as const satisfies LintingRule<DataFrameAccessValidationResult, DataFrameAccessValidationMetadata, DataFrameAccessValidationConfig>;
 

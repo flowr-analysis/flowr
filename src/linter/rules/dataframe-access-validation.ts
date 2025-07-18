@@ -104,7 +104,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 			.map(({ node, operand, ...accessed }) => ({
 				...accessed,
 				access:    node?.lexeme ?? '???',
-				operand:   operand?.type === RType.Symbol ? operand.content : undefined,
+				...(operand?.type === RType.Symbol ? { operand: operand.content } : {}),
 				range:     node?.info.fullRange ?? node?.location ?? rangeFrom(-1, -1, -1, -1),
 				certainty: LintingCertainty.Definitely
 			}));

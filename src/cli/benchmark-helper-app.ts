@@ -60,8 +60,7 @@ async function benchmark() {
 	}
 
 	// Enable pointer analysis if requested, otherwise disable it
-	const config = getConfig();
-	amendConfig(config, c => {
+	const config = amendConfig(getConfig(), c => {
 		c.solver.pointerTracking = options['enable-pointer-tracking'];
 		return c;
 	});

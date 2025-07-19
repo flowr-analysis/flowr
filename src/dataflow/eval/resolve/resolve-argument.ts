@@ -25,7 +25,7 @@ export function getArgumentStringValue(
 	vertex: DataflowGraphVertexFunctionCall,
 	argumentIndex: number | 'unnamed' | undefined,
 	argumentName: string | undefined,
-	resolveValue : boolean | 'library' | undefined
+	resolveValue: boolean | 'library' | undefined
 ): Map<NodeId, Set<string|undefined>> | undefined {
 	if(argumentName) {
 		const arg = vertex?.args.findIndex(arg => arg !== EmptyArgument && arg.name === argumentName);
@@ -91,7 +91,7 @@ function hasCharacterOnly(variableResolve: VariableResolve, graph: DataflowGraph
 	}
 }
 
-function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, environment: REnvironmentInformation | undefined, idMap: Map<NodeId, RNode> | undefined, resolveValue : boolean | 'library' | undefined): string[] | undefined {
+function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, environment: REnvironmentInformation | undefined, idMap: Map<NodeId, RNode> | undefined, resolveValue: boolean | 'library' | undefined): string[] | undefined {
 	let full = true;
 	if(!resolveValue) {
 		full = false;

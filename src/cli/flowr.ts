@@ -88,7 +88,7 @@ if(options['no-ansi']) {
 	setFormatter(voidFormatter);
 }
 
-function createConfig() : FlowrConfigOptions {
+function createConfig(): FlowrConfigOptions {
 	let config: FlowrConfigOptions | undefined;
 
 	if(options['config-json']) {

@@ -27,7 +27,7 @@ describe('source finding', () => {
 
 	function assertSourceFound(path: string, shouldBe: string[], referenceChain: readonly RParseRequest[] = []) {
 		test(`finds source for ${path}`, () => {
-			const resolveSource : FlowrLaxSourcingOptions = {
+			const resolveSource: FlowrLaxSourcingOptions = {
 				dropPaths:             DropPathsOption.All,
 				ignoreCapitalization:  true,
 				inferWorkingDirectory: InferWorkingDirectory.ActiveScript,

@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe } from 'vitest';
 import { ColNamesTop, DataFrameTop } from '../../../../src/abstract-interpretation/data-frame/domain';
-import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 import { setSourceProvider } from '../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
 import { requestProviderFromFile, requestProviderFromText } from '../../../../src/r-bridge/retriever';
 import { withShell } from '../../_helper/shell';
@@ -25,20 +24,12 @@ describe.sequential('Data Frame Shape Inference', withShell(shell => {
 
 	beforeAll(async() => {
 		setSourceProvider(requestProviderFromText(sources));
-		amendConfig(defaultConfigOptions, config => {
-			config.solver.pointerTracking = false;
-			return config;
-		});
 		librariesInstalled = await shell.isPackageInstalled('dplyr') && await shell.isPackageInstalled('readr');
 		shell.clearEnvironment();
 	});
 
 	afterAll(() => {
 		setSourceProvider(requestProviderFromFile());
-		amendConfig(defaultConfigOptions, config => {
-			config.solver.pointerTracking = defaultConfigOptions.solver.pointerTracking;
-			return config;
-		});
 	});
 
 	describe('Control Flow', () => {
@@ -273,6 +264,12 @@ df <- data.frame(id = a, name = b)
 		testDataFrameDomain(
 			shell,
 			'df <- data.frame()',
+			[['1@df', { colnames: [], cols: [0, 0], rows: [0, 0] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			'df <- data.frame(id = c(), name = c())',
 			[['1@df', { colnames: [], cols: [0, 0], rows: [0, 0] }]]
 		);
 
@@ -1897,7 +1894,7 @@ df <- cbind(6:10, df)
 		testDataFrameDomain(
 			shell,
 			'df <- cbind(id = 1:3, name = 4:6)',
-			[['1@df', undefined, ColNamesOverapproximation]]
+			[['1@df', undefined, DataFrameShapeOverapproximation]]
 		);
 
 		testDataFrameDomain(
@@ -2022,8 +2019,20 @@ df <- rbind(6, df)
 
 		testDataFrameDomain(
 			shell,
+			`
+df <- data.frame(id = c(), name = c())
+df <- rbind(df, data.frame(id = 1:5, name = "A"))
+			`.trim(),
+			[
+				['1@df', { colnames: [], cols: [0, 0], rows: [0, 0] }],
+				['2@df', { colnames: ['id', 'name'], cols: [0, 2], rows: [5, 5] }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
 			'df <- rbind(1:3, 4:6)',
-			[['1@df', undefined, ColNamesOverapproximation]]
+			[['1@df', undefined, DataFrameShapeOverapproximation]]
 		);
 	});
 

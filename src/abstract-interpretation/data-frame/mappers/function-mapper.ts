@@ -68,6 +68,11 @@ const DataFrameFunctionMapper = {
 } as const satisfies Record<string, DataFrameFunctionMapperInfo<never>>;
 
 /**
+ * List of data frame functions that are not explicitly supported but return data frames.
+ */
+const UnsupportedDataFrameFunctions = ['anova', 'lmer', 'Anova', 'Manova', 'AIC', 'BIC'] as const satisfies string[];
+
+/**
  * Mapper for defining the location of all relevant function parameters for each supported data frame function of {@link DataFrameFunctionMapper}.
  */
 const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
@@ -404,6 +409,8 @@ type DataFrameFunctionMapping<Params extends object> = (
 
 /** All currently supported data frame functions */
 type DataFrameFunction = keyof typeof DataFrameFunctionMapper;
+/** Data frame functions that are not explicitly supported but return data frames */
+type UnsupportedDataFrameFunction = typeof UnsupportedDataFrameFunctions[number];
 
 /** The required mapping parameters for a data frame function */
 type DataFrameFunctionParams<N extends DataFrameFunction> = Parameters<typeof DataFrameFunctionMapper[N]['mapper']>[1];
@@ -429,22 +436,26 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 	dfg: DataflowGraph,
 	config: FlowrConfigOptions = defaultConfigOptions
 ): DataFrameExpressionInfo | undefined {
-	if(node.type === RType.FunctionCall && node.named && isDataFrameFunction(node.functionName.content)) {
-		const functionName = node.functionName.content as Name;
-		const mapper = DataFrameFunctionMapper[functionName].mapper as DataFrameFunctionMapping<DataFrameFunctionParams<Name>>;
-		const params = DataFrameFunctionParamsMapper[functionName] as DataFrameFunctionParams<Name>;
-		const args = getFunctionArguments(node, dfg);
-		const critical = (params as { critical?: FunctionParameterLocation<unknown>[] }).critical;
-		const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
-		let operations: DataFrameOperation[] | undefined;
+	if(node.type === RType.FunctionCall && node.named) {
+		if(isDataFrameFunction(node.functionName.content)) {
+			const functionName = node.functionName.content as Name;
+			const mapper = DataFrameFunctionMapper[functionName].mapper as DataFrameFunctionMapping<DataFrameFunctionParams<Name>>;
+			const params = DataFrameFunctionParamsMapper[functionName] as DataFrameFunctionParams<Name>;
+			const args = getFunctionArguments(node, dfg);
+			const critical = (params as { critical?: FunctionParameterLocation<unknown>[] }).critical;
+			const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
+			let operations: DataFrameOperation[] | undefined;
 
-		if(hasCriticalArgument(args, critical, resolveInfo)) {
-			operations = [{ operation: 'unknown', operand: undefined }];
-		} else {
-			operations = mapper(args, params, resolveInfo, config);
-		}
-		if(operations !== undefined) {
-			return { type: 'expression', operations: operations };
+			if(hasCriticalArgument(args, critical, resolveInfo)) {
+				operations = [{ operation: 'unknown', operand: undefined }];
+			} else {
+				operations = mapper(args, params, resolveInfo, config);
+			}
+			if(operations !== undefined) {
+				return { type: 'expression', operations: operations };
+			}
+		} else if(isUnsupportedDataFrameFunction(node.functionName.content)) {
+			return { type: 'expression', operations: [{ operation: 'unknown', operand: undefined }] };
 		}
 	}
 }
@@ -452,6 +463,10 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 function isDataFrameFunction(functionName: string): functionName is DataFrameFunction {
 	// a check with `functionName in DataFrameFunctionMapper` would return true for "toString"
 	return Object.prototype.hasOwnProperty.call(DataFrameFunctionMapper, functionName);
+}
+
+function isUnsupportedDataFrameFunction(functionName: string): functionName is UnsupportedDataFrameFunction {
+	return (UnsupportedDataFrameFunctions as string[]).includes(functionName);
 }
 
 function mapDataFrameCreate(
@@ -470,19 +485,22 @@ function mapDataFrameCreate(
 	const argNames = args.map(arg => resolveIdToArgName(arg, info));
 	const argLengths = args.map(arg => resolveIdToArgVectorLength(arg, info));
 	const allVectors = argLengths.every(isNotUndefined);
+	const rows = allVectors ? Math.max(...argLengths, 0) : undefined;
 	let colnames: (string | undefined)[] | undefined = argNames;
 
 	// over-approximate the column names if arguments are present but cannot be resolved to values
-	if(typeof checkNames !== 'boolean' || typeof noDupNames !== 'boolean') {
+	if(!allVectors || typeof checkNames !== 'boolean' || typeof noDupNames !== 'boolean') {
 		colnames = undefined;
+	} else if(rows === 0) {
+		colnames = [];
 	} else {
 		colnames = filterValidNames(colnames, checkNames, noDupNames);
 	}
 	return [{
 		operation: 'create',
 		operand:   undefined,
-		colnames:  allVectors ? colnames : undefined,
-		rows:      allVectors ? Math.max(...argLengths, 0) : undefined
+		colnames,
+		rows
 	}];
 }
 
@@ -574,7 +592,7 @@ function mapDataFrameRead(
 		operand:   undefined,
 		source,
 		colnames,
-		rows:      allLines ? rowCount : undefined
+		rows:      allLines ? rowCount : [rowCount, Infinity]
 	}];
 }
 
@@ -1133,7 +1151,7 @@ function getRequestFromRead(
 		if(typeof fileName === 'string') {
 			source = fileName;
 			const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
-			const sources = findSource(config.solver.resolveSource, fileName, { referenceChain: referenceChain });
+			const sources = findSource(config.solver.resolveSource, fileName, { referenceChain });
 
 			if(sources?.length === 1) {
 				source = sources[0];

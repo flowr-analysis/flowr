@@ -253,7 +253,7 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 			wideningThreshold: 4,
 			readLoadedData:    {
 				readExternalFiles: true,
-				maxReadLines:      1e7
+				maxReadLines:      1e6
 			}
 		}
 	}

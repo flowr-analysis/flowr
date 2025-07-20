@@ -30,18 +30,19 @@ export function mapDataFrameAccess(
 	node: RNode<ParentInformation>,
 	dfg: DataflowGraph
 ): DataFrameExpressionInfo | undefined {
-	if(node.type === RType.Access) {
-		const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
-		let operations: DataFrameOperation[] | undefined;
+	if(node.type !== RType.Access) {
+		return;
+	}
+	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
+	let operations: DataFrameOperation[] | undefined;
 
-		if(isStringBasedAccess(node)) {
-			operations = mapDataFrameNamedColumnAccess(node, resolveInfo);
-		} else {
-			operations = mapDataFrameIndexColRowAccess(node, resolveInfo);
-		}
-		if(operations !== undefined) {
-			return { type: 'expression', operations: operations };
-		}
+	if(isStringBasedAccess(node)) {
+		operations = mapDataFrameNamedColumnAccess(node, resolveInfo);
+	} else {
+		operations = mapDataFrameIndexColRowAccess(node, resolveInfo);
+	}
+	if(operations !== undefined) {
+		return { type: 'expression', operations: operations };
 	}
 }
 
@@ -70,7 +71,7 @@ function mapDataFrameIndexColRowAccess(
 	const dataFrame = access.accessed;
 	const drop = getArgumentValue(access.access, 'drop', info);
 	const exact = getArgumentValue(access.access, 'exact', info);
-	const args = getEffectiveArgs(access.operator, access.access);
+	const args = getAccessArgs(access.operator, access.access);
 
 	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
@@ -169,7 +170,10 @@ function mapDataFrameIndexColRowAccess(
 	return result;
 }
 
-function getEffectiveArgs(
+/**
+ * Removes all special named arguments from the arguments of an access operator (i.e. arguments like "drop" and "exact").
+ */
+function getAccessArgs(
 	operator: RIndexAccess['operator'],
 	args: readonly RFunctionArgument<ParentInformation>[]
 ): readonly RFunctionArgument<ParentInformation>[] {

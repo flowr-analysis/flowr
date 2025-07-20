@@ -1,6 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import type { ColNamesDomain, DataFrameDomain, DataFrameStateDomain, IntervalDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { ColNamesBottom, ColNamesTop, DataFrameBottom, DataFrameTop, equalColNames, equalDataFrameDomain, equalDataFrameState, equalInterval, IntervalBottom, IntervalTop, joinColNames, joinDataFrames, joinDataFrameStates, joinInterval, leqColNames, leqInterval, meetColNames, meetDataFrames, meetDataFrameStates, meetInterval, subtractColNames } from '../../../../src/abstract-interpretation/data-frame/domain';
+import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 describe('Data Frame Domain', () => {
 	describe('Column Names Domain', () => {
@@ -163,8 +164,8 @@ describe('Data Frame Domain', () => {
 		check(new Map([[0, domain1], [1, domain2]]), new Map([[0, domain1], [1, domain2]]), true, new Map([[0, domain1], [1, domain2]]), new Map([[0, domain1], [1, domain2]]));
 		check(new Map([[1, DataFrameTop]]), new Map([[0, domain1], [1, domain2]]), false, new Map([[0, domain1], [1, DataFrameTop]]), new Map([[0, domain1], [1, domain2]]));
 		check(new Map([[0, domain1], [1, domain2]]), new Map([[1, DataFrameTop]]), false, new Map([[0, domain1], [1, DataFrameTop]]), new Map([[0, domain1], [1, domain2]]));
-		check(new Map([[0, domain1], [1, domain2]]), new Map([[0, DataFrameTop], [1, DataFrameBottom]]), false, new Map([[0, DataFrameTop], [1, domain2]]), new Map([[0, domain1], [1, DataFrameBottom]]));
-		check(new Map([[0, DataFrameTop], [1, DataFrameBottom]]), new Map([[0, domain1], [1, domain2]]), false, new Map([[0, DataFrameTop], [1, domain2]]), new Map([[0, domain1], [1, DataFrameBottom]]));
+		check(new Map([[0, domain1], [1, domain2]]), new Map<NodeId, DataFrameDomain>([[0, DataFrameTop], [1, DataFrameBottom]]), false, new Map([[0, DataFrameTop], [1, domain2]]), new Map([[0, domain1], [1, DataFrameBottom]]));
+		check(new Map<NodeId, DataFrameDomain>([[0, DataFrameTop], [1, DataFrameBottom]]), new Map([[0, domain1], [1, domain2]]), false, new Map([[0, DataFrameTop], [1, domain2]]), new Map([[0, domain1], [1, DataFrameBottom]]));
 		check(new Map([[0, domain1], [2, DataFrameBottom]]), new Map([[1, DataFrameTop]]), false, new Map([[0, domain1], [1, DataFrameTop], [2, DataFrameBottom]]), new Map([[0, domain1], [1, DataFrameTop], [2, DataFrameBottom]]));
 		check(new Map([[1, DataFrameTop]]), new Map([[0, domain1], [2, DataFrameBottom]]), false, new Map([[0, domain1], [1, DataFrameTop], [2, DataFrameBottom]]), new Map([[0, domain1], [1, DataFrameTop], [2, DataFrameBottom]]));
 		check(new Map([[0, DataFrameTop]]), new Map([[0, domain1]]), false, new Map([[0, DataFrameTop]]), new Map([[0, domain1]]));

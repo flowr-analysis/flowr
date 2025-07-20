@@ -17,11 +17,11 @@ import { LintingCertainty, LintingPrettyPrintContext } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
 interface DataFrameAccessOperation {
-    nodeId:        NodeId
-    operand?:      NodeId,
-    operandShape?: DataFrameDomain,
-    accessedCols?: (string | number)[],
-    accessedRows?: number[]
+	nodeId:        NodeId
+	operand?:      NodeId,
+	operandShape?: DataFrameDomain,
+	accessedCols?: (string | number)[],
+	accessedRows?: number[]
 };
 
 interface DataFrameAccess {
@@ -29,10 +29,17 @@ interface DataFrameAccess {
 	accessed: string | number
 };
 
-export interface DataFrameAccessValidationResult extends LintingResult, DataFrameAccess {
-    access:   string,
-    operand?: string,
-    range:    SourceRange
+export interface DataFrameAccessValidationResult extends LintingResult {
+	/** The type of the data frame access ("column" or "row") */
+	type:     'column' | 'row',
+	/** The name or index of the column or row being accessed in the data frame */
+	accessed: string | number,
+	/** The name of the function/operation used for the access (e.g. `$`, `[`, `[[`, but also `filter`, `select`, ...) */
+	access:   string,
+	/** The variable/symbol name of the accessed data frame operand (`undefined` if operand is no symbol) */
+	operand?: string,
+	/** The source range in the code where the access occurs */
+	range:    SourceRange
 }
 
 export interface DataFrameAccessValidationConfig extends MergeableRecord {
@@ -42,11 +49,11 @@ export interface DataFrameAccessValidationConfig extends MergeableRecord {
 
 export interface DataFrameAccessValidationMetadata extends MergeableRecord {
 	/** The number of data frame functions and operations containing inferred column or row accesses */
-	numOperations:    number,
+	numOperations: number,
 	/** The number of inferred abstract column or row access operations */
-    numAccesses:   number,
+	numAccesses:   number,
 	/** The total number of inferred accessed columns and rows */
-    totalAccessed: number
+	totalAccessed: number
 }
 
 export const DATA_FRAME_ACCESS_VALIDATION = {

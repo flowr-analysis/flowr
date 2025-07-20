@@ -74,6 +74,7 @@ export type DataFrameOperationOptions<N extends DataFrameOperationName> = Parame
 
 /**
  * Applies the abstract semantics of an abstract data frame operation with respect to the data frame shape domain.
+ * This expects that all arguments have already been sanitized according to the original concrete data frame function (e.g. by replacing duplicate/invalid column names).
  *
  * @param operation - The name of the abstract operation to apply the semantics of
  * @param value     - The abstract data frame shape of the operand of the abstract operation
@@ -246,7 +247,7 @@ function applyRemoveColsSemantics(
 	if(options?.maybe) {
 		return {
 			...value,
-			colnames: colnames !== undefined ? subtractColNames(value.colnames, colnames.filter(col => col !== undefined)) : value.colnames,
+			colnames: colnames !== undefined ? subtractColNames(value.colnames, colnames.filter(isNotUndefined)) : value.colnames,
 			cols:     cols !== undefined ? subtractInterval(value.cols, [cols, 0]) : extendIntervalToZero(value.cols)
 		};
 	}

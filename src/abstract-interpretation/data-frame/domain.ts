@@ -7,16 +7,16 @@ const MaxColNames = defaultConfigOptions.abstractInterpretation.dataFrame.maxCol
 type Interval = [number, number];
 
 /** The bottom element (least element) of the positive interval domain representing no possible values, explicitly given as "bottom". */
-export const IntervalBottom = Symbol('bottom');
+export const IntervalBottom = 'bottom';
 /** The top element (greatest element) of the positive interval domain representing all possible values, defined as the interval from 0 to infinity. */
-export const IntervalTop: Interval = [0, Infinity];
+export const IntervalTop = [0, Infinity] as const satisfies Interval;
 /** The positive interval domain representing possible integer values. */
 export type IntervalDomain = Interval | typeof IntervalBottom;
 
 /** The bottom element (least element) of the column names domain representing no possible column name, defined as the empty list []. */
-export const ColNamesBottom: string[] = [];
+export const ColNamesBottom = [] as const satisfies string[];
 /** The top element (greatest element) of the column names domain representing all possible values, explicitly given as "top". */
-export const ColNamesTop = Symbol('top');
+export const ColNamesTop = 'top';
 /** The column names domain defined as bounded string set domain representing possible column names. */
 export type ColNamesDomain = string[] | typeof ColNamesTop;
 
@@ -34,21 +34,21 @@ export interface DataFrameDomain {
  * The bottom element (least element) of the data frame shape domain representing no possible value, mapping the columns names to {@link ColNamesBottom}
  * and the number of columns and rows to {@link IntervalBottom}.
  */
-export const DataFrameBottom: DataFrameDomain = {
+export const DataFrameBottom = {
 	colnames: ColNamesBottom,
 	cols:     IntervalBottom,
 	rows:     IntervalBottom
-};
+} as const satisfies DataFrameDomain;
 
 /**
  * The top element (greatest element) of the data frame shape domain representing all possible value, mapping the columns names to {@link ColNamesTop}
  * and the number of columns and rows to {@link IntervalTop}.
  */
-export const DataFrameTop: DataFrameDomain = {
+export const DataFrameTop = {
 	colnames: ColNamesTop,
 	cols:     IntervalTop,
 	rows:     IntervalTop
-};
+} as const satisfies DataFrameDomain;
 
 /**
  * The data frame shape state domain representing possible memory states, mapping AST node IDs to data frame shape values of the {@link DataFrameDomain}.

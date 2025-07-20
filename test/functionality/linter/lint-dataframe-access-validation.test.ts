@@ -7,7 +7,15 @@ import { withTreeSitter } from '../_helper/shell';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('Data frame access validation', () => {
-		function exampleCode(params: { filter?: string, mutate?: string, join?: string, select?: string | number, access?: `$${string}` | `[${string}]` | `[[${string}]]` }) {
+		interface ExampleCodeParams {
+			filter?: string;
+			mutate?: string;
+			join?:   string;
+			select?: string | number;
+			access?: `$${string}` | `[${string}]` | `[[${string}]]`;
+		}
+
+		function exampleCode(params: ExampleCodeParams) {
 			const { filter, mutate, join, select, access } = { filter: 'age', mutate: 'score', join: 'id', select: 'age', access: '$level', ...params };
 			return `
 library(dplyr)

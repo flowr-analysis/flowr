@@ -1,5 +1,5 @@
 import type { FlowrConfigOptions } from '../../../config';
-import { defaultConfigOptions, VariableResolve } from '../../../config';
+import { VariableResolve } from '../../../config';
 import { type ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
@@ -35,58 +35,63 @@ enum DataFrameType {
  * including information about the origin library of the functions and the type of the returned data frame.
  */
 const DataFrameFunctionMapper = {
-	'data.frame':    { mapper: mapDataFrameCreate },
-	'as.data.frame': { mapper: mapDataFrameConvert },
-	'read.table':    { mapper: mapDataFrameRead },
-	'read.csv':      { mapper: mapDataFrameRead },
-	'read.csv2':     { mapper: mapDataFrameRead },
-	'read.delim':    { mapper: mapDataFrameRead },
-	'read.delim2':   { mapper: mapDataFrameRead },
-	'read_table':    { mapper: mapDataFrameRead, library: 'readr', returnType: DataFrameType.Tibble },
-	'read_csv':      { mapper: mapDataFrameRead, library: 'readr', returnType: DataFrameType.Tibble },
-	'read_csv2':     { mapper: mapDataFrameRead, library: 'readr', returnType: DataFrameType.Tibble },
-	'read_tsv':      { mapper: mapDataFrameRead, library: 'readr', returnType: DataFrameType.Tibble },
-	'read_delim':    { mapper: mapDataFrameRead, library: 'readr', returnType: DataFrameType.Tibble },
-	'cbind':         { mapper: mapDataFrameColBind },
-	'rbind':         { mapper: mapDataFrameRowBind },
-	'head':          { mapper: mapDataFrameHeadTail },
-	'tail':          { mapper: mapDataFrameHeadTail },
-	'subset':        { mapper: mapDataFrameSubset },
-	'filter':        { mapper: mapDataFrameFilter, library: 'dplyr' },
-	'select':        { mapper: mapDataFrameSelect, library: 'dplyr' },
-	'mutate':        { mapper: mapDataFrameMutate, library: 'dplyr' },
-	'transform':     { mapper: mapDataFrameMutate },
-	'group_by':      { mapper: mapDataFrameGroupBy, library: 'dplyr', returnType: DataFrameType.Tibble },
-	'summarise':     { mapper: mapDataFrameSummarize, library: 'dplyr' },
-	'summarize':     { mapper: mapDataFrameSummarize, library: 'dplyr' },
-	'inner_join':    { mapper: mapDataFrameJoin, library: 'dplyr' },
-	'left_join':     { mapper: mapDataFrameJoin, library: 'dplyr' },
-	'right_join':    { mapper: mapDataFrameJoin, library: 'dplyr' },
-	'full_join':     { mapper: mapDataFrameJoin, library: 'dplyr' },
-	'merge':         { mapper: mapDataFrameJoin },
-	'relocate':      { mapper: mapDataFrameIdentity, library: 'dplyr' },
-	'arrange':       { mapper: mapDataFrameIdentity, library: 'dplyr' }
+	'data.frame':    { mapper: mapDataFrameCreate,    library: 'base',  returnType: DataFrameType.DataFrame },
+	'as.data.frame': { mapper: mapDataFrameConvert,   library: 'base',  returnType: DataFrameType.DataFrame },
+	'read.table':    { mapper: mapDataFrameRead,      library: 'utils', returnType: DataFrameType.DataFrame },
+	'read.csv':      { mapper: mapDataFrameRead,      library: 'utils', returnType: DataFrameType.DataFrame },
+	'read.csv2':     { mapper: mapDataFrameRead,      library: 'utils', returnType: DataFrameType.DataFrame },
+	'read.delim':    { mapper: mapDataFrameRead,      library: 'utils', returnType: DataFrameType.DataFrame },
+	'read.delim2':   { mapper: mapDataFrameRead,      library: 'utils', returnType: DataFrameType.DataFrame },
+	'read_table':    { mapper: mapDataFrameRead,      library: 'readr', returnType: DataFrameType.Tibble    },
+	'read_csv':      { mapper: mapDataFrameRead,      library: 'readr', returnType: DataFrameType.Tibble    },
+	'read_csv2':     { mapper: mapDataFrameRead,      library: 'readr', returnType: DataFrameType.Tibble    },
+	'read_tsv':      { mapper: mapDataFrameRead,      library: 'readr', returnType: DataFrameType.Tibble    },
+	'read_delim':    { mapper: mapDataFrameRead,      library: 'readr', returnType: DataFrameType.Tibble    },
+	'cbind':         { mapper: mapDataFrameColBind,   library: 'base',  returnType: DataFrameType.DataFrame },
+	'rbind':         { mapper: mapDataFrameRowBind,   library: 'base',  returnType: DataFrameType.DataFrame },
+	'head':          { mapper: mapDataFrameHeadTail,  library: 'utils', returnType: DataFrameType.DataFrame },
+	'tail':          { mapper: mapDataFrameHeadTail,  library: 'utils', returnType: DataFrameType.DataFrame },
+	'subset':        { mapper: mapDataFrameSubset,    library: 'base',  returnType: DataFrameType.DataFrame },
+	'filter':        { mapper: mapDataFrameFilter,    library: 'dplyr', returnType: DataFrameType.DataFrame },
+	'select':        { mapper: mapDataFrameSelect,    library: 'dplyr', returnType: DataFrameType.DataFrame },
+	'mutate':        { mapper: mapDataFrameMutate,    library: 'dplyr', returnType: DataFrameType.DataFrame },
+	'transform':     { mapper: mapDataFrameMutate,    library: 'base',  returnType: DataFrameType.DataFrame },
+	'group_by':      { mapper: mapDataFrameGroupBy,   library: 'dplyr', returnType: DataFrameType.Tibble    },
+	'summarise':     { mapper: mapDataFrameSummarize, library: 'dplyr', returnType: DataFrameType.DataFrame },
+	'summarize':     { mapper: mapDataFrameSummarize, library: 'dplyr', returnType: DataFrameType.DataFrame },
+	'inner_join':    { mapper: mapDataFrameJoin,      library: 'dplyr', returnType: DataFrameType.DataFrame },
+	'left_join':     { mapper: mapDataFrameJoin,      library: 'dplyr', returnType: DataFrameType.DataFrame },
+	'right_join':    { mapper: mapDataFrameJoin,      library: 'dplyr', returnType: DataFrameType.DataFrame },
+	'full_join':     { mapper: mapDataFrameJoin,      library: 'dplyr', returnType: DataFrameType.DataFrame },
+	'merge':         { mapper: mapDataFrameJoin,      library: 'base',  returnType: DataFrameType.DataFrame },
+	'relocate':      { mapper: mapDataFrameIdentity,  library: 'dplyr', returnType: DataFrameType.DataFrame },
+	'arrange':       { mapper: mapDataFrameIdentity,  library: 'dplyr', returnType: DataFrameType.DataFrame }
 } as const satisfies Record<string, DataFrameFunctionMapperInfo<never>>;
 
 /**
- * List of data frame functions that are not explicitly supported but may return data frames.
+ * List of other data frame functions that are not explicitly supported but may return data frames.
  */
-const UnsupportedDataFrameFunctions = [
+const OtherDataFrameFunctions = [
 	{
-		type:  'entry_point',
-		names: ['anova', 'AIC', 'BIC']
+		type:       'entry_point',
+		names:      ['anova', 'AIC', 'BIC'],
+		library:    'anova',
+		returnType: DataFrameType.DataFrame
 	}, {
-		type:    'entry_point',
-		names:   ['Anova', 'Manova'],
-		library: 'car'
+		type:       'entry_point',
+		names:      ['Anova', 'Manova'],
+		library:    'car',
+		returnType: DataFrameType.DataFrame
 	}, {
-		type:    'entry_point',
-		names:   ['lmer'],
-		library: 'lme4'
+		type:       'entry_point',
+		names:      ['lmer'],
+		library:    'lme4',
+		returnType: DataFrameType.DataFrame
 	}, {
-		type:    'entry_point',
-		names:   ['data_frame', 'as_data_frame'],
-		library: 'dplyr'
+		type:       'entry_point',
+		names:      ['data_frame', 'as_data_frame'],
+		library:    'dplyr',
+		returnType: DataFrameType.DataFrame
 	}, {
 		type:       'entry_point',
 		names:      ['tbl', 'as.tbl'],
@@ -113,30 +118,50 @@ const UnsupportedDataFrameFunctions = [
 		library:    'data.table',
 		returnType: DataFrameType.DataTable
 	}, {
-		type:      'transformation',
-		names:     ['na.omit'],
-		dataFrame: { pos: 0, name: 'object' }
+		type:       'transformation',
+		names:      ['na.omit'],
+		library:    'stats',
+		returnType: DataFrameType.DataFrame,
+		dataFrame:  { pos: 0, name: 'object' }
 	}, {
-		type:      'transformation',
-		names:     ['aggregate', 'unique', 't'],
-		dataFrame: { pos: 0, name: 'x' }
+		type:       'transformation',
+		names:      ['unique', 't'],
+		library:    'base',
+		returnType: DataFrameType.DataFrame,
+		dataFrame:  { pos: 0, name: 'x' }
 	}, {
-		type:      'transformation',
-		names:     ['with', 'within', 'reshape'],
-		dataFrame: { pos: 0, name: 'data' }
+		type:       'transformation',
+		names:      ['aggregate'],
+		library:    'stats',
+		returnType: DataFrameType.DataFrame,
+		dataFrame:  { pos: 0, name: 'x' }
 	}, {
-		type:      'transformation',
-		names:     ['melt'],
-		library:   'reshape2',
-		dataFrame: { pos: 0, name: 'data' }
+		type:       'transformation',
+		names:      ['with', 'within'],
+		library:    'base',
+		returnType: DataFrameType.DataFrame,
+		dataFrame:  { pos: 0, name: 'data' }
+	}, {
+		type:       'transformation',
+		names:      ['reshape'],
+		library:    'stats',
+		returnType: DataFrameType.DataFrame,
+		dataFrame:  { pos: 0, name: 'data' }
+	}, {
+		type:       'transformation',
+		names:      ['melt'],
+		library:    'reshape2',
+		returnType: DataFrameType.DataFrame,
+		dataFrame:  { pos: 0, name: 'data' }
 	}, {
 		type:  'transformation',
 		names: [
 			'transmute', 'distinct', 'distinct_prepare', 'group_by_prepare', 'rename', 'rename_with', 'reframe',
 			'slice', 'slice_head', 'slice_tail', 'slice_min', 'slice_max', 'slice_sample'
 		],
-		library:   'dplyr',
-		dataFrame: { pos: 0, name: '.data' }
+		library:    'dplyr',
+		returnType: DataFrameType.DataFrame,
+		dataFrame:  { pos: 0, name: '.data' }
 	}, {
 		type:  'transformation',
 		names: [
@@ -156,20 +181,23 @@ const UnsupportedDataFrameFunctions = [
 			'ungroup', 'count', 'tally', 'add_count', 'add_tally',
 			'rows_insert', 'rows_append', 'rows_update', 'rows_patch', 'rows_upsert', 'rows_delete'
 		],
-		library:   'dplyr',
-		dataFrame: { pos: 0, name: 'x' }
+		library:    'dplyr',
+		returnType: DataFrameType.DataFrame,
+		dataFrame:  { pos: 0, name: 'x' }
 	}, {
-		type:    'transformation',
-		names:   ['bind_cols', 'bind_rows'],
-		library: 'dplyr'
+		type:       'transformation',
+		names:      ['bind_cols', 'bind_rows'],
+		library:    'dplyr',
+		returnType: DataFrameType.DataFrame
 	}, {
 		type:  'transformation',
 		names: [
 			'drop_na', 'replace_na', 'pivot_longer', 'pivot_wider',
 			'separate', 'separate_wider_position', 'separate_wider_delim', 'unite'
 		],
-		library:   'tidyr',
-		dataFrame: { pos: 0, name: 'data' }
+		library:    'tidyr',
+		returnType: DataFrameType.DataFrame,
+		dataFrame:  { pos: 0, name: 'data' }
 	}, {
 		type:       'transformation',
 		names:      ['add_column', 'add_row', 'add_case'],
@@ -183,7 +211,7 @@ const UnsupportedDataFrameFunctions = [
 		returnType: DataFrameType.DataTable,
 		dataFrame:  { pos: 0, name: 'data' }
 	}
-] as const satisfies UnsupportedDataFrameFunctionMapping[];
+] as const satisfies OtherDataFrameFunctionMapping[];
 
 /**
  * Mapper for defining the location of all relevant function parameters for each supported data frame function of {@link DataFrameFunctionMapper}.
@@ -501,38 +529,38 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 };
 
 interface DataFrameFunctionMapperInfo<Params extends object> {
-	readonly mapper:      DataFrameFunctionMapping<Params>;
-	readonly library?:    string;
-	readonly returnType?: Exclude<DataFrameType, DataFrameType.DataFrame>;
+	readonly mapper:     DataFrameFunctionMapping<Params>;
+	readonly library:    string;
+	readonly returnType: DataFrameType;
 }
 
-interface UnsupportedDataFrameFunctionBase {
-	readonly type:        string;
-	readonly names:       string[];
-	readonly library?:    string;
-	readonly returnType?: Exclude<DataFrameType, DataFrameType.DataFrame>;
+interface OtherDataFrameFunctionBase {
+	readonly type:       string;
+	readonly names:      readonly string[];
+	readonly library:    string;
+	readonly returnType: DataFrameType;
 }
 
-/** Data frame functions that are not explicitly supported but return data frames */
-interface UnsupportedDataFrameEntryPoint extends UnsupportedDataFrameFunctionBase {
+/** Other data frame functions that are not explicitly supported but return data frames */
+interface OtherDataFrameEntryPoint extends OtherDataFrameFunctionBase {
 	readonly type: 'entry_point';
 }
 
-/** Data frame transformations that are not explicitly supported but return data frames if an argument is a data frame */
-interface UnsupportedDataFrameTransformation extends UnsupportedDataFrameFunctionBase, Readonly<Parameters<typeof mapDataFrameUnknown>[1]> {
+/** Other data frame transformations that are not explicitly supported but return data frames if an argument is a data frame */
+interface OtherDataFrameTransformation extends OtherDataFrameFunctionBase, Readonly<Parameters<typeof mapDataFrameUnknown>[1]> {
 	readonly type:       'transformation';
 	readonly dataFrame?: FunctionParameterLocation;
 }
 
-/** Data frame functions that are not explicitly supported but modify data frames arguments in place */
-interface UnsupportedDataFrameModification extends UnsupportedDataFrameFunctionBase, Readonly<Parameters<typeof mapDataFrameUnknown>[1]> {
+/** Other data frame functions that are not explicitly supported but modify data frames arguments in place */
+interface OtherDataFrameModification extends OtherDataFrameFunctionBase, Readonly<Parameters<typeof mapDataFrameUnknown>[1]> {
 	readonly type:           'modification';
 	readonly constraintType: ConstraintType.OperandModification;
 	readonly dataFrame:      FunctionParameterLocation;
 }
 
-/** Data frame functions that are not explicitly supported but may return data frames */
-type UnsupportedDataFrameFunctionMapping = UnsupportedDataFrameEntryPoint | UnsupportedDataFrameTransformation | UnsupportedDataFrameModification;
+/** Other data frame functions that are not explicitly supported but may return data frames */
+type OtherDataFrameFunctionMapping = OtherDataFrameEntryPoint | OtherDataFrameTransformation | OtherDataFrameModification;
 
 /**
  * Data frame function mapper for mapping a concrete data frame function to abstract data frame operations.
@@ -545,7 +573,7 @@ type DataFrameFunctionMapping<Params extends object> = (
     args: readonly RFunctionArgument<ParentInformation>[],
 	params: Params,
     info: ResolveInfo,
-	config?: FlowrConfigOptions
+	config: FlowrConfigOptions
 ) => DataFrameOperation[] | undefined;
 
 /** All currently supported data frame functions */
@@ -567,38 +595,43 @@ type DataFrameFunctionParamsMapping = {
  *
  * @param node   - The R node of the function call
  * @param dfg    - The data flow graph for resolving the arguments
- * @param config - The flowr configuration to use
+ * @param config - The flowR configuration to use
  * @returns Data frame expression info containing the mapped abstract data frame operations, or `undefined` if the node does not represent a data frame function call
  */
 export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 	node: RNode<ParentInformation>,
 	dfg: DataflowGraph,
-	config: FlowrConfigOptions = defaultConfigOptions
+	config: FlowrConfigOptions
 ): DataFrameExpressionInfo | undefined {
+	if(node.type !== RType.FunctionCall || !node.named) {
+		return;
+	}
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
 	let operations: DataFrameOperation[] | undefined;
 
-	if(node.type === RType.FunctionCall && node.named) {
-		if(isDataFrameFunction(node.functionName.content)) {
-			const functionName = node.functionName.content as Name;
-			const mapper = DataFrameFunctionMapper[functionName].mapper as DataFrameFunctionMapping<DataFrameFunctionParams<Name>>;
-			const params = DataFrameFunctionParamsMapper[functionName] as DataFrameFunctionParams<Name> & { critical?: FunctionParameterLocation<unknown>[] };
-			const args = getFunctionArguments(node, dfg);
+	if(isDataFrameFunction(node.functionName.content)) {
+		const functionName = node.functionName.content as Name;
+		const mapper = DataFrameFunctionMapper[functionName].mapper as DataFrameFunctionMapping<DataFrameFunctionParams<Name>>;
+		const params = DataFrameFunctionParamsMapper[functionName] as DataFrameFunctionParams<Name> & { critical?: FunctionParameterLocation<unknown>[] };
+		const args = getFunctionArguments(node, dfg);
 
-			if(hasCriticalArgument(args, params.critical, resolveInfo)) {
-				operations = [{ operation: 'unknown', operand: undefined }];
-			} else {
-				operations = mapper(args, params, resolveInfo, config);
-			}
+		if(hasCriticalArgument(args, params.critical, resolveInfo)) {
+			operations = [{ operation: 'unknown', operand: undefined }];
 		} else {
-			const mapping = getUnsupportedDataFrameFunction(node.functionName.content);
+			operations = mapper(args, params, resolveInfo, config);
+		}
+	} else {
+		const mapping = getOtherDataFrameFunction(node.functionName.content);
 
-			if(mapping?.type === 'entry_point') {
-				operations = [{ operation: 'unknown', operand: undefined }];
-			} else if(mapping?.type === 'transformation' || mapping?.type === 'modification') {
-				const args = getFunctionArguments(node, dfg);
-				operations = mapDataFrameUnknown(args, mapping, resolveInfo);
-			}
+		if(mapping === undefined) {
+			return;
+		} else if(mapping.type === 'entry_point') {
+			operations = [{ operation: 'unknown', operand: undefined }];
+		} else if(mapping.type === 'transformation' || mapping.type === 'modification') {
+			const args = getFunctionArguments(node, dfg);
+			operations = mapDataFrameUnknown(args, mapping, resolveInfo);
+		} else {
+			assertUnreachable(mapping);
 		}
 	}
 	if(operations !== undefined) {
@@ -611,8 +644,8 @@ function isDataFrameFunction(functionName: string): functionName is DataFrameFun
 	return Object.prototype.hasOwnProperty.call(DataFrameFunctionMapper, functionName);
 }
 
-function getUnsupportedDataFrameFunction(functionName: string): UnsupportedDataFrameFunctionMapping | undefined {
-	return UnsupportedDataFrameFunctions.find(entry => entry.names.includes(functionName as never));
+function getOtherDataFrameFunction(functionName: string): OtherDataFrameFunctionMapping | undefined {
+	return OtherDataFrameFunctions.find(entry => entry.names.includes(functionName as never));
 }
 
 function mapDataFrameCreate(
@@ -681,7 +714,7 @@ function mapDataFrameRead(
 		noEmptyNames?: boolean
 	},
 	info: ResolveInfo,
-	config: FlowrConfigOptions = defaultConfigOptions
+	config: FlowrConfigOptions
 ): DataFrameOperation[] {
 	const fileNameArg = getFunctionArgument(args, params.fileName, info);
 	const textArg = params.text ? getFunctionArgument(args, params.text, info) : undefined;
@@ -1316,7 +1349,7 @@ function getRequestFromRead(
 	textArg: RFunctionArgument<ParentInformation> | undefined,
 	params: DataFrameFunctionParams<'read.table'>,
 	info: ResolveInfo,
-	config: FlowrConfigOptions = defaultConfigOptions
+	config: FlowrConfigOptions
 ) {
 	let source: string | undefined;
 	let request: RParseRequest | undefined;

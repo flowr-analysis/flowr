@@ -1,6 +1,5 @@
 import type { FlowrConfigOptions } from '../../config';
-import { defaultConfigOptions } from '../../config';
-import { type ControlFlowInformation, isMarkerVertex } from '../../control-flow/control-flow-graph';
+import { type ControlFlowInformation, getVertexRootId } from '../../control-flow/control-flow-graph';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
@@ -29,12 +28,12 @@ export function inferDataFrameShapes(
 	cfinfo: ControlFlowInformation,
 	dfg: DataflowGraph,
 	ast: NormalizedAst<ParentInformation & AbstractInterpretationInfo>,
-	config: FlowrConfigOptions = defaultConfigOptions
+	config: FlowrConfigOptions
 ): DataFrameStateDomain {
 	const visitor = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, flowrConfig: config });
 	visitor.start();
 	const exitPoints = cfinfo.exitPoints.map(id => cfinfo.graph.getVertex(id)).filter(isNotUndefined);
-	const exitNodes = exitPoints.map(vertex => ast.idMap.get(isMarkerVertex(vertex) ? vertex.root : vertex.id)).filter(isNotUndefined);
+	const exitNodes = exitPoints.map(vertex => ast.idMap.get(getVertexRootId(vertex))).filter(isNotUndefined);
 	const result = exitNodes.map(node => node.info.dataFrame?.domain ?? new Map<NodeId, DataFrameDomain>());
 
 	return joinDataFrameStates(...result);

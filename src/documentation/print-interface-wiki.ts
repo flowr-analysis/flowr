@@ -234,7 +234,7 @@ ${codeBlock('json', JSON.stringify(
 					wideningThreshold: 4,
 					readLoadedData:    {
 						readExternalFiles: true,
-						maxReadLines:      10_000_000
+						maxReadLines:      1_000_000
 					}
 				}
 			}

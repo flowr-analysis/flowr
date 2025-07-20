@@ -80,7 +80,8 @@ export function resolveAsVector(resolve: VariableResolve, node: RNodeWithParent,
 	if(node.type !== RType.FunctionCall) {
 		return Top;
 	}
-	const values = node.arguments.map(arg => arg !== EmptyArgument ? resolveIdToValue(arg.value, { environment, graph, idMap, full: true, resolve }) : Top);
+	const resolveInfo = { environment, graph, idMap, full: true, resolve };
+	const values = node.arguments.map(arg => arg !== EmptyArgument ? resolveIdToValue(arg.value, resolveInfo) : Top);
 
 	return vectorFrom(flattenVectorElements(values));
 }
@@ -103,13 +104,44 @@ export function resolveAsSeq(resolve: VariableResolve, operator: RNodeWithParent
 	if(operator.type !== RType.BinaryOp) {
 		return Top;
 	}
-	const leftArg = resolveIdToValue(operator.lhs, { environment, graph, idMap, full: true, resolve });
-	const rightArg = resolveIdToValue(operator.rhs, { environment, graph, idMap, full: true, resolve });
+	const resolveInfo = { environment, graph, idMap, full: true, resolve };
+	const leftArg = resolveIdToValue(operator.lhs, resolveInfo);
+	const rightArg = resolveIdToValue(operator.rhs, resolveInfo);
 	const leftValue = unliftRValue(leftArg);
 	const rightValue = unliftRValue(rightArg);
 
 	if(isRNumberValue(leftValue) && isRNumberValue(rightValue)) {
 		return vectorFrom(createNumberSequence(leftValue, rightValue).map(liftScalar));
+	}
+	return Top;
+}
+
+/**
+ * Helper function used by {@link resolveIdToValue}, please use that instead, if
+ * you want to resolve the value of an identifier / node
+ *
+ * This function resolves a unary plus operator `+` to a {@link ValueNumber} or {@link ValueVector} of ValueNumbers
+ * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
+ *
+ * @param resolve  - Variable resolve mode
+ * @param operator - Node of the plus operator to resolve
+ * @param env      - Environment to use
+ * @param graph    - Dataflow graph
+ * @param map      - Id map of the dataflow graph
+ * @returns ValueNumber, ValueVector of ValueNumbers, or Top
+ */
+export function resolveAsPlus(resolve: VariableResolve, operator: RNodeWithParent, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueNumber | ValueVector<Lift<ValueNumber[]>> | typeof Top {
+	if(operator.type !== RType.UnaryOp) {
+		return Top;
+	}
+	const resolveInfo = { environment, graph, idMap, full: true, resolve };
+	const arg = resolveIdToValue(operator.operand, resolveInfo);
+	const argValue = unliftRValue(arg);
+
+	if(isRNumberValue(argValue)) {
+		return liftScalar(argValue);
+	} else if(Array.isArray(argValue) && argValue.every(isRNumberValue)) {
+		return vectorFrom(argValue.map(liftScalar));
 	}
 	return Top;
 }
@@ -132,7 +164,8 @@ export function resolveAsMinus(resolve: VariableResolve, operator: RNodeWithPare
 	if(operator.type !== RType.UnaryOp) {
 		return Top;
 	}
-	const arg = resolveIdToValue(operator.operand, { environment, graph, idMap, full: true, resolve });
+	const resolveInfo = { environment, graph, idMap, full: true, resolve };
+	const arg = resolveIdToValue(operator.operand, resolveInfo);
 	const argValue = unliftRValue(arg);
 
 	if(isRNumberValue(argValue)) {

@@ -13,6 +13,7 @@ import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import type { AbstractInterpretationInfo } from '../absint-info';
 import { resolveIdToDataFrameShape } from '../shape-inference';
 import { resolveIdToArgName, resolveIdToArgValue, unquoteArgument } from '../resolve-args';
+import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 
 /** Regular expression representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
@@ -23,7 +24,7 @@ const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
  * - `name` optionally contains the name of the function parameter
  * - `default` optionally contains the default value of the function parameter
  */
-export interface FunctionParameterLocation<T = undefined> {
+export interface FunctionParameterLocation<T = never> {
     pos:      number,
     name?:    string
     default?: T
@@ -156,7 +157,7 @@ export function getFunctionArguments(
 }
 
 /**
- * Gets all nested symbols in an expression that have no outgouing edges in the data flow graph.
+ * Gets all nested symbols in an expression that have no outgoing edges in the data flow graph.
  * @param expression - The expression to get the symbols from
  * @param dfg        - The data flow graph for checking the outgoing edges
  * @returns The name of all unresolved symbols in the expression
@@ -168,30 +169,18 @@ export function getUnresolvedSymbolsInExpression(
 	if(expression === undefined || expression === EmptyArgument || dfg === undefined) {
 		return [];
 	}
-	switch(expression.type) {
-		case RType.ExpressionList:
-			return [...expression.children.flatMap(child => getUnresolvedSymbolsInExpression(child, dfg))];
-		case RType.FunctionCall:
-			return [...expression.arguments.flatMap(arg => getUnresolvedSymbolsInExpression(arg, dfg))];
-		case RType.UnaryOp:
-			return [...getUnresolvedSymbolsInExpression(expression.operand, dfg)];
-		case RType.BinaryOp:
-			return [...getUnresolvedSymbolsInExpression(expression.lhs, dfg), ...getUnresolvedSymbolsInExpression(expression.rhs, dfg)];
-		case RType.Access:
-			return [...getUnresolvedSymbolsInExpression(expression.accessed, dfg), ...expression.access.flatMap(arg => getUnresolvedSymbolsInExpression(arg, dfg))];
-		case RType.Pipe:
-			return [...getUnresolvedSymbolsInExpression(expression.lhs, dfg), ...getUnresolvedSymbolsInExpression(expression.rhs, dfg)];
-		case RType.Argument:
-			return [...getUnresolvedSymbolsInExpression(expression.value, dfg)];
-		case RType.Symbol:
-			if(isUseVertex(dfg.getVertex(expression.info.id)) && (dfg.outgoingEdges(expression.info.id)?.size ?? 0) === 0) {
-				return [unquoteArgument(expression.content)];
-			} else {
-				return [];
+	const unresolvedSymbols: string[] = [];
+
+	visitAst(expression, node => {
+		if(node.type === RType.Symbol) {
+			const vertex = dfg.get(node.info.id);
+
+			if(isUseVertex(vertex?.[0]) && vertex[1].size === 0) {
+				unresolvedSymbols.push(unquoteArgument(node.content));
 			}
-		default:
-			return [];
-	}
+		}
+	});
+	return unresolvedSymbols;
 }
 
 /**

@@ -36,6 +36,10 @@ import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 
 let sourceProvider = requestProviderFromFile();
 
+export function getSourceProvider(): RParseRequestProvider {
+	return sourceProvider;
+}
+
 export function setSourceProvider(provider: RParseRequestProvider): void {
 	sourceProvider = provider;
 }

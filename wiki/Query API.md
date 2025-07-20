@@ -31,6 +31,8 @@ For now, we support the following **active** queries (which we will refer to sim
     Calculates and returns all the clusters present in the dataflow graph.
 1. [Dataflow Query](#dataflow-query) (`dataflow`):\
     Returns the dataflow graph of the given code.
+1. [Dataframe Shape Inference Query](#dataframe-shape-inference-query) (`df-shape`):\
+    Returns the shapes inferred for all dataframes in the code.
 1. [Dependencies Query](#dependencies-query) (`dependencies`):\
     Returns all direct dependencies (in- and outputs) of a given R script
 1. [Happens-Before Query](#happens-before-query) (`happens-before`):\
@@ -156,6 +158,11 @@ Valid item types:
                 - **type** string [required]
                     _The type of the query._
                     Allows only the values: 'dataflow-lens'
+            - **.** object 
+                _Retrieve information on the dataframe shapes_
+                - **type** string [required]
+                    _The type of the query._
+                    Allows only the values: 'df-shape'
             - **.** object 
                 _The id map query retrieves the id map from the normalized AST._
                 - **type** string [required]
@@ -2553,6 +2560,258 @@ flowchart LR
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Dataflow Query query is `executeDataflowQuery` in [`./src/queries/catalog/dataflow-query/dataflow-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/dataflow-query/dataflow-query-executor.ts).
+
+</details>  
+
+
+-----
+
+
+### Dataframe Shape Inference Query
+
+
+This query infers all shapes of dataframes within the code. For example, you can use:
+
+
+
+```json
+[ { "type": "df-shape" } ]
+```
+
+
+(This query can be shortened to `@df-shape` when used within the REPL command <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span>).
+
+
+
+_Results (prettified and summarized):_
+
+Query: **df-shape** (2 ms)\
+&nbsp;&nbsp;&nbsp;╰ 7: {"colnames":["a"],"cols":[1,1],"rows":[3,3]}\
+&nbsp;&nbsp;&nbsp;╰ 0: {"colnames":["a"],"cols":[1,1],"rows":[3,3]}\
+&nbsp;&nbsp;&nbsp;╰ 8: {"colnames":["a"],"cols":[1,1],"rows":[3,3]}\
+&nbsp;&nbsp;&nbsp;╰ 10: {"colnames":["a"],"cols":[1,1],"rows":[3,3]}\
+&nbsp;&nbsp;&nbsp;╰ 11: {"colnames":["a"],"cols":[1,1],"rows":[3,3]}\
+&nbsp;&nbsp;&nbsp;╰ 14: {"colnames":["a"],"cols":[1,1],"rows":[0,0]}\
+_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
+
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+
+The analysis required _2.43 ms_ (including parsing and normalization and the query) within the generation environment.
+
+In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
+Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+
+
+
+
+```json
+{
+  "df-shape": {
+    ".meta": {
+      "timing": 2
+    },
+    "domains": [
+      [
+        7,
+        {
+          "colnames": [
+            "a"
+          ],
+          "cols": [
+            1,
+            1
+          ],
+          "rows": [
+            3,
+            3
+          ]
+        }
+      ],
+      [
+        0,
+        {
+          "colnames": [
+            "a"
+          ],
+          "cols": [
+            1,
+            1
+          ],
+          "rows": [
+            3,
+            3
+          ]
+        }
+      ],
+      [
+        8,
+        {
+          "colnames": [
+            "a"
+          ],
+          "cols": [
+            1,
+            1
+          ],
+          "rows": [
+            3,
+            3
+          ]
+        }
+      ],
+      [
+        10,
+        {
+          "colnames": [
+            "a"
+          ],
+          "cols": [
+            1,
+            1
+          ],
+          "rows": [
+            3,
+            3
+          ]
+        }
+      ],
+      [
+        11,
+        {
+          "colnames": [
+            "a"
+          ],
+          "cols": [
+            1,
+            1
+          ],
+          "rows": [
+            3,
+            3
+          ]
+        }
+      ],
+      [
+        14,
+        {
+          "colnames": [
+            "a"
+          ],
+          "cols": [
+            1,
+            1
+          ],
+          "rows": [
+            0,
+            0
+          ]
+        }
+      ]
+    ]
+  },
+  ".meta": {
+    "timing": 2
+  }
+}
+```
+
+
+
+</details>
+
+
+<details> <summary style="color:gray">Original Code</summary>
+
+
+
+
+```r
+x <- data.frame(a=1:3)
+filter(x, FALSE)
+```
+
+<details>
+
+<summary style="color:gray">Dataflow Graph of the R Code</summary>
+
+The analysis required _1.04 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+We encountered no unknown side effects during the analysis.
+
+
+
+```mermaid
+flowchart LR
+    3{{"`#91;RNumber#93; 1
+      (3)
+      *1.19*`"}}
+    4{{"`#91;RNumber#93; 3
+      (4)
+      *1.21*`"}}
+    5[["`#91;RBinaryOp#93; #58;
+      (5)
+      *1.19-21*
+    (3, 4)`"]]
+    6(["`#91;RArgument#93; a
+      (6)
+      *1.17*`"])
+    7[["`#91;RFunctionCall#93; data.frame
+      (7)
+      *1.6-22*
+    (a (6))`"]]
+    0["`#91;RSymbol#93; x
+      (0)
+      *1.1*`"]
+    8[["`#91;RBinaryOp#93; #60;#45;
+      (8)
+      *1.1-22*
+    (0, 7)`"]]
+    10(["`#91;RSymbol#93; x
+      (10)
+      *2.8*`"])
+    12{{"`#91;RLogical#93; FALSE
+      (12)
+      *2.11-15*`"}}
+    %% Environment of 14 [level: 0]:
+    %% Built-in
+    %% 539----------------------------------------
+    %%   x: {**x** (id: 0, type: Unknown, def. @8)}
+    14[["`#91;RFunctionCall#93; filter
+      (14)
+      *2.1-16*
+    (10, 12)`"]]
+    5 -->|"reads, argument"| 3
+    5 -->|"reads, argument"| 4
+    6 -->|"reads"| 5
+    7 -->|"reads, argument"| 6
+    0 -->|"defined-by"| 7
+    0 -->|"defined-by"| 8
+    8 -->|"argument"| 7
+    8 -->|"returns, argument"| 0
+    10 -->|"reads"| 0
+    14 -->|"reads, argument"| 10
+    14 -->|"argument"| 12
+```
+
+
+
+
+</details>
+
+
+
+</details>
+
+
+
+
+
+
+
+<details>
+
+<summary style="color:gray">Implementation Details</summary>
+
+Responsible for the execution of the Dataframe Shape Inference Query query is `executeDfShapeQuery` in [`./src/queries/catalog/df-shape-query/df-shape-query-format.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/df-shape-query/df-shape-query-format.ts).
 
 </details>	
 

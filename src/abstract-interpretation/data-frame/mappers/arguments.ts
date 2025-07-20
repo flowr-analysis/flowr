@@ -14,7 +14,7 @@ import type { AbstractInterpretationInfo } from '../absint-info';
 import { resolveIdToDataFrameShape } from '../shape-inference';
 import { resolveIdToArgName, resolveIdToArgValue, unquoteArgument } from '../resolve-args';
 
-/** Regular expresion representing valid columns names, e.g. for `data.frame` */
+/** Regular expression representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
 
 /**
@@ -37,8 +37,8 @@ export interface FunctionParameterLocation<T = undefined> {
  * @returns The escaped text
  */
 export function escapeRegExp(text: string, allowTokens: boolean = false): string {
-	if(allowTokens) {
-		return text.replace(/[.*+?^${}()|[\]]/g, '\\$&');
+	if(allowTokens) {  // only allow and keep the tokens `\s`, `\t`, and `\n` in the text
+		return text.replace(/[.*+?^${}()|[\]]|\\[^stn]/g, '\\$&');
 	} else {
 		return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	}

@@ -9,8 +9,8 @@ import type { DataflowGraph } from '../../graph/graph';
 import { getOriginInDfg, OriginType } from '../../origin/dfg-get-origin';
 import { intervalFrom } from '../values/intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
-import type { Value, ValueNumber, ValueVector } from '../values/r-value';
-import { isTop, Top } from '../values/r-value';
+import type { Lift, Value, ValueNumber, ValueVector } from '../values/r-value';
+import { Top } from '../values/r-value';
 import { stringFrom } from '../values/string/string-constants';
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
 import { resolveIdToValue } from './alias-tracking';
@@ -66,50 +66,21 @@ export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, env?: 
  * Helper function used by {@link resolveIdToValue}, please use that instead, if
  * you want to resolve the value of an identifier / node
  *
- * This function converts an RNode to a Value Vector {@link vectorFrom}
- * It also recursively resolves any symbols, values, function calls (only c), in
- * order to construct the value of the vector to resolve by calling {@link resolveIdToValue}
- * or {@link resolveNode}
+ * This function resolves a vector function call `c` to a {@link ValueVector}
+ * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
  *
- * @param a       - Node of the vector to resolve
- * @param env     - Environment to use
  * @param resolve - Variable resolve mode
+ * @param node    - Node of the vector function to resolve
+ * @param env     - Environment to use
  * @param graph   - Dataflow graph
- * @param map     - Idmap of Dataflow Graph
+ * @param map     - Id map of the dataflow graph
  * @returns ValueVector or Top
  */
-export function resolveAsVector(resolve: VariableResolve, a: RNodeWithParent, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap): Value {
-	if(a.type !== RType.FunctionCall) {
+export function resolveAsVector(resolve: VariableResolve, node: RNodeWithParent, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueVector<Lift<Value[]>> | typeof Top {
+	if(node.type !== RType.FunctionCall) {
 		return Top;
 	}
-
-	const values: Value[] = [];
-	for(const arg of a.arguments) {
-		if(arg === EmptyArgument) {
-			continue;
-		}
-		
-		if(arg.value === undefined) {
-			return Top;
-		}
-
-
-		if(arg.value.type === RType.Symbol) {
-			const value = resolveIdToValue(arg.info.id, { environment: env, idMap: map, graph: graph, full: true, resolve });
-			if(isTop(value)) {
-				return Top;
-			}
-
-			values.push(value);
-		} else {
-			const val = resolveNode(resolve, arg.value, env, graph, map);
-			if(isTop(val)) {
-				return Top;
-			}
-
-			values.push(val);
-		}
-	}
+	const values = node.arguments.map(arg => arg !== EmptyArgument ? resolveIdToValue(arg.value, { environment, graph, idMap, full: true, resolve }) : Top);
 
 	return vectorFrom(flattenVectorElements(values));
 }
@@ -118,17 +89,17 @@ export function resolveAsVector(resolve: VariableResolve, a: RNodeWithParent, en
  * Helper function used by {@link resolveIdToValue}, please use that instead, if
  * you want to resolve the value of an identifier / node
  *
- * This function resolves a {@link Value} Vector for the binary sequence operator `:`
- * by recursively resolving the values of the arguments
+ * This function resolves a binary sequence operator `:` to a {@link ValueVector} of {@link ValueNumber}s
+ * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
  *
  * @param resolve  - Variable resolve mode
  * @param operator - Node of the sequence operator to resolve
  * @param env      - Environment to use
  * @param graph    - Dataflow graph
  * @param map      - Id map of the dataflow graph
- * @returns ValueVector or Top
+ * @returns ValueVector of ValueNumbers or Top
  */
-export function resolveAsSeq(resolve: VariableResolve, operator: RNodeWithParent, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueVector<ValueNumber[]> | typeof Top {
+export function resolveAsSeq(resolve: VariableResolve, operator: RNodeWithParent, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueVector<Lift<ValueNumber[]>> | typeof Top {
 	if(operator.type !== RType.BinaryOp) {
 		return Top;
 	}
@@ -143,7 +114,21 @@ export function resolveAsSeq(resolve: VariableResolve, operator: RNodeWithParent
 	return Top;
 }
 
-export function resolveAsMinus(resolve: VariableResolve, operator: RNodeWithParent, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueNumber | ValueVector<ValueNumber[]> | typeof Top {
+/**
+ * Helper function used by {@link resolveIdToValue}, please use that instead, if
+ * you want to resolve the value of an identifier / node
+ *
+ * This function resolves a unary minus operator `-` to a {@link ValueNumber} or {@link ValueVector} of ValueNumbers
+ * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
+ *
+ * @param resolve  - Variable resolve mode
+ * @param operator - Node of the minus operator to resolve
+ * @param env      - Environment to use
+ * @param graph    - Dataflow graph
+ * @param map      - Id map of the dataflow graph
+ * @returns ValueNumber, ValueVector of ValueNumbers, or Top
+ */
+export function resolveAsMinus(resolve: VariableResolve, operator: RNodeWithParent, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueNumber | ValueVector<Lift<ValueNumber[]>> | typeof Top {
 	if(operator.type !== RType.UnaryOp) {
 		return Top;
 	}

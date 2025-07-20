@@ -102,6 +102,10 @@ export function writeTableAsCsv(table: Table, file: string, sep = ',', newline =
  * See {@link readLineByLineSync} for a synchronous version.
  */
 export async function readLineByLine(filePath: string, onLine: (line: Buffer, lineNumber: number) => Promise<void>, maxLines: number = Infinity): Promise<boolean> {
+	if(!(await fs.promises.stat(filePath).catch(() => {}))?.isFile()) {
+		log.warn(`File ${filePath} does not exist`);
+		return false;
+	}
 	const reader = new LineByLine(filePath);
 
 	let line: false | Buffer;
@@ -127,7 +131,7 @@ export async function readLineByLine(filePath: string, onLine: (line: Buffer, li
  * See {@link readLineByLine} for an asynchronous version.
  */
 export function readLineByLineSync(filePath: string, onLine: (line: Buffer, lineNumber: number) => void, maxLines: number = Infinity): boolean {
-	if(!fs.existsSync(filePath)) {
+	if(!fs.statSync(filePath, { throwIfNoEntry: false })?.isFile()) {
 		log.warn(`File ${filePath} does not exist`);
 		return false;
 	}

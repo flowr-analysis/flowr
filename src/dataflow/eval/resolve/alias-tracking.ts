@@ -310,8 +310,6 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
 export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: AstIdMap): ResolveResult {
 	idMap ??= graph.idMap;
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
-	const start = graph.getVertex(id);
-	guard(start !== undefined, 'Unable to find start for alias tracking');
 
 	const queue = new VisitingQueue(25);
 	const clean = initializeCleanEnvironments();

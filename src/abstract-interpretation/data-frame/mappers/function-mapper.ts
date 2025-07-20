@@ -14,9 +14,10 @@ import { requestFromInput } from '../../../r-bridge/retriever';
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../util/assert';
 import { readLineByLineSync } from '../../../util/files';
 import type { DataFrameExpressionInfo, DataFrameOperation } from '../absint-info';
-import { resolveIdToDataFrameShape } from '../shape-inference';
 import { DataFrameTop } from '../domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from '../resolve-args';
+import type { ConstraintType } from '../semantics';
+import { resolveIdToDataFrameShape } from '../shape-inference';
 import type { FunctionParameterLocation } from './arguments';
 import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isNamedArgument, isRNull } from './arguments';
 
@@ -41,11 +42,11 @@ const DataFrameFunctionMapper = {
 	'read.csv2':     { mapper: mapDataFrameRead },
 	'read.delim':    { mapper: mapDataFrameRead },
 	'read.delim2':   { mapper: mapDataFrameRead },
-	'read_table':    { mapper: mapDataFrameRead, library: 'readr', type: DataFrameType.Tibble },
-	'read_csv':      { mapper: mapDataFrameRead, library: 'readr', type: DataFrameType.Tibble },
-	'read_csv2':     { mapper: mapDataFrameRead, library: 'readr', type: DataFrameType.Tibble },
-	'read_tsv':      { mapper: mapDataFrameRead, library: 'readr', type: DataFrameType.Tibble },
-	'read_delim':    { mapper: mapDataFrameRead, library: 'readr', type: DataFrameType.Tibble },
+	'read_table':    { mapper: mapDataFrameRead, library: 'readr', returnType: DataFrameType.Tibble },
+	'read_csv':      { mapper: mapDataFrameRead, library: 'readr', returnType: DataFrameType.Tibble },
+	'read_csv2':     { mapper: mapDataFrameRead, library: 'readr', returnType: DataFrameType.Tibble },
+	'read_tsv':      { mapper: mapDataFrameRead, library: 'readr', returnType: DataFrameType.Tibble },
+	'read_delim':    { mapper: mapDataFrameRead, library: 'readr', returnType: DataFrameType.Tibble },
 	'cbind':         { mapper: mapDataFrameColBind },
 	'rbind':         { mapper: mapDataFrameRowBind },
 	'head':          { mapper: mapDataFrameHeadTail },
@@ -55,7 +56,7 @@ const DataFrameFunctionMapper = {
 	'select':        { mapper: mapDataFrameSelect, library: 'dplyr' },
 	'mutate':        { mapper: mapDataFrameMutate, library: 'dplyr' },
 	'transform':     { mapper: mapDataFrameMutate },
-	'group_by':      { mapper: mapDataFrameGroupBy, library: 'dplyr', type: DataFrameType.Tibble },
+	'group_by':      { mapper: mapDataFrameGroupBy, library: 'dplyr', returnType: DataFrameType.Tibble },
 	'summarise':     { mapper: mapDataFrameSummarize, library: 'dplyr' },
 	'summarize':     { mapper: mapDataFrameSummarize, library: 'dplyr' },
 	'inner_join':    { mapper: mapDataFrameJoin, library: 'dplyr' },
@@ -66,6 +67,123 @@ const DataFrameFunctionMapper = {
 	'relocate':      { mapper: mapDataFrameIdentity, library: 'dplyr' },
 	'arrange':       { mapper: mapDataFrameIdentity, library: 'dplyr' }
 } as const satisfies Record<string, DataFrameFunctionMapperInfo<never>>;
+
+/**
+ * List of data frame functions that are not explicitly supported but may return data frames.
+ */
+const UnsupportedDataFrameFunctions = [
+	{
+		type:  'entry_point',
+		names: ['anova', 'AIC', 'BIC']
+	}, {
+		type:    'entry_point',
+		names:   ['Anova', 'Manova'],
+		library: 'car'
+	}, {
+		type:    'entry_point',
+		names:   ['lmer'],
+		library: 'lme4'
+	}, {
+		type:    'entry_point',
+		names:   ['data_frame', 'as_data_frame'],
+		library: 'dplyr'
+	}, {
+		type:       'entry_point',
+		names:      ['tbl', 'as.tbl'],
+		library:    'dplyr',
+		returnType: DataFrameType.Tibble
+	}, {
+		type:       'entry_point',
+		names:      ['read_fwf', 'read_log'],
+		library:    'readr',
+		returnType: DataFrameType.Tibble
+	}, {
+		type:       'entry_point',
+		names:      ['read_excel', 'read_xls', 'read_xlsx'],
+		library:    'readxl',
+		returnType: DataFrameType.Tibble
+	}, {
+		type:       'entry_point',
+		names:      ['tibble', 'tibble_row', 'as_tibble', 'tribble'],
+		library:    'tibble',
+		returnType: DataFrameType.Tibble
+	}, {
+		type:       'entry_point',
+		names:      ['data.table', 'as.data.table', 'fread'],
+		library:    'data.table',
+		returnType: DataFrameType.DataTable
+	}, {
+		type:      'transformation',
+		names:     ['na.omit'],
+		dataFrame: { pos: 0, name: 'object' }
+	}, {
+		type:      'transformation',
+		names:     ['aggregate', 'unique', 't'],
+		dataFrame: { pos: 0, name: 'x' }
+	}, {
+		type:      'transformation',
+		names:     ['with', 'within', 'reshape'],
+		dataFrame: { pos: 0, name: 'data' }
+	}, {
+		type:      'transformation',
+		names:     ['melt'],
+		library:   'reshape2',
+		dataFrame: { pos: 0, name: 'data' }
+	}, {
+		type:  'transformation',
+		names: [
+			'transmute', 'distinct', 'distinct_prepare', 'group_by_prepare', 'rename', 'rename_with', 'reframe',
+			'slice', 'slice_head', 'slice_tail', 'slice_min', 'slice_max', 'slice_sample'
+		],
+		library:   'dplyr',
+		dataFrame: { pos: 0, name: '.data' }
+	}, {
+		type:  'transformation',
+		names: [
+			'filter_if', 'filter_at', 'filter_all', 'select_if', 'select_at', 'select_all',
+			'mutate_if', 'mutate_at', 'mutate_all', 'transmute_if', 'transmute_at', 'transmute_all',
+			'distinct_if', 'distinct_at', 'distinct_all', 'group_by_if', 'group_by_at', 'group_by_all',
+			'summarize_if', 'summarise_if', 'summarize_at', 'summarise_at', 'summarize_all', 'summarise_all',
+			'arrange_if', 'arrange_at', 'arrange_all', 'rename_if', 'rename_at', 'rename_all'
+		],
+		library:    'dplyr',
+		returnType: DataFrameType.Tibble,
+		dataFrame:  { pos: 0, name: '.tbl' }
+	}, {
+		type:  'transformation',
+		names: [
+			'semi_join', 'anti_join', 'nest_join', 'cross_join',
+			'ungroup', 'count', 'tally', 'add_count', 'add_tally',
+			'rows_insert', 'rows_append', 'rows_update', 'rows_patch', 'rows_upsert', 'rows_delete'
+		],
+		library:   'dplyr',
+		dataFrame: { pos: 0, name: 'x' }
+	}, {
+		type:    'transformation',
+		names:   ['bind_cols', 'bind_rows'],
+		library: 'dplyr'
+	}, {
+		type:  'transformation',
+		names: [
+			'drop_na', 'replace_na', 'pivot_longer', 'pivot_wider',
+			'separate', 'separate_wider_position', 'separate_wider_delim', 'unite'
+		],
+		library:   'tidyr',
+		dataFrame: { pos: 0, name: 'data' }
+	}, {
+		type:       'transformation',
+		names:      ['add_column', 'add_row', 'add_case'],
+		library:    'tibble',
+		returnType: DataFrameType.Tibble,
+		dataFrame:  { pos: 0, name: '.data' }
+	}, {
+		type:       'transformation',
+		names:      ['melt', 'dcast'],
+		library:    'data.table',
+		returnType: DataFrameType.DataTable,
+		dataFrame:  { pos: 0, name: 'data' }
+	}
+] as const satisfies UnsupportedDataFrameFunctionMapping[];
 
 /**
  * Mapper for defining the location of all relevant function parameters for each supported data frame function of {@link DataFrameFunctionMapper}.
@@ -372,9 +490,9 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 		]
 	},
 	'relocate': {
-		dataFrame:      { pos: 0, name: '.data' },
-		special:        ['.before', '.after'],
-		allowNamedArgs: false
+		dataFrame:         { pos: 0, name: '.data' },
+		special:           ['.before', '.after'],
+		disallowNamedArgs: true
 	},
 	'arrange': {
 		dataFrame: { pos: 0, name: '.data' },
@@ -382,11 +500,39 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 	}
 };
 
-type DataFrameFunctionMapperInfo<Params extends object> = {
-	readonly mapper:   DataFrameFunctionMapping<Params>,
-	readonly library?: string,
-	readonly type?:    Exclude<DataFrameType, DataFrameType.DataFrame>
-};
+interface DataFrameFunctionMapperInfo<Params extends object> {
+	readonly mapper:      DataFrameFunctionMapping<Params>;
+	readonly library?:    string;
+	readonly returnType?: Exclude<DataFrameType, DataFrameType.DataFrame>;
+}
+
+interface UnsupportedDataFrameFunctionBase {
+	readonly type:        string;
+	readonly names:       string[];
+	readonly library?:    string;
+	readonly returnType?: Exclude<DataFrameType, DataFrameType.DataFrame>;
+}
+
+/** Data frame functions that are not explicitly supported but return data frames */
+interface UnsupportedDataFrameEntryPoint extends UnsupportedDataFrameFunctionBase {
+	readonly type: 'entry_point';
+}
+
+/** Data frame transformations that are not explicitly supported but return data frames if an argument is a data frame */
+interface UnsupportedDataFrameTransformation extends UnsupportedDataFrameFunctionBase, Readonly<Parameters<typeof mapDataFrameUnknown>[1]> {
+	readonly type:       'transformation';
+	readonly dataFrame?: FunctionParameterLocation;
+}
+
+/** Data frame functions that are not explicitly supported but modify data frames arguments in place */
+interface UnsupportedDataFrameModification extends UnsupportedDataFrameFunctionBase, Readonly<Parameters<typeof mapDataFrameUnknown>[1]> {
+	readonly type:           'modification';
+	readonly constraintType: ConstraintType.OperandModification;
+	readonly dataFrame:      FunctionParameterLocation;
+}
+
+/** Data frame functions that are not explicitly supported but may return data frames */
+type UnsupportedDataFrameFunctionMapping = UnsupportedDataFrameEntryPoint | UnsupportedDataFrameTransformation | UnsupportedDataFrameModification;
 
 /**
  * Data frame function mapper for mapping a concrete data frame function to abstract data frame operations.
@@ -429,29 +575,44 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 	dfg: DataflowGraph,
 	config: FlowrConfigOptions = defaultConfigOptions
 ): DataFrameExpressionInfo | undefined {
-	if(node.type === RType.FunctionCall && node.named && isDataFrameFunction(node.functionName.content)) {
-		const functionName = node.functionName.content as Name;
-		const mapper = DataFrameFunctionMapper[functionName].mapper as DataFrameFunctionMapping<DataFrameFunctionParams<Name>>;
-		const params = DataFrameFunctionParamsMapper[functionName] as DataFrameFunctionParams<Name>;
-		const args = getFunctionArguments(node, dfg);
-		const critical = (params as { critical?: FunctionParameterLocation<unknown>[] }).critical;
-		const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
-		let operations: DataFrameOperation[] | undefined;
+	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
+	let operations: DataFrameOperation[] | undefined;
 
-		if(hasCriticalArgument(args, critical, resolveInfo)) {
-			operations = [{ operation: 'unknown', operand: undefined }];
+	if(node.type === RType.FunctionCall && node.named) {
+		if(isDataFrameFunction(node.functionName.content)) {
+			const functionName = node.functionName.content as Name;
+			const mapper = DataFrameFunctionMapper[functionName].mapper as DataFrameFunctionMapping<DataFrameFunctionParams<Name>>;
+			const params = DataFrameFunctionParamsMapper[functionName] as DataFrameFunctionParams<Name> & { critical?: FunctionParameterLocation<unknown>[] };
+			const args = getFunctionArguments(node, dfg);
+
+			if(hasCriticalArgument(args, params.critical, resolveInfo)) {
+				operations = [{ operation: 'unknown', operand: undefined }];
+			} else {
+				operations = mapper(args, params, resolveInfo, config);
+			}
 		} else {
-			operations = mapper(args, params, resolveInfo, config);
+			const mapping = getUnsupportedDataFrameFunction(node.functionName.content);
+
+			if(mapping?.type === 'entry_point') {
+				operations = [{ operation: 'unknown', operand: undefined }];
+			} else if(mapping?.type === 'transformation' || mapping?.type === 'modification') {
+				const args = getFunctionArguments(node, dfg);
+				operations = mapDataFrameUnknown(args, mapping, resolveInfo);
+			}
 		}
-		if(operations !== undefined) {
-			return { type: 'expression', operations: operations };
-		}
+	}
+	if(operations !== undefined) {
+		return { type: 'expression', operations };
 	}
 }
 
 function isDataFrameFunction(functionName: string): functionName is DataFrameFunction {
 	// a check with `functionName in DataFrameFunctionMapper` would return true for "toString"
 	return Object.prototype.hasOwnProperty.call(DataFrameFunctionMapper, functionName);
+}
+
+function getUnsupportedDataFrameFunction(functionName: string): UnsupportedDataFrameFunctionMapping | undefined {
+	return UnsupportedDataFrameFunctions.find(entry => entry.names.includes(functionName as never));
 }
 
 function mapDataFrameCreate(
@@ -470,19 +631,22 @@ function mapDataFrameCreate(
 	const argNames = args.map(arg => resolveIdToArgName(arg, info));
 	const argLengths = args.map(arg => resolveIdToArgVectorLength(arg, info));
 	const allVectors = argLengths.every(isNotUndefined);
+	const rows = allVectors ? Math.max(...argLengths, 0) : undefined;
 	let colnames: (string | undefined)[] | undefined = argNames;
 
 	// over-approximate the column names if arguments are present but cannot be resolved to values
-	if(typeof checkNames !== 'boolean' || typeof noDupNames !== 'boolean') {
+	if(!allVectors || typeof checkNames !== 'boolean' || typeof noDupNames !== 'boolean') {
 		colnames = undefined;
+	} else if(rows === 0) {
+		colnames = [];
 	} else {
 		colnames = filterValidNames(colnames, checkNames, noDupNames);
 	}
 	return [{
 		operation: 'create',
 		operand:   undefined,
-		colnames:  allVectors ? colnames : undefined,
-		rows:      allVectors ? Math.max(...argLengths, 0) : undefined
+		colnames,
+		rows
 	}];
 }
 
@@ -574,7 +738,7 @@ function mapDataFrameRead(
 		operand:   undefined,
 		source,
 		colnames,
-		rows:      allLines ? rowCount : undefined
+		rows:      allLines ? rowCount : [rowCount, Infinity]
 	}];
 }
 
@@ -1100,7 +1264,11 @@ function mapDataFrameJoin(
 
 function mapDataFrameIdentity(
 	args: readonly RFunctionArgument<ParentInformation>[],
-	params: { dataFrame: FunctionParameterLocation, special: string[], allowNamedArgs?: boolean },
+	params: {
+		dataFrame:          FunctionParameterLocation,
+		special:            string[],
+		disallowNamedArgs?: boolean
+	},
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	args = getEffectiveArgs(args, params.special);
@@ -1108,12 +1276,38 @@ function mapDataFrameIdentity(
 
 	if(!isDataFrameArgument(dataFrame, info)) {
 		return;
-	} else if(!params.allowNamedArgs && args.some(isNamedArgument)) {
+	} else if(params.disallowNamedArgs && args.some(isNamedArgument)) {
 		return [{ operation: 'unknown', operand: dataFrame.value.info.id }];
 	}
 	return [{
 		operation: 'identity',
 		operand:   dataFrame.value.info.id
+	}];
+}
+
+function mapDataFrameUnknown(
+	args: readonly RFunctionArgument<ParentInformation>[],
+	params: {
+		dataFrame?:      FunctionParameterLocation,
+		constraintType?: Exclude<ConstraintType, ConstraintType.OperandPrecondition>
+	},
+	info: ResolveInfo
+): DataFrameOperation[] | undefined {
+	let dataFrame;
+
+	if(params.dataFrame !== undefined) {
+		dataFrame = getFunctionArgument(args, params.dataFrame, info);
+	} else {
+		dataFrame = args.find(arg => isDataFrameArgument(arg ,info));
+	}
+
+	if(!isDataFrameArgument(dataFrame, info)) {
+		return;
+	}
+	return [{
+		operation: 'identity',
+		operand:   dataFrame.value.info.id,
+		...(params.constraintType !== undefined ? { type: params.constraintType } : {})
 	}];
 }
 
@@ -1133,7 +1327,7 @@ function getRequestFromRead(
 		if(typeof fileName === 'string') {
 			source = fileName;
 			const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
-			const sources = findSource(config.solver.resolveSource, fileName, { referenceChain: referenceChain });
+			const sources = findSource(config.solver.resolveSource, fileName, { referenceChain });
 
 			if(sources?.length === 1) {
 				source = sources[0];

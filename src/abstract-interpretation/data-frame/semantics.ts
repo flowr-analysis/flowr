@@ -1,6 +1,6 @@
 import { assertUnreachable, isNotUndefined } from '../../util/assert';
 import type { DataFrameDomain, IntervalDomain } from './domain';
-import { addInterval, ColNamesTop, DataFrameTop, extendIntervalToInfinity, extendIntervalToZero, IntervalBottom, IntervalTop, joinColNames, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
+import { addInterval, ColNamesTop, DataFrameTop, extendIntervalToInfinity, extendIntervalToZero, IntervalBottom, IntervalTop, joinColNames, joinInterval, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
 
 /**
  * Represents the different types of resulting constraints that are inferred by abstract data frame operations.
@@ -102,20 +102,20 @@ export function getConstraintType(operation: DataFrameOperationName): Constraint
 
 function applyCreateSemantics(
 	value: DataFrameDomain,
-	{ colnames, rows }: { colnames: (string | undefined)[] | undefined, rows: number | undefined }
+	{ colnames, rows }: { colnames: (string | undefined)[] | undefined, rows: number | [number, number] | undefined }
 ): DataFrameDomain {
 	const cols = colnames?.length;
 
 	return {
 		colnames: colnames?.every(isNotUndefined) ? colnames : ColNamesTop,
 		cols:     cols !== undefined ? [cols, cols] : IntervalTop,
-		rows:     rows !== undefined ? [rows, rows] : IntervalTop
+		rows:     Array.isArray(rows) ? rows : typeof rows === 'number' ? [rows, rows] : IntervalTop
 	};
 }
 
 function applyReadSemantics(
 	value: DataFrameDomain,
-	{ colnames, rows }: { source: string | undefined, colnames: (string | undefined)[] | undefined, rows: number | undefined }
+	{ colnames, rows }: { source: string | undefined, colnames: (string | undefined)[] | undefined, rows: number | [number, number] | undefined }
 ): DataFrameDomain {
 	return applyCreateSemantics(value, { colnames, rows });
 }
@@ -205,7 +205,7 @@ function applySetColNamesSemantics(
 		};
 	}
 	const cols = colnames?.length;
-	const allColNames = value.cols != IntervalBottom && cols !== undefined && cols >= value.cols[1];
+	const allColNames = value.cols !== IntervalBottom && cols !== undefined && cols >= value.cols[1];
 
 	return {
 		...value,
@@ -289,6 +289,14 @@ function applyConcatRowsSemantics(
 	value: DataFrameDomain,
 	{ other }: { other: DataFrameDomain }
 ): DataFrameDomain {
+	if(value.cols !== IntervalBottom && value.cols[0] === 0) {
+		return {
+			...value,
+			colnames: joinColNames(value.colnames, other.colnames),
+			cols:     joinInterval(value.cols, other.cols),
+			rows:     addInterval(value.rows, other.rows)
+		};
+	}
 	return {
 		...value,
 		rows: addInterval(value.rows, other.rows)

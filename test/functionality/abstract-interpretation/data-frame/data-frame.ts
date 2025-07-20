@@ -326,17 +326,13 @@ function createCodeForOutput(
 	symbol: string
 ): string {
 	const marker = getOutputMarker(criterion);
-	return `cat(sprintf("${marker} %s,[%s],%s,%s\\n", is.data.frame(${symbol}), paste(names(${symbol}), collapse = ";"), paste(ncol(${symbol}), collapse = ""), paste(nrow(${symbol}), collapse = "")))`;
+	return `cat(sprintf("${marker} %s,%s,%s,%s\\n", is.data.frame(${symbol}), paste(names(${symbol}), collapse = ";"), paste(ncol(${symbol}), collapse = ""), paste(nrow(${symbol}), collapse = "")))`;
 }
 
 function getDefaultTestOptions(expected: DataFrameDomain | undefined, options?: Partial<DataFrameTestOptions>): Partial<DataFrameTestOptions> {
-	let finalOptions: Partial<DataFrameTestOptions> = { ...options };
+	const finalOptions: Partial<DataFrameTestOptions> = { ...options };
 
-	if(expected === undefined) {
-		if(options === undefined) {
-			finalOptions = DataFrameShapeOverapproximation;
-		}
-	} else {
+	if(expected !== undefined) {
 		if(options?.colnames === undefined && expected.colnames === ColNamesTop) {
 			finalOptions.colnames = DomainMatchingType.Overapproximation;
 		}
@@ -405,7 +401,7 @@ function getRealDomainFromOutput(
 	if(line === undefined) {
 		throw new Error(`cannot parse output of instrumented code for ${criterion}`);
 	}
-	const OutputRegex = /^(TRUE|FALSE),\[(.*)\],(\w*),(\w*)$/;
+	const OutputRegex = /^(TRUE|FALSE),(.*),(\w*),(\w*)$/;
 	const result = line.match(OutputRegex);
 
 	if(result?.length === 5) {

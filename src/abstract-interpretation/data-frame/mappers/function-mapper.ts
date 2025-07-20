@@ -582,11 +582,10 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 		if(isDataFrameFunction(node.functionName.content)) {
 			const functionName = node.functionName.content as Name;
 			const mapper = DataFrameFunctionMapper[functionName].mapper as DataFrameFunctionMapping<DataFrameFunctionParams<Name>>;
-			const params = DataFrameFunctionParamsMapper[functionName] as DataFrameFunctionParams<Name>;
+			const params = DataFrameFunctionParamsMapper[functionName] as DataFrameFunctionParams<Name> & { critical?: FunctionParameterLocation<unknown>[] };
 			const args = getFunctionArguments(node, dfg);
-			const critical = (params as { critical?: FunctionParameterLocation<unknown>[] }).critical;
 
-			if(hasCriticalArgument(args, critical, resolveInfo)) {
+			if(hasCriticalArgument(args, params.critical, resolveInfo)) {
 				operations = [{ operation: 'unknown', operand: undefined }];
 			} else {
 				operations = mapper(args, params, resolveInfo, config);

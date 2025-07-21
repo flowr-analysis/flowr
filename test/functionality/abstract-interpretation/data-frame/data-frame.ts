@@ -189,7 +189,7 @@ export function assertDataFrameDomain(
 
 	beforeAll(async() => {
 		if(!skipTestBecauseConfigNotMet(config)) {
-			result = await createDataflowPipeline(parser, {request: requestFromInput(code)}, flowRConfig).allRemainingSteps();
+			result = await createDataflowPipeline(parser, { request: requestFromInput(code) }, flowRConfig).allRemainingSteps();
 		}
 	});
 

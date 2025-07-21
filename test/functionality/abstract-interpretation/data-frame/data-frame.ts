@@ -163,7 +163,7 @@ export function testDataFrameDomainWithSource(
 	const { parser = shell, name, skipRun = false } = config ?? {};
 	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getDefaultTestOptions(expected, options)]);
 	guardValidCriteria(criteria);
-	assertDataFrameDomain(parser, getCode(fileArg), criteria.map(entry => [entry[0], entry[1]]), name ?? getCode(fileArg), flowRConfig);
+	assertDataFrameDomain(parser, getCode(fileArg), criteria.map(entry => [entry[0], entry[1]]), name ?? getCode(fileArg), config, flowRConfig);
 	testDataFrameDomain(shell, getCode(textArg), criteria, { skipRun, parser, name: name ?? getCode(textArg) }, flowRConfig);
 }
 
@@ -188,7 +188,9 @@ export function assertDataFrameDomain(
 	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
 
 	beforeAll(async() => {
-		result = await createDataflowPipeline(parser, { request: requestFromInput(code) }, flowRConfig).allRemainingSteps();
+		if(!skipTestBecauseConfigNotMet(config)) {
+			result = await createDataflowPipeline(parser, {request: requestFromInput(code)}, flowRConfig).allRemainingSteps();
+		}
 	});
 
 	test.skipIf(skipTestBecauseConfigNotMet(config)).each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {

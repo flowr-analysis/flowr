@@ -4,7 +4,10 @@ import { setSourceProvider } from '../../../../src/dataflow/internal/process/fun
 import { requestProviderFromFile, requestProviderFromText } from '../../../../src/r-bridge/retriever';
 import { withShell } from '../../_helper/shell';
 import { assertDataFrameDomain, assertDataFrameOperation, ColNamesOverapproximation, DataFrameShapeOverapproximation, testDataFrameDomain, testDataFrameDomainAgainstReal, testDataFrameDomainWithSource } from './data-frame';
-import { MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
+import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
+
+/** The minimum version required for calling `head` and `tail` with a vector argument, e.g. `head(df, c(1, 2))` */
+export const MIN_VERSION_HEAD_TAIL_VECTOR = '4.0.0';
 
 describe.sequential('Data Frame Shape Inference', withShell(shell => {
 	let librariesInstalled = false;
@@ -1536,7 +1539,8 @@ df <- data.frame(id = 1:3, name = 4:6)
 df$name <- null()
 print(df)
 				`.trim(),
-				[['4@df', DataFrameShapeOverapproximation]]
+				[['4@df', DataFrameShapeOverapproximation]],
+				{ minRVersion: MIN_VERSION_LAMBDA }
 			);
 
 			testDataFrameDomainAgainstReal(
@@ -1547,7 +1551,8 @@ df <- data.frame(id = 1:3, name = 4:6)
 df["name"] <- null()
 print(df)
 				`.trim(),
-				[['4@df', DataFrameShapeOverapproximation]]
+				[['4@df', DataFrameShapeOverapproximation]],
+				{ minRVersion: MIN_VERSION_LAMBDA }
 			);
 
 			testDataFrameDomainAgainstReal(
@@ -1558,7 +1563,8 @@ df <- data.frame(id = 1:3, name = 4:6)
 df[[1]] <- null()
 print(df)
 				`.trim(),
-				[['4@df', DataFrameShapeOverapproximation]]
+				[['4@df', DataFrameShapeOverapproximation]],
+				{ minRVersion: MIN_VERSION_LAMBDA }
 			);
 		});
 	});
@@ -2097,7 +2103,8 @@ df <- head(df, c(2, 1))
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [50, 50] }],
 				['2@df', { colnames: ['id', 'name'], cols: [1, 1], rows: [2, 2] }, ColNamesOverapproximation]
-			]
+			],
+			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
 		);
 
 		testDataFrameDomain(
@@ -2121,7 +2128,8 @@ df <- head(df, n = -c(2, 1))
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [50, 50] }],
 				['2@df', { colnames: ['id', 'name'], cols: [1, 1], rows: [48, 48] }, ColNamesOverapproximation]
-			]
+			],
+			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
 		);
 
 		testDataFrameDomain(
@@ -2133,7 +2141,8 @@ df <- head(df, n = c(-2, 1))
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [50, 50] }],
 				['2@df', { colnames: ['id', 'name'], cols: [1, 1], rows: [48, 48] }, ColNamesOverapproximation]
-			]
+			],
+			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
 		);
 
 		testDataFrameDomain(
@@ -2145,7 +2154,8 @@ df <- head(df, sample(1:50, 1))
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [50, 50] }],
 				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 50] }]
-			]
+			],
+			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
 		);
 
 		testDataFrameDomain(
@@ -2205,7 +2215,8 @@ df <- tail(df, c(2, 1))
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [50, 50] }],
 				['2@df', { colnames: ['id', 'name'], cols: [1, 1], rows: [2, 2] }, ColNamesOverapproximation]
-			]
+			],
+			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
 		);
 
 		testDataFrameDomain(
@@ -2229,7 +2240,8 @@ df <- tail(df, n = -c(2, 1))
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [50, 50] }],
 				['2@df', { colnames: ['id', 'name'], cols: [1, 1], rows: [48, 48] }, ColNamesOverapproximation]
-			]
+			],
+			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
 		);
 
 		testDataFrameDomain(
@@ -2241,7 +2253,8 @@ df <- tail(df, n = c(-2, 1))
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [50, 50] }],
 				['2@df', { colnames: ['id', 'name'], cols: [1, 1], rows: [48, 48] }, ColNamesOverapproximation]
-			]
+			],
+			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
 		);
 
 		testDataFrameDomain(
@@ -2253,7 +2266,8 @@ df <- tail(df, sample(1:50, 1))
 			[
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [50, 50] }],
 				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 50] }]
-			]
+			],
+			{ minRVersion: MIN_VERSION_HEAD_TAIL_VECTOR }
 		);
 	});
 

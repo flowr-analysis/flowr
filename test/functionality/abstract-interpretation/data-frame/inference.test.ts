@@ -4,7 +4,7 @@ import { setSourceProvider } from '../../../../src/dataflow/internal/process/fun
 import { requestProviderFromFile, requestProviderFromText } from '../../../../src/r-bridge/retriever';
 import { withShell } from '../../_helper/shell';
 import { assertDataFrameDomain, assertDataFrameOperation, ColNamesOverapproximation, DataFrameShapeOverapproximation, testDataFrameDomain, testDataFrameDomainAgainstReal, testDataFrameDomainWithSource } from './data-frame';
-import {MIN_VERSION_PIPE} from "../../../../src/r-bridge/lang-4.x/ast/model/versions";
+import { MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
 
 describe.sequential('Data Frame Shape Inference', withShell(shell => {
 	let librariesInstalled = false;

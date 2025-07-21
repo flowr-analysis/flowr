@@ -132,7 +132,7 @@ export function testDataFrameDomain(
 	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getDefaultTestOptions(expected, options)]);
 	guardValidCriteria(criteria);
 	assertDataFrameDomain(parser, code, criteria.map(entry => [entry[0], entry[1]]), name, config, flowRConfig);
-	testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]), { skipRun, parser, name }, flowRConfig);
+	testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]), { ...config, skipRun, parser, name }, flowRConfig);
 }
 
 /**
@@ -164,7 +164,7 @@ export function testDataFrameDomainWithSource(
 	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getDefaultTestOptions(expected, options)]);
 	guardValidCriteria(criteria);
 	assertDataFrameDomain(parser, getCode(fileArg), criteria.map(entry => [entry[0], entry[1]]), name ?? getCode(fileArg), config, flowRConfig);
-	testDataFrameDomain(shell, getCode(textArg), criteria, { skipRun, parser, name: name ?? getCode(textArg) }, flowRConfig);
+	testDataFrameDomain(shell, getCode(textArg), criteria, { ...config, skipRun, parser, name: name ?? getCode(textArg) }, flowRConfig);
 }
 
 /**
@@ -246,7 +246,7 @@ export function assertDataFrameOperation(
 export function testDataFrameDomainAgainstReal(
 	shell: RShell,
 	code: string,
-	/** The options describe whether the inferred properties should match exacly the actual properties or can be an over-approximation (defaults to exact for all properties) */
+	/** The options describe whether the inferred properties should match exactly the actual properties or can be an over-approximation (defaults to exact for all properties) */
 	criteria: (SingleSlicingCriterion | [SingleSlicingCriterion, Partial<DataFrameTestOptions>])[],
 	config?: DataFrameDomainTestOptions,
 	flowRConfig: FlowrConfigOptions = defaultConfigOptions

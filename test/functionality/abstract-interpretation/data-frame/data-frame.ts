@@ -131,7 +131,7 @@ export function testDataFrameDomain(
 	const { parser = shell, name = code, skipRun = false } = config ?? {};
 	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getDefaultTestOptions(expected, options)]);
 	guardValidCriteria(criteria);
-	assertDataFrameDomain(parser, code, criteria.map(entry => [entry[0], entry[1]]), name, flowRConfig);
+	assertDataFrameDomain(parser, code, criteria.map(entry => [entry[0], entry[1]]), name, config, flowRConfig);
 	testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]), { skipRun, parser, name }, flowRConfig);
 }
 
@@ -170,28 +170,30 @@ export function testDataFrameDomainWithSource(
 /**
  * Asserts inferred data frame shape constraints for given slicing criteria.
  *
- * @param parser   - The parser to use for the data flow graph creation
- * @param code     - The code to test
- * @param expected - The expected data frame shape constraints for each slicing criterion
- * @param name     - An optional name or test label for the test (defaults to the code)
- * @param config   - The config to use for the test (defaults to {@link defaultConfigOptions})
+ * @param parser      - The parser to use for the data flow graph creation
+ * @param code        - The code to test
+ * @param expected    - The expected data frame shape constraints for each slicing criterion
+ * @param name        - An optional name or test label for the test (defaults to the code)
+ * @param config      - Test-specific config options
+ * @param flowRConfig - The config to use for the test (defaults to {@link defaultConfigOptions})
  */
 export function assertDataFrameDomain(
 	parser: KnownParser,
 	code: string,
 	expected: [SingleSlicingCriterion, DataFrameDomain | undefined][],
 	name: string | TestLabel = code,
-	config: FlowrConfigOptions = defaultConfigOptions
+	config?: Partial<TestConfiguration>,
+	flowRConfig: FlowrConfigOptions = defaultConfigOptions
 ) {
 	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
 
 	beforeAll(async() => {
-		result = await createDataflowPipeline(parser, { request: requestFromInput(code) }, config).allRemainingSteps();
+		result = await createDataflowPipeline(parser, { request: requestFromInput(code) }, flowRConfig).allRemainingSteps();
 	});
 
-	test.each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
+	test.skipIf(skipTestBecauseConfigNotMet(config)).each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
-		const [inferred] = getInferredDomainForCriterion(result, criterion, config);
+		const [inferred] = getInferredDomainForCriterion(result, criterion, flowRConfig);
 		assertDomainMatches(inferred, expect, DataFrameShapeExact);
 	});
 }

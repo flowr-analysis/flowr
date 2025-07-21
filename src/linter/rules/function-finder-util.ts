@@ -25,7 +25,7 @@ export interface FunctionsToDetectConfig extends MergeableRecord {
 	/**
 	 * The list of function names that should be marked in the given context.
 	 */
-	deprecatedFunctions: string[]
+	functionsToFind: string[]
 }
 
 export const FUNCTION_FINDER_UTIL = {

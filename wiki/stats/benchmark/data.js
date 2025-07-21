@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1753099073344,
+  "lastUpdate": 1753099074844,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -14681,6 +14681,123 @@ window.BENCHMARK_DATA = {
             "unit": "ms",
             "range": 13.954361338644603,
             "extra": "median: 0.93ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 12710 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8777744028063875,
+            "unit": "#",
+            "extra": "std: 0.10660809376285156"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8225385840469721,
+            "unit": "#",
+            "extra": "std: 0.15263521047510092"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 107.6742578125,
+            "unit": "KiB",
+            "range": 118.3336498681691,
+            "extra": "median: 53.09"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "9813198d1b677669d51a188fda97ca97d759d4ed",
+          "message": "[release:minor] 2.3.0 Data Frame Shape Inference",
+          "timestamp": "2025-07-21T13:30:08+02:00",
+          "tree_id": "8f32ebb30ba791261c8ed267b51f312f8f457b87",
+          "url": "https://github.com/flowr-analysis/flowr/commit/9813198d1b677669d51a188fda97ca97d759d4ed"
+        },
+        "date": 1753099074838,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 256.31918026,
+            "unit": "ms",
+            "range": 48.04986217787748,
+            "extra": "median: 234.76ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 18.88341182,
+            "unit": "ms",
+            "range": 14.544096183521296,
+            "extra": "median: 10.76ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 98.14783536,
+            "unit": "ms",
+            "range": 93.4031068187599,
+            "extra": "median: 52.60ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 2253.5739518200003,
+            "unit": "ms",
+            "range": 3699.3042186304283,
+            "extra": "median: 508.13ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": null,
+            "unit": "ms",
+            "range": null,
+            "extra": "median: NaNms"
+          },
+          {
+            "name": "Infer data frame shapes",
+            "value": null,
+            "unit": "ms",
+            "range": null,
+            "extra": "median: NaNms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 4.544352693282431,
+            "unit": "ms",
+            "range": 13.992164332373276,
+            "extra": "median: 0.72ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.29886803865803224,
+            "unit": "ms",
+            "range": 0.17190887987636033,
+            "extra": "median: 0.20ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 4.85133269418561,
+            "unit": "ms",
+            "range": 14.026187794109482,
+            "extra": "median: 0.99ms"
           },
           {
             "name": "failed to reconstruct/re-parse",

@@ -22,6 +22,7 @@ import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
 import { getRangeEnd } from '../../../../src/util/range';
 import { decorateLabelContext, type TestLabel } from '../../_helper/label';
+import {skipTestBecauseConfigNotMet, TestConfiguration} from "../../_helper/shell";
 
 /**
  * Whether the inferred values should match the actual values exactly, or should be an over-approximation of the actual values.
@@ -95,6 +96,16 @@ interface CriterionTestEntry {
 	options:    DataFrameTestOptions
 }
 
+export interface DataFrameDomainTestOptions extends Partial<TestConfiguration> {
+	/** Whether the real test with the execution of the R code should be skipped (defaults to `false`) */
+	readonly skipRun?: boolean | (() => boolean)
+	/** The parser to use for the data flow graph creation (defaults to the R shell) */
+	readonly parser?: KnownParser
+	/** An optional name or test label for the test (defaults to the code) */
+	readonly name?: string | TestLabel
+}
+
+
 /**
  * Combined test to assert the expected data frame shape constraints using {@link assertDataFrameDomain} and
  * to check the constraints against the real properties using {@link testDataFrameDomainAgainstReal} for given slicing criteria.
@@ -103,27 +114,24 @@ interface CriterionTestEntry {
  * Note that this functions inserts print statements for the shape properties in the line after each slicing criterion.
  * Make sure that this does not break the provided code.
  *
- * @param shell    - The R shell to use to run the code
- * @param code     - The code to test
- * @param criteria - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameShapeExact})
- * @param skipRun  - Whether the real test with the execution of the R code should be skipped (defaults to `false`)
- * @param parser   - The parser to use for the data flow graph creation (defaults to the R shell)
- * @param name     - An optional name or test label for the test (defaults to the code)
- * @param config   - The config to use for the test (defaults to {@link defaultConfigOptions})
+ * @param shell       - The R shell to use to run the code
+ * @param code        - The code to test
+ * @param criteria    - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameShapeExact})
+ * @param config      - Test-specific configuration options, including whether the real test should be skipped, the parser to use, and an optional name for the test (defaults to {@link DataFrameDomainTestOptions})
+ * @param flowRConfig - The flowR config to use for the test (defaults to {@link defaultConfigOptions})
  */
 export function testDataFrameDomain(
 	shell: RShell,
 	code: string,
 	criteria: ([SingleSlicingCriterion, DataFrameDomain | undefined] | [SingleSlicingCriterion, DataFrameDomain | undefined, Partial<DataFrameTestOptions>])[],
-	skipRun: boolean | (() => boolean) = false,
-	parser: KnownParser = shell,
-	name: string | TestLabel = code,
-	config: FlowrConfigOptions = defaultConfigOptions
+	config?: DataFrameDomainTestOptions,
+	flowRConfig: FlowrConfigOptions & DataFrameDomainTestOptions = defaultConfigOptions
 ) {
+	const { parser = shell, name = code, skipRun = false } = config ?? {};
 	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getDefaultTestOptions(expected, options)]);
 	guardValidCriteria(criteria);
-	assertDataFrameDomain(parser, code, criteria.map(entry => [entry[0], entry[1]]), name, config);
-	testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]), skipRun, parser, name, config);
+	assertDataFrameDomain(parser, code, criteria.map(entry => [entry[0], entry[1]]), name, flowRConfig);
+	testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]), { skipRun, parser, name }, flowRConfig);
 }
 
 /**
@@ -135,30 +143,27 @@ export function testDataFrameDomain(
  * Note that this functions inserts print statements for the shape properties in the line after each slicing criterion.
  * Make sure that this does not break the provided code.
  *
- * @param shell    - The R shell to use to run the code
- * @param fileArg  - The argument for the assert run
- * @param textArg  - The argument for the full test run where the code is executed
- * @param getCode  - The function to get the code for `fileArg` or `textArg`
- * @param criteria - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameShapeExact})
- * @param skipRun  - Whether the real test with the execution of the R code should be skipped (defaults to `false`)
- * @param parser   - The parser to use for the data flow graph creation (defaults to the R shell)
- * @param name     - An optional name or test label for the test (defaults to the code)
- * @param config   - The config to use for the test (defaults to {@link defaultConfigOptions})
+ * @param shell       - The R shell to use to run the code
+ * @param fileArg     - The argument for the assert run
+ * @param textArg     - The argument for the full test run where the code is executed
+ * @param getCode     - The function to get the code for `fileArg` or `textArg`
+ * @param criteria    - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameShapeExact})
+ * @param config      - Test-specific configuration options, including whether the real test should be skipped, the parser to use, and an optional name for the test (defaults to {@link DataFrameDomainTestOptions})
+ * @param flowRConfig - The config to use for the test (defaults to {@link defaultConfigOptions})
  */
 export function testDataFrameDomainWithSource(
 	shell: RShell,
 	fileArg: string, textArg: string,
 	getCode: (arg: string) => string,
 	criteria: ([SingleSlicingCriterion, DataFrameDomain] | [SingleSlicingCriterion, DataFrameDomain, Partial<DataFrameTestOptions>])[],
-	skipRun: boolean | (() => boolean) = false,
-	parser: KnownParser = shell,
-	name?: string | TestLabel,
-	config: FlowrConfigOptions = defaultConfigOptions
+	config?: DataFrameDomainTestOptions,
+	flowRConfig: FlowrConfigOptions = defaultConfigOptions
 ) {
+	const { parser = shell, name, skipRun = false } = config ?? {};
 	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getDefaultTestOptions(expected, options)]);
 	guardValidCriteria(criteria);
-	assertDataFrameDomain(parser, getCode(fileArg), criteria.map(entry => [entry[0], entry[1]]), name ?? getCode(fileArg), config);
-	testDataFrameDomain(shell, getCode(textArg), criteria, skipRun, parser, name ?? getCode(textArg), config);
+	assertDataFrameDomain(parser, getCode(fileArg), criteria.map(entry => [entry[0], entry[1]]), name ?? getCode(fileArg), flowRConfig);
+	testDataFrameDomain(shell, getCode(textArg), criteria, { skipRun, parser, name: name ?? getCode(textArg) }, flowRConfig);
 }
 
 /**
@@ -230,32 +235,29 @@ export function assertDataFrameOperation(
  * @param shell    - The R shell to use to run the instrumented code
  * @param code     - The code to test
  * @param criteria - The slicing criteria to test including the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameShapeExact})
- * @param skipRun  - Whether the test should be skipped (defaults to `false`)
- * @param parser   - The parser to use for the data flow graph creation (defaults to the R shell)
- * @param name     - An optional name or test label for the test (defaults to the code)
- * @param config   - The config to use for the test (defaults to {@link defaultConfigOptions})
+ * @param config      - Test-specific configuration options, including whether the real test should be skipped, the parser to use, and an optional name for the test (defaults to {@link DataFrameDomainTestOptions})
+ * @param flowRConfig   - The flowR config to use for the test (defaults to {@link defaultConfigOptions})
  */
 export function testDataFrameDomainAgainstReal(
 	shell: RShell,
 	code: string,
 	/** The options describe whether the inferred properties should match exacly the actual properties or can be an over-approximation (defaults to exact for all properties) */
 	criteria: (SingleSlicingCriterion | [SingleSlicingCriterion, Partial<DataFrameTestOptions>])[],
-	skipRun: boolean | (() => boolean) = false,
-	parser: KnownParser = shell,
-	name: string | TestLabel = code,
-	config: FlowrConfigOptions = defaultConfigOptions
+	config?: DataFrameDomainTestOptions,
+	flowRConfig: FlowrConfigOptions = defaultConfigOptions
 ) {
-	test(decorateLabelContext(name, ['absint']), async({ skip })=> {
+	const { parser = shell, name = code, skipRun = false } = config ?? {};
+	test.skipIf(skipTestBecauseConfigNotMet(config))(decorateLabelContext(name, ['absint']), async({ skip })=> {
 		if(typeof skipRun === 'boolean' ? skipRun : skipRun()) {
 			skip();
 		}
-		const result = await createDataflowPipeline(parser, { request: requestFromInput(code) }, config).allRemainingSteps();
+		const result = await createDataflowPipeline(parser, { request: requestFromInput(code) }, flowRConfig).allRemainingSteps();
 		const testEntries: CriterionTestEntry[] = [];
 
 		for(const entry of criteria) {
 			const criterion = Array.isArray(entry) ? entry[0] : entry;
 			const options = { ...DataFrameShapeExact, ...(Array.isArray(entry) ? entry[1] : {}) };
-			const [inferred, node] = getInferredDomainForCriterion(result, criterion, config);
+			const [inferred, node] = getInferredDomainForCriterion(result, criterion, flowRConfig);
 
 			if(node.type !== RType.Symbol) {
 				throw new Error(`slicing criterion ${criterion} does not refer to a R symbol`);

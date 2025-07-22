@@ -447,13 +447,30 @@ function testWrapper(skip: boolean | undefined, shouldFail: boolean, testName: s
 
 export type TestCaseFailType = 'fail-shell' | 'fail-tree-sitter' | 'fail-both' | undefined;
 
+interface TestCaseParams {
+	/** Predicate allowing the inclusion of additional normalized nodes into the slice */
+	autoSelectIf:         AutoSelectPredicate,
+	/** Disable Tree-sitter tests */
+	skipTreeSitter:       boolean,
+	/** Whether to skip AST comparison tests between the RShell and Tree-sitter (only relevant when issues are known) */
+	skipCompare:          boolean,
+	/** Which CFG properties to exclude for CFG checks */
+	cfgExcludeProperties: readonly CfgProperty[],
+	/** Denotes whether the tests should fail in all cases or only for shell or Tree-sitter tests */
+	testCaseFailType:     TestCaseFailType,
+	/** The RNode ID generator */
+	getId:                () => IdGenerator<NoInfo>,
+	/** The flowr configuration to be used for the test */
+	flowrConfig:          FlowrConfigOptions
+}
+
 export function assertSliced(
 	name: TestLabel,
 	shell: RShell,
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[], flowrConfig?: FlowrConfigOptions, testCaseFailType?: TestCaseFailType, getId?: () => IdGenerator<NoInfo> },
+	userConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams>,
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const skip = skipTestBecauseConfigNotMet(userConfig);

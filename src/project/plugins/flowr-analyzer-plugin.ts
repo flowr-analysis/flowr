@@ -6,27 +6,27 @@ import type { PathLike } from 'fs';
 export type PluginType = 'package-versions' | 'loading-order' | 'scoping' | 'file';
 
 export interface FlowrAnalyzerPluginInterface {
-    readonly name:        string;
-    readonly description: string;
-    readonly version:     SemVer;
-    readonly type:        PluginType;
-    dependencies:         FlowrAnalyzerPlugin[];
+	readonly name:        string;
+	readonly description: string;
+	readonly version:     SemVer;
+	readonly type:        PluginType;
+	dependencies:         FlowrAnalyzerPlugin[];
 
-    processor(analyzer: FlowrAnalyzer, pluginConfig: FlowrConfigOptions): Promise<void>;
+	processor(analyzer: FlowrAnalyzer, pluginConfig: FlowrConfigOptions): Promise<void>;
 }
 
 export abstract class FlowrAnalyzerPlugin implements FlowrAnalyzerPluginInterface {
 	public abstract readonly name:        string;
 	public abstract readonly description: string;
 	public abstract readonly version:     SemVer;
-    public abstract readonly type:        PluginType;
-    public abstract dependencies:         FlowrAnalyzerPlugin[];
-    public rootPath: PathLike | undefined;
+	public abstract readonly type:        PluginType;
+	public abstract dependencies:         FlowrAnalyzerPlugin[];
+	public rootPath: PathLike | undefined;
 
-    public setRootPath(rootPath: PathLike | undefined): void {
-    	this.rootPath = rootPath;
-    }
+	public setRootPath(rootPath: PathLike | undefined): void {
+		this.rootPath = rootPath;
+	}
 
-    public abstract processor(analyzer: FlowrAnalyzer, pluginConfig: FlowrConfigOptions): Promise<void>;
+	public abstract processor(analyzer: FlowrAnalyzer, pluginConfig: FlowrConfigOptions): Promise<void>;
 }
 

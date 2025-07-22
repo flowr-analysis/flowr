@@ -1,8 +1,9 @@
 import type { BuiltInMappingName, ConfigOfBuiltInMappingName } from './built-in';
-import { builtInId , BuiltInMemory, BuiltInProcessorMapper, EmptyBuiltInMemory } from './built-in';
+import { builtInId, BuiltInProcessorMapper, BuiltIns } from './built-in';
 import type { Identifier, IdentifierDefinition } from './identifier';
 import { ReferenceType } from './identifier';
 import { guard } from '../../util/assert';
+import { DefaultBuiltinConfig } from './default-builtin-config';
 
 export interface BaseBuiltInDefinition {
     /** The type of the built-in configuration */
@@ -53,7 +54,7 @@ export type BuiltInDefinition = BuiltInConstantDefinition<any> | BuiltInFunction
  */
 export type BuiltInDefinitions = BuiltInDefinition[];
 
-function registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>): void {
+function registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>, builtIns: BuiltIns): void {
 	for(const name of names) {
 		const id = builtInId(name);
 		const d: IdentifierDefinition[] = [{
@@ -64,15 +65,13 @@ function registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInCo
 			name,
 			nodeId:              id
 		}];
-		BuiltInMemory.set(name, d);
-		if(assumePrimitive) {
-			EmptyBuiltInMemory.set(name, d);
-		}
+		builtIns.set(name, d, assumePrimitive);
 	}
 }
 
 export function registerBuiltInFunctions<BuiltInProcessor extends BuiltInMappingName>(
-	{ names, processor, config, assumePrimitive }: BuiltInFunctionDefinition<BuiltInProcessor>
+	{ names, processor, config, assumePrimitive }: BuiltInFunctionDefinition<BuiltInProcessor>,
+	builtIns: BuiltIns
 ): void {
 	const mappedProcessor = BuiltInProcessorMapper[processor];
 	guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
@@ -89,16 +88,14 @@ export function registerBuiltInFunctions<BuiltInProcessor extends BuiltInMapping
 			name,
 			nodeId:              id
 		}];
-		BuiltInMemory.set(name, d);
-		if(assumePrimitive) {
-			EmptyBuiltInMemory.set(name, d);
-		}
+		builtIns.set(name, d, assumePrimitive);
 	}
 }
 
 /* registers all combinations of replacements */
 export function registerReplacementFunctions(
-	{ names, suffixes, assumePrimitive, config }: BuiltInReplacementDefinition
+	{ names, suffixes, assumePrimitive, config }: BuiltInReplacementDefinition,
+	builtIns: BuiltIns
 ): void {
 	const replacer = BuiltInProcessorMapper['builtin:replacement'];
 	guard(replacer !== undefined, () => 'Processor for builtin:replacement is undefined!');
@@ -119,27 +116,40 @@ export function registerReplacementFunctions(
 				controlDependencies: undefined,
 				nodeId:              id
 			}];
-			BuiltInMemory.set(effectiveName, d);
-			if(assumePrimitive) {
-				EmptyBuiltInMemory.set(effectiveName, d);
-			}
+			builtIns.set(effectiveName, d, assumePrimitive);
 		}
 	}
 }
 
-export function registerBuiltInDefinition(definition: BuiltInDefinition) {
+export function registerBuiltInDefinition(definition: BuiltInDefinition, builtIns: BuiltIns) {
 	switch(definition.type) {
 		case 'constant':
-			return registerBuiltInConstant(definition);
+			return registerBuiltInConstant(definition, builtIns);
 		case 'function':
-			return registerBuiltInFunctions(definition);
+			return registerBuiltInFunctions(definition, builtIns);
 		case 'replacement':
-			return registerReplacementFunctions(definition);
+			return registerReplacementFunctions(definition, builtIns);
 	}
 }
 
-export function registerBuiltInDefinitions(definitions: BuiltInDefinitions) {
-	for(const definition of definitions) {
-		registerBuiltInDefinition(definition);
+export function getDefaultBuiltInDefinitions(): BuiltIns {
+	const builtIns = new BuiltIns();
+	for(const definition of DefaultBuiltinConfig) {
+		registerBuiltInDefinition(definition, builtIns);
 	}
+	return builtIns;
+}
+
+export function getBuildInDefinitions(definitions: BuiltInDefinitions, loadDefaults: boolean | undefined): BuiltIns {
+	let builtIns = new BuiltIns();
+
+	if(loadDefaults) {
+		builtIns = getDefaultBuiltInDefinitions();
+	}
+
+	for(const definition of definitions) {
+		registerBuiltInDefinition(definition, builtIns);
+	}
+
+	return builtIns;
 }

@@ -6,11 +6,12 @@
  */
 import type { Identifier, IdentifierDefinition, IdentifierReference } from './identifier';
 import { ReferenceType } from './identifier';
-import { BuiltInMemory, EmptyBuiltInMemory } from './built-in';
 import type { DataflowGraph } from '../graph/graph';
 import { resolveByName } from './resolve-by-name';
 import type { ControlDependency } from '../info';
 import { jsonReplacer } from '../../util/json';
+import { getDefaultBuiltInDefinitions } from './built-in-config';
+import type { BuiltInMemory } from './built-in';
 
 /**
  * Marks the reference as maybe (i.e., as controlled by a set of {@link IdentifierReference#controlDependencies|control dependencies}).
@@ -65,7 +66,7 @@ let environmentIdCounter = 0;
 export class Environment implements IEnvironment {
 	readonly id = environmentIdCounter++;
 	parent: IEnvironment;
-	memory: Map<Identifier, IdentifierDefinition[]>;
+	memory: BuiltInMemory;
 
 	constructor(parent: IEnvironment) {
 		this.parent = parent;
@@ -136,8 +137,8 @@ export const EmptyBuiltInEnvironment: IEnvironment = {
  */
 export function initializeCleanEnvironments(fullBuiltIns = true): REnvironmentInformation {
 	if(BuiltInEnvironment.memory === undefined) {
-		BuiltInEnvironment.memory = BuiltInMemory;
-		EmptyBuiltInEnvironment.memory = EmptyBuiltInMemory;
+		BuiltInEnvironment.memory = getDefaultBuiltInDefinitions().builtInMemory;
+		EmptyBuiltInEnvironment.memory = getDefaultBuiltInDefinitions().emptyBuiltInMemory;
 	}
 	return {
 		current: new Environment(fullBuiltIns ? BuiltInEnvironment : EmptyBuiltInEnvironment),

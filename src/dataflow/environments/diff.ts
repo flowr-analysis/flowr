@@ -5,7 +5,6 @@ import { builtInEnvJsonReplacer } from './environment';
 import { jsonReplacer } from '../../util/json';
 import type { IdentifierReference } from './identifier';
 import { diffControlDependencies } from '../info';
-import { BuiltInMemory, EmptyBuiltInMemory } from './built-in';
 
 export function diffIdentifierReferences<Report extends WriteableDifferenceReport>(a: IdentifierReference | undefined, b: IdentifierReference | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
@@ -62,10 +61,11 @@ export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEn
 		}
 		return;
 	}
-	if((a.memory === BuiltInMemory || a.memory === EmptyBuiltInMemory) &&
-		(b.memory === BuiltInMemory || b.memory === EmptyBuiltInMemory)) {
-		return;
-	}
+	// TODO TSchoeller: Should we re-enable this optimization?
+	//if((a.memory === BuiltInMemory || a.memory === EmptyBuiltInMemory) &&
+	//	(b.memory === BuiltInMemory || b.memory === EmptyBuiltInMemory)) {
+	//	return;
+	//}
 	if(a.memory.size !== b.memory.size) {
 		info.report.addComment(`${info.position}[at level: ${depth}] Different number of definitions in environment. ${info.leftname}: ${a.memory.size} vs. ${info.rightname}: ${b.memory.size}`);
 		setDifference(new Set([...a.memory.keys()]), new Set([...b.memory.keys()]), {

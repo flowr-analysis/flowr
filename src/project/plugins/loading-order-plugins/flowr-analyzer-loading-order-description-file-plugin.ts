@@ -20,8 +20,6 @@ export class FlowrAnalyzerLoadingOrderDescriptionFilePlugin extends FlowrAnalyze
 
 		this.loadingOrder = this.descriptionFile?.get('Collate')?.slice() || [];
 
-		console.log(analyzer);
-		console.log(pluginConfig);
 		return Promise.resolve(undefined);
 	}
 }

@@ -23,8 +23,6 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 		this.retrieveVersionsFromField('Depends', 'r');
 		this.retrieveVersionsFromField('Imports', 'package');
 
-		console.log(analyzer);
-		console.log(pluginConfig);
 		return Promise.resolve(undefined);
 	}
 

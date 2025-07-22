@@ -5,7 +5,6 @@ import type { FlowrConfigOptions } from '../../../config';
 import type  { FlowrAnalyzerPlugin } from '../flowr-analyzer-plugin';
 import { readLineByLine } from '../../../util/files';
 import type { PathLike } from 'fs';
-import * as console from 'node:console';
 
 export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-description-file-plugin';
@@ -14,16 +13,13 @@ export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin 
 	public readonly dependencies: FlowrAnalyzerPlugin[] = [];
 	public readonly information:  Map<string, string[]> = new Map<string, string[]>();
 
-	public async processor(analyzer: FlowrAnalyzer, pluginConfig: FlowrConfigOptions): Promise<void> {
+	public async processor(_analyzer: FlowrAnalyzer, _pluginConfig: FlowrConfigOptions): Promise<void> {
 		for(const file of this.files) {
 			const parsedDescriptionFile = await this.parseDescription(file);
 			for(const [key, values] of parsedDescriptionFile) {
 				this.information.set(key, values);
 			}
 		}
-
-		console.log(analyzer);
-		console.log(pluginConfig);
 	}
 
 	private async parseDescription(file: PathLike): Promise<Map<string, string[]>> {
@@ -31,6 +27,7 @@ export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin 
 		let currentKey = '';
 		let currentValue = '';
 
+		// eslint-disable-next-line @typescript-eslint/require-await
 		await readLineByLine(file.toString(), async(lineBuf) => {
 			const line = lineBuf.toString();
 

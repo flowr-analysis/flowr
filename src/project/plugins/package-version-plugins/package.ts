@@ -1,18 +1,15 @@
 import { Range } from 'semver';
 
-type PackageType = 'package' | 'system' | 'r';
+export type PackageType = 'package' | 'system' | 'r';
 
 export class Package {
-	public name:          string;
+	public name?:         string;
 	public version?:      Range;
+	public type?:         PackageType;
 	public dependencies?: Package[];
-	public type:          PackageType;
 
-	public constructor(name: string, type: PackageType, version: Range | undefined,	dependencies?: Package[]) {
-		this.name = name;
-		this.type = type;
-		this.version = version;
-		this.dependencies = dependencies;
+	constructor(name?: string, version?: Range, type?: PackageType, dependencies?: Package[]) {
+		this.addInfo(name, version, type, dependencies);
 	}
 
 	public addInfo(name?: string, versionConstraint?: Range, type?: PackageType, dependencies?: Package[]): void {

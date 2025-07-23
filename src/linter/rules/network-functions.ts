@@ -17,7 +17,7 @@ export const NETWORK_FUNCTIONS = {
 		tags:          [LintingRuleTag.Deprecated, LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
 		description:   'Marks functions that are related to network operations and should be used with caution.',
 		defaultConfig: {
-			functionsToFind: []
-		}
+			functionsToFind: ['read.table', 'read.csv', 'read.csv2', 'read.delim', 'read.delim2', 'readRDS', 'download.file', 'url', 'httr::GET', 'httr::POST', 'httr::PUT', 'httr::DELETE', 'httr::PATCH', 'httr::HEAD', 'httr::content', 'httr::handle', 'httr::get_callback','httr::VERB', 'fread', 'gzcon']
+		}						
 	}
 } as const satisfies LintingRule<FunctionsResult, FunctionsMetadata, FunctionsToDetectConfig>;

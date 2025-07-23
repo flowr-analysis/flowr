@@ -1338,7 +1338,7 @@ function mapDataFrameUnknown(
 		return;
 	}
 	return [{
-		operation: 'identity',
+		operation: 'unknown',
 		operand:   dataFrame.value.info.id,
 		...(params.constraintType !== undefined ? { type: params.constraintType } : {})
 	}];

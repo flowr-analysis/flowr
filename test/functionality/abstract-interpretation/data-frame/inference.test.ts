@@ -4711,6 +4711,43 @@ df <- dplyr::arrange(df, desc(score))
 		);
 	});
 
+	describe('Other', () => {
+		testDataFrameDomain(
+			shell,
+			'df <- dplyr::tibble(id = 1:5, age = c(25, 32, 35, 40, 45), score = c(90, 85, 88, 92, 95))',
+			[['1@df', DataFrameTop, DataFrameShapeOverapproximation]],
+			{ skipRun: skipLibraries }
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = c(1, 2, 3, 1, 3), score = c(80, 75, 90, 70, 85))
+df <- aggregate(df, list(group = df$id), mean)
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
+				['2@df', DataFrameTop, DataFrameShapeOverapproximation]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:5, score = 31:35)
+df <- within(df, {
+    name <- letters[id]
+	level <- score^2
+})
+print(df)
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
+				['6@df', DataFrameTop, DataFrameShapeOverapproximation]
+			]
+		);
+	});
+
 	describe('General', () => {
 		testDataFrameDomain(
 			shell,

@@ -12,12 +12,12 @@ export class FlowrAnalyzerBuilder {
 	private readonly request: RParseRequests;
 	private plugins:          FlowrAnalyzerPlugin[];
 
-	public amendConfig(func: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions) : this {
+	public amendConfig(func: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions): this {
 		this.flowrConfig = amendConfig(this.flowrConfig, func);
 		return this;
 	}
 
-	public setEngine(engine : EngineConfig['type']) {
+	public setEngine(engine: EngineConfig['type']) {
 		this.flowrConfig.defaultEngine = engine;
 		return this;
 	}

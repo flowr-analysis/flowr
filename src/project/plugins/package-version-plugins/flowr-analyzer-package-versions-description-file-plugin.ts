@@ -26,7 +26,7 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 		return Promise.resolve(undefined);
 	}
 
-	private retrieveVersionsFromField(field: string, type?: PackageType) : void{
+	private retrieveVersionsFromField(field: string, type?: PackageType): void{
 		for(const entry of this.descriptionFile?.get(field) || []) {
 			const match = RegExp(/^([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([\d.]+)\))?$/).exec(entry);
 

@@ -104,10 +104,12 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 
 	public enrich<E extends Enrichment>(data: FlowrSearchInput<Pipeline>, enrichment: E, args?: EnrichmentArguments<E>): this {
 		const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentArguments<E>, EnrichmentSearchContent<E>>;
-		this.enrichments = {
-			...this.enrichments ?? {},
-			[enrichment]: enrichmentData.enrichSearch?.(this as FlowrSearchElements<ParentInformation>, data, args, this.enrichments?.[enrichment])
-		};
+		if(enrichmentData.enrichSearch !== undefined) {
+			this.enrichments = {
+				...this.enrichments ?? {},
+				[enrichment]: enrichmentData.enrichSearch(this as FlowrSearchElements<ParentInformation>, data, args, this.enrichments?.[enrichment])
+			};
+		}
 		return this;
 	}
 

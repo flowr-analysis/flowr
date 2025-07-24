@@ -6,10 +6,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { formatRange } from '../../util/mermaid/dfg';
 import { LintingRuleTag } from '../linter-tags';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { visitCfgInOrder } from '../../control-flow/simple-visitor';
-import { extractSimpleCfg } from '../../control-flow/extract-cfg';
-import { cfgAnalyzeDeadCode } from '../../control-flow/cfg-dead-code';
+import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 
 export interface DeadCodeResult extends LintingResult {
 	range: SourceRange
@@ -20,22 +17,14 @@ export interface DeadCodeConfig extends MergeableRecord {
 }
 
 export const DEAD_CODE = {
-	createSearch:        (_config) => Q.all(),
-	processSearchResult: (elements, config, data) => {
-		let cfg = extractSimpleCfg(data.normalize);
-		if(config.analyzeDeadCode) {
-			cfg = cfgAnalyzeDeadCode(cfg, { ast: data.normalize, dfg: data.dataflow.graph, config: data.config });
-		}
-		const reachable = new Set<NodeId>();
-		visitCfgInOrder(cfg.graph, cfg.entryPoints, node => {
-			reachable.add(node);
-		});
+	createSearch:        (config) => Q.all().with(Enrichment.CfgInformation, { analyzeDeadCode: config.analyzeDeadCode }),
+	processSearchResult: (elements, _config, _data) => {
 		return {
 			results: combineRanges(
 				elements.getElements()
 					.filter(element => {
-						const id = element.node.info.id;
-						return !reachable.has(id);
+						const cfgInformation = enrichmentContent(element, Enrichment.CfgInformation);
+						return !cfgInformation.isReachable;
 					})
 					.map(element => element.node.info.fullRange as SourceRange))
 				.map(range => ({

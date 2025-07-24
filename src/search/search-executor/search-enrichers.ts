@@ -2,6 +2,7 @@ import type { FlowrSearchElement, FlowrSearchInput } from '../flowr-search';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { Pipeline } from '../../core/steps/pipeline/pipeline';
 import type { MergeableRecord } from '../../util/objects';
+import { deepMergeObject } from '../../util/objects';
 import { VertexType } from '../../dataflow/graph/vertex';
 import type { Identifier } from '../../dataflow/environments/identifier';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
@@ -12,7 +13,9 @@ import {
 import { guard, isNotUndefined } from '../../util/assert';
 import { extractSimpleCfg } from '../../control-flow/extract-cfg';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
-import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { cfgAnalyzeDeadCode } from '../../control-flow/cfg-dead-code';
+import { visitCfgInOrder } from '../../control-flow/simple-visitor';
 
 /**
  * A {@link FlowrSearchElement} that is enriched with a set of enrichments through {@link FlowrSearchBuilder.with}.
@@ -41,7 +44,8 @@ export type EnrichmentArguments<E extends Enrichment> = typeof Enrichments[E] ex
  */
 export enum Enrichment {
 	CallTargets = 'call-targets',
-	LastCall = 'last-call'
+	LastCall = 'last-call',
+	CfgInformation = 'cfg-information'
 }
 
 export interface CallTargetsContent extends MergeableRecord {
@@ -53,6 +57,14 @@ export interface CallTargetsContent extends MergeableRecord {
 }
 export interface LastCallContent extends MergeableRecord {
 	linkedIds: FlowrSearchElement<ParentInformation>[]
+}
+export interface CfgInformationContent extends MergeableRecord {
+	isReachable?: boolean
+}
+
+export interface CfgInformationArguments extends MergeableRecord {
+	analyzeDeadCode?: boolean
+	checkReachable?:  boolean
 }
 
 /**
@@ -126,6 +138,33 @@ export const Enrichments = {
 		},
 		mapper: ({ linkedIds }) => linkedIds
 	} satisfies EnrichmentData<LastCallContent, Omit<LinkToLastCall, 'type'>[]>,
+	[Enrichment.CfgInformation]: {
+		enrich: (e, data, args, prev) => {
+			// if args are not specified, they default to true
+			args = deepMergeObject({
+				analyzeDeadCode: true,
+				checkReachable:  true
+			}, args);
+
+			const content: CfgInformationContent = { ...prev };
+
+			// TODO this is per-element right now so exceedingly slow, we need to cache this in the search (as part of the data passed to this func?)
+			let cfg = extractSimpleCfg(data.normalize);
+			if(args.analyzeDeadCode) {
+				cfg = cfgAnalyzeDeadCode(cfg, { ast: data.normalize, dfg: data.dataflow.graph, config: data.config });
+			}
+			if(args.checkReachable) {
+				const reachable = new Set<NodeId>();
+				visitCfgInOrder(cfg.graph, cfg.entryPoints, node => {
+					reachable.add(node);
+				});
+				content.isReachable = reachable.has(e.node.info.id);
+			}
+
+			return content;
+		},
+		mapper: _ => []
+	} satisfies EnrichmentData<CfgInformationContent, CfgInformationArguments>
 } as const;
 
 /**
@@ -138,7 +177,7 @@ export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<Pa
 	return (e as EnrichedFlowrSearchElement<ParentInformation>)?.enrichments?.[enrichment] as EnrichmentContent<E>;
 }
 
-export function enrich<
+export function enrichElement<
 	ElementIn extends FlowrSearchElement<ParentInformation>,
 	ElementOut extends ElementIn & EnrichedFlowrSearchElement<ParentInformation>,
 	ConcreteEnrichment extends Enrichment>(

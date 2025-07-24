@@ -39,7 +39,7 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
-import { resolveAsVector } from '../eval/resolve/resolve';
+import { resolveAsVector, resolveAsSeq, resolveAsMinus, resolveAsPlus } from '../eval/resolve/resolve';
 import type { DataflowGraph } from '../graph/graph';
 import type { VariableResolve } from '../../config';
 
@@ -89,14 +89,14 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
 	/** record mapping the actual function name called to the arguments that should be treated as function calls */
 	readonly treatAsFnCall?:         Record<string, readonly string[]>,
-	/** Name that should be used for the origin (useful when needing to differentiate between 
-	 * functions like 'return' that use the default builtin processor) 
+	/** Name that should be used for the origin (useful when needing to differentiate between
+	 * functions like 'return' that use the default builtin processor)
 	 */
 	readonly useAsProcessor?:        UseAsProcessors
 }
 
 
-export type BuiltInEvalHandler = (resolve: VariableResolve, a: RNodeWithParent, env: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap) => Value;
+export type BuiltInEvalHandler = (resolve: VariableResolve, a: RNodeWithParent, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap) => Value;
 
 function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -215,8 +215,10 @@ export const BuiltInProcessorMapper = {
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;
 
 export const BuiltInEvalHandlerMapper = {
-	'built-in:c':     resolveAsVector,
-	'builtin:vector': resolveAsVector
+	'built-in:c': resolveAsVector,
+	'built-in::': resolveAsSeq,
+	'built-in:+': resolveAsPlus,
+	'built-in:-': resolveAsMinus
 } as const satisfies Record<string, BuiltInEvalHandler>;
 
 export type BuiltInMappingName = keyof typeof BuiltInProcessorMapper;

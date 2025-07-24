@@ -447,60 +447,76 @@ function testWrapper(skip: boolean | undefined, shouldFail: boolean, testName: s
 
 export type TestCaseFailType = 'fail-shell' | 'fail-tree-sitter' | 'fail-both' | undefined;
 
+interface TestCaseParams {
+	/** Predicate allowing the inclusion of additional normalized nodes into the slice */
+	autoSelectIf:         AutoSelectPredicate,
+	/** Disable Tree-sitter tests */
+	skipTreeSitter:       boolean,
+	/** Whether to skip AST comparison tests between the RShell and Tree-sitter (only relevant when issues are known) */
+	skipCompare:          boolean,
+	/** Which CFG properties to exclude for CFG checks */
+	cfgExcludeProperties: readonly CfgProperty[],
+	/** Denotes whether the tests should fail in all cases or only for shell or Tree-sitter tests */
+	testCaseFailType:     TestCaseFailType,
+	/** The RNode ID generator */
+	getId:                () => IdGenerator<NoInfo>,
+	/** The flowr configuration to be used for the test */
+	flowrConfig:          FlowrConfigOptions
+}
+
 export function assertSliced(
 	name: TestLabel,
 	shell: RShell,
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[], flowrConfig?: FlowrConfigOptions },
-	testCaseFailType?: TestCaseFailType,
-	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0)
+	testConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams>,
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
-	const skip = skipTestBecauseConfigNotMet(userConfig);
-	if(skip || testCaseFailType === 'fail-both') {
+	const skip = skipTestBecauseConfigNotMet(testConfig);
+	if(skip || testConfig?.testCaseFailType === 'fail-both') {
 		// drop it again because the test is not to be counted
 		dropTestLabel(name);
 	}
 	describe.skipIf(skip)(fullname, () => {
 		let shellResult: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
 		let tsResult: PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
+		const getId = testConfig?.getId ?? (() => deterministicCountingIdGenerator(0));
 		beforeAll(async() => {
 			shellResult = await new PipelineExecutor(DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE, {
 				getId:        getId(),
 				request:      requestFromInput(input),
 				parser:       shell,
 				criterion:    criteria,
-				autoSelectIf: userConfig?.autoSelectIf,
-			}, cloneConfig(userConfig?.flowrConfig ?? defaultConfigOptions)).allRemainingSteps();
-			if(!userConfig?.skipTreeSitter) {
+				autoSelectIf: testConfig?.autoSelectIf,
+			}, cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions)).allRemainingSteps();
+			if(!testConfig?.skipTreeSitter) {
 				tsResult = await new PipelineExecutor(TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE, {
 					getId:        getId(),
 					request:      requestFromInput(input),
 					parser:       new TreeSitterExecutor(),
 					criterion:    criteria,
-					autoSelectIf: userConfig?.autoSelectIf
-				}, cloneConfig(userConfig?.flowrConfig ?? defaultConfigOptions)).allRemainingSteps();
+					autoSelectIf: testConfig?.autoSelectIf
+				}, cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions)).allRemainingSteps();
 			}
 		});
 
 		testWrapper(
 			false,
-			testCaseFailType === 'fail-both' || testCaseFailType === 'fail-shell',
+			testConfig?.testCaseFailType === 'fail-both' || testConfig?.testCaseFailType === 'fail-shell',
 			'shell',
-			() => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>, testCaseFailType !== 'fail-both' && testCaseFailType !== 'fail-shell'),
+			() => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>, testConfig?.testCaseFailType !== 'fail-both' && testConfig?.testCaseFailType !== 'fail-shell'),
 		);
 
 		testWrapper(
-			userConfig?.skipTreeSitter,
-			testCaseFailType === 'fail-both' || testCaseFailType === 'fail-tree-sitter',
+			testConfig?.skipTreeSitter,
+			testConfig?.testCaseFailType === 'fail-both' || testConfig?.testCaseFailType === 'fail-tree-sitter',
 			'tree-sitter',
-			() => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, testCaseFailType !== 'fail-both' && testCaseFailType !== 'fail-tree-sitter'),
+			() => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, testConfig?.testCaseFailType !== 'fail-both' && testConfig?.testCaseFailType !== 'fail-tree-sitter'),
 		);
 
 		testWrapper(
-			userConfig?.skipTreeSitter || userConfig?.skipCompare,
+			testConfig?.skipTreeSitter || testConfig?.skipCompare,
 			false,
 			'compare ASTs',
 			function() {
@@ -511,13 +527,13 @@ export function assertSliced(
 		);
 
 		testWrapper(
-			userConfig?.skipTreeSitter,
+			testConfig?.skipTreeSitter,
 			false,
 			'cfg SAT properties',
 			function() {
 				const res = tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>;
 				const cfg = extractCfg(res.normalize, defaultConfigOptions, res.dataflow.graph);
-				const check = assertCfgSatisfiesProperties(cfg, userConfig?.cfgExcludeProperties);
+				const check = assertCfgSatisfiesProperties(cfg, testConfig?.cfgExcludeProperties);
 				try {
 					assert.isTrue(check, 'cfg fails properties: ' + check + ' is not satisfied');
 				} catch(e: unknown) {
@@ -527,7 +543,7 @@ export function assertSliced(
 			}
 		);
 	});
-	handleAssertOutput(name, shell, input, userConfig);
+	handleAssertOutput(name, shell, input, testConfig);
 
 	function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {
 		try {
@@ -543,7 +559,7 @@ export function assertSliced(
 			throw e;
 		} /* v8 ignore stop */
 	}
-	handleAssertOutput(name, shell, input, userConfig);
+	handleAssertOutput(name, shell, input, testConfig);
 }
 
 function findInDfg(id: NodeId, dfg: DataflowGraph): ContainerIndex[] | undefined {

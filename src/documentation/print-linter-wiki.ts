@@ -144,6 +144,13 @@ myVar <- 42
 print(myVar)
 `, tagTypes);
 
+	rule(shell,
+		'dataframe-access-validation', 'DataFrameAccessValidationConfig', 'DATA_FRAME_ACCESS_VALIDATION', 'lint-dataframe-access-validation',
+		`
+df <- data.frame(id = 1:5, name = 6:10)
+df[6, "value"]
+`, tagTypes);
+
 
 	function rule(shell: RShell, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];

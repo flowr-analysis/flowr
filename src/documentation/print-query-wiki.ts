@@ -38,6 +38,7 @@ import { getTypesFromFolder, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
 import { printCfgCode } from './doc-util/doc-cfg';
+import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -374,6 +375,25 @@ registerQueryDocumentation('config', {
 	buildExplanation: async() => {
 		return `
 This query provides access to the current configuration of the flowR instance. See the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on what the configuration represents.`;
+	}
+});
+
+registerQueryDocumentation('df-shape', {
+	name:             'Dataframe Shape Inference Query',
+	type:             'active',
+	shortDescription: 'Returns the shapes inferred for all dataframes in the code.',
+	functionName:     executeDfShapeQuery.name,
+	functionFile:     '../queries/catalog/df-shape-query/df-shape-query-format.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- data.frame(a=1:3)\nfilter(x, FALSE)';
+		return `
+This query infers all shapes of dataframes within the code. For example, you can use:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'df-shape'
+	}], { showCode: true, collapseQuery: true })
+}
+`;
 	}
 });
 

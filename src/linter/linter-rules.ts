@@ -6,19 +6,21 @@ import { UNUSED_DEFINITION } from './rules/unused-definition';
 import { DEAD_CODE } from './rules/dead-code';
 import { SEEDED_RANDOMNESS } from './rules/seeded-randomness';
 import { NAMING_CONVENTION } from './rules/naming-convention';
+import { DATA_FRAME_ACCESS_VALIDATION } from './rules/dataframe-access-validation';
 
 /**
  * The registry of currently supported linting rules.
  * A linting rule can be executed on a dataflow pipeline result using {@link executeLintingRule}.
  */
 export const LintingRules = {
-	'deprecated-functions': DEPRECATED_FUNCTIONS,
-	'file-path-validity':   FILE_PATH_VALIDITY,
-	'seeded-randomness':    SEEDED_RANDOMNESS,
-	'absolute-file-paths':  ABSOLUTE_PATH,
-	'naming-convention':    NAMING_CONVENTION,
-	'unused-definitions':   UNUSED_DEFINITION,
-	'dead-code':            DEAD_CODE
+	'deprecated-functions':        DEPRECATED_FUNCTIONS,
+	'file-path-validity':          FILE_PATH_VALIDITY,
+	'seeded-randomness':           SEEDED_RANDOMNESS,
+	'absolute-file-paths':         ABSOLUTE_PATH,
+	'unused-definitions':          UNUSED_DEFINITION,
+	'naming-convention':           NAMING_CONVENTION,
+	'dataframe-access-validation': DATA_FRAME_ACCESS_VALIDATION,
+	'dead-code':                   DEAD_CODE,
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules

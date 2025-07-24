@@ -154,7 +154,7 @@ export interface FlowrReplOptions extends MergeableRecord {
  *
  */
 export async function repl(
-	config : FlowrConfigOptions,
+	config: FlowrConfigOptions,
 	{
 		parser = new RShell(getEngineConfig(config, 'r-shell'), { revive: RShellReviveOptions.Always }),
 		rl = readline.createInterface(makeDefaultReplReadline()),

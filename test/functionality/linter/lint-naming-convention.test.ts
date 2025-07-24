@@ -84,7 +84,7 @@ describe('flowR linter', withTreeSitter(parser => {
 	});
 
 	describe('rule', () => { 
-		/** Given a symbol definition `testVar <- 5` the linter checks if it matches the configured casing rule (default is PascalCase) and provides a quick fix `TestVar <- 5` */
+		/** Given a symbol definition `testVar <- 5` the linter checks if it matches the configured casing rule (here we check for PascalCase) and provides a quick fix `TestVar <- 5` */
 		assertLinter('simple', parser, 'testVar <- 5', 'naming-convention', [{
 			name:           'testVar',
 			detectedCasing: CasingConvention.CamelCase,
@@ -137,5 +137,8 @@ describe('flowR linter', withTreeSitter(parser => {
 			range:          [3,1,3,8],
 			certainty:      LintingCertainty.Definitely,
 		}], undefined, { caseing: 'auto' });
+
+		assertLinter('empty string', parser, '', 'naming-convention', [], undefined, { caseing: CasingConvention.SnakeCase });
+		assertLinter('empty string (auto detect)', parser, '', 'naming-convention', [], undefined, { caseing: 'auto' });
 	});
 }));

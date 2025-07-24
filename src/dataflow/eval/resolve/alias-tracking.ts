@@ -147,7 +147,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
  * @param full        - Whether to track aliases on resolve
  * @param resolve     - Variable resolve mode
  */
-export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, resolve } : ResolveInfo): ResolveResult {
+export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, resolve }: ResolveInfo): ResolveResult {
 	if(id === undefined) {
 		return Top;
 	}
@@ -169,6 +169,8 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 				return Top;
 			}
 		case RType.FunctionCall:
+		case RType.BinaryOp:
+		case RType.UnaryOp:
 			return setFrom(resolveNode(resolve, node, environment, graph, idMap));
 		case RType.String:
 		case RType.Number:
@@ -308,8 +310,6 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
 export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: AstIdMap): ResolveResult {
 	idMap ??= graph.idMap;
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
-	const start = graph.getVertex(id);
-	guard(start !== undefined, 'Unable to find start for alias tracking');
 
 	const queue = new VisitingQueue(25);
 	const clean = initializeCleanEnvironments();

@@ -27,8 +27,6 @@ import { processLibrary } from '../internal/process/functions/call/built-in/buil
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source';
 import type { ForceArguments } from '../internal/process/functions/call/common';
 import { processApply } from '../internal/process/functions/call/built-in/built-in-apply';
-import { registerBuiltInDefinitions } from './built-in-config';
-import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
 import { processVector } from '../internal/process/functions/call/built-in/built-in-vector';
@@ -39,7 +37,7 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
-import { resolveAsVector, resolveAsSeq, resolveAsMinus, resolveAsPlus } from '../eval/resolve/resolve';
+import { resolveAsMinus, resolveAsPlus, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
 import type { DataflowGraph } from '../graph/graph';
 import type { VariableResolve } from '../../config';
 
@@ -169,7 +167,8 @@ export function registerBuiltInFunctions<Config extends object, Proc extends Bui
 	both:      boolean,
 	names:     readonly Identifier[],
 	processor: Proc,
-	config:    Config
+	config:    Config,
+	builtIns:  BuiltIns
 ): void {
 	for(const name of names) {
 		guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
@@ -183,10 +182,7 @@ export function registerBuiltInFunctions<Config extends object, Proc extends Bui
 			name,
 			nodeId:              id
 		}];
-		BuiltInMemory.set(name, d);
-		if(both) {
-			EmptyBuiltInMemory.set(name, d);
-		}
+		builtIns.set(name, d, both);
 	}
 }
 
@@ -224,7 +220,16 @@ export const BuiltInEvalHandlerMapper = {
 export type BuiltInMappingName = keyof typeof BuiltInProcessorMapper;
 export type ConfigOfBuiltInMappingName<N extends BuiltInMappingName> = Parameters<typeof BuiltInProcessorMapper[N]>[4];
 
-export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
-export const EmptyBuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+export type BuiltInMemory = Map<Identifier, IdentifierDefinition[]>
 
-registerBuiltInDefinitions(DefaultBuiltinConfig);
+export class BuiltIns {
+	builtInMemory:      BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+	emptyBuiltInMemory: BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+
+	set(identifier: Identifier, definition: IdentifierDefinition[], includeInEmptyMemory: boolean | undefined): void {
+		this.builtInMemory.set(identifier, definition);
+		if(includeInEmptyMemory) {
+			this.emptyBuiltInMemory.set(identifier, definition);
+		}
+	}
+}

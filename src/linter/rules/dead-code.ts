@@ -1,12 +1,16 @@
 import { LintingCertainty, LintingPrettyPrintContext, type LintingResult, type LintingRule } from '../linter-format';
 import type { SourceRange } from '../../util/range';
-import { rangeIsSubsetOf } from '../../util/range';
+import {   rangeIsSubsetOf } from '../../util/range';
+
+
+
 
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { formatRange } from '../../util/mermaid/dfg';
 import { LintingRuleTag } from '../linter-tags';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
+import { isNotUndefined } from '../../util/assert';
 
 export interface DeadCodeResult extends LintingResult {
 	range: SourceRange
@@ -26,7 +30,8 @@ export const DEAD_CODE = {
 						const cfgInformation = enrichmentContent(element, Enrichment.CfgInformation);
 						return !cfgInformation.isReachable;
 					})
-					.map(element => element.node.info.fullRange as SourceRange))
+					.map(element => element.node.info.fullRange ?? element.node.location)
+					.filter(isNotUndefined))
 				.map(range => ({
 					certainty: LintingCertainty.Definitely,
 					range
@@ -49,6 +54,7 @@ export const DEAD_CODE = {
 } as const satisfies LintingRule<DeadCodeResult, never, DeadCodeConfig>;
 
 function combineRanges(ranges: SourceRange[]): SourceRange[] {
+	// TODO we don't combine ranges correctly here yet, ranges that are subsets of other ranges should be removed in a consistent order (currently range,order vs order,range makes a difference)
 	const unique = [...new Set<SourceRange>(ranges)];
 	return unique.filter(range => !unique.some(other => range !== other && rangeIsSubsetOf(range, other)));
 }

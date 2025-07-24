@@ -24,6 +24,7 @@ body:
       options:
         - New Rule
         - Absolute Paths
+        - Dataframe Access Validation
         - Deprecated Functions
         - File Path Validity
         - Naming Convention

@@ -45,6 +45,8 @@ import { LinterQueryDefinition } from './catalog/linter-query/linter-query-forma
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowQuery } from './catalog/control-flow-query/control-flow-query-format';
 import { ControlFlowQueryDefinition } from './catalog/control-flow-query/control-flow-query-format';
+import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-format';
+import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -52,6 +54,7 @@ export type Query = CallContextQuery
 	| DataflowQuery
 	| ControlFlowQuery
 	| DataflowLensQuery
+	| DfShapeQuery
 	| NormalizedAstQuery
 	| IdMapQuery
 	| DataflowClusterQuery
@@ -92,6 +95,7 @@ export const SupportedQueries = {
 	'control-flow':     ControlFlowQueryDefinition,
 	'dataflow':         DataflowQueryDefinition,
 	'dataflow-lens':    DataflowLensQueryDefinition,
+	'df-shape':         DfShapeQueryDefinition,
 	'id-map':           IdMapQueryDefinition,
 	'normalized-ast':   NormalizedAstQueryDefinition,
 	'dataflow-cluster': ClusterQueryDefinition,

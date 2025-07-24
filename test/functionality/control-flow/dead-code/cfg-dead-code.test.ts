@@ -12,7 +12,7 @@ interface CfgDeadCodeArgs {
 }
 
 describe('Control Flow Graph', withTreeSitter(parser => {
-	function assertDeadCode(code: string, { reachableFromStart, unreachableFromStart } : CfgDeadCodeArgs): void {
+	function assertDeadCode(code: string, { reachableFromStart, unreachableFromStart }: CfgDeadCodeArgs): void {
 		assertCfg(parser, code, {
 			graph: new ControlFlowGraph()
 		}, {

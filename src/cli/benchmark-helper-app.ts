@@ -12,19 +12,20 @@ import type { KnownParserName } from '../r-bridge/parser';
 import { amendConfig, getConfig } from '../config';
 
 export interface SingleBenchmarkCliOptions {
-	verbose:                   boolean
-	help:                      boolean
-	input?:                    string
-	'file-id'?:                number
-	'run-num'?:                number
-	slice:                     string
-	output?:                   string
-	parser:                    KnownParserName
-	'enable-pointer-tracking': boolean
-	'max-slices':              number
-	threshold?:                number
-	'sampling-strategy':       string
-	seed?:                     string
+	verbose:                     boolean
+	help:                        boolean
+	input?:                      string
+	'file-id'?:                  number
+	'run-num'?:                  number
+	slice:                       string
+	output?:                     string
+	parser:                      KnownParserName
+	'dataframe-shape-inference': boolean
+	'enable-pointer-tracking':   boolean
+	'max-slices':                number
+	threshold?:                  number
+	'sampling-strategy':         string
+	seed?:                       string
 }
 
 const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [],{
@@ -60,8 +61,7 @@ async function benchmark() {
 	}
 
 	// Enable pointer analysis if requested, otherwise disable it
-	const config = getConfig();
-	amendConfig(config, c => {
+	const config = amendConfig(getConfig(), c => {
 		c.solver.pointerTracking = options['enable-pointer-tracking'];
 		return c;
 	});
@@ -100,6 +100,15 @@ async function benchmark() {
 			console.log(`${prefix} Completed Slicing`);
 			guard(count >= 0, `Number of slices exceeded limit of ${maxSlices} with ${-count} slices, skipping in count`);
 			guard(count > 0, `No possible slices found for ${options.input}, skipping in count`);
+		}
+
+		if(options['dataframe-shape-inference']) {
+			console.log(`${prefix} Extracting control flow graph for data frame shape inference`);
+			slicer.extractCFG();
+
+			console.log(`${prefix} Performing shape inference for data frames`);
+			slicer.inferDataFrameShapes();
+			console.log(`${prefix} Completed data frame shape inference`);
 		}
 
 		const { stats } = slicer.finish();

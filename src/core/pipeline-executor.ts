@@ -163,7 +163,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	}
 
 
-	public getResults(intermediate?:false): PipelineOutput<P>
+	public getResults(intermediate?: false): PipelineOutput<P>
 	public getResults(intermediate: true): Partial<PipelineOutput<P>>
 	public getResults(intermediate: boolean): PipelineOutput<P>
 	/**

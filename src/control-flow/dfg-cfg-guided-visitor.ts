@@ -1,4 +1,4 @@
-import { isMarkerVertex, type CfgBasicBlockVertex, type CfgEndMarkerVertex, type CfgExpressionVertex, type CfgSimpleVertex, type CfgStatementVertex, type ControlFlowInformation } from './control-flow-graph';
+import { getVertexRootId, type CfgBasicBlockVertex, type CfgEndMarkerVertex, type CfgExpressionVertex, type CfgSimpleVertex, type CfgStatementVertex, type ControlFlowInformation } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 import type {
@@ -64,7 +64,7 @@ export class DataflowAwareCfgGuidedVisitor<
 	}
 
 	protected visitDataflowNode(node: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): void {
-		const dfgVertex = this.getDataflowGraph(isMarkerVertex(node) ? node.root : node.id);
+		const dfgVertex = this.getDataflowGraph(getVertexRootId(node));
 		if(!dfgVertex) {
 			this.visitUnknown(node);
 			return;

@@ -107,6 +107,10 @@ export function isMarkerVertex(vertex: CfgSimpleVertex): vertex is CfgMidMarkerV
 	return vertex.type === CfgVertexType.MidMarker || vertex.type === CfgVertexType.EndMarker;
 }
 
+export function getVertexRootId(vertex: CfgSimpleVertex): NodeId {
+	return isMarkerVertex(vertex) ? vertex.root : vertex.id;
+}
+
 interface CfgFlowDependencyEdge extends MergeableRecord {
     label: CfgEdgeType.Fd
 }

@@ -7,6 +7,7 @@ import { FlowrFilter } from '../../../src/search/flowr-search-filters';
 import { Enrichment } from '../../../src/search/search-executor/search-enrichers';
 import { Mapper } from '../../../src/search/search-executor/search-mappers';
 import { CallTargets } from '../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-simplification';
 
 describe('flowR search', withTreeSitter(parser => {
 	assertSearch('simple search for first', parser, 'x <- 1\nprint(x)', ['1@x'],
@@ -102,7 +103,7 @@ describe('flowR search', withTreeSitter(parser => {
 					test:       /"isReachable":true/
 				}
 			}));
-			assertSearch('reachable no dead code', parser, 'if(FALSE) 1 else 2', [], Q.all().with(Enrichment.CfgInformation, { analyzeDeadCode: false }).filter({
+			assertSearch('reachable no dead code', parser, 'if(FALSE) 1 else 2', [], Q.all().with(Enrichment.CfgInformation, { simplificationPasses: DefaultCfgSimplificationOrder }).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
 					test:       /"isReachable":false/

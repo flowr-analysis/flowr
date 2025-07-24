@@ -2,11 +2,14 @@ import type {
 	SourceRange
 } from '../../../src/util/range';
 import {
+	rangeIsSubsetOf
+	,
 	addRanges,
 	mergeRanges, rangeCompare,
 	rangeFrom, rangesOverlap,
 	rangeStartsCompletelyBefore
 } from '../../../src/util/range';
+
 import { allPermutations } from '../../../src/util/collections/arrays';
 import { formatRange } from '../../../src/util/mermaid/dfg';
 import { describe, assert, test } from 'vitest';
@@ -79,6 +82,26 @@ describe('Range', () => {
 		assertOverlap('overlapping end character', rangeFrom(1, 2, 1, 2), rangeFrom(1, 1, 1, 2), true);
 		assertOverlap('overlapping end line', rangeFrom(1, 1, 2, 1), rangeFrom(2, 1, 2, 2), true);
 		assertOverlap('not overlapping', rangeFrom(1, 1, 2, 1), rangeFrom(2, 2, 3, 1), false);
+	});
+	describe('rangeIsSubsetOf', () => {
+		function assertSubset(name: string, left: SourceRange, right: SourceRange, expected: boolean, expectedSwapped = !expected) {
+			test(name, () => {
+				assert.strictEqual(
+					rangeIsSubsetOf(left, right),
+					expected,
+					`rangeIsSubsetOf(${JSON.stringify(left)}, ${JSON.stringify(right)})`
+				);
+				assert.strictEqual(
+					rangeIsSubsetOf(right, left), expectedSwapped,
+					`rangeIsSubsetOf(${JSON.stringify(right)}, ${JSON.stringify(left)})`
+				);
+			});
+		}
+
+		assertSubset('identical ranges', rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 1), true, true);
+		assertSubset('unrelated ranges', rangeFrom(1,2,3,4), rangeFrom(5,6,7,8), false, false);
+		assertSubset('encompasses columns', rangeFrom(1, 5, 1, 10), rangeFrom(1, 1, 1, 20), true);
+		assertSubset('encompasses lines', rangeFrom(2,1,5,2), rangeFrom(1,10,20, 10), true);
 	});
 	describe('mergeRanges', () => {
 		function assertMerged(expected: SourceRange, ...a: SourceRange[]) {

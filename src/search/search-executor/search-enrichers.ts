@@ -11,13 +11,14 @@ import {
 	identifyLinkToLastCallRelation
 } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { guard, isNotUndefined } from '../../util/assert';
-import { extractSimpleCfg } from '../../control-flow/extract-cfg';
+import { extractCfg, extractSimpleCfg } from '../../control-flow/extract-cfg';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { cfgAnalyzeDeadCode } from '../../control-flow/cfg-dead-code';
 import { visitCfgInOrder } from '../../control-flow/simple-visitor';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import type { Query, QueryResult } from '../../queries/query';
+import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
+import { DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
 	/**
@@ -60,6 +61,10 @@ export interface LastCallContent extends MergeableRecord {
 
 export interface CfgInformationElementContent extends MergeableRecord {
 	/**
+	 * Whether the current node is a root node in the CFG.
+	 */
+	isRoot:       boolean
+	/**
 	 * Whether the current node is reachable from the root of the CFG.
 	 * Only has a value if {@link CfgInformationArguments.checkReachable} was true.
 	 */
@@ -67,9 +72,9 @@ export interface CfgInformationElementContent extends MergeableRecord {
 }
 export interface CfgInformationSearchContent extends MergeableRecord {
 	/**
-	 * The CFG attached to the search, extracted using {@link extractSimpleCfg}.
+	 * The CFG attached to the search, extracted using {@link extractCfg}.
 	 */
-	simpleCfg:       ControlFlowInformation
+	cfg:             ControlFlowInformation
 	/**
 	 * The set of all nodes that are reachable from the root of the CFG, extracted using {@link visitCfgInOrder}.
 	 * Only has a value if {@link CfgInformationArguments.checkReachable} was true.
@@ -78,11 +83,11 @@ export interface CfgInformationSearchContent extends MergeableRecord {
 }
 export interface CfgInformationArguments extends MergeableRecord {
 	/** Whether to recalculate the CFG information if it already exists on the current search. Defaults to false. */
-	forceRefresh?:    boolean
-	/** Whether to use {@link analyzeDeadCode} on the extracted CFG prior to reachability checks. Defaults to true. */
-	analyzeDeadCode?: boolean
-	/** Whether to check nodes for reachability, and subsequently set {@link CfgInformationSearchContent.reachableNodes} and {@link CfgInformationElementContent.isReachable}.*/
-	checkReachable?:  boolean
+	forceRefresh?:         boolean
+	/** The simplification passes that should be run on the extracted CFG. Defaults to {@link DefaultCfgSimplificationOrder} as well as `analyze-dead-code`. */
+	simplificationPasses?: CfgSimplificationPassName[]
+	/** Whether to check nodes for reachability, and subsequently set {@link CfgInformationSearchContent.reachableNodes} and {@link CfgInformationElementContent.isReachable}. */
+	checkReachable?:       boolean
 }
 
 export interface QueryDataElementContent extends MergeableRecord {
@@ -170,15 +175,17 @@ export const Enrichments = {
 			const searchContent: CfgInformationSearchContent = search.enrichmentContent(Enrichment.CfgInformation);
 			return {
 				...prev,
+				isRoot:      searchContent.cfg.graph.rootIds().has(e.node.info.id),
 				isReachable: searchContent.reachableNodes?.has(e.node.info.id)
 			};
 		},
 		enrichSearch: (_search, data, args, prev) => {
-			args = deepMergeObject({
-				forceRefresh:    false,
-				analyzeDeadCode: true,
-				checkReachable:  true
-			}, args);
+			args = {
+				forceRefresh:         false,
+				checkReachable:       true,
+				simplificationPasses: [...DefaultCfgSimplificationOrder, 'analyze-dead-code'],
+				...args
+			};
 
 			// short-circuit if we already have a cfg stored
 			if(!args.forceRefresh && prev?.simpleCfg) {
@@ -187,14 +194,11 @@ export const Enrichments = {
 
 			const content: CfgInformationSearchContent = {
 				...prev,
-				simpleCfg: extractSimpleCfg(data.normalize),
+				cfg: extractCfg(data.normalize, data.config, data.dataflow.graph, args.simplificationPasses),
 			};
-			if(args.analyzeDeadCode) {
-				content.simpleCfg = cfgAnalyzeDeadCode(content.simpleCfg, { ast: data.normalize, dfg: data.dataflow.graph, config: data.config });
-			}
 			if(args.checkReachable) {
 				const reachable = new Set<NodeId>();
-				visitCfgInOrder(content.simpleCfg.graph, content.simpleCfg.entryPoints, node => {
+				visitCfgInOrder(content.cfg.graph, content.cfg.entryPoints, node => {
 					reachable.add(node);
 				});
 				content.reachableNodes = reachable;

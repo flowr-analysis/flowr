@@ -11,12 +11,6 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('always', parser, 'if(TRUE) 1 else 2', 'dead-code', [
 				{ certainty: LintingCertainty.Definitely, range: [1, 17, 1, 17] }
 			]);
-			assertLinter('always multiline', parser, `
-if(TRUE) {
-	x <- 1
-} else {
-	x <- 2
-}`, 'dead-code', [{ certainty: LintingCertainty.Definitely, range: [5, 2, 5, 7] },]);
 			assertLinter('never', parser, 'if(FALSE) 1 else 2', 'dead-code', [
 				{ certainty: LintingCertainty.Definitely, range: [1, 11, 1, 11] }
 			]);

@@ -55,7 +55,7 @@ export const FILE_PATH_VALIDITY = {
 		writeFunctions:         WriteFunctions.concat(config.additionalWriteFunctions)
 	}).with(Enrichment.CfgInformation, { analyzeDeadCode: false, checkReachable: false }),
 	processSearchResult: (elements, config, data): { results: FilePathValidityResult[], '.meta': FilePathValidityMetadata } => {
-		const cfg = elements.enrichmentContent(Enrichment.CfgInformation).simpleCfg.graph;
+		const cfg = elements.enrichmentContent(Enrichment.CfgInformation).cfg.graph;
 		const metadata: FilePathValidityMetadata = {
 			totalReads:              0,
 			totalUnknown:            0,

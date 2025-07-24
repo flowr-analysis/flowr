@@ -8,6 +8,8 @@ import { formatRange } from '../../util/mermaid/dfg';
 import { LintingRuleTag } from '../linter-tags';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { isNotUndefined } from '../../util/assert';
+import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
+import { DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
 
 export interface DeadCodeResult extends LintingResult {
 	range: SourceRange
@@ -18,7 +20,9 @@ export interface DeadCodeConfig extends MergeableRecord {
 }
 
 export const DEAD_CODE = {
-	createSearch:        (config) => Q.all().with(Enrichment.CfgInformation, { analyzeDeadCode: config.analyzeDeadCode }),
+	createSearch: (config) => Q.all().with(Enrichment.CfgInformation, {
+		simplificationPasses: [...DefaultCfgSimplificationOrder, ...(config.analyzeDeadCode ? ['analyze-dead-code' as CfgSimplificationPassName] : [])]
+	}),
 	processSearchResult: (elements, _config, _data) => {
 		return {
 			results: combineRanges(

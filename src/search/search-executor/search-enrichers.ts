@@ -64,14 +64,29 @@ export interface LastCallContent extends MergeableRecord {
 }
 
 export interface CfgInformationElementContent extends MergeableRecord {
+	/**
+	 * Whether the current node is reachable from the root of the CFG.
+	 * Only has a value if {@link CfgInformationArguments.checkReachable} was true.
+	 */
 	isReachable?: boolean
 }
 export interface CfgInformationSearchContent extends MergeableRecord {
+	/**
+	 * The CFG attached to the search, extracted using {@link extractSimpleCfg}.
+	 */
 	simpleCfg:       ControlFlowInformation
+	/**
+	 * The set of all nodes that are reachable from the root of the CFG, extracted using {@link visitCfgInOrder}.
+	 * Only has a value if {@link CfgInformationArguments.checkReachable} was true.
+	 */
 	reachableNodes?: Set<NodeId>
 }
 export interface CfgInformationArguments extends MergeableRecord {
+	/** Whether to recalculate the CFG information if it already exists on the current search. Defaults to false. */
+	forceRefresh?:    boolean
+	/** Whether to use {@link analyzeDeadCode} on the extracted CFG prior to reachability checks. Defaults to true. */
 	analyzeDeadCode?: boolean
+	/** Whether to check nodes for reachability, and subsequently set {@link CfgInformationSearchContent.reachableNodes} and {@link CfgInformationElementContent.isReachable}.*/
 	checkReachable?:  boolean
 }
 
@@ -155,11 +170,17 @@ export const Enrichments = {
 			};
 		},
 		enrichSearch: (_search, data, args, prev) => {
-			// if args are not specified, they default to true
 			args = deepMergeObject({
+				forceRefresh:    false,
 				analyzeDeadCode: true,
 				checkReachable:  true
 			}, args);
+
+			// short-circuit if we already have a cfg stored
+			if(!args.forceRefresh && prev?.simpleCfg) {
+				return prev;
+			}
+
 			const content: CfgInformationSearchContent = {
 				...prev,
 				simpleCfg: extractSimpleCfg(data.normalize),

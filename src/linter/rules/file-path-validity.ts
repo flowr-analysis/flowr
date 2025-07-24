@@ -5,9 +5,6 @@ import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import type { SourceRange } from '../../util/range';
 import { formatRange } from '../../util/mermaid/dfg';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { FlowrSearchElementFromQuery } from '../../search/flowr-search';
-import type { QueryResults } from '../../queries/query';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
@@ -67,7 +64,7 @@ export const FILE_PATH_VALIDITY = {
 		};
 		return {
 			results: elements.getElements().flatMap(element => {
-				const results = (element as FlowrSearchElementFromQuery<ParentInformation>).queryResult as QueryResults<'dependencies'>['dependencies'];
+				const results = elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'];
 				const matchingRead = results.readData.find(r => r.nodeId == element.node.info.id);
 				if(!matchingRead) {
 					return [];

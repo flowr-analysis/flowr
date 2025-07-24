@@ -3,11 +3,8 @@ import type { Pipeline, PipelineOutput, PipelineStepOutputWithName } from '../co
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowInformation } from '../dataflow/info';
-import type { BaseQueryResult } from '../queries/base-query-format';
-import type { Query } from '../queries/query';
 import type { FlowrConfigOptions } from '../config';
-import type { MarkOptional } from 'ts-essentials';
-import type { Enrichment, EnrichmentArguments, EnrichmentData, EnrichmentElementContent, EnrichmentSearchContent } from './search-executor/search-enrichers';
+import type { Enrichment, EnrichmentSearchArguments, EnrichmentData, EnrichmentElementContent, EnrichmentSearchContent, EnrichmentElementArguments } from './search-executor/search-enrichers';
 import { Enrichments } from './search-executor/search-enrichers';
 
 /**
@@ -15,15 +12,9 @@ import { Enrichments } from './search-executor/search-enrichers';
  * just for the respective search.
  */
 export interface FlowrSearchElement<Info> {
-    readonly node: RNode<Info>;
+	readonly node:         RNode<Info>;
+	readonly enrichments?: { [E in Enrichment]?: EnrichmentElementContent<E> }
 }
-
-export interface FlowrSearchElementFromQuery<Info> extends FlowrSearchElement<Info> {
-	readonly query:       Query['type'];
-	readonly queryResult: BaseQueryResult;
-}
-
-export type FlowrSearchElementMaybeFromQuery<Info> = MarkOptional<FlowrSearchElementFromQuery<Info>, 'query' | 'queryResult'>
 
 export interface FlowrSearchNodeBase<Type extends string, Name extends string, Args extends Record<string, unknown> | undefined> {
     readonly type: Type;
@@ -102,8 +93,8 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 		return this;
 	}
 
-	public enrich<E extends Enrichment>(data: FlowrSearchInput<Pipeline>, enrichment: E, args?: EnrichmentArguments<E>): this {
-		const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentArguments<E>, EnrichmentSearchContent<E>>;
+	public enrich<E extends Enrichment>(data: FlowrSearchInput<Pipeline>, enrichment: E, args?: EnrichmentSearchArguments<E>): this {
+		const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>, EnrichmentSearchContent<E>, EnrichmentSearchArguments<E>>;
 		if(enrichmentData.enrichSearch !== undefined) {
 			this.enrichments = {
 				...this.enrichments ?? {},

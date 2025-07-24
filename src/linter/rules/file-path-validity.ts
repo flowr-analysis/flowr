@@ -15,10 +15,10 @@ import { Ternary } from '../../util/logic';
 import { requestFromInput } from '../../r-bridge/retriever';
 import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
-import { extractSimpleCfg } from '../../control-flow/extract-cfg';
 import { happensBefore } from '../../control-flow/happens-before';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { LintingRuleTag } from '../linter-tags';
+import { Enrichment } from '../../search/search-executor/search-enrichers';
 
 export interface FilePathValidityResult extends LintingResult {
 	filePath: string,
@@ -56,9 +56,9 @@ export const FILE_PATH_VALIDITY = {
 		ignoreDefaultFunctions: true,
 		readFunctions:          ReadFunctions.concat(config.additionalReadFunctions),
 		writeFunctions:         WriteFunctions.concat(config.additionalWriteFunctions)
-	}),
+	}).with(Enrichment.CfgInformation, { analyzeDeadCode: false, checkReachable: false }),
 	processSearchResult: (elements, config, data): { results: FilePathValidityResult[], '.meta': FilePathValidityMetadata } => {
-		const cfg = extractSimpleCfg(data.normalize).graph;
+		const cfg = elements.enrichmentContent(Enrichment.CfgInformation).simpleCfg.graph;
 		const metadata: FilePathValidityMetadata = {
 			totalReads:              0,
 			totalUnknown:            0,
@@ -67,7 +67,7 @@ export const FILE_PATH_VALIDITY = {
 		};
 		return {
 			results: elements.getElements().flatMap(element => {
-				const results = element.queryResult as QueryResults<'dependencies'>['dependencies'];
+				const results = (element as FlowrSearchElementFromQuery<ParentInformation>).queryResult as QueryResults<'dependencies'>['dependencies'];
 				const matchingRead = results.readData.find(r => r.nodeId == element.node.info.id);
 				if(!matchingRead) {
 					return [];
@@ -129,7 +129,7 @@ export const FILE_PATH_VALIDITY = {
 		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
 		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} does not point to a valid file`
 	}
-} as const satisfies LintingRule<FilePathValidityResult, FilePathValidityMetadata, FilePathValidityConfig, ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]>;
+} as const satisfies LintingRule<FilePathValidityResult, FilePathValidityMetadata, FilePathValidityConfig>;
 
 function samePath(a: string, b: string, ignoreCapitalization: boolean | undefined): boolean {
 	if(ignoreCapitalization === true) {

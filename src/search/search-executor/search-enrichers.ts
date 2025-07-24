@@ -1,4 +1,4 @@
-import type { FlowrSearchElement, FlowrSearchInput } from '../flowr-search';
+import type { FlowrSearchElement, FlowrSearchElements, FlowrSearchInput } from '../flowr-search';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { Pipeline } from '../../core/steps/pipeline/pipeline';
 import type { MergeableRecord } from '../../util/objects';
@@ -16,27 +16,30 @@ import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { cfgAnalyzeDeadCode } from '../../control-flow/cfg-dead-code';
 import { visitCfgInOrder } from '../../control-flow/simple-visitor';
+import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 
 /**
  * A {@link FlowrSearchElement} that is enriched with a set of enrichments through {@link FlowrSearchBuilder.with}.
  * Enrichments can be retrieved easily from an element through {@link enrichmentContent}.
  */
 export interface EnrichedFlowrSearchElement<Info> extends FlowrSearchElement<Info> {
-	enrichments: { [E in Enrichment]?: EnrichmentContent<E> }
+	enrichments: { [E in Enrichment]?: EnrichmentElementContent<E> }
 }
 
-export interface EnrichmentData<EnrichmentContent extends MergeableRecord, EnrichmentArguments = undefined> {
+export interface EnrichmentData<ElementContent extends MergeableRecord, Arguments = undefined, SearchContent extends MergeableRecord = never> {
 	/**
 	 * A function that is applied to each element of the search to enrich it with additional data.
 	 */
-	readonly enrich: (e: FlowrSearchElement<ParentInformation>, data: FlowrSearchInput<Pipeline>, args: EnrichmentArguments | undefined, previousValue: EnrichmentContent | undefined) => EnrichmentContent
+	readonly enrichElement: (element: FlowrSearchElement<ParentInformation>, search: FlowrSearchElements<ParentInformation>, data: FlowrSearchInput<Pipeline>, args: Arguments | undefined, previousValue: ElementContent | undefined) => ElementContent
+	readonly enrichSearch?: (search: FlowrSearchElements<ParentInformation>, data: FlowrSearchInput<Pipeline>, args: Arguments | undefined, previousValue: SearchContent | undefined) => SearchContent
 	/**
 	 * The mapping function used by the {@link Mapper.Enrichment} mapper.
 	 */
-	readonly mapper: (c: EnrichmentContent) => FlowrSearchElement<ParentInformation>[]
+	readonly mapper:        (content: ElementContent) => FlowrSearchElement<ParentInformation>[]
 }
-export type EnrichmentContent<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer Content, infer _Args> ? Content : never;
-export type EnrichmentArguments<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer _Content, infer Args> ? Args : never;
+export type EnrichmentElementContent<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer ElementContent, infer _Args, infer _SearchContent> ? ElementContent : never;
+export type EnrichmentSearchContent<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer _ElementContent, infer _Args, infer SearchContent> ? SearchContent : never;
+export type EnrichmentArguments<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer _ElementContent, infer Args, infer _SearchContent> ? Args : never;
 
 /**
  * An enumeration that stores the names of the available enrichments that can be applied to a set of search elements.
@@ -55,13 +58,18 @@ export interface CallTargetsContent extends MergeableRecord {
 	 */
 	targets: (FlowrSearchElement<ParentInformation> | Identifier)[];
 }
+
 export interface LastCallContent extends MergeableRecord {
 	linkedIds: FlowrSearchElement<ParentInformation>[]
 }
-export interface CfgInformationContent extends MergeableRecord {
+
+export interface CfgInformationElementContent extends MergeableRecord {
 	isReachable?: boolean
 }
-
+export interface CfgInformationSearchContent extends MergeableRecord {
+	simpleCfg:       ControlFlowInformation
+	reachableNodes?: Set<NodeId>
+}
 export interface CfgInformationArguments extends MergeableRecord {
 	analyzeDeadCode?: boolean
 	checkReachable?:  boolean
@@ -73,7 +81,7 @@ export interface CfgInformationArguments extends MergeableRecord {
  */
 export const Enrichments = {
 	[Enrichment.CallTargets]: {
-		enrich: (e, data, args, prev) => {
+		enrichElement: (e, _s, data, args, prev) => {
 			// we don't resolve aliases here yet!
 			const content: CallTargetsContent = { targets: [] };
 			const callVertex = data.dataflow.graph.getVertex(e.node.info.id);
@@ -117,7 +125,7 @@ export const Enrichments = {
 		mapper: ({ targets }) => targets.map(t => t as FlowrSearchElement<ParentInformation>).filter(t => t.node !== undefined)
 	} satisfies EnrichmentData<CallTargetsContent, {onlyBuiltin?: boolean}>,
 	[Enrichment.LastCall]: {
-		enrich: (e, data, args, prev) => {
+		enrichElement: (e, _s, data, args, prev) => {
 			guard(args && args.length, `${Enrichment.LastCall} enrichment requires at least one argument`);
 			const content = prev ?? { linkedIds: [] };
 			const vertex = data.dataflow.graph.get(e.node.info.id);
@@ -139,32 +147,37 @@ export const Enrichments = {
 		mapper: ({ linkedIds }) => linkedIds
 	} satisfies EnrichmentData<LastCallContent, Omit<LinkToLastCall, 'type'>[]>,
 	[Enrichment.CfgInformation]: {
-		enrich: (e, data, args, prev) => {
+		enrichElement: (e, search, _data, _args, prev) => {
+			const searchContent: CfgInformationSearchContent = search.enrichmentContent(Enrichment.CfgInformation);
+			return {
+				...prev,
+				isReachable: searchContent.reachableNodes?.has(e.node.info.id)
+			};
+		},
+		enrichSearch: (_search, data, args, prev) => {
 			// if args are not specified, they default to true
 			args = deepMergeObject({
 				analyzeDeadCode: true,
 				checkReachable:  true
 			}, args);
-
-			const content: CfgInformationContent = { ...prev };
-
-			// TODO this is per-element right now so exceedingly slow, we need to cache this in the search (as part of the data passed to this func?)
-			let cfg = extractSimpleCfg(data.normalize);
+			const content: CfgInformationSearchContent = {
+				...prev,
+				simpleCfg: extractSimpleCfg(data.normalize),
+			};
 			if(args.analyzeDeadCode) {
-				cfg = cfgAnalyzeDeadCode(cfg, { ast: data.normalize, dfg: data.dataflow.graph, config: data.config });
+				content.simpleCfg = cfgAnalyzeDeadCode(content.simpleCfg, { ast: data.normalize, dfg: data.dataflow.graph, config: data.config });
 			}
 			if(args.checkReachable) {
 				const reachable = new Set<NodeId>();
-				visitCfgInOrder(cfg.graph, cfg.entryPoints, node => {
+				visitCfgInOrder(content.simpleCfg.graph, content.simpleCfg.entryPoints, node => {
 					reachable.add(node);
 				});
-				content.isReachable = reachable.has(e.node.info.id);
+				content.reachableNodes = reachable;
 			}
-
 			return content;
 		},
 		mapper: _ => []
-	} satisfies EnrichmentData<CfgInformationContent, CfgInformationArguments>
+	} satisfies EnrichmentData<CfgInformationElementContent, CfgInformationArguments, CfgInformationSearchContent>
 } as const;
 
 /**
@@ -173,22 +186,22 @@ export const Enrichments = {
  * @param e - The search element whose enrichment content should be retrieved.
  * @param enrichment - The enrichment content, if present, else `undefined`.
  */
-export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<ParentInformation>, enrichment: E): EnrichmentContent<E> {
-	return (e as EnrichedFlowrSearchElement<ParentInformation>)?.enrichments?.[enrichment] as EnrichmentContent<E>;
+export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<ParentInformation>, enrichment: E): EnrichmentElementContent<E> {
+	return (e as EnrichedFlowrSearchElement<ParentInformation>)?.enrichments?.[enrichment] as EnrichmentElementContent<E>;
 }
 
 export function enrichElement<
 	ElementIn extends FlowrSearchElement<ParentInformation>,
 	ElementOut extends ElementIn & EnrichedFlowrSearchElement<ParentInformation>,
-	ConcreteEnrichment extends Enrichment>(
-	e: ElementIn, data: FlowrSearchInput<Pipeline>, enrichment: ConcreteEnrichment, args?: EnrichmentArguments<ConcreteEnrichment>): ElementOut {
-	const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentContent<ConcreteEnrichment>, EnrichmentArguments<ConcreteEnrichment>>;
+	E extends Enrichment>(
+	e: ElementIn, s: FlowrSearchElements<ParentInformation>, data: FlowrSearchInput<Pipeline>, enrichment: E, args?: EnrichmentArguments<E>): ElementOut {
+	const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentArguments<E>, EnrichmentSearchContent<E>>;
 	const prev = (e as ElementIn & EnrichedFlowrSearchElement<ParentInformation>)?.enrichments;
 	return {
 		...e,
 		enrichments: {
 			...prev ?? {},
-			[enrichment]: enrichmentData.enrich(e, data, args, prev?.[enrichment])
+			[enrichment]: enrichmentData.enrichElement(e, s, data, args, prev?.[enrichment])
 		}
 	} as ElementOut;
 }

@@ -1,12 +1,14 @@
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { Pipeline, PipelineOutput, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
-import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowInformation } from '../dataflow/info';
 import type { BaseQueryResult } from '../queries/base-query-format';
 import type { Query } from '../queries/query';
 import type { FlowrConfigOptions } from '../config';
 import type { MarkOptional } from 'ts-essentials';
+import type { Enrichment, EnrichmentArguments, EnrichmentData, EnrichmentElementContent, EnrichmentSearchContent } from './search-executor/search-enrichers';
+import { Enrichments } from './search-executor/search-enrichers';
 
 /**
  * Yes, for now we do technically not need a wrapper around the RNode, but this allows us to attach caches etc.
@@ -71,7 +73,9 @@ export type FlowrSearchInput<
 
 /** Intentionally, we abstract away from an array to avoid the use of conventional typescript operations */
 export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
-	private elements: Elements = [] as unknown as Elements;
+
+	private elements:    Elements = [] as unknown as Elements;
+	private enrichments: { [E in Enrichment]?: EnrichmentSearchContent<E> } = {};
 
 	public constructor(elements?: Elements) {
 		if(elements) {
@@ -96,5 +100,18 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 	public mutate<OutElements extends Elements>(mutator: (elements: Elements) => OutElements): this {
 		this.elements = mutator(this.elements);
 		return this;
+	}
+
+	public enrich<E extends Enrichment>(data: FlowrSearchInput<Pipeline>, enrichment: E, args?: EnrichmentArguments<E>): this {
+		const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentArguments<E>, EnrichmentSearchContent<E>>;
+		this.enrichments = {
+			...this.enrichments ?? {},
+			[enrichment]: enrichmentData.enrichSearch?.(this as FlowrSearchElements<ParentInformation>, data, args, this.enrichments?.[enrichment])
+		};
+		return this;
+	}
+
+	public enrichmentContent<E extends Enrichment>(enrichment: E): EnrichmentSearchContent<E> {
+		return this.enrichments?.[enrichment] as EnrichmentSearchContent<E>;
 	}
 }

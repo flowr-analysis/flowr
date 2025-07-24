@@ -70,7 +70,7 @@ describe('flowR search', withTreeSitter(parser => {
 	});
 
 	describe('Enrichments', () => {
-		describe('Call targets', () => {
+		describe('call targets', () => {
 			assertSearch('local', parser, 'func <- function(x) { x + 1 }\nfunc(7)', ['1@function'],
 				Q.all().with(Enrichment.CallTargets).map(Mapper.Enrichment, Enrichment.CallTargets).select(0),
 				Q.all().get(Enrichment.CallTargets).select(0),
@@ -88,6 +88,32 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.var('points').with(Enrichment.LastCall, [{ callName: 'plot' }]).map(Mapper.Enrichment, Enrichment.LastCall),
 				Q.var('points').get(Enrichment.LastCall, [{ callName: 'plot' }]),
 			);
+		});
+		describe('cfg info', () => {
+			assertSearch('reachable always', parser, 'if(TRUE) 1 else 2', ['1@if', '1@TRUE', '1@1', '$2', '$6'], Q.all().with(Enrichment.CfgInformation).filter({
+				name: FlowrFilter.MatchesEnrichment, args: {
+					enrichment: Enrichment.CfgInformation,
+					test:       /"isReachable":true/
+				}
+			}));
+			assertSearch('reachable never', parser, 'if(FALSE) 1 else 2', ['1@if', '1@FALSE', '1@2', '$4', '$6'], Q.all().with(Enrichment.CfgInformation).filter({
+				name: FlowrFilter.MatchesEnrichment, args: {
+					enrichment: Enrichment.CfgInformation,
+					test:       /"isReachable":true/
+				}
+			}));
+			assertSearch('reachable no dead code', parser, 'if(FALSE) 1 else 2', [], Q.all().with(Enrichment.CfgInformation, { analyzeDeadCode: false }).filter({
+				name: FlowrFilter.MatchesEnrichment, args: {
+					enrichment: Enrichment.CfgInformation,
+					test:       /"isReachable":false/
+				}
+			}));
+			assertSearch('reachable no reachable', parser, 'if(FALSE) 1 else 2', [], Q.all().with(Enrichment.CfgInformation, { checkReachable: false }).filter({
+				name: FlowrFilter.MatchesEnrichment, args: {
+					enrichment: Enrichment.CfgInformation,
+					test:       /"isReachable":false/
+				}
+			}));
 		});
 	});
 }));

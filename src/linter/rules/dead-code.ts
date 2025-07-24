@@ -1,9 +1,6 @@
 import { LintingCertainty, LintingPrettyPrintContext, type LintingResult, type LintingRule } from '../linter-format';
 import type { SourceRange } from '../../util/range';
-import {   rangeIsSubsetOf } from '../../util/range';
-
-
-
+import {    rangeIsSubsetOf } from '../../util/range';
 
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -54,7 +51,6 @@ export const DEAD_CODE = {
 } as const satisfies LintingRule<DeadCodeResult, never, DeadCodeConfig>;
 
 function combineRanges(ranges: SourceRange[]): SourceRange[] {
-	// TODO we don't combine ranges correctly here yet, ranges that are subsets of other ranges should be removed in a consistent order (currently range,order vs order,range makes a difference)
 	const unique = [...new Set<SourceRange>(ranges)];
 	return unique.filter(range => !unique.some(other => range !== other && rangeIsSubsetOf(range, other)));
 }

@@ -107,5 +107,5 @@ export function rangeCompare([r1sl,r1sc,,]: SourceRange, [r2sl,r2sc,,]: SourceRa
  * Checks if the first range is a subset of the second range.
  */
 export function rangeIsSubsetOf([r1sl,r1sc,r1el,r1ec]: SourceRange, [r2sl,r2sc,r2el,r2ec]: SourceRange): boolean {
-	return r1sl >= r2sl && r1sc >= r2sc && r1el <= r2el && r1ec <= r2ec;
+	return (r1sc > r2sc || r1sc == r2sc && r1sl <= r2sl) && (r1ec < r2ec || r1ec == r2ec && r1el <= r2el);
 }

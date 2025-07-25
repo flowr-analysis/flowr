@@ -208,6 +208,7 @@
     "clipboardy": "^4.0.0",
     "command-line-args": "^6.0.1",
     "command-line-usage": "^7.0.3",
+    "csv-parser": "^3.2.0",
     "joi": "^17.13.3",
     "lz-string": "^1.5.0",
     "n-readlines": "^1.0.1",

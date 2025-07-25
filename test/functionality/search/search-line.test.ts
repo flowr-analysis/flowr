@@ -4,6 +4,7 @@ import { FlowrSearchGenerator as Q } from '../../../src/search/flowr-search-buil
 import { assertSearch, assertSearchEnrichment } from '../_helper/search';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { FlowrFilter } from '../../../src/search/flowr-search-filters';
+import type { CfgInformationArguments } from '../../../src/search/search-executor/search-enrichers';
 import { Enrichment } from '../../../src/search/search-executor/search-enrichers';
 import { Mapper } from '../../../src/search/search-executor/search-mappers';
 import { CallTargets } from '../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
@@ -91,25 +92,29 @@ describe('flowR search', withTreeSitter(parser => {
 			);
 		});
 		describe('cfg info', () => {
-			assertSearch('reachable always', parser, 'if(TRUE) 1 else 2', ['1@if', '1@TRUE', '1@1', '$2', '$6'], Q.all().with(Enrichment.CfgInformation).filter({
+			const cfgArgs: CfgInformationArguments = {
+				checkReachable:       true,
+				simplificationPasses: [...DefaultCfgSimplificationOrder, 'analyze-dead-code'],
+			};
+			assertSearch('reachable always', parser, 'if(TRUE) 1 else 2', ['1@if', '1@TRUE', '1@1', '$2', '$6'], Q.all().with(Enrichment.CfgInformation, cfgArgs).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
 					test:       /"isReachable":true/
 				}
 			}));
-			assertSearch('reachable never', parser, 'if(FALSE) 1 else 2', ['1@if', '1@FALSE', '1@2', '$4', '$6'], Q.all().with(Enrichment.CfgInformation).filter({
+			assertSearch('reachable never', parser, 'if(FALSE) 1 else 2', ['1@if', '1@FALSE', '1@2', '$4', '$6'], Q.all().with(Enrichment.CfgInformation, cfgArgs).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
 					test:       /"isReachable":true/
 				}
 			}));
-			assertSearch('reachable no dead code', parser, 'if(FALSE) 1 else 2', [], Q.all().with(Enrichment.CfgInformation, { simplificationPasses: DefaultCfgSimplificationOrder }).filter({
+			assertSearch('reachable no dead code', parser, 'if(FALSE) 1 else 2', [], Q.all().with(Enrichment.CfgInformation).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
 					test:       /"isReachable":false/
 				}
 			}));
-			assertSearch('reachable no reachable', parser, 'if(FALSE) 1 else 2', [], Q.all().with(Enrichment.CfgInformation, { checkReachable: false }).filter({
+			assertSearch('reachable no reachable', parser, 'if(FALSE) 1 else 2', [], Q.all().with(Enrichment.CfgInformation).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
 					test:       /"isReachable":false/

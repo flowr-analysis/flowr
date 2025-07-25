@@ -64,7 +64,6 @@ export type FlowrSearchInput<
 
 /** Intentionally, we abstract away from an array to avoid the use of conventional typescript operations */
 export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
-
 	private elements:    Elements = [] as unknown as Elements;
 	private enrichments: { [E in Enrichment]?: EnrichmentSearchContent<E> } = {};
 

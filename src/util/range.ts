@@ -109,3 +109,7 @@ export function rangeCompare([r1sl,r1sc,,]: SourceRange, [r2sl,r2sc,,]: SourceRa
 export function rangeIsSubsetOf([r1sl,r1sc,r1el,r1ec]: SourceRange, [r2sl,r2sc,r2el,r2ec]: SourceRange): boolean {
 	return (r1sl > r2sl || r1sl === r2sl && r1sc >= r2sc) && (r1el < r2el || r1sl === r2sl && r1ec <= r2ec);
 }
+
+export function combineRanges(...ranges: SourceRange[]): SourceRange[] {
+	return ranges.filter(range => !ranges.some(other => range !== other && rangeIsSubsetOf(range, other)));
+}

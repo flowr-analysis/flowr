@@ -1,15 +1,5 @@
-import type {
-	SourceRange
-} from '../../../src/util/range';
-import {
-	rangeIsSubsetOf
-	,
-	addRanges,
-	mergeRanges, rangeCompare,
-	rangeFrom, rangesOverlap,
-	rangeStartsCompletelyBefore
-} from '../../../src/util/range';
-
+import type { SourceRange } from '../../../src/util/range';
+import { rangeIsSubsetOf, addRanges, mergeRanges, rangeCompare, rangeFrom, rangesOverlap, rangeStartsCompletelyBefore } from '../../../src/util/range';
 import { allPermutations } from '../../../src/util/collections/arrays';
 import { formatRange } from '../../../src/util/mermaid/dfg';
 import { describe, assert, test } from 'vitest';

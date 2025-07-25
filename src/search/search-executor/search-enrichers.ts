@@ -14,11 +14,11 @@ import { guard, isNotUndefined } from '../../util/assert';
 import { extractCfg, extractSimpleCfg } from '../../control-flow/extract-cfg';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { visitCfgInOrder } from '../../control-flow/simple-visitor';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import type { Query, QueryResult } from '../../queries/query';
 import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
-import { DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
+import { cfgFindAllReachable , DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
+
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
 	/**
@@ -82,11 +82,11 @@ export interface CfgInformationSearchContent extends MergeableRecord {
 	reachableNodes?: Set<NodeId>
 }
 export interface CfgInformationArguments extends MergeableRecord {
-	/** Whether to recalculate the CFG information if it already exists on the current search. Defaults to false. */
+	/** Whether to recalculate the CFG information if it already exists on the current search. Defaults to `false`. */
 	forceRefresh?:         boolean
-	/** The simplification passes that should be run on the extracted CFG. Defaults to {@link DefaultCfgSimplificationOrder} as well as `analyze-dead-code`. */
+	/** The simplification passes that should be run on the extracted CFG. Defaults to the entries of {@link DefaultCfgSimplificationOrder}. */
 	simplificationPasses?: CfgSimplificationPassName[]
-	/** Whether to check nodes for reachability, and subsequently set {@link CfgInformationSearchContent.reachableNodes} and {@link CfgInformationElementContent.isReachable}. */
+	/** Whether to check nodes for reachability, and subsequently set {@link CfgInformationSearchContent.reachableNodes} and {@link CfgInformationElementContent.isReachable}. Defaults to `false`. */
 	checkReachable?:       boolean
 }
 
@@ -182,8 +182,8 @@ export const Enrichments = {
 		enrichSearch: (_search, data, args, prev) => {
 			args = {
 				forceRefresh:         false,
-				checkReachable:       true,
-				simplificationPasses: [...DefaultCfgSimplificationOrder, 'analyze-dead-code'],
+				checkReachable:       false,
+				simplificationPasses: DefaultCfgSimplificationOrder,
 				...args
 			};
 
@@ -197,11 +197,7 @@ export const Enrichments = {
 				cfg: extractCfg(data.normalize, data.config, data.dataflow.graph, args.simplificationPasses),
 			};
 			if(args.checkReachable) {
-				const reachable = new Set<NodeId>();
-				visitCfgInOrder(content.cfg.graph, content.cfg.entryPoints, node => {
-					reachable.add(node);
-				});
-				content.reachableNodes = reachable;
+				content.reachableNodes = cfgFindAllReachable(content.cfg);
 			}
 			return content;
 		}

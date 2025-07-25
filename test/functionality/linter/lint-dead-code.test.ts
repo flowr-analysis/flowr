@@ -2,6 +2,7 @@ import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { assertLinter } from '../_helper/linter';
 import { LintingCertainty } from '../../../src/linter/linter-format';
+import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-simplification';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('dead code', () => {
@@ -10,11 +11,11 @@ describe('flowR linter', withTreeSitter(parser => {
 		describe('simple', () => {
 			assertLinter('always', parser, 'if(TRUE) 1 else 2', 'dead-code', [
 				{ certainty: LintingCertainty.Definitely, range: [1, 17, 1, 17] }
-			]);
+			], { consideredNodes: 7 });
 			assertLinter('never', parser, 'if(FALSE) 1 else 2', 'dead-code', [
 				{ certainty: LintingCertainty.Definitely, range: [1, 11, 1, 11] }
-			]);
-			assertLinter('no analysis', parser, 'if(FALSE) 1 else 2', 'dead-code', [], undefined, { analyzeDeadCode: false });
+			], { consideredNodes: 7 });
+			assertLinter('no analysis', parser, 'if(FALSE) 1 else 2', 'dead-code', [], { consideredNodes: 7 }, { simplificationPasses: DefaultCfgSimplificationOrder });
 		});
 
 		describe('non-constant', () => {

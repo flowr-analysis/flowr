@@ -1,6 +1,6 @@
-import type { DataType } from '../types';
-import { DataTypeTag } from '../types';
-import { assertUnreachable } from '../../util/assert';
+import type { DataType } from './types';
+import { DataTypeTag } from './types';
+import { assertUnreachable } from '../util/assert';
 
 function isAny(t: DataType): boolean {
 	return t.tag === DataTypeTag.Variable &&
@@ -8,10 +8,7 @@ function isAny(t: DataType): boolean {
         t.upperBound.tag === DataTypeTag.Intersection && t.upperBound.types.size === 0;
 }
 
-export function prettyPrint(t: DataType | undefined, shorten = true): string {
-	if(t === undefined) {
-		return '$$undefined';
-	}
+export function prettyPrint(t: DataType, shorten = true): string {
 	const tag = t.tag;
 	if(isAny(t)) {
 		return 'any';
@@ -26,7 +23,7 @@ export function prettyPrint(t: DataType | undefined, shorten = true): string {
 		case DataTypeTag.Raw:
 		case DataTypeTag.Environment:
 		case DataTypeTag.Language:
-			return shorten && tag.startsWith('R') && tag.endsWith('Type') ? tag.slice(1, -4): tag;
+			return shorten && tag.startsWith('R') && tag.endsWith('Type') ? tag.slice(1, -4) : tag;
 		case DataTypeTag.Function:
 			return `${shorten ? 'fn' : 'function'}(${[...t.parameterTypes.entries()].map(([k, v]) => 
 				k ? `${k}: ${prettyPrint(v, shorten)}` : prettyPrint(v, shorten)

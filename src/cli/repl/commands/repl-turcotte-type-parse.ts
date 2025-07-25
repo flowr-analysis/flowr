@@ -17,7 +17,7 @@ import {
 	UnresolvedRTypeUnion,
 	UnresolvedRTypeVariable
 } from '../../../typing/subtyping/types';
-import { prettyPrint } from '../../../typing/subtyping/pretty-print';
+import { prettyPrint } from '../../../typing/pretty-print';
 import { ColorEffect, Colors } from '../../../util/text/ansi';
 
 interface FunctionTypeInformation {
@@ -131,9 +131,9 @@ function convertSingleTurcotteFunctionAlternative2RohdeType(fingerprint: string,
 			constrainLowerAndUpperBound(fn.returnType, type);
 		} else {
 			// we get the type to create a new one if not already there
-			getParameterTypeFromFunction(fn, Number(parameterPosition));
+			const parameterType = getParameterTypeFromFunction(fn, Number(parameterPosition));
 			// now we can set the type
-			constrainLowerAndUpperBound(fn.parameterTypes.get(Number(parameterPosition)) as UnresolvedDataType, type);
+			constrainLowerAndUpperBound(parameterType, type);
 		}
 	}
 
@@ -179,21 +179,21 @@ function turcotteType2RohdeType(type: string): UnresolvedDataType {
 		case 'raw':         r = new RRawType(); break;
 		case 'expression':  r = new RLanguageType(); break;
 		case 'externalptr': r = new UnresolvedRTypeVariable(); break;
-		case 'pairlist':    r = new UnresolvedRListType(); break;
+		case 'pairlist':    r = new UnresolvedRTypeVariable(); break;
 		default:
 			r = parseComplicatedTurcotteType(type);
 	}
 
 	guard(r !== undefined, `Unknown type ${JSON.stringify(type)} in Turcotte data!`);
 
-	if(r.tag !== DataTypeTag.Variable) {
-		if(isArray) {
-			const variable = new UnresolvedRTypeVariable();
-			constrainLowerAndUpperBound(variable, r);
-			r = new UnresolvedRAtomicVectorType(variable);
+	if(isArray) {
+		if(r.tag !== DataTypeTag.Variable) {
+			const vectorType = new UnresolvedRAtomicVectorType();
+			constrainLowerAndUpperBound(vectorType.elementType, r);
+			r = vectorType;
+		} else {
+			r = new UnresolvedRAtomicVectorType(r);
 		}
-	} else if(isArray) {
-		r = new UnresolvedRAtomicVectorType(r);
 	}
 
 	return r;
@@ -228,7 +228,7 @@ function turcotte2RohdeTypes(data: TurcotteCsvRow[]): RohdeTypes {
 
 
 
-function parseComplicatedTurcotteType(type: string): UnresolvedDataType | undefined{
+function parseComplicatedTurcotteType(type: string): UnresolvedDataType | undefined {
 	// everything up until the first parse <1, 2 | 3, 4 & 5> etc. recursively!
 	const [prefix, main] = type.split(/<(.*)/, 2);
 
@@ -251,9 +251,9 @@ function parseComplicatedTurcotteType(type: string): UnresolvedDataType | undefi
 	switch(prefix) {
 		case 'list': {
 			guard(params.length === 1, `List type ${JSON.stringify(type)} must have exactly one parameter!`);
-			const v = new UnresolvedRTypeVariable();
-			constrainLowerAndUpperBound(v, alternativeTurcotteType2RohdeType(params[0]));
-			return new UnresolvedRListType(v);
+			const listType = new UnresolvedRListType();
+			constrainLowerAndUpperBound(listType.elementType, alternativeTurcotteType2RohdeType(params[0]));
+			return listType;
 		}
 
 	}
@@ -265,7 +265,7 @@ function parseComplicatedTurcotteType(type: string): UnresolvedDataType | undefi
 function collectParams(argString: string): string[][] {
 	// split at comma but respect nestings with <>
 	const params: string[][] = [];
-	const currentParams: string[] = [];
+	const currentParamAlternatives: string[] = [];
 	let current = '';
 	let depth = 0;
 	let quoted = false;
@@ -280,13 +280,13 @@ function collectParams(argString: string): string[][] {
 		} else if(char === '>' && !quoted) {
 			depth--;
 		} else if(!quoted && char === ',' && depth === 0) {
-			params.push([...currentParams, current.trim()]);
+			params.push([...currentParamAlternatives, current.trim()]);
 			current = '';
 			continue;
 		} else if(char === '|' && !quoted && depth === 0) {
 			// split on alternatives
 			if(current.trim().length > 0) {
-				currentParams.push(current.trim());
+				currentParamAlternatives.push(current.trim());
 			}
 			current = '';
 			continue;
@@ -295,10 +295,10 @@ function collectParams(argString: string): string[][] {
 	}
 
 	if(current.trim().length > 0) {
-		currentParams.push(current.trim());
+		currentParamAlternatives.push(current.trim());
 	}
-	if(currentParams.length > 0) {
-		params.push(currentParams);
+	if(currentParamAlternatives.length > 0) {
+		params.push(currentParamAlternatives);
 	}
 	return params;
 }

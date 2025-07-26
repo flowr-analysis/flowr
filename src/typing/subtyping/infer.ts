@@ -24,9 +24,13 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import type { UnresolvedDataType } from './types';
-import { constrain, getIndexedElementTypeFromList, getParameterTypeFromFunction, resolve, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from './types';
+import { constrain, getIndexedElementTypeFromList, getParameterTypeFromFunction, resolve, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeIntersection, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from './types';
+import type { RohdeTypes, TurcotteCsvRow } from '../adapter/turcotte-types';
+import { turcotte2RohdeTypes } from '../adapter/turcotte-types';
+import csvParser from 'csv-parser';
+import fs from 'fs';
 
-export function inferDataTypes<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
+export function inferDataTypes<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation, useTurcotteTypes: boolean = true): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
 	const controlFlowInfo = extractCfg(astWithTypeVars, dataflowInfo.graph, ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code']);
 	const config = {
@@ -35,6 +39,7 @@ export function inferDataTypes<Info extends ParentInformation & { typeVariable?:
 		dataflowInfo:         dataflowInfo,
 		dfg:                  dataflowInfo.graph,
 		defaultVisitingOrder: 'forward' as const,
+		useTurcotteTypes,
 	};
 	const visitor = new TypeInferringCfgGuidedVisitor(config);
 	visitor.start();
@@ -64,7 +69,8 @@ export interface TypeInferringCfgGuidedVisitorConfiguration<
 	Ast extends NormalizedAst<UnresolvedTypeInfo & OtherInfo> = NormalizedAst<UnresolvedTypeInfo & OtherInfo>,
 	Dataflow extends DataflowInformation                      = DataflowInformation
 > extends Omit<SemanticCfgGuidedVisitorConfiguration<UnresolvedTypeInfo & OtherInfo, ControlFlow, Ast>, 'dataflow'> {
-	dataflowInfo: Dataflow;
+	dataflowInfo:     Dataflow;
+	useTurcotteTypes: boolean;
 }
 
 class TypeInferringCfgGuidedVisitor<
@@ -76,9 +82,31 @@ class TypeInferringCfgGuidedVisitor<
 > extends SemanticCfgGuidedVisitor<UnresolvedTypeInfo & OtherInfo, ControlFlow, Ast, Dataflow['graph'], Config & { dataflow: Dataflow['graph'] }> {
 	constructor(config: Config) {
 		super({ dataflow: config.dataflowInfo.graph, ...config });
+
+		if(config.useTurcotteTypes) {
+			const data: TurcotteCsvRow[] = [];
+			fs.createReadStream('src/typing/adapter/turcotte-types.csv', { encoding: 'utf-8' })
+				.pipe(csvParser({ separator: ',' }))
+				.on('data', (row: TurcotteCsvRow) => {
+					data.push(row);
+				});
+			const rohdeTypes: RohdeTypes = turcotte2RohdeTypes(data);
+			for(const info of rohdeTypes.info) {
+				const label = info.name; //`${info.package}::${info.name}`;
+				if('type' in info) {
+					this.constantContext.set(label, info.type);
+				}
+				if('types' in info) {
+					const type = info.types.length === 1 ? info.types[0] : new UnresolvedRTypeIntersection(...info.types);
+					this.functionContext.set(label, type);
+				}
+			}
+		}
 	}
 
 	protected constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map();
+	protected constantContext: Map<string, UnresolvedDataType> = new Map();
+	protected functionContext: Map<string, UnresolvedDataType> = new Map();
 
 
 	protected constrainNodeType(nodeOrId: RNode<UnresolvedTypeInfo> | NodeId, constraint: UnresolvedDataType | { lowerBound?: UnresolvedDataType, upperBound?: UnresolvedDataType }): void {
@@ -121,6 +149,26 @@ class TypeInferringCfgGuidedVisitor<
 		this.constrainNodeType(data.node, new RStringType());
 	}
 
+	protected inferNodeTypeFromReadOrigins(node: RNode<UnresolvedTypeInfo>, readOrigins: Array<{ id: NodeId, type: OriginType }>): void {
+		for(const readOrigin of readOrigins ?? []) {
+			const readNode = this.getNormalizedAst(readOrigin.id);
+			if(readNode !== undefined) {
+				this.constrainNodeType(node, { lowerBound: readNode.info.typeVariable });
+			} else if(node.type === RType.Symbol) {
+				// If the read variable has no associated AST node it might be a library constant or function
+				const constantType = this.constantContext.get(node.content);
+				if(constantType !== undefined) {
+					this.constrainNodeType(node, { lowerBound: constantType });
+				}
+
+				const functionType = this.functionContext.get(node.content);
+				if(functionType !== undefined) {
+					this.constrainNodeType(node, { lowerBound: functionType });
+				}
+			}
+		}
+	}
+
 	override onVariableUse(data: { vertex: DataflowGraphVertexUse }): void {
 		const isArgumentOfGetCall = this.config.dfg.ingoingEdges(data.vertex.id)?.entries().some(([source, edge]) => {
 			return edgeIncludesType(edge.types, EdgeType.Argument) &&
@@ -140,12 +188,8 @@ class TypeInferringCfgGuidedVisitor<
 			return;
 		}
 
-		const readOrigins = this.getOrigins(data.vertex.id)?.filter((origin) => origin.type === OriginType.ReadVariableOrigin);
-		for(const readOrigin of readOrigins ?? []) {
-			const readNode = this.getNormalizedAst(readOrigin.id);
-			guard(readNode !== undefined, 'Expected read node to be defined');
-			this.constrainNodeType(data.vertex.id, { lowerBound: readNode.info.typeVariable });
-		}
+		const readOrigins = this.getOrigins(data.vertex.id)?.filter((origin) => origin.type === OriginType.ReadVariableOrigin) ?? [];
+		this.inferNodeTypeFromReadOrigins(node, readOrigins);
 	}
 
 	override onAssignmentCall(data: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
@@ -161,17 +205,13 @@ class TypeInferringCfgGuidedVisitor<
 	}
 
 	override onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall }): void {
-		const outgoing = this.config.dataflowInfo.graph.outgoingEdges(data.call.id);
-		const callTargets = outgoing?.entries()
-			.filter(([_target, edge]) => edgeIncludesType(edge.types, EdgeType.Calls))
-			.map(([target, _edge]) => target)
-			.toArray();
+		const callTargets = this.getOrigins(data.call.id)?.filter((origin) => origin.type === OriginType.FunctionCallOrigin) ?? [];
 
-		for(const target of callTargets ?? []) {
-			const targetNode = this.getNormalizedAst(target);
+		const functionType = new UnresolvedRFunctionType();
+		for(const target of callTargets) {
+			const targetNode = this.getNormalizedAst(target.id);
 			if(targetNode !== undefined) {
-				const functionType = new UnresolvedRFunctionType();
-				this.constrainNodeType(targetNode, { lowerBound: functionType });
+				this.constrainNodeType(targetNode, { upperBound: functionType });
 
 				for(const [index, arg] of data.call.args.entries()) {
 					if(arg === EmptyArgument) {
@@ -187,12 +227,15 @@ class TypeInferringCfgGuidedVisitor<
 						constrain(argNode.info.typeVariable, getParameterTypeFromFunction(functionType, index), this.constraintCache);
 					}
 				}
-
-				this.constrainNodeType(data.call.id, functionType.returnType);
 			} else {
-				// TODO: Handle builtin functions that are not represented in the AST
+				// If the target function has no associated AST node it might be a library function
+				const contextFunctionType = this.functionContext.get(data.call.name);
+				if(contextFunctionType !== undefined) {
+					constrain(contextFunctionType, functionType, this.constraintCache);
+				}
 			}
 		}
+		this.constrainNodeType(data.call.id, functionType.returnType);
 	}
 
 	override onGetCall(data: { call: DataflowGraphVertexFunctionCall }) {
@@ -201,13 +244,12 @@ class TypeInferringCfgGuidedVisitor<
 		
 		guard(varName !== undefined && varName !== EmptyArgument, 'Expected argument of get call to be defined');
 		this.constrainNodeType(varName.nodeId, { upperBound: new RStringType() });
+		
+		const node = this.getNormalizedAst(data.call.id);
+		guard(node !== undefined, 'Expected AST node to be defined');
 
-		const varReadOrigins = this.getOrigins(varName.nodeId)?.filter((origin) => origin.type === OriginType.ReadVariableOrigin);
-		for(const readOrigin of varReadOrigins ?? []) {
-			const readNode = this.getNormalizedAst(readOrigin.id);
-			guard(readNode !== undefined, 'Expected read node to be defined');
-			this.constrainNodeType(data.call.id, { lowerBound: readNode.info.typeVariable });
-		}
+		const varReadOrigins = this.getOrigins(varName.nodeId)?.filter((origin) => origin.type === OriginType.ReadVariableOrigin) ?? [];
+		this.inferNodeTypeFromReadOrigins(node, varReadOrigins);
 	}
 
 	override onRmCall(data: { call: DataflowGraphVertexFunctionCall }) {

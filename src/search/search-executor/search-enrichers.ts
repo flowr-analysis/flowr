@@ -61,7 +61,7 @@ export interface LastCallContent extends MergeableRecord {
 
 export interface CfgInformationElementContent extends MergeableRecord {
 	/**
-	 * Whether the current node is a root node in the CFG.
+	 * Whether the current node is a root node in the CFG, which is a node that is not contained inside of a function definition.
 	 */
 	isRoot:       boolean
 	/**

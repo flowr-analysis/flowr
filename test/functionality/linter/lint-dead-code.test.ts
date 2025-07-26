@@ -6,9 +6,9 @@ import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-sim
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('dead code', () => {
-		assertLinter('none', parser, 'x <- 1', 'dead-code', []);
 
 		describe('simple', () => {
+			assertLinter('none', parser, 'x <- 1', 'dead-code', []);
 			assertLinter('always', parser, 'if(TRUE) 1 else 2', 'dead-code', [
 				{ certainty: LintingCertainty.Definitely, range: [1, 17, 1, 17] }
 			], { consideredNodes: 7 });
@@ -16,6 +16,14 @@ describe('flowR linter', withTreeSitter(parser => {
 				{ certainty: LintingCertainty.Definitely, range: [1, 11, 1, 11] }
 			], { consideredNodes: 7 });
 			assertLinter('no analysis', parser, 'if(FALSE) 1 else 2', 'dead-code', [], { consideredNodes: 7 }, { simplificationPasses: DefaultCfgSimplificationOrder });
+		});
+
+		describe('stopifnot', () => {
+			assertLinter('stopifnot true', parser, 'if(TRUE) 1; stopifnot(TRUE); 2', 'dead-code', []);
+			assertLinter('stopifnot false', parser, 'if(TRUE) 1; stopifnot(FALSE); 2', 'dead-code', [
+				{ certainty: LintingCertainty.Definitely, range: [1, 13, 1, 28] },
+				{ certainty: LintingCertainty.Definitely, range: [1, 31, 1, 31] },
+			]);
 		});
 
 		describe('non-constant', () => {
@@ -38,6 +46,15 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('FALSE TRUE', parser, 'if(FALSE) 1 else if (TRUE) 2 else 3', 'dead-code', [
 				{ certainty: LintingCertainty.Definitely, range: [1, 11, 1, 11] },
 				{ certainty: LintingCertainty.Definitely, range: [1, 35, 1, 35] }
+			]);
+		});
+
+		describe('loops', () => {
+			assertLinter('after infinite repeat', parser, 'repeat{ foo }; 2', 'dead-code', [
+				{ certainty: LintingCertainty.Definitely, range: [1,16,1,16] }
+			]);
+			assertLinter('after infinite while', parser, 'while(TRUE){ foo }; 2', 'dead-code', [
+				{ certainty: LintingCertainty.Definitely, range: [1,21,1,21] }
 			]);
 		});
 	});

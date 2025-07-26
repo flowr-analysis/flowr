@@ -92,6 +92,12 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 		return this;
 	}
 
+	/**
+	 * Enriches this flowr search element collection with the given enrichment.
+	 * To retrieve enrichment content for a given enrichment type, use {@link enrichmentContent}.
+	 *
+	 * Please note that this function does not also enrich individual elements, which is done through {@link enrichElement}. Both functions are called in a consise manner in {@link FlowrSearchBuilder.with}, which is the preferred way to add enrichments to a search.
+	 */
 	public enrich<E extends Enrichment>(data: FlowrSearchInput<Pipeline>, enrichment: E, args?: EnrichmentSearchArguments<E>): this {
 		const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>, EnrichmentSearchContent<E>, EnrichmentSearchArguments<E>>;
 		if(enrichmentData.enrichSearch !== undefined) {

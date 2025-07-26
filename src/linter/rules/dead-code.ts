@@ -40,7 +40,7 @@ export const DEAD_CODE = {
 					.filter(element => {
 						meta.consideredNodes++;
 						const cfgInformation = enrichmentContent(element, Enrichment.CfgInformation);
-						return !cfgInformation.isReachable;
+						return cfgInformation.isRoot && !cfgInformation.isReachable;
 					})
 					.map(element => element.node.info.fullRange ?? element.node.location)
 					.filter(isNotUndefined)))
@@ -59,8 +59,6 @@ export const DEAD_CODE = {
 		name:          'Dead Code',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
 		description:   'Marks areas of code that are never reached during execution.',
-		defaultConfig: {
-			analyzeDeadCode: true
-		}
+		defaultConfig: {}
 	}
 } as const satisfies LintingRule<DeadCodeResult, DeadCodeMetadata, DeadCodeConfig>;

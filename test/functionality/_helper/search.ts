@@ -18,7 +18,7 @@ import { guard, isNotUndefined } from '../../../src/util/assert';
 import { flowrSearchToAscii } from '../../../src/search/flowr-search-printer';
 import { defaultConfigOptions } from '../../../src/config';
 import type { FlowrSearchElement } from '../../../src/search/flowr-search';
-import type { Enrichment, EnrichmentContent } from '../../../src/search/search-executor/search-enrichers';
+import type { Enrichment, EnrichmentElementContent } from '../../../src/search/search-executor/search-enrichers';
 import { enrichmentContent } from '../../../src/search/search-executor/search-enrichers';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 
@@ -50,7 +50,7 @@ export function assertSearch(
 				const info = results;
 				search = getFlowrSearch(search, optimize);
 
-				const result = runSearch(search,  { ...info, config: defaultConfigOptions });
+				const result = runSearch(search,  { ...info, config: defaultConfigOptions }).getElements();
 				try {
 					if(Array.isArray(expected)) {
 						expected = expected.map(id => {
@@ -66,7 +66,7 @@ export function assertSearch(
 							`Expected search results to match. Wanted: [${expected.join(', ')}], got: [${result.map(r => r.node.info.id).join(', ')}]`);
 					} else {
 						const expectedFunc = expected as (result: FlowrSearchElement<ParentInformation>[]) => boolean;
-						assert(expectedFunc(result), `Expected search results ${JSON.stringify(results)} to match expected function`);
+						assert(expectedFunc([...result]), `Expected search results ${JSON.stringify(results)} to match expected function`);
 					}
 				} /* v8 ignore next 4 */ catch(e: unknown) {
 					console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(info.dataflow));
@@ -82,7 +82,7 @@ export function assertSearchEnrichment(
 	name: string | TestLabel,
 	parser: KnownParser,
 	code: string,
-	expectedEnrichments: readonly { [E in Enrichment]?: EnrichmentContent<E> }[],
+	expectedEnrichments: readonly { [E in Enrichment]?: EnrichmentElementContent<E> }[],
 	matchType: 'some' | 'every',
 	...searches: FlowrSearchLike[]
 ) {

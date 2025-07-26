@@ -15,12 +15,10 @@ import { isNotUndefined, isUndefined } from '../../util/assert';
 import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
-import { Enrichment } from '../../search/search-executor/search-enrichers';
+import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { FlowrSearchElementMaybeFromQuery } from '../../search/flowr-search';
 import type { QueryResults } from '../../queries/query';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -139,6 +137,7 @@ export const ABSOLUTE_PATH = {
 			totalConsidered: 0,
 			totalUnknown:    0
 		};
+		const queryResults = elements.enrichmentContent(Enrichment.QueryData)?.queries;
 		const regex = config.absolutePathRegex ? new RegExp(config.absolutePathRegex) : undefined;
 		return {
 			results: elements.getElements().flatMap(element => {
@@ -156,8 +155,8 @@ export const ABSOLUTE_PATH = {
 					} else {
 						return [];
 					}
-				} else if(element.queryResult) {
-					const result = element.queryResult as QueryResults<'dependencies'>['dependencies'];
+				} else if(enrichmentContent(element, Enrichment.QueryData)) {
+					const result = queryResults[enrichmentContent(element, Enrichment.QueryData).query] as QueryResults<'dependencies'>['dependencies'];
 					const mappedStrings = result.readData.filter(r => r.source !== Unknown && isAbsolutePath(r.source, regex)).map(r => {
 						const elem = data.normalize.idMap.get(r.nodeId);
 						return {
@@ -213,4 +212,4 @@ export const ABSOLUTE_PATH = {
 			useAsWd:                 '@script'
 		}
 	}
-} as const satisfies LintingRule<AbsoluteFilePathResult, AbsoluteFilePathMetadata, AbsoluteFilePathConfig, ParentInformation, FlowrSearchElementMaybeFromQuery<ParentInformation>[]>;
+} as const satisfies LintingRule<AbsoluteFilePathResult, AbsoluteFilePathMetadata, AbsoluteFilePathConfig>;

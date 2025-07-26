@@ -151,6 +151,9 @@ df <- data.frame(id = 1:5, name = 6:10)
 df[6, "value"]
 `, tagTypes);
 
+	rule(shell,
+		'dead-code', 'DeadCodeConfig', 'DEAD_CODE', 'lint-dead-code',
+		'if(TRUE) 1 else 2', tagTypes);
 
 	function rule(shell: RShell, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];

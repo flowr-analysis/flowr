@@ -11,7 +11,7 @@ export function executeSearch({ ast, dataflow, config }: BasicQueryData, queries
 		const { search } = query;
 		results.push({
 			ids: runSearch(search, { normalize: ast, dataflow, config } )
-				.map(({ node }) => node.info.id),
+				.getElements().map(({ node }) => node.info.id),
 			search
 		});
 	}

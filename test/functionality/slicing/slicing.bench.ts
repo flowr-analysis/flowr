@@ -40,7 +40,7 @@ for(i in 1:5) {
 }
 			`.trim().repeat(200) + '\nprint(x + f(1, function(i) x[[i]] + 2, 3))'),
 				}, defaultConfigOptions).allRemainingSteps();
-				ids = runSearch(Q.var('print').first(),  { ...result, config: defaultConfigOptions }).map(n => n.node.info.id);
+				ids = runSearch(Q.var('print').first(),  { ...result, config: defaultConfigOptions }).getElements().map(n => n.node.info.id);
 			}
 			guard(result !== undefined && ids !== undefined, () => 'no result');
 			staticSlicing(result.dataflow.graph, result.normalize, [`$${ids[0]}`], threshold);

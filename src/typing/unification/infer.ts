@@ -23,7 +23,7 @@ import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
-import { resolveType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeVariable } from './types';
+import { resolve, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeVariable } from './types';
 
 export function inferDataTypes<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
@@ -52,7 +52,7 @@ function decorateTypeVariables<Info extends ParentInformation>(ast: NormalizedAs
 function resolveTypeVariables<Info extends ParentInformation & UnresolvedTypeInfo>(ast: NormalizedAst<Info>): NormalizedAst<Omit<Info, keyof UnresolvedTypeInfo> & DataTypeInfo> {
 	return mapNormalizedAstInfo(ast, node => {
 		const { typeVariable, ...rest } = node.info;
-		return { ...rest, inferredType: resolveType(typeVariable) };
+		return { ...rest, inferredType: resolve(typeVariable) };
 	});
 }
 
@@ -215,7 +215,8 @@ class TypeInferringCfgGuidedVisitor<
 
 				node.info.typeVariable.unify(functionType.returnType);
 			} else {
-				// TODO: Handle builtin functions that are not represented in the AST
+				// The function is a builtin function that is not represented in the AST
+				// We do not handle builtin functions in the unification approach and provide type information only in the more advanced subtyping system
 			}
 		}
 	}

@@ -24,7 +24,7 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import type { UnresolvedDataType } from './types';
-import { constrainWithLowerBound, constrainWithUpperBound, getIndexedElementTypeFromList, getParameterTypeFromFunction, resolveType, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from './types';
+import { constrain, getIndexedElementTypeFromList, getParameterTypeFromFunction, resolve, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from './types';
 
 export function inferDataTypes<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
@@ -54,7 +54,7 @@ function resolveTypeVariables<Info extends ParentInformation & UnresolvedTypeInf
 	const cache = new Map<UnresolvedDataType, DataType>();
 	return mapNormalizedAstInfo(ast, node => {
 		const { typeVariable, ...rest } = node.info;
-		return { ...rest, inferredType: resolveType(typeVariable, cache) };
+		return { ...rest, inferredType: resolve(typeVariable, cache) };
 	});
 }
 
@@ -78,7 +78,7 @@ class TypeInferringCfgGuidedVisitor<
 		super({ dataflow: config.dataflowInfo.graph, ...config });
 	}
 
-	protected constraintCache: Map<UnresolvedDataType, { lowerBounds: Set<UnresolvedDataType>, upperBounds: Set<UnresolvedDataType> }> = new Map();
+	protected constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map();
 
 
 	protected constrainNodeType(nodeOrId: RNode<UnresolvedTypeInfo> | NodeId, constraint: UnresolvedDataType | { lowerBound?: UnresolvedDataType, upperBound?: UnresolvedDataType }): void {
@@ -89,10 +89,10 @@ class TypeInferringCfgGuidedVisitor<
 		const upperBound = 'tag' in constraint ? constraint : constraint.upperBound;
 
 		if(lowerBound !== undefined) {
-			constrainWithLowerBound(node.info.typeVariable, lowerBound, this.constraintCache);
+			constrain(lowerBound, node.info.typeVariable, this.constraintCache);
 		}
 		if(upperBound !== undefined) {
-			constrainWithUpperBound(node.info.typeVariable, upperBound, this.constraintCache);
+			constrain(node.info.typeVariable, upperBound, this.constraintCache);
 		}
 	}
 
@@ -182,9 +182,9 @@ class TypeInferringCfgGuidedVisitor<
 					guard(argNode !== undefined, 'Expected argument node to be defined');
 
 					if(arg.name !== undefined) {
-						constrainWithLowerBound(getParameterTypeFromFunction(functionType, arg.name), argNode.info.typeVariable, this.constraintCache);
+						constrain(argNode.info.typeVariable, getParameterTypeFromFunction(functionType, arg.name), this.constraintCache);
 					} else {
-						constrainWithLowerBound(getParameterTypeFromFunction(functionType, index), argNode.info.typeVariable, this.constraintCache);
+						constrain(argNode.info.typeVariable, getParameterTypeFromFunction(functionType, index), this.constraintCache);
 					}
 				}
 
@@ -326,10 +326,10 @@ class TypeInferringCfgGuidedVisitor<
 			const argNode = this.getNormalizedAst(arg.nodeId);
 			guard(argNode !== undefined, 'Expected argument node to be defined');
 
-			constrainWithLowerBound(getIndexedElementTypeFromList(listType, index, this.constraintCache), argNode.info.typeVariable, this.constraintCache);
+			constrain(argNode.info.typeVariable, getIndexedElementTypeFromList(listType, index, this.constraintCache), this.constraintCache);
 
 			if(arg.name !== undefined) {
-				constrainWithLowerBound(getIndexedElementTypeFromList(listType, arg.name, this.constraintCache), argNode.info.typeVariable, this.constraintCache);
+				constrain(argNode.info.typeVariable, getIndexedElementTypeFromList(listType, arg.name, this.constraintCache), this.constraintCache);
 			}
 		}
 	}
@@ -349,7 +349,7 @@ class TypeInferringCfgGuidedVisitor<
 			const argNode = this.getNormalizedAst(arg.nodeId);
 			guard(argNode !== undefined, 'Expected argument node to be defined');
 			this.constrainNodeType(argNode, { upperBound: new UnresolvedRAtomicVectorType() });
-			constrainWithLowerBound(vectorType, argNode.info.typeVariable, this.constraintCache);
+			constrain(argNode.info.typeVariable, vectorType, this.constraintCache);
 		}
 	}
 
@@ -369,9 +369,9 @@ class TypeInferringCfgGuidedVisitor<
 
 			if(!dotsEncountered) {
 				// Only constrain the parameter type positionally if no `...` has been encountered yet
-				constrainWithUpperBound(getParameterTypeFromFunction(functionType, index), param.info.typeVariable, this.constraintCache);
+				constrain(getParameterTypeFromFunction(functionType, index), param.info.typeVariable, this.constraintCache);
 			}
-			constrainWithUpperBound(getParameterTypeFromFunction(functionType, param.name.lexeme), param.info.typeVariable, this.constraintCache);
+			constrain(getParameterTypeFromFunction(functionType, param.name.lexeme), param.info.typeVariable, this.constraintCache);
 
 			if(param.defaultValue !== undefined) {
 				this.constrainNodeType(param, { lowerBound: param.defaultValue.info.typeVariable });

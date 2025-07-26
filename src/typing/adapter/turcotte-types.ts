@@ -1,7 +1,5 @@
 import { guard } from '../../util/assert';
-import type {
-	DataType,
-	RFunctionType } from '../types';
+import type { DataType } from '../types';
 import {
 	DataTypeTag,
 	RComplexType,
@@ -14,8 +12,7 @@ import {
 	RRawType,
 	RStringType
 } from '../types';
-import type {
-	UnresolvedDataType } from '../subtyping/types';
+import type { UnresolvedDataType } from '../subtyping/types';
 import {
 	constrain,
 	getParameterTypeFromFunction,
@@ -30,7 +27,7 @@ import { jsonReplacer } from '../../util/json';
 export interface RohdeFunctionTypeInformation {
     readonly name:    string;
     readonly package: string;
-    readonly type:    readonly RFunctionType[]
+    readonly types:   readonly UnresolvedRFunctionType[]
 }
 
 export interface RohdeConstantTypeInformation {
@@ -73,15 +70,15 @@ function convertTurcotteFunction2RohdeType(fingerprint: string, rows: TurcotteCs
 	// now we group them by their outer_alternative so that we can get the alternatives in order
 	const groupedByOuter = groupTurcotteData(rows, row => row.outer_alternative);
 
-	const type = [];
+	const functionTypes = [];
 	for(const [, innerRows] of groupedByOuter.entries()) {
-		type.push(convertSingleTurcotteFunctionAlternative2RohdeType(fingerprint, innerRows));
+		functionTypes.push(convertSingleTurcotteFunctionAlternative2RohdeType(fingerprint, innerRows));
 	}
 
 	return {
 		package: anyRow.package_name,
 		name:    anyRow.function_name,
-		type
+		types:   functionTypes
 	};
 }
 
@@ -93,7 +90,7 @@ function constrainLowerAndUpperBound(type: UnresolvedDataType, lowerBound: Unres
 	return type;
 }
 
-function convertSingleTurcotteFunctionAlternative2RohdeType(fingerprint: string, rows: TurcotteCsvRow[]): RFunctionType {
+function convertSingleTurcotteFunctionAlternative2RohdeType(fingerprint: string, rows: TurcotteCsvRow[]): UnresolvedRFunctionType {
 	const groupedByParameterPos = groupTurcotteData(rows, row => row.parameter_position);
 	const fn = new UnresolvedRFunctionType();
 

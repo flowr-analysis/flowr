@@ -17,8 +17,7 @@ import {
 import type {
 	UnresolvedDataType } from '../subtyping/types';
 import {
-	constrainWithLowerBound,
-	constrainWithUpperBound,
+	constrain,
 	getParameterTypeFromFunction,
 	UnresolvedRAtomicVectorType,
 	UnresolvedRFunctionType,
@@ -86,14 +85,11 @@ function convertTurcotteFunction2RohdeType(fingerprint: string, rows: TurcotteCs
 	};
 }
 
-const globalCache: Map<UnresolvedDataType, {
-    lowerBounds: Set<UnresolvedDataType>,
-    upperBounds: Set<UnresolvedDataType>
-}> = new Map();
+const globalCache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map();
 
 function constrainLowerAndUpperBound(type: UnresolvedDataType, lowerBound: UnresolvedDataType, upperBound: UnresolvedDataType = lowerBound) {
-	constrainWithLowerBound(type, lowerBound, globalCache);
-	constrainWithUpperBound(type, upperBound, globalCache);
+	constrain(lowerBound, type, globalCache);
+	constrain(type, upperBound, globalCache);
 	return type;
 }
 

@@ -8,6 +8,10 @@ function isAny(t: DataType): boolean {
         t.upperBound.tag === DataTypeTag.Intersection && t.upperBound.types.size === 0;
 }
 
+/**
+ * Visualize a {@link DataType} as a string.
+ * The `shorten` parameter will do sever simplification so should not be used for debugging but just for display purposes.
+ */
 export function prettyPrint(t: DataType, shorten = true): string {
 	const tag = t.tag;
 	if(isAny(t)) {

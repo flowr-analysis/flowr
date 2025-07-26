@@ -26,18 +26,34 @@ export function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, queries:
 			result[criterion] = node.info.inferredType;
 		}
 	};
-	const [queriesWithoutSubtyping, queriesUsingSubtyping] = queries.reduce(([unificationGroup, subtypingGroup], query) => query.useSubtyping ? [unificationGroup, [...subtypingGroup, query]] : [[...unificationGroup, query], subtypingGroup], [[], []] as [DatatypeQuery[], DatatypeQuery[]]);
+	const [unificationQueries, subtypingQueries, turcotteQueries] = queries.reduce(([unificationGroup, subtypingGroup, turcotteGroup], query) => {
+		if(query.useSubtyping) {
+			if(query.useTurcotteTypes) {
+				turcotteGroup.push(query);
+			} else {
+				subtypingGroup.push(query);
+			}
+		} else {
+			unificationGroup.push(query);
+		}
+		return [unificationGroup, subtypingGroup, turcotteGroup];
+	}, [[], [], []] as [DatatypeQuery[], DatatypeQuery[], DatatypeQuery[]]);
 
 	const start = Date.now();
 
-	if(queriesWithoutSubtyping.length > 0) {
+	if(unificationQueries.length > 0) {
 		const typedAst = inferDataTypes(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow);
-		extractInferredTypeFromAst(typedAst, queriesWithoutSubtyping.map(query => query.criterion ?? '1:1'));
+		extractInferredTypeFromAst(typedAst, unificationQueries.map(query => query.criterion ?? '1:1'));
 	}
 
-	if(queriesUsingSubtyping.length > 0) {
-		const typedAst = inferDataTypesUsingSubtyping(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow);
-		extractInferredTypeFromAst(typedAst, queriesUsingSubtyping.map(query => query.criterion ?? '1:1'));
+	if(subtypingQueries.length > 0) {
+		const typedAst = inferDataTypesUsingSubtyping(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow, false);
+		extractInferredTypeFromAst(typedAst, subtypingQueries.map(query => query.criterion ?? '1:1'));
+	}
+
+	if(turcotteQueries.length > 0) {
+		const typedAst = inferDataTypesUsingSubtyping(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow, true);
+		extractInferredTypeFromAst(typedAst, turcotteQueries.map(query => query.criterion ?? '1:1'));
 	}
 
 	return {

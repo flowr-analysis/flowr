@@ -227,7 +227,7 @@ export function resolve(type: UnresolvedDataType, cache: Map<UnresolvedDataType,
 	}
 }
 
-function subsumes(subtype: DataType | UnresolvedDataType, supertype: DataType | UnresolvedDataType): boolean {
+export function subsumes(subtype: DataType | UnresolvedDataType, supertype: DataType | UnresolvedDataType): boolean {
 	// console.debug('Checking if', subtype, 'subsumes', supertype);
 
 	if(subtype === supertype) {

@@ -1,9 +1,13 @@
 import { guard } from '../../util/assert';
 import type { DataType , AtomicVectorBaseType, REnvironmentType, RLanguageType, RNullType } from '../types';
 import { DataTypeTag, isAtomicVectorBaseType, RAtomicVectorType, RFunctionType, RListType, RTypeError, RTypeIntersection, RTypeUnion, RTypeVariable } from '../types';
+// import { inspect } from 'util';
+
+// let idCounter = 0;
 
 export class UnresolvedRAtomicVectorType {
 	readonly tag = DataTypeTag.AtomicVector;
+	// readonly id = idCounter++;
 	readonly elementType = new UnresolvedRTypeVariable();
 
 	constructor(elementType?: UnresolvedRTypeVariable) {
@@ -15,6 +19,7 @@ export class UnresolvedRAtomicVectorType {
 
 export class UnresolvedRListType {
 	readonly tag = DataTypeTag.List;
+	// readonly id = idCounter++;
 	readonly elementType = new UnresolvedRTypeVariable();
 	readonly indexedElementTypes = new Map<number | string, UnresolvedRTypeVariable>();
 
@@ -38,6 +43,7 @@ export function getIndexedElementTypeFromList(list: UnresolvedRListType, indexOr
 
 export class UnresolvedRFunctionType {
 	readonly tag = DataTypeTag.Function;
+	// readonly id = idCounter++;
 	readonly parameterTypes = new Map<number | string, UnresolvedRTypeVariable>();
 	readonly returnType = new UnresolvedRTypeVariable();
 
@@ -59,6 +65,7 @@ export function getParameterTypeFromFunction(func: UnresolvedRFunctionType, inde
 
 export class UnresolvedRTypeUnion {
 	readonly tag = DataTypeTag.Union;
+	// readonly id = idCounter++;
 	readonly types: Set<UnresolvedDataType> = new Set();
 
 	constructor(...types: UnresolvedDataType[]) {
@@ -71,6 +78,7 @@ export class UnresolvedRTypeUnion {
 
 export class UnresolvedRTypeIntersection {
 	readonly tag = DataTypeTag.Intersection;
+	// readonly id = idCounter++;
 	readonly types: Set<UnresolvedDataType> = new Set();
 
 	constructor(...types: UnresolvedDataType[]) {
@@ -83,9 +91,11 @@ export class UnresolvedRTypeIntersection {
 
 export class UnresolvedRTypeVariable {
 	readonly tag = DataTypeTag.Variable;
+	// readonly id = idCounter++;
 	readonly lowerBound = new UnresolvedRTypeUnion();
 	readonly upperBound = new UnresolvedRTypeIntersection();
 }
+
 
 export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedDataType, cache: Map<UnresolvedDataType, Set<UnresolvedDataType>>): void {
 	// console.debug('constraining', type, 'with upper bound', bound);
@@ -227,42 +237,58 @@ export function resolve(type: UnresolvedDataType, cache: Map<UnresolvedDataType,
 	}
 }
 
-export function subsumes(subtype: DataType | UnresolvedDataType, supertype: DataType | UnresolvedDataType): boolean {
+export function subsumes(subtype: DataType | UnresolvedDataType, supertype: DataType | UnresolvedDataType, inProcess: Map<DataType | UnresolvedDataType, Set<DataType | UnresolvedDataType>> = new Map()): boolean {
 	// console.debug('Checking if', subtype, 'subsumes', supertype);
 
 	if(subtype === supertype) {
-		return true;
-	} else if(subtype.tag === DataTypeTag.Error || supertype.tag === DataTypeTag.Error) {
-		return false; // Error types do not subsume and are not subsumed by any other type
+		return true; // If both types are the same, they subsume each other
+	}
+
+	let processedSupertypes = inProcess.get(subtype);
+	if(processedSupertypes?.has(supertype)) {
+		return true; // Avoid infinite recursion
+	}
+	processedSupertypes ??= new Set();
+	processedSupertypes.add(supertype);
+	inProcess.set(subtype, processedSupertypes);
+
+	let result: boolean;
+
+	if(subtype.tag === DataTypeTag.Error || supertype.tag === DataTypeTag.Error) {
+		result = false; // Error types do not subsume and are not subsumed by any other type
 	} else if(subtype.tag === DataTypeTag.Variable) {
-		return subsumes(subtype.lowerBound, supertype) && subsumes(subtype.upperBound, supertype);
+		result = subsumes(subtype.lowerBound, supertype, inProcess) && subsumes(subtype.upperBound, supertype, inProcess);
 	} else if(supertype.tag === DataTypeTag.Variable) {
-		return subsumes(supertype.lowerBound, subtype) && subsumes(subtype, supertype.upperBound);
+		result = subsumes(supertype.lowerBound, subtype, inProcess) && subsumes(subtype, supertype.upperBound, inProcess);
 	} else if(subtype.tag === DataTypeTag.Union) {
-		return subtype.types.values().every(subtype => subsumes(subtype, supertype));
+		result = subtype.types.values().every(subtype => subsumes(subtype, supertype, inProcess));
 	} else if(supertype.tag === DataTypeTag.Union) {
-		return supertype.types.values().some(supertype => subsumes(subtype, supertype));
+		result = supertype.types.values().some(supertype => subsumes(subtype, supertype, inProcess));
 	} else if(supertype.tag === DataTypeTag.Intersection) {
-		return supertype.types.values().every(supertype => subsumes(subtype, supertype));
+		result = supertype.types.values().every(supertype => subsumes(subtype, supertype, inProcess));
 	} else if(subtype.tag === DataTypeTag.Intersection) {
-		return subtype.types.values().some(subtype => subsumes(subtype, supertype));
+		result = subtype.types.values().some(subtype => subsumes(subtype, supertype, inProcess));
 	} else if(subtype.tag === DataTypeTag.List && supertype.tag === DataTypeTag.List) {
-		return subsumes(subtype.elementType, supertype.elementType);
+		result = subsumes(subtype.elementType, supertype.elementType, inProcess);
 	} else if(subtype.tag === DataTypeTag.AtomicVector && supertype.tag === DataTypeTag.AtomicVector) {
-		return subsumes(subtype.elementType, supertype.elementType);
+		result = subsumes(subtype.elementType, supertype.elementType, inProcess);
 	} else if(isAtomicVectorBaseType(subtype) && supertype.tag === DataTypeTag.AtomicVector) {
 		// A scalar subsumes a vector type if it subsumes the element type of the vector
-		return subsumes(subtype, supertype.elementType);
+		result = subsumes(subtype, supertype.elementType, inProcess);
 	} else if(subtype.tag === DataTypeTag.Function && supertype.tag === DataTypeTag.Function) {
 		const subtypeParameterKeys = new Set(subtype.parameterTypes.keys());
 		const supertypeParameterKeys = new Set(supertype.parameterTypes.keys());
-		return subsumes(subtype.returnType, supertype.returnType) && subtypeParameterKeys.intersection(supertypeParameterKeys).values().every(key => {
+		result = subsumes(subtype.returnType, supertype.returnType, inProcess) && subtypeParameterKeys.intersection(supertypeParameterKeys).values().every(key => {
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			return subsumes(supertype.parameterTypes.get(key)!, subtype.parameterTypes.get(key)!);
+			return subsumes(supertype.parameterTypes.get(key)!, subtype.parameterTypes.get(key)!, inProcess);
 		});
 	} else {
-		return subsumesByTag(subtype.tag, supertype.tag);
+		result = subsumesByTag(subtype.tag, supertype.tag);
 	}
+
+	processedSupertypes?.delete(supertype); // Remove the supertype from the processed set
+
+	return result;
 }
 
 function subsumesByTag(subtype: DataTypeTag, supertype: DataTypeTag): boolean {
@@ -276,7 +302,9 @@ function subsumesByTag(subtype: DataTypeTag, supertype: DataTypeTag): boolean {
 		|| [DataTypeTag.Logical, DataTypeTag.Integer, DataTypeTag.Double, DataTypeTag.Complex, DataTypeTag.String, DataTypeTag.Raw].includes(subtype) && supertype === DataTypeTag.AtomicVector;
 }
 
-function join(type1: DataType, type2: DataType): DataType {
+export function join(type1: DataType, type2: DataType): DataType {
+	// console.debug('Joining', type1, 'and', type2);
+
 	if(type1 instanceof RTypeError) {
 		return type1;
 	} else if(type2 instanceof RTypeError) {
@@ -290,18 +318,28 @@ function join(type1: DataType, type2: DataType): DataType {
 			return type2; // If type1 is an empty union, return type2
 		}
 
-		// ? Use type1.types.values().flatMap(...); instead?
 		const types = new Set<DataType>();
 		for(const subtype of type1.types) {
 			const joinedType = join(subtype, type2);
 			if(joinedType instanceof RTypeError) {
 				return joinedType; // If any subtype resolves to an error, return the error
-			} else if(joinedType instanceof RTypeUnion) {
-				joinedType.types.forEach(type => types.add(type));
 			} else {
-				types.add(joinedType);
+				const typesToAdd = new Set(joinedType instanceof RTypeUnion ? joinedType.types : [joinedType]);
+				for(const type of types) {
+					for(const typeToAdd of typesToAdd) {
+						if(subsumes(typeToAdd, type)) {
+							// If the current type supersumes the new type, do not add the new type
+							typesToAdd.delete(typeToAdd);
+						} else if(subsumes(type, typeToAdd)) {
+							// If the new type supersumes the current type, remove the current type
+							types.delete(type);
+						}
+					}
+				}
+				typesToAdd.forEach(type => types.add(type));
 			}
 		}
+
 		return types.size === 1 ? [...types][0] : new RTypeUnion(...types);
 	} else if(type2 instanceof RTypeUnion) {
 		return join(type2, type1);
@@ -356,7 +394,9 @@ function join(type1: DataType, type2: DataType): DataType {
 	return new RTypeUnion(type1, type2);
 }
 
-function meet(type1: DataType, type2: DataType): DataType {
+export function meet(type1: DataType, type2: DataType): DataType {
+	// console.debug('Meeting', type1, 'and', type2);
+
 	if(type1 instanceof RTypeError) {
 		return type1;
 	} else if(type2 instanceof RTypeError) {
@@ -386,18 +426,28 @@ function meet(type1: DataType, type2: DataType): DataType {
 			return type2; // If type1 is an empty intersection, return type2
 		}
 
-		// ? Use type1.types.values().flatMap(...); instead?
 		const types = new Set<DataType>();
 		for(const subtype of type1.types) {
 			const metType = meet(subtype, type2);
 			if(metType instanceof RTypeError) {
 				return metType; // If any subtype resolves to an error, return the error
-			} else if(metType instanceof RTypeIntersection) {
-				metType.types.forEach(type => types.add(type));
 			} else {
-				types.add(metType);
+				const typesToAdd = new Set(metType instanceof RTypeIntersection ? metType.types : [metType]);
+				for(const type of types) {
+					for(const typeToAdd of typesToAdd) {
+						if(subsumes(type, typeToAdd)) {
+							// If the current type subsumes the new type, do not add the new type
+							typesToAdd.delete(typeToAdd);
+						} else if(subsumes(typeToAdd, type)) {
+							// If the new type subsumes the current type, remove the current type
+							types.delete(type);
+						}
+					}
+				}
+				typesToAdd.forEach(type => types.add(type));
 			}
 		}
+
 		return types.size === 1 ? [...types][0] : new RTypeIntersection(...types);
 	} else if(type2 instanceof RTypeIntersection) {
 		return meet(type2, type1);

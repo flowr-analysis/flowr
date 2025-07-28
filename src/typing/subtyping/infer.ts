@@ -102,6 +102,8 @@ class TypeInferringCfgGuidedVisitor<
 				}
 			}
 		}
+
+		Error.stackTraceLimit = 100; // Increase stack trace limit for better debugging
 	}
 
 	protected constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map();

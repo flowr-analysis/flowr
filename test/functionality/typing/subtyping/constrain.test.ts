@@ -119,4 +119,18 @@ describe('Constrain types with lower and upper bounds', () => {
 		expect(resolve(returnType1)).toEqual(new RTypeVariable(new RIntegerType(), new RTypeIntersection()));
 		expect(resolve(returnType2)).toEqual(new RTypeVariable(new RDoubleType(), new RTypeIntersection()));
 	});
+
+	test('Constrain from both sides', () => {
+		const cache = new Map<UnresolvedDataType, Set<UnresolvedDataType>>();
+
+		const typeVar1 = new UnresolvedRTypeVariable();
+		const typeVar2 = new UnresolvedRTypeVariable();
+		constrain(typeVar1, typeVar2, cache);
+		constrain(typeVar2, typeVar1, cache);
+		constrain(new RIntegerType(), typeVar2, cache);
+		constrain(typeVar2, new RIntegerType(), cache);
+
+		expect(resolve(typeVar1)).toEqual(new RIntegerType());
+		expect(resolve(typeVar2)).toEqual(new RIntegerType());
+	});
 });

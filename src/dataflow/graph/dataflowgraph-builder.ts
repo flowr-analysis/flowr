@@ -209,7 +209,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		if('nodeId' in from) {
 			fromId = from.nodeId;
 		} else {
-			const result = runSearch(from.query, data);
+			const result = runSearch(from.query, data).getElements();
 			guard(result.length === 1, `from query result should yield exactly one node, but yielded ${result.length}`);
 			fromId = result[0].node.info.id;
 		}
@@ -218,7 +218,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		if('target' in to) {
 			toIds = to.target;
 		} else {
-			const result = runSearch(to.query, data);
+			const result = runSearch(to.query, data).getElements();
 			toIds = result.map(r => r.node.info.id);
 		}
 

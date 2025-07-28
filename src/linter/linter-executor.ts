@@ -4,7 +4,6 @@ import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/de
 import type { DataflowInformation } from '../dataflow/info';
 import type { LintingResults, LintingRule } from './linter-format';
 import { runSearch } from '../search/flowr-search-executor';
-import { FlowrSearchElements } from '../search/flowr-search';
 import type { DeepPartial } from 'ts-essentials';
 import { deepMergeObject } from '../util/objects';
 import type { FlowrConfigOptions } from '../config';
@@ -20,7 +19,7 @@ export function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name
 	const searchTime = Date.now() - searchStart;
 
 	const processStart = Date.now();
-	const result = rule.processSearchResult(new FlowrSearchElements(searchResult), fullConfig, input);
+	const result = rule.processSearchResult(searchResult, fullConfig, input);
 	const processTime = Date.now() - processStart;
 
 	return {

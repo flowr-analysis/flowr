@@ -4,7 +4,7 @@
  *
  * @module
  */
-import type { Identifier, IdentifierDefinition, IdentifierReference } from './identifier';
+import type { IdentifierReference } from './identifier';
 import { ReferenceType } from './identifier';
 import type { DataflowGraph } from '../graph/graph';
 import { resolveByName } from './resolve-by-name';
@@ -48,8 +48,6 @@ export function makeAllMaybe(references: readonly IdentifierReference[] | undefi
 	return references.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, defaultCd));
 }
 
-export type EnvironmentMemory = Map<Identifier, IdentifierDefinition[]>
-
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
 	/** Unique and internally generated identifier -- will not be used for comparison but helps with debugging for tracking identities */
@@ -57,7 +55,7 @@ export interface IEnvironment {
 	/** Lexical parent of the environment, if any (can be manipulated by R code) */
 	parent:      IEnvironment
 	/** Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions */
-	memory:      EnvironmentMemory
+	memory:      BuiltInMemory
 }
 
 let environmentIdCounter = 0;
@@ -116,7 +114,7 @@ export interface REnvironmentInformation {
  * see the {@link DefaultBuiltinConfig}.
  */
 export const BuiltInEnvironment = new Environment(undefined as unknown as IEnvironment);
-BuiltInEnvironment.memory = undefined as unknown as EnvironmentMemory;
+BuiltInEnvironment.memory = undefined as unknown as BuiltInMemory;
 
 /**
  * The twin of the {@link BuiltInEnvironment} but with less built ins defined for
@@ -127,7 +125,7 @@ BuiltInEnvironment.memory = undefined as unknown as EnvironmentMemory;
  */
 export const EmptyBuiltInEnvironment: IEnvironment = {
 	id:     BuiltInEnvironment.id,
-	memory: undefined as unknown as EnvironmentMemory,
+	memory: undefined as unknown as BuiltInMemory,
 	parent: undefined as unknown as IEnvironment
 };
 

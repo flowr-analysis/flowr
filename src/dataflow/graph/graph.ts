@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert';
-import type { DataflowGraphEdge , EdgeType } from './edge';
+import type { DataflowGraphEdge, EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
 import { equalFunctionArguments } from './diff-dataflow-graph';
 import type {
@@ -15,7 +15,7 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { EnvironmentMemory, IEnvironment, REnvironmentInformation } from '../environments/environment';
+import type { IEnvironment, REnvironmentInformation } from '../environments/environment';
 import { initializeCleanEnvironments } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
@@ -23,6 +23,7 @@ import { jsonReplacer } from '../../util/json';
 import { dataflowLogger } from '../logger';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
+import type { BuiltInMemory } from '../environments/built-in';
 
 /**
  * Describes the information we store per function body.
@@ -531,7 +532,7 @@ interface REnvironmentInformationJson {
 
 function envFromJson(json: IEnvironmentJson): IEnvironment {
 	const parent = json.parent ? envFromJson(json.parent) : undefined;
-	const memory: EnvironmentMemory = new Map();
+	const memory: BuiltInMemory = new Map();
 	for(const [key, value] of Object.entries(json.memory)) {
 		memory.set(key as Identifier, value);
 	}

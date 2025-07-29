@@ -51,11 +51,13 @@ export function makeAllMaybe(references: readonly IdentifierReference[] | undefi
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
 	/** Unique and internally generated identifier -- will not be used for comparison but helps with debugging for tracking identities */
-	readonly id: number
+	readonly id:      number
 	/** Lexical parent of the environment, if any (can be manipulated by R code) */
-	parent:      IEnvironment
+	parent:           IEnvironment
 	/** Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions */
-	memory:      BuiltInMemory
+	memory:           BuiltInMemory
+	/**  */
+	isBuiltInDefault: boolean
 }
 
 let environmentIdCounter = 0;
@@ -63,12 +65,14 @@ let environmentIdCounter = 0;
 /** @see REnvironmentInformation */
 export class Environment implements IEnvironment {
 	readonly id = environmentIdCounter++;
-	parent: IEnvironment;
-	memory: BuiltInMemory;
+	parent:           IEnvironment;
+	memory:           BuiltInMemory;
+	isBuiltInDefault: boolean;
 
-	constructor(parent: IEnvironment) {
+	constructor(parent: IEnvironment, isBuiltInDefault: boolean) {
 		this.parent = parent;
 		this.memory = new Map();
+		this.isBuiltInDefault = isBuiltInDefault;
 	}
 }
 
@@ -113,7 +117,7 @@ export interface REnvironmentInformation {
  * For its default content (when not overwritten by a flowR config),
  * see the {@link DefaultBuiltinConfig}.
  */
-export const BuiltInEnvironment = new Environment(undefined as unknown as IEnvironment);
+export const BuiltInEnvironment = new Environment(undefined as unknown as IEnvironment, true);
 BuiltInEnvironment.memory = undefined as unknown as BuiltInMemory;
 
 /**
@@ -124,9 +128,10 @@ BuiltInEnvironment.memory = undefined as unknown as BuiltInMemory;
  * @see {@link BuiltInEnvironment}
  */
 export const EmptyBuiltInEnvironment: IEnvironment = {
-	id:     BuiltInEnvironment.id,
-	memory: undefined as unknown as BuiltInMemory,
-	parent: undefined as unknown as IEnvironment
+	id:               BuiltInEnvironment.id,
+	memory:           undefined as unknown as BuiltInMemory,
+	parent:           undefined as unknown as IEnvironment,
+	isBuiltInDefault: true
 };
 
 /**
@@ -139,7 +144,7 @@ export function initializeCleanEnvironments(fullBuiltIns = true): REnvironmentIn
 		EmptyBuiltInEnvironment.memory = getDefaultBuiltInDefinitions().emptyBuiltInMemory;
 	}
 	return {
-		current: new Environment(fullBuiltIns ? BuiltInEnvironment : EmptyBuiltInEnvironment),
+		current: new Environment(fullBuiltIns ? BuiltInEnvironment : EmptyBuiltInEnvironment, true),
 		level:   0
 	};
 }

@@ -5,6 +5,10 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 
 export type Fingerprint = string
 
+function hasDefaultBuiltInFlag(obj: unknown): obj is { isDefaultBuiltIn: boolean } {
+	return typeof obj === 'object' && obj !== null && 'isDefaultBuiltIn' in obj;
+}
+
 export function envFingerprint(env: REnvironmentInformation): Fingerprint {
 	return objectHash(env, {
 		algorithm:                 'md5',
@@ -12,8 +16,7 @@ export function envFingerprint(env: REnvironmentInformation): Fingerprint {
 		respectFunctionProperties: false,
 		respectFunctionNames:      false,
 		ignoreUnknown:             true,
-		// TODO TSchoeller: Re-enable this optimization
-		replacer:                  (v: unknown) => (v === BuiltInEnvironment) ? undefined : v
+		replacer:                  (v: unknown) => (v === BuiltInEnvironment || hasDefaultBuiltInFlag(v) && v.isDefaultBuiltIn) ? undefined : v
 	});
 }
 

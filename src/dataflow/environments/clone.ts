@@ -1,11 +1,5 @@
-import type {
-	IEnvironment,
-	REnvironmentInformation
-} from './environment';
-import {
-	Environment,
-	BuiltInEnvironment
-} from './environment';
+import type { IEnvironment, REnvironmentInformation } from './environment';
+import { BuiltInEnvironment, Environment } from './environment';
 import type { Identifier, IdentifierDefinition } from './identifier';
 
 function cloneEnvironment(environment: IEnvironment, recurseParents: boolean): IEnvironment
@@ -16,7 +10,7 @@ function cloneEnvironment(environment: IEnvironment | undefined, recurseParents:
 		return BuiltInEnvironment;
 	}
 	/* make sure the clone has the same id */
-	const clone = new Environment(recurseParents ? cloneEnvironment(environment.parent, recurseParents) : environment.parent);
+	const clone = new Environment(recurseParents ? cloneEnvironment(environment.parent, recurseParents) : environment.parent, environment.isBuiltInDefault);
 	clone.memory = new Map(JSON.parse(JSON.stringify([...environment.memory])) as [Identifier, IdentifierDefinition[]][]);
 	return clone;
 }

@@ -61,11 +61,9 @@ export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEn
 		}
 		return;
 	}
-	// TODO TSchoeller: Should we re-enable this optimization?
-	//if((a.memory === BuiltInMemory || a.memory === EmptyBuiltInMemory) &&
-	//	(b.memory === BuiltInMemory || b.memory === EmptyBuiltInMemory)) {
-	//	return;
-	//}
+	if(a.isBuiltInDefault && b.isBuiltInDefault) {
+		return;
+	}
 	if(a.memory.size !== b.memory.size) {
 		info.report.addComment(`${info.position}[at level: ${depth}] Different number of definitions in environment. ${info.leftname}: ${a.memory.size} vs. ${info.rightname}: ${b.memory.size}`);
 		setDifference(new Set([...a.memory.keys()]), new Set([...b.memory.keys()]), {

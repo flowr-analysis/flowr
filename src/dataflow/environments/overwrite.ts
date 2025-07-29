@@ -1,6 +1,6 @@
 import { guard } from '../../util/assert';
-import type { REnvironmentInformation, IEnvironment } from './environment';
-import { BuiltInEnvironment , Environment } from './environment';
+import type { IEnvironment, REnvironmentInformation } from './environment';
+import { BuiltInEnvironment, Environment } from './environment';
 import type { IdentifierDefinition } from './identifier';
 import type { ControlDependency } from '../info';
 import { log } from '../../util/log';
@@ -55,7 +55,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 		parent = base.parent;
 	}
 
-	const out = new Environment(parent);
+	const out = new Environment(parent, false);
 	out.memory = map;
 	return out;
 }

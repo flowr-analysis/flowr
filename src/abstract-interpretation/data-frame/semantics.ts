@@ -380,14 +380,11 @@ function applyGroupBySemantics(
 		return {
 			...value,
 			colnames: by.every(isNotUndefined) ? joinColNames(value.colnames, by) : ColNamesTop,
-			cols:     addInterval(value.cols, [0, by.length]),
-			rows:     extendIntervalToZero(value.rows)
+			cols:     addInterval(value.cols, [0, by.length])
 		};
 	}
-	return {
-		...value,
-		rows: extendIntervalToZero(value.rows)
-	};
+	// Group by only marks columns as groups but does not change the shape itself
+	return value;
 }
 
 function applySummarizeSemantics(
@@ -400,7 +397,7 @@ function applySummarizeSemantics(
 		...value,
 		colnames: colnames?.every(isNotUndefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
 		cols:     cols !== undefined ? minInterval(addInterval(value.cols, [0, cols]), [cols, Infinity]) : extendIntervalToInfinity(value.rows),
-		rows:     maxInterval(minInterval(value.rows, [1, Infinity]), [1, 1])
+		rows:     maxInterval(minInterval(value.rows, [1, Infinity]), [0, 1])
 	};
 }
 
@@ -426,7 +423,7 @@ function applyJoinSemantics(
 		}
 	};
 	const commonCols = meetColNames(value.colnames, other.colnames);
-	let duplicateCols: boolean;  // whether columns may be renamed due to occurance in both data frames
+	let duplicateCols: boolean;  // whether columns may be renamed due to occurrence in both data frames
 	let productRows: boolean;  // whether the resulting rows may be a Cartesian product of the rows of the data frames
 
 	if(options?.natural) {

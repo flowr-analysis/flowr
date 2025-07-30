@@ -3274,7 +3274,7 @@ df <- dplyr::group_by(df, id)
 			`.trim(),
 			[
 				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
-				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [0, 5] }]
+				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3287,7 +3287,7 @@ df <- dplyr::group_by(df, \`id\`)
 			`.trim(),
 			[
 				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
-				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [0, 5] }]
+				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3300,7 +3300,7 @@ df <- dplyr::group_by(df, id, name)
 			`.trim(),
 			[
 				['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [5, 5] }],
-				['2@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [0, 5] }]
+				['2@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3326,7 +3326,7 @@ df <- dplyr::group_by(df, id + name)
 			`.trim(),
 			[
 				['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [5, 5] }],
-				['2@df', { colnames: ColNamesTop, cols: [3, 4], rows: [0, 5] }]
+				['2@df', { colnames: ColNamesTop, cols: [3, 4], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3339,7 +3339,7 @@ df <- dplyr::group_by(df, group = id + name)
 			`.trim(),
 			[
 				['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [5, 5] }],
-				['2@df', { colnames: ['id', 'name', 'score', 'group'], cols: [3, 4], rows: [0, 5] }]
+				['2@df', { colnames: ['id', 'name', 'score', 'group'], cols: [3, 4], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3352,7 +3352,7 @@ df <- dplyr::group_by(df, id, .add = TRUE)
 			`.trim(),
 			[
 				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
-				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [0, 5] }]
+				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3449,6 +3449,34 @@ df <- dplyr::summarize(df, score = mean(score), sum = sum(score), .groups = "dro
 				['2@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 6] }, ColNamesOverapproximation]
 			],
 			{ skipRun: skipLibraries }
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+library(dplyr)
+df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
+df <- filter(df, FALSE) |> group_by(category) |> summarize(score = mean(score))
+			`.trim(),
+			[
+				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'category', 'score'], cols: [1, 4], rows: [0, 1] }, ColNamesOverapproximation]
+			],
+			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+library(dplyr)
+df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
+df <- filter(df, FALSE) |> summarize(score = mean(score))
+			`.trim(),
+			[
+				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'category', 'score'], cols: [1, 4], rows: [0, 1] }, ColNamesOverapproximation]
+			],
+			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
 		);
 	});
 
@@ -4796,9 +4824,9 @@ result <- result %>% arrange(desc(avg_score))
 				['10@result', { colnames: ['id', 'age', 'score'], cols: [3, 3], rows: [10, 10] }],
 				['11@result', { colnames: ['id', 'age', 'score'], cols: [3, 3], rows: [0, 10] }],
 				['12@result', { colnames: ['id', 'age', 'score'], cols: [3, 3], rows: [0, 10] }],
-				['13@result', { colnames: ['id', 'age', 'score', 'avg_score'], cols: [1, 4], rows: [1, 10] }, ColNamesOverapproximation],
-				['14@result', { colnames: ['id', 'age', 'score', 'avg_score', 'grade'], cols: [1, 5], rows: [1, 10] }, ColNamesOverapproximation],
-				['15@result', { colnames: ['id', 'age', 'score', 'avg_score', 'grade'], cols: [1, 5], rows: [1, 10] }, ColNamesOverapproximation]
+				['13@result', { colnames: ['id', 'age', 'score', 'avg_score'], cols: [1, 4], rows: [0, 10] }, ColNamesOverapproximation],
+				['14@result', { colnames: ['id', 'age', 'score', 'avg_score', 'grade'], cols: [1, 5], rows: [0, 10] }, ColNamesOverapproximation],
+				['15@result', { colnames: ['id', 'age', 'score', 'avg_score', 'grade'], cols: [1, 5], rows: [0, 10] }, ColNamesOverapproximation]
 			],
 			{ skipRun: skipLibraries }
 		);

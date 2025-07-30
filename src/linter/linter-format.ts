@@ -109,12 +109,14 @@ export interface LintingResults<Name extends LintingRuleNames> {
 export enum LintingCertainty {
 	/**
 	 * The linting rule cannot say for sure whether the result is correct or not.
+	 * This linting certainty should be used for linting results whose calculations are based on estimations involving unknown side-effects, reflection, etc.
 	 */
-	Maybe = 'maybe',
+	Uncertain  = 'uncertain',
 	/**
 	 * The linting rule is certain that the reported lint is real.
+	 * This linting certainty should be used for linting results whose calculations do not involve estimates or other unknown factors.
 	 */
-	Definitely = 'definitely'
+	Certain = 'certain'
 }
 
 export enum LintingPrettyPrintContext {

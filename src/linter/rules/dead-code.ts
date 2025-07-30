@@ -45,7 +45,7 @@ export const DEAD_CODE = {
 					.map(element => element.node.info.fullRange ?? element.node.location)
 					.filter(isNotUndefined)))
 				.map(range => ({
-					certainty: LintingCertainty.Definitely,
+					certainty: LintingCertainty.Certain,
 					range
 				})),
 			'.meta': meta

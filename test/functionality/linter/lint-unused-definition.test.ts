@@ -48,7 +48,7 @@ describe('flowR linter', withTreeSitter(parser => {
 						const node = ast.idMap.get(id);
 						guard(node !== undefined, `Expected node for id ${id} to be defined, but got undefined`);
 						return {
-							certainty:    LintingCertainty.Maybe,
+							certainty:    LintingCertainty.Uncertain,
 							variableName: node.lexeme,
 							range:        node.info.fullRange ?? node.location ?? rangeFrom(-1, -1, -1, -1),
 							quickFix:     removableRange ? [{

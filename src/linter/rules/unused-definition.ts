@@ -125,7 +125,7 @@ export const UNUSED_DEFINITION = {
 				// found an unused definition
 				const variableName = element.node.lexeme;
 				return [{
-					certainty: LintingCertainty.Maybe,
+					certainty: LintingCertainty.Uncertain,
 					variableName,
 					range:     element.node.info.fullRange ?? element.node.location ?? rangeFrom(-1, -1, -1, -1),
 					quickFix:  buildQuickFix(element.node, data.dataflow.graph, data.normalize)

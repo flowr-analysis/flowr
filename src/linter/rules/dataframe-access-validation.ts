@@ -113,7 +113,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 				access:    node?.lexeme ?? '???',
 				...(operand?.type === RType.Symbol ? { operand: operand.content } : {}),
 				range:     node?.info.fullRange ?? node?.location ?? rangeFrom(-1, -1, -1, -1),
-				certainty: LintingCertainty.Definitely
+				certainty: LintingCertainty.Certain
 			}));
 
 		return { results, '.meta': metadata };

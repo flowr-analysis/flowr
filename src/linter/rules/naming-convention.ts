@@ -172,7 +172,7 @@ export const NAMING_CONVENTION = {
 	processSearchResult: (elements, config, data) =>  {
 		const symbols = elements.getElements()
 			.map(m => ({
-				certainty:      LintingCertainty.Definitely,
+				certainty:      LintingCertainty.Certain,
 				detectedCasing: detectCasing(m.node.lexeme as string),
 				name:           m.node.lexeme as string,
 				range:          m.node.info.fullRange as SourceRange,

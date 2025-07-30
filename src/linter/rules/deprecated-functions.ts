@@ -54,7 +54,7 @@ export const DEPRECATED_FUNCTIONS = {
 					});
 				})
 				.map(element => ({
-					certainty: LintingCertainty.Definitely,
+					certainty: LintingCertainty.Certain,
 					function:  element.target,
 					range:     element.range
 				})),

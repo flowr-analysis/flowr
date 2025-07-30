@@ -147,7 +147,7 @@ export const ABSOLUTE_PATH = {
 				if(isRString(node)) {
 					if(node.content.str.length >= 3 && isAbsolutePath(node.content.str, regex)) {
 						return [{
-							certainty: LintingCertainty.Maybe,
+							certainty: LintingCertainty.Uncertain,
 							filePath:  node.content.str,
 							range:     node.info.fullRange ?? node.location,
 							quickFix:  buildQuickFix(node, node.content.str, wd)
@@ -160,7 +160,7 @@ export const ABSOLUTE_PATH = {
 					const mappedStrings = result.readData.filter(r => r.source !== Unknown && isAbsolutePath(r.source, regex)).map(r => {
 						const elem = data.normalize.idMap.get(r.nodeId);
 						return {
-							certainty: LintingCertainty.Definitely,
+							certainty: LintingCertainty.Certain,
 							filePath:  r.source,
 							range:     elem?.info.fullRange ?? elem?.location ?? rangeFrom(-1, -1, -1, -1),
 							quickFix:  buildQuickFix(elem, r.source, wd)
@@ -179,7 +179,7 @@ export const ABSOLUTE_PATH = {
 						const strings = handler ? handler(data.dataflow.graph, dfNode, data.config) : [];
 						if(strings) {
 							return strings.filter(s => isAbsolutePath(s, regex)).map(str => ({
-								certainty: LintingCertainty.Maybe,
+								certainty: LintingCertainty.Uncertain,
 								filePath:  str,
 								range:     node.info.fullRange ?? node.location ?? rangeFrom(-1, -1, -1, -1)
 							}));

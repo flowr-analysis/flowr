@@ -118,7 +118,7 @@ export const SEEDED_RANDOMNESS = {
 				})
 
 				.map(element => ({
-					certainty: LintingCertainty.Definitely,
+					certainty: LintingCertainty.Certain,
 					function:  element.target,
 					range:     element.range
 				})),

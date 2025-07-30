@@ -79,7 +79,7 @@ export const FILE_PATH_VALIDITY = {
 						return [{
 							range,
 							filePath:  Unknown,
-							certainty: LintingCertainty.Maybe
+							certainty: LintingCertainty.Uncertain
 						}];
 					} else {
 						return [];
@@ -106,7 +106,7 @@ export const FILE_PATH_VALIDITY = {
 				return [{
 					range,
 					filePath:  matchingRead.source,
-					certainty: writesBefore && writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingCertainty.Maybe : LintingCertainty.Definitely
+					certainty: writesBefore && writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingCertainty.Uncertain : LintingCertainty.Certain
 				}];
 			}),
 			'.meta': metadata

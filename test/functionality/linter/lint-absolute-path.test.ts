@@ -25,7 +25,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		describe('quickfixes', () => {
 			/* Given an absolute path and assuming a home directory of `/home/me`, we expect the linter to suggest a relative path */
 			assertLinter('is relative to home', parser, '"/home/me/foo.bar"', 'absolute-file-paths', [{
-				certainty: LintingCertainty.Maybe,
+				certainty: LintingCertainty.Uncertain,
 				filePath:  '/home/me/foo.bar',
 				range:     [1, 1, 1, 18],
 				quickFix:  [{
@@ -42,7 +42,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			});
 			/* Replacing absolute paths with relative paths should work within function calls as well */
 			assertLinter('is relative to home', parser, 'read.csv("/home/me/foo.bar")', 'absolute-file-paths', [{
-				certainty: LintingCertainty.Maybe,
+				certainty: LintingCertainty.Uncertain,
 				filePath:  '/home/me/foo.bar',
 				range:     [1, 10, 1, 27],
 				quickFix:  [{
@@ -92,7 +92,7 @@ describe('flowR linter', withTreeSitter(parser => {
 					/* @ignore-in-wiki */
 					assertLinter(`"${absPath}"`, parser, `x <- "${absPath}"`, 'absolute-file-paths', [
 						{
-							certainty: LintingCertainty.Maybe,
+							certainty: LintingCertainty.Uncertain,
 							filePath:  absPath,
 							range:     [1, 6, 1, absPath.length + 2 + 3 + 2] // +2 for the quotes and the assignment
 						}
@@ -136,7 +136,7 @@ describe('flowR linter', withTreeSitter(parser => {
 						/* @ignore-in-wiki */
 						assertLinter(`"${absPath}"`, parser, `${fn}("${absPath}")`, 'absolute-file-paths', [
 							{
-								certainty: LintingCertainty.Definitely,
+								certainty: LintingCertainty.Certain,
 								filePath:  absPath,
 								range:     [1, 1, 1, absPath.length + 2 + fn.length + 2] // +2 for the quotes and the parentheses
 							}
@@ -145,7 +145,7 @@ describe('flowR linter', withTreeSitter(parser => {
 					describe('raw strings', () => {
 						/* @ignore-in-wiki */
 						assertLinter('R()', parser, `${fn}(R"(/x/y)")`, 'absolute-file-paths', [{
-							certainty: LintingCertainty.Definitely,
+							certainty: LintingCertainty.Certain,
 							filePath:  '/x/y',
 							range:     [1, 1, 1, 11 + fn.length] // length of the string + function name + parentheses
 						}], {
@@ -154,7 +154,7 @@ describe('flowR linter', withTreeSitter(parser => {
 						});
 						/* @ignore-in-wiki */
 						assertLinter('--[]--', parser, `${fn}(R"--[C:\\hello.txt]--")`, 'absolute-file-paths', [{
-							certainty: LintingCertainty.Definitely,
+							certainty: LintingCertainty.Certain,
 							filePath:  'C:\\hello.txt',
 							range:     [1, 1, 1, fn.length + 23] // length of the string + function name + parentheses
 						}], {
@@ -192,7 +192,7 @@ describe('flowR linter', withTreeSitter(parser => {
 						/* @ignore-in-wiki */
 						assertLinter(command, parser, command, 'absolute-file-paths', [
 							{
-								certainty: LintingCertainty.Maybe,
+								certainty: LintingCertainty.Uncertain,
 								filePath:  components.join(path.sep),
 								range:     [1, 1, 1, command.length]
 							}
@@ -200,7 +200,7 @@ describe('flowR linter', withTreeSitter(parser => {
 					}
 					assertLinter('change fsep', parser, 'file.path("C:", "b", fsep="\\\\")', 'absolute-file-paths', [
 						{
-							certainty: LintingCertainty.Maybe,
+							certainty: LintingCertainty.Uncertain,
 							filePath:  'C:\\\\b',
 							range:     [1, 1, 1, 31]
 						}
@@ -208,7 +208,7 @@ describe('flowR linter', withTreeSitter(parser => {
 					/* If someone constructs an absolute path due to a (cursed) fsep, we should still be able to detect it */
 					assertLinter('skrewed fsep', parser, 'file.path("C", "b", fsep=":/")', 'absolute-file-paths', [
 						{
-							certainty: LintingCertainty.Maybe,
+							certainty: LintingCertainty.Uncertain,
 							filePath:  'C:/b',
 							range:     [1, 1, 1, 30]
 						}

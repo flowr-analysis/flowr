@@ -128,10 +128,10 @@ print(df)
 			{ minRVersion: MIN_VERSION_PIPE }
 		);
 
-		assertDataFrameDomain(
+		testDataFrameDomain(
 			shell,
 			'df <- if (runif(1) >= 0.5) data.frame(id = 1:5)',
-			[['1@df', DataFrameTop]]
+			[['1@df', undefined]]
 		);
 
 		testDataFrameDomain(
@@ -250,9 +250,9 @@ print(df)
 			shell,
 			`
 a = 1; b = "A"
-df <- data.frame(id = a, name = b)
+df <- data.frame(id = c(a, a), name = b)
 			`.trim(),
-			[['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [1, 1] }]]
+			[['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [2, 2] }]]
 		);
 
 		testDataFrameDomain(

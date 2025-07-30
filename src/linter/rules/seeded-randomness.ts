@@ -1,5 +1,5 @@
 import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingCertainty, LintingPrettyPrintContext } from '../linter-format';
+import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import type { SourceRange } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -118,7 +118,7 @@ export const SEEDED_RANDOMNESS = {
 				})
 
 				.map(element => ({
-					certainty: LintingCertainty.Certain,
+					certainty: LintingResultCertainty.Certain,
 					function:  element.target,
 					range:     element.range
 				})),
@@ -131,6 +131,7 @@ export const SEEDED_RANDOMNESS = {
 			randomnessConsumers: ['jitter', 'sample', 'sample.int', 'arima.sim', 'kmeans', 'princomp', 'rcauchy', 'rchisq', 'rexp', 'rgamma', 'rgeom', 'rlnorm', 'rlogis', 'rmultinom', 'rnbinom', 'rnorm', 'rpois', 'runif', 'pointLabel', 'some', 'rbernoulli', 'rdunif', 'generateSeedVectors'],
 		},
 		tags:        [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility],
+		certainty:   LintingRuleCertainty.BestEffort,
 		name:        'Seeded Randomness',
 		description: 'Checks whether randomness-based function calls are preceded by a random seed generation function. For consistent reproducibility, functions that use randomness should only be called after a constant random seed is set using a function like `set.seed`.'
 	},

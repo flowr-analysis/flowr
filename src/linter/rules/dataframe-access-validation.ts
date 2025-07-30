@@ -1,5 +1,5 @@
-import { hasDataFrameExpressionInfo, type AbstractInterpretationInfo, type DataFrameOperationType } from '../../abstract-interpretation/data-frame/absint-info';
-import { satisfiesColsNames, satisfiesLeqInterval, type DataFrameDomain } from '../../abstract-interpretation/data-frame/domain';
+import { type AbstractInterpretationInfo, type DataFrameOperationType, hasDataFrameExpressionInfo } from '../../abstract-interpretation/data-frame/absint-info';
+import { type DataFrameDomain, satisfiesColsNames, satisfiesLeqInterval } from '../../abstract-interpretation/data-frame/domain';
 import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../abstract-interpretation/data-frame/shape-inference';
 import { amendConfig } from '../../config';
 import { extractCfg } from '../../control-flow/extract-cfg';
@@ -13,7 +13,7 @@ import { formatRange } from '../../util/mermaid/dfg';
 import { type MergeableRecord } from '../../util/objects';
 import { rangeFrom, type SourceRange } from '../../util/range';
 import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingCertainty, LintingPrettyPrintContext } from '../linter-format';
+import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
 interface DataFrameAccessOperation {
@@ -113,7 +113,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 				access:    node?.lexeme ?? '???',
 				...(operand?.type === RType.Symbol ? { operand: operand.content } : {}),
 				range:     node?.info.fullRange ?? node?.location ?? rangeFrom(-1, -1, -1, -1),
-				certainty: LintingCertainty.Certain
+				certainty: LintingResultCertainty.Certain
 			}));
 
 		return { results, '.meta': metadata };
@@ -129,6 +129,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 	info: {
 		name:          'Dataframe Access Validation',
 		tags:          [LintingRuleTag.Bug, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
+		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Validates the existance of accessed columns and rows of dataframes.',
 		defaultConfig: { readLoadedData: false }
 	}

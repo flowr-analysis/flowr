@@ -7,19 +7,8 @@ import { LintingRules } from '../linter/linter-rules';
 import { codeBlock } from './doc-util/doc-code';
 import { RShell } from '../r-bridge/shell';
 import { showQuery } from './doc-util/doc-query';
-import type {
-	TypeElementInSource, TypeReport
-} from './doc-util/doc-types';
-import {
-	getTypePathLink
-	,
-	shortLinkFile
-	,
-	getDocumentationForType,
-	getTypesFromFolder,
-	mermaidHide,
-	shortLink
-} from './doc-util/doc-types';
+import type { TypeElementInSource, TypeReport } from './doc-util/doc-types';
+import { getDocumentationForType, getTypePathLink, getTypesFromFolder, mermaidHide, shortLink, shortLinkFile } from './doc-util/doc-types';
 import path from 'path';
 import { documentReplSession } from './doc-util/doc-repl';
 import { section } from './doc-util/doc-structure';
@@ -29,17 +18,26 @@ import { joinWithLast } from '../util/text/strings';
 import { guard } from '../util/assert';
 import { writeWikiTo } from './doc-util/doc-print';
 import { getFunctionsFromFolder } from './doc-util/doc-functions';
+import { LintingResultCertainty, LintingRuleCertainty } from '../linter/linter-format';
 
-const SpecialTagColors: Record<string, string> = {
+const SpecialBadgeColors: Record<string, string> = {
 	[LintingRuleTag.Bug]:      'red',
 	[LintingRuleTag.Security]: 'orange',
 	[LintingRuleTag.Smell]:    'yellow',
 	[LintingRuleTag.QuickFix]: 'lightgray',
+
+	[LintingRuleCertainty.Exact]:             'darkgreen',
+	[LintingRuleCertainty.BestEffort]:        'yellow',
+	[LintingRuleCertainty.OverApproximative]: 'orange',
+
+	[LintingResultCertainty.Uncertain]: 'orange',
+	[LintingResultCertainty.Certain]:   'darkgreen'
 };
 
-function makeTagBadge(name: LintingRuleTag, info: TypeElementInSource[]): string {
-	const doc = getDocumentationForType('LintingRuleTag::' + name, info, '', true).replaceAll('\n', ' ');
-	return textWithTooltip(`<a href='#${name}'>![` + name + '](https://img.shields.io/badge/' + name.toLowerCase() + `-${SpecialTagColors[name] ?? 'teal'}) </a>`, doc);
+
+function makeBadge(typeName: string, name: string, info: TypeElementInSource[], defaultColor = 'teal'): string {
+	const doc = getDocumentationForType(typeName + '::' + name, info, '', true).replaceAll('\n', ' ');
+	return textWithTooltip(`<a href='#${name}'>![` + name + '](https://img.shields.io/badge/' + name.toLowerCase().replaceAll('-', '--') + `-${SpecialBadgeColors[name] ?? defaultColor}) </a>`, doc);
 }
 
 function prettyPrintExpectedOutput(expected: string): string {
@@ -163,20 +161,20 @@ df[6, "value"]
 			if(a === b) {
 				return 0;
 			}
-			if(SpecialTagColors[a] && SpecialTagColors[b]) {
-				return SpecialTagColors[b].localeCompare(SpecialTagColors[a]);
-			} else if(SpecialTagColors[a]) {
+			if(SpecialBadgeColors[a] && SpecialBadgeColors[b]) {
+				return SpecialBadgeColors[b].localeCompare(SpecialBadgeColors[a]);
+			} else if(SpecialBadgeColors[a]) {
 				return -1;
-			} else if(SpecialTagColors[b]) {
+			} else if(SpecialBadgeColors[b]) {
 				return 1;
 			}
 			return a.localeCompare(b);
-		}).map(t => makeTagBadge(t, types)).join(' ');
+		}).map(t => makeBadge('LintingRuleTag', t, types)).join(' ');
 
 		if(format === 'short') {
 			ruleExplanations.set(name, () => Promise.resolve(`
 	**[${rule.info.name}](${FlowrWikiBaseRef}/lint-${name}):** ${rule.info.description} [see ${shortLinkFile(ruleType, types)}]\\
-	${tags}
+	${makeBadge('LintingRuleCertainty', rule.info.certainty, tagTypes)} ${tags}
 
 		`.trim()));
 		} else {
@@ -185,7 +183,7 @@ df[6, "value"]
 ${autoGenHeader({ filename: module.filename, purpose: 'linter', rVersion })}
 ${section(rule.info.name + `&emsp;<sup>[<a href="${FlowrWikiBaseRef}/Linter">overview</a>]</sup>`, 2, name)}
 
-${tags}
+${makeBadge('LintingRuleCertainty', rule.info.certainty, tagTypes)} ${tags}
  
 ${rule.info.description}\\
 _This linting rule is implemented in ${shortLinkFile(ruleType, types)}._
@@ -219,8 +217,12 @@ ${buildSamplesFromLinterTestCases(shell, `${testfile}.test.ts`)}
 	return ruleExplanations;
 }
 
-function getAllLintingRulesWitTag(tag: LintingRuleTag): LintingRuleNames[] {
+function getAllLintingRulesWithTag(tag: LintingRuleTag): LintingRuleNames[] {
 	return Object.entries(LintingRules).filter(([_, rule]) => (rule.info.tags as readonly LintingRuleTag[]).includes(tag)).map(([name]) => name as LintingRuleNames);
+}
+
+function getAllLintingRulesWitCertainty(certainty: LintingRuleCertainty): LintingRuleNames[] {
+	return Object.entries(LintingRules).filter(([_, rule]) => rule.info.certainty === certainty).map(([name]) => name as LintingRuleNames);
 }
 
 function linkToRule(name: LintingRuleNames): string {
@@ -268,16 +270,37 @@ ${await(async() => {
 	
 ${section('Tags', 2, 'tags')}
 
-We use tags to categorize linting rules. The following tags are available:
+We use tags to categorize linting rules for users. The following tags are available:
 
 | Tag/Badge&emsp;&emsp; | Description |
 | --- | :-- |
 ${Object.entries(LintingRuleTag).map(([name, tag]) => {
-	return `| <a id="${tag}"></a> ${makeTagBadge(tag as LintingRuleTag, tagTypes.info)} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll(/\n/g, ' ')} (rule${getAllLintingRulesWitTag(tag).length === 1 ? '' : 's'}: ${
-		joinWithLast(getAllLintingRulesWitTag(tag).map(l => linkToRule(l))) || '_none_'
+	return `| <a id="${tag}"></a> ${(makeBadge('LintingRuleTag', tag as LintingRuleTag, tagTypes.info))} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll(/\n/g, ' ')} (rule${getAllLintingRulesWithTag(tag).length === 1 ? '' : 's'}: ${
+		joinWithLast(getAllLintingRulesWithTag(tag).map(l => linkToRule(l))) || '_none_'
 	}) | `;
 }).join('\n')}
+
+${section('Certainty', 2, 'certainty')}
+
+Both linting rules and their individual results are additionally categorized by how certain the linter is that the results it is returning are valid.
+
+${section('Rule Certainty', 3, 'rule-certainty')}
+
+| Rule Certainty | Description |
+| -------------- | :---------- |
+${Object.entries(LintingRuleCertainty).map(([name, certainty]) => {
+	return `| <a id="${certainty}"></a> ${makeBadge('LintingRuleCertainty', certainty, tagTypes.info)} | ${getDocumentationForType('LintingRuleCertainty::' + name, tagTypes.info).replaceAll(/\n/g, ' ')} (rule${getAllLintingRulesWitCertainty(certainty).length === 1 ? '' : 's'}: ${
+		joinWithLast(getAllLintingRulesWitCertainty(certainty).map(l => linkToRule(l))) || '_none_'
+	}) |`;
+}).join('\n')}
 	
+${section('Result Certainty', 3, 'result-certainty')}
+
+| Result Certainty | Description |
+| ---------------- | :---------- |
+${Object.entries(LintingResultCertainty).map(([name, certainty]) =>
+	`| ${makeBadge('LintingResultCertainty', certainty, tagTypes.info)} | ${getDocumentationForType('LintingResultCertainty::' + name, tagTypes.info).replaceAll(/\n/g, ' ')} |`).join('\n')}
+
 `.trim();
 }
 

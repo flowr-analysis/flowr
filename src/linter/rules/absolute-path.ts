@@ -1,5 +1,5 @@
 import type { LintingResult, LintingRule, LintQuickFixReplacement } from '../linter-format';
-import { LintingPrettyPrintContext , LintingCertainty } from '../linter-format';
+import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 
 import type { MergeableRecord } from '../../util/objects';
 import { compactRecord } from '../../util/objects';
@@ -147,7 +147,7 @@ export const ABSOLUTE_PATH = {
 				if(isRString(node)) {
 					if(node.content.str.length >= 3 && isAbsolutePath(node.content.str, regex)) {
 						return [{
-							certainty: LintingCertainty.Uncertain,
+							certainty: LintingResultCertainty.Uncertain,
 							filePath:  node.content.str,
 							range:     node.info.fullRange ?? node.location,
 							quickFix:  buildQuickFix(node, node.content.str, wd)
@@ -160,7 +160,7 @@ export const ABSOLUTE_PATH = {
 					const mappedStrings = result.readData.filter(r => r.source !== Unknown && isAbsolutePath(r.source, regex)).map(r => {
 						const elem = data.normalize.idMap.get(r.nodeId);
 						return {
-							certainty: LintingCertainty.Certain,
+							certainty: LintingResultCertainty.Certain,
 							filePath:  r.source,
 							range:     elem?.info.fullRange ?? elem?.location ?? rangeFrom(-1, -1, -1, -1),
 							quickFix:  buildQuickFix(elem, r.source, wd)
@@ -179,7 +179,7 @@ export const ABSOLUTE_PATH = {
 						const strings = handler ? handler(data.dataflow.graph, dfNode, data.config) : [];
 						if(strings) {
 							return strings.filter(s => isAbsolutePath(s, regex)).map(str => ({
-								certainty: LintingCertainty.Uncertain,
+								certainty: LintingResultCertainty.Uncertain,
 								filePath:  str,
 								range:     node.info.fullRange ?? node.location ?? rangeFrom(-1, -1, -1, -1)
 							}));
@@ -202,6 +202,7 @@ export const ABSOLUTE_PATH = {
 		name:          'Absolute Paths',
 		description:   'Checks whether file paths are absolute.',
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
+		certainty:     LintingRuleCertainty.BestEffort,
 		defaultConfig: {
 			include: {
 				constructed: true,

@@ -1,5 +1,5 @@
 import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingPrettyPrintContext , LintingCertainty } from '../linter-format';
+import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -79,7 +79,7 @@ export const FILE_PATH_VALIDITY = {
 						return [{
 							range,
 							filePath:  Unknown,
-							certainty: LintingCertainty.Uncertain
+							certainty: LintingResultCertainty.Uncertain
 						}];
 					} else {
 						return [];
@@ -106,7 +106,7 @@ export const FILE_PATH_VALIDITY = {
 				return [{
 					range,
 					filePath:  matchingRead.source,
-					certainty: writesBefore && writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingCertainty.Uncertain : LintingCertainty.Certain
+					certainty: writesBefore && writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain
 				}];
 			}),
 			'.meta': metadata
@@ -115,6 +115,7 @@ export const FILE_PATH_VALIDITY = {
 	info: {
 		name:          'File Path Validity',
 		description:   'Checks whether file paths used in read and write operations are valid and point to existing files.',
+		certainty:     LintingRuleCertainty.BestEffort,
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug],
 		defaultConfig: {
 			additionalReadFunctions:  [],

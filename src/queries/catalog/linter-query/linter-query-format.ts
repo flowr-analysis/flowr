@@ -5,7 +5,7 @@ import { executeLinterQuery } from './linter-query-executor';
 import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from '../../../linter/linter-rules';
 import { LintingRules } from '../../../linter/linter-rules';
 import type { ConfiguredLintingRule, LintingResults, LintingRule } from '../../../linter/linter-format';
-import { LintingPrettyPrintContext , LintingCertainty } from '../../../linter/linter-format';
+import { LintingPrettyPrintContext , LintingResultCertainty } from '../../../linter/linter-format';
 
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
@@ -54,7 +54,7 @@ export const LinterQueryDefinition = {
 function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, results: LintingResults<Name>, result: string[]) {
 	const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
 	result.push(`   ╰ **${rule.info.name}** (${ruleName}):`);
-	for(const certainty of [LintingCertainty.Certain, LintingCertainty.Uncertain]) {
+	for(const certainty of [LintingResultCertainty.Certain, LintingResultCertainty.Uncertain]) {
 		const certaintyResults = results.results.filter(r => r.certainty === certainty) as LintingRuleResult<Name>[];
 		if(certaintyResults.length) {
 			result.push(`       ╰ ${certainty}:`);

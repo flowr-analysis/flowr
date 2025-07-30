@@ -83,7 +83,7 @@ export type DataFrameOperationOptions<N extends DataFrameOperationName> = Parame
  * @returns The resulting new data frame shape constraints.
  * The semantic type of the resulting constraints depends on the {@link ConstraintType} of the abstract operation.
  */
-export function applySemantics<Name extends DataFrameOperationName>(
+export function applyDataFrameSemantics<Name extends DataFrameOperationName>(
 	operation: Name,
 	value: DataFrameDomain,
 	args: DataFrameOperationArgs<Name>,

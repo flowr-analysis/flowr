@@ -131,7 +131,7 @@ print(df)
 		testDataFrameDomain(
 			shell,
 			'df <- if (runif(1) >= 0.5) data.frame(id = 1:5)',
-			[['1@df', undefined]]
+			[['1@df', undefined, DataFrameShapeOverapproximation]]
 		);
 
 		testDataFrameDomain(

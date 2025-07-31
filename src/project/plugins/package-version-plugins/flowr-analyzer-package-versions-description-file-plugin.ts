@@ -37,7 +37,9 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 
 				const range = Package.parsePackageVersionRange(operator, version);
 
-				this.packages.push(new Package(name, range, type));
+				if(range){
+					this.packages.push(new Package(name, type, undefined, range));
+				}
 			}
 		}
 	}

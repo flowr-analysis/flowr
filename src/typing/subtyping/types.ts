@@ -265,10 +265,13 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 		if(cachedType !== undefined) {
 			switch(isUpperBound) {
 				case true:
+					// console.debug('Returning', inspect(cachedType.upperBound, { depth: null, colors: true }), 'for upper bound');
 					return cachedType.upperBound;
 				case false:
+					// console.debug('Returning', inspect(cachedType.lowerBound, { depth: null, colors: true }), 'for lower bound');
 					return cachedType.lowerBound;
 				default:
+					// console.debug('Returning', inspect(cachedType.combined, { depth: null, colors: true }), 'for combined');
 					return cachedType.combined;
 			}
 		}
@@ -285,15 +288,20 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 			return errorType;
 		}
 
+		// console.debug('Resolved lower bound', inspect(lowerBound, { depth: null, colors: true }), 'and upper bound', inspect(upperBound, { depth: null, colors: true }));
 		const combined = combine(lowerBound, upperBound);
+		// console.debug('Combined bounds into type', inspect(combined, { depth: null, colors: true }));
 		cache.set(type, { lowerBound, upperBound, combined });
 
 		switch(isUpperBound) {
 			case true:
+				// console.debug('Returning', inspect(upperBound, { depth: null, colors: true }), 'for upper bound');
 				return upperBound;
 			case false:
+				// console.debug('Returning', inspect(lowerBound, { depth: null, colors: true }), 'for lower bound');
 				return lowerBound;
 			default:
+				// console.debug('Returning', inspect(combined, { depth: null, colors: true }), 'for combined');
 				return combined;
 		}
 	} else if(type instanceof UnresolvedRTypeUnion) {
@@ -302,6 +310,8 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 			const resolvedSubtype = resolve(subtype, isUpperBound, cache);
 			resolvedType = join(resolvedType, resolvedSubtype);
 		}
+
+		// console.debug('Returning', inspect(resolvedType, { depth: null, colors: true }), 'for resolved union type');
 		return resolvedType;
 	} else if(type instanceof UnresolvedRTypeIntersection) {
 		let resolvedType: DataType = new RTypeIntersection();
@@ -309,6 +319,8 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 			const resolvedSubtype = resolve(subtype, isUpperBound, cache);
 			resolvedType = meet(resolvedType, resolvedSubtype);
 		}
+
+		// console.debug('Returning', inspect(resolvedType, { depth: null, colors: true }), 'for resolved intersection type');
 		return resolvedType;
 	} else if(type instanceof UnresolvedRFunctionType) {
 		type.parameterTypes.values().forEach(paramType => prune(paramType));
@@ -320,6 +332,7 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 		const resolvedReturnType = resolve(type.returnType, isUpperBound, cache);
 		const resolvedType = new RFunctionType(resolvedParameterTypes, resolvedReturnType);
 		
+		// console.debug('Returning', inspect(resolvedType, { depth: null, colors: true }), 'for resolved function type');
 		return resolvedType;
 	} else if(type instanceof UnresolvedRAtomicVectorType) {
 		prune(type.elementType);
@@ -327,6 +340,7 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 		const resolvedElementType = resolve(type.elementType, isUpperBound, cache);
 		const resolvedType = new RAtomicVectorType(resolvedElementType);
 		
+		// console.debug('Returning', inspect(resolvedType, { depth: null, colors: true }), 'for resolved atomic vector type');
 		return resolvedType;
 	} else if(type instanceof UnresolvedRListType) {
 		type.indexedElementTypes.values().forEach(elementType => prune(elementType));
@@ -336,13 +350,17 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 		const resolvedIndexedElementTypes = new Map(type.indexedElementTypes.entries().map(([indexOrName, elementType]) => [indexOrName, resolve(elementType, isUpperBound, cache)]));
 		const resolvedType = new RListType(resolvedElementType, resolvedIndexedElementTypes);
 		
+		// console.debug('Returning', inspect(resolvedType, { depth: null, colors: true }), 'for resolved list type');
 		return resolvedType;
 	} else {
+		// console.debug('Returning already resolved', inspect(type, { depth: null, colors: true }));
 		return type;
 	}
 }
 
 export function combine(lowerBound: DataType, upperBound: DataType): DataType {
+	// console.debug('Combining', inspect(lowerBound, { depth: null, colors: true }), 'and', inspect(upperBound, { depth: null, colors: true }));
+
 	if(lowerBound instanceof RFunctionType && upperBound instanceof RFunctionType) {
 		const parameterTypes = new Map<number | string, DataType>();
 		const keys1 = new Set(lowerBound.parameterTypes.keys());
@@ -368,7 +386,7 @@ export function combine(lowerBound: DataType, upperBound: DataType): DataType {
 	} else if(lowerBound instanceof RAtomicVectorType && upperBound instanceof RAtomicVectorType) {
 		const elementType = combine(lowerBound.elementType, upperBound.elementType);
 		return new RAtomicVectorType(elementType);
-	} else if(subsumesByTag(lowerBound.tag, upperBound.tag) && subsumesByTag(upperBound.tag, lowerBound.tag)) {
+	} else if(subsumes(lowerBound, upperBound) && subsumes(upperBound, lowerBound)) {
 		return lowerBound; // If both types are the same, we return the upper bound
 	} else {
 		return new RTypeVariable(lowerBound, upperBound); // If the types are not compatible, we create a new variable type that combines both bounds 
@@ -421,23 +439,18 @@ export function subsumes(subtype: DataType | UnresolvedDataType, supertype: Data
 			return subsumes(supertype.parameterTypes.get(key)!, subtype.parameterTypes.get(key)!, inProcess);
 		});
 	} else {
-		result = subsumesByTag(subtype.tag, supertype.tag);
+		result = subtype.tag === supertype.tag
+			|| subtype.tag === DataTypeTag.Logical && supertype.tag === DataTypeTag.Integer
+			|| subtype.tag === DataTypeTag.Logical && supertype.tag === DataTypeTag.Double
+			|| subtype.tag === DataTypeTag.Logical && supertype.tag === DataTypeTag.Complex
+			|| subtype.tag === DataTypeTag.Integer && supertype.tag === DataTypeTag.Double
+			|| subtype.tag === DataTypeTag.Integer && supertype.tag === DataTypeTag.Complex
+			|| subtype.tag === DataTypeTag.Double && supertype.tag === DataTypeTag.Complex;
 	}
 
 	processedSupertypes?.delete(supertype); // Remove the supertype from the processed set
 
 	return result;
-}
-
-function subsumesByTag(subtype: DataTypeTag, supertype: DataTypeTag): boolean {
-	return subtype === supertype && subtype !== DataTypeTag.Error
-		|| subtype === DataTypeTag.Logical && supertype === DataTypeTag.Integer
-		|| subtype === DataTypeTag.Logical && supertype === DataTypeTag.Double
-		|| subtype === DataTypeTag.Logical && supertype === DataTypeTag.Complex
-		|| subtype === DataTypeTag.Integer && supertype === DataTypeTag.Double
-		|| subtype === DataTypeTag.Integer && supertype === DataTypeTag.Complex
-		|| subtype === DataTypeTag.Double && supertype === DataTypeTag.Complex
-		|| [DataTypeTag.Logical, DataTypeTag.Integer, DataTypeTag.Double, DataTypeTag.Complex, DataTypeTag.String, DataTypeTag.Raw].includes(subtype) && supertype === DataTypeTag.AtomicVector;
 }
 
 export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataType): UnresolvedDataType {
@@ -535,9 +548,9 @@ export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataT
 		constrain(elementType, joinedElementType);
 		// constrain(joinedElementType, elementType);
 		return new UnresolvedRAtomicVectorType(elementType);
-	} else if(subsumesByTag(type1.tag, type2.tag)) {
+	} else if(subsumes(type1, type2)) {
 		return type2;
-	} else if(subsumesByTag(type2.tag, type1.tag)) {
+	} else if(subsumes(type2, type1)) {
 		return type1;
 	}
 	return new UnresolvedRTypeUnion(type1, type2);
@@ -610,9 +623,9 @@ export function join(type1: DataType, type2: DataType): DataType {
 		return new RAtomicVectorType(join(type1, type2.elementType));
 	} else if(isAtomicVectorBaseType(type2) && type1.tag === DataTypeTag.AtomicVector) {
 		return new RAtomicVectorType(join(type2, type1.elementType));
-	} else if(subsumesByTag(type1.tag, type2.tag)) {
+	} else if(subsumes(type1, type2)) {
 		return type2;
-	} else if(subsumesByTag(type2.tag, type1.tag)) {
+	} else if(subsumes(type2, type1)) {
 		return type1;
 	}
 	return new RTypeUnion(type1, type2);
@@ -705,9 +718,9 @@ export function unresolvedMeet(type1: UnresolvedDataType, type2: UnresolvedDataT
 		return unresolvedMeet(type1, type2.elementType);
 	} else if(isAtomicVectorBaseType(type2) && type1.tag === DataTypeTag.AtomicVector) {
 		return unresolvedMeet(type2, type1.elementType);
-	} else if(subsumesByTag(type1.tag, type2.tag)) {
+	} else if(subsumes(type1, type2)) {
 		return type1;
-	} else if(subsumesByTag(type2.tag, type1.tag)) {
+	} else if(subsumes(type2, type1)) {
 		return type2;
 	}
 	return new UnresolvedRTypeIntersection(type1, type2);
@@ -780,9 +793,9 @@ export function meet(type1: DataType, type2: DataType): DataType {
 		return meet(type1, type2.elementType);
 	} else if(isAtomicVectorBaseType(type2) && type1.tag === DataTypeTag.AtomicVector) {
 		return meet(type2, type1.elementType);
-	} else if(subsumesByTag(type1.tag, type2.tag)) {
+	} else if(subsumes(type1, type2)) {
 		return type1;
-	} else if(subsumesByTag(type2.tag, type1.tag)) {
+	} else if(subsumes(type2, type1)) {
 		return type2;
 	}
 	return new RTypeIntersection(type1, type2);

@@ -255,7 +255,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 
 	// update our graph with the sourced file's information
 	const newInformation = { ...information };
-	newInformation.environment = overwriteEnvironment(information.environment, dataflow.environment);
+	newInformation.environment = overwriteEnvironment(information.environment, dataflow.environment, data.builtInEnvironment);
 	newInformation.graph.mergeWith(dataflow.graph);
 	// this can be improved, see issue #628
 	for(const [k, v] of normalized.idMap) {

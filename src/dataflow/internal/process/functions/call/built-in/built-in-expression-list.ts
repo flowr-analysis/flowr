@@ -11,7 +11,7 @@ import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { unpackArgument } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
 import type { IEnvironment, REnvironmentInformation } from '../../../../../environments/environment';
-import { BuiltInEnvironment, makeAllMaybe } from '../../../../../environments/environment';
+import { makeAllMaybe } from '../../../../../environments/environment';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
 import type { IdentifierReference } from '../../../../../environments/identifier';
@@ -33,10 +33,10 @@ import { removeAll } from '../../../../../environments/remove';
 
 const dotDotDotAccess = /^\.\.\d+$/;
 
-function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
+function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, defaultEnvironment: IEnvironment, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
 	const readName = read.name && dotDotDotAccess.test(read.name) ? '...' : read.name;
 
-	const probableTarget = readName ? resolveByName(readName, environments, read.type) : undefined;
+	const probableTarget = readName ? resolveByName(readName, environments, defaultEnvironment, read.type) : undefined;
 
 	// record if at least one has not been defined
 	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId) || !happensInEveryBranch(t.controlDependencies))) {
@@ -70,19 +70,20 @@ function processNextExpression(
 	currentElement: DataflowInformation,
 	environment: REnvironmentInformation,
 	listEnvironments: Set<NodeId>,
+	defaultEnvironment: IEnvironment,
 	remainingRead: Map<string, IdentifierReference[]>,
 	nextGraph: DataflowGraph
 ) {
 	// all inputs that have not been written until now are read!
 	for(const read of [...currentElement.in, ...currentElement.unknownReferences]) {
-		linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
+		linkReadNameToWriteIfPossible(read, environment, listEnvironments, defaultEnvironment, remainingRead, nextGraph);
 	}
 }
 
 function updateSideEffectsForCalledFunctions(calledEnvs: {
 	functionCall: NodeId;
 	called:       readonly DataflowGraphVertexInfo[]
-}[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[]) {
+}[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[], defaultEnvironment: IEnvironment) {
 	for(const { functionCall, called } of calledEnvs) {
 		const callDependencies = nextGraph.getVertex(functionCall, true)?.cds;
 		for(const calledFn of called) {
@@ -95,7 +96,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 			// update alle definitions to be defined at this function call
 			let current: IEnvironment | undefined = environment.current;
 			let hasUpdate = false;
-			while(current !== undefined && current.id !== BuiltInEnvironment.id) {
+			while(current !== undefined && current.id !== defaultEnvironment.id) {
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
 						if(!isBuiltIn(def.definedAt)) {
@@ -110,9 +111,9 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 				// we update all definitions to be linked with the corresponding function call
 				// we, however, have to ignore expression-local writes!
 				if(localDefs.length > 0) {
-					environment = removeAll(localDefs, environment);
+					environment = removeAll(localDefs, environment, defaultEnvironment);
 				}
-				inputEnvironment = overwriteEnvironment(inputEnvironment, environment, callDependencies);
+				inputEnvironment = overwriteEnvironment(inputEnvironment, environment, defaultEnvironment, callDependencies);
 			}
 		}
 	}
@@ -159,9 +160,9 @@ export function processExpressionList<OtherInfo>(
 		// if the expression contained next or break anywhere before the next loop, the "overwrite" should be an "append", because we do not know if the rest is executed
 		// update the environments for the next iteration with the previous writes
 		if(exitPoints.length > 0) {
-			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment, true);
-			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment, false);
-			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment, false);
+			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment, data.builtInEnvironment, true);
+			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment, data.builtInEnvironment, false);
+			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment, data.builtInEnvironment, false);
 		}
 
 		addNonDefaultExitPoints(exitPoints, processed.exitPoints);
@@ -170,13 +171,13 @@ export function processExpressionList<OtherInfo>(
 
 		expensiveTrace(dataflowLogger, () => `expression ${expressionCounter} of ${expressions.length} has ${processed.unknownReferences.length} unknown nodes`);
 
-		processNextExpression(processed, environment, listEnvironments, remainingRead, nextGraph);
+		processNextExpression(processed, environment, listEnvironments, data.builtInEnvironment, remainingRead, nextGraph);
 
-		environment = exitPoints.length > 0 ? overwriteEnvironment(environment, processed.environment) : processed.environment;
+		environment = exitPoints.length > 0 ? overwriteEnvironment(environment, processed.environment, data.builtInEnvironment) : processed.environment;
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph);
 		// if the called function has global redefinitions, we have to keep them within our environment
-		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out);
+		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out, data.builtInEnvironment);
 
 		for(const { nodeId } of processed.out) {
 			listEnvironments.add(nodeId);
@@ -229,14 +230,15 @@ export function processExpressionList<OtherInfo>(
 	const meId = withGroup ? rootId : (processedExpressions.find(isNotUndefined)?.entryPoint ?? rootId);
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */
-		unknownReferences: [],
-		in:                ingoing,
+		unknownReferences:  [],
+		in:                 ingoing,
 		out,
-		environment:       environment,
-		graph:             nextGraph,
+		environment:        environment,
+		builtInEnvironment: data.builtInEnvironment,
+		graph:              nextGraph,
 		/* if we have no group, we take the last evaluated expr */
-		entryPoint:        meId,
-		exitPoints:        withGroup ? [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
+		entryPoint:         meId,
+		exitPoints:         withGroup ? [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
 			: exitPoints
 	};
 }

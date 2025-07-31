@@ -1,6 +1,5 @@
 import { guard, isNotUndefined } from '../../util/assert';
-import { BuiltInEnvironment } from './environment';
-import type { IEnvironment, REnvironmentInformation  } from './environment';
+import type { IEnvironment, REnvironmentInformation } from './environment';
 
 import { cloneEnvironmentInformation } from './clone';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
@@ -137,12 +136,12 @@ function overwriteContainerIndices(
  * Insert the given `definition` --- defined within the given scope --- into the passed along `environments` will take care of propagation.
  * Does not modify the passed along `environments` in-place! It returns the new reference.
  */
-export function define(definition: IdentifierDefinition, superAssign: boolean | undefined, environment: REnvironmentInformation, config: FlowrConfigOptions): REnvironmentInformation {
+export function define(definition: IdentifierDefinition, superAssign: boolean | undefined, environment: REnvironmentInformation, defaultEnvironment: IEnvironment, config: FlowrConfigOptions): REnvironmentInformation {
 	const name = definition.name;
 	guard(name !== undefined, () => `Name must be defined, but isn't for ${JSON.stringify(definition)}`);
 	let newEnvironment;
 	if(superAssign) {
-		newEnvironment = cloneEnvironmentInformation(environment, true);
+		newEnvironment = cloneEnvironmentInformation(environment, defaultEnvironment, true);
 		let current: IEnvironment = newEnvironment.current;
 		let last = undefined;
 		let found = false;
@@ -154,13 +153,13 @@ export function define(definition: IdentifierDefinition, superAssign: boolean | 
 			}
 			last = current;
 			current = current.parent;
-		} while(current.id !== BuiltInEnvironment.id);
+		} while(current.id !== defaultEnvironment.id);
 		if(!found) {
 			guard(last !== undefined, () => `Could not find global scope for ${name}`);
 			last.memory.set(name, [definition]);
 		}
 	} else {
-		newEnvironment = cloneEnvironmentInformation(environment, false);
+		newEnvironment = cloneEnvironmentInformation(environment, defaultEnvironment, false);
 		defInEnv(newEnvironment.current, name, definition, config);
 	}
 

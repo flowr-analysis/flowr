@@ -22,7 +22,7 @@ import { VertexType } from '../graph/vertex';
 import { resolveByName } from '../environments/resolve-by-name';
 import type { BuiltIn } from '../environments/built-in';
 import { isBuiltIn } from '../environments/built-in';
-import type { REnvironmentInformation } from '../environments/environment';
+import type { IEnvironment, REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
@@ -159,10 +159,10 @@ export function linkFunctionCallWithSingleTarget(
 	idMap: AstIdMap
 ) {
 	const id = info.id;
-	if(info.environment !== undefined) {
+	if(info.environment !== undefined && info.builtInEnvironment !== undefined) {
 		// for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it
 		for(const ingoing of def.subflow.in) {
-			const defs = ingoing.name ? resolveByName(ingoing.name, info.environment, ingoing.type) : undefined;
+			const defs = ingoing.name ? resolveByName(ingoing.name, info.environment, info.builtInEnvironment, ingoing.type) : undefined;
 			if(defs === undefined) {
 				continue;
 			}
@@ -258,9 +258,9 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 		return [];
 	}
 
-	if(info.name !== undefined && (environment !== undefined || info.environment !== undefined)) {
+	if(info.name !== undefined && (environment !== undefined || info.environment !== undefined) && info.builtInEnvironment !== undefined) {
 		const functionCallDefs = resolveByName(
-			info.name, environment ?? info.environment as REnvironmentInformation, ReferenceType.Function
+			info.name, environment ?? info.environment as REnvironmentInformation, info.builtInEnvironment, ReferenceType.Function
 		)?.map(d => d.nodeId) ?? [];
 		for(const [target, outgoingEdge] of outgoingEdges.entries()) {
 			if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
@@ -328,15 +328,16 @@ export function getAllLinkedFunctionDefinitions(
  *
  * @param referencesToLinkAgainstEnvironment - The set of references to link against the environment
  * @param environmentInformation             - The environment information to link against
+ * @param defaultEnvironment
  * @param givenInputs                        - The existing list of inputs that might be extended
  * @param graph                              - The graph to enter the found links
  * @param maybeForRemaining                  - Each input that can not be linked, will be added to `givenInputs`. If this flag is `true`, it will be marked as `maybe`.
  *
  * @returns the given inputs, possibly extended with the remaining inputs (those of `referencesToLinkAgainstEnvironment` that could not be linked against the environment)
  */
-export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
+export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, defaultEnvironment: IEnvironment, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
-		const probableTarget = bodyInput.name ? resolveByName(bodyInput.name, environmentInformation, bodyInput.type) : undefined;
+		const probableTarget = bodyInput.name ? resolveByName(bodyInput.name, environmentInformation, defaultEnvironment, bodyInput.type) : undefined;
 		if(probableTarget === undefined) {
 			log.trace(`found no target for ${bodyInput.name}`);
 			if(maybeForRemaining) {

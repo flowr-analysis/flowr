@@ -7,11 +7,12 @@ import { ReferenceType } from '../../environments/identifier';
 
 export function processValue<OtherInfo>({ info: { id } }: RNodeWithParent, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	return {
-		unknownReferences: [],
-		in:                [{ nodeId: id, name: undefined, controlDependencies: data.controlDependencies, type: ReferenceType.Constant }],
-		out:               [],
-		environment:       data.environment,
-		graph:             new DataflowGraph(data.completeAst.idMap).addVertex({
+		unknownReferences:  [],
+		in:                 [{ nodeId: id, name: undefined, controlDependencies: data.controlDependencies, type: ReferenceType.Constant }],
+		out:                [],
+		environment:        data.environment,
+		builtInEnvironment: data.builtInEnvironment,
+		graph:              new DataflowGraph(data.completeAst.idMap).addVertex({
 			tag: VertexType.Value,
 			id:  id,
 			cds: data.controlDependencies

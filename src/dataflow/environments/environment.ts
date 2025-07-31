@@ -4,21 +4,22 @@
  *
  * @module
  */
-import type { Identifier, IdentifierDefinition, IdentifierReference } from './identifier';
+import type { IdentifierReference } from './identifier';
 import { ReferenceType } from './identifier';
-import { BuiltInMemory, EmptyBuiltInMemory } from './built-in';
 import type { DataflowGraph } from '../graph/graph';
 import { resolveByName } from './resolve-by-name';
 import type { ControlDependency } from '../info';
 import { jsonReplacer } from '../../util/json';
+import { getDefaultBuiltInDefinitions } from './built-in-config';
+import type { BuiltInMemory } from './built-in';
 
 /**
  * Marks the reference as maybe (i.e., as controlled by a set of {@link IdentifierReference#controlDependencies|control dependencies}).
  */
-export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference {
+export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, defaultEnvironment: IEnvironment, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference {
 	const node = graph.get(ref.nodeId, true);
 	if(includeDefs) {
-		const definitions = ref.name ? resolveByName(ref.name, environments, ref.type) : undefined;
+		const definitions = ref.name ? resolveByName(ref.name, environments, defaultEnvironment, ref.type) : undefined;
 		for(const definition of definitions ?? []) {
 			if(definition.type !== ReferenceType.BuiltInFunction && definition.type !== ReferenceType.BuiltInConstant) {
 				if(definition.controlDependencies && defaultCd && !definition.controlDependencies.find(c => c.id === defaultCd.id)) {
@@ -40,23 +41,31 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 	return { ...ref, controlDependencies: [...ref.controlDependencies ?? [], ...(defaultCd ? [defaultCd]: []) ] };
 }
 
-export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference[] {
+export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, defaultEnvironment: IEnvironment, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference[] {
 	if(references === undefined) {
 		return [];
 	}
-	return references.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, defaultCd));
+	return references.map(ref => makeReferenceMaybe(ref, graph, environments, defaultEnvironment, includeDefs, defaultCd));
 }
-
-export type EnvironmentMemory = Map<Identifier, IdentifierDefinition[]>
 
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
 	/** Unique and internally generated identifier -- will not be used for comparison but helps with debugging for tracking identities */
-	readonly id: number
+	readonly id:      number
 	/** Lexical parent of the environment, if any (can be manipulated by R code) */
-	parent:      IEnvironment
+	parent:           IEnvironment
 	/** Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions */
-	memory:      EnvironmentMemory
+	memory:           BuiltInMemory
+	/**  */
+	isBuiltInDefault: boolean
+}
+
+export function hasDefaultBuiltInFlag(obj: unknown): obj is { isDefaultBuiltIn: boolean } {
+	return typeof obj === 'object' && obj !== null && 'isDefaultBuiltIn' in obj;
+}
+
+export function isDefaultBuiltIn(v: unknown) {
+	return hasDefaultBuiltInFlag(v) && v.isDefaultBuiltIn;
 }
 
 let environmentIdCounter = 0;
@@ -64,12 +73,14 @@ let environmentIdCounter = 0;
 /** @see REnvironmentInformation */
 export class Environment implements IEnvironment {
 	readonly id = environmentIdCounter++;
-	parent: IEnvironment;
-	memory: Map<Identifier, IdentifierDefinition[]>;
+	parent:           IEnvironment;
+	memory:           BuiltInMemory;
+	isBuiltInDefault: boolean;
 
-	constructor(parent: IEnvironment) {
+	constructor(parent: IEnvironment, isBuiltInDefault: boolean) {
 		this.parent = parent;
 		this.memory = new Map();
+		this.isBuiltInDefault = isBuiltInDefault;
 	}
 }
 
@@ -114,8 +125,8 @@ export interface REnvironmentInformation {
  * For its default content (when not overwritten by a flowR config),
  * see the {@link DefaultBuiltinConfig}.
  */
-export const BuiltInEnvironment = new Environment(undefined as unknown as IEnvironment);
-BuiltInEnvironment.memory = undefined as unknown as EnvironmentMemory;
+//export const BuiltInEnvironment = new Environment(undefined as unknown as IEnvironment, true);
+//BuiltInEnvironment.memory = undefined as unknown as BuiltInMemory;
 
 /**
  * The twin of the {@link BuiltInEnvironment} but with less built ins defined for
@@ -124,23 +135,26 @@ BuiltInEnvironment.memory = undefined as unknown as EnvironmentMemory;
  *
  * @see {@link BuiltInEnvironment}
  */
-export const EmptyBuiltInEnvironment: IEnvironment = {
-	id:     BuiltInEnvironment.id,
-	memory: undefined as unknown as EnvironmentMemory,
-	parent: undefined as unknown as IEnvironment
-};
+//export const EmptyBuiltInEnvironment: IEnvironment = {
+//	id:               BuiltInEnvironment.id,
+//	memory:           undefined as unknown as BuiltInMemory,
+//	parent:           undefined as unknown as IEnvironment,
+//	isBuiltInDefault: true
+//};
 
 /**
  * Initialize a new {@link REnvironmentInformation|environment} with the built-ins.
- * See {@link EmptyBuiltInEnvironment} for the case `fullBuiltIns = false`.
  */
 export function initializeCleanEnvironments(fullBuiltIns = true): REnvironmentInformation {
-	if(BuiltInEnvironment.memory === undefined) {
-		BuiltInEnvironment.memory = BuiltInMemory;
-		EmptyBuiltInEnvironment.memory = EmptyBuiltInMemory;
+	const env = new Environment(undefined as unknown as IEnvironment, true);
+	if(fullBuiltIns) {
+		env.memory = getDefaultBuiltInDefinitions().builtInMemory;
+	} else {
+		env.memory = getDefaultBuiltInDefinitions().emptyBuiltInMemory;
 	}
+
 	return {
-		current: new Environment(fullBuiltIns ? BuiltInEnvironment : EmptyBuiltInEnvironment),
+		current: env,
 		level:   0
 	};
 }
@@ -149,10 +163,11 @@ export function initializeCleanEnvironments(fullBuiltIns = true): REnvironmentIn
  * Helps to serialize an environment, but replaces the built-in environment with a placeholder.
  */
 export function builtInEnvJsonReplacer(k: unknown, v: unknown): unknown {
-	if(v === BuiltInEnvironment) {
+	if(isDefaultBuiltIn(v)) {
 		return '<BuiltInEnvironment>';
-	} else if(v === EmptyBuiltInEnvironment) {
-		return '<EmptyBuiltInEnvironment>';
+	// TODO TSchoeller Is this important?
+	//} else if(v === EmptyBuiltInEnvironment) {
+	//	return '<EmptyBuiltInEnvironment>';
 	} else {
 		return jsonReplacer(k, v);
 	}

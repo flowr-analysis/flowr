@@ -4,7 +4,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import type { ContainerIndices, ContainerIndex, ContainerIndicesCollection } from '../../../../../graph/vertex';
+import type { ContainerIndex, ContainerIndices, ContainerIndicesCollection } from '../../../../../graph/vertex';
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -48,7 +48,7 @@ export function processVector<OtherInfo>(
 			// Check whether argument value can be resolved
 			let indicesCollection: ContainerIndicesCollection;
 			if(arg.value.type === RType.Symbol) {
-				indicesCollection = resolveIndicesByName(arg.value.lexeme, data.environment);
+				indicesCollection = resolveIndicesByName(arg.value.lexeme, data.environment, data.builtInEnvironment);
 			} else {
 				// Check whether argument is nested container
 				indicesCollection = fnCall.information.graph.getVertex(arg.value.info.id)?.indicesCollection;

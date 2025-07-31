@@ -53,13 +53,14 @@ export function processFunctionArgument<OtherInfo>(
 	}
 
 	return {
-		unknownReferences: [],
+		unknownReferences:  [],
 		// active nodes of the name will be lost as they are only used to reference the corresponding parameter
-		in:                ingoingRefs.filter(r => r.name !== undefined),
-		out:               [...value?.out ?? [], ...(name?.out ?? [])],
-		graph:             graph,
-		environment:       value?.environment ?? data.environment,
-		entryPoint:        entryPoint ?? argument.info.id,
-		exitPoints:        value?.exitPoints ?? name?.exitPoints ?? [{ nodeId: argument.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
+		in:                 ingoingRefs.filter(r => r.name !== undefined),
+		out:                [...value?.out ?? [], ...(name?.out ?? [])],
+		graph:              graph,
+		environment:        value?.environment ?? data.environment,
+		builtInEnvironment: data.builtInEnvironment,
+		entryPoint:         entryPoint ?? argument.info.id,
+		exitPoints:         value?.exitPoints ?? name?.exitPoints ?? [{ nodeId: argument.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
 	};
 }

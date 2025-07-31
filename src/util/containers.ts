@@ -1,4 +1,4 @@
-import type { REnvironmentInformation } from '../dataflow/environments/environment';
+import type { IEnvironment, REnvironmentInformation } from '../dataflow/environments/environment';
 import type { Identifier, InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
 import { resolveByName } from '../dataflow/environments/resolve-by-name';
 import type {
@@ -7,10 +7,7 @@ import type {
 	ContainerIndicesCollection,
 	IndexIdentifier,
 } from '../dataflow/graph/vertex';
-import {
-	isAccessed,
-	isParentContainerIndex
-} from '../dataflow/graph/vertex';
+import { isAccessed, isParentContainerIndex } from '../dataflow/graph/vertex';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RFunctionArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -39,10 +36,11 @@ export function getAccessOperands<OtherInfo>(
  *
  * @param name - Name to resolve
  * @param environment - Environment in which name is resolved
+ * @param defaultEnv
  * @returns The indicesCollection of the resolved definitions
  */
-export function resolveIndicesByName(name: Identifier, environment: REnvironmentInformation) {
-	const definitions = resolveByName(name, environment);
+export function resolveIndicesByName(name: Identifier, environment: REnvironmentInformation, defaultEnv: IEnvironment) {
+	const definitions = resolveByName(name, environment, defaultEnv);
 	return definitions?.flatMap(def => (def as InGraphIdentifierDefinition)?.indicesCollection ?? []);
 }
 
@@ -61,9 +59,10 @@ export function resolveSingleIndex(
 	accessedArg: { lexeme: string },
 	accessArg: { lexeme: string },
 	environment: REnvironmentInformation,
+	defaultEnv: IEnvironment,
 	isIndexBasedAccess: boolean,
 ): ContainerIndicesCollection {
-	const indicesCollection = resolveIndicesByName(accessedArg.lexeme, environment);
+	const indicesCollection = resolveIndicesByName(accessedArg.lexeme, environment, defaultEnv);
 	const accessedIndicesCollection = filterIndices(indicesCollection, accessArg, isIndexBasedAccess);
 	// If the accessed indices couldn't be resolved, overapproximate by returning the original indices.
 	// This could also be the case, when nothing is acccessed, but we better be safe.

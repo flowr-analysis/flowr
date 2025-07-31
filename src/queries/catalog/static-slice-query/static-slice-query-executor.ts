@@ -10,7 +10,7 @@ export function fingerPrintOfQuery(query: StaticSliceQuery): string {
 	return JSON.stringify(query);
 }
 
-export function executeStaticSliceQuery({ dataflow: { graph }, ast, config }: BasicQueryData, queries: readonly StaticSliceQuery[]): StaticSliceQueryResult {
+export function executeStaticSliceQuery({ dataflow, ast, config }: BasicQueryData, queries: readonly StaticSliceQuery[]): StaticSliceQueryResult {
 	const start = Date.now();
 	const results: StaticSliceQueryResult['results'] = {};
 	for(const query of queries) {
@@ -20,7 +20,7 @@ export function executeStaticSliceQuery({ dataflow: { graph }, ast, config }: Ba
 		}
 		const { criteria, noReconstruction, noMagicComments } = query;
 		const sliceStart = Date.now();
-		const slice = staticSlicing(graph, ast, criteria, config.solver.slicer?.threshold);
+		const slice = staticSlicing(dataflow, ast, criteria, config.solver.slicer?.threshold);
 		const sliceEnd = Date.now();
 		if(noReconstruction) {
 			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };

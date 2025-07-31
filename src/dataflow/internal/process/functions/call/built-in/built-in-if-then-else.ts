@@ -89,7 +89,7 @@ export function processIfThenElse<OtherInfo>(
 	} else if(conditionIsAlwaysTrue) {
 		finalEnvironment = thenEnvironment;
 	} else {
-		finalEnvironment = appendEnvironment(thenEnvironment, otherwise ? otherwise.environment : cond.environment);
+		finalEnvironment = appendEnvironment(thenEnvironment, otherwise ? otherwise.environment : cond.environment, data.builtInEnvironment);
 	}
 
 	const cdTrue = { id: rootId, when: true };
@@ -97,19 +97,19 @@ export function processIfThenElse<OtherInfo>(
 	// again within an if-then-else we consider all actives to be read
 	const ingoing: IdentifierReference[] = [
 		...cond.in,
-		...(makeThenMaybe ? makeAllMaybe(then?.in, nextGraph, finalEnvironment, false, cdTrue) : then?.in ?? []),
-		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.in, nextGraph, finalEnvironment, false, cdFalse) : otherwise?.in ?? []),
+		...(makeThenMaybe ? makeAllMaybe(then?.in, nextGraph, finalEnvironment, data.builtInEnvironment, false, cdTrue) : then?.in ?? []),
+		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.in, nextGraph, finalEnvironment, data.builtInEnvironment, false, cdFalse) : otherwise?.in ?? []),
 		...cond.unknownReferences,
-		...(makeThenMaybe ? makeAllMaybe(then?.unknownReferences, nextGraph, finalEnvironment, false, cdTrue) : then?.unknownReferences ?? []),
-		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.unknownReferences, nextGraph, finalEnvironment, false, cdFalse) : otherwise?.unknownReferences ?? []),
+		...(makeThenMaybe ? makeAllMaybe(then?.unknownReferences, nextGraph, finalEnvironment, data.builtInEnvironment, false, cdTrue) : then?.unknownReferences ?? []),
+		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.unknownReferences, nextGraph, finalEnvironment, data.builtInEnvironment, false, cdFalse) : otherwise?.unknownReferences ?? []),
 	];
 
 	// we assign all with a maybe marker
 	// we do not merge even if they appear in both branches because the maybe links will refer to different ids
 	const outgoing = [
 		...cond.out,
-		...(makeThenMaybe ? makeAllMaybe(then?.out, nextGraph, finalEnvironment, true, cdTrue) : then?.out ?? []),
-		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.out, nextGraph, finalEnvironment, true, cdFalse) : otherwise?.out ?? []),
+		...(makeThenMaybe ? makeAllMaybe(then?.out, nextGraph, finalEnvironment, data.builtInEnvironment, true, cdTrue) : then?.out ?? []),
+		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.out, nextGraph, finalEnvironment, data.builtInEnvironment, true, cdFalse) : otherwise?.out ?? []),
 	];
 
 	patchFunctionCall({
@@ -130,12 +130,13 @@ export function processIfThenElse<OtherInfo>(
 	];
 
 	return {
-		unknownReferences: [],
-		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency, type: ReferenceType.Function }, ...ingoing],
-		out:               outgoing,
+		unknownReferences:  [],
+		in:                 [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency, type: ReferenceType.Function }, ...ingoing],
+		out:                outgoing,
 		exitPoints,
-		entryPoint:        rootId,
-		environment:       finalEnvironment,
-		graph:             nextGraph
+		entryPoint:         rootId,
+		environment:        finalEnvironment,
+		builtInEnvironment: data.builtInEnvironment,
+		graph:              nextGraph
 	};
 }

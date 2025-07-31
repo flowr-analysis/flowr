@@ -5,7 +5,6 @@ import type { Fingerprint } from './fingerprint';
 import { envFingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
 import { handleReturns, sliceForCall } from './slice-call';
-import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../criterion/parse';
 import { convertAllSlicingCriteriaToIds } from '../criterion/parse';
@@ -14,6 +13,7 @@ import { initializeCleanEnvironments } from '../../dataflow/environments/environ
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
+import type { DataflowInformation } from '../../dataflow/info';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -29,7 +29,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  * @param cache     - A cache to store the results of the slice. If provided, the slice may use this cache to speed up the slicing process.
  */
 export function staticSlicing(
-	graph: DataflowGraph,
+	info: DataflowInformation,
 	{ idMap }: NormalizedAst,
 	criteria: SlicingCriteria,
 	threshold = 75,
@@ -59,7 +59,7 @@ export function staticSlicing(
 		/* additionally,
 		 * include all the implicit side effects that we have to consider as we are unable to narrow them down
 		 */
-		for(const id of graph.unknownSideEffects) {
+		for(const id of info.graph.unknownSideEffects) {
 			if(typeof id !== 'object') {
 				/* otherwise, their target is just missing */
 				queue.add(id, emptyEnv, basePrint, true);
@@ -72,7 +72,7 @@ export function staticSlicing(
 
 		const { baseEnvironment, id, onlyForSideEffects, envFingerprint: baseEnvFingerprint } = current;
 
-		const currentInfo = graph.get(id, true);
+		const currentInfo = info.graph.get(id, true);
 		if(currentInfo === undefined) {
 			slicerLogger.warn(`id: ${id} must be in graph but can not be found, keep in slice to be sure`);
 			continue;
@@ -82,7 +82,7 @@ export function staticSlicing(
 
 		// we only add control dependencies iff 1) we are in different function call or 2) they have, at least, the same nesting as the slicing seed
 		if(currentVertex.cds && currentVertex.cds.length > 0) {
-			const topLevel = graph.isRoot(id) || sliceSeedIds.has(id);
+			const topLevel = info.graph.isRoot(id) || sliceSeedIds.has(id);
 			for(const cd of currentVertex.cds.filter(({ id }) => !queue.hasId(id))) {
 				if(!topLevel || (idMap.get(cd.id)?.info.nesting ?? 0) >= minNesting) {
 					queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false);
@@ -92,7 +92,7 @@ export function staticSlicing(
 
 		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
-				sliceForCall(current, currentVertex, graph, queue);
+				sliceForCall(current, currentVertex, info, queue);
 			}
 
 			const ret = handleReturns(id, queue, currentEdges, baseEnvFingerprint, baseEnvironment);

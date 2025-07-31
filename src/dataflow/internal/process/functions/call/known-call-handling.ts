@@ -14,8 +14,8 @@ import { ReferenceType } from '../../../../environments/identifier';
 import { DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
 import { dataflowLogger } from '../../../../logger';
+import type { ContainerIndicesCollection, FunctionOriginInformation } from '../../../../graph/vertex';
 import { VertexType } from '../../../../graph/vertex';
-import type { ContainerIndicesCollection , FunctionOriginInformation } from '../../../../graph/vertex';
 import { expensiveTrace } from '../../../../../util/log';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 
@@ -81,16 +81,17 @@ export function processKnownFunctionCall<OtherInfo>(
 	}
 
 	finalGraph.addVertex({
-		tag:               VertexType.FunctionCall,
-		id:                rootId,
-		environment:       data.environment,
-		name:              functionCallName,
+		tag:                VertexType.FunctionCall,
+		id:                 rootId,
+		environment:        data.environment,
+		builtInEnvironment: data.builtInEnvironment,
+		name:               functionCallName,
 		/* will be overwritten accordingly */
-		onlyBuiltin:       false,
-		cds:               data.controlDependencies,
-		args:              reverseOrder ? [...callArgs].reverse() : callArgs,
-		indicesCollection: indicesCollection,
-		origin:            origin === 'default' ? ['function'] : [origin]
+		onlyBuiltin:        false,
+		cds:                data.controlDependencies,
+		args:               reverseOrder ? [...callArgs].reverse() : callArgs,
+		indicesCollection:  indicesCollection,
+		origin:             origin === 'default' ? ['function'] : [origin]
 	});
 
 	if(hasUnknownSideEffect) {
@@ -103,14 +104,15 @@ export function processKnownFunctionCall<OtherInfo>(
 
 	return {
 		information: {
-			unknownReferences: [],
-			in:                inIds,
+			unknownReferences:  [],
+			in:                 inIds,
 			/* we do not keep the argument out as it has been linked by the function */
-			out:               functionName.out,
-			graph:             finalGraph,
-			environment:       finalEnv,
-			entryPoint:        rootId,
-			exitPoints:        [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
+			out:                functionName.out,
+			graph:              finalGraph,
+			environment:        finalEnv,
+			builtInEnvironment: data.builtInEnvironment,
+			entryPoint:         rootId,
+			exitPoints:         [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
 		},
 		processedArguments: reverseOrder ? [...processedArguments].reverse() : processedArguments,
 		fnRef

@@ -143,14 +143,15 @@ function defaultBuiltInProcessor<OtherInfo>(
 					continue;
 				}
 				res.graph.updateToFunctionCall({
-					tag:         VertexType.FunctionCall,
-					id:          fnId,
-					name:        fnName,
-					args:        [],
-					environment: data.environment,
-					onlyBuiltin: false,
-					cds:         data.controlDependencies,
-					origin:      [config.useAsProcessor ?? 'builtin:default']
+					tag:                VertexType.FunctionCall,
+					id:                 fnId,
+					name:               fnName,
+					args:               [],
+					environment:        data.environment,
+					builtInEnvironment: data.builtInEnvironment,
+					onlyBuiltin:        false,
+					cds:                data.controlDependencies,
+					origin:             [config.useAsProcessor ?? 'builtin:default']
 				});
 			}
 		}

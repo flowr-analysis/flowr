@@ -15,7 +15,6 @@ import { edgeTypeToName, splitEdgeTypes } from '../../dataflow/graph/edge';
 import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import { VertexType } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
-import { BuiltInEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isBuiltIn } from '../../dataflow/environments/built-in';
 
@@ -157,13 +156,13 @@ export function printIdentifier(id: IdentifierDefinition): string {
 	return `**${id.name}** (id: ${id.nodeId}, type: ${ReferenceTypeReverseMapping.get(id.type)},${id.controlDependencies? ' cds: {' + id.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
 }
 
-function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
+function printEnvironmentToLines(env: IEnvironment | undefined, defaultEnv: IEnvironment): string[] {
 	if(env === undefined) {
 		return ['??'];
-	} else if(env.id === BuiltInEnvironment.id) {
+	} else if(env.id === defaultEnv.id) {
 		return ['Built-in'];
 	}
-	const lines = [...printEnvironmentToLines(env.parent), `${env.id}${'-'.repeat(40)}`];
+	const lines = [...printEnvironmentToLines(env.parent, defaultEnv), `${env.id}${'-'.repeat(40)}`];
 	const longestName = Math.max(...[...env.memory.keys()].map(x => x.length));
 	for(const [name, defs] of env.memory.entries()) {
 		const printName = `${name}:`;
@@ -177,11 +176,11 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	const { open, close } = mermaidNodeBrackets(info.tag);
 	id = escapeId(id);
 
-	if(info.environment && mermaid.includeEnvironments) {
+	if(info.environment && info.builtInEnvironment && mermaid.includeEnvironments) {
 		if(info.environment.level > 0 || info.environment.current.memory.size !== 0) {
 			mermaid.nodeLines.push(
 				`    %% Environment of ${id} [level: ${info.environment.level}]:`,
-				printEnvironmentToLines(info.environment.current).map(x => `    %% ${x}`).join('\n'));
+				printEnvironmentToLines(info.environment.current, info.builtInEnvironment).map(x => `    %% ${x}`).join('\n'));
 		}
 	}
 

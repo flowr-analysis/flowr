@@ -1,5 +1,4 @@
 import type { IEnvironment, REnvironmentInformation } from './environment';
-import { BuiltInEnvironment } from './environment';
 
 import type { Identifier } from './identifier';
 import { happensInEveryBranch } from '../info';
@@ -9,7 +8,7 @@ import { cloneEnvironmentInformation } from './clone';
 /**
  * Removes all definitions of a given name from the environment.
  */
-export function remove(name: Identifier, environment: REnvironmentInformation): REnvironmentInformation {
+export function remove(name: Identifier, environment: REnvironmentInformation, defaultEnvironment: IEnvironment): REnvironmentInformation {
 	let current: IEnvironment = environment.current;
 	do{
 		const definition = current.memory.get(name);
@@ -20,7 +19,7 @@ export function remove(name: Identifier, environment: REnvironmentInformation): 
 			}
 		}
 		current = current.parent;
-	} while(current.id !== BuiltInEnvironment.id);
+	} while(current.id !== defaultEnvironment.id);
 
 	// we never remove built ins
 	return environment;
@@ -28,8 +27,8 @@ export function remove(name: Identifier, environment: REnvironmentInformation): 
 
 
 /** Creates a copy of the original environment but without the definitions of the given ids */
-export function removeAll(definitions: readonly { nodeId: NodeId, name: Identifier | undefined }[], environment: REnvironmentInformation): REnvironmentInformation {
-	environment = cloneEnvironmentInformation(environment, true);
+export function removeAll(definitions: readonly { nodeId: NodeId, name: Identifier | undefined }[], environment: REnvironmentInformation, defaultEnvironment: IEnvironment): REnvironmentInformation {
+	environment = cloneEnvironmentInformation(environment, defaultEnvironment, true);
 	let current: IEnvironment = environment.current;
 	do{
 		for(const { nodeId, name } of definitions) {
@@ -48,7 +47,7 @@ export function removeAll(definitions: readonly { nodeId: NodeId, name: Identifi
 			}
 		}
 		current = current.parent;
-	} while(current.id !== BuiltInEnvironment.id);
+	} while(current.id !== defaultEnvironment.id);
 
 	// we never remove built ins so we can stop one early
 	return environment;

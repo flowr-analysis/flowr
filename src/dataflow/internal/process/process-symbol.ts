@@ -14,11 +14,12 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 	}
 
 	return {
-		unknownReferences: [ { nodeId: symbol.info.id, name: symbol.content, controlDependencies: data.controlDependencies, type: ReferenceType.Unknown } ],
-		in:                [],
-		out:               [],
-		environment:       data.environment,
-		graph:             new DataflowGraph(data.completeAst.idMap).addVertex({
+		unknownReferences:  [ { nodeId: symbol.info.id, name: symbol.content, controlDependencies: data.controlDependencies, type: ReferenceType.Unknown } ],
+		in:                 [],
+		out:                [],
+		environment:        data.environment,
+		builtInEnvironment: data.builtInEnvironment,
+		graph:              new DataflowGraph(data.completeAst.idMap).addVertex({
 			tag: VertexType.Use,
 			id:  symbol.info.id,
 			cds: data.controlDependencies

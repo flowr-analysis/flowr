@@ -71,7 +71,70 @@ describe('Constrain types with lower and upper bounds', () => {
 		expect(resolve(elementType)).toEqual(new RTypeVariable(new RIntegerType(), new RTypeIntersection()));
 	});
 
-	test('Function overloading', () => {
+	test('Function overloading 1', () => {
+		const cache = new Map<UnresolvedDataType, Set<UnresolvedDataType>>();
+
+		// Predetermined types in context
+		const funcType1 = new UnresolvedRFunctionType();
+		const paramType1 = new UnresolvedRTypeVariable();
+		funcType1.parameterTypes.set(0, paramType1);
+		constrain(new RIntegerType(), paramType1, cache);
+		constrain(paramType1, new RIntegerType(), cache);
+		constrain(new RIntegerType(), funcType1.returnType, cache);
+		constrain(funcType1.returnType, new RIntegerType(), cache);
+
+		const funcType2 = new UnresolvedRFunctionType();
+		const paramType2 = new UnresolvedRTypeVariable();
+		funcType2.parameterTypes.set(0, paramType2);
+		constrain(new RStringType(), paramType2, cache);
+		constrain(paramType2, new RStringType(), cache);
+		constrain(new RStringType(), funcType2.returnType, cache);
+		constrain(funcType2.returnType, new RStringType(), cache);
+
+		const overloadedFuncType1 = new UnresolvedRTypeIntersection(funcType1, funcType2);
+		const overloadedFuncType2 = new UnresolvedRTypeIntersection(funcType1, funcType2);
+
+		// Typing of called function
+		const calledFuncType1 = new UnresolvedRTypeVariable();
+		const calledFuncType2 = new UnresolvedRTypeVariable();
+		constrain(overloadedFuncType1, calledFuncType1, cache);
+		constrain(overloadedFuncType2, calledFuncType2, cache);
+
+		// Typing of function call
+		const argType1 = new UnresolvedRTypeVariable();
+		const argType2 = new UnresolvedRTypeVariable();
+		constrain(new RIntegerType(), argType1, cache);
+		constrain(argType1, new RIntegerType(), cache);
+		constrain(new RStringType(), argType2, cache);
+		constrain(argType2, new RStringType(), cache);
+		const templateFuncType1 = new UnresolvedRFunctionType();
+		templateFuncType1.parameterTypes.set(0, argType1);
+		const returnType1 = templateFuncType1.returnType;
+		const templateFuncType2 = new UnresolvedRFunctionType();
+		templateFuncType2.parameterTypes.set(0, argType2);
+		const returnType2 = templateFuncType2.returnType;
+		constrain(calledFuncType1, templateFuncType1, cache);
+		constrain(calledFuncType2, templateFuncType2, cache);
+
+		resolve(calledFuncType1);
+		resolve(calledFuncType2);
+
+		// console.debug('funcType1', inspect(funcType1, { depth: null, colors: true }));
+		// console.debug('funcType2', inspect(funcType2, { depth: null, colors: true }));
+		// console.debug('overloadedFuncType1', inspect(overloadedFuncType1, { depth: null, colors: true }));
+		// console.debug('overloadedFuncType2', inspect(overloadedFuncType2, { depth: null, colors: true }));
+		// console.debug('calledFuncType1', inspect(calledFuncType1, { depth: null, colors: true }));
+		// console.debug('calledFuncType2', inspect(calledFuncType2, { depth: null, colors: true }));
+		// console.debug('templateFuncType1', inspect(templateFuncType1, { depth: null, colors: true }));
+		// console.debug('templateFuncType2', inspect(templateFuncType2, { depth: null, colors: true }));
+		// console.debug('returnType1', inspect(returnType1, { depth: null, colors: true }));
+		// console.debug('returnType2', inspect(returnType2, { depth: null, colors: true }));
+
+		expect(resolve(returnType1)).toEqual(new RTypeVariable(new RIntegerType(), new RTypeIntersection()));
+		expect(resolve(returnType2)).toEqual(new RTypeVariable(new RStringType(), new RTypeIntersection()));
+	});
+
+	test('Function overloading 2', () => {
 		const cache = new Map<UnresolvedDataType, Set<UnresolvedDataType>>();
 
 		// Predetermined types in context
@@ -116,7 +179,21 @@ describe('Constrain types with lower and upper bounds', () => {
 		constrain(calledFuncType1, templateFuncType1, cache);
 		constrain(calledFuncType2, templateFuncType2, cache);
 
-		expect(resolve(returnType1)).toEqual(new RTypeVariable(new RIntegerType(), new RTypeIntersection()));
+		resolve(calledFuncType1);
+		resolve(calledFuncType2);
+
+		// console.debug('funcType1', inspect(funcType1, { depth: null, colors: true }));
+		// console.debug('funcType2', inspect(funcType2, { depth: null, colors: true }));
+		// console.debug('overloadedFuncType1', inspect(overloadedFuncType1, { depth: null, colors: true }));
+		// console.debug('overloadedFuncType2', inspect(overloadedFuncType2, { depth: null, colors: true }));
+		// console.debug('calledFuncType1', inspect(calledFuncType1, { depth: null, colors: true }));
+		// console.debug('calledFuncType2', inspect(calledFuncType2, { depth: null, colors: true }));
+		// console.debug('templateFuncType1', inspect(templateFuncType1, { depth: null, colors: true }));
+		// console.debug('templateFuncType2', inspect(templateFuncType2, { depth: null, colors: true }));
+		// console.debug('returnType1', inspect(returnType1, { depth: null, colors: true }));
+		// console.debug('returnType2', inspect(returnType2, { depth: null, colors: true }));
+
+		expect(resolve(returnType1)).toEqual(new RTypeVariable(new RDoubleType(), new RTypeIntersection()));
 		expect(resolve(returnType2)).toEqual(new RTypeVariable(new RDoubleType(), new RTypeIntersection()));
 	});
 

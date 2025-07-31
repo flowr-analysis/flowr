@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import type { UnresolvedDataType } from '../../../../src/typing/subtyping/types';
 import { constrain, meet, resolve, subsumes, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeIntersection, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from '../../../../src/typing/subtyping/types';
-import { RIntegerType, RComplexType, RTypeVariable, RDoubleType, RStringType, RListType, RTypeIntersection, RTypeUnion, RNullType, RLanguageType, RLogicalType } from '../../../../src/typing/types';
+import { RIntegerType, RComplexType, RTypeVariable, RDoubleType, RStringType, RListType, RTypeIntersection, RTypeUnion, RNullType, RLanguageType, RLogicalType, RAtomicVectorType } from '../../../../src/typing/types';
 
 describe('Constrain and resolve types', () => {
 	test('Constrain with numeric bounds', () => {
@@ -211,7 +211,7 @@ describe('Constrain and resolve types', () => {
 		expect(resolve(typeVar2)).toEqual(new RIntegerType());
 	});
 	
-	test.only('Constrain from both sides 2', () => {
+	test('Constrain from both sides 2', () => {
 		const cache = new Map<UnresolvedDataType, Set<UnresolvedDataType>>();
 
 		const assignmentTypeVar = new UnresolvedRTypeVariable();
@@ -366,7 +366,7 @@ describe('Constrain and resolve types', () => {
 		constrain(typeVar1, typeVar10, cache);
 		constrain(typeVar1, typeVar12, cache);
 
-		expect(resolve(typeVar1)).toEqual(new RTypeVariable(new RTypeUnion(), new RTypeIntersection(new RIntegerType(), new RListType(new RTypeVariable()))));
+		expect(resolve(typeVar1)).toEqual(new RTypeVariable(new RTypeUnion(), new RTypeIntersection(new RIntegerType(), new RListType(new RTypeIntersection()))));
 	});
 
 	test('Calculate meet with intersections', () => {
@@ -405,5 +405,72 @@ describe('Constrain and resolve types', () => {
 
 		expect(subsumes(typeVar2, typeVar1)).toBe(true);
 		expect(subsumes(typeVar1, typeVar2)).toBe(true);
+	});
+
+	// <ref *1> UnresolvedRTypeVariable {
+	// 	tag: 'RTypeVariable',
+	// 	lowerBound: UnresolvedRTypeUnion { tag: 'RTypeUnion', types: Set(0) {} },
+	// 	upperBound: UnresolvedRTypeIntersection {
+	// 		tag: 'RTypeIntersection',
+	// 		types: Set(2) {
+	// 		UnresolvedRTypeVariable {
+	// 			tag: 'RTypeVariable',
+	// 			lowerBound: UnresolvedRTypeUnion { tag: 'RTypeUnion', types: Set(0) {} },
+	// 			upperBound: UnresolvedRTypeIntersection {
+	// 			tag: 'RTypeIntersection',
+	// 			types: Set(1) { [Circular *1] }
+	// 			}
+	// 		},
+	// 		UnresolvedRTypeUnion {
+	// 			tag: 'RTypeUnion',
+	// 			types: Set(2) {
+	// 			UnresolvedRAtomicVectorType {
+	// 				tag: 'RAtomicVectorType',
+	// 				elementType: UnresolvedRTypeVariable {
+	// 				tag: 'RTypeVariable',
+	// 				lowerBound: UnresolvedRTypeUnion {
+	// 					tag: 'RTypeUnion',
+	// 					types: Set(0) {}
+	// 				},
+	// 				upperBound: UnresolvedRTypeIntersection {
+	// 					tag: 'RTypeIntersection',
+	// 					types: Set(0) {}
+	// 				}
+	// 				}
+	// 			},
+	// 			UnresolvedRListType {
+	// 				tag: 'RListType',
+	// 				elementType: UnresolvedRTypeVariable {
+	// 				tag: 'RTypeVariable',
+	// 				lowerBound: UnresolvedRTypeUnion {
+	// 					tag: 'RTypeUnion',
+	// 					types: Set(0) {}
+	// 				},
+	// 				upperBound: UnresolvedRTypeIntersection {
+	// 					tag: 'RTypeIntersection',
+	// 					types: Set(0) {}
+	// 				}
+	// 				},
+	// 				indexedElementTypes: Map(0) {}
+	// 			}
+	// 			}
+	// 		}
+	// 		}
+	// 	}
+	// 	}
+	test.only('Resolve cyclic type variable with upper union', () => {
+		const cache = new Map<UnresolvedDataType, Set<UnresolvedDataType>>();
+
+		const typeVar1 = new UnresolvedRTypeVariable();
+		// const typeVar2 = new UnresolvedRTypeVariable();
+		const elementType = new UnresolvedRTypeVariable();
+		const vectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(elementType), new UnresolvedRListType(elementType));
+		// constrain(typeVar1, typeVar2, cache);
+		constrain(typeVar1, vectorType, cache);
+		// constrain(typeVar2, typeVar1, cache);
+
+		// console.debug('Resolving', inspect(typeVar1, { depth: null, colors: true }));
+
+		expect(resolve(typeVar1)).toEqual(new RTypeVariable(new RTypeUnion(), new RTypeUnion(new RAtomicVectorType(new RTypeIntersection()), new RListType(new RTypeIntersection()))));
 	});
 });

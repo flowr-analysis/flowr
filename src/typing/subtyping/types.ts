@@ -238,7 +238,7 @@ export function resolve(type: UnresolvedDataType, cache: Map<UnresolvedDataType,
 }
 
 export function subsumes(subtype: DataType | UnresolvedDataType, supertype: DataType | UnresolvedDataType, inProcess: Map<DataType | UnresolvedDataType, Set<DataType | UnresolvedDataType>> = new Map()): boolean {
-	// console.debug('Checking if', subtype, 'subsumes', supertype);
+	// console.debug('Checking if', inspect(subtype, { depth: null, colors: true }), 'subsumes', inspect(supertype, { depth: null, colors: true }));
 
 	if(subtype === supertype) {
 		return true; // If both types are the same, they subsume each other
@@ -257,9 +257,9 @@ export function subsumes(subtype: DataType | UnresolvedDataType, supertype: Data
 	if(subtype.tag === DataTypeTag.Error || supertype.tag === DataTypeTag.Error) {
 		result = false; // Error types do not subsume and are not subsumed by any other type
 	} else if(subtype.tag === DataTypeTag.Variable) {
-		result = subsumes(subtype.lowerBound, supertype, inProcess) && subsumes(subtype.upperBound, supertype, inProcess);
+		result = subsumes(subtype.upperBound, supertype, inProcess);
 	} else if(supertype.tag === DataTypeTag.Variable) {
-		result = subsumes(supertype.lowerBound, subtype, inProcess) && subsumes(subtype, supertype.upperBound, inProcess);
+		result = subsumes(subtype, supertype.upperBound, inProcess);
 	} else if(subtype.tag === DataTypeTag.Union) {
 		result = subtype.types.values().every(subtype => subsumes(subtype, supertype, inProcess));
 	} else if(supertype.tag === DataTypeTag.Union) {

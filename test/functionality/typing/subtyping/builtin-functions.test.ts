@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { RTypeIntersection, RIntegerType, RLanguageType, RListType, RLogicalType, RTypeUnion, RNullType, RStringType, RTypeVariable, RAtomicVectorType } from '../../../../src/typing/types';
+import { RTypeIntersection, RIntegerType, RLanguageType, RListType, RLogicalType, RNullType, RStringType, RTypeVariable, RAtomicVectorType, RComplexType } from '../../../../src/typing/types';
 import { assertInferredType, assertInferredTypes } from '../../_helper/typing/subtyping/assert-inferred-type';
 import { Q } from '../../../../src/search/flowr-search-builder';
 
@@ -8,14 +8,14 @@ describe('Infer types for builtin functions', () => {
 
 	assertInferredTypes(
 		'x <- 42\nget("x")',
-		{ query: Q.criterion('1@x').build(),   lowerBound: new RIntegerType() },
-		{ query: Q.criterion('2@get').build(), lowerBound: new RIntegerType() },
+		{ query: Q.criterion('1@x').build(),   lowerBound: new RIntegerType(), upperBound: new RComplexType() },
+		{ query: Q.criterion('2@get').build(), lowerBound: new RIntegerType(), upperBound: new RComplexType() },
 		{ query: Q.criterion('2@"x"').build(), upperBound: new RStringType() }
 	);
 
 	assertInferredTypes(
 		'eval(quote(TRUE))',
-		{ query: Q.criterion('1@eval').build(),  lowerBound: new RTypeUnion(), upperBound: new RTypeIntersection() },
+		{ query: Q.criterion('1@eval').build(),  expectedType: new RTypeVariable() },
 		{ query: Q.criterion('1@quote').build(), expectedType: new RLanguageType() },
 		{ query: Q.criterion('1@TRUE').build(),  expectedType: new RLogicalType() }
 	);

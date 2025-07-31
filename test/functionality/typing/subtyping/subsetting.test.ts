@@ -9,27 +9,27 @@ describe('Infer types for subsetting expressions', () => {
 	assertInferredTypes(
 		'v <- c(1, 2, 3); v[2]',
 		{ query: Q.var('v').last().build(),                    expectedType: new RAtomicVectorType(new RTypeVariable(new RIntegerType(), new RTypeIntersection())) },
-		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RAtomicVectorType(new RTypeVariable(new RIntegerType(), new RTypeIntersection())) },
+		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RAtomicVectorType(new RIntegerType()) },
 	);
 	
 	const elementType1 = new RTypeVariable(new RIntegerType(), new RTypeIntersection());
 	assertInferredTypes(
 		'l <- list(1, 2, 3); l[2]',
 		{ query: Q.var('l').last().build(),                    expectedType: new RListType(elementType1, new Map([[0, elementType1], [1, elementType1], [2, elementType1]])) },
-		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RListType(elementType1, new Map([[0, elementType1], [1, elementType1], [2, elementType1]])) },
+		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RListType(new RIntegerType(), new Map([[0, new RIntegerType()], [1, new RIntegerType()], [2, new RIntegerType()]])) },
 	);
 	
 	assertInferredTypes(
 		'v <- c(1, 2, 3); v[]',
 		{ query: Q.var('v').last().build(),                    expectedType: new RAtomicVectorType(new RTypeVariable(new RIntegerType(), new RTypeIntersection())) },
-		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RAtomicVectorType(new RTypeVariable(new RIntegerType(), new RTypeIntersection())) },
+		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RAtomicVectorType(new RIntegerType()) },
 	);
 	
 	const elementType2 = new RTypeVariable(new RIntegerType(), new RTypeIntersection());
 	assertInferredTypes(
 		'l <- list(1, 2, 3); l[]',
 		{ query: Q.var('l').last().build(),                    expectedType: new RListType(elementType2, new Map([[0, elementType2], [1, elementType2], [2, elementType2]])) },
-		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RListType(elementType2, new Map([[0, elementType2], [1, elementType2], [2, elementType2]])) },
+		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RListType(new RIntegerType(), new Map([[0, new RIntegerType()], [1, new RIntegerType()], [2, new RIntegerType()]])) },
 	);
 	
 	assertInferredTypes(

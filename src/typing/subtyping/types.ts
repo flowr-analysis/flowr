@@ -103,7 +103,7 @@ export class UnresolvedRTypeVariable {
 
 
 export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedDataType, cache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map()): void {
-	// console.debug('constraining', type, 'with upper bound', bound);
+	// console.debug('Constraining', inspect(subtype, { depth: null, colors: true }), 'to subsume', inspect(supertype, { depth: null, colors: true }));
 
 	if(subtype === supertype) {
 		return; // No need to constrain if both types are the same
@@ -155,6 +155,8 @@ export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedData
 
 
 export function prune(variable: UnresolvedRTypeVariable, inProcess: Set<UnresolvedRTypeVariable | Set<UnresolvedDataType>> = new Set()): void {
+	// console.debug('Pruning variable', inspect(variable, { depth: null, colors: true }));
+	
 	inProcess.add(variable);
 
 	function pruneLowerBounds(lowerBounds: Set<UnresolvedDataType>): Set<UnresolvedDataType> {
@@ -163,15 +165,15 @@ export function prune(variable: UnresolvedRTypeVariable, inProcess: Set<Unresolv
 		const prunedBounds = new Set(lowerBounds.values().flatMap(lowerBound => {
 			if(lowerBound instanceof UnresolvedRTypeVariable) {
 				// If the lower bound is a type variable, we only care about its lower bound
-				if(inProcess.has(lowerBound) || inProcess.has(lowerBound.lowerBound.types)) {
-					return []; // If the variable is already in process, we skip it to avoid infinite recursion
+				if(!inProcess.has(lowerBound) && !inProcess.has(lowerBound.lowerBound.types)) {
+					prune(lowerBound, inProcess); // Prune the variable recursively w.r.t. its own bounds
+					lowerBound.lowerBound.types = pruneLowerBounds(lowerBound.lowerBound.types);
 				}
-				prune(lowerBound, inProcess); // Prune the variable recursively w.r.t. its own bounds
-				lowerBound.lowerBound.types = pruneLowerBounds(lowerBound.lowerBound.types);
 				return [lowerBound];
 			} else if(lowerBound instanceof UnresolvedRTypeUnion) {
 				// If the lower bound is a union, we prune and include its types directly
 				if(inProcess.has(lowerBound.types)) {
+					// console.debug('Skipping already processed union', inspect(lowerBound, { depth: null, colors: true }));
 					return []; // If the union is already in process, we skip it to avoid infinite recursion
 				}
 				return pruneLowerBounds(lowerBound.types);
@@ -208,15 +210,15 @@ export function prune(variable: UnresolvedRTypeVariable, inProcess: Set<Unresolv
 		const prunedBounds = new Set(upperBounds.values().flatMap(upperBound => {
 			if(upperBound instanceof UnresolvedRTypeVariable) {
 				// If the upper bound is a type variable, we only care about its upper bound
-				if(inProcess.has(upperBound) || inProcess.has(upperBound.upperBound.types)) {
-					return []; // If the variable is already in process, we skip it to avoid infinite recursion
+				if(!inProcess.has(upperBound) && !inProcess.has(upperBound.upperBound.types)) {
+					prune(upperBound, inProcess); // Prune the variable recursively w.r.t. its own bounds
+					upperBound.upperBound.types = pruneUpperBounds(upperBound.upperBound.types);
 				}
-				prune(upperBound, inProcess); // Prune the variable recursively w.r.t. its own bounds
-				upperBound.upperBound.types = pruneUpperBounds(upperBound.upperBound.types);
 				return [upperBound];
 			} else if(upperBound instanceof UnresolvedRTypeIntersection) {
 				// If the upper bound is an intersection, we prune and include its types directly
 				if(inProcess.has(upperBound.types)) {
+					// console.debug('Skipping already processed intersection', inspect(upperBound, { depth: null, colors: true }));
 					return []; // If the intersection is already in process, we skip it to avoid infinite recursion
 				}
 				return pruneUpperBounds(upperBound.types);
@@ -255,90 +257,121 @@ export function prune(variable: UnresolvedRTypeVariable, inProcess: Set<Unresolv
 }
 
 
-export function resolve(type: UnresolvedDataType, cache: Map<UnresolvedDataType, DataType> = new Map()): DataType {
-	const cachedType = cache.get(type);
-	if(cachedType !== undefined) {
-		return cachedType;
-	}
+export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache: Map<UnresolvedRTypeVariable, { lowerBound: DataType, upperBound: DataType, combined: DataType }> = new Map()): DataType {
+	// console.debug('Resolving type', inspect(type, { depth: null, colors: true }));
 
 	if(type instanceof UnresolvedRTypeVariable) {
-		cache.set(type, new RTypeVariable()); // Prevent infinite recursion
+		const cachedType = cache.get(type);
+		if(cachedType !== undefined) {
+			switch(isUpperBound) {
+				case true:
+					return cachedType.upperBound;
+				case false:
+					return cachedType.lowerBound;
+				default:
+					return cachedType.combined;
+			}
+		}
+		cache.set(type, { lowerBound: new RTypeUnion(), upperBound: new RTypeIntersection(), combined: new RTypeVariable() }); // Prevent infinite recursion
 
 		prune(type); // Prune the variable to remove unnecessary bounds
 
-		const lowerBound = resolve(type.lowerBound, cache);
-		const upperBound = resolve(type.upperBound, cache);
+		const lowerBound = resolve(type.lowerBound, false, cache);
+		const upperBound = resolve(type.upperBound, true, cache);
 
 		if(!subsumes(lowerBound, upperBound)) {
 			const errorType = new RTypeError(lowerBound, upperBound);
-			cache.set(type, errorType);
+			cache.set(type, { lowerBound: errorType, upperBound: errorType, combined: errorType });
 			return errorType;
 		}
-		
-		if(subsumes(lowerBound, upperBound) && subsumes(upperBound, lowerBound)) {
-			cache.set(type, lowerBound);
-			return lowerBound; // If both bounds are equal, return one of them
-		}
-		
-		const resolvedType = new RTypeVariable(
-			lowerBound instanceof RTypeVariable ? lowerBound.lowerBound : lowerBound,
-			upperBound instanceof RTypeVariable ? upperBound.upperBound : upperBound
-		);
-		cache.set(type, resolvedType);
-		return resolvedType;
-	} else if(type instanceof UnresolvedRTypeUnion) {
-		cache.set(type, new RTypeUnion()); // Prevent infinite recursion
 
+		const combined = combine(lowerBound, upperBound);
+		cache.set(type, { lowerBound, upperBound, combined });
+
+		switch(isUpperBound) {
+			case true:
+				return upperBound;
+			case false:
+				return lowerBound;
+			default:
+				return combined;
+		}
+	} else if(type instanceof UnresolvedRTypeUnion) {
 		let resolvedType: DataType = new RTypeUnion();
 		for(const subtype of type.types) {
-			const resolvedSubtype = resolve(subtype, cache);
+			const resolvedSubtype = resolve(subtype, isUpperBound, cache);
 			resolvedType = join(resolvedType, resolvedSubtype);
 		}
-		
-		cache.set(type, resolvedType);
 		return resolvedType;
 	} else if(type instanceof UnresolvedRTypeIntersection) {
-		cache.set(type, new RTypeIntersection()); // Prevent infinite recursion
-
 		let resolvedType: DataType = new RTypeIntersection();
 		for(const subtype of type.types) {
-			const resolvedSubtype = resolve(subtype, cache);
+			const resolvedSubtype = resolve(subtype, isUpperBound, cache);
 			resolvedType = meet(resolvedType, resolvedSubtype);
 		}
-		
-		cache.set(type, resolvedType);
 		return resolvedType;
 	} else if(type instanceof UnresolvedRFunctionType) {
 		type.parameterTypes.values().forEach(paramType => prune(paramType));
 		prune(type.returnType);
 
-		const resolvedParameterTypes = new Map(type.parameterTypes.entries().toArray().map(([key, type]) => [key, resolve(type, cache)]));
-		const resolvedReturnType = resolve(type.returnType, cache);
+		const resolvedParameterTypes = new Map(type.parameterTypes.entries().toArray().map(([key, type]) => {
+			return [key, resolve(type, isUpperBound !== undefined ? !isUpperBound : undefined, cache)];
+		}));
+		const resolvedReturnType = resolve(type.returnType, isUpperBound, cache);
 		const resolvedType = new RFunctionType(resolvedParameterTypes, resolvedReturnType);
 		
-		cache.set(type, resolvedType);
 		return resolvedType;
 	} else if(type instanceof UnresolvedRAtomicVectorType) {
 		prune(type.elementType);
 
-		const resolvedElementType = resolve(type.elementType, cache);
+		const resolvedElementType = resolve(type.elementType, isUpperBound, cache);
 		const resolvedType = new RAtomicVectorType(resolvedElementType);
 		
-		cache.set(type, resolvedType);
 		return resolvedType;
 	} else if(type instanceof UnresolvedRListType) {
 		type.indexedElementTypes.values().forEach(elementType => prune(elementType));
 		prune(type.elementType);
 
-		const resolvedElementType = resolve(type.elementType, cache);
-		const resolvedIndexedElementTypes = new Map(type.indexedElementTypes.entries().map(([indexOrName, elementType]) => [indexOrName, resolve(elementType, cache)]));
+		const resolvedElementType = resolve(type.elementType, isUpperBound, cache);
+		const resolvedIndexedElementTypes = new Map(type.indexedElementTypes.entries().map(([indexOrName, elementType]) => [indexOrName, resolve(elementType, isUpperBound, cache)]));
 		const resolvedType = new RListType(resolvedElementType, resolvedIndexedElementTypes);
 		
-		cache.set(type, resolvedType);
 		return resolvedType;
 	} else {
-		cache.set(type, type);
 		return type;
+	}
+}
+
+export function combine(lowerBound: DataType, upperBound: DataType): DataType {
+	if(lowerBound instanceof RFunctionType && upperBound instanceof RFunctionType) {
+		const parameterTypes = new Map<number | string, DataType>();
+		const keys1 = new Set(lowerBound.parameterTypes.keys());
+		const keys2 = new Set(upperBound.parameterTypes.keys());
+		for(const key of keys1.union(keys2)) {
+			const lowerBoundParameterType = lowerBound.parameterTypes.get(key) ?? new RTypeIntersection();
+			const upperBoundParameterType = upperBound.parameterTypes.get(key) ?? new RTypeUnion();
+			parameterTypes.set(key, combine(upperBoundParameterType, lowerBoundParameterType));
+		}
+		const returnType = combine(lowerBound.returnType, upperBound.returnType);
+		return new RFunctionType(parameterTypes, returnType);
+	} else if(lowerBound instanceof RListType && upperBound instanceof RListType) {
+		const elementType = combine(lowerBound.elementType, upperBound.elementType);
+		const indexedElementTypes = new Map<number | string, DataType>();
+		const keys1 = new Set(lowerBound.indexedElementTypes.keys());
+		const keys2 = new Set(upperBound.indexedElementTypes.keys());
+		for(const key of keys1.union(keys2)) {
+			const lowerBoundElementType = lowerBound.indexedElementTypes.get(key) ?? new RTypeUnion();
+			const upperBoundElementType = upperBound.indexedElementTypes.get(key) ?? new RTypeIntersection();
+			indexedElementTypes.set(key, combine(lowerBoundElementType, upperBoundElementType));
+		}
+		return new RListType(elementType, indexedElementTypes);
+	} else if(lowerBound instanceof RAtomicVectorType && upperBound instanceof RAtomicVectorType) {
+		const elementType = combine(lowerBound.elementType, upperBound.elementType);
+		return new RAtomicVectorType(elementType);
+	} else if(subsumesByTag(lowerBound.tag, upperBound.tag) && subsumesByTag(upperBound.tag, lowerBound.tag)) {
+		return lowerBound; // If both types are the same, we return the upper bound
+	} else {
+		return new RTypeVariable(lowerBound, upperBound); // If the types are not compatible, we create a new variable type that combines both bounds 
 	}
 }
 
@@ -415,9 +448,9 @@ export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataT
 	} else if(type2 instanceof RTypeError) {
 		return type2;
 	} else if(type1 instanceof UnresolvedRTypeVariable) {
-		return unresolvedJoin(type1.lowerBound, type2);
+		return unresolvedJoin(type1.upperBound, type2);
 	} else if(type2 instanceof UnresolvedRTypeVariable) {
-		return unresolvedJoin(type1, type2.lowerBound);
+		return unresolvedJoin(type1, type2.upperBound);
 	} else if(type1 instanceof UnresolvedRTypeUnion) {
 		if(type1.types.size === 0) {
 			return type2; // If type1 is an empty union, return type2
@@ -453,8 +486,8 @@ export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataT
 		const keys1 = new Set(type1.parameterTypes.keys());
 		const keys2 = new Set(type2.parameterTypes.keys());
 		for(const key of keys1.union(keys2)) {
-			const parameterType1 = type1.parameterTypes.get(key) ?? new UnresolvedRTypeUnion();
-			const parameterType2 = type2.parameterTypes.get(key) ?? new UnresolvedRTypeUnion();
+			const parameterType1 = type1.parameterTypes.get(key) ?? new UnresolvedRTypeIntersection();
+			const parameterType2 = type2.parameterTypes.get(key) ?? new UnresolvedRTypeIntersection();
 			const metParameterType = unresolvedMeet(parameterType1, parameterType2);
 			const parameterType = new UnresolvedRTypeVariable();
 			constrain(metParameterType, parameterType);
@@ -517,9 +550,9 @@ export function join(type1: DataType, type2: DataType): DataType {
 	} else if(type2 instanceof RTypeError) {
 		return type2;
 	} else if(type1 instanceof RTypeVariable) {
-		return join(type1.lowerBound, type2);
+		return new RTypeVariable(join(type1.lowerBound, type2), join(type1.upperBound, type2));
 	} else if(type2 instanceof RTypeVariable) {
-		return join(type1, type2.lowerBound);
+		return new RTypeVariable(join(type1, type2.lowerBound), join(type1, type2.upperBound));
 	} else if(type1 instanceof RTypeUnion) {
 		if(type1.types.size === 0) {
 			return type2; // If type1 is an empty union, return type2
@@ -555,8 +588,8 @@ export function join(type1: DataType, type2: DataType): DataType {
 		const keys1 = new Set(type1.parameterTypes.keys());
 		const keys2 = new Set(type2.parameterTypes.keys());
 		for(const key of keys1.union(keys2)) {
-			const parameterType1 = type1.parameterTypes.get(key) ?? new RTypeUnion();
-			const parameterType2 = type2.parameterTypes.get(key) ?? new RTypeUnion();
+			const parameterType1 = type1.parameterTypes.get(key) ?? new RTypeIntersection();
+			const parameterType2 = type2.parameterTypes.get(key) ?? new RTypeIntersection();
 			parameterTypes.set(key, meet(parameterType1, parameterType2));
 		}
 		const returnType = join(type1.returnType, type2.returnType);
@@ -566,8 +599,8 @@ export function join(type1: DataType, type2: DataType): DataType {
 		const keys1 = new Set(type1.indexedElementTypes.keys());
 		const keys2 = new Set(type2.indexedElementTypes.keys());
 		for(const key of keys1.intersection(keys2)) {
-			const elementType1 = type1.indexedElementTypes.get(key) ?? new RTypeIntersection();
-			const elementType2 = type2.indexedElementTypes.get(key) ?? new RTypeIntersection();
+			const elementType1 = type1.indexedElementTypes.get(key) ?? new RTypeUnion();
+			const elementType2 = type2.indexedElementTypes.get(key) ?? new RTypeUnion();
 			indexedElementTypes.set(key, join(elementType1, elementType2));
 		}
 		return new RListType(join(type1.elementType, type2.elementType), indexedElementTypes);
@@ -593,9 +626,9 @@ export function unresolvedMeet(type1: UnresolvedDataType, type2: UnresolvedDataT
 	} else if(type2 instanceof RTypeError) {
 		return type2;
 	} else if(type1 instanceof UnresolvedRTypeVariable) {
-		return unresolvedMeet(type1.upperBound, type2);
+		return unresolvedMeet(type1.lowerBound, type2);
 	} else if(type2 instanceof UnresolvedRTypeVariable) {
-		return unresolvedMeet(type1, type2.upperBound);
+		return unresolvedMeet(type1, type2.lowerBound);
 	} else if(type1 instanceof UnresolvedRTypeIntersection) {
 		if(type1.types.size === 0) {
 			return type2; // If type1 is an empty intersection, return type2
@@ -631,8 +664,8 @@ export function unresolvedMeet(type1: UnresolvedDataType, type2: UnresolvedDataT
 		const keys1 = new Set(type1.parameterTypes.keys());
 		const keys2 = new Set(type2.parameterTypes.keys());
 		for(const key of keys1.intersection(keys2)) {
-			const parameterType1 = type1.parameterTypes.get(key) ?? new UnresolvedRTypeIntersection();
-			const parameterType2 = type2.parameterTypes.get(key) ?? new UnresolvedRTypeIntersection();
+			const parameterType1 = type1.parameterTypes.get(key) ?? new UnresolvedRTypeUnion();
+			const parameterType2 = type2.parameterTypes.get(key) ?? new UnresolvedRTypeUnion();
 			const joinedParameterType = unresolvedJoin(parameterType1, parameterType2);
 			const parameterType = new UnresolvedRTypeVariable();
 			constrain(parameterType, joinedParameterType);
@@ -687,9 +720,9 @@ export function meet(type1: DataType, type2: DataType): DataType {
 	} else if(type2 instanceof RTypeError) {
 		return type2;
 	} else if(type1 instanceof RTypeVariable) {
-		return meet(type1.upperBound, type2);
+		return new RTypeVariable(meet(type1.lowerBound, type2), meet(type1.upperBound, type2));
 	} else if(type2 instanceof RTypeVariable) {
-		return meet(type1, type2.upperBound);
+		return new RTypeVariable(meet(type1, type2.lowerBound), meet(type1, type2.upperBound));
 	} else if(type1 instanceof RTypeIntersection) {
 		if(type1.types.size === 0) {
 			return type2; // If type1 is an empty intersection, return type2
@@ -725,8 +758,8 @@ export function meet(type1: DataType, type2: DataType): DataType {
 		const keys1 = new Set(type1.parameterTypes.keys());
 		const keys2 = new Set(type2.parameterTypes.keys());
 		for(const key of keys1.intersection(keys2)) {
-			const parameterType1 = type1.parameterTypes.get(key) ?? new RTypeIntersection();
-			const parameterType2 = type2.parameterTypes.get(key) ?? new RTypeIntersection();
+			const parameterType1 = type1.parameterTypes.get(key) ?? new RTypeUnion();
+			const parameterType2 = type2.parameterTypes.get(key) ?? new RTypeUnion();
 			parameterTypes.set(key, join(parameterType1, parameterType2));
 		}
 		const returnType = meet(type1.returnType, type2.returnType);
@@ -736,8 +769,8 @@ export function meet(type1: DataType, type2: DataType): DataType {
 		const keys1 = new Set(type1.indexedElementTypes.keys());
 		const keys2 = new Set(type2.indexedElementTypes.keys());
 		for(const key of keys1.union(keys2)) {
-			const elementType1 = type1.indexedElementTypes.get(key) ?? new RTypeUnion();
-			const elementType2 = type2.indexedElementTypes.get(key) ?? new RTypeUnion();
+			const elementType1 = type1.indexedElementTypes.get(key) ?? new RTypeIntersection();
+			const elementType2 = type2.indexedElementTypes.get(key) ?? new RTypeIntersection();
 			indexedElementTypes.set(key, meet(elementType1, elementType2));
 		}
 		return new RListType(meet(type1.elementType, type2.elementType), indexedElementTypes);

@@ -8,7 +8,7 @@ import type { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { DataType, DataTypeInfo } from '../types';
+import type { DataTypeInfo } from '../types';
 import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, RNullType, RLanguageType } from '../types';
 import type { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../../util/assert';
@@ -56,10 +56,13 @@ function decorateTypeVariables<Info extends ParentInformation>(ast: NormalizedAs
 }
 
 function resolveTypeVariables<Info extends ParentInformation & UnresolvedTypeInfo>(ast: NormalizedAst<Info>): NormalizedAst<Omit<Info, keyof UnresolvedTypeInfo> & DataTypeInfo> {
-	const cache = new Map<UnresolvedDataType, DataType>();
 	return mapNormalizedAstInfo(ast, node => {
 		const { typeVariable, ...rest } = node.info;
-		return { ...rest, inferredType: resolve(typeVariable, cache) };
+		const resolvedType = resolve(typeVariable);
+		// if(node.lexeme === 'y') {
+		// 	console.debug('Resolving type variable', inspect(typeVariable, { depth: null, colors: true }), 'to', inspect(resolvedType, { depth: null, colors: true }));
+		// }
+		return { ...rest, inferredType: resolvedType };
 	});
 }
 
@@ -152,11 +155,21 @@ class TypeInferringCfgGuidedVisitor<
 	}
 
 	protected inferNodeTypeFromReadOrigins(node: RNode<UnresolvedTypeInfo>, readOrigins: Array<{ id: NodeId, type: OriginType }>): void {
+		let hasUnresolvableOrigins = false;
+		const lowerBounds = new Set<UnresolvedDataType>();
+		
 		for(const readOrigin of readOrigins ?? []) {
 			const readNode = this.getNormalizedAst(readOrigin.id);
 			if(readNode !== undefined) {
 				this.constrainNodeType(node, { lowerBound: readNode.info.typeVariable });
-			} else if(node.type === RType.Symbol) {
+				lowerBounds.add(readNode.info.typeVariable);
+			} else {
+				hasUnresolvableOrigins = true;
+			}
+		}
+
+		if(hasUnresolvableOrigins) {
+			if(node.type === RType.Symbol) {
 				// If the read variable has no associated AST node it might be a library constant or function
 				const constantType = this.constantContext.get(node.content);
 				if(constantType !== undefined) {
@@ -168,6 +181,9 @@ class TypeInferringCfgGuidedVisitor<
 					this.constrainNodeType(node, { lowerBound: functionType });
 				}
 			}
+		} else if(lowerBounds.size > 0) {
+			const upperBound = lowerBounds.size === 1 ? lowerBounds.values().next().value : new UnresolvedRTypeUnion(...lowerBounds);
+			this.constrainNodeType(node, { upperBound });
 		}
 	}
 
@@ -202,8 +218,8 @@ class TypeInferringCfgGuidedVisitor<
 		const valueNode = this.getNormalizedAst(data.source);
 		guard(valueNode !== undefined, 'Expected AST node to be defined');
 
-		this.constrainNodeType(data.target, { lowerBound: valueNode.info.typeVariable });
-		this.constrainNodeType(data.call.id, { lowerBound: valueNode.info.typeVariable });
+		this.constrainNodeType(data.target, valueNode.info.typeVariable);
+		this.constrainNodeType(data.call.id, valueNode.info.typeVariable);
 	}
 
 	override onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall }): void {
@@ -392,8 +408,7 @@ class TypeInferringCfgGuidedVisitor<
 		for(const arg of args) {
 			const argNode = this.getNormalizedAst(arg.nodeId);
 			guard(argNode !== undefined, 'Expected argument node to be defined');
-			this.constrainNodeType(argNode, { upperBound: new UnresolvedRAtomicVectorType() });
-			constrain(argNode.info.typeVariable, vectorType, this.constraintCache);
+			this.constrainNodeType(argNode, { upperBound: vectorType });
 		}
 	}
 
@@ -478,11 +493,44 @@ class TypeInferringCfgGuidedVisitor<
 			case '[[':
 				this.constrainNodeType(data.call.id, { lowerBound: elementType });
 				break;
-			case '$': {
+			case '$':
 				this.constrainNodeType(firstArgNode, { upperBound: new UnresolvedRListType(elementType) });
 				this.constrainNodeType(data.call.id, { lowerBound: elementType });
 				break;
-			}
+		}
+	}
+
+	protected override onReplacementCall(data: { call: DataflowGraphVertexFunctionCall; source: NodeId | undefined; target: NodeId | undefined; }): void {
+		if(data.source === undefined || data.target === undefined) {
+			return; // Malformed replacement call
+		}
+
+		const targetNode = this.getNormalizedAst(data.target);
+		guard(targetNode !== undefined, 'Expected target node to be defined');
+		const sourceNode = this.getNormalizedAst(data.source);
+		guard(sourceNode !== undefined, 'Expected source node to be defined');
+
+		const targetElementType = new UnresolvedRTypeVariable();
+		const targetVectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(targetElementType), new UnresolvedRListType(targetElementType));
+		this.constrainNodeType(targetNode, { upperBound: targetVectorType });
+
+		this.constrainNodeType(data.call.id, sourceNode.info.typeVariable);
+
+		const sourceElementType = new UnresolvedRTypeVariable();
+		const sourceVectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(sourceElementType), new UnresolvedRListType(sourceElementType));
+
+		switch(data.call.name) {
+			case '[<-':
+				// If the replacement call uses a `[` operation, we assume that the source is as another instance of the same container type
+				this.constrainNodeType(sourceNode, { upperBound: sourceVectorType });
+				break;
+			case '[[<-':
+				this.constrainNodeType(sourceNode, { upperBound: sourceElementType });
+				break;
+			case '$<-':
+				this.constrainNodeType(targetNode, { upperBound: new UnresolvedRListType(targetElementType) });
+				this.constrainNodeType(sourceNode, { upperBound: sourceElementType });
+				break;
 		}
 	}
 }

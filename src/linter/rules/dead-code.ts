@@ -1,4 +1,4 @@
-import { LintingCertainty, LintingPrettyPrintContext, type LintingResult, type LintingRule } from '../linter-format';
+import { LintingResultCertainty, LintingPrettyPrintContext, type LintingResult, type LintingRule, LintingRuleCertainty } from '../linter-format';
 import type { SourceRange } from '../../util/range';
 import { combineRanges } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
@@ -45,7 +45,7 @@ export const DEAD_CODE = {
 					.map(element => element.node.info.fullRange ?? element.node.location)
 					.filter(isNotUndefined)))
 				.map(range => ({
-					certainty: LintingCertainty.Definitely,
+					certainty: LintingResultCertainty.Certain,
 					range
 				})),
 			'.meta': meta
@@ -58,6 +58,8 @@ export const DEAD_CODE = {
 	info: {
 		name:          'Dead Code',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
+		// our limited dead code analysis causes complex cases of dead code not to be included in the linting result, but deadness is properly investigated for returned results
+		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Marks areas of code that are never reached during execution.',
 		defaultConfig: {}
 	}

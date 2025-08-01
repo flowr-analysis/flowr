@@ -1,6 +1,6 @@
 import { guard } from '../../util/assert';
-import type { DataType , AtomicVectorBaseType, REnvironmentType, RLanguageType, RNullType } from '../types';
-import { DataTypeTag, isAtomicVectorBaseType, RAtomicVectorType, RFunctionType, RListType, RTypeError, RTypeIntersection, RTypeUnion, RTypeVariable } from '../types';
+import type { DataType , AtomicVectorBaseType, REnvironmentType, RLanguageType } from '../types';
+import { RNullType , DataTypeTag, isAtomicVectorBaseType, RAtomicVectorType, RFunctionType, RListType, RTypeError, RTypeIntersection, RTypeUnion, RTypeVariable } from '../types';
 
 // let idCounter = 0;
 
@@ -445,7 +445,8 @@ export function subsumes(subtype: DataType | UnresolvedDataType, supertype: Data
 			|| subtype.tag === DataTypeTag.Logical && supertype.tag === DataTypeTag.Complex
 			|| subtype.tag === DataTypeTag.Integer && supertype.tag === DataTypeTag.Double
 			|| subtype.tag === DataTypeTag.Integer && supertype.tag === DataTypeTag.Complex
-			|| subtype.tag === DataTypeTag.Double && supertype.tag === DataTypeTag.Complex;
+			|| subtype.tag === DataTypeTag.Double && supertype.tag === DataTypeTag.Complex
+			|| subtype.tag === DataTypeTag.Null && supertype.tag === DataTypeTag.AtomicVector;
 	}
 
 	processedSupertypes?.delete(supertype); // Remove the supertype from the processed set
@@ -548,6 +549,14 @@ export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataT
 		constrain(elementType, joinedElementType);
 		// constrain(joinedElementType, elementType);
 		return new UnresolvedRAtomicVectorType(elementType);
+	} else if(type1 instanceof RNullType && isAtomicVectorBaseType(type2)) {
+		const elementType = new UnresolvedRTypeVariable();
+		constrain(elementType, type2);
+		return new UnresolvedRAtomicVectorType(elementType);
+	} else if(isAtomicVectorBaseType(type1) && type2 instanceof RNullType) {
+		const elementType = new UnresolvedRTypeVariable();
+		constrain(elementType, type1);
+		return new UnresolvedRAtomicVectorType(elementType);
 	} else if(subsumes(type1, type2)) {
 		return type2;
 	} else if(subsumes(type2, type1)) {
@@ -563,9 +572,9 @@ export function join(type1: DataType, type2: DataType): DataType {
 	} else if(type2 instanceof RTypeError) {
 		return type2;
 	} else if(type1 instanceof RTypeVariable) {
-		return new RTypeVariable(join(type1.lowerBound, type2), join(type1.upperBound, type2));
+		return combine(join(type1.lowerBound, type2), join(type1.upperBound, type2));
 	} else if(type2 instanceof RTypeVariable) {
-		return new RTypeVariable(join(type1, type2.lowerBound), join(type1, type2.upperBound));
+		return combine(join(type1, type2.lowerBound), join(type1, type2.upperBound));
 	} else if(type1 instanceof RTypeUnion) {
 		if(type1.types.size === 0) {
 			return type2; // If type1 is an empty union, return type2
@@ -623,6 +632,10 @@ export function join(type1: DataType, type2: DataType): DataType {
 		return new RAtomicVectorType(join(type1, type2.elementType));
 	} else if(isAtomicVectorBaseType(type2) && type1.tag === DataTypeTag.AtomicVector) {
 		return new RAtomicVectorType(join(type2, type1.elementType));
+	} else if(type1 instanceof RNullType && isAtomicVectorBaseType(type2)) {
+		return new RAtomicVectorType(type2);
+	} else if(isAtomicVectorBaseType(type1) && type2 instanceof RNullType) {
+		return new RAtomicVectorType(type1);
 	} else if(subsumes(type1, type2)) {
 		return type2;
 	} else if(subsumes(type2, type1)) {
@@ -733,9 +746,9 @@ export function meet(type1: DataType, type2: DataType): DataType {
 	} else if(type2 instanceof RTypeError) {
 		return type2;
 	} else if(type1 instanceof RTypeVariable) {
-		return new RTypeVariable(meet(type1.lowerBound, type2), meet(type1.upperBound, type2));
+		return combine(meet(type1.lowerBound, type2), meet(type1.upperBound, type2));
 	} else if(type2 instanceof RTypeVariable) {
-		return new RTypeVariable(meet(type1, type2.lowerBound), meet(type1, type2.upperBound));
+		return combine(meet(type1, type2.lowerBound), meet(type1, type2.upperBound));
 	} else if(type1 instanceof RTypeIntersection) {
 		if(type1.types.size === 0) {
 			return type2; // If type1 is an empty intersection, return type2

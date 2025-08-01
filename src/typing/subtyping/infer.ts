@@ -377,19 +377,15 @@ class TypeInferringCfgGuidedVisitor<
 		const listType = new UnresolvedRListType();
 		this.constrainNodeType(data.call.id, listType);
 
-		// TODO: Handle flattening behavior of `list` function (?)
 		for(const [index, arg] of data.call.args.entries()) {
 			if(arg === EmptyArgument) {
 				continue; // Skip empty arguments
 			}
-			
-			const argNode = this.getNormalizedAst(arg.nodeId);
-			guard(argNode !== undefined, 'Expected argument node to be defined');
 
-			constrain(argNode.info.typeVariable, getIndexedElementTypeFromList(listType, index, this.constraintCache), this.constraintCache);
+			this.constrainNodeType(arg.nodeId, { upperBound: getIndexedElementTypeFromList(listType, index, this.constraintCache) });
 
 			if(arg.name !== undefined) {
-				constrain(argNode.info.typeVariable, getIndexedElementTypeFromList(listType, arg.name, this.constraintCache), this.constraintCache);
+				this.constrainNodeType(arg.nodeId, { upperBound: getIndexedElementTypeFromList(listType, arg.name, this.constraintCache) });
 			}
 		}
 	}
@@ -401,7 +397,6 @@ class TypeInferringCfgGuidedVisitor<
 			return;
 		}
 		
-		// TODO: Handle behavior of `c` function for non-vector arguments
 		const vectorType = new UnresolvedRAtomicVectorType();
 		this.constrainNodeType(data.call.id, vectorType);
 
@@ -479,7 +474,6 @@ class TypeInferringCfgGuidedVisitor<
 		const firstArgNode = this.getNormalizedAst(firstArg.nodeId);
 		guard(firstArgNode !== undefined, 'Expected first argument node to be defined');
 
-		// TODO: Handle subsetting for other operand types, in particular for scalars and null
 		const elementType = new UnresolvedRTypeVariable();
 		const vectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(elementType), new UnresolvedRListType(elementType));
 		this.constrainNodeType(firstArgNode, { upperBound: vectorType });

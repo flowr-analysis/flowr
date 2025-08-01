@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import type { DataType } from '../../../../src/typing/types';
-import { RTypeIntersection, RAtomicVectorType, RIntegerType, RListType, RTypeVariable, RTypeUnion, RNullType, RLogicalType } from '../../../../src/typing/types';
+import { RTypeIntersection, RAtomicVectorType, RIntegerType, RListType, RTypeVariable, RNullType, RLogicalType, RComplexType } from '../../../../src/typing/types';
 import { assertInferredTypes } from '../../_helper/typing/subtyping/assert-inferred-type';
 import { Q } from '../../../../src/search/flowr-search-builder';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
@@ -59,7 +59,7 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RIntegerType() },
 	);
 	
-	const elementType6 = new RTypeVariable(new RTypeUnion(new RIntegerType(), new RNullType()), new RTypeIntersection());
+	const elementType6 = new RTypeVariable(new RAtomicVectorType(new RIntegerType()), new RTypeIntersection());
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	const elementType6_0 = new RTypeVariable(new RLogicalType(), new RTypeIntersection());
 	// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -69,6 +69,18 @@ describe('Infer types for subsetting expressions', () => {
 	assertInferredTypes(
 		'l <- list(TRUE, a = 42, NULL); l$a',
 		{ query: Q.var('l').last().build(),                    expectedType: new RListType(elementType6, new Map<number | string, DataType>([[0, elementType6_0], [1, elementType6_1], [2, elementType6_2], ['a', elementType6_1]])) },
-		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RTypeUnion(new RIntegerType(), new RNullType()), upperBound: new RTypeIntersection() },
+		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RAtomicVectorType(new RIntegerType()), upperBound: new RTypeIntersection() },
+	);
+
+	assertInferredTypes(
+		'v <- 1; v[[1]]',
+		{ query: Q.var('v').last().build(),                    lowerBound: new RIntegerType(), upperBound: new RComplexType() },
+		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RIntegerType() },
+	);
+
+	assertInferredTypes(
+		'v <- NULL; v[1]',
+		{ query: Q.var('v').last().build(),                    expectedType: new RNullType() },
+		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RNullType() },
 	);
 });

@@ -68,6 +68,7 @@ export const DEPRECATED_FUNCTIONS = {
 	info: {
 		name:          'Deprecated Functions',
 		tags:          [LintingRuleTag.Deprecated, LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
+		// ensures all deprecated functions found are actually deprecated through its limited config, but doesn't find all deprecated functions since the config is pre-crawled
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Marks deprecated functions that should not be used anymore.',
 		defaultConfig: {

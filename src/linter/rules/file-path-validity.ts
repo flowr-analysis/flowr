@@ -115,6 +115,7 @@ export const FILE_PATH_VALIDITY = {
 	info: {
 		name:          'File Path Validity',
 		description:   'Checks whether file paths used in read and write operations are valid and point to existing files.',
+		// checks all found paths for whether they're valid to ensure correctness, but doesn't handle non-constant paths so not all will be returned
 		certainty:     LintingRuleCertainty.BestEffort,
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug],
 		defaultConfig: {

@@ -131,6 +131,7 @@ export const SEEDED_RANDOMNESS = {
 			randomnessConsumers: ['jitter', 'sample', 'sample.int', 'arima.sim', 'kmeans', 'princomp', 'rcauchy', 'rchisq', 'rexp', 'rgamma', 'rgeom', 'rlnorm', 'rlogis', 'rmultinom', 'rnbinom', 'rnorm', 'rpois', 'runif', 'pointLabel', 'some', 'rbernoulli', 'rdunif', 'generateSeedVectors'],
 		},
 		tags:        [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility],
+		// only finds proper randomness producers and consumers due to its config, but will not find all producers/consumers since not all existing deprecated functions will be in the config
 		certainty:   LintingRuleCertainty.BestEffort,
 		name:        'Seeded Randomness',
 		description: 'Checks whether randomness-based function calls are preceded by a random seed generation function. For consistent reproducibility, functions that use randomness should only be called after a constant random seed is set using a function like `set.seed`.'

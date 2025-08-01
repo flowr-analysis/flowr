@@ -58,6 +58,7 @@ export const DEAD_CODE = {
 	info: {
 		name:          'Dead Code',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
+		// our limited dead code analysis causes complex cases of dead code not to be included in the linting result, but deadness is properly investigated for returned results
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Marks areas of code that are never reached during execution.',
 		defaultConfig: {}

@@ -199,6 +199,7 @@ export const NAMING_CONVENTION = {
 	},
 	info: {
 		name:          'Naming Convention',
+		// detects casing heuristically so correctness is not ensured using default config, but checks all identifiers in the code for naming convention match
 		certainty:     LintingRuleCertainty.OverApproximative,
 		description:   'Checks wether the symbols conform to a certain naming convention',
 		tags:          [LintingRuleTag.Style, LintingRuleTag.QuickFix],

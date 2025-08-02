@@ -56,9 +56,10 @@ function decorateTypeVariables<Info extends ParentInformation>(ast: NormalizedAs
 }
 
 function resolveTypeVariables<Info extends ParentInformation & UnresolvedTypeInfo>(ast: NormalizedAst<Info>): NormalizedAst<Omit<Info, keyof UnresolvedTypeInfo> & DataTypeInfo> {
+	const prunedVariables = new Set<UnresolvedRTypeVariable>();
 	return mapNormalizedAstInfo(ast, node => {
 		const { typeVariable, ...rest } = node.info;
-		const resolvedType = resolve(typeVariable);
+		const resolvedType = resolve(typeVariable, undefined, prunedVariables);
 		// if(node.lexeme === 'y') {
 		// 	console.debug('Resolving type variable', inspect(typeVariable, { depth: null, colors: true }), 'to', inspect(resolvedType, { depth: null, colors: true }));
 		// }

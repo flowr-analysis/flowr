@@ -154,123 +154,56 @@ export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedData
 }
 
 
-export function prune(variable: UnresolvedRTypeVariable, inProcess: Set<UnresolvedRTypeVariable | Set<UnresolvedDataType>> = new Set()): void {
+export function prune(variable: UnresolvedRTypeVariable): void {
 	// console.debug('Pruning variable', variable.id);
 
-	if(inProcess.has(variable)) {
-		// console.debug('Variable', variable.id, 'is already in process');
-		return;
-	}
-
-	inProcess.add(variable);
-
-	function pruneLowerBounds(lowerBounds: Set<UnresolvedDataType>): Set<UnresolvedDataType> {
-		if(inProcess.has(lowerBounds)) {
-			return lowerBounds;
-		}
-
-		inProcess.add(lowerBounds);
-
-		const prunedBounds = new Set(lowerBounds.values().flatMap(lowerBound => {
-			if(lowerBound instanceof UnresolvedRTypeVariable) {
-				// If the lower bound is a type variable, we only care about its lower bound
-				lowerBound.lowerBound.types = pruneLowerBounds(lowerBound.lowerBound.types);
-				return [lowerBound];
-			} else if(lowerBound instanceof UnresolvedRTypeUnion) {
-				// If the lower bound is a union, we prune and include its types directly
-				if(inProcess.has(lowerBound.types)) {
-					// console.debug('Skipping already processed union', inspect(lowerBound, { depth: null, colors: true }));
-					return []; // If the union is already in process, we skip it to avoid infinite recursion
-				}
-				return pruneLowerBounds(lowerBound.types);
-			} else if(lowerBound instanceof UnresolvedRTypeIntersection) {
-				// If the lower bound is an intersection, we need to consider its upper bounds
-				if(variable.upperBound.types.size === 0) {
-					return [lowerBound]; // If there are no upper bounds, we keep the lower bound
-				}
-				// Otherwise, we prune it to only include types that subsume some upper bound
-				let upperBound: UnresolvedDataType = new UnresolvedRTypeUnion();
-				for(const type of variable.upperBound.types) {
-					upperBound = unresolvedJoin(upperBound, type);
-				}
-				return [new UnresolvedRTypeIntersection(...lowerBound.types.values().filter(type => {
-					if(variable.upperBound.types.values().some(upperBound => subsumes(type, upperBound))) {
-						// console.debug('\x1b[36m', 'Constraining', inspect(type, { depth: null, colors: true }), 'with upper bound', inspect(upperBound, { depth: null, colors: true }), '\x1b[0m');
-						constrain(type, upperBound);
-						return true;
-					}
-					return false;
-				}))];
-			} else {
-				return [lowerBound]; // If the lower bound is a concrete type, we keep it as is
+	// Prune lower bounds
+	for(const lowerBound of variable.lowerBound.types) {
+		if(lowerBound instanceof UnresolvedRTypeIntersection) {
+			// If the lower bound is an intersection, we need to consider its upper bounds
+			if(variable.upperBound.types.size === 0) {
+				continue; // If there are no upper bounds, we keep the lower bound
 			}
-		}));
-
-		inProcess.delete(lowerBounds);
-
-		return prunedBounds;
-	}
-	function pruneUpperBounds(upperBounds: Set<UnresolvedDataType>): Set<UnresolvedDataType> {
-		// console.debug('Pruning upper bounds');
-
-		if(inProcess.has(upperBounds)) {
-			// console.debug('Upper bounds are already in process');
-			return upperBounds;
-		}
-
-		inProcess.add(upperBounds);
-
-		const prunedBounds = new Set(upperBounds.values().flatMap(upperBound => {
-			if(upperBound instanceof UnresolvedRTypeVariable) {
-				// If the upper bound is a type variable, we only care about its upper bound
-				upperBound.upperBound.types = pruneUpperBounds(upperBound.upperBound.types);
-				return [upperBound];
-			} else if(upperBound instanceof UnresolvedRTypeIntersection) {
-				// If the upper bound is an intersection, we prune and include its types directly
-				if(inProcess.has(upperBound.types)) {
-					// console.debug('Skipping already processed intersection', inspect(upperBound, { depth: null, colors: true }));
-					return []; // If the intersection is already in process, we skip it to avoid infinite recursion
-				}
-				return pruneUpperBounds(upperBound.types);
-			} else if(upperBound instanceof UnresolvedRTypeUnion) {
-				// If the upper bound is a union, we need to consider its lower bounds
-				if(variable.lowerBound.types.size === 0) {
-					return [upperBound]; // If there are no lower bounds, we keep the upper bound
-				}
-				// Otherwise, we prune it to only include types that are subsumed by some lower bound
-				let lowerBound: UnresolvedDataType = new UnresolvedRTypeIntersection();
-				for(const type of variable.lowerBound.types) {
-					lowerBound = unresolvedMeet(lowerBound, type);
-				}
-				return [new UnresolvedRTypeUnion(...upperBound.types.values().filter(type => {
-					if(variable.lowerBound.types.values().some(lowerBound => subsumes(lowerBound, type))) {
-						// console.debug('\x1b[36m', 'Constraining', inspect(type, { depth: null, colors: true }), 'with lower bound', inspect(lowerBound, { depth: null, colors: true }), '\x1b[0m');
-						constrain(lowerBound, type);
-						return true;
-					}
-					return false;
-				}))];
-			} else {
-				return [upperBound]; // If the upper bound is a concrete type, we keep it
+			// Otherwise, we prune it to only include types that subsume some upper bound
+			let upperBound: UnresolvedDataType = new UnresolvedRTypeUnion();
+			for(const type of variable.upperBound.types) {
+				upperBound = unresolvedJoin(upperBound, type);
 			}
-		}));
-
-		inProcess.delete(upperBounds);
-
-		// console.debug('Returning from pruning upper bounds');
-		return prunedBounds;
+			for(const type of lowerBound.types) {
+				if(variable.upperBound.types.values().some(upperBound => subsumes(type, upperBound))) {
+					constrain(type, upperBound);
+				} else {
+					lowerBound.types.delete(type);
+				}
+			}
+		}
 	}
-	
-	variable.lowerBound.types = pruneLowerBounds(variable.lowerBound.types);
-	variable.upperBound.types = pruneUpperBounds(variable.upperBound.types);
 
-	inProcess.delete(variable);
-	
-	// console.debug('Returning from pruning variable', variable.id);
+	// Prune upper bounds
+	for(const upperBound of variable.upperBound.types) {
+		if(upperBound instanceof UnresolvedRTypeUnion) {
+			// If the upper bound is a union, we need to consider its lower bounds
+			if(variable.lowerBound.types.size === 0) {
+				continue; // If there are no lower bounds, we keep the upper bound
+			}
+			// Otherwise, we prune it to only include types that are subsumed by some lower bound
+			let lowerBound: UnresolvedDataType = new UnresolvedRTypeIntersection();
+			for(const type of variable.lowerBound.types) {
+				lowerBound = unresolvedMeet(lowerBound, type);
+			}
+			for(const type of upperBound.types) {
+				if(variable.lowerBound.types.values().some(lowerBound => subsumes(lowerBound, type))) {
+					constrain(lowerBound, type);
+				} else {
+					upperBound.types.delete(type);
+				}
+			}
+		}
+	}
 }
 
 
-export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache: Map<UnresolvedRTypeVariable, { lowerBound: DataType, upperBound: DataType, combined: DataType }> = new Map()): DataType {
+export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, prunedVariables: Set<UnresolvedRTypeVariable> = new Set(), cache: Map<UnresolvedRTypeVariable, { lowerBound: DataType, upperBound: DataType, combined: DataType }> = new Map()): DataType {
 	// console.debug('Resolving', inspect(type, { depth: null, colors: true }));
 
 	if(type instanceof UnresolvedRTypeVariable) {
@@ -290,10 +223,14 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 		}
 		cache.set(type, { lowerBound: new RTypeUnion(), upperBound: new RTypeIntersection(), combined: new RTypeVariable() }); // Prevent infinite recursion
 
-		prune(type); // Prune the variable to remove unnecessary bounds
+		if(!prunedVariables.has(type)) {
+			prune(type); // Prune the variable to remove unnecessary bounds
+			prunedVariables.add(type);
+		}
 
-		const lowerBound = resolve(type.lowerBound, false, cache);
-		const upperBound = resolve(type.upperBound, true, cache);
+
+		const lowerBound = resolve(type.lowerBound, false, prunedVariables, cache);
+		const upperBound = resolve(type.upperBound, true, prunedVariables, cache);
 
 		if(!subsumes(lowerBound, upperBound)) {
 			const errorType = new RTypeError(lowerBound, upperBound);
@@ -320,7 +257,7 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 	} else if(type instanceof UnresolvedRTypeUnion) {
 		let resolvedType: DataType = new RTypeUnion();
 		for(const subtype of type.types) {
-			const resolvedSubtype = resolve(subtype, isUpperBound, cache);
+			const resolvedSubtype = resolve(subtype, isUpperBound, prunedVariables, cache);
 			resolvedType = join(resolvedType, resolvedSubtype);
 		}
 
@@ -329,7 +266,7 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 	} else if(type instanceof UnresolvedRTypeIntersection) {
 		let resolvedType: DataType = new RTypeIntersection();
 		for(const subtype of type.types) {
-			const resolvedSubtype = resolve(subtype, isUpperBound, cache);
+			const resolvedSubtype = resolve(subtype, isUpperBound, prunedVariables, cache);
 			resolvedType = meet(resolvedType, resolvedSubtype);
 		}
 
@@ -340,9 +277,9 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 		prune(type.returnType);
 
 		const resolvedParameterTypes = new Map(type.parameterTypes.entries().toArray().map(([key, type]) => {
-			return [key, resolve(type, isUpperBound !== undefined ? !isUpperBound : undefined, cache)];
+			return [key, resolve(type, isUpperBound !== undefined ? !isUpperBound : undefined, prunedVariables, cache)];
 		}));
-		const resolvedReturnType = resolve(type.returnType, isUpperBound, cache);
+		const resolvedReturnType = resolve(type.returnType, isUpperBound, prunedVariables, cache);
 		const resolvedType = new RFunctionType(resolvedParameterTypes, resolvedReturnType);
 		
 		// console.debug('Returning', inspect(resolvedType, { depth: null, colors: true }), 'for resolved function type');
@@ -350,7 +287,7 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 	} else if(type instanceof UnresolvedRAtomicVectorType) {
 		prune(type.elementType);
 
-		const resolvedElementType = resolve(type.elementType, isUpperBound, cache);
+		const resolvedElementType = resolve(type.elementType, isUpperBound, prunedVariables, cache);
 		const resolvedType = new RAtomicVectorType(resolvedElementType);
 		
 		// console.debug('Returning', inspect(resolvedType, { depth: null, colors: true }), 'for resolved atomic vector type');
@@ -359,8 +296,8 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 		type.indexedElementTypes.values().forEach(elementType => prune(elementType));
 		prune(type.elementType);
 
-		const resolvedElementType = resolve(type.elementType, isUpperBound, cache);
-		const resolvedIndexedElementTypes = new Map(type.indexedElementTypes.entries().map(([indexOrName, elementType]) => [indexOrName, resolve(elementType, isUpperBound, cache)]));
+		const resolvedElementType = resolve(type.elementType, isUpperBound, prunedVariables, cache);
+		const resolvedIndexedElementTypes = new Map(type.indexedElementTypes.entries().map(([indexOrName, elementType]) => [indexOrName, resolve(elementType, isUpperBound, prunedVariables, cache)]));
 		const resolvedType = new RListType(resolvedElementType, resolvedIndexedElementTypes);
 		
 		// console.debug('Returning', inspect(resolvedType, { depth: null, colors: true }), 'for resolved list type');

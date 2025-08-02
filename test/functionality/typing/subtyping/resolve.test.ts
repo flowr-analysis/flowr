@@ -458,7 +458,7 @@ describe('Constrain and resolve types', () => {
 	// 		}
 	// 	}
 	// 	}
-	test.only('Resolve cyclic type variable with upper union', () => {
+	test('Resolve cyclic type variable with upper union', () => {
 		const cache = new Map<UnresolvedDataType, Set<UnresolvedDataType>>();
 
 		const typeVar1 = new UnresolvedRTypeVariable();

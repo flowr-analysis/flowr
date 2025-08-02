@@ -155,20 +155,26 @@ export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedData
 
 
 export function prune(variable: UnresolvedRTypeVariable, inProcess: Set<UnresolvedRTypeVariable | Set<UnresolvedDataType>> = new Set()): void {
-	// console.debug('Pruning variable', inspect(variable, { depth: null, colors: true }));
-	
+	// console.debug('Pruning variable', variable.id);
+
+	if(inProcess.has(variable)) {
+		// console.debug('Variable', variable.id, 'is already in process');
+		return;
+	}
+
 	inProcess.add(variable);
 
 	function pruneLowerBounds(lowerBounds: Set<UnresolvedDataType>): Set<UnresolvedDataType> {
+		if(inProcess.has(lowerBounds)) {
+			return lowerBounds;
+		}
+
 		inProcess.add(lowerBounds);
 
 		const prunedBounds = new Set(lowerBounds.values().flatMap(lowerBound => {
 			if(lowerBound instanceof UnresolvedRTypeVariable) {
 				// If the lower bound is a type variable, we only care about its lower bound
-				if(!inProcess.has(lowerBound) && !inProcess.has(lowerBound.lowerBound.types)) {
-					prune(lowerBound, inProcess); // Prune the variable recursively w.r.t. its own bounds
-					lowerBound.lowerBound.types = pruneLowerBounds(lowerBound.lowerBound.types);
-				}
+				lowerBound.lowerBound.types = pruneLowerBounds(lowerBound.lowerBound.types);
 				return [lowerBound];
 			} else if(lowerBound instanceof UnresolvedRTypeUnion) {
 				// If the lower bound is a union, we prune and include its types directly
@@ -205,15 +211,19 @@ export function prune(variable: UnresolvedRTypeVariable, inProcess: Set<Unresolv
 		return prunedBounds;
 	}
 	function pruneUpperBounds(upperBounds: Set<UnresolvedDataType>): Set<UnresolvedDataType> {
+		// console.debug('Pruning upper bounds');
+
+		if(inProcess.has(upperBounds)) {
+			// console.debug('Upper bounds are already in process');
+			return upperBounds;
+		}
+
 		inProcess.add(upperBounds);
 
 		const prunedBounds = new Set(upperBounds.values().flatMap(upperBound => {
 			if(upperBound instanceof UnresolvedRTypeVariable) {
 				// If the upper bound is a type variable, we only care about its upper bound
-				if(!inProcess.has(upperBound) && !inProcess.has(upperBound.upperBound.types)) {
-					prune(upperBound, inProcess); // Prune the variable recursively w.r.t. its own bounds
-					upperBound.upperBound.types = pruneUpperBounds(upperBound.upperBound.types);
-				}
+				upperBound.upperBound.types = pruneUpperBounds(upperBound.upperBound.types);
 				return [upperBound];
 			} else if(upperBound instanceof UnresolvedRTypeIntersection) {
 				// If the upper bound is an intersection, we prune and include its types directly
@@ -247,6 +257,7 @@ export function prune(variable: UnresolvedRTypeVariable, inProcess: Set<Unresolv
 
 		inProcess.delete(upperBounds);
 
+		// console.debug('Returning from pruning upper bounds');
 		return prunedBounds;
 	}
 	
@@ -254,11 +265,13 @@ export function prune(variable: UnresolvedRTypeVariable, inProcess: Set<Unresolv
 	variable.upperBound.types = pruneUpperBounds(variable.upperBound.types);
 
 	inProcess.delete(variable);
+	
+	// console.debug('Returning from pruning variable', variable.id);
 }
 
 
 export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache: Map<UnresolvedRTypeVariable, { lowerBound: DataType, upperBound: DataType, combined: DataType }> = new Map()): DataType {
-	// console.debug('Resolving type', inspect(type, { depth: null, colors: true }));
+	// console.debug('Resolving', inspect(type, { depth: null, colors: true }));
 
 	if(type instanceof UnresolvedRTypeVariable) {
 		const cachedType = cache.get(type);
@@ -455,7 +468,7 @@ export function subsumes(subtype: DataType | UnresolvedDataType, supertype: Data
 }
 
 export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataType): UnresolvedDataType {
-	// console.debug('Joining', type1, 'and', type2);
+	// console.debug('Joining (unresolved)', type1, 'and', type2);
 
 	if(type1 instanceof RTypeError) {
 		return type1;
@@ -645,7 +658,7 @@ export function join(type1: DataType, type2: DataType): DataType {
 }
 
 export function unresolvedMeet(type1: UnresolvedDataType, type2: UnresolvedDataType): UnresolvedDataType {
-	// console.debug('Meeting', type1, 'and', type2);
+	// console.debug('Meeting (unresolved)', type1, 'and', type2);
 
 	if(type1 instanceof RTypeError) {
 		return type1;

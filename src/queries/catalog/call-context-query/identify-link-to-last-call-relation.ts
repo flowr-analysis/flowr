@@ -45,20 +45,21 @@ export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarge
 
 	let builtIn = false;
 
-	if(callVertex.environment === undefined) {
-		/* if we have a call with an unbound environment,
-         * this only happens if we are sure of built-in relations and want to save references
-         */
-		builtIn = true;
-	} else {
+	// TODO TSchoeller Check this
+	if(callVertex.environment !== undefined && callVertex.builtInEnvironment !== undefined) {
 		/*
          * for performance and scoping reasons, flowR will not identify the global linkage,
          * including any potential built-in mapping.
          */
-		const reResolved = resolveByName(callVertex.name, callVertex.environment, ReferenceType.Unknown);
+		const reResolved = resolveByName(callVertex.name, callVertex.environment, callVertex.builtInEnvironment, ReferenceType.Unknown);
 		if(reResolved?.some(t => isBuiltIn(t.definedAt))) {
 			builtIn = true;
 		}
+	} else {
+		/* if we have a call with an unbound environment,
+         * this only happens if we are sure of built-in relations and want to save references
+         */
+		builtIn = true;
 	}
 
 	switch(callTarget) {

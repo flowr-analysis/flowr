@@ -16,7 +16,7 @@ export interface SliceRequiredInput {
 }
 
 function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>, config: FlowrConfigOptions) {
-	return staticSlicing((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold ?? config.solver.slicer?.threshold);
+	return staticSlicing((results.dataflow as DataflowInformation), results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold ?? config.solver.slicer?.threshold);
 }
 
 export const STATIC_SLICE = {

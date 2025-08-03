@@ -105,10 +105,13 @@ export function produceDataFlowGraph<OtherInfo>(
 		firstRequest = request as RParseRequest;
 	}
 
+	const env = initializeCleanEnvironments();
+
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
-		environment:         initializeCleanEnvironments(),
+		environment:         env,
+		builtInEnvironment:  env.current,
 		processors,
 		currentRequest:      firstRequest,
 		controlDependencies: undefined,
@@ -128,7 +131,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	}
 
 	// finally, resolve linkages
-	updateNestedFunctionCalls(df.graph, df.environment);
+	updateNestedFunctionCalls(df.graph, df.environment, dfData.builtInEnvironment);
 
 
 	resolveLinkToSideEffects(completeAst, df.graph);

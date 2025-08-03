@@ -37,7 +37,6 @@ import type { REnvironmentInformation } from '../../../../../environments/enviro
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { addSubIndicesToLeafIndices, resolveIndicesByName } from '../../../../../../util/containers';
-import type { FlowrConfigOptions } from '../../../../../../config';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -94,7 +93,7 @@ function tryReplacementPassingIndices<OtherInfo>(
 	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[],
 	indices: ContainerIndicesCollection
 ): DataflowInformation {
-	const resolved = resolveByName(functionName.content, data.environment, ReferenceType.Function) ?? [];
+	const resolved = resolveByName(functionName.content, data.environment, data.builtInEnvironment, ReferenceType.Function) ?? [];
 
 	// yield for unsupported pass along!
 	if(resolved.length !== 1 || resolved[0].type !== ReferenceType.BuiltInFunction) {
@@ -308,7 +307,7 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
  * @param config             - The flowr config
  * @param assignmentConfig   - configuration for the assignment processing
  */
-export function markAsAssignment(
+export function markAsAssignment<OtherInfo>(
 	information: {
 		environment: REnvironmentInformation,
 		graph:       DataflowGraph
@@ -316,10 +315,10 @@ export function markAsAssignment(
 	nodeToDefine: InGraphIdentifierDefinition,
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
-	config: FlowrConfigOptions,
+	data: DataflowProcessorInformation<OtherInfo>,
 	assignmentConfig?: AssignmentConfiguration
 ) {
-	if(config.solver.pointerTracking) {
+	if(data.flowrConfig.solver.pointerTracking) {
 		let indicesCollection: ContainerIndicesCollection = undefined;
 		if(sourceIds.length === 1) {
 			// support for tracking indices.
@@ -331,7 +330,7 @@ export function markAsAssignment(
 			if(!indicesCollection) {
 				const node = information.graph.idMap?.get(sourceIds[0]);
 				if(node && node.type === RType.Symbol) {
-					indicesCollection = resolveIndicesByName(node.lexeme, information.environment);
+					indicesCollection = resolveIndicesByName(node.lexeme, information.environment, data.builtInEnvironment);
 				}
 			}
 		}
@@ -349,7 +348,7 @@ export function markAsAssignment(
 		nodeToDefine.indicesCollection ??= indicesCollection;
 	}
 
-	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, config);
+	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, data.builtInEnvironment, data.flowrConfig);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
 	if(!assignmentConfig?.quoteSource) {
 		for(const sourceId of sourceIds) {
@@ -374,7 +373,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], target, rootId, data, information, makeMaybe, quoteSource } = config;
 	const referenceType = checkTargetReferenceType(source, sourceArg);
 
-	const aliases = getAliases([source.info.id], information.graph, information.environment);
+	const aliases = getAliases([source.info.id], information.graph, information.environment, information.builtInEnvironment);
 	const writeNodes = produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
 
 	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {
@@ -388,11 +387,11 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten
 	];
 
-	information.environment = overwriteEnvironment(sourceArg.environment, targetArg.environment);
+	information.environment = overwriteEnvironment(sourceArg.environment, targetArg.environment, data.builtInEnvironment);
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
-		markAsAssignment(information, write, [source.info.id], rootId, data.flowrConfig, config);
+		markAsAssignment(information, write, [source.info.id], rootId, data, config);
 	}
 
 	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);

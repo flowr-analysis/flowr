@@ -1,7 +1,7 @@
 import type { DataflowProcessorInformation } from './processor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from './environments/identifier';
-import type { REnvironmentInformation } from './environments/environment';
+import type { IEnvironment, REnvironmentInformation } from './environments/environment';
 import { DataflowGraph } from './graph/graph';
 import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../util/diff';
 
@@ -95,23 +95,25 @@ export interface DataflowInformation extends DataflowCfgInformation {
 	 *
 	 * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
 	 */
-	unknownReferences: readonly IdentifierReference[]
+	unknownReferences:  readonly IdentifierReference[]
 	/**
 	 * References which are read within the current subtree.
 	 *
 	 * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
 	 * */
-	in:                readonly IdentifierReference[]
+	in:                 readonly IdentifierReference[]
 	/**
 	 * References which are written to within the current subtree
 	 *
 	 * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
 	 */
-	out:               readonly IdentifierReference[]
+	out:                readonly IdentifierReference[]
 	/** Current environments used for name resolution, probably updated on the next expression-list processing */
-	environment:       REnvironmentInformation
+	environment:        REnvironmentInformation
+	/** TODO TSchoeller */
+	builtInEnvironment:	IEnvironment,
 	/** The current constructed dataflow graph */
-	graph:             DataflowGraph
+	graph:              DataflowGraph
 }
 
 /**
@@ -120,15 +122,16 @@ export interface DataflowInformation extends DataflowCfgInformation {
  *
  * @see {@link DataflowInformation}
  */
-export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'completeAst'>): DataflowInformation {
+export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'builtInEnvironment' | 'completeAst'>): DataflowInformation {
 	return {
-		unknownReferences: [],
-		in:                [],
-		out:               [],
-		environment:       data.environment,
-		graph:             new DataflowGraph(data.completeAst.idMap),
+		unknownReferences:  [],
+		in:                 [],
+		out:                [],
+		environment:        data.environment,
+		builtInEnvironment: data.builtInEnvironment,
+		graph:              new DataflowGraph(data.completeAst.idMap),
 		entryPoint,
-		exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default, controlDependencies: undefined }]
+		exitPoints:         [{ nodeId: entryPoint, type: ExitPointType.Default, controlDependencies: undefined }]
 	};
 }
 

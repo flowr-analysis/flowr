@@ -9,22 +9,18 @@ import { EmptyArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/
 import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
-import type {
-	IdentifierReference,
-	InGraphIdentifierDefinition } from '../../../../environments/identifier';
-import {
-	isReferenceType,
-	ReferenceType
-} from '../../../../environments/identifier';
+import type { IdentifierReference, InGraphIdentifierDefinition } from '../../../../environments/identifier';
+import { isReferenceType, ReferenceType } from '../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import type {
-	ContainerIndicesCollection, DataflowGraphVertexAstLink,
+	ContainerIndicesCollection,
+	DataflowGraphVertexAstLink,
 	DataflowGraphVertexFunctionDefinition,
-	FunctionOriginInformation } from '../../../../graph/vertex';
-import { isFunctionDefinitionVertex, VertexType
+	FunctionOriginInformation
 } from '../../../../graph/vertex';
+import { isFunctionDefinitionVertex, VertexType } from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
 
@@ -76,7 +72,7 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 	// try to resolve them against the current environment
 	for(const ref of [...value.in, ...containedSubflowIn.flatMap(n => n.subflow.in)]) {
 		if(ref.name) {
-			const resolved = ref.name ? resolveByName(ref.name, env, ref.type) ?? [] : [];
+			const resolved = ref.name ? resolveByName(ref.name, env, value.builtInEnvironment, ref.type) ?? [] : [];
 			for(const resolve of resolved) {
 				graph.addEdge(ref.nodeId, resolve.nodeId, EdgeType.Reads);
 			}
@@ -110,7 +106,7 @@ export function processAllArguments<OtherInfo>(
 		}
 		processedArguments.push(processed);
 
-		finalEnv = overwriteEnvironment(finalEnv, processed.environment);
+		finalEnv = overwriteEnvironment(finalEnv, processed.environment, data.builtInEnvironment);
 		finalGraph.mergeWith(processed.graph);
 
 		// resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies
@@ -118,7 +114,7 @@ export function processAllArguments<OtherInfo>(
 			// check if it is called directly
 			const vtx = finalGraph.getVertex(ingoing.nodeId);
 
-			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv, vtx?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Unknown) : undefined;
+			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv, data.builtInEnvironment, vtx?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Unknown) : undefined;
 			if(tryToResolve === undefined) {
 				remainingReadInArgs.push(ingoing);
 			} else {
@@ -140,7 +136,7 @@ export function processAllArguments<OtherInfo>(
 				}
 			}
 		}
-		argEnv = overwriteEnvironment(argEnv, processed.environment);
+		argEnv = overwriteEnvironment(argEnv, processed.environment, data.builtInEnvironment);
 
 
 		if(arg.type !== RType.Argument || !arg.name) {
@@ -168,15 +164,16 @@ export function patchFunctionCall<OtherInfo>(
 	{ nextGraph, rootId, name, data, argumentProcessResult, origin, link }: PatchFunctionCallInput<OtherInfo>
 ): void {
 	nextGraph.addVertex({
-		tag:         VertexType.FunctionCall,
-		id:          rootId,
-		name:        name.content,
-		environment: data.environment,
+		tag:                VertexType.FunctionCall,
+		id:                 rootId,
+		name:               name.content,
+		environment:        data.environment,
+		builtInEnvironment: data.builtInEnvironment,
 		/* will be overwritten accordingly */
-		onlyBuiltin: false,
-		cds:         data.controlDependencies,
-		args:        argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined, type: ReferenceType.Argument }),
-		origin:      [origin],
+		onlyBuiltin:        false,
+		cds:                data.controlDependencies,
+		args:               argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined, type: ReferenceType.Argument }),
+		origin:             [origin],
 		link
 	}, !nextGraph.hasVertex(rootId) || nextGraph.isRoot(rootId), true);
 	for(const arg of argumentProcessResult) {

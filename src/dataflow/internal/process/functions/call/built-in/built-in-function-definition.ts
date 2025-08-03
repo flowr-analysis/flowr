@@ -24,7 +24,7 @@ import { isReferenceType, ReferenceType } from '../../../../../environments/iden
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
+import type { IEnvironment, REnvironmentInformation } from '../../../../../environments/environment';
 import { initializeCleanEnvironments } from '../../../../../environments/environment';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
@@ -59,8 +59,8 @@ export function processFunctionDefinition<OtherInfo>(
 		const processed = processDataflowFor(param, data);
 		subgraph.mergeWith(processed.graph);
 		const read = [...processed.in, ...processed.unknownReferences];
-		linkInputs(read, data.environment, readInParameters, subgraph, false);
-		data = { ...data, environment: overwriteEnvironment(data.environment, processed.environment) };
+		linkInputs(read, data.environment, data.builtInEnvironment, readInParameters, subgraph, false);
+		data = { ...data, environment: overwriteEnvironment(data.environment, processed.environment, data.builtInEnvironment) };
 	}
 	const paramsEnvironments = data.environment;
 
@@ -69,12 +69,12 @@ export function processFunctionDefinition<OtherInfo>(
 	// This is the correct behavior, even if someone uses non-`=` arguments in functions.
 	const bodyEnvironment = body.environment;
 
-	readInParameters = findPromiseLinkagesForParameters(subgraph, readInParameters, paramsEnvironments, body);
+	readInParameters = findPromiseLinkagesForParameters(subgraph, readInParameters, paramsEnvironments, data.builtInEnvironment, body);
 
 	const readInBody = [...body.in, ...body.unknownReferences];
 
 	// there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
-	const remainingRead = linkInputs(readInBody, paramsEnvironments, readInParameters.slice(), body.graph, true /* functions do not have to be called */);
+	const remainingRead = linkInputs(readInBody, paramsEnvironments, data.builtInEnvironment, readInParameters.slice(), body.graph, true /* functions do not have to be called */);
 
 	// functions can be called multiple times,
 	// so if they have a global effect, we have to link them as if they would be executed a loop
@@ -92,7 +92,7 @@ export function processFunctionDefinition<OtherInfo>(
 
 	subgraph.mergeWith(body.graph);
 
-	const outEnvironment = overwriteEnvironment(paramsEnvironments, bodyEnvironment);
+	const outEnvironment = overwriteEnvironment(paramsEnvironments, bodyEnvironment, data.builtInEnvironment);
 
 	for(const read of remainingRead) {
 		if(read.name) {
@@ -106,15 +106,16 @@ export function processFunctionDefinition<OtherInfo>(
 	}
 
 	const flow: DataflowFunctionFlowInformation = {
-		unknownReferences: [],
-		in:                remainingRead,
-		out:               [],
-		entryPoint:        body.entryPoint,
-		graph:             new Set(subgraph.rootIds()),
-		environment:       outEnvironment
+		unknownReferences:  [],
+		in:                 remainingRead,
+		out:                [],
+		entryPoint:         body.entryPoint,
+		graph:              new Set(subgraph.rootIds()),
+		environment:        outEnvironment,
+		builtInEnvironment: data.builtInEnvironment
 	};
 
-	updateNestedFunctionClosures(subgraph, outEnvironment, name.info.id);
+	updateNestedFunctionClosures(subgraph, outEnvironment, data.builtInEnvironment, name.info.id);
 	const exitPoints = body.exitPoints;
 
 	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false);
@@ -128,19 +129,20 @@ export function processFunctionDefinition<OtherInfo>(
 	});
 	return {
 		/* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */
-		unknownReferences: [],
-		in:                [],
-		out:               [],
-		exitPoints:        [],
-		entryPoint:        name.info.id,
+		unknownReferences:  [],
+		in:                 [],
+		out:                [],
+		exitPoints:         [],
+		entryPoint:         name.info.id,
 		graph,
-		environment:       originalEnvironment
+		environment:        originalEnvironment,
+		builtInEnvironment: data.builtInEnvironment
 	};
 }
 
 // this is no longer necessary when we update environments to be back to front (e.g., with a list of environments)
 // this favors the bigger environment
-export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
+export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation, defaultEnvironment: IEnvironment): REnvironmentInformation {
 
 	callerEnvironment ??= initializeCleanEnvironments(true);
 	let level = callerEnvironment.level ?? 0;
@@ -155,7 +157,7 @@ export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInforma
 		}
 	}
 
-	return overwriteEnvironment(baseEnvironment, callerEnvironment);
+	return overwriteEnvironment(baseEnvironment, callerEnvironment, defaultEnvironment);
 }
 
 /**
@@ -167,6 +169,7 @@ export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInforma
 export function updateNestedFunctionClosures(
 	graph: DataflowGraph,
 	outEnvironment: REnvironmentInformation,
+	defaultEnvironment: IEnvironment,
 	fnId: NodeId
 ) {
 	// track *all* function definitions - including those nested within the current graph,
@@ -179,7 +182,7 @@ export function updateNestedFunctionClosures(
 		const ingoingRefs = subflow.in;
 		const remainingIn: IdentifierReference[] = [];
 		for(const ingoing of ingoingRefs) {
-			const resolved = ingoing.name ? resolveByName(ingoing.name, outEnvironment, ingoing.type) : undefined;
+			const resolved = ingoing.name ? resolveByName(ingoing.name, outEnvironment, defaultEnvironment, ingoing.type) : undefined;
 			if(resolved === undefined) {
 				remainingIn.push(ingoing);
 				continue;
@@ -209,7 +212,8 @@ export function updateNestedFunctionClosures(
  */
 export function updateNestedFunctionCalls(
 	graph: DataflowGraph,
-	outEnvironment: REnvironmentInformation
+	outEnvironment: REnvironmentInformation,
+	defaultEnvironment: IEnvironment
 ) {
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
@@ -228,7 +232,7 @@ export function updateNestedFunctionCalls(
 			}
 		}
 
-		const effectiveEnvironment = environment ? overwriteEnvironment(outEnvironment, environment) : outEnvironment;
+		const effectiveEnvironment = environment ? overwriteEnvironment(outEnvironment, environment, defaultEnvironment) : outEnvironment;
 
 		const targets = getAllFunctionCallTargets(id, graph, effectiveEnvironment);
 		for(const target of targets) {
@@ -244,7 +248,7 @@ export function updateNestedFunctionCalls(
 			const ingoingRefs = targetVertex.subflow.in;
 			const remainingIn: IdentifierReference[] = [];
 			for(const ingoing of ingoingRefs) {
-				const resolved = ingoing.name ? resolveByName(ingoing.name, effectiveEnvironment, ingoing.type) : undefined;
+				const resolved = ingoing.name ? resolveByName(ingoing.name, effectiveEnvironment, defaultEnvironment, ingoing.type) : undefined;
 				if(resolved === undefined) {
 					remainingIn.push(ingoing);
 					continue;
@@ -280,11 +284,11 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
  * <p>
  * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers the first definitions precisely</b>
  */
-function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParameters: readonly IdentifierReference[], parameterEnvs: REnvironmentInformation, body: DataflowInformation): IdentifierReference[] {
+function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParameters: readonly IdentifierReference[], parameterEnvs: REnvironmentInformation, defaultEnvironment: IEnvironment, body: DataflowInformation): IdentifierReference[] {
 	// first, we try to bind again within parameters - if we have it, fine
 	const remainingRead: IdentifierReference[] = [];
 	for(const read of readInParameters) {
-		const resolved = read.name ? resolveByName(read.name, parameterEnvs, read.type) : undefined;
+		const resolved = read.name ? resolveByName(read.name, parameterEnvs, defaultEnvironment, read.type) : undefined;
 		if(resolved !== undefined) {
 			for(const ref of resolved) {
 				parameters.addEdge(read, ref, EdgeType.Reads);

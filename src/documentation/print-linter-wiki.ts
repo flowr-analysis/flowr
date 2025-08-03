@@ -32,6 +32,7 @@ function makeTagBadge(name: LintingRuleTag, info: TypeElementInSource[]): string
 	return textWithTooltip(`<a href='#${name}'>![` + name + '](https://img.shields.io/badge/' + name.toLowerCase() + `-${SpecialTagColors[name] ?? 'teal'}) </a>`, doc);
 }
 
+
 function prettyPrintExpectedOutput(expected: string): string {
 	if(expected.trim() === '[]') {
 		return '* no lints';
@@ -168,7 +169,7 @@ df[6, "value"]
 		if(format === 'short') {
 			ruleExplanations.set(name, () => Promise.resolve(`
 	**[${rule.info.name}](${FlowrWikiBaseRef}/lint-${name}):** ${rule.info.description} [see ${shortLinkFile(ruleType, types)}]\\
-	${tags} ${certaintyText}
+	${tags}
 
 		`.trim()));
 		} else {
@@ -177,7 +178,10 @@ df[6, "value"]
 ${autoGenHeader({ filename: module.filename, purpose: 'linter', rVersion })}
 ${section(rule.info.name + `&emsp;<sup>[<a href="${FlowrWikiBaseRef}/Linter">overview</a>]</sup>`, 2, name)}
 
-${tags} ${certaintyText}
+${tags}
+
+
+This rule is a ${certaintyText} rule.
  
 ${rule.info.description}\\
 _This linting rule is implemented in ${shortLinkFile(ruleType, types)}._

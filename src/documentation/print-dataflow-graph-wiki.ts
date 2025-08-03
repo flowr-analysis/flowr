@@ -967,7 +967,7 @@ ${prefixLines(codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap)
 >
 > Please note that not every node in the normalized AST is represented in the dataflow graph.
 > For example, if the node is unreachable in a way that can be detected during the analysis and flowR
-> is configured to ignore dead code. Likewise, empty argument wrappers do not have a corrsponding
+> is configured to ignore dead code. Likewise, empty argument wrappers do not have a corresponding
 > dataflow graph vertex (as they are not relevant for the dataflow graph). It depends on the scenario what to do in such a case. 
 > For argument wrappers you can access the dataflow information for their value. For dead code, however, flowR currently contains
 > some core heuristics that remove it which cannot be reversed easily. So please open [an issue](${NewIssueUrl}) if you encounter such a case and require the node to be present in the dataflow graph.

@@ -13,7 +13,7 @@ import type { DataType } from '../../../typing/types';
  */
 export interface DatatypeQuery extends BaseQueryFormat {
 	readonly type:              'datatype';
-	readonly criterion?:        SingleSlicingCriterion;
+	readonly criteria?:         SingleSlicingCriterion[];
 	readonly useSubtyping?:     boolean;
 	readonly useTurcotteTypes?: boolean;
 }
@@ -38,7 +38,7 @@ export const DatatypeQueryDefinition = {
 	},
 	schema: Joi.object({
 		type:             Joi.string().valid('datatype').required().description('The type of the query.'),
-		criterion:        Joi.string().optional().description('The slicing criterion of the node to get the inferred data type for.'),
+		criteria:         Joi.array().items(Joi.string()).optional().description('The slicing criteria of the node to get the inferred data type for.'),
 		useSubtyping:     Joi.boolean().optional().default(false).description('Whether to use subtyping to infer the data type.'),
 		useTurcotteTypes: Joi.boolean().optional().default(true).description('Whether to use Turcotte types for inference.'),
 	}).description('Datatype query used to extract the inferred data type for a node in the normalized AST')

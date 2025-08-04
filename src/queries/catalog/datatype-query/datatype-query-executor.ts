@@ -6,12 +6,16 @@ import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 import { inferDataTypes } from '../../../typing/unification/infer';
 import { inferDataTypes as inferDataTypesUsingSubtyping } from '../../../typing/subtyping/infer';
-import type { DataTypeInfo } from '../../../typing/types';
 
 export function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, queries: readonly DatatypeQuery[]): DatatypeQueryResult {
+	const start = Date.now();
+
 	const result: DatatypeQueryResult['inferredTypes'] = {};
-	const extractInferredTypeFromAst = (typedAst: NormalizedAst<DataTypeInfo>, criteria: SingleSlicingCriterion[]): void => {
-		for(const criterion of criteria) {
+	for(const query of queries) {
+		const typedAst = query.useSubtyping
+			? inferDataTypesUsingSubtyping(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow, query.useTurcotteTypes)
+			: inferDataTypes(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow);
+		for(const criterion of query.criteria ?? ast.idMap.keys().map(id => `$${id}` as SingleSlicingCriterion)) {
 			if(result[criterion] !== undefined) {
 				log.warn('Duplicate criterion in datatype query:', criterion);
 				continue;
@@ -25,35 +29,6 @@ export function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, queries:
 			
 			result[criterion] = node.info.inferredType;
 		}
-	};
-	const [unificationQueries, subtypingQueries, turcotteQueries] = queries.reduce(([unificationGroup, subtypingGroup, turcotteGroup], query) => {
-		if(query.useSubtyping) {
-			if(query.useTurcotteTypes) {
-				turcotteGroup.push(query);
-			} else {
-				subtypingGroup.push(query);
-			}
-		} else {
-			unificationGroup.push(query);
-		}
-		return [unificationGroup, subtypingGroup, turcotteGroup];
-	}, [[], [], []] as [DatatypeQuery[], DatatypeQuery[], DatatypeQuery[]]);
-
-	const start = Date.now();
-
-	if(unificationQueries.length > 0) {
-		const typedAst = inferDataTypes(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow);
-		extractInferredTypeFromAst(typedAst, unificationQueries.map(query => query.criterion ?? '1:1'));
-	}
-
-	if(subtypingQueries.length > 0) {
-		const typedAst = inferDataTypesUsingSubtyping(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow, false);
-		extractInferredTypeFromAst(typedAst, subtypingQueries.map(query => query.criterion ?? '1:1'));
-	}
-
-	if(turcotteQueries.length > 0) {
-		const typedAst = inferDataTypesUsingSubtyping(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow, true);
-		extractInferredTypeFromAst(typedAst, turcotteQueries.map(query => query.criterion ?? '1:1'));
 	}
 
 	return {

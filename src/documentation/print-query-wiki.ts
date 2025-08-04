@@ -500,8 +500,8 @@ ${codeBlock('r', exampleCode)}
 To see the type of the variable \`x\`, you can use the following query:
 ${
 	await showQuery(shell, exampleCode, [{
-		type:      'datatype',
-		criterion: '3@x'
+		type:     'datatype',
+		criteria: ['3@x']
 	}], { showCode: false })
 }
 `;

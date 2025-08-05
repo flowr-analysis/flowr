@@ -68,7 +68,7 @@ async function processQueryArgs(line: string, parser: KnownParser, output: ReplO
 
 	const processed = await getDataflow(config, parser, args.join(' '));
 	return {
-		query: executeQueries({ dataflow: processed.dataflow, ast: processed.normalize, config: config }, parsedQuery),
+		query: await executeQueries({ dataflow: processed.dataflow, ast: processed.normalize, config: config }, parsedQuery),
 		processed
 	};
 }

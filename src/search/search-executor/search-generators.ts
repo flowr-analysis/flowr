@@ -11,7 +11,7 @@ import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../slicing/criterion/parse';
 import { isNotUndefined } from '../../util/assert';
-import type { Query, SupportedQuery } from '../../queries/query';
+import type { Query, SupportedQuery, SynchronousQuery } from '../../queries/query';
 import { executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -90,7 +90,7 @@ function generateFrom(data: FlowrSearchInput<Pipeline>, args: { from: FlowrSearc
 	return new FlowrSearchElements(Array.isArray(args.from) ? args.from : [args.from]);
 }
 
-function generateFromQuery(data: FlowrSearchInput<Pipeline>, args: { from: readonly Query[] } ): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
+function generateFromQuery(data: FlowrSearchInput<Pipeline>, args: { from: readonly SynchronousQuery[] } ): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
 	const result = executeQueries({ ast: data.normalize, dataflow: data.dataflow, config: data.config }, args.from);
 
 	// collect involved nodes

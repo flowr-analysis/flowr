@@ -33,7 +33,7 @@ export async function showQuery<
 		parser:  shell,
 		request: requestFromInput(code)
 	}, defaultConfigOptions).allRemainingSteps();
-	const results = executeQueries({ dataflow: analysis.dataflow, ast: analysis.normalize, config: defaultConfigOptions }, queries);
+	const results = await executeQueries({ dataflow: analysis.dataflow, ast: analysis.normalize, config: defaultConfigOptions }, queries);
 	const duration = performance.now() - now;
 
 	const metaInfo = `

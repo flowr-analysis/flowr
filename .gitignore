@@ -695,3 +695,6 @@ test-results.xml
 # generated performance tests
 /test_perf/*/*
 /test_perf/*.json
+
+/.direnv/
+/.pre-commit-config.yaml

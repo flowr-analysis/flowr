@@ -11,7 +11,7 @@ import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import type { KnownParser } from '../../../r-bridge/parser';
-import { compressToUTF16 } from 'lz-string';
+import { compressToBase64 } from 'lz-string';
 
 
 async function getDataflow(parser: KnownParser, remainingLine: string) {
@@ -96,7 +96,7 @@ export const queryStarCommand: ReplCommand = {
 	fn:           async(output, shell, remainingLine) => {
 		const results = await processQueryArgs(remainingLine, shell, output);
 		if(results) {
-			output.stdout(compressToUTF16(JSON.stringify(results.query, jsonReplacer)));
+			output.stdout(compressToBase64(JSON.stringify(results.query, jsonReplacer)));
 		}
 	}
 };

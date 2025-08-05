@@ -57,11 +57,12 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 	const numberOfFunctions = libraryFunctions.length + sourceFunctions.length + readFunctions.length + writeFunctions.length;
 
 	const results = numberOfFunctions === 0 ? { kinds: {}, '.meta': { timing: 0 } } : executeQueriesOfSameType<CallContextQuery>(data,
-		makeCallContextQuery(libraryFunctions, 'library').concat(
+		[
+			makeCallContextQuery(libraryFunctions, 'library'),
 			makeCallContextQuery(sourceFunctions, 'source'),
 			makeCallContextQuery(readFunctions, 'read'),
 			makeCallContextQuery(writeFunctions, 'write')
-		)
+		].flat()
 	);
 
 	function getLexeme(argument: string | undefined | typeof Unknown, id: NodeId | undefined) {

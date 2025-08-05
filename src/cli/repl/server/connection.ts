@@ -382,6 +382,14 @@ export class FlowRServerConnection {
 				id:   request.id,
 				results
 			});
+		}).catch(e => {
+			this.logger.error(`[${this.name}] Error while executing query: ${String(e)}`);
+			sendMessage<FlowrErrorMessage>(this.socket, {
+				id:     request.id,
+				type:   'error',
+				fatal:  false,
+				reason: `Error while executing query: ${String(e)}`
+			});
 		});
 	}
 }

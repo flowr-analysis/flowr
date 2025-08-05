@@ -1,6 +1,6 @@
 import type { OutputFormatter } from '../util/text/ansi';
 import { markdownFormatter, bold, italic } from '../util/text/ansi';
-import type { QueryResults, SupportedQueryTypes } from './query';
+import type { QueryResult, QueryResults, SupportedQueryTypes } from './query';
 import { SupportedQueries } from './query';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
@@ -76,7 +76,7 @@ export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly 
 	return formatter === markdownFormatter ? textWithTooltip(acc, JSON.stringify(ids)) : acc;
 }
 
-export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs: number, results: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
+export function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(formatter: OutputFormatter, totalInMs: number, results: Awaited<QueryResults<S>>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
 	const result: string[] = [];
 
 	for(const [query, queryResults] of Object.entries(results)) {
@@ -92,8 +92,8 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 		result.push(`Query: ${bold(query, formatter)}`);
 
 		let timing = -1;
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		for(const [key, value] of Object.entries(queryResults)) {
+
+		for(const [key, value] of Object.entries(queryResults as Awaited<QueryResult<S>>)) {
 			if(key === '.meta') {
 				timing = (value as BaseQueryMeta).timing;
 				continue;

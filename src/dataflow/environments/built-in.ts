@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../processor';
-import type { DataflowInformation, ExitPointType } from '../info';
+import type { DataflowInformation, ExitPoint, ExitPointType } from '../info';
 import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling';
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access';
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else';
@@ -103,32 +103,32 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: DefaultBuiltInProcessorConfiguration
+	{ returnsNthArgument, useAsProcessor, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
-	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: config.useAsProcessor ?? 'builtin:default' });
-	if(config.returnsNthArgument !== undefined) {
-		const arg = config.returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[config.returnsNthArgument];
+	const activeProcessor = useAsProcessor ?? 'builtin:default';
+	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: activeProcessor });
+	if(returnsNthArgument !== undefined) {
+		const arg = returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[returnsNthArgument];
 		if(arg !== undefined) {
 			res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Returns);
 		}
 	}
-	if(config.readAllArguments) {
+	if(readAllArguments) {
 		for(const arg of processedArguments) {
 			if(arg) {
 				res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Reads);
 			}
 		}
 	}
-
-	if(config.hasUnknownSideEffects) {
-		if(typeof config.hasUnknownSideEffects !== 'boolean') {
-			handleUnknownSideEffect(res.graph, res.environment, rootId, config.hasUnknownSideEffects);
+	if(hasUnknownSideEffects) {
+		if(typeof hasUnknownSideEffects !== 'boolean') {
+			handleUnknownSideEffect(res.graph, res.environment, rootId, hasUnknownSideEffects);
 		} else {
 			handleUnknownSideEffect(res.graph, res.environment, rootId);
 		}
 	}
 
-	const fnCallNames = config.treatAsFnCall?.[name.content];
+	const fnCallNames = treatAsFnCall?.[name.content];
 	if(fnCallNames) {
 		for(const arg of args) {
 			if(arg !== EmptyArgument && arg.value && fnCallNames.includes(arg.name?.content as string)) {
@@ -152,14 +152,14 @@ function defaultBuiltInProcessor<OtherInfo>(
 					environment: data.environment,
 					onlyBuiltin: false,
 					cds:         data.controlDependencies,
-					origin:      [config.useAsProcessor ?? 'builtin:default']
+					origin:      [activeProcessor]
 				});
 			}
 		}
 	}
 
-	if(config.cfg !== undefined) {
-		res.exitPoints = [...res.exitPoints, { type: config.cfg, nodeId: rootId, controlDependencies: data.controlDependencies }];
+	if(cfg !== undefined) {
+		(res.exitPoints as ExitPoint[]).push({ type: cfg, nodeId: rootId, controlDependencies: data.controlDependencies });
 	}
 
 	return res;

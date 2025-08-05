@@ -1,10 +1,9 @@
 import type {
 	FlowrSearchElement,
 	FlowrSearchElements,
-	FlowrSearchInput, FlowrSearchTransformerNodeBase
+	FlowrSearchInput,
+	FlowrSearchTransformerNodeBase
 } from '../flowr-search';
-
-
 
 
 import type { Pipeline } from '../../core/steps/pipeline/pipeline';
@@ -16,8 +15,8 @@ import { runSearch } from '../flowr-search-executor';
 import type { FlowrSearch } from '../flowr-search-builder';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { isNotUndefined } from '../../util/assert';
-import type { EnrichedFlowrSearchElement, Enrichment, EnrichmentArguments } from './search-enrichers';
-import { enrich } from './search-enrichers';
+import type { Enrichment, EnrichmentElementArguments } from './search-enrichers';
+import { enrichElement } from './search-enrichers';
 import type { Mapper, MapperArguments } from './search-mappers';
 import { map } from './search-mappers';
 import type { ElementOf } from 'ts-essentials';
@@ -153,15 +152,15 @@ function getSkip<Elements extends FlowrSearchElement<ParentInformation>[], FSE e
 function getFilter<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
 	data: FlowrSearchInput<Pipeline>, elements: FSE, { filter }: { filter: FlowrFilterExpression }): CascadeEmpty<Elements, Elements | []> {
 	return elements.mutate(
-		e => e.filter(({ node }) => evalFilter(filter, { node, normalize: data.normalize, dataflow: data.dataflow })) as Elements
+		e => e.filter(e => evalFilter(filter, { element: e, normalize: data.normalize, dataflow: data.dataflow })) as Elements
 	) as unknown as CascadeEmpty<Elements, Elements | []>;
 }
 
 function getWith<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
-	data: FlowrSearchInput<Pipeline>, elements: FSE, { info, args }: { info: Enrichment, args?: EnrichmentArguments<Enrichment> }): FlowrSearchElements<ParentInformation, EnrichedFlowrSearchElement<ParentInformation>[]> {
-	return elements.mutate(
-		elements => elements.map(e => enrich(e, data, info, args)) as (Elements & EnrichedFlowrSearchElement<ParentInformation>[])
-	) as unknown as FlowrSearchElements<ParentInformation, EnrichedFlowrSearchElement<ParentInformation>[]>;
+	data: FlowrSearchInput<Pipeline>, elements: FSE, { info, args }: { info: Enrichment, args?: EnrichmentElementArguments<Enrichment> }): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
+	return elements.enrich(data, info, args).mutate(
+		s => s.map(e => enrichElement(e, elements, data, info, args)) as Elements
+	) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
 }
 
 function getMap<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
@@ -174,8 +173,8 @@ function getMap<Elements extends FlowrSearchElement<ParentInformation>[], FSE ex
 function getMerge<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
 	/* search has to be unknown because it is a recursive type */
 	data: FlowrSearchInput<Pipeline>, elements: FSE, other: { search: unknown[], generator: FlowrSearchGeneratorNode }): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
-	const resultOther = runSearch(other as FlowrSearch<ParentInformation>, data);
-	return elements.addAll(resultOther);
+	const resultOther = runSearch(other as FlowrSearch, data);
+	return elements.addAll([...resultOther.getElements()]);
 }
 
 function getUnique<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(

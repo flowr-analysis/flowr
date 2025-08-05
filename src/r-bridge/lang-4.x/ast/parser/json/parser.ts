@@ -1,13 +1,15 @@
-import { prepareParsedData, convertPreparedParsedData } from './format';
+import { convertPreparedParsedData, prepareParsedData } from './format';
 import { log } from '../../../../../util/log';
 import type { IdGenerator, NormalizedAst } from '../../model/processing/decorate';
-import { decorateAst , deterministicCountingIdGenerator } from '../../model/processing/decorate';
+import { decorateAst, deterministicCountingIdGenerator } from '../../model/processing/decorate';
 import type { NoInfo, RNode } from '../../model/model';
 import { normalizeRootObjToAst } from '../main/internal/structure/normalize-root';
 import type { NormalizerData } from '../main/normalizer-data';
 import type { ParseStepOutputTS } from '../../../../../core/steps/all/core/01-parse-tree-sitter';
 import { normalizeTreeSitterTreeToAst } from '../../../tree-sitter/tree-sitter-normalize';
 import type { ParseStepOutput } from '../../../../parser';
+import type { FlowrConfigOptions } from '../../../../../config';
+import { getEngineConfig } from '../../../../../config';
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' });
 
@@ -44,9 +46,11 @@ export function normalizeButNotDecorated(
 export function normalizeTreeSitter(
 	{ parsed }: ParseStepOutputTS,
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),
+	config: FlowrConfigOptions,
 	file?: string
 ): NormalizedAst {
-	const result = decorateAst(normalizeTreeSitterTreeToAst(parsed), { getId, file });
+	const lax = getEngineConfig(config, 'tree-sitter')?.lax;
+	const result = decorateAst(normalizeTreeSitterTreeToAst(parsed, lax), { getId, file });
 	result.hasError = parsed.rootNode.hasError;
 	return result;
 }

@@ -57,7 +57,7 @@ jobs:
 
       - name: "📦 Install R Packages"
         shell: Rscript {0}
-        run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
+        run: lapply(c("xmlparsedata","dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
 
       - name: "🛒 Checkout LFS"
         if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
@@ -87,8 +87,8 @@ jobs:
             # test if the file changed, but ignore the first line which contains the time stamp
             # we additionally used sed to remove any measurement stamp for the comparison as they of course change
             # additionally, we remove any part "timing": <number>.
-            tail -n +2 "$1.md" | sed -E 's/[0-9]+(\.[0-9]+)? ?ms//g; s/tmp-[A-Za-z0-9-]+//g; s/"timing":\s*[0-9]+(\.0-9)?,?//g' > "$1.md.tmp"
-            tail -n +2 "$1-Old.md" | sed -E 's/[0-9]+(\.[0-9]+)? ?ms//g; s/tmp-[A-Za-z0-9-]+//g; s/"timing":\s*[0-9]+(\.0-9)?,?//g' > "$1-Old.md.tmp"
+            tail -n +2 "$1.md" | sed -E 's/[0-9]+(\.[0-9]+)?( |\s*)?ms//g; s/tmp-[A-Za-z0-9-]+//g; s/"(timing|searchTimeMs|processTimeMs)":\s*[0-9]+(\.0-9)?,?//g' > "$1.md.tmp"
+            tail -n +2 "$1-Old.md" | sed -E 's/[0-9]+(\.[0-9]+)?( |\s*)?ms//g; s/tmp-[A-Za-z0-9-]+//g; s/"(timing|searchTimeMs|processTimeMs)":\s*[0-9]+(\.0-9)?,?//g' > "$1-Old.md.tmp"
           
             if ! diff -q "$1.md.tmp" "$1-Old.md.tmp"; then
                 echo "$1 changed!"
@@ -116,6 +116,8 @@ jobs:
           update_page wiki/"Onboarding" wiki:onboarding
           update_page wiki/"FAQ" wiki:faq
           update_page wiki/"Linter" wiki:linter
+          git add wiki/lint-*.md
+          update_page .github/ISSUE_TEMPLATE/linting-rule.yaml gen:linter-issue
           update_page README gen:readme
           
           # check for an update in the versions! (including the updated name information)

@@ -34,11 +34,12 @@ import { executeConfigQuery } from '../queries/catalog/config-query/config-query
 import { executeSearch } from '../queries/catalog/search-query/search-query-executor';
 import { Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
-import { getTypesFromFolderAsMermaid, shortLink } from './doc-util/doc-types';
+import { getTypesFromFolder, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { executeDatatypeQuery } from '../queries/catalog/datatype-query/datatype-query-executor';
 import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
 import { printCfgCode } from './doc-util/doc-cfg';
+import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -378,6 +379,25 @@ This query provides access to the current configuration of the flowR instance. S
 	}
 });
 
+registerQueryDocumentation('df-shape', {
+	name:             'Dataframe Shape Inference Query',
+	type:             'active',
+	shortDescription: 'Returns the shapes inferred for all dataframes in the code.',
+	functionName:     executeDfShapeQuery.name,
+	functionFile:     '../queries/catalog/df-shape-query/df-shape-query-format.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- data.frame(a=1:3)\nfilter(x, FALSE)';
+		return `
+This query infers all shapes of dataframes within the code. For example, you can use:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'df-shape'
+	}], { showCode: true, collapseQuery: true })
+}
+`;
+	}
+});
+
 registerQueryDocumentation('compound', {
 	name:             'Compound Query',
 	type:             'virtual',
@@ -668,9 +688,8 @@ registerQueryDocumentation('location-map', {
 	functionFile:     '../queries/catalog/location-map-query/location-map-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 
-		const types = getTypesFromFolderAsMermaid({
-			files:    [path.resolve('./src/util/range.ts')],
-			typeName: 'SourceRange'
+		const types = getTypesFromFolder({
+			files: [path.resolve('./src/util/range.ts')],
 		});
 		const exampleCode = 'x + 1\nx * 2';
 		return `

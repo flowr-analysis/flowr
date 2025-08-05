@@ -13,6 +13,7 @@ import { runSearch } from '../../search/flowr-search-executor';
 import { flowrSearchToCode, flowrSearchToMermaid } from '../../search/flowr-search-printer';
 import { recoverContent } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { formatRange } from '../../util/mermaid/dfg';
+import { defaultConfigOptions } from '../../config';
 
 export interface ShowSearchOptions {
 	readonly showCode?:       boolean;
@@ -24,8 +25,8 @@ export async function showSearch(shell: RShell, code: string, search: FlowrSearc
 	const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
 		request: requestFromInput(code)
-	}).allRemainingSteps();
-	const result = runSearch(search, analysis);
+	}, defaultConfigOptions).allRemainingSteps();
+	const result = runSearch(search, { ...analysis, config: defaultConfigOptions });
 	const duration = performance.now() - now;
 
 	const metaInfo = `
@@ -57,14 +58,14 @@ ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary
 
 The query returns the following vetices (all references to \`x\` in the code):
 ${
-	result.map(({ node }) => `<b>${node.info.id} ('${recoverContent(node.info.id, analysis.dataflow.graph)}')</b> at L${formatRange(node.location)}`).join(', ')
+	result.getElements().map(({ node }) => `<b>${node.info.id} ('${recoverContent(node.info.id, analysis.dataflow.graph)}')</b> at L${formatRange(node.location)}`).join(', ')
 }
 
 ${metaInfo}	
 
 The returned results are highlighted thick and blue within the dataflow graph:
 
-${await printDfGraphForCode(shell, code, { showCode: false, switchCodeAndGraph: false, mark: new Set(result.map(({ node }) => node.info.id )) } )}
+${await printDfGraphForCode(shell, code, { showCode: false, switchCodeAndGraph: false, mark: new Set(result.getElements().map(({ node }) => node.info.id )) } )}
 
 
 ${collapseResult ? '</details>' : ''}

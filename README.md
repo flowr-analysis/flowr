@@ -24,7 +24,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.2.15, R v4.5.0 (r-shell engine)
+    flowR repl using flowR v2.3.0, R v4.5.0 (r-shell engine)
     R> :query @linter "read.csv(\"/root/x.txt\")"
     ```
     
@@ -33,20 +33,28 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: [;1mlinter[0m (2 ms)
-       ╰ deprecated-functions:
-           ╰ _Metadata_: <code>{"totalRelevant":1,"totalNotDeprecated":1,"searchTimeMs":0,"processTimeMs":0}</code>
-       ╰ file-path-validity:
-           ╰ definitely:
+    Query: [;1mlinter[0m (3 ms)
+       ╰ **Deprecated Functions** (deprecated-functions):
+           ╰ _Metadata_: <code>{"totalDeprecatedCalls":0,"totalDeprecatedFunctionDefinitions":0,"searchTimeMs":0,"processTimeMs":0}</code>
+       ╰ **File Path Validity** (file-path-validity):
+           ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
            ╰ _Metadata_: <code>{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0,"searchTimeMs":1,"processTimeMs":0}</code>
-       ╰ absolute-file-paths:
-           ╰ definitely:
+       ╰ **Seeded Randomness** (seeded-randomness):
+           ╰ _Metadata_: <code>{"consumerCalls":0,"callsWithFunctionProducers":0,"callsWithAssignmentProducers":0,"callsWithNonConstantProducers":0,"searchTimeMs":0,"processTimeMs":0}</code>
+       ╰ **Absolute Paths** (absolute-file-paths):
+           ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
            ╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":1,"processTimeMs":0}</code>
-       ╰ unused-definitions:
+       ╰ **Unused Definitions** (unused-definitions):
            ╰ _Metadata_: <code>{"totalConsidered":0,"searchTimeMs":0,"processTimeMs":0}</code>
-    [;3mAll queries together required ≈2 ms (1ms accuracy, total 7 ms)[0m[0m
+       ╰ **Naming Convention** (naming-convention):
+           ╰ _Metadata_: <code>{"numMatches":0,"numBreak":0,"searchTimeMs":0,"processTimeMs":0}</code>
+       ╰ **Dataframe Access Validation** (dataframe-access-validation):
+           ╰ _Metadata_: <code>{"numOperations":0,"numAccesses":0,"totalAccessed":0,"searchTimeMs":0,"processTimeMs":0}</code>
+       ╰ **Dead Code** (dead-code):
+           ╰ _Metadata_: <code>{"consideredNodes":5,"searchTimeMs":1,"processTimeMs":0}</code>
+    [;3mAll queries together required ≈3 ms (1ms accuracy, total 9 ms)[0m[0m
     ```
     
     
@@ -62,28 +70,38 @@ It offers a wide variety of features, for example:
     ```
     
     
+    (This query can be shortened to `@linter` when used within the REPL command <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span>).
+    
     
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (8 ms)\
-    &nbsp;&nbsp;&nbsp;╰ deprecated-functions:\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalRelevant":1,"totalNotDeprecated":1,"searchTimeMs":1,"processTimeMs":0}</code>\
-    &nbsp;&nbsp;&nbsp;╰ file-path-validity:\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ definitely:\
+    Query: **linter** (14 ms)\
+    &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions):\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalDeprecatedCalls":0,"totalDeprecatedFunctionDefinitions":0,"searchTimeMs":2,"processTimeMs":0}</code>\
+    &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0,"searchTimeMs":4,"processTimeMs":0}</code>\
-    &nbsp;&nbsp;&nbsp;╰ absolute-file-paths:\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ definitely:\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0,"searchTimeMs":4,"processTimeMs":1}</code>\
+    &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness):\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"consumerCalls":0,"callsWithFunctionProducers":0,"callsWithAssignmentProducers":0,"callsWithNonConstantProducers":0,"searchTimeMs":0,"processTimeMs":1}</code>\
+    &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":1,"processTimeMs":1}</code>\
-    &nbsp;&nbsp;&nbsp;╰ unused-definitions:\
+    &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalConsidered":0,"searchTimeMs":0,"processTimeMs":0}</code>\
-    _All queries together required ≈8 ms (1ms accuracy, total 203 ms)_
+    &nbsp;&nbsp;&nbsp;╰ **Naming Convention** (naming-convention):\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"numMatches":0,"numBreak":0,"searchTimeMs":0,"processTimeMs":0}</code>\
+    &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation):\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"numOperations":0,"numAccesses":0,"totalAccessed":0,"searchTimeMs":0,"processTimeMs":2}</code>\
+    &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code):\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"consideredNodes":5,"searchTimeMs":0,"processTimeMs":0}</code>\
+    _All queries together required ≈14 ms (1ms accuracy, total 214 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _203.2 ms_ (including parsing and normalization and the query) within the generation environment.	
+    The analysis required _213.8 ms_ (including parsing and normalization and the query) within the generation environment.	
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -98,9 +116,9 @@ It offers a wide variety of features, for example:
           "deprecated-functions": {
             "results": [],
             ".meta": {
-              "totalRelevant": 1,
-              "totalNotDeprecated": 1,
-              "searchTimeMs": 1,
+              "totalDeprecatedCalls": 0,
+              "totalDeprecatedFunctionDefinitions": 0,
+              "searchTimeMs": 2,
               "processTimeMs": 0
             }
           },
@@ -114,7 +132,7 @@ It offers a wide variety of features, for example:
                   23
                 ],
                 "filePath": "/root/x.txt",
-                "certainty": "definitely"
+                "certainty": "certain"
               }
             ],
             ".meta": {
@@ -123,13 +141,24 @@ It offers a wide variety of features, for example:
               "totalWritesBeforeAlways": 0,
               "totalValid": 0,
               "searchTimeMs": 4,
-              "processTimeMs": 0
+              "processTimeMs": 1
+            }
+          },
+          "seeded-randomness": {
+            "results": [],
+            ".meta": {
+              "consumerCalls": 0,
+              "callsWithFunctionProducers": 0,
+              "callsWithAssignmentProducers": 0,
+              "callsWithNonConstantProducers": 0,
+              "searchTimeMs": 0,
+              "processTimeMs": 1
             }
           },
           "absolute-file-paths": {
             "results": [
               {
-                "certainty": "definitely",
+                "certainty": "certain",
                 "filePath": "/root/x.txt",
                 "range": [
                   1,
@@ -153,14 +182,41 @@ It offers a wide variety of features, for example:
               "searchTimeMs": 0,
               "processTimeMs": 0
             }
+          },
+          "naming-convention": {
+            "results": [],
+            ".meta": {
+              "numMatches": 0,
+              "numBreak": 0,
+              "searchTimeMs": 0,
+              "processTimeMs": 0
+            }
+          },
+          "dataframe-access-validation": {
+            "results": [],
+            ".meta": {
+              "numOperations": 0,
+              "numAccesses": 0,
+              "totalAccessed": 0,
+              "searchTimeMs": 0,
+              "processTimeMs": 2
+            }
+          },
+          "dead-code": {
+            "results": [],
+            ".meta": {
+              "consideredNodes": 5,
+              "searchTimeMs": 0,
+              "processTimeMs": 0
+            }
           }
         },
         ".meta": {
-          "timing": 8
+          "timing": 14
         }
       },
       ".meta": {
-        "timing": 8
+        "timing": 14
       }
     }
     ```
@@ -227,7 +283,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.2.15, R v4.5.0 (r-shell engine)
+    flowR repl using flowR v2.3.0, R v4.5.0 (r-shell engine)
     R> :slicer test/testfiles/example.R --criterion "11@sum"
     ```
     
@@ -274,7 +330,7 @@ It offers a wide variety of features, for example:
         
 
 * 🚀 **fast data- and control-flow graphs**\
-  Within just <i><span title="This measurement is automatically fetched from the latest benchmark!">136.2 ms</span></i> (as of Jun 2, 2025), 
+  Within just <i><span title="This measurement is automatically fetched from the latest benchmark!">136.8 ms</span></i> (as of Jul 21, 2025), 
   _flowR_ can analyze the data- and control-flow of the average real-world R script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
   and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for more details on the dataflow graph.
 
@@ -310,7 +366,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.2.15, R v4.5.0 (r-shell engine)
+    flowR repl using flowR v2.3.0, R v4.5.0 (r-shell engine)
     R> :dataflow* test/testfiles/example.R
     ```
     
@@ -611,7 +667,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _14.4 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _13.8 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

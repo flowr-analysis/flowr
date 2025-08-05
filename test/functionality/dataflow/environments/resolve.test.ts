@@ -4,7 +4,7 @@ import { decorateLabelContext, label } from '../../_helper/label';
 import { resolveByName, resolvesToBuiltInConstant } from '../../../../src/dataflow/environments/resolve-by-name';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import { Ternary } from '../../../../src/util/logic';
-import { describe, assert, test, expect } from 'vitest';
+import { assert, describe, expect, test } from 'vitest';
 import { valueFromTsValue } from '../../../../src/dataflow/eval/values/general';
 import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
 import type { Lift, Value } from '../../../../src/dataflow/eval/values/r-value';
@@ -13,11 +13,12 @@ import { withShell } from '../../_helper/shell';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { slicingCriterionToId, type SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { intervalFromValues } from '../../../../src/dataflow/eval/values/intervals/interval-constants';
 import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-consatnts';
 import { vectorFrom } from '../../../../src/dataflow/eval/values/vectors/vector-constants';
 import { resolveIdToValue, resolveToConstants } from '../../../../src/dataflow/eval/resolve/alias-tracking';
+import { defaultConfigOptions } from '../../../../src/config';
 
 enum Allow {
 	None = 0,
@@ -56,13 +57,14 @@ describe.sequential('Resolve', withShell(shell => {
 			const dataflow = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 				parser:  shell,
 				request: requestFromInput(code.trim()),
-			}).allRemainingSteps();
+			}, defaultConfigOptions).allRemainingSteps();
 
 			const resolved = resolveIdToValue(slicingCriterionToId(identifier, dataflow.normalize.idMap), {
 				environment: dataflow.dataflow.environment,
 				graph:       dataflow.dataflow.graph,
 				idMap:       dataflow.normalize.idMap,
-				full:        true
+				full:        true,
+				resolve:     defaultConfigOptions.solver.variables
 			});
 			
 			if((allow & Allow.Top) == Allow.Top && isTop(resolved)) {

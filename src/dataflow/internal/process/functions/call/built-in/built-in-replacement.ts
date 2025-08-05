@@ -24,7 +24,6 @@ import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { constructNestedAccess, getAccessOperands } from '../../../../../../util/containers';
-import { getConfig } from '../../../../../../config';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { unpackArgument } from '../argument/unpack-argument';
@@ -52,7 +51,7 @@ export function processReplacementFunction<OtherInfo>(
 	expensiveTrace(dataflowLogger, () => `Replacement ${name.content} with ${JSON.stringify(args)}, processing`);
 	
 	let indices: ContainerIndicesCollection = config.activeIndices;
-	if(getConfig().solver.pointerTracking) {
+	if(data.flowrConfig.solver.pointerTracking) {
 		indices ??= constructAccessedIndices<OtherInfo>(name.content, args);
 	}
 
@@ -125,7 +124,7 @@ export function processReplacementFunction<OtherInfo>(
 
 
 	const fa = unpackArgument(args[0]);
-	if(!getConfig().solver.pointerTracking && fa) {
+	if(!data.flowrConfig.solver.pointerTracking && fa) {
 		res = {
 			...res,
 			in: [...res.in, { name: fa.lexeme, type: ReferenceType.Variable, nodeId: fa.info.id, controlDependencies: data.controlDependencies }]

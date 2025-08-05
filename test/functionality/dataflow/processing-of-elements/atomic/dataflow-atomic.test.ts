@@ -110,7 +110,6 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					.argument(6, 4)
 					.constant(1)
 					.constant(4)
-
 			);
 			assertDataflow(label('chained mixed constant', ['dollar-access', 'single-bracket-access', 'name-normal', 'numbers']), shell,
 				'a[2]$a', emptyGraph()

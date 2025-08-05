@@ -1,16 +1,13 @@
 import { assert, describe, it } from 'vitest';
-import type {
-	BasicCfgGuidedVisitorConfiguration
-} from '../../../src/control-flow/basic-cfg-guided-visitor';
-import {
-	BasicCfgGuidedVisitor
-} from '../../../src/control-flow/basic-cfg-guided-visitor';
+import type { BasicCfgGuidedVisitorConfiguration } from '../../../src/control-flow/basic-cfg-guided-visitor';
+import { BasicCfgGuidedVisitor } from '../../../src/control-flow/basic-cfg-guided-visitor';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { withTreeSitter } from '../_helper/shell';
 import { simplifyControlFlowInformation } from '../../../src/control-flow/cfg-simplification';
+import { defaultConfigOptions } from '../../../src/config';
 
 describe('Control Flow Graph', withTreeSitter(parser => {
 	function assertOrderBasic(
@@ -19,10 +16,11 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 		expectedForward: readonly NodeId[],
 		expectedBackward: readonly NodeId[] = expectedForward.toReversed(),
 		useBasicBlocks = false,
-		config?: Omit<BasicCfgGuidedVisitorConfiguration, 'controlFlow' | 'defaultVisitingOrder'>
+		options?: Omit<BasicCfgGuidedVisitorConfiguration, 'controlFlow' | 'defaultVisitingOrder'>
 	): void {
 		describe(label, () => {
 			it.each(['forward', 'backward'] as const)('%s', async(dir) => {
+				const config = defaultConfigOptions;
 				const order: NodeId[] = [];
 				class TestVisitor extends BasicCfgGuidedVisitor {
 					override onVisitNode(node: NodeId): void {
@@ -33,14 +31,14 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 
 				const result = await createDataflowPipeline(parser, {
 					request: requestFromInput(code)
-				}).allRemainingSteps();
-				let cfg = extractCfg(result.normalize, result.dataflow?.graph);
+				}, config).allRemainingSteps();
+				let cfg = extractCfg(result.normalize, config, result.dataflow?.graph);
 				if(useBasicBlocks) {
-					cfg = simplifyControlFlowInformation(cfg, { ast: result.normalize, dfg: result.dataflow.graph }, ['to-basic-blocks', 'remove-dead-code']);
+					cfg = simplifyControlFlowInformation(cfg, { ast: result.normalize, dfg: result.dataflow.graph, config }, ['to-basic-blocks', 'remove-dead-code']);
 				}
 
 				const configuration: BasicCfgGuidedVisitorConfiguration = {
-					...config,
+					...options,
 					defaultVisitingOrder: dir,
 					controlFlow:          cfg
 				};

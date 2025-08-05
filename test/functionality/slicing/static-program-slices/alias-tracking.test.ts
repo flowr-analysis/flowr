@@ -9,12 +9,13 @@ import { Top } from '../../../../src/dataflow/eval/values/r-value';
 import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
 import { valueFromTsValue } from '../../../../src/dataflow/eval/values/general';
 import { trackAliasInEnvironments } from '../../../../src/dataflow/eval/resolve/alias-tracking';
+import { defaultConfigOptions } from '../../../../src/config';
 
 async function runPipeline(code: string, shell: RShell) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
 		request: requestFromInput(code)
-	}).allRemainingSteps();
+	}, defaultConfigOptions).allRemainingSteps();
 }
 
 describe.sequential('Alias Tracking', withShell(shell => {
@@ -30,7 +31,7 @@ describe.sequential('Alias Tracking', withShell(shell => {
 		['x <- 1; while(x < 10) { if(runif(1)) x <- x + 1 }', 'x', Top]
 	])('%s should resolve %s to %o', async(code, identifier, expectedValues) => {
 		const result = await runPipeline(code, shell);
-		const values = trackAliasInEnvironments(identifier as Identifier, result.dataflow.environment, result.dataflow.graph, result.dataflow.graph.idMap);
+		const values = trackAliasInEnvironments(defaultConfigOptions.solver.variables, identifier as Identifier, result.dataflow.environment, result.dataflow.graph, result.dataflow.graph.idMap);
 		expect(values).toEqual(expectedValues);
 	});
 }));

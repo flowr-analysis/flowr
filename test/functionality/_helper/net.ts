@@ -5,6 +5,7 @@ import { guard } from '../../../src/util/assert';
 import { FlowRServer } from '../../../src/cli/repl/server/server';
 import type { IdMessageBase } from '../../../src/cli/repl/server/messages/all-messages';
 import type { RShell } from '../../../src/r-bridge/shell';
+import { defaultConfigOptions } from '../../../src/config';
 
 export class FakeServer implements Server {
 	private connectHandler: OnConnect | undefined;
@@ -126,7 +127,7 @@ export class FakeSocket implements Socket {
 export function withSocket<T = void>(shell: RShell, fn: (socket: FakeSocket, server: FakeServer) => Promise<T>): () => Promise<T>  {
 	return async function() {
 		const net = new FakeServer();
-		const server = new FlowRServer({ 'r-shell': shell }, 'r-shell', true, net);
+		const server = new FlowRServer({ 'r-shell': shell }, 'r-shell', true, defaultConfigOptions, net);
 		await server.start(42);
 		const socket = new FakeSocket();
 		net.connectClient(socket);

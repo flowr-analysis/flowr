@@ -9,8 +9,9 @@ import { decorateLabelContext, label } from '../_helper/label';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { setEquals } from '../../../src/util/collections/set';
 import { OperatorDatabase } from '../../../src/r-bridge/lang-4.x/ast/model/operators';
-import { describe, assert, test } from 'vitest';
+import { assert, describe, test } from 'vitest';
 import { builtInId } from '../../../src/dataflow/environments/built-in';
+import { defaultConfigOptions } from '../../../src/config';
 
 describe.sequential('Test lineage', withShell(shell => {
 
@@ -21,7 +22,7 @@ describe.sequential('Test lineage', withShell(shell => {
 			const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 				parser:  shell,
 				request: requestFromInput(request)
-			}).allRemainingSteps();
+			}, defaultConfigOptions).allRemainingSteps();
 			const lineageIds = getLineage(criterion, result.dataflow.graph);
 			assert.isTrue(setEquals(lineageIds, new Set(expected)), `Expected ${JSON.stringify(expected)} but got ${JSON.stringify([...lineageIds])}`);
 		});

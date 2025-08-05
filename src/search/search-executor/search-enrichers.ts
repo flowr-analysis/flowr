@@ -15,9 +15,10 @@ import { extractCfg, extractSimpleCfg } from '../../control-flow/extract-cfg';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
-import type { Query, QueryResult } from '../../queries/query';
+import type { QueryResult, SynchronousQuery } from '../../queries/query';
 import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
 import { cfgFindAllReachable , DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
+import type { AsyncOrSyncType } from 'ts-essentials';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
@@ -92,11 +93,11 @@ export interface CfgInformationArguments extends MergeableRecord {
 
 export interface QueryDataElementContent extends MergeableRecord {
 	/** The name of the query that this element originated from. To get each query's data, see {@link QueryDataSearchContent}. */
-	query: Query['type']
+	query: SynchronousQuery['type']
 }
 
 export interface QueryDataSearchContent extends MergeableRecord {
-	queries: { [QueryType in Query['type']]: QueryResult<QueryType> }
+	queries: { [QueryType in SynchronousQuery['type']]: AsyncOrSyncType<QueryResult<QueryType>> }
 }
 
 /**

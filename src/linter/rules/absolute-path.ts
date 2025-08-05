@@ -128,7 +128,7 @@ export const ABSOLUTE_PATH = {
 		}
 		if(config.include.constructed) {
 			q = q.merge(Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets));
-			/* in the future we want to directly check whether this is one of the supported functions */
+			/* in the future, we want to directly check whether this is one of the supported functions */
 		}
 		return q.unique();
 	},

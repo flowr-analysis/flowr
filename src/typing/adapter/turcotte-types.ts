@@ -23,22 +23,7 @@ import {
 	UnresolvedRTypeVariable
 } from '../subtyping/types';
 import { jsonReplacer } from '../../util/json';
-
-export interface RohdeFunctionTypeInformation {
-    readonly name:    string;
-    readonly package: string;
-    readonly types:   readonly UnresolvedRFunctionType[]
-}
-
-export interface RohdeConstantTypeInformation {
-    readonly name:    string;
-    readonly package: string;
-    readonly type:    UnresolvedDataType;
-}
-
-export interface RohdeTypes {
-    readonly info: (RohdeFunctionTypeInformation | RohdeConstantTypeInformation)[];
-}
+import type { RohdeFunctionTypeInformation, RohdeTypes } from './interface';
 
 export interface TurcotteCsvRow {
     readonly package_name:       string;

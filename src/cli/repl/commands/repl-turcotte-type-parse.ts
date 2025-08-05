@@ -2,10 +2,7 @@ import type { ReplCommand } from './repl-main';
 import { findSource } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import fs from 'fs';
 import csvParser from 'csv-parser';
-import type {
-	RohdeTypes,
-	TurcotteCsvRow
-} from '../../../typing/adapter/turcotte-types';
+import type { TurcotteCsvRow } from '../../../typing/adapter/turcotte-types';
 import {
 	dumpRohdeTypesFromTurcotte,
 	recoverRohdeTypesFromTurcotteFromDump,
@@ -13,6 +10,7 @@ import {
 } from '../../../typing/adapter/turcotte-types';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string';
+import type { RohdeTypes } from '../../../typing/adapter/interface';
 
 
 export const replTurcotteTypeParseCommand: ReplCommand = {

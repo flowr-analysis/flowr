@@ -5,8 +5,8 @@ import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeDatatypeQuery } from './datatype-query-executor';
-import { asciiDataType } from '../../query-print';
 import type { DataType } from '../../../typing/types';
+import { prettyPrintDataType } from '../../../typing/pretty-print';
 
 /**
  * Calculates the inferred data type for the given criterion.
@@ -30,7 +30,7 @@ export const DatatypeQueryDefinition = {
 		const out = queryResults as QueryResults<'datatype'>['datatype'];
 		result.push(`Query: ${bold('datatype', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [criterion, inferredType] of Object.entries(out.inferredTypes)) {
-			result.push(`   ╰ ${criterion}: {${asciiDataType(inferredType)}}`);
+			result.push(`   ╰ ${criterion}: {${prettyPrintDataType(inferredType)}}`);
 		}
 		return true;
 	},

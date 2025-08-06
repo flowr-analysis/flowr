@@ -96,5 +96,6 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ package: 'stats', name: 'read.ftable',    argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'DBI', name: 'dbReadTable',      argIdx: 1, argName: 'name', resolveValue: true },
 	{ package: 'DBI', name: 'dbReadTableArrow', argIdx: 1, argName: 'name', resolveValue: true },
+	{ package: 'jsonlite', name: 'read_json', argIdx: 0, argName: 'path', resolveValue: true },
 
 ] as const;

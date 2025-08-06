@@ -519,9 +519,12 @@ export function mapAstInfo<OldInfo, Down, NewInfo>(ast: RNode<OldInfo>, down: Do
 }
 
 export function mapNormalizedAstInfo<OldInfo extends ParentInformation, NewInfo>(normalizedAst: NormalizedAst<OldInfo>, infoMapper: (node: RNode<OldInfo>) => NewInfo): NormalizedAst<NewInfo> {
-	for(const [id, node] of normalizedAst.idMap.entries()) {
-		if(id === node.info.id) { // we skip virtual nodes
+	const mappedNodes = new Set<RNode>(); // To avoid repeatedly mapping the same node in case of virtual node ids
+	
+	for(const node of normalizedAst.idMap.values()) {
+		if(!mappedNodes.has(node)) {
 			(node.info as unknown as NewInfo) = infoMapper(node);
+			mappedNodes.add(node);
 		}
 	}
 

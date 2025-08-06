@@ -86,7 +86,7 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	readonly returnsNthArgument?:    number | 'last',
 	readonly cfg?:                   ExitPointType,
 	readonly readAllArguments?:      boolean,
-	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
+	readonly hasUnknownSideEffects?: boolean | LinkTo,
 	/** record mapping the actual function name called to the arguments that should be treated as function calls */
 	readonly treatAsFnCall?:         Record<string, readonly string[]>,
 	/** Name that should be used for the origin (useful when needing to differentiate between

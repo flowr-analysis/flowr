@@ -25,17 +25,19 @@ import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import type { UnresolvedDataType } from './types';
 import { constrain, getIndexedElementTypeFromList, getParameterTypeFromFunction, resolve, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from './types';
+import { defaultConfigOptions } from '../../config';
 
 
 export function inferDataTypes<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation, knownTypes: Map<string, UnresolvedDataType> = new Map()): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
-	const controlFlowInfo = extractCfg(astWithTypeVars, dataflowInfo.graph, ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code']);
+	const controlFlowInfo = extractCfg(astWithTypeVars, defaultConfigOptions, dataflowInfo.graph, ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code']);
 	const config = {
 		normalizedAst:        astWithTypeVars,
 		controlFlow:          controlFlowInfo,
 		dataflowInfo:         dataflowInfo,
 		dfg:                  dataflowInfo.graph,
 		defaultVisitingOrder: 'forward' as const,
+		flowrConfig:          defaultConfigOptions,
 		knownTypes,
 	};
 	const visitor = new TypeInferringCfgGuidedVisitor(config);

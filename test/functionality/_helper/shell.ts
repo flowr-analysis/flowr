@@ -17,13 +17,15 @@ import type {
 	RNodeWithParent
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type {
+	DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
+	TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE
+} from '../../../src/core/steps/pipeline/default-pipelines';
 import {
-    createSlicePipeline,
-    DEFAULT_DATAFLOW_PIPELINE,
-    DEFAULT_NORMALIZE_PIPELINE,
-    DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
-    TREE_SITTER_NORMALIZE_PIPELINE,
-    TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE
+	createSlicePipeline,
+	DEFAULT_DATAFLOW_PIPELINE,
+	DEFAULT_NORMALIZE_PIPELINE,
+	TREE_SITTER_NORMALIZE_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff-dataflow-graph';
@@ -259,16 +261,15 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 			assertAstEqual(tsAst as RNode, shellAst as RNode, true, userConfig?.ignoreColumns === true,
 				() => `tree-sitter ast: ${JSON.stringify(tsAst)}, vs. shell ast: ${JSON.stringify(shellAst)}`, false);
 		});
-	});
 
-	async function makeShellAst(): Promise<RNode> {
-		const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-			parser:  shell,
-			request: requestFromInput(input)
-		}, defaultConfigOptions);
-		const result = await pipeline.allRemainingSteps();
-		return result.normalize.ast;
-	}
+		async function makeShellAst(): Promise<RNode> {
+			const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
+				parser:  shell,
+				request: requestFromInput(input)
+			}, defaultConfigOptions);
+			const result = await pipeline.allRemainingSteps();
+			return result.normalize.ast;
+		}
 
 		async function makeTsAst(): Promise<RNode> {
 			const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
@@ -454,19 +455,16 @@ function testWrapper(skip: boolean | undefined, shouldFail: boolean, testName: s
 export type TestCaseFailType = 'fail-shell' | 'fail-tree-sitter' | 'fail-both' | undefined;
 
 export function assertSlicedF(
-    name: TestLabel,
-    shell: RShell,
-    input: string,
-    criteria: SlicingCriteria,
-    expected: string,
-    userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[], sliceDirection?: SliceDirection },
-    testCaseFailType?: TestCaseFailType,
-    getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0)
+	name: TestLabel,
+	shell: RShell,
+	input: string,
+	criteria: SlicingCriteria,
+	expected: string,
+	testConfig?: Partial<TestConfigurationWithOutput & TestCaseParams>
 ) {
-    return assertSliced(name, shell, input, criteria, expected, { ...userConfig, sliceDirection: SliceDirection.Forward }, testCaseFailType, getId);
+	return assertSliced(name, shell, input, criteria, expected, { ...testConfig, sliceDirection: SliceDirection.Forward });
 }
 
-// TODO: ADD Slice direction
 interface TestCaseParams {
 	/** Predicate allowing the inclusion of additional normalized nodes into the slice */
 	autoSelectIf:         AutoSelectPredicate,
@@ -481,7 +479,9 @@ interface TestCaseParams {
 	/** The RNode ID generator */
 	getId:                () => IdGenerator<NoInfo>,
 	/** The flowr configuration to be used for the test */
-	flowrConfig:          FlowrConfigOptions
+	flowrConfig:          FlowrConfigOptions,
+	/** The direction of the slice, defaults to forward */
+	sliceDirection?:      SliceDirection
 }
 
 export function assertSliced(
@@ -493,19 +493,19 @@ export function assertSliced(
 	testConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams>,
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
-	const skip = skipTestBecauseConfigNotMet(userConfig);
-	if(skip || testCaseFailType === 'fail-both') {
+	const skip = skipTestBecauseConfigNotMet(testConfig);
+	if(skip || testConfig?.testCaseFailType === 'fail-both') {
 		// drop it again because the test is not to be counted
 		dropTestLabel(name);
 	}
 	describe.skipIf(skip)(fullname, () => {
-		const ts = !userConfig?.skipTreeSitter ? new TreeSitterExecutor() : undefined;
+		const ts = !testConfig?.skipTreeSitter ? new TreeSitterExecutor() : undefined;
 		let shellResult: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
 		let tsResult: PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
 		const getId = testConfig?.getId ?? (() => deterministicCountingIdGenerator(0));
 		beforeAll(async() => {
 			shellResult = await executePipeline(shell);
-			if(!userConfig?.skipTreeSitter) {
+			if(!testConfig?.skipTreeSitter) {
 				tsResult = await executePipeline(ts as TreeSitterExecutor);
 			}
 		});
@@ -552,33 +552,34 @@ export function assertSliced(
 				}
 			}
 		);
-	});
-	handleAssertOutput(name, shell, input, testConfig);
 
-	async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
-		return await createSlicePipeline(parser, {
-			getId:        getId(),
-			request:      requestFromInput(input),
-			criterion:    criteria,
-			autoSelectIf: testConfig?.autoSelectIf,
-			direction:    testConfig?.sliceDirection
-		}, cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions)).allRemainingSteps();
-	}
-	function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {
-		try {
-			assert.strictEqual(
-				result.reconstruct.code, expected,
-				`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
-			);
-		} /* v8 ignore start */ catch(e) {
-			if(printError) {
-				console.error(`got:\n${result.reconstruct.code}\nvs. expected:\n${expected}`);
-				console.error(normalizedAstToMermaidUrl(result.normalize.ast));
-			}
-			throw e;
-		} /* v8 ignore stop */
-	}
-	handleAssertOutput(name, shell, input, testConfig);
+		handleAssertOutput(name, shell, input, testConfig);
+
+		async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
+			return await createSlicePipeline(parser, {
+				getId:        getId(),
+				request:      requestFromInput(input),
+				criterion:    criteria,
+				autoSelectIf: testConfig?.autoSelectIf,
+				direction:    testConfig?.sliceDirection
+			}, cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions)).allRemainingSteps();
+		}
+		function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {
+			try {
+				assert.strictEqual(
+					result.reconstruct.code, expected,
+					`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
+				);
+			} /* v8 ignore start */ catch(e) {
+				if(printError) {
+					console.error(`got:\n${result.reconstruct.code}\nvs. expected:\n${expected}`);
+					console.error(normalizedAstToMermaidUrl(result.normalize.ast));
+				}
+				throw e;
+			} /* v8 ignore stop */
+		}
+		handleAssertOutput(name, shell, input, testConfig);
+	});
 }
 
 function findInDfg(id: NodeId, dfg: DataflowGraph): ContainerIndex[] | undefined {

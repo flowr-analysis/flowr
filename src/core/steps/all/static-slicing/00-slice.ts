@@ -22,7 +22,7 @@ export enum SliceDirection {
 	Forward = 'forward'
 }
 
-function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>, config: FlowrConfigOptions) {
+function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>, _config: FlowrConfigOptions) {
 	const direction = input.direction ?? SliceDirection.Backward;
 	return staticSlice((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, direction, input.threshold);
 }

@@ -1,22 +1,15 @@
 import { withShell } from '../../../_helper/shell';
 import { describe, expect, test } from 'vitest';
+import type { Identifier } from '../../../../../src/dataflow/environments/identifier';
+import type { RShell } from '../../../../../src/r-bridge/shell';
 import { PipelineExecutor } from '../../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../../src/r-bridge/retriever';
-import { trackAliasInEnvironments } from '../../../../../src/dataflow/environments/resolve-by-name';
-import type { Identifier } from '../../../../../src/dataflow/environments/identifier';
-import type { RShell } from '../../../../../src/r-bridge/shell';
-import { numVal } from '../../../_helper/ast-builder';
-import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import type { Identifier } from '../../../../src/dataflow/environments/identifier';
-import type { RShell } from '../../../../src/r-bridge/shell';
-import { Top } from '../../../../src/dataflow/eval/values/r-value';
-import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
-import { valueFromTsValue } from '../../../../src/dataflow/eval/values/general';
-import { trackAliasInEnvironments } from '../../../../src/dataflow/eval/resolve/alias-tracking';
-import { defaultConfigOptions } from '../../../../src/config';
+import { defaultConfigOptions } from '../../../../../src/config';
+import { setFrom } from '../../../../../src/dataflow/eval/values/sets/set-constants';
+import { valueFromTsValue } from '../../../../../src/dataflow/eval/values/general';
+import { Top } from '../../../../../src/dataflow/eval/values/r-value';
+import { trackAliasInEnvironments } from '../../../../../src/dataflow/eval/resolve/alias-tracking';
 
 async function runPipeline(code: string, shell: RShell) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -38,7 +31,13 @@ describe.sequential('Alias Tracking', withShell(shell => {
 		['x <- 1; while(x < 10) { if(runif(1)) x <- x + 1 }', 'x', Top]
 	])('%s should resolve %s to %o', async(code, identifier, expectedValues) => {
 		const result = await runPipeline(code, shell);
-		const values = trackAliasInEnvironments(defaultConfigOptions.solver.variables, identifier as Identifier, result.dataflow.environment, result.dataflow.graph, result.dataflow.graph.idMap);
+		const values = trackAliasInEnvironments(
+			defaultConfigOptions.solver.variables,
+			identifier as Identifier,
+			result.dataflow.environment,
+			result.dataflow.graph,
+			result.dataflow.graph.idMap
+		);
 		expect(values).toEqual(expectedValues);
 	});
 }));

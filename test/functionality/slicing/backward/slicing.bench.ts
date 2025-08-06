@@ -10,6 +10,7 @@ import { Q } from '../../../../src/search/flowr-search-builder';
 import { guard } from '../../../../src/util/assert';
 import { staticSlice } from '../../../../src/slicing/static/static-slicer';
 import { SliceDirection } from '../../../../src/core/steps/all/static-slicing/00-slice';
+import { defaultConfigOptions } from '../../../../src/config';
 
 
 describe('slicing', () => {
@@ -39,8 +40,8 @@ for(i in 1:5) {
 	x[2] <- x[1] + x[3]
 }
 			`.trim().repeat(200) + '\nprint(x + f(1, function(i) x[[i]] + 2, 3))'),
-				}).allRemainingSteps();
-				ids = runSearch(Q.var('print').first(), result).map(n => n.node.info.id);
+				}, defaultConfigOptions).allRemainingSteps();
+				ids = runSearch(Q.var('print').first(), { ...result, config: defaultConfigOptions }).getElements().map(n => n.node.info.id);
 			}
 			guard(result !== undefined && ids !== undefined, () => 'no result');
 			staticSlice(result.dataflow.graph, result.normalize, [`$${ids[0]}`], SliceDirection.Backward, threshold);

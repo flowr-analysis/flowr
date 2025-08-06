@@ -14,7 +14,6 @@ import { initializeCleanEnvironments } from '../../dataflow/environments/environ
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
-import { getConfig } from '../../config';
 import { SliceDirection } from '../../core/steps/all/static-slicing/00-slice';
 import { invertDfg } from '../../dataflow/graph/invert-dfg';
 
@@ -36,7 +35,7 @@ export function staticSlice(
 	graph: DataflowGraph,
 	{ idMap }: NormalizedAst,
 	criteria: SlicingCriteria,
-    direction: SliceDirection,
+	direction: SliceDirection,
 	threshold = 75,
 	cache?: Map<Fingerprint, Set<NodeId>>
 ): Readonly<SliceResult> {

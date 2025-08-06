@@ -276,7 +276,7 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 	let paramExits = params.flatMap(e => e.exitPoints);
 	const children: NodeId[] = [...paramExits, fnId + '-exit'];
 	graph.addVertex({ id: fnId + '-exit', type: CfgVertexType.EndMarker, root: fnId }, false);
-	graph.addVertex({ id: fnId, children, type: identifyMayStatementType(fn), mid: paramExits ?? [], end: [fnId + '-exit'] });
+	graph.addVertex({ id: fnId, children, type: identifyMayStatementType(fn), mid: paramExits, end: [fnId + '-exit'] });
 
 	graph.mergeWith(body.graph, true);
 	children.push(...body.graph.rootIds());
@@ -393,7 +393,7 @@ function cfgArgumentOrParameter(node: RNodeWithParent, name: ControlFlowInformat
 	const graph = new ControlFlowGraph();
 	const info: ControlFlowInformation = { graph, breaks: [], nexts: [], returns: [], exitPoints: [node.info.id + '-exit'], entryPoints: [node.info.id] };
 
-	let currentExitPoints = name?.exitPoints ??[node.info.id];
+	let currentExitPoints = name?.exitPoints ?? [node.info.id];
 	graph.addVertex({ id: node.info.id, type: CfgVertexType.Expression, mid: currentExitPoints, end: [node.info.id + '-exit'] });
 
 	if(name) {

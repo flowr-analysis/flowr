@@ -45,7 +45,6 @@ export function staticSlice(
 		() => `calculating ${direction} slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`
 	);
 
-	// TODO if we don't end up needing any specific changes to this code, we should move this inversion back out of this function (along with the slice direction arg)
 	if(direction === SliceDirection.Forward){
 		graph = invertDfg(graph);
 	}

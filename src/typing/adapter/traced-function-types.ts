@@ -70,7 +70,7 @@ function typeFromStr(str: string): UnresolvedDataType {
 		return vectorType;
 	} else if(str === 'function') {
 		return new UnresolvedRFunctionType();
-	} else if(str === 'list') {
+	} else if(str === 'list' || str === 'dgCMatrix') {
 		return new UnresolvedRListType();
 	} else if(str === 'logical') {
 		return new RLogicalType();
@@ -86,25 +86,15 @@ function typeFromStr(str: string): UnresolvedDataType {
 		return new RRawType();
 	} else if(str === 'NULL') {
 		return new RNullType();
-	} else if(str === 'formula' || str === 'expression' || str === 'name' || str === 'symbol' || str === 'language' || str === 'call') {
+	} else if(str === 'formula' || str === 'expression' || str === 'name' || str === 'symbol' || str === 'language' || str === 'call' || str === 'srcfile' || str === '<-' || str === '(' || str === 'if' || str === '{' || str === 'for') {
 		return new RLanguageType();
 	} else if(str === 'environment') {
 		return new REnvironmentType();
 	} else if(str === 'S4') {
 		// S4 types are not supported yet, so we return a variable type
 		return new UnresolvedRTypeVariable();
-	} else if(str === 'dgCMatrix') {
-		// Time for crying
-		return new UnresolvedRListType();
-	} else if(str === '<-' || str === '(' || str === 'if' || str === '{' || str === 'for') {
-		// Arbitrary definitions
-		return new UnresolvedRTypeVariable();
-	} else if(str === 'srcfile') {
-		return new UnresolvedRTypeVariable();
-	} else if(str === 'standardGeneric') {
-		return new UnresolvedRFunctionType();
-	} else if(str === 'mle' || str === 'track' || str === 'derivedDefaultMethod' || str === 'jmcmMod' || str === 'glmerMod') {
-		// Huh?
+	} else if(str === 'standardGeneric' || str === 'mle' || str === 'track' || str === 'derivedDefaultMethod' || str === 'jmcmMod' || str === 'glmerMod') {
+		// Give Up
 		return new UnresolvedRTypeVariable();
 	} else {
 		throw new Error(`Unknown type: ${str}`);

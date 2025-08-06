@@ -23,7 +23,7 @@ export interface TypeElementInSource {
 	readonly properties?: string[];
 }
 
-function getSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[], program: ts.Program } {
+export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[], program: ts.Program } {
 	try {
 		const program = ts.createProgram(fileNames, { target: ts.ScriptTarget.ESNext });
 		return { program, files: fileNames.map(fileName => program.getSourceFile(fileName)).filter(file => !!file) };
@@ -33,7 +33,7 @@ function getSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[],
 	}
 }
 
-function dropGenericsFromType(type: string): string {
+export function dropGenericsFromTypeName(type: string): string {
 	let previous;
 	do{
 		previous = type;
@@ -42,7 +42,7 @@ function dropGenericsFromType(type: string): string {
 	return type;
 }
 
-function removeCommentSymbols(comment: string): string {
+export function removeCommentSymbolsFromTypeScriptComment(comment: string): string {
 	return comment
 	// remove '/** \n * \n */...
 		.replace(/^\/\*\*?/gm, '').replace(/^\s*\*\s*/gm, '').replace(/\*\/$/gm, '').replace(/^\s*\*/gm, '')
@@ -51,22 +51,22 @@ function removeCommentSymbols(comment: string): string {
 		.trim();
 }
 
-function getTextualComments(node: ts.Node): string[] {
+export function getTextualCommentsFromTypeScript(node: ts.Node): string[] {
 	const comments = ts.getJSDocCommentsAndTags(node);
 	const out: string[] = [];
 	for(const { comment } of comments) {
 		if(typeof comment === 'string') {
-			out.push(removeCommentSymbols(comment));
+			out.push(removeCommentSymbolsFromTypeScriptComment(comment));
 		} else if(comment !== undefined) {
 			for(const c of comment) {
-				out.push(removeCommentSymbols(c.getText(c.getSourceFile())));
+				out.push(removeCommentSymbolsFromTypeScriptComment(c.getText(c.getSourceFile())));
 			}
 		}
 	}
 	return out;
 }
 
-function getStartLine(node: ts.Node, sourceFile: ts.SourceFile): number {
+export function getStartLineOfTypeScriptNode(node: ts.Node, sourceFile: ts.SourceFile): number {
 	const lineStart = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line;
 	return lineStart + 1;
 }
@@ -106,19 +106,19 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 			const baseTypes = node.heritageClauses?.flatMap(clause =>
 				clause.types
 					.map(type => type.getText(sourceFile) ?? '')
-					.map(dropGenericsFromType)
+					.map(dropGenericsFromTypeName)
 			) ?? [];
 			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') || [];
 
 			hierarchyList.push({
-				name:       dropGenericsFromType(interfaceName),
+				name:       dropGenericsFromTypeName(interfaceName),
 				node,
 				kind:       'interface',
 				extends:    baseTypes,
 				generics,
-				comments:   getTextualComments(node),
+				comments:   getTextualCommentsFromTypeScript(node),
 				filePath:   sourceFile.fileName,
-				lineNumber: getStartLine(node, sourceFile),
+				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
 				properties: node.members.map(member => {
 					const name = member.name?.getText(sourceFile) ?? '';
 					return `${name}${escapeMarkdown(': ' + getType(member, typeChecker))}`;
@@ -131,57 +131,70 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 				baseTypes = node.type.types
 					.filter(typeNode => ts.isTypeReferenceNode(typeNode))
 					.flatMap(typeName => followTypeReference(typeName, sourceFile))
-					.map(dropGenericsFromType);
+					.map(dropGenericsFromTypeName);
 			} else if(ts.isTypeReferenceNode(node.type)) {
-				baseTypes = [...followTypeReference(node.type, sourceFile)].map(dropGenericsFromType);
+				baseTypes = [...followTypeReference(node.type, sourceFile)].map(dropGenericsFromTypeName);
 			}
 
 			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
 
 			hierarchyList.push({
-				name:       dropGenericsFromType(typeName),
+				name:       dropGenericsFromTypeName(typeName),
 				node,
 				kind:       'type',
 				extends:    baseTypes,
-				comments:   getTextualComments(node),
+				comments:   getTextualCommentsFromTypeScript(node),
 				generics,
 				filePath:   sourceFile.fileName,
-				lineNumber: getStartLine(node, sourceFile),
+				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
 			});
 		} else if(ts.isEnumDeclaration(node)) {
 			const enumName = node.name?.getText(sourceFile) ?? '';
 			hierarchyList.push({
-				name:       dropGenericsFromType(enumName),
+				name:       dropGenericsFromTypeName(enumName),
 				node,
 				kind:       'enum',
 				extends:    [],
-				comments:   getTextualComments(node),
+				comments:   getTextualCommentsFromTypeScript(node),
 				generics:   [],
 				filePath:   sourceFile.fileName,
-				lineNumber: getStartLine(node, sourceFile),
+				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
 				properties: node.members.map(member => {
 					const name = member.name?.getText(sourceFile) ?? '';
 					return `${name}${escapeMarkdown(': ' + getType(member, typeChecker))}`;
 				})
+			});
+		} else if(ts.isEnumMember(node)) {
+			const typeName = node.parent.name?.getText(sourceFile) ?? '';
+			const enumName = dropGenericsFromTypeName(typeName);
+			hierarchyList.push({
+				name:       dropGenericsFromTypeName(node.name.getText(sourceFile)),
+				node,
+				kind:       'enum',
+				extends:    [enumName],
+				comments:   getTextualCommentsFromTypeScript(node),
+				generics:   [],
+				filePath:   sourceFile.fileName,
+				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
 			});
 		} else if(ts.isClassDeclaration(node)) {
 			const className = node.name?.getText(sourceFile) ?? '';
 			const baseTypes = node.heritageClauses?.flatMap(clause =>
 				clause.types
 					.map(type => type.getText(sourceFile) ?? '')
-					.map(dropGenericsFromType)
+					.map(dropGenericsFromTypeName)
 			) ?? [];
 			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
 
 			hierarchyList.push({
-				name:       dropGenericsFromType(className),
+				name:       dropGenericsFromTypeName(className),
 				node,
 				kind:       'class',
 				extends:    baseTypes,
-				comments:   getTextualComments(node),
+				comments:   getTextualCommentsFromTypeScript(node),
 				generics,
 				filePath:   sourceFile.fileName,
-				lineNumber: getStartLine(node, sourceFile),
+				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
 				properties: node.members.map(member => {
 					const name = member.name?.getText(sourceFile) ?? '';
 					return `${name}${escapeMarkdown(': ' + getType(member, typeChecker))}`;
@@ -191,16 +204,16 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 			ts.isVariableDeclaration(node) || ts.isExportDeclaration(node) || ts.isExportAssignment(node) || ts.isDeclarationStatement(node)
 		) {
 			const name = node.name?.getText(sourceFile) ?? '';
-			const comments = getTextualComments(node);
+			const comments = getTextualCommentsFromTypeScript(node);
 			hierarchyList.push({
-				name:       dropGenericsFromType(name),
+				name:       dropGenericsFromTypeName(name),
 				node,
 				kind:       'variable',
 				extends:    [],
 				comments,
 				generics:   [],
 				filePath:   sourceFile.fileName,
-				lineNumber: getStartLine(node, sourceFile),
+				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
 			});
 		} else if(
 			ts.isPropertyAssignment(node) || ts.isPropertyDeclaration(node) || ts.isPropertySignature(node)
@@ -214,16 +227,16 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 				parent = parent.parent;
 			}
 			if(typeof parent === 'object' && 'name' in parent) {
-				const comments = getTextualComments(node);
+				const comments = getTextualCommentsFromTypeScript(node);
 				hierarchyList.push({
-					name:       dropGenericsFromType(name),
+					name:       dropGenericsFromTypeName(name),
 					node,
 					kind:       'variable',
 					extends:    [parent.name?.getText(sourceFile) ?? ''],
 					comments,
 					generics:   [],
 					filePath:   sourceFile.fileName,
-					lineNumber: getStartLine(node, sourceFile),
+					lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
 				});
 			}
 		}
@@ -243,9 +256,13 @@ interface MermaidCompact {
 	edgeLines: string[]
 }
 
-export function getTypePathLink({ filePath, lineNumber }: TypeElementInSource, prefix = RemoteFlowrFilePathBaseRef): string {
-	const fromSource = filePath.replace(/^.*\/src\//, 'src/').replace(/^.*\/test\//, 'test/');
-	return `${prefix}/${fromSource}#L${lineNumber}`;
+export function getTypePathForTypeScript({ filePath }: Pick<TypeElementInSource, 'filePath' >) {
+	return filePath.replace(/^.*\/src\//, 'src/').replace(/^.*\/test\//, 'test/');
+}
+
+export function getTypePathLink(elem: Pick<TypeElementInSource, 'filePath' | 'lineNumber' >, prefix = RemoteFlowrFilePathBaseRef): string {
+	const fromSource = getTypePathForTypeScript(elem);
+	return `${prefix}/${fromSource}#L${elem.lineNumber}`;
 }
 
 function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], rootName: string, options: GetTypesWithProgramOption, visited: Set<string> = new Set()): MermaidCompact {
@@ -288,9 +305,9 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 				}
 			} else {
 				if(node.kind === 'type' || hierarchyList.find(h => h.name === baseType)?.kind === 'type') {
-					collect.edgeLines.push(`${dropGenericsFromType(baseType)} .. ${node.name}`);
+					collect.edgeLines.push(`${dropGenericsFromTypeName(baseType)} .. ${node.name}`);
 				} else {
-					collect.edgeLines.push(`${dropGenericsFromType(baseType)} <|-- ${node.name}`);
+					collect.edgeLines.push(`${dropGenericsFromTypeName(baseType)} <|-- ${node.name}`);
 				}
 				const { nodeLines, edgeLines } = generateMermaidClassDiagram(hierarchyList, baseType, options, visited);
 				collect.nodeLines.push(...nodeLines);
@@ -301,8 +318,11 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 	return collect;
 }
 
-function visualizeMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], options: GetTypesWithProgramOption) {
-	const { nodeLines, edgeLines } = generateMermaidClassDiagram(hierarchyList, options.typeName, options);
+function visualizeMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], options: GetTypesWithProgramOption): string | undefined {
+	if(!options.typeNameForMermaid) {
+		return undefined;
+	}
+	const { nodeLines, edgeLines } = generateMermaidClassDiagram(hierarchyList, options.typeNameForMermaid, options);
 	return nodeLines.length === 0 && edgeLines.length === 0 ? '' : `
 classDiagram
 direction RL
@@ -311,40 +331,44 @@ ${edgeLines.join('\n')}
 `;
 }
 
-function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMermaidOption): {
-	text:    string,
-	info:    TypeElementInSource[],
-	program: ts.Program
-} {
-	const { files, program } = getSourceFiles(fileNames);
+function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMermaidOption): TypeReport {
+	const { files, program } = getTypeScriptSourceFiles(fileNames);
 	guard(files.length > 0, () => `No source files found for ${JSON.stringify(fileNames)}`);
 	const withProgram = { ...options, program };
 	const hierarchyList = collectHierarchyInformation(files, withProgram);
 	return {
-		text: visualizeMermaidClassDiagram(hierarchyList, withProgram),
-		info: hierarchyList,
+		mermaid: visualizeMermaidClassDiagram(hierarchyList, withProgram),
+		info:    hierarchyList,
 		program
 	};
 }
 
 export interface GetTypesAsMermaidOption {
-	readonly rootFolder?:  string;
-	readonly files?:       readonly string[];
-	readonly typeName:     string;
-	readonly inlineTypes?: readonly string[]
+	readonly rootFolder?:         string;
+	readonly files?:              readonly string[];
+	/** if you request a type name, we will generate a mermaid diagram for that type */
+	readonly typeNameForMermaid?: string;
+	readonly inlineTypes?:        readonly string[]
 }
 
 interface GetTypesWithProgramOption extends GetTypesAsMermaidOption {
 	readonly program: ts.Program;
 }
 
-export interface MermaidTypeReport {
-	text:    string,
+export interface TypeReport {
+	/** if you request a type name this will include the mermaid diagram for the type */
+	mermaid: string | undefined,
 	info:    TypeElementInSource[],
 	program: ts.Program
 }
 
-export function getTypesFromFolderAsMermaid(options: GetTypesAsMermaidOption): MermaidTypeReport {
+export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid: string }): (TypeReport & { mermaid: string })
+export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid?: undefined }): (TypeReport & { mermaid: undefined })
+export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport
+/**
+ * Inspect typescript source code for types and return a report.
+ */
+export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport {
 	guard(options.rootFolder !== undefined || options.files !== undefined, 'Either rootFolder or files must be provided');
 	const files = [...options.files ?? []];
 	if(options.rootFolder) {
@@ -428,16 +452,22 @@ export function printCodeOfElement({ program, info }: FnInfo, name: string): str
 	return `${codeBlock('ts', code)}\n<i>Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></i>\n`;
 }
 
-function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[]): [string | undefined, string, TypeElementInSource]| undefined {
+function fuzzyCompare(a: string, b: string): boolean {
+	const aStr = a.toLowerCase().replace(/[^a-z0-9]/g, '-').trim();
+	const bStr = b.toLowerCase().replace(/[^a-z0-9]/g, '-').trim();
+	return aStr === bStr || aStr.includes(bStr) || bStr.includes(aStr);
+}
+
+function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], fuzzy = false): [string | undefined, string, TypeElementInSource]| undefined {
 	let container: string | undefined = undefined;
 	if(name.includes('::')) {
 		[container, name] = name.split(/:::?/);
 	}
-	let node = hierarchy.filter(e => e.name === name);
+	let node = hierarchy.filter(e =>  fuzzy ? fuzzyCompare(e.name, name) : e.name === name);
 	if(node.length === 0) {
 		return undefined;
 	} else if(container) {
-		node = node.filter(n => n.extends.includes(container));
+		node = node.filter(n => fuzzy ? n.extends.some(n => fuzzyCompare(n, container)) : n.extends.includes(container));
 		if(node.length === 0) {
 			return undefined;
 		}
@@ -465,14 +495,24 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 		pkg = undefined;
 	}
 	const comments = node.comments?.join('\n').replace(/\\?\n|```[a-zA-Z]*|\s\s*/g, ' ').replace(/<\/?code>|`/g, '').replace(/<\/?p\/?>/g, ' ').replace(/"/g, '\'') ?? '';
-	return `[${codeStyle ? '<code>' : ''}${
+	return `<a href="${getTypePathLink(node)}">${codeStyle ? '<code>' : ''}${
 		(node.comments?.length ?? 0) > 0 ?
 			textWithTooltip(pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) : node.name
-	}${codeStyle ? '</code>' : ''}](${getTypePathLink(node)})`;
+	}${codeStyle ? '</code>' : ''}</a>`;
 }
 
-export function getDocumentationForType(name: string, hierarchy: TypeElementInSource[], prefix = ''): string {
+export function shortLinkFile(name: string, hierarchy: readonly TypeElementInSource[]): string {
 	const res = retrieveNode(name, hierarchy);
+	if(!res) {
+		console.error(`Could not find node ${name} when resolving short link!`);
+		return '';
+	}
+	const [,, node] = res;
+	return `<a href="${getTypePathLink(node)}">${getTypePathForTypeScript(node)}</a>`;
+}
+
+export function getDocumentationForType(name: string, hierarchy: TypeElementInSource[], prefix = '', fuzzy = false): string {
+	const res = retrieveNode(name, hierarchy, fuzzy);
 	if(!res) {
 		return '';
 	}

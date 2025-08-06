@@ -84,3 +84,21 @@ export function visitCfgInOrder(
 		}
 	}
 }
+
+/**
+ * Check if a node can reach another node in the control flow graph.
+ */
+export function canReach(
+	graph: ControlFlowGraph,
+	from: NodeId[],
+	to: NodeId
+): boolean {
+	let reached = false;
+	visitCfgInOrder(graph, from, node => {
+		if(node === to) {
+			reached = true;
+			return true;
+		}
+	});
+	return reached;
+}

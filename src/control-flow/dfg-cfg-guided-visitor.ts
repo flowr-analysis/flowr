@@ -1,7 +1,6 @@
-import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from './control-flow-graph';
+import { getVertexRootId, type CfgBasicBlockVertex, type CfgEndMarkerVertex, type CfgExpressionVertex, type CfgSimpleVertex, type CfgStatementVertex, type ControlFlowInformation } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
-import type { DataflowInformation } from '../dataflow/info';
 import type {
 	DataflowGraphVertexArgument, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexUse,
@@ -11,12 +10,14 @@ import { VertexType
 import type { BasicCfgGuidedVisitorConfiguration } from './basic-cfg-guided-visitor';
 import { BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
 import { assertUnreachable } from '../util/assert';
+import type { DataflowGraph } from '../dataflow/graph/graph';
 
 export interface DataflowCfgGuidedVisitorConfiguration<
-	Cfg extends ControlFlowInformation = ControlFlowInformation,
-	Dfg extends DataflowInformation    = DataflowInformation
-> extends BasicCfgGuidedVisitorConfiguration<Cfg> {
-	readonly dataflow: Dfg;
+	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	Dfg extends DataflowGraph                  = DataflowGraph
+> extends BasicCfgGuidedVisitorConfiguration<ControlFlow> {
+	readonly dfg:                  Dfg;
+	readonly defaultVisitingType?: 'entry' | 'exit';
 }
 
 /**
@@ -25,31 +26,45 @@ export interface DataflowCfgGuidedVisitorConfiguration<
  * Use {@link BasicCfgGuidedVisitor#start} to start the traversal.
  */
 export class DataflowAwareCfgGuidedVisitor<
-    Cfg extends ControlFlowInformation = ControlFlowInformation,
-	Dfg extends DataflowInformation    = DataflowInformation,
-	Config extends DataflowCfgGuidedVisitorConfiguration<Cfg, Dfg> = DataflowCfgGuidedVisitorConfiguration<Cfg, Dfg>
-> extends BasicCfgGuidedVisitor<Cfg, Config> {
+    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	Dfg extends DataflowGraph                  = DataflowGraph,
+	Config extends DataflowCfgGuidedVisitorConfiguration<ControlFlow, Dfg> = DataflowCfgGuidedVisitorConfiguration<ControlFlow, Dfg>
+> extends BasicCfgGuidedVisitor<ControlFlow, Config> {
 
 	/**
 	 * Get the dataflow graph vertex for the given id
 	 */
 	protected getDataflowGraph(id: NodeId): DataflowGraphVertexArgument | undefined {
-		return this.config.dataflow.graph.getVertex(id);
+		return this.config.dfg.getVertex(id);
 	}
 
 
 	protected override onStatementNode(node: CfgStatementVertex): void {
 		super.onStatementNode(node);
-		this.onExprOrStmtNode(node);
+
+		if(this.config.defaultVisitingType !== 'exit' || node.end === undefined) {
+			this.visitDataflowNode(node);
+		}
 	}
 
 	protected override onExpressionNode(node: CfgExpressionVertex): void {
 		super.onExpressionNode(node);
-		this.onExprOrStmtNode(node);
+
+		if(this.config.defaultVisitingType !== 'exit' || node.end === undefined) {
+			this.visitDataflowNode(node);
+		}
 	}
 
-	private onExprOrStmtNode(node: CfgStatementVertex | CfgExpressionVertex): void {
-		const dfgVertex = this.getDataflowGraph(node.id);
+	protected override onEndMarkerNode(node: CfgEndMarkerVertex): void {
+		super.onEndMarkerNode(node);
+
+		if(this.config.defaultVisitingType === 'exit') {
+			this.visitDataflowNode(node);
+		}
+	}
+
+	protected visitDataflowNode(node: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): void {
+		const dfgVertex = this.getDataflowGraph(getVertexRootId(node));
 		if(!dfgVertex) {
 			this.visitUnknown(node);
 			return;
@@ -80,7 +95,7 @@ export class DataflowAwareCfgGuidedVisitor<
 	/**
 	 * called for every cfg vertex that has no corresponding dataflow vertex.
 	 */
-	protected visitUnknown(_vertex: CfgStatementVertex | CfgExpressionVertex): void {
+	protected visitUnknown(_vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): void {
 	}
 
 	protected visitValue(_val: DataflowGraphVertexValue): void {

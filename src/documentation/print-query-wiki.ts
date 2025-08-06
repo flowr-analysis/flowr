@@ -34,8 +34,11 @@ import { executeConfigQuery } from '../queries/catalog/config-query/config-query
 import { executeSearch } from '../queries/catalog/search-query/search-query-executor';
 import { Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
-import { getTypesFromFolderAsMermaid, shortLink } from './doc-util/doc-types';
+import { getTypesFromFolder, shortLink } from './doc-util/doc-types';
 import path from 'path';
+import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
+import { printCfgCode } from './doc-util/doc-cfg';
+import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -375,6 +378,25 @@ This query provides access to the current configuration of the flowR instance. S
 	}
 });
 
+registerQueryDocumentation('df-shape', {
+	name:             'Dataframe Shape Inference Query',
+	type:             'active',
+	shortDescription: 'Returns the shapes inferred for all dataframes in the code.',
+	functionName:     executeDfShapeQuery.name,
+	functionFile:     '../queries/catalog/df-shape-query/df-shape-query-format.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- data.frame(a=1:3)\nfilter(x, FALSE)';
+		return `
+This query infers all shapes of dataframes within the code. For example, you can use:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'df-shape'
+	}], { showCode: true, collapseQuery: true })
+}
+`;
+	}
+});
+
 registerQueryDocumentation('compound', {
 	name:             'Compound Query',
 	type:             'virtual',
@@ -543,6 +565,96 @@ Here, \`resolveValue\` tells the dependency query to resolve the value of this a
 	}
 });
 
+registerQueryDocumentation('linter', {
+	name:             'Linter Query',
+	type:             'active',
+	shortDescription: 'Lints a given R script for common issues.',
+	functionName:     executeDependenciesQuery.name,
+	functionFile:     '../queries/catalog/linter-query/linter-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'read.csv("i_do_not_exist.csv")';
+		return `
+This query lints a given R script for common issues, such as missing files, unused variables, and more.
+
+In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns all smells detected:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'linter'
+	}], { showCode: false, collapseQuery: true })
+}
+
+You can also configure which rules to apply and what settings to use for these rules. 
+We welcome any feedback and suggestions for new rules on this (consider opening a [new issue](${NewIssueUrl})).
+		`;
+	}
+});
+
+registerQueryDocumentation('control-flow', {
+	name:             'Control-Flow Query',
+	type:             'active',
+	shortDescription: 'Provides the control-flow of the program.',
+	functionName:     executeControlFlowQuery.name,
+	functionFile:     '../queries/catalog/control-flow-query/control-flow-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'if(TRUE) 1 else 2';
+		return `
+This control-flow query provides you access to the control flow graph.
+
+In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the CFG:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'control-flow'
+	}], { showCode: false, collapseQuery: true, collapseResult: true })
+}
+
+You can also overwrite the simplification passes to tune the perspective. for example, if you want to have basic blocks:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'control-flow',
+		config: {
+			simplificationPasses: ['unique-cf-sets', 'to-basic-blocks']
+		}
+	}], { showCode: false, collapseResult: true })
+}
+
+this produces: 
+
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'] })}
+
+
+If, on the other hand, you want to prune dead code edges:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'control-flow',
+		config: {
+			simplificationPasses: ['unique-cf-sets', 'analyze-dead-code']
+		}
+	}], { showCode: false, collapseResult: true })
+}
+
+this produces:
+
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['analyze-dead-code'] })}
+
+
+Or, completely remove dead code:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'control-flow',
+		config: {
+			simplificationPasses: ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code']
+		}
+	}], { showCode: false, collapseResult: true })
+}
+
+this produces:
+
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['analyze-dead-code', 'remove-dead-code'] })}
+
+		`;
+	}
+});
+
 registerQueryDocumentation('location-map', {
 	name:             'Location Map Query',
 	type:             'active',
@@ -551,9 +663,8 @@ registerQueryDocumentation('location-map', {
 	functionFile:     '../queries/catalog/location-map-query/location-map-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 
-		const types = getTypesFromFolderAsMermaid({
-			files:    [path.resolve('./src/util/range.ts')],
-			typeName: 'SourceRange'
+		const types = getTypesFromFolder({
+			files: [path.resolve('./src/util/range.ts')],
 		});
 		const exampleCode = 'x + 1\nx * 2';
 		return `

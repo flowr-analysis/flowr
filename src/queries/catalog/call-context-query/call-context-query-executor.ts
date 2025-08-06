@@ -11,7 +11,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
-import { extractCFG } from '../../../control-flow/extract-cfg';
+import { extractCfg } from '../../../control-flow/extract-cfg';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
 
@@ -200,7 +200,7 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
  *    This happens during the main resolution!
  * 4. Attach `linkTo` calls to the respective calls.
  */
-export function executeCallContextQueries({ dataflow: { graph }, ast }: BasicQueryData, queries: readonly CallContextQuery[]): CallContextQueryResult {
+export function executeCallContextQueries({ dataflow: { graph }, ast, config }: BasicQueryData, queries: readonly CallContextQuery[]): CallContextQueryResult {
 	/* omit performance page load */
 	const now = Date.now();
 	/* the node id and call targets if present */
@@ -211,7 +211,7 @@ export function executeCallContextQueries({ dataflow: { graph }, ast }: BasicQue
 
 	let cfg = undefined;
 	if(requiresCfg) {
-		cfg = extractCFG(ast, graph, []);
+		cfg = extractCfg(ast, config, graph, []);
 	}
 
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);

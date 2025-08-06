@@ -8,19 +8,21 @@ import type {
 	ExecuteRequestMessage
 } from '../../../src/cli/repl/server/messages/message-repl';
 import type {
-	FileAnalysisRequestMessage, FileAnalysisResponseMessageCompact,
+	FileAnalysisRequestMessage,
+	FileAnalysisResponseMessageCompact,
 	FileAnalysisResponseMessageJson
 } from '../../../src/cli/repl/server/messages/message-analysis';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { jsonReplacer } from '../../../src/util/json';
-import { extractCFG } from '../../../src/control-flow/extract-cfg';
+import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { sanitizeAnalysisResults } from '../../../src/cli/repl/server/connection';
 import type { QueryRequestMessage, QueryResponseMessage } from '../../../src/cli/repl/server/messages/message-query';
-import { describe, assert, test } from 'vitest';
+import { assert, describe, test } from 'vitest';
 import { uncompact } from '../../../src/cli/repl/server/compact';
 import { getPlatform } from '../../../src/util/os';
+import { defaultConfigOptions } from '../../../src/config';
 
 describe('flowr', () => {
 	const skip = getPlatform() !== 'linux';
@@ -87,7 +89,7 @@ describe('flowr', () => {
 			const results = sanitizeAnalysisResults(await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 				parser:  shell,
 				request: requestFromInput('1 + 1'),
-			}).allRemainingSteps());
+			}, defaultConfigOptions).allRemainingSteps());
 
 			// cfg should not be set as we did not request it
 			assert.isUndefined(response.cfg, 'Expected the cfg to be undefined as we did not request it');
@@ -121,7 +123,7 @@ describe('flowr', () => {
 			const results = sanitizeAnalysisResults(await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 				parser:  shell,
 				request: requestFromInput('1 + 1'),
-			}).allRemainingSteps());
+			}, defaultConfigOptions).allRemainingSteps());
 
 			// cfg should not be set as we did not request it
 			assert.isUndefined(response.cfg, 'Expected the cfg to be undefined as we did not request it');
@@ -156,7 +158,7 @@ describe('flowr', () => {
 
 			const gotCfg = response.cfg;
 			assert.isDefined(gotCfg, 'Expected the cfg to be defined as we requested it');
-			const expectedCfg = extractCFG(response.results.normalize);
+			const expectedCfg = extractCfg(response.results.normalize, defaultConfigOptions);
 			assert.equal(JSON.stringify(gotCfg?.graph, jsonReplacer), JSON.stringify(expectedCfg.graph, jsonReplacer), 'Expected the cfg to be the same as the one extracted from the results');
 		}));
 

@@ -16,6 +16,7 @@ If you want to develop for _flowR_, you want to see how to [build from scratch](
 The easiest way to use _flowR_ is to install the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr).
 The extension directly includes a version of _flowR_ that can be used by default, so you can start analyzing code right away (given that you have R installed on your system).
 Please check out the marketplace entry for more information.
+This extension works with Positron as well (in general, it is available on [open-vsx](https://open-vsx.org/extension/code-inspect/vscode-flowr) as well).
 
 ## 🗒️ Using the RStudio Addin
 
@@ -50,7 +51,7 @@ For more information, see the [Interface](https://github.com/flowr-analysis/flow
 ## ⚒️ Building From Scratch
 
 To use _flowR_, you may need [_R_](https://www.r-project.org/) installed and on your path
-(this only affects the [`r-shell` engine][r-shell]).
+(this only affects the [`r-shell` engine][r-shell], which is _not_ the default).
 
 ### Installing R
 Although there are several ways to do so, there is nothing wrong with installing&nbsp;R with the help of your favorite package manager or directly from the [website](https://cloud.r-project.org/).<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a>

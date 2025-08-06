@@ -4,7 +4,6 @@ import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from './base-qu
 import { guard } from '../util/assert';
 import type { VirtualQueryArgumentsWithType } from './virtual-query/virtual-queries';
 import { SupportedVirtualQueries } from './virtual-query/virtual-queries';
-import type { Writable } from 'ts-essentials';
 import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
 import type { DataflowQuery } from './catalog/dataflow-query/dataflow-query-format';
 import { DataflowQueryDefinition } from './catalog/dataflow-query/dataflow-query-format';
@@ -30,11 +29,8 @@ import type { ConfigQuery } from './catalog/config-query/config-query-format';
 import { ConfigQueryDefinition } from './catalog/config-query/config-query-format';
 import type { SearchQuery } from './catalog/search-query/search-query-format';
 import { SearchQueryDefinition } from './catalog/search-query/search-query-format';
-import type {
-	HappensBeforeQuery } from './catalog/happens-before-query/happens-before-query-format';
-import {
-	HappensBeforeQueryDefinition
-} from './catalog/happens-before-query/happens-before-query-format';
+import type { HappensBeforeQuery } from './catalog/happens-before-query/happens-before-query-format';
+import { HappensBeforeQueryDefinition } from './catalog/happens-before-query/happens-before-query-format';
 import type { ResolveValueQuery } from './catalog/resolve-value-query/resolve-value-query-format';
 import { ResolveValueQueryDefinition } from './catalog/resolve-value-query/resolve-value-query-format';
 import type { DataflowLensQuery } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
@@ -43,12 +39,26 @@ import type { ProjectQuery } from './catalog/project-query/project-query-format'
 import { ProjectQueryDefinition } from './catalog/project-query/project-query-format';
 import type { OriginQuery } from './catalog/origin-query/origin-query-format';
 import { OriginQueryDefinition } from './catalog/origin-query/origin-query-format';
+import type { LinterQuery } from './catalog/linter-query/linter-query-format';
+import { LinterQueryDefinition } from './catalog/linter-query/linter-query-format';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { ControlFlowQuery } from './catalog/control-flow-query/control-flow-query-format';
+import { ControlFlowQueryDefinition } from './catalog/control-flow-query/control-flow-query-format';
+import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-format';
+import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
+import type { AsyncOrSync, AsyncOrSyncType, Writable } from 'ts-essentials';
 
+/**
+ * These are all queries that can be executed from within flowR
+ * {@link SynchronousQuery} are queries that can be executed synchronously, i.e., they do not return a Promise.
+ */
 export type Query = CallContextQuery
 	| ConfigQuery
 	| SearchQuery
 	| DataflowQuery
+	| ControlFlowQuery
 	| DataflowLensQuery
+	| DfShapeQuery
 	| NormalizedAstQuery
 	| IdMapQuery
 	| DataflowClusterQuery
@@ -60,28 +70,40 @@ export type Query = CallContextQuery
 	| ResolveValueQuery
 	| ProjectQuery
 	| OriginQuery
+	| LinterQuery
 	;
+
+
+export type SynchronousQuery = Exclude<Query, { executor: (query: Query) => Promise<unknown> }>;
+export type SupportedSynchronousQueryTypes = SynchronousQuery['type'];
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
 /* Each executor receives all queries of its type in case it wants to avoid repeated traversal */
-export type QueryExecutor<Query extends BaseQueryFormat, Result extends BaseQueryResult> = (data: BasicQueryData, query: readonly Query[]) => Result;
+export type QueryExecutor<Query extends BaseQueryFormat, Result extends BaseQueryResult> = (data: BasicQueryData, query: readonly Query[]) => AsyncOrSync<Result>;
 
 type SupportedQueries = {
 	[QueryType in Query['type']]: SupportedQuery<QueryType>
 }
 
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
-	executor:        QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
-	asciiSummarizer: (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
-	schema:          Joi.ObjectSchema
+	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
+	asciiSummarizer:      (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
+	schema:               Joi.ObjectSchema
+	/**
+	 * Flattens the involved query nodes to be added to a flowR search when the {@link fromQuery} function is used based on the given result after this query is executed.
+	 * If this query does not involve any nodes, an empty array can be returned.
+	 */
+	flattenInvolvedNodes: (queryResults: BaseQueryResult) => NodeId[]
 }
 
 export const SupportedQueries = {
 	'call-context':     CallContextQueryDefinition,
 	'config':           ConfigQueryDefinition,
+	'control-flow':     ControlFlowQueryDefinition,
 	'dataflow':         DataflowQueryDefinition,
 	'dataflow-lens':    DataflowLensQueryDefinition,
+	'df-shape':         DfShapeQueryDefinition,
 	'id-map':           IdMapQueryDefinition,
 	'normalized-ast':   NormalizedAstQueryDefinition,
 	'dataflow-cluster': ClusterQueryDefinition,
@@ -94,12 +116,15 @@ export const SupportedQueries = {
 	'resolve-value':    ResolveValueQueryDefinition,
 	'project':          ProjectQueryDefinition,
 	'origin':           OriginQueryDefinition,
+	'linter':           LinterQueryDefinition
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
-export type QueryResult<Type extends Query['type']> = ReturnType<typeof SupportedQueries[Type]['executor']>;
+export type QueryResult<Type extends Query['type']> = AsyncOrSync<ReturnType<typeof SupportedQueries[Type]['executor']>>;
 
-export function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, ...queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']> {
+export function executeQueriesOfSameType<SpecificQuery extends SynchronousQuery>(data: BasicQueryData, queries: readonly SpecificQuery[]): AsyncOrSyncType<QueryResult<SpecificQuery['type']>>
+export function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']>
+export function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']> {
 	guard(queries.length > 0, 'At least one query must be provided');
 	/* every query must have the same type */
 	guard(queries.every(q => q.type === queries[0].type), 'All queries must have the same type');
@@ -121,9 +146,7 @@ function groupQueriesByType<
 >(queries: readonly (QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>)[]): Record<Query['type'], Query[]> {
 	const grouped: Record<Query['type'], Query[]> = {} as Record<Query['type'], Query[]>;
 	function addQuery(query: Query) {
-		if(grouped[query.type] === undefined) {
-			grouped[query.type] = [];
-		}
+		grouped[query.type] ??= [];
 		grouped[query.type].push(query);
 	}
 	for(const query of queries) {
@@ -142,7 +165,7 @@ function groupQueriesByType<
 
 /* a record mapping the query type present to its respective result */
 export type QueryResults<Base extends SupportedQueryTypes> = {
-	readonly [QueryType in Base]: QueryResult<QueryType>
+	readonly [QueryType in Base]: Awaited<QueryResult<QueryType>>
 } & BaseQueryResult
 
 
@@ -157,20 +180,58 @@ export type Queries<
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
 > = readonly (QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>)[];
 
+
+function isPromiseLike(value: unknown): value is Promise<unknown> {
+	return value !== null && typeof value === 'object' && typeof (value as Promise<unknown>).then === 'function';
+}
+
+export function executeQueries<
+	Base extends SupportedSynchronousQueryTypes,
+	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
+>(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): QueryResults<Base>
+
 export function executeQueries<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): QueryResults<Base> {
+>(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): AsyncOrSync<QueryResults<Base>>
+/**
+ * This is the main query execution function that takes a set of queries and executes them on the given data.
+ */
+export function executeQueries<
+	Base extends SupportedQueryTypes,
+	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
+>(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): AsyncOrSync<QueryResults<Base>> {
 	const now = Date.now();
 	const grouped = groupQueriesByType(queries);
-	const results = {} as Writable<QueryResults<Base>>;
-	for(const type of Object.keys(grouped) as Base[]) {
-		results[type] = executeQueriesOfSameType(data, ...grouped[type]) as QueryResults<Base>[Base];
+	const entries = Object.entries(grouped) as [Base, typeof grouped[Base]][];
+
+	const results = entries.map(([type, group]) =>
+		[type, executeQueriesOfSameType(data, group)]
+	);
+
+
+	if(results.length === 0 || results.every(([_, r]) => !isPromiseLike(r))) {
+		// all results are synchronous, we can return them directly
+		const r = Object.fromEntries(results) as Writable<QueryResults<Base>>;
+		r['.meta'] = {
+			timing: Date.now() - now
+		};
+		return r as QueryResults<Base>;
 	}
-	results['.meta'] = {
-		timing: Date.now() - now
-	};
-	return results as QueryResults<Base>;
+
+	return Promise.all(
+		results.map(([type, result]) => Promise.resolve(result).then(
+			resolvedResult => [type, resolvedResult] as const
+		))
+	).then(resultsArray => {
+
+		const results = Object.fromEntries(resultsArray) as Writable<QueryResults<Base>>;
+
+		results['.meta'] = {
+			timing: Date.now() - now
+		};
+		return results as QueryResults<Base>;
+	});
 }
 
 export function SupportedQueriesSchema() {

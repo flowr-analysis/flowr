@@ -6,9 +6,12 @@ import Joi from 'joi';
 import { summarizeIdsIfTooLong } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SourceRange } from '../../../util/range';
+import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 
 export interface LocationMapQuery extends BaseQueryFormat {
 	readonly type: 'location-map';
+	/** Optional list of ids to filter the results by. If not provided, all ids will be included. */
+	readonly ids?: readonly SingleSlicingCriterion[];
 }
 
 export type FileId = number & { readonly __fileId?: unique symbol };
@@ -35,5 +38,7 @@ export const LocationMapQueryDefinition = {
 	},
 	schema: Joi.object({
 		type: Joi.string().valid('location-map').required().description('The type of the query.'),
-	}).description('The location map query retrieves the location of every id in the ast.')
+		ids:  Joi.array().items(Joi.string()).optional().description('Optional list of ids to filter the results by.')
+	}).description('The location map query retrieves the location of every id in the ast.'),
+	flattenInvolvedNodes: () => []
 } as const;

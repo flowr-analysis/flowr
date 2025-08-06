@@ -7,7 +7,7 @@ import { getParentDirectory } from './util/files';
 import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
-import type { DeepPartial } from 'ts-essentials';
+import type { DeepWritable } from 'ts-essentials';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -56,7 +56,7 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 	/**
 	 * Additionally search in these paths
 	 */
-	readonly searchPath:            readonly string[]
+	readonly searchPath:            string[]
 	/**
 	 * Allow to drop the first or all parts of the sourced path,
 	 * if it is relative.
@@ -86,7 +86,7 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 	 * - `foo bar.R` (original name)
 	 * - `main.R` (replaced with main.R)
 	 * - `foo_bar.R` (replaced spaces)
-	 * - `foo-bar.R` (replaced spaces and oo)
+	 * - `faa-bar.R` (replaced spaces and oo)
 	 */
 	readonly applyReplacements?:    Record<string, string>[]
 }
@@ -113,7 +113,7 @@ export interface FlowrConfigOptions extends MergeableRecord {
 	 * The engines to use for interacting with R code. Currently, supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
 	 * An empty array means all available engines will be used.
 	 */
-	readonly engines:        readonly EngineConfig[]
+	readonly engines:        EngineConfig[]
 	/**
 	 * The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from {@link engines} will be used.
 	 */
@@ -153,6 +153,37 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			 * The maximum number of iterations to perform on a single function call during slicing
 			 */
 			readonly threshold?: number
+		}
+	}
+	/**
+	 * Configuration options for abstract interpretation
+	 */
+	readonly abstractInterpretation: {
+		/**
+		 * The configuration of the shape inference for data frames
+		 */
+		readonly dataFrame: {
+			/**
+			 * The maximum number of columns names to infer for data frames before over-approximating the column names to top
+			 */
+			readonly maxColNames:       number;
+			/**
+			 * The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration
+			 */
+			readonly wideningThreshold: number;
+			/**
+			 * Configuration options for reading data frame shapes from loaded external data files, such as CSV files
+			 */
+			readonly readLoadedData: {
+				/**
+				 * Whether data frame shapes should be extracted from loaded external data files, such as CSV files
+				 */
+				readonly readExternalFiles: boolean;
+				/**
+				 * The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files
+				 */
+				readonly maxReadLines:      number;
+			}
 		}
 	}
 }
@@ -200,7 +231,7 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 		}
 	},
 	engines:       [],
-	defaultEngine: 'r-shell',
+	defaultEngine: 'tree-sitter',
 	solver:        {
 		variables:       VariableResolve.Alias,
 		evalStrings:     true,
@@ -214,6 +245,16 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 		},
 		slicer: {
 			threshold: 50
+		}
+	},
+	abstractInterpretation: {
+		dataFrame: {
+			maxColNames:       50,
+			wideningThreshold: 4,
+			readLoadedData:    {
+				readExternalFiles: true,
+				maxReadLines:      1e6
+			}
 		}
 	}
 };
@@ -261,24 +302,18 @@ export const flowrConfigFileSchema = Joi.object({
 		slicer: Joi.object({
 			threshold: Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.')
 		}).optional().description('The configuration for the slicer.')
-	}).description('How to resolve constants, constraints, cells, ...')
+	}).description('How to resolve constants, constraints, cells, ...'),
+	abstractInterpretation: Joi.object({
+		dataFrame: Joi.object({
+			maxColNames:       Joi.number().min(0).description('The maximum number of columns names to infer for data frames before over-approximating the column names to top.'),
+			wideningThreshold: Joi.number().min(1).description('The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration.'),
+			readLoadedData:    Joi.object({
+				readExternalFiles: Joi.boolean().description('Whether data frame shapes should be extracted from loaded external files, such as CSV files.'),
+				maxReadLines:      Joi.number().min(1).description('The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files.')
+			}).description('Configuration options for reading data frame shapes from loaded external data files, such as CSV files.')
+		}).description('The configuration of the shape inference for data frames.')
+	}).description('The configuration options for abstract interpretation.')
 }).description('The configuration file format for flowR.');
-
-// we don't load from a config file at all by default unless setConfigFile is called
-let configFile: string | undefined                = undefined;
-let configWorkingDirectory                        = process.cwd();
-let currentConfig: FlowrConfigOptions | undefined = undefined;
-
-export function setConfigFile(file: string | undefined, workingDirectory = process.cwd(), forceLoad = false) {
-	configFile             = file;
-	configWorkingDirectory = workingDirectory;
-
-	// reset the config so it gets reloaded
-	currentConfig = undefined;
-	if(forceLoad) {
-		getConfig();
-	}
-}
 
 export function parseConfig(jsonString: string): FlowrConfigOptions | undefined {
 	try {
@@ -296,48 +331,46 @@ export function parseConfig(jsonString: string): FlowrConfigOptions | undefined 
 	}
 }
 
-export function setConfig(config: FlowrConfigOptions) {
-	currentConfig = config;
+/**
+ * Creates a new flowr config that has the updated values.
+ */
+export function amendConfig(config: FlowrConfigOptions, amendmentFunc: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions) {
+	return amendmentFunc(cloneConfig(config) as DeepWritable<FlowrConfigOptions>);
 }
 
-export function amendConfig(amendment: DeepPartial<FlowrConfigOptions>) {
-	setConfig(deepMergeObject(getConfig(), amendment) as FlowrConfigOptions);
-	log.trace(`Amending config with ${JSON.stringify(amendment)}, resulting in ${JSON.stringify(getConfig())}}`);
+export function cloneConfig(config: FlowrConfigOptions): FlowrConfigOptions {
+	return JSON.parse(JSON.stringify(config)) as FlowrConfigOptions;
 }
 
-export function getConfig(): FlowrConfigOptions {
-	// lazy-load the config based on the current settings
-	if(currentConfig === undefined) {
-		try {
-			setConfig(loadConfigFromFile(configFile, configWorkingDirectory));
-		} catch(e) {
-			log.error(`Failed to load config: ${(e as Error).message}`);
-			setConfig(defaultConfigOptions);
-		}
+export function getConfig(configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfigOptions {
+	try {
+		return loadConfigFromFile(configFile, configWorkingDirectory);
+	} catch(e) {
+		log.error(`Failed to load config: ${(e as Error).message}`);
+		return defaultConfigOptions;
 	}
-	return currentConfig as FlowrConfigOptions;
 }
 
-export function getEngineConfig<T extends EngineConfig['type']>(engine: T): EngineConfig & { type: T } | undefined {
-	const config = getConfig().engines;
-	if(!config.length) {
+export function getEngineConfig<T extends EngineConfig['type']>(config: FlowrConfigOptions, engine: T): EngineConfig & { type: T } | undefined {
+	const engines = config.engines;
+	if(!engines.length) {
 		return defaultEngineConfigs[engine];
 	} else {
-		return config.find(e => e.type == engine) as EngineConfig & { type: T } | undefined;
+		return engines.find(e => e.type == engine) as EngineConfig & { type: T } | undefined;
 	}
 }
 
-function getPointerAnalysisThreshold(): number | 'unlimited' | 'disabled' {
-	const config = getConfig().solver.pointerTracking;
-	if(typeof config === 'object') {
-		return config.maxIndexCount;
+function getPointerAnalysisThreshold(config: FlowrConfigOptions): number | 'unlimited' | 'disabled' {
+	const pointerTracking = config.solver.pointerTracking;
+	if(typeof pointerTracking === 'object') {
+		return pointerTracking.maxIndexCount;
 	} else {
-		return config ? 'unlimited' : 'disabled';
+		return pointerTracking ? 'unlimited' : 'disabled';
 	}
 }
 
-export function isOverPointerAnalysisThreshold(count: number): boolean {
-	const threshold = getPointerAnalysisThreshold();
+export function isOverPointerAnalysisThreshold(config: FlowrConfigOptions, count: number): boolean {
+	const threshold = getPointerAnalysisThreshold(config);
 	return threshold !== 'unlimited' && (threshold === 'disabled' || count > threshold);
 }
 

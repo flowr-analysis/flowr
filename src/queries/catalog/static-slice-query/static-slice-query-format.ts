@@ -10,9 +10,9 @@ import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeStaticSliceQuery } from './static-slice-query-executor';
-
 import { summarizeIdsIfTooLong } from '../../query-print';
 import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** Calculates and returns all clusters encountered in the dataflow graph. */
 export interface StaticSliceQuery extends BaseQueryFormat {
@@ -70,5 +70,13 @@ export const StaticSliceQueryDefinition = {
 		noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),
 		noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?'),
 		direction:        Joi.string().valid(...Object.values(SliceDirection)).optional().description('The direction to slice in. Defaults to backward slicing if unset.')
-	}).description('Slice query used to slice the dataflow graph')
+	}).description('Slice query used to slice the dataflow graph'),
+	flattenInvolvedNodes: (queryResults: BaseQueryResult) => {
+		const flattened: NodeId[] = [];
+		const out = queryResults as QueryResults<'static-slice'>['static-slice'];
+		for(const [_, obj] of Object.entries(out.results)) {
+			flattened.push(...obj.slice.result);
+		}
+		return flattened;
+	}
 } as const satisfies SupportedQuery<'static-slice'>;

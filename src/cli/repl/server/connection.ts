@@ -1,7 +1,8 @@
 import { sendMessage } from './send';
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate';
 import type {
-	FileAnalysisRequestMessage, FileAnalysisResponseMessageCompact,
+	FileAnalysisRequestMessage,
+	FileAnalysisResponseMessageCompact,
 	FileAnalysisResponseMessageNQuads
 } from './messages/message-analysis';
 import { requestAnalysisMessage } from './messages/message-analysis';
@@ -11,11 +12,15 @@ import type { FlowrErrorMessage } from './messages/message-error';
 import type { Socket } from './net';
 import { serverLog } from './server';
 import type { ILogObj, Logger } from 'tslog';
-import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './messages/message-repl';
+import type {
+	ExecuteEndMessage,
+	ExecuteIntermediateResponseMessage,
+	ExecuteRequestMessage
+} from './messages/message-repl';
 import { requestExecuteReplExpressionMessage } from './messages/message-repl';
 import { replProcessAnswer } from '../core';
 import { LogLevel } from '../../../util/log';
-import { cfg2quads, extractCFG } from '../../../control-flow/extract-cfg';
+import { cfg2quads, extractCfg } from '../../../control-flow/extract-cfg';
 import type { QuadSerializationConfiguration } from '../../../util/quads';
 import { defaultQuadIdGenerator } from '../../../util/quads';
 import { printStepResult, StepOutputFormat } from '../../../core/print/print';
@@ -46,6 +51,7 @@ import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 import type { PipelineExecutor } from '../../../core/pipeline-executor';
 import { compact } from './compact';
 import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
+import type { FlowrConfigOptions } from '../../../config';
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -57,6 +63,7 @@ export class FlowRServerConnection {
 	private readonly name:                string;
 	private readonly logger:              Logger<ILogObj>;
 	private readonly allowRSessionAccess: boolean;
+	private readonly config:              FlowrConfigOptions;
 
 	// maps token to information
 	private readonly fileMap = new Map<string, {
@@ -65,7 +72,8 @@ export class FlowRServerConnection {
 	}>();
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
-	constructor(socket: Socket, name: string, parser: KnownParser, allowRSessionAccess: boolean) {
+	constructor(socket: Socket, name: string, parser: KnownParser, allowRSessionAccess: boolean, config: FlowrConfigOptions) {
+		this.config = config;
 		this.socket = socket;
 		this.parser = parser;
 		this.name = name;
@@ -159,7 +167,7 @@ export class FlowRServerConnection {
 	private async sendFileAnalysisResponse(slicer: PipelineExecutor<Pipeline>, results: Partial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>>, message: FileAnalysisRequestMessage): Promise<void> {
 		let cfg: ControlFlowInformation | undefined = undefined;
 		if(message.cfg) {
-			cfg = extractCFG(results.normalize as NormalizedAst, results.dataflow?.graph);
+			cfg = extractCfg(results.normalize as NormalizedAst, this.config, results.dataflow?.graph);
 		}
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() });
@@ -219,7 +227,7 @@ export class FlowRServerConnection {
 		const slicer = createSlicePipeline(this.parser, {
 			request,
 			criterion: [] // currently unknown
-		});
+		}, this.config);
 		if(message.filetoken) {
 			this.logger.info(`Storing file token ${message.filetoken}`);
 			this.fileMap.set(message.filetoken, {
@@ -296,7 +304,7 @@ export class FlowRServerConnection {
 			});
 		};
 
-		void replProcessAnswer({
+		void replProcessAnswer(this.config, {
 			formatter: request.ansi ? ansiFormatter : voidFormatter,
 			stdout:    msg => out('stdout', msg),
 			stderr:    msg => out('stderr', msg)
@@ -368,11 +376,20 @@ export class FlowRServerConnection {
 		const { dataflow: dfg, normalize: ast } = fileInformation.pipeline.getResults(true);
 		guard(dfg !== undefined, `Dataflow graph must be present (request: ${request.filetoken})`);
 		guard(ast !== undefined, `AST must be present (request: ${request.filetoken})`);
-		const results = executeQueries({ dataflow: dfg, ast }, request.query);
-		sendMessage<QueryResponseMessage>(this.socket, {
-			type: 'response-query',
-			id:   request.id,
-			results
+		void Promise.resolve(executeQueries({ dataflow: dfg, ast, config: this.config }, request.query)).then(results => {
+			sendMessage<QueryResponseMessage>(this.socket, {
+				type: 'response-query',
+				id:   request.id,
+				results
+			});
+		}).catch(e => {
+			this.logger.error(`[${this.name}] Error while executing query: ${String(e)}`);
+			sendMessage<FlowrErrorMessage>(this.socket, {
+				id:     request.id,
+				type:   'error',
+				fatal:  false,
+				reason: `Error while executing query: ${String(e)}`
+			});
 		});
 	}
 }

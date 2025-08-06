@@ -1,18 +1,14 @@
-import { afterEach, beforeEach, describe } from 'vitest';
+import { describe } from 'vitest';
 import { assertContainerIndicesDefinition, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { Q } from '../../../../src/search/flowr-search-builder';
-import { defaultConfigOptions, setConfig } from '../../../../src/config';
+import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 
 describe.sequential('Vector Definition', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'unnamed-arguments', 'subsetting-multiple'] as const;
-
-	beforeEach(() => {
-		setConfig({ ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
-	});
-
-	afterEach(() => {
-		setConfig(defaultConfigOptions);
+	const config = amendConfig(defaultConfigOptions, c => {
+		(c.solver.pointerTracking as boolean) = true;
+		return c;
 	});
 
 	describe('Simple definition', () => {
@@ -26,7 +22,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 3, },
 				{ identifier: { index: 3 }, nodeId: 5, },
 				{ identifier: { index: 4 }, nodeId: 7, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -39,7 +37,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 3, },
 				{ identifier: { index: 3 }, nodeId: 5, },
 				{ identifier: { index: 4 }, nodeId: 7, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -52,23 +52,23 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 3, },
 				{ identifier: { index: 3 }, nodeId: 5, },
 				{ identifier: { index: 4 }, nodeId: 7, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		describe('Skip if index threshold', () => {
-			beforeEach(() => {
-				setConfig({ ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, pointerTracking: { maxIndexCount: 2 } } });
-			});
-
-			afterEach(() => {
-				setConfig(defaultConfigOptions);
-			});
 			assertContainerIndicesDefinition(
 				label('Over the limit (vector)', basicCapabilities),
 				shell,
 				'c(TRUE, FALSE, TRUE, FALSE)',
 				Q.criterion('1@c'),
-				undefined
+				undefined,
+				undefined,
+				amendConfig(defaultConfigOptions, c => {
+					(c.solver.pointerTracking as { maxIndexCount: number }) = { maxIndexCount: 2 };
+					return c;
+				})
 			);
 		});
 	});
@@ -84,7 +84,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 4, },
 				{ identifier: { index: 3 }, nodeId: 8, },
 				{ identifier: { index: 4 }, nodeId: 10, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -97,7 +99,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 4, },
 				{ identifier: { index: 3 }, nodeId: 6, },
 				{ identifier: { index: 4 }, nodeId: 10, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -110,7 +114,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 3, },
 				{ identifier: { index: 3 }, nodeId: 6, },
 				{ identifier: { index: 4 }, nodeId: 8, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -123,7 +129,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 4, },
 				{ identifier: { index: 3 }, nodeId: 9, },
 				{ identifier: { index: 4 }, nodeId: 11, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -136,7 +144,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 5, },
 				{ identifier: { index: 3 }, nodeId: 8, },
 				{ identifier: { index: 4 }, nodeId: 10, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -148,7 +158,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 			[
 				{ identifier: { index: 1 }, nodeId: 2, },
 				{ identifier: { index: 2 }, nodeId: 4, },
-			]
+			],
+			undefined,
+			config
 		);
 	});
 
@@ -165,7 +177,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 7, },
 				{ identifier: { index: 3 }, nodeId: 10, },
 				{ identifier: { index: 4 }, nodeId: 12, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -178,7 +192,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 6, },
 				{ identifier: { index: 3 }, nodeId: 9, },
 				{ identifier: { index: 4 }, nodeId: 12, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -191,7 +207,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 3, },
 				{ identifier: { index: 3 }, nodeId: 8, },
 				{ identifier: { index: 4 }, nodeId: 11, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -204,7 +222,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 7, },
 				{ identifier: { index: 3 }, nodeId: 13, },
 				{ identifier: { index: 4 }, nodeId: 16, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -216,7 +236,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 			[
 				{ identifier: { index: 1 }, nodeId: 4, },
 				{ identifier: { index: 2 }, nodeId: 7, },
-			]
+			],
+			undefined,
+			config
 		);
 	});
 
@@ -231,7 +253,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 4, },
 				{ identifier: { index: 3 }, nodeId: 8, },
 				{ identifier: { index: 4 }, nodeId: 10, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -244,7 +268,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 4, },
 				{ identifier: { index: 3 }, nodeId: 6, },
 				{ identifier: { index: 4 }, nodeId: 10, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -257,7 +283,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 3, },
 				{ identifier: { index: 3 }, nodeId: 6, },
 				{ identifier: { index: 4 }, nodeId: 8, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -270,7 +298,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 2 }, nodeId: 4, },
 				{ identifier: { index: 3 }, nodeId: 9, },
 				{ identifier: { index: 4 }, nodeId: 11, },
-			]
+			],
+			undefined,
+			config
 		);
 
 		assertContainerIndicesDefinition(
@@ -282,7 +312,9 @@ describe.sequential('Vector Definition', withShell(shell => {
 			[
 				{ identifier: { index: 1 }, nodeId: 2, },
 				{ identifier: { index: 2 }, nodeId: 4, },
-			]
+			],
+			undefined,
+			config
 		);
 	});
 }));

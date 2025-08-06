@@ -16,8 +16,10 @@ import type { ParseStepOutput } from '../../../../r-bridge/parser';
 
 export interface NormalizeRequiredInput {
 	/** This id generator is only necessary if you want to retrieve a dataflow from the parsed R AST, it determines the id generator to use and by default uses the {@link deterministicCountingIdGenerator}*/
-	readonly getId?:  IdGenerator<NoInfo>
-	readonly request: RParseRequests
+	readonly getId?:             IdGenerator<NoInfo>
+	readonly request:            RParseRequests
+	/** assume the input stems from a file and use the given path as the file path for the AST */
+	readonly overwriteFilePath?: string
 }
 
 export function getCurrentRequestFile(request: RParseRequests | undefined): string | undefined {
@@ -31,7 +33,7 @@ export function getCurrentRequestFile(request: RParseRequests | undefined): stri
 }
 
 function processor(results: { parse?: ParseStepOutput<string> }, input: Partial<NormalizeRequiredInput>) {
-	return normalize(results.parse as ParseStepOutput<string>, input.getId, getCurrentRequestFile(input.request));
+	return normalize(results.parse as ParseStepOutput<string>, input.getId, input.overwriteFilePath ?? getCurrentRequestFile(input.request));
 }
 
 export const NORMALIZE = {

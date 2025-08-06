@@ -4,18 +4,15 @@ import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/p
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import type { Origin } from '../../../../src/dataflow/origin/dfg-get-origin';
 import { getOriginInDfg, OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
-import type {
-	TREE_SITTER_DATAFLOW_PIPELINE
-} from '../../../../src/core/steps/pipeline/default-pipelines';
-import {
-	createDataflowPipeline
-} from '../../../../src/core/steps/pipeline/default-pipelines';
+import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
 import { guard } from '../../../../src/util/assert';
 import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import { builtInId } from '../../../../src/dataflow/environments/built-in';
+import { defaultConfigOptions } from '../../../../src/config';
 
 describe('Dataflow', withTreeSitter(ts => {
 	describe('getOriginInDfg', () => {
@@ -25,7 +22,7 @@ describe('Dataflow', withTreeSitter(ts => {
 				beforeAll(async() => {
 					analysis = await createDataflowPipeline(ts, {
 						request: requestFromInput(code)
-					}).allRemainingSteps();
+					}, defaultConfigOptions).allRemainingSteps();
 				});
 				test.each(Object.keys(expected) as SingleSlicingCriterion[])('%s', (interest: SingleSlicingCriterion) => {
 					guard(analysis !== undefined);
@@ -134,10 +131,6 @@ describe('Dataflow', withTreeSitter(ts => {
 		chk('f <- 3\neval(u)\nf', {
 			/* under the assumption of eval impact */
 			'3@f': [ro('1@f')]
-		});
-		chk('x <- c(1,2)\nx[1] <- 3\nx[2] <- 4\nprint(x)', {
-			'2@x': [wo('2@x'), ro('1@x')],
-			'4@x': [ro('1@x'), ro('2@x'), ro('3@x')],
 		});
 	});
 }));

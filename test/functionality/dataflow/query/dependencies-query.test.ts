@@ -1,4 +1,3 @@
-import { withShell } from '../../_helper/shell';
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
@@ -10,6 +9,7 @@ import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/proce
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 
 import { describe } from 'vitest';
+import { withTreeSitter } from '../../_helper/shell';
 
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { libraries: [], sourcedFiles: [], readData: [], writtenData: [] };
 
@@ -27,7 +27,7 @@ function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Part
 	return out;
 }
 
-describe.sequential('Dependencies Query', withShell(shell => {
+describe('Dependencies Query', withTreeSitter(parser => {
 	/** handles slicing criteria for the node ids */
 	function testQuery(
 		name: string,
@@ -35,7 +35,7 @@ describe.sequential('Dependencies Query', withShell(shell => {
 		expected: Partial<DependenciesQueryResult>,
 		query: Partial<DependenciesQuery> = {}
 	): void {
-		assertQuery(label(name), shell, code, [{ type: 'dependencies', ...query }], ({ normalize }) => ({
+		assertQuery(label(name), parser, code, [{ type: 'dependencies', ...query }], ({ normalize }) => ({
 			dependencies: {
 				...emptyDependencies,
 				...decodeIds(expected, normalize.idMap)
@@ -73,7 +73,7 @@ describe.sequential('Dependencies Query', withShell(shell => {
 			{ nodeId: '1@require', functionName: 'require', libraryName: 'c' }
 		] });
 
-		testQuery('Given Require with Character Only', 'require(c, character.only=TRUE)', { libraries: [
+		testQuery('Given Require with character only', 'require(c, character.only=TRUE)', { libraries: [
 			{ nodeId: '1@require', functionName: 'require', libraryName: 'unknown', lexemeOfArgument: 'c' }
 		] });
 
@@ -100,14 +100,90 @@ describe.sequential('Dependencies Query', withShell(shell => {
 			{ nodeId: '2@y', functionName: ':::', libraryName: 'bar' }
 		] });
 
-
-		/* currently not supported */
-		testQuery('Using a vector to load', 'lapply(c("a", "b", "c"), library, character.only = TRUE)', { libraries: [
-			/* { nodeId: '1@library', functionName: 'library', libraryName: 'a' },
-			{ nodeId: '1@library', functionName: 'library', libraryName: 'b' },
-			{ nodeId: '1@library', functionName: 'library', libraryName: 'c' } */
-			{ nodeId: '1@library', functionName: 'library', libraryName: 'unknown', lexemeOfArgument: 'c("a", "b", "c")' }
+		testQuery('Using a vector without character.only', 'lapply(c("a", "b", "c"), library)', { libraries: [
+			{ nodeId: '1@library', functionName: 'library', libraryName: '"a"' },
+			{ nodeId: '1@library', functionName: 'library', libraryName: '"b"' },
+			{ nodeId: '1@library', functionName: 'library', libraryName: '"c"' }
 		] });
+
+		testQuery('Using a vector to load (missing elements)', 'lapply(c("x", u), library, character.only = TRUE)', { libraries: [
+			// We currently don't support resolving that "x" and some unknown library is loaded
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'unknown', lexemeOfArgument: 'c("x", u)' },
+		] });
+
+		testQuery('Using an aliased vector to load (missing elements)', 'x <- c("x", u)\nlapply(x, library, character.only = TRUE)', { libraries: [
+			// We currently don't support resolving that "x" and some unknown library is loaded
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'unknown', lexemeOfArgument: 'x' },
+		] });
+
+		testQuery('Using a vector to load', 'lapply(c("foo", "bar", "baz"), library, character.only = TRUE)', { libraries: [
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'foo' },
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'bar' },
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'baz' }
+		] });
+
+		testQuery('Using a vector to load by variable', 'v <- c("a", "b", "c")\nlapply(v, library, character.only = TRUE)', { libraries: [
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'a' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'c' }
+		] });
+		
+		testQuery('Intermix another library call', 'library(foo)\nv <- c("a", "b", "c")\nlapply(v, library, character.only = TRUE)', {
+			libraries: [
+				{ nodeId: '1@library', functionName: 'library', libraryName: 'foo' },
+				{ nodeId: '3@library', functionName: 'library', libraryName: 'a' },
+				{ nodeId: '3@library', functionName: 'library', libraryName: 'b' },
+				{ nodeId: '3@library', functionName: 'library', libraryName: 'c' }
+			]
+		});
+		/* // not until we are able to track the side effects of loading a library
+			testQuery('Intermix another library call', 'v <- c("a", "b", "c")\nlibrary(foo)\nlapply(v, library, character.only = TRUE)', {
+				libraries: [
+					{ nodeId: '1@library', functionName: 'library', libraryName: 'foo' },
+					{ nodeId: '3@library', functionName: 'library', libraryName: 'a' },
+					{ nodeId: '3@library', functionName: 'library', libraryName: 'b' },
+					{ nodeId: '3@library', functionName: 'library', libraryName: 'c' }
+				]
+			}); */
+
+		testQuery('Using a nested vector to load', 'lapply(c(c("a", "b"), "c"), library, character.only = TRUE)', { libraries: [
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'a' },
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'b' },
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'c' }
+		] });
+
+		testQuery('Using a nested vector by variable', 'v <- c(c("a", "b"), "c")\nlapply(v, library, character.only = TRUE)', { libraries: [
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'a' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'c' }
+		] });
+
+		testQuery('Using a vector by variable (with distractor)', 'if(u) {v <- 42}\nv <- c(c("a", "b"), "c")\nc <- 4\nlapply(v, library, character.only = TRUE)', { libraries: [
+			{ nodeId: '4@library', functionName: 'library', libraryName: 'a' },
+			{ nodeId: '4@library', functionName: 'library', libraryName: 'b' },
+			{ nodeId: '4@library', functionName: 'library', libraryName: 'c' }
+		] });
+
+		testQuery('Using a vector (but c is redefined)', 'c <- print\nv <- c(c("a", "b"), "c")\nlapply(v, library, character.only = TRUE)', { libraries: [
+			{ nodeId: '3@library', functionName: 'library', libraryName: 'unknown', lexemeOfArgument: 'v' },
+		] });
+
+		testQuery('Using a vector by variable (real world)', 'packages <- c("ggplot2", "dplyr", "tidyr")\nlapply(packages, library, character.only = TRUE)', { libraries: [
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'ggplot2' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'dplyr' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'tidyr' }
+		] });
+
+		testQuery('Using a deeply nested vector by variable', 'v <- c(c(c("a", c("b")), "c"), "d", c("e", c("f", "g")))\nlapply(v, library, character.only = TRUE)', { libraries: [
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'a' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'c' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'd' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'e' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'f' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'g' }
+		] });
+
 
 		describe('Custom', () => {
 			const readCustomFile: Partial<DependenciesQuery> = {

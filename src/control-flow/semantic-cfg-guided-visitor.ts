@@ -1,14 +1,9 @@
 import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from './control-flow-graph';
 
-import type { DataflowInformation } from '../dataflow/info';
-
 
 import type { DataflowCfgGuidedVisitorConfiguration } from './dfg-cfg-guided-visitor';
 import { DataflowAwareCfgGuidedVisitor } from './dfg-cfg-guided-visitor';
-import type {
-	NormalizedAst,
-	ParentInformation
-} from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SyntaxCfgGuidedVisitorConfiguration } from './syntax-cfg-guided-visitor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { Origin } from '../dataflow/origin/dfg-get-origin';
@@ -24,21 +19,23 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RLogical } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
-import type { FunctionArgument } from '../dataflow/graph/graph';
+import type { DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
 import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { BuiltInProcessorMapper } from '../dataflow/environments/built-in';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-
+import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { FlowrConfigOptions } from '../config';
 
 export interface SemanticCfgGuidedVisitorConfiguration<
 	OtherInfo = NoInfo,
-	Cfg extends ControlFlowInformation    = ControlFlowInformation,
-	Ast extends NormalizedAst<OtherInfo>  = NormalizedAst<OtherInfo>,
-	Dfg extends DataflowInformation       = DataflowInformation
-> extends DataflowCfgGuidedVisitorConfiguration<Cfg, Dfg>, SyntaxCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast> {
+	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	Ast extends NormalizedAst<OtherInfo>       = NormalizedAst<OtherInfo>,
+	Dfg extends DataflowGraph                  = DataflowGraph
+> extends DataflowCfgGuidedVisitorConfiguration<ControlFlow, Dfg>, SyntaxCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast> {
+	readonly flowrConfig: FlowrConfigOptions;
 }
 
 /**
@@ -66,17 +63,17 @@ export interface SemanticCfgGuidedVisitorConfiguration<
  */
 export class SemanticCfgGuidedVisitor<
 	OtherInfo = NoInfo,
-    Cfg extends ControlFlowInformation   = ControlFlowInformation,
-	Ast extends NormalizedAst<OtherInfo> = NormalizedAst<OtherInfo>,
-	Dfg extends DataflowInformation      = DataflowInformation,
-	Config extends SemanticCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast, Dfg> = SemanticCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast, Dfg>
-> extends DataflowAwareCfgGuidedVisitor<Cfg, Dfg, Config> {
+    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	Ast extends NormalizedAst<OtherInfo>       = NormalizedAst<OtherInfo>,
+	Dfg extends DataflowGraph                  = DataflowGraph,
+	Config extends SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg> = SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg>
+> extends DataflowAwareCfgGuidedVisitor<ControlFlow, Dfg, Config> {
 
 	/**
 	 * A helper function to get the normalized AST node for the given id or fail if it does not exist.
 	 */
-	protected getNormalizedAst(id: NodeId): RNode<OtherInfo & ParentInformation> | undefined {
-		return this.config.normalizedAst.idMap.get(id);
+	protected getNormalizedAst(id: NodeId | undefined): RNode<OtherInfo & ParentInformation> | undefined {
+		return id !== undefined ? this.config.normalizedAst.idMap.get(id) : undefined;
 	}
 
 	/**
@@ -94,8 +91,15 @@ export class SemanticCfgGuidedVisitor<
 			case RType.Number:  return this.onNumberConstant({ vertex: val, node: astNode });
 			case RType.Logical: return this.onLogicalConstant({ vertex: val, node: astNode });
 			case RType.Symbol:
-				guard(astNode.lexeme === 'NULL', `Expected NULL constant, got ${astNode.lexeme}`);
-				return this.onNullConstant({ vertex: val, node: astNode as RSymbol<OtherInfo & ParentInformation, 'NULL'> });
+				if(astNode.lexeme === 'NULL') {
+					return this.onNullConstant({
+						vertex: val,
+						node:   astNode as RSymbol<OtherInfo & ParentInformation, 'NULL'>
+					});
+				} else {
+					return this.onSymbolConstant({ vertex: val, node: astNode as RSymbol<OtherInfo & ParentInformation> });
+				}
+
 		}
 		guard(false, `Unexpected value type ${astNode.type} for value ${astNode.lexeme}`);
 	}
@@ -136,7 +140,12 @@ export class SemanticCfgGuidedVisitor<
 	 */
 	protected override visitFunctionDefinition(vertex: DataflowGraphVertexFunctionDefinition): void {
 		super.visitFunctionDefinition(vertex);
-		this.onFunctionDefinition({ vertex });
+		const ast = this.getNormalizedAst(vertex.id);
+		if(ast?.type === RType.FunctionDefinition) {
+			this.onFunctionDefinition({ vertex, parameters: ast.parameters.map(p => p.info.id) });
+		} else {
+			this.onFunctionDefinition({ vertex });
+		}
 	}
 
 	/**
@@ -211,8 +220,25 @@ export class SemanticCfgGuidedVisitor<
 				return this.onSourceCall({ call });
 			case 'builtin:access':
 				return this.onAccessCall({ call });
-			case 'builtin:if-then-else':
-				return this.onIfThenElseCall({ call, condition: call.args[0], then: call.args[1], else: call.args[2] });
+			case 'builtin:if-then-else': {
+				// recover dead arguments from ast
+				const ast = this.getNormalizedAst(call.id);
+				if(!ast || ast.type !== RType.IfThenElse) {
+					return this.onIfThenElseCall({
+						call,
+						condition: call.args[0] === EmptyArgument ? undefined : call.args[0].nodeId,
+						then:      call.args[1] === EmptyArgument ? undefined : call.args[1].nodeId,
+						else:      call.args[2] === EmptyArgument ? undefined : call.args[2].nodeId
+					});
+				} else {
+					return this.onIfThenElseCall({
+						call,
+						condition: ast.condition.info.id,
+						then:      ast.then.info.id,
+						else:      ast.otherwise?.info.id
+					});
+				}
+			}
 			case 'builtin:get':
 				return this.onGetCall({ call });
 			case 'builtin:rm':
@@ -223,11 +249,11 @@ export class SemanticCfgGuidedVisitor<
 				return this.onVectorCall({ call });
 			case 'table:assign':
 			case 'builtin:assignment': {
-				const outgoing = this.config.dataflow.graph.outgoingEdges(call.id);
+				const outgoing = this.config.dfg.outgoingEdges(call.id);
 				if(outgoing) {
 					const target = [...outgoing.entries()].filter(([, e]) => edgeIncludesType(e.types, EdgeType.Returns));
 					if(target.length === 1) {
-						const targetOut = this.config.dataflow.graph.outgoingEdges(target[0][0]);
+						const targetOut = this.config.dfg.outgoingEdges(target[0][0]);
 						if(targetOut) {
 							const source = [...targetOut.entries()].filter(([t, e]) => edgeIncludesType(e.types, EdgeType.DefinedBy) && t !== call.id);
 							if(source.length === 1) {
@@ -239,9 +265,15 @@ export class SemanticCfgGuidedVisitor<
 				return this.onAssignmentCall({ call, target: undefined, source: undefined });
 			}
 			case 'builtin:special-bin-op':
-				return this.onSpecialBinaryOpCall({ call });
+				if(call.args.length !== 2) {
+					return this.onSpecialBinaryOpCall({ call });
+				}
+				return this.onSpecialBinaryOpCall({ call, lhs: call.args[0], rhs: call.args[1] });
 			case 'builtin:pipe':
-				return this.onPipeCall({ call });
+				if(call.args.length !== 2) {
+					return this.onPipeCall({ call });
+				}
+				return this.onPipeCall({ call, lhs: call.args[0], rhs: call.args[1] });
 			case 'builtin:quote':
 				return this.onQuoteCall({ call });
 			case 'builtin:for-loop':
@@ -251,11 +283,11 @@ export class SemanticCfgGuidedVisitor<
 			case 'builtin:while-loop':
 				return this.onWhileLoopCall({ call, condition: call.args[0], body: call.args[1] });
 			case 'builtin:replacement': {
-				const outgoing = this.config.dataflow.graph.outgoingEdges(call.id);
+				const outgoing = this.config.dfg.outgoingEdges(call.id);
 				if(outgoing) {
 					const target = [...outgoing.entries()].filter(([, e]) => edgeIncludesType(e.types, EdgeType.Returns));
 					if(target.length === 1) {
-						const targetOut = this.config.dataflow.graph.outgoingEdges(target[0][0]);
+						const targetOut = this.config.dfg.outgoingEdges(target[0][0]);
 						if(targetOut) {
 							const source = [...targetOut.entries()].filter(([t, e]) => edgeIncludesType(e.types, EdgeType.DefinedBy) && t !== call.id);
 							if(source.length === 1) {
@@ -274,18 +306,26 @@ export class SemanticCfgGuidedVisitor<
 		}
 	}
 
-	protected onProgram(_data: RExpressionList<OtherInfo>) {
-	}
+	/**
+	 * This event is called for the root program node, i.e., the program that is being analyzed.
+	 *
+	 * @protected
+	 */
+	protected onProgram(_data: RExpressionList<OtherInfo>) {}
 
 
 	/**
 	 * A helper function to request the {@link getOriginInDfg|origins} of the given node.
 	 */
 	protected getOrigins(id: NodeId): Origin[] | undefined {
-		return getOriginInDfg(this.config.dataflow.graph, id);
+		return getOriginInDfg(this.config.dfg, id);
 	}
 
-	/** Called for every occurrence of a `NULL` in the program. */
+	/**
+	 * Called for every occurrence of a `NULL` in the program.
+	 *
+	 * For other symbols that are not referenced as a variable, see {@link SemanticCfgGuidedVisitor#onSymbolConstant|`onSymbolConstant`}.
+	 */
 	protected onNullConstant(_data: { vertex: DataflowGraphVertexValue, node: RSymbol<OtherInfo & ParentInformation, 'NULL'> }) {}
 
 	/**
@@ -310,6 +350,16 @@ export class SemanticCfgGuidedVisitor<
 	protected onLogicalConstant(_data: { vertex: DataflowGraphVertexValue, node: RLogical }) {}
 
 	/**
+	 * Called for every constant symbol value in the program.
+	 *
+	 * For example, `foo` in `library(foo)` or `a` in `l$a`. This most likely happens as part of non-standard-evaluation, i.e., the symbol is not evaluated to a value,
+	 * but used as a symbol in and of itself.
+	 *
+	 * Please note, that due to its special behaviors, `NULL` is handled in {@link SemanticCfgGuidedVisitor#onNullConstant|`onNullConstant`} and not here.
+	 */
+	protected onSymbolConstant(_data: { vertex: DataflowGraphVertexValue, node: RSymbol }) {}
+
+	/**
 	 * Called for every variable that is read within the program.
 	 * You can use {@link getOrigins} to get the origins of the variable.
 	 *
@@ -331,7 +381,7 @@ export class SemanticCfgGuidedVisitor<
 	 *
 	 * For example, `function(x) { x + 1 }` in `lapply(1:10, function(x) { x + 1 })`.
 	 */
-	protected onFunctionDefinition(_data: { vertex: DataflowGraphVertexFunctionDefinition }) {}
+	protected onFunctionDefinition(_data: { vertex: DataflowGraphVertexFunctionDefinition, parameters?: readonly NodeId[] }) {}
 
 	/**
 	 * This event triggers for every anonymous call within the program.
@@ -362,7 +412,7 @@ export class SemanticCfgGuidedVisitor<
 	 *
 	 * This explicitly will not trigger for scenarios in which the function has no name (i.e., if it is anonymous).
 	 * For such cases, you may rely on the {@link SemanticCfgGuidedVisitor#onUnnamedCall|`onUnnamedCall`} event.
-	 * The main reason for this separation is part of flowR's handling of these functions, as anonmyous calls cannot be resolved using the active environment.
+	 * The main reason for this separation is part of flowR's handling of these functions, as anonymous calls cannot be resolved using the active environment.
 	 *
 	 * @protected
 	 */
@@ -419,16 +469,14 @@ export class SemanticCfgGuidedVisitor<
 	 *
 	 * @protected
 	 */
-	protected onAccessCall(_data: { call: DataflowGraphVertexFunctionCall }) {
-	}
+	protected onAccessCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 
 	/**
 	 * This event triggers for every call to the `if` function, which is used to implement the `if-then-else` control flow.
 	 *
 	 * @protected
 	 */
-	protected onIfThenElseCall(_data: { call: DataflowGraphVertexFunctionCall, condition: FunctionArgument, then: FunctionArgument, else: FunctionArgument | undefined }) {
-	}
+	protected onIfThenElseCall(_data: { call: DataflowGraphVertexFunctionCall, condition: NodeId | undefined, then: NodeId | undefined, else: NodeId | undefined }) {}
 
 	/**
 	 * This event triggers for every call to the `get` function, which is used to access variables in the global environment.
@@ -482,14 +530,14 @@ export class SemanticCfgGuidedVisitor<
 	 *
 	 * @protected
 	 */
-	protected onSpecialBinaryOpCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onSpecialBinaryOpCall(_data: { call: DataflowGraphVertexFunctionCall, lhs?: FunctionArgument, rhs?: FunctionArgument }) {}
 
 	/**
 	 * This event triggers for every call to R's pipe operator, i.e., for every call to `|>`.
 	 *
 	 * @protected
 	 */
-	protected onPipeCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onPipeCall(_data: { call: DataflowGraphVertexFunctionCall, lhs?: FunctionArgument, rhs?: FunctionArgument }) {}
 
 
 	/**

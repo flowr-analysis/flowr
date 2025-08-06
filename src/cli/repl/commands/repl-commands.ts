@@ -12,9 +12,9 @@ import {
 	dataflowSimplifiedCommand,
 	dataflowStarCommand
 } from './repl-dataflow';
-import { controlflowBBCommand, controlflowBBStarCommand, controlflowCommand, controlflowStarCommand } from './repl-cfg';
+import { controlflowBbCommand, controlflowBbStarCommand, controlflowCommand, controlflowStarCommand } from './repl-cfg';
 import type { OutputFormatter } from '../../../util/text/ansi';
-import { italic , bold } from '../../../util/text/ansi';
+import { bold, italic } from '../../../util/text/ansi';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { guard } from '../../../util/assert';
 import { scripts } from '../../common/scripts-info';
@@ -52,10 +52,10 @@ export const helpCommand: ReplCommand = {
 	script:       false,
 	usageExample: ':help',
 	aliases:      [ 'h', '?' ],
-	fn:           output => {
+	fn:           ({ output }) => {
 		initCommandMapping();
 		output.stdout(`
-If enabled ('--r-session-access'), you can just enter R expressions which get evaluated right away:
+If enabled ('--r-session-access' and if using the 'r-shell' engine), you can just enter R expressions which get evaluated right away:
 ${rawPrompt} ${bold('1 + 1', output.formatter)}
 ${italic('[1] 2', output.formatter)}
 
@@ -93,8 +93,8 @@ const _commands: Record<string, ReplCommand> = {
 	'dataflowsimple*': dataflowSimpleStarCommand,
 	'controlflow':     controlflowCommand,
 	'controlflow*':    controlflowStarCommand,
-	'controlflowbb':   controlflowBBCommand,
-	'controlflowbb*':  controlflowBBStarCommand,
+	'controlflowbb':   controlflowBbCommand,
+	'controlflowbb*':  controlflowBbStarCommand,
 	'lineage':         lineageCommand,
 	'query':           queryCommand,
 	'query*':          queryStarCommand
@@ -122,7 +122,7 @@ export function getReplCommands() {
 				aliases:      [],
 				script:       true,
 				usageExample: `:${script} --help`,
-				fn:           async(output, _s, remainingLine) => {
+				fn:           async({ output, remainingLine }) => {
 					// check if the target *module* exists in the current directory, else try two dirs up, otherwise, fail with a message
 					let path = `${__dirname}/${target}`;
 					if(!hasModule(path)) {

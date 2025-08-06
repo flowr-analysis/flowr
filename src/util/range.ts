@@ -1,4 +1,4 @@
-import { guard } from './assert';
+import { guard, isNotUndefined } from './assert';
 
 /**
  * A source position in a file.
@@ -60,12 +60,13 @@ export function rangeFrom(sl: number | string, sc: number | string, el: number |
 	return [Number(sl), Number(sc), Number(el), Number(ec)];
 }
 
-export function mergeRanges(...rs: SourceRange[]): SourceRange {
-	guard(rs.length > 0, 'Cannot merge no ranges');
-	return rs.reduce(([sl, sc, el, ec], [nsl, nsc, nel, nec]) => [
+export function mergeRanges(...rs: (SourceRange | undefined)[]): SourceRange {
+	const rsSafe: SourceRange[] = rs.filter(isNotUndefined);
+	guard(rsSafe.length > 0, 'Cannot merge no ranges');
+	return rsSafe.reduce(([sl, sc, el, ec], [nsl, nsc, nel, nec]) => [
 		...(sl < nsl || (sl === nsl && sc < nsc) ? [sl, sc] : [nsl, nsc]),
 		...(el > nel || (el === nel && ec > nec) ? [el, ec] : [nel, nec])
-	] as SourceRange, rs[0]);
+	] as SourceRange, rsSafe[0]);
 }
 
 /**
@@ -100,4 +101,15 @@ export function rangeCompare([r1sl,r1sc,,]: SourceRange, [r2sl,r2sc,,]: SourceRa
 	} else {
 		return r1sl - r2sl;
 	}
+}
+
+/**
+ * Checks if the first range is a subset of the second range.
+ */
+export function rangeIsSubsetOf([r1sl,r1sc,r1el,r1ec]: SourceRange, [r2sl,r2sc,r2el,r2ec]: SourceRange): boolean {
+	return (r1sl > r2sl || r1sl === r2sl && r1sc >= r2sc) && (r1el < r2el || r1sl === r2sl && r1ec <= r2ec);
+}
+
+export function combineRanges(...ranges: SourceRange[]): SourceRange[] {
+	return ranges.filter(range => !ranges.some(other => range !== other && rangeIsSubsetOf(range, other)));
 }

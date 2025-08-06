@@ -4,8 +4,6 @@ import type { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 import { guard } from '../util/assert';
 
 export enum CfgVertexType {
-    /** Marks a break point in a construct (e.g., between the name and the value of an argument, or the formals and the body of a function)  */
-    MidMarker   = 'mid',
     /** The explicit exit-nodes to ensure the hammock property */
     EndMarker   = 'end',
     /** something like an if, assignment, ... even though in the classical sense of R they are still expressions */
@@ -69,12 +67,6 @@ export interface CfgWithRoot extends CfgBaseVertex {
 	root: NodeId
 }
 
-export interface CfgMidMarkerVertex extends CfgWithRoot {
-	type: CfgVertexType.MidMarker
-	// describing the separation performed by this marker
-	kind: string
-}
-
 export interface CfgEndMarkerVertex extends CfgWithRoot {
 	type: CfgVertexType.EndMarker
 }
@@ -88,26 +80,32 @@ export interface CfgBasicBlockVertex extends CfgBaseVertex {
 /**
  * A vertex in the {@link ControlFlowGraph}.
  */
-export type CfgSimpleVertex = CfgStatementVertex | CfgExpressionVertex | CfgBasicBlockVertex | CfgMidMarkerVertex | CfgEndMarkerVertex
+export type CfgSimpleVertex = CfgStatementVertex | CfgExpressionVertex | CfgBasicBlockVertex | CfgEndMarkerVertex
 
 export function equalVertex(a: CfgSimpleVertex, b: CfgSimpleVertex): boolean {
 	if(a.type !== b.type || a.id !== b.id) {
 		return false;
 	} else if(a.type === CfgVertexType.Block && b.type === CfgVertexType.Block) {
 		return a.elems.length === b.elems.length && a.elems.every((e, i) => e.id === b.elems[i].id);
-	} else if(a.type === CfgVertexType.MidMarker && b.type === CfgVertexType.MidMarker) {
-		return a.kind === b.kind && a.root === b.root;
 	} else if(a.type === CfgVertexType.EndMarker && b.type === CfgVertexType.EndMarker) {
 		return a.root === b.root;
 	}
 	return true;
 }
 
+export function isMarkerVertex(vertex: CfgSimpleVertex): vertex is CfgEndMarkerVertex {
+	return vertex.type === CfgVertexType.EndMarker;
+}
+
+export function getVertexRootId(vertex: CfgSimpleVertex): NodeId {
+	return isMarkerVertex(vertex) ? vertex.root : vertex.id;
+}
+
 interface CfgFlowDependencyEdge extends MergeableRecord {
     label: CfgEdgeType.Fd
 }
 
-interface CfgControlDependencyEdge extends MergeableRecord {
+export interface CfgControlDependencyEdge extends MergeableRecord {
     label:  CfgEdgeType.Cd
     /** the id which caused the control dependency */
     caused: NodeId,
@@ -205,7 +203,8 @@ export interface ReadOnlyControlFlowGraph {
  * If you want to prohibit modification, please refer to the {@link ReadOnlyControlFlowGraph} interface.
  */
 export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> implements ReadOnlyControlFlowGraph {
-	private readonly rootVertices:      Set<NodeId> = new Set<NodeId>();
+	private readonly rootVertices:      Set<NodeId>         = new Set<NodeId>();
+	/** Nesting-Independent vertex information, mapping the id to the vertex */
 	private readonly vertexInformation: Map<NodeId, Vertex> = new Map<NodeId, Vertex>();
 	/** the basic block children map contains a mapping of ids to all vertices that are nested in basic blocks, mapping them to the Id of the block they appear in */
 	private readonly bbChildren:        Map<NodeId, NodeId> = new Map<NodeId, NodeId>();

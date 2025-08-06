@@ -13,23 +13,27 @@ import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock, jsonWithLimit } from './doc-code';
 import { printAsMs } from '../../util/text/time';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
+import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
+import { getReplCommand } from './doc-cli-option';
+import { defaultConfigOptions } from '../../config';
 
-export interface ShowQueryOptions {
+export interface ShowQueryOptions<Base extends SupportedQueryTypes> {
 	readonly showCode?:       boolean;
 	readonly collapseResult?: boolean;
 	readonly collapseQuery?:  boolean;
+	readonly addOutput?:      (result: QueryResults<Base>, pipeline: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>) => string;
 }
 
 export async function showQuery<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult, collapseQuery }: ShowQueryOptions = {}): Promise<string> {
+>(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult, collapseQuery, addOutput = () => '' }: ShowQueryOptions<Base> = {}): Promise<string> {
 	const now = performance.now();
 	const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
 		request: requestFromInput(code)
-	}).allRemainingSteps();
-	const results = executeQueries({ dataflow: analysis.dataflow, ast: analysis.normalize }, queries);
+	}, defaultConfigOptions).allRemainingSteps();
+	const results = await Promise.resolve(executeQueries({ dataflow: analysis.dataflow, ast: analysis.normalize, config: defaultConfigOptions }, queries));
 	const duration = performance.now() - now;
 
 	const metaInfo = `
@@ -41,12 +45,20 @@ The analysis required _${printAsMs(duration)}_ (including parsing and normalizat
 
 ${codeBlock('json', collapseQuery ? str.split('\n').join(' ').replace(/([{[])\s{2,}/g,'$1 ').replace(/\s{2,}([\]}])/g,' $1') : str)}
 
+${(function() {
+	if(queries.length === 1 && Object.keys(queries[0]).length === 1) {
+		return `(This query can be shortened to \`@${queries[0].type}\` when used within the REPL command ${getReplCommand('query')}).`;
+	} else {
+		return '';
+	}
+})()}
+
 ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary>' : ''}
 
 _Results (prettified and summarized):_
 
 ${
-	asciiSummaryOfQueryResult(markdownFormatter, duration, results as QueryResults<SupportedQueryTypes>, analysis)
+	asciiSummaryOfQueryResult(markdownFormatter, duration, results, analysis)
 }
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -71,6 +83,8 @@ ${await printDfGraphForCode(shell, code, { switchCodeAndGraph: true })}
 }
 
 ${collapseResult ? '</details>' : ''}
+
+${addOutput(results, analysis)}
 
 	`;
 

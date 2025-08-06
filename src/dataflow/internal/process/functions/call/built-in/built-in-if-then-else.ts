@@ -10,13 +10,14 @@ import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { appendEnvironment } from '../../../../../environments/append';
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { ReferenceType } from '../../../../../environments/identifier';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { makeAllMaybe } from '../../../../../environments/environment';
+import { valueSetGuard } from '../../../../../eval/values/general';
+import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -51,10 +52,9 @@ export function processIfThenElse<OtherInfo>(
 	let makeThenMaybe = false;
 
 	// we should defer this to the abstract interpretation
-
-	const values = resolveValueOfVariable(condArg?.lexeme, data.environment, data.completeAst.idMap);
-	const conditionIsAlwaysFalse = values?.every(d => d === false) ?? false;
-	const conditionIsAlwaysTrue  = values?.every(d => d === true) ?? false;
+	const values = resolveIdToValue(condArg?.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.flowrConfig.solver.variables });
+	const conditionIsAlwaysFalse = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
+	const conditionIsAlwaysTrue = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 
 	if(!conditionIsAlwaysFalse) {
 		then = processDataflowFor(thenArg, data);

@@ -137,7 +137,7 @@ jobs:
 
       - name: "📦 Install R Packages"
         shell: Rscript {0}
-        run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
+        run: lapply(c("xmlparsedata","dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
 
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
@@ -445,7 +445,7 @@ jobs:
 
       - name: "📦 Install R Packages"
         shell: Rscript {0}
-        run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
+        run: lapply(c("xmlparsedata","dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
 
       - name: "🛠️ Build the documentation"
         run: bash .github/workflows/scripts/run-flowr-command.sh doc

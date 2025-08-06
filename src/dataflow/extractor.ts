@@ -23,10 +23,9 @@ import {
 	identifyLinkToLastCallRelation
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
-import {
-	updateNestedFunctionCalls
-} from './internal/process/functions/call/built-in/built-in-function-definition';
+import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
 import type { ControlFlowGraph } from '../control-flow/control-flow-graph';
+import type { FlowrConfigOptions } from '../config';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -94,7 +93,8 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 export function produceDataFlowGraph<OtherInfo>(
 	parser: Parser<KnownParserType>,
 	request: RParseRequests,
-	completeAst:     NormalizedAst<OtherInfo & ParentInformation>
+	completeAst:     NormalizedAst<OtherInfo & ParentInformation>,
+	config: FlowrConfigOptions
 ): DataflowInformation {
 	let firstRequest: RParseRequest;
 
@@ -113,8 +113,11 @@ export function produceDataFlowGraph<OtherInfo>(
 		currentRequest:      firstRequest,
 		controlDependencies: undefined,
 		referenceChain:      [firstRequest],
+		flowrConfig:         config
 	};
 	let df = processDataflowFor<OtherInfo>(completeAst.ast, dfData);
+
+
 	df.graph.sourced.unshift(firstRequest.request === 'file' ? firstRequest.content : '<inline>');
 
 	if(multifile) {
@@ -126,6 +129,7 @@ export function produceDataFlowGraph<OtherInfo>(
 
 	// finally, resolve linkages
 	updateNestedFunctionCalls(df.graph, df.environment);
+
 
 	resolveLinkToSideEffects(completeAst, df.graph);
 	return df;

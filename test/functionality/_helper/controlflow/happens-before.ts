@@ -6,9 +6,10 @@ import { Ternary } from '../../../../src/util/logic';
 import type { RShell } from '../../../../src/r-bridge/shell';
 import { createNormalizePipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { extractCFG } from '../../../../src/control-flow/extract-cfg';
+import { extractCfg } from '../../../../src/control-flow/extract-cfg';
 import { happensBefore } from '../../../../src/control-flow/happens-before';
 import { cfgToMermaidUrl } from '../../../../src/util/mermaid/cfg';
+import { defaultConfigOptions } from '../../../../src/config';
 
 export function assertHappensBefore(shell: RShell, code: string, a: SingleSlicingCriterion, b: SingleSlicingCriterion, expected: Ternary) {
 	// shallow copy is important to avoid killing the CFG :c
@@ -16,8 +17,8 @@ export function assertHappensBefore(shell: RShell, code: string, a: SingleSlicin
 		test.each([shell, new TreeSitterExecutor()])('%s', async parser => {
 			const result = await createNormalizePipeline(parser, {
 				request: requestFromInput(code)
-			}).allRemainingSteps();
-			const cfg = extractCFG(result.normalize);
+			}, defaultConfigOptions).allRemainingSteps();
+			const cfg = extractCfg(result.normalize, defaultConfigOptions);
 			const aResolved = slicingCriterionToId(a, result.normalize.idMap);
 			const bResolved = slicingCriterionToId(b, result.normalize.idMap);
 			try {

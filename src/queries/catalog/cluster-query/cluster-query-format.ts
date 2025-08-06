@@ -6,6 +6,7 @@ import type { DataflowGraphClusters } from '../../../dataflow/cluster';
 import { executeDataflowClusterQuery } from './cluster-query-executor';
 import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import { summarizeIdsIfTooLong } from '../../query-print';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /**
  * Calculates and returns all clusters encountered in the dataflow graph.
@@ -39,5 +40,9 @@ export const ClusterQueryDefinition = {
 	},
 	schema: Joi.object({
 		type: Joi.string().valid('dataflow-cluster').required().description('The type of the query.'),
-	}).description('The cluster query calculates and returns all clusters in the dataflow graph.')
+	}).description('The cluster query calculates and returns all clusters in the dataflow graph.'),
+	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
+		const out = queryResults as QueryResults<'dataflow-cluster'>['dataflow-cluster'];
+		return out.clusters.flatMap(({ members }) => members);
+	}
 } as const satisfies SupportedQuery<'dataflow-cluster'>;

@@ -4,7 +4,7 @@ import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
-import { mermaidHide, printHierarchy, getTypesFromFolderAsMermaid, shortLink } from './doc-util/doc-types';
+import { mermaidHide, printHierarchy, getTypesFromFolder, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
@@ -21,10 +21,10 @@ async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 
 	const now = performance.now();
-	const types = getTypesFromFolderAsMermaid({
-		rootFolder:  path.resolve('./src'),
-		typeName:    'RNode',
-		inlineTypes: mermaidHide
+	const types = getTypesFromFolder({
+		rootFolder:         path.resolve('./src'),
+		typeNameForMermaid: 'RNode',
+		inlineTypes:        mermaidHide
 	});
 	const elapsed = performance.now() - now;
 
@@ -69,7 +69,7 @@ In general, we provide node types for:
 Every node is a link, which directly refers to the implementation in the source code.
 Grayed-out parts are used for structuring the AST, grouping together related nodes.
 
-${codeBlock('mermaid', types.text)}
+${codeBlock('mermaid', types.mermaid)}
 
 _The generation of the class diagram required ${printAsMs(elapsed)}._
 </details>

@@ -24,7 +24,6 @@ import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { constructNestedAccess, getAccessOperands } from '../../../../../../util/containers';
-import { getConfig } from '../../../../../../config';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { unpackArgument } from '../argument/unpack-argument';
@@ -32,6 +31,7 @@ import { symbolArgumentsToStrings } from './built-in-access';
 import type { BuiltInMappingName } from '../../../../../environments/built-in';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { ReferenceType } from '../../../../../environments/identifier';
+import { handleReplacementOperator } from '../../../../../graph/unknown-replacement';
 
 
 export function processReplacementFunction<OtherInfo>(
@@ -47,12 +47,11 @@ export function processReplacementFunction<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
-
 	/* we only get here if <-, <<-, ... or whatever is part of the replacement is not overwritten */
 	expensiveTrace(dataflowLogger, () => `Replacement ${name.content} with ${JSON.stringify(args)}, processing`);
-
+	
 	let indices: ContainerIndicesCollection = config.activeIndices;
-	if(getConfig().solver.pointerTracking) {
+	if(data.flowrConfig.solver.pointerTracking) {
 		indices ??= constructAccessedIndices<OtherInfo>(name.content, args);
 	}
 
@@ -98,11 +97,18 @@ export function processReplacementFunction<OtherInfo>(
 		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});
 
-	const firstArg = unpackArgument(args[0])?.info.id;
+	const firstArg = unpackArgument(args[0]);
+	
+	handleReplacementOperator({
+		operator: name.content, 
+		target:   firstArg?.lexeme,
+		env:      res.environment,
+		id:       rootId
+	});
 
 	if(firstArg) {
 		res.graph.addEdge(
-			firstArg,
+			firstArg.info.id,
 			rootId,
 			EdgeType.DefinedBy | EdgeType.Reads
 		);
@@ -118,7 +124,7 @@ export function processReplacementFunction<OtherInfo>(
 
 
 	const fa = unpackArgument(args[0]);
-	if(!getConfig().solver.pointerTracking && fa) {
+	if(!data.flowrConfig.solver.pointerTracking && fa) {
 		res = {
 			...res,
 			in: [...res.in, { name: fa.lexeme, type: ReferenceType.Variable, nodeId: fa.info.id, controlDependencies: data.controlDependencies }]

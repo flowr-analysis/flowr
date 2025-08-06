@@ -110,7 +110,6 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					.argument(6, 4)
 					.constant(1)
 					.constant(4)
-
 			);
 			assertDataflow(label('chained mixed constant', ['dollar-access', 'single-bracket-access', 'name-normal', 'numbers']), shell,
 				'a[2]$a', emptyGraph()
@@ -144,6 +143,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 			'a[x] <- 5',  emptyGraph()
 				.use(1, 'x')
 				.call(3, '[<-', [argumentInCall(0), argumentInCall(1), argumentInCall(4)], { returns: [0], reads: [1, builtInId('[<-')], onlyBuiltIn: true, link: { origin: [5] } })
+				.reads(0, 3)
 				.calls(3, builtInId('[<-'))
 				.constant(4)
 				.defineVariable(0, 'a', { definedBy: [4, 3] })
@@ -156,6 +156,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				.call(6, '$<-', [argumentInCall(3), argumentInCall(4), argumentInCall(7)], { returns: [], reads: [4], onlyBuiltIn: true, link: { origin: [8] } })
 				.constant(4)
 				.defineVariable(0, 'a', { definedBy: [7, 3] })
+				.reads(0, 3)
 				.constant(1)
 				.constant(7)
 		);
@@ -386,6 +387,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					.call(3, '[<-', [argumentInCall(0), argumentInCall(1), argumentInCall(6)], { returns: [0], reads: [1, builtInId('[<-')], onlyBuiltIn: true, link: { origin: [7] } })
 					.calls(3, builtInId('[<-'))
 					.argument(3, 0)
+					.reads(0, 3)
 					.constant(5)
 					.defineVariable(4, 'x', { definedBy: [5, 6] })
 					.defineVariable(0, 'a', { definedBy: [6, 3] })
@@ -466,7 +468,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 						shell, 'x <- for (i in 1:4) 3',  emptyGraph()
 							.call(4, ':', [argumentInCall(2), argumentInCall(3)], { returns: [], reads: [builtInId(':'), 2, 3], onlyBuiltIn: true })
 							.calls(4, builtInId(':'))
-							.call(7, 'for', [argumentInCall(1), argumentInCall(4), argumentInCall(5, { controlDependencies: [{ id: 7, when: true }] })], { returns: [], reads: [builtInId('for'), 1, 4], onlyBuiltIn: true, environment: defaultEnv().defineVariable('i', 1, 7) })
+							.call(7, 'for', [argumentInCall(1), argumentInCall(4), argumentInCall(5, { controlDependencies: [{ id: 7, when: true }] })], { returns: [], reads: [builtInId('for'), 4], onlyBuiltIn: true, environment: defaultEnv().defineVariable('i', 1, 7) })
 							.calls(7, builtInId('for'))
 							.nse(7, 5)
 							.call(8, '<-', [argumentInCall(0), argumentInCall(7)], { returns: [0], reads: [builtInId('<-')] })
@@ -784,7 +786,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					.calls(3, builtInId(':'))
 					.call(7, '{', [argumentInCall(6, { controlDependencies: [{ id: 8, when: true }] })], { returns: [6], reads: [builtInId('{')], controlDependencies: [{ id: 8, when: true }] })
 					.calls(7, builtInId('{'))
-					.call(8, 'for', [argumentInCall(0), argumentInCall(3), argumentInCall(7, { controlDependencies: [{ id: 8, when: true }] })], { returns: [], reads: [0, 3, builtInId('for')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('i', 0, 8) })
+					.call(8, 'for', [argumentInCall(0), argumentInCall(3), argumentInCall(7, { controlDependencies: [{ id: 8, when: true }] })], { returns: [], reads: [3, builtInId('for')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('i', 0, 8) })
 					.calls(8, builtInId('for'))
 					.nse(8, 7)
 					.defineVariable(0, 'i', { definedBy: [3] })
@@ -800,7 +802,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					.calls(3, builtInId(':'))
 					.call(7, '{', [argumentInCall(6, { controlDependencies: [{ id: 8, when: true }] })], { returns: [6], reads: [builtInId('{')], controlDependencies: [{ id: 8, when: true }] })
 					.calls(7, builtInId('{'))
-					.call(8, 'for', [argumentInCall(0), argumentInCall(3), argumentInCall(7, { controlDependencies: [{ id: 8, when: true }] })], { returns: [], reads: [0, 3, builtInId('for')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('i', 0, 8) })
+					.call(8, 'for', [argumentInCall(0), argumentInCall(3), argumentInCall(7, { controlDependencies: [{ id: 8, when: true }] })], { returns: [], reads: [3, builtInId('for')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('i', 0, 8) })
 					.calls(8, builtInId('for'))
 					.nse(8, 7)
 					.defineVariable(0, 'i', { definedBy: [3] })

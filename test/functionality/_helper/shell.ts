@@ -30,9 +30,14 @@ import {
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff-dataflow-graph';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
-import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
+import type {
+	SingleSlicingCriterion,
+	SlicingCriteria } from '../../../src/slicing/criterion/parse';
+import { slicingCriterionToId
+} from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
 import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph';
@@ -454,12 +459,17 @@ function testWrapper(skip: boolean | undefined, shouldFail: boolean, testName: s
 
 export type TestCaseFailType = 'fail-shell' | 'fail-tree-sitter' | 'fail-both' | undefined;
 
+/**
+ * This is a forward slicing convenience function that allows you to assert the result of a forward slice.
+ *
+ * @see {@link assertSliced} - For the explanation of the parameters.
+ */
 export function assertSlicedF(
 	name: TestLabel,
 	shell: RShell,
 	input: string,
 	criteria: SlicingCriteria,
-	expected: string,
+	expected: string | SingleSlicingCriterion[],
 	testConfig?: Partial<TestConfigurationWithOutput & TestCaseParams>
 ) {
 	return assertSliced(name, shell, input, criteria, expected, { ...testConfig, sliceDirection: SliceDirection.Forward });
@@ -484,12 +494,17 @@ interface TestCaseParams {
 	sliceDirection?:      SliceDirection
 }
 
+/**
+ * Ensure that slicing for a given criteria returns the code you expect. Please be aware that for ease of use
+ * this actually checks against the reconstructed code (which may contain additional tokens to support executability).
+ * If you want to check against the actual ids, please provide an array of {@link SingleSlicingCriterion}s as the expected value.
+ */
 export function assertSliced(
 	name: TestLabel,
 	shell: RShell,
 	input: string,
 	criteria: SlicingCriteria,
-	expected: string,
+	expected: string | SingleSlicingCriterion[],
 	testConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams>,
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
@@ -566,13 +581,24 @@ export function assertSliced(
 		}
 		function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {
 			try {
-				assert.strictEqual(
-					result.reconstruct.code, expected,
-					`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
-				);
+				if(Array.isArray(expected)) {
+					// heck whether all ids are present in the slice result
+					const decodedExpected = expected.map(e => slicingCriterionToId(e, result.normalize.idMap))
+						.sort((a, b) => String(a).localeCompare(String(b)))
+						.map(n => normalizeIdToNumberIfPossible(n));
+					const inSlice = [...result.slice.result]
+						.sort((a, b) => String(a).localeCompare(String(b)))
+						.map(n => normalizeIdToNumberIfPossible(n));
+					assert.deepStrictEqual(inSlice, decodedExpected, `expected ids ${JSON.stringify(decodedExpected)} are not in the slice result ${JSON.stringify(inSlice)}, for input ${input} (slice for ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`);
+				} else {
+					assert.strictEqual(
+						result.reconstruct.code, expected,
+						`got: ${result.reconstruct.code}, vs. expected: ${JSON.stringify(expected)}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
+					);
+				}
 			} /* v8 ignore start */ catch(e) {
 				if(printError) {
-					console.error(`got:\n${result.reconstruct.code}\nvs. expected:\n${expected}`);
+					console.error(`got:\n${result.reconstruct.code}\nvs. expected:\n${JSON.stringify(expected)}`);
 					console.error(normalizedAstToMermaidUrl(result.normalize.ast));
 				}
 				throw e;

@@ -1,13 +1,13 @@
 import type { UnresolvedDataType } from '../subtyping/types';
-import { constrain, getParameterTypeFromFunction, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType } from '../subtyping/types';
+import { UnresolvedRTypeVariable , constrain, getParameterTypeFromFunction, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType } from '../subtyping/types';
 import { RComplexType, RDoubleType, REnvironmentType, RIntegerType, RLanguageType, RLogicalType, RNullType, RRawType, RStringType } from '../types';
 import type { RohdeFunctionTypeInformation } from './interface';
 
 export interface TraceCsvRow {
-	readonly packageName:   string;
-	readonly functionName:  string;
-	readonly argumentTypes: string;
-	readonly returnType:    string;
+	readonly package_name:    string;
+	readonly function_name:   string;
+	readonly parameter_types: string[];
+	readonly return_type:     string;
 }
 
 export function extractTypesFromTraceData(data: readonly TraceCsvRow[]): [RohdeFunctionTypeInformation[], Map<string, number>] {
@@ -15,17 +15,19 @@ export function extractTypesFromTraceData(data: readonly TraceCsvRow[]): [RohdeF
 	const unseenSignaturePackageContributions: Map<string, Set<string>> = new Map();
 
 	for(const row of data) {
-		const argumentTypes = row.argumentTypes.split(',').map(str => typeFromStr(str.trim(), true));
-		const returnType = typeFromStr(row.returnType.trim());
+		const argumentTypes = row.parameter_types.map(typeFromStr);
+		const returnType = typeFromStr(row.return_type);
 
-		const signature = `${row.functionName} : (${row.argumentTypes}) -> ${row.returnType}`;
+		const signature = `${row.function_name} : (${row.parameter_types.join(', ')}) -> ${row.return_type}`;
 		if(!unseenSignaturePackageContributions.values().some(set => set.has(signature))) {
-			if(!unseenSignaturePackageContributions.has(row.packageName)) {
-				unseenSignaturePackageContributions.set(row.packageName, new Set([signature]));
+			if(!unseenSignaturePackageContributions.has(row.package_name)) {
+				unseenSignaturePackageContributions.set(row.package_name, new Set([signature]));
 			} else {
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				unseenSignaturePackageContributions.get(row.packageName)!.add(signature);
+				unseenSignaturePackageContributions.get(row.package_name)!.add(signature);
 			}
+		} else {
+			continue; // Skip if we have already seen this signature for this package
 		}
 
 		const functionType = new UnresolvedRFunctionType();
@@ -34,16 +36,16 @@ export function extractTypesFromTraceData(data: readonly TraceCsvRow[]): [RohdeF
 		}
 		constrain(returnType, functionType.returnType);
 
-		if(!extractedTypes.has(row.packageName)) {
-			extractedTypes.set(row.packageName, new Map());
+		if(!extractedTypes.has(row.package_name)) {
+			extractedTypes.set(row.package_name, new Map());
 		}
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const packageMap = extractedTypes.get(row.packageName)!;
-		if(!packageMap.has(row.functionName)) {
-			packageMap.set(row.functionName, []);
+		const packageMap = extractedTypes.get(row.package_name)!;
+		if(!packageMap.has(row.function_name)) {
+			packageMap.set(row.function_name, []);
 		}
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		packageMap.get(row.functionName)!.push(functionType);
+		packageMap.get(row.function_name)!.push(functionType);
 	}
 
 	const functionTypeInfos = extractedTypes.entries().flatMap(([packageName, map]) => map.entries().map(([functionName, types]) => ({
@@ -55,14 +57,11 @@ export function extractTypesFromTraceData(data: readonly TraceCsvRow[]): [RohdeF
 	return [functionTypeInfos, unseenSignaturePackageContributionCounts];
 }
 
-function typeFromStr(str: string, hasNegativePolarity: boolean = false): UnresolvedDataType {
+function typeFromStr(str: string): UnresolvedDataType {
 	if(str.startsWith('v<') && str.endsWith('>')) {
 		const vectorType = new UnresolvedRAtomicVectorType();
-		if(hasNegativePolarity) {
-			constrain(vectorType.elementType, typeFromStr(str.slice(2, -1)));
-		} else {
-			constrain(typeFromStr(str.slice(2, -1)), vectorType.elementType);
-		}
+		constrain(vectorType.elementType, typeFromStr(str.slice(2, -1)));
+		constrain(typeFromStr(str.slice(2, -1)), vectorType.elementType);
 		return vectorType;
 	} else if(str === 'function') {
 		return new UnresolvedRFunctionType();
@@ -86,6 +85,22 @@ function typeFromStr(str: string, hasNegativePolarity: boolean = false): Unresol
 		return new RLanguageType();
 	} else if(str === 'environment') {
 		return new REnvironmentType();
+	} else if(str === 'S4') {
+		// S4 types are not supported yet, so we return a variable type
+		return new UnresolvedRTypeVariable();
+	} else if(str === 'dgCMatrix') {
+		// Time for crying
+		return new UnresolvedRListType();
+	} else if(str === '<-' || str === '(' || str === 'if' || str === '{' || str === 'for') {
+		// Arbitrary definitions
+		return new UnresolvedRTypeVariable();
+	} else if(str === 'srcfile') {
+		return new UnresolvedRTypeVariable();
+	} else if(str === 'standardGeneric') {
+		return new UnresolvedRFunctionType();
+	} else if(str === 'mle' || str === 'track' || str === 'derivedDefaultMethod' || str === 'jmcmMod' || str === 'glmerMod') {
+		// Huh?
+		return new UnresolvedRTypeVariable();
 	} else {
 		throw new Error(`Unknown type: ${str}`);
 	}

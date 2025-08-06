@@ -8,6 +8,7 @@ describe('Infer types for builtin functions', () => {
 
 	assertInferredTypes(
 		'x <- 42\nget("x")',
+		undefined,
 		{ query: Q.criterion('1@x').build(),   lowerBound: new RIntegerType(), upperBound: new RComplexType() },
 		{ query: Q.criterion('2@get').build(), lowerBound: new RIntegerType(), upperBound: new RComplexType() },
 		{ query: Q.criterion('2@"x"').build(), upperBound: new RStringType() }
@@ -15,6 +16,7 @@ describe('Infer types for builtin functions', () => {
 
 	assertInferredTypes(
 		'eval(quote(TRUE))',
+		undefined,
 		{ query: Q.criterion('1@eval').build(),  expectedType: new RTypeVariable() },
 		{ query: Q.criterion('1@quote').build(), expectedType: new RLanguageType() },
 		{ query: Q.criterion('1@TRUE').build(),  expectedType: new RLogicalType() }
@@ -25,6 +27,7 @@ describe('Infer types for builtin functions', () => {
 
 	assertInferredTypes(
 		'c("Hello", "Flo", "!")',
+		undefined,
 		{ query: Q.criterion('1@c').build(),       expectedType: new RAtomicVectorType(new RTypeVariable(new RStringType(), new RTypeIntersection())) },
 		{ query: Q.criterion('1@"Hello"').build(), expectedType: new RStringType() },
 	);

@@ -10,18 +10,21 @@ import { runSearch } from '../../../../../src/search/flowr-search-executor';
 import type { ParentInformation } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
 import { defaultConfigOptions } from '../../../../../src/config';
+import type { UnresolvedDataType } from '../../../../../src/typing/subtyping/types';
 
-export function assertInferredType(input: string, expectedType: { expectedType: DataType } | { lowerBound?: DataType, upperBound?: DataType }): void {
-	assertInferredTypes(input, expectedType);
+export function assertInferredType(input: string, expectedType: { expectedType: DataType } | { lowerBound?: DataType, upperBound?: DataType }, knownTypes?: Map<string, Set<UnresolvedDataType>>): void {
+	assertInferredTypes(input, knownTypes, expectedType);
 }
+
 export function assertInferredTypes(
 	input: string,
+	knownTypes?: Map<string, Set<UnresolvedDataType>>,
 	...expectations: ({ query?: FlowrSearch } & ({ expectedType: DataType } | { lowerBound?: DataType, upperBound?: DataType }))[]
 ): void {
 	describe(`Infer types for ${input}`, async() => {
 		const executor = new TreeSitterExecutor();
 		const result = await createDataflowPipeline(executor, { request: requestFromInput(input) }, defaultConfigOptions).allRemainingSteps();
-		inferDataTypes(result.normalize, result.dataflow);
+		inferDataTypes(result.normalize, result.dataflow, knownTypes);
 
 		const expectedTypes = expectations.map(({ query, ...rest }) => ({
 			query,

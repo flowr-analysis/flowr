@@ -24,11 +24,11 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import type { UnresolvedDataType } from './types';
-import { constrain, getIndexedElementTypeFromList, getParameterTypeFromFunction, resolve, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from './types';
+import { constrain, getIndexedElementTypeFromList, getParameterTypeFromFunction, resolve, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeIntersection, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from './types';
 import { defaultConfigOptions } from '../../config';
 
 
-export function inferDataTypes<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation, knownTypes: Map<string, UnresolvedDataType> = new Map()): NormalizedAst<Info & DataTypeInfo> {
+export function inferDataTypes<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation, knownTypes: Map<string, Set<UnresolvedDataType>> = new Map()): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
 	const controlFlowInfo = extractCfg(astWithTypeVars, defaultConfigOptions, dataflowInfo.graph, ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code']);
 	const config = {
@@ -70,7 +70,7 @@ export interface TypeInferringCfgGuidedVisitorConfiguration<
 	Dataflow extends DataflowInformation                      = DataflowInformation
 > extends Omit<SemanticCfgGuidedVisitorConfiguration<UnresolvedTypeInfo & OtherInfo, ControlFlow, Ast>, 'dataflow'> {
 	dataflowInfo: Dataflow;
-	knownTypes:   Map<string, UnresolvedDataType>;
+	knownTypes:   Map<string, Set<UnresolvedDataType>>;
 }
 
 class TypeInferringCfgGuidedVisitor<
@@ -146,9 +146,9 @@ class TypeInferringCfgGuidedVisitor<
 		if(hasUnresolvableOrigins) {
 			if(node.type === RType.Symbol) {
 				// If the read variable has no associated AST node it might be a library constant or function
-				const contextualType = this.config.knownTypes.get(node.content);
-				if(contextualType !== undefined) {
-					this.constrainNodeType(node, { lowerBound: contextualType });
+				const contextualTypes = this.config.knownTypes.get(node.content);
+				if(contextualTypes !== undefined && contextualTypes.size > 0) {
+					this.constrainNodeType(node, { lowerBound: new UnresolvedRTypeIntersection(...contextualTypes.values()) });
 				}
 			}
 		} else if(lowerBounds.size > 0) {
@@ -217,9 +217,9 @@ class TypeInferringCfgGuidedVisitor<
 				}
 			} else {
 				// If the target function has no associated AST node it might be a library function
-				const contextualType = this.config.knownTypes.get(data.call.name);
-				if(contextualType !== undefined) {
-					constrain(contextualType, functionType, this.constraintCache);
+				const contextualTypes = this.config.knownTypes.get(data.call.name);
+				if(contextualTypes !== undefined && contextualTypes.size > 0) {
+					constrain(new UnresolvedRTypeUnion(...contextualTypes.values()), functionType, this.constraintCache);
 				}
 			}
 		}

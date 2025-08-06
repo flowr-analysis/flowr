@@ -1,10 +1,11 @@
 import type { StaticSliceQuery, StaticSliceQueryResult } from './static-slice-query-format';
-import { staticSlicing } from '../../../slicing/static/static-slicer';
+import { staticSlice } from '../../../slicing/static/static-slicer';
 import { reconstructToCode } from '../../../reconstruct/reconstruct';
 import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-defaults';
 import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
+import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
 
 export function fingerPrintOfQuery(query: StaticSliceQuery): string {
 	return JSON.stringify(query);
@@ -20,7 +21,7 @@ export function executeStaticSliceQuery({ dataflow: { graph }, ast, config }: Ba
 		}
 		const { criteria, noReconstruction, noMagicComments } = query;
 		const sliceStart = Date.now();
-		const slice = staticSlicing(graph, ast, criteria, config.solver.slicer?.threshold);
+		const slice = staticSlice(graph, ast, criteria, query.direction ?? SliceDirection.Backward, config.solver.slicer?.threshold);
 		const sliceEnd = Date.now();
 		if(noReconstruction) {
 			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };

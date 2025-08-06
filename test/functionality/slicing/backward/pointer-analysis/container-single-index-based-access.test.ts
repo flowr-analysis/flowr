@@ -1,8 +1,8 @@
 import { describe } from 'vitest';
-import { assertSliced, withShell } from '../../_helper/shell';
-import { label } from '../../_helper/label';
-import { AccessType, ContainerType, setupContainerFunctions } from '../../_helper/pointer-analysis';
-import { amendConfig, defaultConfigOptions } from '../../../../src/config';
+import { amendConfig, defaultConfigOptions } from '../../../../../src/config';
+import { assertSliced, withShell } from '../../../_helper/shell';
+import { label } from '../../../_helper/label';
+import { AccessType, ContainerType, setupContainerFunctions } from '../../../_helper/pointer-analysis';
 
 const flowrConfig = amendConfig(defaultConfigOptions, c => {
 	(c.solver.pointerTracking as boolean) = true;

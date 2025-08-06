@@ -1,7 +1,7 @@
 import { describe } from 'vitest';
-import { assertSliced, withShell } from '../../_helper/shell';
-import { label } from '../../_helper/label';
-import { amendConfig, defaultConfigOptions } from '../../../../src/config';
+import { assertSliced, withShell } from '../../../_helper/shell';
+import { label } from '../../../_helper/label';
+import { amendConfig, defaultConfigOptions } from '../../../../../src/config';
 
 // Tests that cannot be generalized and are not covered by other tests
 describe.sequential('Special Cases', withShell(shell => {

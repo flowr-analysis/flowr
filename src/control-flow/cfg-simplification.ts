@@ -61,11 +61,11 @@ function cfgRemoveDeadCode(cfg: ControlFlowInformation, _info?: CfgPassInfo): Co
 
 function uniqueControlFlowSets(cfg: ControlFlowInformation, _info?: CfgPassInfo): ControlFlowInformation {
 	return {
-		returns:     [...new Set(cfg.returns)],
-		entryPoints: [...new Set(cfg.entryPoints)],
-		exitPoints:  [...new Set(cfg.exitPoints)],
-		breaks:      [...new Set(cfg.breaks)],
-		nexts:       [...new Set(cfg.nexts)],
+		returns:     Array.from(new Set(cfg.returns)),
+		entryPoints: Array.from(new Set(cfg.entryPoints)),
+		exitPoints:  Array.from(new Set(cfg.exitPoints)),
+		breaks:      Array.from(new Set(cfg.breaks)),
+		nexts:       Array.from(new Set(cfg.nexts)),
 		graph:       cfg.graph
 	};
 }

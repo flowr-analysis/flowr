@@ -7,7 +7,7 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { envFingerprint } from '../../../slicing/static/fingerprint';
 import { VisitingQueue } from '../../../slicing/static/visiting-queue';
 import { guard } from '../../../util/assert';
-import type { BuiltInIdentifierConstant } from '../../environments/built-in';
+import { BuiltInEvalHandlerMapper, BuiltInMappingName, BuiltInProcessorMapper, type BuiltInIdentifierConstant } from '../../environments/built-in';
 import type { REnvironmentInformation } from '../../environments/environment';
 import { initializeCleanEnvironments } from '../../environments/environment';
 import type { Identifier } from '../../environments/identifier';
@@ -19,7 +19,8 @@ import type { ReplacementOperatorHandlerArgs } from '../../graph/unknown-replace
 import { onReplacementOperator } from '../../graph/unknown-replacement';
 import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
 import { VertexType } from '../../graph/vertex';
-import { valueFromRNodeConstant, valueFromTsValue } from '../values/general';
+import { getOriginInDfg, OriginType } from '../../origin/dfg-get-origin';
+import { valueFromTsValue } from '../values/general';
 import type { Lift, Value, ValueSet } from '../values/r-value';
 import { Bottom, isTop, Top } from '../values/r-value';
 import { setFrom } from '../values/sets/set-constants';
@@ -160,20 +161,20 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 
 	switch(node.type) {
 		case RType.Argument:
+			return resolveIdToValue(node.value, { environment, graph, idMap, full, resolve });
 		case RType.Symbol:
 			if(environment) {
 				return full ? trackAliasInEnvironments(resolve, node.lexeme, environment, graph, idMap) : Top;
 			} else if(graph && resolve === VariableResolve.Alias) {
-				return full ? trackAliasesInGraph(node.info.id, graph, idMap) : Top;
+				return full ? trackAliasesInGraph(resolve, node.info.id, graph, idMap) : Top;
 			} else {
 				return Top;
 			}
 		case RType.FunctionCall:
-			return setFrom(resolveNode(resolve, node, environment, graph, idMap));
 		case RType.String:
 		case RType.Number:
 		case RType.Logical:
-			return setFrom(valueFromRNodeConstant(node));
+			return setFrom(resolveNode(resolve, node, environment, graph, idMap));	
 		default:
 			return Top;
 	}
@@ -296,6 +297,11 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
 }
 
 /**
+ * We currently do not support these functions and have to stop the analysis
+ */
+const unsupportedFunctions = new Set<BuiltInMappingName>(['builtin:replacement']);
+
+/**
  * Please use {@link resolveIdToValue} 
  * 
  * Tries to resolve the value of a node by traversing the dataflow graph
@@ -305,11 +311,20 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
  * @param idMap - idmap of dataflow graph
  * @returns Value of node or Top/Bottom
  */
-export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: AstIdMap): ResolveResult {
+export function trackAliasesInGraph(resolve: VariableResolve, id: NodeId, graph: DataflowGraph, idMap?: AstIdMap): ResolveResult {
+	// Give up if the graph contains unlinked side effects 
+	for(const se of graph.unknownSideEffects.values()) {
+		if(typeof se === 'object') {
+			continue;
+		}
+
+		return Top;
+	}
+
 	idMap ??= graph.idMap;
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
 	const start = graph.getVertex(id);
-	guard(start !== undefined, 'Unable to find start for alias tracking');
+	guard(start !== undefined, 'Unable to find start for alias tracking ' + id);
 
 	const queue = new VisitingQueue(25);
 	const clean = initializeCleanEnvironments();
@@ -352,29 +367,60 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 		}
 
 		const isFn = vertex.tag === VertexType.FunctionCall;
+		if(isFn && vertex.origin !== 'unnamed') {
+			if(unsupportedFunctions.has(vertex.origin[0] as BuiltInMappingName)) {
+				return Top;
+			}
+
+			// Try with processor to avoid calling getOriginInDfg as resolveNode will call that as well
+			if(BuiltInEvalHandlerMapper[vertex.origin[0] as keyof typeof BuiltInEvalHandlerMapper] !== undefined) {
+				resultIds.push(vertex.id);
+				continue;	
+			} 
+
+			// Try with getOrigin in case of aliasing
+			const origin = getOriginInDfg(graph, vertex.id);
+			if(origin !== undefined 
+				&& origin.length > 0
+				&& origin[0].type === OriginType.BuiltInFunctionOrigin 
+				&& BuiltInEvalHandlerMapper[origin[0].proc as keyof typeof BuiltInEvalHandlerMapper] !== undefined) {
+				resultIds.push(vertex.id);
+				continue;
+			}
+		}
 
 		// travel all read and defined-by edges
 		for(const [targetId, edge] of outgoingEdges) {
 			if(isFn) {
-				if(edge.types === EdgeType.Returns || edge.types === EdgeType.DefinedByOnCall || edge.types ===  EdgeType.DefinedBy) {
+				const interestingFnEdges = EdgeType.Returns | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
+				if((edge.types & ~interestingFnEdges) === 0 && edge.types !== 0) {
 					queue.add(targetId, baseEnvironment, cleanFingerprint, false);
 				}
 				continue;
 			}
-			// currently, they have to be exact!
-			if(edge.types === EdgeType.Reads || edge.types ===  EdgeType.DefinedBy || edge.types === EdgeType.DefinedByOnCall) {
+
+			const interestingEdges = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
+			if((edge.types & ~interestingEdges) === 0 && edge.types !== 0) {
 				queue.add(targetId, baseEnvironment, cleanFingerprint, false);
 			}
 		}
 	}
-	if(forceBot || resultIds.length === 0) {
+
+	if(forceBot) {
 		return Bottom;
+	} 
+	
+	if(resultIds.length === 0)  {
+		return Top;
 	}
+
+	resultIds.sort((a,b) => String(a).localeCompare(String(b)));
+
 	const values: Set<Value> = new Set<Value>();
 	for(const id of resultIds) {
 		const node = idMap.get(id);
 		if(node !== undefined) {
-			values.add(valueFromRNodeConstant(node));
+			values.add(resolveNode(resolve, node, undefined, graph, graph.idMap));
 		}
 	}
 	return setFrom(...values);

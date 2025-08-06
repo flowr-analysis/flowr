@@ -1,5 +1,3 @@
-import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { intervalFrom } from './intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from './logical/logical-constants';
 import type { Lift, Value, ValueSet } from './r-value';
@@ -45,24 +43,6 @@ export function valueFromTsValue(a: unknown): Value {
 	} else if(typeof a === 'boolean') {
 		return a ? ValueLogicalTrue : ValueLogicalFalse;
 	}
-
-	return Top;
-}
-
-
-/**
- * Converts a constant from an RNode into an abstract value
- * @param a - RNode constant
- * @returns abstract value
- */
-export function valueFromRNodeConstant(a: RNodeWithParent): Value {
-	if(a.type === RType.String) {
-		return stringFrom(a.content.str);
-	} else if(a.type === RType.Number) {
-		return intervalFrom(a.content.num, a.content.num);	
-	} else if(a.type === RType.Logical) {
-		return a.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
-	} 
 
 	return Top;
 }

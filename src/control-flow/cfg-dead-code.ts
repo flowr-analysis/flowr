@@ -143,11 +143,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 
 		this.cachedConditions.set(data.call.id, isEmptyVector ? Ternary.Never : Ternary.Always);
 	}
-
-	protected onMidMarkerNode(_node: CfgMidMarkerVertex): void {
-		
-	}
-
+	
 	protected onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
 		this.handleFunctionCall(data);	
 	}

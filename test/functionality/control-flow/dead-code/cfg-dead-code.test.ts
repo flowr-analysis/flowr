@@ -36,37 +36,11 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 		describe('Empty Vector', () => {
 			assertDeadCode('x<-1\nfor (i in c())\n{ print(i) }', { reachableFromStart: ['1@x', '2@i'], unreachableFromStart: ['3@i'] });
 			assertDeadCode('x<-1; y <- c()\nfor (i in y)\n{ print(i) }', { reachableFromStart: ['1@x', '2@i'], unreachableFromStart: ['3@i'] });
-			// c <- function() 1:10
-			// ------
-			// f <- function(p = c()) { for(i in p) { x <- 2} } --> not dead 
-			// one more indirection 
-			// detect loop that is not dead 
-			// nested 
 			
-			/** 
-		     * f <- function() {
-		     * 	for(i in c()) {}
-		     *    function() i <<- 42
-		     * }
-		     * 
-		     * g <- f()
-		     * g()
-		     * 
-		     * > i
-    		 * Error: object 'i' not found
-    		 * > for(i in c()) {}
-    		 * > i
-    		 * NULL
-			 */
-			
-			/// ------------------------------------
-			// doesItLoopyOnlyOncey(<...>)
-			// for(i in c(1)) { print(42) }
-			// while(TRUE) { print(2); [break|stopifnot()];  }
-			// for(i in 1:10) { print(42); break }
-			// for(i in 1:10) { print(42); if(u) break else break } 
-			// x <- 2; while(TRUE) { x <- x + 1; break } 
-			// a:b (1:9, 9:1) | seq | seq_along |
+			// Negative Test / Don't remove useful loop
+			assertDeadCode('for (i in c(1, 2))\n{ print(i) }', { reachableFromStart: ['1@i', '2@i'], unreachableFromStart: [] });
+			assertDeadCode('c <- function() 1:10 \n for (i in c())\n{ print(i) }', { reachableFromStart: ['2@i', '3@i'], unreachableFromStart: [] });
+			assertDeadCode('f <- function(p = c()) { for(i in p) { x <- 2} }', { reachableFromStart: ['1@i', '1@x'], unreachableFromStart: [] });
 		});
 
 		describe.each([

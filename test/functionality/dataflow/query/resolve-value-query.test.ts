@@ -13,6 +13,7 @@ import { Top } from '../../../../src/dataflow/eval/values/r-value';
 import type { ResolveResult } from '../../../../src/dataflow/eval/resolve/alias-tracking';
 
 import { withTreeSitter } from '../../_helper/shell';
+import { vectorFrom } from '../../../../src/dataflow/eval/values/vectors/vector-constants';
 
 describe('Resolve Value Query', withTreeSitter( parser => {
 	function testQuery(name: string, code: string, criteria: SlicingCriteria, expected: ResolveResult[][]) {
@@ -41,6 +42,7 @@ describe('Resolve Value Query', withTreeSitter( parser => {
 	testQuery('Intermediary', 'x <- 1\ny <- x\nprint(y)', ['3@y'], [[setFrom(intervalFrom(1,1))]]);
 	testQuery('Mystic Intermediary', 'x <- 1\ny <- f(x)\nprint(y)', ['3@y'], [[Top]]);
 	testQuery('Either or', 'if(u) { x <- 1 } else { x <- 2 }\nprint(x)', ['2@x'], [[setFrom(intervalFrom(2,2), intervalFrom(1,1))]]);
+	testQuery('Vector', 'x <- c(1,2,3)', ['1@x'], [[setFrom(vectorFrom([intervalFrom(1,1), intervalFrom(2,2),intervalFrom(3,3)]))]]);
 	testQuery('Big vector', `results <- c("A", "B", "C", "D", "E")
 		col <- vector()
 		

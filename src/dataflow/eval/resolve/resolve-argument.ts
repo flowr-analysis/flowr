@@ -14,7 +14,7 @@ import { resolveIdToValue } from './alias-tracking';
 import { isValue } from '../values/r-value';
 import { RFalse, RTrue } from '../../../r-bridge/lang-4.x/convert-values';
 import { collectStrings } from '../values/string/string-constants';
-import type { VariableResolve } from '../../../config';
+import { VariableResolve } from '../../../config';
 
 /**
  * Get the values of all arguments matching the criteria.
@@ -92,9 +92,8 @@ function hasCharacterOnly(variableResolve: VariableResolve, graph: DataflowGraph
 }
 
 function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, environment: REnvironmentInformation | undefined, idMap: Map<NodeId, RNode> | undefined, resolveValue : boolean | 'library' | undefined): string[] | undefined {
-	let full = true;
 	if(!resolveValue) {
-		full = false;
+		variableResolve = VariableResolve.Builtin;
 	}
 
 	if(resolveValue === 'library') {
@@ -103,11 +102,11 @@ function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowG
 			if(argument.type === RType.Symbol) {
 				return [argument.lexeme];
 			}
-			full = false;
+			variableResolve = VariableResolve.Builtin;
 		}
 	}
 
-	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph, full, resolve: variableResolve }));
+	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph, resolve: variableResolve }));
 	if(resolved) {
 		const values: string[] = [];
 		for(const value of resolved.elements) {
@@ -118,7 +117,7 @@ function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowG
 			} else if(value.type === 'logical' && isValue(value.value)) {
 				values.push(value.value.valueOf() ? RTrue : RFalse);
 			} else if(value.type === 'vector' && isValue(value.elements)) {
-				const elements = collectStrings(value.elements, !full);
+				const elements = collectStrings(value.elements, variableResolve === VariableResolve.Builtin);
 				if(elements === undefined) {
 					return undefined;
 				}

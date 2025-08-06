@@ -81,7 +81,7 @@ export function resolveAsVector(resolve: VariableResolve, a: RNodeWithParent, en
 
 
 		if(arg.value.type === RType.Symbol) {
-			const value = resolveIdToValue(arg.info.id, { environment: env, idMap: map, graph: graph, full: true, resolve });
+			const value = resolveIdToValue(arg.info.id, { environment: env, idMap: map, graph: graph, resolve });
 			if(isTop(value)) {
 				return Top;
 			}

@@ -17,7 +17,7 @@ import { intervalFromValues } from '../../../../src/dataflow/eval/values/interva
 import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-consatnts';
 import { vectorFrom } from '../../../../src/dataflow/eval/values/vectors/vector-constants';
 import { resolveIdToValue, resolveToConstants } from '../../../../src/dataflow/eval/resolve/alias-tracking';
-import { defaultConfigOptions } from '../../../../src/config';
+import { defaultConfigOptions, VariableResolve } from '../../../../src/config';
 
 enum Allow {
 	None = 0,
@@ -61,8 +61,7 @@ describe('Resolve', withTreeSitter(shell => {
 					environment: resolveWith === 'env'   ? dataflow.environment : undefined,
 					graph:       dataflow.graph,
 					idMap:       normalize.idMap,
-					full:        true,
-					resolve:     defaultConfigOptions.solver.variables
+					resolve:     VariableResolve.Alias
 				});
 			
 				if((allow & Allow.Top) == Allow.Top && isTop(resolved)) {
@@ -84,7 +83,7 @@ describe('Resolve', withTreeSitter(shell => {
 				'u <- u + 1',
 				`if(FALSE) { rm(${identifier})}`
 			];
-			
+
 			describe(name, () => {
 				for(const distractor of distractors) {
 					const mutatedCode = code.split('\n').map(line => `${distractor}\n${line}`).join('\n');

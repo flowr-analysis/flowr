@@ -7,7 +7,8 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { envFingerprint } from '../../../slicing/static/fingerprint';
 import { VisitingQueue } from '../../../slicing/static/visiting-queue';
 import { guard } from '../../../util/assert';
-import { BuiltInEvalHandlerMapper, BuiltInMappingName, BuiltInProcessorMapper, type BuiltInIdentifierConstant } from '../../environments/built-in';
+import type { BuiltInMappingName , BuiltInIdentifierConstant } from '../../environments/built-in';
+import { BuiltInEvalHandlerMapper } from '../../environments/built-in';
 import type { REnvironmentInformation } from '../../environments/environment';
 import { initializeCleanEnvironments } from '../../environments/environment';
 import type { Identifier } from '../../environments/identifier';
@@ -44,8 +45,6 @@ export interface ResolveInfo {
 	idMap?:       AstIdMap;
 	/** The graph to resolve in */
 	graph?:       DataflowGraph;
-	/** Whether to track variables */
-	full?:        boolean;
 	/** Variable resolve mode */
 	resolve:      VariableResolve;
 }
@@ -148,7 +147,11 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
  * @param full        - Whether to track aliases on resolve
  * @param resolve     - Variable resolve mode
  */
-export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, resolve } : ResolveInfo): ResolveResult {
+export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, resolve } : ResolveInfo): ResolveResult {
+	if(resolve === VariableResolve.Disabled) {
+		return Top;
+	}
+
 	if(id === undefined) {
 		return Top;
 	}
@@ -159,25 +162,36 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 		return Top;
 	}
 
-	switch(node.type) {
-		case RType.Argument:
-			return resolveIdToValue(node.value, { environment, graph, idMap, full, resolve });
-		case RType.Symbol:
-			if(environment) {
-				return full ? trackAliasInEnvironments(resolve, node.lexeme, environment, graph, idMap) : Top;
-			} else if(graph && resolve === VariableResolve.Alias) {
-				return full ? trackAliasesInGraph(resolve, node.info.id, graph, idMap) : Top;
-			} else {
+	if(resolve === VariableResolve.Alias) {
+		switch(node.type) {
+			case RType.Argument:
+				return resolveIdToValue(node.value, { environment, graph, idMap, resolve });
+			case RType.Symbol:
+				if(environment) {
+					return trackAliasInEnvironments(resolve, node.lexeme, environment, graph, idMap);
+				} else if(graph) {
+					return trackAliasesInGraph(resolve, node.info.id, graph, idMap) ;
+				} else {
+					return Top;
+				}
+			case RType.FunctionCall:
+			case RType.String:
+			case RType.Number:
+			case RType.Logical:
+				return setFrom(resolveNode(resolve, node, environment, graph, idMap));	
+			default:
 				return Top;
-			}
-		case RType.FunctionCall:
-		case RType.String:
-		case RType.Number:
-		case RType.Logical:
-			return setFrom(resolveNode(resolve, node, environment, graph, idMap));	
-		default:
-			return Top;
-	}
+		}
+	} else if(resolve === VariableResolve.Builtin) {
+		switch(node.type) {
+			case RType.String:
+			case RType.Number:
+			case RType.Logical:
+				return setFrom(resolveNode(resolve, node, environment, graph, idMap));	
+		}
+	} 
+
+	return Top;
 }
 
 /**

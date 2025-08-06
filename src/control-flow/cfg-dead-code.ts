@@ -1,6 +1,5 @@
 /* currently this does not do work on function definitions */
-import type { CfgMidMarkerVertex, ControlFlowInformation } from './control-flow-graph';
-import { CfgEdgeType } from './control-flow-graph';
+import { CfgEdgeType, type ControlFlowInformation } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../util/logic';
 import type { CfgPassInfo } from './cfg-simplification';
@@ -70,7 +69,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private handleValuesFor(id: NodeId, valueId: NodeId): void {
-		const values = valueSetGuard(resolveIdToValue(valueId, { graph: this.config.dfg, full: true, idMap: this.config.normalizedAst.idMap, resolve: this.config.flowrConfig.solver.variables }));
+		const values = valueSetGuard(resolveIdToValue(valueId, { graph: this.config.dfg, idMap: this.config.normalizedAst.idMap, resolve: this.config.flowrConfig.solver.variables }));
 		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
 			this.unableToCalculateValue(id);
 			return;
@@ -93,7 +92,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			return undefined;
 		}
 
-		const values = valueSetGuard(resolveIdToValue(data.call.args[0].nodeId, { graph: this.config.dfg, full: true, idMap: this.config.normalizedAst.idMap, resolve: this.config.flowrConfig.solver.variables  }));
+		const values = valueSetGuard(resolveIdToValue(data.call.args[0].nodeId, { graph: this.config.dfg, idMap: this.config.normalizedAst.idMap, resolve: this.config.flowrConfig.solver.variables  }));
 		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
 			return undefined;
 		}
@@ -130,7 +129,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			return;
 		}
 
-		const values = valueSetGuard(resolveIdToValue(data.vector.nodeId, { graph: this.config.dfg, environment: data.call.environment, full: true, idMap: this.config.normalizedAst.idMap, resolve: this.config.flowrConfig.solver.variables  }));
+		const values = valueSetGuard(resolveIdToValue(data.vector.nodeId, { graph: this.config.dfg, environment: data.call.environment, idMap: this.config.normalizedAst.idMap, resolve: this.config.flowrConfig.solver.variables  }));
 		if(values === undefined) {
 			return;
 		}

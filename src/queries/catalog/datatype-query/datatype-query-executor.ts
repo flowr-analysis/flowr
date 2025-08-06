@@ -7,21 +7,20 @@ import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 import { inferDataTypes } from '../../../typing/unification/infer';
 import { inferDataTypes as inferDataTypesUsingSubtyping } from '../../../typing/subtyping/infer';
 import type { UnresolvedDataType } from '../../../typing/subtyping/types';
-// import { loadTracedTypes, loadTurcotteTypes } from '../../../typing/adapter/load-type-signatures';
+import { loadTracedTypes, loadTurcotteTypes } from '../../../typing/adapter/load-type-signatures';
 
-export function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, queries: readonly DatatypeQuery[]): DatatypeQueryResult {
+export async function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, queries: readonly DatatypeQuery[]): Promise<DatatypeQueryResult> {
 	const start = Date.now();
 
 	const result: DatatypeQueryResult['inferredTypes'] = {};
 	for(const query of queries) {
 		const knownTypes = new Map<string, UnresolvedDataType>();
-		// TODO: Make the query asynchronous to be able to load the types
-		// if(query.useTurcotteTypes) {
-		// 	await loadTurcotteTypes(knownTypes);
-		// }
-		// if(query.useTracedTypes) {
-		// 	await loadTracedTypes(knownTypes);
-		// }
+		if(query.useTurcotteTypes) {
+			await loadTurcotteTypes(knownTypes);
+		}
+		if(query.useTracedTypes) {
+			await loadTracedTypes(knownTypes);
+		}
 
 		const typedAst = query.useSubtyping
 			? inferDataTypesUsingSubtyping(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow, knownTypes)

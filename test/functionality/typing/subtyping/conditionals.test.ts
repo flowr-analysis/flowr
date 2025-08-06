@@ -13,6 +13,7 @@ describe('Infer types for if statements', () => {
 
 	assertInferredTypes(
 		'a <- if(1 > 2) { "Yes" } else { "Nope" }',
+		undefined,
 		{ query: Q.all().filter(RType.BinaryOp).first().build(), lowerBound: new RStringType() },
 		{ query: Q.all().filter(RType.BinaryOp).last().build(),  upperBound: new RLogicalType() },
 	);

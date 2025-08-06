@@ -2,10 +2,7 @@ import type { ReplCommand } from './repl-main';
 import { findSource } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import fs from 'fs';
 import csvParser from 'csv-parser';
-import type {
-	RohdeTypes,
-	TurcotteCsvRow
-} from '../../../typing/adapter/turcotte-types';
+import type { TurcotteCsvRow } from '../../../typing/adapter/turcotte-types';
 import {
 	dumpRohdeTypesFromTurcotte,
 	recoverRohdeTypesFromTurcotteFromDump,
@@ -13,6 +10,7 @@ import {
 } from '../../../typing/adapter/turcotte-types';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { compressToUTF16, decompressFromUTF16 } from 'lz-string';
+import type { RohdeTypes } from '../../../typing/adapter/interface';
 
 
 export const replTurcotteTypeParseCommand: ReplCommand = {
@@ -20,26 +18,26 @@ export const replTurcotteTypeParseCommand: ReplCommand = {
 	usageExample: ':turcotte-type-parse foo.csv out.data',
 	aliases:      [ 'ttp',],
 	script:       false,
-	fn:           async(output, _shell, remainingLine) => {
+	fn:           async(info) => {
 		const now = new Date();
-		if(!remainingLine.trim()) {
-			output.stderr('Please provide a file to read from. You do not need a prefix, just the file path.');
+		if(!info.remainingLine.trim()) {
+			info.output.stderr('Please provide a file to read from. You do not need a prefix, just the file path.');
 			return;
 		}
-		const args = splitAtEscapeSensitive(remainingLine.trim());
+		const args = splitAtEscapeSensitive(info.remainingLine.trim());
 		if(args.length < 1 || args.length > 2) {
-			output.stderr(`Expected a single file to read from and and optional one to write to, got: ${JSON.stringify(args)}`);
+			info.output.stderr(`Expected a single file to read from and and optional one to write to, got: ${JSON.stringify(args)}`);
 			return;
 		}
 		const [readFilePath, writeFilePath] = args as [string, string | undefined];
-		const readFile = findSource(readFilePath.trim(), { referenceChain: [] });
+		const readFile = findSource(undefined, readFilePath.trim(), { referenceChain: [] });
 		if(readFile?.length !== 1) {
-			output.stderr(`Could not find a single file to read from. Got: ${JSON.stringify(readFile)}`);
+			info.output.stderr(`Could not find a single file to read from. Got: ${JSON.stringify(readFile)}`);
 			return;
 		}
-		const writeFile = writeFilePath ? findSource(writeFilePath.trim(), { referenceChain: [] }) : undefined;
+		const writeFile = writeFilePath ? findSource(undefined, writeFilePath.trim(), { referenceChain: [] }) : undefined;
 		if(writeFilePath && writeFile && writeFile.length > 0) {
-			output.stderr(`The output file already exists, will not overwrite: ${writeFilePath}`);
+			info.output.stderr(`The output file already exists, will not overwrite: ${writeFilePath}`);
 			return;
 		}
 
@@ -55,16 +53,16 @@ export const replTurcotteTypeParseCommand: ReplCommand = {
 		});
 		const rohdeTypes: RohdeTypes = turcotte2RohdeTypes(data);
 
-		output.stdout(`Parsed ${rohdeTypes.info.length} functions from ${readFile[0]} in ${Date.now() - now.getTime()}ms.`);
+		info.output.stdout(`Parsed ${rohdeTypes.info.length} functions from ${readFile[0]} in ${Date.now() - now.getTime()}ms.`);
 
 		if(writeFilePath) {
 			const startWrite = Date.now();
 			fs.writeFileSync(writeFilePath, compressToUTF16(dumpRohdeTypesFromTurcotte(rohdeTypes)), { encoding: 'utf-16le' });
-			output.stdout(`Wrote ${rohdeTypes.info.length} functions to ${writeFilePath} in ${Date.now() - startWrite}ms.`);
+			info.output.stdout(`Wrote ${rohdeTypes.info.length} functions to ${writeFilePath} in ${Date.now() - startWrite}ms.`);
 			const startRead = Date.now();
 			const loadCheck = decompressFromUTF16(fs.readFileSync(writeFilePath, { encoding: 'utf-16le' }));
 			const recovered = recoverRohdeTypesFromTurcotteFromDump(loadCheck);
-			output.stdout(`[Test] Recovered ${recovered.info.length} functions from ${writeFilePath} in ${Date.now() - startRead}ms.`);
+			info.output.stdout(`[Test] Recovered ${recovered.info.length} functions from ${writeFilePath} in ${Date.now() - startRead}ms.`);
 		}
 	}
 };

@@ -57,10 +57,12 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 	const numberOfFunctions = libraryFunctions.length + sourceFunctions.length + readFunctions.length + writeFunctions.length;
 
 	const results = numberOfFunctions === 0 ? { kinds: {}, '.meta': { timing: 0 } } : executeQueriesOfSameType<CallContextQuery>(data,
-		...makeCallContextQuery(libraryFunctions, 'library'),
-		...makeCallContextQuery(sourceFunctions, 'source'),
-		...makeCallContextQuery(readFunctions, 'read'),
-		...makeCallContextQuery(writeFunctions, 'write')
+		[
+			makeCallContextQuery(libraryFunctions, 'library'),
+			makeCallContextQuery(sourceFunctions, 'source'),
+			makeCallContextQuery(readFunctions, 'read'),
+			makeCallContextQuery(writeFunctions, 'write')
+		].flat()
 	);
 
 	function getLexeme(argument: string | undefined | typeof Unknown, id: NodeId | undefined) {
@@ -151,7 +153,7 @@ function getResults<T extends DependencyInfo>(data: BasicQueryData, results: Cal
 		const vertex = data.dataflow.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
 		const info = functions.find(f => f.name === name) as FunctionInfo;
 
-		const args = getArgumentStringValue(data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
+		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
 		const linkedArgs = collectValuesFromLinks(args, data, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
 
 		const foundValues = linkedArgs ?? args;
@@ -195,7 +197,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undef
 		if(vertex === undefined || vertex.tag !== VertexType.FunctionCall) {
 			continue;
 		}
-		const args = getArgumentStringValue(data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
+		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
 		if(args === undefined) {
 			continue;
 		}
@@ -209,7 +211,6 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undef
 	}
 	return map.size ? map : undefined;
 }
-
 
 function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
 	let functions: FunctionInfo[] = ignoreDefaultFunctions ? [] : [...defaultFunctions];

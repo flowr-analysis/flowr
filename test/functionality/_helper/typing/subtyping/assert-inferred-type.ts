@@ -9,18 +9,22 @@ import { type FlowrSearch } from '../../../../../src/search/flowr-search-builder
 import { runSearch } from '../../../../../src/search/flowr-search-executor';
 import type { ParentInformation } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
+import { defaultConfigOptions } from '../../../../../src/config';
+import type { UnresolvedDataType } from '../../../../../src/typing/subtyping/types';
 
-export function assertInferredType(input: string, expectedType: { expectedType: DataType } | { lowerBound?: DataType, upperBound?: DataType }): void {
-	assertInferredTypes(input, expectedType);
+export function assertInferredType(input: string, expectedType: { expectedType: DataType } | { lowerBound?: DataType, upperBound?: DataType }, knownTypes?: Map<string, Set<UnresolvedDataType>>): void {
+	assertInferredTypes(input, knownTypes, expectedType);
 }
+
 export function assertInferredTypes(
 	input: string,
+	knownTypes?: Map<string, Set<UnresolvedDataType>>,
 	...expectations: ({ query?: FlowrSearch } & ({ expectedType: DataType } | { lowerBound?: DataType, upperBound?: DataType }))[]
 ): void {
 	describe(`Infer types for ${input}`, async() => {
 		const executor = new TreeSitterExecutor();
-		const result = await createDataflowPipeline(executor, { request: requestFromInput(input) }).allRemainingSteps();
-		inferDataTypes(result.normalize, result.dataflow);
+		const result = await createDataflowPipeline(executor, { request: requestFromInput(input) }, defaultConfigOptions).allRemainingSteps();
+		inferDataTypes(result.normalize, result.dataflow, knownTypes);
 
 		const expectedTypes = expectations.map(({ query, ...rest }) => ({
 			query,
@@ -32,9 +36,10 @@ export function assertInferredTypes(
 		describe.each(expectedTypes)('Infer $expectedType.tag for query $query', ({ query, expectedType }) => {
 			let node: RNode<ParentInformation & DataTypeInfo>;
 			if(query !== undefined) {
-				const searchResult = runSearch(query, result);
-				expect(searchResult).toHaveLength(1);
-				node = searchResult[0].node as RNode<ParentInformation & DataTypeInfo>;
+				const searchResult = runSearch(query, { config: defaultConfigOptions, ...result });
+				const searchElements = searchResult.getElements();
+				expect(searchElements).toHaveLength(1);
+				node = searchElements[0].node as RNode<ParentInformation & DataTypeInfo>;
 			} else {
 				node = result.normalize.idMap.get(result.dataflow.exitPoints[0].nodeId) as RNode<ParentInformation & DataTypeInfo>;
 			}

@@ -1,6 +1,6 @@
 import { assert } from 'chai';
 import type { DeepPartial } from 'ts-essentials';
-import { jsonReplacer, jsonBigIntRetriever } from '../../../src/util/json';
+import { jsonBigIntRetriever, jsonReplacer } from '../../../src/util/json';
 import type { TestConfiguration } from '../_helper/shell';
 import { skipTestBecauseConfigNotMet } from '../_helper/shell';
 import { deepMergeObject } from '../../../src/util/objects';
@@ -11,9 +11,10 @@ import type { RShell } from '../../../src/r-bridge/shell';
 import type { AppendFnType, DummyAppendMemoryMap } from '../../../src/statistics/output/file-provider';
 import { initDummyFileProvider } from '../../../src/statistics/output/statistics-file';
 import { test } from 'vitest';
+import { defaultConfigOptions } from '../../../src/config';
 
 async function requestFeature<T extends FeatureKey>(shell: RShell, feature: T, code: string): Promise<FeatureValue<T>> {
-	const results = await extractUsageStatistics(shell, () => { /* do nothing */ }, new Set([feature]), staticRequests({ request: 'text', content: code }));
+	const results = await extractUsageStatistics(shell, defaultConfigOptions, () => { /* do nothing */ }, new Set([feature]), staticRequests({ request: 'text', content: code }));
 	return results.features[feature] as FeatureValue<T>;
 }
 

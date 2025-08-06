@@ -18,6 +18,7 @@ describe('Infer types for loops', () => {
 
 	assertInferredTypes(
 		'while(1 > 2) { print("Testing is done!") }',
+		undefined,
 		{ query: Q.all().filter(RType.BinaryOp).build(), upperBound: new RLogicalType() },
 	);
 });

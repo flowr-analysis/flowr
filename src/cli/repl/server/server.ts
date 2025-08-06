@@ -7,7 +7,7 @@ import type { FlowrErrorMessage } from './messages/message-error';
 import type { Server, Socket } from './net';
 import { NetServer } from './net';
 import { FlowrLogger } from '../../../util/log';
-import type { KnownEngines } from '../../../config';
+import type { FlowrConfigOptions, KnownEngines } from '../../../config';
 import type { KnownParser } from '../../../r-bridge/parser';
 
 // we detach from the main logger so that it can have its own switch
@@ -24,17 +24,19 @@ export class FlowRServer {
 	private readonly defaultEngine:       keyof KnownEngines;
 	private versionInformation:           VersionInformation | undefined;
 	private readonly allowRSessionAccess: boolean;
+	private readonly config:			           FlowrConfigOptions;
 
 	/** maps names to the respective connection */
 	private readonly connections = new Map<string, FlowRServerConnection>();
 	private nameCounter = 0;
 
-	constructor(engines: KnownEngines, defaultEngine: keyof KnownEngines, allowRSessionAccess: boolean, server: Server = new NetServer()) {
+	constructor(engines: KnownEngines, defaultEngine: keyof KnownEngines, allowRSessionAccess: boolean, config: FlowrConfigOptions, server: Server = new NetServer()) {
 		this.server = server;
 		this.server.onConnect(c => this.onConnect(c));
 		this.engines = engines;
 		this.defaultEngine = defaultEngine;
 		this.allowRSessionAccess = allowRSessionAccess;
+		this.config = config;
 	}
 
 	public async start(port: number) {
@@ -51,7 +53,7 @@ export class FlowRServer {
 		const name = `client-${this.nameCounter++}`;
 		serverLog.info(`Client connected: ${getUnnamedSocketName(c)} as "${name}"`);
 
-		this.connections.set(name, new FlowRServerConnection(c, name, this.engines[this.defaultEngine] as KnownParser, this.allowRSessionAccess));
+		this.connections.set(name, new FlowRServerConnection(c, name, this.engines[this.defaultEngine] as KnownParser, this.allowRSessionAccess, this.config));
 		helloClient(c, name, this.versionInformation);
 		c.on('close', () => {
 			this.connections.delete(name);

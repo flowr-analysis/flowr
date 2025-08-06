@@ -25,21 +25,20 @@ import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import type { UnresolvedDataType } from './types';
 import { constrain, getIndexedElementTypeFromList, getParameterTypeFromFunction, resolve, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeIntersection, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from './types';
-import type { RohdeTypes, TurcotteCsvRow } from '../adapter/turcotte-types';
-import { turcotte2RohdeTypes } from '../adapter/turcotte-types';
-import csvParser from 'csv-parser';
-import fs from 'fs';
+import { defaultConfigOptions } from '../../config';
 
-export function inferDataTypes<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation, useTurcotteTypes: boolean = true): NormalizedAst<Info & DataTypeInfo> {
+
+export function inferDataTypes<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation, knownTypes: Map<string, Set<UnresolvedDataType>> = new Map()): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
-	const controlFlowInfo = extractCfg(astWithTypeVars, dataflowInfo.graph, ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code']);
+	const controlFlowInfo = extractCfg(astWithTypeVars, defaultConfigOptions, dataflowInfo.graph, ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code']);
 	const config = {
 		normalizedAst:        astWithTypeVars,
 		controlFlow:          controlFlowInfo,
 		dataflowInfo:         dataflowInfo,
 		dfg:                  dataflowInfo.graph,
 		defaultVisitingOrder: 'forward' as const,
-		useTurcotteTypes,
+		flowrConfig:          defaultConfigOptions,
+		knownTypes,
 	};
 	const visitor = new TypeInferringCfgGuidedVisitor(config);
 	visitor.start();
@@ -60,9 +59,6 @@ function resolveTypeVariables<Info extends ParentInformation & UnresolvedTypeInf
 	return mapNormalizedAstInfo(ast, node => {
 		const { typeVariable, ...rest } = node.info;
 		const resolvedType = resolve(typeVariable, undefined, prunedVariables);
-		// if(node.lexeme === 'y') {
-		// 	console.debug('Resolving type variable', inspect(typeVariable, { depth: null, colors: true }), 'to', inspect(resolvedType, { depth: null, colors: true }));
-		// }
 		return { ...rest, inferredType: resolvedType };
 	});
 }
@@ -73,8 +69,8 @@ export interface TypeInferringCfgGuidedVisitorConfiguration<
 	Ast extends NormalizedAst<UnresolvedTypeInfo & OtherInfo> = NormalizedAst<UnresolvedTypeInfo & OtherInfo>,
 	Dataflow extends DataflowInformation                      = DataflowInformation
 > extends Omit<SemanticCfgGuidedVisitorConfiguration<UnresolvedTypeInfo & OtherInfo, ControlFlow, Ast>, 'dataflow'> {
-	dataflowInfo:     Dataflow;
-	useTurcotteTypes: boolean;
+	dataflowInfo: Dataflow;
+	knownTypes:   Map<string, Set<UnresolvedDataType>>;
 }
 
 class TypeInferringCfgGuidedVisitor<
@@ -87,32 +83,10 @@ class TypeInferringCfgGuidedVisitor<
 	constructor(config: Config) {
 		super({ dataflow: config.dataflowInfo.graph, ...config });
 
-		if(config.useTurcotteTypes) {
-			const data: TurcotteCsvRow[] = [];
-			fs.createReadStream('src/typing/adapter/turcotte-types.csv', { encoding: 'utf-8' })
-				.pipe(csvParser({ separator: ',' }))
-				.on('data', (row: TurcotteCsvRow) => {
-					data.push(row);
-				});
-			const rohdeTypes: RohdeTypes = turcotte2RohdeTypes(data);
-			for(const info of rohdeTypes.info) {
-				const label = info.name; //`${info.package}::${info.name}`;
-				if('type' in info) {
-					this.constantContext.set(label, info.type);
-				}
-				if('types' in info) {
-					const type = info.types.length === 1 ? info.types[0] : new UnresolvedRTypeIntersection(...info.types);
-					this.functionContext.set(label, type);
-				}
-			}
-		}
-
 		Error.stackTraceLimit = 100; // Increase stack trace limit for better debugging
 	}
 
 	protected constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map();
-	protected constantContext: Map<string, UnresolvedDataType> = new Map();
-	protected functionContext: Map<string, UnresolvedDataType> = new Map();
 
 
 	protected constrainNodeType(nodeOrId: RNode<UnresolvedTypeInfo> | NodeId, constraint: UnresolvedDataType | { lowerBound?: UnresolvedDataType, upperBound?: UnresolvedDataType }): void {
@@ -172,14 +146,9 @@ class TypeInferringCfgGuidedVisitor<
 		if(hasUnresolvableOrigins) {
 			if(node.type === RType.Symbol) {
 				// If the read variable has no associated AST node it might be a library constant or function
-				const constantType = this.constantContext.get(node.content);
-				if(constantType !== undefined) {
-					this.constrainNodeType(node, { lowerBound: constantType });
-				}
-
-				const functionType = this.functionContext.get(node.content);
-				if(functionType !== undefined) {
-					this.constrainNodeType(node, { lowerBound: functionType });
+				const contextualTypes = this.config.knownTypes.get(node.content);
+				if(contextualTypes !== undefined && contextualTypes.size > 0) {
+					this.constrainNodeType(node, { lowerBound: new UnresolvedRTypeIntersection(...contextualTypes.values()) });
 				}
 			}
 		} else if(lowerBounds.size > 0) {
@@ -248,9 +217,9 @@ class TypeInferringCfgGuidedVisitor<
 				}
 			} else {
 				// If the target function has no associated AST node it might be a library function
-				const contextFunctionType = this.functionContext.get(data.call.name);
-				if(contextFunctionType !== undefined) {
-					constrain(contextFunctionType, functionType, this.constraintCache);
+				const contextualTypes = this.config.knownTypes.get(data.call.name);
+				if(contextualTypes !== undefined && contextualTypes.size > 0) {
+					constrain(new UnresolvedRTypeUnion(...contextualTypes.values()), functionType, this.constraintCache);
 				}
 			}
 		}

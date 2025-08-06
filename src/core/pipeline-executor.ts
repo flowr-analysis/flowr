@@ -4,11 +4,12 @@ import { PipelineStepStage } from './steps/pipeline-step';
 import type {
 	Pipeline,
 	PipelineInput,
-	PipelineOutput, PipelinePerRequestInput,
+	PipelineOutput,
+	PipelinePerRequestInput,
 	PipelineStepNames,
 	PipelineStepOutputWithName
 } from './steps/pipeline/pipeline';
-import { getConfig } from '../config';
+import type { FlowrConfigOptions } from '../config';
 import { BuiltInMemory, EmptyBuiltInMemory } from '../dataflow/environments/built-in';
 import { registerBuiltInDefinitions } from '../dataflow/environments/built-in-config';
 
@@ -99,10 +100,11 @@ export class PipelineExecutor<P extends Pipeline> {
 	private readonly pipeline: P;
 	private readonly length:   number;
 
-	private input:  PipelineInput<P>;
-	private output: PipelineOutput<P> = {} as PipelineOutput<P>;
+	private input:                PipelineInput<P>;
+	private output:               PipelineOutput<P> = {} as PipelineOutput<P>;
 	private currentExecutionStage = PipelineStepStage.OncePerFile;
 	private stepCounter = 0;
+	private readonly flowrConfig: FlowrConfigOptions;
 
 	/**
 	 * Construct a new pipeline executor.
@@ -112,13 +114,14 @@ export class PipelineExecutor<P extends Pipeline> {
 	 *
 	 * @param pipeline - The {@link Pipeline} to execute, probably created with {@link createPipeline}.
 	 * @param input    - External {@link PipelineInput|configuration and input} required to execute the given pipeline.
+	 * @param flowrConfig   - The flowr config containing the built-in definitions
 	 */
-	constructor(pipeline: P, input: PipelineInput<P>) {
+	constructor(pipeline: P, input: PipelineInput<P>, flowrConfig: FlowrConfigOptions) {
 		this.pipeline = pipeline;
 		this.length = pipeline.order.length;
 		this.input = input;
-		const config = getConfig();
-		const builtIns = config.semantics.environment.overwriteBuiltIns;
+		this.flowrConfig = flowrConfig;
+		const builtIns = flowrConfig.semantics.environment.overwriteBuiltIns;
 		if(!builtIns.loadDefaults) {
 			BuiltInMemory.clear();
 			EmptyBuiltInMemory.clear();
@@ -160,7 +163,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	}
 
 
-	public getResults(intermediate?:false): PipelineOutput<P>
+	public getResults(intermediate?: false): PipelineOutput<P>
 	public getResults(intermediate: true): Partial<PipelineOutput<P>>
 	public getResults(intermediate: boolean): PipelineOutput<P>
 	/**
@@ -220,7 +223,7 @@ export class PipelineExecutor<P extends Pipeline> {
 			guard(step.name === expectedStepName, () => `Cannot execute next step, expected step ${JSON.stringify(expectedStepName)} but got ${step.name}.`);
 		}
 
-		return [step.name, step.processor(this.output, this.input) as PipelineStepOutputWithName<P, PipelineStepName>];
+		return [step.name, step.processor(this.output, this.input, this.flowrConfig) as PipelineStepOutputWithName<P, PipelineStepName>];
 	}
 
 	/**

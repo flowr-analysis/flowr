@@ -1,10 +1,14 @@
 import { summarizeSlicerStats } from '../../../src/benchmark/summarizer/first-phase/process';
 import { BenchmarkSlicer } from '../../../src/benchmark/slicer';
 import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print';
-import { CommonSlicerMeasurements, PerSliceMeasurements } from '../../../src/benchmark/stats/stats';
-import { describe, assert, test, beforeAll, afterAll } from 'vitest';
-import { amendConfig } from '../../../src/config';
+import type { CommonSlicerMeasurements } from '../../../src/benchmark/stats/stats';
+import { PerSliceMeasurements, RequiredSlicerMeasurements } from '../../../src/benchmark/stats/stats';
+import { amendConfig, defaultConfigOptions } from '../../../src/config';
+import { assert, describe, test } from 'vitest';
 import { DefaultAllVariablesFilter } from '../../../src/slicing/criterion/filters/all-variables';
+import { requestFromInput } from '../../../src/r-bridge/retriever';
+import { guard, isNotUndefined } from '../../../src/util/assert';
+import { DataFrameOperationNames, type DataFrameOperationName } from '../../../src/abstract-interpretation/data-frame/semantics';
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
 	const { stats: rawStats } = slicer.finish();
@@ -12,7 +16,7 @@ async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: st
 	const statInfo = stats2string(stats);
 
 	assert.strictEqual(stats.request, request, statInfo);
-	assert.sameMembers([...stats.commonMeasurements.keys()], [...CommonSlicerMeasurements], `Must have all keys in common measurements ${statInfo}`);
+	assert.sameMembers([...stats.commonMeasurements.keys()], [...RequiredSlicerMeasurements], `Must have all keys in common measurements ${statInfo}`);
 	assert.sameMembers([...stats.perSliceMeasurements.measurements.keys()], [...PerSliceMeasurements], `Must have all keys in per-slice measurements ${statInfo}`);
 	return { stats, statInfo };
 }
@@ -30,7 +34,7 @@ describe('Benchmark Slicer', () => {
 		test('Simple slice for simple line', { timeout: 15 * 60 * 1000 }, async() => {
 			const slicer = new BenchmarkSlicer('r-shell');
 			const request = { request: 'text' as const, content: 'a <- b' };
-			await slicer.init(request);
+			await slicer.init(request, defaultConfigOptions);
 			await slicer.slice('1@a');
 			const { stats, statInfo } = await retrieveStatsSafe(slicer, request);
 
@@ -98,7 +102,7 @@ d <- b + 5
 cat(c, d)
 cat(d)`
 			};
-			await slicer.init(request);
+			await slicer.init(request, defaultConfigOptions);
 			await slicer.slice('2@a');
 			await slicer.slice('2@a', '4@c');
 			await slicer.slice('7@d');
@@ -158,14 +162,6 @@ cat(d)`
 		});
 
 		describe('Slicing with pointer-tracking enabled', () => {
-			beforeAll(() => {
-				amendConfig(c => c.solver.pointerTracking = true );
-			});
-
-			afterAll(() => {
-				amendConfig(c => c.solver.pointerTracking = false );
-			});
-
 			test('When indices are stored, then correct values are counted', async() => {
 				const slicer = new BenchmarkSlicer('r-shell');
 				const request = {
@@ -187,7 +183,10 @@ print(person$age)`,
 					pointerTracking: true
 				};
 
-				await slicer.init(request);
+				await slicer.init(request, amendConfig(defaultConfigOptions, c => {
+					c.solver.pointerTracking = true;
+					return c;
+				}));
 				await slicer.slice('14@print');
 
 				const { stats, statInfo } = await retrieveStatsSafe(slicer, request);
@@ -215,7 +214,7 @@ d <- 4
 e <- 5`,
 				};
 
-				await slicer.init(request);
+				await slicer.init(request, defaultConfigOptions);
 				const slicedCount = await slicer.sliceForAll(DefaultAllVariablesFilter, (_1, _2, criteria) => {
 					assert.deepStrictEqual(criteria, [['$0'], ['$6'], ['$12']], 'Correct criteria');
 				}, { sampleCount: 3, sampleStrategy: 'equidistant' });
@@ -250,7 +249,7 @@ d <- 4
 e <- 5`,
 				};
 
-				await slicer.init(request);
+				await slicer.init(request, defaultConfigOptions);
 				const slicedCount = await slicer.sliceForAll(DefaultAllVariablesFilter, (_1, _2, criteria) => {
 					assert.equal(criteria.length, 3, '3 criteria are sliced');
 				}, { sampleCount: 3, sampleStrategy: 'random' });
@@ -271,6 +270,61 @@ e <- 5`,
 					},
 					'Correct slice sizes'
 				);
+			});
+		});
+		describe('Control flow graph and data frame shape inference', () => {
+			test('Data frame shape inference', async() => {
+				const slicer = new BenchmarkSlicer('tree-sitter');
+				const request = requestFromInput('df <- data.frame(id = 1:3, age = c(25, 30, 40))');
+				await slicer.init(request, defaultConfigOptions);
+				slicer.extractCFG();
+				slicer.inferDataFrameShapes();
+
+				const { stats: rawStats } = slicer.finish();
+				const stats = await summarizeSlicerStats(rawStats);
+				const statInfo = stats2string(stats);
+				guard(isNotUndefined(stats.dataFrameShape), 'Abstact interpretation stats cannot be undefined');
+
+				const measurements: CommonSlicerMeasurements[] = [...RequiredSlicerMeasurements, 'extract control flow graph', 'infer data frame shapes'];
+				assert.strictEqual(stats.request, request, statInfo);
+				assert.sameMembers([...stats.commonMeasurements.keys()], measurements, `Must have all keys in common measurements ${statInfo}`);
+
+				const { numberOfEmptyNodes: _numberOfEmptyNodes, sizeOfInfo: _sizeOfInfo, ...dataFrameShapeStats } = stats.dataFrameShape;
+				assert.deepStrictEqual(dataFrameShapeStats, {
+					// checked manually
+					numberOfDataFrameFiles:    1,
+					numberOfNonDataFrameFiles: 0,
+					numberOfResultConstraints: 2,
+					numberOfResultingValues:   2,
+					numberOfResultingTop:      0,
+					numberOfResultingBottom:   0,
+					numberOfOperationNodes:    1,
+					numberOfValueNodes:        2,
+					numberOfEntriesPerNode:    { min: 1, max: 2, median: 2, mean: 1.5, std: 0.5, total: 3 },
+					numberOfOperations:        1,
+					numberOfTotalValues:       1,
+					numberOfTotalTop:          0,
+					numberOfTotalBottom:       0,
+					inferredColNames:          { min: 2, max: 2, median: 2, mean: 2, std: 0, total: 2 },
+					numberOfColNamesValues:    1,
+					numberOfColNamesTop:       0,
+					numberOfColNamesBottom:    0,
+					inferredColCount:          { min: 2, max: 2, median: 2, mean: 2, std: 0, total: 2 },
+					numberOfColCountExact:     1,
+					numberOfColCountValues:    1,
+					numberOfColCountTop:       0,
+					numberOfColCountInfinite:  0,
+					numberOfColCountBottom:    0,
+					approxRangeColCount:       { min: 0, max: 0, median: 0, mean: 0, std: 0, total: 0 },
+					inferredRowCount:          { min: 3, max: 3, median: 3, mean: 3, std: 0, total: 3 },
+					numberOfRowCountExact:     1,
+					numberOfRowCountValues:    1,
+					numberOfRowCountTop:       0,
+					numberOfRowCountInfinite:  0,
+					numberOfRowCountBottom:    0,
+					approxRangeRowCount:       { min: 0, max: 0, median: 0, mean: 0, std: 0, total: 0 },
+					perOperationNumber:        new Map([...DataFrameOperationNames.map<[DataFrameOperationName, number]>(name => [name, 0]), ['create', 1]])
+				}, statInfo);
 			});
 		});
 	});

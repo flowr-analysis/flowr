@@ -21,10 +21,9 @@ import { dataflowLogger } from '../../../../../logger';
 import type {
 	IdentifierReference,
 	InGraphIdentifierDefinition,
-	InGraphReferenceType } from '../../../../../environments/identifier';
-import {
-	ReferenceType
+	InGraphReferenceType
 } from '../../../../../environments/identifier';
+import { ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
@@ -38,7 +37,7 @@ import type { REnvironmentInformation } from '../../../../../environments/enviro
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { addSubIndicesToLeafIndices, resolveIndicesByName } from '../../../../../../util/containers';
-import { getConfig } from '../../../../../../config';
+import type { FlowrConfigOptions } from '../../../../../../config';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -306,7 +305,8 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
  * @param nodeToDefine       - `x`
  * @param sourceIds          - `v`
  * @param rootIdOfAssignment - `<-`
- * @param config             - configuration for the assignment processing
+ * @param config             - The flowr config
+ * @param assignmentConfig   - configuration for the assignment processing
  */
 export function markAsAssignment(
 	information: {
@@ -316,9 +316,10 @@ export function markAsAssignment(
 	nodeToDefine: InGraphIdentifierDefinition,
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
-	config?: AssignmentConfiguration  ,
+	config: FlowrConfigOptions,
+	assignmentConfig?: AssignmentConfiguration
 ) {
-	if(getConfig().solver.pointerTracking) {
+	if(config.solver.pointerTracking) {
 		let indicesCollection: ContainerIndicesCollection = undefined;
 		if(sourceIds.length === 1) {
 			// support for tracking indices.
@@ -335,22 +336,22 @@ export function markAsAssignment(
 			}
 		}
 		// Indices defined by replacement operation e.g. $<-
-		if(config?.indicesCollection !== undefined) {
+		if(assignmentConfig?.indicesCollection !== undefined) {
 			// If there were indices stored in the vertex, then a container was defined
 			// and assigned to the index of another container e.g. a$b <- list(c = 1)
 			if(indicesCollection) {
-				indicesCollection = addSubIndicesToLeafIndices(config.indicesCollection, indicesCollection);
+				indicesCollection = addSubIndicesToLeafIndices(assignmentConfig.indicesCollection, indicesCollection);
 			} else {
 				// No indices were defined for the vertex e.g. a$b <- 2
-				indicesCollection = config.indicesCollection;
+				indicesCollection = assignmentConfig.indicesCollection;
 			}
 		}
 		nodeToDefine.indicesCollection ??= indicesCollection;
 	}
 
-	information.environment = define(nodeToDefine, config?.superAssignment, information.environment);
+	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, config);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
-	if(!config?.quoteSource) {
+	if(!assignmentConfig?.quoteSource) {
 		for(const sourceId of sourceIds) {
 			information.graph.addEdge(nodeToDefine, sourceId, EdgeType.DefinedBy);
 		}
@@ -387,11 +388,11 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten
 	];
 
-	information.environment = overwriteEnvironment(targetArg.environment, sourceArg.environment);
+	information.environment = overwriteEnvironment(sourceArg.environment, targetArg.environment);
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
-		markAsAssignment(information, write, [source.info.id], rootId, config);
+		markAsAssignment(information, write, [source.info.id], rootId, data.flowrConfig, config);
 	}
 
 	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);

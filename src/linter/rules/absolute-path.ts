@@ -1,5 +1,6 @@
 import type { LintingResult, LintingRule, LintQuickFixReplacement } from '../linter-format';
-import { LintingCertainty } from '../linter-format';
+import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+
 import type { MergeableRecord } from '../../util/objects';
 import { compactRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -14,18 +15,17 @@ import { isNotUndefined, isUndefined } from '../../util/assert';
 import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
-import { Enrichment } from '../../search/search-executor/search-enrichers';
+import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { FlowrSearchElementMaybeFromQuery } from '../../search/flowr-search';
 import type { QueryResults } from '../../queries/query';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
 import path from 'path';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { FlowrConfigOptions } from '../../config';
 
 export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,
@@ -87,9 +87,9 @@ function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | un
 }
 
 /** return all strings constructable by these functions */
-const PathFunctions: Record<string, (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall) => string[] | undefined> = {
-	'file.path': (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall): string[] | undefined => {
-		const fsep = getArgumentStringValue(
+const PathFunctions: Record<string, (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, config: FlowrConfigOptions) => string[] | undefined> = {
+	'file.path': (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, config: FlowrConfigOptions): string[] | undefined => {
+		const fsep = getArgumentStringValue(config.solver.variables,
 			df, vtx, undefined, 'fsep', true
 		);
 		// in the future we can access `.Platform$file.sep` here
@@ -98,7 +98,7 @@ const PathFunctions: Record<string, (df: DataflowGraph, vtx: DataflowGraphVertex
 			// if we have no fsep, we cannot construct a path
 			return undefined;
 		}
-		const args = getArgumentStringValue(df, vtx, 'unnamed', undefined, true);
+		const args = getArgumentStringValue(config.solver.variables, df, vtx, 'unnamed', undefined, true);
 		const argValues = args ? Array.from(args.values()).flatMap(v => [...v]) : [];
 		if(!argValues || argValues.length === 0 || argValues.some(v => v === Unknown || isUndefined(v))) {
 			// if we have no arguments, we cannot construct a path
@@ -128,7 +128,7 @@ export const ABSOLUTE_PATH = {
 		}
 		if(config.include.constructed) {
 			q = q.merge(Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets));
-			/* in the future we want to directly check whether this is one of the supported functions */
+			/* in the future, we want to directly check whether this is one of the supported functions */
 		}
 		return q.unique();
 	},
@@ -137,6 +137,7 @@ export const ABSOLUTE_PATH = {
 			totalConsidered: 0,
 			totalUnknown:    0
 		};
+		const queryResults = elements.enrichmentContent(Enrichment.QueryData)?.queries;
 		const regex = config.absolutePathRegex ? new RegExp(config.absolutePathRegex) : undefined;
 		return {
 			results: elements.getElements().flatMap(element => {
@@ -146,7 +147,7 @@ export const ABSOLUTE_PATH = {
 				if(isRString(node)) {
 					if(node.content.str.length >= 3 && isAbsolutePath(node.content.str, regex)) {
 						return [{
-							certainty: LintingCertainty.Maybe,
+							certainty: LintingResultCertainty.Uncertain,
 							filePath:  node.content.str,
 							range:     node.info.fullRange ?? node.location,
 							quickFix:  buildQuickFix(node, node.content.str, wd)
@@ -154,12 +155,12 @@ export const ABSOLUTE_PATH = {
 					} else {
 						return [];
 					}
-				} else if(element.queryResult) {
-					const result = element.queryResult as QueryResults<'dependencies'>['dependencies'];
+				} else if(enrichmentContent(element, Enrichment.QueryData)) {
+					const result = queryResults[enrichmentContent(element, Enrichment.QueryData).query] as QueryResults<'dependencies'>['dependencies'];
 					const mappedStrings = result.readData.filter(r => r.source !== Unknown && isAbsolutePath(r.source, regex)).map(r => {
 						const elem = data.normalize.idMap.get(r.nodeId);
 						return {
-							certainty: LintingCertainty.Definitely,
+							certainty: LintingResultCertainty.Certain,
 							filePath:  r.source,
 							range:     elem?.info.fullRange ?? elem?.location ?? rangeFrom(-1, -1, -1, -1),
 							quickFix:  buildQuickFix(elem, r.source, wd)
@@ -175,10 +176,10 @@ export const ABSOLUTE_PATH = {
 					const dfNode = data.dataflow.graph.getVertex(node.info.id);
 					if(isFunctionCallVertex(dfNode)) {
 						const handler = PathFunctions[dfNode.name ?? ''];
-						const strings = handler ? handler(data.dataflow.graph, dfNode) : [];
+						const strings = handler ? handler(data.dataflow.graph, dfNode, data.config) : [];
 						if(strings) {
 							return strings.filter(s => isAbsolutePath(s, regex)).map(str => ({
-								certainty: LintingCertainty.Maybe,
+								certainty: LintingResultCertainty.Uncertain,
 								filePath:  str,
 								range:     node.info.fullRange ?? node.location ?? rangeFrom(-1, -1, -1, -1)
 							}));
@@ -193,10 +194,16 @@ export const ABSOLUTE_PATH = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}` + (result.quickFix ? ' (quick fix available)' : ''),
-	info:        {
+	prettyPrint: {
+		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} is not absolute`
+	},
+	info: {
+		name:          'Absolute Paths',
 		description:   'Checks whether file paths are absolute.',
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
+		// checks all found paths for whether they're absolute to ensure correctness, but doesn't handle non-constant paths so not all will be returned
+		certainty:     LintingRuleCertainty.BestEffort,
 		defaultConfig: {
 			include: {
 				constructed: true,
@@ -207,5 +214,4 @@ export const ABSOLUTE_PATH = {
 			useAsWd:                 '@script'
 		}
 	}
-} as const satisfies LintingRule<AbsoluteFilePathResult, AbsoluteFilePathMetadata, AbsoluteFilePathConfig, ParentInformation, FlowrSearchElementMaybeFromQuery<ParentInformation>[]>;
-
+} as const satisfies LintingRule<AbsoluteFilePathResult, AbsoluteFilePathMetadata, AbsoluteFilePathConfig>;

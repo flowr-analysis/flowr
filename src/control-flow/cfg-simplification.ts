@@ -5,10 +5,12 @@ import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { visitCfgInOrder } from './simple-visitor';
 import { cfgAnalyzeDeadCode } from './cfg-dead-code';
+import type { FlowrConfigOptions } from '../config';
 
 export interface CfgPassInfo {
-	ast?: NormalizedAst,
-	dfg?: DataflowGraph
+	ast?:   NormalizedAst,
+	dfg?:   DataflowGraph,
+	config: FlowrConfigOptions
 }
 export type CfgSimplificationPass = (cfg: ControlFlowInformation, info: CfgPassInfo) => ControlFlowInformation;
 
@@ -48,10 +50,7 @@ export function simplifyControlFlowInformation(
  */
 function cfgRemoveDeadCode(cfg: ControlFlowInformation, _info?: CfgPassInfo): ControlFlowInformation {
 	// remove every root level node and accompanying vertices that can not be reached from the entry points
-	const reachable = new Set<NodeId>();
-	visitCfgInOrder(cfg.graph, cfg.entryPoints, node => {
-		reachable.add(node);
-	});
+	const reachable = cfgFindAllReachable(cfg);
 	for(const id of cfg.graph.rootIds()) {
 		if(!reachable.has(id)) {
 			cfg.graph.removeVertex(id);
@@ -73,4 +72,16 @@ function uniqueControlFlowSets(cfg: ControlFlowInformation, _info?: CfgPassInfo)
 
 function toBasicBlocks(cfg: ControlFlowInformation, _info?: CfgPassInfo): ControlFlowInformation {
 	return convertCfgToBasicBlocks(cfg);
+}
+
+/**
+ * Uses {@link visitCfgInOrder} to find all nodes that are reachable from the control flow graph's {@link ControlFlowInformation.entryPoints} and returns them as a set.
+ * @param cfg - The control flow graph whose reachable nodes to find.
+ */
+export function cfgFindAllReachable(cfg: ControlFlowInformation): Set<NodeId> {
+	const reachable = new Set<NodeId>();
+	visitCfgInOrder(cfg.graph, cfg.entryPoints, node => {
+		reachable.add(node);
+	});
+	return reachable;
 }

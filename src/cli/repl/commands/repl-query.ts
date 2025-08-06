@@ -6,18 +6,19 @@ import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { ansiFormatter, italic } from '../../../util/text/ansi';
 import { describeSchema } from '../../../util/schema';
 import type { Query, QueryResults, SupportedQueryTypes } from '../../../queries/query';
-import { AnyQuerySchema, QueriesSchema , executeQueries } from '../../../queries/query';
+import { AnyQuerySchema, executeQueries, QueriesSchema } from '../../../queries/query';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import type { KnownParser } from '../../../r-bridge/parser';
 import { compressToBase64 } from 'lz-string';
+import type { FlowrConfigOptions } from '../../../config';
 
 
-async function getDataflow(parser: KnownParser, remainingLine: string) {
+async function getDataflow(config: FlowrConfigOptions, parser: KnownParser, remainingLine: string) {
 	return await createDataflowPipeline(parser, {
 		request: requestFromInput(remainingLine.trim())
-	}).allRemainingSteps();
+	}, config).allRemainingSteps();
 }
 
 
@@ -32,7 +33,7 @@ function printHelp(output: ReplOutput) {
 	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
 }
 
-async function processQueryArgs(line: string, parser: KnownParser, output: ReplOutput): Promise<undefined | { query: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> }> {
+async function processQueryArgs(line: string, parser: KnownParser, output: ReplOutput, config: FlowrConfigOptions): Promise<undefined | { query: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> }> {
 	const args = splitAtEscapeSensitive(line);
 	const query = args.shift();
 
@@ -66,9 +67,9 @@ async function processQueryArgs(line: string, parser: KnownParser, output: ReplO
 		parsedQuery = [{ type: 'call-context', callName: query }];
 	}
 
-	const processed = await getDataflow(parser, args.join(' '));
+	const processed = await getDataflow(config, parser, args.join(' '));
 	return {
-		query: executeQueries({ dataflow: processed.dataflow, ast: processed.normalize }, parsedQuery),
+		query: await Promise.resolve(executeQueries({ dataflow: processed.dataflow, ast: processed.normalize, config: config }, parsedQuery)),
 		processed
 	};
 }
@@ -78,9 +79,9 @@ export const queryCommand: ReplCommand = {
 	usageExample: ':query "<query>" <code>',
 	aliases:      [],
 	script:       false,
-	fn:           async(output, parser, remainingLine) => {
+	fn:           async({ output, parser, remainingLine, config }) => {
 		const totalStart = Date.now();
-		const results = await processQueryArgs(remainingLine, parser, output);
+		const results = await processQueryArgs(remainingLine, parser, output, config);
 		const totalEnd = Date.now();
 		if(results) {
 			output.stdout(asciiSummaryOfQueryResult(ansiFormatter, totalEnd - totalStart, results.query, results.processed));
@@ -93,8 +94,8 @@ export const queryStarCommand: ReplCommand = {
 	usageExample: ':query* <query> <code>',
 	aliases:      [ ],
 	script:       false,
-	fn:           async(output, shell, remainingLine) => {
-		const results = await processQueryArgs(remainingLine, shell, output);
+	fn:           async({ output, parser, remainingLine, config }) => {
+		const results = await processQueryArgs(remainingLine, parser, output, config);
 		if(results) {
 			output.stdout(compressToBase64(JSON.stringify(results.query, jsonReplacer)));
 		}

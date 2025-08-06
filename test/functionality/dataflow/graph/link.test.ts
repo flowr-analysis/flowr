@@ -5,13 +5,14 @@ import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/process
 import { withShell } from '../../_helper/shell';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
+import { defaultConfigOptions } from '../../../../src/config';
 
 describe.sequential('dataflow graph links', withShell(shell => {
 	function assertLink(name: string, code: string, criterion: SingleSlicingCriterion, expect: NodeId[] | undefined) {
 		test(name, async() => {
 			const info = await createDataflowPipeline(shell, {
 				request: requestFromInput(code),
-			}).allRemainingSteps();
+			}, defaultConfigOptions).allRemainingSteps();
 
 			const graph = info.dataflow.graph;
 			const id = slicingCriterionToId(criterion, graph.idMap ?? info.normalize.idMap);

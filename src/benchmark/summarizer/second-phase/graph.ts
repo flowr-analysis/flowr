@@ -18,7 +18,7 @@ export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath:
 
 	for(const { name, measurements } of [{ name: 'per-file', measurements: ultimate.commonMeasurements }, { name: 'per-slice', measurements: ultimate.perSliceMeasurements }]) {
 		for(const [point, measurement] of measurements) {
-			if(point === 'close R session' || point === 'initialize R session') {
+			if(point === 'close R session' || point === 'initialize R session' || !measurement?.mean || !measurement?.std) {
 				continue;
 			}
 			const pointName = point === 'total'? `total ${name}` : point;

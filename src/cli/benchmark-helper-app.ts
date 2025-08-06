@@ -23,6 +23,7 @@ export interface SingleBenchmarkCliOptions {
 	'dataframe-shape-inference': boolean
 	'enable-pointer-tracking':   boolean
 	'max-slices':                number
+	'cfg':                       boolean
 	threshold?:                  number
 	'sampling-strategy':         string
 	seed?:                       string
@@ -55,7 +56,7 @@ async function benchmark() {
 	const prefix = `[${options.input }${options['file-id'] !== undefined ? ` (file ${options['file-id']}, run ${options['run-num']})` : ''}]`;
 	console.log(`${prefix} Appending output to ${options.output}`);
 	const directory = path.parse(options.output).dir;
-	// ensure the directory exists if path contains one
+	// ensure the directory exists if the path contains one
 	if(directory !== '') {
 		fs.mkdirSync(directory, { recursive: true });
 	}
@@ -102,10 +103,11 @@ async function benchmark() {
 			guard(count > 0, `No possible slices found for ${options.input}, skipping in count`);
 		}
 
-		if(options['dataframe-shape-inference']) {
-			console.log(`${prefix} Extracting control flow graph for data frame shape inference`);
+		if(options['cfg'] || options['dataframe-shape-inference']) {
 			slicer.extractCFG();
+		}
 
+		if(options['dataframe-shape-inference']) {
 			console.log(`${prefix} Performing shape inference for data frames`);
 			slicer.inferDataFrameShapes();
 			console.log(`${prefix} Completed data frame shape inference`);

@@ -38,6 +38,7 @@ export const benchmarkOptions: OptionDefinition[] = [
 	{ name: 'threshold',     alias: 't', type: Number,  description: 'How many re-visits of the same node are ok?', defaultValue: undefined, typeLabel: '{underline number}' },
 	{ name: 'per-file-time-limit',       type: Number,  description: 'Time limit in milliseconds to process single file (disabled by default)', defaultValue: undefined, typeLabel: '{underline number}' },
 	{ name: 'sampling-strategy',         type: String,  description: 'Which strategy to use, when sampling is enabled', defaultValue: 'random', typeLabel: '{underline random/equidistant}' },
+	{ name: 'cfg',           alias: 'c', type: Boolean, description: 'Extract the control flow graph of the file (benchmark it too)' }
 ];
 
 export const benchmarkHelperOptions: OptionDefinition[] = [

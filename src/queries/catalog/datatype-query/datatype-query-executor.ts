@@ -14,7 +14,7 @@ export async function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, qu
 
 	const result: DatatypeQueryResult['inferredTypes'] = {};
 	for(const query of queries) {
-		const knownTypes = new Map<string, UnresolvedDataType>();
+		const knownTypes = new Map<string, Set<UnresolvedDataType>>();
 		if(query.useTurcotteTypes) {
 			await loadTurcotteTypes(knownTypes);
 		}
@@ -25,7 +25,7 @@ export async function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, qu
 		const typedAst = query.useSubtyping
 			? inferDataTypesUsingSubtyping(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow, knownTypes)
 			: inferDataTypes(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow);
-		for(const criterion of query.criteria ?? ast.idMap.keys().map(id => `$${id}` as SingleSlicingCriterion)) {
+		for(const criterion of query.criteria ?? typedAst.idMap.keys().map(id => `$${id}` as SingleSlicingCriterion)) {
 			if(result[criterion] !== undefined) {
 				log.warn('Duplicate criterion in datatype query:', criterion);
 				continue;

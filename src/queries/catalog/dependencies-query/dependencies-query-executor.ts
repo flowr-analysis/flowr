@@ -26,6 +26,8 @@ import type { DependencyInfoLinkAttachedInfo, FunctionInfo } from './function-in
 import { DependencyInfoLinkConstraint } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
+import type { Package } from '../../../project/plugins/package-version-plugins/package';
+import { getDummyFlowrProject } from '../../../project/flowr-project';
 
 function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]) {
 	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
@@ -33,9 +35,11 @@ function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]
 		if(n.type === RType.Symbol && n.namespace) {
 			/* we should improve the identification of ':::' */
 			libraries.push({
-				nodeId:       n.info.id,
-				functionName: (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
-				libraryName:  n.namespace,
+				nodeId:             n.info.id,
+				functionName:       (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
+				libraryName:        n.namespace,
+				versionConstraints: data.library?.versionConstraints ?? undefined,
+				derivedVersion:     data.library?.derivedVersion ?? undefined
 			});
 		}
 	});
@@ -46,6 +50,8 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		log.warn('Dependencies query expects only up to one query, but got ', queries.length, 'only using the first query');
 	}
 	const now = Date.now();
+
+	// data.project = getDummyFlowrProject();
 
 	const [query] = queries;
 	const ignoreDefault = query.ignoreDefaultFunctions ?? false;
@@ -74,12 +80,14 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		return get?.info.fullLexeme ?? get?.lexeme;
 	}
 
-	const libraries: LibraryInfo[] = getResults(data, results, 'library', libraryFunctions, (id, vertex, argId, value, linkedIds) => ({
-		nodeId:           id,
-		functionName:     vertex.name,
-		lexemeOfArgument: getLexeme(value, argId),
-		libraryName:      value ?? Unknown,
-		linkedIds:        linkedIds?.length ? linkedIds : undefined
+	const libraries: LibraryInfo[] = getResults(data, results, 'library', libraryFunctions, (id, vertex, argId, value, linkedIds, library?: Package) => ({
+		nodeId:             id,
+		functionName:       vertex.name,
+		lexemeOfArgument:   getLexeme(value, argId),
+		libraryName:        value ?? Unknown,
+		linkedIds:          linkedIds?.length ? linkedIds : undefined,
+		versionConstraints: library?.versionConstraints ?? undefined,
+		derivedVersion:     library?.derivedVersion ?? undefined
 	}));
 
 	if(!ignoreDefault) {
@@ -108,7 +116,6 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		lexemeOfArgument: getLexeme(value, argId),
 		linkedIds:        linkedIds?.length? linkedIds : undefined
 	}));
-
 	return {
 		'.meta': {
 			timing: Date.now() - now
@@ -135,7 +142,8 @@ type MakeDependencyInfo<T extends DependencyInfo> = (
 	vertex: DataflowGraphVertexFunctionCall,
 	argumentId: NodeId | undefined,
 	argumentValue: string | undefined,
-	linkedIds: undefined | readonly NodeId[]
+	linkedIds: undefined | readonly NodeId[],
+	library?: Package,
 ) => T | undefined;
 
 function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: object })[] | undefined): NodeId[] | undefined{
@@ -148,6 +156,7 @@ function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: o
 function getResults<T extends DependencyInfo>(data: BasicQueryData, results: CallContextQueryResult, kind: string, functions: FunctionInfo[], makeInfo: MakeDependencyInfo<T>): T[] {
 	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});
 	return kindEntries.flatMap(([name, results]) => results.flatMap(({ id, linkedIds }) => {
+
 		const vertex = data.dataflow.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
 		const info = functions.find(f => f.name === name) as FunctionInfo;
 
@@ -163,9 +172,15 @@ function getResults<T extends DependencyInfo>(data: BasicQueryData, results: Cal
 			return record ? [record as T] : [];
 		}
 		const results: T[] = [];
+
 		for(const [arg, values] of foundValues.entries()) {
 			for(const value of values) {
-				const result = compactRecord(makeInfo(id, vertex, arg, value, dropInfoOnLinkedIds(linkedIds)));
+				let pkg = undefined;
+				if(name === 'library'){
+					console.log(data.project?.libraries);
+					pkg = data.project?.libraries.find(p => p.name === value);
+				}
+				const result = compactRecord(makeInfo(id, vertex, arg, value, dropInfoOnLinkedIds(linkedIds), pkg));
 				if(result) {
 					results.push(result as T);
 				}

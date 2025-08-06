@@ -6,6 +6,7 @@ import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeDependenciesQuery } from './dependencies-query-executor';
 import type { FunctionInfo } from './function-info/function-info';
+import type { Range } from 'semver';
 
 export const Unknown = 'unknown';
 
@@ -32,7 +33,7 @@ export interface DependencyInfo extends Record<string, unknown>{
 	/** the lexeme is presented whenever the specific info is of {@link Unknown} */
 	lexemeOfArgument?: string;
 }
-export type LibraryInfo = (DependencyInfo & { libraryName: 'unknown' | string })
+export type LibraryInfo = (DependencyInfo & { libraryName: 'unknown' | string, versionConstraints?: Range[], derivedVersion?: Range})
 export type SourceInfo = (DependencyInfo & { file: string })
 export type ReadInfo = (DependencyInfo & { source: string })
 export type WriteInfo = (DependencyInfo & { destination: 'stdout' | string })
@@ -69,7 +70,7 @@ export const DependenciesQueryDefinition = {
 	asciiSummarizer: (formatter, _processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'dependencies'>['dependencies'];
 		result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		printResultSection('Libraries', out.libraries, result, l => `\`${l.libraryName}\``);
+		printResultSection('Libraries', out.libraries, result, l => `\`${l.libraryName}\`, Version: \`${l.derivedVersion?.raw ?? 'unknown'}\``);
 		printResultSection('Sourced Files', out.sourcedFiles, result, s => `\`${s.file}\``);
 		printResultSection('Read Data', out.readData, result, r => `\`${r.source}\``);
 		printResultSection('Written Data', out.writtenData, result, w => `\`${w.destination}\``);

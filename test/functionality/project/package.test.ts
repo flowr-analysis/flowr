@@ -1,6 +1,6 @@
 import { describe, test , assert } from 'vitest';
 import { Package } from '../../../src/project/plugins/package-version-plugins/package';
-import { Range } from 'semver';
+import { minVersion, Range } from 'semver';
 
 describe('DESCRIPTION-file', function() {
 	describe.sequential('Parsing', function() {
@@ -11,7 +11,8 @@ describe('DESCRIPTION-file', function() {
 			p1.addInfo(undefined, undefined, undefined, new Range('>= 1.5'));
 			p1.addInfo(undefined, undefined, undefined, new Range('<= 2.2.5'));
 
-			console.log(p1);
+			console.log(p1.derivedVersion);
+			console.log(minVersion(p1.derivedVersion as Range));
 
 			assert.isTrue(p1.derivedVersion?.test('1.7.0'));
 		});

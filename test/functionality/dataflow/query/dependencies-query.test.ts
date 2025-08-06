@@ -11,6 +11,10 @@ import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/p
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 
+
+
+
+
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { libraries: [], sourcedFiles: [], readData: [], writtenData: [] };
 
 function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Partial<DependenciesQueryResult> {
@@ -76,7 +80,6 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('Given Require with character only', 'require(c, character.only=TRUE)', { libraries: [
 			{ nodeId: '1@require', functionName: 'require', libraryName: 'unknown', lexemeOfArgument: 'c' }
 		] });
-
 
 		testQuery('Library with variable', 'a <- "ggplot2"\nb <- TRUE\nlibrary(a,character.only=b)', { libraries: [
 			{ nodeId: '3@library', functionName: 'library', libraryName: 'ggplot2' }
@@ -183,7 +186,6 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'f' },
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'g' }
 		] });
-
 
 		describe('Custom', () => {
 			const readCustomFile: Partial<DependenciesQuery> = {

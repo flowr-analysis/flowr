@@ -87,6 +87,7 @@ class TypeInferringCfgGuidedVisitor<
 	}
 
 	protected constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map();
+	protected orphanTypes:     Set<UnresolvedDataType> = new Set();
 
 
 	protected constrainNodeType(nodeOrId: RNode<UnresolvedTypeInfo> | NodeId, constraint: UnresolvedDataType | { lowerBound?: UnresolvedDataType, upperBound?: UnresolvedDataType }): void {
@@ -104,6 +105,11 @@ class TypeInferringCfgGuidedVisitor<
 		}
 	}
 
+	
+	override start(): void {
+		super.start();
+		this.onVisitorEnd();
+	}
 
 	protected override onNullConstant(data: { vertex: DataflowGraphVertexValue, node: RSymbol<UnresolvedTypeInfo, 'NULL'>; }): void {
 		this.constrainNodeType(data.node, new RNullType());
@@ -130,25 +136,21 @@ class TypeInferringCfgGuidedVisitor<
 	}
 
 	protected inferNodeTypeFromReadOrigins(node: RNode<UnresolvedTypeInfo>, readOrigins: Array<{ id: NodeId, type: OriginType }>): void {
-		let hasUnresolvableOrigins = false;
+		const readOriginNodes = readOrigins.flatMap(origin => this.getNormalizedAst(origin.id) ?? []);
+
 		const lowerBounds = new Set<UnresolvedDataType>();
 		
-		for(const readOrigin of readOrigins ?? []) {
-			const readNode = this.getNormalizedAst(readOrigin.id);
-			if(readNode !== undefined) {
-				this.constrainNodeType(node, { lowerBound: readNode.info.typeVariable });
-				lowerBounds.add(readNode.info.typeVariable);
-			} else {
-				hasUnresolvableOrigins = true;
-			}
+		for(const readNode of readOriginNodes) {
+			this.constrainNodeType(node, { lowerBound: readNode.info.typeVariable });
+			lowerBounds.add(readNode.info.typeVariable);
 		}
 
-		if(hasUnresolvableOrigins) {
+		if(readOriginNodes.length === 0) {
 			if(node.type === RType.Symbol) {
 				// If the read variable has no associated AST node it might be a library constant or function
 				const contextualTypes = this.config.knownTypes.get(node.content);
 				if(contextualTypes !== undefined && contextualTypes.size > 0) {
-					this.constrainNodeType(node, { lowerBound: new UnresolvedRTypeIntersection(...contextualTypes.values()) });
+					this.constrainNodeType(node, { lowerBound: new UnresolvedRTypeUnion(...contextualTypes.values()) });
 				}
 			}
 		} else if(lowerBounds.size > 0) {
@@ -194,36 +196,45 @@ class TypeInferringCfgGuidedVisitor<
 
 	override onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall }): void {
 		const callTargets = this.getOrigins(data.call.id)?.filter((origin) => origin.type === OriginType.FunctionCallOrigin) ?? [];
+		const callTargetNodes = callTargets.flatMap(target => this.getNormalizedAst(target.id) ?? []);
+		
+		const calledFunctionType = new UnresolvedRTypeVariable();
+		
+		const templateFunctionType = new UnresolvedRFunctionType();
+		for(const [index, arg] of data.call.args.entries()) {
+			if(arg === EmptyArgument) {
+				continue; // Skip empty arguments
+			}
 
-		const functionType = new UnresolvedRFunctionType();
-		for(const target of callTargets) {
-			const targetNode = this.getNormalizedAst(target.id);
-			if(targetNode !== undefined) {
-				this.constrainNodeType(targetNode, { upperBound: functionType });
+			const argNode = this.getNormalizedAst(arg.nodeId);
+			guard(argNode !== undefined, 'Expected argument node to be defined');
 
-				for(const [index, arg] of data.call.args.entries()) {
-					if(arg === EmptyArgument) {
-						continue; // Skip empty arguments
-					}
-
-					const argNode = this.getNormalizedAst(arg.nodeId);
-					guard(argNode !== undefined, 'Expected argument node to be defined');
-
-					if(arg.name !== undefined) {
-						constrain(argNode.info.typeVariable, getParameterTypeFromFunction(functionType, arg.name), this.constraintCache);
-					} else {
-						constrain(argNode.info.typeVariable, getParameterTypeFromFunction(functionType, index), this.constraintCache);
-					}
-				}
+			if(arg.name !== undefined) {
+				// constrain(argNode.info.typeVariable, getParameterTypeFromFunction(templateFunctionType, arg.name), this.constraintCache);
+				constrain(getParameterTypeFromFunction(templateFunctionType, arg.name), argNode.info.typeVariable, this.constraintCache);
 			} else {
-				// If the target function has no associated AST node it might be a library function
-				const contextualTypes = this.config.knownTypes.get(data.call.name);
-				if(contextualTypes !== undefined && contextualTypes.size > 0) {
-					constrain(new UnresolvedRTypeUnion(...contextualTypes.values()), functionType, this.constraintCache);
-				}
+				// constrain(argNode.info.typeVariable, getParameterTypeFromFunction(templateFunctionType, index), this.constraintCache);
+				constrain(getParameterTypeFromFunction(templateFunctionType, index), argNode.info.typeVariable, this.constraintCache);
 			}
 		}
-		this.constrainNodeType(data.call.id, functionType.returnType);
+		constrain(calledFunctionType, templateFunctionType, this.constraintCache);
+
+		for(const targetNode of callTargetNodes) {
+			this.constrainNodeType(targetNode, { upperBound: templateFunctionType });
+		}
+		
+		if(callTargetNodes.length === 0) {
+			// If the target function has no associated AST node it might be a library function
+			const contextualTypes = this.config.knownTypes.get(data.call.name);
+			if(contextualTypes !== undefined && contextualTypes.size > 0) {
+				// console.log('Constraining node', data.call.id, 'with contextual types for', data.call.name);
+				constrain(new UnresolvedRTypeIntersection(...contextualTypes.values()), calledFunctionType, this.constraintCache);
+			}
+		}
+
+		this.constrainNodeType(data.call.id, templateFunctionType.returnType);
+		
+		this.orphanTypes.add(calledFunctionType);
 	}
 
 	override onGetCall(data: { call: DataflowGraphVertexFunctionCall }) {
@@ -495,6 +506,15 @@ class TypeInferringCfgGuidedVisitor<
 				this.constrainNodeType(targetNode, { upperBound: new UnresolvedRListType(targetElementType) });
 				this.constrainNodeType(sourceNode, { upperBound: sourceElementType });
 				break;
+		}
+	}
+
+	protected onVisitorEnd(): void {
+		// Resolve types that are not directly constrained by a node type
+		for(const type of this.orphanTypes) {
+			// console.debug('Resolved orphan type:');
+			// console.dir(resolve(type), { depth: null, colors: true });
+			resolve(type);
 		}
 	}
 }

@@ -94,7 +94,5 @@ export async function loadTracedTypes(typeMap: Map<string, Set<UnresolvedDataTyp
 		}
 	}
 
-	// console.dir(typeMap.get('+'), { depth: null, colors: true });
-	
 	return typeMap;
 }

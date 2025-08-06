@@ -26,6 +26,9 @@ export function extractTypesFromTraceData(data: readonly TraceCsvRow[]): [RohdeF
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				unseenSignaturePackageContributions.get(row.package_name)!.add(signature);
 			}
+			// if(row.function_name === 'print') {
+			// 	console.log('Found print signature:', signature);
+			// }
 		} else {
 			continue; // Skip if we have already seen this signature for this package
 		}
@@ -33,8 +36,10 @@ export function extractTypesFromTraceData(data: readonly TraceCsvRow[]): [RohdeF
 		const functionType = new UnresolvedRFunctionType();
 		for(const [index, type] of argumentTypes.entries()) {
 			constrain(getParameterTypeFromFunction(functionType, index), type);
+			constrain(type, getParameterTypeFromFunction(functionType, index));
 		}
 		constrain(returnType, functionType.returnType);
+		constrain(functionType.returnType, returnType);
 
 		if(!extractedTypes.has(row.package_name)) {
 			extractedTypes.set(row.package_name, new Map());

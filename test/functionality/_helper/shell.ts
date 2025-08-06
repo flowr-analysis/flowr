@@ -582,7 +582,7 @@ export function assertSliced(
 		function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {
 			try {
 				if(Array.isArray(expected)) {
-					// heck whether all ids are present in the slice result
+					// check whether all ids are present in the slice result
 					const decodedExpected = expected.map(e => slicingCriterionToId(e, result.normalize.idMap))
 						.sort((a, b) => String(a).localeCompare(String(b)))
 						.map(n => normalizeIdToNumberIfPossible(n));

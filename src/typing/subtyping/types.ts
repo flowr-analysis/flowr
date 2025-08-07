@@ -103,7 +103,7 @@ export class UnresolvedRTypeVariable {
 
 
 export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedDataType, cache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map()): void {
-	// console.debug('Constraining', inspect(subtype, { depth: null, colors: true }), 'to subsume', inspect(supertype, { depth: null, colors: true }));
+	// console.debug('Constraining', subtype instanceof UnresolvedRTypeVariable ? subtype.id : inspect(subtype, { depth: null, colors: true }), 'to subsume', supertype instanceof UnresolvedRTypeVariable ? supertype.id : inspect(supertype, { depth: null, colors: true }));
 
 	if(subtype === supertype) {
 		return; // No need to constrain if both types are the same
@@ -352,7 +352,7 @@ export function subsumes(subtype: DataType | UnresolvedDataType, supertype: Data
 
 	let processedSupertypes = inProcess.get(subtype);
 	if(processedSupertypes?.has(supertype)) {
-		return true; // Avoid infinite recursion
+		return true; // If we have already processed this pair, we can assume it subsumes
 	}
 	processedSupertypes ??= new Set();
 	processedSupertypes.add(supertype);

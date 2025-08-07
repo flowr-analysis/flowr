@@ -15,7 +15,7 @@ export function extractTypesFromTraceData(data: readonly TraceCsvRow[]): [RohdeF
 	const unseenSignaturePackageContributions: Map<string, Set<string>> = new Map();
 
 	for(const row of data) {
-		const argumentTypes = row.parameter_types.map(typeFromStr);
+		const parameterTypes = row.parameter_types.map(typeFromStr);
 		const returnType = typeFromStr(row.return_type);
 
 		const signature = `${row.function_name} : (${row.parameter_types.join(', ')}) -> ${row.return_type}`;
@@ -34,12 +34,10 @@ export function extractTypesFromTraceData(data: readonly TraceCsvRow[]): [RohdeF
 		}
 
 		const functionType = new UnresolvedRFunctionType();
-		for(const [index, type] of argumentTypes.entries()) {
+		for(const [index, type] of parameterTypes.entries()) {
 			constrain(getParameterTypeFromFunction(functionType, index), type);
-			constrain(type, getParameterTypeFromFunction(functionType, index));
 		}
 		constrain(returnType, functionType.returnType);
-		constrain(functionType.returnType, returnType);
 
 		if(!extractedTypes.has(row.package_name)) {
 			extractedTypes.set(row.package_name, new Map());

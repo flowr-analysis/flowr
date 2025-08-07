@@ -77,22 +77,22 @@ function constrainLowerAndUpperBound(type: UnresolvedDataType, lowerBound: Unres
 
 function convertSingleTurcotteFunctionAlternative2RohdeType(fingerprint: string, rows: TurcotteCsvRow[]): UnresolvedRFunctionType {
 	const groupedByParameterPos = groupTurcotteData(rows, row => row.parameter_position);
-	const fn = new UnresolvedRFunctionType();
+	const functionType = new UnresolvedRFunctionType();
 
 	for(const [parameterPosition, parameterRows] of groupedByParameterPos.entries()) {
 		// convert the rows to a single type
 		const type = convertSingleTurcotteParameter2RohdeType(fingerprint, parameterRows);
 		if(parameterPosition === '-1') {
-			constrainLowerAndUpperBound(fn.returnType, type);
+			constrain(type, functionType.returnType, globalCache);
 		} else {
 			// we get the type to create a new one if not already there
-			const parameterType = getParameterTypeFromFunction(fn, Number(parameterPosition));
+			const parameterType = getParameterTypeFromFunction(functionType, Number(parameterPosition));
 			// now we can set the type
-			constrainLowerAndUpperBound(parameterType, type);
+			constrain(parameterType, type, globalCache);
 		}
 	}
 
-	return fn;
+	return functionType;
 }
 
 function convertSingleTurcotteParameter2RohdeType(fingerprint: string, rows: TurcotteCsvRow[]): UnresolvedDataType {
@@ -106,9 +106,7 @@ function convertSingleTurcotteParameter2RohdeType(fingerprint: string, rows: Tur
         r.function_name === anyRow.function_name), 'Just for my sanity, please!');
 
 	// now we convert all types in the list to the rohde System
-	return new UnresolvedRTypeUnion(
-		...rows.map(r => turcotteType2RohdeType(r.type))
-	);
+	return alternativeTurcotteType2RohdeType(rows.map(row => row.type));
 }
 
 function turcotteType2RohdeType(type: string): UnresolvedDataType {

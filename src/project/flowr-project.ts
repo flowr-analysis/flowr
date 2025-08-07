@@ -34,7 +34,7 @@ export async function getDummyFlowrProject(){
 	flowrAnalyzerPackageVersionsDescriptionFilePlugin.dependencies = [descriptionFilePlugin];
 
 	await flowrAnalyzerPackageVersionsDescriptionFilePlugin
-		.processor({} as FlowrAnalyzer, {} as FlowrConfigOptions)
+		.processor({} as FlowrAnalyzer, {} as FlowrConfigOptions);
 
 	exampleFlowrProject.libraries = flowrAnalyzerPackageVersionsDescriptionFilePlugin.packages;
 

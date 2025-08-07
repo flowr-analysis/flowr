@@ -68,6 +68,7 @@ export function isDefaultBuiltIn(v: unknown) {
 	return hasDefaultBuiltInFlag(v) && v.isDefaultBuiltIn;
 }
 
+// TODO TSchoeller How to handle this?
 let environmentIdCounter = 0;
 
 /** @see REnvironmentInformation */
@@ -146,15 +147,11 @@ export interface REnvironmentInformation {
  * Initialize a new {@link REnvironmentInformation|environment} with the built-ins.
  */
 export function initializeCleanEnvironments(fullBuiltIns = true): REnvironmentInformation {
-	const env = new Environment(undefined as unknown as IEnvironment, true);
-	if(fullBuiltIns) {
-		env.memory = getDefaultBuiltInDefinitions().builtInMemory;
-	} else {
-		env.memory = getDefaultBuiltInDefinitions().emptyBuiltInMemory;
-	}
+	const builtInEnv = new Environment(undefined as unknown as IEnvironment, true);
+	builtInEnv.memory = fullBuiltIns ? getDefaultBuiltInDefinitions().builtInMemory : getDefaultBuiltInDefinitions().emptyBuiltInMemory;
 
 	return {
-		current: env,
+		current: new Environment(builtInEnv, false),
 		level:   0
 	};
 }

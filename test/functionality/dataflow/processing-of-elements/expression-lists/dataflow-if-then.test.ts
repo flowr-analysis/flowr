@@ -344,22 +344,24 @@ a()`,  emptyGraph()
 				.calls('19', ['3', '13'])
 				.constant('1', undefined, false)
 				.defineFunction('3', ['1'], {
-					out:               [],
-					in:                [{ nodeId: '1', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
-					unknownReferences: [],
-					entryPoint:        '1',
-					graph:             new Set(['1']),
-					environment:       defaultEnv().pushEnv()
+					out:                [],
+					in:                 [{ nodeId: '1', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
+					unknownReferences:  [],
+					entryPoint:         '1',
+					graph:              new Set(['1']),
+					environment:        defaultEnv().pushEnv(),
+					builtInEnvironment: defaultEnv().current
 				})
 				.defineVariable('0', 'a', { definedBy: ['3', '4'] })
 				.constant('11', undefined, false)
 				.defineFunction('13', ['11'], {
-					out:               [],
-					in:                [{ nodeId: '11', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
-					unknownReferences: [],
-					entryPoint:        '11',
-					graph:             new Set(['11']),
-					environment:       defaultEnv().pushEnv()
+					out:                [],
+					in:                 [{ nodeId: '11', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
+					unknownReferences:  [],
+					entryPoint:         '11',
+					graph:              new Set(['11']),
+					environment:        defaultEnv().pushEnv(),
+					builtInEnvironment: defaultEnv().current
 				})
 				.defineVariable('9', '"a"', { definedBy: ['13', '15'], controlDependencies: [{ id: '17', when: true }] }),
 			{ minRVersion: MIN_VERSION_LAMBDA });
@@ -414,12 +416,13 @@ f()`,  emptyGraph()
 				.constant('1')
 				.defineVariable('0', 'a', { definedBy: ['1', '2'] })
 				.defineFunction('11', ['10'], {
-					out:               [],
-					in:                [{ nodeId: '7', name: 'a', controlDependencies: [], type: ReferenceType.Argument }],
-					unknownReferences: [],
-					entryPoint:        '10',
-					graph:             new Set(['7', '9', '10']),
-					environment:       defaultEnv().pushEnv()
+					out:                [],
+					in:                 [{ nodeId: '7', name: 'a', controlDependencies: [], type: ReferenceType.Argument }],
+					unknownReferences:  [],
+					entryPoint:         '10',
+					graph:              new Set(['7', '9', '10']),
+					environment:        defaultEnv().pushEnv(),
+					builtInEnvironment: defaultEnv().current
 				})
 				.defineVariable('3', 'f', { definedBy: ['11', '12'] })
 		);
@@ -450,12 +453,13 @@ f()`, emptyGraph()
 				.defineVariable('0', 'a', { definedBy: ['1', '2'] })
 				.defineVariable('4', 'a', { definedBy: ['6', '8'] }, false)
 				.defineFunction('14', ['13'], {
-					out:               [],
-					in:                [],
-					unknownReferences: [],
-					entryPoint:        '13',
-					graph:             new Set(['4', '6', '8', '12', '13']),
-					environment:       defaultEnv().pushEnv().defineParameter('a', '4', '9')
+					out:                [],
+					in:                 [],
+					unknownReferences:  [],
+					entryPoint:         '13',
+					graph:              new Set(['4', '6', '8', '12', '13']),
+					environment:        defaultEnv().pushEnv().defineParameter('a', '4', '9'),
+					builtInEnvironment: defaultEnv().current
 				})
 				.defineVariable('3', 'f', { definedBy: ['14', '15'] }));
 	});

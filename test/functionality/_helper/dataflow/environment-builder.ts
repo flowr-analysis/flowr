@@ -3,11 +3,14 @@ import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x
 import type { IdentifierDefinition } from '../../../../src/dataflow/environments/identifier';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import type { FunctionArgument } from '../../../../src/dataflow/graph/graph';
-import type { Environment, REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
+import type {
+	Environment,
+	IEnvironment,
+	REnvironmentInformation
+} from '../../../../src/dataflow/environments/environment';
 import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment';
 import { define } from '../../../../src/dataflow/environments/define';
-import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping';
-import { appendEnvironment } from '../../../../src/dataflow/environments/append';
+import { pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping';
 import type { ControlDependency } from '../../../../src/dataflow/info';
 import { defaultConfigOptions } from '../../../../src/config';
 
@@ -32,7 +35,7 @@ export function argumentInCall(nodeId: NodeId, options?: { name?: string, contro
  */
 export const defaultEnv = () => {
 	const global = initializeCleanEnvironments();
-	return new EnvironmentBuilder(global.current, 0);
+	return new EnvironmentBuilder(global.current, global.current, 0);
 };
 
 /**
@@ -48,9 +51,12 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 */
 	level:   number;
 
-	constructor(env: Environment, level: number) {
+	private readonly builtInEnv: IEnvironment;
+
+	constructor(env: Environment, builtInEnvironment: IEnvironment, level: number) {
 		this.current = env;
 		this.level = level;
+		this.builtInEnv = builtInEnvironment;
 	}
 
 	/**
@@ -131,8 +137,8 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 			definedAt:           normalizeIdToNumberIfPossible(def.definedAt),
 			nodeId:              normalizeIdToNumberIfPossible(def.nodeId),
 			controlDependencies: def.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) }))
-		} as IdentifierDefinition, superAssignment, this, defaultConfigOptions);
-		return new EnvironmentBuilder(envWithDefinition.current, envWithDefinition.level);
+		} as IdentifierDefinition, superAssignment, this, this.builtInEnv, defaultConfigOptions);
+		return new EnvironmentBuilder(envWithDefinition.current, this.builtInEnv, envWithDefinition.level);
 	}
 
 	/**
@@ -140,24 +146,25 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 */
 	pushEnv(): EnvironmentBuilder {
 		const newEnvironment = pushLocalEnvironment(this);
-		return new EnvironmentBuilder(newEnvironment.current, newEnvironment.level);
+		return new EnvironmentBuilder(newEnvironment.current, this.builtInEnv, newEnvironment.level);
 	}
 
-	/**
-	 * Pops the last environment (must be local) from the environment stack.
-	 */
-	popEnv(): EnvironmentBuilder {
-		const underlyingEnv = popLocalEnvironment(this);
-		return new EnvironmentBuilder(underlyingEnv.current, underlyingEnv.level);
-	}
+	// TODO TSchoeller Clarify unused methods
+	///**
+	// * Pops the last environment (must be local) from the environment stack.
+	// */
+	//popEnv(): EnvironmentBuilder {
+	//	const underlyingEnv = popLocalEnvironment(this);
+	//	return new EnvironmentBuilder(underlyingEnv.current, underlyingEnv.level);
+	//}
 
-	/**
-	 * Appends the `writes` in other to the given environment
-	 * (i.e., those _may_ happen).
-	 * @param other - The next environment.
-	 */
-	appendWritesOf(other: REnvironmentInformation) {
-		const appendedEnv = appendEnvironment(this, other);
-		return new EnvironmentBuilder(appendedEnv.current, appendedEnv.level);
-	}
+	///**
+	// * Appends the `writes` in other to the given environment
+	// * (i.e., those _may_ happen).
+	// * @param other - The next environment.
+	// */
+	//appendWritesOf(other: REnvironmentInformation) {
+	//	const appendedEnv = appendEnvironment(this, other);
+	//	return new EnvironmentBuilder(appendedEnv.current, appendedEnv.level);
+	//}
 }

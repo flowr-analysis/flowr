@@ -17,13 +17,12 @@ import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo,
-	DataflowGraphVertexUse } from '../../../../src/dataflow/graph/vertex';
-import {
-	VertexType
+	DataflowGraphVertexUse
 } from '../../../../src/dataflow/graph/vertex';
+import { VertexType } from '../../../../src/dataflow/graph/vertex';
 import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
 import type { ControlDependency } from '../../../../src/dataflow/info';
+import type { IEnvironment, REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
 
 
 /** we add the node id to allow convenience sorting if we want that in the future (or grouping or, ...) */
@@ -118,7 +117,7 @@ class DataflowBuilderPrinter {
 		this.recordFnCall(id,'call', [
 			wrap(id),
 			`[${vertex.args.map(a => this.processArgumentInCall(vertex.id, a)).join(', ')}]`,
-			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${readSuffix}${this.getControlDependencySuffix(vertex.cds, ', ', '') ?? ''}${this.getEnvironmentSuffix(vertex.environment, ', ', '') ?? ''} }`,
+			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${readSuffix}${this.getControlDependencySuffix(vertex.cds, ', ', '') ?? ''}${this.getEnvironmentSuffix(vertex.environment, vertex.builtInEnvironment, ', ', '') ?? ''} }`,
 			this.asRootArg(id)
 		]);
 	}
@@ -219,7 +218,7 @@ class DataflowBuilderPrinter {
 
 	private processFunctionDefinition(id: NodeId, vertex: DataflowGraphVertexFunctionDefinition) {
 		const root = this.asRootArg(id);
-		const suffix = this.getEnvironmentSuffix(vertex.environment, '{ ', ' }') ?? (root ? 'undefined' : undefined);
+		const suffix = this.getEnvironmentSuffix(vertex.environment, vertex.builtInEnvironment, '{ ', ' }') ?? (root ? 'undefined' : undefined);
 		this.recordFnCall(id,'defineFunction', [
 			wrap(id),
 			`[${vertex.exitPoints.map(wrap).join(', ')}]`,
@@ -229,7 +228,7 @@ class DataflowBuilderPrinter {
 				unknownReferences: [${vertex.subflow.unknownReferences.map(wrapReference).join(', ')}],
 				entryPoint:        ${wrap(vertex.subflow.entryPoint)},
 				graph:             new Set([${[...vertex.subflow.graph].map(wrap).join(', ')}]),
-				environment:       ${new EnvironmentBuilderPrinter(vertex.subflow.environment).print()}
+				environment:       ${new EnvironmentBuilderPrinter(vertex.subflow.environment, vertex.subflow.builtInEnvironment).print()}
 			}`, suffix, root
 		]);
 	}
@@ -256,11 +255,11 @@ class DataflowBuilderPrinter {
 		return undefined;
 	}
 
-	private getEnvironmentSuffix(env: REnvironmentInformation | undefined, prefix: string = '{ ', suffix: string = ' }'): string | undefined {
-		if(env === undefined) {
+	private getEnvironmentSuffix(env: REnvironmentInformation | undefined, builtInEnv: IEnvironment | undefined, prefix: string = '{ ', suffix: string = ' }'): string | undefined {
+		if(env === undefined || builtInEnv === undefined) {
 			return undefined;
 		}
-		const printed = new EnvironmentBuilderPrinter(env).print();
+		const printed = new EnvironmentBuilderPrinter(env, builtInEnv).print();
 		return printed === '' ? undefined : `${prefix}environment: ${printed}${suffix}`;
 	}
 

@@ -4,11 +4,12 @@ import type { TraceCsvRow } from './traced-function-types';
 import { extractTypesFromTraceData } from './traced-function-types';
 import { turcotte2RohdeTypes, type TurcotteCsvRow } from './turcotte-types';
 import fs from 'fs';
+import path from 'path';
 
 export async function loadTurcotteTypes(typeMap: Map<string, Set<UnresolvedDataType>> = new Map()): Promise<Map<string, Set<UnresolvedDataType>>> {
 	const data: TurcotteCsvRow[] = [];
 	await new Promise(resolve => {
-		fs.createReadStream('src/typing/adapter/turcotte-types.csv', { encoding: 'utf-8' })
+		fs.createReadStream(path.resolve('dist/src/typing/adapter/turcotte-types.csv'), { encoding: 'utf-8' })
 			.pipe(csvParser({ separator: ',' }))
 			.on('data', (row: TurcotteCsvRow) => {
 				data.push(row);
@@ -49,7 +50,7 @@ function trimQuotes(str: string): string {
 export async function loadTracedTypes(typeMap: Map<string, Set<UnresolvedDataType>> = new Map()): Promise<Map<string, Set<UnresolvedDataType>>> {
 	const data: TraceCsvRow[] = [];
 	await new Promise(resolve => {
-		fs.createReadStream('src/typing/adapter/traced-function-types.csv', { encoding: 'utf-8' })
+		fs.createReadStream(path.resolve('dist/src/typing/adapter/traced-function-types.csv'), { encoding: 'utf-8' })
 			.pipe(csvParser({
 				separator:  ',',
 				mapHeaders: ({ header }) => {

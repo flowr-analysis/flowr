@@ -27,7 +27,6 @@ import { DependencyInfoLinkConstraint } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
 import type { Package } from '../../../project/plugins/package-version-plugins/package';
-import { getDummyFlowrProject } from '../../../project/flowr-project';
 
 function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]) {
 	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
@@ -38,8 +37,8 @@ function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]
 				nodeId:             n.info.id,
 				functionName:       (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
 				libraryName:        n.namespace,
-				versionConstraints: data.library?.versionConstraints ?? undefined,
-				derivedVersion:     data.library?.derivedVersion ?? undefined
+				versionConstraints: data.libraries?.find(f => f.name === n.namespace)?.versionConstraints ?? [],
+				derivedVersion:     data.libraries?.find(f => f.name === n.namespace)?.derivedVersion ?? undefined,
 			});
 		}
 	});
@@ -50,9 +49,6 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		log.warn('Dependencies query expects only up to one query, but got ', queries.length, 'only using the first query');
 	}
 	const now = Date.now();
-
-	// data.project = getDummyFlowrProject();
-
 	const [query] = queries;
 	const ignoreDefault = query.ignoreDefaultFunctions ?? false;
 	const libraryFunctions = getFunctionsToCheck(query.libraryFunctions, ignoreDefault, LibraryFunctions);
@@ -80,14 +76,14 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		return get?.info.fullLexeme ?? get?.lexeme;
 	}
 
-	const libraries: LibraryInfo[] = getResults(data, results, 'library', libraryFunctions, (id, vertex, argId, value, linkedIds, library?: Package) => ({
+	const libraries: LibraryInfo[] = getResults(data, results, 'library', libraryFunctions, (id, vertex, argId, value, linkedIds) => ({
 		nodeId:             id,
 		functionName:       vertex.name,
 		lexemeOfArgument:   getLexeme(value, argId),
 		libraryName:        value ?? Unknown,
 		linkedIds:          linkedIds?.length ? linkedIds : undefined,
-		versionConstraints: library?.versionConstraints ?? undefined,
-		derivedVersion:     library?.derivedVersion ?? undefined
+		versionConstraints: data.libraries?.find(f => f.name === value)?.versionConstraints ?? [],
+		derivedVersion:     data.libraries?.find(f => f.name === value)?.derivedVersion ?? undefined,
 	}));
 
 	if(!ignoreDefault) {
@@ -175,12 +171,7 @@ function getResults<T extends DependencyInfo>(data: BasicQueryData, results: Cal
 
 		for(const [arg, values] of foundValues.entries()) {
 			for(const value of values) {
-				let pkg = undefined;
-				if(name === 'library'){
-					console.log(data.project?.libraries);
-					pkg = data.project?.libraries.find(p => p.name === value);
-				}
-				const result = compactRecord(makeInfo(id, vertex, arg, value, dropInfoOnLinkedIds(linkedIds), pkg));
+				const result = compactRecord(makeInfo(id, vertex, arg, value, dropInfoOnLinkedIds(linkedIds)));
 				if(result) {
 					results.push(result as T);
 				}

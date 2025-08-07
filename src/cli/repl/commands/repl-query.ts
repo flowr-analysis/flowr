@@ -12,6 +12,7 @@ import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import type { KnownParser } from '../../../r-bridge/parser';
 import type { FlowrConfigOptions } from '../../../config';
+import { getDummyFlowrProject } from '../../../project/flowr-project';
 
 
 async function getDataflow(config: FlowrConfigOptions, parser: KnownParser, remainingLine: string) {
@@ -66,9 +67,11 @@ async function processQueryArgs(line: string, parser: KnownParser, output: ReplO
 		parsedQuery = [{ type: 'call-context', callName: query }];
 	}
 
+	const dummyProject = await getDummyFlowrProject();
+
 	const processed = await getDataflow(config, parser, args.join(' '));
 	return {
-		query: executeQueries({ dataflow: processed.dataflow, ast: processed.normalize, config: config }, parsedQuery),
+		query: executeQueries({ dataflow: processed.dataflow, ast: processed.normalize, config: config, libraries: dummyProject.libraries }, parsedQuery),
 		processed
 	};
 }

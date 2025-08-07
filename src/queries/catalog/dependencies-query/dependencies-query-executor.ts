@@ -37,7 +37,7 @@ function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]
 				nodeId:             n.info.id,
 				functionName:       (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
 				libraryName:        n.namespace,
-				versionConstraints: data.libraries?.find(f => f.name === n.namespace)?.versionConstraints ?? [],
+				versionConstraints: data.libraries?.find(f => f.name === n.namespace)?.versionConstraints ?? undefined,
 				derivedVersion:     data.libraries?.find(f => f.name === n.namespace)?.derivedVersion ?? undefined,
 			});
 		}
@@ -82,7 +82,7 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		lexemeOfArgument:   getLexeme(value, argId),
 		libraryName:        value ?? Unknown,
 		linkedIds:          linkedIds?.length ? linkedIds : undefined,
-		versionConstraints: data.libraries?.find(f => f.name === value)?.versionConstraints ?? [],
+		versionConstraints: data.libraries?.find(f => f.name === value)?.versionConstraints ?? undefined,
 		derivedVersion:     data.libraries?.find(f => f.name === value)?.derivedVersion ?? undefined,
 	}));
 

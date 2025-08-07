@@ -16,6 +16,7 @@ import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { defaultConfigOptions } from '../../../src/config';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
+import {getDummyFlowrProject} from "../../../src/project/flowr-project";
 
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
@@ -72,7 +73,9 @@ export function assertQuery<
 			getId:   deterministicCountingIdGenerator(0)
 		}, defaultConfigOptions).allRemainingSteps();
 
-		const result = executeQueries<Queries['type'], VirtualArguments>({ dataflow: info.dataflow, ast: info.normalize, config: defaultConfigOptions }, queries);
+		const dummyProject = await getDummyFlowrProject();
+
+		const result = executeQueries<Queries['type'], VirtualArguments>({ dataflow: info.dataflow, ast: info.normalize, config: defaultConfigOptions, libraries: dummyProject.libraries }, queries);
 
 		log.info(`total query time: ${result['.meta'].timing.toFixed(0)}ms (~1ms accuracy)`);
 

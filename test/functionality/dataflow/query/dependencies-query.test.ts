@@ -9,6 +9,7 @@ import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/proce
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 
 import { describe } from 'vitest';
+import { Range } from 'semver';
 import { withTreeSitter } from '../../_helper/shell';
 
 
@@ -82,7 +83,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		] });
 
 		testQuery('Library with variable', 'a <- "ggplot2"\nb <- TRUE\nlibrary(a,character.only=b)', { libraries: [
-			{ nodeId: '3@library', functionName: 'library', libraryName: 'ggplot2' }
+			{ nodeId: '3@library', functionName: 'library', libraryName: 'ggplot2', derivedVersion: new Range('>=2.5.8'), versionConstraints: [new Range('>=2.5.8')]  }
 		] });
 
 		// for now, we want a better or (https://github.com/flowr-analysis/flowr/issues/1342)
@@ -172,8 +173,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		] });
 
 		testQuery('Using a vector by variable (real world)', 'packages <- c("ggplot2", "dplyr", "tidyr")\nlapply(packages, library, character.only = TRUE)', { libraries: [
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'ggplot2' },
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'dplyr' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'ggplot2', derivedVersion: new Range('>=2.5.8'), versionConstraints: [new Range('>=2.5.8')] },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'dplyr', derivedVersion: new Range('>=1.4.0'), versionConstraints: [new Range('>=1.4.0')]  },
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'tidyr' }
 		] });
 
@@ -185,6 +186,21 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'e' },
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'f' },
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'g' }
+		] });
+
+		testQuery('Library with version', 'library(ggplot2)', { libraries: [
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'ggplot2', derivedVersion: new Range('>=2.5.8'), versionConstraints: [new Range('>=2.5.8')]  }
+		] });
+
+		testQuery('Libraries with versions', 'library(ggplot2)\nlibrary(dplyr)', { libraries: [
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'ggplot2', derivedVersion: new Range('>=2.5.8'), versionConstraints: [new Range('>=2.5.8')] },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'dplyr', derivedVersion: new Range('>=1.4.0'), versionConstraints: [new Range('>=1.4.0')]  },
+		] });
+
+		testQuery('Libraries with and without versions', 'library(ggplot2)\nlibrary(dplyr)\nlibrary(tidyr)', { libraries: [
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'ggplot2', derivedVersion: new Range('>=2.5.8'), versionConstraints: [new Range('>=2.5.8')] },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'dplyr', derivedVersion: new Range('>=1.4.0'), versionConstraints: [new Range('>=1.4.0')]  },
+			{ nodeId: '3@library', functionName: 'library', libraryName: 'tidyr', derivedVersion: undefined, versionConstraints: undefined  },
 		] });
 
 		describe('Custom', () => {

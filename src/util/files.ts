@@ -176,8 +176,6 @@ export function parseDCF(file: PathLike): Map<string, string[]> {
 		result.set(currentKey, values);
 	}
 
-	console.log(result);
-
 	return result;
 }
 

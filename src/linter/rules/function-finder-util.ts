@@ -6,10 +6,12 @@ import { Enrichment, enrichmentContent } from '../../search/search-executor/sear
 import type { SourceRange } from '../../util/range';
 import type { Identifier } from '../../dataflow/environments/identifier';
 import type { LintingResult } from '../linter-format';
-import { LintingCertainty } from '../linter-format';
+import { LintingCertainty, LintingPrettyPrintContext } from '../linter-format';
 import type { FlowrSearchElement, FlowrSearchElements } from '../../search/flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { MergeableRecord } from '../../util/objects';
+import { formatRange } from '../../util/mermaid/dfg';
+import type { LintingRuleTag } from '../linter-tags';
 
 export interface FunctionsResult extends LintingResult {
     function: string
@@ -28,7 +30,7 @@ export interface FunctionsToDetectConfig extends MergeableRecord {
 	functionsToFind: string[]
 }
 
-export const FUNCTION_FINDER_UTIL = {
+export const funtionFinderUtil = {
 	createSearch: (functions: string[]) => {
 		return (
 			Q.all()
@@ -65,6 +67,22 @@ export const FUNCTION_FINDER_UTIL = {
 					range:     element.range
 				})),
 			'.meta': metadata
+		};
+	},
+	prettyPrint: (functionType: string) =>{
+		return {
+			[LintingPrettyPrintContext.Query]: (result:FunctionsResult) => `Function \`${result.function}\` at ${formatRange(result.range)}`,
+			[LintingPrettyPrintContext.Full]:  (result:FunctionsResult) => `Function \`${result.function}\` called at ${formatRange(result.range)} is related to ${functionType}`
+		};
+	},
+	info: (name: string, tags:LintingRuleTag[], description: string, functionsToFind: string[])=>{
+		return {
+			name:          name,
+			tags:          tags,
+			description:   description,
+			defaultConfig: {
+				functionsToFind: functionsToFind
+			}
 		};
 	}
 };

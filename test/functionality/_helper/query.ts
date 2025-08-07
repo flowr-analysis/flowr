@@ -16,7 +16,7 @@ import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { defaultConfigOptions } from '../../../src/config';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
-import {getDummyFlowrProject} from "../../../src/project/flowr-project";
+import { getDummyFlowrProject } from '../../../src/project/flowr-project';
 
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {

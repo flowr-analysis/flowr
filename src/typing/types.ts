@@ -29,6 +29,8 @@ export enum DataTypeTag {
 	Environment = 'REnvironmentType',
 	/** {@link RLanguageType} */
 	Language = 'RLanguageType',
+	/** {@link RS4Type} */
+	S4 = 'RS4Type',
 	/** {@link RTypeUnion} */
 	Union = 'RTypeUnion',
 	/** {@link RTypeIntersection} */
@@ -107,6 +109,10 @@ export class RLanguageType {
 	readonly tag = DataTypeTag.Language;
 }
 
+export class RS4Type {
+	readonly tag = DataTypeTag.S4;
+}
+
 export class RTypeUnion {
 	readonly tag = DataTypeTag.Union;
 	readonly types: Set<DataType> = new Set();
@@ -171,6 +177,13 @@ export function isAtomicVectorBaseType(type: DataType): type is AtomicVectorBase
 		|| type.tag === DataTypeTag.Raw;
 }
 
+export type SimpleType
+	= AtomicVectorBaseType
+	| RNullType
+	| REnvironmentType
+	| RLanguageType
+	| RS4Type;
+
 /**
  * The `RDataType` type is the union of all possible types that can be inferred
  * by the type inferencer for R objects.
@@ -178,13 +191,10 @@ export function isAtomicVectorBaseType(type: DataType): type is AtomicVectorBase
  * type you are dealing with or if you want to handle all possible types.
 */
 export type DataType
-	= RAtomicVectorType
-	| AtomicVectorBaseType
+	= SimpleType
+	| RAtomicVectorType
 	| RListType
-	| RNullType
 	| RFunctionType
-	| REnvironmentType
-	| RLanguageType
 	| RTypeUnion
 	| RTypeIntersection
 	| RTypeVariable

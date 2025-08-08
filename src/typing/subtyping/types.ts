@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert';
-import type { DataType , AtomicVectorBaseType, REnvironmentType, RLanguageType } from '../types';
+import type { SimpleType, DataType } from '../types';
 import { RNullType , DataTypeTag, isAtomicVectorBaseType, RAtomicVectorType, RFunctionType, RListType, RTypeError, RTypeIntersection, RTypeUnion, RTypeVariable } from '../types';
 
 // let idCounter = 0;
@@ -766,13 +766,10 @@ export function meet(type1: DataType, type2: DataType): DataType {
 
 
 export type UnresolvedDataType
-	= UnresolvedRAtomicVectorType
-	| AtomicVectorBaseType
+	= SimpleType
+	| UnresolvedRAtomicVectorType
 	| UnresolvedRListType
-	| RNullType
 	| UnresolvedRFunctionType
-	| REnvironmentType
-	| RLanguageType
 	| UnresolvedRTypeUnion
 	| UnresolvedRTypeIntersection
 	| UnresolvedRTypeVariable

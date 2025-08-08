@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { DataType } from '../../../../src/typing/types';
-import { RTypeIntersection, RAtomicVectorType, RIntegerType, RListType, RTypeVariable, RTypeUnion, RNullType, RLogicalType, RComplexType, RDoubleType } from '../../../../src/typing/types';
+import { RTypeIntersection, RAtomicVectorType, RIntegerType, RListType, RTypeVariable, RTypeUnion, RNullType, RLogicalType, RComplexType, RDoubleType, RS4Type } from '../../../../src/typing/types';
 import { assertInferredTypes } from '../../_helper/typing/subtyping/assert-inferred-type';
 import { Q } from '../../../../src/search/flowr-search-builder';
 
@@ -122,5 +122,13 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('v').last().build(),         expectedType: new RTypeVariable(new RNullType(), new RAtomicVectorType(new RTypeIntersection())) },
 		{ query: Q.var('y').last().build(),         upperBound: new RTypeUnion(new RAtomicVectorType(new RTypeIntersection()), new RListType(new RTypeIntersection())) },
 		{ query: Q.criterion('1@[').last().build(), upperBound: new RTypeUnion(new RAtomicVectorType(new RTypeIntersection()), new RListType(new RTypeIntersection())) },
+	);
+	
+	assertInferredTypes(
+		'o@"name" <- y; o',
+		undefined,
+		{ query: Q.var('o').last().build(),         upperBound: new RS4Type() },
+		{ query: Q.var('y').last().build(),         expectedType: new RTypeVariable() },
+		{ query: Q.criterion('1@@').last().build(), expectedType: new RTypeVariable() },
 	);
 });

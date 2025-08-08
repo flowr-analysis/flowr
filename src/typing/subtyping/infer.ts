@@ -9,7 +9,7 @@ import type { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataTypeInfo } from '../types';
-import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, RNullType, RLanguageType } from '../types';
+import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, RNullType, RLanguageType, RS4Type } from '../types';
 import type { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../../util/assert';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
@@ -455,23 +455,32 @@ class TypeInferringCfgGuidedVisitor<
 		const firstArgNode = this.getNormalizedAst(firstArg.nodeId);
 		guard(firstArgNode !== undefined, 'Expected first argument node to be defined');
 
-		const elementType = new UnresolvedRTypeVariable();
-		const vectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(elementType), new UnresolvedRListType(elementType));
-		this.constrainNodeType(firstArgNode, { upperBound: vectorType });
-
 		switch(data.call.name) {
-			case '[':
-				// If the access call is a `[` operation, we can assume that the it returns a subset
-				// of the first argument's elements as another instance of the same container type
+			case '[': { // If the access call is a `[` operation, we can assume that it returns a subset of the first argument's elements as another instance of the same vector type
+				const vectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(), new UnresolvedRListType());
+				this.constrainNodeType(firstArgNode, { upperBound: vectorType });
 				this.constrainNodeType(data.call.id, { lowerBound: firstArgNode.info.typeVariable });
 				break;
-			case '[[':
+			}
+			
+			case '[[': { // If the access call is a `[[` operation, we can assume that the first argument is a container type and that it returns one of its elements
+				const elementType = new UnresolvedRTypeVariable();
+				const vectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(elementType), new UnresolvedRListType(elementType));
+				this.constrainNodeType(firstArgNode, { upperBound: vectorType });
 				this.constrainNodeType(data.call.id, { lowerBound: elementType });
 				break;
-			case '$':
+			}
+			case '$': {
+				const elementType = new UnresolvedRTypeVariable();
 				this.constrainNodeType(firstArgNode, { upperBound: new UnresolvedRListType(elementType) });
 				this.constrainNodeType(data.call.id, { lowerBound: elementType });
 				break;
+			}
+			case '@': {
+				// The target of the access call must be an S4 object but we can not make any assumptions about its slots
+				this.constrainNodeType(firstArgNode, { upperBound: new RS4Type() });
+				break;
+			}
 		}
 	}
 
@@ -485,27 +494,26 @@ class TypeInferringCfgGuidedVisitor<
 		const sourceNode = this.getNormalizedAst(data.source);
 		guard(sourceNode !== undefined, 'Expected source node to be defined');
 
-		const targetElementType = new UnresolvedRTypeVariable();
-		const targetVectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(targetElementType), new UnresolvedRListType(targetElementType));
-		this.constrainNodeType(targetNode, { upperBound: targetVectorType });
-
 		this.constrainNodeType(data.call.id, sourceNode.info.typeVariable);
 
-		const sourceElementType = new UnresolvedRTypeVariable();
-		const sourceVectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(sourceElementType), new UnresolvedRListType(sourceElementType));
-
 		switch(data.call.name) {
-			case '[<-':
-				// If the replacement call uses a `[` operation, we assume that the source is as another instance of the same container type
-				this.constrainNodeType(sourceNode, { upperBound: sourceVectorType });
+			case '[<-': {
+				this.constrainNodeType(targetNode, { upperBound: new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(), new UnresolvedRListType()) });
+				this.constrainNodeType(sourceNode, { upperBound: new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(), new UnresolvedRListType()) });
 				break;
-			case '[[<-':
-				this.constrainNodeType(sourceNode, { upperBound: sourceElementType });
+			}
+			case '[[<-': {
+				this.constrainNodeType(targetNode, { upperBound: new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(), new UnresolvedRListType()) });
 				break;
-			case '$<-':
-				this.constrainNodeType(targetNode, { upperBound: new UnresolvedRListType(targetElementType) });
-				this.constrainNodeType(sourceNode, { upperBound: sourceElementType });
+			}
+			case '$<-': {
+				this.constrainNodeType(targetNode, { upperBound: new UnresolvedRListType() });
 				break;
+			}
+			case '@<-': {
+				this.constrainNodeType(targetNode, { upperBound: new RS4Type() });
+				break;
+			}
 		}
 	}
 

@@ -1,6 +1,6 @@
 import type { UnresolvedDataType } from '../subtyping/types';
 import { UnresolvedRTypeVariable , constrain, getParameterTypeFromFunction, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType } from '../subtyping/types';
-import { RComplexType, RDoubleType, REnvironmentType, RIntegerType, RLanguageType, RLogicalType, RNullType, RRawType, RStringType } from '../types';
+import { RComplexType, RDoubleType, REnvironmentType, RIntegerType, RLanguageType, RLogicalType, RNullType, RRawType, RS4Type, RStringType } from '../types';
 import type { RohdeFunctionTypeInformation } from './interface';
 
 export interface TraceCsvRow {
@@ -89,8 +89,7 @@ function typeFromStr(str: string): UnresolvedDataType {
 	} else if(str === 'environment') {
 		return new REnvironmentType();
 	} else if(str === 'S4') {
-		// S4 types are not supported yet, so we return a variable type
-		return new UnresolvedRTypeVariable();
+		return new RS4Type();
 	} else if(str === 'standardGeneric' || str === 'mle' || str === 'track' || str === 'derivedDefaultMethod' || str === 'jmcmMod' || str === 'glmerMod') {
 		// Give Up
 		return new UnresolvedRTypeVariable();

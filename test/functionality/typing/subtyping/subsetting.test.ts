@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import type { DataType } from '../../../../src/typing/types';
-import { RTypeIntersection, RAtomicVectorType, RIntegerType, RListType, RTypeVariable, RNullType, RLogicalType, RComplexType } from '../../../../src/typing/types';
+import { RTypeIntersection, RAtomicVectorType, RIntegerType, RListType, RTypeVariable, RNullType, RLogicalType, RComplexType, RS4Type } from '../../../../src/typing/types';
 import { assertInferredTypes } from '../../_helper/typing/subtyping/assert-inferred-type';
 import { Q } from '../../../../src/search/flowr-search-builder';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
@@ -93,5 +93,12 @@ describe('Infer types for subsetting expressions', () => {
 		undefined,
 		{ query: Q.var('v').last().build(),                    expectedType: new RNullType() },
 		{ query: Q.all().filter(RType.Access).first().build(), lowerBound: new RNullType() },
+	);
+	
+	assertInferredTypes(
+		'o <- new("Object", name = "Flo"); o@name; o',
+		undefined,
+		{ query: Q.var('o').last().build(),                    upperBound: new RS4Type() },
+		{ query: Q.all().filter(RType.Access).first().build(), expectedType: new RTypeVariable() },
 	);
 });

@@ -18,6 +18,7 @@ export function prettyPrintDataType(type: DataType, shorten = true): string {
 		case DataTypeTag.Raw:
 		case DataTypeTag.Environment:
 		case DataTypeTag.Language:
+		case DataTypeTag.S4:
 			return shorten && tag.startsWith('R') && tag.endsWith('Type') ? tag.slice(1, -4).toLowerCase() : tag.toLowerCase();
 		case DataTypeTag.Function:
 			return `(${[...type.parameterTypes.entries()].map(([k, v]) => 

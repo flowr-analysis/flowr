@@ -9,7 +9,7 @@
  * @module
  */
 
-import type { NoInfo, RNode } from '../model';
+import type { NoInfo, RNode, Source } from '../model';
 import { guard } from '../../../../../util/assert';
 import type { SourceRange } from '../../../../../util/range';
 import { BiMap } from '../../../../../util/collections/bimap';
@@ -462,4 +462,71 @@ function createFoldForFunctionArgument<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		decorated.info.file = info.file;
 		return decorated;
 	};
+}
+
+
+export function mapAstInfo<OldInfo, Down, NewInfo>(ast: RNode<OldInfo>, down: Down, infoMapper: (node: RNode<OldInfo>, down: Down) => NewInfo, downUpdater: (node: RNode<OldInfo>, down: Down) => Down = (_node, down) => down): RNode<NewInfo> {
+	const fullInfoMapper = (node: RNode<OldInfo>, down: Down): NewInfo & Source => {
+		const sourceInfo = {
+			...(node.info.fullRange !== undefined ? { fullRange: node.info.fullRange } : {}),
+			...(node.info.fullLexeme !== undefined ? { fullLexeme: node.info.fullLexeme } : {}),
+			...(node.info.additionalTokens !== undefined ? { additionalTokens: node.info.additionalTokens } : {}),
+			...(node.info.file !== undefined ? { file: node.info.file } : {})
+		};
+		const mappedInfo = infoMapper(node, down);
+		return { ...sourceInfo, ...mappedInfo };
+	};
+
+	function updateInfo(n: RNode<OldInfo>, down: Down): RNode<NewInfo> {
+		(n.info as NewInfo) = fullInfoMapper(n, down);
+		return n as unknown as RNode<NewInfo>;
+	}
+
+	return foldAstStateful(ast, down, {
+		down:         downUpdater,
+		foldNumber:   updateInfo,
+		foldString:   updateInfo,
+		foldLogical:  updateInfo,
+		foldSymbol:   updateInfo,
+		foldAccess:   (node, _name, _access, down) => updateInfo(node, down),
+		foldBinaryOp: (op, _lhs, _rhs, down) => updateInfo(op, down),
+		foldPipe:     (op, _lhs, _rhs, down) => updateInfo(op, down),
+		foldUnaryOp:  (op, _operand, down) => updateInfo(op, down),
+		loop:         {
+			foldFor:    (loop, _variable, _vector, _body, down) => updateInfo(loop, down),
+			foldWhile:  (loop, _condition, _body, down) => updateInfo(loop, down),
+			foldRepeat: (loop, _body, down) => updateInfo(loop, down),
+			foldNext:   (next, down) => updateInfo(next, down),
+			foldBreak:  (next, down) => updateInfo(next, down),
+		},
+		other: {
+			foldComment:       (comment, down) => updateInfo(comment, down),
+			foldLineDirective: (comment, down) => updateInfo(comment, down),
+		},
+		foldIfThenElse: (ifThenExpr, _condition, _then, _otherwise, down ) =>
+			updateInfo(ifThenExpr, down),
+		foldExprList: (exprList, _grouping, _expressions, down) => updateInfo(exprList, down),
+		functions:    {
+			foldFunctionDefinition: (definition, _parameters, _body, down) => updateInfo(definition, down),
+			/** folds named and unnamed function calls */
+			foldFunctionCall:       (call, _functionNameOrExpression, _args, down) => updateInfo(call, down),
+			/** The `name` is `undefined` if the argument is unnamed, the value, if we have something like `x=,...` */
+			foldArgument:           (argument, _name, _value, down) => updateInfo(argument, down),
+			/** The `defaultValue` is `undefined` if the argument was not initialized with a default value */
+			foldParameter:          (parameter, _name, _defaultValue, down) => updateInfo(parameter, down)
+		}
+	});
+}
+
+export function mapNormalizedAstInfo<OldInfo extends ParentInformation, NewInfo>(normalizedAst: NormalizedAst<OldInfo>, infoMapper: (node: RNode<OldInfo>) => NewInfo): NormalizedAst<NewInfo> {
+	const mappedNodes = new Set<RNode>(); // To avoid repeatedly mapping the same node in case of virtual node ids
+	
+	for(const node of normalizedAst.idMap.values()) {
+		if(!mappedNodes.has(node)) {
+			(node.info as unknown as NewInfo) = infoMapper(node);
+			mappedNodes.add(node);
+		}
+	}
+
+	return normalizedAst as unknown as NormalizedAst<NewInfo>;
 }

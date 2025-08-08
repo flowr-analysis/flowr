@@ -11,6 +11,7 @@ import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import type { KnownParser } from '../../../r-bridge/parser';
+import { compressToBase64 } from 'lz-string';
 import type { FlowrConfigOptions } from '../../../config';
 
 
@@ -96,7 +97,7 @@ export const queryStarCommand: ReplCommand = {
 	fn:           async({ output, parser, remainingLine, config }) => {
 		const results = await processQueryArgs(remainingLine, parser, output, config);
 		if(results) {
-			output.stdout(JSON.stringify(results.query, jsonReplacer));
+			output.stdout(compressToBase64(JSON.stringify(results.query, jsonReplacer)));
 		}
 	}
 };

@@ -167,12 +167,12 @@ describe.sequential('source', withShell(shell => {
 	assertDataflow(label('non-constant source (but constant alias)', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'strings', 'newlines', 'unnamed-arguments']), shell, 'x <- "simple"\nsource(x)',  emptyGraph()
 		.use('4', 'x')
 		.reads('4', '0')
-		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
+		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')], builtInEnvironment: defaultEnv().current.parent })
 		.calls('2', builtInId('<-'))
-		.call('6', 'source', [argumentInCall('4')], { returns: [], reads: [builtInId('source')], environment: defaultEnv().defineVariable('x', '0', '2') })
+		.call('6', 'source', [argumentInCall('4')], { returns: [], reads: [builtInId('source')], environment: defaultEnv().defineVariable('x', '0', '2'), builtInEnvironment: defaultEnv().current.parent })
 		.calls('6', builtInId('source'))
 		.defineVariable('simple-2:1-2:6-0', 'N', { definedBy: ['simple-2:1-2:6-1', 'simple-2:1-2:6-2'] })
-		.call('simple-2:1-2:6-2', '<-', [argumentInCall('simple-2:1-2:6-0'), argumentInCall('simple-2:1-2:6-1')], { returns: ['simple-2:1-2:6-0'], reads: [builtInId('<-')] })
+		.call('simple-2:1-2:6-2', '<-', [argumentInCall('simple-2:1-2:6-0'), argumentInCall('simple-2:1-2:6-1')], { returns: ['simple-2:1-2:6-0'], reads: [builtInId('<-')], builtInEnvironment: defaultEnv().current.parent })
 		.calls('simple-2:1-2:6-2', builtInId('<-'))
 		.addControlDependency('simple-2:1-2:6-2', '6', true)
 		.addControlDependency('simple-2:1-2:6-0', '6', true)
@@ -212,7 +212,7 @@ describe.sequential('source', withShell(shell => {
 				entryPoint:         'closure1-1:1-1:6-3',
 				graph:              new Set(['closure1-1:1-1:6-3']),
 				environment:        defaultEnv().pushEnv().pushEnv(),
-				builtInEnvironment: defaultEnv().current
+				builtInEnvironment: defaultEnv().current.parent
 			}, { environment: defaultEnv().pushEnv() }, false)
 			.defineFunction('closure1-1:1-1:6-7', ['closure1-1:1-1:6-5'], {
 				out:                [],
@@ -221,7 +221,7 @@ describe.sequential('source', withShell(shell => {
 				entryPoint:         'closure1-1:1-1:6-5',
 				graph:              new Set(['closure1-1:1-1:6-5']),
 				environment:        defaultEnv().pushEnv(),
-				builtInEnvironment: defaultEnv().current
+				builtInEnvironment: defaultEnv().current.parent
 			})
 			.defineVariable('closure1-1:1-1:6-0', 'f', { definedBy: ['closure1-1:1-1:6-7', 'closure1-1:1-1:6-8'] })
 			.addControlDependency('closure1-1:1-1:6-0', '3', true)
@@ -233,24 +233,24 @@ describe.sequential('source', withShell(shell => {
 		shell, 'x <- 2\nsource("closure2")\nf()\nprint(x)', emptyGraph()
 			.use('10', 'x')
 			.reads('10', 'closure2-2:1-2:6-3')
-			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
+			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')], builtInEnvironment: defaultEnv().current.parent })
 			.calls('2', builtInId('<-'))
 			.argument('2', ['1', '0'])
-			.call('6', 'source', [argumentInCall('4')], { returns: [], reads: [builtInId('source')], environment: defaultEnv().defineVariable('x', '0', '2') })
+			.call('6', 'source', [argumentInCall('4')], { returns: [], reads: [builtInId('source')], environment: defaultEnv().defineVariable('x', '0', '2'), builtInEnvironment: defaultEnv().current.parent })
 			.calls('6', builtInId('source'))
 			.argument('6', '4')
-			.call('closure2-2:1-2:6-5', '<<-', [argumentInCall('closure2-2:1-2:6-3'), argumentInCall('closure2-2:1-2:6-4')], { returns: ['closure2-2:1-2:6-3'], reads: [builtInId('<<-')], environment: defaultEnv().pushEnv() }, false)
+			.call('closure2-2:1-2:6-5', '<<-', [argumentInCall('closure2-2:1-2:6-3'), argumentInCall('closure2-2:1-2:6-4')], { returns: ['closure2-2:1-2:6-3'], reads: [builtInId('<<-')], environment: defaultEnv().pushEnv(), builtInEnvironment: defaultEnv().current.parent }, false)
 			.calls('closure2-2:1-2:6-5', builtInId('<<-'))
 			.argument('closure2-2:1-2:6-5', ['closure2-2:1-2:6-4', 'closure2-2:1-2:6-3'])
-			.call('closure2-2:1-2:6-8', '<-', [argumentInCall('closure2-2:1-2:6-0'), argumentInCall('closure2-2:1-2:6-7')], { returns: ['closure2-2:1-2:6-0'], reads: [builtInId('<-')], environment: defaultEnv().defineVariable('x', '0', '2') })
+			.call('closure2-2:1-2:6-8', '<-', [argumentInCall('closure2-2:1-2:6-0'), argumentInCall('closure2-2:1-2:6-7')], { returns: ['closure2-2:1-2:6-0'], reads: [builtInId('<-')], environment: defaultEnv().defineVariable('x', '0', '2'), builtInEnvironment: defaultEnv().current.parent })
 			.calls('closure2-2:1-2:6-8', builtInId('<-'))
 			.addControlDependency('closure2-2:1-2:6-8', '6', true)
 			.argument('closure2-2:1-2:6-8', ['closure2-2:1-2:6-7', 'closure2-2:1-2:6-0'])
-			.call('8', 'f', [], { returns: ['closure2-2:1-2:6-5'], reads: ['closure2-2:1-2:6-0'], environment: defaultEnv().defineVariable('x', '0', '2').defineFunction('f', 'closure2-2:1-2:6-0', 'closure2-2:1-2:6-8') })
+			.call('8', 'f', [], { returns: ['closure2-2:1-2:6-5'], reads: ['closure2-2:1-2:6-0'], environment: defaultEnv().defineVariable('x', '0', '2').defineFunction('f', 'closure2-2:1-2:6-0', 'closure2-2:1-2:6-8'), builtInEnvironment: defaultEnv().current.parent })
 			.calls('8', 'closure2-2:1-2:6-7')
 			.argument('12', '10')
 			.reads('12', '10')
-			.call('12', 'print', [argumentInCall('10')], { returns: ['10'], reads: [builtInId('print')], environment: defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5').defineFunction('f', 'closure2-2:1-2:6-0', 'closure2-2:1-2:6-8') })
+			.call('12', 'print', [argumentInCall('10')], { returns: ['10'], reads: [builtInId('print')], environment: defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5').defineFunction('f', 'closure2-2:1-2:6-0', 'closure2-2:1-2:6-8'), builtInEnvironment: defaultEnv().current.parent })
 			.calls('12', builtInId('print'))
 			.constant('1')
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
@@ -265,8 +265,11 @@ describe.sequential('source', withShell(shell => {
 				entryPoint:         'closure2-2:1-2:6-5',
 				graph:              new Set(['closure2-2:1-2:6-4', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5']),
 				environment:        defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5').pushEnv(),
-				builtInEnvironment: defaultEnv().current
-			}, { environment: defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5') })
+				builtInEnvironment: defaultEnv().current.parent
+			}, {
+				environment:        defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5'),
+				builtInEnvironment: defaultEnv().current.parent
+			})
 			.defineVariable('closure2-2:1-2:6-0', 'f', { definedBy: ['closure2-2:1-2:6-7', 'closure2-2:1-2:6-8'] })
 			.addControlDependency('closure2-2:1-2:6-0', '6', true)
 			.markIdForUnknownSideEffects('12'),

@@ -44,7 +44,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public defineFunction(id: NodeId,
 		exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation,
-		info?: { environment?: REnvironmentInformation, controlDependencies?: ControlDependency[] },
+		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, controlDependencies?: ControlDependency[] },
 		asRoot: boolean = true) {
 		return this.addVertex({
 			tag:     VertexType.FunctionDefinition,
@@ -57,9 +57,10 @@ export class DataflowGraphBuilder extends DataflowGraph {
 				in:                subflow.in.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), controlDependencies: o.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
 				unknownReferences: subflow.unknownReferences.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), controlDependencies: o.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) }))
 			} as DataflowFunctionFlowInformation,
-			exitPoints:  exitPoints.map(normalizeIdToNumberIfPossible),
-			cds:         info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
-			environment: info?.environment
+			exitPoints:         exitPoints.map(normalizeIdToNumberIfPossible),
+			cds:                info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
+			environment:        info?.environment,
+			builtInEnvironment: info?.builtInEnvironment
 		}, asRoot);
 	}
 

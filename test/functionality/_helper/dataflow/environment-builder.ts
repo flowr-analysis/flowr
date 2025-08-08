@@ -35,7 +35,7 @@ export function argumentInCall(nodeId: NodeId, options?: { name?: string, contro
  */
 export const defaultEnv = () => {
 	const global = initializeCleanEnvironments();
-	return new EnvironmentBuilder(global.current, global.current, 0);
+	return new EnvironmentBuilder(global.current, global.current.parent, 0);
 };
 
 /**

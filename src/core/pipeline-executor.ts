@@ -100,10 +100,12 @@ export class PipelineExecutor<P extends Pipeline> {
 	private readonly pipeline: P;
 	private readonly length:   number;
 
-	private input:                PipelineInput<P>;
-	private output:               PipelineOutput<P> = {} as PipelineOutput<P>;
+	private input:  PipelineInput<P>;
+	private output: PipelineOutput<P> = {} as PipelineOutput<P>;
 	private currentExecutionStage = PipelineStepStage.OncePerFile;
 	private stepCounter = 0;
+
+	// TODO TSchoeller enable usage of built-in overwrites via config
 	private readonly builtIns:    BuiltIns;
 	private readonly flowrConfig: FlowrConfigOptions;
 

@@ -69,16 +69,18 @@ export function isDefaultBuiltIn(v: unknown) {
 }
 
 // TODO TSchoeller How to handle this?
-let environmentIdCounter = 0;
+// TODO TSchoeller Should we expose a constant 0 as built-in environment ID?
+let environmentIdCounter = 1; // Zero is reserved for built-in environment
 
 /** @see REnvironmentInformation */
 export class Environment implements IEnvironment {
-	readonly id = environmentIdCounter++;
+	readonly id;
 	parent:           IEnvironment;
 	memory:           BuiltInMemory;
 	isBuiltInDefault: boolean;
 
 	constructor(parent: IEnvironment, isBuiltInDefault: boolean) {
+		this.id = isBuiltInDefault ? 0 : environmentIdCounter++;
 		this.parent = parent;
 		this.memory = new Map();
 		this.isBuiltInDefault = isBuiltInDefault;

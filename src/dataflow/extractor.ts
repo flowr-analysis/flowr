@@ -105,13 +105,14 @@ export function produceDataFlowGraph<OtherInfo>(
 		firstRequest = request as RParseRequest;
 	}
 
+	// TODO TSchoeller enable overwrite via built-in config
 	const env = initializeCleanEnvironments();
 
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
 		environment:         env,
-		builtInEnvironment:  env.current,
+		builtInEnvironment:  env.current.parent,
 		processors,
 		currentRequest:      firstRequest,
 		controlDependencies: undefined,

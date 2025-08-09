@@ -249,7 +249,7 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	onlyBuiltin:        boolean
 	/** The environment attached to the call (if such an attachment is necessary, e.g., because it represents the calling closure */
 	environment:        REnvironmentInformation | undefined
-	/** TODO TSchoeller */
+	/** The built-in environment */
 	builtInEnvironment: IEnvironment | undefined
 	/** More detailed Information on this function call */
 	origin:             FunctionOriginInformation[] | 'unnamed'

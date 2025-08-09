@@ -17,13 +17,13 @@ function cloneEnvironment(environment: IEnvironment | undefined, recurseParents:
 
 /**
  * Produce a clone of the given environment information.
- * @param environment    - The environment information to clone.
- * @param
- * @param recurseParents - Whether to clone the parent environments as well.
+ * @param environment        - The environment information to clone.
+ * @param builtInEnvironment - The built-in environment
+ * @param recurseParents     - Whether to clone the parent environments as well.
  */
-export function cloneEnvironmentInformation(environment: REnvironmentInformation, defaultEnvironment: IEnvironment, recurseParents = true): REnvironmentInformation {
+export function cloneEnvironmentInformation(environment: REnvironmentInformation, builtInEnvironment: IEnvironment, recurseParents = true): REnvironmentInformation {
 	return {
-		current: cloneEnvironment(environment.current, recurseParents, defaultEnvironment),
+		current: cloneEnvironment(environment.current, recurseParents, builtInEnvironment),
 		level:   environment.level
 	};
 }

@@ -39,7 +39,7 @@ const AliasHandler = {
 export interface ResolveInfo {
 	/** The current environment used for name resolution */
 	environment?:        REnvironmentInformation;
-	/** TODO TSchoeller */
+	/** The built-in environment */
 	builtInEnvironment?: IEnvironment;
 	/** The id map to resolve the node if given as an id */
 	idMap?:              AstIdMap;
@@ -106,10 +106,10 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
  * us later, in the {@link trackAliasInEnvironments} function, to get all the
  * aliases of an identifier.
  *
- * @param sourceIds    - node ids to get the definitions for
- * @param dataflow     - dataflow graph
- * @param environment  - environment
- * @param defaultEnvironment
+ * @param sourceIds          - node ids to get the definitions for
+ * @param dataflow           - dataflow graph
+ * @param environment        - environment
+ * @param defaultEnvironment - built-in environment
  * @returns node id of alias
  */
 export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph, environment: REnvironmentInformation, defaultEnvironment: IEnvironment): NodeId[] | undefined {
@@ -143,13 +143,13 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
  * to resolve values. For e.g. in the Dependency Query it is used to resolve calls
  * like `lapply(c("a", "b", "c"), library, character.only = TRUE)`
  *
- * @param id          - The node id or node to resolve
- * @param environment - The current environment used for name resolution
- * @param defaultEnvironment
- * @param graph       - The graph to resolve in
- * @param idMap       - The id map to resolve the node if given as an id
- * @param full        - Whether to track aliases on resolve
- * @param resolve     - Variable resolve mode
+ * @param id                 - The node id or node to resolve
+ * @param environment        - The current environment used for name resolution
+ * @param builtInEnvironment - The built-in environment
+ * @param graph              - The graph to resolve in
+ * @param idMap              - The id map to resolve the node if given as an id
+ * @param full               - Whether to track aliases on resolve
+ * @param resolve            - Variable resolve mode
  */
 // TODO TSchoeller Fix calls to this function
 export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, builtInEnvironment, graph, idMap, full = true, resolve }: ResolveInfo): ResolveResult {
@@ -196,16 +196,17 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
  * @param resolve    - Variable resolve mode
  * @param identifier - Identifier to resolve
  * @param use        - Environment to use
- * @param info
+ * @param builtInEnvironment - built-in environment
+ * @param graph      - dataflow graph
  * @param idMap      - id map of Dataflow graph
  * @returns Value of Identifier or Top
  */
-export function trackAliasInEnvironments(resolve: VariableResolve, identifier: Identifier | undefined, use: REnvironmentInformation, defaultEnv: IEnvironment, graph?: DataflowGraph, idMap?: AstIdMap): ResolveResult {
+export function trackAliasInEnvironments(resolve: VariableResolve, identifier: Identifier | undefined, use: REnvironmentInformation, builtInEnvironment: IEnvironment, graph?: DataflowGraph, idMap?: AstIdMap): ResolveResult {
 	if(identifier === undefined) {
 		return Top;
 	}
 
-	const defs = resolveByName(identifier, use, defaultEnv);
+	const defs = resolveByName(identifier, use, builtInEnvironment);
 	if(defs === undefined) {
 		return Top;
 	}
@@ -392,17 +393,17 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
  *
  * Resolve an Identifier to a constant, if the identifier is a constant
  *
- * @param name        - Identifier to resolve
- * @param environment - Environment to use
- * @param defaultEnvironment
+ * @param name               - Identifier to resolve
+ * @param environment        - Environment to use
+ * @param builtInEnvironment - Built-in environment
  * @returns Value of Constant or Top
  */
-export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation, defaultEnvironment: IEnvironment): ResolveResult {
+export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation, builtInEnvironment: IEnvironment): ResolveResult {
 	if(name === undefined) {
 		return Top;
 	}
 
-	const definitions = resolveByName(name, environment, defaultEnvironment, ReferenceType.Constant);
+	const definitions = resolveByName(name, environment, builtInEnvironment, ReferenceType.Constant);
 	if(definitions === undefined) {
 		return Top;
 	}

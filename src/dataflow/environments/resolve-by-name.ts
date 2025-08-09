@@ -25,15 +25,15 @@ const TargetTypePredicate = {
 /**
  * Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.
  *
- * @param name         - The name of the identifier to resolve
- * @param environment  - The current environment used for name resolution
- * @param defaultEnvironment
- * @param target       - The target (meta) type of the identifier to resolve
+ * @param name               - The name of the identifier to resolve
+ * @param environment        - The current environment used for name resolution
+ * @param builtInEnvironment - The built-in environment
+ * @param target             - The target (meta) type of the identifier to resolve
  *
  * @returns A list of possible identifier definitions (one if the definition location is exactly and always known), or `undefined`
  *          if the identifier is undefined in the current scope/with the current environment information.
  */
-export function resolveByName(name: Identifier, environment: REnvironmentInformation, defaultEnvironment: IEnvironment, target: ReferenceType = ReferenceType.Unknown): IdentifierDefinition[] | undefined {
+export function resolveByName(name: Identifier, environment: REnvironmentInformation, builtInEnvironment: IEnvironment, target: ReferenceType = ReferenceType.Unknown): IdentifierDefinition[] | undefined {
 	let current: IEnvironment = environment.current;
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	const wantedType = TargetTypePredicate[target];
@@ -49,7 +49,7 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 			}
 		}
 		current = current.parent;
-	} while(current.id !== defaultEnvironment.id);
+	} while(current.id !== builtInEnvironment.id);
 
 	const builtIns = current.memory.get(name);
 	if(definitions) {

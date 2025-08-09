@@ -36,11 +36,11 @@ export function getAccessOperands<OtherInfo>(
  *
  * @param name - Name to resolve
  * @param environment - Environment in which name is resolved
- * @param defaultEnv
+ * @param builtInEnvironment - Built-in environment
  * @returns The indicesCollection of the resolved definitions
  */
-export function resolveIndicesByName(name: Identifier, environment: REnvironmentInformation, defaultEnv: IEnvironment) {
-	const definitions = resolveByName(name, environment, defaultEnv);
+export function resolveIndicesByName(name: Identifier, environment: REnvironmentInformation, builtInEnvironment: IEnvironment) {
+	const definitions = resolveByName(name, environment, builtInEnvironment);
 	return definitions?.flatMap(def => (def as InGraphIdentifierDefinition)?.indicesCollection ?? []);
 }
 

@@ -328,16 +328,16 @@ export function getAllLinkedFunctionDefinitions(
  *
  * @param referencesToLinkAgainstEnvironment - The set of references to link against the environment
  * @param environmentInformation             - The environment information to link against
- * @param defaultEnvironment
+ * @param builtInEnviroment                  - The built-in environment
  * @param givenInputs                        - The existing list of inputs that might be extended
  * @param graph                              - The graph to enter the found links
  * @param maybeForRemaining                  - Each input that can not be linked, will be added to `givenInputs`. If this flag is `true`, it will be marked as `maybe`.
  *
  * @returns the given inputs, possibly extended with the remaining inputs (those of `referencesToLinkAgainstEnvironment` that could not be linked against the environment)
  */
-export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, defaultEnvironment: IEnvironment, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
+export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, builtInEnviroment: IEnvironment, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
-		const probableTarget = bodyInput.name ? resolveByName(bodyInput.name, environmentInformation, defaultEnvironment, bodyInput.type) : undefined;
+		const probableTarget = bodyInput.name ? resolveByName(bodyInput.name, environmentInformation, builtInEnviroment, bodyInput.type) : undefined;
 		if(probableTarget === undefined) {
 			log.trace(`found no target for ${bodyInput.name}`);
 			if(maybeForRemaining) {

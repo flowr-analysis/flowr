@@ -42,7 +42,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 */
 	readonly controlDependencies: ControlDependency[] | undefined
 	/**
-	 * TODO TSchoeller
+	 * The built-in environment
 	 */
 	readonly builtInEnvironment:  IEnvironment;
 	/**

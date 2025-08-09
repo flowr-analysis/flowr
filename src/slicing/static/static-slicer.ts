@@ -22,8 +22,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  * <p>
  * The returned ids can be used to {@link reconstructToCode|reconstruct the slice to R code}.
  *
- * @param graph     - The dataflow graph to conduct the slicing on.
- * @param info
+ * @param info      - The dataflow information used for slicing.
  * @param criteria  - The criteria to slice on.
  * @param threshold - The maximum number of nodes to visit in the graph. If the threshold is reached, the slice will side with inclusion and drop its minimal guarantee. The limit ensures that the algorithm halts.
  * @param cache     - A cache to store the results of the slice. If provided, the slice may use this cache to speed up the slicing process.

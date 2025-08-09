@@ -110,7 +110,7 @@ export interface DataflowInformation extends DataflowCfgInformation {
 	out:                readonly IdentifierReference[]
 	/** Current environments used for name resolution, probably updated on the next expression-list processing */
 	environment:        REnvironmentInformation
-	/** TODO TSchoeller */
+	/** Built-in environment */
 	builtInEnvironment:	IEnvironment,
 	/** The current constructed dataflow graph */
 	graph:              DataflowGraph

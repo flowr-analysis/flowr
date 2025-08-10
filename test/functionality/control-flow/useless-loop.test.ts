@@ -23,5 +23,9 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 	}
 
 
-	checkLoop('Simple For', 'for(i in c(1)) { print(i) }', '1@for', true);
+	checkLoop('Simple For',            'for(i in c(1)) { print(i) }',         '1@for', true);
+	
+	// works after #1858 is merged
+	// checkLoop('Simple For with Alias', 'x <- c(1); for(i in x) { print(i) }', '1@for', true);
+
 }));

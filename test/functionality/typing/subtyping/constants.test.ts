@@ -7,9 +7,9 @@ describe('Infer types for constants', () => {
 		{ description: 'logical constant',        input: 'TRUE',            expectedType: new RLogicalType() },
 		{ description: 'logical constant',        input: 'FALSE',           expectedType: new RLogicalType() },
 		{ description: 'null constant',           input: 'NULL',            expectedType: new RNullType() },
-		{ description: 'integer constant',        input: '42',              lowerBound: new RIntegerType(), upperBound: new RComplexType() },
+		{ description: 'integer constant',        input: '42',              expectedType: new RDoubleType() },
 		{ description: 'integer constant',        input: '42L',             expectedType: new RIntegerType() },
-		{ description: 'double constant',         input: '42.5',            lowerBound: new RDoubleType(), upperBound: new RComplexType() },
+		{ description: 'double constant',         input: '42.5',            expectedType: new RDoubleType() },
 		{ description: 'complex number constant', input: '42i',             expectedType: new RComplexType() },
 		{ description: 'string constant',         input: '"Hello, world!"', expectedType: new RStringType() },
 		{ description: 'empty expression list',   input: '{}',              expectedType: new RNullType() }

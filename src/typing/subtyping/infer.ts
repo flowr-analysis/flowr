@@ -124,10 +124,8 @@ class TypeInferringCfgGuidedVisitor<
 			this.constrainNodeType(data.node, new RComplexType());
 		} else if(data.node.content.markedAsInt) {
 			this.constrainNodeType(data.node, new RIntegerType());
-		} else if(data.node.content.num % 1 === 0) {
-			this.constrainNodeType(data.node, { lowerBound: new RIntegerType(), upperBound: new RComplexType() });
 		} else {
-			this.constrainNodeType(data.node, { lowerBound: new RDoubleType(), upperBound: new RComplexType() });
+			this.constrainNodeType(data.node, new RDoubleType());
 		}
 	}
 

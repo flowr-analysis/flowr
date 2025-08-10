@@ -239,8 +239,8 @@ describe('Constrain and resolve types', () => {
 		// Typing of function call
 		const argType1 = new UnresolvedRTypeVariable();
 		// const argType2 = new UnresolvedRTypeVariable();
-		// constrain(new RIntegerType(), argType1, cache);
-		constrain(argType1, new RIntegerType(), cache);
+		constrain(new RIntegerType(), argType1, cache);
+		// constrain(argType1, new RIntegerType(), cache);
 		// constrain(new RStringType(), argType2, cache);
 		// constrain(argType2, new RStringType(), cache);
 		const templateFuncType1 = new UnresolvedRFunctionType();

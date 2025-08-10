@@ -9,7 +9,7 @@ import type { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataTypeInfo } from '../types';
-import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, RNullType, RLanguageType, RS4Type } from '../types';
+import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, RNullType, RLanguageType, RS4Type, REnvironmentType } from '../types';
 import type { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../../util/assert';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
@@ -208,11 +208,9 @@ class TypeInferringCfgGuidedVisitor<
 			guard(argNode !== undefined, 'Expected argument node to be defined');
 
 			if(arg.name !== undefined) {
-				// constrain(argNode.info.typeVariable, getParameterTypeFromFunction(templateFunctionType, arg.name), this.constraintCache);
-				constrain(getParameterTypeFromFunction(templateFunctionType, arg.name), argNode.info.typeVariable, this.constraintCache);
+				constrain(argNode.info.typeVariable, getParameterTypeFromFunction(templateFunctionType, arg.name), this.constraintCache);
 			} else {
-				// constrain(argNode.info.typeVariable, getParameterTypeFromFunction(templateFunctionType, index), this.constraintCache);
-				constrain(getParameterTypeFromFunction(templateFunctionType, index), argNode.info.typeVariable, this.constraintCache);
+				constrain(argNode.info.typeVariable, getParameterTypeFromFunction(templateFunctionType, index), this.constraintCache);
 			}
 		}
 		constrain(calledFunctionType, templateFunctionType, this.constraintCache);
@@ -356,34 +354,35 @@ class TypeInferringCfgGuidedVisitor<
 		const listType = new UnresolvedRListType();
 		this.constrainNodeType(data.call.id, listType);
 
-		for(const [index, arg] of data.call.args.entries()) {
-			if(arg === EmptyArgument) {
-				continue; // Skip empty arguments
-			}
-
-			this.constrainNodeType(arg.nodeId, { upperBound: getIndexedElementTypeFromList(listType, index, this.constraintCache) });
+		for(const [index, arg] of data.call.args.filter((arg) => arg !== EmptyArgument).entries()) {
+			const argNode = this.getNormalizedAst(arg.nodeId);
+			guard(argNode !== undefined, 'Expected argument node to be defined');
+			
+			this.constrainNodeType(argNode, { upperBound: getIndexedElementTypeFromList(listType, index, this.constraintCache) });
 
 			if(arg.name !== undefined) {
-				this.constrainNodeType(arg.nodeId, { upperBound: getIndexedElementTypeFromList(listType, arg.name, this.constraintCache) });
+				this.constrainNodeType(argNode, { upperBound: getIndexedElementTypeFromList(listType, arg.name, this.constraintCache) });
 			}
 		}
 	}
 
 	override onVectorCall(data: { call: DataflowGraphVertexFunctionCall }) {
-		const args = data.call.args.filter((arg) => arg !== EmptyArgument);
-		if(args.length === 0) {
-			this.constrainNodeType(data.call.id, new RNullType());
-			return;
-		}
+		const lowerBounds = new Set<UnresolvedDataType>();
 		
 		const vectorType = new UnresolvedRAtomicVectorType();
 		this.constrainNodeType(data.call.id, vectorType);
 
-		for(const arg of args) {
+		for(const arg of data.call.args.filter((arg) => arg !== EmptyArgument)) {
 			const argNode = this.getNormalizedAst(arg.nodeId);
 			guard(argNode !== undefined, 'Expected argument node to be defined');
+
 			this.constrainNodeType(argNode, { upperBound: vectorType });
+			lowerBounds.add(argNode.info.typeVariable);
 		}
+
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		const upperBound = lowerBounds.size === 1 ? lowerBounds.values().next().value! : new UnresolvedRTypeUnion(...lowerBounds);
+		constrain(vectorType, upperBound, this.constraintCache);
 	}
 
 	override onFunctionDefinition(data: { vertex: DataflowGraphVertexFunctionDefinition }): void {
@@ -453,33 +452,59 @@ class TypeInferringCfgGuidedVisitor<
 		const firstArgNode = this.getNormalizedAst(firstArg.nodeId);
 		guard(firstArgNode !== undefined, 'Expected first argument node to be defined');
 
+		const accessFunction = new UnresolvedRTypeVariable();
+		const overloads = new UnresolvedRTypeIntersection();
+		const templateFunction = new UnresolvedRFunctionType();
+
 		switch(data.call.name) {
-			case '[': { // If the access call is a `[` operation, we can assume that it returns a subset of the first argument's elements as another instance of the same vector type
-				const vectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(), new UnresolvedRListType());
-				this.constrainNodeType(firstArgNode, { upperBound: vectorType });
-				this.constrainNodeType(data.call.id, { lowerBound: firstArgNode.info.typeVariable });
+			case '[': {
+				if(data.call.args.at(1) === undefined || data.call.args.at(1) === EmptyArgument) {
+					overloads.types = new Set([new UnresolvedRFunctionType(new Map([[0, firstArgNode.info.typeVariable]]), firstArgNode.info.typeVariable)]);
+					break;
+				}
+				const vectorSignature = new UnresolvedRFunctionType(new Map([[0, new UnresolvedRTypeVariable(undefined, [new UnresolvedRAtomicVectorType()])]]), new UnresolvedRTypeVariable([new UnresolvedRAtomicVectorType()], undefined));
+				const listSignature = new UnresolvedRFunctionType(new Map([[0, new UnresolvedRTypeVariable(undefined, [new UnresolvedRListType()])]]), new UnresolvedRTypeVariable([new UnresolvedRListType()], undefined));
+				const nullSignature = new UnresolvedRFunctionType(new Map([[0, new UnresolvedRTypeVariable(undefined, [new RNullType()])]]), new UnresolvedRTypeVariable([new RNullType()], undefined));
+				overloads.types = new Set([vectorSignature, listSignature, nullSignature]);
 				break;
 			}
-			
-			case '[[': { // If the access call is a `[[` operation, we can assume that the first argument is a container type and that it returns one of its elements
+			case '[[': {
 				const elementType = new UnresolvedRTypeVariable();
-				const vectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(elementType), new UnresolvedRListType(elementType));
-				this.constrainNodeType(firstArgNode, { upperBound: vectorType });
-				this.constrainNodeType(data.call.id, { lowerBound: elementType });
+				const vectorSignature = new UnresolvedRFunctionType(new Map([[0, new UnresolvedRTypeVariable(undefined, [new UnresolvedRAtomicVectorType(elementType)])]]), elementType);
+				const listSignature = new UnresolvedRFunctionType(new Map([[0, new UnresolvedRTypeVariable(undefined, [new UnresolvedRListType(elementType)])]]), elementType);
+				const nullSignature = new UnresolvedRFunctionType(new Map([[0, new UnresolvedRTypeVariable(undefined, [new RNullType()])]]), new UnresolvedRTypeVariable([new RNullType()], undefined));
+				const environmentSignature = new UnresolvedRFunctionType(new Map([[0, new UnresolvedRTypeVariable(undefined, [new REnvironmentType()])]]), new UnresolvedRTypeVariable());
+				overloads.types = new Set([vectorSignature, listSignature, nullSignature, environmentSignature]);
 				break;
 			}
 			case '$': {
+				const indexArg = data.call.args.at(1);
+				guard(indexArg !== undefined && indexArg !== EmptyArgument, 'Expected index argument to be defined');
+				const indexNode = this.getNormalizedAst(indexArg.nodeId);
+				guard(indexNode !== undefined && indexNode.type === RType.Symbol, 'Expected index node to be defined and of type Symbol');
+				const index = indexNode.content;
 				const elementType = new UnresolvedRTypeVariable();
-				this.constrainNodeType(firstArgNode, { upperBound: new UnresolvedRListType(elementType) });
-				this.constrainNodeType(data.call.id, { lowerBound: elementType });
+				const listSignature = new UnresolvedRFunctionType(new Map([[0, new UnresolvedRTypeVariable(undefined, [new UnresolvedRListType(undefined, new Map([[index, elementType]]))])]]), elementType);
+				const nullSignature = new UnresolvedRFunctionType(new Map([[0, new UnresolvedRTypeVariable(undefined, [new RNullType()])]]), new UnresolvedRTypeVariable([new RNullType()], undefined));
+				const environmentSignature = new UnresolvedRFunctionType(new Map([[0, new UnresolvedRTypeVariable(undefined, [new REnvironmentType()])]]), new UnresolvedRTypeVariable());
+				overloads.types = new Set([listSignature, nullSignature, environmentSignature]);
 				break;
 			}
 			case '@': {
 				// The target of the access call must be an S4 object but we can not make any assumptions about its slots
-				this.constrainNodeType(firstArgNode, { upperBound: new RS4Type() });
+				const signature = new UnresolvedRFunctionType(new Map([[0, new UnresolvedRTypeVariable(undefined, [new RS4Type()])]]), new UnresolvedRTypeVariable());
+				overloads.types = new Set([signature]);
 				break;
 			}
 		}
+
+		constrain(firstArgNode.info.typeVariable, getParameterTypeFromFunction(templateFunction, 0), this.constraintCache);
+		this.constrainNodeType(data.call.id, templateFunction.returnType);
+		
+		constrain(overloads, accessFunction, this.constraintCache);
+		constrain(accessFunction, templateFunction, this.constraintCache);
+
+		this.orphanTypes.add(accessFunction);
 	}
 
 	protected override onReplacementCall(data: { call: DataflowGraphVertexFunctionCall; source: NodeId | undefined; target: NodeId | undefined; }): void {
@@ -496,16 +521,16 @@ class TypeInferringCfgGuidedVisitor<
 
 		switch(data.call.name) {
 			case '[<-': {
-				this.constrainNodeType(targetNode, { upperBound: new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(), new UnresolvedRListType()) });
-				this.constrainNodeType(sourceNode, { upperBound: new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(), new UnresolvedRListType()) });
+				this.constrainNodeType(targetNode, { upperBound: new UnresolvedRTypeUnion(new RNullType(), new UnresolvedRAtomicVectorType(), new UnresolvedRListType()) });
+				this.constrainNodeType(sourceNode, { upperBound: new UnresolvedRTypeUnion(new RNullType(), new UnresolvedRAtomicVectorType(), new UnresolvedRListType()) });
 				break;
 			}
 			case '[[<-': {
-				this.constrainNodeType(targetNode, { upperBound: new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(), new UnresolvedRListType()) });
+				this.constrainNodeType(targetNode, { upperBound: new UnresolvedRTypeUnion(new RNullType(), new UnresolvedRAtomicVectorType(), new UnresolvedRListType(), new REnvironmentType()) });
 				break;
 			}
 			case '$<-': {
-				this.constrainNodeType(targetNode, { upperBound: new UnresolvedRListType() });
+				this.constrainNodeType(targetNode, { upperBound: new UnresolvedRTypeUnion(new RNullType(), new UnresolvedRListType(), new REnvironmentType()) });
 				break;
 			}
 			case '@<-': {
@@ -518,8 +543,6 @@ class TypeInferringCfgGuidedVisitor<
 	protected onVisitorEnd(): void {
 		// Resolve types that are not directly constrained by a node type
 		for(const type of this.orphanTypes) {
-			// console.debug('Resolved orphan type:');
-			// console.dir(resolve(type), { depth: null, colors: true });
 			resolve(type);
 		}
 	}

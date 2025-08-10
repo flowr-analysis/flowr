@@ -1,6 +1,6 @@
 import { guard } from '../../util/assert';
 import type { SimpleType, DataType } from '../types';
-import { RNullType , DataTypeTag, isAtomicVectorBaseType, RAtomicVectorType, RFunctionType, RListType, RTypeError, RTypeIntersection, RTypeUnion, RTypeVariable } from '../types';
+import { DataTypeTag, isAtomicVectorBaseType, RAtomicVectorType, RFunctionType, RListType, RTypeError, RTypeIntersection, RTypeUnion, RTypeVariable } from '../types';
 
 // let idCounter = 0;
 
@@ -97,8 +97,13 @@ export class UnresolvedRTypeIntersection {
 export class UnresolvedRTypeVariable {
 	readonly tag = DataTypeTag.Variable;
 	// readonly id = idCounter++;
-	readonly lowerBound = new UnresolvedRTypeUnion();
-	readonly upperBound = new UnresolvedRTypeIntersection();
+	readonly lowerBound: UnresolvedRTypeUnion;
+	readonly upperBound: UnresolvedRTypeIntersection;
+
+	constructor(lowerBounds: UnresolvedDataType[] = [], upperBounds: UnresolvedDataType[] = []) {
+		this.lowerBound = new UnresolvedRTypeUnion(...lowerBounds);
+		this.upperBound = new UnresolvedRTypeIntersection(...upperBounds);
+	}
 }
 
 
@@ -140,7 +145,7 @@ export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedData
 	} else if(subtype instanceof UnresolvedRFunctionType && supertype instanceof UnresolvedRFunctionType) {
 		const subtypeParameterKeys = new Set(subtype.parameterTypes.keys());
 		const supertypeParameterKeys = new Set(supertype.parameterTypes.keys());
-		for(const key of subtypeParameterKeys.union(supertypeParameterKeys)) {
+		for(const key of subtypeParameterKeys.intersection(supertypeParameterKeys)) {
 			constrain(getParameterTypeFromFunction(supertype, key), getParameterTypeFromFunction(subtype, key), cache);
 		}
 		constrain(subtype.returnType, supertype.returnType, cache);
@@ -149,6 +154,11 @@ export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedData
 	} else if(isAtomicVectorBaseType(subtype) && supertype instanceof UnresolvedRAtomicVectorType) {
 		constrain(subtype, supertype.elementType, cache);
 	} else if(subtype instanceof UnresolvedRListType && supertype instanceof UnresolvedRListType) {
+		const subtypeElementIndices = new Set(subtype.indexedElementTypes.keys());
+		const supertypeElementIndices = new Set(supertype.indexedElementTypes.keys());
+		for(const indexOrName of subtypeElementIndices.union(supertypeElementIndices).values()) {
+			constrain(getIndexedElementTypeFromList(subtype, indexOrName, cache), getIndexedElementTypeFromList(supertype, indexOrName, cache), cache);
+		}
 		constrain(subtype.elementType, supertype.elementType, cache);
 	}
 }
@@ -171,8 +181,10 @@ export function prune(variable: UnresolvedRTypeVariable): void {
 			}
 			for(const type of lowerBound.types) {
 				if(variable.upperBound.types.values().some(upperBound => subsumes(type, upperBound))) {
+					// console.debug('Constraining', inspect(type, { depth: null, colors: true }), 'to subsume', inspect(upperBound, { depth: null, colors: true }));
 					constrain(type, upperBound);
 				} else {
+					// console.debug('Pruning', inspect(type, { depth: null, colors: true }), 'from lower intersection', inspect(lowerBound, { depth: null, colors: true }));
 					lowerBound.types.delete(type);
 				}
 			}
@@ -363,7 +375,7 @@ export function subsumes(subtype: DataType | UnresolvedDataType, supertype: Data
 	if(subtype.tag === DataTypeTag.Error || supertype.tag === DataTypeTag.Error) {
 		result = false; // Error types do not subsume and are not subsumed by any other type
 	} else if(subtype.tag === DataTypeTag.Variable) {
-		result = subsumes(subtype.upperBound, supertype, inProcess);
+		result = subsumes(subtype.lowerBound, supertype, inProcess);
 	} else if(supertype.tag === DataTypeTag.Variable) {
 		result = subsumes(subtype, supertype.upperBound, inProcess);
 	} else if(subtype.tag === DataTypeTag.Union) {
@@ -375,12 +387,18 @@ export function subsumes(subtype: DataType | UnresolvedDataType, supertype: Data
 	} else if(subtype.tag === DataTypeTag.Intersection) {
 		result = subtype.types.values().some(subtype => subsumes(subtype, supertype, inProcess));
 	} else if(subtype.tag === DataTypeTag.List && supertype.tag === DataTypeTag.List) {
-		result = subsumes(subtype.elementType, supertype.elementType, inProcess);
+		const subtypeElementIndices = new Set(subtype.indexedElementTypes.keys());
+		const supertypeElementIndices = new Set(supertype.indexedElementTypes.keys());
+		result = subsumes(subtype.elementType, supertype.elementType, inProcess) && subtypeElementIndices.union(supertypeElementIndices).values().every(indexOrName => {
+			return subsumes(subtype.indexedElementTypes.get(indexOrName) ?? new RTypeVariable(), supertype.indexedElementTypes.get(indexOrName) ?? new RTypeVariable(), inProcess);
+		});
 	} else if(subtype.tag === DataTypeTag.AtomicVector && supertype.tag === DataTypeTag.AtomicVector) {
 		result = subsumes(subtype.elementType, supertype.elementType, inProcess);
 	} else if(isAtomicVectorBaseType(subtype) && supertype.tag === DataTypeTag.AtomicVector) {
 		// A scalar subsumes a vector type if it subsumes the element type of the vector
 		result = subsumes(subtype, supertype.elementType, inProcess);
+	} else if(subtype.tag === DataTypeTag.AtomicVector && supertype.tag === DataTypeTag.Null) {
+		result = subsumes(subtype.elementType, new RTypeUnion());
 	} else if(subtype.tag === DataTypeTag.Function && supertype.tag === DataTypeTag.Function) {
 		const subtypeParameterKeys = new Set(subtype.parameterTypes.keys());
 		const supertypeParameterKeys = new Set(supertype.parameterTypes.keys());
@@ -395,8 +413,7 @@ export function subsumes(subtype: DataType | UnresolvedDataType, supertype: Data
 			|| subtype.tag === DataTypeTag.Logical && supertype.tag === DataTypeTag.Complex
 			|| subtype.tag === DataTypeTag.Integer && supertype.tag === DataTypeTag.Double
 			|| subtype.tag === DataTypeTag.Integer && supertype.tag === DataTypeTag.Complex
-			|| subtype.tag === DataTypeTag.Double && supertype.tag === DataTypeTag.Complex
-			|| subtype.tag === DataTypeTag.Null && supertype.tag === DataTypeTag.AtomicVector;
+			|| subtype.tag === DataTypeTag.Double && supertype.tag === DataTypeTag.Complex;
 	}
 
 	processedSupertypes?.delete(supertype); // Remove the supertype from the processed set
@@ -499,14 +516,6 @@ export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataT
 		constrain(elementType, joinedElementType);
 		// constrain(joinedElementType, elementType);
 		return new UnresolvedRAtomicVectorType(elementType);
-	} else if(type1 instanceof RNullType && isAtomicVectorBaseType(type2)) {
-		const elementType = new UnresolvedRTypeVariable();
-		constrain(elementType, type2);
-		return new UnresolvedRAtomicVectorType(elementType);
-	} else if(isAtomicVectorBaseType(type1) && type2 instanceof RNullType) {
-		const elementType = new UnresolvedRTypeVariable();
-		constrain(elementType, type1);
-		return new UnresolvedRAtomicVectorType(elementType);
 	} else if(subsumes(type1, type2)) {
 		return type2;
 	} else if(subsumes(type2, type1)) {
@@ -582,10 +591,6 @@ export function join(type1: DataType, type2: DataType): DataType {
 		return new RAtomicVectorType(join(type1, type2.elementType));
 	} else if(isAtomicVectorBaseType(type2) && type1.tag === DataTypeTag.AtomicVector) {
 		return new RAtomicVectorType(join(type2, type1.elementType));
-	} else if(type1 instanceof RNullType && isAtomicVectorBaseType(type2)) {
-		return new RAtomicVectorType(type2);
-	} else if(isAtomicVectorBaseType(type1) && type2 instanceof RNullType) {
-		return new RAtomicVectorType(type1);
 	} else if(subsumes(type1, type2)) {
 		return type2;
 	} else if(subsumes(type2, type1)) {
@@ -681,6 +686,10 @@ export function unresolvedMeet(type1: UnresolvedDataType, type2: UnresolvedDataT
 		return unresolvedMeet(type1, type2.elementType);
 	} else if(isAtomicVectorBaseType(type2) && type1.tag === DataTypeTag.AtomicVector) {
 		return unresolvedMeet(type2, type1.elementType);
+	} else if(type1.tag === DataTypeTag.AtomicVector && type2.tag === DataTypeTag.Null || type2.tag === DataTypeTag.AtomicVector && type1.tag === DataTypeTag.Null) {
+		const elementType = new UnresolvedRTypeVariable();
+		constrain(new UnresolvedRTypeUnion(), elementType);
+		return new UnresolvedRAtomicVectorType(elementType);
 	} else if(subsumes(type1, type2)) {
 		return type1;
 	} else if(subsumes(type2, type1)) {
@@ -756,6 +765,8 @@ export function meet(type1: DataType, type2: DataType): DataType {
 		return meet(type1, type2.elementType);
 	} else if(isAtomicVectorBaseType(type2) && type1.tag === DataTypeTag.AtomicVector) {
 		return meet(type2, type1.elementType);
+	} else if(type1.tag === DataTypeTag.AtomicVector && type2.tag === DataTypeTag.Null || type2.tag === DataTypeTag.AtomicVector && type1.tag === DataTypeTag.Null) {
+		return new RAtomicVectorType(new RTypeUnion());
 	} else if(subsumes(type1, type2)) {
 		return type1;
 	} else if(subsumes(type2, type1)) {

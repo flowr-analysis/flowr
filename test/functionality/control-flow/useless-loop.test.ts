@@ -17,7 +17,7 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 			}, defaultConfigOptions).allRemainingSteps();
 			const cfg = extractCfg(result.normalize, defaultConfigOptions, result.dataflow.graph);
 
-			const actual = onlyLoopsOnce(slicingCriterionToId(node, result.normalize.idMap), result.dataflow.graph, cfg);
+			const actual = onlyLoopsOnce(slicingCriterionToId(node, result.normalize.idMap), result.dataflow.graph, cfg, defaultConfigOptions.solver.variables);
 			assert(actual === expectedLoopsOnlyOnce, `Expected to ${expectedLoopsOnlyOnce ? 'loop only once' : 'loop multiple times'}`);
 		});
 	}

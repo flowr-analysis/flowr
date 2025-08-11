@@ -56,6 +56,7 @@
               nodejs
               typescript-language-server
               R
+              just
             ];
           };
 

@@ -209,9 +209,9 @@ class TypeInferringCfgGuidedVisitor<
 			guard(argNode !== undefined, 'Expected argument node to be defined');
 
 			if(arg.name !== undefined) {
-				constrain(argNode.info.typeVariable, getParameterTypeFromFunction(templateFunctionType, arg.name), this.constraintCache, this.prunableVariables);
+				this.constrainNodeType(argNode, getParameterTypeFromFunction(templateFunctionType, arg.name));
 			} else {
-				constrain(argNode.info.typeVariable, getParameterTypeFromFunction(templateFunctionType, index), this.constraintCache, this.prunableVariables);
+				this.constrainNodeType(argNode, getParameterTypeFromFunction(templateFunctionType, index));
 			}
 		}
 		constrain(calledFunctionType, templateFunctionType, this.constraintCache, this.prunableVariables);

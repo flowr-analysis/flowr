@@ -1,5 +1,8 @@
+import { DataflowGraphVertexFunctionCall } from "../../dataflow/graph/vertex"
 
-export type Operation = "paste"
+export type Interval<K extends String> = {
+  kind: K
+}
 
 export interface Top {
   kind: "top"
@@ -11,8 +14,14 @@ export interface Bottom {
 }
 export const Bottom: Bottom = { kind: "bottom" }
 
-export interface Domain<Interval> {
-  estimate(operation: Operation, args: Interval[]): Interval
+export type Interval<I> = Top | Bottom | I
+
+
+type FnCall = DataflowGraphVertexFunctionCall
+
+interface StringDomain<Interval> {
+  assignment: (call: FnCall) => Interval
+  paste: (call: FnCall) => Interval
 }
 
 

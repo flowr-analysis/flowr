@@ -32,13 +32,13 @@ export class UnresolvedRListType {
 	}
 }
 
-export function getIndexedElementTypeFromList(list: UnresolvedRListType, indexOrName: number | string, constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>>): UnresolvedRTypeVariable {
+export function getIndexedElementTypeFromList(list: UnresolvedRListType, indexOrName: number | string, constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>>, prunableVariables: Set<UnresolvedRTypeVariable> = new Set()): UnresolvedRTypeVariable {
 	let elementType = list.indexedElementTypes.get(indexOrName);
 	if(elementType === undefined) {
 		elementType = new UnresolvedRTypeVariable();
-		constrain(elementType, list.elementType.upperBound, constraintCache);
+		constrain(elementType, list.elementType.upperBound, constraintCache, prunableVariables);
 		list.indexedElementTypes.set(indexOrName, elementType);
-		constrain(elementType, list.elementType, constraintCache);
+		constrain(elementType, list.elementType, constraintCache, prunableVariables);
 	}
 	return elementType;
 }
@@ -107,16 +107,16 @@ export class UnresolvedRTypeVariable {
 }
 
 
-export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedDataType, cache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map()): void {
-	// console.debug('Constraining', subtype instanceof UnresolvedRTypeVariable ? subtype.id : inspect(subtype, { depth: null, colors: true }), 'to subsume', supertype instanceof UnresolvedRTypeVariable ? supertype.id : inspect(supertype, { depth: null, colors: true }));
+export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedDataType, cache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map(), prunableVariables: Set<UnresolvedRTypeVariable> = new Set()): boolean {
+	// console.debug('Constraining', inspect(subtype, { depth: null, colors: true }), 'to subsume', supertype instanceof UnresolvedRTypeVariable ? supertype.id : inspect(supertype, { depth: null, colors: true }));
 
 	if(subtype === supertype) {
-		return; // No need to constrain if both types are the same
+		return false; // No need to constrain if both types are the same
 	}
 
 	const cachedConstraints = cache.get(subtype);
 	if(cachedConstraints?.has(supertype)) {
-		return; // Avoid infinite recursion
+		return false; // Avoid infinite recursion
 	}
 	if(cachedConstraints !== undefined) {
 		cachedConstraints.add(supertype);
@@ -126,96 +126,126 @@ export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedData
 
 	if(subtype instanceof UnresolvedRTypeUnion) {
 		for(const type of subtype.types) {
-			constrain(type, supertype, cache);
+			constrain(type, supertype, cache, prunableVariables);
 		}
 	} else if(supertype instanceof UnresolvedRTypeIntersection) {
 		for(const type of supertype.types) {
-			constrain(type, type, cache);
+			constrain(subtype, type, cache, prunableVariables);
 		}
 	} else if(subtype instanceof UnresolvedRTypeVariable) {
 		subtype.upperBound.types.add(supertype);
+		if(supertype instanceof UnresolvedRTypeUnion && supertype.types.size > 0) {
+			prunableVariables.add(subtype);
+		}
 		for(const lowerBound of subtype.lowerBound.types) {
-			constrain(lowerBound, supertype, cache);
+			constrain(lowerBound, supertype, cache, prunableVariables);
 		}
 	} else if(supertype instanceof UnresolvedRTypeVariable) {
 		supertype.lowerBound.types.add(subtype);
+		if(subtype instanceof UnresolvedRTypeIntersection && subtype.types.size > 0) {
+			prunableVariables.add(supertype);
+		}
 		for(const upperBound of supertype.upperBound.types) {
-			constrain(subtype, upperBound, cache);
+			constrain(subtype, upperBound, cache, prunableVariables);
 		}
 	} else if(subtype instanceof UnresolvedRFunctionType && supertype instanceof UnresolvedRFunctionType) {
 		const subtypeParameterKeys = new Set(subtype.parameterTypes.keys());
 		const supertypeParameterKeys = new Set(supertype.parameterTypes.keys());
 		for(const key of subtypeParameterKeys.intersection(supertypeParameterKeys)) {
-			constrain(getParameterTypeFromFunction(supertype, key), getParameterTypeFromFunction(subtype, key), cache);
+			constrain(getParameterTypeFromFunction(supertype, key), getParameterTypeFromFunction(subtype, key), cache, prunableVariables);
 		}
-		constrain(subtype.returnType, supertype.returnType, cache);
+		constrain(subtype.returnType, supertype.returnType, cache, prunableVariables);
 	} else if(subtype instanceof UnresolvedRAtomicVectorType && supertype instanceof UnresolvedRAtomicVectorType) {
-		constrain(subtype.elementType, supertype.elementType, cache);
+		constrain(subtype.elementType, supertype.elementType, cache, prunableVariables);
 	} else if(isAtomicVectorBaseType(subtype) && supertype instanceof UnresolvedRAtomicVectorType) {
-		constrain(subtype, supertype.elementType, cache);
+		constrain(subtype, supertype.elementType, cache, prunableVariables);
 	} else if(subtype instanceof UnresolvedRListType && supertype instanceof UnresolvedRListType) {
 		const subtypeElementIndices = new Set(subtype.indexedElementTypes.keys());
 		const supertypeElementIndices = new Set(supertype.indexedElementTypes.keys());
 		for(const indexOrName of subtypeElementIndices.union(supertypeElementIndices).values()) {
-			constrain(getIndexedElementTypeFromList(subtype, indexOrName, cache), getIndexedElementTypeFromList(supertype, indexOrName, cache), cache);
+			constrain(getIndexedElementTypeFromList(subtype, indexOrName, cache, prunableVariables), getIndexedElementTypeFromList(supertype, indexOrName, cache, prunableVariables), cache, prunableVariables);
 		}
-		constrain(subtype.elementType, supertype.elementType, cache);
+		constrain(subtype.elementType, supertype.elementType, cache, prunableVariables);
 	}
+
+	return true; // Successfully constrained types
 }
 
 
-export function prune(variable: UnresolvedRTypeVariable): void {
+export function prune(variable: UnresolvedRTypeVariable, constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map(), prunableVariables: Set<UnresolvedRTypeVariable>): boolean {
 	// console.debug('Pruning variable', variable.id);
 
+	let newConstraintsFound = false;
+
 	// Prune lower bounds
-	for(const lowerBound of variable.lowerBound.types) {
+	for(const lowerBound of variable.lowerBound.types.values()) {
 		if(lowerBound instanceof UnresolvedRTypeIntersection) {
-			// If the lower bound is an intersection, we need to consider its upper bounds
+			// console.debug('Analyzing lower bound intersection:', inspect(lowerBound, { depth: null, colors: true }));
+
 			if(variable.upperBound.types.size === 0) {
 				continue; // If there are no upper bounds, we keep the lower bound
 			}
-			// Otherwise, we prune it to only include types that subsume some upper bound
-			let upperBound: UnresolvedDataType = new UnresolvedRTypeUnion();
-			for(const type of variable.upperBound.types) {
-				upperBound = unresolvedJoin(upperBound, type);
-			}
+
 			for(const type of lowerBound.types) {
-				if(variable.upperBound.types.values().some(upperBound => subsumes(type, upperBound))) {
-					// console.debug('Constraining', inspect(type, { depth: null, colors: true }), 'to subsume', inspect(upperBound, { depth: null, colors: true }));
-					constrain(type, upperBound);
-				} else {
-					// console.debug('Pruning', inspect(type, { depth: null, colors: true }), 'from lower intersection', inspect(lowerBound, { depth: null, colors: true }));
+				if(!variable.upperBound.types.values().some(upperBound => subsumes(type, upperBound))) {
 					lowerBound.types.delete(type);
 				}
+			}
+
+			let newLowerBound: UnresolvedDataType = new UnresolvedRTypeIntersection();
+			for(const type of lowerBound.types) {
+				newLowerBound = unresolvedMeet(newLowerBound, type, constraintCache, prunableVariables);
+			}
+			// console.debug('New lower bound:', inspect(newLowerBound, { depth: null, colors: true }));
+
+			lowerBound.types = newLowerBound instanceof UnresolvedRTypeIntersection ? newLowerBound.types : new Set([newLowerBound]);
+			
+			if(lowerBound.types.size === 1) {
+				const [type] = lowerBound.types;
+				// console.debug('Constraining', inspect(type, { depth: null, colors: true }), 'to subsume', inspect(variable, { depth: null, colors: true }));
+				newConstraintsFound ||= constrain(type, variable, constraintCache, prunableVariables);
 			}
 		}
 	}
 
 	// Prune upper bounds
-	for(const upperBound of variable.upperBound.types) {
+	for(const upperBound of variable.upperBound.types.values()) {
 		if(upperBound instanceof UnresolvedRTypeUnion) {
-			// If the upper bound is a union, we need to consider its lower bounds
+			// console.debug('Analyzing upper bound union:', inspect(upperBound, { depth: null, colors: true }));
+
 			if(variable.lowerBound.types.size === 0) {
 				continue; // If there are no lower bounds, we keep the upper bound
 			}
-			// Otherwise, we prune it to only include types that are subsumed by some lower bound
-			let lowerBound: UnresolvedDataType = new UnresolvedRTypeIntersection();
-			for(const type of variable.lowerBound.types) {
-				lowerBound = unresolvedMeet(lowerBound, type);
-			}
+
 			for(const type of upperBound.types) {
-				if(variable.lowerBound.types.values().some(lowerBound => subsumes(lowerBound, type))) {
-					constrain(lowerBound, type);
-				} else {
+				if(!variable.lowerBound.types.values().some(lowerBound => subsumes(lowerBound, type))) {
 					upperBound.types.delete(type);
 				}
 			}
+
+			let newUpperBound: UnresolvedDataType = new UnresolvedRTypeUnion();
+			for(const type of upperBound.types) {
+				newUpperBound = unresolvedJoin(newUpperBound, type, constraintCache, prunableVariables);
+			}
+			// console.debug('New upper bound:', inspect(newUpperBound, { depth: null, colors: true }));
+
+			upperBound.types = newUpperBound instanceof UnresolvedRTypeUnion ? newUpperBound.types : new Set([newUpperBound]);
+
+			if(upperBound.types.size === 1) {
+				const [type] = upperBound.types;
+				// console.debug('Constraining', inspect(variable, { depth: null, colors: true }), 'to subsume', inspect(type, { depth: null, colors: true }));
+				newConstraintsFound ||= constrain(variable, type, constraintCache, prunableVariables);
+			}
+			
 		}
 	}
+	
+	// console.debug('New constraints found:', newConstraintsFound);
+	return newConstraintsFound;
 }
 
 
-export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, prunedVariables: Set<UnresolvedRTypeVariable> = new Set(), cache: Map<UnresolvedRTypeVariable, { lowerBound: DataType, upperBound: DataType, combined: DataType }> = new Map()): DataType {
+export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache: Map<UnresolvedRTypeVariable, { lowerBound: DataType, upperBound: DataType, combined: DataType }> = new Map()): DataType {
 	// console.debug('Resolving', inspect(type, { depth: null, colors: true }));
 
 	if(type instanceof UnresolvedRTypeVariable) {
@@ -223,26 +253,17 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, pruned
 		if(cachedType !== undefined) {
 			switch(isUpperBound) {
 				case true:
-					// console.debug('Returning', inspect(cachedType.upperBound, { depth: null, colors: true }), 'for upper bound');
 					return cachedType.upperBound;
 				case false:
-					// console.debug('Returning', inspect(cachedType.lowerBound, { depth: null, colors: true }), 'for lower bound');
 					return cachedType.lowerBound;
 				default:
-					// console.debug('Returning', inspect(cachedType.combined, { depth: null, colors: true }), 'for combined');
 					return cachedType.combined;
 			}
 		}
 		cache.set(type, { lowerBound: new RTypeUnion(), upperBound: new RTypeIntersection(), combined: new RTypeVariable() }); // Prevent infinite recursion
 
-		if(!prunedVariables.has(type)) {
-			prune(type); // Prune the variable to remove unnecessary bounds
-			prunedVariables.add(type);
-		}
-
-
-		const lowerBound = resolve(type.lowerBound, false, prunedVariables, cache);
-		const upperBound = resolve(type.upperBound, true, prunedVariables, cache);
+		const lowerBound = resolve(type.lowerBound, false, cache);
+		const upperBound = resolve(type.upperBound, true, cache);
 
 		if(!subsumes(lowerBound, upperBound)) {
 			const errorType = new RTypeError(lowerBound, upperBound);
@@ -250,72 +271,49 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, pruned
 			return errorType;
 		}
 
-		// console.debug('Resolved lower bound', inspect(lowerBound, { depth: null, colors: true }), 'and upper bound', inspect(upperBound, { depth: null, colors: true }));
 		const combined = combine(lowerBound, upperBound);
-		// console.debug('Combined bounds into type', inspect(combined, { depth: null, colors: true }));
+		
 		cache.set(type, { lowerBound, upperBound, combined });
 
 		switch(isUpperBound) {
 			case true:
-				// console.debug('Returning', inspect(upperBound, { depth: null, colors: true }), 'for upper bound');
 				return upperBound;
 			case false:
-				// console.debug('Returning', inspect(lowerBound, { depth: null, colors: true }), 'for lower bound');
 				return lowerBound;
 			default:
-				// console.debug('Returning', inspect(combined, { depth: null, colors: true }), 'for combined');
 				return combined;
 		}
 	} else if(type instanceof UnresolvedRTypeUnion) {
 		let resolvedType: DataType = new RTypeUnion();
 		for(const subtype of type.types) {
-			const resolvedSubtype = resolve(subtype, isUpperBound, prunedVariables, cache);
+			const resolvedSubtype = resolve(subtype, isUpperBound, cache);
 			resolvedType = join(resolvedType, resolvedSubtype);
 		}
-
-		// console.debug('Returning', inspect(resolvedType, { depth: null, colors: true }), 'for resolved union type');
 		return resolvedType;
 	} else if(type instanceof UnresolvedRTypeIntersection) {
 		let resolvedType: DataType = new RTypeIntersection();
 		for(const subtype of type.types) {
-			const resolvedSubtype = resolve(subtype, isUpperBound, prunedVariables, cache);
+			const resolvedSubtype = resolve(subtype, isUpperBound, cache);
 			resolvedType = meet(resolvedType, resolvedSubtype);
 		}
-
-		// console.debug('Returning', inspect(resolvedType, { depth: null, colors: true }), 'for resolved intersection type');
 		return resolvedType;
 	} else if(type instanceof UnresolvedRFunctionType) {
-		type.parameterTypes.values().forEach(paramType => prune(paramType));
-		prune(type.returnType);
-
 		const resolvedParameterTypes = new Map(type.parameterTypes.entries().toArray().map(([key, type]) => {
-			return [key, resolve(type, isUpperBound !== undefined ? !isUpperBound : undefined, prunedVariables, cache)];
+			return [key, resolve(type, isUpperBound !== undefined ? !isUpperBound : undefined, cache)];
 		}));
-		const resolvedReturnType = resolve(type.returnType, isUpperBound, prunedVariables, cache);
+		const resolvedReturnType = resolve(type.returnType, isUpperBound, cache);
 		const resolvedType = new RFunctionType(resolvedParameterTypes, resolvedReturnType);
-		
-		// console.debug('Returning', inspect(resolvedType, { depth: null, colors: true }), 'for resolved function type');
 		return resolvedType;
 	} else if(type instanceof UnresolvedRAtomicVectorType) {
-		prune(type.elementType);
-
-		const resolvedElementType = resolve(type.elementType, isUpperBound, prunedVariables, cache);
+		const resolvedElementType = resolve(type.elementType, isUpperBound, cache);
 		const resolvedType = new RAtomicVectorType(resolvedElementType);
-		
-		// console.debug('Returning', inspect(resolvedType, { depth: null, colors: true }), 'for resolved atomic vector type');
 		return resolvedType;
 	} else if(type instanceof UnresolvedRListType) {
-		type.indexedElementTypes.values().forEach(elementType => prune(elementType));
-		prune(type.elementType);
-
-		const resolvedElementType = resolve(type.elementType, isUpperBound, prunedVariables, cache);
-		const resolvedIndexedElementTypes = new Map(type.indexedElementTypes.entries().map(([indexOrName, elementType]) => [indexOrName, resolve(elementType, isUpperBound, prunedVariables, cache)]));
+		const resolvedElementType = resolve(type.elementType, isUpperBound, cache);
+		const resolvedIndexedElementTypes = new Map(type.indexedElementTypes.entries().map(([indexOrName, elementType]) => [indexOrName, resolve(elementType, isUpperBound, cache)]));
 		const resolvedType = new RListType(resolvedElementType, resolvedIndexedElementTypes);
-		
-		// console.debug('Returning', inspect(resolvedType, { depth: null, colors: true }), 'for resolved list type');
 		return resolvedType;
 	} else {
-		// console.debug('Returning already resolved', inspect(type, { depth: null, colors: true }));
 		return type;
 	}
 }
@@ -421,7 +419,7 @@ export function subsumes(subtype: DataType | UnresolvedDataType, supertype: Data
 	return result;
 }
 
-export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataType): UnresolvedDataType {
+export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataType, constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>>, prunableVariables: Set<UnresolvedRTypeVariable>): UnresolvedDataType {
 	// console.debug('Joining (unresolved)', type1, 'and', type2);
 
 	if(type1 instanceof RTypeError) {
@@ -429,9 +427,9 @@ export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataT
 	} else if(type2 instanceof RTypeError) {
 		return type2;
 	} else if(type1 instanceof UnresolvedRTypeVariable) {
-		return unresolvedJoin(type1.upperBound, type2);
+		return unresolvedJoin(type1.upperBound, type2, constraintCache, prunableVariables);
 	} else if(type2 instanceof UnresolvedRTypeVariable) {
-		return unresolvedJoin(type1, type2.upperBound);
+		return unresolvedJoin(type1, type2.upperBound, constraintCache, prunableVariables);
 	} else if(type1 instanceof UnresolvedRTypeUnion) {
 		if(type1.types.size === 0) {
 			return type2; // If type1 is an empty union, return type2
@@ -439,7 +437,7 @@ export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataT
 
 		const types = new Set<UnresolvedDataType>();
 		for(const type of type1.types) {
-			const joinedType = unresolvedJoin(type, type2);
+			const joinedType = unresolvedJoin(type, type2, constraintCache, prunableVariables);
 			if(joinedType instanceof RTypeError) {
 				return joinedType; // If any subtype resolves to an error, return the error
 			} else {
@@ -461,7 +459,7 @@ export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataT
 
 		return types.size === 1 ? [...types][0] : new UnresolvedRTypeUnion(...types);
 	} else if(type2 instanceof UnresolvedRTypeUnion) {
-		return unresolvedJoin(type2, type1);
+		return unresolvedJoin(type2, type1, constraintCache, prunableVariables);
 	} else if(type1 instanceof UnresolvedRFunctionType && type2 instanceof UnresolvedRFunctionType) {
 		const parameterTypes = new Map<number | string, UnresolvedRTypeVariable>();
 		const keys1 = new Set(type1.parameterTypes.keys());
@@ -469,15 +467,15 @@ export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataT
 		for(const key of keys1.union(keys2)) {
 			const parameterType1 = type1.parameterTypes.get(key) ?? new UnresolvedRTypeIntersection();
 			const parameterType2 = type2.parameterTypes.get(key) ?? new UnresolvedRTypeIntersection();
-			const metParameterType = unresolvedMeet(parameterType1, parameterType2);
+			const metParameterType = unresolvedMeet(parameterType1, parameterType2, constraintCache, prunableVariables);
 			const parameterType = new UnresolvedRTypeVariable();
-			constrain(metParameterType, parameterType);
+			constrain(metParameterType, parameterType, constraintCache, prunableVariables);
 			// constrain(parameterType, metParameterType);
 			parameterTypes.set(key, parameterType);
 		}
-		const joinedReturnType = unresolvedJoin(type1.returnType, type2.returnType);
+		const joinedReturnType = unresolvedJoin(type1.returnType, type2.returnType, constraintCache, prunableVariables);
 		const returnType = new UnresolvedRTypeVariable();
-		constrain(returnType, joinedReturnType);
+		constrain(returnType, joinedReturnType, constraintCache, prunableVariables);
 		// constrain(joinedReturnType, returnType);
 		return new UnresolvedRFunctionType(parameterTypes, returnType);
 	} else if(type1 instanceof UnresolvedRListType && type2 instanceof UnresolvedRListType) {
@@ -487,33 +485,33 @@ export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataT
 		for(const key of keys1.intersection(keys2)) {
 			const elementType1 = type1.indexedElementTypes.get(key) ?? new UnresolvedRTypeIntersection();
 			const elementType2 = type2.indexedElementTypes.get(key) ?? new UnresolvedRTypeIntersection();
-			const joinedElementType = unresolvedJoin(elementType1, elementType2);
+			const joinedElementType = unresolvedJoin(elementType1, elementType2, constraintCache, prunableVariables);
 			const elementType = new UnresolvedRTypeVariable();
-			constrain(elementType, joinedElementType);
+			constrain(elementType, joinedElementType, constraintCache, prunableVariables);
 			// constrain(joinedElementType, elementType);
 			indexedElementTypes.set(key, elementType);
 		}
-		const joinedElementType = unresolvedJoin(type1.elementType, type2.elementType);
+		const joinedElementType = unresolvedJoin(type1.elementType, type2.elementType, constraintCache, prunableVariables);
 		const elementType = new UnresolvedRTypeVariable();
-		constrain(elementType, joinedElementType);
+		constrain(elementType, joinedElementType, constraintCache, prunableVariables);
 		// constrain(joinedElementType, elementType);
 		return new UnresolvedRListType(elementType, indexedElementTypes);
 	} else if(type1 instanceof UnresolvedRAtomicVectorType && type2 instanceof UnresolvedRAtomicVectorType) {
-		const joinedElementType = unresolvedJoin(type1.elementType, type2.elementType);
+		const joinedElementType = unresolvedJoin(type1.elementType, type2.elementType, constraintCache, prunableVariables);
 		const elementType = new UnresolvedRTypeVariable();
-		constrain(elementType, joinedElementType);
+		constrain(elementType, joinedElementType, constraintCache, prunableVariables);
 		// constrain(joinedElementType, elementType);
 		return new UnresolvedRAtomicVectorType(elementType);
 	} else if(isAtomicVectorBaseType(type1) && type2.tag === DataTypeTag.AtomicVector) {
-		const joinedElementType = unresolvedJoin(type1, type2.elementType);
+		const joinedElementType = unresolvedJoin(type1, type2.elementType, constraintCache, prunableVariables);
 		const elementType = new UnresolvedRTypeVariable();
-		constrain(elementType, joinedElementType);
+		constrain(elementType, joinedElementType, constraintCache, prunableVariables);
 		// constrain(joinedElementType, elementType);
 		return new UnresolvedRAtomicVectorType(elementType);
 	} else if(isAtomicVectorBaseType(type2) && type1.tag === DataTypeTag.AtomicVector) {
-		const joinedElementType = unresolvedJoin(type2, type1.elementType);
+		const joinedElementType = unresolvedJoin(type2, type1.elementType, constraintCache, prunableVariables);
 		const elementType = new UnresolvedRTypeVariable();
-		constrain(elementType, joinedElementType);
+		constrain(elementType, joinedElementType, constraintCache, prunableVariables);
 		// constrain(joinedElementType, elementType);
 		return new UnresolvedRAtomicVectorType(elementType);
 	} else if(subsumes(type1, type2)) {
@@ -599,17 +597,17 @@ export function join(type1: DataType, type2: DataType): DataType {
 	return new RTypeUnion(type1, type2);
 }
 
-export function unresolvedMeet(type1: UnresolvedDataType, type2: UnresolvedDataType): UnresolvedDataType {
-	// console.debug('Meeting (unresolved)', type1, 'and', type2);
+export function unresolvedMeet(type1: UnresolvedDataType, type2: UnresolvedDataType, constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>>, prunableVariables: Set<UnresolvedRTypeVariable>): UnresolvedDataType {
+	// console.debug('Meeting (unresolved)', inspect(type1, { depth: null, colors: true }), 'and', inspect(type2, { depth: null, colors: true }));
 
 	if(type1 instanceof RTypeError) {
 		return type1;
 	} else if(type2 instanceof RTypeError) {
 		return type2;
 	} else if(type1 instanceof UnresolvedRTypeVariable) {
-		return unresolvedMeet(type1.lowerBound, type2);
+		return unresolvedMeet(type1.lowerBound, type2, constraintCache, prunableVariables);
 	} else if(type2 instanceof UnresolvedRTypeVariable) {
-		return unresolvedMeet(type1, type2.lowerBound);
+		return unresolvedMeet(type1, type2.lowerBound, constraintCache, prunableVariables);
 	} else if(type1 instanceof UnresolvedRTypeIntersection) {
 		if(type1.types.size === 0) {
 			return type2; // If type1 is an empty intersection, return type2
@@ -617,7 +615,7 @@ export function unresolvedMeet(type1: UnresolvedDataType, type2: UnresolvedDataT
 
 		const types = new Set<UnresolvedDataType>();
 		for(const subtype of type1.types) {
-			const metType = unresolvedMeet(subtype, type2);
+			const metType = unresolvedMeet(subtype, type2, constraintCache, prunableVariables);
 			if(metType instanceof RTypeError) {
 				return metType; // If any subtype resolves to an error, return the error
 			} else {
@@ -639,7 +637,7 @@ export function unresolvedMeet(type1: UnresolvedDataType, type2: UnresolvedDataT
 
 		return types.size === 1 ? [...types][0] : new UnresolvedRTypeIntersection(...types);
 	} else if(type2 instanceof UnresolvedRTypeIntersection) {
-		return unresolvedMeet(type2, type1);
+		return unresolvedMeet(type2, type1, constraintCache, prunableVariables);
 	} else if(type1 instanceof UnresolvedRFunctionType && type2 instanceof UnresolvedRFunctionType) {
 		const parameterTypes = new Map<number | string, UnresolvedRTypeVariable>();
 		const keys1 = new Set(type1.parameterTypes.keys());
@@ -647,15 +645,15 @@ export function unresolvedMeet(type1: UnresolvedDataType, type2: UnresolvedDataT
 		for(const key of keys1.intersection(keys2)) {
 			const parameterType1 = type1.parameterTypes.get(key) ?? new UnresolvedRTypeUnion();
 			const parameterType2 = type2.parameterTypes.get(key) ?? new UnresolvedRTypeUnion();
-			const joinedParameterType = unresolvedJoin(parameterType1, parameterType2);
+			const joinedParameterType = unresolvedJoin(parameterType1, parameterType2, constraintCache, prunableVariables);
 			const parameterType = new UnresolvedRTypeVariable();
-			constrain(parameterType, joinedParameterType);
+			constrain(parameterType, joinedParameterType, constraintCache, prunableVariables);
 			// constrain(joinedParameterType, parameterType);
 			parameterTypes.set(key, parameterType);
 		}
-		const metReturnType = unresolvedMeet(type1.returnType, type2.returnType);
+		const metReturnType = unresolvedMeet(type1.returnType, type2.returnType, constraintCache, prunableVariables);
 		const returnType = new UnresolvedRTypeVariable();
-		constrain(metReturnType, returnType);
+		constrain(metReturnType, returnType, constraintCache, prunableVariables);
 		// constrain(returnType, metReturnType);
 		return new UnresolvedRFunctionType(parameterTypes, returnType);
 	} else if(type1 instanceof UnresolvedRListType && type2 instanceof UnresolvedRListType) {
@@ -665,30 +663,30 @@ export function unresolvedMeet(type1: UnresolvedDataType, type2: UnresolvedDataT
 		for(const key of keys1.union(keys2)) {
 			const elementType1 = type1.indexedElementTypes.get(key) ?? new UnresolvedRTypeUnion();
 			const elementType2 = type2.indexedElementTypes.get(key) ?? new UnresolvedRTypeUnion();
-			const metElementType = unresolvedMeet(elementType1, elementType2);
+			const metElementType = unresolvedMeet(elementType1, elementType2, constraintCache, prunableVariables);
 			const elementType = new UnresolvedRTypeVariable();
-			constrain(metElementType, elementType);
+			constrain(metElementType, elementType, constraintCache, prunableVariables);
 			// constrain(elementType, metElementType);
 			indexedElementTypes.set(key, elementType);
 		}
-		const metElementType = unresolvedMeet(type1.elementType, type2.elementType);
+		const metElementType = unresolvedMeet(type1.elementType, type2.elementType, constraintCache, prunableVariables);
 		const elementType = new UnresolvedRTypeVariable();
-		constrain(metElementType, elementType);
+		constrain(metElementType, elementType, constraintCache, prunableVariables);
 		// constrain(elementType, metElementType);
 		return new UnresolvedRListType(elementType, indexedElementTypes);
 	} else if(type1 instanceof RAtomicVectorType && type2 instanceof UnresolvedRAtomicVectorType) {
-		const metElementType = unresolvedMeet(type1.elementType, type2.elementType);
+		const metElementType = unresolvedMeet(type1.elementType, type2.elementType, constraintCache, prunableVariables);
 		const elementType = new UnresolvedRTypeVariable();
-		constrain(metElementType, elementType);
+		constrain(metElementType, elementType, constraintCache, prunableVariables);
 		// constrain(elementType, metElementType);
 		return new UnresolvedRAtomicVectorType(elementType);
 	} else if(isAtomicVectorBaseType(type1) && type2.tag === DataTypeTag.AtomicVector) {
-		return unresolvedMeet(type1, type2.elementType);
+		return unresolvedMeet(type1, type2.elementType, constraintCache, prunableVariables);
 	} else if(isAtomicVectorBaseType(type2) && type1.tag === DataTypeTag.AtomicVector) {
-		return unresolvedMeet(type2, type1.elementType);
+		return unresolvedMeet(type2, type1.elementType, constraintCache, prunableVariables);
 	} else if(type1.tag === DataTypeTag.AtomicVector && type2.tag === DataTypeTag.Null || type2.tag === DataTypeTag.AtomicVector && type1.tag === DataTypeTag.Null) {
 		const elementType = new UnresolvedRTypeVariable();
-		constrain(new UnresolvedRTypeUnion(), elementType);
+		constrain(new UnresolvedRTypeUnion(), elementType, constraintCache, prunableVariables);
 		return new UnresolvedRAtomicVectorType(elementType);
 	} else if(subsumes(type1, type2)) {
 		return type1;

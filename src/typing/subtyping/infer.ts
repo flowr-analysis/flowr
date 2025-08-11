@@ -24,7 +24,7 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import type { UnresolvedDataType } from './types';
-import { constrain, getIndexedElementTypeFromList, getParameterTypeFromFunction, resolve, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeIntersection, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from './types';
+import { constrain, getIndexedElementTypeFromList, getParameterTypeFromFunction, prune, resolve, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeIntersection, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from './types';
 import { defaultConfigOptions } from '../../config';
 
 
@@ -55,11 +55,9 @@ function decorateTypeVariables<Info extends ParentInformation>(ast: NormalizedAs
 }
 
 function resolveTypeVariables<Info extends ParentInformation & UnresolvedTypeInfo>(ast: NormalizedAst<Info>): NormalizedAst<Omit<Info, keyof UnresolvedTypeInfo> & DataTypeInfo> {
-	const prunedVariables = new Set<UnresolvedRTypeVariable>();
 	return mapNormalizedAstInfo(ast, node => {
 		const { typeVariable, ...rest } = node.info;
-		const resolvedType = resolve(typeVariable, undefined, prunedVariables);
-		return { ...rest, inferredType: resolvedType };
+		return { ...rest, inferredType: resolve(typeVariable, undefined) };
 	});
 }
 
@@ -86,8 +84,8 @@ class TypeInferringCfgGuidedVisitor<
 		Error.stackTraceLimit = 100; // Increase stack trace limit for better debugging
 	}
 
-	protected constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map();
-	protected orphanTypes:     Set<UnresolvedDataType> = new Set();
+	protected constraintCache:   Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map();
+	protected prunableVariables: Set<UnresolvedRTypeVariable> = new Set();
 
 
 	protected constrainNodeType(nodeOrId: RNode<UnresolvedTypeInfo> | NodeId, constraint: UnresolvedDataType | { lowerBound?: UnresolvedDataType, upperBound?: UnresolvedDataType }): void {
@@ -98,10 +96,10 @@ class TypeInferringCfgGuidedVisitor<
 		const upperBound = 'tag' in constraint ? constraint : constraint.upperBound;
 
 		if(lowerBound !== undefined) {
-			constrain(lowerBound, node.info.typeVariable, this.constraintCache);
+			constrain(lowerBound, node.info.typeVariable, this.constraintCache, this.prunableVariables);
 		}
 		if(upperBound !== undefined) {
-			constrain(node.info.typeVariable, upperBound, this.constraintCache);
+			constrain(node.info.typeVariable, upperBound, this.constraintCache, this.prunableVariables);
 		}
 	}
 
@@ -148,10 +146,13 @@ class TypeInferringCfgGuidedVisitor<
 				// If the read variable has no associated AST node it might be a library constant or function
 				const contextualTypes = this.config.knownTypes.get(node.content);
 				if(contextualTypes !== undefined && contextualTypes.size > 0) {
-					this.constrainNodeType(node, { lowerBound: new UnresolvedRTypeUnion(...contextualTypes.values()) });
+					for(const type of contextualTypes) {
+						this.constrainNodeType(node, { lowerBound: type });
+						lowerBounds.add(type);
+					}
 				}
 			}
-		} else if(lowerBounds.size > 0) {
+		} else {
 			const upperBound = lowerBounds.size === 1 ? lowerBounds.values().next().value : new UnresolvedRTypeUnion(...lowerBounds);
 			this.constrainNodeType(node, { upperBound });
 		}
@@ -208,12 +209,12 @@ class TypeInferringCfgGuidedVisitor<
 			guard(argNode !== undefined, 'Expected argument node to be defined');
 
 			if(arg.name !== undefined) {
-				constrain(argNode.info.typeVariable, getParameterTypeFromFunction(templateFunctionType, arg.name), this.constraintCache);
+				constrain(argNode.info.typeVariable, getParameterTypeFromFunction(templateFunctionType, arg.name), this.constraintCache, this.prunableVariables);
 			} else {
-				constrain(argNode.info.typeVariable, getParameterTypeFromFunction(templateFunctionType, index), this.constraintCache);
+				constrain(argNode.info.typeVariable, getParameterTypeFromFunction(templateFunctionType, index), this.constraintCache, this.prunableVariables);
 			}
 		}
-		constrain(calledFunctionType, templateFunctionType, this.constraintCache);
+		constrain(calledFunctionType, templateFunctionType, this.constraintCache, this.prunableVariables);
 
 		for(const targetNode of callTargetNodes) {
 			this.constrainNodeType(targetNode, { upperBound: templateFunctionType });
@@ -224,13 +225,11 @@ class TypeInferringCfgGuidedVisitor<
 			const contextualTypes = this.config.knownTypes.get(data.call.name);
 			if(contextualTypes !== undefined && contextualTypes.size > 0) {
 				// console.log('Constraining node', data.call.id, 'with contextual types for', data.call.name);
-				constrain(new UnresolvedRTypeIntersection(...contextualTypes.values()), calledFunctionType, this.constraintCache);
+				constrain(new UnresolvedRTypeIntersection(...contextualTypes.values()), calledFunctionType, this.constraintCache, this.prunableVariables);
 			}
 		}
 
 		this.constrainNodeType(data.call.id, templateFunctionType.returnType);
-		
-		this.orphanTypes.add(calledFunctionType);
 	}
 
 	override onGetCall(data: { call: DataflowGraphVertexFunctionCall }) {
@@ -358,17 +357,15 @@ class TypeInferringCfgGuidedVisitor<
 			const argNode = this.getNormalizedAst(arg.nodeId);
 			guard(argNode !== undefined, 'Expected argument node to be defined');
 			
-			this.constrainNodeType(argNode, { upperBound: getIndexedElementTypeFromList(listType, index, this.constraintCache) });
+			this.constrainNodeType(argNode, { upperBound: getIndexedElementTypeFromList(listType, index, this.constraintCache, this.prunableVariables) });
 
 			if(arg.name !== undefined) {
-				this.constrainNodeType(argNode, { upperBound: getIndexedElementTypeFromList(listType, arg.name, this.constraintCache) });
+				this.constrainNodeType(argNode, { upperBound: getIndexedElementTypeFromList(listType, arg.name, this.constraintCache, this.prunableVariables) });
 			}
 		}
 	}
 
 	override onVectorCall(data: { call: DataflowGraphVertexFunctionCall }) {
-		const lowerBounds = new Set<UnresolvedDataType>();
-		
 		const vectorType = new UnresolvedRAtomicVectorType();
 		this.constrainNodeType(data.call.id, vectorType);
 
@@ -377,12 +374,7 @@ class TypeInferringCfgGuidedVisitor<
 			guard(argNode !== undefined, 'Expected argument node to be defined');
 
 			this.constrainNodeType(argNode, { upperBound: vectorType });
-			lowerBounds.add(argNode.info.typeVariable);
 		}
-
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const upperBound = lowerBounds.size === 1 ? lowerBounds.values().next().value! : new UnresolvedRTypeUnion(...lowerBounds);
-		constrain(vectorType, upperBound, this.constraintCache);
 	}
 
 	override onFunctionDefinition(data: { vertex: DataflowGraphVertexFunctionDefinition }): void {
@@ -498,13 +490,11 @@ class TypeInferringCfgGuidedVisitor<
 			}
 		}
 
-		constrain(firstArgNode.info.typeVariable, getParameterTypeFromFunction(templateFunction, 0), this.constraintCache);
+		constrain(firstArgNode.info.typeVariable, getParameterTypeFromFunction(templateFunction, 0), this.constraintCache, this.prunableVariables);
 		this.constrainNodeType(data.call.id, templateFunction.returnType);
-		
-		constrain(overloads, accessFunction, this.constraintCache);
-		constrain(accessFunction, templateFunction, this.constraintCache);
 
-		this.orphanTypes.add(accessFunction);
+		constrain(overloads, accessFunction, this.constraintCache, this.prunableVariables);
+		constrain(accessFunction, templateFunction, this.constraintCache, this.prunableVariables);
 	}
 
 	protected override onReplacementCall(data: { call: DataflowGraphVertexFunctionCall; source: NodeId | undefined; target: NodeId | undefined; }): void {
@@ -541,9 +531,12 @@ class TypeInferringCfgGuidedVisitor<
 	}
 
 	protected onVisitorEnd(): void {
-		// Resolve types that are not directly constrained by a node type
-		for(const type of this.orphanTypes) {
-			resolve(type);
+		let newConstraintsFound = true;
+		while(newConstraintsFound) {
+			newConstraintsFound = false;
+			for(const type of this.prunableVariables) {
+				newConstraintsFound ||= prune(type, this.constraintCache, this.prunableVariables);
+			}
 		}
 	}
 }

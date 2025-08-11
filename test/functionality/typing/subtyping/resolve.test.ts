@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { UnresolvedDataType } from '../../../../src/typing/subtyping/types';
-import { constrain, meet, resolve, subsumes, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeIntersection, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from '../../../../src/typing/subtyping/types';
+import { constrain, meet, prune, resolve, subsumes, UnresolvedRAtomicVectorType, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeIntersection, UnresolvedRTypeUnion, UnresolvedRTypeVariable } from '../../../../src/typing/subtyping/types';
 import { RIntegerType, RComplexType, RTypeVariable, RDoubleType, RStringType, RListType, RTypeIntersection, RTypeUnion, RNullType, RLanguageType, RLogicalType, RAtomicVectorType } from '../../../../src/typing/types';
 
 describe('Constrain and resolve types', () => {
@@ -10,17 +10,26 @@ describe('Constrain and resolve types', () => {
 		const typeVar = new UnresolvedRTypeVariable();
 		constrain(new RIntegerType(), typeVar, cache);
 		constrain(typeVar, new RComplexType(), cache);
-		
+
 		expect(resolve(typeVar)).toEqual(new RTypeVariable(new RIntegerType(), new RComplexType()));
 	});
 
 	test('Constrain with multiple bounds', () => {
 		const cache = new Map<UnresolvedDataType, Set<UnresolvedDataType>>();
+		const prunableVariables = new Set<UnresolvedRTypeVariable>();
 
 		const typeVar = new UnresolvedRTypeVariable();
-		constrain(new RIntegerType(), typeVar, cache);
-		constrain(new RDoubleType(), typeVar, cache);
-		constrain(typeVar, new UnresolvedRTypeUnion(new RComplexType(), new RStringType()), cache);
+		constrain(new RIntegerType(), typeVar, cache, prunableVariables);
+		constrain(new RDoubleType(), typeVar, cache, prunableVariables);
+		constrain(typeVar, new UnresolvedRTypeUnion(new RComplexType(), new RStringType()), cache, prunableVariables);
+
+		let newConstraintsFound = true;
+		while(newConstraintsFound) {
+			newConstraintsFound = false;
+			for(const variable of prunableVariables) {
+				newConstraintsFound ||= prune(variable, cache, prunableVariables);
+			}
+		}
 
 		expect(resolve(typeVar)).toEqual(new RTypeVariable(new RDoubleType(), new RComplexType()));
 	});
@@ -57,15 +66,24 @@ describe('Constrain and resolve types', () => {
 
 	test('Advanced constraint propagation', () => {
 		const cache = new Map<UnresolvedDataType, Set<UnresolvedDataType>>();
+		const prunableVariables = new Set<UnresolvedRTypeVariable>();
 
 		const typeVar = new UnresolvedRTypeVariable();
 		const listType1 = new UnresolvedRListType();
-		constrain(new RIntegerType(), listType1.elementType, cache);
-		constrain(listType1, typeVar, cache);
+		constrain(new RIntegerType(), listType1.elementType, cache, prunableVariables);
+		constrain(listType1, typeVar, cache, prunableVariables);
 
 		const elementType = new UnresolvedRTypeVariable();
 		const vectorType = new UnresolvedRTypeUnion(new UnresolvedRAtomicVectorType(elementType), new UnresolvedRListType(elementType));
-		constrain(typeVar, vectorType, cache);
+		constrain(typeVar, vectorType, cache, prunableVariables);
+
+		let newConstraintsFound = true;
+		while(newConstraintsFound) {
+			newConstraintsFound = false;
+			for(const variable of prunableVariables) {
+				newConstraintsFound ||= prune(variable, cache, prunableVariables);
+			}
+		}
 
 		expect(resolve(typeVar)).toEqual(new RListType(new RTypeVariable(new RIntegerType(), new RTypeIntersection())));
 		expect(resolve(elementType)).toEqual(new RTypeVariable(new RIntegerType(), new RTypeIntersection()));
@@ -73,23 +91,24 @@ describe('Constrain and resolve types', () => {
 
 	test('Function overloading 1', () => {
 		const cache = new Map<UnresolvedDataType, Set<UnresolvedDataType>>();
+		const prunableVariables = new Set<UnresolvedRTypeVariable>();
 
 		// Predetermined types in context
 		const funcType1 = new UnresolvedRFunctionType();
 		const paramType1 = new UnresolvedRTypeVariable();
 		funcType1.parameterTypes.set(0, paramType1);
-		constrain(new RIntegerType(), paramType1, cache);
-		constrain(paramType1, new RIntegerType(), cache);
-		constrain(new RIntegerType(), funcType1.returnType, cache);
-		constrain(funcType1.returnType, new RIntegerType(), cache);
+		constrain(new RIntegerType(), paramType1, cache, prunableVariables);
+		constrain(paramType1, new RIntegerType(), cache, prunableVariables);
+		constrain(new RIntegerType(), funcType1.returnType, cache, prunableVariables);
+		constrain(funcType1.returnType, new RIntegerType(), cache, prunableVariables);
 
 		const funcType2 = new UnresolvedRFunctionType();
 		const paramType2 = new UnresolvedRTypeVariable();
 		funcType2.parameterTypes.set(0, paramType2);
-		constrain(new RStringType(), paramType2, cache);
-		constrain(paramType2, new RStringType(), cache);
-		constrain(new RStringType(), funcType2.returnType, cache);
-		constrain(funcType2.returnType, new RStringType(), cache);
+		constrain(new RStringType(), paramType2, cache, prunableVariables);
+		constrain(paramType2, new RStringType(), cache, prunableVariables);
+		constrain(new RStringType(), funcType2.returnType, cache, prunableVariables);
+		constrain(funcType2.returnType, new RStringType(), cache, prunableVariables);
 
 		const overloadedFuncType1 = new UnresolvedRTypeIntersection(funcType1, funcType2);
 		const overloadedFuncType2 = new UnresolvedRTypeIntersection(funcType1, funcType2);
@@ -97,27 +116,32 @@ describe('Constrain and resolve types', () => {
 		// Typing of called function
 		const calledFuncType1 = new UnresolvedRTypeVariable();
 		const calledFuncType2 = new UnresolvedRTypeVariable();
-		constrain(overloadedFuncType1, calledFuncType1, cache);
-		constrain(overloadedFuncType2, calledFuncType2, cache);
+		constrain(overloadedFuncType1, calledFuncType1, cache, prunableVariables);
+		constrain(overloadedFuncType2, calledFuncType2, cache, prunableVariables);
 
 		// Typing of function call
 		const argType1 = new UnresolvedRTypeVariable();
 		const argType2 = new UnresolvedRTypeVariable();
-		constrain(new RIntegerType(), argType1, cache);
-		constrain(argType1, new RIntegerType(), cache);
-		constrain(new RStringType(), argType2, cache);
-		constrain(argType2, new RStringType(), cache);
+		constrain(new RIntegerType(), argType1, cache, prunableVariables);
+		constrain(argType1, new RIntegerType(), cache, prunableVariables);
+		constrain(new RStringType(), argType2, cache, prunableVariables);
+		constrain(argType2, new RStringType(), cache, prunableVariables);
 		const templateFuncType1 = new UnresolvedRFunctionType();
 		templateFuncType1.parameterTypes.set(0, argType1);
 		const returnType1 = templateFuncType1.returnType;
 		const templateFuncType2 = new UnresolvedRFunctionType();
 		templateFuncType2.parameterTypes.set(0, argType2);
 		const returnType2 = templateFuncType2.returnType;
-		constrain(calledFuncType1, templateFuncType1, cache);
-		constrain(calledFuncType2, templateFuncType2, cache);
+		constrain(calledFuncType1, templateFuncType1, cache, prunableVariables);
+		constrain(calledFuncType2, templateFuncType2, cache, prunableVariables);
 
-		resolve(calledFuncType1);
-		resolve(calledFuncType2);
+		let newConstraintsFound = true;
+		while(newConstraintsFound) {
+			newConstraintsFound = false;
+			for(const variable of prunableVariables) {
+				newConstraintsFound ||= prune(variable, cache, prunableVariables);
+			}
+		}
 
 		// console.debug('funcType1', inspect(funcType1, { depth: null, colors: true }));
 		// console.debug('funcType2', inspect(funcType2, { depth: null, colors: true }));
@@ -136,23 +160,20 @@ describe('Constrain and resolve types', () => {
 
 	test('Function overloading 2', () => {
 		const cache = new Map<UnresolvedDataType, Set<UnresolvedDataType>>();
+		const prunableVariables = new Set<UnresolvedRTypeVariable>();
 
 		// Predetermined types in context
 		const funcType1 = new UnresolvedRFunctionType();
 		const paramType1 = new UnresolvedRTypeVariable();
 		funcType1.parameterTypes.set(0, paramType1);
-		constrain(new RIntegerType(), paramType1, cache);
-		constrain(paramType1, new RIntegerType(), cache);
-		constrain(new RIntegerType(), funcType1.returnType, cache);
-		constrain(funcType1.returnType, new RIntegerType(), cache);
+		constrain(paramType1, new RIntegerType(), cache, prunableVariables);
+		constrain(new RIntegerType(), funcType1.returnType, cache, prunableVariables);
 
 		const funcType2 = new UnresolvedRFunctionType();
 		const paramType2 = new UnresolvedRTypeVariable();
 		funcType2.parameterTypes.set(0, paramType2);
-		constrain(new RDoubleType(), paramType2, cache);
-		constrain(paramType2, new RDoubleType(), cache);
-		constrain(new RDoubleType(), funcType2.returnType, cache);
-		constrain(funcType2.returnType, new RDoubleType(), cache);
+		constrain(paramType2, new RDoubleType(), cache, prunableVariables);
+		constrain(new RDoubleType(), funcType2.returnType, cache, prunableVariables);
 
 		const overloadedFuncType1 = new UnresolvedRTypeIntersection(funcType1, funcType2);
 		const overloadedFuncType2 = new UnresolvedRTypeIntersection(funcType1, funcType2);
@@ -160,27 +181,30 @@ describe('Constrain and resolve types', () => {
 		// Typing of called function
 		const calledFuncType1 = new UnresolvedRTypeVariable();
 		const calledFuncType2 = new UnresolvedRTypeVariable();
-		constrain(overloadedFuncType1, calledFuncType1, cache);
-		constrain(overloadedFuncType2, calledFuncType2, cache);
+		constrain(overloadedFuncType1, calledFuncType1, cache, prunableVariables);
+		constrain(overloadedFuncType2, calledFuncType2, cache, prunableVariables);
 
 		// Typing of function call
 		const argType1 = new UnresolvedRTypeVariable();
 		const argType2 = new UnresolvedRTypeVariable();
-		constrain(new RIntegerType(), argType1, cache);
-		constrain(argType1, new RIntegerType(), cache);
-		constrain(new RDoubleType(), argType2, cache);
-		constrain(argType2, new RDoubleType(), cache);
+		constrain(new RIntegerType(), argType1, cache, prunableVariables);
+		constrain(new RDoubleType(), argType2, cache, prunableVariables);
 		const templateFuncType1 = new UnresolvedRFunctionType();
 		templateFuncType1.parameterTypes.set(0, argType1);
 		const returnType1 = templateFuncType1.returnType;
 		const templateFuncType2 = new UnresolvedRFunctionType();
 		templateFuncType2.parameterTypes.set(0, argType2);
 		const returnType2 = templateFuncType2.returnType;
-		constrain(calledFuncType1, templateFuncType1, cache);
-		constrain(calledFuncType2, templateFuncType2, cache);
+		constrain(calledFuncType1, templateFuncType1, cache, prunableVariables);
+		constrain(calledFuncType2, templateFuncType2, cache, prunableVariables);
 
-		resolve(calledFuncType1);
-		resolve(calledFuncType2);
+		let newConstraintsFound = true;
+		while(newConstraintsFound) {
+			newConstraintsFound = false;
+			for(const variable of prunableVariables) {
+				newConstraintsFound ||= prune(variable, cache, prunableVariables);
+			}
+		}
 
 		// console.debug('funcType1', inspect(funcType1, { depth: null, colors: true }));
 		// console.debug('funcType2', inspect(funcType2, { depth: null, colors: true }));
@@ -193,28 +217,29 @@ describe('Constrain and resolve types', () => {
 		// console.debug('returnType1', inspect(returnType1, { depth: null, colors: true }));
 		// console.debug('returnType2', inspect(returnType2, { depth: null, colors: true }));
 
-		expect(resolve(returnType1)).toEqual(new RTypeVariable(new RDoubleType(), new RTypeIntersection()));
+		expect(resolve(returnType1)).toEqual(new RTypeVariable(new RIntegerType(), new RTypeIntersection()));
 		expect(resolve(returnType2)).toEqual(new RTypeVariable(new RDoubleType(), new RTypeIntersection()));
 	});
 	
 	test('Function overloading 3', () => {
 		const cache = new Map<UnresolvedDataType, Set<UnresolvedDataType>>();
+		const prunableVariables = new Set<UnresolvedRTypeVariable>();
 
 		// Predetermined types in context
 		const funcType1 = new UnresolvedRFunctionType();
 		const paramType1 = new UnresolvedRTypeVariable();
 		funcType1.parameterTypes.set(0, paramType1);
 		// constrain(new RIntegerType(), paramType1, cache);
-		constrain(paramType1, new RIntegerType(), cache);
-		constrain(new RIntegerType(), funcType1.returnType, cache);
+		constrain(paramType1, new RIntegerType(), cache, prunableVariables);
+		constrain(new RIntegerType(), funcType1.returnType, cache, prunableVariables);
 		// constrain(funcType1.returnType, new RIntegerType(), cache);
 
 		const funcType2 = new UnresolvedRFunctionType();
 		const paramType2 = new UnresolvedRTypeVariable();
 		funcType2.parameterTypes.set(0, paramType2);
 		// constrain(new RStringType(), paramType2, cache);
-		constrain(paramType2, new RStringType(), cache);
-		constrain(new RStringType(), funcType2.returnType, cache);
+		constrain(paramType2, new RStringType(), cache, prunableVariables);
+		constrain(new RStringType(), funcType2.returnType, cache, prunableVariables);
 		// constrain(funcType2.returnType, new RStringType(), cache);
 
 		const funcType3 = new UnresolvedRFunctionType();
@@ -222,7 +247,7 @@ describe('Constrain and resolve types', () => {
 		funcType3.parameterTypes.set(0, paramType3);
 		const var1 = new UnresolvedRTypeVariable();
 		// const var2 = new UnresolvedRTypeVariable();
-		constrain(paramType3, var1, cache);
+		constrain(paramType3, var1, cache, prunableVariables);
 		// constrain(var1, paramType3, cache); // AVOID THIS AT ALL COSTS!
 		// constrain(funcType3.returnType, var2, cache);
 		// constrain(var2, funcType3.returnType, cache);
@@ -233,13 +258,13 @@ describe('Constrain and resolve types', () => {
 		// Typing of called function
 		const calledFuncType1 = new UnresolvedRTypeVariable();
 		const calledFuncType2 = new UnresolvedRTypeVariable();
-		constrain(overloadedFuncType1, calledFuncType1, cache);
-		constrain(overloadedFuncType2, calledFuncType2, cache);
+		constrain(overloadedFuncType1, calledFuncType1, cache, prunableVariables);
+		constrain(overloadedFuncType2, calledFuncType2, cache, prunableVariables);
 
 		// Typing of function call
 		const argType1 = new UnresolvedRTypeVariable();
 		// const argType2 = new UnresolvedRTypeVariable();
-		constrain(new RIntegerType(), argType1, cache);
+		constrain(new RIntegerType(), argType1, cache, prunableVariables);
 		// constrain(argType1, new RIntegerType(), cache);
 		// constrain(new RStringType(), argType2, cache);
 		// constrain(argType2, new RStringType(), cache);
@@ -249,11 +274,16 @@ describe('Constrain and resolve types', () => {
 		const templateFuncType2 = new UnresolvedRFunctionType();
 		// templateFuncType2.parameterTypes.set(0, argType2);
 		const returnType2 = templateFuncType2.returnType;
-		constrain(calledFuncType1, templateFuncType1, cache);
-		constrain(calledFuncType2, templateFuncType2, cache);
+		constrain(calledFuncType1, templateFuncType1, cache, prunableVariables);
+		constrain(calledFuncType2, templateFuncType2, cache, prunableVariables);
 
-		resolve(calledFuncType1);
-		// resolve(calledFuncType2);
+		let newConstraintsFound = true;
+		while(newConstraintsFound) {
+			newConstraintsFound = false;
+			for(const variable of prunableVariables) {
+				newConstraintsFound ||= prune(variable, cache, prunableVariables);
+			}
+		}
 
 		// console.debug('funcType3', inspect(funcType3, { depth: null, colors: true }));
 		// console.debug('funcType1', inspect(funcType1, { depth: null, colors: true }));
@@ -267,8 +297,58 @@ describe('Constrain and resolve types', () => {
 		// console.debug('returnType1', inspect(returnType1, { depth: null, colors: true }));
 		// console.debug('returnType2', inspect(returnType2, { depth: null, colors: true }));
 
-		expect(resolve(returnType1)).toEqual(new RTypeVariable(new RIntegerType(), new RTypeIntersection()));
-		expect(resolve(returnType2)).toEqual(new RTypeVariable(new RTypeUnion(), new RTypeIntersection()));
+		expect(resolve(returnType1)).toEqual(new RTypeVariable());
+		expect(resolve(returnType2)).toEqual(new RTypeVariable());
+	});
+	
+	test('Function overloading 4', () => {
+		const cache = new Map<UnresolvedDataType, Set<UnresolvedDataType>>();
+		const prunableVariables = new Set<UnresolvedRTypeVariable>();
+
+		// Predetermined types in context
+		const funcType1 = new UnresolvedRFunctionType();
+		const paramType1 = new UnresolvedRTypeVariable();
+		funcType1.parameterTypes.set(0, paramType1);
+		constrain(paramType1, new RLogicalType(), cache, prunableVariables);
+		constrain(new RDoubleType(), funcType1.returnType, cache, prunableVariables);
+
+		const funcType2 = new UnresolvedRFunctionType();
+		const paramType2 = new UnresolvedRTypeVariable();
+		funcType2.parameterTypes.set(0, paramType2);
+		constrain(paramType2, new RIntegerType(), cache, prunableVariables);
+		constrain(new RComplexType(), funcType2.returnType, cache, prunableVariables);
+
+		const overloadedFuncType = new UnresolvedRTypeIntersection(funcType1, funcType2);
+
+		// Typing of called function
+		const calledFuncType = new UnresolvedRTypeVariable();
+		constrain(overloadedFuncType, calledFuncType, cache, prunableVariables);
+
+		// Typing of function call
+		const argType = new UnresolvedRTypeVariable();
+		constrain(new UnresolvedRTypeVariable(), argType, cache, prunableVariables);
+		const templateFuncType = new UnresolvedRFunctionType();
+		templateFuncType.parameterTypes.set(0, argType);
+		const returnType = templateFuncType.returnType;
+		constrain(calledFuncType, templateFuncType, cache, prunableVariables);
+
+		let newConstraintsFound = true;
+		while(newConstraintsFound) {
+			newConstraintsFound = false;
+			for(const variable of prunableVariables) {
+				newConstraintsFound ||= prune(variable, cache, prunableVariables);
+			}
+		}
+
+		// console.debug('funcType1', inspect(funcType1, { depth: null, colors: true }));
+		// console.debug('funcType2', inspect(funcType2, { depth: null, colors: true }));
+		// console.debug('overloadedFuncType', inspect(overloadedFuncType, { depth: null, colors: true }));
+		// console.debug('calledFuncType', inspect(calledFuncType, { depth: null, colors: true }));
+		// console.debug('templateFuncType', inspect(templateFuncType, { depth: null, colors: true }));
+		// console.debug('returnType', inspect(returnType, { depth: null, colors: true }));
+
+		expect(resolve(returnType)).toEqual(new RTypeVariable(new RDoubleType(), new RTypeIntersection()));
+		expect(resolve(argType)).toEqual(new RTypeVariable(new RTypeUnion(), new RIntegerType()));
 	});
 
 	test('Constrain from both sides 1', () => {

@@ -534,6 +534,10 @@ class TypeInferringCfgGuidedVisitor<
 		}
 	}
 
+	protected override onApplyFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+		this.onDefaultFunctionCall(data);
+	}
+
 	protected onVisitorEnd(): void {
 		let newConstraintsFound = true;
 		while(newConstraintsFound) {

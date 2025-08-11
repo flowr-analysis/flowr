@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import type { DataType } from '../../../../src/typing/types';
-import { RComplexType, RDoubleType, RFunctionType, RIntegerType, RAtomicVectorType, RStringType, RTypeIntersection, RTypeVariable } from '../../../../src/typing/types';
+import { RComplexType, RDoubleType, RFunctionType, RIntegerType, RAtomicVectorType, RStringType, RTypeIntersection, RTypeVariable, RTypeUnion } from '../../../../src/typing/types';
 import { assertInferredTypes } from '../../_helper/typing/subtyping/assert-inferred-type';
 import type { UnresolvedDataType } from '../../../../src/typing/subtyping/types';
 import { loadTracedTypes, loadTurcotteTypes } from '../../../../src/typing/adapter/load-type-signatures';
@@ -23,12 +23,13 @@ describe('Infer types for longer code snippets', async() => {
 		'cost <- function(price, quantity) sum(price * quantity); cost("5.50€", 2)',
 		knownTypes,
 		{ query: Q.var('cost').first().build(),     expectedType: functionType },
-		// { query: Q.var('price').first().build(),    lowerBound: new RStringType() },
-		// { query: Q.var('price').last().build(),     lowerBound: new RStringType() },
-		// { query: Q.var('quantity').first().build(), lowerBound: new RDoubleType() },
-		// { query: Q.var('quantity').last().build(),  lowerBound: new RDoubleType() },
-		{ query: Q.criterion('1@*').build(),        lowerBound: new RIntegerType(), upperBound: new RAtomicVectorType(new RComplexType()) },
-		{ query: Q.criterion('1@*').build(),        lowerBound: new RIntegerType(), upperBound: new RAtomicVectorType(new RComplexType()) },
+		{ query: Q.var('price').first().build(),    lowerBound: new RStringType() },
+		{ query: Q.var('quantity').first().build(), lowerBound: new RDoubleType() },
+		{ query: Q.criterion('$1').build(),         lowerBound: new RStringType() },
+		{ query: Q.criterion('$3').build(),         lowerBound: new RDoubleType() },
+		{ query: Q.var('price').last().build(),     lowerBound: new RStringType() },
+		{ query: Q.var('quantity').last().build(),  lowerBound: new RDoubleType() },
+		{ query: Q.criterion('1@*').build(),        lowerBound: new RTypeUnion(), upperBound: new RAtomicVectorType(new RComplexType()) },
 		{ query: Q.criterion('1@sum').build(),      lowerBound: new RIntegerType() }
 	);
 });

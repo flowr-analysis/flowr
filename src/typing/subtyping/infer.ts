@@ -172,7 +172,7 @@ class TypeInferringCfgGuidedVisitor<
 		guard(node !== undefined, 'Expected AST node to be defined');
 		if(node.type === RType.Argument) {
 			if(node.value !== undefined) {
-				this.constrainNodeType(data.vertex.id, node.value.info.typeVariable);
+				this.constrainNodeType(node, node.value.info.typeVariable);
 			}
 			return;
 		}
@@ -382,7 +382,7 @@ class TypeInferringCfgGuidedVisitor<
 		guard(node !== undefined && node.type === RType.FunctionDefinition, 'Expected AST node to be a function definition');
 
 		const functionType = new UnresolvedRFunctionType();
-		this.constrainNodeType(node, { lowerBound: functionType });
+		this.constrainNodeType(node, functionType);
 
 		let dotsEncountered = false;
 		for(const [index, param] of node.parameters.entries()) {
@@ -391,16 +391,20 @@ class TypeInferringCfgGuidedVisitor<
 				continue; // Skip `...` parameters
 			}
 
+			this.constrainNodeType(param, param.name.info.typeVariable); // Ignore laziness of parameters for now
+
 			if(!dotsEncountered) {
 				// Only constrain the parameter type positionally if no `...` has been encountered yet
-				constrain(getParameterTypeFromFunction(functionType, index), param.info.typeVariable, this.constraintCache);
+				this.constrainNodeType(param, getParameterTypeFromFunction(functionType, index));
 			}
-			constrain(getParameterTypeFromFunction(functionType, param.name.lexeme), param.info.typeVariable, this.constraintCache);
+			this.constrainNodeType(param, getParameterTypeFromFunction(functionType, param.name.content));
 
 			if(param.defaultValue !== undefined) {
 				this.constrainNodeType(param, { lowerBound: param.defaultValue.info.typeVariable });
 			}
 		}
+
+		this.constrainNodeType(node.body, functionType.returnType);
 	}
 
 	override onProgram(node: RExpressionList<UnresolvedTypeInfo>) {

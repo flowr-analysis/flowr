@@ -15,10 +15,10 @@ export async function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, qu
 	const result: DatatypeQueryResult['inferredTypes'] = {};
 	for(const query of queries) {
 		const knownTypes = new Map<string, Set<UnresolvedDataType>>();
-		if(query.useTurcotteTypes) {
+		if(query.useTurcotteTypes ?? true) {
 			await loadTurcotteTypes(knownTypes);
 		}
-		if(query.useTracedTypes) {
+		if(query.useTracedTypes ?? true) {
 			await loadTracedTypes(knownTypes);
 		}
 

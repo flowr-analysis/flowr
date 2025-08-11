@@ -9,7 +9,7 @@ import type { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mapNormalizedAstInfo } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataTypeInfo } from '../types';
-import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, RNullType, RLanguageType, RS4Type, REnvironmentType } from '../types';
+import { RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, RNullType, RS4Type, REnvironmentType } from '../types';
 import type { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { guard } from '../../util/assert';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
@@ -246,10 +246,6 @@ class TypeInferringCfgGuidedVisitor<
 		this.inferNodeTypeFromReadOrigins(node, varReadOrigins);
 	}
 
-	override onRmCall(data: { call: DataflowGraphVertexFunctionCall }) {
-		this.constrainNodeType(data.call.id, new RNullType());
-	}
-
 	override onForLoopCall(data: { call: DataflowGraphVertexFunctionCall, variable: FunctionArgument, vector: FunctionArgument, body: FunctionArgument }) {
 		guard(data.variable !== EmptyArgument && data.vector !== EmptyArgument, 'Expected variable and vector arguments to be defined');
 		const elementType = new UnresolvedRTypeVariable();
@@ -339,14 +335,7 @@ class TypeInferringCfgGuidedVisitor<
 	}
 	
 	override onQuoteCall(data: { call: DataflowGraphVertexFunctionCall }) {
-		this.constrainNodeType(data.call.id, new RLanguageType());
-	}
-
-	override onEvalFunctionCall(data: { call: DataflowGraphVertexFunctionCall }) {
-		guard(data.call.args.length === 1, 'Expected exactly one argument for eval call');
-		const arg = data.call.args.at(0);
-		guard(arg !== undefined && arg !== EmptyArgument, 'Expected argument of eval call to be defined');
-		this.constrainNodeType(arg.nodeId, { upperBound: new RLanguageType() });
+		this.onDefaultFunctionCall(data);
 	}
 
 	override onListCall(data: { call: DataflowGraphVertexFunctionCall }) {

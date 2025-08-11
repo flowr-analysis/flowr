@@ -1,25 +1,15 @@
 import { describe } from 'vitest';
-import { RTypeIntersection, RLanguageType, RListType, RLogicalType, RNullType, RStringType, RTypeVariable, RAtomicVectorType, RDoubleType } from '../../../../src/typing/types';
+import { RTypeIntersection, RListType, RStringType, RTypeVariable, RAtomicVectorType, RDoubleType } from '../../../../src/typing/types';
 import { assertInferredType, assertInferredTypes } from '../../_helper/typing/subtyping/assert-inferred-type';
 import { Q } from '../../../../src/search/flowr-search-builder';
 
 describe('Infer types for builtin functions', () => {
-	assertInferredType('rm(x)', { expectedType: new RNullType() });
-
 	assertInferredTypes(
 		'x <- 42\nget("x")',
 		undefined,
 		{ query: Q.criterion('1@x').build(),   expectedType: new RDoubleType() },
 		{ query: Q.criterion('2@get').build(), expectedType: new RDoubleType() },
 		{ query: Q.criterion('2@"x"').build(), upperBound: new RStringType() }
-	);
-
-	assertInferredTypes(
-		'eval(quote(TRUE))',
-		undefined,
-		{ query: Q.criterion('1@eval').build(),  expectedType: new RTypeVariable() },
-		{ query: Q.criterion('1@quote').build(), expectedType: new RLanguageType() },
-		{ query: Q.criterion('1@TRUE').build(),  expectedType: new RLogicalType() }
 	);
 
 	const elementType = new RTypeVariable(new RDoubleType(), new RTypeIntersection());

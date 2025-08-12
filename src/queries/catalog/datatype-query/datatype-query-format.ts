@@ -17,6 +17,7 @@ export interface DatatypeQuery extends BaseQueryFormat {
 	readonly useSubtyping?:     boolean;
 	readonly useTurcotteTypes?: boolean;
 	readonly useTracedTypes?:   boolean;
+	readonly outputFile?:       string;
 }
 
 export interface DatatypeQueryResult extends BaseQueryResult {
@@ -42,6 +43,7 @@ export const DatatypeQueryDefinition = {
 		criteria:         Joi.array().items(Joi.string()).optional().description('The slicing criteria of the node to get the inferred data type for.'),
 		useSubtyping:     Joi.boolean().optional().default(true).description('Whether to use subtyping to infer the data type.'),
 		useTurcotteTypes: Joi.boolean().optional().default(true).description('Whether to use Turcotte types for inference.'),
-		useTracedTypes:   Joi.boolean().optional().default(true).description('Whether to use our manually traced types for inference.')
+		useTracedTypes:   Joi.boolean().optional().default(true).description('Whether to use our manually traced types for inference.'),
+		outputFile:       Joi.string().optional().description('The output file to write the inferred types to.')
 	}).description('Datatype query used to extract the inferred data type for a node in the normalized AST')
 } as const satisfies SupportedQuery<'datatype'>;

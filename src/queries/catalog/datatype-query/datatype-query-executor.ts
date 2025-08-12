@@ -8,6 +8,8 @@ import { inferDataTypesWithUnification } from '../../../typing/unification/infer
 import { inferDataTypes } from '../../../typing/subtyping/infer';
 import type { UnresolvedDataType } from '../../../typing/subtyping/types';
 import { loadTracedTypes, loadTurcotteTypes } from '../../../typing/adapter/load-type-signatures';
+import fs from 'fs';
+import { superBigJsonStringify } from '../../../util/json';
 
 export async function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, queries: readonly DatatypeQuery[]): Promise<DatatypeQueryResult> {
 	const start = Date.now();
@@ -41,8 +43,20 @@ export async function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, qu
 		}
 	}
 
-	return {
+	const output = {
 		'.meta':       { timing: Date.now() - start },
 		inferredTypes: result
 	};
+
+	for(const filePath of queries.map(query => query.outputFile).filter(filePath => filePath !== undefined)) {
+		if(fs.existsSync(filePath)) {
+			const stream = fs.createWriteStream(filePath, { flags: 'w' });
+			superBigJsonStringify(output, '', str => stream.write(str));
+			stream.end();
+		} else {
+			log.warn('Output file does not exist:', filePath);
+		}
+	}
+
+	return output;
 }

@@ -1,1 +1,0 @@
-cost <- function(price, quantity) sum(price * quantity); cost("5.50€", 2)

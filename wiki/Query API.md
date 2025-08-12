@@ -31,6 +31,8 @@ For now, we support the following **active** queries (which we will refer to sim
     Calculates and returns all the clusters present in the dataflow graph.
 1. [Dataflow Query](#dataflow-query) (`dataflow`):\
     Returns the dataflow graph of the given code.
+1. [Datatype Query](#datatype-query) (`datatype`):\
+    Returns all datatypes for syntactic elements (or the type for a criterion).
 1. [Dataframe Shape Inference Query](#dataframe-shape-inference-query) (`df-shape`):\
     Returns the shapes inferred for all dataframes in the code.
 1. [Dependencies Query](#dependencies-query) (`dependencies`):\
@@ -203,6 +205,13 @@ Valid item types:
                     Allows only the values: 'lineage'
                 - **criterion** string [required]
                     _The slicing criterion of the node to get the lineage of._
+            - **.** object 
+                _Datatype query used to extract the inferred data type for a node in the normalized AST_
+                - **type** string [required]
+                    _The type of the query._
+                    Allows only the values: 'datatype'
+                - **criterion** string [optional]
+                    _The slicing criterion of the node to get the inferred data type for._
             - **.** object 
                 _The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data._
                 - **type** string [required]
@@ -781,7 +790,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 1
+    "timing": 0
   }
 }
 ```
@@ -2797,11 +2806,75 @@ Responsible for the execution of the Dataflow Query query is `executeDataflowQue
 -----
 
 
+### Datatype Query
+
+
+This query returns the datatypes of syntactic elements in the code.
+To exemplify the capabilities, consider the following code:
+
+```r
+x <- 1
+y <- 2
+x
+```
+
+To see the type of the variable `x`, you can use the following query:
+
+```json
+[
+  {
+    "type": "datatype",
+    "criterion": "3@x"
+  }
+]
+```
+
+_Results (prettified and summarized):_
+
+Query: **datatype** (1 ms)\
+&nbsp;&nbsp;&nbsp;╰ 3@x: {RIntegerType}\
+_All queries together required ≈1 ms (1ms accuracy, total 2 ms)_
+
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+
+The analysis required _1.7 ms_ (including parsing and normalization and the query) within the generation environment.	
+
+
+```json
+{
+  "datatype": {
+    ".meta": {
+      "timing": 1
+    },
+    "inferredTypes": {
+      "3@x": {
+        "tag": "RIntegerType"
+      }
+    }
+  },
+  ".meta": {
+    "timing": 1
+  }
+}
+```
+
+
+<details> 
+
+<summary style="color:gray">Implementation Details</summary>
+
+Responsible for the execution of the Datatype Query query is `executeDatatypeQuery` in [`./src/queries/catalog/datatype-query/datatype-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/datatype-query/datatype-query-executor.ts).
+
+</details>
+
+
+-----
+
+
 ### Dataframe Shape Inference Query
 
 
 This query infers all shapes of dataframes within the code. For example, you can use:
-
 
 
 ```json
@@ -2827,8 +2900,6 @@ The analysis required _5.0 ms_ (including parsing and normalization and the qu
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
-
-
 
 
 ```json
@@ -5155,8 +5226,6 @@ assigned to the kind `visualize` and the subkind `text` (using the example code 
 
 
 
-
-
 _Results (prettified and summarized):_
 
 Query: **call-context** (0 ms)\
@@ -5240,8 +5309,6 @@ Of course, in this specific scenario, the following query would be equivalent:
 ```
 
 
-
-
  <details> <summary style="color:gray">Show Results</summary>
 
 _Results (prettified and summarized):_
@@ -5308,7 +5375,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 
 
 
-	
+
 
 However, compound queries become more useful whenever common arguments can not be expressed as a union in one of their properties.
 Additionally, you can still overwrite default arguments.

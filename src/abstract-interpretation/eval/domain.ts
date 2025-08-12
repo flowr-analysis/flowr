@@ -1,46 +1,27 @@
+import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { Const } from './domains/constant';
+import type { StringDomainInfo } from './visitor';
 
-export type Operation = "paste"
+export type Top = { kind: 'top' }
+export const Top: Top = { kind: 'top' };
 
-export interface Top {
-  kind: "top"
-}
-export const Top: Top = { kind: "top" }
+export type Bottom = { kind: 'bottom' }
+export const Bottom: Bottom = { kind: 'bottom' };
 
-export interface Bottom {
-  kind: "bottom"
-}
-export const Bottom: Bottom = { kind: "bottom" }
-
-export interface Domain<Interval> {
-  estimate(operation: Operation, args: Interval[]): Interval
-}
-
-
-
-export interface ConstantIntervalValue {
-  kind: "interval",
-  value: string
+export function isTop(value: AbstractStringValue): value is Top {
+	return value.kind === 'top';
 }
 
-export type ConstantInterval = Top | Bottom | ConstantIntervalValue
+export function isBottom(value: AbstractStringValue): value is Bottom {
+	return value.kind === 'bottom';
+}
 
-export class ConstantDomain implements Domain<ConstantInterval> {
-  estimate(operation: Operation, args: ConstantInterval[]): ConstantInterval {
-    switch (operation) {
-      case "paste":
-        return args.reduce((l, r) => {
-          if (l.kind === "top" || r.kind === "top") return Top
-          if (l.kind === "bottom" || r.kind === "bottom") return Bottom
-          return {
-            kind: "interval",
-            value: l.value + " " + r.value // TODO: paste separator is also an arg, cannot just
-                                           // pass domain. "Real" R arguments need to be passed,
-                                           // then each function can be handled correctly.
-          }
-        })
-      
-      default:
-        throw new Error("Unknown Operator")
-    }
-  }
+export type AbstractStringValue = Top | Bottom | Const
+
+export type SDRNode = RNode<NoInfo & StringDomainInfo & ParentInformation>
+export interface StringDomain {
+  assignment:     (source: SDRNode) => AbstractStringValue
+  stringConstant: (node: SDRNode, str: RString) => AbstractStringValue
 }

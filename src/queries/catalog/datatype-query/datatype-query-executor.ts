@@ -4,8 +4,8 @@ import type { BasicQueryData } from '../../base-query-format';
 import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
-import { inferDataTypes } from '../../../typing/unification/infer';
-import { inferDataTypes as inferDataTypesUsingSubtyping } from '../../../typing/subtyping/infer';
+import { inferDataTypesWithUnification } from '../../../typing/unification/infer';
+import { inferDataTypes } from '../../../typing/subtyping/infer';
 import type { UnresolvedDataType } from '../../../typing/subtyping/types';
 import { loadTracedTypes, loadTurcotteTypes } from '../../../typing/adapter/load-type-signatures';
 
@@ -23,8 +23,8 @@ export async function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, qu
 		}
 
 		const typedAst = query.useSubtyping
-			? inferDataTypesUsingSubtyping(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow, knownTypes)
-			: inferDataTypes(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow);
+			? inferDataTypes(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow, knownTypes)
+			: inferDataTypesWithUnification(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow);
 		for(const criterion of query.criteria ?? typedAst.idMap.keys().map(id => `$${id}` as SingleSlicingCriterion)) {
 			if(result[criterion] !== undefined) {
 				log.warn('Duplicate criterion in datatype query:', criterion);

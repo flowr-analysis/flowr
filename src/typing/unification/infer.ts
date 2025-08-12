@@ -26,7 +26,7 @@ import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import { resolve, UnresolvedRFunctionType, UnresolvedRListType, UnresolvedRTypeVariable } from './types';
 import { defaultConfigOptions } from '../../config';
 
-export function inferDataTypes<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
+export function inferDataTypesWithUnification<Info extends ParentInformation & { typeVariable?: undefined }>(ast: NormalizedAst<ParentInformation & Info>, dataflowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
 	const controlFlowInfo = extractCfg(astWithTypeVars, defaultConfigOptions, dataflowInfo.graph, ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code']);
 	const config = {

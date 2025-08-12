@@ -108,6 +108,7 @@ export class UnresolvedRTypeVariable {
 
 
 export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedDataType, cache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map(), prunableVariables: Set<UnresolvedRTypeVariable> = new Set()): boolean {
+	// console.debug('Constraining');
 	// console.debug('Constraining', inspect(subtype, { depth: null, colors: true }), 'to subsume', supertype instanceof UnresolvedRTypeVariable ? supertype.id : inspect(supertype, { depth: null, colors: true }));
 
 	if(subtype === supertype) {
@@ -173,6 +174,7 @@ export function constrain(subtype: UnresolvedDataType, supertype: UnresolvedData
 
 
 export function prune(variable: UnresolvedRTypeVariable, constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>> = new Map(), prunableVariables: Set<UnresolvedRTypeVariable>): boolean {
+	// console.debug('Pruning');
 	// console.debug('Pruning variable', variable.id);
 
 	let newConstraintsFound = false;
@@ -246,6 +248,7 @@ export function prune(variable: UnresolvedRTypeVariable, constraintCache: Map<Un
 
 
 export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache: Map<UnresolvedRTypeVariable, { lowerBound: DataType, upperBound: DataType, combined: DataType }> = new Map()): DataType {
+	// console.debug('Resolving');
 	// console.debug('Resolving', inspect(type, { depth: null, colors: true }));
 
 	if(type instanceof UnresolvedRTypeVariable) {
@@ -319,6 +322,7 @@ export function resolve(type: UnresolvedDataType, isUpperBound?: boolean, cache:
 }
 
 export function combine(lowerBound: DataType, upperBound: DataType): DataType {
+	// console.debug('Combining');
 	// console.debug('Combining', inspect(lowerBound, { depth: null, colors: true }), 'and', inspect(upperBound, { depth: null, colors: true }));
 
 	if(lowerBound instanceof RFunctionType && upperBound instanceof RFunctionType) {
@@ -353,56 +357,58 @@ export function combine(lowerBound: DataType, upperBound: DataType): DataType {
 	}
 }
 
-export function subsumes(subtype: DataType | UnresolvedDataType, supertype: DataType | UnresolvedDataType, inProcess: Map<DataType | UnresolvedDataType, Set<DataType | UnresolvedDataType>> = new Map()): boolean {
+export function subsumes(subtype: DataType | UnresolvedDataType, supertype: DataType | UnresolvedDataType, cache: Map<DataType | UnresolvedDataType, Map<DataType | UnresolvedDataType, boolean>> = new Map()): boolean {
+	// console.debug('Checking subsumption' + (subtype instanceof UnresolvedRTypeVariable ? ` (variable ${subtype.id})` : ''));
 	// console.debug('Checking if', inspect(subtype, { depth: null, colors: true }), 'subsumes', inspect(supertype, { depth: null, colors: true }));
 
 	if(subtype === supertype) {
 		return true; // If both types are the same, they subsume each other
 	}
 
-	let processedSupertypes = inProcess.get(subtype);
-	if(processedSupertypes?.has(supertype)) {
-		return true; // If we have already processed this pair, we can assume it subsumes
+	let processedSupertypes = cache.get(subtype);
+	const cachedResult = processedSupertypes?.get(supertype);
+	if(cachedResult !== undefined) {
+		return cachedResult; // If we have already processed this pair, we can assume it subsumes
 	}
-	processedSupertypes ??= new Set();
-	processedSupertypes.add(supertype);
-	inProcess.set(subtype, processedSupertypes);
+	processedSupertypes ??= new Map();
+	processedSupertypes.set(supertype, true); // Avoid infinite recursion
+	cache.set(subtype, processedSupertypes);
 
 	let result: boolean;
 
 	if(subtype.tag === DataTypeTag.Error || supertype.tag === DataTypeTag.Error) {
 		result = false; // Error types do not subsume and are not subsumed by any other type
 	} else if(subtype.tag === DataTypeTag.Variable) {
-		result = subsumes(subtype.lowerBound, supertype, inProcess);
+		result = subsumes(subtype.lowerBound, supertype, cache);
 	} else if(supertype.tag === DataTypeTag.Variable) {
-		result = subsumes(subtype, supertype.upperBound, inProcess);
+		result = subsumes(subtype, supertype.upperBound, cache);
 	} else if(subtype.tag === DataTypeTag.Union) {
-		result = subtype.types.values().every(subtype => subsumes(subtype, supertype, inProcess));
+		result = subtype.types.values().every(subtype => subsumes(subtype, supertype, cache));
 	} else if(supertype.tag === DataTypeTag.Union) {
-		result = supertype.types.values().some(supertype => subsumes(subtype, supertype, inProcess));
+		result = supertype.types.values().some(supertype => subsumes(subtype, supertype, cache));
 	} else if(supertype.tag === DataTypeTag.Intersection) {
-		result = supertype.types.values().every(supertype => subsumes(subtype, supertype, inProcess));
+		result = supertype.types.values().every(supertype => subsumes(subtype, supertype, cache));
 	} else if(subtype.tag === DataTypeTag.Intersection) {
-		result = subtype.types.values().some(subtype => subsumes(subtype, supertype, inProcess));
+		result = subtype.types.values().some(subtype => subsumes(subtype, supertype, cache));
 	} else if(subtype.tag === DataTypeTag.List && supertype.tag === DataTypeTag.List) {
 		const subtypeElementIndices = new Set(subtype.indexedElementTypes.keys());
 		const supertypeElementIndices = new Set(supertype.indexedElementTypes.keys());
-		result = subsumes(subtype.elementType, supertype.elementType, inProcess) && subtypeElementIndices.union(supertypeElementIndices).values().every(indexOrName => {
-			return subsumes(subtype.indexedElementTypes.get(indexOrName) ?? new RTypeVariable(), supertype.indexedElementTypes.get(indexOrName) ?? new RTypeVariable(), inProcess);
+		result = subsumes(subtype.elementType, supertype.elementType, cache) && subtypeElementIndices.union(supertypeElementIndices).values().every(indexOrName => {
+			return subsumes(subtype.indexedElementTypes.get(indexOrName) ?? new RTypeVariable(), supertype.indexedElementTypes.get(indexOrName) ?? new RTypeVariable(), cache);
 		});
 	} else if(subtype.tag === DataTypeTag.AtomicVector && supertype.tag === DataTypeTag.AtomicVector) {
-		result = subsumes(subtype.elementType, supertype.elementType, inProcess);
+		result = subsumes(subtype.elementType, supertype.elementType, cache);
 	} else if(isAtomicVectorBaseType(subtype) && supertype.tag === DataTypeTag.AtomicVector) {
 		// A scalar subsumes a vector type if it subsumes the element type of the vector
-		result = subsumes(subtype, supertype.elementType, inProcess);
+		result = subsumes(subtype, supertype.elementType, cache);
 	} else if(subtype.tag === DataTypeTag.AtomicVector && supertype.tag === DataTypeTag.Null) {
-		result = subsumes(subtype.elementType, new RTypeUnion());
+		result = subsumes(subtype.elementType, new RTypeUnion(), cache);
 	} else if(subtype.tag === DataTypeTag.Function && supertype.tag === DataTypeTag.Function) {
 		const subtypeParameterKeys = new Set(subtype.parameterTypes.keys());
 		const supertypeParameterKeys = new Set(supertype.parameterTypes.keys());
-		result = subsumes(subtype.returnType, supertype.returnType, inProcess) && subtypeParameterKeys.intersection(supertypeParameterKeys).values().every(key => {
+		result = subsumes(subtype.returnType, supertype.returnType, cache) && subtypeParameterKeys.intersection(supertypeParameterKeys).values().every(key => {
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			return subsumes(supertype.parameterTypes.get(key)!, subtype.parameterTypes.get(key)!, inProcess);
+			return subsumes(supertype.parameterTypes.get(key)!, subtype.parameterTypes.get(key)!, cache);
 		});
 	} else {
 		result = subtype.tag === supertype.tag
@@ -414,12 +420,13 @@ export function subsumes(subtype: DataType | UnresolvedDataType, supertype: Data
 			|| subtype.tag === DataTypeTag.Double && supertype.tag === DataTypeTag.Complex;
 	}
 
-	processedSupertypes?.delete(supertype); // Remove the supertype from the processed set
+	processedSupertypes.set(supertype, result); // Cache the result for this pair
 
 	return result;
 }
 
 export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataType, constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>>, prunableVariables: Set<UnresolvedRTypeVariable>): UnresolvedDataType {
+	// console.debug('Joining (unresolved)');
 	// console.debug('Joining (unresolved)', type1, 'and', type2);
 
 	if(type1 instanceof RTypeError) {
@@ -522,6 +529,7 @@ export function unresolvedJoin(type1: UnresolvedDataType, type2: UnresolvedDataT
 	return new UnresolvedRTypeUnion(type1, type2);
 }
 export function join(type1: DataType, type2: DataType): DataType {
+	// console.debug('Joining');
 	// console.debug('Joining', type1, 'and', type2);
 
 	if(type1 instanceof RTypeError) {
@@ -598,6 +606,7 @@ export function join(type1: DataType, type2: DataType): DataType {
 }
 
 export function unresolvedMeet(type1: UnresolvedDataType, type2: UnresolvedDataType, constraintCache: Map<UnresolvedDataType, Set<UnresolvedDataType>>, prunableVariables: Set<UnresolvedRTypeVariable>): UnresolvedDataType {
+	// console.debug('Meeting (unresolved)');
 	// console.debug('Meeting (unresolved)', inspect(type1, { depth: null, colors: true }), 'and', inspect(type2, { depth: null, colors: true }));
 
 	if(type1 instanceof RTypeError) {
@@ -696,6 +705,7 @@ export function unresolvedMeet(type1: UnresolvedDataType, type2: UnresolvedDataT
 	return new UnresolvedRTypeIntersection(type1, type2);
 }
 export function meet(type1: DataType, type2: DataType): DataType {
+	// console.debug('Meeting');
 	// console.debug('Meeting', type1, 'and', type2);
 
 	if(type1 instanceof RTypeError) {

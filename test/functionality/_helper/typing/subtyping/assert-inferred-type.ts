@@ -11,6 +11,7 @@ import type { ParentInformation } from '../../../../../src/r-bridge/lang-4.x/ast
 import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
 import { defaultConfigOptions } from '../../../../../src/config';
 import type { UnresolvedDataType } from '../../../../../src/typing/subtyping/types';
+import { prettyPrintDataType } from '../../../../../src/typing/pretty-print';
 
 export function assertInferredType(input: string, expectedType: { expectedType: DataType } | { lowerBound?: DataType, upperBound?: DataType }, knownTypes?: Map<string, Set<UnresolvedDataType>>): void {
 	assertInferredTypes(input, knownTypes, expectedType);
@@ -43,6 +44,7 @@ export function assertInferredTypes(
 			} else {
 				node = result.normalize.idMap.get(result.dataflow.exitPoints[0].nodeId) as RNode<ParentInformation & DataTypeInfo>;
 			}
+			console.debug(`$${node.info.id} [${node.lexeme}]: {${prettyPrintDataType(node.info.inferredType)}}`);
 
 			test(`Infer ${expectedType.tag} for ${node.lexeme}`, () => {
 				expect(node.info.inferredType).toEqual(expectedType);

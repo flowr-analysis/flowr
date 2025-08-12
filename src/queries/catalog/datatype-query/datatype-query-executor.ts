@@ -52,7 +52,11 @@ export async function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, qu
 		if(fs.existsSync(filePath)) {
 			const stream = fs.createWriteStream(filePath, { flags: 'w' });
 			superBigJsonStringify(output, '', str => stream.write(str));
-			stream.end();
+			await new Promise<void>((resolve, reject) => {
+				stream.end();
+				stream.on('error', reject);
+				stream.on('finish', resolve);
+			});
 		} else {
 			log.warn('Output file does not exist:', filePath);
 		}

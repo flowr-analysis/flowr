@@ -22,7 +22,7 @@ export async function executeDatatypeQuery({ dataflow, ast }: BasicQueryData, qu
 			await loadTracedTypes(knownTypes);
 		}
 
-		const typedAst = query.useSubtyping
+		const typedAst = query.useSubtyping ?? true
 			? inferDataTypes(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow, knownTypes)
 			: inferDataTypesWithUnification(ast as NormalizedAst<ParentInformation & { typeVariable?: undefined }>, dataflow);
 		for(const criterion of query.criteria ?? typedAst.idMap.keys().map(id => `$${id}` as SingleSlicingCriterion)) {

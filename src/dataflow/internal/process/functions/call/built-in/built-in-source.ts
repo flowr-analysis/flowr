@@ -180,7 +180,7 @@ export function processSourceCall<OtherInfo>(
 	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
 		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
 	} else if(sourceFileArgument !== EmptyArgument) {
-		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.flowrConfig.solver.variables }));
+		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, builtInEnvironment: data.builtInEnvironment, idMap: data.completeAst.idMap, resolve: data.flowrConfig.solver.variables }));
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 

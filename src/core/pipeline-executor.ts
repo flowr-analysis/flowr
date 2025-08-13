@@ -10,8 +10,6 @@ import type {
 	PipelineStepOutputWithName
 } from './steps/pipeline/pipeline';
 import type { FlowrConfigOptions } from '../config';
-import { getBuildInDefinitions } from '../dataflow/environments/built-in-config';
-import type { BuiltIns } from '../dataflow/environments/built-in';
 
 /**
  * The pipeline executor allows to execute arbitrary {@link Pipeline|pipelines} in a step-by-step fashion.
@@ -105,8 +103,6 @@ export class PipelineExecutor<P extends Pipeline> {
 	private currentExecutionStage = PipelineStepStage.OncePerFile;
 	private stepCounter = 0;
 
-	// TODO TSchoeller enable usage of built-in overwrites via config
-	private readonly builtIns:    BuiltIns;
 	private readonly flowrConfig: FlowrConfigOptions;
 
 	/**
@@ -124,8 +120,6 @@ export class PipelineExecutor<P extends Pipeline> {
 		this.length = pipeline.order.length;
 		this.input = input;
 		this.flowrConfig = flowrConfig;
-		const builtIns = flowrConfig.semantics.environment.overwriteBuiltIns;
-		this.builtIns = getBuildInDefinitions(builtIns.definitions, builtIns.loadDefaults);
 	}
 
 	/**

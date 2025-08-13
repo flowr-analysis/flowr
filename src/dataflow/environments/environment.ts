@@ -148,9 +148,9 @@ export interface REnvironmentInformation {
 /**
  * Initialize a new {@link REnvironmentInformation|environment} with the built-ins.
  */
-export function initializeCleanEnvironments(fullBuiltIns = true): REnvironmentInformation {
+export function initializeCleanEnvironments(memory?: BuiltInMemory, fullBuiltIns = true): REnvironmentInformation {
 	const builtInEnv = new Environment(undefined as unknown as IEnvironment, true);
-	builtInEnv.memory = fullBuiltIns ? getDefaultBuiltInDefinitions().builtInMemory : getDefaultBuiltInDefinitions().emptyBuiltInMemory;
+	builtInEnv.memory = memory ?? (fullBuiltIns ? getDefaultBuiltInDefinitions().builtInMemory : getDefaultBuiltInDefinitions().emptyBuiltInMemory);
 
 	return {
 		current: new Environment(builtInEnv, false),

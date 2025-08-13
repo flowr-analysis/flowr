@@ -140,7 +140,7 @@ export function getDefaultBuiltInDefinitions(): BuiltIns {
 	return builtIns;
 }
 
-export function getBuildInDefinitions(definitions: BuiltInDefinitions, loadDefaults: boolean | undefined): BuiltIns {
+export function getBuiltInDefinitions(definitions: BuiltInDefinitions, loadDefaults: boolean | undefined): BuiltIns {
 	let builtIns = new BuiltIns();
 
 	if(loadDefaults) {

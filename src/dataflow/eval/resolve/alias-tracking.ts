@@ -151,7 +151,6 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
  * @param full               - Whether to track aliases on resolve
  * @param resolve            - Variable resolve mode
  */
-// TODO TSchoeller Fix calls to this function
 export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, builtInEnvironment, graph, idMap, full = true, resolve }: ResolveInfo): ResolveResult {
 	if(id === undefined) {
 		return Top;

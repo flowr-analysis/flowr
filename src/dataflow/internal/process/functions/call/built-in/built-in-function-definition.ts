@@ -144,7 +144,7 @@ export function processFunctionDefinition<OtherInfo>(
 // this favors the bigger environment
 export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation, defaultEnvironment: IEnvironment): REnvironmentInformation {
 
-	callerEnvironment ??= initializeCleanEnvironments(true);
+	callerEnvironment ??= initializeCleanEnvironments(undefined, true);
 	let level = callerEnvironment.level ?? 0;
 
 	if(baseEnvironment.level !== level) {

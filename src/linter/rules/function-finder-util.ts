@@ -8,10 +8,16 @@ import type { Identifier } from '../../dataflow/environments/identifier';
 import type { LintingResult } from '../linter-format';
 import { LintingCertainty, LintingPrettyPrintContext } from '../linter-format';
 import type { FlowrSearchElement, FlowrSearchElements } from '../../search/flowr-search';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { MergeableRecord } from '../../util/objects';
 import { formatRange } from '../../util/mermaid/dfg';
 import type { LintingRuleTag } from '../linter-tags';
+import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
+import { isUndefined } from '../../util/assert';
+import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
+import type { DataflowInformation } from '../../dataflow/info';
+import type { FlowrConfigOptions } from '../../config';
+import { isFunctionCallVertex } from '../../dataflow/graph/vertex';
 
 export interface FunctionsResult extends LintingResult {
     function: string
@@ -44,24 +50,46 @@ export const funtionFinderUtil = {
 				})
 		);
 	},
-	processSearchResult: (elements: FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>) => {
+	processSearchResult: (elements: FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>, data: { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions }) => {
 		const metadata: FunctionsMetadata = {
 			totalCalls:               0,
 			totalFunctionDefinitions: 0
 		};
+
+		const results = elements.getElements()
+			.flatMap(element => {
+				metadata.totalCalls++;
+				return enrichmentContent(element, Enrichment.CallTargets).targets.map(target => {
+					metadata.totalFunctionDefinitions++;
+					return {
+						node:   element.node,
+						range:  element.node.info.fullRange as SourceRange,
+						target: target as Identifier
+					};
+				});
+			});
+
+		const args = results.filter(element => {
+			return !isUndefined(ReadFunctions.find(f => f.name === element.node.lexeme));
+		}).forEach(element =>{
+			const info = ReadFunctions.find(f => f.name === element.node.lexeme);
+			const vert = data.dataflow.graph.getVertex(element.node.info.id);
+			if(isFunctionCallVertex(vert)){
+				return getArgumentStringValue(
+					data.config.solver.variables, 
+					data.dataflow.graph,
+					vert, 
+					info?.argIdx, 
+					info?.argName, 
+					info?.resolveValue);
+			} 
+		});
+
+		console.log(args);
+
 		return {
-			results: elements.getElements()
-				.flatMap(element => {
-					metadata.totalCalls++;
-					return enrichmentContent(element, Enrichment.CallTargets).targets.map(target => {
-						metadata.totalFunctionDefinitions++;
-						return {
-							range:  element.node.info.fullRange as SourceRange,
-							target: target as Identifier
-						};
-					});
-				})
-				.map(element => ({
+			results: 
+				results.map(element => ({
 					certainty: LintingCertainty.Definitely,
 					function:  element.target,
 					range:     element.range

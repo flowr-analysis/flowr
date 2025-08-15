@@ -28,7 +28,7 @@ function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironme
 
 	const parent = base.parent.builtInEnv ? base.parent : appendIEnvironmentWith(base.parent, next.parent);
 
-	const out = new Environment(parent, false);
+	const out = new Environment(parent);
 	out.memory = map;
 	return out;
 }

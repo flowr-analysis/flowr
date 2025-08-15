@@ -14,7 +14,7 @@ describe('Initialization', () => {
 	});
 	test(label('Clean creation should create independent new environments', ['lexicographic-scope'], ['other']), () => {
 		const clean = initializeCleanEnvironments();
-		clean.current.parent = new Environment(clean.current.parent, false);
+		clean.current.parent = new Environment(clean.current.parent);
 		const newParentId = clean.current.parent.id;
 
 		const second = initializeCleanEnvironments();

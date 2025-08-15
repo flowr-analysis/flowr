@@ -16,7 +16,7 @@ import { expensiveTrace } from '../../../../../../util/log';
 import { sourceRequest } from './built-in-source';
 import { EdgeType } from '../../../../../graph/edge';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import type { IEnvironment, REnvironmentInformation } from '../../../../../environments/environment';
+import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { appendEnvironment } from '../../../../../environments/append';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -62,7 +62,7 @@ export function processEvalCall<OtherInfo>(
 		return information;
 	}
 
-	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, data.environment, data.builtInEnvironment, data.completeAst.idMap, data.flowrConfig);
+	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, data.environment, data.completeAst.idMap, data.flowrConfig);
 
 	if(code) {
 		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId, name.location);
@@ -99,7 +99,7 @@ export function processEvalCall<OtherInfo>(
 	return information;
 }
 
-function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, env: REnvironmentInformation, builtInEnvironment: IEnvironment, idMap: AstIdMap, config: FlowrConfigOptions): string[] | undefined {
+function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, env: REnvironmentInformation, idMap: AstIdMap, config: FlowrConfigOptions): string[] | undefined {
 	const val = evalArgument;
 
 	if(
@@ -118,7 +118,7 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 				return collectStrings(resolved.elements);
 			}
 		} else if(arg.value?.type === RType.FunctionCall && arg.value.named && ['paste', 'paste0'].includes(arg.value.functionName.content)) {
-			return handlePaste(config, arg.value.arguments, env, builtInEnvironment, idMap, arg.value.functionName.content === 'paste' ? [' '] : ['']);
+			return handlePaste(config, arg.value.arguments, env, idMap, arg.value.functionName.content === 'paste' ? [' '] : ['']);
 		}
 		return undefined;
 	} else if(val.type === RType.Symbol) {
@@ -130,7 +130,7 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 	}
 }
 
-function getAsString(config: FlowrConfigOptions, val: RNode<ParentInformation> | undefined, env: REnvironmentInformation, builtInEnvironment: IEnvironment, idMap: AstIdMap): string[] | undefined {
+function getAsString(config: FlowrConfigOptions, val: RNode<ParentInformation> | undefined, env: REnvironmentInformation, idMap: AstIdMap): string[] | undefined {
 	if(!val) {
 		return undefined;
 	}
@@ -145,10 +145,10 @@ function getAsString(config: FlowrConfigOptions, val: RNode<ParentInformation> |
 	return undefined;
 }
 
-function handlePaste(config: FlowrConfigOptions, args: readonly RFunctionArgument<ParentInformation>[], env: REnvironmentInformation, builtInEnvironment: IEnvironment, idMap: AstIdMap, sepDefault: string[]): string[] | undefined {
+function handlePaste(config: FlowrConfigOptions, args: readonly RFunctionArgument<ParentInformation>[], env: REnvironmentInformation, idMap: AstIdMap, sepDefault: string[]): string[] | undefined {
 	const sepArg = args.find(v => v !== EmptyArgument && v.name?.content === 'sep');
 	if(sepArg) {
-		const res = sepArg !== EmptyArgument && sepArg.value ? getAsString(config, sepArg.value, env, builtInEnvironment, idMap) : undefined;
+		const res = sepArg !== EmptyArgument && sepArg.value ? getAsString(config, sepArg.value, env, idMap) : undefined;
 		if(!res) {
 			// sep not resolvable clearly / unknown
 			return undefined;
@@ -158,7 +158,7 @@ function handlePaste(config: FlowrConfigOptions, args: readonly RFunctionArgumen
 
 	const allArgs = args
 		.filter(v => v !== EmptyArgument && v.name?.content !== 'sep' && v.value)
-		.map(v => getAsString(config, (v as RArgument<ParentInformation>).value, env, builtInEnvironment, idMap));
+		.map(v => getAsString(config, (v as RArgument<ParentInformation>).value, env, idMap));
 	if(allArgs.some(isUndefined)) {
 		return undefined;
 	}

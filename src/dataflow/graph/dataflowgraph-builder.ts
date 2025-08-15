@@ -57,10 +57,9 @@ export class DataflowGraphBuilder extends DataflowGraph {
 				in:                subflow.in.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), controlDependencies: o.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
 				unknownReferences: subflow.unknownReferences.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), controlDependencies: o.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) }))
 			} as DataflowFunctionFlowInformation,
-			exitPoints:         exitPoints.map(normalizeIdToNumberIfPossible),
-			cds:                info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
-			environment:        info?.environment,
-			builtInEnvironment: info?.builtInEnvironment
+			exitPoints:  exitPoints.map(normalizeIdToNumberIfPossible),
+			cds:         info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
+			environment: info?.environment
 		}, asRoot);
 	}
 
@@ -88,16 +87,15 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		asRoot: boolean = true) {
 		const onlyBuiltInAuto = info?.reads?.length === 1 && isBuiltIn(info?.reads[0]);
 		this.addVertex({
-			tag:                VertexType.FunctionCall,
-			id:                 normalizeIdToNumberIfPossible(id),
+			tag:         VertexType.FunctionCall,
+			id:          normalizeIdToNumberIfPossible(id),
 			name,
-			args:               args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: normalizeIdToNumberIfPossible(a.nodeId), controlDependencies: undefined }),
-			environment:        (info?.onlyBuiltIn || onlyBuiltInAuto) ? undefined : info?.environment ?? initializeCleanEnvironments(),
-			builtInEnvironment: info?.builtInEnvironment,
-			cds:                info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
-			onlyBuiltin:        info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false,
-			origin:             info?.origin ?? [ getDefaultProcessor(name) ?? 'function' ],
-			link:               info?.link
+			args:        args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: normalizeIdToNumberIfPossible(a.nodeId), controlDependencies: undefined }),
+			environment: (info?.onlyBuiltIn || onlyBuiltInAuto) ? undefined : info?.environment ?? initializeCleanEnvironments(),
+			cds:         info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
+			onlyBuiltin: info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false,
+			origin:      info?.origin ?? [ getDefaultProcessor(name) ?? 'function' ],
+			link:        info?.link
 		}, asRoot);
 		this.addArgumentLinks(id, args);
 		if(info?.returns) {

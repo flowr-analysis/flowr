@@ -41,7 +41,7 @@ describe('unknown-side-effect', () => {
 		onUnknownSideEffect(mockHandler);
 		const graph = new DataflowGraph(undefined);
 		const env = {
-			current: new Environment(defaultEnv().current, false),
+			current: new Environment(defaultEnv().current),
 			level:   0
 		};
 		handleUnknownSideEffect(graph, env, {} as unknown as NodeId);

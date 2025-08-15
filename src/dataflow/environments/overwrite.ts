@@ -55,7 +55,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 		parent = base.parent;
 	}
 
-	const out = new Environment(parent, false);
+	const out = new Environment(parent);
 	out.memory = map;
 	return out;
 }

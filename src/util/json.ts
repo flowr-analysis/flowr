@@ -44,9 +44,6 @@ function bigStringify(obj: unknown, current: string, send: (s: string) => void):
 		return current + 'null';
 	} else if(isDefaultBuiltInEnvironment(obj)) {
 		return current + '<BuiltInEnvironment>';
-	// TODO TSchoeller Is this case important?
-	//} else if(obj === EmptyBuiltInEnvironment) {
-	//	return current + '<EmptyBuiltInEnvironment>';
 	} else if(Array.isArray(obj)) {
 		let str = current + '[';
 		for(let i = 0; i < obj.length; i++) {

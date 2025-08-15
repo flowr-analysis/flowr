@@ -175,7 +175,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	const { open, close } = mermaidNodeBrackets(info.tag);
 	id = escapeId(id);
 
-	if(info.environment && info.builtInEnvironment && mermaid.includeEnvironments) {
+	if(info.environment && mermaid.includeEnvironments) {
 		if(info.environment.level > 0 || info.environment.current.memory.size !== 0) {
 			mermaid.nodeLines.push(
 				`    %% Environment of ${id} [level: ${info.environment.level}]:`,

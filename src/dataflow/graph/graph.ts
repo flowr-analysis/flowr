@@ -318,7 +318,7 @@ export class DataflowGraph<
 
 		const fallback = vertex.tag === VertexType.VariableDefinition || vertex.tag === VertexType.Use || vertex.tag === VertexType.Value || (vertex.tag === VertexType.FunctionCall && vertex.onlyBuiltin) ? undefined : DataflowGraph.DEFAULT_ENVIRONMENT;
 		// keep a clone of the original environment
-		const environment = vertex.environment && vertex.builtInEnvironment ? cloneEnvironmentInformation(vertex.environment) : fallback;
+		const environment = vertex.environment ? cloneEnvironmentInformation(vertex.environment) : fallback;
 
 		this.vertexInformation.set(vertex.id, {
 			...vertex,
@@ -523,7 +523,7 @@ export interface IEnvironmentJson {
     readonly id: number;
     parent:      IEnvironmentJson;
     memory:      Record<Identifier, IdentifierDefinition[]>;
-    builtInEnv:  boolean;
+    builtInEnv:  true | undefined;
 }
 
 interface REnvironmentInformationJson {
@@ -537,12 +537,15 @@ function envFromJson(json: IEnvironmentJson): IEnvironment {
 	for(const [key, value] of Object.entries(json.memory)) {
 		memory.set(key as Identifier, value);
 	}
-	return {
-		id:         json.id,
-		parent:     parent as IEnvironment,
-		builtInEnv: json.builtInEnv,
+	const obj: Writable<IEnvironment> = {
+		id:     json.id,
+		parent: parent as IEnvironment,
 		memory
 	};
+	if(json.builtInEnv) {
+		obj.builtInEnv = true;
+	}
+	return obj as IEnvironment;
 }
 
 function renvFromJson(json: REnvironmentInformationJson): REnvironmentInformation {

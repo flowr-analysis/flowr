@@ -9,6 +9,7 @@ import { compactRecord } from '../../util/objects';
 
 /* we have to kill all processors linked in the default environment as they cannot be serialized and they are shared anyway */
 function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
+
 	if(env === undefined) {
 		return undefined as unknown as IEnvironment;
 	} else if(env.builtInEnv) {
@@ -27,10 +28,9 @@ function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
 	}
 
 	return {
-		id:         env.id,
-		parent:     killBuiltInEnv(env.parent),
-		memory,
-		builtInEnv: false
+		id:     env.id,
+		parent: killBuiltInEnv(env.parent),
+		memory
 	};
 }
 

@@ -258,7 +258,7 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 		return [];
 	}
 
-	if(info.name !== undefined && (environment !== undefined || info.environment !== undefined) && info.builtInEnvironment !== undefined) {
+	if(info.name !== undefined && (environment !== undefined || info.environment !== undefined)) {
 		const functionCallDefs = resolveByName(
 			info.name, environment ?? info.environment as REnvironmentInformation, ReferenceType.Function
 		)?.map(d => d.nodeId) ?? [];

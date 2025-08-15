@@ -81,17 +81,16 @@ export function processKnownFunctionCall<OtherInfo>(
 	}
 
 	finalGraph.addVertex({
-		tag:                VertexType.FunctionCall,
-		id:                 rootId,
-		environment:        data.environment,
-		builtInEnvironment: data.builtInEnvironment,
-		name:               functionCallName,
+		tag:               VertexType.FunctionCall,
+		id:                rootId,
+		environment:       data.environment,
+		name:              functionCallName,
 		/* will be overwritten accordingly */
-		onlyBuiltin:        false,
-		cds:                data.controlDependencies,
-		args:               reverseOrder ? [...callArgs].reverse() : callArgs,
-		indicesCollection:  indicesCollection,
-		origin:             origin === 'default' ? ['function'] : [origin]
+		onlyBuiltin:       false,
+		cds:               data.controlDependencies,
+		args:              reverseOrder ? [...callArgs].reverse() : callArgs,
+		indicesCollection: indicesCollection,
+		origin:            origin === 'default' ? ['function'] : [origin]
 	});
 
 	if(hasUnknownSideEffect) {

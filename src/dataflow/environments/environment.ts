@@ -56,10 +56,16 @@ export interface IEnvironment {
 	parent:      IEnvironment
 	/** Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions */
 	memory:      BuiltInMemory
-	/**  */
-	builtInEnv:  boolean
+	/**
+     * Is this a built-in environment that is not allowed to change? Please use this carefully and only for the top-most envs!
+     */
+	builtInEnv?: true | undefined
 }
 
+/**
+ * Please use this function only if you do not know the object type.
+ * Otherwise, rely on {@link IEnvironment#builtInEnv}
+ */
 export function isDefaultBuiltInEnvironment(obj: unknown) {
 	return typeof obj === 'object' && obj !== null && ((obj as Record<string, unknown>).builtInEnv === true);
 }
@@ -69,15 +75,18 @@ let environmentIdCounter = 1; // Zero is reserved for built-in environment
 /** @see REnvironmentInformation */
 export class Environment implements IEnvironment {
 	readonly id;
-	parent:     IEnvironment;
-	memory:     BuiltInMemory;
-	builtInEnv: boolean;
+	parent:      IEnvironment;
+	memory:      BuiltInMemory;
+	builtInEnv?: true;
 
-	constructor(parent: IEnvironment, isBuiltInDefault: boolean) {
+	constructor(parent: IEnvironment, isBuiltInDefault: true | undefined = undefined) {
 		this.id = isBuiltInDefault ? 0 : environmentIdCounter++;
 		this.parent = parent;
 		this.memory = new Map();
-		this.builtInEnv = isBuiltInDefault;
+		// do not store if not needed!
+		if(isBuiltInDefault) {
+			this.builtInEnv = isBuiltInDefault;
+		}
 	}
 }
 
@@ -123,7 +132,7 @@ export function initializeCleanEnvironments(memory?: BuiltInMemory, fullBuiltIns
 	builtInEnv.memory = memory ?? (fullBuiltIns ? getDefaultBuiltInDefinitions().builtInMemory : getDefaultBuiltInDefinitions().emptyBuiltInMemory);
 
 	return {
-		current: new Environment(builtInEnv, false),
+		current: new Environment(builtInEnv),
 		level:   0
 	};
 }

@@ -520,10 +520,10 @@ function extractEdgeIds(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceF
 }
 
 export interface IEnvironmentJson {
-	readonly id:      number;
-	parent:           IEnvironmentJson;
-	memory:           Record<Identifier, IdentifierDefinition[]>;
-	isBuiltInDefault: boolean;
+    readonly id: number;
+    parent:      IEnvironmentJson;
+    memory:      Record<Identifier, IdentifierDefinition[]>;
+    builtInEnv:  boolean;
 }
 
 interface REnvironmentInformationJson {
@@ -540,7 +540,7 @@ function envFromJson(json: IEnvironmentJson): IEnvironment {
 	return {
 		id:         json.id,
 		parent:     parent as IEnvironment,
-		builtInEnv: json.isBuiltInDefault,
+		builtInEnv: json.builtInEnv,
 		memory
 	};
 }

@@ -60,12 +60,8 @@ export interface IEnvironment {
 	builtInEnv:  boolean
 }
 
-export function hasDefaultBuiltInFlag(obj: unknown): obj is { builtInEnv: boolean } {
-	return typeof obj === 'object' && obj !== null && 'builtInEnv' in obj;
-}
-
-export function isDefaultBuiltInEnvironment(v: unknown) {
-	return hasDefaultBuiltInFlag(v) && v.builtInEnv;
+export function isDefaultBuiltInEnvironment(obj: unknown) {
+	return typeof obj === 'object' && obj !== null && ((obj as Record<string, unknown>).builtInEnv === true);
 }
 
 let environmentIdCounter = 1; // Zero is reserved for built-in environment
@@ -118,30 +114,6 @@ export interface REnvironmentInformation {
 	/** nesting level of the environment, will be `0` for the global/root environment */
 	readonly level:   number
 }
-
-
-/**
- * The built-in {@link REnvironmentInformation|environment} is the root of all environments.
- *
- * For its default content (when not overwritten by a flowR config),
- * see the {@link DefaultBuiltinConfig}.
- */
-//export const BuiltInEnvironment = new Environment(undefined as unknown as IEnvironment, true);
-//BuiltInEnvironment.memory = undefined as unknown as BuiltInMemory;
-
-/**
- * The twin of the {@link BuiltInEnvironment} but with less built ins defined for
- * cases in which we want some commonly overwritten variables to remain open.
- * If you do not know if you need the empty environment, you do not need the empty environment (right now).
- *
- * @see {@link BuiltInEnvironment}
- */
-//export const EmptyBuiltInEnvironment: IEnvironment = {
-//	id:               BuiltInEnvironment.id,
-//	memory:           undefined as unknown as BuiltInMemory,
-//	parent:           undefined as unknown as IEnvironment,
-//	isBuiltInDefault: true
-//};
 
 /**
  * Initialize a new {@link REnvironmentInformation|environment} with the built-ins.

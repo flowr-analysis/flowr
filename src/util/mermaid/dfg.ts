@@ -14,7 +14,6 @@ import { edgeTypeToName, splitEdgeTypes } from '../../dataflow/graph/edge';
 import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import { VertexType } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
-import { isDefaultBuiltInEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isBuiltIn } from '../../dataflow/environments/built-in';
 
@@ -159,7 +158,7 @@ export function printIdentifier(id: IdentifierDefinition): string {
 function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 	if(env === undefined) {
 		return ['??'];
-	} else if(isDefaultBuiltInEnvironment(env)) {
+	} else if(env.builtInEnv) {
 		return ['Built-in'];
 	}
 	const lines = [...printEnvironmentToLines(env.parent), `${env.id}${'-'.repeat(40)}`];

@@ -15,8 +15,7 @@ import type {
 	REnvironmentInformation
 } from '../../../../../environments/environment';
 import {
-	isDefaultBuiltInEnvironment
-	, makeAllMaybe } from '../../../../../environments/environment';
+	makeAllMaybe } from '../../../../../environments/environment';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
 import type { IdentifierReference } from '../../../../../environments/identifier';
@@ -105,7 +104,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 			let current: IEnvironment | undefined = environment.current;
 
 			let hasUpdate = false;
-			while(!isDefaultBuiltInEnvironment(current)) {
+			while(!current?.builtInEnv) {
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
 						if(!isBuiltIn(def.definedAt)) {

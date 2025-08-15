@@ -1,12 +1,12 @@
 import type { IEnvironment, REnvironmentInformation } from './environment';
-import { isDefaultBuiltInEnvironment , Environment } from './environment';
+import {  Environment } from './environment';
 import type { Identifier, IdentifierDefinition } from './identifier';
 
 function cloneEnvironment(environment: IEnvironment, recurseParents: boolean): IEnvironment
 function cloneEnvironment(environment: IEnvironment | undefined, recurseParents: boolean): IEnvironment | undefined {
 	if(environment === undefined) {
 		return undefined;
-	} else if(isDefaultBuiltInEnvironment(environment)) {
+	} else if(environment.builtInEnv) {
 		return environment; // do not clone the built-in environment
 	}
 	/* make sure the clone has the same id */

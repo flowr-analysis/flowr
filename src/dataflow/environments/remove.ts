@@ -1,5 +1,4 @@
 import type { IEnvironment, REnvironmentInformation } from './environment';
-import { isDefaultBuiltInEnvironment } from './environment';
 
 import type { Identifier } from './identifier';
 import { happensInEveryBranch } from '../info';
@@ -48,7 +47,7 @@ export function removeAll(definitions: readonly { nodeId: NodeId, name: Identifi
 			}
 		}
 		current = current.parent;
-	} while(!isDefaultBuiltInEnvironment(current));
+	} while(!current.builtInEnv);
 
 	// we never remove built ins so we can stop one early
 	return environment;

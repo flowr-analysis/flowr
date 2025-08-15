@@ -1,6 +1,6 @@
 import { guard } from '../../util/assert';
 import type { IEnvironment, REnvironmentInformation } from './environment';
-import { isDefaultBuiltInEnvironment , Environment } from './environment';
+import {  Environment } from './environment';
 import type { IdentifierDefinition } from './identifier';
 
 function uniqueMergeValues(old: IdentifierDefinition[], value: readonly IdentifierDefinition[]): IdentifierDefinition[] {
@@ -26,7 +26,7 @@ function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironme
 		}
 	}
 
-	const parent = isDefaultBuiltInEnvironment(base.parent) ? base.parent : appendIEnvironmentWith(base.parent, next.parent);
+	const parent = base.parent.builtInEnv ? base.parent : appendIEnvironmentWith(base.parent, next.parent);
 
 	const out = new Environment(parent, false);
 	out.memory = map;

@@ -224,7 +224,20 @@ export type ConfigOfBuiltInMappingName<N extends BuiltInMappingName> = Parameter
 export type BuiltInMemory = Map<Identifier, IdentifierDefinition[]>
 
 export class BuiltIns {
+	/**
+     * The built-in {@link REnvironmentInformation|environment} is the root of all environments.
+     *
+     * For its default content (when not overwritten by a flowR config),
+     * see the {@link DefaultBuiltinConfig}.
+     */
 	builtInMemory:      BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+	/**
+     * The twin of the {@link builtInMemory} but with less built ins defined for
+     * cases in which we want some commonly overwritten variables to remain open.
+     * If you do not know if you need the empty environment, you do not need the empty environment (right now).
+     *
+     * @see {@link builtInMemory}
+     */
 	emptyBuiltInMemory: BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
 
 	set(identifier: Identifier, definition: IdentifierDefinition[], includeInEmptyMemory: boolean | undefined): void {

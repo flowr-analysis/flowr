@@ -6,9 +6,8 @@ import type {
 	IEnvironment,
 	REnvironmentInformation
 } from '../../../../src/dataflow/environments/environment';
-import {
-	isDefaultBuiltInEnvironment
-} from '../../../../src/dataflow/environments/environment';
+
+
 import type { IdentifierDefinition } from '../../../../src/dataflow/environments/identifier';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 
@@ -23,7 +22,7 @@ export class EnvironmentBuilderPrinter {
 	private process() {
 		let current = this.env.current;
 		let i = this.env.level;
-		while(current !== undefined && !isDefaultBuiltInEnvironment(current)) {
+		while(!current?.builtInEnv) {
 			if(i-- > 0) {
 				this.push();
 			}

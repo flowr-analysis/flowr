@@ -1,5 +1,4 @@
 import type { IEnvironment } from '../../dataflow/environments/environment';
-import { isDefaultBuiltInEnvironment } from '../../dataflow/environments/environment';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import { VertexType } from '../../dataflow/graph/vertex';
@@ -12,7 +11,7 @@ import { compactRecord } from '../../util/objects';
 function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
 	if(env === undefined) {
 		return undefined as unknown as IEnvironment;
-	} else if(isDefaultBuiltInEnvironment(env)) {
+	} else if(env.builtInEnv) {
 		/* in this case, the reference would be shared for sure */
 		return {
 			id:         env.id,

@@ -1,5 +1,4 @@
 import type { IEnvironment, REnvironmentInformation } from './environment';
-import { isDefaultBuiltInEnvironment } from './environment';
 import { Ternary } from '../../util/logic';
 import type { Identifier, IdentifierDefinition } from './identifier';
 import { isReferenceType, ReferenceType } from './identifier';
@@ -49,7 +48,7 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 			}
 		}
 		current = current.parent;
-	} while(!isDefaultBuiltInEnvironment(current));
+	} while(!current.builtInEnv);
 
 	const builtIns = current.memory.get(name);
 	if(definitions) {

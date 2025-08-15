@@ -1,6 +1,6 @@
 import { guard } from '../../util/assert';
 import type { IEnvironment, REnvironmentInformation } from './environment';
-import { isDefaultBuiltInEnvironment , Environment } from './environment';
+import {  Environment } from './environment';
 import type { IdentifierDefinition } from './identifier';
 import type { ControlDependency } from '../info';
 import { log } from '../../util/log';
@@ -50,7 +50,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 
 	let parent: IEnvironment;
 	if(includeParent) {
-		parent = isDefaultBuiltInEnvironment(base.parent) ? base.parent : overwriteIEnvironmentWith(base.parent, next.parent, includeParent, applyCds);
+		parent = base.parent.builtInEnv ? base.parent : overwriteIEnvironmentWith(base.parent, next.parent, includeParent, applyCds);
 	} else {
 		parent = base.parent;
 	}

@@ -10,8 +10,13 @@ import { linkFunctionCalls } from '../../../../linker';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { unpackArgument } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
-import type { IEnvironment, REnvironmentInformation } from '../../../../../environments/environment';
-import { makeAllMaybe } from '../../../../../environments/environment';
+import type {
+	IEnvironment,
+	REnvironmentInformation
+} from '../../../../../environments/environment';
+import {
+	isDefaultBuiltInEnvironment
+	, makeAllMaybe } from '../../../../../environments/environment';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
 import type { IdentifierReference } from '../../../../../environments/identifier';
@@ -82,20 +87,25 @@ function processNextExpression(
 function updateSideEffectsForCalledFunctions(calledEnvs: {
 	functionCall: NodeId;
 	called:       readonly DataflowGraphVertexInfo[]
-}[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[], defaultEnvironment: IEnvironment) {
+}[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[]) {
 	for(const { functionCall, called } of calledEnvs) {
+		if(called.length === 0) {
+			continue;
+		}
+
 		const callDependencies = nextGraph.getVertex(functionCall, true)?.cds;
 		for(const calledFn of called) {
 			guard(calledFn.tag === VertexType.FunctionDefinition, 'called function must be a function definition');
 			// only merge the environments they have in common
-			let environment = calledFn.environment;
+			let environment = calledFn.subflow.environment;
 			while(environment.level > inputEnvironment.level) {
 				environment = popLocalEnvironment(environment);
 			}
 			// update alle definitions to be defined at this function call
 			let current: IEnvironment | undefined = environment.current;
+
 			let hasUpdate = false;
-			while(current !== undefined && current.id !== defaultEnvironment.id) {
+			while(!isDefaultBuiltInEnvironment(current)) {
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
 						if(!isBuiltIn(def.definedAt)) {
@@ -176,7 +186,7 @@ export function processExpressionList<OtherInfo>(
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph);
 		// if the called function has global redefinitions, we have to keep them within our environment
-		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out, data.builtInEnvironment);
+		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out);
 
 		for(const { nodeId } of processed.out) {
 			listEnvironments.add(nodeId);

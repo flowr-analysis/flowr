@@ -24,7 +24,7 @@ import { isReferenceType, ReferenceType } from '../../../../../environments/iden
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
-import type { IEnvironment, REnvironmentInformation } from '../../../../../environments/environment';
+import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { initializeCleanEnvironments } from '../../../../../environments/environment';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
@@ -208,8 +208,7 @@ export function updateNestedFunctionClosures(
  */
 export function updateNestedFunctionCalls(
 	graph: DataflowGraph,
-	outEnvironment: REnvironmentInformation,
-	defaultEnvironment: IEnvironment
+	outEnvironment: REnvironmentInformation
 ) {
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition

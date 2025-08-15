@@ -134,7 +134,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	}
 
 	// finally, resolve linkages
-	updateNestedFunctionCalls(df.graph, df.environment, dfData.builtInEnvironment);
+	updateNestedFunctionCalls(df.graph, df.environment);
 
 
 	resolveLinkToSideEffects(completeAst, df.graph);

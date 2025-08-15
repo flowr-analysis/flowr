@@ -10,9 +10,10 @@ import type {
 } from '../../../../src/dataflow/environments/environment';
 import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment';
 import { define } from '../../../../src/dataflow/environments/define';
-import { pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping';
+import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping';
 import type { ControlDependency } from '../../../../src/dataflow/info';
 import { defaultConfigOptions } from '../../../../src/config';
+import { appendEnvironment } from '../../../../src/dataflow/environments/append';
 
 export function variable(name: string, definedAt: NodeId): IdentifierDefinition {
 	return { name, type: ReferenceType.Variable, nodeId: '_0', definedAt, controlDependencies: undefined };
@@ -149,22 +150,21 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 		return new EnvironmentBuilder(newEnvironment.current, this.builtInEnv, newEnvironment.level);
 	}
 
-	// TODO TSchoeller Clarify unused methods
-	///**
-	// * Pops the last environment (must be local) from the environment stack.
-	// */
-	//popEnv(): EnvironmentBuilder {
-	//	const underlyingEnv = popLocalEnvironment(this);
-	//	return new EnvironmentBuilder(underlyingEnv.current, underlyingEnv.level);
-	//}
+	/**
+	 * Pops the last environment (must be local) from the environment stack.
+	 */
+	popEnv(): EnvironmentBuilder {
+		const underlyingEnv = popLocalEnvironment(this);
+		return new EnvironmentBuilder(underlyingEnv.current, this.builtInEnv, underlyingEnv.level);
+	}
 
-	///**
-	// * Appends the `writes` in other to the given environment
-	// * (i.e., those _may_ happen).
-	// * @param other - The next environment.
-	// */
-	//appendWritesOf(other: REnvironmentInformation) {
-	//	const appendedEnv = appendEnvironment(this, other);
-	//	return new EnvironmentBuilder(appendedEnv.current, appendedEnv.level);
-	//}
+	/**
+	 * Appends the `writes` in other to the given environment
+	 * (i.e., those _may_ happen).
+	 * @param other - The next environment.
+	 */
+	appendWritesOf(other: REnvironmentInformation) {
+		const appendedEnv = appendEnvironment(this, other);
+		return new EnvironmentBuilder(appendedEnv.current, this.builtInEnv, appendedEnv.level);
+	}
 }

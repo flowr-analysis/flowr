@@ -15,7 +15,6 @@ import { VertexType } from '../../dataflow/graph/vertex';
 import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import { SliceDirection } from '../../core/steps/all/static-slicing/00-slice';
 import { invertDfg } from '../../dataflow/graph/invert-dfg';
-import {DataflowInformation} from "../../dataflow/info";
 import type { DataflowInformation } from '../../dataflow/info';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
@@ -32,7 +31,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  * @param cache     - A cache to store the results of the slice. If provided, the slice may use this cache to speed up the slicing process.
  */
 export function staticSlice(
-    { graph }: DataflowInformation,
+	info: DataflowInformation,
 	{ idMap }: NormalizedAst,
 	criteria: SlicingCriteria,
 	direction: SliceDirection,
@@ -44,6 +43,8 @@ export function staticSlice(
 	expensiveTrace(slicerLogger,
 		() => `calculating ${direction} slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`
 	);
+
+	let { graph } = info;
 
 	if(direction === SliceDirection.Forward){
 		graph = invertDfg(graph);
@@ -100,7 +101,7 @@ export function staticSlice(
 
 		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
-				sliceForCall(current, currentVertex, graph, queue);
+				sliceForCall(current, currentVertex, info, queue);
 			}
 
 			const ret = handleReturns(id, queue, currentEdges, baseEnvFingerprint, baseEnvironment);

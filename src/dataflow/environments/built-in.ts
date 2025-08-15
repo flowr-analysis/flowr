@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../processor';
-import type { DataflowInformation, ExitPointType } from '../info';
+import type { DataflowInformation, ExitPoint, ExitPointType } from '../info';
 import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling';
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access';
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else';
@@ -27,8 +27,6 @@ import { processLibrary } from '../internal/process/functions/call/built-in/buil
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source';
 import type { ForceArguments } from '../internal/process/functions/call/common';
 import { processApply } from '../internal/process/functions/call/built-in/built-in-apply';
-import { registerBuiltInDefinitions } from './built-in-config';
-import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
 import { processVector } from '../internal/process/functions/call/built-in/built-in-vector';
@@ -145,15 +143,15 @@ function defaultBuiltInProcessor<OtherInfo>(
 					continue;
 				}
 				res.graph.updateToFunctionCall({
-					tag:         VertexType.FunctionCall,
-					id:          fnId,
-					name:        fnName,
-					args:        [],
-					environment: data.environment,
-                    builtInEnvironment: data.builtInEnvironment,
-                    onlyBuiltin: false,
-					cds:         data.controlDependencies,
-					origin:      [activeProcessor]
+					tag:                VertexType.FunctionCall,
+					id:                 fnId,
+					name:               fnName,
+					args:               [],
+					environment:        data.environment,
+					builtInEnvironment: data.builtInEnvironment,
+					onlyBuiltin:        false,
+					cds:                data.controlDependencies,
+					origin:             [activeProcessor]
 				});
 			}
 		}

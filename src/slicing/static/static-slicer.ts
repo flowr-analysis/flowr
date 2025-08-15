@@ -13,32 +13,41 @@ import { initializeCleanEnvironments } from '../../dataflow/environments/environ
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
+import { SliceDirection } from '../../core/steps/all/static-slicing/00-slice';
+import { invertDfg } from '../../dataflow/graph/invert-dfg';
+import {DataflowInformation} from "../../dataflow/info";
 import type { DataflowInformation } from '../../dataflow/info';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
 /**
- * This returns the ids to include in the static backward slice, when slicing with the given seed id's (must be at least one).
+ * This returns the ids to include in the static slice of the given type, when slicing with the given seed id's (must be at least one).
  * <p>
  * The returned ids can be used to {@link reconstructToCode|reconstruct the slice to R code}.
  *
  * @param info      - The dataflow information used for slicing.
  * @param criteria  - The criteria to slice on.
+ * @param direction - The direction to slice in.
  * @param threshold - The maximum number of nodes to visit in the graph. If the threshold is reached, the slice will side with inclusion and drop its minimal guarantee. The limit ensures that the algorithm halts.
  * @param cache     - A cache to store the results of the slice. If provided, the slice may use this cache to speed up the slicing process.
  */
-export function staticSlicing(
-	info: DataflowInformation,
+export function staticSlice(
+    { graph }: DataflowInformation,
 	{ idMap }: NormalizedAst,
 	criteria: SlicingCriteria,
+	direction: SliceDirection,
 	threshold = 75,
 	cache?: Map<Fingerprint, Set<NodeId>>
 ): Readonly<SliceResult> {
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice');
 	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, idMap);
 	expensiveTrace(slicerLogger,
-		() => `calculating slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`
+		() => `calculating ${direction} slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`
 	);
+
+	if(direction === SliceDirection.Forward){
+		graph = invertDfg(graph);
+	}
 
 	const queue = new VisitingQueue(threshold, cache);
 
@@ -58,7 +67,7 @@ export function staticSlicing(
 		/* additionally,
 		 * include all the implicit side effects that we have to consider as we are unable to narrow them down
 		 */
-		for(const id of info.graph.unknownSideEffects) {
+		for(const id of graph.unknownSideEffects) {
 			if(typeof id !== 'object') {
 				/* otherwise, their target is just missing */
 				queue.add(id, emptyEnv, basePrint, true);
@@ -71,7 +80,7 @@ export function staticSlicing(
 
 		const { baseEnvironment, id, onlyForSideEffects, envFingerprint: baseEnvFingerprint } = current;
 
-		const currentInfo = info.graph.get(id, true);
+		const currentInfo = graph.get(id, true);
 		if(currentInfo === undefined) {
 			slicerLogger.warn(`id: ${id} must be in graph but can not be found, keep in slice to be sure`);
 			continue;
@@ -81,7 +90,7 @@ export function staticSlicing(
 
 		// we only add control dependencies iff 1) we are in different function call or 2) they have, at least, the same nesting as the slicing seed
 		if(currentVertex.cds && currentVertex.cds.length > 0) {
-			const topLevel = info.graph.isRoot(id) || sliceSeedIds.has(id);
+			const topLevel = graph.isRoot(id) || sliceSeedIds.has(id);
 			for(const cd of currentVertex.cds.filter(({ id }) => !queue.hasId(id))) {
 				if(!topLevel || (idMap.get(cd.id)?.info.nesting ?? 0) >= minNesting) {
 					queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false);
@@ -91,7 +100,7 @@ export function staticSlicing(
 
 		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
-				sliceForCall(current, currentVertex, info, queue);
+				sliceForCall(current, currentVertex, graph, queue);
 			}
 
 			const ret = handleReturns(id, queue, currentEdges, baseEnvFingerprint, baseEnvironment);

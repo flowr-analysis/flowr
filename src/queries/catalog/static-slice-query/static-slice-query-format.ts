@@ -11,6 +11,7 @@ import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeStaticSliceQuery } from './static-slice-query-executor';
 import { summarizeIdsIfTooLong } from '../../query-print';
+import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** Calculates and returns all clusters encountered in the dataflow graph. */
@@ -22,6 +23,8 @@ export interface StaticSliceQuery extends BaseQueryFormat {
 	readonly noReconstruction?: boolean;
 	/** Should the magic comments (force-including lines within the slice) be ignored? */
 	readonly noMagicComments?:  boolean
+	/** The direction to slice in. Defaults to backward slicing if unset. */
+	readonly direction?:        SliceDirection
 }
 
 export interface StaticSliceQueryResult extends BaseQueryResult {
@@ -65,7 +68,8 @@ export const StaticSliceQueryDefinition = {
 		type:             Joi.string().valid('static-slice').required().description('The type of the query.'),
 		criteria:         Joi.array().items(Joi.string()).min(0).required().description('The slicing criteria to use.'),
 		noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),
-		noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?')
+		noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?'),
+		direction:        Joi.string().valid(...Object.values(SliceDirection)).optional().description('The direction to slice in. Defaults to backward slicing if unset.')
 	}).description('Slice query used to slice the dataflow graph'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult) => {
 		const flattened: NodeId[] = [];

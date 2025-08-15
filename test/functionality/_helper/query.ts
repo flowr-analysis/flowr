@@ -18,7 +18,7 @@ import type { KnownParser } from '../../../src/r-bridge/parser';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 
 
-function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
+function normalizeResults<Queries extends Query>(result: Awaited<QueryResults<Queries['type']>>): QueryResultsWithoutMeta<Queries> {
 	return JSON.parse(JSON.stringify(result, (key: unknown, value: unknown) => {
 		if(key === '.meta') {
 			return undefined;
@@ -72,7 +72,7 @@ export function assertQuery<
 			getId:   deterministicCountingIdGenerator(0)
 		}, defaultConfigOptions).allRemainingSteps();
 
-		const result = executeQueries<Queries['type'], VirtualArguments>({ dataflow: info.dataflow, ast: info.normalize, config: defaultConfigOptions }, queries);
+		const result = await Promise.resolve(executeQueries<Queries['type'], VirtualArguments>({ dataflow: info.dataflow, ast: info.normalize, config: defaultConfigOptions }, queries));
 
 		log.info(`total query time: ${result['.meta'].timing.toFixed(0)}ms (~1ms accuracy)`);
 

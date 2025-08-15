@@ -38,6 +38,7 @@ export const benchmarkOptions: OptionDefinition[] = [
 	{ name: 'threshold',     alias: 't', type: Number,  description: 'How many re-visits of the same node are ok?', defaultValue: undefined, typeLabel: '{underline number}' },
 	{ name: 'per-file-time-limit',       type: Number,  description: 'Time limit in milliseconds to process single file (disabled by default)', defaultValue: undefined, typeLabel: '{underline number}' },
 	{ name: 'sampling-strategy',         type: String,  description: 'Which strategy to use, when sampling is enabled', defaultValue: 'random', typeLabel: '{underline random/equidistant}' },
+	{ name: 'cfg',           alias: 'c', type: Boolean, description: 'Extract the control flow graph of the file (benchmark it too)' }
 ];
 
 export const benchmarkHelperOptions: OptionDefinition[] = [
@@ -47,6 +48,7 @@ export const benchmarkHelperOptions: OptionDefinition[] = [
 	{ name: 'file-id',       alias: 'd', type: Number,  description: 'A numeric file id that can be used to match an input and run-num to a file' },
 	{ name: 'run-num',       alias: 'r', type: Number,  description: 'The n-th time that the file with the given file-id is being benchmarked' },
 	{ name: 'slice',         alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction. Numbers will indicate: sample X random slices from all.', defaultValue: 'all', typeLabel: '{underline all/no}' },
+	{ name: 'cfg',           alias: 'c', type: Boolean, description: 'Extract the control flow graph of the file (benchmark it too)' },
 	{ name: 'output',        alias: 'o', type: String,  description: 'File to write the measurements to (appends a single line in JSON format)',  typeLabel: '{underline file}' },
 	{ name: 'parser',                    type: String,  description: 'The parser to use for the benchmark', defaultValue: 'r-shell', typeLabel: '{underline parser}' },
 	{ name: 'dataframe-shape-inference', type: Boolean, description: 'Infer the shape of data frames using abstract interpretation (includes control flow graph extraction)', defaultValue: false },

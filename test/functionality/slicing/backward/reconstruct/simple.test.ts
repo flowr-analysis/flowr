@@ -1,8 +1,8 @@
-import { assertReconstructed, withShell } from '../../_helper/shell';
-import { label } from '../../_helper/label';
-import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
-import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { assertReconstructed, withShell } from '../../../_helper/shell';
+import { label } from '../../../_helper/label';
+import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import type { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { describe } from 'vitest';
 
 describe.sequential('Simple', withShell(shell => {

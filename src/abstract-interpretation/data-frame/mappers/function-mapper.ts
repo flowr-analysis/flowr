@@ -224,8 +224,8 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 		critical:   [{ pos: -1, name: 'row.names' }]
 	},
 	'as.data.frame': {
-		critical:  [],
-		dataFrame: { pos: 0, name: 'x' }
+		dataFrame: { pos: 0, name: 'x' },
+		critical:  []
 	},
 	'read.table': {
 		fileName:   { pos: 0, name: 'file' },
@@ -1338,7 +1338,7 @@ function mapDataFrameUnknown(
 		return;
 	}
 	return [{
-		operation: 'identity',
+		operation: 'unknown',
 		operand:   dataFrame.value.info.id,
 		...(params.constraintType !== undefined ? { type: params.constraintType } : {})
 	}];

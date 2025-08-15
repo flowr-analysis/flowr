@@ -240,3 +240,12 @@ export function equidistantSampling<T>(list: readonly T[], sampleCount: number, 
 export function cartesianProduct<T>(...arrays: T[][]): T[][] {
 	return arrays.reduce((a, b) => a.flatMap(x => b.map(y => x.concat(y))), [[]] as T[][]);
 }
+
+/** merge two arrays, removing duplicates */
+export function uniqueArrayMerge<T>(left: readonly T[], right: readonly T[]): T[] {
+	const result = new Set<T>(left);
+	for(const elem of right) {
+		result.add(elem);
+	}
+	return Array.from(result);
+}

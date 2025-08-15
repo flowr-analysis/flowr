@@ -8,14 +8,14 @@ import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isNotUndefined } from '../../util/assert';
-import { DataFrameInfoMarker, hasDataFrameAssignmentInfo, hasDataFrameExpressionInfo, hasDataFrameInfoMarker, type AbstractInterpretationInfo, type DataFrameAssignmentInfo, type DataFrameExpressionInfo } from './absint-info';
+import { DataFrameInfoMarker, hasDataFrameAssignmentInfo, hasDataFrameExpressionInfo, hasDataFrameInfoMarker, type AbstractInterpretationInfo } from './absint-info';
 import type { DataFrameDomain, DataFrameStateDomain } from './domain';
 import { DataFrameTop, equalDataFrameState, joinDataFrameStates, wideningDataFrameStates } from './domain';
 import { mapDataFrameAccess } from './mappers/access-mapper';
 import { isAssignmentTarget, mapDataFrameVariableAssignment } from './mappers/assignment-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
 import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
-import { applySemantics, ConstraintType, getConstraintType } from './semantics';
+import { applyDataFrameSemantics, ConstraintType, getConstraintType } from './semantics';
 import { getVariableOrigins, resolveIdToDataFrameShape } from './shape-inference';
 
 export type DataFrameShapeInferenceVisitorConfiguration<
@@ -53,7 +53,7 @@ export class DataFrameShapeInferenceVisitor<
 	protected override visitNode(nodeId: NodeId): boolean {
 		const vertex = this.getCfgVertex(nodeId);
 
-		// skip vertices representing mid markers or entries of complex nodes
+		// skip vertices representing entries of complex nodes
 		if(vertex === undefined || this.shouldSkipVertex(vertex)) {
 			return true;
 		}
@@ -64,7 +64,7 @@ export class DataFrameShapeInferenceVisitor<
 		const visitedCount = this.visited.get(vertex.id) ?? 0;
 		this.visited.set(vertex.id, visitedCount + 1);
 
-		// only continue visitor if the node has not been visited before or the data frame value of the node changed
+		// only continue visiting if the node has not been visited before or the data frame value of the node changed
 		return visitedCount === 0 || !equalDataFrameState(this.oldDomain, this.newDomain);
 	}
 
@@ -100,7 +100,7 @@ export class DataFrameShapeInferenceVisitor<
 
 		if(node !== undefined && isAssignmentTarget(targetNode) && sourceNode !== undefined) {
 			node.info.dataFrame = mapDataFrameVariableAssignment(targetNode, sourceNode, this.config.dfg);
-			this.processOperation(node);
+			this.applyDataFrameAssignment(node);
 			this.clearUnassignedInfo(targetNode);
 		}
 	}
@@ -110,7 +110,7 @@ export class DataFrameShapeInferenceVisitor<
 
 		if(node !== undefined) {
 			node.info.dataFrame = mapDataFrameAccess(node, this.config.dfg);
-			this.processOperation(node);
+			this.applyDataFrameExpression(node);
 		}
 	}
 
@@ -119,7 +119,7 @@ export class DataFrameShapeInferenceVisitor<
 
 		if(node !== undefined) {
 			node.info.dataFrame = mapDataFrameFunctionCall(node, this.config.dfg, this.config.flowrConfig);
-			this.processOperation(node);
+			this.applyDataFrameExpression(node);
 		}
 	}
 
@@ -130,20 +130,15 @@ export class DataFrameShapeInferenceVisitor<
 
 		if(node !== undefined && targetNode !== undefined && sourceNode !== undefined) {
 			node.info.dataFrame = mapDataFrameReplacementFunction(node, sourceNode, this.config.dfg);
-			this.processOperation(node);
+			this.applyDataFrameExpression(node);
 			this.clearUnassignedInfo(targetNode);
 		}
 	}
 
-	private processOperation(node: RNode<ParentInformation & AbstractInterpretationInfo>) {
-		if(hasDataFrameAssignmentInfo(node)) {
-			this.processDataFrameAssignment(node);
-		} else if(hasDataFrameExpressionInfo(node)) {
-			this.processDataFrameExpression(node);
+	private applyDataFrameAssignment(node: RNode<ParentInformation & AbstractInterpretationInfo>) {
+		if(!hasDataFrameAssignmentInfo(node)) {
+			return;
 		}
-	}
-
-	private processDataFrameAssignment(node: RNode<ParentInformation & AbstractInterpretationInfo & { dataFrame: DataFrameAssignmentInfo }>) {
 		const value = resolveIdToDataFrameShape(node.info.dataFrame.expression, this.config.dfg, this.newDomain);
 
 		if(value !== undefined) {
@@ -157,12 +152,15 @@ export class DataFrameShapeInferenceVisitor<
 		}
 	}
 
-	private processDataFrameExpression(node: RNode<ParentInformation & AbstractInterpretationInfo & { dataFrame: DataFrameExpressionInfo }>) {
+	private applyDataFrameExpression(node: RNode<ParentInformation & AbstractInterpretationInfo>) {
+		if(!hasDataFrameExpressionInfo(node)) {
+			return;
+		}
 		let value: DataFrameDomain = DataFrameTop;
 
 		for(const { operation, operand, type, options, ...args } of node.info.dataFrame.operations) {
 			const operandValue = operand !== undefined ? resolveIdToDataFrameShape(operand, this.config.dfg, this.newDomain) : value;
-			value = applySemantics(operation, operandValue ?? DataFrameTop, args, options);
+			value = applyDataFrameSemantics(operation, operandValue ?? DataFrameTop, args, options);
 			const constraintType = type ?? getConstraintType(operation);
 
 			if(operand !== undefined && constraintType === ConstraintType.OperandModification) {

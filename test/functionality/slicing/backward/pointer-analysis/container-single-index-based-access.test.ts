@@ -1,8 +1,8 @@
 import { describe } from 'vitest';
-import { assertSliced, withShell } from '../../_helper/shell';
-import { label } from '../../_helper/label';
-import { AccessType, ContainerType, setupContainerFunctions } from '../../_helper/pointer-analysis';
-import { amendConfig, defaultConfigOptions } from '../../../../src/config';
+import { amendConfig, defaultConfigOptions } from '../../../../../src/config';
+import { assertSliced, withShell } from '../../../_helper/shell';
+import { label } from '../../../_helper/label';
+import { AccessType, ContainerType, setupContainerFunctions } from '../../../_helper/pointer-analysis';
 
 const flowrConfig = amendConfig(defaultConfigOptions, c => {
 	(c.solver.pointerTracking as boolean) = true;
@@ -481,8 +481,7 @@ ${acc('grades', 2)} <- 1.0
 person <- ${def('"John"', 'grades')}
 ${acc('person', 1)} <- "Jane"
 result <- person`,
-				{ flowrConfig },
-				'fail-both'
+				{ flowrConfig, testCaseFailType: 'fail-both' },
 			);
 
 			assertSliced(
@@ -504,8 +503,7 @@ person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
 ${acc('person', 5)} <- ${def('4.0', '3.0')}
 ${acc(acc('person', 5), 1)} <- 1.0
 result <- ${acc(acc('person', 5), 2)}`,
-				{ flowrConfig },
-				'fail-both'
+				{ flowrConfig, testCaseFailType: 'fail-both' },
 			);
 
 			assertSliced(
@@ -525,8 +523,8 @@ result <- ${acc('person', 5)}`,
 person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
 ${acc('person', 5)} <- 3
 result <- ${acc('person', 5)}`,
-				{ flowrConfig },
-				'fail-both'
+				{ flowrConfig, testCaseFailType: 'fail-both' },
+
 			);
 
 			assertSliced(
@@ -547,8 +545,8 @@ person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
 ${acc('person', 2)} <- ${def('"Jane"', '"Doe"')}
 ${acc(acc('person', 2), 1)} <- "John"
 result <- ${acc('person', 2)}`,
-				{ flowrConfig },
-				'fail-both'
+				{ flowrConfig, testCaseFailType: 'fail-both' },
+
 			);
 
 			assertSliced(
@@ -593,8 +591,7 @@ print(${acc(acc('wrapper', 1), 1)})`,
 					`person <- ${def('24')}
 wrapper <- ${def('person')}
 print(${acc(acc('wrapper', 1), 1)})`,
-					{ flowrConfig },
-					'fail-both'
+					{ flowrConfig, testCaseFailType: 'fail-both' },
 				);
 			});
 		});

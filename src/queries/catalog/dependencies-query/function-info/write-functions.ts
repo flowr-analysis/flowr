@@ -83,4 +83,5 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ package: 'rasterpdf', name: 'raster_pdf', argIdx: 0, argName: 'filename', resolveValue: true },
 	{ package: 'rasterpdf', name: 'agg_pdf',    argIdx: 0, argName: 'filename', resolveValue: true },
 	{ package: 'highcharter', name: 'hc_exporting', argName: 'filename', resolveValue: true },
+	{ package: 'jsonlite', name: 'write_json', argIdx: 1, argName: 'path', resolveValue: true },
 ] as const;

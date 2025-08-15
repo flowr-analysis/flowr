@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { LintingCertainty } from '../../../src/linter/linter-format';
+import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import type { DataFrameAccessValidationResult } from '../../../src/linter/rules/dataframe-access-validation';
 import { rangeFrom } from '../../../src/util/range';
 import { assertLinter } from '../_helper/linter';
@@ -146,7 +146,7 @@ print(df3${access})
 
 			for(const [test, result] of testCases) {
 				/* @ignore-in-wiki */
-				assertLinter(test, parser, test, 'dataframe-access-validation', [{ ...result, certainty: LintingCertainty.Definitely }]);
+				assertLinter(test, parser, test, 'dataframe-access-validation', [{ ...result, certainty: LintingResultCertainty.Certain }]);
 			}
 		});
 
@@ -157,7 +157,7 @@ print(df3${access})
 				parser,
 				'df <- data.frame(id = 1:3, name = c("Alice", "Bob", "Charlie"), score = c(90, 65, 75))\nprint(df$skill)',
 				'dataframe-access-validation',
-				[{ type: 'column', accessed: 'skill', access: '$', operand: 'df', range: [2, 7, 2, 14], certainty: LintingCertainty.Definitely }]
+				[{ type: 'column', accessed: 'skill', access: '$', operand: 'df', range: [2, 7, 2, 14], certainty: LintingResultCertainty.Certain }]
 			);
 
 			/** We expect the linter to report an issue, if a column is accessed by index via `[` or `[[` that does not exist in the data frame. */
@@ -166,7 +166,7 @@ print(df3${access})
 				parser,
 				'df <- data.frame(id = 1:3, name = c("Alice", "Bob", "Charlie"), score = c(90, 65, 75))\nprint(df[3:4])',
 				'dataframe-access-validation',
-				[{ type: 'column', accessed: 4, access: '[', operand: 'df', range: [2, 7, 2, 13], certainty: LintingCertainty.Definitely }]
+				[{ type: 'column', accessed: 4, access: '[', operand: 'df', range: [2, 7, 2, 13], certainty: LintingResultCertainty.Certain }]
 			);
 
 			/** We expect the linter to report an issue, if a row is accessed by index via `[` or `[[` that does not exist in the data frame. */
@@ -175,7 +175,7 @@ print(df3${access})
 				parser,
 				'df <- data.frame(id = 1:3, name = c("Alice", "Bob", "Charlie"), score = c(90, 65, 75))\nprint(df[[5, "score"]])',
 				'dataframe-access-validation',
-				[{ type: 'row', accessed: 5, access: '[[', operand: 'df', range: [2, 7, 2, 22], certainty: LintingCertainty.Definitely }]
+				[{ type: 'row', accessed: 5, access: '[[', operand: 'df', range: [2, 7, 2, 22], certainty: LintingResultCertainty.Certain }]
 			);
 
 			/** We expect the linter to report an issue, if a column is used in a `filter` function call that does not exist in the data frame. */
@@ -184,7 +184,7 @@ print(df3${access})
 				parser,
 				'df <- data.frame(id = 1:3, name = c("Alice", "Bob", "Charlie"), score = c(90, 65, 75))\ndf <- dplyr::filter(df, level > 70)',
 				'dataframe-access-validation',
-				[{ type: 'column', accessed: 'level', access: 'dplyr::filter', operand: 'df', range: [2, 7, 2, 35], certainty: LintingCertainty.Definitely }]
+				[{ type: 'column', accessed: 'level', access: 'dplyr::filter', operand: 'df', range: [2, 7, 2, 35], certainty: LintingResultCertainty.Certain }]
 			);
 
 			/** We expect the linter to report an issue, if a column is selected or unselected in a `select` function that does not exist in the data frame. */
@@ -193,7 +193,7 @@ print(df3${access})
 				parser,
 				'df <- data.frame(id = 1:3, name = c("Alice", "Bob", "Charlie"), score = c(90, 65, 75))\ndf <- dplyr::select(df, id, age, score)',
 				'dataframe-access-validation',
-				[{ type: 'column', accessed: 'age', access: 'dplyr::select', operand: 'df', range: [2, 7, 2, 39], certainty: LintingCertainty.Definitely }]
+				[{ type: 'column', accessed: 'age', access: 'dplyr::select', operand: 'df', range: [2, 7, 2, 39], certainty: LintingResultCertainty.Certain }]
 			);
 
 			/** We expect the linter to report an issue for all non-existent columns accessed in transformation functions like `filter`, `mutate`, and `select`, as well as all non-existent columns and rows accessed via access operators like `[`. */
@@ -203,11 +203,11 @@ print(df3${access})
 				'library(dplyr)\n\ndf1 <- data.frame(\n    id = c(1, 2, 3, 4),\n    score = c(65, 85, 40, 90)\n)\n\ndf2 <- df1 %>%\n    filter(age > 50) %>%\n    mutate(level = skill^2) %>%\n    select(-name)\n\nprint(df2[1:5, 3])',
 				'dataframe-access-validation',
 				[
-					{ type: 'column', accessed: 'age', access: 'filter', operand: 'df1', range: [9, 5, 9, 20], certainty: LintingCertainty.Definitely },
-					{ type: 'column', accessed: 'skill', access: 'mutate', range: [10, 5, 10, 27], certainty: LintingCertainty.Definitely },
-					{ type: 'column', accessed: 'name', access: 'select', range: [11, 5, 11, 17], certainty: LintingCertainty.Definitely },
-					{ type: 'row', accessed: 5, access: '[', operand: 'df2', range: [13, 7, 13, 17], certainty: LintingCertainty.Definitely },
-					{ type: 'column', accessed: 3, access: '[', operand: 'df2', range: [13, 7, 13, 17], certainty: LintingCertainty.Definitely }
+					{ type: 'column', accessed: 'age', access: 'filter', operand: 'df1', range: [9, 5, 9, 20], certainty: LintingResultCertainty.Certain },
+					{ type: 'column', accessed: 'skill', access: 'mutate', range: [10, 5, 10, 27], certainty: LintingResultCertainty.Certain },
+					{ type: 'column', accessed: 'name', access: 'select', range: [11, 5, 11, 17], certainty: LintingResultCertainty.Certain },
+					{ type: 'row', accessed: 5, access: '[', operand: 'df2', range: [13, 7, 13, 17], certainty: LintingResultCertainty.Certain },
+					{ type: 'column', accessed: 3, access: '[', operand: 'df2', range: [13, 7, 13, 17], certainty: LintingResultCertainty.Certain }
 				]
 			);
 		});

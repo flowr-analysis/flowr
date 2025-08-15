@@ -17,19 +17,27 @@ import type {
 	RNodeWithParent
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type {
+	DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
+	TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE
+} from '../../../src/core/steps/pipeline/default-pipelines';
 import {
+	createSlicePipeline,
 	DEFAULT_DATAFLOW_PIPELINE,
 	DEFAULT_NORMALIZE_PIPELINE,
-	DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
-	TREE_SITTER_NORMALIZE_PIPELINE,
-	TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE
+	TREE_SITTER_NORMALIZE_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff-dataflow-graph';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
-import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
+import type {
+	SingleSlicingCriterion,
+	SlicingCriteria } from '../../../src/slicing/criterion/parse';
+import { slicingCriterionToId
+} from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
 import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph';
@@ -50,6 +58,8 @@ import type { CfgProperty } from '../../../src/control-flow/cfg-properties';
 import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
 import type { FlowrConfigOptions } from '../../../src/config';
 import { cloneConfig, defaultConfigOptions } from '../../../src/config';
+import type { KnownParser } from '../../../src/r-bridge/parser';
+import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -216,7 +226,7 @@ export function sameForSteps<T, S>(steps: S[], wanted: T): { step: S, wanted: T 
 }
 
 /**
- * For a given input code this takes multiple ASTs depending on the respective normalizer step to run!
+ * For a given input code, this takes multiple ASTs depending on the respective normalizer step to run!
  *
  * @see sameForSteps
  */
@@ -233,6 +243,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 	}
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
 	return describe.skipIf(skip)(`${decorateLabelContext(name, labelContext)} (input: ${input})`, () => {
+		const ts = !skipTreeSitter ? new TreeSitterExecutor() : undefined;
 		let shellAst: RNode | undefined;
 		let tsAst: RNode | undefined;
 		beforeAll(async() => {
@@ -241,6 +252,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 				tsAst = await makeTsAst();
 			}
 		});
+		afterAll(() => ts?.close());
 		test('shell', function() {
 			assertAstEqual(shellAst as RNode, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(shellAst)}, vs. expected: ${JSON.stringify(expected)}`);
@@ -254,25 +266,25 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 			assertAstEqual(tsAst as RNode, shellAst as RNode, true, userConfig?.ignoreColumns === true,
 				() => `tree-sitter ast: ${JSON.stringify(tsAst)}, vs. shell ast: ${JSON.stringify(shellAst)}`, false);
 		});
+
+		async function makeShellAst(): Promise<RNode> {
+			const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
+				parser:  shell,
+				request: requestFromInput(input)
+			}, defaultConfigOptions);
+			const result = await pipeline.allRemainingSteps();
+			return result.normalize.ast;
+		}
+
+		async function makeTsAst(): Promise<RNode> {
+			const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
+				parser:  ts as TreeSitterExecutor,
+				request: requestFromInput(input)
+			}, defaultConfigOptions);
+			const result = await pipeline.allRemainingSteps();
+			return result.normalize.ast;
+		}
 	});
-
-	async function makeShellAst(): Promise<RNode> {
-		const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-			parser:  shell,
-			request: requestFromInput(input)
-		}, defaultConfigOptions);
-		const result = await pipeline.allRemainingSteps();
-		return result.normalize.ast;
-	}
-
-	async function makeTsAst(): Promise<RNode> {
-		const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
-			parser:  new TreeSitterExecutor(),
-			request: requestFromInput(input)
-		}, defaultConfigOptions);
-		const result = await pipeline.allRemainingSteps();
-		return result.normalize.ast;
-	}
 }
 
 /** call within describeSession */
@@ -447,60 +459,89 @@ function testWrapper(skip: boolean | undefined, shouldFail: boolean, testName: s
 
 export type TestCaseFailType = 'fail-shell' | 'fail-tree-sitter' | 'fail-both' | undefined;
 
+/**
+ * This is a forward slicing convenience function that allows you to assert the result of a forward slice.
+ *
+ * @see {@link assertSliced} - For the explanation of the parameters.
+ */
+export function assertSlicedF(
+	name: TestLabel,
+	shell: RShell,
+	input: string,
+	criteria: SlicingCriteria,
+	expected: string | SingleSlicingCriterion[],
+	testConfig?: Partial<TestConfigurationWithOutput & TestCaseParams>
+) {
+	return assertSliced(name, shell, input, criteria, expected, { ...testConfig, sliceDirection: SliceDirection.Forward });
+}
+
+interface TestCaseParams {
+	/** Predicate allowing the inclusion of additional normalized nodes into the slice */
+	autoSelectIf:         AutoSelectPredicate,
+	/** Disable Tree-sitter tests */
+	skipTreeSitter:       boolean,
+	/** Whether to skip AST comparison tests between the RShell and Tree-sitter (only relevant when issues are known) */
+	skipCompare:          boolean,
+	/** Which CFG properties to exclude for CFG checks */
+	cfgExcludeProperties: readonly CfgProperty[],
+	/** Denotes whether the tests should fail in all cases or only for shell or Tree-sitter tests */
+	testCaseFailType:     TestCaseFailType,
+	/** The RNode ID generator */
+	getId:                () => IdGenerator<NoInfo>,
+	/** The flowr configuration to be used for the test */
+	flowrConfig:          FlowrConfigOptions,
+	/** The direction of the slice, defaults to forward */
+	sliceDirection?:      SliceDirection
+}
+
+/**
+ * Ensure that slicing for a given criteria returns the code you expect. Please be aware that for ease of use
+ * this actually checks against the reconstructed code (which may contain additional tokens to support executability).
+ * If you want to check against the actual ids, please provide an array of {@link SingleSlicingCriterion}s as the expected value.
+ */
 export function assertSliced(
 	name: TestLabel,
 	shell: RShell,
 	input: string,
 	criteria: SlicingCriteria,
-	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[], flowrConfig?: FlowrConfigOptions },
-	testCaseFailType?: TestCaseFailType,
-	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0)
+	expected: string | SingleSlicingCriterion[],
+	testConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams>,
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
-	const skip = skipTestBecauseConfigNotMet(userConfig);
-	if(skip || testCaseFailType === 'fail-both') {
+	const skip = skipTestBecauseConfigNotMet(testConfig);
+	if(skip || testConfig?.testCaseFailType === 'fail-both') {
 		// drop it again because the test is not to be counted
 		dropTestLabel(name);
 	}
 	describe.skipIf(skip)(fullname, () => {
+		const ts = !testConfig?.skipTreeSitter ? new TreeSitterExecutor() : undefined;
 		let shellResult: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
 		let tsResult: PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
+		const getId = testConfig?.getId ?? (() => deterministicCountingIdGenerator(0));
 		beforeAll(async() => {
-			shellResult = await new PipelineExecutor(DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE, {
-				getId:        getId(),
-				request:      requestFromInput(input),
-				parser:       shell,
-				criterion:    criteria,
-				autoSelectIf: userConfig?.autoSelectIf,
-			}, cloneConfig(userConfig?.flowrConfig ?? defaultConfigOptions)).allRemainingSteps();
-			if(!userConfig?.skipTreeSitter) {
-				tsResult = await new PipelineExecutor(TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE, {
-					getId:        getId(),
-					request:      requestFromInput(input),
-					parser:       new TreeSitterExecutor(),
-					criterion:    criteria,
-					autoSelectIf: userConfig?.autoSelectIf
-				}, cloneConfig(userConfig?.flowrConfig ?? defaultConfigOptions)).allRemainingSteps();
+			shellResult = await executePipeline(shell);
+			if(!testConfig?.skipTreeSitter) {
+				tsResult = await executePipeline(ts as TreeSitterExecutor);
 			}
 		});
+		afterAll(() => ts?.close());
 
 		testWrapper(
 			false,
-			testCaseFailType === 'fail-both' || testCaseFailType === 'fail-shell',
+			testConfig?.testCaseFailType === 'fail-both' || testConfig?.testCaseFailType === 'fail-shell',
 			'shell',
-			() => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>, testCaseFailType !== 'fail-both' && testCaseFailType !== 'fail-shell'),
+			() => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>, testConfig?.testCaseFailType !== 'fail-both' && testConfig?.testCaseFailType !== 'fail-shell'),
 		);
 
 		testWrapper(
-			userConfig?.skipTreeSitter,
-			testCaseFailType === 'fail-both' || testCaseFailType === 'fail-tree-sitter',
+			testConfig?.skipTreeSitter,
+			testConfig?.testCaseFailType === 'fail-both' || testConfig?.testCaseFailType === 'fail-tree-sitter',
 			'tree-sitter',
-			() => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, testCaseFailType !== 'fail-both' && testCaseFailType !== 'fail-tree-sitter'),
+			() => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, testConfig?.testCaseFailType !== 'fail-both' && testConfig?.testCaseFailType !== 'fail-tree-sitter'),
 		);
 
 		testWrapper(
-			userConfig?.skipTreeSitter || userConfig?.skipCompare,
+			testConfig?.skipTreeSitter || testConfig?.skipCompare,
 			false,
 			'compare ASTs',
 			function() {
@@ -511,13 +552,13 @@ export function assertSliced(
 		);
 
 		testWrapper(
-			userConfig?.skipTreeSitter,
+			testConfig?.skipTreeSitter,
 			false,
 			'cfg SAT properties',
 			function() {
 				const res = tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>;
 				const cfg = extractCfg(res.normalize, defaultConfigOptions, res.dataflow.graph);
-				const check = assertCfgSatisfiesProperties(cfg, userConfig?.cfgExcludeProperties);
+				const check = assertCfgSatisfiesProperties(cfg, testConfig?.cfgExcludeProperties);
 				try {
 					assert.isTrue(check, 'cfg fails properties: ' + check + ' is not satisfied');
 				} catch(e: unknown) {
@@ -526,24 +567,45 @@ export function assertSliced(
 				}
 			}
 		);
-	});
-	handleAssertOutput(name, shell, input, userConfig);
 
-	function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {
-		try {
-			assert.strictEqual(
-				result.reconstruct.code, expected,
-				`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
-			);
-		} /* v8 ignore start */ catch(e) {
-			if(printError) {
-				console.error(`got:\n${result.reconstruct.code}\nvs. expected:\n${expected}`);
-				console.error(normalizedAstToMermaidUrl(result.normalize.ast));
-			}
-			throw e;
-		} /* v8 ignore stop */
-	}
-	handleAssertOutput(name, shell, input, userConfig);
+		handleAssertOutput(name, shell, input, testConfig);
+
+		async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
+			return await createSlicePipeline(parser, {
+				getId:        getId(),
+				request:      requestFromInput(input),
+				criterion:    criteria,
+				autoSelectIf: testConfig?.autoSelectIf,
+				direction:    testConfig?.sliceDirection
+			}, cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions)).allRemainingSteps();
+		}
+		function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {
+			try {
+				if(Array.isArray(expected)) {
+					// check whether all ids are present in the slice result
+					const decodedExpected = expected.map(e => slicingCriterionToId(e, result.normalize.idMap))
+						.sort((a, b) => String(a).localeCompare(String(b)))
+						.map(n => normalizeIdToNumberIfPossible(n));
+					const inSlice = [...result.slice.result]
+						.sort((a, b) => String(a).localeCompare(String(b)))
+						.map(n => normalizeIdToNumberIfPossible(n));
+					assert.deepStrictEqual(inSlice, decodedExpected, `expected ids ${JSON.stringify(decodedExpected)} are not in the slice result ${JSON.stringify(inSlice)}, for input ${input} (slice for ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`);
+				} else {
+					assert.strictEqual(
+						result.reconstruct.code, expected,
+						`got: ${result.reconstruct.code}, vs. expected: ${JSON.stringify(expected)}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
+					);
+				}
+			} /* v8 ignore start */ catch(e) {
+				if(printError) {
+					console.error(`got:\n${result.reconstruct.code}\nvs. expected:\n${JSON.stringify(expected)}`);
+					console.error(normalizedAstToMermaidUrl(result.normalize.ast));
+				}
+				throw e;
+			} /* v8 ignore stop */
+		}
+		handleAssertOutput(name, shell, input, testConfig);
+	});
 }
 
 function findInDfg(id: NodeId, dfg: DataflowGraph): ContainerIndex[] | undefined {
@@ -588,7 +650,7 @@ export function assertContainerIndicesDefinition(
 			parser:  shell,
 			request: requestFromInput(input),
 		}, config).allRemainingSteps();
-		const result = runSearch(search,  { ...analysis, config: defaultConfigOptions });
+		const result = runSearch(search,  { ...analysis, config: defaultConfigOptions }).getElements();
 		let findIndices: (id: NodeId) => ContainerIndex[] | undefined;
 		if(userConfig.searchIn === 'dfg') {
 			findIndices = id => findInDfg(id, analysis.dataflow.graph);

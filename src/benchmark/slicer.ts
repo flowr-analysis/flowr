@@ -469,13 +469,16 @@ export class BenchmarkSlicer {
 			if(expression !== undefined) {
 				nodeStats.mappedOperations = expression.operations.map(op => op.operation);
 				stats.numberOfOperationNodes++;
+
+				if(value !== undefined) {
+					nodeStats.inferredColNames = value.colnames === ColNamesTop ? 'top' : value.colnames.length;
+					nodeStats.inferredColCount = this.getInferredSize(value.cols);
+					nodeStats.inferredRowCount = this.getInferredSize(value.rows);
+					nodeStats.approxRangeColCount = value.cols === IntervalBottom ? 0 : value.cols[1] - value.cols[0];
+					nodeStats.approxRangeRowCount = value.rows === IntervalBottom ? 0 : value.rows[1] - value.rows[0];
+				}
 			}
 			if(value !== undefined) {
-				nodeStats.inferredColNames = value.colnames === ColNamesTop ? 'top' : value.colnames.length;
-				nodeStats.inferredColCount = this.getInferredSize(value.cols);
-				nodeStats.inferredRowCount = this.getInferredSize(value.rows);
-				nodeStats.approxRangeColCount = value.cols === IntervalBottom ? 0 : value.cols[1] - value.cols[0];
-				nodeStats.approxRangeRowCount = value.rows === IntervalBottom ? 0 : value.rows[1] - value.rows[0];
 				stats.numberOfValueNodes++;
 			}
 			stats.perNodeStats.set(node.info.id, nodeStats);

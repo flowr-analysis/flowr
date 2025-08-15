@@ -1,7 +1,6 @@
 import type { SourceRange } from '../range';
 
 
-import { guard } from '../assert';
 import { escapeId, escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import type { DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import { isNamedArgument, isPositionalArgument } from '../../dataflow/graph/graph';
@@ -208,7 +207,10 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	}
 
 	const edges = mermaid.rootGraph.get(normalizeIdToNumberIfPossible(id), true);
-	guard(edges !== undefined, `node ${id} must be found`);
+	if(edges === undefined) {
+		mermaid.nodeLines.push('   %% No edges found for ' + id);
+		return;
+	}
 	const artificialCdEdges = (info.cds ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False'>([x.when ? 'CD-True' : 'CD-False']) }] as const);
 	// eslint-disable-next-line prefer-const
 	for(let [target, edge] of [...edges[1], ...artificialCdEdges]) {

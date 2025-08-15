@@ -167,7 +167,7 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 		failedToRepParse:           Math.max(...stats.map(s => s.failedToRepParse)),
 		timesHitThreshold:          Math.max(...stats.map(s => s.timesHitThreshold)),
 		// average out / summarize other measurements
-		commonMeasurements:         new Map(CommonSlicerMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.commonMeasurements.get(m) as SummarizedMeasurement))])),
+		commonMeasurements:         new Map(CommonSlicerMeasurements.filter(m => stats.some(s => s.commonMeasurements.has(m))).map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.commonMeasurements.get(m) as SummarizedMeasurement))])),
 		perSliceMeasurements:       new Map(PerSliceMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.perSliceMeasurements.get(m) as SummarizedMeasurement))])),
 		sliceTimePerToken:          summarizeSummarizedTimePerToken(stats.map(s => s.sliceTimePerToken)),
 		reconstructTimePerToken:    summarizeSummarizedTimePerToken(stats.map(s => s.reconstructTimePerToken)),

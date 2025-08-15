@@ -33,7 +33,7 @@ export async function showQuery<
 		parser:  shell,
 		request: requestFromInput(code)
 	}, defaultConfigOptions).allRemainingSteps();
-	const results = executeQueries({ dataflow: analysis.dataflow, ast: analysis.normalize, config: defaultConfigOptions }, queries);
+	const results = await Promise.resolve(executeQueries({ dataflow: analysis.dataflow, ast: analysis.normalize, config: defaultConfigOptions }, queries));
 	const duration = performance.now() - now;
 
 	const metaInfo = `
@@ -58,7 +58,7 @@ ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary
 _Results (prettified and summarized):_
 
 ${
-	asciiSummaryOfQueryResult(markdownFormatter, duration, results as QueryResults<SupportedQueryTypes>, analysis)
+	asciiSummaryOfQueryResult(markdownFormatter, duration, results, analysis)
 }
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>

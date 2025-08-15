@@ -7,8 +7,8 @@ import { assertUnreachable } from '../../util/assert';
 import { formatRange } from '../../util/mermaid/dfg';
 import type { MergeableRecord } from '../../util/objects';
 import type { SourceRange } from '../../util/range';
-import type { LintQuickFixReplacement, LintingResult, LintingRule } from '../linter-format';
-import { LintingPrettyPrintContext , LintingCertainty } from '../linter-format';
+import type { LintingResult, LintingRule, LintQuickFixReplacement } from '../linter-format';
+import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 
 import { LintingRuleTag } from '../linter-tags';
 
@@ -172,7 +172,7 @@ export const NAMING_CONVENTION = {
 	processSearchResult: (elements, config, data) =>  {
 		const symbols = elements.getElements()
 			.map(m => ({
-				certainty:      LintingCertainty.Definitely,
+				certainty:      LintingResultCertainty.Certain,
 				detectedCasing: detectCasing(m.node.lexeme as string),
 				name:           m.node.lexeme as string,
 				range:          m.node.info.fullRange as SourceRange,
@@ -199,6 +199,8 @@ export const NAMING_CONVENTION = {
 	},
 	info: {
 		name:          'Naming Convention',
+		// detects casing heuristically so correctness is not ensured using default config, but checks all identifiers in the code for naming convention match
+		certainty:     LintingRuleCertainty.OverApproximative,
 		description:   'Checks wether the symbols conform to a certain naming convention',
 		tags:          [LintingRuleTag.Style, LintingRuleTag.QuickFix],
 		defaultConfig: {

@@ -24,6 +24,10 @@ export interface LinterRuleInformation<Config extends MergeableRecord = never> {
 	 */
 	readonly tags:          readonly LintingRuleTag[];
 	/**
+	 * The linting rule's certainty in terms of the rule's calculations' precision and recall.
+	 */
+	readonly certainty:     LintingRuleCertainty;
+	/**
 	 * A short description of the linting rule.
 	 * This is used to display the rule in the UI and to provide a brief overview of what the rule does.
 	 */
@@ -89,7 +93,7 @@ export type LintQuickFix = LintQuickFixReplacement | LintQuickFixRemove;
  * A linting result for a single linting rule match.
  */
 export interface LintingResult {
-	readonly certainty: LintingCertainty
+	readonly certainty: LintingResultCertainty
 	/**
 	 * If available, what to do to fix the linting result.
 	 */
@@ -106,15 +110,34 @@ export interface LintingResults<Name extends LintingRuleNames> {
 	'.meta': LintingRuleMetadata<Name> & { readonly searchTimeMs: number; readonly processTimeMs: number; };
 }
 
-export enum LintingCertainty {
+export enum LintingResultCertainty {
 	/**
 	 * The linting rule cannot say for sure whether the result is correct or not.
+	 * This linting certainty should be used for linting results whose calculations are based on estimations involving unknown side-effects, reflection, etc.
 	 */
-	Maybe = 'maybe',
+	Uncertain  = 'uncertain',
 	/**
 	 * The linting rule is certain that the reported lint is real.
+	 * This linting certainty should be used for linting results whose calculations do not involve estimates or other unknown factors.
 	 */
-	Definitely = 'definitely'
+	Certain = 'certain'
+}
+
+export enum LintingRuleCertainty {
+	/**
+	 * Linting rules that are expected to have both high precision and high recall.
+	 */
+	Exact = 'exact',
+	/**
+	 * Linting rules that are expected to have high precision, but not necessarily high recall.
+	 * Rules with this certainty generally ensure that the results they return are correct, but may not return all results.
+	 */
+	BestEffort = 'best-effort',
+	/**
+	 * Linting rules that are expected to have high recall, but not necessarily high precision.
+	 * Rules with this certainty generally return all relevant results, but may also include some incorrect matches.
+	 */
+	OverApproximative = 'over-approximative'
 }
 
 export enum LintingPrettyPrintContext {

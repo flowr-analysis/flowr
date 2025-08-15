@@ -128,10 +128,10 @@ print(df)
 			{ minRVersion: MIN_VERSION_PIPE }
 		);
 
-		assertDataFrameDomain(
+		testDataFrameDomain(
 			shell,
 			'df <- if (runif(1) >= 0.5) data.frame(id = 1:5)',
-			[['1@df', DataFrameTop]]
+			[['1@df', undefined, DataFrameShapeOverapproximation]]
 		);
 
 		testDataFrameDomain(
@@ -250,9 +250,9 @@ print(df)
 			shell,
 			`
 a = 1; b = "A"
-df <- data.frame(id = a, name = b)
+df <- data.frame(id = c(a, a), name = b)
 			`.trim(),
-			[['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [1, 1] }]]
+			[['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [2, 2] }]]
 		);
 
 		testDataFrameDomain(
@@ -3274,7 +3274,7 @@ df <- dplyr::group_by(df, id)
 			`.trim(),
 			[
 				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
-				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [0, 5] }]
+				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3287,7 +3287,7 @@ df <- dplyr::group_by(df, \`id\`)
 			`.trim(),
 			[
 				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
-				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [0, 5] }]
+				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3300,7 +3300,7 @@ df <- dplyr::group_by(df, id, name)
 			`.trim(),
 			[
 				['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [5, 5] }],
-				['2@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [0, 5] }]
+				['2@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3326,7 +3326,7 @@ df <- dplyr::group_by(df, id + name)
 			`.trim(),
 			[
 				['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [5, 5] }],
-				['2@df', { colnames: ColNamesTop, cols: [3, 4], rows: [0, 5] }]
+				['2@df', { colnames: ColNamesTop, cols: [3, 4], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3339,7 +3339,7 @@ df <- dplyr::group_by(df, group = id + name)
 			`.trim(),
 			[
 				['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [5, 5] }],
-				['2@df', { colnames: ['id', 'name', 'score', 'group'], cols: [3, 4], rows: [0, 5] }]
+				['2@df', { colnames: ['id', 'name', 'score', 'group'], cols: [3, 4], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3352,7 +3352,7 @@ df <- dplyr::group_by(df, id, .add = TRUE)
 			`.trim(),
 			[
 				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
-				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [0, 5] }]
+				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3449,6 +3449,34 @@ df <- dplyr::summarize(df, score = mean(score), sum = sum(score), .groups = "dro
 				['2@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 6] }, ColNamesOverapproximation]
 			],
 			{ skipRun: skipLibraries }
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+library(dplyr)
+df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
+df <- filter(df, FALSE) |> group_by(category) |> summarize(score = mean(score))
+			`.trim(),
+			[
+				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'category', 'score'], cols: [1, 4], rows: [0, 1] }, ColNamesOverapproximation]
+			],
+			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+library(dplyr)
+df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
+df <- filter(df, FALSE) |> summarize(score = mean(score))
+			`.trim(),
+			[
+				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'category', 'score'], cols: [1, 4], rows: [0, 1] }, ColNamesOverapproximation]
+			],
+			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
 		);
 	});
 
@@ -4711,6 +4739,43 @@ df <- dplyr::arrange(df, desc(score))
 		);
 	});
 
+	describe('Other', () => {
+		testDataFrameDomain(
+			shell,
+			'df <- dplyr::tibble(id = 1:5, age = c(25, 32, 35, 40, 45), score = c(90, 85, 88, 92, 95))',
+			[['1@df', DataFrameTop, DataFrameShapeOverapproximation]],
+			{ skipRun: skipLibraries }
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = c(1, 2, 3, 1, 3), score = c(80, 75, 90, 70, 85))
+df <- aggregate(df, list(group = df$id), mean)
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
+				['2@df', DataFrameTop, DataFrameShapeOverapproximation]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:5, score = 31:35)
+df <- within(df, {
+    name <- letters[id]
+	level <- score^2
+})
+print(df)
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
+				['6@df', DataFrameTop, DataFrameShapeOverapproximation]
+			]
+		);
+	});
+
 	describe('General', () => {
 		testDataFrameDomain(
 			shell,
@@ -4759,9 +4824,9 @@ result <- result %>% arrange(desc(avg_score))
 				['10@result', { colnames: ['id', 'age', 'score'], cols: [3, 3], rows: [10, 10] }],
 				['11@result', { colnames: ['id', 'age', 'score'], cols: [3, 3], rows: [0, 10] }],
 				['12@result', { colnames: ['id', 'age', 'score'], cols: [3, 3], rows: [0, 10] }],
-				['13@result', { colnames: ['id', 'age', 'score', 'avg_score'], cols: [1, 4], rows: [1, 10] }, ColNamesOverapproximation],
-				['14@result', { colnames: ['id', 'age', 'score', 'avg_score', 'grade'], cols: [1, 5], rows: [1, 10] }, ColNamesOverapproximation],
-				['15@result', { colnames: ['id', 'age', 'score', 'avg_score', 'grade'], cols: [1, 5], rows: [1, 10] }, ColNamesOverapproximation]
+				['13@result', { colnames: ['id', 'age', 'score', 'avg_score'], cols: [1, 4], rows: [0, 10] }, ColNamesOverapproximation],
+				['14@result', { colnames: ['id', 'age', 'score', 'avg_score', 'grade'], cols: [1, 5], rows: [0, 10] }, ColNamesOverapproximation],
+				['15@result', { colnames: ['id', 'age', 'score', 'avg_score', 'grade'], cols: [1, 5], rows: [0, 10] }, ColNamesOverapproximation]
 			],
 			{ skipRun: skipLibraries }
 		);

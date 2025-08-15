@@ -25,6 +25,7 @@ body:
         - New Rule
         - Absolute Paths
         - Dataframe Access Validation
+        - Dead Code
         - Deprecated Functions
         - File Path Validity
         - Naming Convention

@@ -376,11 +376,20 @@ export class FlowRServerConnection {
 		const { dataflow: dfg, normalize: ast } = fileInformation.pipeline.getResults(true);
 		guard(dfg !== undefined, `Dataflow graph must be present (request: ${request.filetoken})`);
 		guard(ast !== undefined, `AST must be present (request: ${request.filetoken})`);
-		const results = executeQueries({ dataflow: dfg, ast, config: this.config }, request.query);
-		sendMessage<QueryResponseMessage>(this.socket, {
-			type: 'response-query',
-			id:   request.id,
-			results
+		void Promise.resolve(executeQueries({ dataflow: dfg, ast, config: this.config }, request.query)).then(results => {
+			sendMessage<QueryResponseMessage>(this.socket, {
+				type: 'response-query',
+				id:   request.id,
+				results
+			});
+		}).catch(e => {
+			this.logger.error(`[${this.name}] Error while executing query: ${String(e)}`);
+			sendMessage<FlowrErrorMessage>(this.socket, {
+				id:     request.id,
+				type:   'error',
+				fatal:  false,
+				reason: `Error while executing query: ${String(e)}`
+			});
 		});
 	}
 }

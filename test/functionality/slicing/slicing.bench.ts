@@ -7,9 +7,10 @@ import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { runSearch } from '../../../src/search/flowr-search-executor';
 import { Q } from '../../../src/search/flowr-search-builder';
-import { staticSlicing } from '../../../src/slicing/static/static-slicer';
 import { guard } from '../../../src/util/assert';
 import { defaultConfigOptions } from '../../../src/config';
+import { staticSlice } from '../../../src/slicing/static/static-slicer';
+import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
 
 
 describe('slicing', () => {
@@ -40,10 +41,10 @@ for(i in 1:5) {
 }
 			`.trim().repeat(200) + '\nprint(x + f(1, function(i) x[[i]] + 2, 3))'),
 				}, defaultConfigOptions).allRemainingSteps();
-				ids = runSearch(Q.var('print').first(),  { ...result, config: defaultConfigOptions }).map(n => n.node.info.id);
+				ids = runSearch(Q.var('print').first(),  { ...result, config: defaultConfigOptions }).getElements().map(n => n.node.info.id);
 			}
 			guard(result !== undefined && ids !== undefined, () => 'no result');
-			staticSlicing(result.dataflow, result.normalize, [`$${ids[0]}`], threshold);
+			staticSlice(result.dataflow.graph, result.normalize, [`$${ids[0]}`], SliceDirection.Backward, threshold);
 		});
 	}
 });

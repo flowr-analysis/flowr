@@ -11,7 +11,7 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isNotUndefined } from '../../util/assert';
 import { type AbstractInterpretationInfo, DataFrameInfoMarker, hasDataFrameInfoMarker } from './absint-info';
 import { DataFrameShapeInferenceVisitor } from './absint-visitor';
-import { type DataFrameDomain, type DataFrameStateDomain, DataFrameTop, joinDataFrames, joinDataFrameStates } from './domain';
+import { type DataFrameDomain, type DataFrameStateDomain, joinDataFrames, joinDataFrameStates } from './domain';
 
 /**
  * Infers the shape of data frames by performing abstract interpretation using the control flow graph of a program.
@@ -84,9 +84,7 @@ export function resolveIdToDataFrameShape(
 			return resolveIdToDataFrameShape(call.args[1].nodeId, dfg, domain);
 		}
 	} else if(node.type === RType.IfThenElse) {
-		if(node.otherwise === undefined) {
-			return resolveIdToDataFrameShape(node.then, dfg, domain) !== undefined ? DataFrameTop : undefined;
-		} else {
+		if(node.otherwise !== undefined) {
 			const values = [node.then, node.otherwise].map(entry => resolveIdToDataFrameShape(entry, dfg, domain));
 
 			if(values.length > 0 && values.every(isNotUndefined)) {
@@ -94,9 +92,7 @@ export function resolveIdToDataFrameShape(
 			}
 		}
 	} else if(origins.includes('builtin:if-then-else') && call?.args.every(arg => arg !== EmptyArgument)) {
-		if(call.args.length === 2) {
-			return resolveIdToDataFrameShape(call.args[1].nodeId, dfg, domain) !== undefined ? DataFrameTop : undefined;
-		} else if(call.args.length === 3) {
+		if(call.args.length === 3) {
 			const values = call.args.slice(1, 3).map(entry => resolveIdToDataFrameShape(entry.nodeId, dfg, domain));
 
 			if(values.length > 0 && values.every(isNotUndefined)) {

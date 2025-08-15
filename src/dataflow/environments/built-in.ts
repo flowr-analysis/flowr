@@ -27,6 +27,8 @@ import { processLibrary } from '../internal/process/functions/call/built-in/buil
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source';
 import type { ForceArguments } from '../internal/process/functions/call/common';
 import { processApply } from '../internal/process/functions/call/built-in/built-in-apply';
+import { registerBuiltInDefinitions } from './built-in-config';
+import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
 import { processVector } from '../internal/process/functions/call/built-in/built-in-vector';
@@ -37,7 +39,7 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
-import { resolveAsMinus, resolveAsPlus, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
+import { resolveAsVector, resolveAsSeq, resolveAsMinus, resolveAsPlus } from '../eval/resolve/resolve';
 import type { DataflowGraph } from '../graph/graph';
 import type { VariableResolve } from '../../config';
 
@@ -84,7 +86,7 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	readonly returnsNthArgument?:    number | 'last',
 	readonly cfg?:                   ExitPointType,
 	readonly readAllArguments?:      boolean,
-	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
+	readonly hasUnknownSideEffects?: boolean | LinkTo,
 	/** record mapping the actual function name called to the arguments that should be treated as function calls */
 	readonly treatAsFnCall?:         Record<string, readonly string[]>,
 	/** Name that should be used for the origin (useful when needing to differentiate between
@@ -101,32 +103,32 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: DefaultBuiltInProcessorConfiguration
+	{ returnsNthArgument, useAsProcessor, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
-	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: config.useAsProcessor ?? 'builtin:default' });
-	if(config.returnsNthArgument !== undefined) {
-		const arg = config.returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[config.returnsNthArgument];
+	const activeProcessor = useAsProcessor ?? 'builtin:default';
+	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: activeProcessor });
+	if(returnsNthArgument !== undefined) {
+		const arg = returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[returnsNthArgument];
 		if(arg !== undefined) {
 			res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Returns);
 		}
 	}
-	if(config.readAllArguments) {
+	if(readAllArguments) {
 		for(const arg of processedArguments) {
 			if(arg) {
 				res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Reads);
 			}
 		}
 	}
-
-	if(config.hasUnknownSideEffects) {
-		if(typeof config.hasUnknownSideEffects !== 'boolean') {
-			handleUnknownSideEffect(res.graph, res.environment, rootId, config.hasUnknownSideEffects);
+	if(hasUnknownSideEffects) {
+		if(typeof hasUnknownSideEffects !== 'boolean') {
+			handleUnknownSideEffect(res.graph, res.environment, rootId, hasUnknownSideEffects);
 		} else {
 			handleUnknownSideEffect(res.graph, res.environment, rootId);
 		}
 	}
 
-	const fnCallNames = config.treatAsFnCall?.[name.content];
+	const fnCallNames = treatAsFnCall?.[name.content];
 	if(fnCallNames) {
 		for(const arg of args) {
 			if(arg !== EmptyArgument && arg.value && fnCallNames.includes(arg.name?.content as string)) {
@@ -143,22 +145,22 @@ function defaultBuiltInProcessor<OtherInfo>(
 					continue;
 				}
 				res.graph.updateToFunctionCall({
-					tag:                VertexType.FunctionCall,
-					id:                 fnId,
-					name:               fnName,
-					args:               [],
-					environment:        data.environment,
-					builtInEnvironment: data.builtInEnvironment,
-					onlyBuiltin:        false,
-					cds:                data.controlDependencies,
-					origin:             [config.useAsProcessor ?? 'builtin:default']
+					tag:         VertexType.FunctionCall,
+					id:          fnId,
+					name:        fnName,
+					args:        [],
+					environment: data.environment,
+                    builtInEnvironment: data.builtInEnvironment,
+                    onlyBuiltin: false,
+					cds:         data.controlDependencies,
+					origin:      [activeProcessor]
 				});
 			}
 		}
 	}
 
-	if(config.cfg !== undefined) {
-		res.exitPoints = [...res.exitPoints, { type: config.cfg, nodeId: rootId, controlDependencies: data.controlDependencies }];
+	if(cfg !== undefined) {
+		(res.exitPoints as ExitPoint[]).push({ type: cfg, nodeId: rootId, controlDependencies: data.controlDependencies });
 	}
 
 	return res;

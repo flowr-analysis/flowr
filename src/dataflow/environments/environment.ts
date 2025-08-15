@@ -96,7 +96,7 @@ export interface WorkingDirectoryReference {
 }
 
 /**
- * An environment describes a ({@link IEnvironment#parent|scoped}) mapping of names to their definitions ({@link EnvironmentMemory}).
+ * An environment describes a ({@link IEnvironment#parent|scoped}) mapping of names to their definitions ({@link BuiltIns}).
  *
  * First, yes, R stores its environments differently, potentially even with another differentiation between
  * the `baseenv`, the `emptyenv`, and other default environments (see https://adv-r.hadley.nz/environments.html).
@@ -104,7 +104,7 @@ export interface WorkingDirectoryReference {
  * and sometimes know less (to be honest, we do not want that,
  * but statically determining all attached environments is theoretically impossible --- consider attachments by user input).
  *
- * One important environment is the {@link BuiltInEnvironment} which contains the default definitions for R's built-in functions and constants.
+ * One important environment is the {@link BuiltIns|BuiltInEnvironment} which contains the default definitions for R's built-in functions and constants.
  * Please use {@link initializeCleanEnvironments} to initialize the environments (which includes the built-ins).
  * During serialization, you may want to rely on the {@link builtInEnvJsonReplacer} to avoid the huge built-in environment.
  *

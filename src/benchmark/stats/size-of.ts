@@ -15,10 +15,10 @@ function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
 	} else if(isDefaultBuiltInEnvironment(env)) {
 		/* in this case, the reference would be shared for sure */
 		return {
-			id:               env.id,
-			parent:           killBuiltInEnv(env.parent),
-			memory:           new Map<Identifier, IdentifierDefinition[]>(),
-			isBuiltInDefault: true
+			id:         env.id,
+			parent:     killBuiltInEnv(env.parent),
+			memory:     new Map<Identifier, IdentifierDefinition[]>(),
+			builtInEnv: true
 		};
 	}
 
@@ -28,10 +28,10 @@ function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
 	}
 
 	return {
-		id:               env.id,
-		parent:           killBuiltInEnv(env.parent),
+		id:         env.id,
+		parent:     killBuiltInEnv(env.parent),
 		memory,
-		isBuiltInDefault: false
+		builtInEnv: false
 	};
 }
 

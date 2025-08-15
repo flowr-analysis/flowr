@@ -9,7 +9,7 @@ describe('Initialization', () => {
 		assert.isDefined(clean.current,'there should be a current environment');
 		expect(clean.current.memory.size, 'the current environment should have no memory').to.be.equal(0);
 		expect(clean.level, 'the level of the clean environment is predefined as 0').to.be.equal(0);
-		expect(clean.current.parent.isBuiltInDefault, 'the parent environment is the built-in environment').to.be.equal(true);
+		expect(clean.current.parent.builtInEnv, 'the parent environment is the built-in environment').to.be.equal(true);
 		expect(clean.current.parent.id, 'the ID of the parent environment is predefined as 0').to.be.equal(0);
 	});
 	test(label('Clean creation should create independent new environments', ['lexicographic-scope'], ['other']), () => {

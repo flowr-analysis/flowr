@@ -51,21 +51,21 @@ export function makeAllMaybe(references: readonly IdentifierReference[] | undefi
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
 	/** Unique and internally generated identifier -- will not be used for comparison but helps with debugging for tracking identities */
-	readonly id:      number
+	readonly id: number
 	/** Lexical parent of the environment, if any (can be manipulated by R code) */
-	parent:           IEnvironment
+	parent:      IEnvironment
 	/** Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions */
-	memory:           BuiltInMemory
+	memory:      BuiltInMemory
 	/**  */
-	isBuiltInDefault: boolean
+	builtInEnv:  boolean
 }
 
-export function hasDefaultBuiltInFlag(obj: unknown): obj is { isDefaultBuiltIn: boolean } {
-	return typeof obj === 'object' && obj !== null && 'isDefaultBuiltIn' in obj;
+export function hasDefaultBuiltInFlag(obj: unknown): obj is { builtInEnv: boolean } {
+	return typeof obj === 'object' && obj !== null && 'builtInEnv' in obj;
 }
 
 export function isDefaultBuiltInEnvironment(v: unknown) {
-	return hasDefaultBuiltInFlag(v) && v.isDefaultBuiltIn;
+	return hasDefaultBuiltInFlag(v) && v.builtInEnv;
 }
 
 let environmentIdCounter = 1; // Zero is reserved for built-in environment
@@ -73,15 +73,15 @@ let environmentIdCounter = 1; // Zero is reserved for built-in environment
 /** @see REnvironmentInformation */
 export class Environment implements IEnvironment {
 	readonly id;
-	parent:           IEnvironment;
-	memory:           BuiltInMemory;
-	isBuiltInDefault: boolean;
+	parent:     IEnvironment;
+	memory:     BuiltInMemory;
+	builtInEnv: boolean;
 
 	constructor(parent: IEnvironment, isBuiltInDefault: boolean) {
 		this.id = isBuiltInDefault ? 0 : environmentIdCounter++;
 		this.parent = parent;
 		this.memory = new Map();
-		this.isBuiltInDefault = isBuiltInDefault;
+		this.builtInEnv = isBuiltInDefault;
 	}
 }
 

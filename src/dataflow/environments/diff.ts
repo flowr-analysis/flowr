@@ -61,7 +61,7 @@ export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEn
 		}
 		return;
 	}
-	if(a.isBuiltInDefault && b.isBuiltInDefault) {
+	if(a.builtInEnv && b.builtInEnv) {
 		return;
 	}
 	if(a.memory.size !== b.memory.size) {

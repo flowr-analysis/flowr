@@ -538,9 +538,9 @@ function envFromJson(json: IEnvironmentJson): IEnvironment {
 		memory.set(key as Identifier, value);
 	}
 	return {
-		id:               json.id,
-		parent:           parent as IEnvironment,
-		isBuiltInDefault: json.isBuiltInDefault,
+		id:         json.id,
+		parent:     parent as IEnvironment,
+		builtInEnv: json.isBuiltInDefault,
 		memory
 	};
 }

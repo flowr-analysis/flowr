@@ -1,22 +1,25 @@
 import type { FlowrConfigOptions } from '../config';
 import type { RParseRequests } from '../r-bridge/retriever';
 import { requestFromInput } from '../r-bridge/retriever';
-import { createDataflowPipeline, createSlicePipeline } from '../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline, createNormalizePipeline } from '../core/steps/pipeline/default-pipelines';
 import { FlowrAnalyzerBuilder } from './flowr-analyzer-builder';
 import { graphToMermaidUrl } from '../util/mermaid/dfg';
 import type { KnownParser } from '../r-bridge/parser';
-import type { SlicingCriteria } from '../slicing/criterion/parse';
 import type { Queries, SupportedQueryTypes } from '../queries/query';
 import { executeQueries } from '../queries/query';
 import type { DataflowInformation } from '../dataflow/info';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { extractCfg } from '../control-flow/extract-cfg';
+import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 
 export class FlowrAnalyzer {
 	private readonly flowrConfig: FlowrConfigOptions;
 	private readonly request:     RParseRequests;
 	private readonly parser:      KnownParser;
+
 	private ast = undefined as unknown as NormalizedAst;
 	private dataflowInfo = undefined as unknown as DataflowInformation;
+	private controlflowInfo = undefined as unknown as ControlFlowInformation;
 
 	constructor(config: FlowrConfigOptions, parser: KnownParser, request: RParseRequests) {
 		this.flowrConfig = config;
@@ -24,29 +27,50 @@ export class FlowrAnalyzer {
 		this.parser = parser;
 	}
 
-	public async dataflow() {
+	public async normalizedAst(force?: boolean): Promise<NormalizedAst> {
+		if(this.ast && !force) {
+			return this.ast;
+		}
+
+		const result = await createNormalizePipeline(
+			this.parser,
+			{ request: this.request },
+			this.flowrConfig).allRemainingSteps();
+		this.ast = result.normalize;
+		return result.normalize;
+	}
+
+	public async dataflow(force?: boolean): Promise<DataflowInformation> {
+		if(this.dataflowInfo && !force) {
+			return this.dataflowInfo;
+		}
+
 		const result = await createDataflowPipeline(
 			this.parser,
 			{ request: this.request },
 			this.flowrConfig).allRemainingSteps();
 		this.dataflowInfo = result.dataflow;
 		this.ast = result.normalize;
+		return result.dataflow;
+	}
+
+	public async controlflow(force?: boolean): Promise<ControlFlowInformation> {
+		if(this.controlflowInfo && !force) {
+			return this.controlflowInfo;
+		}
+
+		if(force || !this.ast) {
+			await this.normalizedAst(force);
+		}
+
+		const result = extractCfg(this.ast, this.flowrConfig);
+		this.controlflowInfo = result;
 		return result;
 	}
 
-	public async slice(criterion: SlicingCriteria) {
-		return createSlicePipeline(
-			this.parser,
-			{
-				request:   this.request,
-				criterion: criterion
-			},
-			this.flowrConfig).allRemainingSteps();
-	}
-
-	public async query(query: Queries<SupportedQueryTypes>) {
+	public async query(query: Queries<SupportedQueryTypes>, force?: boolean) {
 		if(!this.dataflowInfo) {
-			await this.dataflow();
+			await this.dataflow(force);
 		}
 		return executeQueries({ ast: this.ast, dataflow: this.dataflowInfo, config: this.flowrConfig }, query);
 	}
@@ -67,9 +91,7 @@ async function main() {
 		subkind:  'test-subkind',
 		callName: /foo/
 	}]);
-	const slice = await analyzer.slice(['3@foo']);
-	console.log(graphToMermaidUrl(result.dataflow.graph));
-	console.log(slice.reconstruct);
+	console.log(graphToMermaidUrl(result.graph));
 	console.log(query);
 }
 

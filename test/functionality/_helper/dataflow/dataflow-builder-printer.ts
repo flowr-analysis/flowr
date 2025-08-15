@@ -17,13 +17,12 @@ import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo,
-	DataflowGraphVertexUse } from '../../../../src/dataflow/graph/vertex';
-import {
-	VertexType
+	DataflowGraphVertexUse
 } from '../../../../src/dataflow/graph/vertex';
+import { VertexType } from '../../../../src/dataflow/graph/vertex';
 import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
 import type { ControlDependency } from '../../../../src/dataflow/info';
+import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
 
 
 /** we add the node id to allow convenience sorting if we want that in the future (or grouping or, ...) */

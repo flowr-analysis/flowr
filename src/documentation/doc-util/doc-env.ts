@@ -1,11 +1,10 @@
 import type { IEnvironment } from '../../dataflow/environments/environment';
-import { BuiltInEnvironment } from '../../dataflow/environments/environment';
 import { printIdentifier } from '../../util/mermaid/dfg';
 
 export function printEnvironmentToMarkdown(env: IEnvironment | undefined): string {
 	if(env === undefined) {
 		return '?? (error)';
-	} else if(env.id === BuiltInEnvironment.id) {
+	} else if(env.builtInEnv) {
 		return `_Built-in Environment (${env.memory.size} entries)_`;
 	}
 

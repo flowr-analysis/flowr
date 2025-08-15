@@ -27,8 +27,6 @@ import { processLibrary } from '../internal/process/functions/call/built-in/buil
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source';
 import type { ForceArguments } from '../internal/process/functions/call/common';
 import { processApply } from '../internal/process/functions/call/built-in/built-in-apply';
-import { registerBuiltInDefinitions } from './built-in-config';
-import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
 import { processVector } from '../internal/process/functions/call/built-in/built-in-vector';
@@ -169,7 +167,8 @@ export function registerBuiltInFunctions<Config extends object, Proc extends Bui
 	both:      boolean,
 	names:     readonly Identifier[],
 	processor: Proc,
-	config:    Config
+	config:    Config,
+	builtIns:  BuiltIns
 ): void {
 	for(const name of names) {
 		guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
@@ -183,10 +182,7 @@ export function registerBuiltInFunctions<Config extends object, Proc extends Bui
 			name,
 			nodeId:              id
 		}];
-		BuiltInMemory.set(name, d);
-		if(both) {
-			EmptyBuiltInMemory.set(name, d);
-		}
+		builtIns.set(name, d, both);
 	}
 }
 
@@ -224,7 +220,29 @@ export const BuiltInEvalHandlerMapper = {
 export type BuiltInMappingName = keyof typeof BuiltInProcessorMapper;
 export type ConfigOfBuiltInMappingName<N extends BuiltInMappingName> = Parameters<typeof BuiltInProcessorMapper[N]>[4];
 
-export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
-export const EmptyBuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+export type BuiltInMemory = Map<Identifier, IdentifierDefinition[]>
 
-registerBuiltInDefinitions(DefaultBuiltinConfig);
+export class BuiltIns {
+	/**
+     * The built-in {@link REnvironmentInformation|environment} is the root of all environments.
+     *
+     * For its default content (when not overwritten by a flowR config),
+     * see the {@link DefaultBuiltinConfig}.
+     */
+	builtInMemory:      BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+	/**
+     * The twin of the {@link builtInMemory} but with less built ins defined for
+     * cases in which we want some commonly overwritten variables to remain open.
+     * If you do not know if you need the empty environment, you do not need the empty environment (right now).
+     *
+     * @see {@link builtInMemory}
+     */
+	emptyBuiltInMemory: BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+
+	set(identifier: Identifier, definition: IdentifierDefinition[], includeInEmptyMemory: boolean | undefined): void {
+		this.builtInMemory.set(identifier, definition);
+		if(includeInEmptyMemory) {
+			this.emptyBuiltInMemory.set(identifier, definition);
+		}
+	}
+}

@@ -1,6 +1,6 @@
 import { setEquals } from '../../util/collections/set';
-import type { AbstractDomain } from './abstract-domain';
-import { Top } from './abstract-domain';
+import { DEFAULT_INFERENCE_LIMIT, type AbstractDomain } from './abstract-domain';
+import { Top } from './lattice';
 
 type BoundedSetValue<T> = ReadonlySet<T>;
 type BoundedSetTop = typeof Top;
@@ -8,12 +8,16 @@ type BoundedSetBottom = ReadonlySet<never>;
 type BoundedSetLift<T> = BoundedSetValue<T> | BoundedSetTop | BoundedSetBottom;
 
 export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLift<T>>
-implements AbstractDomain<BoundedSetValue<T>, BoundedSetTop, BoundedSetBottom, Value> {
+implements AbstractDomain<T, BoundedSetValue<T>, BoundedSetTop, BoundedSetBottom, Value> {
 	private readonly limit: number;
 	private _value:         Value;
 
-	constructor(value: Value | T[], limit: number = 50) {
-		this._value = (Array.isArray(value) || value instanceof Set ? new Set(value) : value) as Value;
+	constructor(value: Value, limit: number = DEFAULT_INFERENCE_LIMIT) {
+		if(value !== Top) {
+			this._value = (value.size > limit ? Top : new Set(value)) as Value;
+		} else {
+			this._value = value;
+		}
 		this.limit = limit;
 	}
 
@@ -26,7 +30,11 @@ implements AbstractDomain<BoundedSetValue<T>, BoundedSetTop, BoundedSetBottom, V
 	}
 
 	public static bottom<T>(limit?: number): BoundedSetDomain<T, BoundedSetBottom> {
-		return new BoundedSetDomain(new Set<never>(), limit);
+		return new BoundedSetDomain(new Set(), limit);
+	}
+
+	public static abstract<T>(concrete: ReadonlySet<T> | typeof Top, limit?: number): BoundedSetDomain<T> {
+		return new BoundedSetDomain(concrete, limit);
 	}
 
 	public top(): BoundedSetDomain<T, BoundedSetTop> {
@@ -86,6 +94,18 @@ implements AbstractDomain<BoundedSetValue<T>, BoundedSetTop, BoundedSetBottom, V
 
 	public widen(other: BoundedSetDomain<T>): BoundedSetDomain<T> {
 		return this.leq(other) ? new BoundedSetDomain(other.value, this.limit) : this.top();
+	}
+
+	public narrow(other: BoundedSetDomain<T>): BoundedSetDomain<T> {
+		return this.isTop() ? other : this;
+	}
+
+	public concretize(limit: number = this.limit): ReadonlySet<T> |  typeof Top {
+		return this.value === Top || this.value.size > limit ? Top : this.value;
+	}
+
+	public abstract(concrete: ReadonlySet<T> | typeof Top): BoundedSetDomain<T> {
+		return BoundedSetDomain.abstract(concrete, this.limit);
 	}
 
 	public toString(): string {

@@ -1,28 +1,14 @@
-export const Top = Symbol('top');
-export const Bottom = Symbol('bottom');
+import type { Bottom, Lattice, Top } from './lattice';
 
-export interface AbstractDomain<Value, Top = typeof Top, Bot = typeof Bottom, Lift extends Value | Top | Bot = Value | Top | Bot> {
-	get value(): Lift;
+export const DEFAULT_INFERENCE_LIMIT = 50;
 
-	top(): AbstractDomain<Value, Top, Bot, Top>;
+export interface AbstractDomain<Concrete, Abstract, Top = typeof Top, Bot = typeof Bottom, Lift extends Abstract | Top | Bot = Abstract | Top | Bot>
+extends Lattice<Abstract, Top, Bot, Lift> {
+	widen(other: AbstractDomain<Concrete, Abstract, Top, Bot>): AbstractDomain<Concrete, Abstract, Top, Bot>;
 
-	bottom(): AbstractDomain<Value, Top, Bot, Bot>;
+	narrow(other: AbstractDomain<Concrete, Abstract, Top, Bot>): AbstractDomain<Concrete, Abstract, Top, Bot>;
 
-	equals(other: AbstractDomain<Value, Top, Bot>): boolean;
+	concretize(limit?: number): ReadonlySet<Concrete> | typeof Top;
 
-	leq(other: AbstractDomain<Value, Top, Bot>): boolean;
-
-	join(...values: AbstractDomain<Value, Top, Bot>[]): AbstractDomain<Value, Top, Bot>;
-
-	meet(...values: AbstractDomain<Value, Top, Bot>[]): AbstractDomain<Value, Top, Bot>;
-
-	widen(other: AbstractDomain<Value, Top, Bot>): AbstractDomain<Value, Top, Bot>;
-
-	toString(): string;
-
-	isTop(): this is AbstractDomain<Value, Top, Bot, Top>;
-
-	isBottom(): this is AbstractDomain<Value, Top, Bot, Bot>;
-
-	isValue(): this is AbstractDomain<Value, Top, Bot, Value>;
+	abstract(concrete: ReadonlySet<Concrete> | typeof Top): AbstractDomain<Concrete, Abstract, Top, Bot>;
 }

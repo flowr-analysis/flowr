@@ -1,7 +1,13 @@
-import type { AbstractDomain } from './abstract-domain';
+import { DEFAULT_INFERENCE_LIMIT, type AbstractDomain } from './abstract-domain';
+import { Top } from './lattice';
 
-export abstract class ProductDomain<Product extends Record<string, AbstractDomain<unknown, unknown, unknown>>>
-implements AbstractDomain<Product, Product, Product> {
+type ConcreteProduct<Product extends Record<string, AbstractDomain<unknown, unknown, unknown, unknown>>> = {
+	[Key in keyof Product]: Product[Key] extends AbstractDomain<infer Concrete, unknown, unknown, unknown> ? Concrete : never;
+};
+type AbstractProduct = Record<string, AbstractDomain<unknown, unknown, unknown, unknown>>;
+
+export abstract class ProductDomain<Product extends AbstractProduct>
+implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 	private _value: Product;
 
 	constructor(value: Product) {
@@ -18,7 +24,7 @@ implements AbstractDomain<Product, Product, Product> {
 		const result = this.create(this.value);
 
 		for(const key in result.value) {
-			result._value[key] =  result.value[key].bottom() as Product[Extract<keyof Product, string>];
+			result._value[key] = result.value[key].bottom() as Product[Extract<keyof Product, string>];
 		}
 		return result;
 	}
@@ -87,19 +93,65 @@ implements AbstractDomain<Product, Product, Product> {
 		return result;
 	}
 
+	public narrow(other: ProductDomain<Product>): ProductDomain<Product> {
+		const result = this.create(this.value);
+
+		for(const key in result.value) {
+			result._value[key] = result.value[key].narrow(other.value[key]) as Product[Extract<keyof Product, string>];
+		}
+		return result;
+	}
+
+	public concretize(limit: number = DEFAULT_INFERENCE_LIMIT): ReadonlySet<ConcreteProduct<Product>> | typeof Top {
+		let result = new Set<ConcreteProduct<Product>>();
+
+		for(const key in this.value) {
+			const concrete = this.value[key].concretize(limit);
+
+			if(concrete === Top) {
+				return Top;
+			}
+			const newResult = new Set<ConcreteProduct<Product>>();
+
+			for(const value of concrete) {
+				for(const entry of result) {
+					if(newResult.size >= limit) {
+						return Top;
+					}
+					newResult.add({ ...entry, [key]: value });
+				}
+			}
+			result = newResult;
+		}
+		return result;
+	}
+
+	public abstract(concrete: ReadonlySet<ConcreteProduct<Product>> | typeof Top): ProductDomain<Product> {
+		if(concrete === Top) {
+			return this.top();
+		}
+		const result = this.create(this.value);
+
+		for(const key in result.value) {
+			const concreteValues = new Set(concrete.values().map(value => value[key]));
+			result._value[key] = result.value[key].abstract(concreteValues) as Product[Extract<keyof Product, string>];
+		}
+		return result;
+	}
+
 	public toString(): string {
-		return '(' + Object.entries<AbstractDomain<unknown>>(this.value).map(([key, value]) => `${key}: ${value.toString()}`).join(', ') + ')';
+		return '(' + Object.entries<AbstractDomain<unknown, unknown, unknown, unknown>>(this.value).map(([key, value]) => `${key}: ${value.toString()}`).join(', ') + ')';
 	}
 
 	public isTop(): this is ProductDomain<Product> {
-		return Object.values<AbstractDomain<unknown>>(this.value).every(value => value.isTop());
+		return Object.values<AbstractDomain<unknown, unknown, unknown, unknown>>(this.value).every(value => value.isTop());
 	}
 
 	public isBottom(): this is ProductDomain<Product> {
-		return Object.values<AbstractDomain<unknown>>(this.value).every(value => value.isBottom());
+		return Object.values<AbstractDomain<unknown, unknown, unknown, unknown>>(this.value).every(value => value.isBottom());
 	}
 
 	public isValue(): this is ProductDomain<Product> {
-		return !this.isTop() && !(this as ProductDomain<Product>).isBottom();
+		return true;
 	}
 }

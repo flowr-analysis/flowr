@@ -1,10 +1,13 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { AbstractDomain } from './abstract-domain';
+import { DEFAULT_INFERENCE_LIMIT, type AbstractDomain } from './abstract-domain';
+import { Top } from './lattice';
 
+type Concrete<Domain> = Domain extends AbstractDomain<infer Concrete, unknown, unknown, unknown> ? Concrete : never;
+type ConcreteState<Domain> = ReadonlyMap<NodeId, Concrete<Domain>>;
 type AbstractState<Domain> = Map<NodeId, Domain>;
 
-export class StateAbstractDomain<Domain extends AbstractDomain<unknown, unknown, unknown>>
-implements AbstractDomain<AbstractState<Domain>, AbstractState<Domain>, AbstractState<Domain>> {
+export class StateAbstractDomain<Domain extends AbstractDomain<unknown, unknown, unknown, unknown>>
+implements AbstractDomain<ConcreteState<Domain>, AbstractState<Domain>, AbstractState<Domain>, AbstractState<Domain>> {
 	private _value: AbstractState<Domain>;
 
 	constructor(value: AbstractState<Domain>) {
@@ -104,6 +107,72 @@ implements AbstractDomain<AbstractState<Domain>, AbstractState<Domain>, Abstract
 		return result;
 	}
 
+	public narrow(other: StateAbstractDomain<Domain>): StateAbstractDomain<Domain> {
+		const result = new StateAbstractDomain(this.value);
+
+		for(const [nodeId, value] of other.value) {
+			const currValue = result.value.get(nodeId);
+			if(currValue === undefined) {
+				result.value.set(nodeId, value);
+			} else {
+				result.value.set(nodeId, currValue.narrow(value) as Domain);
+			}
+		}
+		return result;
+	}
+
+	public concretize(limit: number = DEFAULT_INFERENCE_LIMIT): ReadonlySet<ConcreteState<Domain>> | typeof Top {
+		let states = new Set<ConcreteState<Domain>>([new Map()]);
+
+		for(const [nodeId, value] of this.value) {
+			const newStates = new Set<ConcreteState<Domain>>();
+			const concreteValues = value.concretize(limit);
+
+			if(concreteValues === Top) {
+				return Top;
+			}
+			for(const state of states) {
+				for(const concrete of concreteValues) {
+					if(newStates.size > limit) {
+						return Top;
+					}
+					const map = new Map(state);
+					map.set(nodeId, concrete as Concrete<Domain>);
+					newStates.add(map);
+				}
+			}
+			states = newStates;
+		}
+		return states;
+	}
+
+	public abstract(concrete: ReadonlySet<ConcreteState<Domain>> | typeof Top): StateAbstractDomain<Domain> {
+		const entry = [...this.value.values()][0];
+
+		if(concrete === Top || entry === undefined) {
+			return new StateAbstractDomain(new Map<NodeId, Domain>());
+		}
+		const mappings = new Map<NodeId, Set<Concrete<Domain>>>();
+
+		for(const state of concrete) {
+			for(const [nodeId, value] of state) {
+				const mapping = mappings.get(nodeId);
+
+				if(mapping === undefined) {
+					mappings.set(nodeId, new Set([value]));
+				} else {
+					mapping.add(value);
+				}
+			}
+		}
+		const result = new Map<NodeId, Domain>();
+
+		for(const [nodeId, values] of mappings) {
+			result.set(nodeId, entry.abstract(values) as Domain);
+		}
+		return new StateAbstractDomain(result);
+	}
+
 	public toString(): string {
 		return '(' + this.value.entries().toArray().map(([key, value]) => `${key} -> ${value.toString()}`).join(', ') + ')';
 	}
@@ -117,6 +186,6 @@ implements AbstractDomain<AbstractState<Domain>, AbstractState<Domain>, Abstract
 	}
 
 	public isValue(): this is StateAbstractDomain<Domain> {
-		return !this.isTop() && !(this as StateAbstractDomain<Domain>).isBottom();
+		return true;
 	}
 }

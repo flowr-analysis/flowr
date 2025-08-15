@@ -27,6 +27,12 @@ export class FlowrAnalyzer {
 		this.parser = parser;
 	}
 
+	public reset() {
+		this.ast = undefined as unknown as NormalizedAst;
+		this.dataflowInfo = undefined as unknown as DataflowInformation;
+		this.controlflowInfo = undefined as unknown as ControlFlowInformation;
+	}
+
 	public async normalizedAst(force?: boolean): Promise<NormalizedAst> {
 		if(this.ast && !force) {
 			return this.ast;

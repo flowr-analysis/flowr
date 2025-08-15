@@ -104,15 +104,14 @@ export function processKnownFunctionCall<OtherInfo>(
 
 	return {
 		information: {
-			unknownReferences:  [],
-			in:                 inIds,
+			unknownReferences: [],
+			in:                inIds,
 			/* we do not keep the argument out as it has been linked by the function */
-			out:                functionName.out,
-			graph:              finalGraph,
-			environment:        finalEnv,
-			builtInEnvironment: data.builtInEnvironment,
-			entryPoint:         rootId,
-			exitPoints:         [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
+			out:               functionName.out,
+			graph:             finalGraph,
+			environment:       finalEnv,
+			entryPoint:        rootId,
+			exitPoints:        [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
 		},
 		processedArguments: reverseOrder ? [...processedArguments].reverse() : processedArguments,
 		fnRef

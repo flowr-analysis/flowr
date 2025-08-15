@@ -84,14 +84,13 @@ export function processEvalCall<OtherInfo>(
 			}
 		}
 		return {
-			graph:              result.reduce((acc, r) => acc.mergeWith(r.graph), information.graph),
-			environment:        result.reduce((acc, r) => appendEnvironment(acc, r.environment, data.builtInEnvironment), information.environment),
-			builtInEnvironment: information.builtInEnvironment,
-			entryPoint:         rootId,
-			out:                [...information.out, ...result.flatMap(r => r.out)],
-			in:                 [...information.in, ...result.flatMap(r => r.in)],
-			unknownReferences:  [...information.unknownReferences, ...result.flatMap(r => r.unknownReferences)],
-			exitPoints:         [...information.exitPoints, ...result.flatMap(r => r.exitPoints)],
+			graph:             result.reduce((acc, r) => acc.mergeWith(r.graph), information.graph),
+			environment:       result.reduce((acc, r) => appendEnvironment(acc, r.environment), information.environment),
+			entryPoint:        rootId,
+			out:               [...information.out, ...result.flatMap(r => r.out)],
+			in:                [...information.in, ...result.flatMap(r => r.in)],
+			unknownReferences: [...information.unknownReferences, ...result.flatMap(r => r.unknownReferences)],
+			exitPoints:        [...information.exitPoints, ...result.flatMap(r => r.exitPoints)],
 		};
 	}
 
@@ -114,7 +113,7 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 		if(arg.value?.type === RType.String) {
 			return [arg.value.content.str];
 		} else if(arg.value?.type === RType.Symbol) {
-			const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, builtInEnvironment: builtInEnvironment, idMap: idMap, resolve: config.solver.variables }));
+			const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, idMap: idMap, resolve: config.solver.variables }));
 			if(resolved) {
 				return collectStrings(resolved.elements);
 			}

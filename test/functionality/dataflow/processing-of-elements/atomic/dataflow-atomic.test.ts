@@ -863,13 +863,12 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				.call(7, 'assign', [argumentInCall(1), argumentInCall(5)], { returns: [1], onlyBuiltIn: true, reads: [builtInId('assign')] })
 				.calls(7, builtInId('assign'))
 				.defineFunction(5, [3], {
-					entryPoint:         5,
-					environment:        defaultEnv().pushEnv(),
-					builtInEnvironment: defaultEnv().current,
-					graph:              new Set([3]),
-					in:                 [{ nodeId: 3, name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
-					out:                [],
-					unknownReferences:  []
+					entryPoint:        5,
+					environment:       defaultEnv().pushEnv(),
+					graph:             new Set([3]),
+					in:                [{ nodeId: 3, name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
+					out:               [],
+					unknownReferences: []
 				})
 				.constant(3, undefined, false)
 		);
@@ -883,13 +882,12 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				.call(8, 'get', [argumentInCall(6)], { reads: [6, builtInId('get')], onlyBuiltIn: true, environment: defaultEnv().defineFunction('a', 0, 4) })
 				.calls(8, builtInId('get'))
 				.defineFunction(3, [1], {
-					entryPoint:         0,
-					environment:        defaultEnv().pushEnv(),
-					builtInEnvironment: defaultEnv().current,
-					graph:              new Set([1]),
-					in:                 [{ nodeId: 9, name: 'get("a")', controlDependencies: [], type: ReferenceType.Argument }],
-					out:                [],
-					unknownReferences:  []
+					entryPoint:        0,
+					environment:       defaultEnv().pushEnv(),
+					graph:             new Set([1]),
+					in:                [{ nodeId: 9, name: 'get("a")', controlDependencies: [], type: ReferenceType.Argument }],
+					out:               [],
+					unknownReferences: []
 				})
 				.use(6, '"a"')
 				.defineVariable(0, 'a', { definedBy: [4, 3] })

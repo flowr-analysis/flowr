@@ -1,7 +1,7 @@
 import type { MergeableRecord } from '../../util/objects';
 import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IEnvironment, REnvironmentInformation } from '../environments/environment';
+import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency } from '../info';
 import type { BuiltInMappingName } from '../environments/built-in';
 
@@ -97,11 +97,11 @@ export type ContainerIndex = ContainerLeafIndex | ContainerParentIndex;
 
 /**
  * Checks whether {@link index} is accessed by {@link accessLexeme}.
- * 
+ *
  * @param index - The {@link ContainerIndex}, which is accessed
  * @param accessLexeme - The access lexeme
  * @param isIndexBasedAccess - Whether the index of the {@link ContainerIndex} is accessed i.e. the position in the container and not e.g. the name of the index
- * @returns true, when {@link accessLexeme} accesses the {@link index}, false otherwise 
+ * @returns true, when {@link accessLexeme} accesses the {@link index}, false otherwise
  */
 export function isAccessed(index: ContainerIndex, accessLexeme: string, isIndexBasedAccess: boolean) {
 	if(isIndexBasedAccess) {
@@ -210,9 +210,8 @@ export interface DataflowGraphVertexAstLink {
  * @see {@link isValueVertex} - to check if a vertex is a value vertex
  */
 export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
-	readonly tag:                 VertexType.Value
-	readonly environment?:        undefined
-	readonly builtInEnvironment?: undefined
+	readonly tag:          VertexType.Value
+	readonly environment?: undefined
 }
 
 /**
@@ -221,10 +220,9 @@ export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
  * @see {@link isUseVertex} - to check if a vertex is a use vertex
  */
 export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
-	readonly tag:                 VertexType.Use
+	readonly tag:          VertexType.Use
 	/** Does not require an environment to be attached. If we promote the use to a function call, we attach the environment later.  */
-	readonly environment?:        undefined
-	readonly builtInEnvironment?: undefined
+	readonly environment?: undefined
 }
 
 /**
@@ -235,24 +233,22 @@ export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
  * @see {@link isFunctionCallVertex} - to check if a vertex is a function call vertex
  */
 export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase {
-	readonly tag:       VertexType.FunctionCall
+	readonly tag:  VertexType.FunctionCall
 	/**
 	 * Effective name of the function call,
 	 * Please be aware that this name can differ from the lexeme.
 	 * For example, if the function is a replacement function, in this case, the actually called fn will
 	 * have the compound name (e.g., `[<-`).
 	 */
-	readonly name:      string
+	readonly name: string
 	/** The arguments of the function call, in order (as they are passed to the respective call if executed in R). */
-	args:               FunctionArgument[]
+	args:          FunctionArgument[]
 	/** a performance flag to indicate that the respective call is _only_ calling a builtin function without any df graph attached */
-	onlyBuiltin:        boolean
+	onlyBuiltin:   boolean
 	/** The environment attached to the call (if such an attachment is necessary, e.g., because it represents the calling closure */
-	environment:        REnvironmentInformation | undefined
-	/** The built-in environment */
-	builtInEnvironment: IEnvironment | undefined
+	environment:   REnvironmentInformation | undefined
 	/** More detailed Information on this function call */
-	origin:             FunctionOriginInformation[] | 'unnamed'
+	origin:        FunctionOriginInformation[] | 'unnamed'
 }
 
 /** Describes the processor responsible for a function call */
@@ -264,10 +260,9 @@ export type FunctionOriginInformation = BuiltInMappingName | string
  * @see {@link isVariableDefinitionVertex} - to check if a vertex is a variable definition vertex
  */
 export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVertexBase {
-	readonly tag:                 VertexType.VariableDefinition
+	readonly tag:          VertexType.VariableDefinition
 	/** Does not require an environment, those are attached to the call */
-	readonly environment?:        undefined
-	readonly builtInEnvironment?: undefined
+	readonly environment?: undefined
 }
 
 /**
@@ -276,20 +271,19 @@ export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVert
  * @see {@link isFunctionDefinitionVertex} - to check if a vertex is a function definition vertex
  */
 export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVertexBase {
-	readonly tag:        VertexType.FunctionDefinition
+	readonly tag: VertexType.FunctionDefinition
 	/**
 	 * The static subflow of the function definition, constructed within {@link processFunctionDefinition}.
 	 * If the vertex is (for example) a function, it can have a subgraph which is used as a template for each call.
 	 * This is the `body` of the function.
 	 */
-	subflow:             DataflowFunctionFlowInformation
+	subflow:      DataflowFunctionFlowInformation
 	/**
 	 * All exit points of the function definitions.
 	 * In other words: last expressions/return calls
 	 */
-	exitPoints:          readonly NodeId[]
-	environment?:        REnvironmentInformation
-	builtInEnvironment?: IEnvironment
+	exitPoints:   readonly NodeId[]
+	environment?: REnvironmentInformation
 }
 
 /**

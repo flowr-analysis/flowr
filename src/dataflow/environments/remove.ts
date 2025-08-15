@@ -1,4 +1,5 @@
 import type { IEnvironment, REnvironmentInformation } from './environment';
+import { isDefaultBuiltInEnvironment } from './environment';
 
 import type { Identifier } from './identifier';
 import { happensInEveryBranch } from '../info';
@@ -27,8 +28,8 @@ export function remove(name: Identifier, environment: REnvironmentInformation, d
 
 
 /** Creates a copy of the original environment but without the definitions of the given ids */
-export function removeAll(definitions: readonly { nodeId: NodeId, name: Identifier | undefined }[], environment: REnvironmentInformation, defaultEnvironment: IEnvironment): REnvironmentInformation {
-	environment = cloneEnvironmentInformation(environment, defaultEnvironment, true);
+export function removeAll(definitions: readonly { nodeId: NodeId, name: Identifier | undefined }[], environment: REnvironmentInformation): REnvironmentInformation {
+	environment = cloneEnvironmentInformation(environment, true);
 	let current: IEnvironment = environment.current;
 	do{
 		for(const { nodeId, name } of definitions) {
@@ -47,7 +48,7 @@ export function removeAll(definitions: readonly { nodeId: NodeId, name: Identifi
 			}
 		}
 		current = current.parent;
-	} while(current.id !== defaultEnvironment.id);
+	} while(!isDefaultBuiltInEnvironment(current));
 
 	// we never remove built ins so we can stop one early
 	return environment;

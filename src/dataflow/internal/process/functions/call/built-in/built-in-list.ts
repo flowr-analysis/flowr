@@ -60,7 +60,7 @@ export function processList<OtherInfo>(
 
 		// Check whether argument value can be resolved
 		if(arg.value.type === RType.Symbol) {
-			const indicesCollection = resolveIndicesByName(arg.value.lexeme, data.environment, data.builtInEnvironment);
+			const indicesCollection = resolveIndicesByName(arg.value.lexeme, data.environment);
 			if(indicesCollection) {
 				newIndex = {
 					...newIndex,

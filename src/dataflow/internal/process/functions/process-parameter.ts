@@ -26,7 +26,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 	for(const writtenNode of writtenNodes) {
 		log.trace(`parameter ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' no default value'}`);
 		graph.setDefinitionOfVertex(writtenNode);
-		environment = define(writtenNode, false, environment, data.builtInEnvironment, data.flowrConfig);
+		environment = define(writtenNode, false, environment, data.flowrConfig);
 
 		if(defaultValue !== undefined) {
 			if(parameter.defaultValue?.type === RType.FunctionDefinition) {
@@ -41,13 +41,12 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 	}
 
 	return {
-		unknownReferences:  [],
-		in:                 defaultValue === undefined ? [] : [...defaultValue.in, ...defaultValue.unknownReferences, ...name.in],
-		out:                [...(defaultValue?.out ?? []), ...name.out, ...name.unknownReferences],
-		graph:              graph,
-		environment:        environment,
-		builtInEnvironment: data.builtInEnvironment,
-		entryPoint:         parameter.info.id,
-		exitPoints:         [{ nodeId: parameter.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
+		unknownReferences: [],
+		in:                defaultValue === undefined ? [] : [...defaultValue.in, ...defaultValue.unknownReferences, ...name.in],
+		out:               [...(defaultValue?.out ?? []), ...name.out, ...name.unknownReferences],
+		graph:             graph,
+		environment:       environment,
+		entryPoint:        parameter.info.id,
+		exitPoints:        [{ nodeId: parameter.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
 	};
 }

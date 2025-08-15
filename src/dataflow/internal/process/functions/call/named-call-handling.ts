@@ -19,14 +19,13 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 	}
 
 	return {
-		unknownReferences:  [...info.unknownReferences, ...newInfo.unknownReferences],
-		in:                 [...info.in, ...newInfo.in],
-		out:                [...info.out, ...newInfo.out],
-		graph:              info.graph.mergeWith(newInfo.graph),
-		environment:        appendEnvironment(info.environment, newInfo.environment, info.builtInEnvironment),
-		builtInEnvironment: info.builtInEnvironment,
-		entryPoint:         newInfo.entryPoint,
-		exitPoints:         [...info.exitPoints, ...newInfo.exitPoints],
+		unknownReferences: [...info.unknownReferences, ...newInfo.unknownReferences],
+		in:                [...info.in, ...newInfo.in],
+		out:               [...info.out, ...newInfo.out],
+		graph:             info.graph.mergeWith(newInfo.graph),
+		environment:       appendEnvironment(info.environment, newInfo.environment),
+		entryPoint:        newInfo.entryPoint,
+		exitPoints:        [...info.exitPoints, ...newInfo.exitPoints],
 	};
 }
 
@@ -37,7 +36,7 @@ function processDefaultFunctionProcessor<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ) {
-	const resolve = resolveByName(name.content, data.environment, data.builtInEnvironment, ReferenceType.Function);
+	const resolve = resolveByName(name.content, data.environment, ReferenceType.Function);
 	/* if we do not know where we land, we force! */
 	const call = processKnownFunctionCall({ name, args, rootId, data, forceArgs: (resolve?.length ?? 0) > 0 ? undefined : 'all', origin: 'default' });
 	return mergeInformation(information, call.information);
@@ -57,7 +56,7 @@ export function processNamedCall<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const resolved = resolveByName(name.content, data.environment, data.builtInEnvironment, ReferenceType.Function) ?? [];
+	const resolved = resolveByName(name.content, data.environment, ReferenceType.Function) ?? [];
 	let defaultProcessor = resolved.length === 0;
 
 	let information: DataflowInformation | undefined = undefined;

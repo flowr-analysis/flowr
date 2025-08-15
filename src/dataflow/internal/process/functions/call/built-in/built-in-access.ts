@@ -99,12 +99,12 @@ export function processAccess<OtherInfo>(
 		 * ```
 		 * the read for a will use both accesses as potential definitions and not just the last one!
 		 */
-		unknownReferences: makeAllMaybe(info.unknownReferences, info.graph, info.environment, data.builtInEnvironment, false),
+		unknownReferences: makeAllMaybe(info.unknownReferences, info.graph, info.environment, false),
 		entryPoint:        rootId,
 		/** it is, to be precise, the accessed element we want to map to maybe */
 		in:                head === EmptyArgument ? info.in : info.in.map(ref => {
 			if(ref.nodeId === head.value?.info.id) {
-				return makeReferenceMaybe(ref, info.graph, info.environment, data.builtInEnvironment, false);
+				return makeReferenceMaybe(ref, info.graph, info.environment, false);
 			} else {
 				return ref;
 			}
@@ -232,7 +232,7 @@ function referenceAccessedIndices<OtherInfo>(
 	let accessedIndicesCollection: ContainerIndicesCollection;
 	// If the accessedArg is a symbol, it's either a simple access or the base case of a nested access
 	if(accessedArg.value?.type === RType.Symbol) {
-		accessedIndicesCollection = resolveSingleIndex(accessedArg, accessArg, data.environment, data.builtInEnvironment, isIndexBasedAccess);
+		accessedIndicesCollection = resolveSingleIndex(accessedArg, accessArg, data.environment, isIndexBasedAccess);
 	} else {
 		// Higher access call
 		const underlyingAccessId = accessedArg.value?.info.id ?? -1;

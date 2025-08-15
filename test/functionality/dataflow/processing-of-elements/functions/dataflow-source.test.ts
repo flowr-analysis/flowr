@@ -206,22 +206,20 @@ describe.sequential('source', withShell(shell => {
 			.constant('1')
 			.constant('closure1-1:1-1:6-3', undefined, false)
 			.defineFunction('closure1-1:1-1:6-5', ['closure1-1:1-1:6-3'], {
-				out:                [],
-				in:                 [{ nodeId: 'closure1-1:1-1:6-3', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
-				unknownReferences:  [],
-				entryPoint:         'closure1-1:1-1:6-3',
-				graph:              new Set(['closure1-1:1-1:6-3']),
-				environment:        defaultEnv().pushEnv().pushEnv(),
-				builtInEnvironment: defaultEnv().current.parent
+				out:               [],
+				in:                [{ nodeId: 'closure1-1:1-1:6-3', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
+				unknownReferences: [],
+				entryPoint:        'closure1-1:1-1:6-3',
+				graph:             new Set(['closure1-1:1-1:6-3']),
+				environment:       defaultEnv().pushEnv().pushEnv(),
 			}, { environment: defaultEnv().pushEnv() }, false)
 			.defineFunction('closure1-1:1-1:6-7', ['closure1-1:1-1:6-5'], {
-				out:                [],
-				in:                 [],
-				unknownReferences:  [],
-				entryPoint:         'closure1-1:1-1:6-5',
-				graph:              new Set(['closure1-1:1-1:6-5']),
-				environment:        defaultEnv().pushEnv(),
-				builtInEnvironment: defaultEnv().current.parent
+				out:               [],
+				in:                [],
+				unknownReferences: [],
+				entryPoint:        'closure1-1:1-1:6-5',
+				graph:             new Set(['closure1-1:1-1:6-5']),
+				environment:       defaultEnv().pushEnv(),
 			})
 			.defineVariable('closure1-1:1-1:6-0', 'f', { definedBy: ['closure1-1:1-1:6-7', 'closure1-1:1-1:6-8'] })
 			.addControlDependency('closure1-1:1-1:6-0', '3', true)
@@ -259,16 +257,14 @@ describe.sequential('source', withShell(shell => {
 			.defineVariable('closure2-2:1-2:6-3', 'x', { definedBy: ['closure2-2:1-2:6-4', 'closure2-2:1-2:6-5'] }, false)
 			.sideEffectOnCall('closure2-2:1-2:6-3', '8')
 			.defineFunction('closure2-2:1-2:6-7', ['closure2-2:1-2:6-5'], {
-				out:                [],
-				in:                 [],
-				unknownReferences:  [],
-				entryPoint:         'closure2-2:1-2:6-5',
-				graph:              new Set(['closure2-2:1-2:6-4', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5']),
-				environment:        defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5').pushEnv(),
-				builtInEnvironment: defaultEnv().current.parent
+				out:               [],
+				in:                [],
+				unknownReferences: [],
+				entryPoint:        'closure2-2:1-2:6-5',
+				graph:             new Set(['closure2-2:1-2:6-4', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5']),
+				environment:       defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5').pushEnv(),
 			}, {
-				environment:        defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5'),
-				builtInEnvironment: defaultEnv().current.parent
+				environment: defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5'),
 			})
 			.defineVariable('closure2-2:1-2:6-0', 'f', { definedBy: ['closure2-2:1-2:6-7', 'closure2-2:1-2:6-8'] })
 			.addControlDependency('closure2-2:1-2:6-0', '6', true)

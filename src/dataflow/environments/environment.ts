@@ -16,10 +16,10 @@ import type { BuiltInMemory } from './built-in';
 /**
  * Marks the reference as maybe (i.e., as controlled by a set of {@link IdentifierReference#controlDependencies|control dependencies}).
  */
-export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, defaultEnvironment: IEnvironment, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference {
+export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference {
 	const node = graph.get(ref.nodeId, true);
 	if(includeDefs) {
-		const definitions = ref.name ? resolveByName(ref.name, environments, defaultEnvironment, ref.type) : undefined;
+		const definitions = ref.name ? resolveByName(ref.name, environments, ref.type) : undefined;
 		for(const definition of definitions ?? []) {
 			if(definition.type !== ReferenceType.BuiltInFunction && definition.type !== ReferenceType.BuiltInConstant) {
 				if(definition.controlDependencies && defaultCd && !definition.controlDependencies.find(c => c.id === defaultCd.id)) {
@@ -41,11 +41,11 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 	return { ...ref, controlDependencies: [...ref.controlDependencies ?? [], ...(defaultCd ? [defaultCd]: []) ] };
 }
 
-export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, defaultEnvironment: IEnvironment, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference[] {
+export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference[] {
 	if(references === undefined) {
 		return [];
 	}
-	return references.map(ref => makeReferenceMaybe(ref, graph, environments, defaultEnvironment, includeDefs, defaultCd));
+	return references.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, defaultCd));
 }
 
 /** A single entry/scope within an {@link REnvironmentInformation} */
@@ -64,12 +64,10 @@ export function hasDefaultBuiltInFlag(obj: unknown): obj is { isDefaultBuiltIn: 
 	return typeof obj === 'object' && obj !== null && 'isDefaultBuiltIn' in obj;
 }
 
-export function isDefaultBuiltIn(v: unknown) {
+export function isDefaultBuiltInEnvironment(v: unknown) {
 	return hasDefaultBuiltInFlag(v) && v.isDefaultBuiltIn;
 }
 
-// TODO TSchoeller How to handle this?
-// TODO TSchoeller Should we expose a constant 0 as built-in environment ID?
 let environmentIdCounter = 1; // Zero is reserved for built-in environment
 
 /** @see REnvironmentInformation */
@@ -162,11 +160,8 @@ export function initializeCleanEnvironments(memory?: BuiltInMemory, fullBuiltIns
  * Helps to serialize an environment, but replaces the built-in environment with a placeholder.
  */
 export function builtInEnvJsonReplacer(k: unknown, v: unknown): unknown {
-	if(isDefaultBuiltIn(v)) {
+	if(isDefaultBuiltInEnvironment(v)) {
 		return '<BuiltInEnvironment>';
-	// TODO TSchoeller Is this important?
-	//} else if(v === EmptyBuiltInEnvironment) {
-	//	return '<EmptyBuiltInEnvironment>';
 	} else {
 		return jsonReplacer(k, v);
 	}

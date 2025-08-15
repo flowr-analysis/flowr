@@ -401,14 +401,14 @@ but this of course does not apply to the general case.
 
 For starters, let's have a look at the environment of the call to \`<-\` in the last line:
 
-${printEnvironmentToMarkdown(env.current, info.dataflow.builtInEnvironment)}
+${printEnvironmentToMarkdown(env.current)}
 
 Great, you should see a definition of \`<-\` which is constraint by the [control dependency](#control-dependencies) to the \`if\`.
 Hence, trying to re-resolve the call using \`${getAllFunctionCallTargets.name}\` (defined in ${getFilePathMd('../dataflow/internal/linker.ts')}) with the id \`${id}\` of the call as starting point will present you with
 the following target ids: { \`${[...getAllFunctionCallTargets(id, info.dataflow.graph)].join('`, `')}\` }.
 This way we know that the call may refer to the built-in assignment operator or to the multiplication.
 Similarly, trying to resolve the name with \`${resolveByName.name}\` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
-{ \`${resolveByName(name, env, info.dataflow.builtInEnvironment)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
+{ \`${resolveByName(name, env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
 
 	`;		
 })()}
@@ -490,7 +490,7 @@ ${details('Conditional Assignments', await (async() => {
 	const constrainedDefinitions = await printDfGraphForCode(shell, 'x <- 0\nif(u) x <- 1 else x <- 2\nx', { exposeResult: true });
 	const [text, info] = constrainedDefinitions;
 
-	const finalEnvironment = printEnvironmentToMarkdown(info.dataflow.environment.current, info.dataflow.builtInEnvironment);
+	const finalEnvironment = printEnvironmentToMarkdown(info.dataflow.environment.current);
 		
 	return `
 ${text}
@@ -604,7 +604,7 @@ Besides this being a theoretically "shorter" way of defining a function, this be
 
 `,
 		code:             'function() 1',
-		expectedSubgraph: emptyGraph().defineFunction('1@function', [0], { graph: new Set('0'), in: [], out: [], unknownReferences: [], entryPoint: 0, environment: defaultEnv(), builtInEnvironment: defaultEnv().current })
+		expectedSubgraph: emptyGraph().defineFunction('1@function', [0], { graph: new Set('0'), in: [], out: [], unknownReferences: [], entryPoint: 0, environment: defaultEnv() })
 	}, []]);
 
 	const results = [];
@@ -1075,7 +1075,7 @@ The **environment** property contains the active environment information of the 
 In other words, this is a linked list of tables (scopes), mapping identifiers to their respective definitions.
 A summarized version of the produced environment looks like this:
 
-${printEnvironmentToMarkdown(result.dataflow.environment.current, result.dataflow.builtInEnvironment)}
+${printEnvironmentToMarkdown(result.dataflow.environment.current)}
 
 This shows us that the local environment contains a single definition for \`x\` (with id 0) and that the parent environment is the built-in environment.
 Additionally, we get the information that the node with the id 2 was responsible for the definition of \`x\`.

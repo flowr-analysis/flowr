@@ -24,7 +24,7 @@ describe('Modification', () => {
 		test(label('Different variables', ['global-scope', 'name-normal'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('x', '_1');
 			const overwrite = defaultEnv().defineVariable('y', '_2');
-			const result = overwriteEnvironment(clean, overwrite, defaultEnv().current.parent);
+			const result = overwriteEnvironment(clean, overwrite);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2);
 			existsDefinedAt('x', ['_1'], result.current, 'globals must be defined locally as well');
@@ -34,7 +34,7 @@ describe('Modification', () => {
 		test(label('Same variables', ['global-scope'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('x', '_1');
 			const overwrite = defaultEnv().defineVariable('x', '_2');
-			const result = overwriteEnvironment(clean, overwrite, defaultEnv().current.parent);
+			const result = overwriteEnvironment(clean, overwrite);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.current.memory, 'there should be only one definition for x').to.have.length(1);
 			existsDefinedAt('x', ['_2'], result.current);
@@ -46,7 +46,7 @@ describe('Modification', () => {
 		test(label('Different variables', ['lexicographic-scope'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('long', '_1');
 			const overwrite = defaultEnv().defineVariable('short', '_2');
-			const result = overwriteEnvironment(clean, overwrite, defaultEnv().current.parent);
+			const result = overwriteEnvironment(clean, overwrite);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0);
 			expect(result.current.memory, 'there should be two definitions for long and short').to.have.length(2);
@@ -57,7 +57,7 @@ describe('Modification', () => {
 		test(label('Same variables', ['lexicographic-scope'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('long', '_1');
 			const overwrite = defaultEnv().defineVariable('long', '_2');
-			const result = overwriteEnvironment(clean, overwrite, defaultEnv().current.parent);
+			const result = overwriteEnvironment(clean, overwrite);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0);
 			expect(result.current.memory, 'there should be only one definition for long').to.have.length(1);
@@ -71,7 +71,7 @@ describe('Append', () => {
 		test(label('Different variables', ['global-scope', 'lexicographic-scope'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('x', '_1', '_1');
 			const append = defaultEnv().defineVariable('y', '_2', '_2');
-			const result = appendEnvironment(clean, append, defaultEnv().current.parent);
+			const result = appendEnvironment(clean, append);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2);
 			existsDefinedAt('x', ['_1'], result.current, 'globals must be defined locally as well');
@@ -81,7 +81,7 @@ describe('Append', () => {
 		test(label('Same variables', ['global-scope', 'lexicographic-scope'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('x', '_1', '_1');
 			const append = defaultEnv().defineVariable('x', '_2', '_2');
-			const result = appendEnvironment(clean, append, defaultEnv().current.parent);
+			const result = appendEnvironment(clean, append);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.current.memory, 'there should be only one symbol defined (for x)').to.have.length(1);
 			existsDefinedAt('x', ['_1', '_2'], result.current);
@@ -93,7 +93,7 @@ describe('Append', () => {
 		test(label('Different variables', ['lexicographic-scope'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('local-long', '_1');
 			const append = defaultEnv().defineVariable('local-short', '_2');
-			const result = appendEnvironment(clean, append, defaultEnv().current.parent);
+			const result = appendEnvironment(clean, append);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.level, 'neither definitions nor appends should produce new local scopes').to.be.equal(0);
 			expect(result.current.memory, 'there should be two definitions for local-long and local-short').to.have.length(2);
@@ -104,7 +104,7 @@ describe('Append', () => {
 		test(label('Same variables', ['lexicographic-scope'], ['other']), () => {
 			const clean = defaultEnv().defineVariable('local-long', '_1');
 			const append = defaultEnv().defineVariable('local-long', '_2');
-			const result = appendEnvironment(clean, append, defaultEnv().current.parent);
+			const result = appendEnvironment(clean, append);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0);
 			expect(result.current.memory, 'there should be only one definition for local-long').to.have.length(1);

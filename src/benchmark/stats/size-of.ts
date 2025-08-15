@@ -1,4 +1,5 @@
 import type { IEnvironment } from '../../dataflow/environments/environment';
+import { isDefaultBuiltInEnvironment } from '../../dataflow/environments/environment';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import { VertexType } from '../../dataflow/graph/vertex';
@@ -8,14 +9,14 @@ import sizeof from 'object-sizeof';
 import { compactRecord } from '../../util/objects';
 
 /* we have to kill all processors linked in the default environment as they cannot be serialized and they are shared anyway */
-function killBuiltInEnv(env: IEnvironment | undefined, defaultEnvironment: IEnvironment): IEnvironment {
+function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
 	if(env === undefined) {
 		return undefined as unknown as IEnvironment;
-	} else if(env.id === defaultEnvironment.id) {
+	} else if(isDefaultBuiltInEnvironment(env)) {
 		/* in this case, the reference would be shared for sure */
 		return {
 			id:               env.id,
-			parent:           killBuiltInEnv(env.parent, defaultEnvironment),
+			parent:           killBuiltInEnv(env.parent),
 			memory:           new Map<Identifier, IdentifierDefinition[]>(),
 			isBuiltInDefault: true
 		};
@@ -28,14 +29,14 @@ function killBuiltInEnv(env: IEnvironment | undefined, defaultEnvironment: IEnvi
 
 	return {
 		id:               env.id,
-		parent:           killBuiltInEnv(env.parent, defaultEnvironment),
+		parent:           killBuiltInEnv(env.parent),
 		memory,
 		isBuiltInDefault: false
 	};
 }
 
 /** Returns the size of the given df graph in bytes (without sharing in-memory) */
-export function getSizeOfDfGraph(df: DataflowGraph, defaultEnv: IEnvironment): number {
+export function getSizeOfDfGraph(df: DataflowGraph): number {
 	const verts = [];
 	for(const [, v] of df.vertices(true)) {
 		let vertex: DataflowGraphVertexInfo = v;
@@ -45,7 +46,7 @@ export function getSizeOfDfGraph(df: DataflowGraph, defaultEnv: IEnvironment): n
 				...vertex,
 				environment: {
 					...vertex.environment,
-					current: killBuiltInEnv(v.environment?.current, defaultEnv)
+					current: killBuiltInEnv(v.environment?.current)
 				}
 			} as DataflowGraphVertexInfo;
 		}
@@ -57,7 +58,7 @@ export function getSizeOfDfGraph(df: DataflowGraph, defaultEnv: IEnvironment): n
 					...vertex.subflow,
 					environment: {
 						...vertex.subflow.environment,
-						current: killBuiltInEnv(vertex.subflow.environment.current, defaultEnv)
+						current: killBuiltInEnv(vertex.subflow.environment.current)
 					}
 				}
 			} as DataflowGraphVertexInfo;

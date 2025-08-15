@@ -49,7 +49,7 @@ import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
 import { runSearch } from '../../../src/search/flowr-search-executor';
 import type { ContainerIndex } from '../../../src/dataflow/graph/vertex';
 import type { DataflowInformation } from '../../../src/dataflow/info';
-import type { IEnvironment, REnvironmentInformation } from '../../../src/dataflow/environments/environment';
+import type { REnvironmentInformation } from '../../../src/dataflow/environments/environment';
 import { resolveByName } from '../../../src/dataflow/environments/resolve-by-name';
 import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/util/diff-graph';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
@@ -613,15 +613,14 @@ function findInDfg(id: NodeId, dfg: DataflowGraph): ContainerIndex[] | undefined
 	return vertex?.indicesCollection?.flatMap(collection => collection.indices);
 }
 
-function findInEnv(id: NodeId, ast: NormalizedAst, dfg: DataflowGraph, env: REnvironmentInformation, defaultEnvironment: IEnvironment): ContainerIndex[] | undefined {
+function findInEnv(id: NodeId, ast: NormalizedAst, dfg: DataflowGraph, env: REnvironmentInformation): ContainerIndex[] | undefined {
 	const name = ast.idMap.get(id)?.lexeme;
 	if(!name) {
 		return undefined;
 	}
 	const mayVertex = dfg.getVertex(id);
 	const useEnv = mayVertex?.environment ?? env;
-	const useDefaultEnv = mayVertex?.builtInEnvironment ?? defaultEnvironment;
-	const result = resolveByName(name, useEnv, useDefaultEnv)?.flatMap(f => {
+	const result = resolveByName(name, useEnv)?.flatMap(f => {
 		if('indicesCollection' in f) {
 			return f.indicesCollection?.flatMap(collection => collection.indices);
 		} else {
@@ -655,9 +654,9 @@ export function assertContainerIndicesDefinition(
 		if(userConfig.searchIn === 'dfg') {
 			findIndices = id => findInDfg(id, analysis.dataflow.graph);
 		} else if(userConfig.searchIn === 'env') {
-			findIndices = id => findInEnv(id, analysis.normalize, analysis.dataflow.graph, analysis.dataflow.environment, analysis.dataflow.builtInEnvironment);
+			findIndices = id => findInEnv(id, analysis.normalize, analysis.dataflow.graph, analysis.dataflow.environment);
 		} else {
-			findIndices = id => findInDfg(id, analysis.dataflow.graph) ?? findInEnv(id, analysis.normalize, analysis.dataflow.graph, analysis.dataflow.environment, analysis.dataflow.builtInEnvironment);
+			findIndices = id => findInDfg(id, analysis.dataflow.graph) ?? findInEnv(id, analysis.normalize, analysis.dataflow.graph, analysis.dataflow.environment);
 		}
 
 

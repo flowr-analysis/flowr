@@ -45,13 +45,12 @@ export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarge
 
 	let builtIn = false;
 
-	// TODO TSchoeller Check this
-	if(callVertex.environment !== undefined && callVertex.builtInEnvironment !== undefined) {
+	if(callVertex.environment !== undefined) {
 		/*
          * for performance and scoping reasons, flowR will not identify the global linkage,
          * including any potential built-in mapping.
          */
-		const reResolved = resolveByName(callVertex.name, callVertex.environment, callVertex.builtInEnvironment, ReferenceType.Unknown);
+		const reResolved = resolveByName(callVertex.name, callVertex.environment, ReferenceType.Unknown);
 		if(reResolved?.some(t => isBuiltIn(t.definedAt))) {
 			builtIn = true;
 		}

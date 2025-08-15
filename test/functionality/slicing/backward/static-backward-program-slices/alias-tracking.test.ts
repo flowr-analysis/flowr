@@ -35,8 +35,7 @@ describe.sequential('Alias Tracking', withShell(shell => {
 			defaultConfigOptions.solver.variables,
 			identifier as Identifier,
 			result.dataflow.environment,
-            result.dataflow.builtInEnvironment,
-            result.dataflow.graph,
+			result.dataflow.graph,
 			result.dataflow.graph.idMap
 		);
 		expect(values).toEqual(expectedValues);

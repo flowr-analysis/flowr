@@ -22,7 +22,7 @@ import { VertexType } from '../graph/vertex';
 import { resolveByName } from '../environments/resolve-by-name';
 import type { BuiltIn } from '../environments/built-in';
 import { isBuiltIn } from '../environments/built-in';
-import type { IEnvironment, REnvironmentInformation } from '../environments/environment';
+import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
@@ -83,7 +83,7 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 
 export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<ParentInformation>[], graph: DataflowGraph): void {
 	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
-	const nameParamMap = new Map<string, RParameter<ParentInformation>>(params.filter(p => p !== undefined && p.name !== undefined && p.name.content !== undefined).map(p => [p.name.content, p]));
+	const nameParamMap = new Map<string, RParameter<ParentInformation>>(params.filter(p => p?.name?.content !== undefined).map(p => [p.name.content, p]));
 
 	const specialDotParameter = params.find(p => p.special);
 
@@ -95,19 +95,19 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 	for(const [name, arg] of nameArgMap) {
 		const pmatchName = findByPrefixIfUnique(name, [...nameParamMap.keys()]) ?? name;
 		const param = nameParamMap.get(pmatchName);
-		if(param !== undefined && param.name) {
+		if(param?.name) {
 			dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`);
 			graph.addEdge(arg.nodeId, param.name.info.id, EdgeType.DefinesOnCall);
 			graph.addEdge(param.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
 			matchedParameters.add(name);
-		} else if(specialDotParameter !== undefined && specialDotParameter.name) {
+		} else if(specialDotParameter?.name) {
 			dataflowLogger.trace(`mapping named argument "${name}" to dot-dot-dot parameter`);
 			graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, EdgeType.DefinesOnCall);
 			graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
 		}
 	}
 
-	const remainingParameter = params.filter(p => !p || !p.name || !matchedParameters.has(p.name.content));
+	const remainingParameter = params.filter(p => !p?.name || !matchedParameters.has(p.name.content));
 	const remainingArguments = args.filter(a => !isNamedArgument(a));
 
 	for(let i = 0; i < remainingArguments.length; i++) {
@@ -159,10 +159,10 @@ export function linkFunctionCallWithSingleTarget(
 	idMap: AstIdMap
 ) {
 	const id = info.id;
-	if(info.environment !== undefined && info.builtInEnvironment !== undefined) {
+	if(info.environment !== undefined) {
 		// for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it
 		for(const ingoing of def.subflow.in) {
-			const defs = ingoing.name ? resolveByName(ingoing.name, info.environment, info.builtInEnvironment, ingoing.type) : undefined;
+			const defs = ingoing.name ? resolveByName(ingoing.name, info.environment, ingoing.type) : undefined;
 			if(defs === undefined) {
 				continue;
 			}
@@ -260,7 +260,7 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 
 	if(info.name !== undefined && (environment !== undefined || info.environment !== undefined) && info.builtInEnvironment !== undefined) {
 		const functionCallDefs = resolveByName(
-			info.name, environment ?? info.environment as REnvironmentInformation, info.builtInEnvironment, ReferenceType.Function
+			info.name, environment ?? info.environment as REnvironmentInformation, ReferenceType.Function
 		)?.map(d => d.nodeId) ?? [];
 		for(const [target, outgoingEdge] of outgoingEdges.entries()) {
 			if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
@@ -328,16 +328,15 @@ export function getAllLinkedFunctionDefinitions(
  *
  * @param referencesToLinkAgainstEnvironment - The set of references to link against the environment
  * @param environmentInformation             - The environment information to link against
- * @param builtInEnviroment                  - The built-in environment
  * @param givenInputs                        - The existing list of inputs that might be extended
  * @param graph                              - The graph to enter the found links
  * @param maybeForRemaining                  - Each input that can not be linked, will be added to `givenInputs`. If this flag is `true`, it will be marked as `maybe`.
  *
  * @returns the given inputs, possibly extended with the remaining inputs (those of `referencesToLinkAgainstEnvironment` that could not be linked against the environment)
  */
-export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, builtInEnviroment: IEnvironment, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
+export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
-		const probableTarget = bodyInput.name ? resolveByName(bodyInput.name, environmentInformation, builtInEnviroment, bodyInput.type) : undefined;
+		const probableTarget = bodyInput.name ? resolveByName(bodyInput.name, environmentInformation, bodyInput.type) : undefined;
 		if(probableTarget === undefined) {
 			log.trace(`found no target for ${bodyInput.name}`);
 			if(maybeForRemaining) {

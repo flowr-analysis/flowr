@@ -45,19 +45,19 @@ export function processForLoop<OtherInfo>(
 	const originalDependency = data.controlDependencies;
 	data = { ...data, controlDependencies: [...data.controlDependencies ?? [], { id: name.info.id, when: true }] };
 
-	let headEnvironments = overwriteEnvironment(vector.environment, variable.environment, data.builtInEnvironment);
+	let headEnvironments = overwriteEnvironment(vector.environment, variable.environment);
 	const headGraph = variable.graph.mergeWith(vector.graph);
 
 	const writtenVariable = [...variable.unknownReferences, ...variable.in];
 	for(const write of writtenVariable) {
-		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable }, false, headEnvironments, data.builtInEnvironment, data.flowrConfig);
+		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable }, false, headEnvironments, data.flowrConfig);
 	}
 	data = { ...data, environment: headEnvironments };
 
 	const body = processDataflowFor(bodyArg, data);
 
 	const nextGraph = headGraph.mergeWith(body.graph);
-	const outEnvironment = appendEnvironment(headEnvironments, body.environment, data.builtInEnvironment);
+	const outEnvironment = appendEnvironment(headEnvironments, body.environment );
 
 	// now we have to identify all reads that may be effected by a circular redefinition
 	// for this, we search for all reads with a non-local read resolve!
@@ -68,7 +68,7 @@ export function processForLoop<OtherInfo>(
 		nextGraph.setDefinitionOfVertex(write);
 	}
 
-	const outgoing = [...variable.out, ...writtenVariable, ...makeAllMaybe(body.out, nextGraph, outEnvironment, data.builtInEnvironment, true)];
+	const outgoing = [...variable.out, ...writtenVariable, ...makeAllMaybe(body.out, nextGraph, outEnvironment, true)];
 
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out);
 
@@ -86,14 +86,13 @@ export function processForLoop<OtherInfo>(
 	nextGraph.addEdge(name.info.id, vector.entryPoint, EdgeType.Reads);
 
 	return {
-		unknownReferences:  [],
+		unknownReferences: [],
 		// we only want those not bound by a local variable
-		in:                 [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...[...nameIdShares.values()].flat()],
-		out:                outgoing,
-		graph:              nextGraph,
-		entryPoint:         name.info.id,
-		exitPoints:         filterOutLoopExitPoints(body.exitPoints),
-		environment:        outEnvironment,
-		builtInEnvironment: data.builtInEnvironment
+		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...[...nameIdShares.values()].flat()],
+		out:               outgoing,
+		graph:             nextGraph,
+		entryPoint:        name.info.id,
+		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
+		environment:       outEnvironment
 	};
 }

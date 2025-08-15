@@ -1,6 +1,6 @@
 import objectHash from 'object-hash';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
-import { isDefaultBuiltIn } from '../../dataflow/environments/environment';
+import { isDefaultBuiltInEnvironment } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export type Fingerprint = string
@@ -12,7 +12,7 @@ export function envFingerprint(env: REnvironmentInformation): Fingerprint {
 		respectFunctionProperties: false,
 		respectFunctionNames:      false,
 		ignoreUnknown:             true,
-		replacer:                  (v: unknown) => isDefaultBuiltIn(v) ? undefined : v
+		replacer:                  (v: unknown) => isDefaultBuiltInEnvironment(v) ? undefined : v
 	});
 }
 

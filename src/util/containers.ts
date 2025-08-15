@@ -1,4 +1,4 @@
-import type { IEnvironment, REnvironmentInformation } from '../dataflow/environments/environment';
+import type { REnvironmentInformation } from '../dataflow/environments/environment';
 import type { Identifier, InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
 import { resolveByName } from '../dataflow/environments/resolve-by-name';
 import type {
@@ -39,8 +39,8 @@ export function getAccessOperands<OtherInfo>(
  * @param builtInEnvironment - Built-in environment
  * @returns The indicesCollection of the resolved definitions
  */
-export function resolveIndicesByName(name: Identifier, environment: REnvironmentInformation, builtInEnvironment: IEnvironment) {
-	const definitions = resolveByName(name, environment, builtInEnvironment);
+export function resolveIndicesByName(name: Identifier, environment: REnvironmentInformation) {
+	const definitions = resolveByName(name, environment);
 	return definitions?.flatMap(def => (def as InGraphIdentifierDefinition)?.indicesCollection ?? []);
 }
 
@@ -59,10 +59,9 @@ export function resolveSingleIndex(
 	accessedArg: { lexeme: string },
 	accessArg: { lexeme: string },
 	environment: REnvironmentInformation,
-	defaultEnv: IEnvironment,
 	isIndexBasedAccess: boolean,
 ): ContainerIndicesCollection {
-	const indicesCollection = resolveIndicesByName(accessedArg.lexeme, environment, defaultEnv);
+	const indicesCollection = resolveIndicesByName(accessedArg.lexeme, environment);
 	const accessedIndicesCollection = filterIndices(indicesCollection, accessArg, isIndexBasedAccess);
 	// If the accessed indices couldn't be resolved, overapproximate by returning the original indices.
 	// This could also be the case, when nothing is acccessed, but we better be safe.

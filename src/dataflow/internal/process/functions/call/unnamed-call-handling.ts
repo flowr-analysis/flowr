@@ -65,14 +65,13 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	inIds = inIds.concat(calledFunction.in, calledFunction.unknownReferences);
 
 	return {
-		unknownReferences:  [],
-		in:                 inIds,
+		unknownReferences: [],
+		in:                inIds,
 		// we do not keep the argument out as it has been linked by the function
-		out:                calledFunction.out,
-		graph:              finalGraph,
-		environment:        finalEnv,
-		builtInEnvironment: data.builtInEnvironment,
-		entryPoint:         functionCall.info.id,
-		exitPoints:         calledFunction.exitPoints
+		out:               calledFunction.out,
+		graph:             finalGraph,
+		environment:       finalEnv,
+		entryPoint:        functionCall.info.id,
+		exitPoints:        calledFunction.exitPoints
 	};
 }

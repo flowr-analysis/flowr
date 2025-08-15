@@ -93,7 +93,7 @@ function tryReplacementPassingIndices<OtherInfo>(
 	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[],
 	indices: ContainerIndicesCollection
 ): DataflowInformation {
-	const resolved = resolveByName(functionName.content, data.environment, data.builtInEnvironment, ReferenceType.Function) ?? [];
+	const resolved = resolveByName(functionName.content, data.environment, ReferenceType.Function) ?? [];
 
 	// yield for unsupported pass along!
 	if(resolved.length !== 1 || resolved[0].type !== ReferenceType.BuiltInFunction) {
@@ -304,7 +304,7 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
  * @param nodeToDefine       - `x`
  * @param sourceIds          - `v`
  * @param rootIdOfAssignment - `<-`
- * @param config             - The flowr config
+ * @param data               - The dataflow analysis fold backpack
  * @param assignmentConfig   - configuration for the assignment processing
  */
 export function markAsAssignment<OtherInfo>(
@@ -330,7 +330,7 @@ export function markAsAssignment<OtherInfo>(
 			if(!indicesCollection) {
 				const node = information.graph.idMap?.get(sourceIds[0]);
 				if(node && node.type === RType.Symbol) {
-					indicesCollection = resolveIndicesByName(node.lexeme, information.environment, data.builtInEnvironment);
+					indicesCollection = resolveIndicesByName(node.lexeme, information.environment);
 				}
 			}
 		}
@@ -348,7 +348,7 @@ export function markAsAssignment<OtherInfo>(
 		nodeToDefine.indicesCollection ??= indicesCollection;
 	}
 
-	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, data.builtInEnvironment, data.flowrConfig);
+	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, data.flowrConfig);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
 	if(!assignmentConfig?.quoteSource) {
 		for(const sourceId of sourceIds) {
@@ -373,7 +373,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], target, rootId, data, information, makeMaybe, quoteSource } = config;
 	const referenceType = checkTargetReferenceType(source, sourceArg);
 
-	const aliases = getAliases([source.info.id], information.graph, information.environment, information.builtInEnvironment);
+	const aliases = getAliases([source.info.id], information.graph, information.environment);
 	const writeNodes = produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
 
 	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {
@@ -387,7 +387,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten
 	];
 
-	information.environment = overwriteEnvironment(sourceArg.environment, targetArg.environment, data.builtInEnvironment);
+	information.environment = overwriteEnvironment(sourceArg.environment, targetArg.environment);
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {

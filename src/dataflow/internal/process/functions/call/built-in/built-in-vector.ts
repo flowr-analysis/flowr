@@ -48,7 +48,7 @@ export function processVector<OtherInfo>(
 			// Check whether argument value can be resolved
 			let indicesCollection: ContainerIndicesCollection;
 			if(arg.value.type === RType.Symbol) {
-				indicesCollection = resolveIndicesByName(arg.value.lexeme, data.environment, data.builtInEnvironment);
+				indicesCollection = resolveIndicesByName(arg.value.lexeme, data.environment);
 			} else {
 				// Check whether argument is nested container
 				indicesCollection = fnCall.information.graph.getVertex(arg.value.info.id)?.indicesCollection;

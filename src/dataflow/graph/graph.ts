@@ -318,7 +318,7 @@ export class DataflowGraph<
 
 		const fallback = vertex.tag === VertexType.VariableDefinition || vertex.tag === VertexType.Use || vertex.tag === VertexType.Value || (vertex.tag === VertexType.FunctionCall && vertex.onlyBuiltin) ? undefined : DataflowGraph.DEFAULT_ENVIRONMENT;
 		// keep a clone of the original environment
-		const environment = vertex.environment && vertex.builtInEnvironment ? cloneEnvironmentInformation(vertex.environment, vertex.builtInEnvironment) : fallback;
+		const environment = vertex.environment && vertex.builtInEnvironment ? cloneEnvironmentInformation(vertex.environment) : fallback;
 
 		this.vertexInformation.set(vertex.id, {
 			...vertex,

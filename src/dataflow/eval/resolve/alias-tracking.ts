@@ -38,26 +38,24 @@ const AliasHandler = {
 
 export interface ResolveInfo {
 	/** The current environment used for name resolution */
-	environment?:        REnvironmentInformation;
-	/** The built-in environment */
-	builtInEnvironment?: IEnvironment;
+	environment?: REnvironmentInformation;
 	/** The id map to resolve the node if given as an id */
-	idMap?:              AstIdMap;
+	idMap?:       AstIdMap;
 	/** The graph to resolve in */
-	graph?:              DataflowGraph;
+	graph?:       DataflowGraph;
 	/** Whether to track variables */
-	full?:               boolean;
+	full?:        boolean;
 	/** Variable resolve mode */
-	resolve:             VariableResolve;
+	resolve:      VariableResolve;
 }
 
-function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation, defaultEnvironment: IEnvironment): NodeId[] | undefined {
+function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
 	const identifier = recoverName(sourceId, dataflow.idMap);
 	if(identifier === undefined) {
 		return undefined;
 	}
 
-	const defs = resolveByName(identifier, environment, defaultEnvironment, ReferenceType.Function);
+	const defs = resolveByName(identifier, environment, ReferenceType.Function);
 	if(defs === undefined || defs.length !== 1) {
 		return undefined;
 	}	
@@ -65,7 +63,7 @@ function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environ
 	return [sourceId]; 
 }
 
-function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation, defaultEnvironment: IEnvironment): NodeId[] | undefined {
+function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
 	const definitions: NodeId[] = [];
 
 	// Source is Symbol -> resolve definitions of symbol
@@ -74,7 +72,7 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 		return undefined;
 	}
 
-	const defs = resolveByName(identifier, environment, defaultEnvironment);
+	const defs = resolveByName(identifier, environment);
 	if(defs === undefined) {
 		return undefined;
 	}
@@ -109,10 +107,9 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
  * @param sourceIds          - node ids to get the definitions for
  * @param dataflow           - dataflow graph
  * @param environment        - environment
- * @param defaultEnvironment - built-in environment
  * @returns node id of alias
  */
-export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph, environment: REnvironmentInformation, defaultEnvironment: IEnvironment): NodeId[] | undefined {
+export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
 	const definitions: Set<NodeId> = new Set<NodeId>();
 
 	for(const sourceId of sourceIds) {
@@ -121,7 +118,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 			return undefined;
 		}
 
-		const defs = AliasHandler[info.tag](sourceId, dataflow, environment, defaultEnvironment);
+		const defs = AliasHandler[info.tag](sourceId, dataflow, environment);
 		for(const def of defs ?? []) {
 			definitions.add(def);
 		}
@@ -145,13 +142,12 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
  *
  * @param id                 - The node id or node to resolve
  * @param environment        - The current environment used for name resolution
- * @param builtInEnvironment - The built-in environment
  * @param graph              - The graph to resolve in
  * @param idMap              - The id map to resolve the node if given as an id
  * @param full               - Whether to track aliases on resolve
  * @param resolve            - Variable resolve mode
  */
-export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, builtInEnvironment, graph, idMap, full = true, resolve }: ResolveInfo): ResolveResult {
+export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, resolve }: ResolveInfo): ResolveResult {
 	if(id === undefined) {
 		return Top;
 	}
@@ -165,8 +161,8 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 	switch(node.type) {
 		case RType.Argument:
 		case RType.Symbol:
-			if(environment && builtInEnvironment) {
-				return full ? trackAliasInEnvironments(resolve, node.lexeme, environment, builtInEnvironment, graph, idMap) : Top;
+			if(environment) {
+				return full ? trackAliasInEnvironments(resolve, node.lexeme, environment, graph, idMap) : Top;
 			} else if(graph && resolve === VariableResolve.Alias) {
 				return full ? trackAliasesInGraph(node.info.id, graph, idMap) : Top;
 			} else {
@@ -195,17 +191,16 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
  * @param resolve    - Variable resolve mode
  * @param identifier - Identifier to resolve
  * @param use        - Environment to use
- * @param builtInEnvironment - built-in environment
  * @param graph      - dataflow graph
  * @param idMap      - id map of Dataflow graph
  * @returns Value of Identifier or Top
  */
-export function trackAliasInEnvironments(resolve: VariableResolve, identifier: Identifier | undefined, use: REnvironmentInformation, builtInEnvironment: IEnvironment, graph?: DataflowGraph, idMap?: AstIdMap): ResolveResult {
+export function trackAliasInEnvironments(resolve: VariableResolve, identifier: Identifier | undefined, use: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ResolveResult {
 	if(identifier === undefined) {
 		return Top;
 	}
 
-	const defs = resolveByName(identifier, use, builtInEnvironment);
+	const defs = resolveByName(identifier, use);
 	if(defs === undefined) {
 		return Top;
 	}
@@ -386,7 +381,6 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 	return setFrom(...values);
 }
 
-// TODO TSchoeller Only used by tests?
 /**
  * Please use {@link resolveIdToValue}
  *
@@ -394,15 +388,14 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
  *
  * @param name               - Identifier to resolve
  * @param environment        - Environment to use
- * @param builtInEnvironment - Built-in environment
  * @returns Value of Constant or Top
  */
-export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation, builtInEnvironment: IEnvironment): ResolveResult {
+export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): ResolveResult {
 	if(name === undefined) {
 		return Top;
 	}
 
-	const definitions = resolveByName(name, environment, builtInEnvironment, ReferenceType.Constant);
+	const definitions = resolveByName(name, environment, ReferenceType.Constant);
 	if(definitions === undefined) {
 		return Top;
 	}

@@ -147,13 +147,12 @@ print(x)`, emptyGraph()
 				.defineVariable('1', '...', { definedBy: [] }, false)
 				.constant('3', undefined, false)
 				.defineFunction('5', ['3'], {
-					out:                [],
-					in:                 [{ nodeId: '3', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
-					unknownReferences:  [],
-					entryPoint:         '3',
-					graph:              new Set(['1', '3']),
-					environment:        defaultEnv().pushEnv().defineParameter('...', '1', '2'),
-					builtInEnvironment: defaultEnv().current
+					out:               [],
+					in:                [{ nodeId: '3', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
+					unknownReferences: [],
+					entryPoint:        '3',
+					graph:             new Set(['1', '3']),
+					environment:       defaultEnv().pushEnv().defineParameter('...', '1', '2')
 				})
 				.defineVariable('0', '`{`', { definedBy: ['5', '6'] })
 				.constant('8')

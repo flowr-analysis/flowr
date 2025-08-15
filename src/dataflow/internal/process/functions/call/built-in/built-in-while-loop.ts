@@ -42,7 +42,7 @@ export function processWhileLoop<OtherInfo>(
 	}
 
 	// we should defer this to the abstract interpretation
-	const values = resolveIdToValue(unpackedArgs[0]?.info.id, { environment: data.environment, builtInEnvironment: data.builtInEnvironment, idMap: data.completeAst.idMap, resolve: data.flowrConfig.solver.variables });
+	const values = resolveIdToValue(unpackedArgs[0]?.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.flowrConfig.solver.variables });
 	const conditionIsAlwaysFalse = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
 	
 	//We don't care about the body if it never executes
@@ -69,14 +69,13 @@ export function processWhileLoop<OtherInfo>(
 	if(condition !== undefined && conditionIsAlwaysFalse) {
 		information.graph.addEdge(name.info.id, condition.entryPoint, EdgeType.Reads);
 		return {
-			unknownReferences:  [],
-			in:                 [{ nodeId: name.info.id, name: name.lexeme, controlDependencies: data.controlDependencies, type: ReferenceType.Function }],
-			out:                condition.out,
-			entryPoint:         name.info.id,
-			exitPoints:         [],
-			graph:              information.graph,
-			environment:        information.environment,
-			builtInEnvironment: data.builtInEnvironment
+			unknownReferences: [],
+			in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependencies: data.controlDependencies, type: ReferenceType.Function }],
+			out:               condition.out,
+			entryPoint:        name.info.id,
+			exitPoints:        [],
+			graph:             information.graph,
+			environment:       information.environment
 		};
 	}
 
@@ -90,22 +89,21 @@ export function processWhileLoop<OtherInfo>(
 	}
 
 	const remainingInputs = linkInputs([
-		...makeAllMaybe(body.unknownReferences, information.graph, information.environment, data.builtInEnvironment, false),
-		...makeAllMaybe(body.in, information.graph, information.environment, data.builtInEnvironment, false)
-	], information.environment, data.builtInEnvironment, [...condition.in, ...condition.unknownReferences], information.graph, true);
+		...makeAllMaybe(body.unknownReferences, information.graph, information.environment, false),
+		...makeAllMaybe(body.in, information.graph, information.environment, false)
+	], information.environment, [...condition.in, ...condition.unknownReferences], information.graph, true);
 	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, condition.in)), body.out);
 
 	// as the while-loop always evaluates its condition
 	information.graph.addEdge(name.info.id, condition.entryPoint, EdgeType.Reads);
 
 	return {
-		unknownReferences:  [],
-		in:                 [{ nodeId: name.info.id, name: name.lexeme, controlDependencies: originalDependency, type: ReferenceType.Function }, ...remainingInputs],
-		out:                [...makeAllMaybe(body.out, information.graph, information.environment, data.builtInEnvironment, true), ...condition.out],
-		entryPoint:         name.info.id,
-		exitPoints:         filterOutLoopExitPoints(body.exitPoints),
-		graph:              information.graph,
-		environment:        information.environment,
-		builtInEnvironment: information.builtInEnvironment
+		unknownReferences: [],
+		in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependencies: originalDependency, type: ReferenceType.Function }, ...remainingInputs],
+		out:               [...makeAllMaybe(body.out, information.graph, information.environment, true), ...condition.out],
+		entryPoint:        name.info.id,
+		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
+		graph:             information.graph,
+		environment:       information.environment
 	};
 }

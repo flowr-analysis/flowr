@@ -264,7 +264,7 @@ export class BenchmarkSlicer {
 				numberOfEdges:               numberOfEdges,
 				numberOfCalls:               numberOfCalls,
 				numberOfFunctionDefinitions: numberOfDefinitions,
-				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph, this.dataflow.builtInEnvironment),
+				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph),
 				storedVertexIndices:         storedVertexIndices,
 				storedEnvIndices:            storedEnvIndices,
 				overwrittenIndices:          overwrittenIndices,

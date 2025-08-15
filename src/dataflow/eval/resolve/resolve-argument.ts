@@ -8,7 +8,7 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { Unknown } from '../../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { IEnvironment, REnvironmentInformation } from '../../environments/environment';
+import type { REnvironmentInformation } from '../../environments/environment';
 import { valueSetGuard } from '../values/general';
 import { resolveIdToValue } from './alias-tracking';
 import { isValue } from '../values/r-value';
@@ -49,7 +49,7 @@ export function getArgumentStringValue(
 			}
 			if(valueNode) {
 				// this should be evaluated in the callee-context
-				const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, vertex.builtInEnvironment, graph.idMap, resolveValue) ?? [Unknown];
+				const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue) ?? [Unknown];
 				map.set(ref, new Set(values));
 			}
 		}
@@ -66,7 +66,7 @@ export function getArgumentStringValue(
 		}
 
 		if(valueNode) {
-			const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, vertex.builtInEnvironment, graph.idMap, resolveValue) ?? [Unknown];
+			const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue) ?? [Unknown];
 			return new Map([[arg, new Set(values)]]);
 		}
 	}
@@ -91,7 +91,7 @@ function hasCharacterOnly(variableResolve: VariableResolve, graph: DataflowGraph
 	}
 }
 
-function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, environment: REnvironmentInformation | undefined, builtInEnvironment: IEnvironment | undefined, idMap: Map<NodeId, RNode> | undefined, resolveValue: boolean | 'library' | undefined): string[] | undefined {
+function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, environment: REnvironmentInformation | undefined, idMap: Map<NodeId, RNode> | undefined, resolveValue: boolean | 'library' | undefined): string[] | undefined {
 	let full = true;
 	if(!resolveValue) {
 		full = false;
@@ -107,7 +107,7 @@ function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowG
 		}
 	}
 
-	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, builtInEnvironment, graph, full, resolve: variableResolve }));
+	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph, full, resolve: variableResolve }));
 	if(resolved) {
 		const values: string[] = [];
 		for(const value of resolved.elements) {

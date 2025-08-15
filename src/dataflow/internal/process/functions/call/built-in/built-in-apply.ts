@@ -89,7 +89,7 @@ export function processApply<OtherInfo>(
 	} else if(val.type === RType.Symbol) {
 		functionId = val.info.id;
 		if(resolveValue) {
-			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: data.environment, builtInEnvironment: data.builtInEnvironment, idMap: data.completeAst.idMap , resolve: data.flowrConfig.solver.variables }));
+			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: data.environment, idMap: data.completeAst.idMap , resolve: data.flowrConfig.solver.variables }));
 			if(resolved?.elements.length === 1 && resolved.elements[0].type === 'string') {
 				functionName = isValue(resolved.elements[0].value) ? resolved.elements[0].value.str : undefined;
 			}
@@ -151,7 +151,7 @@ export function processApply<OtherInfo>(
 			const ingoingRefs = dfVert.subflow.in;
 			const remainingIn: IdentifierReference[] = [];
 			for(const ingoing of ingoingRefs) {
-				const resolved = ingoing.name ? resolveByName(ingoing.name, data.environment, data.builtInEnvironment, ingoing.type) : undefined;
+				const resolved = ingoing.name ? resolveByName(ingoing.name, data.environment, ingoing.type) : undefined;
 				if(resolved === undefined) {
 					remainingIn.push(ingoing);
 					continue;

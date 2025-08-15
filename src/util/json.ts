@@ -1,7 +1,7 @@
 // to get the types within JSON.stringify
 
 
-import { builtInEnvJsonReplacer, isDefaultBuiltIn } from '../dataflow/environments/environment';
+import { builtInEnvJsonReplacer, isDefaultBuiltInEnvironment } from '../dataflow/environments/environment';
 
 export function jsonReplacer(key: unknown, value: unknown): unknown {
 	if(key === 'fullLexeme') {
@@ -42,7 +42,7 @@ function bigStringify(obj: unknown, current: string, send: (s: string) => void):
 	}
 	if(obj === undefined || obj === null) {
 		return current + 'null';
-	} else if(isDefaultBuiltIn(obj)) {
+	} else if(isDefaultBuiltInEnvironment(obj)) {
 		return current + '<BuiltInEnvironment>';
 	// TODO TSchoeller Is this case important?
 	//} else if(obj === EmptyBuiltInEnvironment) {

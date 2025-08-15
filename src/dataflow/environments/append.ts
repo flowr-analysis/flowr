@@ -1,6 +1,6 @@
 import { guard } from '../../util/assert';
 import type { IEnvironment, REnvironmentInformation } from './environment';
-import { Environment } from './environment';
+import { isDefaultBuiltInEnvironment , Environment } from './environment';
 import type { IdentifierDefinition } from './identifier';
 
 function uniqueMergeValues(old: IdentifierDefinition[], value: readonly IdentifierDefinition[]): IdentifierDefinition[] {
@@ -14,7 +14,7 @@ function uniqueMergeValues(old: IdentifierDefinition[], value: readonly Identifi
 	return result;
 }
 
-function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined, defaultEnvironment: IEnvironment): IEnvironment {
+function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined): IEnvironment {
 	guard(base !== undefined && next !== undefined, 'can not append environments with undefined');
 	const map = new Map(base.memory);
 	for(const [key, value] of next.memory) {
@@ -26,7 +26,7 @@ function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironme
 		}
 	}
 
-	const parent = base.parent === defaultEnvironment ? defaultEnvironment : appendIEnvironmentWith(base.parent, next.parent, defaultEnvironment);
+	const parent = isDefaultBuiltInEnvironment(base.parent) ? base.parent : appendIEnvironmentWith(base.parent, next.parent);
 
 	const out = new Environment(parent, false);
 	out.memory = map;
@@ -36,11 +36,11 @@ function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironme
 /**
  * Adds all writes of `next` to `base` (i.e., the operations of `next` *might* happen).
  */
-export function appendEnvironment(base: REnvironmentInformation, next: REnvironmentInformation | undefined, defaultEnvironment: IEnvironment): REnvironmentInformation
-export function appendEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation, defaultEnvironment: IEnvironment): REnvironmentInformation
-export function appendEnvironment(base: undefined, next: undefined, defaultEnvironment: IEnvironment): undefined
-export function appendEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined, defaultEnvironment: IEnvironment): REnvironmentInformation | undefined
-export function appendEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined, defaultEnvironment: IEnvironment): REnvironmentInformation | undefined {
+export function appendEnvironment(base: REnvironmentInformation, next: REnvironmentInformation | undefined): REnvironmentInformation
+export function appendEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation): REnvironmentInformation
+export function appendEnvironment(base: undefined, next: undefined): undefined
+export function appendEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined
+export function appendEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined {
 	if(base === undefined) {
 		return next;
 	} else if(next === undefined) {
@@ -49,7 +49,7 @@ export function appendEnvironment(base: REnvironmentInformation | undefined, nex
 	guard(base.level === next.level, 'environments must have the same level to be handled, it is up to the caller to ensure that');
 
 	return {
-		current: appendIEnvironmentWith(base.current, next.current, defaultEnvironment),
+		current: appendIEnvironmentWith(base.current, next.current),
 		level:   base.level,
 	};
 }

@@ -72,7 +72,7 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 	// try to resolve them against the current environment
 	for(const ref of [...value.in, ...containedSubflowIn.flatMap(n => n.subflow.in)]) {
 		if(ref.name) {
-			const resolved = ref.name ? resolveByName(ref.name, env, value.builtInEnvironment, ref.type) ?? [] : [];
+			const resolved = ref.name ? resolveByName(ref.name, env, ref.type) ?? [] : [];
 			for(const resolve of resolved) {
 				graph.addEdge(ref.nodeId, resolve.nodeId, EdgeType.Reads);
 			}
@@ -106,7 +106,7 @@ export function processAllArguments<OtherInfo>(
 		}
 		processedArguments.push(processed);
 
-		finalEnv = overwriteEnvironment(finalEnv, processed.environment, data.builtInEnvironment);
+		finalEnv = overwriteEnvironment(finalEnv, processed.environment);
 		finalGraph.mergeWith(processed.graph);
 
 		// resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies
@@ -114,7 +114,7 @@ export function processAllArguments<OtherInfo>(
 			// check if it is called directly
 			const vtx = finalGraph.getVertex(ingoing.nodeId);
 
-			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv, data.builtInEnvironment, vtx?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Unknown) : undefined;
+			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv, vtx?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Unknown) : undefined;
 			if(tryToResolve === undefined) {
 				remainingReadInArgs.push(ingoing);
 			} else {
@@ -136,7 +136,7 @@ export function processAllArguments<OtherInfo>(
 				}
 			}
 		}
-		argEnv = overwriteEnvironment(argEnv, processed.environment, data.builtInEnvironment);
+		argEnv = overwriteEnvironment(argEnv, processed.environment);
 
 
 		if(arg.type !== RType.Argument || !arg.name) {

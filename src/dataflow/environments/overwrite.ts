@@ -1,6 +1,6 @@
 import { guard } from '../../util/assert';
 import type { IEnvironment, REnvironmentInformation } from './environment';
-import { Environment } from './environment';
+import { isDefaultBuiltInEnvironment , Environment } from './environment';
 import type { IdentifierDefinition } from './identifier';
 import type { ControlDependency } from '../info';
 import { log } from '../../util/log';
@@ -17,7 +17,7 @@ function anyIsMaybeOrEmpty(values: readonly IdentifierDefinition[]): boolean {
 	return false;
 }
 
-export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined, defaultEnvironment: IEnvironment, includeParent = true, applyCds?: readonly ControlDependency[]): IEnvironment {
+export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined, includeParent = true, applyCds?: readonly ControlDependency[]): IEnvironment {
 	guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined');
 	const map = new Map(base.memory);
 	for(const [key, values] of next.memory) {
@@ -50,7 +50,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 
 	let parent: IEnvironment;
 	if(includeParent) {
-		parent = base.parent.id === defaultEnvironment.id ? defaultEnvironment : overwriteIEnvironmentWith(base.parent, next.parent, defaultEnvironment, includeParent, applyCds);
+		parent = isDefaultBuiltInEnvironment(base.parent) ? base.parent : overwriteIEnvironmentWith(base.parent, next.parent, includeParent, applyCds);
 	} else {
 		parent = base.parent;
 	}
@@ -61,15 +61,15 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 }
 
 
-export function overwriteEnvironment(base: REnvironmentInformation, next: REnvironmentInformation | undefined, defaultEnvironment: IEnvironment, applyCds?: readonly ControlDependency[]): REnvironmentInformation
-export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation, defaultEnvironment: IEnvironment, applyCds?: readonly ControlDependency[]): REnvironmentInformation
-export function overwriteEnvironment(base: undefined, next: undefined, defaultEnvironment: IEnvironment,  applyCds?: readonly ControlDependency[]): undefined
-export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined, defaultEnvironment: IEnvironment, applyCds?: readonly ControlDependency[]): REnvironmentInformation | undefined
+export function overwriteEnvironment(base: REnvironmentInformation, next: REnvironmentInformation | undefined, applyCds?: readonly ControlDependency[]): REnvironmentInformation
+export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation, applyCds?: readonly ControlDependency[]): REnvironmentInformation
+export function overwriteEnvironment(base: undefined, next: undefined,  applyCds?: readonly ControlDependency[]): undefined
+export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined, applyCds?: readonly ControlDependency[]): REnvironmentInformation | undefined
 /**
  * Assumes, that all definitions within next replace those within base (given the same name).
  * <b>But</b> if all definitions within next are maybe, then they are appended to the base definitions (updating them to be `maybe` from now on as well), similar to {@link appendEnvironment}.
  */
-export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined, defaultEnvironment: IEnvironment, applyCds?: readonly ControlDependency[]): REnvironmentInformation | undefined {
+export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined, applyCds?: readonly ControlDependency[]): REnvironmentInformation | undefined {
 	if(base === undefined) {
 		return next;
 	} else if(next === undefined) {
@@ -78,7 +78,7 @@ export function overwriteEnvironment(base: REnvironmentInformation | undefined, 
 	guard(next.level === base.level, `cannot overwrite environments with differently nested local scopes, base ${base.level} vs. next ${next.level}. This should not happen.`);
 
 	return {
-		current: overwriteIEnvironmentWith(base.current, next.current, defaultEnvironment, true, applyCds),
+		current: overwriteIEnvironmentWith(base.current, next.current, true, applyCds),
 		level:   base.level
 	};
 }

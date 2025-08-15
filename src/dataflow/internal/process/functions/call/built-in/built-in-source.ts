@@ -180,7 +180,7 @@ export function processSourceCall<OtherInfo>(
 	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
 		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
 	} else if(sourceFileArgument !== EmptyArgument) {
-		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, builtInEnvironment: data.builtInEnvironment, idMap: data.completeAst.idMap, resolve: data.flowrConfig.solver.variables }));
+		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.flowrConfig.solver.variables }));
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 
@@ -255,7 +255,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 
 	// update our graph with the sourced file's information
 	const newInformation = { ...information };
-	newInformation.environment = overwriteEnvironment(information.environment, dataflow.environment, data.builtInEnvironment);
+	newInformation.environment = overwriteEnvironment(information.environment, dataflow.environment);
 	newInformation.graph.mergeWith(dataflow.graph);
 	// this can be improved, see issue #628
 	for(const [k, v] of normalized.idMap) {

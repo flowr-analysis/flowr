@@ -2,24 +2,28 @@
 /* this is a test-only utility */
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert';
 import { wrap, wrapControlDependencies } from './printer';
-import type { IEnvironment, REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
+import type {
+	IEnvironment,
+	REnvironmentInformation
+} from '../../../../src/dataflow/environments/environment';
+import {
+	isDefaultBuiltInEnvironment
+} from '../../../../src/dataflow/environments/environment';
 import type { IdentifierDefinition } from '../../../../src/dataflow/environments/identifier';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 
 export class EnvironmentBuilderPrinter {
-	private readonly env:        REnvironmentInformation;
-	private readonly lines:      string[] = [];
-	private readonly builtInEnv: IEnvironment;
+	private readonly env:   REnvironmentInformation;
+	private readonly lines: string[] = [];
 
-	constructor(env: REnvironmentInformation, builtInEnvironment: IEnvironment) {
+	constructor(env: REnvironmentInformation) {
 		this.env = env;
-		this.builtInEnv = builtInEnvironment;
 	}
 
 	private process() {
 		let current = this.env.current;
 		let i = this.env.level;
-		while(current !== undefined && current.id !== this.builtInEnv.id) {
+		while(current !== undefined && !isDefaultBuiltInEnvironment(current)) {
 			if(i-- > 0) {
 				this.push();
 			}

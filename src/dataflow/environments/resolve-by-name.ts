@@ -1,4 +1,5 @@
 import type { IEnvironment, REnvironmentInformation } from './environment';
+import { isDefaultBuiltInEnvironment } from './environment';
 import { Ternary } from '../../util/logic';
 import type { Identifier, IdentifierDefinition } from './identifier';
 import { isReferenceType, ReferenceType } from './identifier';
@@ -27,13 +28,12 @@ const TargetTypePredicate = {
  *
  * @param name               - The name of the identifier to resolve
  * @param environment        - The current environment used for name resolution
- * @param builtInEnvironment - The built-in environment
  * @param target             - The target (meta) type of the identifier to resolve
  *
  * @returns A list of possible identifier definitions (one if the definition location is exactly and always known), or `undefined`
  *          if the identifier is undefined in the current scope/with the current environment information.
  */
-export function resolveByName(name: Identifier, environment: REnvironmentInformation, builtInEnvironment: IEnvironment, target: ReferenceType = ReferenceType.Unknown): IdentifierDefinition[] | undefined {
+export function resolveByName(name: Identifier, environment: REnvironmentInformation, target: ReferenceType = ReferenceType.Unknown): IdentifierDefinition[] | undefined {
 	let current: IEnvironment = environment.current;
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	const wantedType = TargetTypePredicate[target];
@@ -49,7 +49,7 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 			}
 		}
 		current = current.parent;
-	} while(current.id !== builtInEnvironment.id);
+	} while(!isDefaultBuiltInEnvironment(current));
 
 	const builtIns = current.memory.get(name);
 	if(definitions) {
@@ -59,11 +59,11 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 	}
 }
 
-export function resolvesToBuiltInConstant(name: Identifier | undefined, environment: REnvironmentInformation,  defaultEnvironment: IEnvironment, wantedValue: unknown): Ternary {
+export function resolvesToBuiltInConstant(name: Identifier | undefined, environment: REnvironmentInformation, wantedValue: unknown): Ternary {
 	if(name === undefined) {
 		return Ternary.Never;
 	}
-	const definition = resolveByName(name, environment, defaultEnvironment, ReferenceType.Constant);
+	const definition = resolveByName(name, environment, ReferenceType.Constant);
 
 	if(definition === undefined) {
 		return Ternary.Never;

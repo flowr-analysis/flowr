@@ -37,9 +37,15 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
-import { resolveAsVector, resolveAsSeq, resolveAsMinus, resolveAsPlus } from '../eval/resolve/resolve';
+import { resolveAsMinus, resolveAsPlus, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
 import type { DataflowGraph } from '../graph/graph';
 import type { VariableResolve } from '../../config';
+import type {
+	BuiltInConstantDefinition,
+	BuiltInDefinition,
+	BuiltInFunctionDefinition,
+	BuiltInReplacementDefinition
+} from './built-in-config';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -223,6 +229,89 @@ export type ConfigOfBuiltInMappingName<N extends BuiltInMappingName> = Parameter
 export type BuiltInMemory = Map<Identifier, IdentifierDefinition[]>
 
 export class BuiltIns {
+	/**
+	 * Register a built-in constant (like `NULL` or `TRUE`) to the given {@link builtIns}
+	 */
+	registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>): void {
+		for(const name of names) {
+			const id = builtInId(name);
+			const d: IdentifierDefinition[] = [{
+				type:                ReferenceType.BuiltInConstant,
+				definedAt:           id,
+				controlDependencies: undefined,
+				value,
+				name,
+				nodeId:              id
+			}];
+			this.set(name, d, assumePrimitive);
+		}
+	}
+
+	/**
+	 * Register a built-in function (like `print` or `c`) to the given {@link builtIns}
+	 */
+	registerBuiltInFunctions<BuiltInProcessor extends BuiltInMappingName>({ names, processor, config, assumePrimitive }: BuiltInFunctionDefinition<BuiltInProcessor> ): void {
+		const mappedProcessor = BuiltInProcessorMapper[processor];
+		guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
+		for(const name of names) {
+			guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
+			const id = builtInId(name);
+			const d: IdentifierDefinition[] = [{
+				type:                ReferenceType.BuiltInFunction,
+				definedAt:           id,
+				controlDependencies: undefined,
+				/* eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-argument */
+				processor:           (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as any),
+				config,
+				name,
+				nodeId:              id
+			}];
+			this.set(name, d, assumePrimitive);
+		}
+	}
+
+	/**
+	 * Registers all combinations of replacements
+	 */
+	registerReplacementFunctions({ names, suffixes, assumePrimitive, config }: BuiltInReplacementDefinition): void {
+		const replacer = BuiltInProcessorMapper['builtin:replacement'];
+		guard(replacer !== undefined, () => 'Processor for builtin:replacement is undefined!');
+		for(const assignment of names) {
+			for(const suffix of suffixes) {
+				const effectiveName = `${assignment}${suffix}`;
+				const id = builtInId(effectiveName);
+				const d: IdentifierDefinition[] = [{
+					type:      ReferenceType.BuiltInFunction,
+					definedAt: id,
+					processor: (name, args, rootId, data) => replacer(name, args, rootId, data, { makeMaybe: true, assignmentOperator: suffix, readIndices: config.readIndices }),
+					config:    {
+						...config,
+						assignmentOperator: suffix,
+						makeMaybe:          true
+					},
+					name:                effectiveName,
+					controlDependencies: undefined,
+					nodeId:              id
+				}];
+				this.set(effectiveName, d, assumePrimitive);
+			}
+		}
+	}
+
+	/**
+	 * Register a single {@link BuiltInDefinition} to the given memories in {@link builtIns}
+	 */
+	registerBuiltInDefinition(definition: BuiltInDefinition) {
+		switch(definition.type) {
+			case 'constant':
+				return this.registerBuiltInConstant(definition);
+			case 'function':
+				return this.registerBuiltInFunctions(definition);
+			case 'replacement':
+				return this.registerReplacementFunctions(definition);
+		}
+	}
+	
 	/**
      * The built-in {@link REnvironmentInformation|environment} is the root of all environments.
      *

@@ -1,8 +1,6 @@
 import type { BuiltInMappingName, ConfigOfBuiltInMappingName } from './built-in';
-import { builtInId, BuiltInProcessorMapper, BuiltIns } from './built-in';
-import type { Identifier, IdentifierDefinition } from './identifier';
-import { ReferenceType } from './identifier';
-import { guard } from '../../util/assert';
+import { BuiltIns } from './built-in';
+import type { Identifier } from './identifier';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 
 export interface BaseBuiltInDefinition {
@@ -54,94 +52,6 @@ export type BuiltInDefinition = BuiltInConstantDefinition<any> | BuiltInFunction
  */
 export type BuiltInDefinitions = BuiltInDefinition[];
 
-/**
- * Register a built-in constant (like `NULL` or `TRUE`) to the given {@link builtIns}
- */
-function registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>, builtIns: BuiltIns): void {
-	for(const name of names) {
-		const id = builtInId(name);
-		const d: IdentifierDefinition[] = [{
-			type:                ReferenceType.BuiltInConstant,
-			definedAt:           id,
-			controlDependencies: undefined,
-			value,
-			name,
-			nodeId:              id
-		}];
-		builtIns.set(name, d, assumePrimitive);
-	}
-}
-
-/**
- * Register a built-in function (like `print` or `c`) to the given {@link builtIns}
- */
-export function registerBuiltInFunctions<BuiltInProcessor extends BuiltInMappingName>(
-	{ names, processor, config, assumePrimitive }: BuiltInFunctionDefinition<BuiltInProcessor>,
-	builtIns: BuiltIns
-): void {
-	const mappedProcessor = BuiltInProcessorMapper[processor];
-	guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
-	for(const name of names) {
-		guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
-		const id = builtInId(name);
-		const d: IdentifierDefinition[] = [{
-			type:                ReferenceType.BuiltInFunction,
-			definedAt:           id,
-			controlDependencies: undefined,
-			/* eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-argument */
-			processor:           (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as any),
-			config,
-			name,
-			nodeId:              id
-		}];
-		builtIns.set(name, d, assumePrimitive);
-	}
-}
-
-/**
- * Registers all combinations of replacements
- */
-export function registerReplacementFunctions(
-	{ names, suffixes, assumePrimitive, config }: BuiltInReplacementDefinition,
-	builtIns: BuiltIns
-): void {
-	const replacer = BuiltInProcessorMapper['builtin:replacement'];
-	guard(replacer !== undefined, () => 'Processor for builtin:replacement is undefined!');
-	for(const assignment of names) {
-		for(const suffix of suffixes) {
-			const effectiveName = `${assignment}${suffix}`;
-			const id = builtInId(effectiveName);
-			const d: IdentifierDefinition[] = [{
-				type:      ReferenceType.BuiltInFunction,
-				definedAt: id,
-				processor: (name, args, rootId, data) => replacer(name, args, rootId, data, { makeMaybe: true, assignmentOperator: suffix, readIndices: config.readIndices }),
-				config:    {
-					...config,
-					assignmentOperator: suffix,
-					makeMaybe:          true
-				},
-				name:                effectiveName,
-				controlDependencies: undefined,
-				nodeId:              id
-			}];
-			builtIns.set(effectiveName, d, assumePrimitive);
-		}
-	}
-}
-
-/**
- * Register a single {@link BuiltInDefinition} to the given memories in {@link builtIns}
- */
-function registerBuiltInDefinition(definition: BuiltInDefinition, builtIns: BuiltIns) {
-	switch(definition.type) {
-		case 'constant':
-			return registerBuiltInConstant(definition, builtIns);
-		case 'function':
-			return registerBuiltInFunctions(definition, builtIns);
-		case 'replacement':
-			return registerReplacementFunctions(definition, builtIns);
-	}
-}
 
 /**
  * Get the {@link BuiltIns#builtInMemory} and {@link BuiltIns#emptyBuiltInMemory} for the {@link DefaultBuiltinConfig}.
@@ -149,7 +59,7 @@ function registerBuiltInDefinition(definition: BuiltInDefinition, builtIns: Buil
 export function getDefaultBuiltInDefinitions(): BuiltIns {
 	const builtIns = new BuiltIns();
 	for(const definition of DefaultBuiltinConfig) {
-		registerBuiltInDefinition(definition, builtIns);
+		builtIns.registerBuiltInDefinition(definition);
 	}
 	return builtIns;
 }
@@ -168,7 +78,7 @@ export function getBuiltInDefinitions(definitions: BuiltInDefinitions, loadDefau
 	}
 
 	for(const definition of definitions) {
-		registerBuiltInDefinition(definition, builtIns);
+		builtIns.registerBuiltInDefinition(definition);
 	}
 
 	return builtIns;

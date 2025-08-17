@@ -44,7 +44,7 @@ for(i in 1:5) {
 				ids = runSearch(Q.var('print').first(),  { ...result, config: defaultConfigOptions }).getElements().map(n => n.node.info.id);
 			}
 			guard(result !== undefined && ids !== undefined, () => 'no result');
-			staticSlice(result.dataflow.graph, result.normalize, [`$${ids[0]}`], SliceDirection.Backward, threshold);
+			staticSlice(result.dataflow, result.normalize, [`$${ids[0]}`], SliceDirection.Backward, threshold);
 		});
 	}
 });

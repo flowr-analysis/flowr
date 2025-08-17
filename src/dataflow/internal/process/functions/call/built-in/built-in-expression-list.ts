@@ -10,8 +10,12 @@ import { linkFunctionCalls } from '../../../../linker';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { unpackArgument } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
-import type { IEnvironment, REnvironmentInformation } from '../../../../../environments/environment';
-import { BuiltInEnvironment, makeAllMaybe } from '../../../../../environments/environment';
+import type {
+	IEnvironment,
+	REnvironmentInformation
+} from '../../../../../environments/environment';
+import {
+	makeAllMaybe } from '../../../../../environments/environment';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
 import type { IdentifierReference } from '../../../../../environments/identifier';
@@ -84,18 +88,23 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	called:       readonly DataflowGraphVertexInfo[]
 }[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[]) {
 	for(const { functionCall, called } of calledEnvs) {
+		if(called.length === 0) {
+			continue;
+		}
+
 		const callDependencies = nextGraph.getVertex(functionCall, true)?.cds;
 		for(const calledFn of called) {
 			guard(calledFn.tag === VertexType.FunctionDefinition, 'called function must be a function definition');
 			// only merge the environments they have in common
-			let environment = calledFn.environment;
+			let environment = calledFn.subflow.environment;
 			while(environment.level > inputEnvironment.level) {
 				environment = popLocalEnvironment(environment);
 			}
 			// update alle definitions to be defined at this function call
 			let current: IEnvironment | undefined = environment.current;
+
 			let hasUpdate = false;
-			while(current !== undefined && current.id !== BuiltInEnvironment.id) {
+			while(!current?.builtInEnv) {
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
 						if(!isBuiltIn(def.definedAt)) {

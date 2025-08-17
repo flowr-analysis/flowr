@@ -57,7 +57,7 @@ export function processForLoop<OtherInfo>(
 	const body = processDataflowFor(bodyArg, data);
 
 	const nextGraph = headGraph.mergeWith(body.graph);
-	const outEnvironment = appendEnvironment(headEnvironments, body.environment);
+	const outEnvironment = appendEnvironment(headEnvironments, body.environment );
 
 	// now we have to identify all reads that may be effected by a circular redefinition
 	// for this, we search for all reads with a non-local read resolve!

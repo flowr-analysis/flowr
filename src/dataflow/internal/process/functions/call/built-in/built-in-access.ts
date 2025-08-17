@@ -151,7 +151,7 @@ function processNumberBasedAccess<OtherInfo>(
 	if(head.value && outInfo.definitionRootNodes.length > 0) {
 		markAsAssignment(fnCall.information, { type: ReferenceType.Variable, name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, controlDependencies: [] },
 			outInfo.definitionRootNodes,
-			rootId, data.flowrConfig
+			rootId, data
 		);
 	}
 

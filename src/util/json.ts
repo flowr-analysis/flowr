@@ -1,10 +1,7 @@
 // to get the types within JSON.stringify
- 
 
-import {
-	BuiltInEnvironment,
-	builtInEnvJsonReplacer, EmptyBuiltInEnvironment
-} from '../dataflow/environments/environment';
+
+import { builtInEnvJsonReplacer, isDefaultBuiltInEnvironment } from '../dataflow/environments/environment';
 
 export function jsonReplacer(key: unknown, value: unknown): unknown {
 	if(key === 'fullLexeme') {
@@ -45,10 +42,8 @@ function bigStringify(obj: unknown, current: string, send: (s: string) => void):
 	}
 	if(obj === undefined || obj === null) {
 		return current + 'null';
-	} else if(obj === BuiltInEnvironment) {
+	} else if(isDefaultBuiltInEnvironment(obj)) {
 		return current + '<BuiltInEnvironment>';
-	} else if(obj === EmptyBuiltInEnvironment) {
-		return current + '<EmptyBuiltInEnvironment>';
 	} else if(Array.isArray(obj)) {
 		let str = current + '[';
 		for(let i = 0; i < obj.length; i++) {

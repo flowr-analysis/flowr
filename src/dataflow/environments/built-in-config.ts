@@ -54,6 +54,9 @@ export type BuiltInDefinition = BuiltInConstantDefinition<any> | BuiltInFunction
  */
 export type BuiltInDefinitions = BuiltInDefinition[];
 
+/**
+ * Register a built-in constant (like `NULL` or `TRUE`) to the given {@link builtIns}
+ */
 function registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>, builtIns: BuiltIns): void {
 	for(const name of names) {
 		const id = builtInId(name);
@@ -69,6 +72,9 @@ function registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInCo
 	}
 }
 
+/**
+ * Register a built-in function (like `print` or `c`) to the given {@link builtIns}
+ */
 export function registerBuiltInFunctions<BuiltInProcessor extends BuiltInMappingName>(
 	{ names, processor, config, assumePrimitive }: BuiltInFunctionDefinition<BuiltInProcessor>,
 	builtIns: BuiltIns
@@ -92,7 +98,9 @@ export function registerBuiltInFunctions<BuiltInProcessor extends BuiltInMapping
 	}
 }
 
-/* registers all combinations of replacements */
+/**
+ * Registers all combinations of replacements
+ */
 export function registerReplacementFunctions(
 	{ names, suffixes, assumePrimitive, config }: BuiltInReplacementDefinition,
 	builtIns: BuiltIns
@@ -121,7 +129,10 @@ export function registerReplacementFunctions(
 	}
 }
 
-export function registerBuiltInDefinition(definition: BuiltInDefinition, builtIns: BuiltIns) {
+/**
+ * Register a single {@link BuiltInDefinition} to the given memories in {@link builtIns}
+ */
+function registerBuiltInDefinition(definition: BuiltInDefinition, builtIns: BuiltIns) {
 	switch(definition.type) {
 		case 'constant':
 			return registerBuiltInConstant(definition, builtIns);
@@ -132,6 +143,9 @@ export function registerBuiltInDefinition(definition: BuiltInDefinition, builtIn
 	}
 }
 
+/**
+ * Get the {@link BuiltIns#builtInMemory} and {@link BuiltIns#emptyBuiltInMemory} for the {@link DefaultBuiltinConfig}.
+ */
 export function getDefaultBuiltInDefinitions(): BuiltIns {
 	const builtIns = new BuiltIns();
 	for(const definition of DefaultBuiltinConfig) {
@@ -140,6 +154,12 @@ export function getDefaultBuiltInDefinitions(): BuiltIns {
 	return builtIns;
 }
 
+/**
+ * Get the {@link BuiltIns#builtInMemory} and {@link BuiltIns#emptyBuiltInMemory} for the given list of built-in definitions.
+ *
+ * @param definitions - the list of built-in definitions
+ * @param loadDefaults - whether to first add the {@link DefaultBuiltinConfig} before the given {@link definitions}
+ */
 export function getBuiltInDefinitions(definitions: BuiltInDefinitions, loadDefaults: boolean | undefined): BuiltIns {
 	let builtIns = new BuiltIns();
 

@@ -30,7 +30,7 @@ export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 export function findNonLocalReads(graph: DataflowGraph, ignore: readonly IdentifierReference[]): IdentifierReference[] {
 	const ignores = new Set(ignore.map(i => i.nodeId));
 	const ids = new Set(
-		[...graph.vertices(true)]
+		graph.vertices(true)
 			.filter(([_, info]) => info.tag === VertexType.Use || info.tag === VertexType.FunctionCall)
 			.map(([id, _]) => id)
 	);
@@ -93,7 +93,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 
 	// first map names
 	for(const [name, arg] of nameArgMap) {
-		const pmatchName = findByPrefixIfUnique(name, [...nameParamMap.keys()]) ?? name;
+		const pmatchName = findByPrefixIfUnique(name, nameParamMap.keys()) ?? name;
 		const param = nameParamMap.get(pmatchName);
 		if(param?.name) {
 			dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`);
@@ -205,7 +205,7 @@ function linkFunctionCall(
 	}
 
 	const readBits = EdgeType.Reads | EdgeType.Calls;
-	const functionDefinitionReadIds = [...edges].filter(([_, e]) =>
+	const functionDefinitionReadIds = edges.entries().filter(([_, e]) =>
 		edgeDoesNotIncludeType(e.types, EdgeType.Argument)
 		&& edgeIncludesType(e.types, readBits)
 	).map(([target, _]) => target);
@@ -215,7 +215,7 @@ function linkFunctionCall(
 		guard(def.tag === VertexType.FunctionDefinition, () => `expected function definition, but got ${def.tag}`);
 		linkFunctionCallWithSingleTarget(graph, def, info, idMap);
 	}
-	if(thisGraph.isRoot(id)) {
+	if(thisGraph.isRoot(id) && functionDefs.size > 0) {
 		calledFunctionDefinitions.push({ functionCall: id, called: [...functionDefs.values()] });
 	}
 }
@@ -233,7 +233,7 @@ export function linkFunctionCalls(
 	idMap: AstIdMap,
 	thisGraph: DataflowGraph
 ): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[] }[] {
-	const functionCalls = [...thisGraph.vertices(true)]
+	const functionCalls = thisGraph.vertices(true)
 		.filter(([_,info]) => info.tag === VertexType.FunctionCall);
 	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] = [];
 	for(const [id, info] of functionCalls) {

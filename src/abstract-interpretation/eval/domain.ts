@@ -25,4 +25,5 @@ export type SDRNode = RNode<NoInfo & StringDomainInfo & ParentInformation>
 export interface StringDomain {
   assignment:     (source: SDRNode) => AbstractStringValue
   stringConstant: (node: SDRNode, str: RString) => AbstractStringValue
+  ifThenElseCall: (then: SDRNode, els: SDRNode) => AbstractStringValue
 }

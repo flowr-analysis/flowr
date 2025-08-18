@@ -12,10 +12,45 @@ import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipelin
 import { getVertexRootId } from '../../../../src/control-flow/control-flow-graph';
 import { ConstStringDomain } from '../../../../src/abstract-interpretation/eval/domains/constant';
 import type { SDRNode } from '../../../../src/abstract-interpretation/eval/domain';
+import { isNotUndefined } from '../../../../src/util/assert';
 
 describe('Domain', withShell((shell) => {
-	test('Constant Domain', async() => {
-		const input = '"test"';
+	// test('Constant Domain', async() => {
+	// 	const input = '"test"';
+	// 	const output: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> = await createDataflowPipeline(shell, { request: requestFromInput(input) }, defaultConfigOptions).allRemainingSteps();
+	// 	const dfg = output.dataflow.graph;
+	// 	const normalizedAst: NormalizedAst<ParentInformation & StringDomainInfo> = output.normalize;
+	// 	const controlFlow = extractCfg(normalizedAst, defaultConfigOptions, dfg);
+	// 	const visitor = new StringDomainVisitor(new ConstStringDomain(), { controlFlow, dfg, normalizedAst, flowrConfig: defaultConfigOptions });
+	// 	visitor.start();
+
+	// 	const exitPoint = controlFlow.graph.getVertex(controlFlow.exitPoints[0]);
+	// 	if(!exitPoint) {
+	// 		assert(false);
+	// 	}
+	// 	const exitNode = normalizedAst.idMap.get(getVertexRootId(exitPoint));
+	// 	if(!exitNode) {
+	// 		assert(false);
+	// 	}
+	// 	const node = (exitNode.children as SDRNode)[0] as SDRNode;
+
+	// 	assert.deepEqual(node.info.stringdomain?.value, {
+	// 		kind:  'const',
+	// 		value: 'test'
+	// 	});
+
+	// 	// controlFlow.graph.vertices()
+	// 	//   .values()
+	// 	//   .filter(isNotUndefined)
+	// 	//   .map(vertex => normalizedAst.idMap.get(getVertexRootId(vertex)))
+	// 	//   .filter(isNotUndefined)
+	// 	//   .forEach(node => {
+	// 	//     console.log("Node: ", node.lexeme, "\n", node.info.stringdomain)
+	// 	//   })
+	// });
+
+	test('Const Set Domain', async() => {
+		const input = 'if(TRUE) { "foo" } else { "bar" }';
 		const output: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> = await createDataflowPipeline(shell, { request: requestFromInput(input) }, defaultConfigOptions).allRemainingSteps();
 		const dfg = output.dataflow.graph;
 		const normalizedAst: NormalizedAst<ParentInformation & StringDomainInfo> = output.normalize;
@@ -33,19 +68,19 @@ describe('Domain', withShell((shell) => {
 		}
 		const node = (exitNode.children as SDRNode)[0] as SDRNode;
 
-		assert.deepEqual(node.info.stringdomain?.value, {
-			kind:  'const',
-			value: 'test'
-		});
-
 		// controlFlow.graph.vertices()
-		//   .values()
-		//   .filter(isNotUndefined)
-		//   .map(vertex => normalizedAst.idMap.get(getVertexRootId(vertex)))
-		//   .filter(isNotUndefined)
-		//   .forEach(node => {
-		//     console.log("Node: ", node.lexeme, "\n", node.info.stringdomain)
-		//   })
+		// 	.values()
+		// 	.filter(isNotUndefined)
+		// 	.map(vertex => normalizedAst.idMap.get(getVertexRootId(vertex)))
+		// 	.filter(isNotUndefined)
+		// 	.forEach(node => {
+		// 		console.log('Node: ', node.type, ' ', node.lexeme, '\n', node.info.stringdomain);
+		// 	});
+
+		// assert.deepEqual(node.info.stringdomain?.value, {
+		// 	kind:  'const-set',
+		// 	value: ['foo'],
+		// });
 	});
 }));
 

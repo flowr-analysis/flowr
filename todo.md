@@ -1,0 +1,6 @@
+- [x] Top
+- [x] Bottom
+- [ ] Order
+- [ ] LUB/join
+- [ ] GLB/meet
+- [ ] Widening/Narrowing

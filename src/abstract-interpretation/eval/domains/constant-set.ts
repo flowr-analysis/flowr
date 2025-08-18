@@ -1,6 +1,6 @@
 import type { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { AbstractStringValue, SDRNode, StringDomain } from '../domain';
-import { Bottom, Top } from '../domain';
+import { Bottom, isBottom, isTop, Top } from '../domain';
 
 export type ConstSet = {
   kind:  'const-set',
@@ -40,5 +40,31 @@ export class ConstSetStringDomain implements StringDomain {
 			kind:  'const-set',
 			value: [str.content.str]
 		};
+	}
+	ifThenElseCall(then: SDRNode, els: SDRNode): AbstractStringValue {
+		const t = then.info.stringdomain?.value;
+		const e = els.info.stringdomain?.value;
+
+		if(!t || !e) {
+			return Top;
+		}
+
+		const t2 = toConstSet(t);
+		const e2 = toConstSet(e);
+
+		if(isTop(t2) || isTop(e2)) {
+			return Top;
+		}
+		if(isBottom(t2) || isBottom(e2)) {
+			return Bottom;
+		}
+		if(isConstSet(t2) && isConstSet(e2)) {
+			return {
+				kind:  'const-set',
+				value: t2.value.concat(e2.value),
+			};
+		}
+
+		return Top;
 	}
 }

@@ -17,7 +17,6 @@ import type { BuiltInMemory } from './built-in';
  * Marks the reference as maybe (i.e., as controlled by a set of {@link IdentifierReference#controlDependencies|control dependencies}).
  */
 export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference {
-	const node = graph.get(ref.nodeId, true);
 	if(includeDefs) {
 		const definitions = ref.name ? resolveByName(ref.name, environments, ref.type) : undefined;
 		for(const definition of definitions ?? []) {
@@ -30,6 +29,7 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 			}
 		}
 	}
+	const node = graph.get(ref.nodeId, true);
 	if(node) {
 		const [fst] = node;
 		if(fst.cds && defaultCd && !fst.cds.includes(defaultCd)) {

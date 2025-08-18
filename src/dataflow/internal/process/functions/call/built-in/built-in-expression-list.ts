@@ -2,7 +2,7 @@
  * Processes a list of expressions joining their dataflow graphs accordingly.
  * @module
  */
-import type { DataflowInformation, ExitPoint } from '../../../../../info';
+import type { ControlDependency, DataflowInformation, ExitPoint } from '../../../../../info';
 import { addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
@@ -33,6 +33,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { dataflowLogger } from '../../../../../logger';
 import { expensiveTrace } from '../../../../../../util/log';
 import { removeAll } from '../../../../../environments/remove';
+import type { Writable } from 'ts-essentials';
 
 
 const dotDotDotAccess = /^\.\.\d+$/;
@@ -78,7 +79,7 @@ function processNextExpression(
 	nextGraph: DataflowGraph
 ) {
 	// all inputs that have not been written until now are read!
-	for(const read of [...currentElement.in, ...currentElement.unknownReferences]) {
+	for(const read of currentElement.in.concat(currentElement.unknownReferences)) {
 		linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
 	}
 }
@@ -88,11 +89,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	called:       readonly DataflowGraphVertexInfo[]
 }[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[]) {
 	for(const { functionCall, called } of calledEnvs) {
-		if(called.length === 0) {
-			continue;
-		}
-
-		const callDependencies = nextGraph.getVertex(functionCall, true)?.cds;
+		let callDependencies: ControlDependency[] | null | undefined = null;
 		for(const calledFn of called) {
 			guard(calledFn.tag === VertexType.FunctionDefinition, 'called function must be a function definition');
 			// only merge the environments they have in common
@@ -120,6 +117,9 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 				// we, however, have to ignore expression-local writes!
 				if(localDefs.length > 0) {
 					environment = removeAll(localDefs, environment);
+				}
+				if(callDependencies === null) {
+					callDependencies = nextGraph.getVertex(functionCall, true)?.cds;
 				}
 				inputEnvironment = overwriteEnvironment(inputEnvironment, environment, callDependencies);
 			}
@@ -159,7 +159,7 @@ export function processExpressionList<OtherInfo>(
 			continue;
 		}
 		// use the current environments for processing
-		data = { ...data, environment: environment };
+		(data as Writable<DataflowProcessorInformation<OtherInfo & ParentInformation>>).environment = environment;
 		const processed = processDataflowFor(expression, data);
 		processedExpressions.push(processed);
 		nextGraph.mergeWith(processed.graph);
@@ -199,8 +199,6 @@ export function processExpressionList<OtherInfo>(
 		}
 	}
 
-	dataflowLogger.trace(`expression list exits with ${remainingRead.size} remaining read names`);
-
 	if(defaultReturnExpr) {
 		exitPoints.push({
 			type:                ExitPointType.Default,
@@ -209,7 +207,7 @@ export function processExpressionList<OtherInfo>(
 		});
 	}
 
-	const ingoing = [...remainingRead.values()].flat();
+	const ingoing = [...remainingRead.values().flatMap(v => v)];
 
 	const rootNode = data.completeAst.idMap.get(rootId);
 	const withGroup = rootNode?.grouping;

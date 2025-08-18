@@ -13,14 +13,19 @@ export enum DependencyInfoLinkConstraint {
 export type DependencyInfoLink = LinkTo<RegExp | string, Omit<FunctionInfo, 'name' | 'linkTo' | 'package'> & { when: DependencyInfoLinkConstraint } | undefined>
 export type DependencyInfoLinkAttachedInfo = DependencyInfoLink['attachLinkInfo']
 
-export interface FunctionInfo {
-    package?:      string
-    name:          string
+export interface FunctionArgInfo {
     /** the index if the argument can be positional, unnamed in case of something like `...`, if the argument must be given with the name, please leave undefined */
     argIdx?:       number | 'unnamed'
     argName?:      string
-    linkTo?:       DependencyInfoLink[]
     resolveValue?: boolean | 'library'
+}
+
+export interface FunctionInfo extends FunctionArgInfo{
+    package?:        string
+    name:            string
+    linkTo?:         DependencyInfoLink[]
     // the function is not to be counted as a dependency if the argument is missing
-    ignoreIf?:     'arg-missing'
+    ignoreIf?:       'arg-missing' | 'mode-only-read' | 'mode-only-write',
+    /** additional info on arguments - e.g. for the mode flag */
+    additionalArgs?: Record<string, FunctionArgInfo>
 }

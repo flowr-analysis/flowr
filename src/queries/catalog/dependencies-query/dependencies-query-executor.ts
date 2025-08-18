@@ -26,6 +26,7 @@ import type { DependencyInfoLinkAttachedInfo, FunctionInfo } from './function-in
 import { DependencyInfoLinkConstraint } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
+import { guard } from '../../../util/assert';
 
 function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]) {
 	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
@@ -147,6 +148,9 @@ function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: o
 	return linkedIds.map(id => typeof id === 'object' ? id.id : id);
 }
 
+const readOnlyModes = new Set(['r', 'rt', 'rb']);
+const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab', 'r+', 'r+b', 'w+', 'w+b', 'a+', 'a+b']);
+
 function getResults<T extends DependencyInfo>(data: BasicQueryData, results: CallContextQueryResult, kind: string, functions: FunctionInfo[], makeInfo: MakeDependencyInfo<T>): T[] {
 	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});
 	return kindEntries.flatMap(([name, results]) => results.flatMap(({ id, linkedIds }) => {
@@ -163,6 +167,19 @@ function getResults<T extends DependencyInfo>(data: BasicQueryData, results: Cal
 			}
 			const record = compactRecord(makeInfo(id, vertex, undefined, undefined, dropInfoOnLinkedIds(linkedIds)));
 			return record ? [record as T] : [];
+		} else if(info.ignoreIf === 'mode-only-read' || info.ignoreIf === 'mode-only-write') {
+			guard('mode' in (info.additionalArgs ?? {}), 'Need additional argument mode when checking for mode');
+			const margs = info.additionalArgs?.mode;
+			guard(margs, 'Need additional argument mode when checking for mode');
+			const modeArgs = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, margs.argIdx, margs.argName, margs.resolveValue);
+			const modeValues = modeArgs?.values().flatMap(v => [...v]) ?? [];
+			if(info.ignoreIf === 'mode-only-read' && modeValues.every(m => m && readOnlyModes.has(m))) {
+				// all modes are read-only, so we can ignore this
+				return [];
+			} else if(info.ignoreIf === 'mode-only-write' && modeValues.every(m => m && writeOnlyModes.has(m))) {
+				// all modes are write-only, so we can ignore this
+				return [];
+			}
 		}
 		const results: T[] = [];
 		for(const [arg, values] of foundValues.entries()) {

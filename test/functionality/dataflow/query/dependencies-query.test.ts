@@ -310,7 +310,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				readData: [{ nodeId: '1@file', functionName: 'file', source: 'test.txt' }]
 			});
 		}
-		for(const wo of ['w', 'wb', 'wt', 'r+', 'r+b', 'a', 'ab', 'at',] as const) {
+		for(const wo of ['w', 'wb', 'wt', 'a', 'ab', 'at',] as const) {
 			testQuery('write only file connection', `file("test.txt", "${wo}")`, {
 				writtenData: [{ nodeId: '1@file', functionName: 'file', destination: 'test.txt' }]
 			});

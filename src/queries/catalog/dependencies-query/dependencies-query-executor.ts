@@ -149,7 +149,7 @@ function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: o
 }
 
 const readOnlyModes = new Set(['r', 'rt', 'rb']);
-const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab', 'r+', 'r+b', 'w+', 'w+b', 'a+', 'a+b']);
+const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab']);
 
 function getResults<T extends DependencyInfo>(data: BasicQueryData, results: CallContextQueryResult, kind: string, functions: FunctionInfo[], makeInfo: MakeDependencyInfo<T>): T[] {
 	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});

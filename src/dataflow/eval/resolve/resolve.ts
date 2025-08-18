@@ -54,7 +54,7 @@ export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, env?: 
 		} else {
 			return Top;
 		}
-		if(Object.prototype.hasOwnProperty.call(BuiltInEvalHandlerMapper, builtInName)) {
+		if(Object.hasOwn(BuiltInEvalHandlerMapper, builtInName)) {
 			const handler = BuiltInEvalHandlerMapper[builtInName as keyof typeof BuiltInEvalHandlerMapper];
 			return handler(resolve, a, env, graph, map);
 		}

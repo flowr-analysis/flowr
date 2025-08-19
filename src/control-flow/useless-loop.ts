@@ -144,7 +144,7 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 			case 'builtin:stopifnot': {
 				const arg = this.getBoolArgValue(data);
 				if(arg !== undefined) {
-					stopsLoop = !arg;
+					stopsLoop = !arg && alwaysHappens();
 				}
 				break;
 			}

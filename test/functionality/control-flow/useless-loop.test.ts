@@ -24,6 +24,8 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 
 	describe('Simple Cases', () => {
 		checkLoop('for (i in c(1))', 'for(i in c(1)) { print(i) }',  '1@for',    true);	
+		checkLoop('for (i in 1:1)',  'for(i in 1:1)  { print(i) }',  '1@for',    true);	
+
 		checkLoop('Always Break',    'repeat { print(42); break; }', '1@repeat', true);
 		
 		// works after #1858 is merged
@@ -46,7 +48,7 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 	describe('Branches', () => {
 		const loopVariants = ['while (TRUE)', 'repeat', 'for (i in 1:10)', 'for (i in c(1,2))'];
 		const stopVariants = ['break', 'return(42)', 'stop(42)', 'stopifnot(FALSE)'];
-		const branchVariants = ['if (TRUE) { %s }', 'if (u) { %s } else { %s }'];
+		const branchVariants = ['if (TRUE) { %s }', 'if (u) { %s } else { %s }', 'if (FALSE) {} else { %s }'];
 
 
 		for(const loop of loopVariants) {
@@ -61,10 +63,11 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 
 	// Negative Tests
 	describe('Negative', () => {
-		checkLoop('Normal For',    'for (i in c(1,2)) { print(42); }',                                    '1@for',    false);
-		checkLoop('repeat',        'repeat { print(42); }',                                               '1@repeat', false);
-		checkLoop('while',         'while(TRUE) { print(42) }',                                           '1@while',  false);
-		checkLoop('unknown while', 'while(x) { print(42) }',                                              '1@while',  false);
+		checkLoop('Normal For',     'for (i in c(1,2)) { print(42); }',                                    '1@for',    false);
+		checkLoop('repeat',         'repeat { print(42); }',                                               '1@repeat', false);
+		checkLoop('while',          'while(TRUE) { print(42) }',                                           '1@while',  false);
+		checkLoop('stopifnot(TRUE)','while(TRUE) { stopifnot(TRUE) }',                                     '1@while',  false);
+		checkLoop('unknown while',  'while(x) { print(42) }',                                              '1@while',  false);
 	
 		checkLoop('Useful Loop before uselss', 'for (i in c(1,2)) { print(42); }\nrepeat { break; }',     '1@for',    false);
 		checkLoop('Useful Loop after  uselss', 'repeat { break; }\nfor (i in c(1,2)) { print(42); }',     '2@for',    false);
@@ -73,7 +76,7 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 
 		describe('Branches', () => {
 			const loopVariants = ['while (TRUE)', 'repeat', 'for (i in 1:10)', 'for (i in c(1,2))'];
-			const stopVariants = ['break', 'return(42)', 'stop(42)', 'stopifnot(TRUE)'];
+			const stopVariants = ['break', 'return(42)', 'stop(42)', 'stopifnot(FALSE)'];
 			const branchVariants = ['if (FALSE)', 'if (u)'];
 
 

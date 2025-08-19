@@ -19,7 +19,7 @@ export interface FlowrProject {
 }
 
 export async function getDummyFlowrProject(){
-	const exampleFlowrProject : FlowrProject = {
+	const exampleFlowrProject: FlowrProject = {
 		analyzer:    {} as FlowrAnalyzer,
 		builder:     {} as   FlowrAnalyzerBuilder,
 		plugins:     [],

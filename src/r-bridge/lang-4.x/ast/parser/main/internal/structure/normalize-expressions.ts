@@ -129,7 +129,7 @@ function handleExpressionList(raw: readonly NamedJsonEntry[]): HandledExpression
 }
 
 
-function processBraces([start, end]: [start: NamedJsonEntry, end: NamedJsonEntry], processed: readonly RNode[], comments: RComment[], data: NormalizerData) : RExpressionList {
+function processBraces([start, end]: [start: NamedJsonEntry, end: NamedJsonEntry], processed: readonly RNode[], comments: RComment[], data: NormalizerData): RExpressionList {
 	const [newStart, newEnd] = [tryNormalizeSymbol(data, [start]), tryNormalizeSymbol(data, [end])];
 	guard(newStart !== undefined && newEnd !== undefined, () => `expected both start and end to be symbols, but ${JSON.stringify(start, jsonReplacer)} :: ${JSON.stringify(end, jsonReplacer)}`);
 	return {

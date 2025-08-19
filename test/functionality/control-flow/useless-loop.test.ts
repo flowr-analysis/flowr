@@ -23,16 +23,15 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 	}
 
 	describe('Simple Cases', () => {
-		checkLoop('Simple For',                'for(i in c(1)) { print(i) }',                          '1@for',    true);	
+		checkLoop('for (i in c(1))', 'for(i in c(1)) { print(i) }',  '1@for',    true);	
+		checkLoop('Always Break',    'repeat { print(42); break; }', '1@repeat', true);
 		
 		// works after #1858 is merged
 		// checkLoop('Simple For with Alias', 'x <- c(1); for(i in x) { print(i) }', '1@for', true);
-		
-		checkLoop('Always Break',              'repeat { print(42); break; }',                         '1@repeat', true);
 	});
 
 
-	describe('Generated', () => {
+	describe('Stopped Loop', () => {
 		const loopVariants = ['while (TRUE)', 'repeat', 'for (i in 1:10)', 'for (i in c(1,2))'];
 		const stopVariants = ['break', 'return(42)', 'stop(42)', 'stopifnot(FALSE)'];
 
@@ -40,6 +39,22 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 			for(const stop of stopVariants) {
 				const code = `${loop} { print(42); ${stop} }`;
 				checkLoop(code, code, `1@${loop.split(' ')[0]}`, true);
+			}
+		}
+	});
+
+	describe('Branches', () => {
+		const loopVariants = ['while (TRUE)', 'repeat', 'for (i in 1:10)', 'for (i in c(1,2))'];
+		const stopVariants = ['break', 'return(42)', 'stop(42)', 'stopifnot(FALSE)'];
+		const branchVariants = ['if (TRUE) { %s }', 'if (u) { %s } else { %s }'];
+
+
+		for(const loop of loopVariants) {
+			for(const stop of stopVariants) {
+				for(const branch of branchVariants) {
+					const code = `${loop} { print(42); ${branch.replaceAll('%s', stop)} }`;
+					checkLoop(code, code, `1@${loop.split(' ')[0]}`, true);
+				}
 			}
 		}
 	});
@@ -52,8 +67,25 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 		checkLoop('unknown while', 'while(x) { print(42) }',                                              '1@while',  false);
 	
 		checkLoop('Useful Loop before uselss', 'for (i in c(1,2)) { print(42); }\nrepeat { break; }',     '1@for',    false);
+		checkLoop('Useful Loop after  uselss', 'repeat { break; }\nfor (i in c(1,2)) { print(42); }',     '2@for',    false);
 
 		checkLoop('false break', 'for (i in c(1,2)) { if (FALSE) { break } }',                            '1@for',    false);
+
+		describe('Branches', () => {
+			const loopVariants = ['while (TRUE)', 'repeat', 'for (i in 1:10)', 'for (i in c(1,2))'];
+			const stopVariants = ['break', 'return(42)', 'stop(42)', 'stopifnot(TRUE)'];
+			const branchVariants = ['if (FALSE)', 'if (u)'];
+
+
+			for(const loop of loopVariants) {
+				for(const stop of stopVariants) {
+					for(const branch of branchVariants) {
+						const code = `${loop} { print(42); ${branch} { ${stop} } }`;
+						checkLoop(code, code, `1@${loop.split(' ')[0]}`, false);
+					}
+				}
+			}
+		});
 	});
 
 }));

@@ -78,6 +78,7 @@ async function processQueryArgs(line: string, parser: KnownParser, output: ReplO
 
 export const queryCommand: ReplCommand = {
 	description:  `Query the given R code, start with '${fileProtocol}' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).`,
+	usesAnalyzer: false,
 	usageExample: ':query "<query>" <code>',
 	aliases:      [],
 	script:       false,
@@ -93,6 +94,7 @@ export const queryCommand: ReplCommand = {
 
 export const queryStarCommand: ReplCommand = {
 	description:  'Similar to query, but returns the output in json format.',
+	usesAnalyzer: false,
 	usageExample: ':query* <query> <code>',
 	aliases:      [ ],
 	script:       false,

@@ -153,9 +153,10 @@ function depthListToTextTree(list: Readonly<DepthList>, f: OutputFormatter): str
 	return result;
 }
 
-
+// TODO TSchoeller Should we use the analyzer here?
 export const parseCommand: ReplCommand = {
 	description:  `Prints ASCII Art of the parsed, unmodified AST, start with '${fileProtocol}' to indicate a file`,
+	usesAnalyzer: false,
 	usageExample: ':parse',
 	aliases:      [ 'p' ],
 	script:       false,

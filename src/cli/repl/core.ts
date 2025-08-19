@@ -13,7 +13,7 @@ import { splitAtEscapeSensitive } from '../../util/text/args';
 import { FontStyles } from '../../util/text/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
-import { fileProtocol } from '../../r-bridge/retriever';
+import { fileProtocol, requestFromInput } from '../../r-bridge/retriever';
 import type { ReplOutput } from './commands/repl-main';
 import { standardReplOutput } from './commands/repl-main';
 import { RShell, RShellReviveOptions } from '../../r-bridge/shell';
@@ -22,6 +22,7 @@ import type { KnownParser } from '../../r-bridge/parser';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfigOptions } from '../../config';
 import { getEngineConfig } from '../../config';
+import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -80,6 +81,10 @@ export function makeDefaultReplReadline(): readline.ReadLineOptions {
 	};
 }
 
+function handleString(code: string): string {
+	return code.startsWith('"') ? JSON.parse(code) as string : code;
+}
+
 async function replProcessStatement(output: ReplOutput, statement: string, parser: KnownParser, allowRSessionAccess: boolean, config: FlowrConfigOptions): Promise<void> {
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase();
@@ -87,7 +92,20 @@ async function replProcessStatement(output: ReplOutput, statement: string, parse
 		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
 		if(processor) {
 			try {
-				await processor.fn({ output, parser, remainingLine: statement.slice(command.length + 2).trim(), allowRSessionAccess, config });
+				const remainingLine = statement.slice(command.length + 2).trim();
+				if(processor.usesAnalyzer) {
+					const request = requestFromInput(handleString(remainingLine));
+					// TODO TSchoeller engine/parser
+					// TODO TSchoeller Ideally the analyzer would also be used for query commands
+					// TODO TSchoeller Is this the right level to create the analyzer instance?
+					const analyzer = await new FlowrAnalyzerBuilder(request)
+						.setConfig(config)
+						.setParser(parser)
+						.build();
+					await processor.fn({ output, analyzer });
+				} else {
+					await processor.fn({ output, parser, remainingLine, allowRSessionAccess, config });
+				}
 			} catch(e){
 				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
 				if(log.settings.minLevel < LogLevel.Fatal) {
@@ -154,7 +172,7 @@ export interface FlowrReplOptions extends MergeableRecord {
  *
  */
 export async function repl(
-	config : FlowrConfigOptions,
+	config: FlowrConfigOptions,
 	{
 		parser = new RShell(getEngineConfig(config, 'r-shell'), { revive: RShellReviveOptions.Always }),
 		rl = readline.createInterface(makeDefaultReplReadline()),

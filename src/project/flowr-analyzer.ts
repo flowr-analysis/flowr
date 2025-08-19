@@ -1,21 +1,19 @@
 import type { FlowrConfigOptions } from '../config';
 import type { RParseRequests } from '../r-bridge/retriever';
-import { requestFromInput } from '../r-bridge/retriever';
 import { createDataflowPipeline, createNormalizePipeline } from '../core/steps/pipeline/default-pipelines';
-import { FlowrAnalyzerBuilder } from './flowr-analyzer-builder';
-import { graphToMermaidUrl } from '../util/mermaid/dfg';
 import type { KnownParser } from '../r-bridge/parser';
 import type { Queries, SupportedQueryTypes } from '../queries/query';
 import { executeQueries } from '../queries/query';
-import type { DataflowInformation } from '../dataflow/info';
-import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { extractCfg } from '../control-flow/extract-cfg';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
+import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { DataflowInformation } from '../dataflow/info';
+import type { CfgSimplificationPassName } from '../control-flow/cfg-simplification';
 
 export class FlowrAnalyzer {
-	private readonly flowrConfig: FlowrConfigOptions;
-	private readonly request:     RParseRequests;
-	private readonly parser:      KnownParser;
+	public readonly flowrConfig: FlowrConfigOptions;
+	private readonly request:    RParseRequests;
+	private readonly parser:     KnownParser;
 
 	private ast = undefined as unknown as NormalizedAst;
 	private dataflowInfo = undefined as unknown as DataflowInformation;
@@ -60,7 +58,7 @@ export class FlowrAnalyzer {
 		return result.dataflow;
 	}
 
-	public async controlflow(force?: boolean): Promise<ControlFlowInformation> {
+	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation> {
 		if(this.controlflowInfo && !force) {
 			return this.controlflowInfo;
 		}
@@ -80,27 +78,4 @@ export class FlowrAnalyzer {
 		}
 		return executeQueries({ ast: this.ast, dataflow: this.dataflowInfo, config: this.flowrConfig }, query);
 	}
-}
-
-async function main() {
-	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('x <- 1\nfoo <- function(){}\nfoo()'))
-		.setEngine('r-shell')
-		.amendConfig(c => {
-			c.solver.pointerTracking = true;
-			return c;
-		})
-		.build();
-	const result = await analyzer.dataflow();
-	const query = await analyzer.query([{
-		type:     'call-context',
-		kind:     'test-kind',
-		subkind:  'test-subkind',
-		callName: /foo/
-	}]);
-	console.log(graphToMermaidUrl(result.graph));
-	console.log(query);
-}
-
-if(require.main === module) {
-	void main();
 }

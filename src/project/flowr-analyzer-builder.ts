@@ -9,11 +9,22 @@ import type { FlowrAnalyzerPlugin } from './plugins/flowr-analyzer-plugin';
 
 export class FlowrAnalyzerBuilder {
 	private flowrConfig:      DeepWritable<FlowrConfigOptions> = cloneConfig(defaultConfigOptions);
+	private parser?:          KnownParser;
 	private readonly request: RParseRequests;
 	private plugins:          FlowrAnalyzerPlugin[];
 
 	public amendConfig(func: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions): this {
 		this.flowrConfig = amendConfig(this.flowrConfig, func);
+		return this;
+	}
+
+	public setConfig(config: FlowrConfigOptions) {
+		this.flowrConfig = config;
+		return this;
+	}
+
+	public setParser(parser: KnownParser) {
+		this.parser = parser;
 		return this;
 	}
 
@@ -39,7 +50,8 @@ export class FlowrAnalyzerBuilder {
 
 	public async build(): Promise<FlowrAnalyzer> {
 		const engines = await retrieveEngineInstances(this.flowrConfig);
-		const parser = engines.engines[engines.default] as KnownParser;
+		// TODO TSchoeller Is this complexity necessary?
+		const parser = this.parser ?? engines.engines[engines.default] as KnownParser;
 
 		return new FlowrAnalyzer(
 			this.flowrConfig,

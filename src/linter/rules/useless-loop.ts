@@ -46,7 +46,7 @@ export const USELESS_LOOP = {
 		};
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.name}-loop at ${formatRange(result.range)} loops once`,
+		[LintingPrettyPrintContext.Query]: result => `${result.name}-loop at ${formatRange(result.range)} only loops once`,
 		[LintingPrettyPrintContext.Full]:  result => `${result.name}-loop at ${formatRange(result.range)} only loops once`
 	},
 	info: {

@@ -205,7 +205,7 @@ function linkFunctionCall(
 	}
 
 	const readBits = EdgeType.Reads | EdgeType.Calls;
-	const functionDefinitionReadIds = edges.entries().filter(([_, e]) =>
+	const functionDefinitionReadIds = [...edges].filter(([_, e]) =>
 		edgeDoesNotIncludeType(e.types, EdgeType.Argument)
 		&& edgeIncludesType(e.types, readBits)
 	).map(([target, _]) => target);

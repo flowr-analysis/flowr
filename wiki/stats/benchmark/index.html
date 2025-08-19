@@ -231,6 +231,39 @@
 <script id="main-script">
     'use strict';
     (function () {
+        function ensureEveryElementHasAllKeys(w) {
+            // from all entries collect all keys:
+            const allKeys = new Set();
+            for (const k of Object.keys(w.entries)) {
+                for (const elem of w.entries[k]) {
+                    for (const b of elem.benches.map(b => b.name)) {
+                        allKeys.add(b);
+                    }
+                }
+            }
+            // for each entry, ensure it has all keys, if not, add one with null value
+            for (const k of Object.keys(w.entries)) {
+                for (const elem of w.entries[k]) {
+                    const existingKeys = new Set(elem.benches.map(b => b.name));
+                    for (const key of allKeys) {
+                        if (!existingKeys.has(key)) {
+                            console.log(`Adding missing key "${key}" to entry "${k}"`);
+                            elem.benches.push({
+                                name: key,
+                                value: 0,
+                                unit: 'ms',
+                                range: null,
+                                extra: 'median: NaNms'
+                            });
+                        } else if(elem.benches.find(b => b.name === key).value === undefined) {
+                            console.log(`Adding missing value for key "${key}" to entry "${k}"`);
+                            elem.benches.find(b => b.name === key).value = 0;
+                        }
+                    }
+                }
+            }
+            return w;
+        }
         const cycleColors = [
             '#FF4D00',
             '#00add8',
@@ -259,7 +292,8 @@
         }
         const releaseRegex = /.*(Release v|\[release:(patch|minor|major)\]\s*)(?<version>\d+\.\d+\.\d+)/;
 
-        const data = window.BENCHMARK_DATA;
+        const data = ensureEveryElementHasAllKeys(window.BENCHMARK_DATA);
+
         const lastUpdate = new Date(data.lastUpdate);
 
         // filter options to only show supported dates
@@ -309,7 +343,6 @@
                         }
 
                         const result = {commit, date, tool, bench}
-                        console.log(bench)
                         const arr = map.get(bench.name);
                         if (arr === undefined) {
                             map.set(bench.name, [result]);
@@ -321,7 +354,7 @@
                 return map;
             }
 
-            const data = window.BENCHMARK_DATA;
+            const data = ensureEveryElementHasAllKeys(window.BENCHMARK_DATA);
 
             // Render header
             const lastUpdate = new Date(data.lastUpdate);

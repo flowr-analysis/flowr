@@ -15,6 +15,11 @@ export interface UselessLoopResult extends LintingResult {
     range: SourceRange
 }
 
+export interface UselessLoopConfig extends MergeableRecord {
+    /** Function origins that are considered loops */
+    loopyFunctions: Set<BuiltInMappingName>
+}
+
 export interface UselessLoopMetadata extends MergeableRecord {
     numOfUselessLoops: number
 }
@@ -29,7 +34,7 @@ export const USELESS_LOOP = {
 			return vertex 
                 && isFunctionCallVertex(vertex) 
                 && vertex.origin !== 'unnamed' 
-                && loopyFunctions.has(vertex.origin[0] as BuiltInMappingName);
+                && config.loopyFunctions.has(vertex.origin[0] as BuiltInMappingName);
 		}).filter(loop => 
 			onlyLoopsOnce(loop.node.info.id, data.dataflow.graph, cfg, data.normalize, data.config)   
 		).map(res => ({
@@ -54,6 +59,8 @@ export const USELESS_LOOP = {
 		description:   'Detect loops which only iterate once',
 		certainty:     LintingRuleCertainty.BestEffort,  
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Readability],
-		defaultConfig: { }
+		defaultConfig: { 
+			loopyFunctions: loopyFunctions
+		}
 	}
-} as const satisfies LintingRule<UselessLoopResult, UselessLoopMetadata, MergeableRecord>;
+} as const satisfies LintingRule<UselessLoopResult, UselessLoopMetadata, UselessLoopConfig>;

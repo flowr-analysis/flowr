@@ -146,6 +146,10 @@ df[6, "value"]
 		'dead-code', 'DeadCodeConfig', 'DEAD_CODE', 'lint-dead-code',
 		'if(TRUE) 1 else 2', tagTypes);
 
+	rule(shell,
+		'useless-loop', 'UselessLoopConfig', 'USELESS_LOOP', 'lint-useless-loop',
+		'for(i in c(1)) { print(i) }', tagTypes);
+
 	function rule(shell: RShell, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 

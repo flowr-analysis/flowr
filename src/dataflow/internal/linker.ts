@@ -30,7 +30,7 @@ export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 export function findNonLocalReads(graph: DataflowGraph, ignore: readonly IdentifierReference[]): IdentifierReference[] {
 	const ignores = new Set(ignore.map(i => i.nodeId));
 	const ids = new Set(
-		graph.vertices(true)
+		[...graph.vertices(true)]
 			.filter(([_, info]) => info.tag === VertexType.Use || info.tag === VertexType.FunctionCall)
 			.map(([id, _]) => id)
 	);
@@ -233,11 +233,11 @@ export function linkFunctionCalls(
 	idMap: AstIdMap,
 	thisGraph: DataflowGraph
 ): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[] }[] {
-	const functionCalls = thisGraph.vertices(true)
-		.filter(([_,info]) => info.tag === VertexType.FunctionCall);
 	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] = [];
-	for(const [id, info] of functionCalls) {
-		linkFunctionCall(graph, id, info as DataflowGraphVertexFunctionCall, idMap, thisGraph, calledFunctionDefinitions);
+	for(const [id, info] of thisGraph.vertices(true)) {
+		if(info.tag === VertexType.FunctionCall) {
+			linkFunctionCall(graph, id, info as DataflowGraphVertexFunctionCall, idMap, thisGraph, calledFunctionDefinitions);
+		}
 	}
 	return calledFunctionDefinitions;
 }

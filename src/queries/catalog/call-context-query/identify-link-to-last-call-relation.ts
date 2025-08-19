@@ -121,7 +121,7 @@ export function identifyLinkToLastCallRelation(
 	graph: DataflowGraph,
 	{ callName, ignoreIf, cascadeIf }: LinkTo<RegExp>
 ): NodeId[] {
-	if(ignoreIf && ignoreIf(from, graph)) {
+	if(ignoreIf?.(from, graph)) {
 		return [];
 	}
 

@@ -34,6 +34,7 @@ export interface FunctionsToDetectConfig extends MergeableRecord {
 	 * The list of function names that should be marked in the given context.
 	 */
 	functionsToFind: string[]
+	regEx:           RegExp
 }
 
 export const funtionFinderUtil = {
@@ -50,7 +51,7 @@ export const funtionFinderUtil = {
 				})
 		);
 	},
-	processSearchResult: (elements: FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>, data: { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions }) => {
+	processSearchResult: (elements: FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>, config: FunctionsToDetectConfig, data: { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions}) => {
 		const metadata: FunctionsMetadata = {
 			totalCalls:               0,
 			totalFunctionDefinitions: 0
@@ -67,25 +68,31 @@ export const funtionFinderUtil = {
 						target: target as Identifier
 					};
 				});
+			}).filter(element =>{
+				const info = ReadFunctions.find(f => f.name === element.node.lexeme);
+				if(isUndefined(info)){
+					return true;
+				}
+				const vert = data.dataflow.graph.getVertex(element.node.info.id);
+				if(isFunctionCallVertex(vert)){
+					const args = getArgumentStringValue(
+						data.config.solver.variables, 
+						data.dataflow.graph,
+						vert, 
+						info.argIdx, 
+						info.argName, 
+						info.resolveValue);
+					
+					const argValues = args ? Array.from(args.values()).filter(v => !isUndefined(v)).flatMap(v => [...v]):[];
+					// if(!argValues || argValues.length === 0 || argValues.some(v => v === Unknown || isUndefined(v))) {
+					// 	if we have no arguments, we cannot construct the argument
+					// 	return undefined;
+					// }
+					return argValues.map(arg => !isUndefined(arg) ? config.regEx.test(arg): undefined);
+				}
+				return false;
+				
 			});
-
-		const args = results.filter(element => {
-			return !isUndefined(ReadFunctions.find(f => f.name === element.node.lexeme));
-		}).forEach(element =>{
-			const info = ReadFunctions.find(f => f.name === element.node.lexeme);
-			const vert = data.dataflow.graph.getVertex(element.node.info.id);
-			if(isFunctionCallVertex(vert)){
-				return getArgumentStringValue(
-					data.config.solver.variables, 
-					data.dataflow.graph,
-					vert, 
-					info?.argIdx, 
-					info?.argName, 
-					info?.resolveValue);
-			} 
-		});
-
-		console.log(args);
 
 		return {
 			results: 
@@ -103,13 +110,14 @@ export const funtionFinderUtil = {
 			[LintingPrettyPrintContext.Full]:  (result:FunctionsResult) => `Function \`${result.function}\` called at ${formatRange(result.range)} is related to ${functionType}`
 		};
 	},
-	info: (name: string, tags:LintingRuleTag[], description: string, functionsToFind: string[])=>{
+	info: (name: string, tags:LintingRuleTag[], description: string, functionsToFind: string[], regEx: RegExp)=>{
 		return {
 			name:          name,
 			tags:          tags,
 			description:   description,
 			defaultConfig: {
-				functionsToFind: functionsToFind
+				functionsToFind: functionsToFind,
+				regEx: 	         regEx
 			}
 		};
 	}

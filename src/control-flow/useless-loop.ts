@@ -16,7 +16,7 @@ import type { SemanticCfgGuidedVisitorConfiguration } from './semantic-cfg-guide
 import { SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
 
 
-const loopyFunctions = new Set<BuiltInMappingName>(['builtin:for-loop', 'builtin:while-loop', 'builtin:repeat-loop']);
+export const loopyFunctions = new Set<BuiltInMappingName>(['builtin:for-loop', 'builtin:while-loop', 'builtin:repeat-loop']);
 
 /**
  * Checks wheter a loop only loops once 

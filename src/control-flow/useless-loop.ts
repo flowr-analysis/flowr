@@ -78,7 +78,6 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 
 	private loopToCheck: NodeId;
 
-
 	constructor(loop: NodeId, config: SemanticCfgGuidedVisitorConfiguration) {
 		super(config);
 		this.loopToCheck = loop;
@@ -97,6 +96,31 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 		return Boolean(values.elements[0].value);
 	}
 
+	protected startVisitor(_: readonly NodeId[]): void {
+		const g = this.config.controlFlow.graph;
+		const n = (i: NodeId) => g.ingoingEdges(i);
+
+		const exits = new Set<NodeId>(g.getVertex(this.loopToCheck)?.end as NodeId[] ?? []);
+		guard(exits.size !== 0, "Can't find end of loop"); 
+
+		const stack: NodeId[] = [this.loopToCheck];
+		while(stack.length > 0) {
+			const current = stack.shift() as NodeId;
+
+			if(!this.visitNode(current)) {
+				continue;
+			}
+
+
+			if(!exits.has(current)) {
+				const next = n(current) ?? [];
+				for(const [to] of next) {
+					stack.unshift(to);
+				}
+			}
+		}
+	}
+
 	protected onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
 		let stopsLoop = false;
 
@@ -106,7 +130,9 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 				return true;
 			}
 
-			return happensInEveryBranch(data.call.cds);
+			const cds = data.call.cds.filter(d => d.id !== this.loopToCheck);
+
+			return happensInEveryBranch(cds);
 		};
 
 		switch(data.call.origin[0]) {
@@ -124,12 +150,11 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 			}
 		}
 			
-			
 		this.onlyLoopyOnce = this.onlyLoopyOnce || stopsLoop;
 	}
 
 	public loopsOnlyOnce(): boolean {
-		this.startVisitor([this.loopToCheck]);
+		this.startVisitor([]);
 		return this.onlyLoopyOnce;
 	}
 }

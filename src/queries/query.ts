@@ -222,7 +222,9 @@ export function executeQueries<
 	return Promise.all(
 		results.map(([type, result]) => Promise.resolve(result).then(
 			resolvedResult => [type, resolvedResult] as const
-		))
+		).catch(() => {
+			return [type, undefined] as const;
+		}))
 	).then(resultsArray => {
 
 		const results = Object.fromEntries(resultsArray) as Writable<QueryResults<Base>>;

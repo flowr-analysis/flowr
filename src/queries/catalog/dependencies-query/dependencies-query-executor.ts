@@ -172,7 +172,7 @@ function getResults<T extends DependencyInfo>(data: BasicQueryData, results: Cal
 			const margs = info.additionalArgs?.mode;
 			guard(margs, 'Need additional argument mode when checking for mode');
 			const modeArgs = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, margs.argIdx, margs.argName, margs.resolveValue);
-			const modeValues = modeArgs?.values().flatMap(v => [...v]) ?? [];
+			const modeValues = [...modeArgs?.values() ?? []].flatMap(v => [...v]) ?? [];
 			if(info.ignoreIf === 'mode-only-read' && modeValues.every(m => m && readOnlyModes.has(m))) {
 				// all modes are read-only, so we can ignore this
 				return [];

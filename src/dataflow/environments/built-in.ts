@@ -169,29 +169,6 @@ function defaultBuiltInProcessor<OtherInfo>(
 	return res;
 }
 
-export function registerBuiltInFunctions<Config extends object, Proc extends BuiltInIdentifierProcessorWithConfig<Config>>(
-	both:      boolean,
-	names:     readonly Identifier[],
-	processor: Proc,
-	config:    Config,
-	builtIns:  BuiltIns
-): void {
-	for(const name of names) {
-		guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
-		const id = builtInId(name);
-		const d: IdentifierDefinition[] = [{
-			type:                ReferenceType.BuiltInFunction,
-			definedAt:           id,
-			controlDependencies: undefined,
-			processor:           (name, args, rootId, data) => processor(name, args, rootId, data, config),
-			config,
-			name,
-			nodeId:              id
-		}];
-		builtIns.set(name, d, both);
-	}
-}
-
 export const BuiltInProcessorMapper = {
 	'builtin:default':             defaultBuiltInProcessor,
 	'builtin:eval':                processEvalCall,

@@ -24,7 +24,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 		if(values.length > 1_000_000) {
 			log.warn(`Overwriting environment with ${values.length} definitions for ${key}`);
 		}
-		const hasMaybe = applyCds?.length === 0 || applyCds !== undefined ? true : anyIsMaybeOrEmpty(values);
+		const hasMaybe = applyCds !== undefined ? true : anyIsMaybeOrEmpty(values);
 		if(hasMaybe) {
 			const old = map.get(key);
 			// we need to make a copy to avoid side effects for old reference in other environments
@@ -35,7 +35,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 					if(applyCds !== undefined) {
 						updatedOld.push({
 							...v,
-							controlDependencies: [...applyCds, ...v.controlDependencies ?? []]
+							controlDependencies: applyCds.concat(v.controlDependencies ?? [])
 						});
 					} else {
 						updatedOld.push(v);

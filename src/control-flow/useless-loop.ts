@@ -19,13 +19,13 @@ import { SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
 export const loopyFunctions = new Set<BuiltInMappingName>(['builtin:for-loop', 'builtin:while-loop', 'builtin:repeat-loop']);
 
 /**
- * Checks wheter a loop only loops once 
+ * Checks whether a loop only loops once
  * 
  * 
  * 
  * @param loop        - nodeid of the loop to analyse
  * @param dataflow    - dataflow graph
- * @param controlflow - controlflow graph
+ * @param controlflow - control flow graph
  * @param ast         - normalized ast
  * @param config      - current flowr config
  * @returns true if the given loop only iterates once

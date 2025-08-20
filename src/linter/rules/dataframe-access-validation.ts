@@ -22,12 +22,12 @@ interface DataFrameAccessOperation {
 	operandShape?: DataFrameDomain,
 	accessedCols?: (string | number)[],
 	accessedRows?: number[]
-};
+}
 
 interface DataFrameAccess {
 	type:     'column' | 'row',
 	accessed: string | number
-};
+}
 
 export interface DataFrameAccessValidationResult extends LintingResult {
 	/** The type of the data frame access ("column" or "row") */

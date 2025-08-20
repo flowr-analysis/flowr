@@ -241,7 +241,7 @@ export async function summarizeSlicerStats(
 }
 
 function summarizeDfShapeStats({ perNodeStats, ...stats }: SlicerStatsDfShape): SummarizedDfShapeStats {
-	const nodeStats = perNodeStats.values().toArray();
+	const nodeStats = [...perNodeStats.values()];
 
 	const isTop = (value?: number | 'top' | 'infinite' | 'bottom') => value === 'top';
 	const isInfinite = (value?: number | 'top' | 'infinite' | 'bottom') => value === 'infinite';

@@ -120,7 +120,7 @@ export interface DataflowInformation extends DataflowCfgInformation {
  *
  * @see {@link DataflowInformation}
  */
-export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'completeAst'>): DataflowInformation {
+export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'builtInEnvironment' | 'completeAst'>): DataflowInformation {
 	return {
 		unknownReferences: [],
 		in:                [],

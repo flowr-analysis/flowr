@@ -141,8 +141,7 @@ export function processFunctionDefinition<OtherInfo>(
 // this is no longer necessary when we update environments to be back to front (e.g., with a list of environments)
 // this favors the bigger environment
 export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
-
-	callerEnvironment ??= initializeCleanEnvironments(true);
+	callerEnvironment ??= initializeCleanEnvironments(undefined, true);
 	let level = callerEnvironment.level ?? 0;
 
 	if(baseEnvironment.level !== level) {
@@ -264,7 +263,7 @@ export function updateNestedFunctionCalls(
 }
 
 function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
-	let env = initializeCleanEnvironments();
+	let env = initializeCleanEnvironments(data.builtInEnvironment.memory);
 	for(let i = 0; i < data.environment.level + 1 /* add another env */; i++) {
 		env = pushLocalEnvironment(env);
 	}

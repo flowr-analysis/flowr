@@ -37,7 +37,6 @@ import type { REnvironmentInformation } from '../../../../../environments/enviro
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { addSubIndicesToLeafIndices, resolveIndicesByName } from '../../../../../../util/containers';
-import type { FlowrConfigOptions } from '../../../../../../config';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -305,10 +304,10 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
  * @param nodeToDefine       - `x`
  * @param sourceIds          - `v`
  * @param rootIdOfAssignment - `<-`
- * @param config             - The flowr config
+ * @param data               - The dataflow analysis fold backpack
  * @param assignmentConfig   - configuration for the assignment processing
  */
-export function markAsAssignment(
+export function markAsAssignment<OtherInfo>(
 	information: {
 		environment: REnvironmentInformation,
 		graph:       DataflowGraph
@@ -316,10 +315,10 @@ export function markAsAssignment(
 	nodeToDefine: InGraphIdentifierDefinition,
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
-	config: FlowrConfigOptions,
+	data: DataflowProcessorInformation<OtherInfo>,
 	assignmentConfig?: AssignmentConfiguration
 ) {
-	if(config.solver.pointerTracking) {
+	if(data.flowrConfig.solver.pointerTracking) {
 		let indicesCollection: ContainerIndicesCollection = undefined;
 		if(sourceIds.length === 1) {
 			// support for tracking indices.
@@ -349,7 +348,7 @@ export function markAsAssignment(
 		nodeToDefine.indicesCollection ??= indicesCollection;
 	}
 
-	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, config);
+	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, data.flowrConfig);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
 	if(!assignmentConfig?.quoteSource) {
 		for(const sourceId of sourceIds) {
@@ -392,7 +391,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
-		markAsAssignment(information, write, [source.info.id], rootId, data.flowrConfig, config);
+		markAsAssignment(information, write, [source.info.id], rootId, data, config);
 	}
 
 	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);

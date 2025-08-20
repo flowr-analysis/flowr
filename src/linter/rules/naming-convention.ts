@@ -9,7 +9,6 @@ import type { MergeableRecord } from '../../util/objects';
 import type { SourceRange } from '../../util/range';
 import type { LintingResult, LintingRule, LintQuickFixReplacement } from '../linter-format';
 import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
-
 import { LintingRuleTag } from '../linter-tags';
 
 

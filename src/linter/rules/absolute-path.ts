@@ -93,7 +93,8 @@ const PathFunctions: Record<string, (df: DataflowGraph, vtx: DataflowGraphVertex
 			df, vtx, undefined, 'fsep', true
 		);
 		// in the future we can access `.Platform$file.sep` here
-		const sepValues: string[] = new Array(...fsep?.values()?.flatMap(s => [...s].filter(isNotUndefined)) ?? [path.sep]);
+		const v = fsep?.values();
+		const sepValues: string[] = v ? [...v].flatMap(s => [...s].filter(isNotUndefined)) : [path.sep];
 		if(sepValues.some(s => s === Unknown || isUndefined(s))) {
 			// if we have no fsep, we cannot construct a path
 			return undefined;

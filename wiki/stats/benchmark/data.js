@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1755710669182,
+  "lastUpdate": 1755710671946,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -18900,6 +18900,116 @@ window.BENCHMARK_DATA = {
             "extra": "median: 34.18"
           }
         ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "f76a9565b68adc516aab54ef1e0eaddc3dc40832",
+          "message": "[release:patch] 2.4.6 Fix MapIterator in DFShape Linter",
+          "timestamp": "2025-08-20T18:54:08+02:00",
+          "tree_id": "f6fddd12c13459514380efe842dc91c81011c613",
+          "url": "https://github.com/flowr-analysis/flowr/commit/f76a9565b68adc516aab54ef1e0eaddc3dc40832"
+        },
+        "date": 1755710670479,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 12.806118181818182,
+            "unit": "ms",
+            "range": 15.25733328832822,
+            "extra": "median: 9.41ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 15.367087545454545,
+            "unit": "ms",
+            "range": 19.321146084085413,
+            "extra": "median: 11.73ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 74.42731163636364,
+            "unit": "ms",
+            "range": 165.71207669222838,
+            "extra": "median: 35.20ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 591.3327782272728,
+            "unit": "ms",
+            "range": 1466.4432934078477,
+            "extra": "median: 152.50ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 8.472190045454544,
+            "unit": "ms",
+            "range": 18.645419221853736,
+            "extra": "median: 3.22ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.851197288980519,
+            "unit": "ms",
+            "range": 0.46189965334606664,
+            "extra": "median: 0.74ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2365098087764867,
+            "unit": "ms",
+            "range": 0.1918538535849674,
+            "extra": "median: 0.10ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 1.1042966799285783,
+            "unit": "ms",
+            "range": 0.6187155621277551,
+            "extra": "median: 1.01ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7786152155810172,
+            "unit": "#",
+            "extra": "std: 0.1290160802322939"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7558573293027475,
+            "unit": "#",
+            "extra": "std: 0.13293775369417085"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 117.43639026988636,
+            "unit": "KiB",
+            "range": 300.1098805940028,
+            "extra": "median: 34.18"
+          }
+        ]
       }
     ],
     "\"social-science\" Benchmark Suite (tree-sitter)": [
@@ -21398,6 +21508,116 @@ window.BENCHMARK_DATA = {
             "unit": "ms",
             "range": 13.941054757592136,
             "extra": "median: 1.21ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 12710 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8760636188102862,
+            "unit": "#",
+            "extra": "std: 0.1071843874046504"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8218888563337355,
+            "unit": "#",
+            "extra": "std: 0.152841619600717"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 108.7821875,
+            "unit": "KiB",
+            "range": 119.20997798075639,
+            "extra": "median: 54.17"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "f76a9565b68adc516aab54ef1e0eaddc3dc40832",
+          "message": "[release:patch] 2.4.6 Fix MapIterator in DFShape Linter",
+          "timestamp": "2025-08-20T18:54:08+02:00",
+          "tree_id": "f6fddd12c13459514380efe842dc91c81011c613",
+          "url": "https://github.com/flowr-analysis/flowr/commit/f76a9565b68adc516aab54ef1e0eaddc3dc40832"
+        },
+        "date": 1755710671939,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 19.134115899999998,
+            "unit": "ms",
+            "range": 11.26377847677974,
+            "extra": "median: 13.48ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 20.85031668,
+            "unit": "ms",
+            "range": 11.671570696492026,
+            "extra": "median: 16.49ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 95.63041082,
+            "unit": "ms",
+            "range": 89.42462102659404,
+            "extra": "median: 53.57ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 2078.10271722,
+            "unit": "ms",
+            "range": 3693.2299668735764,
+            "extra": "median: 355.53ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 10.48790396,
+            "unit": "ms",
+            "range": 8.928975625655914,
+            "extra": "median: 8.09ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 4.756176201254601,
+            "unit": "ms",
+            "range": 14.023426553465619,
+            "extra": "median: 0.91ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2705395226209734,
+            "unit": "ms",
+            "range": 0.16433303678790828,
+            "extra": "median: 0.15ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 5.034379914501014,
+            "unit": "ms",
+            "range": 14.059728135061208,
+            "extra": "median: 1.23ms"
           },
           {
             "name": "failed to reconstruct/re-parse",

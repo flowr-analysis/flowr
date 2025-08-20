@@ -31,6 +31,7 @@ body:
         - Naming Convention
         - Seeded Randomness
         - Unused Definitions
+        - Useless Loops
       default: 0
   - type: checkboxes
     id: tags

@@ -1,12 +1,22 @@
 import { setEquals } from '../../util/collections/set';
-import { DEFAULT_INFERENCE_LIMIT, type AbstractDomain } from './abstract-domain';
+import { DEFAULT_INFERENCE_LIMIT, domainElementToString, type AbstractDomain } from './abstract-domain';
 import { Top } from './lattice';
 
-type BoundedSetValue<T> = ReadonlySet<T>;
-type BoundedSetTop = typeof Top;
-type BoundedSetBottom = ReadonlySet<never>;
-type BoundedSetLift<T> = BoundedSetValue<T> | BoundedSetTop | BoundedSetBottom;
+/** The type of the actual values of the bounded set domain as set */
+export type BoundedSetValue<T> = ReadonlySet<T>;
+/** The type of the Top element of the bounded set domain as {@link Top} symbol */
+export type BoundedSetTop = typeof Top;
+/** The type of the Bottom element of the bounded set domain as empty set */
+export type BoundedSetBottom = ReadonlySet<never>;
+/** The type of the abstract values of the bounded set domain that are Top, Bottom, or actual values */
+export type BoundedSetLift<T> = BoundedSetValue<T> | BoundedSetTop | BoundedSetBottom;
 
+/**
+ * The bounded set abstract domain as sets of possible values bounded by a `limit` indicating the maximum number of inferred values.
+ * The Bottom element is defined as the empty set and the Top element is defined as {@link Top} symbol.
+ * @template T     - Type of the values in the abstract domain
+ * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
+ */
 export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLift<T>>
 implements AbstractDomain<T, BoundedSetValue<T>, BoundedSetTop, BoundedSetBottom, Value> {
 	private readonly limit: number;
@@ -82,6 +92,9 @@ implements AbstractDomain<T, BoundedSetValue<T>, BoundedSetTop, BoundedSetBottom
 		return result;
 	}
 
+	/**
+	 * Subtracts another abstract value from the current abstract value by removing all elements of the other abstract value from the current abstract value.
+	 */
 	public subtract(other: BoundedSetDomain<T>): BoundedSetDomain<T> {
 		if(this.value === Top) {
 			return this.top();
@@ -93,7 +106,7 @@ implements AbstractDomain<T, BoundedSetValue<T>, BoundedSetTop, BoundedSetBottom
 	}
 
 	public widen(other: BoundedSetDomain<T>): BoundedSetDomain<T> {
-		return this.leq(other) ? new BoundedSetDomain(other.value, this.limit) : this.top();
+		return other.leq(this) ? new BoundedSetDomain(this.value, this.limit) : this.top();
 	}
 
 	public narrow(other: BoundedSetDomain<T>): BoundedSetDomain<T> {
@@ -112,7 +125,9 @@ implements AbstractDomain<T, BoundedSetValue<T>, BoundedSetTop, BoundedSetBottom
 		if(this.value === Top) {
 			return '⊤';
 		}
-		return `{${this.value.values().toArray().join(', ')}}`;
+		const string = this.value.values().map(domainElementToString).toArray().join(', ');
+
+		return `{${string}}`;
 	}
 
 	public isTop(): this is BoundedSetDomain<T, BoundedSetTop> {

@@ -1,11 +1,20 @@
 import { DEFAULT_INFERENCE_LIMIT, type AbstractDomain } from './abstract-domain';
 import { Top } from './lattice';
 
-type ConcreteProduct<Product extends Record<string, AbstractDomain<unknown, unknown, unknown, unknown>>> = {
+/** The type of an abstract product of a product domain mapping named properties of the product to abstract domains */
+export type AbstractProduct = Record<string, AbstractDomain<unknown, unknown, unknown, unknown>>;
+
+/** The type of the concrete product of an abstract product mapping each property to a concrete value in the respective concrete domain */
+export type ConcreteProduct<Product extends AbstractProduct> = {
 	[Key in keyof Product]: Product[Key] extends AbstractDomain<infer Concrete, unknown, unknown, unknown> ? Concrete : never;
 };
-type AbstractProduct = Record<string, AbstractDomain<unknown, unknown, unknown, unknown>>;
 
+/**
+ * A product abstract domain as named Cartesian product of sub abstract domains.
+ * The sub abstract domains are represented a record mapping property names to abstract domains.
+ * The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as mapping every sub abstract domain to Top.
+ * @template Product - Type of the abstract product of the product domain mapping property names to abstract domains
+ */
 export abstract class ProductDomain<Product extends AbstractProduct>
 implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 	private _value: Product;
@@ -14,6 +23,9 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		this._value = value;
 	}
 
+	/**
+	 * Creates an abstract value of the product domain for a given abstract value.
+	 */
 	public abstract create(value: Product): ProductDomain<Product>;
 
 	public get value(): Product {
@@ -103,7 +115,7 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 	}
 
 	public concretize(limit: number = DEFAULT_INFERENCE_LIMIT): ReadonlySet<ConcreteProduct<Product>> | typeof Top {
-		let result = new Set<ConcreteProduct<Product>>();
+		let result = new Set<ConcreteProduct<Product>>([{} as ConcreteProduct<Product>]);
 
 		for(const key in this.value) {
 			const concrete = this.value[key].concretize(limit);

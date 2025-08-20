@@ -71,7 +71,7 @@ export function subtractColNames(set1: ColNamesDomain, set2: ColNamesDomain): Co
 }
 
 export function wideningColNames(set1: ColNamesDomain, set2: ColNamesDomain): ColNamesDomain {
-	return leqColNames(set1, set2) ? set2 : ColNamesTop;
+	return leqColNames(set2, set1) ? set1 : ColNamesTop;
 }
 
 export function equalInterval(interval1: IntervalDomain, interval2: IntervalDomain): boolean {

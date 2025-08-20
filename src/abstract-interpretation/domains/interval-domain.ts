@@ -1,11 +1,20 @@
 import { DEFAULT_INFERENCE_LIMIT, type AbstractDomain } from './abstract-domain';
 import { Bottom, Top } from './lattice';
 
-type IntervalValue = readonly [number, number];
-type IntervalTop = readonly [typeof Infinity, typeof Infinity];
-type IntervalBottom = typeof Bottom;
-type IntervalLift = IntervalValue | IntervalTop | IntervalBottom;
+/** The type of the actual values of the interval domain as tuple of the lower and upper bound */
+export type IntervalValue = readonly [number, number];
+/** The type of the Top element of the interval domain as interval [-∞, +∞] from -∞ to +∞ */
+export type IntervalTop = readonly [typeof Infinity, typeof Infinity];
+/** The type of the Bottom element of the interval domain as {@link Bottom} symbol */
+export type IntervalBottom = typeof Bottom;
+/** The type of the abstract values of the interval domain that are Top, Bottom, or actual values */
+export type IntervalLift = IntervalValue | IntervalTop | IntervalBottom;
 
+/**
+ * The interval abstract domain as intervals with possibly infinite bounds representing possible numeric values.
+ * The Bottom element is defined as {@link Bottom} symbol and the Top element is defined as the interval [-∞, +∞].
+ * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
+ */
 export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Value> {
 	private _value: Value;
@@ -104,7 +113,7 @@ implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Va
 
 	public narrow(other: IntervalDomain): IntervalDomain {
 		if(this.value === Bottom || other.value === Bottom) {
-			return IntervalDomain.bottom();
+			return this.bottom();
 		}
 		return new IntervalDomain([
 			this.value[0] === -Infinity ? other.value[0] : this.value[0],
@@ -130,6 +139,9 @@ implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Va
 		return IntervalDomain.abstract(concrete);
 	}
 
+	/**
+	 * Adds another abstract value to the current abstract value by adding the two lower and upper bounds, respectively.
+	 */
 	public add(other: IntervalDomain): IntervalDomain {
 		if(this.value === Bottom || other.value === Bottom) {
 			return this.bottom();
@@ -138,6 +150,9 @@ implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Va
 		}
 	}
 
+	/**
+	 * Subtracts another abstract value from the current abstract value by subtracting the two lower and upper bounds from each other, respectively.
+	 */
 	public subtract(other: IntervalDomain): IntervalDomain {
 		if(this.value === Bottom || other.value === Bottom) {
 			return this.bottom();
@@ -146,6 +161,9 @@ implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Va
 		}
 	}
 
+	/**
+	 * Creates the minimum between the current abstract value and another abstract value by creating the minimum of the two lower and upper bounds, respectively.
+	 */
 	public min(other: IntervalDomain): IntervalDomain {
 		if(this.value === Bottom || other.value === Bottom) {
 			return this.bottom();
@@ -154,6 +172,9 @@ implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Va
 		}
 	}
 
+	/**
+	 * Creates the maximum between the current abstract value and another abstract value by creating the maximum of the two lower and upper bounds, respectively.
+	 */
 	public max(other: IntervalDomain): IntervalDomain {
 		if(this.value === Bottom || other.value === Bottom) {
 			return this.bottom();
@@ -162,6 +183,9 @@ implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Va
 		}
 	}
 
+	/**
+	 * Extends the lower bound of the current abstract value down to -∞.
+	 */
 	public extendDown(): IntervalDomain {
 		if(this.value === Bottom) {
 			return this.bottom();
@@ -170,6 +194,9 @@ implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Va
 		}
 	}
 
+	/**
+	 * Extends the upper bound of the current abstract value up to +∞.
+	 */
 	public extendUp(): IntervalDomain {
 		if(this.value === Bottom) {
 			return this.bottom();

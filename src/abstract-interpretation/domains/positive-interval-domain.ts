@@ -1,11 +1,20 @@
 import { IntervalDomain } from './interval-domain';
 import { Bottom, Top } from './lattice';
 
-type PosIntervalValue = readonly [number, number];
-type PosIntervalTop = readonly [0, typeof Infinity];
-type PosIntervalBottom = typeof Bottom;
-type PosIntervalLift = PosIntervalValue | PosIntervalTop | PosIntervalBottom;
+/** The type of the actual values of the positive interval domain as tuple of the lower and upper bound */
+export type PosIntervalValue = readonly [number, number];
+/** The type of the Top element of the positive interval domain as interval [0, +∞] from 0 to +∞ */
+export type PosIntervalTop = readonly [0, typeof Infinity];
+/** The type of the Bottom element of the positive interval domain as {@link Bottom} symbol */
+export type PosIntervalBottom = typeof Bottom;
+/** The type of the abstract values of the positive interval domain that are Top, Bottom, or actual values */
+export type PosIntervalLift = PosIntervalValue | PosIntervalTop | PosIntervalBottom;
 
+/**
+ * The positive interval abstract domain as positive intervals with possibly zero lower bounds and infinite upper bounds representing possible numeric values.
+ * The Bottom element is defined as {@link Bottom} symbol and the Top element is defined as the interval [0, +∞].
+ * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
+ */
 export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> extends IntervalDomain<Value> {
 	constructor(value: Value) {
 		if(Array.isArray(value) && value[0] < 0) {
@@ -75,6 +84,9 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 		}
 	}
 
+	/**
+	 * Extends the lower bound of the current abstract value down to 0.
+	 */
 	public extendDown(): PosIntervalDomain {
 		if(this.value === Bottom) {
 			return this.bottom();

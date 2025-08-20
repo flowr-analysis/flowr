@@ -1,11 +1,21 @@
-import type { AbstractDomain } from './abstract-domain';
+import { domainElementToString, type AbstractDomain } from './abstract-domain';
 import { Bottom, Top } from './lattice';
 
-type SingletonValue<T> = T;
-type SingletonTop = typeof Top;
-type SingletonBottom = typeof Bottom;
-type SingletonLift<T> = SingletonValue<T> | SingletonTop | SingletonBottom;
+/** The type of the actual values of the singleton domain as single value */
+export type SingletonValue<T> = T;
+/** The type of the Top element of the singleton domain as {@link Top} symbol */
+export type SingletonTop = typeof Top;
+/** The type of the Bottom element of the singleton domain as {@link Bottom} symbol */
+export type SingletonBottom = typeof Bottom;
+/** The type of the abstract values of the singleton domain that are Top, Bottom, or actual values */
+export type SingletonLift<T> = SingletonValue<T> | SingletonTop | SingletonBottom;
 
+/**
+ * The singleton abstract domain as single possible value.
+ * The Bottom element is defined as {@link Bottom} symbol and the Top element is defined as {@link Top} symbol.
+ * @template T     - Type of the value in the abstract domain
+ * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
+ */
 export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T>>
 implements AbstractDomain<T, SingletonValue<T>, SingletonTop, SingletonBottom, Value> {
 	private _value: Value;
@@ -55,7 +65,11 @@ implements AbstractDomain<T, SingletonValue<T>, SingletonTop, SingletonBottom, V
 		const result = new SingletonDomain<T>(this.value);
 
 		for(const other of values) {
-			if(!result.isBottom() && !other.isBottom() && !result.equals(other)) {
+			if(result.value === Bottom) {
+				result._value = other.value;
+			} else if(other.value === Bottom) {
+				result._value = result.value;
+			} else if(result.value !== other.value) {
 				result._value = Top;
 			}
 		}
@@ -66,7 +80,11 @@ implements AbstractDomain<T, SingletonValue<T>, SingletonTop, SingletonBottom, V
 		const result = new SingletonDomain<T>(this.value);
 
 		for(const other of values) {
-			if(!result.isTop() && !other.isTop() && !result.equals(other)) {
+			if(result.value === Top) {
+				result._value = other.value;
+			} else if(other.value === Top) {
+				result._value = result.value;
+			} else if(result.value !== other.value) {
 				result._value = Bottom;
 			}
 		}
@@ -74,11 +92,11 @@ implements AbstractDomain<T, SingletonValue<T>, SingletonTop, SingletonBottom, V
 	}
 
 	public widen(other: SingletonDomain<T>): SingletonDomain<T> {
-		return this.leq(other) ? new SingletonDomain(other.value) : this.top();
+		return this.join(other);  // Using join for widening as the lattice is finite
 	}
 
 	public narrow(other: SingletonDomain<T>): SingletonDomain<T> {
-		return this.isTop() ? other : this;
+		return this.meet(other);  // Using meet for narrowing as the lattice is finite
 	}
 
 	public concretize(): ReadonlySet<T> |  typeof Top {
@@ -100,7 +118,7 @@ implements AbstractDomain<T, SingletonValue<T>, SingletonTop, SingletonBottom, V
 		} else if(this.value === Bottom) {
 			return '⊥';
 		}
-		return typeof this.value === 'object' && this.value !== null ? this.value.toString() : JSON.stringify(this.value);
+		return domainElementToString(this.value);
 	}
 
 	public isTop(): this is SingletonDomain<T, SingletonTop> {

@@ -182,7 +182,7 @@ export class DataFrameShapeInferenceVisitor<
 
 	/** Get all AST nodes for the predecessor vertices that are leaf nodes and exit vertices */
 	private getPredecessorNodes(vertexId: NodeId): RNode<ParentInformation & AbstractInterpretationInfo>[] {
-		return this.config.controlFlow.graph.outgoingEdges(vertexId)?.keys()  // outgoing dependency edges are incoming CFG edges
+		return [...this.config.controlFlow.graph.outgoingEdges(vertexId)?.keys() ?? []]  // outgoing dependency edges are incoming CFG edges
 			.map(id => this.getCfgVertex(id))
 			.flatMap(vertex => {
 				if(vertex === undefined) {
@@ -193,8 +193,7 @@ export class DataFrameShapeInferenceVisitor<
 					return [this.getNormalizedAst(getVertexRootId(vertex))];
 				}
 			})
-			.filter(isNotUndefined)
-			.toArray() ?? [];
+			.filter(isNotUndefined);
 	}
 
 	private shouldWiden(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): boolean {

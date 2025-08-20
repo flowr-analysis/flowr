@@ -13,7 +13,7 @@ export type AbstractDataFrameShape = {
 
 /** The type of abstract values of a sub abstract domain (shape property) of the data frame shape product */
 type DataFrameShapeProperty<Property extends keyof AbstractDataFrameShape> =
-	AbstractDataFrameShape[Property] extends AbstractDomain<unknown, infer Value, infer Top, infer Bot> ? Value | Top | Bot : never;
+	AbstractDataFrameShape[Property] extends AbstractDomain<unknown, unknown, unknown, unknown, infer Lift> ? Lift : never;
 
 /**
  * The data frame abstract domain as product domain of a column names domain, column count domain, and row count domain.

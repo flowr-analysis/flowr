@@ -1,111 +1,107 @@
-import type { CfgBasicBlockVertex, CfgEndMarkerVertex, CfgExpressionVertex, CfgMidMarkerVertex, CfgSimpleVertex, CfgStatementVertex, ControlFlowInformation } from '../../control-flow/control-flow-graph';
-import { CfgVertexType, isCfgMarkerNode } from '../../control-flow/control-flow-graph';
+import type { CfgBasicBlockVertex, CfgSimpleVertex, ControlFlowInformation } from '../../control-flow/control-flow-graph';
+import { CfgVertexType, getVertexRootId, isMarkerVertex } from '../../control-flow/control-flow-graph';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../../control-flow/semantic-cfg-guided-visitor';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { VertexType } from '../../dataflow/graph/vertex';
-import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
+import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexVariableDefinition } from '../../dataflow/graph/vertex';
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isNotUndefined } from '../../util/assert';
-import type { AbstractInterpretationInfo } from './absint-info';
+import { DataFrameInfoMarker, hasDataFrameAssignmentInfo, hasDataFrameExpressionInfo, hasDataFrameInfoMarker, type AbstractInterpretationInfo } from './absint-info';
 import type { DataFrameDomain, DataFrameStateDomain } from './domain';
-import { DataFrameTop, equalDataFrameState, joinDataFrames, joinDataFrameStates, wideningDataFrameStates } from './domain';
+import { DataFrameTop, equalDataFrameState, joinDataFrameStates, wideningDataFrameStates } from './domain';
 import { mapDataFrameAccess } from './mappers/access-mapper';
-import { mapDataFrameVariableAssignment } from './mappers/assignment-mapper';
+import { isAssignmentTarget, mapDataFrameVariableAssignment } from './mappers/assignment-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
 import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
-import { applySemantics, getConstraintType, ConstraintType } from './semantics';
-import { isRSingleNode } from './util';
+import { applyDataFrameSemantics, ConstraintType, getConstraintType } from './semantics';
+import { getVariableOrigins, resolveIdToDataFrameShape } from './shape-inference';
 
-export interface DataFrameAbsintVisitorConfiguration<
+export type DataFrameShapeInferenceVisitorConfiguration<
 	OtherInfo = NoInfo,
 	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
-	Ast extends NormalizedAst<OtherInfo>       = NormalizedAst<OtherInfo>,
-	Dfg extends DataflowGraph                  = DataflowGraph
-> extends Omit<SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg>, 'defaultVisitingOrder'> {
-    readonly wideningThreshold?: number;
-}
+	Ast extends NormalizedAst<OtherInfo & AbstractInterpretationInfo> = NormalizedAst<OtherInfo & AbstractInterpretationInfo>,
+	Dfg extends DataflowGraph = DataflowGraph
+> = Omit<SemanticCfgGuidedVisitorConfiguration<OtherInfo & AbstractInterpretationInfo, ControlFlow, Ast, Dfg>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
 
-const DefaultWideningThreshold = 4;
-
-class DataFrameAbsintVisitor<
+/**
+ * The control flow graph visitor to infer the shape of data frames using abstract interpretation
+ */
+export class DataFrameShapeInferenceVisitor<
 	OtherInfo = NoInfo,
 	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst<OtherInfo & AbstractInterpretationInfo> = NormalizedAst<OtherInfo & AbstractInterpretationInfo>,
 	Dfg extends DataflowGraph = DataflowGraph,
-	Config extends DataFrameAbsintVisitorConfiguration<OtherInfo & AbstractInterpretationInfo, ControlFlow, Ast, Dfg> = DataFrameAbsintVisitorConfiguration<OtherInfo & AbstractInterpretationInfo, ControlFlow, Ast, Dfg>
-> extends SemanticCfgGuidedVisitor<OtherInfo & AbstractInterpretationInfo, ControlFlow, Ast, Dfg, Config & { defaultVisitingOrder: 'forward' }> {
+	Config extends DataFrameShapeInferenceVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg> = DataFrameShapeInferenceVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg>
+> extends SemanticCfgGuidedVisitor<OtherInfo & AbstractInterpretationInfo, ControlFlow, Ast, Dfg, Config & { defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' }> {
+	/**
+	 * The old domain of an AST node before processing the node retrieved from the attached {@link AbstractInterpretationInfo}.
+	 * This is used to check whether the state has changed and successors should be visited again, and is also required for widening.
+	 */
 	private oldDomain: DataFrameStateDomain = new Map();
+	/**
+	 * The new domain of an AST node during and after processing the node.
+	 * This information is stored in the {@link AbstractInterpretationInfo} afterwards.
+	 */
 	private newDomain: DataFrameStateDomain = new Map();
 
 	constructor(config: Config) {
-		super({ ...config, defaultVisitingOrder: 'forward' });
+		super({ ...config, defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' });
 	}
 
 	protected override visitNode(nodeId: NodeId): boolean {
 		const vertex = this.getCfgVertex(nodeId);
 
+		// skip vertices representing entries of complex nodes
 		if(vertex === undefined || this.shouldSkipVertex(vertex)) {
 			return true;
 		}
 		const predecessors = this.getPredecessorNodes(vertex.id);
-		this.newDomain = joinDataFrameStates(...predecessors.map(node => node.info.dataFrame?.domain ?? new Map()));
+		this.newDomain = joinDataFrameStates(...predecessors.map(node => node.info.dataFrame?.domain ?? new Map<NodeId, DataFrameDomain>()));
 		this.onVisitNode(nodeId);
+
 		const visitedCount = this.visited.get(vertex.id) ?? 0;
 		this.visited.set(vertex.id, visitedCount + 1);
 
-		if(visitedCount >= (this.config.wideningThreshold ?? DefaultWideningThreshold)) {
-			this.newDomain = wideningDataFrameStates(this.oldDomain, this.newDomain);
-		}
+		// only continue visiting if the node has not been visited before or the data frame value of the node changed
 		return visitedCount === 0 || !equalDataFrameState(this.oldDomain, this.newDomain);
 	}
 
-	protected override onExpressionNode(vertex: CfgExpressionVertex): void {
-		const node = this.getNormalizedAst(vertex.id);
+	protected override visitDataflowNode(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): void {
+		const node = this.getNormalizedAst(getVertexRootId(vertex));
 
-		if(node !== undefined && isRSingleNode(node)) {
-			this.onProcessNode(vertex, node);
+		if(node === undefined) {
+			return;
 		}
-	}
-
-	protected override onStatementNode(vertex: CfgStatementVertex): void {
-		const node = this.getNormalizedAst(vertex.id);
-
-		if(node !== undefined && isRSingleNode(node)) {
-			this.onProcessNode(vertex, node);
-		}
-	}
-
-	protected override onMidMarkerNode(_vertex: CfgMidMarkerVertex): void {}
-
-	protected override onEndMarkerNode(vertex: CfgEndMarkerVertex): void {
-		const node = this.getNormalizedAst(vertex.root);
-
-		if(node !== undefined && !isRSingleNode(node)) {
-			this.onProcessNode(vertex, node);
-		}
-	}
-
-	private onProcessNode(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>, node: RNode<ParentInformation & AbstractInterpretationInfo>): void {
 		this.oldDomain = node.info.dataFrame?.domain ?? new Map<NodeId, DataFrameDomain>();
-		this.onExprOrStmtNode(vertex);
+		super.visitDataflowNode(vertex);
+
+		if(this.shouldWiden(vertex)) {
+			this.newDomain = wideningDataFrameStates(this.oldDomain, this.newDomain);
+		}
 		node.info.dataFrame ??= {};
 		node.info.dataFrame.domain = this.newDomain;
 	}
 
+	protected onVariableDefinition({ vertex }: { vertex: DataflowGraphVertexVariableDefinition; }): void {
+		const node = this.getNormalizedAst(vertex.id);
+
+		if(node !== undefined) {
+			// mark variable definitions as "unassigned", as the evaluation of the assigned expression is delayed until processing the assignment
+			node.info.dataFrame ??= { marker: DataFrameInfoMarker.Unassigned };
+		}
+	}
+
 	protected override onAssignmentCall({ call, target, source }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
 		const node = this.getNormalizedAst(call.id);
-		const targetNode = target !== undefined ? this.getNormalizedAst(target) : undefined;
-		const sourceNode = source !== undefined ? this.getNormalizedAst(source) : undefined;
+		const targetNode = this.getNormalizedAst(target);
+		const sourceNode = this.getNormalizedAst(source);
 
-		if(node !== undefined && (targetNode?.type === RType.Symbol || targetNode?.type === RType.String) && sourceNode !== undefined) {
+		if(node !== undefined && isAssignmentTarget(targetNode) && sourceNode !== undefined) {
 			node.info.dataFrame = mapDataFrameVariableAssignment(targetNode, sourceNode, this.config.dfg);
-			this.processOperation(node);
+			this.applyDataFrameAssignment(node);
+			this.clearUnassignedInfo(targetNode);
 		}
 	}
 
@@ -114,7 +110,7 @@ class DataFrameAbsintVisitor<
 
 		if(node !== undefined) {
 			node.info.dataFrame = mapDataFrameAccess(node, this.config.dfg);
-			this.processOperation(node);
+			this.applyDataFrameExpression(node);
 		}
 	}
 
@@ -122,154 +118,95 @@ class DataFrameAbsintVisitor<
 		const node = this.getNormalizedAst(call.id);
 
 		if(node !== undefined) {
-			node.info.dataFrame = mapDataFrameFunctionCall(node, this.config.dfg);
-			this.processOperation(node);
+			node.info.dataFrame = mapDataFrameFunctionCall(node, this.config.dfg, this.config.flowrConfig);
+			this.applyDataFrameExpression(node);
 		}
 	}
 
-	protected override onReplacementCall({ call, source }: { call: DataflowGraphVertexFunctionCall, source: NodeId | undefined, target: NodeId | undefined }): void {
+	protected override onReplacementCall({ call, source, target }: { call: DataflowGraphVertexFunctionCall, source: NodeId | undefined, target: NodeId | undefined }): void {
 		const node = this.getNormalizedAst(call.id);
-		const sourceNode = source !== undefined ? this.getNormalizedAst(source) : undefined;
+		const targetNode = this.getNormalizedAst(target);
+		const sourceNode = this.getNormalizedAst(source);
 
-		if(node !== undefined && sourceNode !== undefined) {
+		if(node !== undefined && targetNode !== undefined && sourceNode !== undefined) {
 			node.info.dataFrame = mapDataFrameReplacementFunction(node, sourceNode, this.config.dfg);
-			this.processOperation(node);
+			this.applyDataFrameExpression(node);
+			this.clearUnassignedInfo(targetNode);
 		}
 	}
 
-	private processOperation(node: RNode<ParentInformation & AbstractInterpretationInfo>) {
-		if(node.info.dataFrame?.type === 'assignment') {
-			const value = resolveIdToAbstractValue(node.info.dataFrame.expression, this.config.dfg, this.newDomain);
+	private applyDataFrameAssignment(node: RNode<ParentInformation & AbstractInterpretationInfo>) {
+		if(!hasDataFrameAssignmentInfo(node)) {
+			return;
+		}
+		const value = resolveIdToDataFrameShape(node.info.dataFrame.expression, this.config.dfg, this.newDomain);
 
-			if(value !== undefined) {
-				this.newDomain.set(node.info.dataFrame.identifier, value);
-				const identifier = this.getNormalizedAst(node.info.dataFrame.identifier);
+		if(value !== undefined) {
+			this.newDomain.set(node.info.dataFrame.identifier, value);
+			const identifier = this.getNormalizedAst(node.info.dataFrame.identifier);
 
-				if(identifier !== undefined) {
-					identifier.info.dataFrame ??= {};
-					identifier.info.dataFrame.domain = new Map(this.newDomain);
-				}
-				this.newDomain.set(node.info.id, value);
-			}
-		} else if(node.info.dataFrame?.type === 'expression') {
-			let value = DataFrameTop;
-
-			for(const operation of node.info.dataFrame.operations) {
-				const operandValue = operation.operand ? resolveIdToAbstractValue(operation.operand, this.config.dfg, this.newDomain) : value;
-				value = applySemantics(operation.operation, operandValue ?? DataFrameTop, operation.args);
-
-				if(operation.operand !== undefined && getConstraintType(operation.operation) === ConstraintType.OperandModification) {
-					this.newDomain.set(operation.operand, value);
-					getOriginInDfg(this.config.dfg, operation.operand)
-						?.filter(origin => origin.type === OriginType.ReadVariableOrigin)
-						.forEach(origin => this.newDomain.set(origin.id, value));
-				}
-			}
-			if(node.info.dataFrame.operations.some(operation => getConstraintType(operation.operation) === ConstraintType.ResultPostcondition)) {
-				this.newDomain.set(node.info.id, value);
+			if(identifier !== undefined) {
+				identifier.info.dataFrame ??= {};
+				identifier.info.dataFrame.domain = new Map(this.newDomain);
 			}
 		}
 	}
 
-	// We only process vertices of leaf nodes and exit vertices (no entry nodes of complex nodes)
+	private applyDataFrameExpression(node: RNode<ParentInformation & AbstractInterpretationInfo>) {
+		if(!hasDataFrameExpressionInfo(node)) {
+			return;
+		}
+		let value: DataFrameDomain = DataFrameTop;
+
+		for(const { operation, operand, type, options, ...args } of node.info.dataFrame.operations) {
+			const operandValue = operand !== undefined ? resolveIdToDataFrameShape(operand, this.config.dfg, this.newDomain) : value;
+			value = applyDataFrameSemantics(operation, operandValue ?? DataFrameTop, args, options);
+			const constraintType = type ?? getConstraintType(operation);
+
+			if(operand !== undefined && constraintType === ConstraintType.OperandModification) {
+				this.newDomain.set(operand, value);
+
+				for(const origin of getVariableOrigins(operand, this.config.dfg)) {
+					this.newDomain.set(origin.info.id, value);
+				}
+			} else if(constraintType === ConstraintType.ResultPostcondition) {
+				this.newDomain.set(node.info.id, value);
+			}
+		}
+	}
+
+	/** We only process vertices of leaf nodes and exit vertices (no entry nodes of complex nodes) */
 	private shouldSkipVertex(vertex: CfgSimpleVertex) {
-		if(vertex.type === CfgVertexType.EndMarker) {
-			return false;
-		} else if(vertex.type === CfgVertexType.MidMarker) {
-			return true;
-		}
-		const node = this.getNormalizedAst(vertex.id);
-
-		return node === undefined || !isRSingleNode(node);
+		return isMarkerVertex(vertex) ? vertex.type !== CfgVertexType.EndMarker : vertex.end !== undefined;
 	}
 
+	/** Get all AST nodes for the predecessor vertices that are leaf nodes and exit vertices */
 	private getPredecessorNodes(vertexId: NodeId): RNode<ParentInformation & AbstractInterpretationInfo>[] {
 		return this.config.controlFlow.graph.outgoingEdges(vertexId)?.keys()  // outgoing dependency edges are incoming CFG edges
 			.map(id => this.getCfgVertex(id))
 			.flatMap(vertex => {
-				if(vertex !== undefined && this.shouldSkipVertex(vertex)) {
+				if(vertex === undefined) {
+					return [];
+				} else if(this.shouldSkipVertex(vertex)) {
 					return this.getPredecessorNodes(vertex.id);
-				} else if(vertex?.type === CfgVertexType.EndMarker) {
-					const nodeId = vertex.root;
-					return nodeId ? [this.getNormalizedAst(nodeId)] : [];
 				} else {
-					return vertex ? [this.getNormalizedAst(vertex.id)] : [];
+					return [this.getNormalizedAst(getVertexRootId(vertex))];
 				}
 			})
-			.filter(node => node !== undefined)
+			.filter(isNotUndefined)
 			.toArray() ?? [];
 	}
-}
 
-export function performDataFrameAbsint(
-	cfinfo: ControlFlowInformation,
-	dfg: DataflowGraph,
-	ast: NormalizedAst<ParentInformation & AbstractInterpretationInfo>
-): DataFrameStateDomain {
-	const visitor = new DataFrameAbsintVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast });
-	visitor.start();
-	const exitPoints = cfinfo.exitPoints.map(id => cfinfo.graph.getVertex(id)).filter(isNotUndefined);
-	const exitNodes = exitPoints.map(vertex => ast.idMap.get(isCfgMarkerNode(vertex) ? vertex.root : vertex.id)).filter(isNotUndefined);
-	const result = exitNodes.map(node => node.info.dataFrame?.domain ?? new Map());
-
-	return joinDataFrameStates(...result);
-}
-
-export function resolveIdToAbstractValue(
-	id: RNode<ParentInformation & AbstractInterpretationInfo> | NodeId | undefined,
-	dfg: DataflowGraph | undefined,
-	domain?: DataFrameStateDomain
-): DataFrameDomain | undefined {
-	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = id === undefined || typeof id === 'object' ? id : dfg?.idMap?.get(id);
-	domain ??= node?.info.dataFrame?.domain;
-
-	if(dfg === undefined || node === undefined || domain === undefined) {
-		return;
-	} else if(domain.has(node.info.id)) {
-		return domain.get(node.info.id);
+	private shouldWiden(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): boolean {
+		return (this.visited.get(vertex.id) ?? 0) >= this.config.flowrConfig.abstractInterpretation.dataFrame.wideningThreshold;
 	}
-	const vertex = dfg.getVertex(node.info.id);
-	const call = vertex?.tag === VertexType.FunctionCall ? vertex : undefined;
-	const origins = Array.isArray(call?.origin) ? call.origin : [];
 
-	if(node.type === RType.Symbol) {
-		const values = getOriginInDfg(dfg, node.info.id)
-			?.filter(entry => entry.type === OriginType.ReadVariableOrigin)
-			.map(entry => resolveIdToAbstractValue(entry.id, dfg, domain));
-
-		if(values?.every(isNotUndefined)) {
-			return joinDataFrames(...values);
-		}
-	} else if(node.type === RType.Argument && node.value !== undefined) {
-		return resolveIdToAbstractValue(node.value, dfg, domain);
-	} else if(node.type === RType.ExpressionList && node.children.length > 0) {
-		return resolveIdToAbstractValue(node.children[node.children.length - 1], dfg, domain);
-	} else if(node.type === RType.Pipe) {
-		return resolveIdToAbstractValue(node.rhs, dfg, domain);
-	} else if(origins.includes('builtin:pipe')) {
-		if(node.type === RType.BinaryOp) {
-			return resolveIdToAbstractValue(node.rhs, dfg, domain);
-		} else if(call?.args.length === 2 && call?.args[1] !== EmptyArgument) {
-			return resolveIdToAbstractValue(call.args[1].nodeId, dfg, domain);
-		}
-	} else if(node.type === RType.IfThenElse) {
-		if(node.otherwise === undefined) {
-			return resolveIdToAbstractValue(node.then, dfg, domain) !== undefined ? DataFrameTop : undefined;
-		} else {
-			const values = [node.then, node.otherwise].map(entry => resolveIdToAbstractValue(entry, dfg, domain));
-
-			if(values.every(isNotUndefined)) {
-				return joinDataFrames(...values);
-			}
-		}
-	} else if(origins.includes('builtin:if-then-else') && call?.args.every(arg => arg !== EmptyArgument)) {
-		if(call.args.length === 2) {
-			return resolveIdToAbstractValue(call.args[1].nodeId, dfg, domain) !== undefined ? DataFrameTop : undefined;
-		} else if(call.args.length === 3) {
-			const values = call.args.slice(1, 3).map(entry => resolveIdToAbstractValue(entry.nodeId, dfg, domain));
-
-			if(values.every(isNotUndefined)) {
-				return joinDataFrames(...values);
+	private clearUnassignedInfo(node: RNode<ParentInformation & AbstractInterpretationInfo>) {
+		if(hasDataFrameInfoMarker(node, DataFrameInfoMarker.Unassigned)) {
+			if(node.info.dataFrame?.domain !== undefined) {
+				node.info.dataFrame = { domain: node.info.dataFrame.domain };
+			} else {
+				delete node.info.dataFrame;
 			}
 		}
 	}

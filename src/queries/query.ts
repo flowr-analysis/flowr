@@ -4,7 +4,6 @@ import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from './base-qu
 import { guard } from '../util/assert';
 import type { VirtualQueryArgumentsWithType } from './virtual-query/virtual-queries';
 import { SupportedVirtualQueries } from './virtual-query/virtual-queries';
-import type { Writable } from 'ts-essentials';
 import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
 import type { DataflowQuery } from './catalog/dataflow-query/dataflow-query-format';
 import { DataflowQueryDefinition } from './catalog/dataflow-query/dataflow-query-format';
@@ -47,7 +46,12 @@ import type { ControlFlowQuery } from './catalog/control-flow-query/control-flow
 import { ControlFlowQueryDefinition } from './catalog/control-flow-query/control-flow-query-format';
 import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-format';
 import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
+import type { AsyncOrSync, AsyncOrSyncType, Writable } from 'ts-essentials';
 
+/**
+ * These are all queries that can be executed from within flowR
+ * {@link SynchronousQuery} are queries that can be executed synchronously, i.e., they do not return a Promise.
+ */
 export type Query = CallContextQuery
 	| ConfigQuery
 	| SearchQuery
@@ -69,10 +73,14 @@ export type Query = CallContextQuery
 	| LinterQuery
 	;
 
+
+export type SynchronousQuery = Exclude<Query, { executor: (query: Query) => Promise<unknown> }>;
+export type SupportedSynchronousQueryTypes = SynchronousQuery['type'];
+
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
 /* Each executor receives all queries of its type in case it wants to avoid repeated traversal */
-export type QueryExecutor<Query extends BaseQueryFormat, Result extends BaseQueryResult> = (data: BasicQueryData, query: readonly Query[]) => Result;
+export type QueryExecutor<Query extends BaseQueryFormat, Result extends BaseQueryResult> = (data: BasicQueryData, query: readonly Query[]) => AsyncOrSync<Result>;
 
 type SupportedQueries = {
 	[QueryType in Query['type']]: SupportedQuery<QueryType>
@@ -112,9 +120,11 @@ export const SupportedQueries = {
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
-export type QueryResult<Type extends Query['type']> = ReturnType<typeof SupportedQueries[Type]['executor']>;
+export type QueryResult<Type extends Query['type']> = AsyncOrSync<ReturnType<typeof SupportedQueries[Type]['executor']>>;
 
-export function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, ...queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']> {
+export function executeQueriesOfSameType<SpecificQuery extends SynchronousQuery>(data: BasicQueryData, queries: readonly SpecificQuery[]): AsyncOrSyncType<QueryResult<SpecificQuery['type']>>
+export function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']>
+export function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']> {
 	guard(queries.length > 0, 'At least one query must be provided');
 	/* every query must have the same type */
 	guard(queries.every(q => q.type === queries[0].type), 'All queries must have the same type');
@@ -136,9 +146,7 @@ function groupQueriesByType<
 >(queries: readonly (QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>)[]): Record<Query['type'], Query[]> {
 	const grouped: Record<Query['type'], Query[]> = {} as Record<Query['type'], Query[]>;
 	function addQuery(query: Query) {
-		if(grouped[query.type] === undefined) {
-			grouped[query.type] = [];
-		}
+		grouped[query.type] ??= [];
 		grouped[query.type].push(query);
 	}
 	for(const query of queries) {
@@ -157,7 +165,7 @@ function groupQueriesByType<
 
 /* a record mapping the query type present to its respective result */
 export type QueryResults<Base extends SupportedQueryTypes> = {
-	readonly [QueryType in Base]: QueryResult<QueryType>
+	readonly [QueryType in Base]: Awaited<QueryResult<QueryType>>
 } & BaseQueryResult
 
 
@@ -172,20 +180,60 @@ export type Queries<
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
 > = readonly (QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>)[];
 
+
+function isPromiseLike(value: unknown): value is Promise<unknown> {
+	return value !== null && typeof value === 'object' && typeof (value as Promise<unknown>).then === 'function';
+}
+
+export function executeQueries<
+	Base extends SupportedSynchronousQueryTypes,
+	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
+>(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): QueryResults<Base>
+
 export function executeQueries<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): QueryResults<Base> {
+>(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): AsyncOrSync<QueryResults<Base>>
+/**
+ * This is the main query execution function that takes a set of queries and executes them on the given data.
+ */
+export function executeQueries<
+	Base extends SupportedQueryTypes,
+	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
+>(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): AsyncOrSync<QueryResults<Base>> {
 	const now = Date.now();
 	const grouped = groupQueriesByType(queries);
-	const results = {} as Writable<QueryResults<Base>>;
-	for(const type of Object.keys(grouped) as Base[]) {
-		results[type] = executeQueriesOfSameType(data, ...grouped[type]) as QueryResults<Base>[Base];
+	const entries = Object.entries(grouped) as [Base, typeof grouped[Base]][];
+
+	const results = entries.map(([type, group]) =>
+		[type, executeQueriesOfSameType(data, group)]
+	);
+
+
+	if(results.length === 0 || results.every(([_, r]) => !isPromiseLike(r))) {
+		// all results are synchronous, we can return them directly
+		const r = Object.fromEntries(results) as Writable<QueryResults<Base>>;
+		r['.meta'] = {
+			timing: Date.now() - now
+		};
+		return r as QueryResults<Base>;
 	}
-	results['.meta'] = {
-		timing: Date.now() - now
-	};
-	return results as QueryResults<Base>;
+
+	return Promise.all(
+		results.map(([type, result]) => Promise.resolve(result).then(
+			resolvedResult => [type, resolvedResult] as const
+		).catch(() => {
+			return [type, undefined] as const;
+		}))
+	).then(resultsArray => {
+
+		const results = Object.fromEntries(resultsArray) as Writable<QueryResults<Base>>;
+
+		results['.meta'] = {
+			timing: Date.now() - now
+		};
+		return results as QueryResults<Base>;
+	});
 }
 
 export function SupportedQueriesSchema() {

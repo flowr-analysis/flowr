@@ -7,14 +7,16 @@ import type { ReplacementOperatorHandlerArgs } from '../../../../src/dataflow/gr
 import { handleReplacementOperator, onReplacementOperator } from '../../../../src/dataflow/graph/unknown-replacement';
 import { handleUnknownSideEffect, onUnknownSideEffect } from '../../../../src/dataflow/graph/unknown-side-effect';
 import { DataflowGraph } from '../../../../src/dataflow/graph/graph';
-import { EmptyBuiltInEnvironment, Environment } from '../../../../src/dataflow/environments/environment';
+import { Environment } from '../../../../src/dataflow/environments/environment';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { defaultConfigOptions } from '../../../../src/config';
+import { defaultEnv } from '../../_helper/dataflow/environment-builder';
 
 async function runDataflowPipeline(code: string) {
 	await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  new RShell(),
 		request: requestFromInput(code.trim())
-	}).allRemainingSteps();
+	}, defaultConfigOptions).allRemainingSteps();
 }
 
 describe('unknown-replacement', () =>  {
@@ -39,7 +41,7 @@ describe('unknown-side-effect', () => {
 		onUnknownSideEffect(mockHandler);
 		const graph = new DataflowGraph(undefined);
 		const env = {
-			current: new Environment(EmptyBuiltInEnvironment), 
+			current: new Environment(defaultEnv().current),
 			level:   0
 		};
 		handleUnknownSideEffect(graph, env, {} as unknown as NodeId);

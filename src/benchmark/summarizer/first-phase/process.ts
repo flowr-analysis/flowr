@@ -1,5 +1,5 @@
 import * as tmp from 'tmp';
-import type { Reduction, SliceSizeCollection, SummarizedAbsintStats, SummarizedSlicerStats, TimePerToken } from '../data';
+import type { Reduction, SliceSizeCollection, SummarizedDfShapeStats, SummarizedSlicerStats, TimePerToken } from '../data';
 
 import fs from 'fs';
 import { DefaultMap } from '../../../util/collections/defaultmap';
@@ -8,13 +8,14 @@ import { withoutWhitespace } from '../../../util/text/strings';
 import type { SummarizedMeasurement } from '../../../util/summarizer';
 import { summarizeMeasurement } from '../../../util/summarizer';
 import { isNotUndefined } from '../../../util/assert';
-import type { PerNodeStatsAbsint, PerSliceMeasurements, PerSliceStats, SlicerStats, SlicerStatsAbsint, SlicerStatsDataflow, SlicerStatsInput } from '../../stats/stats';
+import type { PerNodeStatsDfShape, PerSliceMeasurements, PerSliceStats, SlicerStats, SlicerStatsDfShape, SlicerStatsDataflow, SlicerStatsInput } from '../../stats/stats';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import { RShell } from '../../../r-bridge/shell';
 import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse } from '../../../r-bridge/retriever';
 import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { arraySum } from '../../../util/collections/arrays';
+import type { RShellEngineConfig } from '../../../config';
 import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
 
 const tempfile = (() => {
@@ -77,10 +78,12 @@ function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerSta
 export async function summarizeSlicerStats(
 	stats: SlicerStats,
 	report: (criteria: SlicingCriteria, stats: PerSliceStats) => void = () => { /* do nothing */
-	}): Promise<Readonly<SummarizedSlicerStats>> {
+	},
+	engineConf?: RShellEngineConfig,
+): Promise<Readonly<SummarizedSlicerStats>> {
 	const collect = new DefaultMap<PerSliceMeasurements, number[]>(() => []);
 	const sizeOfSliceCriteria: number[] = [];
-	const reParseShellSession = new RShell();
+	const reParseShellSession = new RShell(engineConf);
 
 	const sliceTimes: TimePerToken<number>[] = [];
 	const reconstructTimes: TimePerToken<number>[] = [];
@@ -233,12 +236,12 @@ export async function summarizeSlicerStats(
 				dataflowNodes:                     summarizeMeasurement(sliceSize.dataflowNodes)
 			}
 		},
-		absint: stats.absint ? summarizeAbsintStats(stats.absint) : undefined
+		dataFrameShape: stats.dataFrameShape ? summarizeDfShapeStats(stats.dataFrameShape) : undefined
 	};
 }
 
-function summarizeAbsintStats({ perNodeStats, ...stats }: SlicerStatsAbsint): SummarizedAbsintStats {
-	const nodeStats = perNodeStats.values().toArray();
+function summarizeDfShapeStats({ perNodeStats, ...stats }: SlicerStatsDfShape): SummarizedDfShapeStats {
+	const nodeStats = [...perNodeStats.values()];
 
 	const isTop = (value?: number | 'top' | 'infinite' | 'bottom') => value === 'top';
 	const isInfinite = (value?: number | 'top' | 'infinite' | 'bottom') => value === 'infinite';
@@ -255,14 +258,16 @@ function summarizeAbsintStats({ perNodeStats, ...stats }: SlicerStatsAbsint): Su
 		inferredColNames:         summarizeMeasurement(nodeStats.map(s => s.inferredColNames).filter(isValue)),
 		numberOfColNamesValues:   nodeStats.map(s => s.inferredColNames).filter(isValue).length,
 		numberOfColNamesTop:      nodeStats.map(s => s.inferredColNames).filter(isTop).length,
-		numberOfColNamesBottom:   nodeStats.map(s => s.inferredColNames).filter(n => n === 0).length,
+		numberOfColNamesBottom:   nodeStats.map(s => s.inferredColNames).filter(number => number === 0).length,
 		inferredColCount:         summarizeMeasurement(nodeStats.map(s => s.inferredColCount).filter(isValue)),
+		numberOfColCountExact:    nodeStats.map(s => s.approxRangeColCount).filter(range => range === 0).length,
 		numberOfColCountValues:   nodeStats.map(s => s.inferredColCount).filter(isValue).length,
 		numberOfColCountTop:      nodeStats.map(s => s.inferredColCount).filter(isTop).length,
 		numberOfColCountInfinite: nodeStats.map(s => s.inferredColCount).filter(isInfinite).length,
 		numberOfColCountBottom:   nodeStats.map(s => s.inferredColCount).filter(isBottom).length,
 		approxRangeColCount:      summarizeMeasurement(nodeStats.map(s => s.approxRangeColCount).filter(isNotUndefined).filter(isFinite)),
 		inferredRowCount:         summarizeMeasurement(nodeStats.map(s => s.inferredRowCount).filter(isValue)),
+		numberOfRowCountExact:    nodeStats.map(s => s.approxRangeRowCount).filter(range => range === 0).length,
 		numberOfRowCountValues:   nodeStats.map(s => s.inferredRowCount).filter(isValue).length,
 		numberOfRowCountTop:      nodeStats.map(s => s.inferredRowCount).filter(isTop).length,
 		numberOfRowCountInfinite: nodeStats.map(s => s.inferredRowCount).filter(isInfinite).length,
@@ -272,7 +277,7 @@ function summarizeAbsintStats({ perNodeStats, ...stats }: SlicerStatsAbsint): Su
 	};
 }
 
-function summarizePerOperationStats(nodeStats: PerNodeStatsAbsint[]): SummarizedAbsintStats['perOperationNumber'] {
+function summarizePerOperationStats(nodeStats: PerNodeStatsDfShape[]): SummarizedDfShapeStats['perOperationNumber'] {
 	const perOperationNumber = new Map(DataFrameOperationNames.map(name => [name, 0]));
 
 	for(const stat of nodeStats) {

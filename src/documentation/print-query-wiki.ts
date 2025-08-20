@@ -34,11 +34,12 @@ import { executeConfigQuery } from '../queries/catalog/config-query/config-query
 import { executeSearch } from '../queries/catalog/search-query/search-query-executor';
 import { Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
-import { getTypesFromFolderAsMermaid, shortLink } from './doc-util/doc-types';
+import { getTypesFromFolder, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
 import { printCfgCode } from './doc-util/doc-cfg';
 import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
+import { SliceDirection } from '../core/steps/all/static-slicing/00-slice';
 
 
 registerQueryDocumentation('call-context', {
@@ -462,15 +463,15 @@ Now, the results no longer contain calls to \`plot\` that are not defined locall
 registerQueryDocumentation('static-slice', {
 	name:             'Static Slice Query',
 	type:             'active',
-	shortDescription: 'Slice the dataflow graph reducing the code to just the parts relevant for the given criteria.',
+	shortDescription: 'Slice the dataflow graph reducing the code to just the parts relevant for the given criteria (backward and forward).',
 	functionName:     executeStaticSliceQuery.name,
 	functionFile:     '../queries/catalog/static-slice-query/static-slice-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- 1\ny <- 2\nx';
 		return `
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
-return of the call) that you want to slice the dataflow graph for. 
-Given this, the slice is essentially the subpart of the program that may influence the value of the variables you are interested in.
+return of the call) that you want to slice the dataflow graph for (additionally, you have to tell flowR if you want to have a forward slice). 
+Given this, the backward slice is essentially the subpart of the program that may influence the value of the variables you are interested in.
 To specify a variable of interest, you have to present flowR with a [slicing criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion) (or, respectively, an array of them).
 
 To exemplify the capabilities, consider the following code:
@@ -495,6 +496,16 @@ ${
 			noReconstruction: true
 		}], { showCode: false })
 	)
+}
+
+Likewise, if you want the forward slice for the first use of \`x\`, you can do it like this:
+
+${
+	await showQuery(shell, exampleCode, [{
+		type:      'static-slice',
+		criteria:  ['1@x'],
+		direction: SliceDirection.Forward
+	}], { showCode: false })
 }
 
 You can disable [magic comments](${FlowrWikiBaseRef}/Interface#slice-magic-comments) using the \`noMagicComments\` flag.
@@ -663,9 +674,8 @@ registerQueryDocumentation('location-map', {
 	functionFile:     '../queries/catalog/location-map-query/location-map-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 
-		const types = getTypesFromFolderAsMermaid({
-			files:    [path.resolve('./src/util/range.ts')],
-			typeName: 'SourceRange'
+		const types = getTypesFromFolder({
+			files: [path.resolve('./src/util/range.ts')],
 		});
 		const exampleCode = 'x + 1\nx * 2';
 		return `

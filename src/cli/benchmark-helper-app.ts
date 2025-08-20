@@ -9,22 +9,24 @@ import { BenchmarkSlicer } from '../benchmark/slicer';
 import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables';
 import path from 'path';
 import type { KnownParserName } from '../r-bridge/parser';
-import { amendConfig } from '../config';
+import { amendConfig, getConfig } from '../config';
 
 export interface SingleBenchmarkCliOptions {
-	verbose:                   boolean
-	help:                      boolean
-	input?:                    string
-	'file-id'?:                number
-	'run-num'?:                number
-	slice:                     string
-	output?:                   string
-	parser:                    KnownParserName
-	'abstract-interpretation': boolean
-	'enable-pointer-tracking': boolean
-	'max-slices':              number
-	threshold?:                number
-	'sampling-strategy':       string
+	verbose:                     boolean
+	help:                        boolean
+	input?:                      string
+	'file-id'?:                  number
+	'run-num'?:                  number
+	slice:                       string
+	output?:                     string
+	parser:                      KnownParserName
+	'dataframe-shape-inference': boolean
+	'enable-pointer-tracking':   boolean
+	'max-slices':                number
+	'cfg':                       boolean
+	threshold?:                  number
+	'sampling-strategy':         string
+	seed?:                       string
 }
 
 const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [],{
@@ -54,13 +56,16 @@ async function benchmark() {
 	const prefix = `[${options.input }${options['file-id'] !== undefined ? ` (file ${options['file-id']}, run ${options['run-num']})` : ''}]`;
 	console.log(`${prefix} Appending output to ${options.output}`);
 	const directory = path.parse(options.output).dir;
-	// ensure the directory exists if path contains one
+	// ensure the directory exists if the path contains one
 	if(directory !== '') {
 		fs.mkdirSync(directory, { recursive: true });
 	}
 
 	// Enable pointer analysis if requested, otherwise disable it
-	amendConfig(c => c.solver.pointerTracking = options['enable-pointer-tracking']);
+	const config = amendConfig(getConfig(), c => {
+		c.solver.pointerTracking = options['enable-pointer-tracking'];
+		return c;
+	});
 
 	// ensure the file exists
 	const fileStat = fs.statSync(options.input);
@@ -71,7 +76,7 @@ async function benchmark() {
 	const maxSlices = options['max-slices'] ?? -1;
 	const slicer = new BenchmarkSlicer(options.parser);
 	try {
-		await slicer.init(request, undefined, options.threshold);
+		await slicer.init(request, config, undefined, options.threshold);
 
 		// ${escape}1F${escape}1G${escape}2K for line reset
 		if(options.slice === 'all') {
@@ -91,20 +96,21 @@ async function benchmark() {
 			const count = await slicer.sliceForAll(
 				DefaultAllVariablesFilter,
 				(i, total, arr) => console.log(`${prefix} Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`),
-				{ sampleCount: limit, maxSliceCount: maxSlices, sampleStrategy: options['sampling-strategy'] as SamplingStrategy },
+				{ sampleCount: limit, maxSliceCount: maxSlices, sampleStrategy: options['sampling-strategy'] as SamplingStrategy, seed: options.seed },
 			);
 			console.log(`${prefix} Completed Slicing`);
 			guard(count >= 0, `Number of slices exceeded limit of ${maxSlices} with ${-count} slices, skipping in count`);
 			guard(count > 0, `No possible slices found for ${options.input}, skipping in count`);
 		}
 
-		if(options['abstract-interpretation']) {
-			console.log(`${prefix} Extracting control flow graph for abstract interpretation`);
+		if(options['cfg'] || options['dataframe-shape-inference']) {
 			slicer.extractCFG();
+		}
 
-			console.log(`${prefix} Performing abstract interpretation for data frames`);
-			slicer.abstractIntepretation();
-			console.log(`${prefix} Completed abstract interpretation`);
+		if(options['dataframe-shape-inference']) {
+			console.log(`${prefix} Performing shape inference for data frames`);
+			slicer.inferDataFrameShapes();
+			console.log(`${prefix} Completed data frame shape inference`);
 		}
 
 		const { stats } = slicer.finish();

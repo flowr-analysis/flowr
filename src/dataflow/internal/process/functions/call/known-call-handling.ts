@@ -14,8 +14,8 @@ import { ReferenceType } from '../../../../environments/identifier';
 import { DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
 import { dataflowLogger } from '../../../../logger';
+import type { ContainerIndicesCollection, FunctionOriginInformation } from '../../../../graph/vertex';
 import { VertexType } from '../../../../graph/vertex';
-import type { ContainerIndicesCollection , FunctionOriginInformation } from '../../../../graph/vertex';
 import { expensiveTrace } from '../../../../../util/log';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 

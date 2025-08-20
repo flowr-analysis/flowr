@@ -5,7 +5,7 @@ import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { block, details } from './doc-util/doc-structure';
 import { FlowrWikiBaseRef, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { getCliLongOptionOf, getReplCommand } from './doc-util/doc-cli-option';
-import { getTypesFromFolderAsMermaid, mermaidHide, printHierarchy, shortLink } from './doc-util/doc-types';
+import { getTypesFromFolder, mermaidHide, printHierarchy, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { codeBlock } from './doc-util/doc-code';
 import { produceDataFlowGraph } from '../dataflow/extractor';
@@ -23,13 +23,13 @@ import { processAccess } from '../dataflow/internal/process/functions/call/built
 import { processForLoop } from '../dataflow/internal/process/functions/call/built-in/built-in-for-loop';
 import { processRepeatLoop } from '../dataflow/internal/process/functions/call/built-in/built-in-repeat-loop';
 import { linkCircularRedefinitionsWithinALoop } from '../dataflow/internal/linker';
-import { staticSlicing } from '../slicing/static/static-slicer';
 import { filterOutLoopExitPoints, initializeCleanDataflowInformation } from '../dataflow/info';
 import { processDataflowFor } from '../dataflow/processor';
 import {
 	createDataflowPipeline,
 	createNormalizePipeline,
-	createParsePipeline, TREE_SITTER_PARSE_PIPELINE
+	createParsePipeline,
+	TREE_SITTER_PARSE_PIPELINE
 } from '../core/steps/pipeline/default-pipelines';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { fileProtocol, requestFromInput, retrieveParseDataFromRCode } from '../r-bridge/retriever';
@@ -41,13 +41,14 @@ import { tryNormalizeFor } from '../r-bridge/lang-4.x/ast/parser/main/internal/l
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { PipelineExecutor } from '../core/pipeline-executor';
 import { createPipeline } from '../core/steps/pipeline/pipeline';
+import { staticSlice } from '../slicing/static/static-slicer';
+import { defaultConfigOptions } from '../config';
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 	const sampleCode = 'x <- 1; print(x)';
-	const { info, program } = getTypesFromFolderAsMermaid({
+	const { info, program } = getTypesFromFolder({
 		rootFolder:  path.resolve('./src'),
-		typeName:    RShell.name,
 		inlineTypes: mermaidHide
 	});
 
@@ -113,7 +114,7 @@ const result = await executor.allRemainingSteps();
 `)}
 
 This is, roughly, what the ${shortLink('replGetDataflow', info)} function does for the ${getReplCommand('dataflow')} REPL command when using the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines).
-We create a new ${shortLink(PipelineExecutor.name, info)} with the ${shortLink('TREE_SITTER_DATAFLOW_PIPELINE', info)} and then use ${shortLink(`${PipelineExecutor.name}::${new PipelineExecutor(TREE_SITTER_PARSE_PIPELINE, { parser: new TreeSitterExecutor(), request: requestFromInput('') }).allRemainingSteps.name}`, info)} 
+We create a new ${shortLink(PipelineExecutor.name, info)} with the ${shortLink('TREE_SITTER_DATAFLOW_PIPELINE', info)} and then use ${shortLink(`${PipelineExecutor.name}::${new PipelineExecutor(TREE_SITTER_PARSE_PIPELINE, { parser: new TreeSitterExecutor(), request: requestFromInput('') }, defaultConfigOptions).allRemainingSteps.name}`, info)} 
 to cause the execution of all contained steps (in general, pipelines can be executed step-by-step, but this is usually not required if you just want the result).
 ${shortLink(requestFromInput.name, info)} is merely a convenience function to create a request object from a code string.
 
@@ -258,7 +259,7 @@ While looking at the mermaid visualization of such an AST is nice and usually su
 Let's have a look at the normalized AST for the sample code \`${sampleCode}\` (please refer to the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) wiki page for more information):
 
 ${details('Normalized AST for <code>x <- 1; print(x)</code>', codeBlock('json', 
-	JSON.stringify((await createNormalizePipeline(shell, { request: requestFromInput(sampleCode) }).allRemainingSteps()).normalize.ast, jsonReplacer, 4)
+	JSON.stringify((await createNormalizePipeline(shell, { request: requestFromInput(sampleCode) }, defaultConfigOptions).allRemainingSteps()).normalize.ast, jsonReplacer, 4)
 ))}
 
 This is… a lot! We get the type from the ${shortLink('RType', info)} enum, the lexeme, location information, an id, the children of the node, and their parents.
@@ -281,7 +282,7 @@ For single nodes, we use ${shortLink(normalizeSingleNode.name, info)} which cont
 The output of just this pass is listed below (using the ${shortLink(normalizeButNotDecorated.name, info)} function):
 
 ${details('Ast for <code>x <- 1; print(x)</code> after the first normalization', codeBlock('json',
-	JSON.stringify(normalizeButNotDecorated((await createParsePipeline(shell, { request: requestFromInput(sampleCode) }).allRemainingSteps()).parse), jsonReplacer, 4)
+	JSON.stringify(normalizeButNotDecorated((await createParsePipeline(shell, { request: requestFromInput(sampleCode) }, defaultConfigOptions).allRemainingSteps()).parse), jsonReplacer, 4)
 ))}
 
 
@@ -380,7 +381,7 @@ Of course, all of these endeavors work not just with the ${shortLink(RShell.name
 The slicing is available as an extra step as you can see by inspecting he ${shortLink('DEFAULT_SLICING_PIPELINE', info)}.
 Besides ${shortLink('STATIC_SLICE', info)} it contains a ${shortLink('NAIVE_RECONSTRUCT', info)} to print the slice as (executable) R code.
 
-Your main point of interesting here is the ${shortLink(staticSlicing.name, info)} function which relies on a modified
+Your main point of interesting here is the ${shortLink(staticSlice.name, info)} function which relies on a modified
 breadth-first search to collect all nodes which are part of the slice. 
 For more information on how the slicing works, please refer to the [tool demonstration (Section 3.2)](https://doi.org/10.1145/3691620.3695359),
 or the [original master's thesis (Chapter 4)](https://doi.org/10.18725/OPARU-50107).

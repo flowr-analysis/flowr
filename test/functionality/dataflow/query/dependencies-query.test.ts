@@ -136,15 +136,6 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				{ nodeId: '3@library', functionName: 'library', libraryName: 'c' }
 			]
 		});
-		/* // not until we are able to track the side effects of loading a library
-			testQuery('Intermix another library call', 'v <- c("a", "b", "c")\nlibrary(foo)\nlapply(v, library, character.only = TRUE)', {
-				libraries: [
-					{ nodeId: '1@library', functionName: 'library', libraryName: 'foo' },
-					{ nodeId: '3@library', functionName: 'library', libraryName: 'a' },
-					{ nodeId: '3@library', functionName: 'library', libraryName: 'b' },
-					{ nodeId: '3@library', functionName: 'library', libraryName: 'c' }
-				]
-			}); */
 
 		testQuery('Using a nested vector to load', 'lapply(c(c("a", "b"), "c"), library, character.only = TRUE)', { libraries: [
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'a' },
@@ -237,8 +228,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		for(const readFn of [
 			'dbReadTable',
-			'dbReadTableArrow',
-			'url'
+			'dbReadTableArrow'
 		] as const) {
 			testQuery(`${readFn}`, `${readFn}(obj, "a")` , { readData: [{ nodeId: `1@${readFn}`, functionName: readFn, source: 'a' }] });
 		}
@@ -313,6 +303,20 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('Ignore default', 'dump("My text", "MyTextFile.txt")', {}, { ignoreDefaultFunctions: true });
 		});
 	});
+
+	describe('With file connections', () => {
+		for(const ro of ['r', 'rb', 'rt'] as const) {
+			testQuery('read only file connection', `file("test.txt", "${ro}")`, {
+				readData: [{ nodeId: '1@file', functionName: 'file', source: 'test.txt' }]
+			});
+		}
+		for(const wo of ['w', 'wb', 'wt', 'a', 'ab', 'at',] as const) {
+			testQuery('write only file connection', `file("test.txt", "${wo}")`, {
+				writtenData: [{ nodeId: '1@file', functionName: 'file', destination: 'test.txt' }]
+			});
+		}
+	});
+
 
 
 	describe('Overwritten Function', () => {

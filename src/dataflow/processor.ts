@@ -7,10 +7,11 @@ import type {
 	ParentInformation,
 	RNodeWithParent
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { REnvironmentInformation } from './environments/environment';
+import type { IEnvironment, REnvironmentInformation } from './environments/environment';
 import type { RParseRequest } from '../r-bridge/retriever';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
+import type { FlowrConfigOptions } from '../config';
 
 export interface DataflowProcessorInformation<OtherInfo> {
 	readonly parser:              Parser<KnownParserType>
@@ -40,7 +41,14 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
 	 */
 	readonly controlDependencies: ControlDependency[] | undefined
-	
+	/**
+	 * The built-in environment
+	 */
+	readonly builtInEnvironment:  IEnvironment;
+	/**
+	 * The flowr configuration used for environment seeding, and precision control
+	 */
+	readonly flowrConfig:			      FlowrConfigOptions
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation

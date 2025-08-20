@@ -9,22 +9,18 @@ import { EmptyArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/
 import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
-import type {
-	IdentifierReference,
-	InGraphIdentifierDefinition } from '../../../../environments/identifier';
-import {
-	isReferenceType,
-	ReferenceType
-} from '../../../../environments/identifier';
+import type { IdentifierReference, InGraphIdentifierDefinition } from '../../../../environments/identifier';
+import { isReferenceType, ReferenceType } from '../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import type {
-	ContainerIndicesCollection, DataflowGraphVertexAstLink,
+	ContainerIndicesCollection,
+	DataflowGraphVertexAstLink,
 	DataflowGraphVertexFunctionDefinition,
-	FunctionOriginInformation } from '../../../../graph/vertex';
-import { isFunctionDefinitionVertex, VertexType
+	FunctionOriginInformation
 } from '../../../../graph/vertex';
+import { isFunctionDefinitionVertex, VertexType } from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
 
@@ -131,7 +127,7 @@ export function processAllArguments<OtherInfo>(
 					// When only a single index is referenced, we don't need to reference the whole object
 					const resolvedInGraphDef = resolved as InGraphIdentifierDefinition;
 					const isContainer = checkForContainer(resolvedInGraphDef?.indicesCollection);
-					if(isContainer || isContainer === undefined) {
+					if(isContainer !== false) {
 						finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
 					}
 				}

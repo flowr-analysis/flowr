@@ -15,8 +15,8 @@ import { printEnvironmentToMarkdown } from './doc-util/doc-env';
 import type { ExplanationParameters, SubExplanationParameters } from './data/dfg/doc-data-dfg-util';
 import { getAllEdges, getAllVertices } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
-import type { MermaidTypeReport } from './doc-util/doc-types';
-import { getDocumentationForType, getTypesFromFolderAsMermaid, printHierarchy, shortLink } from './doc-util/doc-types';
+import type { TypeReport } from './doc-util/doc-types';
+import { getDocumentationForType, getTypesFromFolder, printHierarchy, shortLink } from './doc-util/doc-types';
 import { block, details, section } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import path from 'path';
@@ -25,10 +25,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import {
-	resolveByName,
-	resolvesToBuiltInConstant,
-} from '../dataflow/environments/resolve-by-name';
+import { resolveByName, resolvesToBuiltInConstant, } from '../dataflow/environments/resolve-by-name';
 import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
@@ -47,6 +44,7 @@ import {
 	UnnamedFunctionCallPrefix
 } from '../dataflow/internal/process/functions/call/unnamed-call-handling';
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
+import { defaultConfigOptions } from '../config';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -110,7 +108,7 @@ function linkEdgeName(edgeType: EdgeType, page = ''): string {
 	return `[\`${edgeTypeToName(edgeType)}\`](${page}#${edgeTypeToId(edgeType)})`;
 }
 
-async function getVertexExplanations(shell: RShell, vertexType: MermaidTypeReport): Promise<string> {
+async function getVertexExplanations(shell: RShell, vertexType: TypeReport): Promise<string> {
 	/* we use the map to ensure order easily :D */
 	const vertexExplanations = new Map<VertexType,[ExplanationParameters, SubExplanationParameters[]]>();
 
@@ -263,9 +261,8 @@ ${
 			guard(callInfo !== undefined, () => `Could not find call vertex for ${code}`);
 			const [callId, callVert] = callInfo as [NodeId, DataflowGraphVertexFunctionCall];
 			const inverseMapReferenceTypes = Object.fromEntries(Object.entries(ReferenceType).map(([k, v]) => [v, k]));
-			const identifierType = getTypesFromFolderAsMermaid({
+			const identifierType = getTypesFromFolder({
 				files:       [path.resolve('./src/dataflow/environments/identifier.ts')],
-				typeName:    'IdentifierReference',
 				inlineTypes: ['ControlDependency']
 			});
 			return `
@@ -621,7 +618,7 @@ Besides this being a theoretically "shorter" way of defining a function, this be
 	return results.join('\n');
 }
 
-async function getEdgesExplanations(shell: RShell, vertexType: MermaidTypeReport): Promise<string> {
+async function getEdgesExplanations(shell: RShell, vertexType: TypeReport): Promise<string> {
 	const edgeExplanations = new Map<EdgeType,[ExplanationParameters, SubExplanationParameters[]]>();
 
 	edgeExplanations.set(EdgeType.Reads, [{
@@ -869,7 +866,7 @@ async function dummyDataflow(): Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_P
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
 		request: requestFromInput('x <- 1\nx + 1')
-	}).allRemainingSteps();
+	}, defaultConfigOptions).allRemainingSteps();
 	shell.close();
 	return result;
 }
@@ -877,15 +874,15 @@ async function dummyDataflow(): Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_P
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 	/* we collect type information on the graph */
-	const vertexType = getTypesFromFolderAsMermaid({
-		rootFolder:  path.resolve('./src/'),
-		typeName:    'DataflowGraphVertexInfo',
-		inlineTypes: ['MergeableRecord']
+	const vertexType = getTypesFromFolder({
+		rootFolder:         path.resolve('./src/'),
+		typeNameForMermaid: 'DataflowGraphVertexInfo',
+		inlineTypes:        ['MergeableRecord']
 	});
-	const edgeType = getTypesFromFolderAsMermaid({
-		files:       [path.resolve('./src/dataflow/graph/edge.ts'), path.resolve('./src/dataflow/graph/graph.ts'), path.resolve('./src/dataflow/environments/identifier.ts'), path.resolve('./src/dataflow/info.ts')],
-		typeName:    'EdgeType',
-		inlineTypes: ['MergeableRecord']
+	const edgeType = getTypesFromFolder({
+		files:              [path.resolve('./src/dataflow/graph/edge.ts'), path.resolve('./src/dataflow/graph/graph.ts'), path.resolve('./src/dataflow/environments/identifier.ts'), path.resolve('./src/dataflow/info.ts')],
+		typeNameForMermaid: 'EdgeType',
+		inlineTypes:        ['MergeableRecord']
 	});
 	return `${autoGenHeader({ filename: module.filename, purpose: 'dataflow graph', rVersion: rversion })}
 
@@ -934,7 +931,7 @@ The following vertices types exist:
 	([k,v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
 ).join('\n1. ')}
 
-${vertexType.text.trim().length > 0 ? details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', vertexType.text)) : ''}
+${vertexType.mermaid.trim().length > 0 ? details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', vertexType.mermaid)) : ''}
 
 </details>
 
@@ -948,7 +945,7 @@ The following edges types exist, internally we use bitmasks to represent multipl
 	([k, v], index) => `[\`${k}\` (${v})](#${index + 1}-${k.toLowerCase().replace(/\s/g, '-')}-edge)`
 ).join('\n1. ')}
 
-${edgeType.text.trim().length > 0 ? details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', edgeType.text)) : ''}
+${edgeType.mermaid.trim().length > 0 ? details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', edgeType.mermaid)) : ''}
 
 </details>
 
@@ -964,6 +961,13 @@ The following sections present details on the different types of vertices and ed
 ${prefixLines(codeBlock('ts', 'const node = graph.idMap.get(id);'), '> ')}
 > In case you just need the name (\`lexeme\`) of the respective vertex, ${shortLink(recoverName.name, vertexType.info)} can help you out:
 ${prefixLines(codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap);`), '> ')}
+>
+> Please note that not every node in the normalized AST is represented in the dataflow graph.
+> For example, if the node is unreachable in a way that can be detected during the analysis and flowR
+> is configured to ignore dead code. Likewise, empty argument wrappers do not have a corresponding
+> dataflow graph vertex (as they are not relevant for the dataflow graph). It depends on the scenario what to do in such a case. 
+> For argument wrappers you can access the dataflow information for their value. For dead code, however, flowR currently contains
+> some core heuristics that remove it which cannot be reversed easily. So please open [an issue](${NewIssueUrl}) if you encounter such a case and require the node to be present in the dataflow graph.
 
 ${section('Vertices', 2, 'vertices')}
 
@@ -1145,7 +1149,7 @@ Retrieving the _types_ of the edge from the print call to its argument returns:
 ${await(async() => {
 			const dfg =  await createDataflowPipeline(shell, {
 				request: requestFromInput('print(x)')
-			}).allRemainingSteps();		
+			}, defaultConfigOptions).allRemainingSteps();		
 			const edge = dfg.dataflow.graph.outgoingEdges(3);
 			if(edge) {
 				const wanted = edge.get(1);

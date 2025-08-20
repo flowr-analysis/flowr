@@ -100,29 +100,29 @@ function convertNumberToNiceBytes(x: number){
 export function stats2string(stats: SummarizedSlicerStats): string {
 	let result = `
 Request: ${JSON.stringify(stats.request)}
-Shell init time:                    ${print(stats.commonMeasurements, 'initialize R session')}
-AST retrieval:                      ${print(stats.commonMeasurements, 'retrieve AST from R code')}
-AST retrieval per token:            ${formatNanoseconds(stats.retrieveTimePerToken.normalized)}
-AST retrieval per R token:          ${formatNanoseconds(stats.retrieveTimePerToken.raw)}
-AST normalization:                  ${print(stats.commonMeasurements, 'normalize R AST')}
-AST normalization per token:        ${formatNanoseconds(stats.normalizeTimePerToken.normalized)}
-AST normalization per R token:      ${formatNanoseconds(stats.normalizeTimePerToken.raw)}
-Dataflow creation:                  ${print(stats.commonMeasurements, 'produce dataflow information')}
-Dataflow creation per token:        ${formatNanoseconds(stats.dataflowTimePerToken.normalized)}
-Dataflow creation per R token:      ${formatNanoseconds(stats.dataflowTimePerToken.raw)}
-Total common time per token:        ${formatNanoseconds(stats.totalCommonTimePerToken.normalized)}
-Total common time per R token:      ${formatNanoseconds(stats.totalCommonTimePerToken.raw)}`;
+Shell init time:                      ${print(stats.commonMeasurements, 'initialize R session')}
+AST retrieval:                        ${print(stats.commonMeasurements, 'retrieve AST from R code')}
+AST retrieval per token:              ${formatNanoseconds(stats.retrieveTimePerToken.normalized)}
+AST retrieval per R token:            ${formatNanoseconds(stats.retrieveTimePerToken.raw)}
+AST normalization:                    ${print(stats.commonMeasurements, 'normalize R AST')}
+AST normalization per token:          ${formatNanoseconds(stats.normalizeTimePerToken.normalized)}
+AST normalization per R token:        ${formatNanoseconds(stats.normalizeTimePerToken.raw)}
+Dataflow creation:                    ${print(stats.commonMeasurements, 'produce dataflow information')}
+Dataflow creation per token:          ${formatNanoseconds(stats.dataflowTimePerToken.normalized)}
+Dataflow creation per R token:        ${formatNanoseconds(stats.dataflowTimePerToken.raw)}
+Total common time per token:          ${formatNanoseconds(stats.totalCommonTimePerToken.normalized)}
+Total common time per R token:        ${formatNanoseconds(stats.totalCommonTimePerToken.raw)}`;
 	if(stats.commonMeasurements.has('extract control flow graph') && stats.controlFlowTimePerToken !== undefined) {
 		result += `
-Control flow extraction:            ${print(stats.commonMeasurements, 'extract control flow graph')}
-Control flow extraction per token:  ${formatNanoseconds(stats.controlFlowTimePerToken.normalized)}
-Control flow extraction per R token:${formatNanoseconds(stats.controlFlowTimePerToken.raw)}`;
+Control flow extraction:              ${print(stats.commonMeasurements, 'extract control flow graph')}
+Control flow extraction per token:    ${formatNanoseconds(stats.controlFlowTimePerToken.normalized)}
+Control flow extraction per R token:  ${formatNanoseconds(stats.controlFlowTimePerToken.raw)}`;
 	}
-	if(stats.commonMeasurements.has('perform abstract interpretation') && stats.absintTimePerToken !== undefined) {
+	if(stats.commonMeasurements.has('infer data frame shapes') && stats.dataFrameShapeTimePerToken !== undefined) {
 		result += `
-Abstract interpretation:            ${print(stats.commonMeasurements, 'perform abstract interpretation')}
-Abstract interpretation per token:  ${formatNanoseconds(stats.absintTimePerToken.normalized)}
-Abstract interpretation per R token:${formatNanoseconds(stats.absintTimePerToken.raw)}`;
+Dataframe shape inference:            ${print(stats.commonMeasurements, 'infer data frame shapes')}
+Dataframe shape inference per token:  ${formatNanoseconds(stats.dataFrameShapeTimePerToken.normalized)}
+Dataframe shape inference per R token:${formatNanoseconds(stats.dataFrameShapeTimePerToken.raw)}`;
 	}
 
 	if(stats.perSliceMeasurements.numberOfSlices > 0) {
@@ -179,29 +179,29 @@ Dataflow:
   Number of overwritten indices: ${pad(stats.dataflow.overwrittenIndices)}
   Size of graph:                 ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`;
 
-	if(stats.absint !== undefined) {
+	if(stats.dataFrameShape !== undefined) {
 		result += `
 
-Abstract Interpretation:
-  Number of resulting constraints:${pad(stats.absint.numberOfResultConstraints)}
-  Number of operation nodes:      ${pad(stats.absint.numberOfOperationNodes)}
-  Number of abstract value nodes: ${pad(stats.absint.numberOfValueNodes)}
-  Number of entries per node:     ${pad(stats.absint.numberOfEntriesPerNode.mean)}
-  Number of operations:           ${pad(stats.absint.numberOfOperations)}
-  Number of total values:         ${pad(stats.absint.numberOfTotalValues)}
-  Number of total top:            ${pad(stats.absint.numberOfTotalTop)}
-  Inferred column names per node: ${pad(stats.absint.inferredColNames.mean)}
-  Number of column names values:  ${pad(stats.absint.numberOfColNamesValues)}
-  Number of column names Top:     ${pad(stats.absint.numberOfColNamesTop)}
-  Inferred column count per node: ${pad(stats.absint.inferredColCount.mean)}
-  Number of column count values:  ${pad(stats.absint.numberOfColCountValues)}
-  Number of column count Top:     ${pad(stats.absint.numberOfColCountTop)}
-  Number of column count infinite:${pad(stats.absint.numberOfColCountInfinite)}
-  Inferred row count per node:    ${pad(stats.absint.inferredRowCount.mean)}
-  Number of row count values:     ${pad(stats.absint.numberOfRowCountValues)}
-  Number of row count Top:        ${pad(stats.absint.numberOfRowCountTop)}
-  Number of row count infinite:   ${pad(stats.absint.numberOfRowCountInfinite)}
-  Size of absint info:            ${convertNumberToNiceBytes(stats.absint.sizeOfInfo)}`;
+Dataframe shape inference:
+  Number of resulting constraints:${pad(stats.dataFrameShape.numberOfResultConstraints)}
+  Number of operation nodes:      ${pad(stats.dataFrameShape.numberOfOperationNodes)}
+  Number of abstract value nodes: ${pad(stats.dataFrameShape.numberOfValueNodes)}
+  Number of entries per node:     ${pad(stats.dataFrameShape.numberOfEntriesPerNode.mean)}
+  Number of operations:           ${pad(stats.dataFrameShape.numberOfOperations)}
+  Number of total values:         ${pad(stats.dataFrameShape.numberOfTotalValues)}
+  Number of total top:            ${pad(stats.dataFrameShape.numberOfTotalTop)}
+  Inferred column names per node: ${pad(stats.dataFrameShape.inferredColNames.mean)}
+  Number of column names values:  ${pad(stats.dataFrameShape.numberOfColNamesValues)}
+  Number of column names Top:     ${pad(stats.dataFrameShape.numberOfColNamesTop)}
+  Inferred column count per node: ${pad(stats.dataFrameShape.inferredColCount.mean)}
+  Number of column count values:  ${pad(stats.dataFrameShape.numberOfColCountValues)}
+  Number of column count Top:     ${pad(stats.dataFrameShape.numberOfColCountTop)}
+  Number of column count infinite:${pad(stats.dataFrameShape.numberOfColCountInfinite)}
+  Inferred row count per node:    ${pad(stats.dataFrameShape.inferredRowCount.mean)}
+  Number of row count values:     ${pad(stats.dataFrameShape.numberOfRowCountValues)}
+  Number of row count Top:        ${pad(stats.dataFrameShape.numberOfRowCountTop)}
+  Number of row count infinite:   ${pad(stats.dataFrameShape.numberOfRowCountInfinite)}
+  Size of data frame shape info:  ${convertNumberToNiceBytes(stats.dataFrameShape.sizeOfInfo)}`;
 	}
 
 	return result;
@@ -210,29 +210,29 @@ Abstract Interpretation:
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
 	let result = `
 Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices
-Shell init time:                    ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('initialize R session'))}
-AST retrieval:                      ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('retrieve AST from R code'))}
-AST retrieval per token:            ${formatSummarizedTimeMeasure(stats.retrieveTimePerToken.normalized)}
-AST retrieval per R token:          ${formatSummarizedTimeMeasure(stats.retrieveTimePerToken.raw)}
-AST normalization:                  ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('normalize R AST'))}
-AST normalization per token:        ${formatSummarizedTimeMeasure(stats.normalizeTimePerToken.normalized)}
-AST normalization per R token:      ${formatSummarizedTimeMeasure(stats.normalizeTimePerToken.raw)}
-Dataflow creation:                  ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('produce dataflow information'))}
-Dataflow creation per token:        ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.normalized)}
-Dataflow creation per R token:      ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.raw)}
-Total common time per token:        ${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.normalized)}
-Total common time per R token:      ${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.raw)}`;
+Shell init time:                      ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('initialize R session'))}
+AST retrieval:                        ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('retrieve AST from R code'))}
+AST retrieval per token:              ${formatSummarizedTimeMeasure(stats.retrieveTimePerToken.normalized)}
+AST retrieval per R token:            ${formatSummarizedTimeMeasure(stats.retrieveTimePerToken.raw)}
+AST normalization:                    ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('normalize R AST'))}
+AST normalization per token:          ${formatSummarizedTimeMeasure(stats.normalizeTimePerToken.normalized)}
+AST normalization per R token:        ${formatSummarizedTimeMeasure(stats.normalizeTimePerToken.raw)}
+Dataflow creation:                    ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('produce dataflow information'))}
+Dataflow creation per token:          ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.normalized)}
+Dataflow creation per R token:        ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.raw)}
+Total common time per token:          ${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.normalized)}
+Total common time per R token:        ${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.raw)}`;
 	if(stats.commonMeasurements.has('extract control flow graph') && stats.controlFlowTimePerToken !== undefined) {
 		result += `
-Control flow extraction:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('extract control flow graph'))}
-Control flow extraction per token:  ${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.normalized)}
-Control flow extraction per R token:${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.raw)}`;
+Control flow extraction:              ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('extract control flow graph'))}
+Control flow extraction per token:    ${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.normalized)}
+Control flow extraction per R token:  ${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.raw)}`;
 	}
-	if(stats.commonMeasurements.has('perform abstract interpretation') && stats.absintTimePerToken !== undefined) {
+	if(stats.commonMeasurements.has('infer data frame shapes') && stats.dataFrameShapeTimePerToken !== undefined) {
 		result += `
-Abstract Interpretation:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('perform abstract interpretation'))}
-Abstract Interpretation per token:  ${formatSummarizedTimeMeasure(stats.absintTimePerToken.normalized)}
-Abstract Interpretation per R token:${formatSummarizedTimeMeasure(stats.absintTimePerToken.raw)}`;
+Dataframe shape inference:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('infer data frame shapes'))}
+Dataframe shape inference per token:  ${formatSummarizedTimeMeasure(stats.dataFrameShapeTimePerToken.normalized)}
+Dataframe shape inference per R token:${formatSummarizedTimeMeasure(stats.dataFrameShapeTimePerToken.raw)}`;
 	}
 
 	// Used Slice Criteria Sizes: ${formatSummarizedMeasure(stats.perSliceMeasurements.sliceCriteriaSizes)}
@@ -282,29 +282,31 @@ Dataflow:
   Number of overwritten indices: ${formatSummarizedMeasure (stats.dataflow.overwrittenIndices)}
   Size of graph:                 ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}`;
 
-	if(stats.absint !== undefined) {
+	if(stats.dataFrameShape !== undefined) {
 		result += `
 
-Abstract Interpretation:
-  Number of resulting constraints:${formatSummarizedMeasure(stats.absint.numberOfResultConstraints)}
-  Number of operation nodes:      ${formatSummarizedMeasure(stats.absint.numberOfOperationNodes)}
-  Number of abstract value nodes: ${formatSummarizedMeasure(stats.absint.numberOfValueNodes)}
-  Number of entries per node:     ${formatSummarizedMeasure(stats.absint.numberOfEntriesPerNode)}
-  Number of operations:           ${formatSummarizedMeasure(stats.absint.numberOfOperations)}
-  Number of total values:         ${formatSummarizedMeasure(stats.absint.numberOfTotalValues)}
-  Number of total top:            ${formatSummarizedMeasure(stats.absint.numberOfTotalTop)}
-  Inferred column names per node: ${formatSummarizedMeasure(stats.absint.inferredColNames)}
-  Number of column names values:  ${formatSummarizedMeasure(stats.absint.numberOfColNamesValues)}
-  Number of column names Top:     ${formatSummarizedMeasure(stats.absint.numberOfColNamesTop)}
-  Inferred column count per node: ${formatSummarizedMeasure(stats.absint.inferredColCount)}
-  Number of column count values:  ${formatSummarizedMeasure(stats.absint.numberOfColCountValues)}
-  Number of column count Top:     ${formatSummarizedMeasure(stats.absint.numberOfColCountTop)}
-  Number of column count infinite:${formatSummarizedMeasure(stats.absint.numberOfColCountInfinite)}
-  Inferred row count per node:    ${formatSummarizedMeasure(stats.absint.inferredRowCount)}
-  Number of row count values:     ${formatSummarizedMeasure(stats.absint.numberOfRowCountValues)}
-  Number of row count Top:        ${formatSummarizedMeasure(stats.absint.numberOfRowCountTop)}
-  Number of row count infinite:   ${formatSummarizedMeasure(stats.absint.numberOfRowCountInfinite)}
-  Size of absint info:            ${formatSummarizedMeasure(stats.absint.sizeOfInfo, convertNumberToNiceBytes)}`;
+Dataframe shape inference:
+  Number of resulting constraints:${formatSummarizedMeasure(stats.dataFrameShape.numberOfResultConstraints)}
+  Number of operation nodes:      ${formatSummarizedMeasure(stats.dataFrameShape.numberOfOperationNodes)}
+  Number of abstract value nodes: ${formatSummarizedMeasure(stats.dataFrameShape.numberOfValueNodes)}
+  Number of entries per node:     ${formatSummarizedMeasure(stats.dataFrameShape.numberOfEntriesPerNode)}
+  Number of operations:           ${formatSummarizedMeasure(stats.dataFrameShape.numberOfOperations)}
+  Number of total values:         ${formatSummarizedMeasure(stats.dataFrameShape.numberOfTotalValues)}
+  Number of total top:            ${formatSummarizedMeasure(stats.dataFrameShape.numberOfTotalTop)}
+  Inferred column names per node: ${formatSummarizedMeasure(stats.dataFrameShape.inferredColNames)}
+  Number of column names values:  ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColNamesValues)}
+  Number of column names top:     ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColNamesTop)}
+  Inferred column count per node: ${formatSummarizedMeasure(stats.dataFrameShape.inferredColCount)}
+  Number of column count exact:   ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColCountExact)}
+  Number of column count values:  ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColCountValues)}
+  Number of column count top:     ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColCountTop)}
+  Number of column count infinite:${formatSummarizedMeasure(stats.dataFrameShape.numberOfColCountInfinite)}
+  Inferred row count per node:    ${formatSummarizedMeasure(stats.dataFrameShape.inferredRowCount)}
+  Number of row count exact:      ${formatSummarizedMeasure(stats.dataFrameShape.numberOfRowCountExact)}
+  Number of row count values:     ${formatSummarizedMeasure(stats.dataFrameShape.numberOfRowCountValues)}
+  Number of row count top:        ${formatSummarizedMeasure(stats.dataFrameShape.numberOfRowCountTop)}
+  Number of row count infinite:   ${formatSummarizedMeasure(stats.dataFrameShape.numberOfRowCountInfinite)}
+  Size of data frame shape info:  ${formatSummarizedMeasure(stats.dataFrameShape.sizeOfInfo, convertNumberToNiceBytes)}`;
 	}
 
 	return result;

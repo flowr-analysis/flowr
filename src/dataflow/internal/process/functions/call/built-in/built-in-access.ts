@@ -16,14 +16,10 @@ import type { BuiltInMappingName } from '../../../../../environments/built-in';
 import { builtInId } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
 import { ReferenceType } from '../../../../../environments/identifier';
-import type {
-	ContainerIndicesCollection,
-	ContainerParentIndex
-} from '../../../../../graph/vertex';
+import type { ContainerIndicesCollection, ContainerParentIndex } from '../../../../../graph/vertex';
 import { isParentContainerIndex } from '../../../../../graph/vertex';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { filterIndices, getAccessOperands, resolveSingleIndex } from '../../../../../../util/containers';
-import { getConfig } from '../../../../../../config';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -153,14 +149,13 @@ function processNumberBasedAccess<OtherInfo>(
 		data.environment.current.memory.set(':=', existing);
 	}
 	if(head.value && outInfo.definitionRootNodes.length > 0) {
-		markAsAssignment(fnCall.information,
-			{ type: ReferenceType.Variable, name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, controlDependencies: [] },
+		markAsAssignment(fnCall.information, { type: ReferenceType.Variable, name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, controlDependencies: [] },
 			outInfo.definitionRootNodes,
-			rootId
+			rootId, data
 		);
 	}
 
-	if(getConfig().solver.pointerTracking) {
+	if(data.flowrConfig.solver.pointerTracking) {
 		referenceAccessedIndices(args, data, fnCall, rootId, true);
 	}
 
@@ -213,7 +208,7 @@ function processStringBasedAccess<OtherInfo>(
 		origin:    'builtin:access' satisfies BuiltInMappingName
 	});
 
-	if(getConfig().solver.pointerTracking) {
+	if(data.flowrConfig.solver.pointerTracking) {
 		referenceAccessedIndices(newArgs, data, fnCall, rootId, false);
 	}
 

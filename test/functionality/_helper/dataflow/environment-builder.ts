@@ -3,12 +3,17 @@ import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x
 import type { IdentifierDefinition } from '../../../../src/dataflow/environments/identifier';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import type { FunctionArgument } from '../../../../src/dataflow/graph/graph';
-import type { Environment, REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
+import type {
+	Environment,
+	IEnvironment,
+	REnvironmentInformation
+} from '../../../../src/dataflow/environments/environment';
 import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment';
 import { define } from '../../../../src/dataflow/environments/define';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping';
-import { appendEnvironment } from '../../../../src/dataflow/environments/append';
 import type { ControlDependency } from '../../../../src/dataflow/info';
+import { defaultConfigOptions } from '../../../../src/config';
+import { appendEnvironment } from '../../../../src/dataflow/environments/append';
 
 export function variable(name: string, definedAt: NodeId): IdentifierDefinition {
 	return { name, type: ReferenceType.Variable, nodeId: '_0', definedAt, controlDependencies: undefined };
@@ -31,7 +36,7 @@ export function argumentInCall(nodeId: NodeId, options?: { name?: string, contro
  */
 export const defaultEnv = () => {
 	const global = initializeCleanEnvironments();
-	return new EnvironmentBuilder(global.current, 0);
+	return new EnvironmentBuilder(global.current, global.current.parent, 0);
 };
 
 /**
@@ -47,9 +52,12 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 */
 	level:   number;
 
-	constructor(env: Environment, level: number) {
+	private readonly builtInEnv: IEnvironment;
+
+	constructor(env: Environment, builtInEnvironment: IEnvironment, level: number) {
 		this.current = env;
 		this.level = level;
+		this.builtInEnv = builtInEnvironment;
 	}
 
 	/**
@@ -130,8 +138,8 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 			definedAt:           normalizeIdToNumberIfPossible(def.definedAt),
 			nodeId:              normalizeIdToNumberIfPossible(def.nodeId),
 			controlDependencies: def.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) }))
-		} as IdentifierDefinition, superAssignment, this);
-		return new EnvironmentBuilder(envWithDefinition.current, envWithDefinition.level);
+		} as IdentifierDefinition, superAssignment, this, defaultConfigOptions);
+		return new EnvironmentBuilder(envWithDefinition.current, this.builtInEnv, envWithDefinition.level);
 	}
 
 	/**
@@ -139,7 +147,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 */
 	pushEnv(): EnvironmentBuilder {
 		const newEnvironment = pushLocalEnvironment(this);
-		return new EnvironmentBuilder(newEnvironment.current, newEnvironment.level);
+		return new EnvironmentBuilder(newEnvironment.current, this.builtInEnv, newEnvironment.level);
 	}
 
 	/**
@@ -147,7 +155,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 */
 	popEnv(): EnvironmentBuilder {
 		const underlyingEnv = popLocalEnvironment(this);
-		return new EnvironmentBuilder(underlyingEnv.current, underlyingEnv.level);
+		return new EnvironmentBuilder(underlyingEnv.current, this.builtInEnv, underlyingEnv.level);
 	}
 
 	/**
@@ -157,6 +165,6 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 */
 	appendWritesOf(other: REnvironmentInformation) {
 		const appendedEnv = appendEnvironment(this, other);
-		return new EnvironmentBuilder(appendedEnv.current, appendedEnv.level);
+		return new EnvironmentBuilder(appendedEnv.current, this.builtInEnv, appendedEnv.level);
 	}
 }

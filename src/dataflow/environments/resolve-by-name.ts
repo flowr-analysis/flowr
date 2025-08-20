@@ -1,9 +1,9 @@
 import type { IEnvironment, REnvironmentInformation } from './environment';
-import { BuiltInEnvironment } from './environment';
 import { Ternary } from '../../util/logic';
 import type { Identifier, IdentifierDefinition } from './identifier';
 import { isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
+
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
 const VariableTargetTypes = ReferenceType.Variable | ReferenceType.Parameter | ReferenceType.Argument | ReferenceType.Unknown;
@@ -25,9 +25,9 @@ const TargetTypePredicate = {
 /**
  * Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.
  *
- * @param name         - The name of the identifier to resolve
- * @param environment  - The current environment used for name resolution
- * @param target       - The target (meta) type of the identifier to resolve
+ * @param name               - The name of the identifier to resolve
+ * @param environment        - The current environment used for name resolution
+ * @param target             - The target (meta) type of the identifier to resolve
  *
  * @returns A list of possible identifier definitions (one if the definition location is exactly and always known), or `undefined`
  *          if the identifier is undefined in the current scope/with the current environment information.
@@ -48,7 +48,7 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 			}
 		}
 		current = current.parent;
-	} while(current.id !== BuiltInEnvironment.id);
+	} while(!current.builtInEnv);
 
 	const builtIns = current.memory.get(name);
 	if(definitions) {

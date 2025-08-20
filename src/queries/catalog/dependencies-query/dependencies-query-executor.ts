@@ -26,6 +26,7 @@ import type { DependencyInfoLinkAttachedInfo, FunctionInfo } from './function-in
 import { DependencyInfoLinkConstraint } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
+import { guard } from '../../../util/assert';
 
 function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]) {
 	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
@@ -57,10 +58,12 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 	const numberOfFunctions = libraryFunctions.length + sourceFunctions.length + readFunctions.length + writeFunctions.length;
 
 	const results = numberOfFunctions === 0 ? { kinds: {}, '.meta': { timing: 0 } } : executeQueriesOfSameType<CallContextQuery>(data,
-		...makeCallContextQuery(libraryFunctions, 'library'),
-		...makeCallContextQuery(sourceFunctions, 'source'),
-		...makeCallContextQuery(readFunctions, 'read'),
-		...makeCallContextQuery(writeFunctions, 'write')
+		[
+			makeCallContextQuery(libraryFunctions, 'library'),
+			makeCallContextQuery(sourceFunctions, 'source'),
+			makeCallContextQuery(readFunctions, 'read'),
+			makeCallContextQuery(writeFunctions, 'write')
+		].flat()
 	);
 
 	function getLexeme(argument: string | undefined | typeof Unknown, id: NodeId | undefined) {
@@ -145,13 +148,16 @@ function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: o
 	return linkedIds.map(id => typeof id === 'object' ? id.id : id);
 }
 
+const readOnlyModes = new Set(['r', 'rt', 'rb']);
+const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab']);
+
 function getResults<T extends DependencyInfo>(data: BasicQueryData, results: CallContextQueryResult, kind: string, functions: FunctionInfo[], makeInfo: MakeDependencyInfo<T>): T[] {
 	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});
 	return kindEntries.flatMap(([name, results]) => results.flatMap(({ id, linkedIds }) => {
 		const vertex = data.dataflow.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
 		const info = functions.find(f => f.name === name) as FunctionInfo;
 
-		const args = getArgumentStringValue(data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
+		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
 		const linkedArgs = collectValuesFromLinks(args, data, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
 
 		const foundValues = linkedArgs ?? args;
@@ -161,6 +167,19 @@ function getResults<T extends DependencyInfo>(data: BasicQueryData, results: Cal
 			}
 			const record = compactRecord(makeInfo(id, vertex, undefined, undefined, dropInfoOnLinkedIds(linkedIds)));
 			return record ? [record as T] : [];
+		} else if(info.ignoreIf === 'mode-only-read' || info.ignoreIf === 'mode-only-write') {
+			guard('mode' in (info.additionalArgs ?? {}), 'Need additional argument mode when checking for mode');
+			const margs = info.additionalArgs?.mode;
+			guard(margs, 'Need additional argument mode when checking for mode');
+			const modeArgs = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, margs.argIdx, margs.argName, margs.resolveValue);
+			const modeValues = [...modeArgs?.values() ?? []].flatMap(v => [...v]) ?? [];
+			if(info.ignoreIf === 'mode-only-read' && modeValues.every(m => m && readOnlyModes.has(m))) {
+				// all modes are read-only, so we can ignore this
+				return [];
+			} else if(info.ignoreIf === 'mode-only-write' && modeValues.every(m => m && writeOnlyModes.has(m))) {
+				// all modes are write-only, so we can ignore this
+				return [];
+			}
 		}
 		const results: T[] = [];
 		for(const [arg, values] of foundValues.entries()) {
@@ -195,7 +214,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undef
 		if(vertex === undefined || vertex.tag !== VertexType.FunctionCall) {
 			continue;
 		}
-		const args = getArgumentStringValue(data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
+		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
 		if(args === undefined) {
 			continue;
 		}
@@ -209,7 +228,6 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undef
 	}
 	return map.size ? map : undefined;
 }
-
 
 function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
 	let functions: FunctionInfo[] = ignoreDefaultFunctions ? [] : [...defaultFunctions];

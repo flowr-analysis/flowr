@@ -1,7 +1,6 @@
 import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from './control-flow-graph';
 
 
-
 import type { DataflowCfgGuidedVisitorConfiguration } from './dfg-cfg-guided-visitor';
 import { DataflowAwareCfgGuidedVisitor } from './dfg-cfg-guided-visitor';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -28,14 +27,16 @@ import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { BuiltInProcessorMapper } from '../dataflow/environments/built-in';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-
+import type { FlowrConfigOptions } from '../config';
 
 export interface SemanticCfgGuidedVisitorConfiguration<
 	OtherInfo = NoInfo,
 	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst<OtherInfo>       = NormalizedAst<OtherInfo>,
 	Dfg extends DataflowGraph                  = DataflowGraph
-> extends DataflowCfgGuidedVisitorConfiguration<ControlFlow, Dfg>, SyntaxCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast> {}
+> extends DataflowCfgGuidedVisitorConfiguration<ControlFlow, Dfg>, SyntaxCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast> {
+	readonly flowrConfig: FlowrConfigOptions;
+}
 
 /**
  * This visitor extends on the {@link DataflowAwareCfgGuidedVisitor} by dispatching visitors for separate function calls as well,
@@ -71,8 +72,8 @@ export class SemanticCfgGuidedVisitor<
 	/**
 	 * A helper function to get the normalized AST node for the given id or fail if it does not exist.
 	 */
-	protected getNormalizedAst(id: NodeId): RNode<OtherInfo & ParentInformation> | undefined {
-		return this.config.normalizedAst.idMap.get(id);
+	protected getNormalizedAst(id: NodeId | undefined): RNode<OtherInfo & ParentInformation> | undefined {
+		return id !== undefined ? this.config.normalizedAst.idMap.get(id) : undefined;
 	}
 
 	/**
@@ -91,10 +92,14 @@ export class SemanticCfgGuidedVisitor<
 			case RType.Logical: return this.onLogicalConstant({ vertex: val, node: astNode });
 			case RType.Symbol:
 				if(astNode.lexeme === 'NULL') {
-					return this.onNullConstant({ vertex: val, node: astNode as RSymbol<OtherInfo & ParentInformation, 'NULL'> });
+					return this.onNullConstant({
+						vertex: val,
+						node:   astNode as RSymbol<OtherInfo & ParentInformation, 'NULL'>
+					});
 				} else {
-					return this.onSymbolConstant({ vertex: val, node: astNode });
+					return this.onSymbolConstant({ vertex: val, node: astNode as RSymbol<OtherInfo & ParentInformation> });
 				}
+
 		}
 		guard(false, `Unexpected value type ${astNode.type} for value ${astNode.lexeme}`);
 	}

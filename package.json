@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.2.15",
+  "version": "2.4.4",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -39,6 +39,7 @@
     "wiki:cfg": "ts-node src/documentation/print-cfg-wiki.ts",
     "wiki:linter": "ts-node src/documentation/print-linter-wiki.ts",
     "gen:readme": "ts-node src/documentation/print-readme.ts",
+    "gen:linter-issue": "ts-node src/documentation/print-linter-issue.ts",
     "build": "tsc --project .",
     "build-dev": "npm run build && npm run build:copy-wasm",
     "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --tree-shaking=true --bundle --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm",
@@ -175,7 +176,7 @@
   "devDependencies": {
     "@commitlint/cli": "^19.7.1",
     "@commitlint/config-angular": "^19.7.1",
-    "@eagleoutice/eslint-config-flowr": "^1.0.17",
+    "@eagleoutice/eslint-config-flowr": "^1.0.19",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.20.0",
     "@j-ulrich/release-it-regex-bumper": "^5.3.0",
@@ -184,6 +185,7 @@
     "@types/n-readlines": "^1.0.6",
     "@types/n3": "^1.21.1",
     "@types/object-hash": "^3.0.6",
+    "@types/seedrandom": "^3.0.8",
     "@types/semver": "^7.5.8",
     "@types/tmp": "^0.2.6",
     "@types/ws": "^8.5.14",
@@ -215,6 +217,7 @@
     "object-hash": "^3.0.0",
     "object-sizeof": "^2.6.5",
     "rotating-file-stream": "^3.2.6",
+    "seedrandom": "^3.0.5",
     "semver": "^7.7.1",
     "tar": "^7.4.3",
     "tmp": "^0.2.3",

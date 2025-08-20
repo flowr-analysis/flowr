@@ -4,12 +4,12 @@ import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
 import {
+	getDocumentationForType,
 	mermaidHide,
-	getTypesFromFolderAsMermaid,
-	shortLink,
-	printHierarchy,
+	getTypesFromFolder,
 	printCodeOfElement,
-	getDocumentationForType
+	printHierarchy,
+	shortLink
 } from './doc-util/doc-types';
 import path from 'path';
 import { FlowrWikiBaseRef } from './doc-util/doc-files';
@@ -37,16 +37,14 @@ import { recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
 import { DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-visitor';
 import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
-import type {
-	SemanticCfgGuidedVisitorConfiguration
-} from '../control-flow/semantic-cfg-guided-visitor';
-import {
-	SemanticCfgGuidedVisitor
-} from '../control-flow/semantic-cfg-guided-visitor';
+import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
+import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { EdgeType, edgeTypeToName } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
 import type { DataflowGraph } from '../dataflow/graph/graph';
+import type { FlowrConfigOptions } from '../config';
+import { defaultConfigOptions } from '../config';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -136,8 +134,8 @@ class CollectNumbersDataflowVisitor extends DataflowAwareCfgGuidedVisitor {
 class CollectSourcesSemanticVisitor extends SemanticCfgGuidedVisitor {
 	private sources: string[] = [];
 
-	constructor(controlFlow: ControlFlowInformation, normalizedAst: NormalizedAst, dataflow: DataflowGraph) {
-		super({ controlFlow, normalizedAst, dfg: dataflow, defaultVisitingOrder: 'forward' });
+	constructor(controlFlow: ControlFlowInformation, normalizedAst: NormalizedAst, dataflow: DataflowGraph, config: FlowrConfigOptions) {
+		super({ controlFlow, normalizedAst, dfg: dataflow, flowrConfig: config, defaultVisitingOrder: 'forward' });
 	}
 
 	protected override onAssignmentCall({ source }: { source?: NodeId }): void {
@@ -154,15 +152,13 @@ class CollectSourcesSemanticVisitor extends SemanticCfgGuidedVisitor {
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 
-	const types = getTypesFromFolderAsMermaid({
+	const types = getTypesFromFolder({
 		rootFolder:  path.resolve('./src'),
-		typeName:    'RNode',
 		inlineTypes: mermaidHide
 	});
 
-	const testTypes = getTypesFromFolderAsMermaid({
+	const testTypes = getTypesFromFolder({
 		rootFolder:  path.resolve('./test'),
-		typeName:    'assertCfg',
 		inlineTypes: mermaidHide
 	});
 
@@ -267,8 +263,7 @@ ${Object.entries(CfgVertexType).map(([key, value]) => `- \`${key}\` (${value})`)
 We use the ${shortLink('CfgBasicBlockVertex', types.info)} to represent [basic blocks](#cfg-basic-blocks) and separate
 expressions (${shortLink('CfgExpressionVertex', types.info)}) and statements (${shortLink('CfgStatementVertex', types.info)}) 
 as control flow units with and without side effects (if you want to, you can see view statements as effectful expressions).
-The markers (${shortLink('CfgMidMarkerVertex', types.info)} and ${shortLink('CfgEndMarkerVertex', types.info)})
-indicate specific segments of larger expressions/statements (e.g., an \`if\` which has a condition and its branches). 
+The markers (${shortLink('CfgEndMarkerVertex', types.info)}) indicate the end of larger expressions/statements. 
 
 To signal these links, the expressions and statements contain information about the attached markers:
 
@@ -278,7 +273,7 @@ Similarly, the markers contain a link to their root:
 
 ${printHierarchy({ info: types.info, root: 'CfgWithRoot', program: types.program, openTop: true })}
 
-In mermaid visualizations, we use rectangles for statements, rounded rectangles for expressions, circles for exit markers and double-lined rectangles for mid markers.
+In mermaid visualizations, we use rectangles for statements, rounded rectangles for expressions and circles for exit markers.
 Blocks are visualized as boxes around the contained vertices.
 
 ${block({
@@ -542,7 +537,7 @@ Executing it with the CFG and Dataflow of the expression \`x <- 2; 3 -> x; assig
 
 ${await (async() => {
 	const res = await getCfg(shell, 'x <- 2; 3 -> x; assign("x", 42 + 21)');
-	const visitor = new CollectSourcesSemanticVisitor(res.info, res.ast, res.dataflow.graph);
+	const visitor = new CollectSourcesSemanticVisitor(res.info, res.ast, res.dataflow.graph, defaultConfigOptions);
 	visitor.start();
 	const collected = visitor.getSources();
 	return collected.map(n => '\n- `' + n + '`').join('');
@@ -604,7 +599,7 @@ Hence, you may rely on the corresponding exit point(s) to identify all exits of 
 
 ${block({
 	type:    'WARNING',
-	content: 'Using basic blocks, this works just the same. However please keep in mind that the corresponding exit markers do not (and for control statements usually will not) be part of the same basic block.'
+	content: 'Using basic blocks, this works just the same. However, please keep in mind that the corresponding exit markers do not (and for control statements usually will not) be part of the same basic block.'
 })}
 
 `;

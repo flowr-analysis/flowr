@@ -95,7 +95,6 @@ async function replProcessStatement(output: ReplOutput, statement: string, parse
 				const remainingLine = statement.slice(command.length + 2).trim();
 				if(processor.usesAnalyzer) {
 					const request = requestFromInput(handleString(remainingLine));
-					// TODO TSchoeller engine/parser
 					// TODO TSchoeller Ideally the analyzer would also be used for query commands
 					// TODO TSchoeller Is this the right level to create the analyzer instance?
 					const analyzer = await new FlowrAnalyzerBuilder(request)

@@ -23,14 +23,14 @@ export function executeStaticSliceQuery({ dataflow: { graph }, ast, config }: Ba
 		const slice = staticSlicing(graph, ast, criteria, config.solver.slicer?.threshold);
 		const sliceEnd = Date.now();
 		if(noReconstruction) {
-			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };
+			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart, cached: false } } };
 		} else {
 			const reconstructStart = Date.now();
 			const reconstruct = reconstructToCode(ast, slice.result, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect));
 			const reconstructEnd = Date.now();
 			results[key] = {
-				slice:       { ...slice, '.meta': { timing: sliceEnd - sliceStart } },
-				reconstruct: { ...reconstruct, '.meta': { timing: reconstructEnd - reconstructStart } }
+				slice:       { ...slice, '.meta': { timing: sliceEnd - sliceStart, cached: false } },
+				reconstruct: { ...reconstruct, '.meta': { timing: reconstructEnd - reconstructStart, cached: false } }
 			};
 		}
 	}

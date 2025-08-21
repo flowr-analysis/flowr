@@ -9,6 +9,7 @@ import type { ControlFlowInformation } from '../control-flow/control-flow-graph'
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../dataflow/info';
 import type { CfgSimplificationPassName } from '../control-flow/cfg-simplification';
+import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
 
 export class FlowrAnalyzer {
 	public readonly flowrConfig: FlowrConfigOptions;
@@ -31,9 +32,14 @@ export class FlowrAnalyzer {
 		this.controlflowInfo = undefined as unknown as ControlFlowInformation;
 	}
 
-	public async normalizedAst(force?: boolean): Promise<NormalizedAst> {
+	public async normalizedAst(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation> {
 		if(this.ast && !force) {
-			return this.ast;
+			return {
+				...this.ast,
+				'.meta': {
+					cached: true
+				}
+			};
 		}
 
 		const result = await createNormalizePipeline(
@@ -44,9 +50,14 @@ export class FlowrAnalyzer {
 		return result.normalize;
 	}
 
-	public async dataflow(force?: boolean): Promise<DataflowInformation> {
+	public async dataflow(force?: boolean): Promise<DataflowInformation & PipelinePerStepMetaInformation> {
 		if(this.dataflowInfo && !force) {
-			return this.dataflowInfo;
+			return {
+				...this.dataflowInfo,
+				'.meta': {
+					cached: true
+				}
+			};
 		}
 
 		const result = await createDataflowPipeline(

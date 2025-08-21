@@ -2,9 +2,10 @@ import type { ReplCodeCommand, ReplOutput } from './repl-main';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
+import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 
-function formatInfo(out: ReplOutput, type: string, timing: number): string {
-	return out.formatter.format(`Copied ${type} to clipboard (normalize: ${timing}ms).`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
+function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInformation): string {
+	return out.formatter.format(`Copied ${type} to clipboard (normalize: ${meta['.meta'].cached ? 'cached' : meta['.meta'].timing + 'ms'}).`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
 }
 
 export const normalizeCommand: ReplCodeCommand = {
@@ -20,7 +21,7 @@ export const normalizeCommand: ReplCodeCommand = {
 		try {
 			const clipboard = await import('clipboardy');
 			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid url', 0)); // TODO
+			output.stdout(formatInfo(output, 'mermaid url', result));
 		} catch{ /* do nothing this is a service thing */ }
 	}
 };
@@ -38,7 +39,7 @@ export const normalizeStarCommand: ReplCodeCommand = {
 		try {
 			const clipboard = await import('clipboardy');
 			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid url', 0)); // TODO
+			output.stdout(formatInfo(output, 'mermaid url', result));
 		} catch{ /* do nothing this is a service thing */ }
 	}
 };

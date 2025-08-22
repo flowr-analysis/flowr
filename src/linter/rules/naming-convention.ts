@@ -32,7 +32,11 @@ export interface NamingConventionResult extends LintingResult {
  * It is planned to have a config like ESLint
  */
 export interface NamingConventionConfig extends MergeableRecord {
-    caseing: CasingConvention | 'auto'
+    /** which casing convention to enforce */
+	caseing: CasingConvention | 'auto'
+
+	/** if true non alphabetic characters are ignored */
+	ignoreNonAlpha: boolean;
 }
 
 export interface NamingConventionMetadata extends MergeableRecord {
@@ -41,11 +45,14 @@ export interface NamingConventionMetadata extends MergeableRecord {
 
 	/** number of symbols breaking the casing convetion */
 	numBreak: number;
+}
 
+function containsAlpha(s: string): boolean {
+	return /[A-Za-z]/.test(s);
 }
 
 export function detectCasing(identifier: string): CasingConvention {
-	if(identifier.trim() === '') {
+	if(identifier.trim() === '' || !containsAlpha(identifier)) {
 		return CasingConvention.Unknown;
 	}
 
@@ -106,10 +113,20 @@ export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[
 	return [...map].reduce((p, c) => p[1] > c[1] ? p : c)[0];
 }
 
-export function fixCasing(identifier: string, convention: CasingConvention): string {
+export function fixCasing(identifier: string, convention: CasingConvention): string | undefined {
+	if(!containsAlpha(identifier)) {
+		return undefined;
+	}
+
 	const tokens = identifier.split(/(?=[A-Z])|_/).map(s => s.toLowerCase());
 
-	const firstUp = (s: string) => `${s[0].toUpperCase()}${s.substring(1)}`;
+	const firstUp = (s: string) => {
+		if(s.length < 1) {
+			return s.toUpperCase();
+		}
+
+		return `${s[0].toUpperCase()}${s.substring(1)}`;
+	};
 
 	switch(convention) {
 		case CasingConvention.CamelCase: // camelCase
@@ -178,11 +195,15 @@ export const NAMING_CONVENTION = {
 				id:             m.node.info.id
 			}));
 		const casing = config.caseing === 'auto' ? getMostUsedCasing(symbols) : config.caseing;
-		const results = symbols.filter(m => m.detectedCasing !== casing)
-			.map(({ id, ...m }) => ({
-				...m,
-				quickFix: createNamingConventionQuickFixes(data.dataflow.graph, id, fixCasing(m.name, casing), casing)
-			}));
+		const results = symbols
+			.filter(m => (m.detectedCasing !== casing) && (!config.ignoreNonAlpha || containsAlpha(m.name)))
+			.map(({ id, ...m }) => {
+				const fix = fixCasing(m.name, casing);
+				return {
+					...m,
+					quickFix: fix ? createNamingConventionQuickFixes(data.dataflow.graph, id, fix, casing) : undefined
+				};
+			});
 		
 		return {
 			results: results,
@@ -203,7 +224,8 @@ export const NAMING_CONVENTION = {
 		description:   'Checks wether the symbols conform to a certain naming convention',
 		tags:          [LintingRuleTag.Style, LintingRuleTag.QuickFix],
 		defaultConfig: {
-			caseing: 'auto'
+			caseing:        'auto',
+			ignoreNonAlpha: true
 		}
 	}
 } as const satisfies LintingRule<NamingConventionResult, NamingConventionMetadata, NamingConventionConfig>;

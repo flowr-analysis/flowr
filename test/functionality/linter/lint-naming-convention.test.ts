@@ -138,6 +138,24 @@ describe('flowR linter', withTreeSitter(parser => {
 			certainty:      LintingResultCertainty.Certain,
 		}], undefined, { caseing: 'auto' });
 
+		/** The rule can be configured to ignore identifier that do not contain any alphabetic characters */
+		assertLinter('non alpha identifier (ignore)', parser, '._ <- 4', 'naming-convention', [], undefined, {
+			caseing:        'auto',
+			ignoreNonAlpha: true
+		});
+
+		/** Otherwise the linter will always detect non alpha identifiers as following the wrong convention */
+		assertLinter('non alpha identifier (do not ignore)', parser, '._ <- 4', 'naming-convention', [{
+			certainty:      LintingResultCertainty.Certain,
+			detectedCasing: CasingConvention.Unknown,
+			name:           '._',
+			range:          [ 1, 1, 1, 2],
+			quickFix:       undefined
+		}], undefined, {
+			caseing:        CasingConvention.SnakeCase,
+			ignoreNonAlpha: false
+		});
+
 		assertLinter('empty string', parser, '', 'naming-convention', [], undefined, { caseing: CasingConvention.SnakeCase });
 		assertLinter('empty string (auto detect)', parser, '', 'naming-convention', [], undefined, { caseing: 'auto' });
 	});

@@ -7,13 +7,13 @@ import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 
 import { asciiCallContext } from '../../query-print';
-import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
-import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import { CallTargets } from './identify-link-to-last-call-relation';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { DataflowGraphVertexInfo } from '../../../dataflow/graph/vertex';
 import type { CascadeAction } from './cascade-action';
 import type { NoInfo } from '../../../r-bridge/lang-4.x/ast/model/model';
+import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { DataflowInformation } from '../../../dataflow/info';
 
 export interface FileFilter<FilterType> {
 	/**
@@ -125,10 +125,10 @@ const CallContextQueryLinkTo = Joi.object({
 
 export const CallContextQueryDefinition = {
 	executor:        executeCallContextQueries,
-	asciiSummarizer: (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, result: string[]) => {
+	asciiSummarizer: (formatter: OutputFormatter, processed: {dataflow: DataflowInformation, normalize: NormalizedAst}, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as CallContextQueryResult;
 		result.push(`Query: ${bold('call-context', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push(asciiCallContext(formatter, out, processed));
+		result.push(asciiCallContext(formatter, out, processed.normalize.idMap));
 		return true;
 	},
 	schema: Joi.object({

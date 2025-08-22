@@ -1,5 +1,3 @@
-import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
-import { createDataflowPipeline } from '../../../core/steps/pipeline/default-pipelines';
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import type { ReplCommand, ReplOutput } from './repl-main';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
@@ -7,19 +5,14 @@ import { ansiFormatter, italic } from '../../../util/text/ansi';
 import { describeSchema } from '../../../util/schema';
 import type { Query, QueryResults, SupportedQueryTypes } from '../../../queries/query';
 import { AnyQuerySchema, executeQueries, QueriesSchema } from '../../../queries/query';
-import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import type { KnownParser } from '../../../r-bridge/parser';
 import type { FlowrConfigOptions } from '../../../config';
 import { getDummyFlowrProject } from '../../../project/flowr-project';
-
-
-async function getDataflow(config: FlowrConfigOptions, parser: KnownParser, remainingLine: string) {
-	return await createDataflowPipeline(parser, {
-		request: requestFromInput(remainingLine.trim())
-	}, config).allRemainingSteps();
-}
+import { FlowrAnalyzerBuilder } from '../../../project/flowr-analyzer-builder';
+import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { DataflowInformation } from '../../../dataflow/info';
 
 
 function printHelp(output: ReplOutput) {
@@ -33,7 +26,7 @@ function printHelp(output: ReplOutput) {
 	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
 }
 
-async function processQueryArgs(line: string, parser: KnownParser, output: ReplOutput, config: FlowrConfigOptions): Promise<undefined | { query: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> }> {
+async function processQueryArgs(line: string, parser: KnownParser, output: ReplOutput, config: FlowrConfigOptions): Promise<undefined | { query: QueryResults<SupportedQueryTypes>, processed: {dataflow: DataflowInformation, normalize: NormalizedAst} }> {
 	const args = splitAtEscapeSensitive(line);
 	const query = args.shift();
 
@@ -46,7 +39,7 @@ async function processQueryArgs(line: string, parser: KnownParser, output: ReplO
 		return;
 	}
 
-	let parsedQuery: Query[] = [];
+	let parsedQuery: Query[];
 	if(query.startsWith('@')) {
 		parsedQuery = [{ type: query.slice(1) as SupportedQueryTypes } as Query];
 		const validationResult = QueriesSchema().validate(parsedQuery);
@@ -69,10 +62,15 @@ async function processQueryArgs(line: string, parser: KnownParser, output: ReplO
 
 	const dummyProject = await getDummyFlowrProject();
 
-	const processed = await getDataflow(config, parser, args.join(' '));
+	// TODO Use analyzer supplied by REPL core
+	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(args.join(' ').trim()))
+		.setParser(parser)
+		.setConfig(config)
+		.build();
+
 	return {
-		query: executeQueries({ dataflow: processed.dataflow, ast: processed.normalize, config: config, libraries: dummyProject.libraries }, parsedQuery),
-		processed
+		query:     executeQueries({ dataflow: await analyzer.dataflow(), ast: await analyzer.normalizedAst(), config: config, libraries: dummyProject.libraries }, parsedQuery),
+		processed: { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalizedAst() }
 	};
 }
 

@@ -21,8 +21,6 @@ import { ClusterQueryDefinition } from './catalog/cluster-query/cluster-query-fo
 import type { DependenciesQuery } from './catalog/dependencies-query/dependencies-query-format';
 import { DependenciesQueryDefinition } from './catalog/dependencies-query/dependencies-query-format';
 import type { OutputFormatter } from '../util/text/ansi';
-import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
-import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import Joi from 'joi';
 import type { LocationMapQuery } from './catalog/location-map-query/location-map-query-format';
 import { LocationMapQueryDefinition } from './catalog/location-map-query/location-map-query-format';
@@ -45,6 +43,8 @@ import { LinterQueryDefinition } from './catalog/linter-query/linter-query-forma
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowQuery } from './catalog/control-flow-query/control-flow-query-format';
 import { ControlFlowQueryDefinition } from './catalog/control-flow-query/control-flow-query-format';
+import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { DataflowInformation } from '../dataflow/info';
 
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -77,7 +77,7 @@ type SupportedQueries = {
 
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
 	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
-	asciiSummarizer:      (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
+	asciiSummarizer:      (formatter: OutputFormatter, processed: {dataflow: DataflowInformation, normalize: NormalizedAst}, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
 	schema:               Joi.ObjectSchema
 	/**
 	 * Flattens the involved query nodes to be added to a flowR search when the {@link fromQuery} function is used based on the given result after this query is executed.

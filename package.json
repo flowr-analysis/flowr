@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.2.16",
+  "version": "2.4.7",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -176,7 +176,7 @@
   "devDependencies": {
     "@commitlint/cli": "^19.7.1",
     "@commitlint/config-angular": "^19.7.1",
-    "@eagleoutice/eslint-config-flowr": "^1.0.17",
+    "@eagleoutice/eslint-config-flowr": "^1.0.19",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.20.0",
     "@j-ulrich/release-it-regex-bumper": "^5.3.0",

@@ -5,8 +5,8 @@ import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-se
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { SourceRange } from '../../util/range';
 import type { Identifier } from '../../dataflow/environments/identifier';
-import type { LintingResult } from '../linter-format';
-import { LintingCertainty, LintingPrettyPrintContext } from '../linter-format';
+import type { LintingResult, LintingRuleCertainty } from '../linter-format';
+import { LintingResultCertainty, LintingPrettyPrintContext } from '../linter-format';
 import type { FlowrSearchElement, FlowrSearchElements } from '../../search/flowr-search';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { MergeableRecord } from '../../util/objects';
@@ -37,7 +37,7 @@ export interface FunctionsToDetectConfig extends MergeableRecord {
 	regEx:           RegExp
 }
 
-export const funtionFinderUtil = {
+export const functionFinderUtil = {
 	createSearch: (functions: string[]) => {
 		return (
 			Q.all()
@@ -97,7 +97,7 @@ export const funtionFinderUtil = {
 		return {
 			results: 
 				results.map(element => ({
-					certainty: LintingCertainty.Definitely,
+					certainty: LintingResultCertainty.Certain,
 					function:  element.target,
 					range:     element.range
 				})),
@@ -110,11 +110,12 @@ export const funtionFinderUtil = {
 			[LintingPrettyPrintContext.Full]:  (result:FunctionsResult) => `Function \`${result.function}\` called at ${formatRange(result.range)} is related to ${functionType}`
 		};
 	},
-	info: (name: string, tags:LintingRuleTag[], description: string, functionsToFind: string[], regEx: RegExp)=>{
+	info: (name: string, tags:LintingRuleTag[], description: string, certainty: LintingRuleCertainty, functionsToFind: string[], regEx: RegExp)=>{
 		return {
 			name:          name,
 			tags:          tags,
 			description:   description,
+			certainty:	    certainty,
 			defaultConfig: {
 				functionsToFind: functionsToFind,
 				regEx: 	         regEx

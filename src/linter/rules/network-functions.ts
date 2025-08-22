@@ -1,12 +1,12 @@
 import type { LintingRule } from '../linter-format';
 import type { FunctionsMetadata, FunctionsResult, FunctionsToDetectConfig } from './function-finder-util';
-import { funtionFinderUtil } from './function-finder-util';
+import { functionFinderUtil } from './function-finder-util';
 
 export const NETWORK_FUNCTIONS = {
-	createSearch:        (config) => funtionFinderUtil.createSearch(config.functionsToFind),
-	processSearchResult: funtionFinderUtil.processSearchResult,
-	prettyPrint:         funtionFinderUtil.prettyPrint('network operations'),
-	info:                funtionFinderUtil.info(
+	createSearch:        (config) => functionFinderUtil.createSearch(config.functionsToFind),
+	processSearchResult: functionFinderUtil.processSearchResult,
+	prettyPrint:         functionFinderUtil.prettyPrint('network operations'),
+	info:                functionFinderUtil.info(
 		'Network Functions',
 		[],
 		'Marks network functions that execute network operations, such as downloading files or making HTTP requests.',

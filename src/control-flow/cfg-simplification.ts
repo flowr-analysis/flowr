@@ -50,10 +50,7 @@ export function simplifyControlFlowInformation(
  */
 function cfgRemoveDeadCode(cfg: ControlFlowInformation, _info?: CfgPassInfo): ControlFlowInformation {
 	// remove every root level node and accompanying vertices that can not be reached from the entry points
-	const reachable = new Set<NodeId>();
-	visitCfgInOrder(cfg.graph, cfg.entryPoints, node => {
-		reachable.add(node);
-	});
+	const reachable = cfgFindAllReachable(cfg);
 	for(const id of cfg.graph.rootIds()) {
 		if(!reachable.has(id)) {
 			cfg.graph.removeVertex(id);
@@ -64,15 +61,27 @@ function cfgRemoveDeadCode(cfg: ControlFlowInformation, _info?: CfgPassInfo): Co
 
 function uniqueControlFlowSets(cfg: ControlFlowInformation, _info?: CfgPassInfo): ControlFlowInformation {
 	return {
-		returns:     [...new Set(cfg.returns)],
-		entryPoints: [...new Set(cfg.entryPoints)],
-		exitPoints:  [...new Set(cfg.exitPoints)],
-		breaks:      [...new Set(cfg.breaks)],
-		nexts:       [...new Set(cfg.nexts)],
+		returns:     Array.from(new Set(cfg.returns)),
+		entryPoints: Array.from(new Set(cfg.entryPoints)),
+		exitPoints:  Array.from(new Set(cfg.exitPoints)),
+		breaks:      Array.from(new Set(cfg.breaks)),
+		nexts:       Array.from(new Set(cfg.nexts)),
 		graph:       cfg.graph
 	};
 }
 
 function toBasicBlocks(cfg: ControlFlowInformation, _info?: CfgPassInfo): ControlFlowInformation {
 	return convertCfgToBasicBlocks(cfg);
+}
+
+/**
+ * Uses {@link visitCfgInOrder} to find all nodes that are reachable from the control flow graph's {@link ControlFlowInformation.entryPoints} and returns them as a set.
+ * @param cfg - The control flow graph whose reachable nodes to find.
+ */
+export function cfgFindAllReachable(cfg: ControlFlowInformation): Set<NodeId> {
+	const reachable = new Set<NodeId>();
+	visitCfgInOrder(cfg.graph, cfg.entryPoints, node => {
+		reachable.add(node);
+	});
+	return reachable;
 }

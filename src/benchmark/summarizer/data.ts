@@ -1,8 +1,10 @@
+import type { DataFrameOperationName } from '../../abstract-interpretation/data-frame/semantics';
 import type { SummarizedMeasurement } from '../../util/summarizer';
 import type {
 	CommonSlicerMeasurements,
 	PerSliceMeasurements,
 	SlicerStats,
+	SlicerStatsDfShape,
 	SlicerStatsDataflow,
 	SlicerStatsInput
 } from '../stats/stats';
@@ -29,8 +31,9 @@ export interface SliceSizeCollection {
  * @see summarizeSlicerStats
  */
 export type SummarizedSlicerStats = {
-	perSliceMeasurements: SummarizedPerSliceStats
-} & Omit<SlicerStats, 'perSliceMeasurements'>
+	perSliceMeasurements: SummarizedPerSliceStats,
+	dataFrameShape?:      SummarizedDfShapeStats
+} & Omit<SlicerStats, 'perSliceMeasurements' | 'dataFrameShape'>
 
 export interface Reduction<T = number> {
 	numberOfLines:                   T
@@ -67,24 +70,54 @@ export interface SummarizedPerSliceStats {
 }
 
 export interface UltimateSlicerStats {
-	totalRequests:             number
-	totalSlices:               number
-	commonMeasurements:        Map<CommonSlicerMeasurements, SummarizedMeasurement>
-	perSliceMeasurements:      Map<PerSliceMeasurements, SummarizedMeasurement>
-	retrieveTimePerToken:      TimePerToken
-	normalizeTimePerToken:     TimePerToken
-	dataflowTimePerToken:      TimePerToken
-	totalCommonTimePerToken:   TimePerToken
-	sliceTimePerToken:         TimePerToken
-	reconstructTimePerToken:   TimePerToken
-	totalPerSliceTimePerToken: TimePerToken
+	totalRequests:               number
+	totalSlices:                 number
+	commonMeasurements:          Map<CommonSlicerMeasurements, SummarizedMeasurement>
+	perSliceMeasurements:        Map<PerSliceMeasurements, SummarizedMeasurement>
+	retrieveTimePerToken:        TimePerToken
+	normalizeTimePerToken:       TimePerToken
+	dataflowTimePerToken:        TimePerToken
+	totalCommonTimePerToken:     TimePerToken
+	controlFlowTimePerToken?:    TimePerToken
+	dataFrameShapeTimePerToken?: TimePerToken
+	sliceTimePerToken:           TimePerToken
+	reconstructTimePerToken:     TimePerToken
+	totalPerSliceTimePerToken:   TimePerToken
 	/** sum */
-	failedToRepParse:          number
+	failedToRepParse:            number
 	/** sum */
-	timesHitThreshold:         number
-	reduction:                 Reduction<SummarizedMeasurement>
+	timesHitThreshold:           number
+	reduction:                   Reduction<SummarizedMeasurement>
 	/** reduction, but without taking into account comments and empty lines */
-	reductionNoFluff:          Reduction<SummarizedMeasurement>
-	input:                     SlicerStatsInput<SummarizedMeasurement>
-	dataflow:                  SlicerStatsDataflow<SummarizedMeasurement>
+	reductionNoFluff:            Reduction<SummarizedMeasurement>
+	input:                       SlicerStatsInput<SummarizedMeasurement>
+	dataflow:                    SlicerStatsDataflow<SummarizedMeasurement>
+	dataFrameShape?:             SummarizedDfShapeStats<SummarizedMeasurement>
+}
+
+export interface SummarizedDfShapeStats<T = number> extends Omit<SlicerStatsDfShape<T>, 'perNodeStats'> {
+	numberOfEntriesPerNode:   SummarizedMeasurement,
+	numberOfOperations:       T,
+	numberOfTotalValues:      T,
+	numberOfTotalTop:         T,
+	numberOfTotalBottom:      T,
+	inferredColNames:         SummarizedMeasurement,
+	numberOfColNamesValues:   T,
+	numberOfColNamesTop:      T,
+	numberOfColNamesBottom:   T,
+	inferredColCount:         SummarizedMeasurement,
+	numberOfColCountExact:    T,
+	numberOfColCountValues:   T,
+	numberOfColCountTop:      T,
+	numberOfColCountInfinite: T,
+	numberOfColCountBottom:   T,
+	approxRangeColCount:      SummarizedMeasurement,
+	inferredRowCount:         SummarizedMeasurement,
+	numberOfRowCountExact:    T,
+	numberOfRowCountValues:   T,
+	numberOfRowCountTop:      T,
+	numberOfRowCountInfinite: T,
+	numberOfRowCountBottom:   T,
+	approxRangeRowCount:      SummarizedMeasurement,
+	perOperationNumber:       Map<DataFrameOperationName, T>
 }

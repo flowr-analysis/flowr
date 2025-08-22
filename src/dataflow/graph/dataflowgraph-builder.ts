@@ -3,8 +3,8 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph';
-import { isPositionalArgument, DataflowGraph } from './graph';
-import type { REnvironmentInformation } from '../environments/environment';
+import { DataflowGraph, isPositionalArgument } from './graph';
+import type { IEnvironment, REnvironmentInformation } from '../environments/environment';
 import { initializeCleanEnvironments } from '../environments/environment';
 import type { DataflowGraphVertexAstLink, DataflowGraphVertexUse, FunctionOriginInformation } from './vertex';
 import { VertexType } from './vertex';
@@ -44,7 +44,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public defineFunction(id: NodeId,
 		exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation,
-		info?: { environment?: REnvironmentInformation, controlDependencies?: ControlDependency[] },
+		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, controlDependencies?: ControlDependency[] },
 		asRoot: boolean = true) {
 		return this.addVertex({
 			tag:     VertexType.FunctionDefinition,
@@ -79,6 +79,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			reads?:               readonly NodeId[],
 			onlyBuiltIn?:         boolean,
 			environment?:         REnvironmentInformation,
+			builtInEnvironment?:  IEnvironment,
 			controlDependencies?: ControlDependency[],
 			origin?:              FunctionOriginInformation[]
 			link?:                DataflowGraphVertexAstLink
@@ -209,7 +210,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		if('nodeId' in from) {
 			fromId = from.nodeId;
 		} else {
-			const result = runSearch(from.query, data);
+			const result = runSearch(from.query, data).getElements();
 			guard(result.length === 1, `from query result should yield exactly one node, but yielded ${result.length}`);
 			fromId = result[0].node.info.id;
 		}
@@ -218,7 +219,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		if('target' in to) {
 			toIds = to.target;
 		} else {
-			const result = runSearch(to.query, data);
+			const result = runSearch(to.query, data).getElements();
 			toIds = result.map(r => r.node.info.id);
 		}
 

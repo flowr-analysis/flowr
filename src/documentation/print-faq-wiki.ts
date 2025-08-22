@@ -39,6 +39,10 @@ With \`npm\` you have to pass arguments in a specific way. The \`--\` operator i
 ${codeBlock('shell', 'npm run flowR -- --help')}
 `)}
 
+${qAndA('How to do logging in flowR?', `
+Check out the [Logging Section in the Linting and Testing wiki page](${FlowrWikiBaseRef}/Linting-and-Testing#logging) for more information on how to do logging in *flowR*.
+`)}
+
 ## 🇷 R FAQ
 
 ### 📦 R Packages

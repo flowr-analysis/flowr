@@ -1,6 +1,6 @@
 import { guard } from '../../util/assert';
-import type { REnvironmentInformation, IEnvironment } from './environment';
-import { BuiltInEnvironment , Environment } from './environment';
+import type { IEnvironment, REnvironmentInformation } from './environment';
+import {  Environment } from './environment';
 import type { IdentifierDefinition } from './identifier';
 import type { ControlDependency } from '../info';
 import { log } from '../../util/log';
@@ -24,7 +24,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 		if(values.length > 1_000_000) {
 			log.warn(`Overwriting environment with ${values.length} definitions for ${key}`);
 		}
-		const hasMaybe = applyCds?.length === 0 || applyCds !== undefined ? true : anyIsMaybeOrEmpty(values);
+		const hasMaybe = applyCds !== undefined ? true : anyIsMaybeOrEmpty(values);
 		if(hasMaybe) {
 			const old = map.get(key);
 			// we need to make a copy to avoid side effects for old reference in other environments
@@ -35,7 +35,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 					if(applyCds !== undefined) {
 						updatedOld.push({
 							...v,
-							controlDependencies: [...applyCds, ...v.controlDependencies ?? []]
+							controlDependencies: applyCds.concat(v.controlDependencies ?? [])
 						});
 					} else {
 						updatedOld.push(v);
@@ -50,7 +50,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 
 	let parent: IEnvironment;
 	if(includeParent) {
-		parent = base.parent.id === BuiltInEnvironment.id ? BuiltInEnvironment : overwriteIEnvironmentWith(base.parent, next.parent, includeParent, applyCds);
+		parent = base.parent.builtInEnv ? base.parent : overwriteIEnvironmentWith(base.parent, next.parent, includeParent, applyCds);
 	} else {
 		parent = base.parent;
 	}
@@ -63,7 +63,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 
 export function overwriteEnvironment(base: REnvironmentInformation, next: REnvironmentInformation | undefined, applyCds?: readonly ControlDependency[]): REnvironmentInformation
 export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation, applyCds?: readonly ControlDependency[]): REnvironmentInformation
-export function overwriteEnvironment(base: undefined, next: undefined, applyCds?: readonly ControlDependency[]): undefined
+export function overwriteEnvironment(base: undefined, next: undefined,  applyCds?: readonly ControlDependency[]): undefined
 export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined, applyCds?: readonly ControlDependency[]): REnvironmentInformation | undefined
 /**
  * Assumes, that all definitions within next replace those within base (given the same name).

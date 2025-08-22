@@ -5,7 +5,7 @@ import { assertLinter } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
 import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { convertAllSlicingCriteriaToIds } from '../../../src/slicing/criterion/parse';
-import { LintingCertainty } from '../../../src/linter/linter-format';
+import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { guard } from '../../../src/util/assert';
 import type { SourceRange } from '../../../src/util/range';
 import { rangeFrom } from '../../../src/util/range';
@@ -48,7 +48,7 @@ describe('flowR linter', withTreeSitter(parser => {
 						const node = ast.idMap.get(id);
 						guard(node !== undefined, `Expected node for id ${id} to be defined, but got undefined`);
 						return {
-							certainty:    LintingCertainty.Maybe,
+							certainty:    LintingResultCertainty.Uncertain,
 							variableName: node.lexeme,
 							range:        node.info.fullRange ?? node.location ?? rangeFrom(-1, -1, -1, -1),
 							quickFix:     removableRange ? [{

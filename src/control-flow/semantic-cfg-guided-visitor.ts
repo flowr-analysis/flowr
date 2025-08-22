@@ -72,8 +72,8 @@ export class SemanticCfgGuidedVisitor<
 	/**
 	 * A helper function to get the normalized AST node for the given id or fail if it does not exist.
 	 */
-	protected getNormalizedAst(id: NodeId): RNode<OtherInfo & ParentInformation> | undefined {
-		return this.config.normalizedAst.idMap.get(id);
+	protected getNormalizedAst(id: NodeId | undefined): RNode<OtherInfo & ParentInformation> | undefined {
+		return id !== undefined ? this.config.normalizedAst.idMap.get(id) : undefined;
 	}
 
 	/**

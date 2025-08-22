@@ -10,8 +10,6 @@ import type {
 	PipelineStepOutputWithName
 } from './steps/pipeline/pipeline';
 import type { FlowrConfigOptions } from '../config';
-import { BuiltInMemory, EmptyBuiltInMemory } from '../dataflow/environments/built-in';
-import { registerBuiltInDefinitions } from '../dataflow/environments/built-in-config';
 
 /**
  * The pipeline executor allows to execute arbitrary {@link Pipeline|pipelines} in a step-by-step fashion.
@@ -100,10 +98,11 @@ export class PipelineExecutor<P extends Pipeline> {
 	private readonly pipeline: P;
 	private readonly length:   number;
 
-	private input:                PipelineInput<P>;
-	private output:               PipelineOutput<P> = {} as PipelineOutput<P>;
+	private input:  PipelineInput<P>;
+	private output: PipelineOutput<P> = {} as PipelineOutput<P>;
 	private currentExecutionStage = PipelineStepStage.OncePerFile;
 	private stepCounter = 0;
+
 	private readonly flowrConfig: FlowrConfigOptions;
 
 	/**
@@ -121,12 +120,6 @@ export class PipelineExecutor<P extends Pipeline> {
 		this.length = pipeline.order.length;
 		this.input = input;
 		this.flowrConfig = flowrConfig;
-		const builtIns = flowrConfig.semantics.environment.overwriteBuiltIns;
-		if(!builtIns.loadDefaults) {
-			BuiltInMemory.clear();
-			EmptyBuiltInMemory.clear();
-		}
-		registerBuiltInDefinitions(builtIns.definitions);
 	}
 
 	/**
@@ -163,7 +156,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	}
 
 
-	public getResults(intermediate?:false): PipelineOutput<P>
+	public getResults(intermediate?: false): PipelineOutput<P>
 	public getResults(intermediate: true): Partial<PipelineOutput<P>>
 	public getResults(intermediate: boolean): PipelineOutput<P>
 	/**

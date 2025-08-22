@@ -21,6 +21,7 @@ import {
 	retrieveActiveEnvironment
 } from '../../dataflow/internal/process/functions/call/built-in/built-in-function-definition';
 import { updatePotentialAddition } from './static-slicer';
+import type { DataflowInformation } from '../../dataflow/info';
 
 /**
  * Returns the function call targets (definitions) by the given caller
@@ -88,9 +89,9 @@ function linkCallTargets(
 }
 
 /** returns the new threshold hit count */
-export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, dataflowGraph: DataflowGraph, queue: VisitingQueue): void {
+export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, dataflowInformation: DataflowInformation, queue: VisitingQueue): void {
 	const baseEnvironment = current.baseEnvironment;
-	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargets(dataflowGraph, callerInfo, current.baseEnvironment, queue);
+	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargets(dataflowInformation.graph, callerInfo, current.baseEnvironment, queue);
 	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment);
 
 	if(functionCallTargets.size === 0) {
@@ -99,7 +100,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 		 * hence, we add a new flag and add all argument values to the queue causing directly
 		 */
 		for(const arg of callerInfo.args) {
-			includeArgumentFunctionCallClosure(arg, baseEnvironment, activeEnvironment, queue, dataflowGraph);
+			includeArgumentFunctionCallClosure(arg, baseEnvironment, activeEnvironment, queue, dataflowInformation.graph);
 		}
 		return;
 	}

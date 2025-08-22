@@ -13,6 +13,10 @@ To get started developing on *flowR*, we recommend carefully reading the followi
 - 💖 [Contributing guidelines](${FlowrGithubBaseRef}/flowr/tree/main/.github/CONTRIBUTING.md).\
   This page also includes information about how to set up **git-lfs** and several **git hooks**.
 
+If you have any questions, please check out the [FAQ](${FlowrWikiBaseRef}/FAQ) first, but if the question
+is not answered there (or in the wiki in general), feel free to ask a question.  
+	
+
 ## ⌛ TL;DR
 
 The most important steps to get the *flowR* development environment set up (after installing **R** and **Node.js**) can be seen below. For convenience, they can be executed all at once using the following command:

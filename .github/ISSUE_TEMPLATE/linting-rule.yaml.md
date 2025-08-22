@@ -24,11 +24,14 @@ body:
       options:
         - New Rule
         - Absolute Paths
+        - Dataframe Access Validation
+        - Dead Code
         - Deprecated Functions
         - File Path Validity
         - Naming Convention
         - Seeded Randomness
         - Unused Definitions
+        - Useless Loops
       default: 0
   - type: checkboxes
     id: tags

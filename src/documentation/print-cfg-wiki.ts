@@ -263,8 +263,7 @@ ${Object.entries(CfgVertexType).map(([key, value]) => `- \`${key}\` (${value})`)
 We use the ${shortLink('CfgBasicBlockVertex', types.info)} to represent [basic blocks](#cfg-basic-blocks) and separate
 expressions (${shortLink('CfgExpressionVertex', types.info)}) and statements (${shortLink('CfgStatementVertex', types.info)}) 
 as control flow units with and without side effects (if you want to, you can see view statements as effectful expressions).
-The markers (${shortLink('CfgMidMarkerVertex', types.info)} and ${shortLink('CfgEndMarkerVertex', types.info)})
-indicate specific segments of larger expressions/statements (e.g., an \`if\` which has a condition and its branches). 
+The markers (${shortLink('CfgEndMarkerVertex', types.info)}) indicate the end of larger expressions/statements. 
 
 To signal these links, the expressions and statements contain information about the attached markers:
 
@@ -274,7 +273,7 @@ Similarly, the markers contain a link to their root:
 
 ${printHierarchy({ info: types.info, root: 'CfgWithRoot', program: types.program, openTop: true })}
 
-In mermaid visualizations, we use rectangles for statements, rounded rectangles for expressions, circles for exit markers and double-lined rectangles for mid markers.
+In mermaid visualizations, we use rectangles for statements, rounded rectangles for expressions and circles for exit markers.
 Blocks are visualized as boxes around the contained vertices.
 
 ${block({
@@ -600,7 +599,7 @@ Hence, you may rely on the corresponding exit point(s) to identify all exits of 
 
 ${block({
 	type:    'WARNING',
-	content: 'Using basic blocks, this works just the same. However please keep in mind that the corresponding exit markers do not (and for control statements usually will not) be part of the same basic block.'
+	content: 'Using basic blocks, this works just the same. However, please keep in mind that the corresponding exit markers do not (and for control statements usually will not) be part of the same basic block.'
 })}
 
 `;

@@ -38,7 +38,7 @@ echo "done."
 FILES_DIR="$(pwd)/files/"
 
 ## run the benchmark script for each file
-CMD=(npm run benchmark -- --parallel "${PARALLEL}" --runs "${RUNS}" --output "${RAW_OUTPUT}" --parser "${PARSER}" "${FILES_DIR}")
+CMD=(npm run benchmark -- --cfg --parallel "${PARALLEL}" --runs "${RUNS}" --output "${RAW_OUTPUT}" --parser "${PARSER}" "${FILES_DIR}")
 
 echo -e "  * Running: \"${CMD[*]}\"...\033[33m"
 "${CMD[@]}"

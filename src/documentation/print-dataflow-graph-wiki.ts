@@ -25,10 +25,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import {
-	resolveByName,
-	resolvesToBuiltInConstant,
-} from '../dataflow/environments/resolve-by-name';
+import { resolveByName, resolvesToBuiltInConstant, } from '../dataflow/environments/resolve-by-name';
 import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
@@ -964,6 +961,13 @@ The following sections present details on the different types of vertices and ed
 ${prefixLines(codeBlock('ts', 'const node = graph.idMap.get(id);'), '> ')}
 > In case you just need the name (\`lexeme\`) of the respective vertex, ${shortLink(recoverName.name, vertexType.info)} can help you out:
 ${prefixLines(codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap);`), '> ')}
+>
+> Please note that not every node in the normalized AST is represented in the dataflow graph.
+> For example, if the node is unreachable in a way that can be detected during the analysis and flowR
+> is configured to ignore dead code. Likewise, empty argument wrappers do not have a corresponding
+> dataflow graph vertex (as they are not relevant for the dataflow graph). It depends on the scenario what to do in such a case. 
+> For argument wrappers you can access the dataflow information for their value. For dead code, however, flowR currently contains
+> some core heuristics that remove it which cannot be reversed easily. So please open [an issue](${NewIssueUrl}) if you encounter such a case and require the node to be present in the dataflow graph.
 
 ${section('Vertices', 2, 'vertices')}
 

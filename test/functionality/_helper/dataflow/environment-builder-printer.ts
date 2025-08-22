@@ -2,8 +2,12 @@
 /* this is a test-only utility */
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert';
 import { wrap, wrapControlDependencies } from './printer';
-import type { IEnvironment, REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
-import { BuiltInEnvironment } from '../../../../src/dataflow/environments/environment';
+import type {
+	IEnvironment,
+	REnvironmentInformation
+} from '../../../../src/dataflow/environments/environment';
+
+
 import type { IdentifierDefinition } from '../../../../src/dataflow/environments/identifier';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 
@@ -18,7 +22,7 @@ export class EnvironmentBuilderPrinter {
 	private process() {
 		let current = this.env.current;
 		let i = this.env.level;
-		while(current !== undefined && current.id !== BuiltInEnvironment.id) {
+		while(!current?.builtInEnv) {
 			if(i-- > 0) {
 				this.push();
 			}

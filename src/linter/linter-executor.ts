@@ -9,17 +9,16 @@ import { deepMergeObject } from '../util/objects';
 import type { FlowrConfigOptions } from '../config';
 
 export function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions }, lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>>): LintingResults<Name> {
-	const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
-	const fullConfig = deepMergeObject<LintingRuleConfig<Name>>(rule.info.defaultConfig, lintingRuleConfig);
-
-	const ruleSearch = rule.createSearch(fullConfig, input);
-
-	const searchStart = Date.now();
-	const searchResult = runSearch(ruleSearch, input);
-	const searchTime = Date.now() - searchStart;
-
-
 	try {
+		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
+		const fullConfig = deepMergeObject<LintingRuleConfig<Name>>(rule.info.defaultConfig, lintingRuleConfig);
+
+		const ruleSearch = rule.createSearch(fullConfig, input);
+
+		const searchStart = Date.now();
+		const searchResult = runSearch(ruleSearch, input);
+		const searchTime = Date.now() - searchStart;
+
 		const processStart = Date.now();
 		const result = rule.processSearchResult(searchResult, fullConfig, input);
 		const processTime = Date.now() - processStart;

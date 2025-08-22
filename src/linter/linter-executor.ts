@@ -18,16 +18,23 @@ export function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name
 	const searchResult = runSearch(ruleSearch, input);
 	const searchTime = Date.now() - searchStart;
 
-	const processStart = Date.now();
-	const result = rule.processSearchResult(searchResult, fullConfig, input);
-	const processTime = Date.now() - processStart;
 
-	return {
-		...result,
-		'.meta': {
-			...result['.meta'],
-			searchTimeMs:  searchTime,
-			processTimeMs: processTime
-		}
-	};
+	try {
+		const processStart = Date.now();
+		const result = rule.processSearchResult(searchResult, fullConfig, input);
+		const processTime = Date.now() - processStart;
+		return {
+			...result,
+			'.meta': {
+				...result['.meta'],
+				searchTimeMs:  searchTime,
+				processTimeMs: processTime
+			}
+		};
+	} catch(e) {
+		const msg = typeof e === 'string' ? e : e instanceof Error ? e.message : JSON.stringify(e);
+		return {
+			error: msg
+		};
+	}
 }

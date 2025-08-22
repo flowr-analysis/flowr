@@ -28,7 +28,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 		if(hasMaybe) {
 			const old = map.get(key);
 			// we need to make a copy to avoid side effects for old reference in other environments
-			const updatedOld: IdentifierDefinition[] = old ?? [];
+			const updatedOld: IdentifierDefinition[] = [...old ?? []];
 			for(const v of values) {
 				const index = updatedOld.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt);
 				if(index < 0) {
@@ -42,7 +42,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 					}
 				}
 			}
-			map.set(key, [...updatedOld]);
+			map.set(key, updatedOld);
 		} else {
 			map.set(key, values);
 		}

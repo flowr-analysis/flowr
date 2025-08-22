@@ -65,12 +65,13 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 			}
 		}
 	}
-	const containedSubflowIn: readonly DataflowGraphVertexFunctionDefinition[] = [...graph.vertices(true)]
+	const containedSubflowIn: IdentifierReference[] = graph.vertices(true)
 		.filter(([, info]) => isFunctionDefinitionVertex(info))
-		.flatMap(([, info]) => (info as DataflowGraphVertexFunctionDefinition));
+		.flatMap(([, info]) => (info as DataflowGraphVertexFunctionDefinition).subflow.in)
+		.toArray();
 
 	// try to resolve them against the current environment
-	for(const ref of [...value.in, ...containedSubflowIn.flatMap(n => n.subflow.in)]) {
+	for(const ref of value.in.concat(containedSubflowIn)) {
 		if(ref.name) {
 			const resolved = ref.name ? resolveByName(ref.name, env, ref.type) ?? [] : [];
 			for(const resolve of resolved) {

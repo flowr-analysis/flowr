@@ -116,7 +116,7 @@ export const UNUSED_DEFINITION = {
 				const ingoingEdges = data.dataflow.graph.ingoingEdges(dfgVertex.id);
 
 				const interestedIn = isVariableDefinitionVertex(dfgVertex) ? InterestingEdgesVariable : InterestingEdgesFunction;
-				const ingoingInteresting = [...ingoingEdges?.values() ?? []].some(e => edgeIncludesType(e.types, interestedIn));
+				const ingoingInteresting = ingoingEdges?.values().some(e => edgeIncludesType(e.types, interestedIn));
 
 				if(ingoingInteresting) {
 					return undefined;

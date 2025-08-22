@@ -30,7 +30,7 @@ export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 export function findNonLocalReads(graph: DataflowGraph, ignore: readonly IdentifierReference[]): IdentifierReference[] {
 	const ignores = new Set(ignore.map(i => i.nodeId));
 	const ids = new Set(
-		[...graph.vertices(true)]
+		graph.vertices(true)
 			.filter(([_, info]) => info.tag === VertexType.Use || info.tag === VertexType.FunctionCall)
 			.map(([id, _]) => id)
 	);

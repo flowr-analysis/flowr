@@ -205,7 +205,7 @@ export class BenchmarkSlicer {
 		guard(this.dataflow !== undefined, 'dataflow should be defined after initialization');
 
 		// collect dataflow graph size
-		const vertices = [...this.dataflow.graph.vertices(true)];
+		const vertices = this.dataflow.graph.vertices(true);
 		let numberOfEdges = 0;
 		let numberOfCalls = 0;
 		let numberOfDefinitions = 0;

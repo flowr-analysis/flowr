@@ -329,8 +329,8 @@ ${await (async() => {
 		const code = 'foo <- function() 3\nfoo()'; 
 		const [text, info] = await printDfGraphForCode(shell, code, { exposeResult: true, mark: new Set([6, '6->0', '6->1', '6->3']) });
 		
-		const numberOfEdges = [...info.dataflow.graph.edges()].flatMap(e => [...e[1].keys()]).length;
-		const callVertex = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name === 'foo');
+		const numberOfEdges = [...info.dataflow.graph. edges()].flatMap(e => [...e[1].keys()]).length;
+		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name === 'foo');
 		guard(callVertex !== undefined, () => `Could not find call vertex for ${code}`);
 		const [callId] = callVertex;
 		
@@ -546,9 +546,10 @@ ${details('Example: Nested Function Definitions',
 	await (async() => {
 		const [text, info] = await printDfGraphForCode(shell, 'f <- function() { g <- function() 3 }', { mark: new Set([9, 6]), exposeResult: true });
 	
-		const definitions = [...info.dataflow.graph.vertices(true)]
+		const definitions = info.dataflow.graph.vertices(true)
 			.filter(([, vertex]) => vertex.tag === VertexType.FunctionDefinition)
-			.map(([id, vertex]) => `| \`${id}\` | { \`${[...(vertex as DataflowGraphVertexFunctionDefinition).subflow.graph].join('`, `')}\` } |`);
+			.map(([id, vertex]) => `| \`${id}\` | { \`${[...(vertex as DataflowGraphVertexFunctionDefinition).subflow.graph].join('`, `')}\` } |`)
+			.toArray();
 			
 		return `
 ${text}

@@ -89,7 +89,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 			accesses.push(access);
 		}
 
-		const operations = [...accessOperations.entries()].flatMap(([, operations]) => operations);
+		const operations = accessOperations.entries().flatMap(([, operations]) => operations).toArray();
 
 		const metadata: DataFrameAccessValidationMetadata = {
 			numOperations: accessOperations.size,

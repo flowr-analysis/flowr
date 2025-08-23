@@ -76,4 +76,6 @@ export interface ReplCodeCommand extends ReplBaseCommand {
 	 * Furthermore, it has to obey the formatter defined in the {@link ReplOutput}.
 	 */
 	fn:           (info: ReplCodeCommandInformation) => Promise<void> | void
+	/** Argument parser */
+	argsParser:   (remainingLine: string) => { input: string, remainingArgs: string[]}
 }

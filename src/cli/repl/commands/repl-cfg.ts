@@ -7,6 +7,7 @@ import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/process
 import type { CfgSimplificationPassName } from '../../../control-flow/cfg-simplification';
 import { DefaultCfgSimplificationOrder } from '../../../control-flow/cfg-simplification';
 import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';
+import { handleString } from '../core';
 
 function formatInfo(out: ReplOutput, type: string): string {
 	return out.formatter.format(`Copied ${type} to clipboard.`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
@@ -31,6 +32,7 @@ export const controlflowCommand: ReplCodeCommand = {
 	usageExample: ':controlflow',
 	aliases:      [ 'cfg', 'cf' ],
 	script:       false,
+	argsParser:   (args: string) => handleString(args),
 	fn:           async({ output, analyzer }) => {
 		await produceAndPrintCfg(analyzer, output, [], cfgToMermaid);
 	}
@@ -43,6 +45,7 @@ export const controlflowStarCommand: ReplCodeCommand = {
 	usageExample: ':controlflow*',
 	aliases:      [ 'cfg*', 'cf*' ],
 	script:       false,
+	argsParser:   (args: string) => handleString(args),
 	fn:           async({ output, analyzer }) => {
 		await produceAndPrintCfg(analyzer, output, [], cfgToMermaidUrl);
 	}
@@ -55,6 +58,7 @@ export const controlflowBbCommand: ReplCodeCommand = {
 	usageExample: ':controlflowbb',
 	aliases:      [ 'cfgb', 'cfb' ],
 	script:       false,
+	argsParser:   (args: string) => handleString(args),
 	fn:           async({ output, analyzer }) => {
 		await produceAndPrintCfg(analyzer, output, ['to-basic-blocks'], cfgToMermaid);
 	}
@@ -67,6 +71,7 @@ export const controlflowBbStarCommand: ReplCodeCommand = {
 	usageExample: ':controlflowbb*',
 	aliases:      [ 'cfgb*', 'cfb*' ],
 	script:       false,
+	argsParser:   (args: string) => handleString(args),
 	fn:           async({ output, analyzer }) => {
 		await produceAndPrintCfg(analyzer, output, ['to-basic-blocks' ], cfgToMermaidUrl);
 	}

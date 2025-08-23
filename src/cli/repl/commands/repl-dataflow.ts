@@ -3,6 +3,7 @@ import { fileProtocol } from '../../../r-bridge/retriever';
 import { graphToMermaid, graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
+import { handleString } from '../core';
 
 function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInformation ): string {
 	return out.formatter.format(`Copied ${type} to clipboard (dataflow: ${meta['.meta'].cached ? 'cached' : meta['.meta'].timing + 'ms'}).`,
@@ -15,6 +16,7 @@ export const dataflowCommand: ReplCodeCommand = {
 	usageExample: ':dataflow',
 	aliases:      [ 'd', 'df' ],
 	script:       false,
+	argsParser:   (args: string) => handleString(args),
 	fn:           async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = graphToMermaid({ graph: result.graph, includeEnvironments: false }).string;
@@ -33,6 +35,7 @@ export const dataflowStarCommand: ReplCodeCommand = {
 	usageExample: ':dataflow*',
 	aliases:      [ 'd*', 'df*' ],
 	script:       false,
+	argsParser:   (args: string) => handleString(args),
 	fn:           async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = graphToMermaidUrl(result.graph, false);
@@ -52,6 +55,7 @@ export const dataflowSimplifiedCommand: ReplCodeCommand = {
 	usageExample: ':dataflowsimple',
 	aliases:      [ 'ds', 'dfs' ],
 	script:       false,
+	argsParser:   (args: string) => handleString(args),
 	fn:           async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = graphToMermaid({ graph: result.graph, includeEnvironments: false, simplified: true }).string;
@@ -70,6 +74,7 @@ export const dataflowSimpleStarCommand: ReplCodeCommand = {
 	usageExample: ':dataflowsimple*',
 	aliases:      [ 'ds*', 'dfs*' ],
 	script:       false,
+	argsParser:   (args: string) => handleString(args),
 	fn:           async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = graphToMermaidUrl(result.graph, false, undefined, true);

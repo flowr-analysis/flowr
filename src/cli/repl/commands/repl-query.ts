@@ -1,5 +1,5 @@
-import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
-import type { ReplCommand, ReplOutput } from './repl-main';
+import { fileProtocol } from '../../../r-bridge/retriever';
+import type { ReplCodeCommand, ReplOutput } from './repl-main';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { ansiFormatter, italic } from '../../../util/text/ansi';
 import { describeSchema } from '../../../util/schema';
@@ -7,12 +7,10 @@ import type { Query, QueryResults, SupportedQueryTypes } from '../../../queries/
 import { AnyQuerySchema, executeQueries, QueriesSchema } from '../../../queries/query';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
-import type { KnownParser } from '../../../r-bridge/parser';
-import type { FlowrConfigOptions } from '../../../config';
 import { getDummyFlowrProject } from '../../../project/flowr-project';
-import { FlowrAnalyzerBuilder } from '../../../project/flowr-analyzer-builder';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
+import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';
 
 
 function printHelp(output: ReplOutput) {
@@ -26,9 +24,8 @@ function printHelp(output: ReplOutput) {
 	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
 }
 
-async function processQueryArgs(line: string, parser: KnownParser, output: ReplOutput, config: FlowrConfigOptions): Promise<undefined | { query: QueryResults<SupportedQueryTypes>, processed: {dataflow: DataflowInformation, normalize: NormalizedAst} }> {
-	const args = splitAtEscapeSensitive(line);
-	const query = args.shift();
+async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalyzer, remainingArgs: string[]): Promise<undefined | { query: QueryResults<SupportedQueryTypes>, processed: {dataflow: DataflowInformation, normalize: NormalizedAst} }> {
+	const query = remainingArgs[0];
 
 	if(!query) {
 		output.stderr('No query provided, use \':query help\' to get more information.');
@@ -62,27 +59,36 @@ async function processQueryArgs(line: string, parser: KnownParser, output: ReplO
 
 	const dummyProject = await getDummyFlowrProject();
 
-	// TODO Use analyzer supplied by REPL core
-	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(args.join(' ').trim()))
-		.setParser(parser)
-		.setConfig(config)
-		.build();
-
 	return {
-		query:     executeQueries({ dataflow: await analyzer.dataflow(), ast: await analyzer.normalizedAst(), config: config, libraries: dummyProject.libraries }, parsedQuery),
+		query: executeQueries({
+			dataflow:  await analyzer.dataflow(),
+			ast:       await analyzer.normalizedAst(),
+			config:    analyzer.flowrConfig,
+			libraries: dummyProject.libraries },
+		parsedQuery),
 		processed: { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalizedAst() }
 	};
 }
 
-export const queryCommand: ReplCommand = {
+function parseArgs(line: string) {
+	const args = splitAtEscapeSensitive(line);
+	const command = args.shift();
+	return {
+		input:     args.join(' ').trim(),
+		remaining: command ? [command] : []
+	};
+}
+
+export const queryCommand: ReplCodeCommand = {
 	description:  `Query the given R code, start with '${fileProtocol}' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).`,
-	usesAnalyzer: false,
+	usesAnalyzer: true,
 	usageExample: ':query "<query>" <code>',
 	aliases:      [],
 	script:       false,
-	fn:           async({ output, parser, remainingLine, config }) => {
+	argsParser:   parseArgs,
+	fn:           async({ output, analyzer, remainingArgs }) => {
 		const totalStart = Date.now();
-		const results = await processQueryArgs(remainingLine, parser, output, config);
+		const results = await processQueryArgs(output, analyzer, remainingArgs);
 		const totalEnd = Date.now();
 		if(results) {
 			output.stdout(asciiSummaryOfQueryResult(ansiFormatter, totalEnd - totalStart, results.query, results.processed));
@@ -90,14 +96,15 @@ export const queryCommand: ReplCommand = {
 	}
 };
 
-export const queryStarCommand: ReplCommand = {
+export const queryStarCommand: ReplCodeCommand = {
 	description:  'Similar to query, but returns the output in json format.',
-	usesAnalyzer: false,
+	usesAnalyzer: true,
 	usageExample: ':query* <query> <code>',
-	aliases:      [ ],
+	aliases:      [],
 	script:       false,
-	fn:           async({ output, parser, remainingLine, config }) => {
-		const results = await processQueryArgs(remainingLine, parser, output, config);
+	argsParser:   parseArgs,
+	fn:           async({ output, analyzer, remainingArgs }) => {
+		const results = await processQueryArgs(output, analyzer, remainingArgs);
 		if(results) {
 			output.stdout(JSON.stringify(results.query, jsonReplacer));
 		}

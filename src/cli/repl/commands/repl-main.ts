@@ -41,8 +41,9 @@ export interface ReplCommandInformation {
 }
 
 export interface ReplCodeCommandInformation {
-	output:   ReplOutput,
-	analyzer: FlowrAnalyzer
+	output:        ReplOutput,
+	analyzer:      FlowrAnalyzer
+	remainingArgs: string[]
 }
 
 /**
@@ -77,5 +78,5 @@ export interface ReplCodeCommand extends ReplBaseCommand {
 	 */
 	fn:           (info: ReplCodeCommandInformation) => Promise<void> | void
 	/** Argument parser */
-	argsParser:   (remainingLine: string) => { input: string, remainingArgs: string[]}
+	argsParser:   (remainingLine: string) => { input: string, remaining: string[]}
 }

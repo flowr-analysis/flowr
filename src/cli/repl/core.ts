@@ -81,8 +81,11 @@ export function makeDefaultReplReadline(): readline.ReadLineOptions {
 	};
 }
 
-function handleString(code: string): string {
-	return code.startsWith('"') ? JSON.parse(code) as string : code;
+export function handleString(code: string) {
+	return {
+		input:     code.startsWith('"') ? JSON.parse(code) as string : code,
+		remaining: []
+	};
 }
 
 async function replProcessStatement(output: ReplOutput, statement: string, parser: KnownParser, allowRSessionAccess: boolean, config: FlowrConfigOptions): Promise<void> {
@@ -94,14 +97,13 @@ async function replProcessStatement(output: ReplOutput, statement: string, parse
 			try {
 				const remainingLine = statement.slice(command.length + 2).trim();
 				if(processor.usesAnalyzer) {
-					const request = requestFromInput(handleString(remainingLine));
-					// TODO TSchoeller Ideally the analyzer would also be used for query commands
-					// TODO TSchoeller Is this the right level to create the analyzer instance?
+					const args = processor.argsParser(remainingLine);
+					const request = requestFromInput(args.input);
 					const analyzer = await new FlowrAnalyzerBuilder(request)
 						.setConfig(config)
 						.setParser(parser)
 						.build();
-					await processor.fn({ output, analyzer });
+					await processor.fn({ output, analyzer, remainingArgs: args.remaining });
 				} else {
 					await processor.fn({ output, parser, remainingLine, allowRSessionAccess, config });
 				}

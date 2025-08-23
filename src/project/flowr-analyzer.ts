@@ -1,7 +1,11 @@
 import type { FlowrConfigOptions } from '../config';
 import type { RParseRequests } from '../r-bridge/retriever';
-import { createDataflowPipeline, createNormalizePipeline } from '../core/steps/pipeline/default-pipelines';
-import type { KnownParser } from '../r-bridge/parser';
+import {
+	createDataflowPipeline,
+	createNormalizePipeline,
+	createParsePipeline
+} from '../core/steps/pipeline/default-pipelines';
+import type { KnownParser, ParseStepOutput } from '../r-bridge/parser';
 import type { Queries, SupportedQueryTypes } from '../queries/query';
 import { executeQueries } from '../queries/query';
 import { extractCfg } from '../control-flow/extract-cfg';
@@ -16,6 +20,7 @@ export class FlowrAnalyzer {
 	private readonly request:    RParseRequests;
 	private readonly parser:     KnownParser;
 
+	private parse = undefined as unknown as ParseStepOutput<any>;
 	private ast = undefined as unknown as NormalizedAst;
 	private dataflowInfo = undefined as unknown as DataflowInformation;
 	private controlflowInfo = undefined as unknown as ControlFlowInformation;
@@ -30,6 +35,30 @@ export class FlowrAnalyzer {
 		this.ast = undefined as unknown as NormalizedAst;
 		this.dataflowInfo = undefined as unknown as DataflowInformation;
 		this.controlflowInfo = undefined as unknown as ControlFlowInformation;
+	}
+
+	public parserName(): string {
+		return this.parser.name;
+	}
+
+	// TODO TSchoeller Fix type
+	// TODO TSchoeller Do we want to expose parsing in this way?
+	public async parseOutput(force?: boolean): Promise<ParseStepOutput<any> & PipelinePerStepMetaInformation> {
+		if(this.parse && !force) {
+			return {
+				...this.parse,
+				'.meta': {
+					cached: true
+				}
+			};
+		}
+
+		const result = await createParsePipeline(
+			this.parser,
+			{ request: this.request },
+			this.flowrConfig).allRemainingSteps();
+		this.parse = result.parse;
+		return result.parse;
 	}
 
 	public async normalizedAst(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation> {

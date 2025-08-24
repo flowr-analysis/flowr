@@ -204,7 +204,6 @@ export const NAMING_CONVENTION = {
 					quickFix: fix ? createNamingConventionQuickFixes(data.dataflow.graph, id, fix, casing) : undefined
 				};
 			});
-		
 		return {
 			results: results,
 			'.meta': { 

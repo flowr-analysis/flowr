@@ -51,6 +51,10 @@ async function getText(shell: RShell) {
 		rootFolder:  path.resolve('./src'),
 		inlineTypes: mermaidHide
 	});
+	const { info: testInfo } = getTypesFromFolder({
+		rootFolder:  path.resolve('./test'),
+		inlineTypes: mermaidHide
+	});
 
 	return `${autoGenHeader({ filename: module.filename, purpose: 'core', rVersion: rversion })}
 
@@ -166,7 +170,7 @@ We can see that it relies on three steps:
 1. **${shortLink('PARSE_WITH_R_SHELL_STEP', info, false)}** ([parsing](#parsing)): Uses the ${shortLink(RShell.name, info)} to parse the input program.\\
    _Its main function linked as the processor is the ${shortLink(parseRequests.name, info, false)} function._
 2. **${shortLink('NORMALIZE', info, false)}** ([normalization](#normalization)):  Normalizes the AST produced by the parser (to create a [normalized AST](${FlowrWikiBaseRef}/Normalized-AST)).\\
-   _Its main function linked as the processor is the ${shortLink(normalize.name, info, false)} function._
+   _Its main function linked as the processor is the ${shortLink(normalize.name, info, false, 'b', { filePath: 'parser.ts' })} function._
 3. **${shortLink('STATIC_DATAFLOW', info, false)}** ([dataflow](#dataflow-graph-generation)): Produces the actual [dataflow graph](${FlowrWikiBaseRef}/Dataflow-Graph) from the normalized AST.\\
    _Its main function linked as the processor is the ${shortLink(produceDataFlowGraph.name, info, false)} function._
 
@@ -398,7 +402,7 @@ ${await documentReplSession(shell, [{
 ### Getting flowR to Talk
 
 When using flowR from the CLI, you can use the ${getCliLongOptionOf('flowr', 'verbose')} option to get more information about what flowR is doing.
-While coding, however, you can use the ${shortLink(setMinLevelOfAllLogs.name, info)} function to set the minimum level of logs to be displayed (this works with the ${shortLink(FlowrLogger.name, info)} abstraction).
+While coding, however, you can use the ${shortLink(setMinLevelOfAllLogs.name, testInfo)} function to set the minimum level of logs to be displayed (this works with the ${shortLink(FlowrLogger.name, info)} abstraction).
 In general, you can configure the levels of individual logs, such as the general \`log\` (obtained with ${shortLink('getActiveLog', info)}) or the ${shortLink('parseLog', info)}.
 Please note that flowR makes no guarantees that log outputs are persistent across versions, and it is up to the implementors to provide sensible logging.
 If you are an implementor and want to add logging, please make sure there are no larger runtime impliciations when logging is disabled. 

@@ -458,7 +458,7 @@ function fuzzyCompare(a: string, b: string): boolean {
 	return aStr === bStr || aStr.includes(bStr) || bStr.includes(aStr);
 }
 
-function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], fuzzy = false): [string | undefined, string, TypeElementInSource]| undefined {
+function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], fuzzy = false, file: undefined | string = undefined): [string | undefined, string, TypeElementInSource]| undefined {
 	let container: string | undefined = undefined;
 	if(name.includes('::')) {
 		[container, name] = name.split(/:::?/);
@@ -472,6 +472,13 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], f
 			return undefined;
 		}
 	}
+	if(file) {
+		node = node.filter(n => n.filePath.includes(file));
+	}
+	if(node.length > 1) {
+		// try to find one without extends
+		node = node.sort((a, b) => a.extends.length - b.extends.length);
+	}
 	return [container, name, node[0]];
 }
 
@@ -482,14 +489,18 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], f
  * @param hierarchy - The hierarchy of types to search in
  * @param codeStyle - Whether to use code style for the link
  * @param realNameWrapper - How to highlight the function in name in the `x::y` format?
+ * @param filter    - Additional filter to, e.g.,  only consider types from a specific file path
  */
-export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true, realNameWrapper = 'b'): string {
-	const res = retrieveNode(name, hierarchy);
+export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true, realNameWrapper = 'b', filter?: {
+    filePath: string
+}): string {
+	const res = retrieveNode(name, hierarchy, false, filter?.filePath);
 	if(!res) {
 		console.error(`Could not find node ${name} when resolving short link!`);
 		return '';
 	}
 	const [, mainName, node] = res;
+	/* just to get a mutable package variable :D */
 	let pkg = res[0];
 	if(name.includes(':::')) {
 		pkg = undefined;

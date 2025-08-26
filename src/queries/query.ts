@@ -47,6 +47,8 @@ import type { ControlFlowQuery } from './catalog/control-flow-query/control-flow
 import { ControlFlowQueryDefinition } from './catalog/control-flow-query/control-flow-query-format';
 import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-format';
 import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
+import type { StringDomainQuery } from './catalog/string-domain-query/string-domain-query-format';
+import { StringDomainQueryDefinition } from './catalog/string-domain-query/string-domain-query-format';
 
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -67,6 +69,7 @@ export type Query = CallContextQuery
 	| ProjectQuery
 	| OriginQuery
 	| LinterQuery
+	| StringDomainQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -108,7 +111,8 @@ export const SupportedQueries = {
 	'resolve-value':    ResolveValueQueryDefinition,
 	'project':          ProjectQueryDefinition,
 	'origin':           OriginQueryDefinition,
-	'linter':           LinterQueryDefinition
+	'linter':           LinterQueryDefinition,
+	'string-domain':    StringDomainQueryDefinition,
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

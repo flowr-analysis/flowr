@@ -1,5 +1,4 @@
-import type { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import type { AbstractStringValue, SDRNode, StringDomain } from '../domain';
+import type { SDValue, StringDomain } from '../domain';
 import { Bottom, Top } from '../domain';
 
 export type Const = {
@@ -7,11 +6,11 @@ export type Const = {
   value: string,
 }
 
-export function isConst(value: AbstractStringValue): value is Const {
+export function isConst(value: SDValue): value is Const {
 	return value.kind === 'const';
 }
 
-function toConst(value: AbstractStringValue): AbstractStringValue {
+function toConst(value: SDValue): SDValue {
 	switch(value.kind) {
 		case 'const-set':
 			switch(value.value.length) {
@@ -20,9 +19,6 @@ function toConst(value: AbstractStringValue): AbstractStringValue {
 						kind:  'const',
 						value: value.value[0],
 					};
-
-				case 0:
-					return Bottom;
 
 				default:
 					return Top;
@@ -39,15 +35,46 @@ function toConst(value: AbstractStringValue): AbstractStringValue {
 	}
 }
 
-export class ConstStringDomain implements StringDomain {
-	assignment(source: SDRNode): AbstractStringValue {
-		return toConst(source.info.stringdomain?.value ?? Top);
-	}
+function konst(value: string): Const {
+	return { kind: 'const', value };
+}
 
-	stringConstant(_: SDRNode, str: RString): AbstractStringValue {
-		return {
-			kind:  'const',
-			value: str.content.str
-		};
+export class ConstStringDomain implements StringDomain {
+  const(value: string): SDValue {
+  	return konst(value)
+  }
+    
+	concat(_sep: SDValue, ..._args: readonly SDValue[]): SDValue {
+		const sep = toConst(_sep);
+		const args = _args.map(toConst); 
+			
+		if (_args.length === 1) {
+			return _args[0]
+		}
+
+		if(!isConst(sep) || !args.every(isConst)) {
+			return Top;
+		}
+
+		return konst(
+			args.slice(1).reduce((l, r) =>
+				l + sep.value + r.value, args[0].value
+			)
+		);
+	}
+    
+	join(..._args: readonly SDValue[]): SDValue {
+		const args = _args.map(toConst); 
+			
+		if(!args.every(isConst)) {
+			return Top;
+		}
+			
+    
+		if(args.every(i => i.value === args[0].value)) {
+			return konst(args[0].value);
+		} else {
+			return Top;
+		}
 	}
 }

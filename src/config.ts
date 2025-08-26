@@ -184,7 +184,14 @@ export interface FlowrConfigOptions extends MergeableRecord {
 				 */
 				readonly maxReadLines:      number;
 			}
-		}
+		},
+
+		/**
+		 * The configuration of the string domain
+		 */
+		readonly string: {
+			readonly domain: 'const' | 'const-set',
+		},
 	}
 }
 
@@ -255,7 +262,10 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 				readExternalFiles: true,
 				maxReadLines:      1e6
 			}
-		}
+		},
+		string: {
+			domain: 'const-set',
+		},
 	}
 };
 
@@ -311,7 +321,10 @@ export const flowrConfigFileSchema = Joi.object({
 				readExternalFiles: Joi.boolean().description('Whether data frame shapes should be extracted from loaded external files, such as CSV files.'),
 				maxReadLines:      Joi.number().min(1).description('The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files.')
 			}).description('Configuration options for reading data frame shapes from loaded external data files, such as CSV files.')
-		}).description('The configuration of the shape inference for data frames.')
+		}).description('The configuration of the shape inference for data frames.'),
+		string: Joi.object({
+			domain: Joi.allow('const', 'const-set').description('The concrete string domain to be used during analysis')
+		}).description('The configuration of the string domain.')
 	}).description('The configuration options for abstract interpretation.')
 }).description('The configuration file format for flowR.');
 

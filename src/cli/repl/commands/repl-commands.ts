@@ -10,7 +10,7 @@ import {
 	dataflowCommand,
 	dataflowSimpleStarCommand,
 	dataflowSimplifiedCommand,
-	dataflowStarCommand
+	dataflowStarCommand,
 } from './repl-dataflow';
 import { controlflowBbCommand, controlflowBbStarCommand, controlflowCommand, controlflowStarCommand } from './repl-cfg';
 import type { OutputFormatter } from '../../../util/text/ansi';
@@ -20,6 +20,7 @@ import { guard } from '../../../util/assert';
 import { scripts } from '../../common/scripts-info';
 import { lineageCommand } from './repl-lineage';
 import { queryCommand, queryStarCommand } from './repl-query';
+import { stringDomainGraphStarCommand } from './repl-string-domain';
 
 function printHelpForScript(script: [string, ReplCommand], f: OutputFormatter, starredVersion?: ReplCommand): string {
 	let base = `  ${bold(padCmd(':' + script[0] + (starredVersion ? '[*]' : '')), f)}${script[1].description}`;
@@ -80,24 +81,25 @@ You can combine commands by separating them with a semicolon ${bold(';',output.f
  * All commands that should be available in the REPL.
  */
 const _commands: Record<string, ReplCommand> = {
-	'help':            helpCommand,
-	'quit':            quitCommand,
-	'version':         versionCommand,
-	'execute':         executeCommand,
-	'parse':           parseCommand,
-	'normalize':       normalizeCommand,
-	'normalize*':      normalizeStarCommand,
-	'dataflow':        dataflowCommand,
-	'dataflow*':       dataflowStarCommand,
-	'dataflowsimple':  dataflowSimplifiedCommand,
-	'dataflowsimple*': dataflowSimpleStarCommand,
-	'controlflow':     controlflowCommand,
-	'controlflow*':    controlflowStarCommand,
-	'controlflowbb':   controlflowBbCommand,
-	'controlflowbb*':  controlflowBbStarCommand,
-	'lineage':         lineageCommand,
-	'query':           queryCommand,
-	'query*':          queryStarCommand
+	'help':               helpCommand,
+	'quit':               quitCommand,
+	'version':            versionCommand,
+	'execute':            executeCommand,
+	'parse':              parseCommand,
+	'stringdomaingraph*': stringDomainGraphStarCommand,
+	'normalize':          normalizeCommand,
+	'normalize*':         normalizeStarCommand,
+	'dataflow':           dataflowCommand,
+	'dataflow*':          dataflowStarCommand,
+	'dataflowsimple':     dataflowSimplifiedCommand,
+	'dataflowsimple*':    dataflowSimpleStarCommand,
+	'controlflow':        controlflowCommand,
+	'controlflow*':       controlflowStarCommand,
+	'controlflowbb':      controlflowBbCommand,
+	'controlflowbb*':     controlflowBbStarCommand,
+	'lineage':            lineageCommand,
+	'query':              queryCommand,
+	'query*':             queryStarCommand
 };
 let commandsInitialized = false;
 

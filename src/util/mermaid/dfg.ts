@@ -18,7 +18,7 @@ import type { IEnvironment } from '../../dataflow/environments/environment';
 import { BuiltInEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isBuiltIn } from '../../dataflow/environments/built-in';
-
+import { inspect } from 'util';
 
 type MarkVertex = NodeId
 type MarkEdge = `${string}->${string}`
@@ -172,7 +172,7 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 	return lines;
 }
 
-function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, mark: ReadonlySet<NodeId> | undefined): void {
+function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, mark: ReadonlySet<NodeId> | undefined, includedInfo: string[] = []): void {
 	const fCall = info.tag === VertexType.FunctionCall;
 	const { open, close } = mermaidNodeBrackets(info.tag);
 	id = escapeId(id);
@@ -188,10 +188,12 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	const node = mermaid.rootGraph.idMap?.get(info.id);
 	const lexeme = node?.lexeme ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0]?.lexeme : '') ?? '??';
 
+	const infoLines = includedInfo.map(key => `\n${key}: ${inspect(node?.info[key])}`).join(''); 
+
 	if(mermaid.simplified) {
 		const location = node?.location?.[0] ? ` (L. ${node?.location?.[0]})` : '';
 		const escapedName = '**' + escapeMarkdown(node ? `${lexeme}` : '??') + '**' + location + (node ? `\n*${node.type}*` : '');
-		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\`"${close}`);
+		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${infoLines}\`"${close}`);
 	} else {
 		const escapedName = escapeMarkdown(node ? `[${node.type}] ${lexeme}` : '??');
 		const deps = info.cds ? ', :may:' + info.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
@@ -199,7 +201,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps}${lnks})\n      *${formatRange(n)}*${
 			fCall ? displayFunctionArgMapping(info.args) : ''
-		}\`"${close}`);
+		}${infoLines}\`"${close}`);
 	}
 	if(mark?.has(id)) {
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} ${mermaid.markStyle.vertex} `);
@@ -252,20 +254,21 @@ interface MermaidGraphConfiguration {
 	markStyle?:           MermaidMarkStyle,
 	rootGraph?:           DataflowGraph,
 	presentEdges?:        Set<string>,
-	simplified?:          boolean
+	simplified?:          boolean,
+	includedInfo?:        string[],
 }
 
 
 // make the passing of root ids more performant again
 function graphToMermaidGraph(
 	rootIds: ReadonlySet<NodeId>,
-	{ simplified, graph, prefix = 'flowchart BT', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = { vertex: 'stroke:teal,stroke-width:7px,stroke-opacity:.8;', edge: 'stroke:teal,stroke-width:4.2px,stroke-opacity:.8' } }: MermaidGraphConfiguration
+	{ simplified, graph, prefix = 'flowchart BT', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = { vertex: 'stroke:teal,stroke-width:7px,stroke-opacity:.8;', edge: 'stroke:teal,stroke-width:4.2px,stroke-opacity:.8' }, includedInfo }: MermaidGraphConfiguration
 ): MermaidGraph {
 	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, presentVertices: new Set(), mark, rootGraph: rootGraph ?? graph, includeEnvironments, markStyle, simplified };
 
 	for(const [id, info] of graph.vertices(true)) {
 		if(rootIds.has(id)) {
-			vertexToMermaid(info, mermaid, id, idPrefix, mark);
+			vertexToMermaid(info, mermaid, id, idPrefix, mark, includedInfo);
 		}
 	}
 
@@ -285,8 +288,8 @@ export function graphToMermaid(config: MermaidGraphConfiguration): { string: str
  * @param mark                - Special nodes to mark (e.g., those included in the slice)
  * @param simplified          - Whether to simplify the graph
  */
-export function graphToMermaidUrl(graph: DataflowGraph, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>, simplified = false): string {
-	return mermaidCodeToUrl(graphToMermaid({ graph, includeEnvironments, mark, simplified }).string);
+export function graphToMermaidUrl(graph: DataflowGraph, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>, simplified = false, includedInfo: string[] = []): string {
+	return mermaidCodeToUrl(graphToMermaid({ graph, includeEnvironments, mark, simplified, includedInfo }).string);
 }
 
 export interface LabeledDiffGraph {

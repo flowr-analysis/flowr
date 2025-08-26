@@ -1,4 +1,4 @@
-import type { SDValue, StringDomain } from '../domain';
+import type { SDValue, AbstractOperationsStringDomain } from '../domain';
 import { Bottom, Top } from '../domain';
 
 export type Const = {
@@ -39,7 +39,7 @@ function konst(value: string): Const {
 	return { kind: 'const', value };
 }
 
-export class ConstStringDomain implements StringDomain {
+export class ConstStringDomain implements AbstractOperationsStringDomain {
   const(value: string): SDValue {
   	return konst(value)
   }

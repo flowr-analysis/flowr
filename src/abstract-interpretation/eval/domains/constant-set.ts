@@ -1,4 +1,4 @@
-import type { SDValue, StringDomain } from '../domain';
+import type { SDValue, AbstractOperationsStringDomain } from '../domain';
 import { Bottom, Top } from '../domain';
 
 export type ConstSet = {
@@ -36,7 +36,7 @@ function constSet(...value: string[]): ConstSet {
 	};
 }
 
-export class ConstSetStringDomain implements StringDomain {
+export class ConstSetStringDomain implements AbstractOperationsStringDomain {
 	MAX_VARIANTS = 1_000
 	
 	const(value: string): SDValue {

@@ -16,7 +16,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type {
 	SDValue ,
 	Top,
-	type StringDomain,
+	type AbstractOperationsStringDomain,
 } from './domain';
 import { inspect } from 'util';
 import { sdEqual } from './equality';
@@ -65,10 +65,10 @@ export class StringDomainVisitor<
   Ast,
   Dfg
 > {
-	domain: StringDomain;
+	domain: AbstractOperationsStringDomain;
 	dirty: boolean = false;
 
-	constructor(domain: StringDomain, config: Config) {
+	constructor(domain: AbstractOperationsStringDomain, config: Config) {
 		super({
 			...config,
 			defaultVisitingOrder: 'forward',

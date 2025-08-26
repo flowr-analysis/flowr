@@ -9,8 +9,7 @@ export const Bottom: Bottom = { kind: 'bottom' };
 
 export type SDValue = Top | Bottom | Const | ConstSet
 
-// TODO: Rename: Abstract Operations String Domain
-export interface StringDomain {
+export interface AbstractOperationsStringDomain {
 	const(value: string): SDValue,
 	concat: (sep: SDValue, ...args: readonly SDValue[]) => SDValue,
 	join:   (...args: readonly SDValue[]) => SDValue,

@@ -236,6 +236,9 @@ ${codeBlock('json', JSON.stringify(
 						readExternalFiles: true,
 						maxReadLines:      1_000_000
 					}
+				},
+				string: {
+					domain: 'const-set'
 				}
 			}
 		} satisfies FlowrConfigOptions,

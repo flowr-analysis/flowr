@@ -117,10 +117,31 @@ jobs:
           update_page wiki/"FAQ" wiki:faq
           update_page wiki/"Linter" wiki:linter
           update_page wiki/"Value Resolve" wiki:value-resolve
+          echo "====== Updating Wiki Pages ======"
+          ids=()
+          ids+=$(update_page wiki/"Capabilities" capabilities-markdown &)
+          ids+=$(update_page wiki/"Dataflow Graph" wiki:df-graph &)
+          ids+=$(update_page wiki/"Query API" wiki:query-api &)
+          ids+=$(update_page wiki/"Search API" wiki:search-api &)
+          ids+=$(update_page wiki/"Engines" wiki:engines &)
+          ids+=$(update_page wiki/"Interface" wiki:interface &)
+          ids+=$(update_page wiki/"Normalized AST" wiki:normalized-ast &)
+          ids+=$(update_page wiki/"Control Flow Graph" wiki:cfg &)
+          ids+=$(update_page wiki/"Linting and Testing" wiki:linting-and-testing &)
+          ids+=$(update_page wiki/"Core" wiki:core &)
+          ids+=$(update_page wiki/"Onboarding" wiki:onboarding &)
+          ids+=$(update_page wiki/"FAQ" wiki:faq &)
+          ids+=$(update_page wiki/"Linter" wiki:linter &)
+          # await all in parallel
+          wait ${ids[@]}
+          
           git add wiki/lint-*.md
+          echo "====== Updating Issue Templates ======"
           update_page .github/ISSUE_TEMPLATE/linting-rule.yaml gen:linter-issue
+          echo "====== Updating Main Readme ======"
           update_page README gen:readme
           
+          echo "====== Producing Update (if necessary) ======"
           # check for an update in the versions! (including the updated name information)
           LIMIT_TO_LAST=8
           ALL_TAGS=$( git tag --list --format="%(tag) (%(creatordate))" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | sed -E 's/^(v[0-9]+\.[0-9]+\.[0-9]+)\s*\(([a-zA-Z]+\s*)([a-zA-Z]+)\s*([0-9]+)\s*[0-9:]+\s+([0-9]+).*/\1 (\3 \4, \5)/' | sort -V | tail -n$LIMIT_TO_LAST)
@@ -144,6 +165,7 @@ jobs:
               echo "Versions in bug-report did not change!"
           fi
 
+          echo "====== Make Commit (if necessary) ======"
           if [ $CHANGED_ANY == "true" ]; then
               git config --local user.email "action@github.com"
               git config --local user.name "GitHub Action"

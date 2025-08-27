@@ -71,7 +71,6 @@ These examples are synthesized from the test cases in: ${linkFlowRSourceFile('te
 		}
 		const testName = args[0].getText(report.source);
 		if(report.comments?.some(c => c.includes('@ignore-in-wiki'))) {
-			console.warn(`Skipping test case for linter rule ${testName} (${testFile}) as it is marked with @ignore-in-wiki`);
 			continue;
 		}
 		// drop any quotes around the test name

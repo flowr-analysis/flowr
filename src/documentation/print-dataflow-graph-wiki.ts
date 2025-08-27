@@ -1140,7 +1140,11 @@ These capabilities are exposed by the [resolve value Query](${FlowrWikiBaseRef}/
 ${shortLink(resolveIdToValue.name, vertexType.info)} provides an environment-sensitive (see ${shortLink('REnvironmentInformation', vertexType.info)})
 value resolution depending on if the environment is provided.
 The idea of ${shortLink(resolveIdToValue.name, vertexType.info)} is to provide a compromise between precision and performance, to
-be used _during_ and _after_ the core analysis. After the dataflow analysis completes, there are much more expensive queries possible (such as the resolution of the data frame shape, see the [Query API](${FlowrWikiBaseRef}/Query-API)).  
+be used _during_ and _after_ the core analysis. After the dataflow analysis completes, there are much more expensive queries possible (such as the resolution of the data frame shape, see the [Query API](${FlowrWikiBaseRef}/Query-API)).
+
+Additionally, to ${shortLink(resolveIdToValue.name, vertexType.info)}, we offer the aforementioned ${shortLink(getValueOfArgument.name, vertexType.info)} to retrieve the value of an argument in a function call.
+Be aware, that this function is currently not optimized for speed, so if you frequently require the values of multiple arguments of the same function call, you may want to open [an issue](${NewIssueUrl}) to request support for resolving
+multiple arguments at once.
 
 ${section('Assessing Edges', 3, 'dfg-assess-edge')}
 

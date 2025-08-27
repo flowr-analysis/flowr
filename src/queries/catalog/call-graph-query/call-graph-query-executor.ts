@@ -3,8 +3,8 @@ import type {
 	CallGraphQuery,
 	CallGraphQueryResult
 } from './call-graph-query-format';
-import { findAllClusters } from '../../../dataflow/cluster';
 import type { BasicQueryData } from '../../base-query-format';
+import { CallGraph } from '../../../dataflow/call-graph/call-graph';
 
 
 export function executeCallGraphQuery({ dataflow: { graph } }: BasicQueryData, queries: readonly CallGraphQuery[]): CallGraphQueryResult {
@@ -13,11 +13,11 @@ export function executeCallGraphQuery({ dataflow: { graph } }: BasicQueryData, q
 	}
 
 	const start = Date.now();
-	const clusters = findAllClusters(graph);
+	const cg = CallGraph.create(graph);
 	return {
 		'.meta': {
 			timing: Date.now() - start
 		},
-		clusters
+		cg
 	};
 }

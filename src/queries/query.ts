@@ -47,6 +47,7 @@ import { ControlFlowQueryDefinition } from './catalog/control-flow-query/control
 import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-format';
 import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 import type { AsyncOrSync, AsyncOrSyncType, Writable } from 'ts-essentials';
+import type { CallGraphQuery } from './catalog/call-graph-query/call-graph-query-format';
 import { CallGraphQueryDefinition } from './catalog/call-graph-query/call-graph-query-format';
 
 /**
@@ -58,6 +59,7 @@ export type Query = CallContextQuery
 	| SearchQuery
 	| DataflowQuery
 	| ControlFlowQuery
+    | CallGraphQuery
 	| DataflowLensQuery
 	| DfShapeQuery
 	| NormalizedAstQuery

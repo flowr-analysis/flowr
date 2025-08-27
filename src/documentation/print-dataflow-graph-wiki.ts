@@ -92,7 +92,7 @@ async function explanation(
 <a id='${name.toLowerCase().replaceAll(' ', '-')}'> </a>
 ### ${index}) ${name}
 
-Type: \`${type}\` (this is the numeric value of the bit-flag encountered when looking at the serialized vertex type)
+Type: \`${type}\` (this is the bit-flag value, e.g., when looking at the serialization)
 
 ${await subExplanation(shell, { name, description, code, expectedSubgraph })}
 
@@ -436,11 +436,11 @@ ${block({
 	content: `Now you might be asking yourself how to differentiate anonymous and named functions and what you have to keep in mind when working with them?
 
 Unnamed functions have an array of signatures which you can use to identify them. 
-But in short - the \`origin\` attribute of the ${shortLink('DataflowGraphVertexFunctionCall', vertexType.info)} is \`${UnnamedFunctionCallOrigin}\`.
+But in short: the \`origin\` attribute of the ${shortLink('DataflowGraphVertexFunctionCall', vertexType.info)} is \`${UnnamedFunctionCallOrigin}\`.
 Please be aware that unnamed functions still have a \`name\` property to give it a unique identifier that can be used for debugging and reference.
 This name _always_ starts with \`${UnnamedFunctionCallPrefix}\`.
 
-To identify these calls please do not rely on the [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST). An expression like \`1 + 1\` will be correctly
+To identify these calls please do not rely on the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST). An expression like \`1 + 1\` will be correctly
 identified as a syntactical binary operation. Yet, from a dataflow/semantic perspective this is equivalent to \`\` \`+\`(1, 1) \`\` (which is a named function call and marked as such in the dataflow graph).
 To know which function is called, please rely on the ${linkEdgeName(EdgeType.Calls)} edge.
 	`
@@ -889,6 +889,7 @@ async function getText(shell: RShell) {
 
 This page briefly summarizes flowR's dataflow graph, represented by the ${shortLink(DataflowGraph.name, vertexType.info)} class within the code.
 In case you want to manually build such a graph (e.g., for testing), you can use the ${shortLink(DataflowGraphBuilder.name, vertexType.info)}.
+If you are interested in which features we support and which features are still to be worked on, please refer to our [capabilities](${FlowrWikiBaseRef}/Capabilities) page.
 In summary, we discuss the following topics:
 
 - [Vertices](#vertices)
@@ -900,7 +901,7 @@ In summary, we discuss the following topics:
 
 Please be aware that the accompanied [dataflow information](#dataflow-information) (${shortLink('DataflowInformation', vertexType.info)}) returned by _flowR_ contains things besides the graph,
 like the entry and exit points of the subgraphs, and currently active references (see [below](#dataflow-information)).
-Additionally, you may be interested in the set of [Unknown Side Effects](#unknown-side-effects) marking calls which _flowR_ is unable to handle correctly.
+Additionally, you may be interested in the set of [Unknown Side Effects](#unknown-side-effects), marking calls which _flowR_ is unable to handle correctly.
 
 Potentially, you are interested in another perspective that flowR provides, the [control flow graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph), so please check the correpsonding
 wiki page if you are unsure.
@@ -956,16 +957,16 @@ From an implementation perspective all of these types are represented by respect
 The following sections present details on the different types of vertices and edges, including examples and explanations.
 
 > [!NOTE]
-> Every dataflow vertex holds an \`id\` which links it to the respective node in the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST).
+> Every dataflow vertex holds an \`id\` which links it to the respective node in the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST).
 > So if you want more information about the respective vertex, you can usually access more information
 > using the <code>${shortLink(`${DataflowGraph.name}`, vertexType.info, false, 'i')}::idMap</code> linked to the dataflow graph:
 ${prefixLines(codeBlock('ts', 'const node = graph.idMap.get(id);'), '> ')}
 > In case you just need the name (\`lexeme\`) of the respective vertex, ${shortLink(recoverName.name, vertexType.info)} can help you out:
 ${prefixLines(codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap);`), '> ')}
 >
-> Please note that not every node in the normalized AST is represented in the dataflow graph.
+> Please note, that not every node in the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) is represented in the dataflow graph.
 > For example, if the node is unreachable in a way that can be detected during the analysis and flowR
-> is configured to ignore dead code. Likewise, empty argument wrappers do not have a corresponding
+> is configured to ignore dead code (there are more powerful dead code capabilities with the [CFG](${FlowrWikiBaseRef}/Control-Flow-Graph)). Likewise, empty argument wrappers do not have a corresponding
 > dataflow graph vertex (as they are not relevant for the dataflow graph). It depends on the scenario what to do in such a case. 
 > For argument wrappers you can access the dataflow information for their value. For dead code, however, flowR currently contains
 > some core heuristics that remove it which cannot be reversed easily. So please open [an issue](${NewIssueUrl}) if you encounter such a case and require the node to be present in the dataflow graph.
@@ -1128,7 +1129,8 @@ Depending on what you are interested in, there exists a plethora of functions an
 * ${shortLink(getValueOfArgument.name, vertexType.info)} to get the (syntactical) value of an argument in a function call 
 * ${shortLink(getOriginInDfg.name, vertexType.info)} to get information about where a read, call, ... comes from (see [below](#dfg-resolving-values))
 
-Some of these functions have been explained in their respective wiki pages. However, some are part of the [Dataflow Graph API](${FlowrWikiBaseRef}/Dataflow%20Graph%20API) and so we explain them here.
+Some of these functions have been explained in their respective wiki pages. However, some are part of the [Dataflow Graph API](${FlowrWikiBaseRef}/Dataflow-Graph) and so we explain them here.
+If you are interested in which features we support and which features are still to be worked on, please refer to our [capabilities](${FlowrWikiBaseRef}/Capabilities) page.
 
 ${section('Resolving Values', 3, 'dfg-resolving-values')}
 
@@ -1137,6 +1139,12 @@ These capabilities are exposed by the [resolve value Query](${FlowrWikiBaseRef}/
 
 ${shortLink(resolveIdToValue.name, vertexType.info)} provides an environment-sensitive (see ${shortLink('REnvironmentInformation', vertexType.info)})
 value resolution depending on if the environment is provided.
+The idea of ${shortLink(resolveIdToValue.name, vertexType.info)} is to provide a compromise between precision and performance, to
+be used _during_ and _after_ the core analysis. After the dataflow analysis completes, there are much more expensive queries possible (such as the resolution of the data frame shape, see the [Query API](${FlowrWikiBaseRef}/Query-API)).
+
+Additionally, to ${shortLink(resolveIdToValue.name, vertexType.info)}, we offer the aforementioned ${shortLink(getValueOfArgument.name, vertexType.info)} to retrieve the value of an argument in a function call.
+Be aware, that this function is currently not optimized for speed, so if you frequently require the values of multiple arguments of the same function call, you may want to open [an issue](${NewIssueUrl}) to request support for resolving
+multiple arguments at once.
 
 ${section('Assessing Edges', 3, 'dfg-assess-edge')}
 
@@ -1175,7 +1183,7 @@ Their respective uses are documented alongside their implementation:
 
 ${
 		['SimpleOrigin', 'FunctionCallOrigin', 'BuiltInFunctionOrigin'].sort().map(
-			key => `- ${shortLink(`${key}`, vertexType.info)}\\\n${getDocumentationForType(`${key}`, vertexType.info)}`
+			key => `- ${shortLink(key, vertexType.info)}\\\n${getDocumentationForType(key, vertexType.info, '', { type: 'interface' })}`
 		).join('\n')
 		}
 

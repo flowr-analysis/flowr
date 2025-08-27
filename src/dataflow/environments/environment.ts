@@ -32,13 +32,17 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 	const node = graph.get(ref.nodeId, true);
 	if(node) {
 		const [fst] = node;
-		if(fst.cds && defaultCd && !fst.cds.includes(defaultCd)) {
+		if(fst.cds && defaultCd && !fst.cds.find(c => c.id === defaultCd.id)) {
 			fst.cds.push(defaultCd);
 		} else {
 			fst.cds = defaultCd ? [defaultCd] : [];
 		}
 	}
-	return { ...ref, controlDependencies: [...ref.controlDependencies ?? [], ...(defaultCd ? [defaultCd]: []) ] };
+	if(ref.controlDependencies && defaultCd && !ref.controlDependencies.find(c => c.id === defaultCd.id)) {
+		return { ...ref, controlDependencies: (ref.controlDependencies ?? []).concat(defaultCd ? [defaultCd] : []) };
+	} else {
+		return { ...ref, controlDependencies: ref.controlDependencies ?? (defaultCd ? [defaultCd] : []) };
+	}
 }
 
 export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference[] {

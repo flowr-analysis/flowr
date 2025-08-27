@@ -88,10 +88,11 @@ export function processWhileLoop<OtherInfo>(
 		return condition;
 	}
 
-	const remainingInputs = linkInputs([
-		...makeAllMaybe(body.unknownReferences, information.graph, information.environment, false),
-		...makeAllMaybe(body.in, information.graph, information.environment, false)
-	], information.environment, [...condition.in, ...condition.unknownReferences], information.graph, true);
+	const cdTrue = { id: name.info.id, when: true };
+	const remainingInputs = linkInputs(
+		makeAllMaybe(body.unknownReferences, information.graph, information.environment, false, cdTrue).concat(
+			makeAllMaybe(body.in, information.graph, information.environment, false, cdTrue)),
+		information.environment, condition.in.concat(condition.unknownReferences), information.graph, true);
 	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, condition.in)), body.out);
 
 	// as the while-loop always evaluates its condition
@@ -100,7 +101,7 @@ export function processWhileLoop<OtherInfo>(
 	return {
 		unknownReferences: [],
 		in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependencies: originalDependency, type: ReferenceType.Function }, ...remainingInputs],
-		out:               [...makeAllMaybe(body.out, information.graph, information.environment, true), ...condition.out],
+		out:               condition.out.concat(makeAllMaybe(body.out, information.graph, information.environment, true, cdTrue)),
 		entryPoint:        name.info.id,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		graph:             information.graph,

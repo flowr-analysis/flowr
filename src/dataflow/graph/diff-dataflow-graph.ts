@@ -38,8 +38,8 @@ function diffDataflowGraph(ctx: GraphDiffContext): void {
 }
 
 function diffOutgoingEdges(ctx: GraphDiffContext): void {
-	const lEdges = new Map([...ctx.left.edges()]);
-	const rEdges = new Map([...ctx.right.edges()]);
+	const lEdges = new Map(ctx.left.edges());
+	const rEdges = new Map(ctx.right.edges());
 
 	if(lEdges.size < rEdges.size && !ctx.config.leftIsSubgraph || lEdges.size > rEdges.size && !ctx.config.rightIsSubgraph) {
 		ctx.report.addComment(`Detected different number of edges! ${ctx.leftname} has ${lEdges.size} (${JSON.stringify(lEdges, jsonReplacer)}). ${ctx.rightname} has ${rEdges.size} ${JSON.stringify(rEdges, jsonReplacer)}`);
@@ -144,8 +144,8 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
 
 export function diffVertices(ctx: GraphDiffContext): void {
 	// collect vertices from both sides
-	const lVert = [...ctx.left.vertices(true)].map(([id, info]) => ([id, info] as const));
-	const rVert = [...ctx.right.vertices(true)].map(([id, info]) => ([id, info] as const));
+	const lVert = ctx.left.vertices(true).map(([id, info]) => ([id, info] as const)).toArray();
+	const rVert = ctx.right.vertices(true).map(([id, info]) => ([id, info] as const)).toArray();
 	if(lVert.length < rVert.length && !ctx.config.leftIsSubgraph
 		|| lVert.length > rVert.length && !ctx.config.rightIsSubgraph
 	) {

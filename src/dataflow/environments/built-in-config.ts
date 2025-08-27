@@ -1,8 +1,7 @@
 import type { BuiltInMappingName, ConfigOfBuiltInMappingName } from './built-in';
-import { builtInId , BuiltInMemory, BuiltInProcessorMapper, EmptyBuiltInMemory } from './built-in';
-import type { Identifier, IdentifierDefinition } from './identifier';
-import { ReferenceType } from './identifier';
-import { guard } from '../../util/assert';
+import { BuiltIns } from './built-in';
+import type { Identifier } from './identifier';
+import { DefaultBuiltinConfig } from './default-builtin-config';
 
 export interface BaseBuiltInDefinition {
     /** The type of the built-in configuration */
@@ -53,93 +52,34 @@ export type BuiltInDefinition = BuiltInConstantDefinition<any> | BuiltInFunction
  */
 export type BuiltInDefinitions = BuiltInDefinition[];
 
-function registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>): void {
-	for(const name of names) {
-		const id = builtInId(name);
-		const d: IdentifierDefinition[] = [{
-			type:                ReferenceType.BuiltInConstant,
-			definedAt:           id,
-			controlDependencies: undefined,
-			value,
-			name,
-			nodeId:              id
-		}];
-		BuiltInMemory.set(name, d);
-		if(assumePrimitive) {
-			EmptyBuiltInMemory.set(name, d);
-		}
+
+/**
+ * Get the {@link BuiltIns#builtInMemory} and {@link BuiltIns#emptyBuiltInMemory} for the {@link DefaultBuiltinConfig}.
+ */
+export function getDefaultBuiltInDefinitions(): BuiltIns {
+	const builtIns = new BuiltIns();
+	for(const definition of DefaultBuiltinConfig) {
+		builtIns.registerBuiltInDefinition(definition);
 	}
+	return builtIns;
 }
 
-export function registerBuiltInFunctions<BuiltInProcessor extends BuiltInMappingName>(
-	{ names, processor, config, assumePrimitive }: BuiltInFunctionDefinition<BuiltInProcessor>
-): void {
-	const mappedProcessor = BuiltInProcessorMapper[processor];
-	guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
-	for(const name of names) {
-		guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
-		const id = builtInId(name);
-		const d: IdentifierDefinition[] = [{
-			type:                ReferenceType.BuiltInFunction,
-			definedAt:           id,
-			controlDependencies: undefined,
-			/* eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-argument */
-			processor:           (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as any),
-			config,
-			name,
-			nodeId:              id
-		}];
-		BuiltInMemory.set(name, d);
-		if(assumePrimitive) {
-			EmptyBuiltInMemory.set(name, d);
-		}
-	}
-}
+/**
+ * Get the {@link BuiltIns#builtInMemory} and {@link BuiltIns#emptyBuiltInMemory} for the given list of built-in definitions.
+ *
+ * @param definitions - the list of built-in definitions
+ * @param loadDefaults - whether to first add the {@link DefaultBuiltinConfig} before the given {@link definitions}
+ */
+export function getBuiltInDefinitions(definitions: BuiltInDefinitions, loadDefaults: boolean | undefined): BuiltIns {
+	let builtIns = new BuiltIns();
 
-/* registers all combinations of replacements */
-export function registerReplacementFunctions(
-	{ names, suffixes, assumePrimitive, config }: BuiltInReplacementDefinition
-): void {
-	const replacer = BuiltInProcessorMapper['builtin:replacement'];
-	guard(replacer !== undefined, () => 'Processor for builtin:replacement is undefined!');
-	for(const assignment of names) {
-		for(const suffix of suffixes) {
-			const effectiveName = `${assignment}${suffix}`;
-			const id = builtInId(effectiveName);
-			const d: IdentifierDefinition[] = [{
-				type:      ReferenceType.BuiltInFunction,
-				definedAt: id,
-				processor: (name, args, rootId, data) => replacer(name, args, rootId, data, { makeMaybe: true, assignmentOperator: suffix, readIndices: config.readIndices }),
-				config:    {
-					...config,
-					assignmentOperator: suffix,
-					makeMaybe:          true
-				},
-				name:                effectiveName,
-				controlDependencies: undefined,
-				nodeId:              id
-			}];
-			BuiltInMemory.set(effectiveName, d);
-			if(assumePrimitive) {
-				EmptyBuiltInMemory.set(effectiveName, d);
-			}
-		}
+	if(loadDefaults) {
+		builtIns = getDefaultBuiltInDefinitions();
 	}
-}
 
-export function registerBuiltInDefinition(definition: BuiltInDefinition) {
-	switch(definition.type) {
-		case 'constant':
-			return registerBuiltInConstant(definition);
-		case 'function':
-			return registerBuiltInFunctions(definition);
-		case 'replacement':
-			return registerReplacementFunctions(definition);
-	}
-}
-
-export function registerBuiltInDefinitions(definitions: BuiltInDefinitions) {
 	for(const definition of definitions) {
-		registerBuiltInDefinition(definition);
+		builtIns.registerBuiltInDefinition(definition);
 	}
+
+	return builtIns;
 }

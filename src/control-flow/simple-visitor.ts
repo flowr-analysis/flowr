@@ -38,9 +38,9 @@ export function visitCfgInReverseOrder(
 				queue = queue.concat(get.elems.toReversed().map(e => e.id));
 			}
 		}
-		const incoming = graph.outgoingEdges(current) ?? [];
-		for(const [from] of incoming) {
-			queue.push(from);
+		const incoming = graph.outgoingEdges(current);
+		if(incoming) {
+			queue.push(...incoming.keys());
 		}
 	}
 }

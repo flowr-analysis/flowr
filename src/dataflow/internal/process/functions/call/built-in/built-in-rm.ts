@@ -41,7 +41,7 @@ export function processRm<OtherInfo>(
 
 	let env = res.environment;
 	for(const name of names) {
-		env = remove(name, env);
+		env = remove(name, env, data.builtInEnvironment);
 	}
 
 	return {

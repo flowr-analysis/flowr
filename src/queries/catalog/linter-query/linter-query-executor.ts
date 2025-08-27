@@ -21,7 +21,7 @@ export function executeLinterQuery({ ast, dataflow, config }: BasicQueryData, qu
 	const input = { normalize: ast, dataflow, config };
 	for(const entry of distinct) {
 		const ruleName = typeof entry === 'string' ? entry : entry.name;
-		results.results[ruleName] = executeLintingRule<typeof ruleName>(ruleName, input, (entry as ConfiguredLintingRule)?.config);
+		results.results[ruleName] = executeLintingRule<typeof ruleName>(ruleName, input, (entry as ConfiguredLintingRule)?.config);	
 	}
 
 	return {

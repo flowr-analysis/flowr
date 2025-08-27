@@ -196,7 +196,7 @@ export const ABSOLUTE_PATH = {
 	},
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} is not absolute`
+		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} is absolute`
 	},
 	info: {
 		name:          'Absolute Paths',

@@ -52,6 +52,11 @@ async function getText(shell: RShell) {
 		inlineTypes: mermaidHide
 	});
 
+	const testInfo = getTypesFromFolder({
+		rootFolder:  path.resolve('./test'),
+		inlineTypes: mermaidHide
+	}).info;
+
 	return `${autoGenHeader({ filename: module.filename, purpose: 'core', rVersion: rversion })}
 
 This wiki page provides an overview of the inner workings of _flowR_.
@@ -398,7 +403,7 @@ ${await documentReplSession(shell, [{
 ### Getting flowR to Talk
 
 When using flowR from the CLI, you can use the ${getCliLongOptionOf('flowr', 'verbose')} option to get more information about what flowR is doing.
-While coding, however, you can use the ${shortLink(setMinLevelOfAllLogs.name, info)} function to set the minimum level of logs to be displayed (this works with the ${shortLink(FlowrLogger.name, info)} abstraction).
+While coding, however, you can use the ${shortLink(setMinLevelOfAllLogs.name, testInfo)} function to set the minimum level of logs to be displayed (this works with the ${shortLink(FlowrLogger.name, info)} abstraction).
 In general, you can configure the levels of individual logs, such as the general \`log\` (obtained with ${shortLink('getActiveLog', info)}) or the ${shortLink('parseLog', info)}.
 Please note that flowR makes no guarantees that log outputs are persistent across versions, and it is up to the implementors to provide sensible logging.
 If you are an implementor and want to add logging, please make sure there are no larger runtime impliciations when logging is disabled. 

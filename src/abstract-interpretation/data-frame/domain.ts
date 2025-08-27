@@ -104,7 +104,7 @@ export function subtractColNames(set1: ColNamesDomain, set2: ColNamesDomain): Co
  * However, this speeds up the iteration in larger loops significantly, as we are over-approximating the column names much earlier.
  */
 export function wideningColNames(set1: ColNamesDomain, set2: ColNamesDomain): ColNamesDomain {
-	return leqColNames(set1, set2) ? set2 : ColNamesTop;
+	return leqColNames(set2, set1) ? set1 : ColNamesTop;
 }
 
 /** Checks whether an abstract value of the column names domain satisfies a column name */

@@ -9,8 +9,8 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ package: 'base', name: 'read.dcf',            argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'base', name: 'scan',                argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'utils',name: 'read.fwf',            argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'file',                argIdx: 1, argName: 'open', resolveValue: true },
-	{ package: 'base', name: 'url',                 argIdx: 1, argName: 'open', resolveValue: true },
+	{ package: 'base', name: 'file',                argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-write', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
+	{ package: 'base', name: 'url',                 argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-write', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
 	{ package: 'base', name: 'load',                argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'base', name: 'gzfile',              argIdx: 1, argName: 'open', resolveValue: true },
 	{ package: 'base', name: 'bzfile',              argIdx: 1, argName: 'open', resolveValue: true },
@@ -21,6 +21,8 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ package: 'base', name: 'matrix',              argIdx: 0, argName: 'data', resolveValue: true },
 	{ package: 'base', name: 'readRDS',             argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'base', name: 'readLines',           argIdx: 0, argName: 'con',  resolveValue: true },
+	{ package: 'base', name: 'readChar',            argIdx: 0, argName: 'con',  resolveValue: true },
+	{ package: 'base', name: 'readBin',             argIdx: 0, argName: 'con',  resolveValue: true },
 	{ package: 'base', name: 'readRenviron',        argIdx: 0, argName: 'path', resolveValue: true },
 	{ package: 'readr', name: 'read_csv',           argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'readr', name: 'read_csv2',          argIdx: 0, argName: 'file', resolveValue: true },
@@ -97,5 +99,4 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ package: 'DBI', name: 'dbReadTable',      argIdx: 1, argName: 'name', resolveValue: true },
 	{ package: 'DBI', name: 'dbReadTableArrow', argIdx: 1, argName: 'name', resolveValue: true },
 	{ package: 'jsonlite', name: 'read_json', argIdx: 0, argName: 'path', resolveValue: true },
-
 ] as const;

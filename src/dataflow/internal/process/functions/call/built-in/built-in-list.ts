@@ -4,7 +4,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import type { ContainerIndices, ContainerIndex } from '../../../../../graph/vertex';
+import type { ContainerIndex, ContainerIndices } from '../../../../../graph/vertex';
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';

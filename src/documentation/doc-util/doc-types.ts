@@ -9,12 +9,12 @@ import { details } from './doc-structure';
 import { textWithTooltip } from '../../util/html-hover-over';
 import { prefixLines } from './doc-general';
 
-/* basics generated */
+export type TypeElementKind = 'interface' | 'type' | 'enum' | 'class' | 'variable';
 
 export interface TypeElementInSource {
 	name:                 string;
 	node:                 ts.Node;
-	kind:                 'interface' | 'type' | 'enum' | 'class' | 'variable';
+	kind:                 TypeElementKind;
 	extends:              string[];
 	generics:             string[];
 	filePath:             string;
@@ -458,7 +458,7 @@ function fuzzyCompare(a: string, b: string): boolean {
 	return aStr === bStr || aStr.includes(bStr) || bStr.includes(aStr);
 }
 
-function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], fuzzy = false): [string | undefined, string, TypeElementInSource]| undefined {
+function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], fuzzy = false, type: TypeElementKind | undefined = undefined): [string | undefined, string, TypeElementInSource]| undefined {
 	let container: string | undefined = undefined;
 	if(name.includes('::')) {
 		[container, name] = name.split(/:::?/);
@@ -468,6 +468,12 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], f
 		return undefined;
 	} else if(container) {
 		node = node.filter(n => fuzzy ? n.extends.some(n => fuzzyCompare(n, container)) : n.extends.includes(container));
+		if(node.length === 0) {
+			return undefined;
+		}
+	}
+	if(type) {
+		node = node.filter(n => n.kind === type);
 		if(node.length === 0) {
 			return undefined;
 		}
@@ -511,8 +517,13 @@ export function shortLinkFile(name: string, hierarchy: readonly TypeElementInSou
 	return `<a href="${getTypePathLink(node)}">${getTypePathForTypeScript(node)}</a>`;
 }
 
-export function getDocumentationForType(name: string, hierarchy: TypeElementInSource[], prefix = '', fuzzy = false): string {
-	const res = retrieveNode(name, hierarchy, fuzzy);
+export interface GetDocumentationForTypeFilters {
+    fuzzy?: boolean;
+    type?:  TypeElementKind;
+}
+
+export function getDocumentationForType(name: string, hierarchy: TypeElementInSource[], prefix = '', filter?: GetDocumentationForTypeFilters): string {
+	const res = retrieveNode(name, hierarchy, filter?.fuzzy, filter?.type);
 	if(!res) {
 		return '';
 	}

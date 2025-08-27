@@ -28,7 +28,7 @@ const SpecialTagColors: Record<string, string> = {
 };
 
 function makeTagBadge(name: LintingRuleTag, info: TypeElementInSource[]): string {
-	const doc = getDocumentationForType('LintingRuleTag::' + name, info, '', true).replaceAll('\n', ' ');
+	const doc = getDocumentationForType('LintingRuleTag::' + name, info, '', { fuzzy: true }).replaceAll('\n', ' ');
 	return textWithTooltip(`<a href='#${name}'>![` + name + '](https://img.shields.io/badge/' + name.toLowerCase() + `-${SpecialTagColors[name] ?? 'teal'}) </a>`, doc);
 }
 
@@ -168,7 +168,7 @@ df[6, "value"]
 			return a.localeCompare(b);
 		}).map(t => makeTagBadge(t, types)).join(' ');
 
-		const certaintyDoc = getDocumentationForType(`LintingRuleCertainty::${rule.info.certainty}`, types, '', true).replaceAll('\n', ' ');
+		const certaintyDoc = getDocumentationForType(`LintingRuleCertainty::${rule.info.certainty}`, types, '', { fuzzy: true }).replaceAll('\n', ' ');
 		const certaintyText = `\`${textWithTooltip(rule.info.certainty, certaintyDoc)}\``;
 		if(format === 'short') {
 			ruleExplanations.set(name, () => Promise.resolve(`

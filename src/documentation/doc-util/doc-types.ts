@@ -25,7 +25,17 @@ export interface TypeElementInSource {
 
 export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[], program: ts.Program } {
 	try {
-		const program = ts.createProgram(fileNames, { target: ts.ScriptTarget.ESNext });
+		const program = ts.createProgram(fileNames, {
+			target:                       ts.ScriptTarget.ESNext,
+			skipLibCheck:                 true,
+			skipDefaultLibCheck:          true,
+			allowJs:                      true,
+			checkJs:                      false,
+			strictNullChecks:             false,
+			noUncheckedIndexedAccess:     false,
+			noUncheckedSideEffectImports: false,
+			noCheck:                      true
+		});
 		return { program, files: fileNames.map(fileName => program.getSourceFile(fileName)).filter(file => !!file) };
 	} catch(err) {
 		console.error('Failed to get source files', err);

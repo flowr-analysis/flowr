@@ -56,8 +56,13 @@ jobs:
           r-version: ${{ env.ACTION_R_VERSION }}
 
       - name: "📦 Install R Packages"
-        shell: Rscript {0}
-        run: lapply(c("xmlparsedata","dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          cache-version: 2
+          extra-packages: |
+            any::xmlparsedata
+            any::dplyr
+            any::readr
 
       - name: "🛒 Checkout LFS"
         if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}

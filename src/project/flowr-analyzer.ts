@@ -8,7 +8,7 @@ import {
 import type { KnownParser, ParseStepOutput } from '../r-bridge/parser';
 import type { Queries, SupportedQueryTypes } from '../queries/query';
 import { executeQueries } from '../queries/query';
-import { extractCfg } from '../control-flow/extract-cfg';
+import { extractCfg, extractSimpleCfg } from '../control-flow/extract-cfg';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../dataflow/info';
@@ -23,7 +23,8 @@ export class FlowrAnalyzer {
 	private parse = undefined as unknown as ParseStepOutput<any>;
 	private ast = undefined as unknown as NormalizedAst;
 	private dataflowInfo = undefined as unknown as DataflowInformation;
-	private controlflowInfo = undefined as unknown as ControlFlowInformation;
+	private controlFlowInfo = undefined as unknown as ControlFlowInformation;
+	private simpleControlFlowInfo = undefined as unknown as ControlFlowInformation; // TODO Differentiate between simple and regular CFG
 
 	constructor(config: FlowrConfigOptions, parser: KnownParser, request: RParseRequests) {
 		this.flowrConfig = config;
@@ -34,7 +35,7 @@ export class FlowrAnalyzer {
 	public reset() {
 		this.ast = undefined as unknown as NormalizedAst;
 		this.dataflowInfo = undefined as unknown as DataflowInformation;
-		this.controlflowInfo = undefined as unknown as ControlFlowInformation;
+		this.controlFlowInfo = undefined as unknown as ControlFlowInformation;
 	}
 
 	public parserName(): string {
@@ -98,17 +99,38 @@ export class FlowrAnalyzer {
 		return result.dataflow;
 	}
 
-	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation> {
-		if(this.controlflowInfo && !force) {
-			return this.controlflowInfo;
+	public async controlFlow(simplifications?: readonly CfgSimplificationPassName[], useDataflow?: boolean, force?: boolean): Promise<ControlFlowInformation> {
+		if(this.controlFlowInfo && !force) {
+			return this.controlFlowInfo;
 		}
 
 		if(force || !this.ast) {
 			await this.normalizedAst(force);
 		}
 
-		const result = extractCfg(this.ast, this.flowrConfig);
-		this.controlflowInfo = result;
+		if(useDataflow && (force || !this.dataflowInfo)) {
+			await this.dataflow(force);
+		}
+
+		const result = extractCfg(this.ast, this.flowrConfig, this.dataflowInfo.graph, simplifications);
+		this.controlFlowInfo = result;
+		return result;
+	}
+
+	public async simpleControlFlow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation> {
+		if(this.simpleControlFlowInfo && !force) {
+			return this.simpleControlFlowInfo;
+		} else if(this.controlFlowInfo && !force) {
+			// Use the full CFG is it is already available
+			return this.controlFlowInfo;
+		}
+
+		if(force || !this.ast) {
+			await this.normalizedAst(force);
+		}
+
+		const result = extractSimpleCfg(this.ast);
+		this.simpleControlFlowInfo = result;
 		return result;
 	}
 

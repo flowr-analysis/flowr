@@ -185,12 +185,13 @@ jobs:
       - name: "🔎 Check the README for broken links"
         uses: becheran/mlc@v1
         continue-on-error: true
+        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         with:
           args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" --ignore-links "http*://hub.docker.com/r/*" README.md
 
       - name: "🔎 Check the Wiki pages for broken links"
         uses: becheran/mlc@v1
         continue-on-error: true
-        if: ${{ always() && !failure() }}
+        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         with:
           args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" wiki/

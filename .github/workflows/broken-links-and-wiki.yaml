@@ -109,22 +109,19 @@ jobs:
           }
 
           echo "====== Updating Wiki Pages ======"
-          ids=()
-          ids+=$(update_page wiki/"Capabilities" capabilities-markdown &)
-          ids+=$(update_page wiki/"Dataflow Graph" wiki:df-graph &)
-          ids+=$(update_page wiki/"Query API" wiki:query-api &)
-          ids+=$(update_page wiki/"Search API" wiki:search-api &)
-          ids+=$(update_page wiki/"Engines" wiki:engines &)
-          ids+=$(update_page wiki/"Interface" wiki:interface &)
-          ids+=$(update_page wiki/"Normalized AST" wiki:normalized-ast &)
-          ids+=$(update_page wiki/"Control Flow Graph" wiki:cfg &)
-          ids+=$(update_page wiki/"Linting and Testing" wiki:linting-and-testing &)
-          ids+=$(update_page wiki/"Core" wiki:core &)
-          ids+=$(update_page wiki/"Onboarding" wiki:onboarding &)
-          ids+=$(update_page wiki/"FAQ" wiki:faq &)
-          ids+=$(update_page wiki/"Linter" wiki:linter &)
-          # await all in parallel
-          wait ${ids[@]}
+          update_page wiki/"Capabilities" capabilities-markdown
+          update_page wiki/"Dataflow Graph" wiki:df-graph
+          update_page wiki/"Query API" wiki:query-api
+          update_page wiki/"Search API" wiki:search-api
+          update_page wiki/"Engines" wiki:engines
+          update_page wiki/"Interface" wiki:interface
+          update_page wiki/"Normalized AST" wiki:normalized-ast
+          update_page wiki/"Control Flow Graph" wiki:cfg
+          update_page wiki/"Linting and Testing" wiki:linting-and-testing
+          update_page wiki/"Core" wiki:core
+          update_page wiki/"Onboarding" wiki:onboarding
+          update_page wiki/"FAQ" wiki:faq
+          update_page wiki/"Linter" wiki:linter
           
           git add wiki/lint-*.md
           echo "====== Updating Issue Templates ======"

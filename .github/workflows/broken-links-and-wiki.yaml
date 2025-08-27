@@ -107,21 +107,7 @@ jobs:
             # delete the old file again
             rm "$1-Old.md"
           }
-          
-          update_page wiki/"Capabilities" capabilities-markdown
-          update_page wiki/"Dataflow Graph" wiki:df-graph
-          update_page wiki/"Query API" wiki:query-api
-          update_page wiki/"Search API" wiki:search-api
-          update_page wiki/"Engines" wiki:engines
-          update_page wiki/"Interface" wiki:interface
-          update_page wiki/"Normalized AST" wiki:normalized-ast
-          update_page wiki/"Control Flow Graph" wiki:cfg
-          update_page wiki/"Linting and Testing" wiki:linting-and-testing
-          update_page wiki/"Core" wiki:core
-          update_page wiki/"Onboarding" wiki:onboarding
-          update_page wiki/"FAQ" wiki:faq
-          update_page wiki/"Linter" wiki:linter
-          update_page wiki/"Value Resolve" wiki:value-resolve
+
           echo "====== Updating Wiki Pages ======"
           ids=()
           ids+=$(update_page wiki/"Capabilities" capabilities-markdown &)

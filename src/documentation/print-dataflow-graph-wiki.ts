@@ -889,6 +889,7 @@ async function getText(shell: RShell) {
 
 This page briefly summarizes flowR's dataflow graph, represented by the ${shortLink(DataflowGraph.name, vertexType.info)} class within the code.
 In case you want to manually build such a graph (e.g., for testing), you can use the ${shortLink(DataflowGraphBuilder.name, vertexType.info)}.
+If you are interested in which features we support and which features are still to be worked on, please refer to our [capabilities](${FlowrWikiBaseRef}/Capabilities) page.
 In summary, we discuss the following topics:
 
 - [Vertices](#vertices)
@@ -900,7 +901,7 @@ In summary, we discuss the following topics:
 
 Please be aware that the accompanied [dataflow information](#dataflow-information) (${shortLink('DataflowInformation', vertexType.info)}) returned by _flowR_ contains things besides the graph,
 like the entry and exit points of the subgraphs, and currently active references (see [below](#dataflow-information)).
-Additionally, you may be interested in the set of [Unknown Side Effects](#unknown-side-effects) marking calls which _flowR_ is unable to handle correctly.
+Additionally, you may be interested in the set of [Unknown Side Effects](#unknown-side-effects), marking calls which _flowR_ is unable to handle correctly.
 
 Potentially, you are interested in another perspective that flowR provides, the [control flow graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph), so please check the correpsonding
 wiki page if you are unsure.
@@ -1129,6 +1130,7 @@ Depending on what you are interested in, there exists a plethora of functions an
 * ${shortLink(getOriginInDfg.name, vertexType.info)} to get information about where a read, call, ... comes from (see [below](#dfg-resolving-values))
 
 Some of these functions have been explained in their respective wiki pages. However, some are part of the [Dataflow Graph API](${FlowrWikiBaseRef}/Dataflow%20Graph%20API) and so we explain them here.
+If you are interested in which features we support and which features are still to be worked on, please refer to our [capabilities](${FlowrWikiBaseRef}/Capabilities) page.
 
 ${section('Resolving Values', 3, 'dfg-resolving-values')}
 

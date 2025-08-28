@@ -40,6 +40,7 @@ import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/c
 import { printCfgCode } from './doc-util/doc-cfg';
 import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
 import { SliceDirection } from '../core/steps/all/static-slicing/00-slice';
+import { documentReplSession } from './doc-util/doc-repl';
 
 
 registerQueryDocumentation('call-context', {
@@ -384,6 +385,17 @@ ${
 			ignoreSourceCalls: true
 		}
 	}], { showCode: false, collapseQuery: true, collapseResult: true })
+}
+
+Please note that, in the repl, a special syntax starting with \`+\` (which should be autocompleted) can be used to update the configuration on the fly:
+
+${
+	await documentReplSession(shell, [
+		{
+			command:     ':query @config +solver.slicer.threshold=10000',
+			description: 'Set the slicing threshold to 10,000.'
+		}
+	])
 }
 `;
 	}

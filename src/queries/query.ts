@@ -47,6 +47,7 @@ import { ControlFlowQueryDefinition } from './catalog/control-flow-query/control
 import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-format';
 import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 import type { AsyncOrSync, AsyncOrSyncType, Writable } from 'ts-essentials';
+import type { FlowrConfigOptions } from '../config';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -86,8 +87,12 @@ type SupportedQueries = {
 	[QueryType in Query['type']]: SupportedQuery<QueryType>
 }
 
-export interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
+export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = BaseQueryFormat['type']> {
 	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
+    /** optional completion in, e.g., the repl */
+	completer?:           (splitLine: readonly string[], config: FlowrConfigOptions) => string[]
+    /** optional query construction from an, e.g., repl line */
+	fromLine?:            (splitLine: readonly string[], config: FlowrConfigOptions) => Query | Query[] | undefined
 	asciiSummarizer:      (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
 	schema:               Joi.ObjectSchema
 	/**

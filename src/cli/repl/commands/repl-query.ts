@@ -5,8 +5,8 @@ import type { ReplCommand, ReplOutput } from './repl-main';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { ansiFormatter, italic } from '../../../util/text/ansi';
 import { describeSchema } from '../../../util/schema';
-import type { Query, QueryResults, SupportedQueryTypes } from '../../../queries/query';
-import { AnyQuerySchema, executeQueries, QueriesSchema } from '../../../queries/query';
+import type { Query, QueryResults, SupportedQuery, SupportedQueryTypes } from '../../../queries/query';
+import { SupportedQueries , AnyQuerySchema, executeQueries, QueriesSchema } from '../../../queries/query';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
@@ -47,7 +47,14 @@ async function processQueryArgs(line: string, parser: KnownParser, output: ReplO
 
 	let parsedQuery: Query[] = [];
 	if(query.startsWith('@')) {
-		parsedQuery = [{ type: query.slice(1) as SupportedQueryTypes } as Query];
+		const queryName = query.slice(1);
+		const queryObj = SupportedQueries[queryName as keyof typeof SupportedQueries] as SupportedQuery;
+		if(queryObj?.fromLine) {
+			const q = queryObj.fromLine(args, config);
+			parsedQuery = q ? (Array.isArray(q) ? q : [q]) : [];
+		} else {
+			parsedQuery = [{ type: query.slice(1) as SupportedQueryTypes } as Query];
+		}
 		const validationResult = QueriesSchema().validate(parsedQuery);
 		if(validationResult.error) {
 			output.stderr(`Invalid query: ${validationResult.error.message}`);

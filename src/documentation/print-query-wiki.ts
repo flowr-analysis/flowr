@@ -372,10 +372,20 @@ registerQueryDocumentation('config', {
 	shortDescription: 'Returns the current configuration of flowR.',
 	functionName:     executeConfigQuery.name,
 	functionFile:     '../queries/catalog/config-query/config-query-format.ts',
-	// eslint-disable-next-line @typescript-eslint/require-await -- no need for async here
-	buildExplanation: async() => {
+	 
+	buildExplanation: async(shell: RShell) => {
 		return `
-This query provides access to the current configuration of the flowR instance. See the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on what the configuration represents.`;
+This query provides access to the current configuration of the flowR instance. See the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on what the configuration represents.
+Additionally, you can use this query to update the configuration of flowR on-the-fly (please do not rely on this mechanism it is mostly of interest for demonstrations).
+${
+	await showQuery(shell, '', [{
+		type:   'config',
+		update: {
+			ignoreSourceCalls: true
+		}
+	}], { showCode: false, collapseQuery: true, collapseResult: true })
+}
+`;
 	}
 });
 

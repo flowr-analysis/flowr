@@ -5,9 +5,11 @@ import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { FlowrConfigOptions } from '../../../config';
 import { jsonReplacer } from '../../../util/json';
+import type { DeepPartial } from 'ts-essentials';
 
 export interface ConfigQuery extends BaseQueryFormat {
-	readonly type: 'config';
+    readonly type:    'config';
+    readonly update?: DeepPartial<FlowrConfigOptions>
 }
 
 export interface ConfigQueryResult extends BaseQueryResult {
@@ -25,6 +27,6 @@ export const ConfigQueryDefinition = {
 	},
 	schema: Joi.object({
 		type: Joi.string().valid('config').required().description('The type of the query.'),
-	}).description('The config query retrieves the current configuration of the flowR instance.'),
+	}).description('The config query retrieves the current configuration of the flowR instance and optionally also updates it.'),
 	flattenInvolvedNodes: () => []
 } as const;

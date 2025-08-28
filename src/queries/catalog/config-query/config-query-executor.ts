@@ -4,10 +4,17 @@ import type {
 	ConfigQueryResult
 } from './config-query-format';
 import type { BasicQueryData } from '../../base-query-format';
+import { isNotUndefined } from '../../../util/assert';
+import { deepMergeObjectInPlace } from '../../../util/objects';
 
 export function executeConfigQuery({ config }: BasicQueryData, queries: readonly ConfigQuery[]): ConfigQueryResult {
 	if(queries.length !== 1) {
-		log.warn('Config query expects only up to one query, but got', queries.length);
+		log.warn('Config query usually expects only up to one query, but got', queries.length);
+	}
+	const updates = queries.map(q => q.update).filter(isNotUndefined);
+
+	for(const update of updates) {
+		deepMergeObjectInPlace(config, update);
 	}
 
 	return {

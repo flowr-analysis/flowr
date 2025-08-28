@@ -40,6 +40,7 @@ import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/c
 import { printCfgCode } from './doc-util/doc-cfg';
 import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
 import { SliceDirection } from '../core/steps/all/static-slicing/00-slice';
+import { documentReplSession } from './doc-util/doc-repl';
 
 
 registerQueryDocumentation('call-context', {
@@ -372,10 +373,31 @@ registerQueryDocumentation('config', {
 	shortDescription: 'Returns the current configuration of flowR.',
 	functionName:     executeConfigQuery.name,
 	functionFile:     '../queries/catalog/config-query/config-query-format.ts',
-	// eslint-disable-next-line @typescript-eslint/require-await -- no need for async here
-	buildExplanation: async() => {
+	 
+	buildExplanation: async(shell: RShell) => {
 		return `
-This query provides access to the current configuration of the flowR instance. See the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on what the configuration represents.`;
+This query provides access to the current configuration of the flowR instance. See the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on what the configuration represents.
+Additionally, you can use this query to update the configuration of flowR on-the-fly (please do not rely on this mechanism it is mostly of interest for demonstrations).
+${
+	await showQuery(shell, '', [{
+		type:   'config',
+		update: {
+			ignoreSourceCalls: true
+		}
+	}], { showCode: false, collapseQuery: true, collapseResult: true })
+}
+
+Please note that, in the repl, a special syntax starting with \`+\` (which should be autocompleted) can be used to update the configuration on the fly:
+
+${
+	await documentReplSession(shell, [
+		{
+			command:     ':query @config +solver.slicer.threshold=10000',
+			description: 'Set the slicing threshold to 10,000.'
+		}
+	])
+}
+`;
 	}
 });
 

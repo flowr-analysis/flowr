@@ -16,6 +16,8 @@ type OrReadonly<T> = T | Readonly<T> | DeepReadonly<T>;
 /**
  * Given two objects deeply merges them, if an object is an array it will merge the array values!
  * Guarantees some type safety by requiring objects to merge to be from the same type (allows undefined)
+ *
+ * @see {@link deepMergeObjectInPlace} to merge into an existing object
  */
 export function deepMergeObject<T extends Mergeable>(base: Required<OrReadonly<T>>, addon?: T | DeepPartial<T> | Partial<T>): Required<T>
 export function deepMergeObject<T extends Mergeable>(base: DeepRequired<OrReadonly<T>>, addon?: T | DeepPartial<T> | Partial<T>): DeepRequired<T>
@@ -68,6 +70,41 @@ function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord
 			result[key] = addon[key];
 		}
 	}
+}
+
+/**
+ * Given two objects deeply merges them, if an object is an array it will merge the array values!
+ * Modifies the `base` object in place and also returns it.
+ * Guarantees some type safety by requiring objects to merge to be from the same type (allows undefined)
+ *
+ * @see {@link deepMergeObject} to create a new merged object
+ */
+export function deepMergeObjectInPlace<T extends Mergeable>(base: T, addon?: DeepPartial<T> | Partial<T>): T
+export function deepMergeObjectInPlace<T extends Mergeable>(base: T | undefined, addon?: DeepPartial<T> | Partial<T>): T | undefined
+export function deepMergeObjectInPlace(base?: Mergeable, addon?: Mergeable): Mergeable | undefined {
+	if(!base) {
+		return addon;
+	} else if(!addon) {
+		return base;
+	} else if(typeof base !== 'object' || typeof addon !== 'object') {
+		// this case should be guarded by type guards, but in case we do not know
+		throw new Error('illegal types for deepMergeObjectInPlace!');
+	}
+
+	assertSameType(base, addon);
+
+	const baseIsArray = Array.isArray(base);
+	const addonIsArray = Array.isArray(addon);
+
+	if(!baseIsArray && !addonIsArray) {
+		deepMergeObjectWithResult(addon, base, base);
+	} else if(baseIsArray && addonIsArray) {
+		(base).push(...addon);
+	} else {
+		throw new Error('cannot merge object with array!');
+	}
+
+	return base;
 }
 
 function assertSameType(base: unknown, addon: unknown): void {

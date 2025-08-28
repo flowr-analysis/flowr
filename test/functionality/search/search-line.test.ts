@@ -75,20 +75,20 @@ describe('flowR search', withTreeSitter(parser => {
 		describe('call targets', () => {
 			assertSearch('local', parser, 'func <- function(x) { x + 1 }\nfunc(7)', ['1@function'],
 				Q.all().with(Enrichment.CallTargets).map(Mapper.Enrichment, Enrichment.CallTargets).select(0),
-				Q.all().get(Enrichment.CallTargets).select(0),
+				Q.all().to(Enrichment.CallTargets).select(0),
 			);
 			assertSearchEnrichment('global', parser, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'some', Q.all().with(Enrichment.CallTargets));
 			assertSearchEnrichment('global specific', parser, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'every', Q.all().with(Enrichment.CallTargets).select(1));
 			// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!
 			assertSearch('global mapper', parser, 'cat("hello")', [],
 				Q.all().with(Enrichment.CallTargets).map(Mapper.Enrichment, Enrichment.CallTargets),
-				Q.all().get(Enrichment.CallTargets),
+				Q.all().to(Enrichment.CallTargets),
 			);
 		});
 		describe('last call', () => {
 			assertSearch('plot mapper', parser, 'plot(x)\nplot(x)\npoints(y)', ['2@plot'],
 				Q.var('points').with(Enrichment.LastCall, [{ callName: 'plot' }]).map(Mapper.Enrichment, Enrichment.LastCall),
-				Q.var('points').get(Enrichment.LastCall, [{ callName: 'plot' }]),
+				Q.var('points').to(Enrichment.LastCall, [{ callName: 'plot' }]),
 			);
 		});
 		describe('cfg info', () => {

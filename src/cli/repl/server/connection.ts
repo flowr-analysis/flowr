@@ -20,38 +20,36 @@ import type {
 import { requestExecuteReplExpressionMessage } from './messages/message-repl';
 import { replProcessAnswer } from '../core';
 import { LogLevel } from '../../../util/log';
-import { cfg2quads, extractCfg } from '../../../control-flow/extract-cfg';
+import { cfg2quads } from '../../../control-flow/extract-cfg';
 import type { QuadSerializationConfiguration } from '../../../util/quads';
 import { defaultQuadIdGenerator } from '../../../util/quads';
 import { printStepResult, StepOutputFormat } from '../../../core/print/print';
-import type { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
-import type { DataflowInformation } from '../../../dataflow/info';
-import type { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
-import type { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
+import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
+import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
+import { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
 import { ansiFormatter, voidFormatter } from '../../../util/text/ansi';
-import { PipelineStepStage } from '../../../core/steps/pipeline-step';
-import { createSlicePipeline, DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
-import type { Pipeline, PipelineOutput } from '../../../core/steps/pipeline/pipeline';
-import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
+import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type { DeepPartial } from 'ts-essentials';
 import { DataflowGraph } from '../../../dataflow/graph/graph';
 import * as tmp from 'tmp';
 import fs from 'fs';
 import type { RParseRequests } from '../../../r-bridge/retriever';
-import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments';
 import type { LineageRequestMessage, LineageResponseMessage } from './messages/message-lineage';
 import { requestLineageMessage } from './messages/message-lineage';
 import { getLineage } from '../commands/repl-lineage';
-import { guard } from '../../../util/assert';
-import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-defaults';
 import type { QueryRequestMessage, QueryResponseMessage } from './messages/message-query';
 import { requestQueryMessage } from './messages/message-query';
 import { executeQueries } from '../../../queries/query';
 import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
-import type { PipelineExecutor } from '../../../core/pipeline-executor';
 import { compact } from './compact';
 import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
 import type { FlowrConfigOptions } from '../../../config';
+import { FlowrAnalyzerBuilder } from '../../../project/flowr-analyzer-builder';
+import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';
+import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { DataflowInformation } from '../../../dataflow/info';
+import { PipelineStepStage } from '../../../core/steps/pipeline-step';
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -68,7 +66,7 @@ export class FlowRServerConnection {
 	// maps token to information
 	private readonly fileMap = new Map<string, {
 		filename?: string,
-		pipeline:  ReturnType<typeof createSlicePipeline>
+		analyzer:  FlowrAnalyzer
 	}>();
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
@@ -109,16 +107,16 @@ export class FlowRServerConnection {
 				void this.handleFileAnalysisRequest(request.message as FileAnalysisRequestMessage);
 				break;
 			case 'request-slice':
-				this.handleSliceRequest(request.message as SliceRequestMessage);
+				void this.handleSliceRequest(request.message as SliceRequestMessage);
 				break;
 			case 'request-repl-execution':
 				this.handleRepl(request.message as ExecuteRequestMessage);
 				break;
 			case 'request-lineage':
-				this.handleLineageRequest(request.message as LineageRequestMessage);
+				void this.handleLineageRequest(request.message as LineageRequestMessage);
 				break;
 			case 'request-query':
-				this.handleQueryRequest(request.message as QueryRequestMessage);
+				void this.handleQueryRequest(request.message as QueryRequestMessage);
 				break;
 			default:
 				sendMessage<FlowrErrorMessage>(this.socket, {
@@ -147,36 +145,32 @@ export class FlowRServerConnection {
 		}
 
 		const tempFile = tmp.fileSync({ postfix: '.R' });
-		const slicer = this.createPipelineExecutorForRequest(message, tempFile.name);
+		const analyzer = await this.createAnalyzerForRequest(message, tempFile.name);
 
-		await slicer.allRemainingSteps(false).then(async results => await this.sendFileAnalysisResponse(slicer, results, message))
-			.catch(e => {
-				this.logger.error(`[${this.name}] Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`);
-				sendMessage<FlowrErrorMessage>(this.socket, {
-					id:     message.id,
-					type:   'error',
-					fatal:  false,
-					reason: `Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`
-				});
+		try {
+			await this.sendFileAnalysisResponse(analyzer, message);
+		} catch(e) {
+			this.logger.error(`[${this.name}] Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`);
+			sendMessage<FlowrErrorMessage>(this.socket, {
+				id:     message.id,
+				type:   'error',
+				fatal:  false,
+				reason: `Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`
 			});
+		}
 
 		// this is an interestingly named function that means "I am a callback that removes a file" - so this deletes the file
 		tempFile.removeCallback();
 	}
 
-	private async sendFileAnalysisResponse(slicer: PipelineExecutor<Pipeline>, results: Partial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>>, message: FileAnalysisRequestMessage): Promise<void> {
+	private async sendFileAnalysisResponse(analyzer: FlowrAnalyzer, message: FileAnalysisRequestMessage): Promise<void> {
 		let cfg: ControlFlowInformation | undefined = undefined;
 		if(message.cfg) {
-			cfg = extractCfg(results.normalize as NormalizedAst, this.config, results.dataflow?.graph);
+			cfg = await analyzer.controlFlow();
 		}
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() });
-		const sanitizedResults = sanitizeAnalysisResults(results);
-		const pipeline = slicer.getPipeline();
-		const parseStep = pipeline.steps.get('parse') as typeof PARSE_WITH_R_SHELL_STEP;
-		const normalizedStep = pipeline.steps.get('normalize') as typeof NORMALIZE;
-		const dataflowStep = pipeline.steps.get('dataflow') as typeof STATIC_DATAFLOW;
-		guard(parseStep !== undefined && normalizedStep !== undefined && dataflowStep !== undefined, 'All steps must be present');
+		const sanitizedResults = sanitizeAnalysisResults(await analyzer.parseOutput(), await analyzer.normalizedAst(), await analyzer.dataflow());
 		if(message.format === 'n-quads') {
 			sendMessage<FileAnalysisResponseMessageNQuads>(this.socket, {
 				type:    'response-file-analysis',
@@ -184,9 +178,9 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     await printStepResult(parseStep, sanitizedResults.parse as ParseStepOutput<string>, StepOutputFormat.RdfQuads, config()),
-					normalize: await printStepResult(normalizedStep, sanitizedResults.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
-					dataflow:  await printStepResult(dataflowStep, sanitizedResults.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config())
+					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, await analyzer.parseOutput(), StepOutputFormat.RdfQuads, config()),
+					normalize: await printStepResult(NORMALIZE, await analyzer.normalizedAst(), StepOutputFormat.RdfQuads, config()),
+					dataflow:  await printStepResult(STATIC_DATAFLOW, await analyzer.dataflow(), StepOutputFormat.RdfQuads, config())
 				}
 			});
 		} else if(message.format === 'compact') {
@@ -208,7 +202,7 @@ export class FlowRServerConnection {
 		}
 	}
 
-	private createPipelineExecutorForRequest(message: FileAnalysisRequestMessage, tempFile: string) {
+	private async createAnalyzerForRequest(message: FileAnalysisRequestMessage, tempFile: string) {
 		let request: RParseRequests;
 		if(message.content !== undefined){
 			// we store the code in a temporary file in case it's too big for the shell to handle
@@ -224,21 +218,22 @@ export class FlowRServerConnection {
 			throw new Error('Either content or filepath must be defined.');
 		}
 
-		const slicer = createSlicePipeline(this.parser, {
-			request,
-			criterion: [] // currently unknown
-		}, this.config);
+		const analyzer = await new FlowrAnalyzerBuilder(request)
+			.setConfig(this.config)
+			.setParser(this.parser)
+			.build();
+
 		if(message.filetoken) {
 			this.logger.info(`Storing file token ${message.filetoken}`);
 			this.fileMap.set(message.filetoken, {
 				filename: message.filename,
-				pipeline: slicer
+				analyzer: analyzer
 			});
 		}
-		return slicer;
+		return analyzer;
 	}
 
-	private handleSliceRequest(base: SliceRequestMessage) {
+	private async handleSliceRequest(base: SliceRequestMessage) {
 		const requestResult = validateMessage(base, requestSliceMessage);
 		if(requestResult.type === 'error') {
 			answerForValidationError(this.socket, requestResult, base.id);
@@ -259,21 +254,25 @@ export class FlowRServerConnection {
 			return;
 		}
 
-		fileInformation.pipeline.updateRequest({
-			criterion:    request.criterion,
-			autoSelectIf: request.noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
-		});
+		try {
+			// TODO TSchoeller Previously, this did update the slice request
+			const result = await fileInformation.analyzer.query([{
+				type:            'static-slice',
+				criteria:        request.criterion,
+				noMagicComments: request.noMagicComments,
+				// TODO TSchoeller autoSelectIf -> How to pass?
+				//autoSelectIf:    request.noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
+			}]);
 
-		void fileInformation.pipeline.allRemainingSteps(true).then(results => {
 			sendMessage<SliceResponseMessage>(this.socket, {
 				type:    'response-slice',
 				id:      request.id,
 				results: Object.fromEntries(
-					Object.entries(results)
+					Object.entries(result)
 						.filter(([k,]) => DEFAULT_SLICING_PIPELINE.steps.get(k)?.executed === PipelineStepStage.OncePerRequest)
 				) as SliceResponseMessage['results']
 			});
-		}).catch(e => {
+		} catch(e) {
 			this.logger.error(`[${this.name}] Error while analyzing file for token ${request.filetoken}: ${String(e)}`);
 			sendMessage<FlowrErrorMessage>(this.socket, {
 				id:     request.id,
@@ -281,7 +280,7 @@ export class FlowRServerConnection {
 				fatal:  false,
 				reason: `Error while analyzing file for token ${request.filetoken}: ${String(e)}`
 			});
-		});
+		}
 	}
 
 
@@ -318,7 +317,7 @@ export class FlowRServerConnection {
 		});
 	}
 
-	private handleLineageRequest(base: LineageRequestMessage) {
+	private async handleLineageRequest(base: LineageRequestMessage) {
 		const requestResult = validateMessage(base, requestLineageMessage);
 
 		if(requestResult.type === 'error') {
@@ -340,10 +339,8 @@ export class FlowRServerConnection {
 			return;
 		}
 
-		const { dataflow: dfg, normalize: ast } = fileInformation.pipeline.getResults(true);
-		guard(dfg !== undefined, `Dataflow graph must be present (request: ${request.filetoken})`);
-		guard(ast !== undefined, `AST must be present (request: ${request.filetoken})`);
-		const lineageIds = getLineage(request.criterion, dfg.graph, ast.idMap);
+		const analyzer = fileInformation.analyzer;
+		const lineageIds = getLineage(request.criterion, (await analyzer.dataflow()).graph, (await analyzer.normalizedAst()).idMap);
 		sendMessage<LineageResponseMessage>(this.socket, {
 			type:    'response-lineage',
 			id:      request.id,
@@ -351,7 +348,7 @@ export class FlowRServerConnection {
 		});
 	}
 
-	private handleQueryRequest(base: QueryRequestMessage) {
+	private async handleQueryRequest(base: QueryRequestMessage) {
 		const requestResult = validateMessage(base, requestQueryMessage);
 
 		if(requestResult.type === 'error') {
@@ -373,10 +370,11 @@ export class FlowRServerConnection {
 			return;
 		}
 
-		const { dataflow: dfg, normalize: ast } = fileInformation.pipeline.getResults(true);
-		guard(dfg !== undefined, `Dataflow graph must be present (request: ${request.filetoken})`);
-		guard(ast !== undefined, `AST must be present (request: ${request.filetoken})`);
-		const results = executeQueries({ dataflow: dfg, ast, config: this.config }, request.query);
+		const analyzer = fileInformation.analyzer;
+		const results = executeQueries({
+			dataflow: await analyzer.dataflow(),
+			ast:      await analyzer.normalizedAst(),
+			config:   this.config }, request.query);
 		sendMessage<QueryResponseMessage>(this.socket, {
 			type: 'response-query',
 			id:   request.id,
@@ -385,17 +383,18 @@ export class FlowRServerConnection {
 	}
 }
 
-export function sanitizeAnalysisResults(results: Partial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>>): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>> {
+export function sanitizeAnalysisResults(parse: ParseStepOutput<any>, normalize: NormalizedAst, dataflow: DataflowInformation): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>> {
 	return {
-		...results,
+		// TODO Results missing?
+		parse,
 		normalize: {
-			...results.normalize,
+			...normalize,
 			idMap: undefined
 		},
 		dataflow: {
-			...results.dataflow,
+			...dataflow,
 			// we want to keep the DataflowGraph type information, but not the idMap
-			graph: new DataflowGraph(undefined).mergeWith(results.dataflow?.graph)
+			graph: new DataflowGraph(undefined).mergeWith(dataflow?.graph)
 		}
 	};
 }

@@ -112,7 +112,7 @@ export class FlowrAnalyzer {
 			await this.dataflow(force);
 		}
 
-		const result = extractCfg(this.ast, this.flowrConfig, this.dataflowInfo.graph, simplifications);
+		const result = extractCfg(this.ast, this.flowrConfig, this.dataflowInfo?.graph, simplifications);
 		this.controlFlowInfo = result;
 		return result;
 	}

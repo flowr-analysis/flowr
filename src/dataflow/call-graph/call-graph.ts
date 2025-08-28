@@ -6,6 +6,8 @@ import type { DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
 import { VertexType } from '../graph/vertex';
 import { getOriginInDfg, OriginType } from '../origin/dfg-get-origin';
 import { isNotUndefined } from '../../util/assert';
+import { GraphDifferenceReport } from '../../util/diff-graph';
+import type { DifferenceReport } from '../../util/diff';
 
 export class CallGraph {
 	private readonly edges: DefaultMap<NodeId, Set<NodeId>>;
@@ -24,7 +26,7 @@ export class CallGraph {
 		const cg = new CallGraph();
 		for(const [id, info] of dfg.vertices(true)) {
 			if(info.tag === VertexType.FunctionCall) {
-				handleFunctionCall(id, dfg, cg);
+				handleAsFunctionCall(id, dfg, cg);
 			} else if(info.tag === VertexType.FunctionDefinition) {
 				handleFunctionDefinition(info, dfg, cg);
 			}
@@ -45,17 +47,40 @@ export class CallGraph {
 		return { edges: Array.from(this.edges.entries()).map(([k, v]) => [k, Array.from(v)]) };
 	}
 
+	diff(other: CallGraph): DifferenceReport {
+		const d = new GraphDifferenceReport();
+		for(const [from, tos] of this.edges.entries()) {
+			const otherTos = other.edges.get(from);
+			for(const to of tos) {
+				if(!otherTos.has(to)) {
+					d.addComment(`Edge from ${from} to ${to} is missing in the other call graph`, { tag: 'edge', from, to });
+				}
+			}
+		}
+		for(const [from, tos] of other.edges.entries()) {
+			const thisTos = this.edges.get(from);
+			for(const to of tos) {
+				if(!thisTos.has(to)) {
+					d.addComment(`Edge from ${from} to ${to} is missing in this call graph`, { tag: 'edge', from, to });
+				}
+			}
+		}
+		return d;
+	}
+
 	toMermaid(dfg: DataflowGraph): string {
 		const lines = ['flowchart TD'];
 		const gl = (id: NodeId) => {
 			return String(id).startsWith('builtin:') ? id : recoverContent(id, dfg);
 		};
+		const lstart = (l: string | NodeId | undefined) => l === 'function' ? '{{' : '[';
+		const lend = (l: string | NodeId | undefined) => l === 'function' ? '}}' : ']';
 		for(const [from, tos] of this.edges.entries()) {
 			const fromLabel = gl(from);
-			lines.push(`    ${from}["${fromLabel} (${from})"]`);
+			lines.push(`    ${from}${lstart(fromLabel)}"${fromLabel} (${from})"${lend(fromLabel)}`);
 			for(const to of tos) {
 				const toLabel = gl(to);
-				lines.push(`    ${to}["${toLabel} (${to})"]`);
+				lines.push(`    ${to}${lstart(toLabel)}"${toLabel} (${to})"${lend(toLabel)}`);
 				lines.push(`    ${from} --> ${to}`);
 			}
 		}
@@ -64,7 +89,7 @@ export class CallGraph {
 }
 
 
-function handleFunctionCall(id: NodeId, dfg: DataflowGraph, cg: CallGraph) {
+function handleAsFunctionCall(id: NodeId, dfg: DataflowGraph, cg: CallGraph) {
 	const origins = getOriginInDfg(dfg, id);
 	for(const origin of origins ?? []) {
 		if(origin.type === OriginType.FunctionCallOrigin) {

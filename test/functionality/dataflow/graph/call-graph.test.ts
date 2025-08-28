@@ -14,6 +14,7 @@ import { defaultConfigOptions } from '../../../../src/config';
 import { decorateLabelContext } from '../../_helper/label';
 import { mermaidCodeToUrl } from '../../../../src/util/mermaid/mermaid';
 import { normalizedAstToMermaidUrl } from '../../../../src/util/mermaid/ast';
+import { dataflowGraphToMermaidUrl } from '../../../../src/core/print/dataflow-printer';
 
 describe('Call Graph', withTreeSitter(parser => {
 	function testCg(code: string, cg: (dfg: DataflowGraph) => CallGraph) {
@@ -23,11 +24,14 @@ describe('Call Graph', withTreeSitter(parser => {
 				request: requestFromInput(code)
 			}, defaultConfigOptions).allRemainingSteps();
 			const gotGraph = CallGraph.create(result.dataflow.graph);
+			const diff = gotGraph.diff(cg(result.dataflow.graph));
 			try {
-				assert.strictEqual(JSON.stringify(gotGraph), JSON.stringify(cg(result.dataflow.graph)));
+				assert.isTrue(diff.isEqual());
 			} catch(error) {
+				console.log(diff.comments());
 				console.log('cg: ', mermaidCodeToUrl(gotGraph.toMermaid(result.dataflow.graph)));
 				console.log('normalized: ', normalizedAstToMermaidUrl(result.normalize.ast));
+				console.log('dfg: ', dataflowGraphToMermaidUrl(result.dataflow));
 				throw error; // Re-throw the error after logging it
 			}
 		});
@@ -48,6 +52,9 @@ describe('Call Graph', withTreeSitter(parser => {
 		}
 	}
 
+	testCg('f <- function() 1\n f();', d => new CGB(d)
+		.e('1@<-', 'builtin:assignment')
+		.e('2@f', '1@function'));
 
 	testCg('f <- function() { return 1; }\n f();', d => new CGB(d)
 		.e('$5', 'builtin:expression-list')
@@ -55,6 +62,17 @@ describe('Call Graph', withTreeSitter(parser => {
 		.e('1@<-', 'builtin:assignment')
 		.e('2@f', '1@function'));
 
-
-
+	/*
+	testCg(`
+f <- function(x) x + 1
+q <- function() {
+    g <- function(y) f(y) * 2
+    h <- function(z) g(z)- 3
+    x <- function() print(42)
+    y <- function(f) f() + h(10)
+    y(x)
+}
+q()
+    `, d => new CGB(d));
+    */
 }));

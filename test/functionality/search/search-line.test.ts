@@ -67,7 +67,7 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:assignment' } })
 			);
 			assertSearch('include function calls', parser, 'x <- 2\ncat(x)', ['1@<-', '1@x', '1@2', '2@x', '$3', '$5', '$7'],
-				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:assignment', includeNonFunctionCalls: true } })
+				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:assignment', keepNonFunctionCalls: true } })
 			);
 			assertSearch('regex assignment', parser, 'x <- 2\ncat(x)', ['1@<-'],
 				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: /:assignment/ } })

@@ -47,7 +47,7 @@ export const FlowrFilters = {
 	[FlowrFilter.OriginKind]: ((e: FlowrSearchElement<ParentInformation>, args: OriginKindArgs, data: FlowrSearchInput<Pipeline>) => {
 		const dfgNode = data.dataflow.graph.getVertex(e.node.info.id);
 		if(!dfgNode || dfgNode.tag !== VertexType.FunctionCall) {
-			return args.includeNonFunctionCalls ?? false;
+			return args.keepNonFunctionCalls ?? false;
 		}
 		const match = typeof args.origin === 'string' ?
 			(origin: string) => args.origin === origin :
@@ -63,9 +63,9 @@ export interface MatchesEnrichmentArgs<E extends Enrichment> {
 	test:       RegExp
 }
 export interface OriginKindArgs {
-	origin:                   BuiltInMappingName | RegExp;
-	matchType?:               'some' | 'every';
-	includeNonFunctionCalls?: boolean
+	origin:                BuiltInMappingName | RegExp;
+	matchType?:            'some' | 'every';
+	keepNonFunctionCalls?: boolean
 }
 
 export function testFunctionsIgnoringPackage(functions: string[]): RegExp {
@@ -211,7 +211,7 @@ export function isBinaryTree(tree: unknown): tree is { tree: BooleanNode } {
 
 interface FilterData {
 	readonly element: FlowrSearchElement<ParentInformation>,
-	data:             FlowrSearchInput<Pipeline>
+	readonly data:    FlowrSearchInput<Pipeline>
 }
 
 const evalVisit = {

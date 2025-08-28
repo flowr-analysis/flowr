@@ -1,12 +1,11 @@
-import { RType , ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
-import type { VertexType } from '../dataflow/graph/vertex';
-import { ValidVertexTypes } from '../dataflow/graph/vertex';
-import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { DataflowInformation } from '../dataflow/info';
-import type { FlowrSearchElement } from './flowr-search';
-import type { MergeableRecord } from '../util/objects';
+import { RType, ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
+import { ValidVertexTypes, VertexType } from '../dataflow/graph/vertex';
+import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { FlowrSearchElement, FlowrSearchInput } from './flowr-search';
 import type { Enrichment } from './search-executor/search-enrichers';
 import { enrichmentContent } from './search-executor/search-enrichers';
+import type { BuiltInMappingName } from '../dataflow/environments/built-in';
+import type { Pipeline } from '../core/steps/pipeline/pipeline';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {
@@ -25,9 +24,14 @@ export enum FlowrFilter {
 	 * This filter accepts {@link MatchesEnrichmentArgs}, which includes the enrichment to match for, as well as the regular expression to test the enrichment's (non-pretty-printed) JSON representation for.
 	 * To test for included function names in an enrichment like {@link Enrichment.CallTargets}, the helper function {@link testFunctionsIgnoringPackage} can be used.
 	 */
-	MatchesEnrichment = 'matches-enrichment'
+	MatchesEnrichment = 'matches-enrichment',
+	/**
+	 * Only returns search elements whose {@link FunctionOriginInformation} match a given pattern or value.
+	 * This filter accepts {@link OriginKindArgs}, which includes the {@link DataflowGraphVertexFunctionCall.origin} to match for, whether to match for every or some origins, and whether to include non-function-calls in the filtered query.
+	 */
+	OriginKind = 'origin-kind'
 }
-export type FlowrFilterFunction <T extends MergeableRecord> = (e: FlowrSearchElement<ParentInformation>, args: T) => boolean;
+export type FlowrFilterFunction <T> = (e: FlowrSearchElement<ParentInformation>, args: T, data: FlowrSearchInput<Pipeline>) => boolean;
 
 export const ValidFlowrFilters: Set<string> = new Set(Object.values(FlowrFilter));
 export const ValidFlowrFiltersReverse = Object.fromEntries(Object.entries(FlowrFilter).map(([k, v]) => [v, k]));
@@ -39,13 +43,29 @@ export const FlowrFilters = {
 	[FlowrFilter.MatchesEnrichment]: ((e: FlowrSearchElement<ParentInformation>, args: MatchesEnrichmentArgs<Enrichment>) => {
 		const content = JSON.stringify(enrichmentContent(e, args.enrichment));
 		return content !== undefined && args.test.test(content);
-	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>
+	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>,
+	[FlowrFilter.OriginKind]: ((e: FlowrSearchElement<ParentInformation>, args: OriginKindArgs, data: FlowrSearchInput<Pipeline>) => {
+		const dfgNode = data.dataflow.graph.getVertex(e.node.info.id);
+		if(!dfgNode || dfgNode.tag !== VertexType.FunctionCall) {
+			return args.includeNonFunctionCalls ?? false;
+		}
+		const match = typeof args.origin === 'string' ?
+			(origin: string) => args.origin === origin :
+			(origin: string) => (args.origin as RegExp).test(origin);
+		const origins = Array.isArray(dfgNode.origin) ? dfgNode.origin : [dfgNode.origin];
+		return args.matchType === 'every' ? origins.every(match) : origins.some(match);
+	}) satisfies FlowrFilterFunction<OriginKindArgs>
 } as const;
 export type FlowrFilterArgs<F extends FlowrFilter> = typeof FlowrFilters[F] extends FlowrFilterFunction<infer Args> ? Args : never;
 
-export interface MatchesEnrichmentArgs<E extends Enrichment> extends MergeableRecord {
+export interface MatchesEnrichmentArgs<E extends Enrichment> {
 	enrichment: E,
 	test:       RegExp
+}
+export interface OriginKindArgs {
+	origin:                   BuiltInMappingName | RegExp;
+	matchType?:               'some' | 'every';
+	includeNonFunctionCalls?: boolean
 }
 
 export function testFunctionsIgnoringPackage(functions: string[]): RegExp {
@@ -190,9 +210,8 @@ export function isBinaryTree(tree: unknown): tree is { tree: BooleanNode } {
 }
 
 interface FilterData {
-	readonly element:   FlowrSearchElement<ParentInformation>,
-	readonly normalize: NormalizedAst,
-	readonly dataflow:  DataflowInformation
+	readonly element: FlowrSearchElement<ParentInformation>,
+	data:             FlowrSearchInput<Pipeline>
 }
 
 const evalVisit = {
@@ -206,14 +225,14 @@ const evalVisit = {
 		!evalTree(operand, data),
 	'r-type': ({ value }: LeafRType, { element }: FilterData) =>
 		element.node.type === value,
-	'vertex-type': ({ value }: LeafVertexType, { dataflow: { graph }, element }: FilterData) =>
-		graph.getVertex(element.node.info.id)?.tag === value,
-	'special': ({ value }: LeafSpecial, { element }: FilterData) => {
+	'vertex-type': ({ value }: LeafVertexType, { data: { dataflow }, element }: FilterData) =>
+		dataflow.graph.getVertex(element.node.info.id)?.tag === value,
+	'special': ({ value }: LeafSpecial, { data, element }: FilterData) => {
 		const name = typeof value === 'string' ? value : value.name;
 		const args = typeof value === 'string' ? undefined as unknown as FlowrFilterArgs<FlowrFilter> : value.args;
 		const getHandler = FlowrFilters[name];
 		if(getHandler) {
-			return getHandler(element, args);
+			return getHandler(element, args, data);
 		}
 		throw new Error(`Couldn't find special filter with name ${name}`);
 	}

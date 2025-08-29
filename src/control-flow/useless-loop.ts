@@ -6,6 +6,7 @@ import { isValue } from '../dataflow/eval/values/r-value';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import { VertexType } from '../dataflow/graph/vertex';
+import type { ControlDependency } from '../dataflow/info';
 import { happensInEveryBranch } from '../dataflow/info';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -69,11 +70,14 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 		defaultVisitingOrder: 'forward'
 	});
 
-	return visitor.loopsOnlyOnce();
+	const r = visitor.loopsOnlyOnce();
+	return r;
 }
 
 class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 	
+	private loopCds: ControlDependency[] | undefined = undefined;
+	private encounteredLoopBreaker = false;
 	private onlyLoopyOnce = false;
 
 	private loopToCheck: NodeId;
@@ -98,10 +102,10 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 
 	protected startVisitor(_: readonly NodeId[]): void {
 		const g = this.config.controlFlow.graph;
-		const n = (i: NodeId) => g.ingoingEdges(i);
+		const ingoing = (i: NodeId) => g.ingoingEdges(i);
 
 		const exits = new Set<NodeId>(g.getVertex(this.loopToCheck)?.end as NodeId[] ?? []);
-		guard(exits.size !== 0, "Can't find end of loop"); 
+		guard(exits.size !== 0, "Can't find end of loop");
 
 		const stack: NodeId[] = [this.loopToCheck];
 		while(stack.length > 0) {
@@ -113,44 +117,47 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 
 
 			if(!exits.has(current)) {
-				const next = n(current) ?? [];
+				const next = ingoing(current) ?? [];
 				for(const [to] of next) {
 					stack.unshift(to);
 				}
+			}
+
+			this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds);
+		}
+
+		this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds);
+	}
+
+	private app(cds: ControlDependency[] | undefined): void {
+		if(cds === undefined) {
+			return;
+		}
+		const filtered = cds.filter(c => c.id !== this.loopToCheck);
+		if(filtered.length > 0) {
+			if(this.loopCds === undefined) {
+				this.loopCds = filtered;
+			} else {
+				this.loopCds = this.loopCds.concat(filtered);
 			}
 		}
 	}
 
 	protected onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
-		let stopsLoop = false;
-
-		const alwaysHappens = () => {
-			if(!data.call.cds || 
-				(data.call.cds.length === 1 && data.call.cds[0].id === this.loopToCheck)) {
-				return true;
-			}
-
-			const cds = data.call.cds.filter(d => d.id !== this.loopToCheck);
-
-			return happensInEveryBranch(cds);
-		};
-
-		switch(data.call.origin[0]) {
-			case 'builtin:return':
-			case 'builtin:stop':
-			case 'builtin:break':
-				stopsLoop = alwaysHappens();
-				break;
-			case 'builtin:stopifnot': {
+		for(const origin of data.call.origin) {
+			if(origin === 'builtin:stop' || origin === 'builtin:return' || origin === 'builtin:break') {
+				this.encounteredLoopBreaker = true;
+				this.app(data.call.cds);
+				return;
+			} else if(origin === 'builtin:stopifnot') {
 				const arg = this.getBoolArgValue(data);
-				if(arg !== undefined) {
-					stopsLoop = !arg && alwaysHappens();
+				if(arg === false) {
+					this.encounteredLoopBreaker = true;
+					this.app(data.call.cds);
+					return;
 				}
-				break;
 			}
 		}
-			
-		this.onlyLoopyOnce = this.onlyLoopyOnce || stopsLoop;
 	}
 
 	public loopsOnlyOnce(): boolean {

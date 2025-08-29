@@ -22,7 +22,7 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 		for(const definition of definitions ?? []) {
 			if(definition.type !== ReferenceType.BuiltInFunction && definition.type !== ReferenceType.BuiltInConstant) {
 				if(definition.controlDependencies) {
-					if(defaultCd && !definition.controlDependencies.find(c => c.id === defaultCd.id)) {
+					if(defaultCd && !definition.controlDependencies.find(c => c.id === defaultCd.id && c.when === defaultCd.when)) {
 						definition.controlDependencies.push(defaultCd);
 					}
 				} else {
@@ -35,7 +35,7 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 	if(node) {
 		const [fst] = node;
 		if(fst.cds) {
-			if(defaultCd && !fst.cds.find(c => c.id === defaultCd.id)) {
+			if(defaultCd && !fst.cds.find(c => c.id === defaultCd.id && c.when === defaultCd.when)) {
 				fst.cds.push(defaultCd);
 			}
 		} else {
@@ -43,7 +43,7 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 		}
 	}
 	if(ref.controlDependencies) {
-		if(defaultCd && !ref.controlDependencies.find(c => c.id === defaultCd.id)) {
+		if(defaultCd && !ref.controlDependencies.find(c => c.id === defaultCd.id && c.when === defaultCd.when)) {
 			return { ...ref, controlDependencies: (ref.controlDependencies ?? []).concat(defaultCd ? [defaultCd] : []) };
 		}
 	} else {

@@ -407,13 +407,13 @@ f()`,  emptyGraph()
 				.call('12', '<-', [argumentInCall('3'), argumentInCall('11')], { returns: ['3'], reads: [builtInId('<-')], environment: defaultEnv().defineVariable('a', '0', '2') })
 				.calls('12', builtInId('<-'))
 				.argument('12', ['11', '3'])
-				.call('14', 'f', [], { returns: ['10'], reads: ['3'], environment: defaultEnv().defineVariable('a', '0', '2').defineFunction('f', '3', '12') })
+				.call('14', 'f', [], { returns: ['9'], reads: ['3'], environment: defaultEnv().defineVariable('a', '0', '2').defineFunction('f', '3', '12') })
 				.calls('14', '11')
 				.definesOnCall('14', '0')
 				.definedByOnCall('7', '0')
 				.constant('1')
 				.defineVariable('0', 'a', { definedBy: ['1', '2'] })
-				.defineFunction('11', ['10'], {
+				.defineFunction('11', ['9'], {
 					out:               [],
 					in:                [{ nodeId: '7', name: 'a', controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
@@ -444,12 +444,12 @@ f()`, emptyGraph()
 				.call('15', '<-', [argumentInCall('3'), argumentInCall('14')], { returns: ['3'], reads: [builtInId('<-')], environment: defaultEnv().defineVariable('a', '0', '2') })
 				.calls('15', builtInId('<-'))
 				.argument('15', ['14', '3'])
-				.call('17', 'f', [], { returns: ['13'], reads: ['3'], environment: defaultEnv().defineVariable('a', '0', '2').defineFunction('f', '3', '15') })
+				.call('17', 'f', [], { returns: ['12'], reads: ['3'], environment: defaultEnv().defineVariable('a', '0', '2').defineFunction('f', '3', '15') })
 				.calls('17', '14')
 				.constant('1')
 				.defineVariable('0', 'a', { definedBy: ['1', '2'] })
 				.defineVariable('4', 'a', { definedBy: ['6', '8'] }, false)
-				.defineFunction('14', ['13'], {
+				.defineFunction('14', ['12'], {
 					out:               [],
 					in:                [],
 					unknownReferences: [],

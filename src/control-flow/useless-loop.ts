@@ -70,8 +70,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 		defaultVisitingOrder: 'forward'
 	});
 
-	const r = visitor.loopsOnlyOnce();
-	return r;
+	return visitor.loopsOnlyOnce();
 }
 
 class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {

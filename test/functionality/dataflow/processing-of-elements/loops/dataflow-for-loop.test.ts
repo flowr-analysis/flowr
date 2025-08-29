@@ -39,7 +39,7 @@ x`, emptyGraph()
 				.calls('6', builtInId('break'))
 				.call('8', 'if', [argumentInCall('5'), argumentInCall('6'), EmptyArgument], { origin: ['builtin:if-then-else'], returns: ['6'], reads: [builtInId('if'), '5'], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '2', '4'), controlDependencies: [{ id: '13' }, { id: '8', when: true }]  })
 				.calls('8', builtInId('if'))
-				.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { origin: ['builtin:assignment'], returns: ['9'], reads: [builtInId('<-')], controlDependencies: [], environment: defaultEnv().defineVariable('x', '2', '4') })
+				.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { origin: ['builtin:assignment'], returns: ['9'], reads: [builtInId('<-')], controlDependencies: [{ id: '13' }, { id: '8', when: true }], environment: defaultEnv().defineVariable('x', '2', '4') })
 				.calls('11', builtInId('<-'))
 				.call('12', '{', [argumentInCall('4'), argumentInCall('8'), argumentInCall('11')], { origin: ['builtin:expression-list'], returns: ['11'], reads: [builtInId('{')], environment: defaultEnv().defineVariable('x', '2', '4').defineVariable('x', '9', '11', []), controlDependencies: [{ id: '13' }, { id: '8', when: true }]  })
 				.calls('12', builtInId('{'))
@@ -49,7 +49,7 @@ x`, emptyGraph()
 				.constant('3', { controlDependencies: [{ id: '13' }, { id: '8', when: true }] })
 				.defineVariable('2', 'x', { definedBy: ['3', '4'], controlDependencies: [{ id: '13' }, { id: '8', when: true }] })
 				.constant('10', { controlDependencies: [{ id: '13' }, { id: '8', when: true }] })
-				.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
+				.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [{ id: '13' }, { id: '8', when: true }] })
 		);
 	});
 
@@ -85,7 +85,7 @@ x`, emptyGraph()
 		.constant('1')
 		.constant('2')
 		.constant('7', { controlDependencies: [{ id: '10', when: true }] })
-		.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [] })
+		.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [{ id: '10', when: true }] })
 	);
 
 
@@ -109,7 +109,7 @@ x`, emptyGraph()
 		.constant('4')
 		.constant('5')
 		.constant('10', { controlDependencies: [{ id: '13', when: true }] })
-		.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
+		.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [{ id: '13', when: true }] })
 	);
 	assertDataflow(label('redefinition within loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- x }\n x',  emptyGraph()
 		.use('10', 'x', { cds: [{ id: '13', when: true }] })
@@ -132,12 +132,12 @@ x`, emptyGraph()
 		.defineVariable('3', 'i', { definedBy: ['6'] })
 		.constant('4')
 		.constant('5')
-		.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
+		.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [{ id: '13', when: true }] })
 	);
 
 	assertDataflow(label('Simple Circular Redefinition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']),
 		shell, 'for(i in 1:10) x <- x + 1',
-		emptyGraph().defineVariable('1@x', 'x', { controlDependencies: [] }).use('1:21', 'x', { cds: [{ id: 10, when: true }] }).reads('1:21', '1@x'),
+		emptyGraph().defineVariable('1@x', 'x', { controlDependencies: [{ id: 10, when: true }] }).use('1:21', 'x', { cds: [{ id: 10, when: true }] }).reads('1:21', '1@x'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 
@@ -167,8 +167,8 @@ x`, emptyGraph()
 		.defineVariable('3', 'i', { definedBy: ['6'] })
 		.constant('4')
 		.constant('5')
-		.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
-		.defineVariable('12', 'x', { definedBy: ['13', '14'], controlDependencies: [] })
+		.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [{ id: '16', when: true }] })
+		.defineVariable('12', 'x', { definedBy: ['13', '14'], controlDependencies: [{ id: '16', when: true }] })
 	);
 
 	assertDataflow(label('loop-variable redefined within loop', ['name-normal', 'for-loop', 'semicolons', 'newlines', 'numbers']), shell, 'for(i in 1:10) { i; i <- 12 }\n i', emptyGraph()
@@ -189,7 +189,7 @@ x`, emptyGraph()
 		.constant('1')
 		.constant('2')
 		.constant('8', { controlDependencies: [{ id: '11', when: true }] })
-		.defineVariable('7', 'i', { definedBy: ['8', '9'], controlDependencies: [] })
+		.defineVariable('7', 'i', { definedBy: ['8', '9'], controlDependencies: [{ id: '11', when: true }] })
 	);
 
 	describe('Branch coverage', () => {
@@ -351,7 +351,7 @@ print(x)`, emptyGraph()
 					.constant('4')
 					.constant('5')
 					.constant('10', { controlDependencies: [{ id: '14', when: true }] })
-					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
+					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [ { id: '14', when: true }] })
 					.markIdForUnknownSideEffects('18')
 			);
 			assertDataflow(label('Break in condition', ['for-loop', 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
@@ -400,7 +400,7 @@ print(x)`,  emptyGraph()
 					.constant('4')
 					.constant('5')
 					.constant('10', { controlDependencies: [{ id: '17', when: true }, { id: '15', when: true }] })
-					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
+					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [ { id: '17', when: true }, { id: '15', when: true }] })
 					.markIdForUnknownSideEffects('21')
 			);
 			assertDataflow(label('Next', ['for-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
@@ -424,7 +424,7 @@ print(x)`,  emptyGraph()
 					.argument('11', ['10', '9'])
 					.call('12', 'next', [], { returns: [], reads: [builtInId('next')], controlDependencies: [{ id: '19', when: true }], environment: defaultEnv().defineVariable('x', '9', '11', [{ id: '19', when: true }]) })
 					.calls('12', builtInId('next'))
-					.call('16', '<-', [argumentInCall('14', { controlDependencies: [] }), argumentInCall('15', { controlDependencies: [{ id: '19', when: true }] })], { returns: ['14'], reads: [builtInId('<-')], controlDependencies: [], environment: defaultEnv().defineVariable('x', '9', '11', [{ id: '19', when: true }]) })
+					.call('16', '<-', [argumentInCall('14', { controlDependencies: [] }), argumentInCall('15', { controlDependencies: [{ id: '19', when: true }] })], { returns: ['14'], reads: [builtInId('<-')], controlDependencies: [{ id: 19, when: true }], environment: defaultEnv().defineVariable('x', '9', '11', [{ id: '19', when: true }]) })
 					.calls('16', builtInId('<-'))
 					.argument('16', ['15', '14'])
 					.argument('18', '11')
@@ -446,9 +446,9 @@ print(x)`,  emptyGraph()
 					.constant('4')
 					.constant('5')
 					.constant('10', { controlDependencies: [{ id: '19', when: true }] })
-					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
+					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [{ id: 19, when: true }] })
 					.constant('15', { controlDependencies: [{ id: '19', when: true }] })
-					.defineVariable('14', 'x', { definedBy: ['15', '16'], controlDependencies: [] })
+					.defineVariable('14', 'x', { definedBy: ['15', '16'], controlDependencies: [{ id: 19, when: true }] })
 					.markIdForUnknownSideEffects('23')
 			);
 		});
@@ -499,24 +499,24 @@ while(TRUE) {
       break
 }
 print(x)`, emptyGraph()
-					.use('9', 'foo', { cds: [{ id: 14, when: true }] })
+					.use('9', 'foo', { cds: [{ id: 14, when: true }, { id: '12', when: true }] })
 					.use('16', 'x')
 					.reads('16', ['0', '6'])
 					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
 					.calls('2', builtInId('<-'))
 					.argument('2', ['1', '0'])
-					.call('8', '<-', [argumentInCall('6', { controlDependencies: [] }), argumentInCall('7', { controlDependencies: [{ id: '14', when: true }, { id: '12', when: true }] })], { returns: ['6'], reads: [builtInId('<-')], controlDependencies: [{ id: 14, when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
+					.call('8', '<-', [argumentInCall('6', { controlDependencies: [] }), argumentInCall('7', { controlDependencies: [{ id: '14', when: true }, { id: '12', when: true }] })], { returns: ['6'], reads: [builtInId('<-')], controlDependencies: [{ id: 14, when: true }, { id: '12', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
 					.calls('8', builtInId('<-'))
 					.argument('8', ['7', '6'])
-					.call('10', 'break', [], { origin: ['builtin:break'], returns: [], reads: [builtInId('break')], controlDependencies: [{ id: 14, when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '14', when: true }]) })
+					.call('10', 'break', [], { origin: ['builtin:break'], returns: [], reads: [builtInId('break')], controlDependencies: [{ id: 14, when: true }, { id: '12', when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '14', when: true }]) })
 					.calls('10', builtInId('break'))
 					.argument('12', '9')
 					.argument('12', '10')
-					.call('12', 'if', [argumentInCall('9', { controlDependencies: [] }), argumentInCall('10', { controlDependencies: [] }), EmptyArgument], { returns: ['10'], reads: [builtInId('if'), '9'], onlyBuiltIn: true, controlDependencies: [{ id: 14, when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '14', when: true }, { id: '12', when: true }]) })
+					.call('12', 'if', [argumentInCall('9', { controlDependencies: [] }), argumentInCall('10', { controlDependencies: [] }), EmptyArgument], { returns: ['10'], reads: [builtInId('if'), '9'], onlyBuiltIn: true, controlDependencies: [{ id: 14, when: true }, { id: '12', when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '14', when: true }, { id: '12', when: true }]) })
 					.calls('12', builtInId('if'))
 					.argument('13', '8')
 					.argument('13', '12')
-					.call('13', '{', [argumentInCall('8', { controlDependencies: [] }), argumentInCall('12', { controlDependencies: [] })], { returns: ['12'], reads: [builtInId('{')], controlDependencies: [{ id: 14, when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '14', when: true }, { id: '12', when: true }]) })
+					.call('13', '{', [argumentInCall('8', { controlDependencies: [] }), argumentInCall('12', { controlDependencies: [] })], { returns: ['12'], reads: [builtInId('{')], controlDependencies: [{ id: 14, when: true }, { id: '12', when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '14', when: true }, { id: '12', when: true }]) })
 					.calls('13', builtInId('{'))
 					.argument('14', '13')
 					.call('14', 'while', [argumentInCall('3'), argumentInCall('13', { controlDependencies: [] })], { returns: [], reads: ['3', builtInId('while')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '14', when: true }, { id: '12', when: true }]) })
@@ -531,7 +531,7 @@ print(x)`, emptyGraph()
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 					.constant('3')
 					.constant('7', { controlDependencies: [{ id: '14', when: true }, { id: '12', when: true }] })
-					.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [{ id: 14, when: true }] })
+					.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [{ id: 14, when: true }, { id: '12', when: true }] })
 					.markIdForUnknownSideEffects('18')
 			);
 			assertDataflow(label('Next', ['while-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),

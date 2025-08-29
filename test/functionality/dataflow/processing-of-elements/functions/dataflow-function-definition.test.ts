@@ -20,7 +20,7 @@ describe.sequential('Function Definition', withShell(shell => {
 				.argument('3', '2')
 				.call('3', '{', [argumentInCall('2')], { returns: ['2'], reads: [builtInId('{')], environment: defaultEnv().pushEnv() }, false)
 				.calls('3', builtInId('{'))
-				.defineFunction('4', ['3'], {
+				.defineFunction('4', ['2'], {
 					out:               [],
 					in:                [{ nodeId: '2', name: 'x', controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
@@ -38,7 +38,7 @@ describe.sequential('Function Definition', withShell(shell => {
 				.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [builtInId('{')], environment: defaultEnv().pushEnv().defineParameter('x', '0', '1') }, false)
 				.calls('5', builtInId('{'))
 				.defineVariable('0', 'x', { definedBy: [] }, false)
-				.defineFunction('6', ['5'], {
+				.defineFunction('6', ['4'], {
 					out:               [],
 					in:                [],
 					unknownReferences: [],
@@ -58,7 +58,7 @@ describe.sequential('Function Definition', withShell(shell => {
 				.call('8', '{', [argumentInCall('7')], { returns: ['7'], reads: [builtInId('{')], environment: defaultEnv().pushEnv().defineParameter('x', '0', '1') }, false)
 				.calls('8', builtInId('{'))
 				.defineVariable('0', 'x', { definedBy: [] }, false)
-				.defineFunction('9', ['8'], {
+				.defineFunction('9', ['7'], {
 					out:               [],
 					in:                [],
 					unknownReferences: [],
@@ -81,7 +81,7 @@ describe.sequential('Function Definition', withShell(shell => {
 					.call('9', '{', [argumentInCall('8')], { returns: ['8'], reads: [builtInId('{')], environment: defaultEnv().pushEnv().defineParameter('x', '0', '1') }, false)
 					.calls('9', builtInId('{'))
 					.defineVariable('0', 'x', { definedBy: [] }, false)
-					.defineFunction('10', ['9'], {
+					.defineFunction('10', ['8'], {
 						out:               [],
 						in:                [],
 						unknownReferences: [],
@@ -127,7 +127,7 @@ describe.sequential('Function Definition', withShell(shell => {
 				.calls('6', builtInId('{'))
 				.constant('1')
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
-				.defineFunction('7', ['6'], {
+				.defineFunction('7', ['5'], {
 					out:               [],
 					in:                [{ nodeId: '5', name: 'x', controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
@@ -145,7 +145,7 @@ describe.sequential('Function Definition', withShell(shell => {
 				.calls('5', builtInId('{'))
 				.constant('3', undefined, false)
 				.defineVariable('2', 'x', { definedBy: ['3', '4'] }, false)
-				.defineFunction('6', ['5'], {
+				.defineFunction('6', ['4'], {
 					out:               [],
 					in:                [],
 					unknownReferences: [],
@@ -162,7 +162,7 @@ describe.sequential('Function Definition', withShell(shell => {
 			.calls('5', builtInId('{'))
 			.constant('3', undefined, false)
 			.defineVariable('2', 'x', { definedBy: ['3', '4'] }, false)
-			.defineFunction('6', ['5'], {
+			.defineFunction('6', ['4'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -180,7 +180,7 @@ describe.sequential('Function Definition', withShell(shell => {
 			.calls('5', builtInId('{'))
 			.constant('2', undefined, false)
 			.defineVariable('3', 'x', { definedBy: ['2', '4'] }, false)
-			.defineFunction('6', ['5'], {
+			.defineFunction('6', ['4'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -197,7 +197,7 @@ describe.sequential('Function Definition', withShell(shell => {
 			.calls('5', builtInId('{'))
 			.constant('3', undefined, false)
 			.defineVariable('2', 'x', { definedBy: ['3', '4'] }, false)
-			.defineFunction('6', ['5'], {
+			.defineFunction('6', ['4'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -214,7 +214,7 @@ describe.sequential('Function Definition', withShell(shell => {
 			.calls('5', builtInId('{'))
 			.constant('2', undefined, false)
 			.defineVariable('3', 'x', { definedBy: ['2', '4'] }, false)
-			.defineFunction('6', ['5'], {
+			.defineFunction('6', ['4'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -238,7 +238,7 @@ describe.sequential('Function Definition', withShell(shell => {
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 			.constant('6', undefined, false)
 			.defineVariable('5', 'x', { definedBy: ['6', '7'] }, false)
-			.defineFunction('10', ['9'], {
+			.defineFunction('10', ['8'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -262,7 +262,7 @@ describe.sequential('Function Definition', withShell(shell => {
 			.constant('1')
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 			.defineVariable('5', 'x', { definedBy: ['6', '7'] }, false)
-			.defineFunction('10', ['9'], {
+			.defineFunction('10', ['8'], {
 				out:               [],
 				in:                [{ nodeId: '6', name: 'x', controlDependencies: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
@@ -296,7 +296,7 @@ print(x)`,  emptyGraph()
 			.constant('1')
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 			.defineVariable('3', 'x', { definedBy: [] }, false)
-			.defineFunction('9', ['8'], {
+			.defineFunction('9', ['7'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -314,7 +314,7 @@ print(x)`,  emptyGraph()
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [builtInId('{')], environment: defaultEnv().pushEnv().defineParameter('...', '0', '1') }, false)
 			.calls('5', builtInId('{'))
 			.defineVariable('0', '...', { definedBy: [] }, false)
-			.defineFunction('6', ['5'], {
+			.defineFunction('6', ['4'], {
 				out:               [],
 				in:                [{ nodeId: '4', name: '..11', controlDependencies: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
@@ -335,7 +335,7 @@ print(x)`,  emptyGraph()
 			.defineVariable('0', 'a', { definedBy: ['1'] }, false)
 			.constant('1', undefined, false)
 			.defineVariable('3', 'b', { definedBy: ['4'] }, false)
-			.defineFunction('10', ['9'], {
+			.defineFunction('10', ['8'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -369,7 +369,7 @@ print(x)`,  emptyGraph()
 			.constant('13', undefined, false)
 			.defineVariable('12', 'b', { definedBy: ['13', '14'] }, false)
 			.constant('16', undefined, false)
-			.defineFunction('19', ['18'], {
+			.defineFunction('19', ['17'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -390,7 +390,7 @@ print(x)`,  emptyGraph()
 			.calls('10', builtInId('{'))
 			.defineVariable('0', 'a', { definedBy: [] }, false)
 			.defineVariable('2', '...', { definedBy: [] }, false)
-			.defineFunction('11', ['10'], {
+			.defineFunction('11', ['9'], {
 				out:               [],
 				in:                [{ nodeId: '9', name: 'foo', controlDependencies: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
@@ -431,7 +431,7 @@ print(x)`,  emptyGraph()
 			.call('23', '{', [argumentInCall('8'), argumentInCall('11'), argumentInCall('18'), argumentInCall('21'), argumentInCall('22')], { returns: ['22'], reads: [builtInId('{')], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11').defineVariable('y', '19', '21', []) }, false)
 			.calls('23', builtInId('{'))
 			.returns('23', '16')
-			.defineFunction('7', ['6'], {
+			.defineFunction('7', ['5'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -444,7 +444,7 @@ print(x)`,  emptyGraph()
 			.defineVariable('9', 'y', { definedBy: ['10', '11'] }, false)
 			.constant('20', undefined, false)
 			.defineVariable('19', 'y', { definedBy: ['20', '21'], controlDependencies: [] }, false)
-			.defineFunction('24', ['23'], {
+			.defineFunction('24', ['16', '22'], {
 				out:               [],
 				in:                [{ nodeId: '12', name: 'z', controlDependencies: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
@@ -461,7 +461,7 @@ print(x)`,  emptyGraph()
 			.calls('3', builtInId('{'))
 			.call('7', '<-', [argumentInCall('5'), argumentInCall('6')], { returns: ['5'], reads: [builtInId('<-')] })
 			.calls('7', builtInId('<-'))
-			.defineFunction('4', ['3'], {
+			.defineFunction('4', ['2'], {
 				out:               [],
 				in:                [{ nodeId: '2', name: 'x', controlDependencies: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
@@ -495,7 +495,7 @@ print(x)`,  emptyGraph()
 			.calls('20', builtInId('<-'))
 			.defineVariable('4', 'x', { definedBy: [] }, false)
 			.defineVariable('8', 'x', { definedBy: ['9', '10'] }, false)
-			.defineFunction('12', ['11'], {
+			.defineFunction('12', ['10'], {
 				out:               [],
 				in:                [{ nodeId: '9', name: 'b', controlDependencies: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
@@ -504,7 +504,7 @@ print(x)`,  emptyGraph()
 				environment:       defaultEnv().pushEnv().pushEnv().defineVariable('x', '8', '10')
 			}, { environment: defaultEnv().pushEnv() }, false)
 			.defineVariable('3', 'x', { definedBy: ['12', '13'] }, false)
-			.defineFunction('16', ['15'], {
+			.defineFunction('16', ['14'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -530,7 +530,7 @@ print(g())`, emptyGraph()
 				.call('11', '<-', [argumentInCall('0'), argumentInCall('10')], { returns: ['0'], reads: [builtInId('<-')] })
 				.calls('11', builtInId('<-'))
 				.argument('11', ['10', '0'])
-				.call('16', 'f', [argumentInCall('14')], { returns: ['9'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '11') })
+				.call('16', 'f', [argumentInCall('14')], { returns: ['8'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '11') })
 				.argument('16', '14')
 				.calls('16', '10')
 				.argument('17', '16')
@@ -553,7 +553,7 @@ print(g())`, emptyGraph()
 					graph:             new Set(['6']),
 					environment:       defaultEnv().pushEnv().pushEnv()
 				}, { environment: defaultEnv().pushEnv() }, false)
-				.defineFunction('10', ['9'], {
+				.defineFunction('10', ['8'], {
 					out:               [],
 					in:                [],
 					unknownReferences: [],
@@ -599,7 +599,7 @@ print(g())`, emptyGraph()
 				.call('27', '<-', [argumentInCall('0'), argumentInCall('26')], { returns: ['0'], reads: [builtInId('<-')] })
 				.calls('27', builtInId('<-'))
 				.argument('27', ['26', '0'])
-				.call('32', 'f', [argumentInCall('30')], { returns: ['25'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '27') })
+				.call('32', 'f', [argumentInCall('30')], { returns: ['24'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '27') })
 				.argument('32', '30')
 				.calls('32', '26')
 				.argument('33', '32')
@@ -634,7 +634,7 @@ print(g())`, emptyGraph()
 					graph:             new Set(['8', '9', '20']),
 					environment:       defaultEnv().pushEnv().pushEnv().defineParameter('y', '8', '10')
 				}, { environment: defaultEnv().pushEnv() }, false)
-				.defineFunction('26', ['25'], {
+				.defineFunction('26', ['24'], {
 					out:               [],
 					in:                [{ nodeId: '24', name: `${UnnamedFunctionCallPrefix}24`, controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
@@ -686,9 +686,9 @@ print(x)`, emptyGraph()
 				.call('18', '<-', [argumentInCall('16'), argumentInCall('17')], { returns: ['16'], reads: [builtInId('<-')], environment: defaultEnv().defineFunction('f', '0', '15') })
 				.calls('18', builtInId('<-'))
 				.argument('18', ['17', '16'])
-				.call('20', 'f', [], { returns: ['13'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '15').defineVariable('x', '16', '18') })
+				.call('20', 'f', [], { returns: ['12'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '15').defineVariable('x', '16', '18') })
 				.calls('20', '14')
-				.call('21', `${UnnamedFunctionCallPrefix}21`, [], { returns: ['11'], reads: ['20'], environment: defaultEnv().defineFunction('f', '0', '15').defineVariable('x', '16', '18') })
+				.call('21', `${UnnamedFunctionCallPrefix}21`, [], { returns: ['10'], reads: ['20'], environment: defaultEnv().defineFunction('f', '0', '15').defineVariable('x', '16', '18') })
 				.definesOnCall('21', '16')
 				.definedByOnCall('6', '16')
 				.calls('21', ['20', '12'])
@@ -699,7 +699,7 @@ print(x)`, emptyGraph()
 				.constant('7', undefined, false)
 				.defineVariable('5', 'x', { definedBy: ['8', '9'] }, false)
 				.sideEffectOnCall('5', '21')
-				.defineFunction('12', ['11'], {
+				.defineFunction('12', ['10'], {
 					out:               [],
 					in:                [{ nodeId: '6', name: 'x', controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
@@ -707,7 +707,7 @@ print(x)`, emptyGraph()
 					graph:             new Set(['6', '7', '8', '5', '9', '10', '11']),
 					environment:       defaultEnv().defineVariable('x', '5', '9').pushEnv().pushEnv()
 				}, { environment: defaultEnv().defineVariable('x', '5', '9').pushEnv() }, false)
-				.defineFunction('14', ['13'], {
+				.defineFunction('14', ['12'], {
 					out:               [],
 					in:                [],
 					unknownReferences: [],
@@ -754,13 +754,13 @@ f(5)`, emptyGraph()
 				.call('23', '<-', [argumentInCall('0'), argumentInCall('22')], { returns: ['0'], reads: [builtInId('<-')] })
 				.calls('23', builtInId('<-'))
 				.argument('23', ['22', '0'])
-				.call('27', 'f', [argumentInCall('25')], { returns: ['21'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '23') })
+				.call('27', 'f', [argumentInCall('25')], { returns: ['13'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '23') })
 				.argument('27', '25')
 				.calls('27', '22')
 				.defineVariable('1', 'x', { definedBy: [] }, false)
 				.constant('6', undefined, false)
 				.defineVariable('5', 'x', { definedBy: ['8', '9'] }, false)
-				.defineFunction('22', ['21'], {
+				.defineFunction('22', ['13'], {
 					out:               [],
 					in:                [],
 					unknownReferences: [],
@@ -815,14 +815,14 @@ f(5)`, emptyGraph()
 				.call('31', '<-', [argumentInCall('0'), argumentInCall('30')], { returns: ['0'], reads: [builtInId('<-')] })
 				.calls('31', builtInId('<-'))
 				.argument('31', ['30', '0'])
-				.call('35', 'f', [argumentInCall('33')], { returns: ['29'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '31') })
+				.call('35', 'f', [argumentInCall('33')], { returns: ['14', '19'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '31') })
 				.argument('35', '33')
 				.calls('35', '30')
 				.defineVariable('1', 'x', { definedBy: [] }, false)
 				.constant('6', undefined, false)
 				.defineVariable('5', 'x', { definedBy: ['8', '9'] }, false)
 				.constant('17', undefined, false)
-				.defineFunction('30', ['29'], {
+				.defineFunction('30', ['14', '19'], {
 					out:               [],
 					in:                [{ nodeId: '10', name: 'k', controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
@@ -874,7 +874,7 @@ f(3)`, emptyGraph()
 				.call('25', '+', [argumentInCall('23'), argumentInCall('24')], { returns: [], reads: ['23', '24', builtInId('+')], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineParameter('x', '21', '22') }, false)
 				.calls('25', builtInId('+'))
 				.argument('25', '24')
-				.call('29', 'm', [argumentInCall('27')], { returns: ['17'], reads: ['9'], environment: defaultEnv().defineFunction('f', '0', '8').defineFunction('m', '9', '19') })
+				.call('29', 'm', [argumentInCall('27')], { returns: ['16'], reads: ['9'], environment: defaultEnv().defineFunction('f', '0', '8').defineFunction('m', '9', '19') })
 				.argument('29', '27')
 				.calls('29', '18')
 				.call('33', 'f', [argumentInCall('31')], { returns: ['25'], reads: ['14'], environment: defaultEnv().defineVariable('f', '14', '16').defineFunction('m', '9', '19') })
@@ -894,7 +894,7 @@ f(3)`, emptyGraph()
 				.defineVariable('10', 'g', { definedBy: [] }, false)
 				.defineVariable('14', 'f', { definedBy: ['15', '16'] }, false)
 				.sideEffectOnCall('14', '29')
-				.defineFunction('18', ['17'], {
+				.defineFunction('18', ['16'], {
 					out:               [],
 					in:                [],
 					unknownReferences: [],

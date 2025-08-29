@@ -1,5 +1,5 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
-import { guard } from '../../util/assert';
+import { guard, isNotUndefined } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -24,6 +24,7 @@ import type { BuiltIn } from '../environments/built-in';
 import { isBuiltIn } from '../environments/built-in';
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
+import type { ExitPoint } from '../info';
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
@@ -387,6 +388,23 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 				for(const target of targets) {
 					graph.addEdge(target.nodeId, out.nodeId, EdgeType.Reads);
 				}
+			}
+		}
+	}
+}
+
+export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: readonly IdentifierReference[]): void {
+	// just apply the cds of all exit points not already present
+	const exitCds = new Set(exits.flatMap(e => e.controlDependencies).filter(isNotUndefined));
+
+	for(const ref of references) {
+		for(const cd of exitCds) {
+			if(ref.controlDependencies) {
+				if(!ref.controlDependencies?.find(c => c.id === cd.id && c.when === cd.when)) {
+					ref.controlDependencies.push(cd);
+				}
+			} else {
+				ref.controlDependencies = [cd];
 			}
 		}
 	}

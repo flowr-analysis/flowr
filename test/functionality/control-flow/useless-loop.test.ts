@@ -34,7 +34,7 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 
 
 	describe('Stopped Loop', () => {
-		const loopVariants = [/*'while (TRUE)',*/ 'repeat', 'for (i in 1:10)', 'for (i in c(1,2))'];
+		const loopVariants = ['while (TRUE)', 'repeat', 'for (i in 1:10)', 'for (i in c(1,2))'];
 		const stopVariants = ['break', 'return(42)', 'stop(42)', 'stopifnot(FALSE)'];
 
 		for(const loop of loopVariants) {
@@ -75,7 +75,7 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 		checkLoop('false break', 'for (i in c(1,2)) { if (FALSE) { break } }',                             '1@for',    false);
 
 		describe('Branches', () => {
-			const loopVariants = [/*'while (TRUE)',*/ 'repeat', 'for (i in 1:10)', 'for (i in c(1,2))'];
+			const loopVariants = ['while (TRUE)', 'repeat', 'for (i in 1:10)', 'for (i in c(1,2))'];
 			const stopVariants = ['break', 'return(42)', 'stop(42)', 'stopifnot(FALSE)'];
 			const branchVariants = ['if (FALSE)', 'if (u)'];
 

@@ -53,10 +53,10 @@ It offers a wide variety of features, for example:
        ╰ **Dataframe Access Validation** (dataframe-access-validation):
            ╰ _Metadata_: <code>{"numOperations":0,"numAccesses":0,"totalAccessed":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Dead Code** (dead-code):
-           ╰ _Metadata_: <code>{"consideredNodes":5,"searchTimeMs":1,"processTimeMs":0}</code>
+           ╰ _Metadata_: <code>{"consideredNodes":5,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Useless Loops** (useless-loop):
            ╰ _Metadata_: <code>{"numOfUselessLoops":0,"searchTimeMs":0,"processTimeMs":0}</code>
-    [;3mAll queries together required ≈3 ms (1ms accuracy, total 8 ms)[0m[0m
+    [;3mAll queries together required ≈3 ms (1ms accuracy, total 9 ms)[0m[0m
     ```
     
     
@@ -98,14 +98,14 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"numOperations":0,"numAccesses":0,"totalAccessed":0,"searchTimeMs":0,"processTimeMs":2}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"consideredNodes":5,"searchTimeMs":0,"processTimeMs":0}</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"consideredNodes":5,"searchTimeMs":1,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Useless Loops** (useless-loop):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"numOfUselessLoops":0,"searchTimeMs":0,"processTimeMs":1}</code>\
-    _All queries together required ≈14 ms (1ms accuracy, total 212 ms)_
+    _All queries together required ≈14 ms (1ms accuracy, total 216 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _212.1 ms_ (including parsing and normalization and the query) within the generation environment.	
+    The analysis required _215.9 ms_ (including parsing and normalization and the query) within the generation environment.	
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -210,7 +210,7 @@ It offers a wide variety of features, for example:
             "results": [],
             ".meta": {
               "consideredNodes": 5,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -493,7 +493,7 @@ It offers a wide variety of features, for example:
           *7.10-20*
         (26, 27)`"]]
         23["`#91;RSymbol#93; sum
-          (23, :may:)
+          (23, :may:36+)
           *7.3-5*`"]
         29[["`#91;RBinaryOp#93; #60;#45;
           (29, :may:36+)
@@ -510,7 +510,7 @@ It offers a wide variety of features, for example:
           *8.14-24*
         (31, 32)`"]]
         30["`#91;RSymbol#93; product
-          (30, :may:)
+          (30, :may:36+)
           *8.3-9*`"]
         34[["`#91;RBinaryOp#93; #60;#45;
           (34, :may:36+)
@@ -622,64 +622,68 @@ It offers a wide variety of features, for example:
         linkStyle 44 stroke:gray,color:gray;
         23 -->|"defined-by"| 28
         23 -->|"defined-by"| 29
+        23 -->|"CD-True"| 36
+        linkStyle 47 stroke:gray,color:gray;
         29 -->|"argument"| 28
         29 -->|"returns, argument"| 23
         29 -.->|"reads, calls"| built-in:_-
-        linkStyle 49 stroke:gray;
+        linkStyle 50 stroke:gray;
         29 -->|"CD-True"| 36
-        linkStyle 50 stroke:gray,color:gray;
+        linkStyle 51 stroke:gray,color:gray;
         31 -->|"reads"| 3
         31 -->|"reads"| 30
         31 -->|"CD-True"| 36
-        linkStyle 53 stroke:gray,color:gray;
+        linkStyle 54 stroke:gray,color:gray;
         32 -->|"reads"| 12
         32 -->|"CD-True"| 36
-        linkStyle 55 stroke:gray,color:gray;
+        linkStyle 56 stroke:gray,color:gray;
         33 -->|"reads, argument"| 31
         33 -->|"reads, argument"| 32
         33 -.->|"reads, calls"| built-in:_
-        linkStyle 58 stroke:gray;
+        linkStyle 59 stroke:gray;
         33 -->|"CD-True"| 36
-        linkStyle 59 stroke:gray,color:gray;
+        linkStyle 60 stroke:gray,color:gray;
         30 -->|"defined-by"| 33
         30 -->|"defined-by"| 34
+        30 -->|"CD-True"| 36
+        linkStyle 63 stroke:gray,color:gray;
         34 -->|"argument"| 33
         34 -->|"returns, argument"| 30
         34 -.->|"reads, calls"| built-in:_-
-        linkStyle 64 stroke:gray;
+        linkStyle 66 stroke:gray;
         34 -->|"CD-True"| 36
-        linkStyle 65 stroke:gray,color:gray;
+        linkStyle 67 stroke:gray,color:gray;
         35 -->|"argument"| 29
         35 -->|"returns, argument"| 34
         35 -.->|"reads, calls"| built-in:_
-        linkStyle 68 stroke:gray;
+        linkStyle 70 stroke:gray;
         35 -->|"CD-True"| 36
-        linkStyle 69 stroke:gray,color:gray;
+        linkStyle 71 stroke:gray,color:gray;
         36 -->|"argument"| 12
         36 -->|"reads, argument"| 20
         36 -->|"argument, non-standard-evaluation"| 35
         36 -.->|"reads, calls"| built-in:for
-        linkStyle 73 stroke:gray;
+        linkStyle 75 stroke:gray;
         40 -->|"reads"| 0
         40 -->|"reads"| 23
         40 -.->|"reads"| built-in:sum
-        linkStyle 76 stroke:gray;
+        linkStyle 78 stroke:gray;
         44 -->|"argument"| 38
         44 -->|"reads, argument"| 40
         44 -->|"argument"| 42
         44 -.->|"reads, calls"| built-in:cat
-        linkStyle 80 stroke:gray;
+        linkStyle 82 stroke:gray;
         48 -->|"reads"| 3
         48 -->|"reads"| 30
         52 -->|"argument"| 46
         52 -->|"reads, argument"| 48
         52 -->|"argument"| 50
         52 -.->|"reads, calls"| built-in:cat
-        linkStyle 86 stroke:gray;
+        linkStyle 88 stroke:gray;
     ```
     
     	
-    (The analysis required _14.3 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _14.9 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

@@ -5,7 +5,7 @@ import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
 	linkInputs,
-	produceNameSharedIdMap
+	produceNameSharedIdMap, reapplyLoopExitPoints
 } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard, isUndefined } from '../../../../../../util/assert';
@@ -94,6 +94,7 @@ export function processWhileLoop<OtherInfo>(
 			makeAllMaybe(body.in, information.graph, information.environment, false, cdTrue)),
 		information.environment, condition.in.concat(condition.unknownReferences), information.graph, true);
 	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, condition.in)), body.out);
+	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out,body.unknownReferences));
 
 	// as the while-loop always evaluates its condition
 	information.graph.addEdge(name.info.id, condition.entryPoint, EdgeType.Reads);

@@ -2,7 +2,12 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { alwaysExits, filterOutLoopExitPoints } from '../../../../../info';
-import { findNonLocalReads, linkCircularRedefinitionsWithinALoop, produceNameSharedIdMap } from '../../../../linker';
+import {
+	findNonLocalReads,
+	linkCircularRedefinitionsWithinALoop,
+	produceNameSharedIdMap,
+	reapplyLoopExitPoints
+} from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
 import { patchFunctionCall } from '../common';
@@ -43,16 +48,15 @@ export function processForLoop<OtherInfo>(
 	// this should not be able to exit always!
 
 	const originalDependency = data.controlDependencies;
-	data = { ...data, controlDependencies: [...data.controlDependencies ?? [], { id: name.info.id, when: true }] };
 
 	let headEnvironments = overwriteEnvironment(vector.environment, variable.environment);
 	const headGraph = variable.graph.mergeWith(vector.graph);
 
-	const writtenVariable = [...variable.unknownReferences, ...variable.in];
+	const writtenVariable = variable.unknownReferences.concat(variable.in);
 	for(const write of writtenVariable) {
 		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable }, false, headEnvironments, data.flowrConfig);
 	}
-	data = { ...data, environment: headEnvironments };
+	data = { ...data, controlDependencies: [...data.controlDependencies ?? [], { id: name.info.id, when: true }], environment: headEnvironments };
 
 	const body = processDataflowFor(bodyArg, data);
 
@@ -68,9 +72,11 @@ export function processForLoop<OtherInfo>(
 		nextGraph.setDefinitionOfVertex(write);
 	}
 
-	const outgoing = [...variable.out, ...writtenVariable, ...makeAllMaybe(body.out, nextGraph, outEnvironment, true)];
+	const outgoing = variable.out.concat(writtenVariable, makeAllMaybe(body.out, nextGraph, outEnvironment, true));
 
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out);
+
+	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out,body.unknownReferences));
 
 	patchFunctionCall({
 		nextGraph,

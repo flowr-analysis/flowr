@@ -11,7 +11,6 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
-import { extractCfg } from '../../../control-flow/extract-cfg';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
 
@@ -214,7 +213,7 @@ export async function executeCallContextQueries({ input }: BasicQueryData, queri
 
 	let cfg = undefined;
 	if(requiresCfg) {
-		cfg = extractCfg(ast, input.flowrConfig, dataflow.graph, []);
+		cfg = await input.controlFlow([], true);
 	}
 
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);

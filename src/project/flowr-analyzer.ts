@@ -19,6 +19,7 @@ import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize
 export type FlowrAnalysisInput = {
 	normalizedAst(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation>;
 	dataflow(force?: boolean): Promise<DataflowInformation & PipelinePerStepMetaInformation>;
+	controlFlow(simplifications?: readonly CfgSimplificationPassName[], useDataflow?: boolean, force?: boolean): Promise<ControlFlowInformation>;
 	flowrConfig: FlowrConfigOptions;
 }
 

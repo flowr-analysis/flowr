@@ -371,10 +371,7 @@ export class FlowRServerConnection {
 		}
 
 		const analyzer = fileInformation.analyzer;
-		const results = executeQueries({
-			dataflow: await analyzer.dataflow(),
-			ast:      await analyzer.normalizedAst(),
-			config:   this.config }, request.query);
+		const results = await executeQueries({ input: analyzer }, request.query);
 		sendMessage<QueryResponseMessage>(this.socket, {
 			type: 'response-query',
 			id:   request.id,

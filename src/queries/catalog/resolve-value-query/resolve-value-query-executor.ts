@@ -8,19 +8,23 @@ export function fingerPrintOfQuery(query: ResolveValueQuery): string {
 	return JSON.stringify(query);
 }
 
-export function executeResolveValueQuery({ dataflow: { graph }, ast, config }: BasicQueryData, queries: readonly ResolveValueQuery[]): ResolveValueQueryResult {
+export async function executeResolveValueQuery({ input }: BasicQueryData, queries: readonly ResolveValueQuery[]): Promise<ResolveValueQueryResult> {
 	const start = Date.now();
 	const results: ResolveValueQueryResult['results'] = {};
+
+	const graph = (await input.dataflow()).graph;
+	const ast = await input.normalizedAst();
+
 	for(const query of queries) {
 		const key = fingerPrintOfQuery(query);
-		
+
 		if(results[key]) {
 			log.warn(`Duplicate Key for resolve-value-query: ${key}, skipping...`);
 		}
 
 		const values = query.criteria
 			.map(criteria => slicingCriterionToId(criteria, ast.idMap))
-			.flatMap(ident => resolveIdToValue(ident, { graph, full: true, idMap: ast.idMap, resolve: config.solver.variables }));
+			.flatMap(ident => resolveIdToValue(ident, { graph, full: true, idMap: ast.idMap, resolve: input.flowrConfig.solver.variables }));
 
 		results[key] = {
 			values: values

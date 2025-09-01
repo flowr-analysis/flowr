@@ -14,11 +14,19 @@ import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/de
 import type { DataflowInformation } from '../dataflow/info';
 import type { CfgSimplificationPassName } from '../control-flow/cfg-simplification';
 import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
+import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize';
+
+export type FlowrAnalysisInput = {
+	normalizedAst(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation>;
+	dataflow(force?: boolean): Promise<DataflowInformation & PipelinePerStepMetaInformation>;
+	flowrConfig: FlowrConfigOptions;
+}
 
 export class FlowrAnalyzer {
-	public readonly flowrConfig: FlowrConfigOptions;
-	private readonly request:    RParseRequests;
-	private readonly parser:     KnownParser;
+	public readonly flowrConfig:    FlowrConfigOptions;
+	private readonly request:       RParseRequests;
+	private readonly parser:        KnownParser;
+	private readonly requiredInput: Omit<NormalizeRequiredInput, 'request'>;
 
 	private parse = undefined as unknown as ParseStepOutput<any>;
 	private ast = undefined as unknown as NormalizedAst;
@@ -26,10 +34,11 @@ export class FlowrAnalyzer {
 	private controlFlowInfo = undefined as unknown as ControlFlowInformation;
 	private simpleControlFlowInfo = undefined as unknown as ControlFlowInformation; // TODO Differentiate between simple and regular CFG
 
-	constructor(config: FlowrConfigOptions, parser: KnownParser, request: RParseRequests) {
+	constructor(config: FlowrConfigOptions, parser: KnownParser, request: RParseRequests, requiredInput: Omit<NormalizeRequiredInput, 'request'>) {
 		this.flowrConfig = config;
 		this.request = request;
 		this.parser = parser;
+		this.requiredInput = requiredInput;
 	}
 
 	public reset() {
@@ -43,7 +52,7 @@ export class FlowrAnalyzer {
 	}
 
 	// TODO TSchoeller Fix type
-	// TODO TSchoeller Do we want to expose parsing in this way?
+	// TODO TSchoeller Do we want to expose parsing as primary view in addition to the AST, CFG, and dataflow?
 	public async parseOutput(force?: boolean): Promise<ParseStepOutput<any> & PipelinePerStepMetaInformation> {
 		if(this.parse && !force) {
 			return {
@@ -74,7 +83,7 @@ export class FlowrAnalyzer {
 
 		const result = await createNormalizePipeline(
 			this.parser,
-			{ request: this.request },
+			{ request: this.request, ...this.requiredInput },
 			this.flowrConfig).allRemainingSteps();
 		this.ast = result.normalize;
 		return result.normalize;
@@ -138,6 +147,6 @@ export class FlowrAnalyzer {
 		if(!this.dataflowInfo) {
 			await this.dataflow(force);
 		}
-		return executeQueries({ ast: this.ast, dataflow: this.dataflowInfo, config: this.flowrConfig }, query);
+		return executeQueries({ input: this }, query);
 	}
 }

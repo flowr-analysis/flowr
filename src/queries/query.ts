@@ -69,14 +69,14 @@ export type Query = CallContextQuery
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
 /* Each executor receives all queries of its type in case it wants to avoid repeated traversal */
-export type QueryExecutor<Query extends BaseQueryFormat, Result extends BaseQueryResult> = (data: BasicQueryData, query: readonly Query[]) => Result;
+export type QueryExecutor<Query extends BaseQueryFormat, Result extends Promise<BaseQueryResult>> = (data: BasicQueryData, query: readonly Query[]) => Result;
 
 type SupportedQueries = {
 	[QueryType in Query['type']]: SupportedQuery<QueryType>
 }
 
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
-	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
+	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, Promise<BaseQueryResult>>
 	asciiSummarizer:      (formatter: OutputFormatter, processed: {dataflow: DataflowInformation, normalize: NormalizedAst}, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
 	schema:               Joi.ObjectSchema
 	/**
@@ -108,15 +108,16 @@ export const SupportedQueries = {
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
-export type QueryResult<Type extends Query['type']> = ReturnType<typeof SupportedQueries[Type]['executor']>;
+export type QueryResult<Type extends Query['type']> = Awaited<ReturnType<typeof SupportedQueries[Type]['executor']>>;
 
-export function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, ...queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']> {
+export async function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, ...queries: readonly SpecificQuery[]): Promise<QueryResult<SpecificQuery['type']>> {
 	guard(queries.length > 0, 'At least one query must be provided');
 	/* every query must have the same type */
 	guard(queries.every(q => q.type === queries[0].type), 'All queries must have the same type');
 	const query = SupportedQueries[queries[0].type];
 	guard(query !== undefined, `Unsupported query type: ${queries[0].type}`);
-	return query.executor(data, queries as never) as QueryResult<SpecificQuery['type']>;
+	const result = await query.executor(data, queries as never);
+	return result as QueryResult<SpecificQuery['type']>;
 }
 
 function isVirtualQuery<
@@ -168,15 +169,16 @@ export type Queries<
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
 > = readonly (QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>)[];
 
-export function executeQueries<
+export async function executeQueries<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): QueryResults<Base> {
+>(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): Promise<QueryResults<Base>> {
 	const now = Date.now();
 	const grouped = groupQueriesByType(queries);
 	const results = {} as Writable<QueryResults<Base>>;
 	for(const type of Object.keys(grouped) as Base[]) {
-		results[type] = executeQueriesOfSameType(data, ...grouped[type]) as QueryResults<Base>[Base];
+		const result = await executeQueriesOfSameType(data, ...grouped[type]);
+		results[type] = result as QueryResults<Base>[Base];
 	}
 	results['.meta'] = {
 		timing: Date.now() - now

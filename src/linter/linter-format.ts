@@ -39,7 +39,7 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 	 * Creates a flowR search that will then be executed and whose results will be passed to {@link processSearchResult}.
 	 * In the future, additional optimizations and transformations may be applied to the search between this function and {@link processSearchResult}.
 	 */
-	readonly createSearch:        (config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation }) => FlowrSearchLike<Info, GeneratorNames, TransformerNames[], FlowrSearchElements<Info, Elements>>
+	readonly createSearch:        (config: Config) => FlowrSearchLike<Info, GeneratorNames, TransformerNames[], FlowrSearchElements<Info, Elements>>
 	/**
 	 * Processes the search results of the search created through {@link createSearch}.
 	 * This function is expected to return the linting results from this rule for the given search, ie usually the given script file.

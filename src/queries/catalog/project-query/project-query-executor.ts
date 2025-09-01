@@ -2,7 +2,7 @@ import { log } from '../../../util/log';
 import type { ProjectQuery, ProjectQueryResult } from './project-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 
-export function executeProjectQuery({ dataflow }: BasicQueryData, queries: readonly ProjectQuery[]): ProjectQueryResult {
+export async function executeProjectQuery({ input }: BasicQueryData, queries: readonly ProjectQuery[]): Promise<ProjectQueryResult> {
 	if(queries.length !== 1) {
 		log.warn('Project query expects only up to one query, but got', queries.length);
 	}
@@ -11,6 +11,6 @@ export function executeProjectQuery({ dataflow }: BasicQueryData, queries: reado
 			/* there is no sense in measuring a get */
 			timing: 0
 		},
-		files: dataflow.graph.sourced
+		files: (await input.dataflow()).graph.sourced
 	};
 }

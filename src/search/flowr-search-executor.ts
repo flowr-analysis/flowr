@@ -1,12 +1,10 @@
 import type { FlowrSearch, FlowrSearchLike, SearchOutput } from './flowr-search-builder';
 import { getFlowrSearch } from './flowr-search-builder';
-import type { FlowrSearchElements, FlowrSearchInput } from './flowr-search';
-
-
-import type { Pipeline } from '../core/steps/pipeline/pipeline';
+import type { FlowrSearchElements } from './flowr-search';
 import { getGenerator } from './search-executor/search-generators';
 import { getTransformer } from './search-executor/search-transformer';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { FlowrAnalysisInput } from '../project/flowr-analyzer';
 
 type GetSearchElements<S> = S extends FlowrSearch<infer _, infer _, infer _, infer Elements> ? Elements extends
 	FlowrSearchElements<infer _, infer E> ? E : never : never;
@@ -14,15 +12,17 @@ type GetSearchElements<S> = S extends FlowrSearch<infer _, infer _, infer _, inf
 /**
  * Run a search with the given search query and data.
  */
-export function runSearch<S extends FlowrSearchLike, P extends Pipeline>(
+export async function runSearch<S extends FlowrSearchLike>(
 	search: S,
-	data: FlowrSearchInput<P>
-): GetSearchElements<SearchOutput<S>>  {
+	input: FlowrAnalysisInput
+): Promise<GetSearchElements<SearchOutput<S>>> {
 	const s = getFlowrSearch(search);
-	return s.search.reduce(
-		(acc: FlowrSearchElements<ParentInformation>, transformer) =>
-			getTransformer(transformer.name)(data, acc, transformer.args as never),
-		/* support multiple arguments may be abstracted away in search frontend */
-		getGenerator(s.generator.name)(data, s.generator.args as never)
-	).getElements() as GetSearchElements<SearchOutput<S>>;
+
+	let acc: FlowrSearchElements<ParentInformation> = await getGenerator(s.generator.name)(input, s.generator.args as never);
+
+	for(const transformer of s.search) {
+		acc = await getTransformer(transformer.name)(input, acc, transformer.args as never);
+	}
+
+	return acc.getElements() as GetSearchElements<SearchOutput<S>>;
 }

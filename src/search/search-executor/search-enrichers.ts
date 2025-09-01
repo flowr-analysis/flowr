@@ -1,6 +1,9 @@
-import type { FlowrSearchElement, FlowrSearchInput } from '../flowr-search';
-import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { Pipeline } from '../../core/steps/pipeline/pipeline';
+import type { FlowrSearchElement } from '../flowr-search';
+import type {
+	NormalizedAst,
+	ParentInformation,
+	RNodeWithParent
+} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { MergeableRecord } from '../../util/objects';
 import { VertexType } from '../../dataflow/graph/vertex';
 import type { Identifier } from '../../dataflow/environments/identifier';
@@ -12,6 +15,7 @@ import { guard, isNotUndefined } from '../../util/assert';
 import { extractSimpleCfg } from '../../control-flow/extract-cfg';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { DataflowInformation } from '../../dataflow/info';
 
 /**
  * A {@link FlowrSearchElement} that is enriched with a set of enrichments through {@link FlowrSearchBuilder.with}.
@@ -21,11 +25,16 @@ export interface EnrichedFlowrSearchElement<Info> extends FlowrSearchElement<Inf
 	enrichments: { [E in Enrichment]?: EnrichmentContent<E> }
 }
 
+export interface EnrichmentInput {
+	dataflow:  DataflowInformation,
+	normalize: NormalizedAst
+}
+
 export interface EnrichmentData<EnrichmentContent extends MergeableRecord, EnrichmentArguments = undefined> {
 	/**
 	 * A function that is applied to each element of the search to enrich it with additional data.
 	 */
-	readonly enrich: (e: FlowrSearchElement<ParentInformation>, data: FlowrSearchInput<Pipeline>, args: EnrichmentArguments | undefined) => EnrichmentContent
+	readonly enrich: (e: FlowrSearchElement<ParentInformation>, input: EnrichmentInput, args: EnrichmentArguments | undefined) => EnrichmentContent
 	/**
 	 * The mapping function used by the {@link Mapper.Enrichment} mapper.
 	 */
@@ -132,8 +141,9 @@ export function enrich<
 	ElementIn extends FlowrSearchElement<ParentInformation>,
 	ElementOut extends ElementIn & EnrichedFlowrSearchElement<ParentInformation>,
 	ConcreteEnrichment extends Enrichment>(
-	e: ElementIn, data: FlowrSearchInput<Pipeline>, enrichment: ConcreteEnrichment, args?: EnrichmentArguments<ConcreteEnrichment>): ElementOut {
+	e: ElementIn, data: EnrichmentInput, enrichment: ConcreteEnrichment, args?: EnrichmentArguments<ConcreteEnrichment>): ElementOut {
 	const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentContent<ConcreteEnrichment>, EnrichmentArguments<ConcreteEnrichment>>;
+
 	return {
 		...e,
 		enrichments: {

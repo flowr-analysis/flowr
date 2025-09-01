@@ -1,11 +1,7 @@
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
-import type { Pipeline, PipelineOutput, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
-import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowInformation } from '../dataflow/info';
 import type { BaseQueryResult } from '../queries/base-query-format';
 import type { Query } from '../queries/query';
-import type { FlowrConfigOptions } from '../config';
 import type { MarkOptional } from 'ts-essentials';
 
 /**
@@ -57,17 +53,6 @@ export interface FlowrSearchGetFilter extends Record<string, unknown> {
 	 */
     readonly id?:       NodeId;
 }
-
-type MinimumInputForFlowrSearch<P extends Pipeline> =
-    PipelineStepOutputWithName<P, 'normalize'> extends NormalizedAst ? (
-        PipelineStepOutputWithName<P, 'dataflow'> extends DataflowInformation ? PipelineOutput<P> & { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions }
-            : never
-    ): never
-
-/** we allow any pipeline, which provides us with a 'normalize' and 'dataflow' step */
-export type FlowrSearchInput<
-    P extends Pipeline
-> = MinimumInputForFlowrSearch<P>
 
 /** Intentionally, we abstract away from an array to avoid the use of conventional typescript operations */
 export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {

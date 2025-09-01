@@ -1,8 +1,5 @@
 import { log } from '../../../util/log';
-import type {
-	LocationMapQuery,
-	LocationMapQueryResult
-} from './location-map-query-format';
+import type { LocationMapQuery, LocationMapQueryResult } from './location-map-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
@@ -25,7 +22,7 @@ function fuzzyFindFile(node: RNodeWithParent | undefined, idMap: AstIdMap): stri
 	return '<inline>';
 }
 
-export function executeLocationMapQuery({ ast, dataflow: { graph } }: BasicQueryData, queries: readonly LocationMapQuery[]): LocationMapQueryResult {
+export async function executeLocationMapQuery({ input }: BasicQueryData, queries: readonly LocationMapQuery[]): Promise<LocationMapQueryResult> {
 	if(queries.length !== 1) {
 		log.warn('Id-Map query expects only up to one query, but got', queries.length);
 	}
@@ -36,11 +33,13 @@ export function executeLocationMapQuery({ ast, dataflow: { graph } }: BasicQuery
 	};
 	let count = 0;
 	const inverseMap = new Map<string, number>();
-	for(const file of graph.sourced) {
+	for(const file of (await input.dataflow()).graph.sourced) {
 		locationMap.files[count] = file;
 		inverseMap.set(file, count);
 		count++;
 	}
+
+	const ast = await input.normalizedAst();
 	for(const [id, node] of ast.idMap.entries()) {
 		if(node.location) {
 			const file = fuzzyFindFile(node, ast.idMap);

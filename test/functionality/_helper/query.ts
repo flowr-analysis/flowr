@@ -1,7 +1,5 @@
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
-import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
-import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { Query, QueryResults, QueryResultsWithoutMeta } from '../../../src/queries/query';
 import { executeQueries, SupportedQueries } from '../../../src/queries/query';
 import type { VirtualQueryArgumentsWithType } from '../../../src/queries/virtual-query/virtual-queries';
@@ -17,6 +15,7 @@ import { defaultConfigOptions } from '../../../src/config';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { getDummyFlowrProject } from '../../../src/project/flowr-project';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
@@ -68,14 +67,13 @@ export function assertQuery<
 			}
 		}
 
-		const info = await createDataflowPipeline(parser, {
-			request: requestFromInput(code),
-			getId:   deterministicCountingIdGenerator(0)
-		}, defaultConfigOptions).allRemainingSteps();
+		const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
+			.setParser(parser)
+			.build();
 
 		const dummyProject = await getDummyFlowrProject();
 
-		const result = executeQueries<Queries['type'], VirtualArguments>({ dataflow: info.dataflow, ast: info.normalize, config: defaultConfigOptions, libraries: dummyProject.libraries }, queries);
+		const result = await executeQueries<Queries['type'], VirtualArguments>({ input: analyzer, libraries: dummyProject.libraries }, queries);
 
 		log.info(`total query time: ${result['.meta'].timing.toFixed(0)}ms (~1ms accuracy)`);
 
@@ -84,11 +82,17 @@ export function assertQuery<
 		/* expect them to be deeply equal */
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			const expectedNormalized = normalizeResults(typeof expected === 'function' ? await expected(info) : expected);
+			const expectedNormalized = normalizeResults(typeof expected === 'function' ? await expected(
+				{
+					parse:     await analyzer.parseOutput(),
+					normalize: await analyzer.normalizedAst(),
+					dataflow:  await analyzer.dataflow()
+				}
+			) : expected);
 			assert.deepStrictEqual(normalized, expectedNormalized, 'The result of the query does not match the expected result');
 		} /* v8 ignore next 3 */ catch(e: unknown) {
-			console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(info.dataflow));
-			console.error('Control-Flow-Graph', cfgToMermaidUrl(extractCfg(info.normalize, defaultConfigOptions, info.dataflow.graph), info.normalize));
+			console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(await analyzer.dataflow()));
+			console.error('Control-Flow-Graph', cfgToMermaidUrl(extractCfg(await analyzer.normalizedAst(), defaultConfigOptions, (await analyzer.dataflow()).graph), await analyzer.normalizedAst()));
 			throw e;
 		}
 	});

@@ -1,7 +1,5 @@
-import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { DataflowInformation } from '../dataflow/info';
-import type { FlowrConfigOptions } from '../config';
 import type { Package } from '../project/plugins/package-version-plugins/package';
+import type { FlowrAnalysisInput } from '../project/flowr-analyzer';
 
 export interface BaseQueryFormat {
 	/** used to select the query type :) */
@@ -18,7 +16,5 @@ export interface BaseQueryResult {
 
 export interface BasicQueryData {
 	readonly libraries?: Package[];
-	readonly ast:        NormalizedAst;
-	readonly dataflow:   DataflowInformation;
-	readonly config:     FlowrConfigOptions;
+	readonly input:      FlowrAnalysisInput;
 }

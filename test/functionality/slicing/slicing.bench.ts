@@ -1,7 +1,4 @@
 import { bench, describe } from 'vitest';
-import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
-import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
-import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -9,21 +6,20 @@ import { runSearch } from '../../../src/search/flowr-search-executor';
 import { Q } from '../../../src/search/flowr-search-builder';
 import { staticSlicing } from '../../../src/slicing/static/static-slicer';
 import { guard } from '../../../src/util/assert';
-import { defaultConfigOptions } from '../../../src/config';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import type { DataflowInformation } from '../../../src/dataflow/info';
+import type { NormalizedAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 
 
 describe('slicing', () => {
-	let result: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined = undefined;
+	let result: { dataflow: DataflowInformation; normalize: NormalizedAst } | undefined = undefined;
 	let ids: NodeId[] | undefined = undefined;
 
 	for(const threshold of [1, 10, 100, 200]) {
 		bench(`slice (threshold: ${threshold})`, async() => {
 			if(!result) {
-				await TreeSitterExecutor.initTreeSitter();
-				const exec = new TreeSitterExecutor();
-				result = await createDataflowPipeline(exec, {
-					/* make it hurt! */
-					request: requestFromInput(`
+				/* make it hurt! */
+				const request = requestFromInput(`
 for(i in 1:5) {
 	if(u) {
 		x <- c(1, 2, 3)
@@ -38,9 +34,13 @@ for(i in 1:5) {
 	x[1] <- 4
 	x[2] <- x[1] + x[3]
 }
-			`.trim().repeat(200) + '\nprint(x + f(1, function(i) x[[i]] + 2, 3))'),
-				}, defaultConfigOptions).allRemainingSteps();
-				ids = runSearch(Q.var('print').first(),  { ...result, config: defaultConfigOptions }).map(n => n.node.info.id);
+			`.trim().repeat(200) + '\nprint(x + f(1, function(i) x[[i]] + 2, 3))');
+				// TODO TSchoeller Use executor
+				await TreeSitterExecutor.initTreeSitter();
+				const exec = new TreeSitterExecutor();
+				const analyzer = await new FlowrAnalyzerBuilder(request).build();
+				result = { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalizedAst() };
+				ids = (await runSearch(Q.var('print').first(), analyzer)).map(n => n.node.info.id);
 			}
 			guard(result !== undefined && ids !== undefined, () => 'no result');
 			staticSlicing(result.dataflow.graph, result.normalize, [`$${ids[0]}`], threshold);

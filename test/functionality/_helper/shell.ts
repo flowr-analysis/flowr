@@ -18,7 +18,6 @@ import type {
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
-	DEFAULT_DATAFLOW_PIPELINE,
 	DEFAULT_NORMALIZE_PIPELINE,
 	DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
 	TREE_SITTER_NORMALIZE_PIPELINE,
@@ -36,11 +35,10 @@ import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph'
 import { afterAll, assert, beforeAll, describe, test } from 'vitest';
 import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import type { Pipeline, PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
+import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
 import { runSearch } from '../../../src/search/flowr-search-executor';
 import type { ContainerIndex } from '../../../src/dataflow/graph/vertex';
-import type { DataflowInformation } from '../../../src/dataflow/info';
 import type { REnvironmentInformation } from '../../../src/dataflow/environments/environment';
 import { resolveByName } from '../../../src/dataflow/environments/resolve-by-name';
 import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/util/diff-graph';
@@ -50,6 +48,8 @@ import type { CfgProperty } from '../../../src/control-flow/cfg-properties';
 import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
 import type { FlowrConfigOptions } from '../../../src/config';
 import { cloneConfig, defaultConfigOptions } from '../../../src/config';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import type { FlowrAnalysisInput } from '../../../src/project/flowr-analyzer';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -348,29 +348,34 @@ function cropIfTooLong(str: string): string {
  * Especially the `resolveIdsAsCriterion` and the `expectIsSubgraph` are interesting as they allow you for rather
  * flexible matching of the expected graph.
  */
-export function assertDataflow<P extends Pipeline>(
+export function assertDataflow(
 	name: string | TestLabel,
 	shell: RShell,
 	input: string | RParseRequests,
-	expected: DataflowGraph | ((data: PipelineOutput<P> & { normalize: NormalizedAst, dataflow: DataflowInformation }) => DataflowGraph),
+	expected: DataflowGraph | ((input: FlowrAnalysisInput) => Promise<DataflowGraph>),
 	userConfig?: Partial<DataflowTestConfiguration>,
 	startIndexForDeterministicIds = 0,
 	config = cloneConfig(defaultConfigOptions)
 ): void {
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
-		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			parser:  shell,
-			request: typeof input === 'string' ? requestFromInput(input) : input,
-			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
-		}, config).allRemainingSteps();
+		const analyzer = await new FlowrAnalyzerBuilder(typeof input === 'string' ? requestFromInput(input) : input)
+			.setInput({
+				getId: deterministicCountingIdGenerator(startIndexForDeterministicIds)
+			})
+			.setConfig(config)
+			.setParser(shell)
+			.build();
 
 		if(typeof expected === 'function') {
-			expected = expected(info);
+			expected = await expected(analyzer);
 		}
 
+		const normalize = await analyzer.normalizedAst();
+		const dataflow = await analyzer.dataflow();
+
 		// assign the same id map to the expected graph, so that resolves work as expected
-		expected.setIdMap(info.normalize.idMap);
+		expected.setIdMap(normalize.idMap);
 
 		if(userConfig?.resolveIdsAsCriterion) {
 			expected = resolveDataflowGraph(expected);
@@ -378,7 +383,7 @@ export function assertDataflow<P extends Pipeline>(
 
 		const report: GraphDifferenceReport = diffOfDataflowGraphs(
 			{ name: 'expected', graph: expected },
-			{ name: 'got',      graph: info.dataflow.graph },
+			{ name: 'got',      graph: dataflow.graph },
 			{
 				leftIsSubgraph: userConfig?.expectIsSubgraph
 			}
@@ -389,13 +394,13 @@ export function assertDataflow<P extends Pipeline>(
 		} /* v8 ignore start */ catch(e) {
 			const diff = diffGraphsToMermaidUrl(
 				{ label: 'expected', graph: expected, mark: mapProblematicNodesToIds(report.problematic()) },
-				{ label: 'got', graph: info.dataflow.graph, mark: mapProblematicNodesToIds(report.problematic()) },
+				{ label: 'got', graph: dataflow.graph, mark: mapProblematicNodesToIds(report.problematic()) },
 				`%% ${JSON.stringify(input).replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') + '\n'
 			);
 
-			console.error('ast', normalizedAstToMermaidUrl(info.normalize.ast));
+			console.error('ast', normalizedAstToMermaidUrl(normalize.ast));
 
-			console.error('best-effort reconstruction:\n', printAsBuilder(info.dataflow.graph));
+			console.error('best-effort reconstruction:\n', printAsBuilder(dataflow.graph));
 
 			console.error('diff:\n', diff);
 			throw e;
@@ -583,18 +588,20 @@ export function assertContainerIndicesDefinition(
 ) {
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
-		const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			parser:  shell,
-			request: requestFromInput(input),
-		}, config).allRemainingSteps();
-		const result = runSearch(search,  { ...analysis, config: defaultConfigOptions });
+		const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(input))
+			.setConfig(config)
+			.setParser(shell)
+			.build();
+		const dataflow = await analyzer.dataflow();
+		const normalize = await analyzer.normalizedAst();
+		const result = await runSearch(search, analyzer);
 		let findIndices: (id: NodeId) => ContainerIndex[] | undefined;
 		if(userConfig.searchIn === 'dfg') {
-			findIndices = id => findInDfg(id, analysis.dataflow.graph);
+			findIndices = id => findInDfg(id, dataflow.graph);
 		} else if(userConfig.searchIn === 'env') {
-			findIndices = id => findInEnv(id, analysis.normalize, analysis.dataflow.graph, analysis.dataflow.environment);
+			findIndices = id => findInEnv(id, normalize, dataflow.graph, dataflow.environment);
 		} else {
-			findIndices = id => findInDfg(id, analysis.dataflow.graph) ?? findInEnv(id, analysis.normalize, analysis.dataflow.graph, analysis.dataflow.environment);
+			findIndices = id => findInDfg(id, dataflow.graph) ?? findInEnv(id, normalize, dataflow.graph, dataflow.environment);
 		}
 
 
@@ -616,11 +623,11 @@ export function assertContainerIndicesDefinition(
 			try {
 				assert.strictEqual(
 					actual, expected,
-					`got: ${actual}, vs. expected: ${expected}, for input ${input}, url: ${graphToMermaidUrl(analysis.dataflow.graph, true)}`
+					`got: ${actual}, vs. expected: ${expected}, for input ${input}, url: ${graphToMermaidUrl(dataflow.graph, true)}`
 				);
 			} /* v8 ignore start */ catch(e) {
 				console.error(`got:\n${actual}\nvs. expected:\n${expected}`);
-				console.error(normalizedAstToMermaidUrl(analysis.normalize.ast));
+				console.error(normalizedAstToMermaidUrl(normalize.ast));
 				throw e;
 			} /* v8 ignore stop */
 		}

@@ -14,6 +14,7 @@ import { flowrSearchToCode, flowrSearchToMermaid } from '../../search/flowr-sear
 import { recoverContent } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { formatRange } from '../../util/mermaid/dfg';
 import { defaultConfigOptions } from '../../config';
+import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 
 export interface ShowSearchOptions {
 	readonly showCode?:       boolean;
@@ -26,7 +27,11 @@ export async function showSearch(shell: RShell, code: string, search: FlowrSearc
 		parser:  shell,
 		request: requestFromInput(code)
 	}, defaultConfigOptions).allRemainingSteps();
-	const result = runSearch(search, { ...analysis, config: defaultConfigOptions });
+	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
+		.setParser(shell)
+		.setConfig(defaultConfigOptions)
+		.build();
+	const result = await runSearch(search, analyzer);
 	const duration = performance.now() - now;
 
 	const metaInfo = `

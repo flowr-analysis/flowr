@@ -1,8 +1,6 @@
 import type { RShell } from '../../r-bridge/shell';
 import type { Queries, QueryResults, SupportedQueryTypes } from '../../queries/query';
 import { executeQueries } from '../../queries/query';
-import { PipelineExecutor } from '../../core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
 import { jsonReplacer } from '../../util/json';
 import { markdownFormatter } from '../../util/text/ansi';
@@ -13,26 +11,21 @@ import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock, jsonWithLimit } from './doc-code';
 import { printAsMs } from '../../util/text/time';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
-import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
-import { defaultConfigOptions } from '../../config';
+import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 
-export interface ShowQueryOptions<Base extends SupportedQueryTypes> {
+export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
 	readonly collapseResult?: boolean;
 	readonly collapseQuery?:  boolean;
-	readonly addOutput?:      (result: QueryResults<Base>, pipeline: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>) => string;
 }
 
 export async function showQuery<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult, collapseQuery, addOutput = () => '' }: ShowQueryOptions<Base> = {}): Promise<string> {
+>(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult, collapseQuery }: ShowQueryOptions = {}): Promise<string> {
 	const now = performance.now();
-	const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		parser:  shell,
-		request: requestFromInput(code)
-	}, defaultConfigOptions).allRemainingSteps();
-	const results = executeQueries({ dataflow: analysis.dataflow, ast: analysis.normalize, config: defaultConfigOptions }, queries);
+	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code)).setParser(shell).build();
+	const results = await executeQueries({ input: analyzer }, queries);
 	const duration = performance.now() - now;
 
 	const metaInfo = `
@@ -49,7 +42,7 @@ ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary
 _Results (prettified and summarized):_
 
 ${
-	asciiSummaryOfQueryResult(markdownFormatter, duration, results as QueryResults<SupportedQueryTypes>, analysis)
+	asciiSummaryOfQueryResult(markdownFormatter, duration, results as QueryResults<SupportedQueryTypes>, { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalizedAst() })
 }
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -74,8 +67,6 @@ ${await printDfGraphForCode(shell, code, { switchCodeAndGraph: true })}
 }
 
 ${collapseResult ? '</details>' : ''}
-
-${addOutput(results, analysis)}
 
 	`;
 

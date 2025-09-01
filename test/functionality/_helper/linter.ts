@@ -8,29 +8,19 @@ import { LintingRules } from '../../../src/linter/linter-rules';
 import type { TestLabel } from './label';
 import { decorateLabelContext } from './label';
 import { assert, test } from 'vitest';
-import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
-import type {
-	NormalizedAst
-} from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	deterministicCountingIdGenerator
-} from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { executeLintingRule } from '../../../src/linter/linter-executor';
 import type { LintingRule } from '../../../src/linter/linter-format';
 import { log } from '../../../src/util/log';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser } from '../../../src/r-bridge/parser';
-import type {
-	FlowrLaxSourcingOptions
-} from '../../../src/config';
-import {
-	amendConfig,
-	defaultConfigOptions,
-	DropPathsOption
-} from '../../../src/config';
+import type { FlowrLaxSourcingOptions } from '../../../src/config';
+import { amendConfig, defaultConfigOptions, DropPathsOption } from '../../../src/config';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 
 export function assertLinter<Name extends LintingRuleNames>(
 	name: string | TestLabel,
@@ -49,14 +39,18 @@ export function assertLinter<Name extends LintingRuleNames>(
 			};
 			return c;
 		});
-		const pipelineResults = await createDataflowPipeline(parser, {
-			request:           requestFromInput(code),
-			getId:             deterministicCountingIdGenerator(0),
-			overwriteFilePath: lintingRuleConfig?.useAsFilePath
-		}, flowrConfig).allRemainingSteps();
+
+		const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
+			.setInput({
+				getId:             deterministicCountingIdGenerator(0),
+				overwriteFilePath: lintingRuleConfig?.useAsFilePath
+			})
+			.setParser(parser)
+			.setConfig(flowrConfig)
+			.build();
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
-		const results = executeLintingRule(ruleName, { ...pipelineResults, config: flowrConfig }, lintingRuleConfig);
+		const results = await executeLintingRule(ruleName, analyzer, lintingRuleConfig);
 
 		for(const [type, printer] of Object.entries({
 			text: (result: LintingRuleResult<Name>, metadata: LintingRuleMetadata<Name>) => `${rule.prettyPrint(result, metadata)} (${result.certainty})`,
@@ -66,13 +60,13 @@ export function assertLinter<Name extends LintingRuleNames>(
 		}
 
 		if(typeof expected === 'function') {
-			expected = expected(pipelineResults.dataflow, pipelineResults.normalize);
+			expected = expected(await analyzer.dataflow(), await analyzer.normalizedAst());
 		}
 
 		try {
 			assert.deepEqual(results.results, expected, `Expected ${ruleName} to return ${JSON.stringify(expected)}, but got ${JSON.stringify(results)}`);
 		} catch(e) {
-			console.error('dfg:', graphToMermaidUrl(pipelineResults.dataflow.graph));
+			console.error('dfg:', graphToMermaidUrl((await analyzer.dataflow()).graph));
 			throw e;
 		}
 		if(expectedMetadata !== undefined) {

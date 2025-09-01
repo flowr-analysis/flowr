@@ -200,7 +200,10 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
  *    This happens during the main resolution!
  * 4. Attach `linkTo` calls to the respective calls.
  */
-export function executeCallContextQueries({ dataflow: { graph }, ast, config }: BasicQueryData, queries: readonly CallContextQuery[]): CallContextQueryResult {
+export async function executeCallContextQueries({ input }: BasicQueryData, queries: readonly CallContextQuery[]): Promise<CallContextQueryResult> {
+	const ast = await input.normalizedAst();
+	const dataflow = await input.dataflow();
+
 	/* omit performance page load */
 	const now = Date.now();
 	/* the node id and call targets if present */
@@ -211,12 +214,12 @@ export function executeCallContextQueries({ dataflow: { graph }, ast, config }: 
 
 	let cfg = undefined;
 	if(requiresCfg) {
-		cfg = extractCfg(ast, config, graph, []);
+		cfg = extractCfg(ast, input.flowrConfig, dataflow.graph, []);
 	}
 
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);
 
-	for(const [nodeId, info] of graph.vertices(true)) {
+	for(const [nodeId, info] of dataflow.graph.vertices(true)) {
 		if(info.tag !== VertexType.FunctionCall) {
 			continue;
 		}
@@ -227,11 +230,15 @@ export function executeCallContextQueries({ dataflow: { graph }, ast, config }: 
 			 * by checking all of these queries would be satisfied otherwise,
 			 * in general, we first want a call to happen, i.e., trace the called targets of this!
 			 */
-			const targets = retrieveAllCallAliases(nodeId, graph);
+			const targets = retrieveAllCallAliases(nodeId, dataflow.graph);
 			for(const [l, ids] of targets.entries()) {
 				for(const query of queriesWhichWantAliases) {
 					if(query.callName.test(l)) {
-						initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({ id: nodeId, name: info.name, aliasRoots: ids }));
+						initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({
+							id:         nodeId,
+							name:       info.name,
+							aliasRoots: ids
+						}));
 					}
 				}
 			}
@@ -245,12 +252,12 @@ export function executeCallContextQueries({ dataflow: { graph }, ast, config }: 
 
 			let targets: NodeId[] | 'no' | undefined = undefined;
 			if(query.callTargets) {
-				targets = satisfiesCallTargets(nodeId, graph, query.callTargets);
+				targets = satisfiesCallTargets(nodeId, dataflow.graph, query.callTargets);
 				if(targets === 'no') {
 					continue;
 				}
 			}
-			if(isQuoted(nodeId, graph)) {
+			if(isQuoted(nodeId, dataflow.graph)) {
 				/* if the call is quoted, we do not want to link to it */
 				continue;
 			} else if(query.ignoreParameterValues && isParameterDefaultValue(nodeId, ast)) {
@@ -261,7 +268,7 @@ export function executeCallContextQueries({ dataflow: { graph }, ast, config }: 
 				const linked = Array.isArray(query.linkTo) ? query.linkTo : [query.linkTo];
 				for(const link of linked) {
 					/* if we have a linkTo query, we have to find the last call */
-					const lastCall = identifyLinkToLastCallRelation(nodeId, cfg.graph, graph, link);
+					const lastCall = identifyLinkToLastCallRelation(nodeId, cfg.graph, dataflow.graph, link);
 					if(lastCall) {
 						linkedIds ??= new Set();
 						for(const l of lastCall) {
@@ -275,7 +282,12 @@ export function executeCallContextQueries({ dataflow: { graph }, ast, config }: 
 				}
 			}
 
-			initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({ id: nodeId, name: info.name, calls: targets, linkedIds: linkedIds ? [...linkedIds] : undefined }));
+			initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({
+				id:        nodeId,
+				name:      info.name,
+				calls:     targets,
+				linkedIds: linkedIds ? [...linkedIds] : undefined
+			}));
 		}
 	}
 

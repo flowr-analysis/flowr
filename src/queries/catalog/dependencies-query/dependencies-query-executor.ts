@@ -27,8 +27,11 @@ import { DependencyInfoLinkConstraint } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
 import type { Package } from '../../../project/plugins/package-version-plugins/package';
+import type { DataflowInformation } from '../../../dataflow/info';
+import type { FlowrConfigOptions } from '../../../config';
+import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
-function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]) {
+function collectNamespaceAccesses(data: { ast: NormalizedAst, libraries?: Package[]}, libraries: LibraryInfo[]) {
 	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
 	visitAst(data.ast.ast, n => {
 		if(n.type === RType.Symbol && n.namespace) {
@@ -44,10 +47,21 @@ function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]
 	});
 }
 
-export function executeDependenciesQuery(data: BasicQueryData, queries: readonly DependenciesQuery[]): DependenciesQueryResult {
+export async function executeDependenciesQuery({
+	input,
+	libraries
+}: BasicQueryData, queries: readonly DependenciesQuery[]): Promise<DependenciesQueryResult> {
 	if(queries.length !== 1) {
 		log.warn('Dependencies query expects only up to one query, but got ', queries.length, 'only using the first query');
 	}
+
+	const data = {
+		dataflow:  await input.dataflow(),
+		ast:       await input.normalizedAst(),
+		config:    input.flowrConfig,
+		libraries: libraries
+	};
+
 	const now = Date.now();
 	const [query] = queries;
 	const ignoreDefault = query.ignoreDefaultFunctions ?? false;
@@ -58,7 +72,10 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 
 	const numberOfFunctions = libraryFunctions.length + sourceFunctions.length + readFunctions.length + writeFunctions.length;
 
-	const results = numberOfFunctions === 0 ? { kinds: {}, '.meta': { timing: 0 } } : executeQueriesOfSameType<CallContextQuery>(data,
+	const results = numberOfFunctions === 0 ? {
+		kinds:   {},
+		'.meta': { timing: 0 }
+	} : await executeQueriesOfSameType<CallContextQuery>({ input, libraries },
 		...makeCallContextQuery(libraryFunctions, 'library'),
 		...makeCallContextQuery(sourceFunctions, 'source'),
 		...makeCallContextQuery(readFunctions, 'read'),
@@ -76,7 +93,7 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		return get?.info.fullLexeme ?? get?.lexeme;
 	}
 
-	const libraries: LibraryInfo[] = getResults(data, results, 'library', libraryFunctions, (id, vertex, argId, value, linkedIds) => ({
+	const libs: LibraryInfo[] = getResults(data, results, 'library', libraryFunctions, (id, vertex, argId, value, linkedIds) => ({
 		nodeId:             id,
 		functionName:       vertex.name,
 		lexemeOfArgument:   getLexeme(value, argId),
@@ -87,7 +104,7 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 	}));
 
 	if(!ignoreDefault) {
-		collectNamespaceAccesses(data, libraries);
+		collectNamespaceAccesses(data, libs);
 	}
 
 	const sourcedFiles: SourceInfo[] = getResults(data, results, 'source', sourceFunctions, (id, vertex, argId, value, linkedIds) => ({
@@ -110,13 +127,13 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		// write functions that don't have argIndex are assumed to write to stdout
 		destination:      value ?? 'stdout',
 		lexemeOfArgument: getLexeme(value, argId),
-		linkedIds:        linkedIds?.length? linkedIds : undefined
+		linkedIds:        linkedIds?.length ? linkedIds : undefined
 	}));
 	return {
 		'.meta': {
 			timing: Date.now() - now
 		},
-		libraries, sourcedFiles, readData, writtenData
+		libraries: libs, sourcedFiles, readData, writtenData
 	};
 }
 
@@ -149,7 +166,7 @@ function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: o
 	return linkedIds.map(id => typeof id === 'object' ? id.id : id);
 }
 
-function getResults<T extends DependencyInfo>(data: BasicQueryData, results: CallContextQueryResult, kind: string, functions: FunctionInfo[], makeInfo: MakeDependencyInfo<T>): T[] {
+function getResults<T extends DependencyInfo>(data: { dataflow: DataflowInformation, config: FlowrConfigOptions }, results: CallContextQueryResult, kind: string, functions: FunctionInfo[], makeInfo: MakeDependencyInfo<T>): T[] {
 	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});
 	return kindEntries.flatMap(([name, results]) => results.flatMap(({ id, linkedIds }) => {
 
@@ -181,7 +198,7 @@ function getResults<T extends DependencyInfo>(data: BasicQueryData, results: Cal
 	})) ?? [];
 }
 
-function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undefined, data: BasicQueryData, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string|undefined>> | undefined {
+function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfigOptions }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string|undefined>> | undefined {
 	if(!linkedIds || linkedIds.length === 0) {
 		return undefined;
 	}

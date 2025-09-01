@@ -56,9 +56,13 @@ export class FlowrAnalyzerBuilder {
 	}
 
 	public async build(): Promise<FlowrAnalyzer> {
-		const engines = await retrieveEngineInstances(this.flowrConfig);
-		// TODO TSchoeller Is this complexity necessary?
-		const parser = this.parser ?? engines.engines[engines.default] as KnownParser;
+		let parser: KnownParser;
+		if(this.parser) {
+			parser = this.parser;
+		} else {
+			const engines = await retrieveEngineInstances(this.flowrConfig);
+			parser = this.parser ?? engines.engines[engines.default] as KnownParser;
+		}
 
 		return new FlowrAnalyzer(
 			this.flowrConfig,

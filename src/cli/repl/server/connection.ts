@@ -52,6 +52,7 @@ import type { PipelineExecutor } from '../../../core/pipeline-executor';
 import { compact } from './compact';
 import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
 import type { FlowrConfigOptions } from '../../../config';
+import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -246,7 +247,7 @@ export class FlowRServerConnection {
 		}
 
 		const request = requestResult.message;
-		this.logger.info(`[${request.filetoken}] Received slice request with criteria ${JSON.stringify(request.criterion)}`);
+		this.logger.info(`[${request.filetoken}] Received ${request.direction ?? SliceDirection.Backward} slice request with criteria ${JSON.stringify(request.criterion)}`);
 
 		const fileInformation = this.fileMap.get(request.filetoken);
 		if(!fileInformation) {
@@ -261,6 +262,7 @@ export class FlowRServerConnection {
 
 		fileInformation.pipeline.updateRequest({
 			criterion:    request.criterion,
+			direction:    request.direction,
 			autoSelectIf: request.noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
 		});
 

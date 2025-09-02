@@ -5,7 +5,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import type { SourceRange } from '../../util/range';
 import { formatRange } from '../../util/mermaid/dfg';
-import { DependenciesFunctions, Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { DependencyType, Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { Ternary } from '../../util/logic';
@@ -46,10 +46,10 @@ export interface FilePathValidityMetadata extends MergeableRecord {
 
 export const FILE_PATH_VALIDITY = {
 	createSearch: (config) => Q.fromQuery({
-		type:             'dependencies',
-		enabledFunctions: [DependenciesFunctions.Read, DependenciesFunctions.Write],
-		readFunctions:    config.additionalReadFunctions,
-		writeFunctions:   config.additionalWriteFunctions
+		type:           'dependencies',
+		enabledTypes:   [DependencyType.Read, DependencyType.Write],
+		readFunctions:  config.additionalReadFunctions,
+		writeFunctions: config.additionalWriteFunctions
 	}).with(Enrichment.CfgInformation),
 	processSearchResult: (elements, config, data): { results: FilePathValidityResult[], '.meta': FilePathValidityMetadata } => {
 		const cfg = elements.enrichmentContent(Enrichment.CfgInformation).cfg.graph;

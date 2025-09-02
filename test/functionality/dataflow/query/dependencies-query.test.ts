@@ -8,7 +8,7 @@ import type {
 	DependencyInfo
 } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import {
-	DependencyType
+	DependencyCategory
 } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 
@@ -190,13 +190,13 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('Custom (by index)', 'custom.library(1, "my-custom-file", 2)', expected, readCustomFile);
 			testQuery('Custom (by name)', 'custom.library(num1 = 1, num2 = 2, file = "my-custom-file")', expected, readCustomFile);
 			testQuery('Ignore default', 'library(testLibrary)', {}, { ignoreDefaultFunctions: true });
-			testQuery('Disabled', 'library(testLibrary)', {}, { enabledTypes: [DependencyType.Source, DependencyType.Read, DependencyType.Write] });
+			testQuery('Disabled', 'library(testLibrary)', {}, { enabledCategories: [DependencyCategory.Source, DependencyCategory.Read, DependencyCategory.Write] });
 			testQuery('Enabled', 'library(testLibrary)', {
 				libraries: [{ nodeId: '1@library', functionName: 'library', libraryName: 'testLibrary' }]
-			}, { enabledTypes: [DependencyType.Library] });
+			}, { enabledCategories: [DependencyCategory.Library] });
 			testQuery('Empty enabled', 'library(testLibrary)', {
 				libraries: [{ nodeId: '1@library', functionName: 'library', libraryName: 'testLibrary' }]
-			}, { enabledTypes: [] });
+			}, { enabledCategories: [] });
 		});
 	});
 
@@ -222,10 +222,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('Custom (by index)', 'source.custom.file(1, "my-custom-file", 2)', expected, sourceCustomFile);
 			testQuery('Custom (by name)', 'source.custom.file(num1 = 1, num2 = 2, file = "my-custom-file")', expected, sourceCustomFile);
 			testQuery('Ignore default', 'source("test/file.R")', {}, { ignoreDefaultFunctions: true });
-			testQuery('Disabled', 'source("test/file.R")', {}, { enabledTypes: [DependencyType.Read, DependencyType.Write, DependencyType.Library] });
+			testQuery('Disabled', 'source("test/file.R")', {}, { enabledCategories: [DependencyCategory.Read, DependencyCategory.Write, DependencyCategory.Library] });
 			testQuery('Enabled', 'source("test/file.R")', {
 				sourcedFiles: [{ nodeId: '1@source', functionName: 'source', file: 'test/file.R' }]
-			}, { enabledTypes: [DependencyType.Source] });
+			}, { enabledCategories: [DependencyCategory.Source] });
 		});
 	});
 
@@ -271,10 +271,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('Custom (by index)', 'read.custom.file(1, "my-custom-file", 2)', expected, readCustomFile);
 			testQuery('Custom (by name)', 'read.custom.file(num1 = 1, num2 = 2, file = "my-custom-file")', expected, readCustomFile);
 			testQuery('Ignore default', "read.table('test.csv')", {}, { ignoreDefaultFunctions: true });
-			testQuery('Disabled', "read.table('test.csv')", {}, { enabledTypes: [DependencyType.Library, DependencyType.Write, DependencyType.Source] });
+			testQuery('Disabled', "read.table('test.csv')", {}, { enabledCategories: [DependencyCategory.Library, DependencyCategory.Write, DependencyCategory.Source] });
 			testQuery('Enabled', "read.table('test.csv')", {
 				readData: [{ nodeId: '1@read.table', functionName: 'read.table', source: 'test.csv' }]
-			}, { enabledTypes: [DependencyType.Read] });
+			}, { enabledCategories: [DependencyCategory.Read] });
 		});
 	});
 
@@ -320,10 +320,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('Custom (by index)', 'write.custom.file(1, "my-custom-file", 2)', expected, writeCustomFile);
 			testQuery('Custom (by name)', 'write.custom.file(num1 = 1, num2 = 2, file = "my-custom-file")', expected, writeCustomFile);
 			testQuery('Ignore default', 'dump("My text", "MyTextFile.txt")', {}, { ignoreDefaultFunctions: true });
-			testQuery('Disabled', 'dump("My text", "MyTextFile.txt")', {}, { enabledTypes: [DependencyType.Library, DependencyType.Read, DependencyType.Source] });
+			testQuery('Disabled', 'dump("My text", "MyTextFile.txt")', {}, { enabledCategories: [DependencyCategory.Library, DependencyCategory.Read, DependencyCategory.Source] });
 			testQuery('Disabled', 'dump("My text", "MyTextFile.txt")', {
 				writtenData: [{ nodeId: '1@dump', functionName: 'dump', destination: 'MyTextFile.txt' }]
-			}, { enabledTypes: [DependencyType.Write] });
+			}, { enabledCategories: [DependencyCategory.Write] });
 		});
 	});
 

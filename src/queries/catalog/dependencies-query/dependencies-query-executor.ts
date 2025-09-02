@@ -9,7 +9,7 @@ import type {
 	WriteInfo
 } from './dependencies-query-format';
 import {
-	DependencyType,
+	DependencyCategory,
 	Unknown
 } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
@@ -53,10 +53,10 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 
 	const [query] = queries;
 	const ignoreDefault = query.ignoreDefaultFunctions ?? false;
-	const libraryFunctions = getFunctionsToCheck(query.libraryFunctions, DependencyType.Library, query.enabledTypes, ignoreDefault, LibraryFunctions);
-	const sourceFunctions = getFunctionsToCheck(query.sourceFunctions, DependencyType.Source, query.enabledTypes, ignoreDefault, SourceFunctions);
-	const readFunctions = getFunctionsToCheck(query.readFunctions, DependencyType.Read, query.enabledTypes, ignoreDefault, ReadFunctions);
-	const writeFunctions = getFunctionsToCheck(query.writeFunctions, DependencyType.Write, query.enabledTypes, ignoreDefault, WriteFunctions);
+	const libraryFunctions = getFunctionsToCheck(query.libraryFunctions, DependencyCategory.Library, query.enabledCategories, ignoreDefault, LibraryFunctions);
+	const sourceFunctions = getFunctionsToCheck(query.sourceFunctions, DependencyCategory.Source, query.enabledCategories, ignoreDefault, SourceFunctions);
+	const readFunctions = getFunctionsToCheck(query.readFunctions, DependencyCategory.Read, query.enabledCategories, ignoreDefault, ReadFunctions);
+	const writeFunctions = getFunctionsToCheck(query.writeFunctions, DependencyCategory.Write, query.enabledCategories, ignoreDefault, WriteFunctions);
 
 	const numberOfFunctions = libraryFunctions.length + sourceFunctions.length + readFunctions.length + writeFunctions.length;
 
@@ -232,7 +232,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undef
 	return map.size ? map : undefined;
 }
 
-function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, functionFlag: DependencyType, enabled: DependencyType[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
+function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, functionFlag: DependencyCategory, enabled: DependencyCategory[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
 	// "If unset or empty, all function types are searched for."
 	if(enabled?.length && enabled.indexOf(functionFlag) < 0) {
 		return [];

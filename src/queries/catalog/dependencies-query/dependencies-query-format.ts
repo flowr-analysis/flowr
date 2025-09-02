@@ -9,7 +9,7 @@ import type { FunctionInfo } from './function-info/function-info';
 
 export const Unknown = 'unknown';
 
-export enum DependencyType {
+export enum DependencyCategory {
     Library = 'library',
     Source = 'source',
     Read = 'read',
@@ -17,7 +17,7 @@ export enum DependencyType {
 }
 export interface DependenciesQuery extends BaseQueryFormat {
     readonly type:                    'dependencies'
-    readonly enabledTypes?:           DependencyType[]
+    readonly enabledCategories?:      DependencyCategory[]
     readonly ignoreDefaultFunctions?: boolean
     readonly libraryFunctions?:       FunctionInfo[]
     readonly sourceFunctions?:        FunctionInfo[]
@@ -89,8 +89,8 @@ export const DependenciesQueryDefinition = {
 		sourceFunctions:        functionInfoSchema.description('The set of source functions to search for.'),
 		readFunctions:          functionInfoSchema.description('The set of data reading functions to search for.'),
 		writeFunctions:         functionInfoSchema.description('The set of data writing functions to search for.'),
-		enabledTypes:           Joi.array().optional().items(
-			Joi.string().valid(...Object.values(DependencyType))
+		enabledCategories:      Joi.array().optional().items(
+			Joi.string().valid(...Object.values(DependencyCategory))
 		).description('A set of flags that determines what types of dependencies are searched for. If unset or empty, all dependency types are searched for.'),
 	}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {

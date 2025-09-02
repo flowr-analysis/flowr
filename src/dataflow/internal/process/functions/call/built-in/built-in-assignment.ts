@@ -331,7 +331,7 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
 	readonly source:                   RNode<OtherInfo & ParentInformation>
 	readonly args:                     [DataflowInformation, DataflowInformation]
 	readonly targetId:                 NodeId
-	/** pass only if the assignment target differs from normal R assignments (i.e., if the symbol is to be resolved */
+	/** pass only if the assignment target differs from normal R assignments (i.e., if the symbol is to be resolved) */
 	readonly targetName?:              string
 	readonly rootId:                   NodeId
 	readonly data:                     DataflowProcessorInformation<OtherInfo>

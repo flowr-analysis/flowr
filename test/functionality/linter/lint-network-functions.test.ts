@@ -37,5 +37,11 @@ describe('flowR linter', withTreeSitter(parser => {
                 { fns: ['read.csv'] }
             );
         }
+        assertLinter(`do not trigger without url prefix`, parser, `read.csv("www.example.com")`,
+            'network-functions',
+            [],
+            { totalCalls: 0, totalFunctionDefinitions: 0 },
+            { fns: ['read.csv'] }
+        );
     });
 }));

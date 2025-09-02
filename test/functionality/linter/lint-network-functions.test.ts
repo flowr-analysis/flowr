@@ -18,30 +18,30 @@ describe('flowR linter', withTreeSitter(parser => {
 				{ fns: [entry] }
 			);
 		}
-        /* Testing the nested use the 'url' function in other function calls */
-        assertLinter('network function nested', parser, 'foo(url("http://example.com"))',
-            'network-functions',
-            [
-                { certainty: LintingResultCertainty.Certain, function: 'url', range: [1,5,1,29] }
-            ],
-            { totalCalls: 1, totalFunctionDefinitions: 1 },
-            { fns: ['url'] }
-        );
-        for(const prefix of urlPrefix){
-            assertLinter(`network function with url prefix: ${prefix}`, parser, `read.csv("${prefix}www.example.com")`,
-                'network-functions',
-                [
-                    { certainty: LintingResultCertainty.Certain, function: 'read.csv', range: [1,1,1,prefix.length + 27] }
-                ],
-                { totalCalls: 1, totalFunctionDefinitions: 1 },
-                { fns: ['read.csv'] }
-            );
-        }
-        assertLinter(`do not trigger without url prefix`, parser, `read.csv("www.example.com")`,
-            'network-functions',
-            [],
-            { totalCalls: 0, totalFunctionDefinitions: 0 },
-            { fns: ['read.csv'] }
-        );
-    });
+		/* Testing the nested use the 'url' function in other function calls */
+		assertLinter('network function nested', parser, 'foo(url("http://example.com"))',
+			'network-functions',
+			[
+				{ certainty: LintingResultCertainty.Certain, function: 'url', range: [1,5,1,29] }
+			],
+			{ totalCalls: 1, totalFunctionDefinitions: 1 },
+			{ fns: ['url'] }
+		);
+		for(const prefix of urlPrefix){
+			assertLinter(`network function with url prefix: ${prefix}`, parser, `read.csv("${prefix}www.example.com")`,
+				'network-functions',
+				[
+					{ certainty: LintingResultCertainty.Certain, function: 'read.csv', range: [1,1,1,prefix.length + 27] }
+				],
+				{ totalCalls: 1, totalFunctionDefinitions: 1 },
+				{ fns: ['read.csv'] }
+			);
+		}
+		assertLinter('do not trigger without url prefix', parser, 'read.csv("www.example.com")',
+			'network-functions',
+			[],
+			{ totalCalls: 0, totalFunctionDefinitions: 0 },
+			{ fns: ['read.csv'] }
+		);
+	});
 }));

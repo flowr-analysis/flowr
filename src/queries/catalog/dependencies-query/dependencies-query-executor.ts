@@ -94,9 +94,7 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		// write functions that don't have argIndex are assumed to write to stdout
 		destination: value ?? 'stdout',
 	}));
-	const visualizeCalls: DependencyInfo[] = getResults(data, results, DependencyCategory.Visualize, visualizeFunctions, (base) => ({
-		...base,
-	}));
+	const visualizeCalls: DependencyInfo[] = getResults(data, results, DependencyCategory.Visualize, visualizeFunctions, base => base);
 
 	return {
 		'.meta': {

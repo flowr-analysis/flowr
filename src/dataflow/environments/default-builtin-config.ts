@@ -91,7 +91,7 @@ export const GgPlotAddons = [
 const PlotAddons = [...MiscPlotAddons, ...GgPlotImplicitAddons, ...PlotFunctionsWithAddParam];
 
 
-export function escapeFunctionNamesAsRegex(n: readonly string[]): RegExp {
+function toRegex(n: readonly string[]): RegExp {
 	return new RegExp(`^(${
 		[...new Set(n)].map(s => s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')).filter(s => s.length > 0).join('|')
 	})$`);
@@ -150,7 +150,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 						name:  'add'
 					}, [RType.Logical])?.content === true);
 				},
-				callName: escapeFunctionNamesAsRegex(GraphicDeviceOpen)
+				callName: toRegex(GraphicDeviceOpen)
 			}
 		}, assumePrimitive: true },
 	// graphics addons
@@ -162,7 +162,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			},
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: escapeFunctionNamesAsRegex([...PlotCreate, ...PlotAddons]),
+				callName: toRegex([...PlotCreate, ...PlotAddons]),
 				ignoreIf: (source: NodeId, graph: DataflowGraph) => {
 					const sourceVertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;
 
@@ -190,7 +190,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: escapeFunctionNamesAsRegex([...GgPlotCreate, ...GgPlotAddons])
+				callName: toRegex([...GgPlotCreate, ...GgPlotAddons])
 			}
 		}, assumePrimitive: true },
 	{
@@ -201,7 +201,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: escapeFunctionNamesAsRegex([...TinyPlotCrate, ...TinyPlotAddons])
+				callName: toRegex([...TinyPlotCrate, ...TinyPlotAddons])
 			}
 		}, assumePrimitive: true },
 	{
@@ -212,7 +212,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: escapeFunctionNamesAsRegex([...GraphicDeviceOpen, ...PlotCreate, ...PlotAddons, ...GgPlotAddons, ...TinyPlotAddons])
+				callName: toRegex([...GraphicDeviceOpen, ...PlotCreate, ...PlotAddons, ...GgPlotAddons, ...TinyPlotAddons])
 			}
 		}, assumePrimitive: true },
 	{ type: 'function', names: ['('],                                          processor: 'builtin:default',             config: { returnsNthArgument: 0 },                                                     assumePrimitive: true  },

@@ -24,19 +24,15 @@ export const MiscPlotCreate = [
 	'spineplot', 'Plotranges', 'regressogram', 'bootcurve', 'meanplot', 'vioplot', 'pairs', 'copolot', 'histogram', 'splom', 'leaflet', 'tm_shape', 'plot_ly', 'plotProfLik', 'plotSimulatedResiduals', 'plotmeans',
 	'overplot', 'residplot', 'heatmap.2', 'lmplot2', 'sinkplot', 'textplot', 'boxplot2', 'profLikCI',
 ];
-export const PlotCreate = [
-	...MiscPlotCreate,
-	...TinyPlotCrate,
-	...GgPlotCreate
-];
+export const PlotCreate = [...MiscPlotCreate, ...TinyPlotCrate, ...GgPlotCreate];
 const GraphicDeviceOpen = [
 	'pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz', 'image_graph',
 	'image_draw', 'dev.new', 'trellis.device', 'raster_pdf', 'agg_pdf'
 ] as const;
-const TinyPlotAddons = [
+export const TinyPlotAddons = [
 	'tinyplot_add', 'plt_add'
 ];
-const GgPlotImplicitAddons = [
+export const GgPlotImplicitAddons = [
 	'geom_count','geom_bin_2d','geom_spoke','geom_tile','geom_rect',
 	'geom_function','geom_crossbar','geom_density2d','geom_abline','geom_errorbar','geom_errorbarh',
 	'geom_jitter','geom_line','geom_density','geom_quantile','geom_qq','geom_qq_line','geom_segment','geom_label','geom_density_2d',
@@ -81,20 +77,21 @@ const GgPlotImplicitAddons = [
 	'scale_colour_gradient_tableau','scale_colour_few','scale_color_calc','scale_fill_few','scale_fill_gdocs','scale_color_hc','scale_color_gdocs','scale_color_canva','scale_color_gradient_tableau',
 	'scale_fill_solarized','scale_fill_continuous_tableau','scale_colour_wsj', 'gradient_color', 'ggsurvplot_add_all'
 ] as const;
-const PlotFunctionsWithAddParam: Set<string> = new Set([
+export const PlotFunctionsWithAddParam: Set<string> = new Set([
 	'map', 'matplot', 'barplot', 'boxplot', 'curve', 'image', 'plotCI', 'bandplot', 'barplot2', 'bubbleplot'
 ]);
-const PlotAddons = [
+export const MiscPlotAddons = [
 	'points', 'abline', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
 	'qqline', 'qqnorm', 'rasterImage',
-	'tiplabels', 'rug', 'grid', 'box', 'clip', 'matpoints', 'matlines', ...GgPlotImplicitAddons, ...PlotFunctionsWithAddParam
+	'tiplabels', 'rug', 'grid', 'box', 'clip', 'matpoints', 'matlines',
 ];
-const GgPlotAddons = [
+export const GgPlotAddons = [
 	'ggdraw', 'last_plot'
 ];
+const PlotAddons = [...MiscPlotAddons, ...GgPlotImplicitAddons, ...PlotFunctionsWithAddParam];
 
 
-function toRegex(n: readonly string[]): RegExp {
+export function escapeFunctionNamesAsRegex(n: readonly string[]): RegExp {
 	return new RegExp(`^(${
 		[...new Set(n)].map(s => s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')).filter(s => s.length > 0).join('|')
 	})$`);
@@ -153,7 +150,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 						name:  'add'
 					}, [RType.Logical])?.content === true);
 				},
-				callName: toRegex(GraphicDeviceOpen)
+				callName: escapeFunctionNamesAsRegex(GraphicDeviceOpen)
 			}
 		}, assumePrimitive: true },
 	// graphics addons
@@ -165,7 +162,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			},
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: toRegex([...PlotCreate, ...PlotAddons]),
+				callName: escapeFunctionNamesAsRegex([...PlotCreate, ...PlotAddons]),
 				ignoreIf: (source: NodeId, graph: DataflowGraph) => {
 					const sourceVertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;
 
@@ -193,7 +190,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: toRegex([...GgPlotCreate, ...GgPlotAddons])
+				callName: escapeFunctionNamesAsRegex([...GgPlotCreate, ...GgPlotAddons])
 			}
 		}, assumePrimitive: true },
 	{
@@ -204,7 +201,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: toRegex([...TinyPlotCrate, ...TinyPlotAddons])
+				callName: escapeFunctionNamesAsRegex([...TinyPlotCrate, ...TinyPlotAddons])
 			}
 		}, assumePrimitive: true },
 	{
@@ -215,7 +212,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: toRegex([...GraphicDeviceOpen, ...PlotCreate, ...PlotAddons, ...GgPlotAddons, ...TinyPlotAddons])
+				callName: escapeFunctionNamesAsRegex([...GraphicDeviceOpen, ...PlotCreate, ...PlotAddons, ...GgPlotAddons, ...TinyPlotAddons])
 			}
 		}, assumePrimitive: true },
 	{ type: 'function', names: ['('],                                          processor: 'builtin:default',             config: { returnsNthArgument: 0 },                                                     assumePrimitive: true  },

@@ -327,6 +327,22 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 	});
 
+	describe('Visualize', () => {
+		describe('Creation', () => {
+			for(const f of ['ggplot', 'tinyplot', 'plot', 'bootcurve']) {
+				testQuery(f, `${f}()` , { visualizeCalls: [{ nodeId: `1@${f}`, functionName: f }] });
+			}
+		});
+		describe('Modification', () => {
+			for(const f of ['coord_trans', 'scale_colour_hue', 'tinyplot_add']) {
+				testQuery(f, `plot()\n${f}(x, y, z)`, { visualizeCalls: [
+					{ nodeId: '1@plot', functionName: 'plot' },
+					{ nodeId: `2@${f}`, functionName: f, linkedIds: [1] }
+				] });
+			}
+		});
+	});
+
 	describe('With file connections', () => {
 		for(const ro of ['r', 'rb', 'rt'] as const) {
 			testQuery('read only file connection', `file("test.txt", "${ro}")`, {
@@ -339,8 +355,6 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			});
 		}
 	});
-
-
 
 	describe('Overwritten Function', () => {
 		testQuery('read.csv (overwritten by user)', "read.csv <- function(a) print(a); read.csv('test.csv')", { 

@@ -1,17 +1,15 @@
 import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import type { SourceRange } from '../../util/range';
 import { formatRange } from '../../util/mermaid/dfg';
-import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { DependenciesFunctions, Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { Ternary } from '../../util/logic';
 import { requestFromInput } from '../../r-bridge/retriever';
-import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
-import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 import { happensBefore } from '../../control-flow/happens-before';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { LintingRuleTag } from '../linter-tags';
@@ -48,11 +46,10 @@ export interface FilePathValidityMetadata extends MergeableRecord {
 
 export const FILE_PATH_VALIDITY = {
 	createSearch: (config) => Q.fromQuery({
-		type:                   'dependencies',
-		// we only want to check read and write functions, so we explicitly clear all others
-		ignoreDefaultFunctions: true,
-		readFunctions:          ReadFunctions.concat(config.additionalReadFunctions),
-		writeFunctions:         WriteFunctions.concat(config.additionalWriteFunctions)
+		type:             'dependencies',
+		enabledFunctions: [DependenciesFunctions.Read, DependenciesFunctions.Write],
+		readFunctions:    config.additionalReadFunctions,
+		writeFunctions:   config.additionalWriteFunctions
 	}).with(Enrichment.CfgInformation),
 	processSearchResult: (elements, config, data): { results: FilePathValidityResult[], '.meta': FilePathValidityMetadata } => {
 		const cfg = elements.enrichmentContent(Enrichment.CfgInformation).cfg.graph;

@@ -1,12 +1,16 @@
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
+import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import type {
 	DependenciesQuery,
-	DependenciesQueryResult, DependencyInfo
+	DependenciesQueryResult,
+	DependencyInfo
+} from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+import {
+	DependenciesFunctions
 } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
@@ -186,6 +190,13 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('Custom (by index)', 'custom.library(1, "my-custom-file", 2)', expected, readCustomFile);
 			testQuery('Custom (by name)', 'custom.library(num1 = 1, num2 = 2, file = "my-custom-file")', expected, readCustomFile);
 			testQuery('Ignore default', 'library(testLibrary)', {}, { ignoreDefaultFunctions: true });
+			testQuery('Disabled', 'library(testLibrary)', {}, { enabledFunctions: [DependenciesFunctions.Source, DependenciesFunctions.Read, DependenciesFunctions.Write] });
+			testQuery('Enabled', 'library(testLibrary)', {
+				libraries: [{ nodeId: '1@library', functionName: 'library', libraryName: 'testLibrary' }]
+			}, { enabledFunctions: [DependenciesFunctions.Library] });
+			testQuery('Empty enabled', 'library(testLibrary)', {
+				libraries: [{ nodeId: '1@library', functionName: 'library', libraryName: 'testLibrary' }]
+			}, { enabledFunctions: [] });
 		});
 	});
 

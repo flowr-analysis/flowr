@@ -8,7 +8,10 @@ import type {
 	SourceInfo,
 	WriteInfo
 } from './dependencies-query-format';
-import { Unknown } from './dependencies-query-format';
+import {
+	DependenciesFunctions,
+	Unknown
+} from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { VertexType } from '../../../dataflow/graph/vertex';
@@ -50,10 +53,10 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 
 	const [query] = queries;
 	const ignoreDefault = query.ignoreDefaultFunctions ?? false;
-	const libraryFunctions = getFunctionsToCheck(query.libraryFunctions, ignoreDefault, LibraryFunctions);
-	const sourceFunctions = getFunctionsToCheck(query.sourceFunctions, ignoreDefault, SourceFunctions);
-	const readFunctions = getFunctionsToCheck(query.readFunctions, ignoreDefault, ReadFunctions);
-	const writeFunctions = getFunctionsToCheck(query.writeFunctions, ignoreDefault, WriteFunctions);
+	const libraryFunctions = getFunctionsToCheck(query.libraryFunctions, DependenciesFunctions.Library, query.enabledFunctions, ignoreDefault, LibraryFunctions);
+	const sourceFunctions = getFunctionsToCheck(query.sourceFunctions, DependenciesFunctions.Source, query.enabledFunctions, ignoreDefault, SourceFunctions);
+	const readFunctions = getFunctionsToCheck(query.readFunctions, DependenciesFunctions.Read, query.enabledFunctions, ignoreDefault, ReadFunctions);
+	const writeFunctions = getFunctionsToCheck(query.writeFunctions, DependenciesFunctions.Write, query.enabledFunctions, ignoreDefault, WriteFunctions);
 
 	const numberOfFunctions = libraryFunctions.length + sourceFunctions.length + readFunctions.length + writeFunctions.length;
 
@@ -229,7 +232,11 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undef
 	return map.size ? map : undefined;
 }
 
-function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
+function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, functionFlag: DependenciesFunctions, enabled: DependenciesFunctions[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
+	// "If unset or empty, all function types are searched for."
+	if(enabled?.length && enabled.indexOf(functionFlag) < 0) {
+		return [];
+	}
 	let functions: FunctionInfo[] = ignoreDefaultFunctions ? [] : [...defaultFunctions];
 	if(customFunctions) {
 		functions = functions.concat(customFunctions);

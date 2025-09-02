@@ -118,7 +118,7 @@ export type CallContextQuery<CallName extends CallNameTypes = CallNameTypes, Att
 
 const CallContextQueryLinkTo = Joi.object({
 	type:           Joi.string().valid('link-to-last-call').required().description('The type of the linkTo sub-query.'),
-	callName:       Joi.string().required().description('Regex regarding the function name of the last call. Similar to `callName`, strings are interpreted as a regular expression.'),
+	callName:       Joi.alternatives(Joi.string(), Joi.array().items(Joi.string())).required().description('Test regarding the function name of the last call. Similar to `callName`, strings are interpreted as a regular expression, and string arrays are checked for containment.'),
 	ignoreIf:       Joi.function().optional().description('Should we ignore this (source) call? Currently, there is no well working serialization for this.'),
 	cascadeIf:      Joi.function().optional().description('Should we continue searching after the link was created? Currently, there is no well working serialization for this.'),
 	attachLinkInfo: Joi.object().optional().description('Additional information to attach to the link.')

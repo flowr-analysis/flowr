@@ -10,6 +10,7 @@ describe('flowR linter', withTreeSitter(parser => {
 	describe('network functions', () => {
 		/* Testing the validity of all declared network functions */
 		for(const entry of NETWORK_FUNCTIONS.info.defaultConfig.fns) {
+			/* @ignore-in-wiki */
 			assertLinter('network function: ' + entry, parser, `${entry}()`, 'network-functions',
 				[
 					{ certainty: LintingResultCertainty.Certain, function: entry, range: [1, 1, 1, entry.length + 2] }
@@ -28,6 +29,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ fns: ['url'] }
 		);
 		for(const prefix of urlPrefix){
+			/* @ignore-in-wiki */
 			assertLinter(`network function with url prefix: ${prefix}`, parser, `read.csv("${prefix}www.example.com")`,
 				'network-functions',
 				[

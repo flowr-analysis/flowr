@@ -137,10 +137,11 @@ const readOnlyModes = new Set(['r', 'rt', 'rb']);
 const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab']);
 
 function getResults<T extends DependencyInfo>(data: BasicQueryData, results: CallContextQueryResult, kind: DependencyCategory, functions: FunctionInfo[], makeInfo: MakeDependencyInfo<T>): T[] {
+	const functionMap = new Map<string, FunctionInfo>(functions.map(f => [f.name, f]));
 	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});
 	return kindEntries.flatMap(([name, results]) => results.flatMap(({ id, linkedIds }) => {
 		const vertex = data.dataflow.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
-		const info = functions.find(f => f.name === name) as FunctionInfo;
+		const info = functionMap.get(name) as FunctionInfo;
 
 		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
 		const linkedArgs = collectValuesFromLinks(args, data, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);

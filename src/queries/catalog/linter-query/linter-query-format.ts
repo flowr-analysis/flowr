@@ -2,10 +2,11 @@ import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
 import { executeLinterQuery } from './linter-query-executor';
-import type { LintingRuleNames, LintingRuleResult } from '../../../linter/linter-rules';
+import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from '../../../linter/linter-rules';
 import { LintingRules } from '../../../linter/linter-rules';
-import type { ConfiguredLintingRule, LintingResults } from '../../../linter/linter-format';
-import { LintingCertainty } from '../../../linter/linter-format';
+import type { ConfiguredLintingRule, LintingResults, LintingRule } from '../../../linter/linter-format';
+import { isLintingResultsError, LintingPrettyPrintContext , LintingResultCertainty } from '../../../linter/linter-format';
+
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import { codeInline } from '../../../documentation/doc-util/doc-code';
@@ -33,18 +34,7 @@ export const LinterQueryDefinition = {
 		const out = queryResults as QueryResults<'linter'>['linter'];
 		result.push(`Query: ${bold('linter', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [ruleName, results] of Object.entries(out.results)) {
-			const rule = LintingRules[ruleName as LintingRuleNames];
-			result.push(`   ╰ ${ruleName}:`);
-			for(const certainty of [LintingCertainty.Definitely, LintingCertainty.Maybe]) {
-				const certaintyResults = results.results.filter(r => r.certainty === certainty);
-				if(certaintyResults.length) {
-					result.push(`       ╰ ${certainty}:`);
-					for(const res of certaintyResults) {
-						result.push(`           ╰ ${rule.prettyPrint(res as LintingRuleResult<LintingRuleNames>)}`);
-					}
-				}
-			}
-			result.push(`       ╰ _Metadata_: ${codeInline(JSON.stringify(results['.meta']))}`);
+			addLintingRuleResult(ruleName as LintingRuleNames, results as LintingResults<LintingRuleNames>, result);
 		}
 		return true;
 	},
@@ -60,3 +50,25 @@ export const LinterQueryDefinition = {
 	}).description('The linter query lints for the given set of rules and returns the result.'),
 	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'linter'>;
+
+function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, results: LintingResults<Name>, result: string[]) {
+	const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
+	result.push(`   ╰ **${rule.info.name}** (${ruleName}):`);
+
+	if(isLintingResultsError(results)) {
+		result.push(`       ╰ Error during execution of Rule: ${results.error}`);
+		return;
+	}
+
+	for(const certainty of [LintingResultCertainty.Certain, LintingResultCertainty.Uncertain]) {
+		const certaintyResults = results.results.filter(r => r.certainty === certainty) as LintingRuleResult<Name>[];
+		if(certaintyResults.length) {
+			result.push(`       ╰ ${certainty}:`);
+			for(const res of certaintyResults) {
+				const pretty = rule.prettyPrint[LintingPrettyPrintContext.Query](res, results['.meta']);
+				result.push(`           ╰ ${pretty}${res.quickFix ? ` (${res.quickFix.length} quick fix(es) available)` : ''}`);
+			}
+		}
+	}
+	result.push(`       ╰ _Metadata_: ${codeInline(JSON.stringify(results['.meta']))}`);
+}

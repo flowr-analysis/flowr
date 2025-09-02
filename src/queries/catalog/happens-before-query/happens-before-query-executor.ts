@@ -2,7 +2,7 @@ import type { BasicQueryData } from '../../base-query-format';
 import type { HappensBeforeQuery, HappensBeforeQueryResult } from './happens-before-query-format';
 import { Ternary } from '../../../util/logic';
 import { log } from '../../../util/log';
-import { extractSimpleCfg } from '../../../control-flow/extract-cfg';
+import { extractCfgQuick } from '../../../control-flow/extract-cfg';
 import { happensBefore } from '../../../control-flow/happens-before';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 
@@ -10,7 +10,7 @@ export async function executeHappensBefore({ input }: BasicQueryData, queries: r
 	const start = Date.now();
 	const results: Record<string, Ternary> = {};
 	const ast = await input.normalizedAst();
-	const cfg = extractSimpleCfg(ast);
+	const cfg = extractCfgQuick(ast);
 	for(const query of queries) {
 		const { a, b } = query;
 		const fingerprint = `${a}<${b}`;

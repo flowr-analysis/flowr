@@ -6,8 +6,7 @@ import { getTransformer } from './search-executor/search-transformer';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalysisInput } from '../project/flowr-analyzer';
 
-type GetSearchElements<S> = S extends FlowrSearch<infer _, infer _, infer _, infer Elements> ? Elements extends
-	FlowrSearchElements<infer _, infer E> ? E : never : never;
+type GetSearchElements<S> = S extends FlowrSearch<infer _, infer _, infer _, infer Elements> ? Elements : never;
 
 /**
  * Run a search with the given search query and data.
@@ -24,5 +23,5 @@ export async function runSearch<S extends FlowrSearchLike>(
 		acc = await getTransformer(transformer.name)(input, acc, transformer.args as never);
 	}
 
-	return acc.getElements() as GetSearchElements<SearchOutput<S>>;
+	return acc as GetSearchElements<SearchOutput<S>>;
 }

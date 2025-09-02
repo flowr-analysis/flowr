@@ -7,19 +7,8 @@ import { LintingRules } from '../linter/linter-rules';
 import { codeBlock } from './doc-util/doc-code';
 import { RShell } from '../r-bridge/shell';
 import { showQuery } from './doc-util/doc-query';
-import type {
-	TypeElementInSource, TypeReport
-} from './doc-util/doc-types';
-import {
-	getTypePathLink
-	,
-	shortLinkFile
-	,
-	getDocumentationForType,
-	getTypesFromFolder,
-	mermaidHide,
-	shortLink
-} from './doc-util/doc-types';
+import type { TypeElementInSource, TypeReport } from './doc-util/doc-types';
+import { getDocumentationForType, getTypePathLink, getTypesFromFolder, mermaidHide, shortLink, shortLinkFile } from './doc-util/doc-types';
 import path from 'path';
 import { documentReplSession } from './doc-util/doc-repl';
 import { section } from './doc-util/doc-structure';
@@ -29,18 +18,20 @@ import { joinWithLast } from '../util/text/strings';
 import { guard } from '../util/assert';
 import { writeWikiTo } from './doc-util/doc-print';
 import { getFunctionsFromFolder } from './doc-util/doc-functions';
+import { LintingResultCertainty, LintingRuleCertainty } from '../linter/linter-format';
 
 const SpecialTagColors: Record<string, string> = {
 	[LintingRuleTag.Bug]:      'red',
 	[LintingRuleTag.Security]: 'orange',
 	[LintingRuleTag.Smell]:    'yellow',
-	[LintingRuleTag.QuickFix]: 'lightgray',
+	[LintingRuleTag.QuickFix]: 'lightgray'
 };
 
 function makeTagBadge(name: LintingRuleTag, info: TypeElementInSource[]): string {
-	const doc = getDocumentationForType('LintingRuleTag::' + name, info, '', true).replaceAll('\n', ' ');
+	const doc = getDocumentationForType('LintingRuleTag::' + name, info, '', { fuzzy: true }).replaceAll('\n', ' ');
 	return textWithTooltip(`<a href='#${name}'>![` + name + '](https://img.shields.io/badge/' + name.toLowerCase() + `-${SpecialTagColors[name] ?? 'teal'}) </a>`, doc);
 }
+
 
 function prettyPrintExpectedOutput(expected: string): string {
 	if(expected.trim() === '[]') {
@@ -70,7 +61,7 @@ function buildSamplesFromLinterTestCases(shell: RShell, testFile: string): strin
 	}
 	let result = `#### Additional Examples
 	
-	These examples are synthesized from the test cases in: ${linkFlowRSourceFile(testFile)}\n\n`;
+These examples are synthesized from the test cases in: ${linkFlowRSourceFile('test/functionality/linter/' + testFile)}\n\n`;
 
 	for(const report of reports.info) {
 		const args = report.arguments;
@@ -80,7 +71,6 @@ function buildSamplesFromLinterTestCases(shell: RShell, testFile: string): strin
 		}
 		const testName = args[0].getText(report.source);
 		if(report.comments?.some(c => c.includes('@ignore-in-wiki'))) {
-			console.warn(`Skipping test case for linter rule ${testName} (${testFile}) as it is marked with @ignore-in-wiki`);
 			continue;
 		}
 		// drop any quotes around the test name
@@ -132,7 +122,32 @@ x <- 42
 y <- 3
 print(x)
 `, tagTypes);
+	rule(shell,
+		'seeded-randomness', 'SeededRandomnessConfig', 'SEEDED_RANDOMNESS', 'lint-seeded-randomness',
+		'runif(1)',
+		tagTypes);
 
+	rule(shell, 
+		'naming-convention', 'NamingConventionConfig', 'NAMING_CONVENTION', 'lint-naming-convention',
+		`
+myVar <- 42
+print(myVar)
+`, tagTypes);
+
+	rule(shell,
+		'dataframe-access-validation', 'DataFrameAccessValidationConfig', 'DATA_FRAME_ACCESS_VALIDATION', 'lint-dataframe-access-validation',
+		`
+df <- data.frame(id = 1:5, name = 6:10)
+df[6, "value"]
+`, tagTypes);
+
+	rule(shell,
+		'dead-code', 'DeadCodeConfig', 'DEAD_CODE', 'lint-dead-code',
+		'if(TRUE) 1 else 2', tagTypes);
+
+	rule(shell,
+		'useless-loop', 'UselessLoopConfig', 'USELESS_LOOP', 'lint-useless-loop',
+		'for(i in c(1)) { print(i) }', tagTypes);
 
 	function rule(shell: RShell, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
@@ -152,9 +167,11 @@ print(x)
 			return a.localeCompare(b);
 		}).map(t => makeTagBadge(t, types)).join(' ');
 
+		const certaintyDoc = getDocumentationForType(`LintingRuleCertainty::${rule.info.certainty}`, types, '', { fuzzy: true }).replaceAll('\n', ' ');
+		const certaintyText = `\`${textWithTooltip(rule.info.certainty, certaintyDoc)}\``;
 		if(format === 'short') {
 			ruleExplanations.set(name, () => Promise.resolve(`
-	**[${rule.info.name}](${FlowrWikiBaseRef}/linter-rules/${name}):** ${rule.info.description} [see ${shortLinkFile(ruleType, types)}]\\
+	**[${rule.info.name}](${FlowrWikiBaseRef}/lint-${name}):** ${rule.info.description} [see ${shortLinkFile(ruleType, types)}]\\
 	${tags}
 
 		`.trim()));
@@ -165,6 +182,9 @@ ${autoGenHeader({ filename: module.filename, purpose: 'linter', rVersion })}
 ${section(rule.info.name + `&emsp;<sup>[<a href="${FlowrWikiBaseRef}/Linter">overview</a>]</sup>`, 2, name)}
 
 ${tags}
+
+
+This rule is a ${certaintyText} rule.
  
 ${rule.info.description}\\
 _This linting rule is implemented in ${shortLinkFile(ruleType, types)}._
@@ -198,12 +218,16 @@ ${buildSamplesFromLinterTestCases(shell, `${testfile}.test.ts`)}
 	return ruleExplanations;
 }
 
-function getAllLintingRulesWitTag(tag: LintingRuleTag): LintingRuleNames[] {
+function getAllLintingRulesWithTag(tag: LintingRuleTag): LintingRuleNames[] {
 	return Object.entries(LintingRules).filter(([_, rule]) => (rule.info.tags as readonly LintingRuleTag[]).includes(tag)).map(([name]) => name as LintingRuleNames);
 }
 
+function getAllLintingRulesWitCertainty(certainty: LintingRuleCertainty): LintingRuleNames[] {
+	return Object.entries(LintingRules).filter(([_, rule]) => rule.info.certainty === certainty).map(([name]) => name as LintingRuleNames);
+}
+
 function linkToRule(name: LintingRuleNames): string {
-	return `[${name}](${FlowrWikiBaseRef}/linter-rules/${name})`;
+	return `[${name}](${FlowrWikiBaseRef}/lint-${name})`;
 }
 
 
@@ -247,16 +271,37 @@ ${await(async() => {
 	
 ${section('Tags', 2, 'tags')}
 
-We use tags to categorize linting rules. The following tags are available:
+We use tags to categorize linting rules for users. The following tags are available:
 
 | Tag/Badge&emsp;&emsp; | Description |
 | --- | :-- |
 ${Object.entries(LintingRuleTag).map(([name, tag]) => {
-	return `| <a id="${tag}"></a> ${makeTagBadge(tag as LintingRuleTag, tagTypes.info)} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll(/\n/g, ' ')} (rule${getAllLintingRulesWitTag(tag).length === 1 ? '' : 's'}: ${
-		joinWithLast(getAllLintingRulesWitTag(tag).map(l => linkToRule(l))) || '_none_'
+	return `| <a id="${tag}"></a> ${(makeTagBadge(tag as LintingRuleTag, tagTypes.info))} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll(/\n/g, ' ')} (rule${getAllLintingRulesWithTag(tag).length === 1 ? '' : 's'}: ${
+		joinWithLast(getAllLintingRulesWithTag(tag).map(l => linkToRule(l))) || '_none_'
 	}) | `;
 }).join('\n')}
+
+${section('Certainty', 2, 'certainty')}
+
+Both linting rules and their individual results are additionally categorized by how certain the linter is that the results it is returning are valid.
+
+${section('Rule Certainty', 3, 'rule-certainty')}
+
+| Rule Certainty | Description |
+| -------------- | :---------- |
+${Object.entries(LintingRuleCertainty).map(([name, certainty]) => {
+	return `| <a id="${certainty}"></a> \`${certainty}\` | ${getDocumentationForType('LintingRuleCertainty::' + name, tagTypes.info).replaceAll(/\n/g, ' ')} (rule${getAllLintingRulesWitCertainty(certainty).length === 1 ? '' : 's'}: ${
+		joinWithLast(getAllLintingRulesWitCertainty(certainty).map(l => linkToRule(l))) || '_none_'
+	}) |`;
+}).join('\n')}
 	
+${section('Result Certainty', 3, 'result-certainty')}
+
+| Result Certainty | Description |
+| ---------------- | :---------- |
+${Object.entries(LintingResultCertainty).map(([name, certainty]) =>
+	`| <a id="${certainty}"></a> \`${certainty}\` | ${getDocumentationForType('LintingResultCertainty::' + name, tagTypes.info).replaceAll(/\n/g, ' ')} |`).join('\n')}
+
 `.trim();
 }
 
@@ -265,7 +310,7 @@ async function getRulesPages(shell: RShell, tagTypes: TypeReport, rVersion: stri
 	const result: Record<string, string> = {} as Record<string, string>;
 
 	for(const [name, rule] of rules) {
-		const filepath = path.resolve('./wiki/linter-rules', `${name}.md`);
+		const filepath = path.resolve('./wiki', `lint-${name}.md`);
 		result[filepath] = await rule();
 	}
 
@@ -296,7 +341,7 @@ if(require.main === module) {
 			if(file === 'main') {
 				continue; // main is printed above
 			}
-			const filepath = path.resolve('./wiki/linter-rules', file);
+			const filepath = path.resolve('./wiki', file);
 			writeWikiTo(content, filepath);
 		}
 	}).finally(() => {

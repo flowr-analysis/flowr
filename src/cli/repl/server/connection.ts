@@ -45,6 +45,7 @@ import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 import { compact } from './compact';
 import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
 import type { FlowrConfigOptions } from '../../../config';
+import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
 import { FlowrAnalyzerBuilder } from '../../../project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -116,7 +117,7 @@ export class FlowRServerConnection {
 				void this.handleLineageRequest(request.message as LineageRequestMessage);
 				break;
 			case 'request-query':
-				void this.handleQueryRequest(request.message as QueryRequestMessage);
+				this.handleQueryRequest(request.message as QueryRequestMessage);
 				break;
 			default:
 				sendMessage<FlowrErrorMessage>(this.socket, {
@@ -241,7 +242,7 @@ export class FlowRServerConnection {
 		}
 
 		const request = requestResult.message;
-		this.logger.info(`[${request.filetoken}] Received slice request with criteria ${JSON.stringify(request.criterion)}`);
+		this.logger.info(`[${request.filetoken}] Received ${request.direction ?? SliceDirection.Backward} slice request with criteria ${JSON.stringify(request.criterion)}`);
 
 		const fileInformation = this.fileMap.get(request.filetoken);
 		if(!fileInformation) {
@@ -261,6 +262,7 @@ export class FlowRServerConnection {
 				criteria:        request.criterion,
 				noMagicComments: request.noMagicComments,
 				// TODO TSchoeller autoSelectIf -> How to pass?
+				// direction: request.direction
 				//autoSelectIf:    request.noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
 			}]);
 
@@ -348,7 +350,7 @@ export class FlowRServerConnection {
 		});
 	}
 
-	private async handleQueryRequest(base: QueryRequestMessage) {
+	private handleQueryRequest(base: QueryRequestMessage) {
 		const requestResult = validateMessage(base, requestQueryMessage);
 
 		if(requestResult.type === 'error') {
@@ -370,12 +372,20 @@ export class FlowRServerConnection {
 			return;
 		}
 
-		const analyzer = fileInformation.analyzer;
-		const results = await executeQueries({ input: analyzer }, request.query);
-		sendMessage<QueryResponseMessage>(this.socket, {
-			type: 'response-query',
-			id:   request.id,
-			results
+		void Promise.resolve(executeQueries({ input: fileInformation.analyzer }, request.query)).then(results => {
+			sendMessage<QueryResponseMessage>(this.socket, {
+				type: 'response-query',
+				id:   request.id,
+				results
+			});
+		}).catch(e => {
+			this.logger.error(`[${this.name}] Error while executing query: ${String(e)}`);
+			sendMessage<FlowrErrorMessage>(this.socket, {
+				id:     request.id,
+				type:   'error',
+				fatal:  false,
+				reason: `Error while executing query: ${String(e)}`
+			});
 		});
 	}
 }

@@ -2,13 +2,8 @@ import type { TestLabel } from './label';
 import { decorateLabelContext } from './label';
 import { assert, beforeAll, describe, test } from 'vitest';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
-import type {
-	NormalizedAst,
-	ParentInformation
-} from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	deterministicCountingIdGenerator
-} from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-printer';
 import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
 import { getFlowrSearch } from '../../../src/search/flowr-search-builder';
@@ -19,7 +14,7 @@ import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../src/
 import { guard, isNotUndefined } from '../../../src/util/assert';
 import { flowrSearchToAscii } from '../../../src/search/flowr-search-printer';
 import type { FlowrSearchElement } from '../../../src/search/flowr-search';
-import type { Enrichment, EnrichmentContent } from '../../../src/search/search-executor/search-enrichers';
+import type { Enrichment, EnrichmentElementContent } from '../../../src/search/search-executor/search-enrichers';
 import { enrichmentContent } from '../../../src/search/search-executor/search-enrichers';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
@@ -62,7 +57,7 @@ export function assertSearch(
 				guard(isNotUndefined(ast), 'Normalized AST must be defined');
 				search = getFlowrSearch(search, optimize);
 
-				const result = await runSearch(search, analyzer);
+				const result = (await runSearch(search, analyzer)).getElements();
 				try {
 					if(Array.isArray(expected)) {
 						expected = expected.map(id => {
@@ -79,10 +74,7 @@ export function assertSearch(
 							`Expected search results to match. Wanted: [${expected.join(', ')}], got: [${result.map(r => r.node.info.id).join(', ')}]`);
 					} else {
 						const expectedFunc = expected as (result: FlowrSearchElement<ParentInformation>[]) => boolean;
-						assert(expectedFunc(result), `Expected search results ${JSON.stringify({
-							normalize: ast,
-							dataflow:  dataflow
-						})} to match expected function`);
+						assert(expectedFunc([...result]), `Expected search results ${JSON.stringify(result)} to match expected function`);
 					}
 				} /* v8 ignore next 4 */ catch(e: unknown) {
 					console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(dataflow));
@@ -98,7 +90,7 @@ export function assertSearchEnrichment(
 	name: string | TestLabel,
 	parser: KnownParser,
 	code: string,
-	expectedEnrichments: readonly { [E in Enrichment]?: EnrichmentContent<E> }[],
+	expectedEnrichments: readonly { [E in Enrichment]?: EnrichmentElementContent<E> }[],
 	matchType: 'some' | 'every',
 	...searches: FlowrSearchLike[]
 ) {

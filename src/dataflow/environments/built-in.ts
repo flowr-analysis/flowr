@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../processor';
-import type { DataflowInformation, ExitPointType } from '../info';
+import type { DataflowInformation, ExitPoint, ExitPointType } from '../info';
 import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling';
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access';
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else';
@@ -27,8 +27,6 @@ import { processLibrary } from '../internal/process/functions/call/built-in/buil
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source';
 import type { ForceArguments } from '../internal/process/functions/call/common';
 import { processApply } from '../internal/process/functions/call/built-in/built-in-apply';
-import { registerBuiltInDefinitions } from './built-in-config';
-import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
 import { processVector } from '../internal/process/functions/call/built-in/built-in-vector';
@@ -39,9 +37,15 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
-import { resolveAsVector } from '../eval/resolve/resolve';
+import { resolveAsMinus, resolveAsPlus, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
 import type { DataflowGraph } from '../graph/graph';
 import type { VariableResolve } from '../../config';
+import type {
+	BuiltInConstantDefinition,
+	BuiltInDefinition,
+	BuiltInFunctionDefinition,
+	BuiltInReplacementDefinition
+} from './built-in-config';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -86,49 +90,49 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	readonly returnsNthArgument?:    number | 'last',
 	readonly cfg?:                   ExitPointType,
 	readonly readAllArguments?:      boolean,
-	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
+	readonly hasUnknownSideEffects?: boolean | LinkTo,
 	/** record mapping the actual function name called to the arguments that should be treated as function calls */
 	readonly treatAsFnCall?:         Record<string, readonly string[]>,
-	/** Name that should be used for the origin (useful when needing to differentiate between 
-	 * functions like 'return' that use the default builtin processor) 
+	/** Name that should be used for the origin (useful when needing to differentiate between
+	 * functions like 'return' that use the default builtin processor)
 	 */
 	readonly useAsProcessor?:        UseAsProcessors
 }
 
 
-export type BuiltInEvalHandler = (resolve: VariableResolve, a: RNodeWithParent, env: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap) => Value;
+export type BuiltInEvalHandler = (resolve: VariableResolve, a: RNodeWithParent, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap) => Value;
 
 function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: DefaultBuiltInProcessorConfiguration
+	{ returnsNthArgument, useAsProcessor, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
-	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: config.useAsProcessor ?? 'builtin:default' });
-	if(config.returnsNthArgument !== undefined) {
-		const arg = config.returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[config.returnsNthArgument];
+	const activeProcessor = useAsProcessor ?? 'builtin:default';
+	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: activeProcessor });
+	if(returnsNthArgument !== undefined) {
+		const arg = returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[returnsNthArgument];
 		if(arg !== undefined) {
 			res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Returns);
 		}
 	}
-	if(config.readAllArguments) {
+	if(readAllArguments) {
 		for(const arg of processedArguments) {
 			if(arg) {
 				res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Reads);
 			}
 		}
 	}
-
-	if(config.hasUnknownSideEffects) {
-		if(typeof config.hasUnknownSideEffects !== 'boolean') {
-			handleUnknownSideEffect(res.graph, res.environment, rootId, config.hasUnknownSideEffects);
+	if(hasUnknownSideEffects) {
+		if(typeof hasUnknownSideEffects !== 'boolean') {
+			handleUnknownSideEffect(res.graph, res.environment, rootId, hasUnknownSideEffects);
 		} else {
 			handleUnknownSideEffect(res.graph, res.environment, rootId);
 		}
 	}
 
-	const fnCallNames = config.treatAsFnCall?.[name.content];
+	const fnCallNames = treatAsFnCall?.[name.content];
 	if(fnCallNames) {
 		for(const arg of args) {
 			if(arg !== EmptyArgument && arg.value && fnCallNames.includes(arg.name?.content as string)) {
@@ -152,42 +156,17 @@ function defaultBuiltInProcessor<OtherInfo>(
 					environment: data.environment,
 					onlyBuiltin: false,
 					cds:         data.controlDependencies,
-					origin:      [config.useAsProcessor ?? 'builtin:default']
+					origin:      [activeProcessor]
 				});
 			}
 		}
 	}
 
-	if(config.cfg !== undefined) {
-		res.exitPoints = [...res.exitPoints, { type: config.cfg, nodeId: rootId, controlDependencies: data.controlDependencies }];
+	if(cfg !== undefined) {
+		(res.exitPoints as ExitPoint[]).push({ type: cfg, nodeId: rootId, controlDependencies: data.controlDependencies });
 	}
 
 	return res;
-}
-
-export function registerBuiltInFunctions<Config extends object, Proc extends BuiltInIdentifierProcessorWithConfig<Config>>(
-	both:      boolean,
-	names:     readonly Identifier[],
-	processor: Proc,
-	config:    Config
-): void {
-	for(const name of names) {
-		guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
-		const id = builtInId(name);
-		const d: IdentifierDefinition[] = [{
-			type:                ReferenceType.BuiltInFunction,
-			definedAt:           id,
-			controlDependencies: undefined,
-			processor:           (name, args, rootId, data) => processor(name, args, rootId, data, config),
-			config,
-			name,
-			nodeId:              id
-		}];
-		BuiltInMemory.set(name, d);
-		if(both) {
-			EmptyBuiltInMemory.set(name, d);
-		}
-	}
 }
 
 export const BuiltInProcessorMapper = {
@@ -215,14 +194,121 @@ export const BuiltInProcessorMapper = {
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;
 
 export const BuiltInEvalHandlerMapper = {
-	'built-in:c':     resolveAsVector,
-	'builtin:vector': resolveAsVector
+	'built-in:c': resolveAsVector,
+	'built-in::': resolveAsSeq,
+	'built-in:+': resolveAsPlus,
+	'built-in:-': resolveAsMinus
 } as const satisfies Record<string, BuiltInEvalHandler>;
 
 export type BuiltInMappingName = keyof typeof BuiltInProcessorMapper;
 export type ConfigOfBuiltInMappingName<N extends BuiltInMappingName> = Parameters<typeof BuiltInProcessorMapper[N]>[4];
 
-export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
-export const EmptyBuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+export type BuiltInMemory = Map<Identifier, IdentifierDefinition[]>
 
-registerBuiltInDefinitions(DefaultBuiltinConfig);
+export class BuiltIns {
+	/**
+	 * Register a built-in constant (like `NULL` or `TRUE`) to the given {@link builtIns}
+	 */
+	registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>): void {
+		for(const name of names) {
+			const id = builtInId(name);
+			const d: IdentifierDefinition[] = [{
+				type:                ReferenceType.BuiltInConstant,
+				definedAt:           id,
+				controlDependencies: undefined,
+				value,
+				name,
+				nodeId:              id
+			}];
+			this.set(name, d, assumePrimitive);
+		}
+	}
+
+	/**
+	 * Register a built-in function (like `print` or `c`) to the given {@link builtIns}
+	 */
+	registerBuiltInFunctions<BuiltInProcessor extends BuiltInMappingName>({ names, processor, config, assumePrimitive }: BuiltInFunctionDefinition<BuiltInProcessor> ): void {
+		const mappedProcessor = BuiltInProcessorMapper[processor];
+		guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
+		for(const name of names) {
+			guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
+			const id = builtInId(name);
+			const d: IdentifierDefinition[] = [{
+				type:                ReferenceType.BuiltInFunction,
+				definedAt:           id,
+				controlDependencies: undefined,
+				/* eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-argument */
+				processor:           (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as any),
+				config,
+				name,
+				nodeId:              id
+			}];
+			this.set(name, d, assumePrimitive);
+		}
+	}
+
+	/**
+	 * Registers all combinations of replacements
+	 */
+	registerReplacementFunctions({ names, suffixes, assumePrimitive, config }: BuiltInReplacementDefinition): void {
+		const replacer = BuiltInProcessorMapper['builtin:replacement'];
+		guard(replacer !== undefined, () => 'Processor for builtin:replacement is undefined!');
+		for(const assignment of names) {
+			for(const suffix of suffixes) {
+				const effectiveName = `${assignment}${suffix}`;
+				const id = builtInId(effectiveName);
+				const d: IdentifierDefinition[] = [{
+					type:      ReferenceType.BuiltInFunction,
+					definedAt: id,
+					processor: (name, args, rootId, data) => replacer(name, args, rootId, data, { makeMaybe: true, assignmentOperator: suffix, readIndices: config.readIndices }),
+					config:    {
+						...config,
+						assignmentOperator: suffix,
+						makeMaybe:          true
+					},
+					name:                effectiveName,
+					controlDependencies: undefined,
+					nodeId:              id
+				}];
+				this.set(effectiveName, d, assumePrimitive);
+			}
+		}
+	}
+
+	/**
+	 * Register a single {@link BuiltInDefinition} to the given memories in {@link builtIns}
+	 */
+	registerBuiltInDefinition(definition: BuiltInDefinition) {
+		switch(definition.type) {
+			case 'constant':
+				return this.registerBuiltInConstant(definition);
+			case 'function':
+				return this.registerBuiltInFunctions(definition);
+			case 'replacement':
+				return this.registerReplacementFunctions(definition);
+		}
+	}
+	
+	/**
+     * The built-in {@link REnvironmentInformation|environment} is the root of all environments.
+     *
+     * For its default content (when not overwritten by a flowR config),
+     * see the {@link DefaultBuiltinConfig}.
+     */
+	builtInMemory:      BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+	/**
+     * The twin of the {@link builtInMemory} but with less built ins defined for
+     * cases in which we want some commonly overwritten variables to remain open.
+     * If you do not know if you need the empty environment, you do not need the empty environment (right now).
+     *
+     * @see {@link builtInMemory}
+     */
+	emptyBuiltInMemory: BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+
+	set(identifier: Identifier, definition: IdentifierDefinition[], includeInEmptyMemory: boolean | undefined): void {
+		this.builtInMemory.set(identifier, definition);
+		if(includeInEmptyMemory) {
+			this.emptyBuiltInMemory.set(identifier, definition);
+		}
+	}
+}

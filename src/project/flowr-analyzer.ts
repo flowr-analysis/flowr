@@ -8,7 +8,7 @@ import {
 import type { KnownParser, ParseStepOutput } from '../r-bridge/parser';
 import type { Queries, SupportedQueryTypes } from '../queries/query';
 import { executeQueries } from '../queries/query';
-import { extractCfg, extractSimpleCfg } from '../control-flow/extract-cfg';
+import { extractCfg, extractCfgQuick } from '../control-flow/extract-cfg';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../dataflow/info';
@@ -139,7 +139,7 @@ export class FlowrAnalyzer {
 			await this.normalizedAst(force);
 		}
 
-		const result = extractSimpleCfg(this.ast);
+		const result = extractCfgQuick(this.ast);
 		this.simpleControlFlowInfo = result;
 		return result;
 	}

@@ -17,7 +17,7 @@ import type { RParseRequest, RParseRequests } from '../r-bridge/retriever';
 import { initializeCleanEnvironments } from './environments/environment';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
-import { extractSimpleCfg } from '../control-flow/extract-cfg';
+import { extractCfgQuick } from '../control-flow/extract-cfg';
 import { EdgeType } from './graph/edge';
 import {
 	identifyLinkToLastCallRelation
@@ -26,6 +26,7 @@ import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
 import type { ControlFlowGraph } from '../control-flow/control-flow-graph';
 import type { FlowrConfigOptions } from '../config';
+import { getBuiltInDefinitions } from './environments/built-in-config';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -72,7 +73,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 		if(typeof s !== 'object') {
 			continue;
 		}
-		cfg ??= extractSimpleCfg(ast).graph;
+		cfg ??= extractCfgQuick(ast).graph;
 		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */
 		const potentials = identifyLinkToLastCallRelation(s.id, cfg, graph, s.linkTo);
 		for(const pot of potentials) {
@@ -94,7 +95,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	parser: Parser<KnownParserType>,
 	request: RParseRequests,
 	completeAst:     NormalizedAst<OtherInfo & ParentInformation>,
-	config: FlowrConfigOptions
+	config: FlowrConfigOptions,
 ): DataflowInformation {
 	let firstRequest: RParseRequest;
 
@@ -105,10 +106,15 @@ export function produceDataFlowGraph<OtherInfo>(
 		firstRequest = request as RParseRequest;
 	}
 
+	const builtInsConfig = config.semantics.environment.overwriteBuiltIns;
+	const builtIns = getBuiltInDefinitions(builtInsConfig.definitions, builtInsConfig.loadDefaults);
+	const env = initializeCleanEnvironments(builtIns.builtInMemory);
+
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
-		environment:         initializeCleanEnvironments(),
+		environment:         env,
+		builtInEnvironment:  env.current.parent,
 		processors,
 		currentRequest:      firstRequest,
 		controlDependencies: undefined,

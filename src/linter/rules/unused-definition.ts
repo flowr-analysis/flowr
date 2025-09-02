@@ -1,9 +1,10 @@
 import type { LintingResult, LintingRule, LintQuickFixRemove } from '../linter-format';
-import { LintingCertainty } from '../linter-format';
+import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import type { SourceRange } from '../../util/range';
-import { rangeCompare, rangeIsSubsetOf , mergeRanges, rangeFrom } from '../../util/range';
+import { mergeRanges, rangeCompare, rangeFrom, rangeIsSubsetOf } from '../../util/range';
 import { formatRange } from '../../util/mermaid/dfg';
 import { LintingRuleTag } from '../linter-tags';
 import { isNotUndefined } from '../../util/assert';
@@ -124,7 +125,7 @@ export const UNUSED_DEFINITION = {
 				// found an unused definition
 				const variableName = element.node.lexeme;
 				return [{
-					certainty: LintingCertainty.Maybe,
+					certainty: LintingResultCertainty.Uncertain,
 					variableName,
 					range:     element.node.info.fullRange ?? element.node.location ?? rangeFrom(-1, -1, -1, -1),
 					quickFix:  buildQuickFix(element.node, data.dataflow.graph, data.normalize)
@@ -133,14 +134,18 @@ export const UNUSED_DEFINITION = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint: result => `Definition of \`${result.variableName}\` at ${formatRange(result.range)}` + (result.quickFix ? ' (quick fix available)' : ''),
-	info:        {
+	prettyPrint: {
+		[LintingPrettyPrintContext.Query]: result => `Definition of \`${result.variableName}\` at ${formatRange(result.range)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Definition of \`${result.variableName}\` at ${formatRange(result.range)} is unused`
+	},
+	info: {
 		name:          'Unused Definitions',
 		description:   'Checks for unused definitions.',
 		tags:          [LintingRuleTag.Readability, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
+		// our limited analysis causes unused definitions involving complex reflection etc. not to be included in our result, but unused definitions are correctly validated
+		certainty:     LintingRuleCertainty.BestEffort,
 		defaultConfig: {
 			includeFunctionDefinitions: true
 		}
 	}
 } as const satisfies LintingRule<UnusedDefinitionResult, UnusedDefinitionMetadata, UnusedDefinitionConfig>;
-

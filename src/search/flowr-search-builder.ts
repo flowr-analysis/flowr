@@ -1,6 +1,6 @@
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { FlowrSearchElement, FlowrSearchElementFromQuery, FlowrSearchElements, FlowrSearchGetFilter } from './flowr-search';
-import type { FlowrFilterExpression } from './flowr-search-filters';
+import type { FlowrSearchElement, FlowrSearchElements, FlowrSearchGetFilter } from './flowr-search';
+import type { FlowrFilter, FlowrFilterExpression } from './flowr-search-filters';
 import type { FlowrSearchGeneratorNode, GeneratorNames } from './search-executor/search-generators';
 import type {
 	FlowrSearchTransformerNode,
@@ -11,7 +11,7 @@ import { optimize } from './search-optimizer/search-optimizer';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../util/assert';
-import type { Enrichment, EnrichmentArguments } from './search-executor/search-enrichers';
+import type { Enrichment, EnrichmentElementArguments } from './search-executor/search-enrichers';
 import type { MapperArguments } from './search-executor/search-mappers';
 import { Mapper } from './search-executor/search-mappers';
 import type { Query } from '../queries/query';
@@ -38,7 +38,7 @@ export const FlowrSearchGenerator = {
 	 * Internally, the {@link SupportedQuery#flattenInvolvedNodes} function is used to flatten the resulting nodes of the query.
 	 * Please note that, due to the fact that not every query involves dataflow nodes, the search may not contain any elements at all for certain queries.
 	 */
-	fromQuery(...from: readonly Query[]): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]>> {
+	fromQuery(...from: readonly Query[]): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'from-query', args: { from } });
 	},
 	/**
@@ -152,8 +152,8 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	/**
 	 * only returns the elements that match the given filter.
 	 */
-	filter(filter: FlowrFilterExpression): FlowrSearchBuilderOut<Generator, Transformers, Info, 'filter'> {
-		this.search.push({ type: 'transformer', name: 'filter', args: { filter: filter } });
+	filter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter> ): FlowrSearchBuilderOut<Generator, Transformers, Info, 'filter'> {
+		this.search.push({ type: 'transformer', name: 'filter', args: { filter: filter as FlowrFilterExpression } });
 		return this;
 	}
 
@@ -221,8 +221,8 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	 * Adds the given enrichment to each element of the search.
 	 * Added enrichments can later be retrieved using the {@link enrichmentContent} function.
 	 */
-	with<ConcreteEnrichment extends Enrichment>(enrichment: ConcreteEnrichment, args?: EnrichmentArguments<ConcreteEnrichment>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with'> {
-		this.search.push( { type: 'transformer', name: 'with', args: { info: enrichment, args: args as EnrichmentArguments<Enrichment> } });
+	with<ConcreteEnrichment extends Enrichment>(enrichment: ConcreteEnrichment, args?: EnrichmentElementArguments<ConcreteEnrichment>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with'> {
+		this.search.push( { type: 'transformer', name: 'with', args: { info: enrichment, args: args as EnrichmentElementArguments<Enrichment> } });
 		return this;
 	}
 
@@ -237,7 +237,7 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	/**
 	 * A convenience function that combines {@link with} and the {@link Mapper.Enrichment} mapper to immediately add an enrichment and then map to its value(s).
 	 */
-	get<ConcreteEnrichment extends Enrichment>(enrichment: ConcreteEnrichment, args?: EnrichmentArguments<ConcreteEnrichment>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with' | 'map'> {
+	to<ConcreteEnrichment extends Enrichment>(enrichment: ConcreteEnrichment, args?: EnrichmentElementArguments<ConcreteEnrichment>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with' | 'map'> {
 		return this.with(enrichment, args).map(Mapper.Enrichment, enrichment);
 	}
 

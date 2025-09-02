@@ -63,14 +63,14 @@ ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary
 
 The query returns the following vetices (all references to \`x\` in the code):
 ${
-	result.map(({ node }) => `<b>${node.info.id} ('${recoverContent(node.info.id, analysis.dataflow.graph)}')</b> at L${formatRange(node.location)}`).join(', ')
+	result.getElements().map(({ node }) => `<b>${node.info.id} ('${recoverContent(node.info.id, analysis.dataflow.graph)}')</b> at L${formatRange(node.location)}`).join(', ')
 }
 
 ${metaInfo}	
 
 The returned results are highlighted thick and blue within the dataflow graph:
 
-${await printDfGraphForCode(shell, code, { showCode: false, switchCodeAndGraph: false, mark: new Set(result.map(({ node }) => node.info.id )) } )}
+${await printDfGraphForCode(shell, code, { showCode: false, switchCodeAndGraph: false, mark: new Set(result.getElements().map(({ node }) => node.info.id )) } )}
 
 
 ${collapseResult ? '</details>' : ''}

@@ -30,6 +30,7 @@ import type { Package } from '../../../project/plugins/package-version-plugins/p
 import type { DataflowInformation } from '../../../dataflow/info';
 import type { FlowrConfigOptions } from '../../../config';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { guard } from '../../../util/assert';
 
 function collectNamespaceAccesses(data: { ast: NormalizedAst, libraries?: Package[]}, libraries: LibraryInfo[]) {
 	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
@@ -56,11 +57,13 @@ export async function executeDependenciesQuery({
 	}
 
 	const data = {
-		dataflow:  await input.dataflow(),
-		ast:       await input.normalizedAst(),
-		config:    input.flowrConfig,
+		input,
 		libraries: libraries
 	};
+
+	const ast = await input.normalizedAst();
+	const dataflow = await input.dataflow();
+	const config = input.flowrConfig;
 
 	const now = Date.now();
 	const [query] = queries;
@@ -72,28 +75,27 @@ export async function executeDependenciesQuery({
 
 	const numberOfFunctions = libraryFunctions.length + sourceFunctions.length + readFunctions.length + writeFunctions.length;
 
-	const results = numberOfFunctions === 0 ? {
-		kinds:   {},
-		'.meta': { timing: 0 }
-	} : await executeQueriesOfSameType<CallContextQuery>({ input, libraries },
-		...makeCallContextQuery(libraryFunctions, 'library'),
-		...makeCallContextQuery(sourceFunctions, 'source'),
-		...makeCallContextQuery(readFunctions, 'read'),
-		...makeCallContextQuery(writeFunctions, 'write')
+	const results = numberOfFunctions === 0 ? { kinds: {}, '.meta': { timing: 0 } } : await executeQueriesOfSameType<CallContextQuery>(data,
+		[
+			makeCallContextQuery(libraryFunctions, 'library'),
+			makeCallContextQuery(sourceFunctions, 'source'),
+			makeCallContextQuery(readFunctions, 'read'),
+			makeCallContextQuery(writeFunctions, 'write')
+		].flat()
 	);
 
 	function getLexeme(argument: string | undefined | typeof Unknown, id: NodeId | undefined) {
 		if((argument && argument !== Unknown) || !id) {
 			return undefined;
 		}
-		let get = data.ast.idMap.get(id);
+		let get = ast.idMap.get(id);
 		if(get?.type === RType.Argument) {
 			get = get.value;
 		}
 		return get?.info.fullLexeme ?? get?.lexeme;
 	}
 
-	const libs: LibraryInfo[] = getResults(data, results, 'library', libraryFunctions, (id, vertex, argId, value, linkedIds) => ({
+	const libs: LibraryInfo[] = getResults({ dataflow, config }, results, 'library', libraryFunctions, (id, vertex, argId, value, linkedIds) => ({
 		nodeId:             id,
 		functionName:       vertex.name,
 		lexemeOfArgument:   getLexeme(value, argId),
@@ -104,24 +106,24 @@ export async function executeDependenciesQuery({
 	}));
 
 	if(!ignoreDefault) {
-		collectNamespaceAccesses(data, libs);
+		collectNamespaceAccesses({ ast: await input.normalizedAst(), libraries: libraries }, libs);
 	}
 
-	const sourcedFiles: SourceInfo[] = getResults(data, results, 'source', sourceFunctions, (id, vertex, argId, value, linkedIds) => ({
+	const sourcedFiles: SourceInfo[] = getResults({ dataflow, config }, results, 'source', sourceFunctions, (id, vertex, argId, value, linkedIds) => ({
 		nodeId:           id,
 		functionName:     vertex.name,
 		file:             value ?? Unknown,
 		lexemeOfArgument: getLexeme(value, argId),
 		linkedIds:        linkedIds?.length ? linkedIds : undefined
 	}));
-	const readData: ReadInfo[] = getResults(data, results, 'read', readFunctions, (id, vertex, argId, value, linkedIds) => ({
+	const readData: ReadInfo[] = getResults({ dataflow, config }, results, 'read', readFunctions, (id, vertex, argId, value, linkedIds) => ({
 		nodeId:           id,
 		functionName:     vertex.name,
 		source:           value ?? Unknown,
 		lexemeOfArgument: getLexeme(value, argId),
 		linkedIds:        linkedIds?.length ? linkedIds : undefined
 	}));
-	const writtenData: WriteInfo[] = getResults(data, results, 'write', writeFunctions, (id, vertex, argId, value, linkedIds) => ({
+	const writtenData: WriteInfo[] = getResults({ dataflow, config }, results, 'write', writeFunctions, (id, vertex, argId, value, linkedIds) => ({
 		nodeId:           id,
 		functionName:     vertex.name,
 		// write functions that don't have argIndex are assumed to write to stdout
@@ -166,15 +168,17 @@ function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: o
 	return linkedIds.map(id => typeof id === 'object' ? id.id : id);
 }
 
-function getResults<T extends DependencyInfo>(data: { dataflow: DataflowInformation, config: FlowrConfigOptions }, results: CallContextQueryResult, kind: string, functions: FunctionInfo[], makeInfo: MakeDependencyInfo<T>): T[] {
+const readOnlyModes = new Set(['r', 'rt', 'rb']);
+const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab']);
+
+function getResults<T extends DependencyInfo>({ dataflow, config }: { dataflow: DataflowInformation, config: FlowrConfigOptions }, results: CallContextQueryResult, kind: string, functions: FunctionInfo[], makeInfo: MakeDependencyInfo<T>): T[] {
 	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});
 	return kindEntries.flatMap(([name, results]) => results.flatMap(({ id, linkedIds }) => {
-
-		const vertex = data.dataflow.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
+		const vertex = dataflow.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
 		const info = functions.find(f => f.name === name) as FunctionInfo;
 
-		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
-		const linkedArgs = collectValuesFromLinks(args, data, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
+		const args = getArgumentStringValue(config.solver.variables, dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
+		const linkedArgs = collectValuesFromLinks(args, { config, dataflow }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
 
 		const foundValues = linkedArgs ?? args;
 		if(!foundValues) {
@@ -183,6 +187,19 @@ function getResults<T extends DependencyInfo>(data: { dataflow: DataflowInformat
 			}
 			const record = compactRecord(makeInfo(id, vertex, undefined, undefined, dropInfoOnLinkedIds(linkedIds)));
 			return record ? [record as T] : [];
+		} else if(info.ignoreIf === 'mode-only-read' || info.ignoreIf === 'mode-only-write') {
+			guard('mode' in (info.additionalArgs ?? {}), 'Need additional argument mode when checking for mode');
+			const margs = info.additionalArgs?.mode;
+			guard(margs, 'Need additional argument mode when checking for mode');
+			const modeArgs = getArgumentStringValue(config.solver.variables, dataflow.graph, vertex, margs.argIdx, margs.argName, margs.resolveValue);
+			const modeValues = modeArgs?.values().flatMap(v => [...v]) ?? [];
+			if(info.ignoreIf === 'mode-only-read' && modeValues.every(m => m && readOnlyModes.has(m))) {
+				// all modes are read-only, so we can ignore this
+				return [];
+			} else if(info.ignoreIf === 'mode-only-write' && modeValues.every(m => m && writeOnlyModes.has(m))) {
+				// all modes are write-only, so we can ignore this
+				return [];
+			}
 		}
 		const results: T[] = [];
 

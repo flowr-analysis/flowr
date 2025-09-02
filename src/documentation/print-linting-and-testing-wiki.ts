@@ -1,16 +1,17 @@
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
-import { LogLevel } from '../util/log';
+import { FlowrLogger, LogLevel } from '../util/log';
 import { codeBlock } from './doc-util/doc-code';
 import { FlowrCodecovRef, FlowrDockerRef, FlowrGithubBaseRef, FlowrSiteBaseRef, FlowrWikiBaseRef, getFilePathMd, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { block } from './doc-util/doc-structure';
 import { getTypesFromFolder, mermaidHide, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
+import { getCliLongOptionOf } from './doc-util/doc-cli-option';
 
 function getText() {
 	const { info } = getTypesFromFolder({
 		rootFolder:         path.resolve('./test'),
-		files:              [path.resolve('./src/dataflow/graph/dataflowgraph-builder.ts')],
+		files:              [path.resolve('./src/dataflow/graph/dataflowgraph-builder.ts'), path.resolve('./src/util/log.ts'), path.resolve('./src/slicing/static/static-slicer.ts')],
 		typeNameForMermaid: 'parameter',
 		inlineTypes:        mermaidHide
 	});
@@ -36,6 +37,7 @@ for the latest benchmark results, see the [benchmark results](${FlowrSiteBaseRef
   - [License Checker](#license-checker)
 - [🐛 Debugging](#debugging)
   - [VS Code](#vs-code-1)
+  - [Logging](#logging)
 
 <a id='testing-suites'></a>
 ## 🏨 Testing Suites
@@ -251,6 +253,15 @@ However, in case you think that the linter is wrong, please do not hesitate to o
 ### VS Code
 When working with VS Code, you can attach a debugger to the REPL. This works automatically by running the \`Start Debugging\` command (\`F5\` by default).
 You can also set the \`Auto Attach Filter\` setting to automatically attach the debugger, when running \`npm run flowr\`.
+
+### Logging
+
+*flowR* uses a wrapper around [tslog](https://www.npmjs.com/package/tslog) using a class named
+${shortLink(FlowrLogger.name, info)}. They obey to, for example, the ${getCliLongOptionOf('flowr', 'verbose')}
+option. Throughout *flowR*, we use the \`log\` object (or subloggers of it) for logging.
+To create your own logger, you can use ${shortLink(FlowrLogger.name + '::' + (new FlowrLogger().getSubLogger.name), info, true, 'i')}.
+For example, check out the ${shortLink('slicerLogger', info)} for the static slicer.
+
 `;
 }
 

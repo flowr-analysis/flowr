@@ -1,5 +1,6 @@
 import type { Package } from '../project/plugins/package-version-plugins/package';
 import type { FlowrAnalysisInput } from '../project/flowr-analyzer';
+import type { SemVer } from 'semver';
 
 export interface BaseQueryFormat {
 	/** used to select the query type :) */
@@ -15,6 +16,7 @@ export interface BaseQueryResult {
 }
 
 export interface BasicQueryData {
+	readonly lib?:       Record<string, SemVer>;
 	readonly libraries?: Package[];
 	readonly input:      FlowrAnalysisInput;
 }

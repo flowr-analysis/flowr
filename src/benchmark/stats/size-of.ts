@@ -1,5 +1,4 @@
 import type { IEnvironment } from '../../dataflow/environments/environment';
-import { BuiltInEnvironment } from '../../dataflow/environments/environment';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import { VertexType } from '../../dataflow/graph/vertex';
@@ -10,14 +9,16 @@ import { compactRecord } from '../../util/objects';
 
 /* we have to kill all processors linked in the default environment as they cannot be serialized and they are shared anyway */
 function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
+
 	if(env === undefined) {
 		return undefined as unknown as IEnvironment;
-	} else if(env.id === BuiltInEnvironment.id) {
+	} else if(env.builtInEnv) {
 		/* in this case, the reference would be shared for sure */
 		return {
-			id:     env.id,
-			parent: killBuiltInEnv(env.parent),
-			memory: new Map<Identifier, IdentifierDefinition[]>()
+			id:         env.id,
+			parent:     killBuiltInEnv(env.parent),
+			memory:     new Map<Identifier, IdentifierDefinition[]>(),
+			builtInEnv: true
 		};
 	}
 
@@ -80,7 +81,7 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
  * @param array - The array to calculate the size of.
  * @returns The size of the array in bytes.
  */
-function safeSizeOf<T>(array: T[]): number {
+export function safeSizeOf<T>(array: T[]): number {
 	const size = sizeof(array);
 
 	if(typeof size === 'number') {

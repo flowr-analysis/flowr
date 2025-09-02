@@ -18,7 +18,7 @@ import { getDummyFlowrProject } from '../../../src/project/flowr-project';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 
 
-function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
+function normalizeResults<Queries extends Query>(result: Awaited<QueryResults<Queries['type']>>): QueryResultsWithoutMeta<Queries> {
 	return JSON.parse(JSON.stringify(result, (key: unknown, value: unknown) => {
 		if(key === '.meta') {
 			return undefined;
@@ -72,8 +72,7 @@ export function assertQuery<
 			.build();
 
 		const dummyProject = await getDummyFlowrProject();
-
-		const result = await executeQueries<Queries['type'], VirtualArguments>({ input: analyzer, libraries: dummyProject.libraries }, queries);
+		const result = await Promise.resolve(executeQueries<Queries['type'], VirtualArguments>({ input: analyzer, libraries: dummyProject.libraries }, queries));
 
 		log.info(`total query time: ${result['.meta'].timing.toFixed(0)}ms (~1ms accuracy)`);
 

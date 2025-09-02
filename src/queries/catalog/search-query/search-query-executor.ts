@@ -13,7 +13,7 @@ export async function executeSearch({ input }: BasicQueryData, queries: readonly
 		const searchResult = await runSearch(search, input);
 
 		results.push({
-			ids: searchResult.map(({ node }) => node.info.id),
+			ids: searchResult.getElements().map(({ node }) => node.info.id),
 			search
 		});
 	}

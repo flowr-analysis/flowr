@@ -22,6 +22,8 @@ import type { KnownParser } from '../../r-bridge/parser';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfigOptions } from '../../config';
 import { getEngineConfig } from '../../config';
+import type { SupportedQuery } from '../../queries/query';
+import { SupportedQueries } from '../../queries/query';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
@@ -36,7 +38,7 @@ const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory');
 /**
  * Used by the repl to provide automatic completions for a given (partial) input line
  */
-export function replCompleter(line: string): [string[], string] {
+export function replCompleter(line: string, config: FlowrConfigOptions): [string[], string] {
 	const splitLine = splitAtEscapeSensitive(line);
 	// did we just type a space (and are starting a new arg right now)?
 	const startingNewArg = line.endsWith(' ');
@@ -48,17 +50,17 @@ export function replCompleter(line: string): [string[], string] {
 			const completions: string[] = [];
 
 			const commandName = commandNameColon.slice(1);
-			if(getCommand(commandName)?.script === true){
+			const cmd = getCommand(commandName);
+			if(cmd?.script === true){
 				// autocomplete script arguments
 				const options = scripts[commandName as keyof typeof scripts].options;
 				completions.push(...getValidOptionsForCompletion(options, splitLine).map(o => `${o} `));
+			} else if(commandName.startsWith('query')) {
+				completions.push(...replQueryCompleter(splitLine, config));
 			} else {
 				// autocomplete command arguments (specifically, autocomplete the file:// protocol)
 				completions.push(fileProtocol);
 			}
-
-			// add an empty option so that it doesn't autocomplete the only defined option immediately
-			completions.push(' ');
 
 			const currentArg = startingNewArg ? '' : splitLine[splitLine.length - 1];
 			return [completions.filter(a => a.startsWith(currentArg)), currentArg];
@@ -69,7 +71,24 @@ export function replCompleter(line: string): [string[], string] {
 	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line];
 }
 
-export function makeDefaultReplReadline(): readline.ReadLineOptions {
+function replQueryCompleter(splitLine: readonly string[], config: FlowrConfigOptions): string[] {
+	const nonEmpty = splitLine.slice(1).map(s => s.trim()).filter(s => s.length > 0);
+	const queryShorts = Object.keys(SupportedQueries).map(q => `@${q}`).concat(['help']);
+	let candidates: string[] = [];
+	if(nonEmpty.length == 0 || (nonEmpty.length == 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q))) {
+		candidates = candidates.concat(queryShorts.map(q => `${q} `));
+	} else {
+		const q = nonEmpty[0].slice(1);
+		const queryElement = SupportedQueries[q as keyof typeof SupportedQueries] as SupportedQuery;
+		if(queryElement?.completer) {
+			candidates = candidates.concat(queryElement.completer(nonEmpty.slice(1), config));
+		}
+	}
+
+	return candidates;
+}
+
+export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.ReadLineOptions {
 	return {
 		input:                   process.stdin,
 		output:                  process.stdout,
@@ -77,7 +96,7 @@ export function makeDefaultReplReadline(): readline.ReadLineOptions {
 		terminal:                true,
 		history:                 loadReplHistory(defaultHistoryFile),
 		removeHistoryDuplicates: true,
-		completer:               replCompleter
+		completer:               (c: string) => replCompleter(c, config)
 	};
 }
 
@@ -176,7 +195,7 @@ export async function repl(
 	config: FlowrConfigOptions,
 	{
 		parser = new RShell(getEngineConfig(config, 'r-shell'), { revive: RShellReviveOptions.Always }),
-		rl = readline.createInterface(makeDefaultReplReadline()),
+		rl = readline.createInterface(makeDefaultReplReadline(config)),
 		output = standardReplOutput,
 		historyFile = defaultHistoryFile,
 		allowRSessionAccess = false

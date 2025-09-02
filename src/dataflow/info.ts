@@ -120,7 +120,7 @@ export interface DataflowInformation extends DataflowCfgInformation {
  *
  * @see {@link DataflowInformation}
  */
-export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'completeAst'>): DataflowInformation {
+export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'builtInEnvironment' | 'completeAst'>): DataflowInformation {
 	return {
 		unknownReferences: [],
 		in:                [],
@@ -199,7 +199,7 @@ export function diffControlDependencies<Report extends WriteableDifferenceReport
 		return;
 	}
 	if(a.length !== b.length) {
-		info.report.addComment(`${info.position}Different control dependency lengths: ${a.length} vs. ${b.length}`);
+		info.report.addComment(`${info.position}Different control dependency lengths: ${a.length} (${JSON.stringify(a)}) vs. ${b.length} (${JSON.stringify(b)})`);
 	}
 	for(let i = 0; i < a.length; ++i) {
 		diffControlDependency(a[i], b[i], { ...info, position: `${info.position}Control dependency at index: ${i}: ` });

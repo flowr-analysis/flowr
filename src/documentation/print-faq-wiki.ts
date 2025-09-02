@@ -15,6 +15,11 @@ ${qAndA('What are test labels and how do they work?', `
 Tests are labeled based on the *flowR* capabilities that they test for. The list of supported capabilities can be found on the [Capabilities](${FlowrWikiBaseRef}/Capabilities) wiki page. For more extensive information on test labels, see the [test labels wiki section](${FlowrWikiBaseRef}/Linting-and-Testing#test-labels).
 `)}
 
+${qAndA('How to get a REPL with debug-info/hot-reload?', `
+To enter the development repl, execute \`npm run main-dev\` in contrast to \`npm run flowr\` this will use an unminified build (keeping debug info)
+and will also watch the source files for changes and automatically recompile them. Please note, that this may have negative performance implications.
+`)}
+
 ${qAndA('How do I generate mermaid diagrams?', `
 There are several ways to generate mermaid diagrams based on the input data that you want to use.
 - From the AST (abstract syntax tree): ${getFilePathMd('../util/mermaid/ast.ts')}
@@ -37,6 +42,10 @@ Remember not to commit this file, as it's only meant for testing.
 ${qAndA('Why can\'t I pass arguments when running flowR with npm?', `
 With \`npm\` you have to pass arguments in a specific way. The \`--\` operator is used to separate the \`npm\` arguments from the script arguments. For example, if you want to run \`flowR\` with the \`--help\` argument, you can use the following command:
 ${codeBlock('shell', 'npm run flowR -- --help')}
+`)}
+
+${qAndA('How to do logging in flowR?', `
+Check out the [Logging Section in the Linting and Testing wiki page](${FlowrWikiBaseRef}/Linting-and-Testing#logging) for more information on how to do logging in *flowR*.
 `)}
 
 ## 🇷 R FAQ

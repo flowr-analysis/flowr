@@ -15,7 +15,9 @@ import { builtInId } from '../../../../../src/dataflow/environments/built-in';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { FunctionArgument } from '../../../../../src/dataflow/graph/graph';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
+import {
+	UnnamedFunctionCallPrefix
+} from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 
@@ -460,7 +462,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 							.call(5, '<-', [argumentInCall(0), argumentInCall(4)], { returns: [0], reads: [builtInId('<-')] })
 							.calls(5, builtInId('<-'))
 							.argument(5, 0)
-							.constant(2, { controlDependencies: [] })
+							.constant(2, { controlDependencies: [{ id: 4, when: true }] })
 							.defineVariable(0, 'x', { definedBy: [4, 5] })
 					);
 

@@ -4,7 +4,7 @@ import { filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
-	produceNameSharedIdMap
+	produceNameSharedIdMap, reapplyLoopExitPoints
 } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
@@ -47,6 +47,7 @@ export function processRepeatLoop<OtherInfo>(
 	guard(body !== undefined, () => `Repeat-Loop ${name.content} has no body, impossible!`);
 
 	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, [])), body.out);
+	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out,body.unknownReferences));
 
 	information.exitPoints = filterOutLoopExitPoints(information.exitPoints);
 

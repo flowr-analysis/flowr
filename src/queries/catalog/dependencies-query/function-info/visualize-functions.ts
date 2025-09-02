@@ -1,13 +1,12 @@
 import type { FunctionInfo , DependencyInfoLink } from './function-info';
-import {
-	escapeFunctionNamesAsRegex, GgPlotAddons,
+import { GgPlotAddons,
 	GgPlotCreate, GgPlotImplicitAddons, MiscPlotAddons,
 	MiscPlotCreate, PlotCreate, TinyPlotAddons,
 	TinyPlotCrate
 } from '../../../../dataflow/environments/default-builtin-config';
 
 const LinkToPlotCreation = [
-	{ type: 'link-to-last-call', callName: escapeFunctionNamesAsRegex(PlotCreate) }
+	{ type: 'link-to-last-call', callName: PlotCreate }
 ] as const satisfies DependencyInfoLink[];
 
 export const VisualizeFunctions: FunctionInfo[] = [

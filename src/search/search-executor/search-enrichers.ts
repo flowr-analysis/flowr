@@ -19,6 +19,7 @@ import type { QueryResult, SynchronousQuery } from '../../queries/query';
 import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
 import { cfgFindAllReachable , DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
 import type { AsyncOrSyncType } from 'ts-essentials';
+import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
@@ -159,7 +160,7 @@ export const Enrichments = {
 				for(const arg of args) {
 					const lastCalls = identifyLinkToLastCallRelation(vertex[0].id, cfg.graph, data.dataflow.graph, {
 						...arg,
-						callName: new RegExp(arg.callName),
+						callName: promoteCallName(arg.callName),
 						type:     'link-to-last-call',
 					});
 					for(const lastCall of lastCalls) {

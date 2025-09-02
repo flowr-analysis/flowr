@@ -15,6 +15,7 @@ import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-func
 import type { LinkTo } from './call-context-query-format';
 import { CascadeAction } from './cascade-action';
 import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
+import type { PromotedLinkTo } from './call-context-query-executor';
 
 export enum CallTargets {
     /** call targets a function that is not defined locally in the script (e.g., the call targets a library function) */
@@ -119,7 +120,7 @@ export function identifyLinkToLastCallRelation(
 	from: NodeId,
 	cfg: ControlFlowGraph,
 	graph: DataflowGraph,
-	{ callName, ignoreIf, cascadeIf }: LinkTo<RegExp>
+	{ callName, ignoreIf, cascadeIf }: LinkTo<RegExp> | PromotedLinkTo
 ): NodeId[] {
 	if(ignoreIf?.(from, graph)) {
 		return [];
@@ -136,7 +137,7 @@ export function identifyLinkToLastCallRelation(
 		if(vertex === undefined || vertex.tag !== VertexType.FunctionCall) {
 			return;
 		}
-		if(callName.test(vertex.name)) {
+		if(callName instanceof RegExp ? callName.test(vertex.name) : callName.has(vertex.name)) {
 			const act = cascadeIf ? cascadeIf(vertex, from, graph) : CascadeAction.Stop;
 			if(act === CascadeAction.Skip) {
 				return;

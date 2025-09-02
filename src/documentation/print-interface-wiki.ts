@@ -126,6 +126,8 @@ which is interpreted as an R&nbsp;expression by default but interpreted as a *co
 The best command to get started with the REPL is ${getReplCommand('help')}.
 Besides, you can leave the REPL either with the command ${getReplCommand('quit')} or by pressing <kbd>CTRL</kbd>+<kbd>C</kbd> twice.
 
+> [!NOTE]
+> If you develop flowR, you may want to launch the repl using the \`npm run main-dev\` command, this way, you get a non-minified version of flowR with debug information and hot-reloading of source files.
 
 <details>
 <summary>Available Commands</summary>

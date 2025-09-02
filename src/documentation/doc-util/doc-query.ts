@@ -15,7 +15,7 @@ import { printAsMs } from '../../util/text/time';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
 import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
 import { getReplCommand } from './doc-cli-option';
-import { defaultConfigOptions } from '../../config';
+import { cloneConfig, defaultConfigOptions } from '../../config';
 
 export interface ShowQueryOptions<Base extends SupportedQueryTypes> {
 	readonly showCode?:       boolean;
@@ -33,7 +33,11 @@ export async function showQuery<
 		parser:  shell,
 		request: requestFromInput(code)
 	}, defaultConfigOptions).allRemainingSteps();
-	const results = await Promise.resolve(executeQueries({ dataflow: analysis.dataflow, ast: analysis.normalize, config: defaultConfigOptions }, queries));
+	const results = await Promise.resolve(executeQueries({
+		dataflow: analysis.dataflow,
+		ast:      analysis.normalize,
+		config:   cloneConfig(defaultConfigOptions)
+	}, queries));
 	const duration = performance.now() - now;
 
 	const metaInfo = `

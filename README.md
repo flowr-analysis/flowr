@@ -24,7 +24,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.4.6, R v4.5.0 (r-shell engine)
+    flowR repl using flowR v2.4.7, R v4.5.0 (r-shell engine)
     R> :query @linter "read.csv(\"/root/x.txt\")"
     ```
     
@@ -33,7 +33,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: [;1mlinter[0m (2 ms)
+    Query: [;1mlinter[0m (3 ms)
        ╰ **Deprecated Functions** (deprecated-functions):
            ╰ _Metadata_: <code>{"totalDeprecatedCalls":0,"totalDeprecatedFunctionDefinitions":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **File Path Validity** (file-path-validity):
@@ -45,18 +45,18 @@ It offers a wide variety of features, for example:
        ╰ **Absolute Paths** (absolute-file-paths):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
-           ╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":0,"processTimeMs":0}</code>
+           ╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":1,"processTimeMs":0}</code>
        ╰ **Unused Definitions** (unused-definitions):
            ╰ _Metadata_: <code>{"totalConsidered":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Naming Convention** (naming-convention):
            ╰ _Metadata_: <code>{"numMatches":0,"numBreak":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Dataframe Access Validation** (dataframe-access-validation):
-           ╰ _Metadata_: <code>{"numOperations":0,"numAccesses":0,"totalAccessed":0,"searchTimeMs":0,"processTimeMs":1}</code>
+           ╰ _Metadata_: <code>{"numOperations":0,"numAccesses":0,"totalAccessed":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Dead Code** (dead-code):
            ╰ _Metadata_: <code>{"consideredNodes":5,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Useless Loops** (useless-loop):
            ╰ _Metadata_: <code>{"numOfUselessLoops":0,"searchTimeMs":0,"processTimeMs":0}</code>
-    [;3mAll queries together required ≈2 ms (1ms accuracy, total 8 ms)[0m[0m
+    [;3mAll queries together required ≈3 ms (1ms accuracy, total 9 ms)[0m[0m
     ```
     
     
@@ -78,7 +78,7 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (13 ms)\
+    Query: **linter** (14 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalDeprecatedCalls":0,"totalDeprecatedFunctionDefinitions":0,"searchTimeMs":2,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
@@ -86,13 +86,13 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0,"searchTimeMs":4,"processTimeMs":1}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"consumerCalls":0,"callsWithFunctionProducers":0,"callsWithAssignmentProducers":0,"callsWithNonConstantProducers":0,"searchTimeMs":0,"processTimeMs":0}</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"consumerCalls":0,"callsWithFunctionProducers":0,"callsWithAssignmentProducers":0,"callsWithNonConstantProducers":0,"searchTimeMs":0,"processTimeMs":1}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":2,"processTimeMs":0}</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":1,"processTimeMs":1}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalConsidered":0,"searchTimeMs":0,"processTimeMs":1}</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalConsidered":0,"searchTimeMs":0,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Naming Convention** (naming-convention):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"numMatches":0,"numBreak":0,"searchTimeMs":0,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation):\
@@ -100,12 +100,12 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"consideredNodes":5,"searchTimeMs":1,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Useless Loops** (useless-loop):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"numOfUselessLoops":0,"searchTimeMs":0,"processTimeMs":0}</code>\
-    _All queries together required ≈13 ms (1ms accuracy, total 210 ms)_
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"numOfUselessLoops":0,"searchTimeMs":0,"processTimeMs":1}</code>\
+    _All queries together required ≈14 ms (1ms accuracy, total 216 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _210.1 ms_ (including parsing and normalization and the query) within the generation environment.	
+    The analysis required _215.9 ms_ (including parsing and normalization and the query) within the generation environment.	
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -156,7 +156,7 @@ It offers a wide variety of features, for example:
               "callsWithAssignmentProducers": 0,
               "callsWithNonConstantProducers": 0,
               "searchTimeMs": 0,
-              "processTimeMs": 0
+              "processTimeMs": 1
             }
           },
           "absolute-file-paths": {
@@ -175,8 +175,8 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalConsidered": 1,
               "totalUnknown": 0,
-              "searchTimeMs": 2,
-              "processTimeMs": 0
+              "searchTimeMs": 1,
+              "processTimeMs": 1
             }
           },
           "unused-definitions": {
@@ -184,7 +184,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalConsidered": 0,
               "searchTimeMs": 0,
-              "processTimeMs": 1
+              "processTimeMs": 0
             }
           },
           "naming-convention": {
@@ -219,16 +219,16 @@ It offers a wide variety of features, for example:
             ".meta": {
               "numOfUselessLoops": 0,
               "searchTimeMs": 0,
-              "processTimeMs": 0
+              "processTimeMs": 1
             }
           }
         },
         ".meta": {
-          "timing": 13
+          "timing": 14
         }
       },
       ".meta": {
-        "timing": 13
+        "timing": 14
       }
     }
     ```
@@ -295,7 +295,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.4.6, R v4.5.0 (r-shell engine)
+    flowR repl using flowR v2.4.7, R v4.5.0 (r-shell engine)
     R> :slicer test/testfiles/example.R --criterion "11@sum"
     ```
     
@@ -342,7 +342,7 @@ It offers a wide variety of features, for example:
         
 
 * 🚀 **fast data- and control-flow graphs**\
-  Within just <i><span title="This measurement is automatically fetched from the latest benchmark!">135.6 ms</span></i> (as of Aug 20, 2025), 
+  Within just <i><span title="This measurement is automatically fetched from the latest benchmark!">135.1 ms</span></i> (as of Aug 20, 2025), 
   _flowR_ can analyze the data- and control-flow of the average real-world R script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
   and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for more details on the dataflow graph.
 
@@ -378,7 +378,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.4.6, R v4.5.0 (r-shell engine)
+    flowR repl using flowR v2.4.7, R v4.5.0 (r-shell engine)
     R> :dataflow* test/testfiles/example.R
     ```
     
@@ -493,7 +493,7 @@ It offers a wide variety of features, for example:
           *7.10-20*
         (26, 27)`"]]
         23["`#91;RSymbol#93; sum
-          (23, :may:)
+          (23, :may:36+)
           *7.3-5*`"]
         29[["`#91;RBinaryOp#93; #60;#45;
           (29, :may:36+)
@@ -510,7 +510,7 @@ It offers a wide variety of features, for example:
           *8.14-24*
         (31, 32)`"]]
         30["`#91;RSymbol#93; product
-          (30, :may:)
+          (30, :may:36+)
           *8.3-9*`"]
         34[["`#91;RBinaryOp#93; #60;#45;
           (34, :may:36+)
@@ -622,64 +622,68 @@ It offers a wide variety of features, for example:
         linkStyle 44 stroke:gray,color:gray;
         23 -->|"defined-by"| 28
         23 -->|"defined-by"| 29
+        23 -->|"CD-True"| 36
+        linkStyle 47 stroke:gray,color:gray;
         29 -->|"argument"| 28
         29 -->|"returns, argument"| 23
         29 -.->|"reads, calls"| built-in:_-
-        linkStyle 49 stroke:gray;
+        linkStyle 50 stroke:gray;
         29 -->|"CD-True"| 36
-        linkStyle 50 stroke:gray,color:gray;
+        linkStyle 51 stroke:gray,color:gray;
         31 -->|"reads"| 3
         31 -->|"reads"| 30
         31 -->|"CD-True"| 36
-        linkStyle 53 stroke:gray,color:gray;
+        linkStyle 54 stroke:gray,color:gray;
         32 -->|"reads"| 12
         32 -->|"CD-True"| 36
-        linkStyle 55 stroke:gray,color:gray;
+        linkStyle 56 stroke:gray,color:gray;
         33 -->|"reads, argument"| 31
         33 -->|"reads, argument"| 32
         33 -.->|"reads, calls"| built-in:_
-        linkStyle 58 stroke:gray;
+        linkStyle 59 stroke:gray;
         33 -->|"CD-True"| 36
-        linkStyle 59 stroke:gray,color:gray;
+        linkStyle 60 stroke:gray,color:gray;
         30 -->|"defined-by"| 33
         30 -->|"defined-by"| 34
+        30 -->|"CD-True"| 36
+        linkStyle 63 stroke:gray,color:gray;
         34 -->|"argument"| 33
         34 -->|"returns, argument"| 30
         34 -.->|"reads, calls"| built-in:_-
-        linkStyle 64 stroke:gray;
+        linkStyle 66 stroke:gray;
         34 -->|"CD-True"| 36
-        linkStyle 65 stroke:gray,color:gray;
+        linkStyle 67 stroke:gray,color:gray;
         35 -->|"argument"| 29
         35 -->|"returns, argument"| 34
         35 -.->|"reads, calls"| built-in:_
-        linkStyle 68 stroke:gray;
+        linkStyle 70 stroke:gray;
         35 -->|"CD-True"| 36
-        linkStyle 69 stroke:gray,color:gray;
+        linkStyle 71 stroke:gray,color:gray;
         36 -->|"argument"| 12
         36 -->|"reads, argument"| 20
         36 -->|"argument, non-standard-evaluation"| 35
         36 -.->|"reads, calls"| built-in:for
-        linkStyle 73 stroke:gray;
+        linkStyle 75 stroke:gray;
         40 -->|"reads"| 0
         40 -->|"reads"| 23
         40 -.->|"reads"| built-in:sum
-        linkStyle 76 stroke:gray;
+        linkStyle 78 stroke:gray;
         44 -->|"argument"| 38
         44 -->|"reads, argument"| 40
         44 -->|"argument"| 42
         44 -.->|"reads, calls"| built-in:cat
-        linkStyle 80 stroke:gray;
+        linkStyle 82 stroke:gray;
         48 -->|"reads"| 3
         48 -->|"reads"| 30
         52 -->|"argument"| 46
         52 -->|"reads, argument"| 48
         52 -->|"argument"| 50
         52 -.->|"reads, calls"| built-in:cat
-        linkStyle 86 stroke:gray;
+        linkStyle 88 stroke:gray;
     ```
     
     	
-    (The analysis required _14.2 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _14.9 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

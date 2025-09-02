@@ -64,7 +64,6 @@ export function reduceDfg(dfg: DataflowGraph, options: DeepPartial<ReduceOptions
 
 	// go over the vertices
 	for(const [id, info] of dfg.vertices(!applyOptions)) {
-
 		const result = applyFilter(info);
 		if(result) {
 			newDfg.addVertex(result, dfg.isRoot(id));

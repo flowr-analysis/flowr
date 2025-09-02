@@ -143,7 +143,7 @@ print(y)`, emptyGraph()
 			.call('14', '<-', [argumentInCall('0'), argumentInCall('13')], { returns: ['0'], reads: [builtInId('<-')] })
 			.calls('14', builtInId('<-'))
 			.argument('14', ['13', '0'])
-			.call('17', 'f', [], { returns: ['12'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '14') })
+			.call('17', 'f', [], { returns: ['11'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '14') })
 			.calls('17', '13')
 			.argument('18', '17')
 			.call('18', '<-', [argumentInCall('15'), argumentInCall('17')], { returns: ['15'], reads: [builtInId('<-')], environment: defaultEnv().defineFunction('f', '0', '14') })
@@ -157,7 +157,7 @@ print(y)`, emptyGraph()
 			.defineVariable('3', 'x', { definedBy: ['4', '5'] }, false)
 			.defineVariable('6', '`<-`', { definedBy: ['7', '8'] }, false)
 			.constant('10', undefined, false)
-			.defineFunction('13', ['12'], {
+			.defineFunction('13', ['11'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],

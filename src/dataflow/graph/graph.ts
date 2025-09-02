@@ -259,7 +259,7 @@ export class DataflowGraph<
 	 *
 	 * @see #edges
 	 */
-	public* vertices(includeDefinedFunctions: boolean): IterableIterator<[NodeId, Vertex]> {
+	public* vertices(includeDefinedFunctions: boolean): MapIterator<[NodeId, Vertex]> {
 		if(includeDefinedFunctions) {
 			yield* this.vertexInformation.entries();
 		} else {
@@ -274,7 +274,7 @@ export class DataflowGraph<
 	 *
 	 * @see #vertices
 	 */
-	public* edges(): IterableIterator<[NodeId, OutgoingEdges]> {
+	public* edges(): MapIterator<[NodeId, OutgoingEdges]> {
 		yield* this.edgeInformation.entries();
 	}
 

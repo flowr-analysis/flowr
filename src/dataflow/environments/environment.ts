@@ -21,8 +21,10 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 		const definitions = ref.name ? resolveByName(ref.name, environments, ref.type) : undefined;
 		for(const definition of definitions ?? []) {
 			if(definition.type !== ReferenceType.BuiltInFunction && definition.type !== ReferenceType.BuiltInConstant) {
-				if(definition.controlDependencies && defaultCd && !definition.controlDependencies.find(c => c.id === defaultCd.id)) {
-					definition.controlDependencies.push(defaultCd);
+				if(definition.controlDependencies) {
+					if(defaultCd && !definition.controlDependencies.find(c => c.id === defaultCd.id && c.when === defaultCd.when)) {
+						definition.controlDependencies.push(defaultCd);
+					}
 				} else {
 					definition.controlDependencies = defaultCd ? [defaultCd] : [];
 				}
@@ -32,20 +34,26 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 	const node = graph.get(ref.nodeId, true);
 	if(node) {
 		const [fst] = node;
-		if(fst.cds && defaultCd && !fst.cds.includes(defaultCd)) {
-			fst.cds.push(defaultCd);
+		if(fst.cds) {
+			if(defaultCd && !fst.cds.find(c => c.id === defaultCd.id && c.when === defaultCd.when)) {
+				fst.cds.push(defaultCd);
+			}
 		} else {
 			fst.cds = defaultCd ? [defaultCd] : [];
 		}
 	}
-	return { ...ref, controlDependencies: [...ref.controlDependencies ?? [], ...(defaultCd ? [defaultCd]: []) ] };
+	if(ref.controlDependencies) {
+		if(defaultCd && !ref.controlDependencies.find(c => c.id === defaultCd.id && c.when === defaultCd.when)) {
+			return { ...ref, controlDependencies: (ref.controlDependencies ?? []).concat(defaultCd ? [defaultCd] : []) };
+		}
+	} else {
+		return { ...ref, controlDependencies: ref.controlDependencies ?? (defaultCd ? [defaultCd] : []) };
+	}
+	return ref;
 }
 
 export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference[] {
-	if(references === undefined) {
-		return [];
-	}
-	return references.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, defaultCd));
+	return references?.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, defaultCd)) ?? [];
 }
 
 /** A single entry/scope within an {@link REnvironmentInformation} */

@@ -243,7 +243,6 @@ export function processExpressionList<OtherInfo>(
 		graph:             nextGraph,
 		/* if we have no group, we take the last evaluated expr */
 		entryPoint:        meId,
-		exitPoints:        withGroup ? [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
-			: exitPoints
+		exitPoints:        exitPoints
 	};
 }

@@ -81,7 +81,7 @@ function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInf
  * @param graph           - additional dataflow facts to consider by the control flow extraction
  * @param simplifications - a list of simplification passes to apply to the control flow graph
  *
- * @see {@link extractSimpleCfg} - for a simplified version of this function
+ * @see {@link extractCfgQuick} - for a simplified version of this function
  */
 export function extractCfg<Info = ParentInformation>(
 	ast:    NormalizedAst<Info & ParentInformation>,
@@ -93,9 +93,9 @@ export function extractCfg<Info = ParentInformation>(
 }
 
 /**
- * Simplified version of {@link extractCfg} that is much quicker, but much simpler!
+ * A version of {@link extractCfg} that is much quicker and does not apply any simplifciations or dataflow information.
  */
-export function extractSimpleCfg<Info = ParentInformation>(ast: NormalizedAst<Info>) {
+export function extractCfgQuick<Info = ParentInformation>(ast: NormalizedAst<Info>) {
 	return foldAst(ast.ast, cfgFolds);
 }
 

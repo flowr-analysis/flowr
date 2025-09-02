@@ -18,7 +18,7 @@ import {
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { executeLintingRule } from '../../../src/linter/linter-executor';
 import type { LintingRule } from '../../../src/linter/linter-format';
-import { LintingPrettyPrintContext } from '../../../src/linter/linter-format';
+import { isLintingResultsError, LintingPrettyPrintContext } from '../../../src/linter/linter-format';
 import { log } from '../../../src/util/log';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser } from '../../../src/r-bridge/parser';
@@ -58,6 +58,10 @@ export function assertLinter<Name extends LintingRuleNames>(
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
 		const results = executeLintingRule(ruleName, { ...pipelineResults, config: flowrConfig }, lintingRuleConfig);
+
+		if(isLintingResultsError(results)) {
+			throw new Error(results.error);
+		}
 
 		for(const [type, printer] of Object.entries({
 			text: (result: LintingRuleResult<Name>, metadata: LintingRuleMetadata<Name>) => `${rule.prettyPrint[LintingPrettyPrintContext.Query](result, metadata)} (${result.certainty})${result.quickFix ? ` (${result.quickFix.length} quick fix(es) available)` : ''}`,

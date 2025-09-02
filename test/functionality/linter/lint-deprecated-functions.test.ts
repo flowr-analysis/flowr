@@ -9,7 +9,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('no function listed', parser, 'cat("hello")\nprint("hello")\nx <- 1\ncat(x)',
 			'deprecated-functions', [],
 			{ totalCalls: 0, totalFunctionDefinitions: 0 },
-			{ functionsToFind: [] }
+			{ fns: [] }
 		);
 		/* Given that we declare `cat` as deprecated, we expect all uses to be marked! */
 		assertLinter('cat', parser, 'cat("hello")\nprint("hello")\nx <- 1\ncat(x)',
@@ -18,7 +18,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				{ certainty: LintingResultCertainty.Certain, function: 'cat', range: [4, 1, 4, 6] },
 			],
 			{ totalCalls: 2, totalFunctionDefinitions: 2 },
-			{ functionsToFind: ['cat'] }
+			{ fns: ['cat'] }
 		);
 		/* Overwriting the `cat` function with a user defined implementation (even though it is useless), should cause the linter to not mark calls to the custom `cat` function as deprecated */
 		assertLinter('custom cat', parser, 'cat("hello")\nprint("hello")\ncat <- function(x) { }\nx <- 1\ncat(x)',
@@ -26,7 +26,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				{ certainty: LintingResultCertainty.Certain, function: 'cat', range: [1, 1, 1, 12] }
 			],
 			{ totalCalls: 1, totalFunctionDefinitions: 1 },
-			{ functionsToFind: ['cat'] }
+			{ fns: ['cat'] }
 		);
 		/* Using the default linter configuration, a function such as `all_equal` should be marked as deprecated */
 		assertLinter('with defaults', parser, 'all_equal(foo)',

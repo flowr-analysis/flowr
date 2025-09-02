@@ -99,6 +99,6 @@ export const DependenciesQueryDefinition = {
 	}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as DependenciesQueryResult;
-		return [...out.libraries, ...out.sourcedFiles, ...out.readData, ...out.writtenData].map(o => o.nodeId);
+		return [...out.libraries, ...out.sourcedFiles, ...out.readData, ...out.writtenData, ...out.visualizeCalls].map(o => o.nodeId);
 	}
 } as const satisfies SupportedQuery<'dependencies'>;

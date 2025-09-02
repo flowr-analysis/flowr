@@ -1,6 +1,6 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { QueryResults, SupportedQuery } from '../../query';
+import type { SupportedQuery } from '../../query';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
@@ -47,7 +47,7 @@ export type SourceInfo = (DependencyInfo & { file: string })
 export type ReadInfo = (DependencyInfo & { source: string })
 export type WriteInfo = (DependencyInfo & { destination: 'stdout' | string })
 
-function printResultSection<T extends DependencyInfo>(title: string, infos: T[], result: string[], sectionSpecifics: (info: T) => string): void {
+function printResultSection<T extends DependencyInfo>(title: string, infos: T[], result: string[], sectionSpecifics?: (info: T) => string): void {
 	if(infos.length <= 0) {
 		return;
 	}
@@ -63,7 +63,7 @@ function printResultSection<T extends DependencyInfo>(title: string, infos: T[],
 	}, new Map<string, T[]>());
 	for(const [functionName, infos] of grouped) {
 		result.push(`       ╰ \`${functionName}\``);
-		result.push(infos.map(i => `           ╰ Node Id: ${i.nodeId}, ${sectionSpecifics(i)}`).join('\n'));
+		result.push(infos.map(i => `           ╰ Node Id: ${i.nodeId}${sectionSpecifics !== undefined ? `, ${sectionSpecifics(i)}` : ''}`).join('\n'));
 	}
 }
 
@@ -77,12 +77,13 @@ const functionInfoSchema: Joi.ArraySchema = Joi.array().items(Joi.object({
 export const DependenciesQueryDefinition = {
 	executor:        executeDependenciesQuery,
 	asciiSummarizer: (formatter, _processed, queryResults, result) => {
-		const out = queryResults as QueryResults<'dependencies'>['dependencies'];
+		const out = queryResults as DependenciesQueryResult;
 		result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		printResultSection('Libraries', out.libraries, result, l => `\`${l.libraryName}\``);
 		printResultSection('Sourced Files', out.sourcedFiles, result, s => `\`${s.file}\``);
 		printResultSection('Read Data', out.readData, result, r => `\`${r.source}\``);
 		printResultSection('Written Data', out.writtenData, result, w => `\`${w.destination}\``);
+		printResultSection('Visualizations', out.visualizeCalls, result);
 		return true;
 	},
 	schema: Joi.object({
@@ -97,12 +98,7 @@ export const DependenciesQueryDefinition = {
 		).description('A set of flags that determines what types of dependencies are searched for. If unset or empty, all dependency types are searched for.'),
 	}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
-		const out = queryResults as QueryResults<'dependencies'>['dependencies'];
-		return [
-			...out.libraries.map(library => library.nodeId),
-			...out.sourcedFiles.map(sourced => sourced.nodeId),
-			...out.readData.map(read => read.nodeId),
-			...out.writtenData.map(write => write.nodeId)
-		];
+		const out = queryResults as DependenciesQueryResult;
+		return [...out.libraries, ...out.sourcedFiles, ...out.readData, ...out.writtenData].map(o => o.nodeId);
 	}
 } as const satisfies SupportedQuery<'dependencies'>;

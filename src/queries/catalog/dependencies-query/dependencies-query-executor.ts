@@ -30,6 +30,7 @@ import { DependencyInfoLinkConstraint } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
 import { guard } from '../../../util/assert';
+import { VisualizeFunctions } from './function-info/visualize-functions';
 
 function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]) {
 	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
@@ -57,8 +58,9 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 	const sourceFunctions = getFunctionsToCheck(query.sourceFunctions, DependencyCategory.Source, query.enabledCategories, ignoreDefault, SourceFunctions);
 	const readFunctions = getFunctionsToCheck(query.readFunctions, DependencyCategory.Read, query.enabledCategories, ignoreDefault, ReadFunctions);
 	const writeFunctions = getFunctionsToCheck(query.writeFunctions, DependencyCategory.Write, query.enabledCategories, ignoreDefault, WriteFunctions);
+	const visualizeFunctions = getFunctionsToCheck(query.visualizeFunctions, DependencyCategory.Visualize, query.enabledCategories, ignoreDefault, VisualizeFunctions);
 
-	const numberOfFunctions = libraryFunctions.length + sourceFunctions.length + readFunctions.length + writeFunctions.length;
+	const numberOfFunctions = libraryFunctions.length + sourceFunctions.length + readFunctions.length + writeFunctions.length + visualizeFunctions.length;
 
 	const results = numberOfFunctions === 0 ? { kinds: {}, '.meta': { timing: 0 } } : executeQueriesOfSameType<CallContextQuery>(data,
 		[
@@ -66,6 +68,7 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 			makeCallContextQuery(sourceFunctions, DependencyCategory.Source),
 			makeCallContextQuery(readFunctions, DependencyCategory.Read),
 			makeCallContextQuery(writeFunctions, DependencyCategory.Write),
+			makeCallContextQuery(visualizeFunctions, DependencyCategory.Visualize)
 		].flat()
 	);
 
@@ -91,12 +94,15 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		// write functions that don't have argIndex are assumed to write to stdout
 		destination: value ?? 'stdout',
 	}));
+	const visualizeCalls: DependencyInfo[] = getResults(data, results, DependencyCategory.Visualize, visualizeFunctions, (base) => ({
+		...base,
+	}));
 
 	return {
 		'.meta': {
 			timing: Date.now() - now
 		},
-		libraries, sourcedFiles, readData, writtenData
+		libraries, sourcedFiles, readData, writtenData, visualizeCalls
 	};
 }
 

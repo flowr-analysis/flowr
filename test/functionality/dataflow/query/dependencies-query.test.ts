@@ -15,7 +15,7 @@ import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/proce
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 
-const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { libraries: [], sourcedFiles: [], readData: [], writtenData: [] };
+const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { libraries: [], sourcedFiles: [], readData: [], writtenData: [], visualizeCalls: [] };
 
 function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Partial<DependenciesQueryResult> {
 	const out: Partial<DependenciesQueryResult> = {

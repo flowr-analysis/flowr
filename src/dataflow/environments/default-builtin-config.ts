@@ -9,20 +9,23 @@ import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-
 import type { BuiltInMappingName } from './built-in';
 import { UnnamedFunctionCallPrefix } from '../internal/process/functions/call/unnamed-call-handling';
 
-const GgPlotCreate = [
+export const GgPlotCreate = [
 	'ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', 'ggseasonplot', 'ggdendrogram', 'qmap', 'qplot', 'quickplot', 'autoplot', 'grid.arrange',
 	'fviz_pca_biplot', 'fviz_pca', 'fviz_pca_ind', 'fviz_pca_var', 'fviz_screeplot', 'fviz_mca_biplot', 'fviz_mca', 'fviz_mca_ind', 'fviz_mca_var', 'fviz_cluster', 'fviz_dend',
 	'ggsurvplot',
 ] as const;
-const TinyPlotCrate = [
+export const TinyPlotCrate = [
 	'tinyplot', 'plt'
 ] as const;
-const PlotCreate = [
+export const MiscPlotCreate = [
 	'plot', 'plot.new', 'xspline', 'map', 'curve', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'stem',
 	'density', 'smoothScatter', 'contour', 'persp', 'XYPlot', 'xyplot', 'stripplot', 'bwplot', 'dotPlot', 'dotplot', 'histPlot', 'densityPlot', 'qPlot', 'qqplot', 'qqPlot', 'boxPlot',
 	'bxp', 'assocplot', 'mosaicplot', 'stripchart', 'fourfoldplot', 'plot.xy', 'plot.formula', 'plot.default', 'plot.design', 'stars', 'cotabplot', 'pheatmap',
 	'spineplot', 'Plotranges', 'regressogram', 'bootcurve', 'meanplot', 'vioplot', 'pairs', 'copolot', 'histogram', 'splom', 'leaflet', 'tm_shape', 'plot_ly', 'plotProfLik', 'plotSimulatedResiduals', 'plotmeans',
 	'overplot', 'residplot', 'heatmap.2', 'lmplot2', 'sinkplot', 'textplot', 'boxplot2', 'profLikCI',
+];
+export const PlotCreate = [
+	...MiscPlotCreate,
 	...TinyPlotCrate,
 	...GgPlotCreate
 ];

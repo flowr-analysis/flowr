@@ -13,7 +13,8 @@ export enum DependencyCategory {
     Library = 'library',
     Source = 'source',
     Read = 'read',
-    Write = 'write'
+    Write = 'write',
+    Visualize = 'visualize'
 }
 export interface DependenciesQuery extends BaseQueryFormat {
     readonly type:                    'dependencies'
@@ -23,13 +24,15 @@ export interface DependenciesQuery extends BaseQueryFormat {
     readonly sourceFunctions?:        FunctionInfo[]
     readonly readFunctions?:          FunctionInfo[]
     readonly writeFunctions?:         FunctionInfo[]
+    readonly visualizeFunctions?:     FunctionInfo[]
 }
 
 export interface DependenciesQueryResult extends BaseQueryResult {
-    libraries:    LibraryInfo[]
-    sourcedFiles: SourceInfo[]
-    readData:     ReadInfo[]
-    writtenData:  WriteInfo[]
+    libraries:      LibraryInfo[]
+    sourcedFiles:   SourceInfo[]
+    readData:       ReadInfo[]
+    writtenData:    WriteInfo[]
+    visualizeCalls: DependencyInfo[]
 }
 
 export interface DependencyInfo extends Record<string, unknown>{

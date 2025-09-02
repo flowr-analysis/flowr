@@ -4,6 +4,8 @@ import { assertLinter } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { NETWORK_FUNCTIONS } from '../../../src/linter/rules/network-functions';
 
+const urlPrefix = ['https://', 'ftp://', 'ftps://', 'file://'];
+
 describe('flowR linter', withTreeSitter(parser => {
 	describe('network functions', () => {
 		/* Testing the validity of all declared network functions */
@@ -26,4 +28,14 @@ describe('flowR linter', withTreeSitter(parser => {
 		{ totalCalls: 1, totalFunctionDefinitions: 1 },
 		{ functionsToFind: ['url'] }
 	);
+	for(const prefix of urlPrefix){
+		assertLinter('network function', parser, `read.csv(${prefix}www.example.com)`,
+			'network-functions',
+			[
+				{ certainty: LintingResultCertainty.Certain, function: 'read.csv', range: [1,1,1,prefix.length + 17] }
+			],
+			{ totalCalls: 1, totalFunctionDefinitions: 1 }, 
+			{ functionsToFind: ['read.csv'] }
+		);
+	}
 }));

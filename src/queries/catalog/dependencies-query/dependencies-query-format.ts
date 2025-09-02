@@ -93,6 +93,7 @@ export const DependenciesQueryDefinition = {
 		sourceFunctions:        functionInfoSchema.description('The set of source functions to search for.'),
 		readFunctions:          functionInfoSchema.description('The set of data reading functions to search for.'),
 		writeFunctions:         functionInfoSchema.description('The set of data writing functions to search for.'),
+		visualizeFunctions:     functionInfoSchema.description('The set of visualization functions to search for.'),
 		enabledCategories:      Joi.array().optional().items(
 			Joi.string().valid(...Object.values(DependencyCategory))
 		).description('A set of flags that determines what types of dependencies are searched for. If unset or empty, all dependency types are searched for.'),

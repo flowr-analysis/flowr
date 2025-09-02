@@ -41,6 +41,7 @@ import { printCfgCode } from './doc-util/doc-cfg';
 import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
 import { SliceDirection } from '../core/steps/all/static-slicing/00-slice';
 import { documentReplSession } from './doc-util/doc-repl';
+import { DependencyCategory } from '../queries/catalog/dependencies-query/dependencies-query-format';
 
 
 registerQueryDocumentation('call-context', {
@@ -586,10 +587,8 @@ ${
 	await showQuery(shell, longerCode, [{
 		type:                   'dependencies',
 		ignoreDefaultFunctions: true,
+		enabledCategories:      [DependencyCategory.Library],
 		libraryFunctions:       [{ package: 'base', name: 'print', argIdx: 0, argName: 'library', resolveValue: true }],
-		sourceFunctions:        [],
-		readFunctions:          [],
-		writeFunctions:         []
 	}], { showCode: false, collapseQuery: false, collapseResult: true })
 }
 

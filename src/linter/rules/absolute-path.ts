@@ -157,7 +157,7 @@ export const ABSOLUTE_PATH = {
 					}
 				} else if(enrichmentContent(element, Enrichment.QueryData)) {
 					const result = queryResults[enrichmentContent(element, Enrichment.QueryData).query] as QueryResults<'dependencies'>['dependencies'];
-					const mappedStrings = result.readResult.filter(r => r.value !== Unknown && isAbsolutePath(r.value as string, regex)).map(r => {
+					const mappedStrings = result.read.filter(r => r.value !== undefined && r.value !== Unknown && isAbsolutePath(r.value, regex)).map(r => {
 						const elem = data.normalize.idMap.get(r.nodeId);
 						return {
 							certainty: LintingResultCertainty.Certain,
@@ -168,7 +168,7 @@ export const ABSOLUTE_PATH = {
 					});
 					if(mappedStrings.length > 0) {
 						return mappedStrings;
-					} else if(result.readResult.every(r => r.value !== Unknown)) {
+					} else if(result.read.every(r => r.value !== Unknown)) {
 						// if we have no absolute paths, but all paths are known, we can return an empty array
 						return [];
 					}

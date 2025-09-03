@@ -74,7 +74,7 @@ export type DependenciesQuery = BaseQueryFormat & {
     readonly ignoreDefaultFunctions?: boolean
 } & { [C in `${keyof typeof DependencyCategories}Functions`]?: FunctionInfo[] }
 
-export type DependenciesQueryResult = BaseQueryResult & { [C in `${DependencyCategoryName}Result`]: DependencyInfo[] }
+export type DependenciesQueryResult = BaseQueryResult & { [C in DependencyCategoryName]: DependencyInfo[] }
 
 
 export interface DependencyInfo extends Record<string, unknown>{
@@ -120,7 +120,7 @@ export const DependenciesQueryDefinition = {
 		const out = queryResults as DependenciesQueryResult;
 		result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [category, value] of Object.entries(DependencyCategories)) {
-			printResultSection(value.queryDisplayName, out[`${category as DependencyCategoryName}Result`], result);
+			printResultSection(value.queryDisplayName, out[category as DependencyCategoryName], result);
 		}
 		return true;
 	},
@@ -134,6 +134,6 @@ export const DependenciesQueryDefinition = {
 	}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as DependenciesQueryResult;
-		return Object.keys(DependencyCategories).flatMap(c => out[`${c as DependencyCategoryName}Result`]).map(o => o.nodeId);
+		return Object.keys(DependencyCategories).flatMap(c => out[c as DependencyCategoryName]).map(o => o.nodeId);
 	}
 } as const satisfies SupportedQuery<'dependencies'>;

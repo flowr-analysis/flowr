@@ -1,14 +1,6 @@
 import { executeQueriesOfSameType } from '../../query';
-import type {
-	DependenciesQuery,
-	DependenciesQueryResult, DependencyCategoryName, DependencyCategorySettings,
-	DependencyInfo
-} from './dependencies-query-format';
-import { DependencyCategories
-	,
-	Unknown
-} from './dependencies-query-format';
-
+import type { DependenciesQuery, DependenciesQueryResult, DependencyCategoryName, DependencyCategorySettings, DependencyInfo } from './dependencies-query-format';
+import { DependencyCategories, Unknown } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { VertexType } from '../../../dataflow/graph/vertex';
@@ -42,8 +34,8 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 	const results = Object.fromEntries(functions.entries().map(([c, f]) => {
 		const results = getResults(data, queryResults, c, f);
 		(DependencyCategories[c] as DependencyCategorySettings).additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
-		return [`${c}Result`, results];
-	})) as {[C in `${DependencyCategoryName}Result`]: DependencyInfo[]};
+		return [c, results];
+	})) as {[C in DependencyCategoryName]: DependencyInfo[]};
 
 	return {
 		'.meta': {

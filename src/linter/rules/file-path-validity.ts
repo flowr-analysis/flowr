@@ -62,7 +62,7 @@ export const FILE_PATH_VALIDITY = {
 		return {
 			results: elements.getElements().flatMap(element => {
 				const results = elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'];
-				const matchingRead = results.readResult.find(r => r.nodeId == element.node.info.id);
+				const matchingRead = results.read.find(r => r.nodeId == element.node.info.id);
 				if(!matchingRead) {
 					return [];
 				}
@@ -84,7 +84,7 @@ export const FILE_PATH_VALIDITY = {
 				}
 
 				// check if any write to the same file happens before the read, and exclude this case if so
-				const writesToFile = results.writeResult.filter(r => samePath(r.value as string, matchingRead.value as string, data.config.solver.resolveSource?.ignoreCapitalization));
+				const writesToFile = results.write.filter(r => samePath(r.value as string, matchingRead.value as string, data.config.solver.resolveSource?.ignoreCapitalization));
 				const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, element.node.info.id));
 				if(writesBefore.some(w => w === Ternary.Always)) {
 					metadata.totalWritesBeforeAlways++;

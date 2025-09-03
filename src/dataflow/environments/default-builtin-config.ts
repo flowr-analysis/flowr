@@ -17,14 +17,14 @@ export const GgPlotCreate = [
 export const TinyPlotCrate = [
 	'tinyplot', 'plt'
 ] as const;
-export const MiscPlotCreate = [
+export const GraphicsPlotCreate = [
 	'plot', 'plot.new', 'xspline', 'map', 'curve', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'stem',
 	'density', 'smoothScatter', 'contour', 'persp', 'XYPlot', 'xyplot', 'stripplot', 'bwplot', 'dotPlot', 'dotplot', 'histPlot', 'densityPlot', 'qPlot', 'qqplot', 'qqPlot', 'boxPlot',
 	'bxp', 'assocplot', 'mosaicplot', 'stripchart', 'fourfoldplot', 'plot.xy', 'plot.formula', 'plot.default', 'plot.design', 'stars', 'cotabplot', 'pheatmap',
 	'spineplot', 'Plotranges', 'regressogram', 'bootcurve', 'meanplot', 'vioplot', 'pairs', 'copolot', 'histogram', 'splom', 'leaflet', 'tm_shape', 'plot_ly', 'plotProfLik', 'plotSimulatedResiduals', 'plotmeans',
 	'overplot', 'residplot', 'heatmap.2', 'lmplot2', 'sinkplot', 'textplot', 'boxplot2', 'profLikCI',
 ];
-export const PlotCreate = [...MiscPlotCreate, ...TinyPlotCrate, ...GgPlotCreate];
+export const PlotCreate = GraphicsPlotCreate.concat(TinyPlotCrate, GgPlotCreate);
 const GraphicDeviceOpen = [
 	'pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz', 'image_graph',
 	'image_draw', 'dev.new', 'trellis.device', 'raster_pdf', 'agg_pdf'
@@ -80,7 +80,7 @@ export const GgPlotImplicitAddons = [
 export const PlotFunctionsWithAddParam: Set<string> = new Set([
 	'map', 'matplot', 'barplot', 'boxplot', 'curve', 'image', 'plotCI', 'bandplot', 'barplot2', 'bubbleplot'
 ]);
-export const MiscPlotAddons = [
+export const GraphicsPlotAddons = [
 	'points', 'abline', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
 	'qqline', 'qqnorm', 'rasterImage',
 	'tiplabels', 'rug', 'grid', 'box', 'clip', 'matpoints', 'matlines',
@@ -88,8 +88,7 @@ export const MiscPlotAddons = [
 export const GgPlotAddons = [
 	'ggdraw', 'last_plot'
 ];
-const PlotAddons = [...MiscPlotAddons, ...GgPlotImplicitAddons, ...PlotFunctionsWithAddParam];
-
+const PlotAddons = GraphicsPlotAddons.concat(GgPlotImplicitAddons, ...PlotFunctionsWithAddParam);
 
 function toRegex(n: readonly string[]): RegExp {
 	return new RegExp(`^(${

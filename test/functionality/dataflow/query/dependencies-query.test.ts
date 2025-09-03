@@ -5,7 +5,8 @@ import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import type {
 	DependenciesQuery,
 	DependenciesQueryResult,
-	DependencyInfo
+	DependencyInfo } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown
 } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 
 
@@ -338,6 +339,16 @@ describe('Dependencies Query', withTreeSitter(parser => {
 					{ nodeId: `2@${f}`, functionName: f, linkedIds: [1] }
 				] });
 			}
+			testQuery('complex', 'plot()\nx <- 2\ncat(x)\ncoord_trans(x, y, z)', { visualize: [
+				{ nodeId: '1@plot', functionName: 'plot' },
+				{ nodeId: '4@coord_trans', functionName: 'coord_trans', linkedIds: [1] }
+			] }, { enabledCategories: ['visualize'] } );
+			testQuery('multiple', 'plot()\nx <- 2\ncat(x)\ncoord_trans(x, y, z)\nplot()\ntinyplot_add(x, y, z)', { visualize: [
+				{ nodeId: '1@plot', functionName: 'plot' },
+				{ nodeId: '5@plot', functionName: 'plot' },
+				{ nodeId: '4@coord_trans', functionName: 'coord_trans', linkedIds: [1] },
+				{ nodeId: '6@tinyplot_add', functionName: 'tinyplot_add', linkedIds: [18] }
+			] }, { enabledCategories: ['visualize'] } );
 		});
 	});
 
@@ -374,6 +385,16 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				'test': {
 					queryDisplayName: 'Testing',
 					functions:        [{ name: 'cat', argIdx: 0 }]
+				}
+			}
+		});
+		testQuery('addon', 'cat("a")\nx <- 2', {
+			write:      [{ value: 'stdout', functionName: 'cat', nodeId: '1@cat' }],
+			assignment: [{ lexemeOfArgument: '2', functionName: '<-', nodeId: '2@<-', value: Unknown }]
+		}, {
+			additionalCategories: {
+				assignment: {
+					functions: [{ name: '<-', argIdx: 1 }]
 				}
 			}
 		});

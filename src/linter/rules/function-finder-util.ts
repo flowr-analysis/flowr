@@ -98,7 +98,7 @@ export const functionFinderUtil = {
 		element: FlowrSearchElement<ParentInformation>,
 		pool: readonly FunctionInfo[],
 		data: { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions},
-		require: RegExp | string | undefined
+		requireValue: RegExp | string | undefined
 	): boolean {
 		const info = pool.find(f => f.name === element.node.lexeme);
 		/* if we have no additional info, we assume they always access the network */
@@ -118,7 +118,7 @@ export const functionFinderUtil = {
 			const argValues: string[] = args ? args.values().flatMap(v => [...v]).filter(isNotUndefined).toArray() : [];
 
 			/* if there are no arguments we assume they may access the network, otherwise we check for the flag */
-			return argValues.length === 0 || argValues.some(v => v === Unknown || (require instanceof RegExp ? require.test(v) : v === require));
+			return argValues.length === 0 || argValues.some(v => v === Unknown || (requireValue instanceof RegExp ? requireValue.test(v) : v === requireValue));
 		}
 		return false;
 	}

@@ -1,6 +1,6 @@
 import { executeQueriesOfSameType } from '../../query';
-import type { DependenciesQuery, DependenciesQueryResult, DependencyCategoryName, DependencyCategorySettings, DependencyInfo } from './dependencies-query-format';
-import { DependencyCategories, Unknown } from './dependencies-query-format';
+import type { DefaultDependencyCategoryName,DependenciesQuery, DependenciesQueryResult, DependencyCategoryName, DependencyCategorySettings, DependencyInfo } from './dependencies-query-format';
+import { getAllCategories, DefaultDependencyCategories, Unknown } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { VertexType } from '../../../dataflow/graph/vertex';
@@ -23,26 +23,32 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 
 	const [query] = queries;
 	const ignoreDefault = query.ignoreDefaultFunctions ?? false;
-	const functions = new Map<DependencyCategoryName, FunctionInfo[]>(Object.entries(DependencyCategories).map(([c,v]) => {
-		const name = c as DependencyCategoryName;
-		return [name, getFunctionsToCheck(query[`${name}Functions`], name, query.enabledCategories, ignoreDefault, v.defaultFunctions)];
+	const functions = new Map<DependencyCategoryName, FunctionInfo[]>(Object.entries(DefaultDependencyCategories).map(([c,v]) => {
+		return [c, getFunctionsToCheck(query[`${c as DefaultDependencyCategoryName}Functions`], c, query.enabledCategories, ignoreDefault, v.functions)];
 	}));
+	if(query.additionalCategories !== undefined){
+		for(const [category, value] of Object.entries(query.additionalCategories)) {
+			// custom categories only use the "functions" collection and do not allow specifying additional functions in the object itself, so we "undefined" a lot here
+			functions.set(category, getFunctionsToCheck(undefined, category, undefined, false, value.functions));
+		}
+	}
 
 	const queryResults = functions.values().toArray().flat().length === 0 ? { kinds: {}, '.meta': { timing: 0 } } :
 		executeQueriesOfSameType<CallContextQuery>(data, functions.entries().map(([c, f]) => makeCallContextQuery(f, c)).toArray().flat());
 
 	const results = Object.fromEntries(functions.entries().map(([c, f]) => {
-		const results = getResults(data, queryResults, c, f);
-		(DependencyCategories[c] as DependencyCategorySettings).additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
+		const results = getResults(queries, data, queryResults, c, f);
+		// only default categories allow additional analyses, so we null coalese here!
+		(DefaultDependencyCategories as Record<string, DependencyCategorySettings>)[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
 		return [c, results];
-	})) as {[C in DependencyCategoryName]: DependencyInfo[]};
+	})) as {[C in DependencyCategoryName]?: DependencyInfo[]};
 
 	return {
 		'.meta': {
 			timing: Date.now() - now
 		},
 		...results
-	};
+	} as DependenciesQueryResult;
 }
 
 function makeCallContextQuery(functions: readonly FunctionInfo[], kind: DependencyCategoryName): CallContextQuery[] {
@@ -68,8 +74,8 @@ function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: o
 const readOnlyModes = new Set(['r', 'rt', 'rb']);
 const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab']);
 
-function getResults(data: BasicQueryData, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[]): DependencyInfo[] {
-	const defaultValue = DependencyCategories[kind].defaultValue;
+function getResults(queries: readonly DependenciesQuery[], data: BasicQueryData, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[]): DependencyInfo[] {
+	const defaultValue = getAllCategories(queries)[kind].defaultValue;
 	const functionMap = new Map<string, FunctionInfo>(functions.map(f => [f.name, f]));
 	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});
 	return kindEntries.flatMap(([name, results]) => results.flatMap(({ id, linkedIds }) => {

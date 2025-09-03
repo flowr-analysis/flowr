@@ -364,4 +364,18 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			}]
 		});
 	});
+
+	describe('Custom categories', () => {
+		testQuery('simple', 'cat("a")', {
+			test: [{ value: 'a', functionName: 'cat', nodeId: '1@cat' }]
+		}, {
+			ignoreDefaultFunctions: true,
+			additionalCategories:   {
+				'test': {
+					queryDisplayName: 'Testing',
+					functions:        [{ name: 'cat', argIdx: 0 }]
+				}
+			}
+		});
+	});
 }));

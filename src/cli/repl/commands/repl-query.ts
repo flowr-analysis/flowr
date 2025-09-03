@@ -32,7 +32,7 @@ function printHelp(output: ReplOutput) {
 	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
 }
 
-async function processQueryArgs(line: string, parser: KnownParser, output: ReplOutput, config: FlowrConfigOptions): Promise<undefined | { query: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> }> {
+async function processQueryArgs(line: string, parser: KnownParser, output: ReplOutput, config: FlowrConfigOptions): Promise<undefined | { parsedQuery: Query[], query: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> }> {
 	const args = splitAtEscapeSensitive(line);
 	const query = args.shift();
 
@@ -75,6 +75,7 @@ async function processQueryArgs(line: string, parser: KnownParser, output: ReplO
 
 	const processed = await getDataflow(config, parser, args.join(' '));
 	return {
+		parsedQuery,
 		query: await Promise.resolve(executeQueries({ dataflow: processed.dataflow, ast: processed.normalize, config }, parsedQuery)),
 		processed
 	};
@@ -90,7 +91,7 @@ export const queryCommand: ReplCommand = {
 		const results = await processQueryArgs(remainingLine, parser, output, config);
 		const totalEnd = Date.now();
 		if(results) {
-			output.stdout(asciiSummaryOfQueryResult(ansiFormatter, totalEnd - totalStart, results.query, results.processed));
+			output.stdout(asciiSummaryOfQueryResult(ansiFormatter, totalEnd - totalStart, results.query, results.processed, results.parsedQuery));
 		}
 	}
 };

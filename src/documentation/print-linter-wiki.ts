@@ -96,11 +96,18 @@ function registerRules(rVersion: string, shell: RShell, tagTypes: TypeElementInS
 	const ruleExplanations = new Map<LintingRuleNames, () => Promise<string>>();
 
 	rule(shell,
-		'deprecated-functions', 'DeprecatedFunctionsConfig', 'DEPRECATED_FUNCTIONS', 'lint-deprecated-functions',
+		'deprecated-functions', 'FunctionsToDetectConfig', 'DEPRECATED_FUNCTIONS', 'lint-deprecated-functions',
 		`
 first <- data.frame(x = c(1, 2, 3), y = c(1, 2, 3))
 second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))
 dplyr::all_equal(first, second)
+`, tagTypes);
+
+	rule(shell,
+		'network-functions', 'NetworkFunctionsConfig', 'NETWORK_FUNCTIONS', 'lint-network-functions',
+		`
+read.csv("https://example.com/data.csv")
+download.file("https://foo.bar")
 `, tagTypes);
 
 	rule(shell,

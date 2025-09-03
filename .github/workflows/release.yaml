@@ -80,12 +80,8 @@ jobs:
           r-version: ${{ matrix.r-version }}
 
       - name: "📦 Install R Packages"
-        uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: |
-            any::xmlparsedata
-            any::dplyr
-            any::readr
+        shell: Rscript {0}
+        run:   lapply(c("xmlparsedata","dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
 
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"

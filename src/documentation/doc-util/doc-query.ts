@@ -62,7 +62,7 @@ ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary
 _Results (prettified and summarized):_
 
 ${
-	asciiSummaryOfQueryResult(markdownFormatter, duration, results, analysis)
+	asciiSummaryOfQueryResult(markdownFormatter, duration, results, analysis, queries)
 }
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>

@@ -240,7 +240,7 @@ export function trackAliasInEnvironments(resolve: VariableResolve, identifier: I
 
 
 /** given an unknown alias, we have to clear all values in the environments */
-onUnknownSideEffect((_graph: DataflowGraph, env: REnvironmentInformation, _id: NodeId, target?: LinkTo) => {
+onUnknownSideEffect((_graph: DataflowGraph, env: REnvironmentInformation, _id: NodeId, target?: LinkTo<RegExp | string>) => {
 	if(target) {
 		return;
 	}

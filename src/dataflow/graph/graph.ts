@@ -461,9 +461,12 @@ export class DataflowGraph<
 	}
 
 	/** Marks the given node as having unknown side effects */
-	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo): this {
+	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo<RegExp | string>): this {
 		if(target) {
-			this._unknownSideEffects.add({ id: normalizeIdToNumberIfPossible(id), linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp> });
+			this._unknownSideEffects.add({
+				id:     normalizeIdToNumberIfPossible(id),
+				linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp>
+			});
 			return this;
 		}
 		this._unknownSideEffects.add(normalizeIdToNumberIfPossible(id));

@@ -57,8 +57,8 @@ export const SEEDED_RANDOMNESS = {
 			}
 		})
 		.with(Enrichment.LastCall,[
-			...config.randomnessProducers.filter(p => p.type === 'function').map(p => ({ callName: p.name })),
-			...getDefaultAssignments().flatMap(b => b.names).map(a => ({ callName: a, cascadeIf: () => CascadeAction.Continue }))
+			{ callName: config.randomnessProducers.filter(p => p.type === 'function').map(p => p.name) },
+			{ callName: getDefaultAssignments().flatMap(b => b.names), cascadeIf: () => CascadeAction.Continue }
 		]),
 	processSearchResult: (elements, config, { dataflow }) => {
 		const assignmentProducers = new Set<string>(config.randomnessProducers.filter(p => p.type == 'assignment').map(p => p.name));

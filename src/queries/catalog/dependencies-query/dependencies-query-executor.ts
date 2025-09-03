@@ -1,46 +1,19 @@
 import { executeQueriesOfSameType } from '../../query';
-import type {
-	DependenciesQuery,
-	DependenciesQueryResult,
-	DependencyInfo,
-	LibraryInfo,
-	ReadInfo,
-	SourceInfo,
-	WriteInfo
-} from './dependencies-query-format';
-import { Unknown } from './dependencies-query-format';
+import type { DefaultDependencyCategoryName,DependenciesQuery, DependenciesQueryResult, DependencyCategoryName, DependencyCategorySettings, DependencyInfo } from './dependencies-query-format';
+import { getAllCategories, DefaultDependencyCategories, Unknown } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { log } from '../../../util/log';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import type { BasicQueryData } from '../../base-query-format';
 import { compactRecord } from '../../../util/objects';
-import { LibraryFunctions } from './function-info/library-functions';
-import { SourceFunctions } from './function-info/source-functions';
-import { ReadFunctions } from './function-info/read-functions';
-import { WriteFunctions } from './function-info/write-functions';
 import type { DependencyInfoLinkAttachedInfo, FunctionInfo } from './function-info/function-info';
 import { DependencyInfoLinkConstraint } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
 import { guard } from '../../../util/assert';
-
-function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]) {
-	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
-	visitAst(data.ast.ast, n => {
-		if(n.type === RType.Symbol && n.namespace) {
-			/* we should improve the identification of ':::' */
-			libraries.push({
-				nodeId:       n.info.id,
-				functionName: (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
-				libraryName:  n.namespace,
-			});
-		}
-	});
-}
 
 export function executeDependenciesQuery(data: BasicQueryData, queries: readonly DependenciesQuery[]): DependenciesQueryResult {
 	if(queries.length !== 1) {
@@ -50,77 +23,35 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 
 	const [query] = queries;
 	const ignoreDefault = query.ignoreDefaultFunctions ?? false;
-	const libraryFunctions = getFunctionsToCheck(query.libraryFunctions, ignoreDefault, LibraryFunctions);
-	const sourceFunctions = getFunctionsToCheck(query.sourceFunctions, ignoreDefault, SourceFunctions);
-	const readFunctions = getFunctionsToCheck(query.readFunctions, ignoreDefault, ReadFunctions);
-	const writeFunctions = getFunctionsToCheck(query.writeFunctions, ignoreDefault, WriteFunctions);
-
-	const numberOfFunctions = libraryFunctions.length + sourceFunctions.length + readFunctions.length + writeFunctions.length;
-
-	const results = numberOfFunctions === 0 ? { kinds: {}, '.meta': { timing: 0 } } : executeQueriesOfSameType<CallContextQuery>(data,
-		[
-			makeCallContextQuery(libraryFunctions, 'library'),
-			makeCallContextQuery(sourceFunctions, 'source'),
-			makeCallContextQuery(readFunctions, 'read'),
-			makeCallContextQuery(writeFunctions, 'write')
-		].flat()
-	);
-
-	function getLexeme(argument: string | undefined | typeof Unknown, id: NodeId | undefined) {
-		if((argument && argument !== Unknown) || !id) {
-			return undefined;
+	const functions = new Map<DependencyCategoryName, FunctionInfo[]>(Object.entries(DefaultDependencyCategories).map(([c,v]) => {
+		return [c, getFunctionsToCheck(query[`${c as DefaultDependencyCategoryName}Functions`], c, query.enabledCategories, ignoreDefault, v.functions)];
+	}));
+	if(query.additionalCategories !== undefined){
+		for(const [category, value] of Object.entries(query.additionalCategories)) {
+			// custom categories only use the "functions" collection and do not allow specifying additional functions in the object itself, so we "undefined" a lot here
+			functions.set(category, getFunctionsToCheck(undefined, category, undefined, false, value.functions));
 		}
-		let get = data.ast.idMap.get(id);
-		if(get?.type === RType.Argument) {
-			get = get.value;
-		}
-		return get?.info.fullLexeme ?? get?.lexeme;
 	}
 
-	const libraries: LibraryInfo[] = getResults(data, results, 'library', libraryFunctions, (id, vertex, argId, value, linkedIds) => ({
-		nodeId:           id,
-		functionName:     vertex.name,
-		lexemeOfArgument: getLexeme(value, argId),
-		libraryName:      value ?? Unknown,
-		linkedIds:        linkedIds?.length ? linkedIds : undefined
-	}));
+	const queryResults = functions.values().toArray().flat().length === 0 ? { kinds: {}, '.meta': { timing: 0 } } :
+		executeQueriesOfSameType<CallContextQuery>(data, functions.entries().map(([c, f]) => makeCallContextQuery(f, c)).toArray().flat());
 
-	if(!ignoreDefault) {
-		collectNamespaceAccesses(data, libraries);
-	}
-
-	const sourcedFiles: SourceInfo[] = getResults(data, results, 'source', sourceFunctions, (id, vertex, argId, value, linkedIds) => ({
-		nodeId:           id,
-		functionName:     vertex.name,
-		file:             value ?? Unknown,
-		lexemeOfArgument: getLexeme(value, argId),
-		linkedIds:        linkedIds?.length ? linkedIds : undefined
-	}));
-	const readData: ReadInfo[] = getResults(data, results, 'read', readFunctions, (id, vertex, argId, value, linkedIds) => ({
-		nodeId:           id,
-		functionName:     vertex.name,
-		source:           value ?? Unknown,
-		lexemeOfArgument: getLexeme(value, argId),
-		linkedIds:        linkedIds?.length ? linkedIds : undefined
-	}));
-	const writtenData: WriteInfo[] = getResults(data, results, 'write', writeFunctions, (id, vertex, argId, value, linkedIds) => ({
-		nodeId:           id,
-		functionName:     vertex.name,
-		// write functions that don't have argIndex are assumed to write to stdout
-		destination:      value ?? 'stdout',
-		lexemeOfArgument: getLexeme(value, argId),
-		linkedIds:        linkedIds?.length? linkedIds : undefined
-	}));
+	const results = Object.fromEntries(functions.entries().map(([c, f]) => {
+		const results = getResults(queries, data, queryResults, c, f);
+		// only default categories allow additional analyses, so we null coalese here!
+		(DefaultDependencyCategories as Record<string, DependencyCategorySettings>)[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
+		return [c, results];
+	})) as {[C in DependencyCategoryName]?: DependencyInfo[]};
 
 	return {
 		'.meta': {
 			timing: Date.now() - now
 		},
-		libraries, sourcedFiles, readData, writtenData
-	};
+		...results
+	} as DependenciesQueryResult;
 }
 
-function makeCallContextQuery(functions: readonly FunctionInfo[], kind: string): CallContextQuery[] {
+function makeCallContextQuery(functions: readonly FunctionInfo[], kind: DependencyCategoryName): CallContextQuery[] {
 	return functions.map(f => ({
 		type:           'call-context',
 		callName:       f.name,
@@ -133,14 +64,6 @@ function makeCallContextQuery(functions: readonly FunctionInfo[], kind: string):
 	}));
 }
 
-type MakeDependencyInfo<T extends DependencyInfo> = (
-	id: NodeId,
-	vertex: DataflowGraphVertexFunctionCall,
-	argumentId: NodeId | undefined,
-	argumentValue: string | undefined,
-	linkedIds: undefined | readonly NodeId[]
-) => T | undefined;
-
 function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: object })[] | undefined): NodeId[] | undefined{
 	if(!linkedIds) {
 		return undefined;
@@ -151,22 +74,31 @@ function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: o
 const readOnlyModes = new Set(['r', 'rt', 'rb']);
 const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab']);
 
-function getResults<T extends DependencyInfo>(data: BasicQueryData, results: CallContextQueryResult, kind: string, functions: FunctionInfo[], makeInfo: MakeDependencyInfo<T>): T[] {
+function getResults(queries: readonly DependenciesQuery[], data: BasicQueryData, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[]): DependencyInfo[] {
+	const defaultValue = getAllCategories(queries)[kind].defaultValue;
+	const functionMap = new Map<string, FunctionInfo>(functions.map(f => [f.name, f]));
 	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});
 	return kindEntries.flatMap(([name, results]) => results.flatMap(({ id, linkedIds }) => {
 		const vertex = data.dataflow.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
-		const info = functions.find(f => f.name === name) as FunctionInfo;
+		const info = functionMap.get(name) as FunctionInfo;
 
 		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
 		const linkedArgs = collectValuesFromLinks(args, data, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
+		const linked = dropInfoOnLinkedIds(linkedIds);
 
 		const foundValues = linkedArgs ?? args;
 		if(!foundValues) {
 			if(info.ignoreIf === 'arg-missing') {
 				return [];
 			}
-			const record = compactRecord(makeInfo(id, vertex, undefined, undefined, dropInfoOnLinkedIds(linkedIds)));
-			return record ? [record as T] : [];
+			const record = compactRecord({
+				nodeId:           id,
+				functionName:     vertex.name,
+				lexemeOfArgument: undefined,
+				linkedIds:        linked?.length ? linked : undefined,
+				value:            defaultValue
+			} as DependencyInfo);
+			return record ? [record] : [];
 		} else if(info.ignoreIf === 'mode-only-read' || info.ignoreIf === 'mode-only-write') {
 			guard('mode' in (info.additionalArgs ?? {}), 'Need additional argument mode when checking for mode');
 			const margs = info.additionalArgs?.mode;
@@ -181,17 +113,34 @@ function getResults<T extends DependencyInfo>(data: BasicQueryData, results: Cal
 				return [];
 			}
 		}
-		const results: T[] = [];
+		const results: DependencyInfo[] = [];
 		for(const [arg, values] of foundValues.entries()) {
 			for(const value of values) {
-				const result = compactRecord(makeInfo(id, vertex, arg, value, dropInfoOnLinkedIds(linkedIds)));
+				const result = compactRecord({
+					nodeId:           id,
+					functionName:     vertex.name,
+					lexemeOfArgument: getLexeme(value, arg),
+					linkedIds:        linked?.length ? linked : undefined,
+					value:            value ?? defaultValue
+				} as DependencyInfo);
 				if(result) {
-					results.push(result as T);
+					results.push(result);
 				}
 			}
 		}
 		return results;
 	})) ?? [];
+
+	function getLexeme(argument: string | undefined | typeof Unknown, id: NodeId | undefined) {
+		if((argument && argument !== Unknown) || !id) {
+			return undefined;
+		}
+		let get = data.ast.idMap.get(id);
+		if(get?.type === RType.Argument) {
+			get = get.value;
+		}
+		return get?.info.fullLexeme ?? get?.lexeme;
+	}
 }
 
 function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undefined, data: BasicQueryData, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string|undefined>> | undefined {
@@ -229,7 +178,11 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undef
 	return map.size ? map : undefined;
 }
 
-function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
+function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, functionFlag: DependencyCategoryName, enabled: DependencyCategoryName[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
+	// "If unset or empty, all function types are searched for."
+	if(enabled?.length && enabled.indexOf(functionFlag) < 0) {
+		return [];
+	}
 	let functions: FunctionInfo[] = ignoreDefaultFunctions ? [] : [...defaultFunctions];
 	if(customFunctions) {
 		functions = functions.concat(customFunctions);

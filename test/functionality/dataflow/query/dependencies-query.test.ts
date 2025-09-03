@@ -7,15 +7,14 @@ import type {
 	DependenciesQueryResult,
 	DependencyInfo
 } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
-import {
-	DependencyCategory
-} from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+
+
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 
-const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { libraries: [], sourcedFiles: [], readData: [], writtenData: [], visualizeCalls: [] };
+const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { libraryResult: [], sourceResult: [], readResult: [], writeResult: [], visualizeResult: [] };
 
 function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Partial<DependenciesQueryResult> {
 	const out: Partial<DependenciesQueryResult> = {
@@ -25,7 +24,6 @@ function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Part
 		if(key === '.meta') {
 			continue;
 		}
-		// @ts-expect-error -- we do not need key-dependent typing due to the spread
 		out[key] = value.map(({ nodeId, ...rest }) => ({ nodeId: typeof nodeId === 'number' ? nodeId : slicingCriterionToId(String(nodeId) as SingleSlicingCriterion, idMap), ...rest }));
 	}
 	return out;
@@ -62,121 +60,121 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			/* support attach, support with, support pacman::p_load and the like? */
 		] as const) {
 			testQuery(`${loadFn} (${str ? 'string' : 'symbol'})`, `${loadFn}(${str ? '"a"' : 'a'})`, {
-				libraries: [{ nodeId: '1@' + loadFn, functionName: loadFn, libraryName: 'a' }]
+				libraryResult: [{ nodeId: '1@' + loadFn, functionName: loadFn, value: 'a' }]
 			});
 		}
 
 
-		testQuery('Multiple Libraries', 'library(a)\nlibrary(b)\nrequire(c)', { libraries: [
-			{ nodeId: '1@library', functionName: 'library', libraryName: 'a' },
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
-			{ nodeId: '3@require', functionName: 'require', libraryName: 'c' }
+		testQuery('Multiple Libraries', 'library(a)\nlibrary(b)\nrequire(c)', { libraryResult: [
+			{ nodeId: '1@library', functionName: 'library', value: 'a' },
+			{ nodeId: '2@library', functionName: 'library', value: 'b' },
+			{ nodeId: '3@require', functionName: 'require', value: 'c' }
 		] });
 
-		testQuery('Given Require', 'require("c")', { libraries: [
-			{ nodeId: '1@require', functionName: 'require', libraryName: 'c' }
+		testQuery('Given Require', 'require("c")', { libraryResult: [
+			{ nodeId: '1@require', functionName: 'require', value: 'c' }
 		] });
 
-		testQuery('Given Require with character only', 'require(c, character.only=TRUE)', { libraries: [
-			{ nodeId: '1@require', functionName: 'require', libraryName: 'unknown', lexemeOfArgument: 'c' }
+		testQuery('Given Require with character only', 'require(c, character.only=TRUE)', { libraryResult: [
+			{ nodeId: '1@require', functionName: 'require', value: 'unknown', lexemeOfArgument: 'c' }
 		] });
 
 
-		testQuery('Library with variable', 'a <- "ggplot2"\nb <- TRUE\nlibrary(a,character.only=b)', { libraries: [
-			{ nodeId: '3@library', functionName: 'library', libraryName: 'ggplot2' }
+		testQuery('Library with variable', 'a <- "ggplot2"\nb <- TRUE\nlibrary(a,character.only=b)', { libraryResult: [
+			{ nodeId: '3@library', functionName: 'library', value: 'ggplot2' }
 		] });
 
 		// for now, we want a better or (https://github.com/flowr-analysis/flowr/issues/1342)
-		testQuery('Library with possibilities', 'if(u) { a <- "a" } else { a <- "b" }\nlibrary(a,character.only=TRUE)', { libraries: [
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'a' }
+		testQuery('Library with possibilities', 'if(u) { a <- "a" } else { a <- "b" }\nlibrary(a,character.only=TRUE)', { libraryResult: [
+			{ nodeId: '2@library', functionName: 'library', value: 'b' },
+			{ nodeId: '2@library', functionName: 'library', value: 'a' }
 		] });
 
 
-		testQuery('pacman', 'p_load(a, b, c)', { libraries: [
-			{ nodeId: '1@p_load', functionName: 'p_load', libraryName: 'a' },
-			{ nodeId: '1@p_load', functionName: 'p_load', libraryName: 'b' },
-			{ nodeId: '1@p_load', functionName: 'p_load', libraryName: 'c' }
+		testQuery('pacman', 'p_load(a, b, c)', { libraryResult: [
+			{ nodeId: '1@p_load', functionName: 'p_load', value: 'a' },
+			{ nodeId: '1@p_load', functionName: 'p_load', value: 'b' },
+			{ nodeId: '1@p_load', functionName: 'p_load', value: 'c' }
 		] });
 
-		testQuery('Load implicitly', 'foo::x\nbar:::y()', { libraries: [
-			{ nodeId: '1@x', functionName: '::', libraryName: 'foo' },
-			{ nodeId: '2@y', functionName: ':::', libraryName: 'bar' }
+		testQuery('Load implicitly', 'foo::x\nbar:::y()', { libraryResult: [
+			{ nodeId: '1@x', functionName: '::', value: 'foo' },
+			{ nodeId: '2@y', functionName: ':::', value: 'bar' }
 		] });
 
-		testQuery('Using a vector without character.only', 'lapply(c("a", "b", "c"), library)', { libraries: [
-			{ nodeId: '1@library', functionName: 'library', libraryName: '"a"' },
-			{ nodeId: '1@library', functionName: 'library', libraryName: '"b"' },
-			{ nodeId: '1@library', functionName: 'library', libraryName: '"c"' }
+		testQuery('Using a vector without character.only', 'lapply(c("a", "b", "c"), library)', { libraryResult: [
+			{ nodeId: '1@library', functionName: 'library', value: '"a"' },
+			{ nodeId: '1@library', functionName: 'library', value: '"b"' },
+			{ nodeId: '1@library', functionName: 'library', value: '"c"' }
 		] });
 
-		testQuery('Using a vector to load (missing elements)', 'lapply(c("x", u), library, character.only = TRUE)', { libraries: [
+		testQuery('Using a vector to load (missing elements)', 'lapply(c("x", u), library, character.only = TRUE)', { libraryResult: [
 			// We currently don't support resolving that "x" and some unknown library is loaded
-			{ nodeId: '1@library', functionName: 'library', libraryName: 'unknown', lexemeOfArgument: 'c("x", u)' },
+			{ nodeId: '1@library', functionName: 'library', value: 'unknown', lexemeOfArgument: 'c("x", u)' },
 		] });
 
-		testQuery('Using an aliased vector to load (missing elements)', 'x <- c("x", u)\nlapply(x, library, character.only = TRUE)', { libraries: [
+		testQuery('Using an aliased vector to load (missing elements)', 'x <- c("x", u)\nlapply(x, library, character.only = TRUE)', { libraryResult: [
 			// We currently don't support resolving that "x" and some unknown library is loaded
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'unknown', lexemeOfArgument: 'x' },
+			{ nodeId: '2@library', functionName: 'library', value: 'unknown', lexemeOfArgument: 'x' },
 		] });
 
-		testQuery('Using a vector to load', 'lapply(c("foo", "bar", "baz"), library, character.only = TRUE)', { libraries: [
-			{ nodeId: '1@library', functionName: 'library', libraryName: 'foo' },
-			{ nodeId: '1@library', functionName: 'library', libraryName: 'bar' },
-			{ nodeId: '1@library', functionName: 'library', libraryName: 'baz' }
+		testQuery('Using a vector to load', 'lapply(c("foo", "bar", "baz"), library, character.only = TRUE)', { libraryResult: [
+			{ nodeId: '1@library', functionName: 'library', value: 'foo' },
+			{ nodeId: '1@library', functionName: 'library', value: 'bar' },
+			{ nodeId: '1@library', functionName: 'library', value: 'baz' }
 		] });
 
-		testQuery('Using a vector to load by variable', 'v <- c("a", "b", "c")\nlapply(v, library, character.only = TRUE)', { libraries: [
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'a' },
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'c' }
+		testQuery('Using a vector to load by variable', 'v <- c("a", "b", "c")\nlapply(v, library, character.only = TRUE)', { libraryResult: [
+			{ nodeId: '2@library', functionName: 'library', value: 'a' },
+			{ nodeId: '2@library', functionName: 'library', value: 'b' },
+			{ nodeId: '2@library', functionName: 'library', value: 'c' }
 		] });
 		
 		testQuery('Intermix another library call', 'library(foo)\nv <- c("a", "b", "c")\nlapply(v, library, character.only = TRUE)', {
-			libraries: [
-				{ nodeId: '1@library', functionName: 'library', libraryName: 'foo' },
-				{ nodeId: '3@library', functionName: 'library', libraryName: 'a' },
-				{ nodeId: '3@library', functionName: 'library', libraryName: 'b' },
-				{ nodeId: '3@library', functionName: 'library', libraryName: 'c' }
+			libraryResult: [
+				{ nodeId: '1@library', functionName: 'library', value: 'foo' },
+				{ nodeId: '3@library', functionName: 'library', value: 'a' },
+				{ nodeId: '3@library', functionName: 'library', value: 'b' },
+				{ nodeId: '3@library', functionName: 'library', value: 'c' }
 			]
 		});
 
-		testQuery('Using a nested vector to load', 'lapply(c(c("a", "b"), "c"), library, character.only = TRUE)', { libraries: [
-			{ nodeId: '1@library', functionName: 'library', libraryName: 'a' },
-			{ nodeId: '1@library', functionName: 'library', libraryName: 'b' },
-			{ nodeId: '1@library', functionName: 'library', libraryName: 'c' }
+		testQuery('Using a nested vector to load', 'lapply(c(c("a", "b"), "c"), library, character.only = TRUE)', { libraryResult: [
+			{ nodeId: '1@library', functionName: 'library', value: 'a' },
+			{ nodeId: '1@library', functionName: 'library', value: 'b' },
+			{ nodeId: '1@library', functionName: 'library', value: 'c' }
 		] });
 
-		testQuery('Using a nested vector by variable', 'v <- c(c("a", "b"), "c")\nlapply(v, library, character.only = TRUE)', { libraries: [
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'a' },
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'c' }
+		testQuery('Using a nested vector by variable', 'v <- c(c("a", "b"), "c")\nlapply(v, library, character.only = TRUE)', { libraryResult: [
+			{ nodeId: '2@library', functionName: 'library', value: 'a' },
+			{ nodeId: '2@library', functionName: 'library', value: 'b' },
+			{ nodeId: '2@library', functionName: 'library', value: 'c' }
 		] });
 
-		testQuery('Using a vector by variable (with distractor)', 'if(u) {v <- 42}\nv <- c(c("a", "b"), "c")\nc <- 4\nlapply(v, library, character.only = TRUE)', { libraries: [
-			{ nodeId: '4@library', functionName: 'library', libraryName: 'a' },
-			{ nodeId: '4@library', functionName: 'library', libraryName: 'b' },
-			{ nodeId: '4@library', functionName: 'library', libraryName: 'c' }
+		testQuery('Using a vector by variable (with distractor)', 'if(u) {v <- 42}\nv <- c(c("a", "b"), "c")\nc <- 4\nlapply(v, library, character.only = TRUE)', { libraryResult: [
+			{ nodeId: '4@library', functionName: 'library', value: 'a' },
+			{ nodeId: '4@library', functionName: 'library', value: 'b' },
+			{ nodeId: '4@library', functionName: 'library', value: 'c' }
 		] });
 
-		testQuery('Using a vector (but c is redefined)', 'c <- print\nv <- c(c("a", "b"), "c")\nlapply(v, library, character.only = TRUE)', { libraries: [
-			{ nodeId: '3@library', functionName: 'library', libraryName: 'unknown', lexemeOfArgument: 'v' },
+		testQuery('Using a vector (but c is redefined)', 'c <- print\nv <- c(c("a", "b"), "c")\nlapply(v, library, character.only = TRUE)', { libraryResult: [
+			{ nodeId: '3@library', functionName: 'library', value: 'unknown', lexemeOfArgument: 'v' },
 		] });
 
-		testQuery('Using a vector by variable (real world)', 'packages <- c("ggplot2", "dplyr", "tidyr")\nlapply(packages, library, character.only = TRUE)', { libraries: [
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'ggplot2' },
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'dplyr' },
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'tidyr' }
+		testQuery('Using a vector by variable (real world)', 'packages <- c("ggplot2", "dplyr", "tidyr")\nlapply(packages, library, character.only = TRUE)', { libraryResult: [
+			{ nodeId: '2@library', functionName: 'library', value: 'ggplot2' },
+			{ nodeId: '2@library', functionName: 'library', value: 'dplyr' },
+			{ nodeId: '2@library', functionName: 'library', value: 'tidyr' }
 		] });
 
-		testQuery('Using a deeply nested vector by variable', 'v <- c(c(c("a", c("b")), "c"), "d", c("e", c("f", "g")))\nlapply(v, library, character.only = TRUE)', { libraries: [
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'a' },
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'c' },
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'd' },
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'e' },
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'f' },
-			{ nodeId: '2@library', functionName: 'library', libraryName: 'g' }
+		testQuery('Using a deeply nested vector by variable', 'v <- c(c(c("a", c("b")), "c"), "d", c("e", c("f", "g")))\nlapply(v, library, character.only = TRUE)', { libraryResult: [
+			{ nodeId: '2@library', functionName: 'library', value: 'a' },
+			{ nodeId: '2@library', functionName: 'library', value: 'b' },
+			{ nodeId: '2@library', functionName: 'library', value: 'c' },
+			{ nodeId: '2@library', functionName: 'library', value: 'd' },
+			{ nodeId: '2@library', functionName: 'library', value: 'e' },
+			{ nodeId: '2@library', functionName: 'library', value: 'f' },
+			{ nodeId: '2@library', functionName: 'library', value: 'g' }
 		] });
 
 
@@ -185,17 +183,17 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				libraryFunctions: [{ package: 'custom', name: 'custom.library', argIdx: 1, argName: 'file' }]
 			};
 			const expected: Partial<DependenciesQueryResult> = {
-				libraries: [{ nodeId: '1@custom.library', functionName: 'custom.library', libraryName: 'my-custom-file' }]
+				libraryResult: [{ nodeId: '1@custom.library', functionName: 'custom.library', value: 'my-custom-file' }]
 			};
 			testQuery('Custom (by index)', 'custom.library(1, "my-custom-file", 2)', expected, readCustomFile);
 			testQuery('Custom (by name)', 'custom.library(num1 = 1, num2 = 2, file = "my-custom-file")', expected, readCustomFile);
 			testQuery('Ignore default', 'library(testLibrary)', {}, { ignoreDefaultFunctions: true });
-			testQuery('Disabled', 'library(testLibrary)', {}, { enabledCategories: [DependencyCategory.Source, DependencyCategory.Read, DependencyCategory.Write] });
+			testQuery('Disabled', 'library(testLibrary)', {}, { enabledCategories: ['source', 'read', 'write'] });
 			testQuery('Enabled', 'library(testLibrary)', {
-				libraries: [{ nodeId: '1@library', functionName: 'library', libraryName: 'testLibrary' }]
-			}, { enabledCategories: [DependencyCategory.Library] });
+				libraryResult: [{ nodeId: '1@library', functionName: 'library', value: 'testLibrary' }]
+			}, { enabledCategories: ['library'] });
 			testQuery('Empty enabled', 'library(testLibrary)', {
-				libraries: [{ nodeId: '1@library', functionName: 'library', libraryName: 'testLibrary' }]
+				libraryResult: [{ nodeId: '1@library', functionName: 'library', value: 'testLibrary' }]
 			}, { enabledCategories: [] });
 		});
 	});
@@ -205,27 +203,27 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			'source_url',
 			'source_gist'
 		] as const) {
-			testQuery(`${sourceFn}`, `${sourceFn}("a")` , { sourcedFiles: [{ nodeId: `1@${sourceFn}`, functionName: sourceFn, file: 'a' }] });
+			testQuery(`${sourceFn}`, `${sourceFn}("a")` , { sourceResult: [{ nodeId: `1@${sourceFn}`, functionName: sourceFn, value: 'a' }] });
 		}
 
-		testQuery('Single source', 'source("test/file.R")', { sourcedFiles: [{ nodeId: '1@source', functionName: 'source', file: 'test/file.R' }] });
+		testQuery('Single source', 'source("test/file.R")', { sourceResult: [{ nodeId: '1@source', functionName: 'source', value: 'test/file.R' }] });
 
-		testQuery('Single source variable', 'a <- "test/file.R"; source("test/file.R")', { sourcedFiles: [{ nodeId: '1@source', functionName: 'source', file: 'test/file.R' }] });
+		testQuery('Single source variable', 'a <- "test/file.R"; source("test/file.R")', { sourceResult: [{ nodeId: '1@source', functionName: 'source', value: 'test/file.R' }] });
 
 		describe('Custom', () => {
 			const sourceCustomFile: Partial<DependenciesQuery> = {
 				sourceFunctions: [{ name: 'source.custom.file', argIdx: 1, argName: 'file' }]
 			};
 			const expected: Partial<DependenciesQueryResult> = {
-				sourcedFiles: [{ nodeId: '1@source.custom.file', functionName: 'source.custom.file', file: 'my-custom-file' }]
+				sourceResult: [{ nodeId: '1@source.custom.file', functionName: 'source.custom.file', value: 'my-custom-file' }]
 			};
 			testQuery('Custom (by index)', 'source.custom.file(1, "my-custom-file", 2)', expected, sourceCustomFile);
 			testQuery('Custom (by name)', 'source.custom.file(num1 = 1, num2 = 2, file = "my-custom-file")', expected, sourceCustomFile);
 			testQuery('Ignore default', 'source("test/file.R")', {}, { ignoreDefaultFunctions: true });
-			testQuery('Disabled', 'source("test/file.R")', {}, { enabledCategories: [DependencyCategory.Read, DependencyCategory.Write, DependencyCategory.Library] });
+			testQuery('Disabled', 'source("test/file.R")', {}, { enabledCategories: ['read', 'write', 'library'] });
 			testQuery('Enabled', 'source("test/file.R")', {
-				sourcedFiles: [{ nodeId: '1@source', functionName: 'source', file: 'test/file.R' }]
-			}, { enabledCategories: [DependencyCategory.Source] });
+				sourceResult: [{ nodeId: '1@source', functionName: 'source', value: 'test/file.R' }]
+			}, { enabledCategories: ['source'] });
 		});
 	});
 
@@ -238,26 +236,26 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			'read_html_live',
 			'read.ftable',
 		] as const) {
-			testQuery(`${readFn}`, `${readFn}("a")` , { readData: [{ nodeId: `1@${readFn}`, functionName: readFn, source: 'a' }] });
+			testQuery(`${readFn}`, `${readFn}("a")` , { readResult: [{ nodeId: `1@${readFn}`, functionName: readFn, value: 'a' }] });
 		}
 
 		for(const readFn of [
 			'dbReadTable',
 			'dbReadTableArrow'
 		] as const) {
-			testQuery(`${readFn}`, `${readFn}(obj, "a")` , { readData: [{ nodeId: `1@${readFn}`, functionName: readFn, source: 'a' }] });
+			testQuery(`${readFn}`, `${readFn}(obj, "a")` , { readResult: [{ nodeId: `1@${readFn}`, functionName: readFn, value: 'a' }] });
 		}
 		
-		testQuery('read.table', "read.table('test.csv')", { readData: [{ nodeId: '1@read.table', functionName: 'read.table', source: 'test.csv' }] });
-		testQuery('gzfile', 'gzfile("this is my gzip file :)", "test.gz")', { readData: [{ nodeId: '1@gzfile', functionName: 'gzfile', source: 'test.gz' }] });
-		testQuery('With Argument', 'gzfile(open="test.gz",description="this is my gzip file :)")', { readData: [{ nodeId: '1@gzfile', functionName: 'gzfile', source: 'test.gz' }] });
+		testQuery('read.table', "read.table('test.csv')", { readResult: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] });
+		testQuery('gzfile', 'gzfile("this is my gzip file :)", "test.gz")', { readResult: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
+		testQuery('With Argument', 'gzfile(open="test.gz",description="this is my gzip file :)")', { readResult: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
 
-		testQuery('unknown read', 'read.table(x)', { readData: [{ nodeId: '1@read.table', functionName: 'read.table', source: 'unknown', lexemeOfArgument: 'x' }] });
+		testQuery('unknown read', 'read.table(x)', { readResult: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'unknown', lexemeOfArgument: 'x' }] });
 
-		testQuery('single read (variable)', 'x <- "test.csv"; read.table(x)', { readData: [{ nodeId: '1@read.table', functionName: 'read.table', source: 'test.csv' }] });
+		testQuery('single read (variable)', 'x <- "test.csv"; read.table(x)', { readResult: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] });
 
 		describe('Only if file parameter', () => {
-			testQuery('parse', 'parse(file="test.R")', { readData: [{ nodeId: '1@parse', functionName: 'parse', source: 'test.R' }] });
+			testQuery('parse', 'parse(file="test.R")', { readResult: [{ nodeId: '1@parse', functionName: 'parse', value: 'test.R' }] });
 			testQuery('parse text', 'parse(text="test.R")', { });
 		});
 
@@ -266,15 +264,15 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				readFunctions: [{ name: 'read.custom.file', argIdx: 1, argName: 'file' }]
 			};
 			const expected: Partial<DependenciesQueryResult> = {
-				readData: [{ nodeId: '1@read.custom.file', functionName: 'read.custom.file', source: 'my-custom-file' }]
+				readResult: [{ nodeId: '1@read.custom.file', functionName: 'read.custom.file', value: 'my-custom-file' }]
 			};
 			testQuery('Custom (by index)', 'read.custom.file(1, "my-custom-file", 2)', expected, readCustomFile);
 			testQuery('Custom (by name)', 'read.custom.file(num1 = 1, num2 = 2, file = "my-custom-file")', expected, readCustomFile);
 			testQuery('Ignore default', "read.table('test.csv')", {}, { ignoreDefaultFunctions: true });
-			testQuery('Disabled', "read.table('test.csv')", {}, { enabledCategories: [DependencyCategory.Library, DependencyCategory.Write, DependencyCategory.Source] });
+			testQuery('Disabled', "read.table('test.csv')", {}, { enabledCategories: ['library', 'write', 'source'] });
 			testQuery('Enabled', "read.table('test.csv')", {
-				readData: [{ nodeId: '1@read.table', functionName: 'read.table', source: 'test.csv' }]
-			}, { enabledCategories: [DependencyCategory.Read] });
+				readResult: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }]
+			}, { enabledCategories: ['read'] });
 		});
 	});
 
@@ -286,56 +284,56 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			'Export',
 			'windows'
 		]) {
-			testQuery(`${writeFn}`, `${writeFn}("a")` , { writtenData: [{ nodeId: `1@${writeFn}`, functionName: writeFn, destination: 'a' }] });
+			testQuery(`${writeFn}`, `${writeFn}("a")` , { writeResult: [{ nodeId: `1@${writeFn}`, functionName: writeFn, value: 'a' }] });
 		}
 
-		testQuery('visSave', 'visSave(obj, "a")' , { writtenData: [{ nodeId: '1@visSave', functionName: 'visSave', destination: 'a' }] });
-		testQuery('save_graph', 'save_graph(obj, "a")' , { writtenData: [{ nodeId: '1@save_graph', functionName: 'save_graph', destination: 'a' }] });
-		testQuery('export_graph', 'export_graph(file_name = "a")' , { writtenData: [{ nodeId: '1@export_graph', functionName: 'export_graph', destination: 'a' }] });
+		testQuery('visSave', 'visSave(obj, "a")' , { writeResult: [{ nodeId: '1@visSave', functionName: 'visSave', value: 'a' }] });
+		testQuery('save_graph', 'save_graph(obj, "a")' , { writeResult: [{ nodeId: '1@save_graph', functionName: 'save_graph', value: 'a' }] });
+		testQuery('export_graph', 'export_graph(file_name = "a")' , { writeResult: [{ nodeId: '1@export_graph', functionName: 'export_graph', value: 'a' }] });
 	
-		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { writtenData: [{ nodeId: '1@dump', functionName: 'dump', destination: 'MyTextFile.txt' }] });
-		testQuery('dump (argument)', 'dump(file="foo.txt", "foo")', { writtenData: [{ nodeId: '1@dump', functionName: 'dump', destination: 'foo.txt' }] });
-		testQuery('cat', 'cat("Hello!")', { writtenData: [{ nodeId: '1@cat', functionName: 'cat', destination: 'stdout' }] });
-		testQuery('cat with sink', 'sink("foo")\ncat("Hello!")', { writtenData: [{ nodeId: '2@cat', functionName: 'cat', destination: 'foo', linkedIds: [3] }] });
-		testQuery('multiple sinks', 'sink("x")\nk <- "k.txt"\nsink(k)\nprint("hey")', { writtenData: [
-			{ nodeId: '4@print', functionName: 'print', destination: 'k.txt', linkedIds: [10] }
+		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { writeResult: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt' }] });
+		testQuery('dump (argument)', 'dump(file="foo.txt", "foo")', { writeResult: [{ nodeId: '1@dump', functionName: 'dump', value: 'foo.txt' }] });
+		testQuery('cat', 'cat("Hello!")', { writeResult: [{ nodeId: '1@cat', functionName: 'cat', value: 'stdout' }] });
+		testQuery('cat with sink', 'sink("foo")\ncat("Hello!")', { writeResult: [{ nodeId: '2@cat', functionName: 'cat', value: 'foo', linkedIds: [3] }] });
+		testQuery('multiple sinks', 'sink("x")\nk <- "k.txt"\nsink(k)\nprint("hey")', { writeResult: [
+			{ nodeId: '4@print', functionName: 'print', value: 'k.txt', linkedIds: [10] }
 		] });
-		testQuery('cat with empty sink', 'sink()\ncat("Hello!")', { writtenData: [{ nodeId: '2@cat', functionName: 'cat', destination: 'stdout', linkedIds: [1] }] });
-		testQuery('cat 2 args', 'cat("Hello", "World")', { writtenData: [{ nodeId: '1@cat', functionName: 'cat', destination: 'stdout' }] });
-		testQuery('cat 2 args with file', 'cat("Hello", "World", file="foo.txt")', { writtenData: [{ nodeId: '1@cat', functionName: 'cat', destination: 'foo.txt' }] });
-		testQuery('cat many args', 'cat(a, b, c, d, e, file)', { writtenData: [{ nodeId: '1@cat', functionName: 'cat', destination: 'stdout' }] });
+		testQuery('cat with empty sink', 'sink()\ncat("Hello!")', { writeResult: [{ nodeId: '2@cat', functionName: 'cat', value: 'stdout', linkedIds: [1] }] });
+		testQuery('cat 2 args', 'cat("Hello", "World")', { writeResult: [{ nodeId: '1@cat', functionName: 'cat', value: 'stdout' }] });
+		testQuery('cat 2 args with file', 'cat("Hello", "World", file="foo.txt")', { writeResult: [{ nodeId: '1@cat', functionName: 'cat', value: 'foo.txt' }] });
+		testQuery('cat many args', 'cat(a, b, c, d, e, file)', { writeResult: [{ nodeId: '1@cat', functionName: 'cat', value: 'stdout' }] });
 
-		testQuery('Unknown write', 'write.csv(data, file=u)', { writtenData: [{ nodeId: '1@write.csv', functionName: 'write.csv', destination: 'unknown', lexemeOfArgument: 'u' }] });
-		testQuery('File save', 'save(foo,file="a.Rda")', { writtenData: [{ nodeId: '1@save', functionName: 'save', destination: 'a.Rda' }] });
+		testQuery('Unknown write', 'write.csv(data, file=u)', { writeResult: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'unknown', lexemeOfArgument: 'u' }] });
+		testQuery('File save', 'save(foo,file="a.Rda")', { writeResult: [{ nodeId: '1@save', functionName: 'save', value: 'a.Rda' }] });
 
-		testQuery('single write (variable)', 'u <- "test.csv"; write.csv(data, file=u)', { writtenData: [{ nodeId: '1@write.csv', functionName: 'write.csv', destination: 'test.csv' }] });
+		testQuery('single write (variable)', 'u <- "test.csv"; write.csv(data, file=u)', { writeResult: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'test.csv' }] });
 
 		describe('Custom', () => {
 			const writeCustomFile: Partial<DependenciesQuery> = {
 				writeFunctions: [{ name: 'write.custom.file', argIdx: 1, argName: 'file' }]
 			};
 			const expected: Partial<DependenciesQueryResult> = {
-				writtenData: [{ nodeId: '1@write.custom.file', functionName: 'write.custom.file', destination: 'my-custom-file' }]
+				writeResult: [{ nodeId: '1@write.custom.file', functionName: 'write.custom.file', value: 'my-custom-file' }]
 			};
 			testQuery('Custom (by index)', 'write.custom.file(1, "my-custom-file", 2)', expected, writeCustomFile);
 			testQuery('Custom (by name)', 'write.custom.file(num1 = 1, num2 = 2, file = "my-custom-file")', expected, writeCustomFile);
 			testQuery('Ignore default', 'dump("My text", "MyTextFile.txt")', {}, { ignoreDefaultFunctions: true });
-			testQuery('Disabled', 'dump("My text", "MyTextFile.txt")', {}, { enabledCategories: [DependencyCategory.Library, DependencyCategory.Read, DependencyCategory.Source] });
+			testQuery('Disabled', 'dump("My text", "MyTextFile.txt")', {}, { enabledCategories: ['library', 'read', 'source'] });
 			testQuery('Disabled', 'dump("My text", "MyTextFile.txt")', {
-				writtenData: [{ nodeId: '1@dump', functionName: 'dump', destination: 'MyTextFile.txt' }]
-			}, { enabledCategories: [DependencyCategory.Write] });
+				writeResult: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt' }]
+			}, { enabledCategories: ['write'] });
 		});
 	});
 
 	describe('Visualize', () => {
 		describe('Creation', () => {
 			for(const f of ['ggplot', 'tinyplot', 'plot', 'bootcurve']) {
-				testQuery(f, `${f}()` , { visualizeCalls: [{ nodeId: `1@${f}`, functionName: f }] });
+				testQuery(f, `${f}()` , { visualizeResult: [{ nodeId: `1@${f}`, functionName: f }] });
 			}
 		});
 		describe('Modification', () => {
 			for(const f of ['coord_trans', 'scale_colour_hue', 'tinyplot_add']) {
-				testQuery(f, `plot()\n${f}(x, y, z)`, { visualizeCalls: [
+				testQuery(f, `plot()\n${f}(x, y, z)`, { visualizeResult: [
 					{ nodeId: '1@plot', functionName: 'plot' },
 					{ nodeId: `2@${f}`, functionName: f, linkedIds: [1] }
 				] });
@@ -346,21 +344,21 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	describe('With file connections', () => {
 		for(const ro of ['r', 'rb', 'rt'] as const) {
 			testQuery('read only file connection', `file("test.txt", "${ro}")`, {
-				readData: [{ nodeId: '1@file', functionName: 'file', source: 'test.txt' }]
+				readResult: [{ nodeId: '1@file', functionName: 'file', value: 'test.txt' }]
 			});
 		}
 		for(const wo of ['w', 'wb', 'wt', 'a', 'ab', 'at',] as const) {
 			testQuery('write only file connection', `file("test.txt", "${wo}")`, {
-				writtenData: [{ nodeId: '1@file', functionName: 'file', destination: 'test.txt' }]
+				writeResult: [{ nodeId: '1@file', functionName: 'file', value: 'test.txt' }]
 			});
 		}
 	});
 
 	describe('Overwritten Function', () => {
 		testQuery('read.csv (overwritten by user)', "read.csv <- function(a) print(a); read.csv('test.csv')", { 
-			readData:    [],
-			writtenData: [{
-				destination:  'stdout',
+			readResult:  [],
+			writeResult: [{
+				value:        'stdout',
 				functionName: 'print',
 				nodeId:       '1@print'
 			}]

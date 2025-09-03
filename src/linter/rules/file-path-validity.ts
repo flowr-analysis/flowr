@@ -5,7 +5,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import type { SourceRange } from '../../util/range';
 import { formatRange } from '../../util/mermaid/dfg';
-import { DependencyCategory, Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { Ternary } from '../../util/logic';
@@ -47,7 +47,7 @@ export interface FilePathValidityMetadata extends MergeableRecord {
 export const FILE_PATH_VALIDITY = {
 	createSearch: (config) => Q.fromQuery({
 		type:              'dependencies',
-		enabledCategories: [DependencyCategory.Read, DependencyCategory.Write],
+		enabledCategories: ['read', 'write'],
 		readFunctions:     config.additionalReadFunctions,
 		writeFunctions:    config.additionalWriteFunctions
 	}).with(Enrichment.CfgInformation),
@@ -62,7 +62,7 @@ export const FILE_PATH_VALIDITY = {
 		return {
 			results: elements.getElements().flatMap(element => {
 				const results = elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'];
-				const matchingRead = results.readData.find(r => r.nodeId == element.node.info.id);
+				const matchingRead = results.readResult.find(r => r.nodeId == element.node.info.id);
 				if(!matchingRead) {
 					return [];
 				}
@@ -70,7 +70,7 @@ export const FILE_PATH_VALIDITY = {
 				const range = element.node.info.fullRange as SourceRange;
 
 				// check if we can't parse the file path statically
-				if(matchingRead.source === Unknown) {
+				if(matchingRead.value === Unknown) {
 					metadata.totalUnknown++;
 					if(config.includeUnknown) {
 						return [{
@@ -84,7 +84,7 @@ export const FILE_PATH_VALIDITY = {
 				}
 
 				// check if any write to the same file happens before the read, and exclude this case if so
-				const writesToFile = results.writtenData.filter(r => samePath(r.destination, matchingRead.source, data.config.solver.resolveSource?.ignoreCapitalization));
+				const writesToFile = results.writeResult.filter(r => samePath(r.value as string, matchingRead.value as string, data.config.solver.resolveSource?.ignoreCapitalization));
 				const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, element.node.info.id));
 				if(writesBefore.some(w => w === Ternary.Always)) {
 					metadata.totalWritesBeforeAlways++;
@@ -92,7 +92,7 @@ export const FILE_PATH_VALIDITY = {
 				}
 
 				// check if the file exists!
-				const paths = findSource(data.config.solver.resolveSource, matchingRead.source, {
+				const paths = findSource(data.config.solver.resolveSource, matchingRead.value as string, {
 					referenceChain: element.node.info.file ? [requestFromInput(`file://${element.node.info.file}`)] : []
 				});
 				if(paths && paths.length) {
@@ -102,7 +102,7 @@ export const FILE_PATH_VALIDITY = {
 
 				return [{
 					range,
-					filePath:  matchingRead.source,
+					filePath:  matchingRead.value as string,
 					certainty: writesBefore && writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain
 				}];
 			}),

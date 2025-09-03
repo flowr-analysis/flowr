@@ -1,4 +1,4 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SupportedQuery } from '../../query';
 import { bold } from '../../../util/text/ansi';
@@ -6,34 +6,76 @@ import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeDependenciesQuery } from './dependencies-query-executor';
 import type { FunctionInfo } from './function-info/function-info';
+import { LibraryFunctions } from './function-info/library-functions';
+import { SourceFunctions } from './function-info/source-functions';
+import { ReadFunctions } from './function-info/read-functions';
+import { WriteFunctions } from './function-info/write-functions';
+import { VisualizeFunctions } from './function-info/visualize-functions';
+import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
+import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 
 export const Unknown = 'unknown';
 
-export enum DependencyCategory {
-    Library = 'library',
-    Source = 'source',
-    Read = 'read',
-    Write = 'write',
-    Visualize = 'visualize'
-}
-export interface DependenciesQuery extends BaseQueryFormat {
-    readonly type:                    'dependencies'
-    readonly enabledCategories?:      DependencyCategory[]
-    readonly ignoreDefaultFunctions?: boolean
-    readonly libraryFunctions?:       FunctionInfo[]
-    readonly sourceFunctions?:        FunctionInfo[]
-    readonly readFunctions?:          FunctionInfo[]
-    readonly writeFunctions?:         FunctionInfo[]
-    readonly visualizeFunctions?:     FunctionInfo[]
+export interface DependencyCategorySettings {
+    queryDisplayName:    string
+    defaultFunctions:    FunctionInfo[]
+    defaultValue:        string | undefined
+    additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => void
 }
 
-export interface DependenciesQueryResult extends BaseQueryResult {
-    libraries:      LibraryInfo[]
-    sourcedFiles:   SourceInfo[]
-    readData:       ReadInfo[]
-    writtenData:    WriteInfo[]
-    visualizeCalls: DependencyInfo[]
-}
+export const DependencyCategories = {
+	'library': {
+		queryDisplayName:   'Libraries',
+		defaultFunctions:   LibraryFunctions,
+		defaultValue:       Unknown,
+		/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
+		additionalAnalysis: (data, ignoreDefault, _functions, _queryResults, result) => {
+			if(!ignoreDefault) {
+				visitAst(data.ast.ast, n => {
+					if(n.type === RType.Symbol && n.namespace) {
+						/* we should improve the identification of ':::' */
+						result.push({
+							nodeId:       n.info.id,
+							functionName: (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
+							value:        n.namespace,
+						});
+					}
+				});
+			}
+		}
+	},
+	'source': {
+		queryDisplayName: 'Sourced Files',
+		defaultFunctions: SourceFunctions,
+		defaultValue:     Unknown
+	},
+	'read': {
+		queryDisplayName: 'Read Data',
+		defaultFunctions: ReadFunctions,
+		defaultValue:     Unknown
+	},
+	'write': {
+		queryDisplayName: 'Written Data',
+		defaultFunctions: WriteFunctions,
+		defaultValue:     'stdout'
+	},
+	'visualize': {
+		queryDisplayName: 'Visualizations',
+		defaultFunctions: VisualizeFunctions,
+		defaultValue:     undefined
+	}
+} as const satisfies Record<string, DependencyCategorySettings>;
+export type DependencyCategoryName = keyof typeof DependencyCategories;
+
+export type DependenciesQuery = BaseQueryFormat & {
+    readonly type:                    'dependencies'
+    readonly enabledCategories?:      DependencyCategoryName[]
+    readonly ignoreDefaultFunctions?: boolean
+} & { [C in `${keyof typeof DependencyCategories}Functions`]?: FunctionInfo[] }
+
+export type DependenciesQueryResult = BaseQueryResult & { [C in `${DependencyCategoryName}Result`]: DependencyInfo[] }
+
 
 export interface DependencyInfo extends Record<string, unknown>{
     nodeId:         NodeId
@@ -41,18 +83,16 @@ export interface DependencyInfo extends Record<string, unknown>{
     linkedIds?:     readonly NodeId[]
 	/** the lexeme is presented whenever the specific info is of {@link Unknown} */
 	lexemeOfArgument?: string;
+    /** The library name, file, source, destination etc. being sourced, read from, or written to. */
+    value?:         string
 }
-export type LibraryInfo = (DependencyInfo & { libraryName: 'unknown' | string })
-export type SourceInfo = (DependencyInfo & { file: string })
-export type ReadInfo = (DependencyInfo & { source: string })
-export type WriteInfo = (DependencyInfo & { destination: 'stdout' | string })
 
-function printResultSection<T extends DependencyInfo>(title: string, infos: T[], result: string[], sectionSpecifics?: (info: T) => string): void {
+function printResultSection(title: string, infos: DependencyInfo[], result: string[]): void {
 	if(infos.length <= 0) {
 		return;
 	}
 	result.push(`   ╰ ${title}`);
-	const grouped = infos.reduce(function(groups: Map<string, T[]>, i) {
+	const grouped = infos.reduce(function(groups: Map<string, DependencyInfo[]>, i) {
 		const array = groups.get(i.functionName);
 		if(array) {
 			array.push(i);
@@ -60,10 +100,10 @@ function printResultSection<T extends DependencyInfo>(title: string, infos: T[],
 			groups.set(i.functionName, [i]);
 		}
 		return groups;
-	}, new Map<string, T[]>());
+	}, new Map<string, DependencyInfo[]>());
 	for(const [functionName, infos] of grouped) {
 		result.push(`       ╰ \`${functionName}\``);
-		result.push(infos.map(i => `           ╰ Node Id: ${i.nodeId}${sectionSpecifics !== undefined ? `, ${sectionSpecifics(i)}` : ''}`).join('\n'));
+		result.push(infos.map(i => `           ╰ Node Id: ${i.nodeId}${i.value !== undefined ? `, \`${i.value}\`` : ''}`).join('\n'));
 	}
 }
 
@@ -79,27 +119,21 @@ export const DependenciesQueryDefinition = {
 	asciiSummarizer: (formatter, _processed, queryResults, result) => {
 		const out = queryResults as DependenciesQueryResult;
 		result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		printResultSection('Libraries', out.libraries, result, l => `\`${l.libraryName}\``);
-		printResultSection('Sourced Files', out.sourcedFiles, result, s => `\`${s.file}\``);
-		printResultSection('Read Data', out.readData, result, r => `\`${r.source}\``);
-		printResultSection('Written Data', out.writtenData, result, w => `\`${w.destination}\``);
-		printResultSection('Visualizations', out.visualizeCalls, result);
+		for(const [category, value] of Object.entries(DependencyCategories)) {
+			printResultSection(value.queryDisplayName, out[`${category as DependencyCategoryName}Result`], result);
+		}
 		return true;
 	},
 	schema: Joi.object({
 		type:                   Joi.string().valid('dependencies').required().description('The type of the query.'),
 		ignoreDefaultFunctions: Joi.boolean().optional().description('Should the set of functions that are detected by default be ignored/skipped? Defaults to false.'),
-		libraryFunctions:       functionInfoSchema.description('The set of library functions to search for.'),
-		sourceFunctions:        functionInfoSchema.description('The set of source functions to search for.'),
-		readFunctions:          functionInfoSchema.description('The set of data reading functions to search for.'),
-		writeFunctions:         functionInfoSchema.description('The set of data writing functions to search for.'),
-		visualizeFunctions:     functionInfoSchema.description('The set of visualization functions to search for.'),
+		...Object.fromEntries(Object.keys(DependencyCategories).map(c => [`${c}Functions`, functionInfoSchema.description(`The set of ${c} functions to search for.`)])),
 		enabledCategories:      Joi.array().optional().items(
-			Joi.string().valid(...Object.values(DependencyCategory))
+			Joi.string().valid(...Object.keys(DependencyCategories))
 		).description('A set of flags that determines what types of dependencies are searched for. If unset or empty, all dependency types are searched for.'),
 	}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as DependenciesQueryResult;
-		return [...out.libraries, ...out.sourcedFiles, ...out.readData, ...out.writtenData, ...out.visualizeCalls].map(o => o.nodeId);
+		return Object.keys(DependencyCategories).flatMap(c => out[`${c as DependencyCategoryName}Result`]).map(o => o.nodeId);
 	}
 } as const satisfies SupportedQuery<'dependencies'>;

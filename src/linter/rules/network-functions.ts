@@ -5,12 +5,11 @@ import { LintingRuleTag } from '../linter-tags';
 import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import type { MergeableRecord } from '../../util/objects';
 
-interface NetworkFunctionsConfig extends MergeableRecord {
+export interface NetworkFunctionsConfig extends MergeableRecord {
     /** The list of function names that should be marked in the given context if their arguments match. */
     fns:                      readonly string[]
     /** only trigger if the function's read argument is linked to a value that matches this pattern */
     onlyTriggerWithArgument?: RegExp | string
-
 }
 
 export const NETWORK_FUNCTIONS = {

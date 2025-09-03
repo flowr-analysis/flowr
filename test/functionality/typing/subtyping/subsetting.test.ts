@@ -101,4 +101,11 @@ describe('Infer types for subsetting expressions', () => {
 		{ query: Q.var('o').last().build(),                    upperBound: new RS4Type() },
 		{ query: Q.all().filter(RType.Access).first().build(), expectedType: new RTypeVariable() },
 	);
+
+	assertInferredTypes(
+		'v <- c(); v[1]; v',
+		undefined,
+		// This test result is expected but suboptimal :(
+		{ query: Q.var('v').last().build(), expectedType: new RAtomicVectorType(new RTypeUnion()) },
+	);
 });

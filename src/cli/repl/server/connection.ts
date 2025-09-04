@@ -256,14 +256,11 @@ export class FlowRServerConnection {
 		}
 
 		try {
-			// TODO TSchoeller Previously, this did update the slice request
 			const result = await fileInformation.analyzer.query([{
 				type:            'static-slice',
 				criteria:        request.criterion,
 				noMagicComments: request.noMagicComments,
-				// TODO TSchoeller autoSelectIf -> How to pass?
-				// direction: request.direction
-				//autoSelectIf:    request.noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
+				direction: 		    request.direction
 			}]);
 
 			sendMessage<SliceResponseMessage>(this.socket, {

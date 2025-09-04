@@ -10,8 +10,6 @@ import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-q
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { Ternary } from '../../util/logic';
 import { requestFromInput } from '../../r-bridge/retriever';
-import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
-import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 import { happensBefore } from '../../control-flow/happens-before';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { LintingRuleTag } from '../linter-tags';
@@ -48,16 +46,12 @@ export interface FilePathValidityMetadata extends MergeableRecord {
 
 export const FILE_PATH_VALIDITY = {
 	createSearch: (config) => Q.fromQuery({
-		type:                   'dependencies',
-		// we only want to check read and write functions, so we explicitly clear all others
-		ignoreDefaultFunctions: true,
-		readFunctions:          ReadFunctions.concat(config.additionalReadFunctions),
-		writeFunctions:         WriteFunctions.concat(config.additionalWriteFunctions)
+		type:              'dependencies',
+		enabledCategories: ['read', 'write'],
+		readFunctions:     config.additionalReadFunctions,
+		writeFunctions:    config.additionalWriteFunctions
 	}).with(Enrichment.CfgInformation),
-	processSearchResult: async(elements, config, data): Promise<{
-		results: FilePathValidityResult[],
-		'.meta': FilePathValidityMetadata
-	}> => {
+	processSearchResult: async(elements, config, data): Promise<{ results: FilePathValidityResult[], '.meta': FilePathValidityMetadata }> => {
 		const cfg = elements.enrichmentContent(Enrichment.CfgInformation).cfg.graph;
 		const metadata: FilePathValidityMetadata = {
 			totalReads:              0,
@@ -68,7 +62,7 @@ export const FILE_PATH_VALIDITY = {
 		const results = await elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'];
 		return {
 			results: elements.getElements().flatMap(element => {
-				const matchingRead = results.readData.find(r => r.nodeId == element.node.info.id);
+				const matchingRead = results.read.find(r => r.nodeId == element.node.info.id);
 				if(!matchingRead) {
 					return [];
 				}
@@ -76,7 +70,7 @@ export const FILE_PATH_VALIDITY = {
 				const range = element.node.info.fullRange as SourceRange;
 
 				// check if we can't parse the file path statically
-				if(matchingRead.source === Unknown) {
+				if(matchingRead.value === Unknown) {
 					metadata.totalUnknown++;
 					if(config.includeUnknown) {
 						return [{
@@ -90,7 +84,7 @@ export const FILE_PATH_VALIDITY = {
 				}
 
 				// check if any write to the same file happens before the read, and exclude this case if so
-				const writesToFile = results.writtenData.filter(r => samePath(r.destination, matchingRead.source, data.config.solver.resolveSource?.ignoreCapitalization));
+				const writesToFile = results.write.filter(r => samePath(r.value as string, matchingRead.value as string, data.config.solver.resolveSource?.ignoreCapitalization));
 				const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, element.node.info.id));
 				if(writesBefore.some(w => w === Ternary.Always)) {
 					metadata.totalWritesBeforeAlways++;
@@ -98,7 +92,7 @@ export const FILE_PATH_VALIDITY = {
 				}
 
 				// check if the file exists!
-				const paths = findSource(data.config.solver.resolveSource, matchingRead.source, {
+				const paths = findSource(data.config.solver.resolveSource, matchingRead.value as string, {
 					referenceChain: element.node.info.file ? [requestFromInput(`file://${element.node.info.file}`)] : []
 				});
 				if(paths && paths.length) {
@@ -108,7 +102,7 @@ export const FILE_PATH_VALIDITY = {
 
 				return [{
 					range,
-					filePath:  matchingRead.source,
+					filePath:  matchingRead.value as string,
 					certainty: writesBefore && writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain
 				}];
 			}),

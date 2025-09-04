@@ -3,8 +3,8 @@ import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
 	CallContextQueryResult,
-	CallContextQuerySubKindResult,
-	FileFilter,
+	CallContextQuerySubKindResult, CallNameTypes,
+	FileFilter, LinkTo,
 	SubCallContextQueryFormat
 } from './call-context-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -57,38 +57,51 @@ function exactCallNameRegex(name: RegExp | string): RegExp {
 	return new RegExp(`^(${name})$`);
 }
 
-function promoteQueryCallNames(queries: readonly CallContextQuery[]): { promotedQueries: CallContextQuery<RegExp>[], requiresCfg: boolean } {
+export function promoteCallName(callName: CallNameTypes, exact = false): RegExp | Set<string> {
+	return Array.isArray(callName) ? new Set<string>(callName) : exact ? exactCallNameRegex(callName) : new RegExp(callName);
+}
+
+// when promoting queries, we convert all strings to regexes, and all string arrays to string sets
+type PromotedQuery = Omit<CallContextQuery, 'callName' | 'fileFilter' | 'linkTo'> & {
+    callName:    RegExp | Set<string>,
+    fileFilter?: FileFilter<RegExp | Set<string>>,
+    linkTo?:     PromotedLinkTo | PromotedLinkTo[]
+};
+export type PromotedLinkTo = Omit<LinkTo, 'callName'> & {callName: RegExp | Set<string>}
+
+function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
+    promotedQueries: PromotedQuery[],
+    requiresCfg:     boolean
+} {
 	let requiresCfg = false;
-	const promotedQueries = queries.map(q => {
+	const promotedQueries: PromotedQuery[] = queries.map(q => {
 		if(isSubCallQuery(q)) {
 			requiresCfg = true;
 			return {
 				...q,
-				callName: q.callNameExact ? exactCallNameRegex(q.callName)
-					: new RegExp(q.callName),
+				callName:   promoteCallName(q.callName, q.callNameExact),
 				fileFilter: q.fileFilter && {
 					...q.fileFilter,
-					filter: new RegExp(q.fileFilter.filter)
+					filter: promoteCallName(q.fileFilter.filter)
 				},
 				linkTo: Array.isArray(q.linkTo) ? q.linkTo.map(l => ({
 					...l,
-					callName: new RegExp(l.callName)
+					callName: promoteCallName(l.callName)
 				})) : {
 					...q.linkTo,
 					/* we have to add another promotion layer whenever we add something without this call name */
-					callName: new RegExp(q.linkTo.callName)
+					callName: promoteCallName(q.linkTo.callName)
 				}
-			};
+			} satisfies PromotedQuery;
 		} else {
 			return {
 				...q,
-				callName: q.callNameExact ? exactCallNameRegex(q.callName)
-					: new RegExp(q.callName),
+				callName:   promoteCallName(q.callName, q.callNameExact),
 				fileFilter: q.fileFilter && {
 					...q.fileFilter,
-					filter: new RegExp(q.fileFilter.filter)
+					filter: promoteCallName(q.fileFilter.filter)
 				}
-			};
+			} satisfies PromotedQuery;
 		}
 	});
 
@@ -169,14 +182,14 @@ function removeIdenticalDuplicates(collector: TwoLayerCollector<string, string, 
 	}
 }
 
-function doesFilepathMatch(file: string | undefined, filter: FileFilter<RegExp> | undefined): boolean {
+function doesFilepathMatch(file: string | undefined, filter: FileFilter<RegExp | Set<string>> | undefined): boolean {
 	if(filter === undefined) {
 		return true;
 	}
 	if(file === undefined) {
 		return filter.includeUndefinedFiles ?? true;
 	}
-	return filter.filter.test(file);
+	return filter.filter instanceof RegExp ? filter.filter.test(file) : filter.filter.has(file);
 }
 
 function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
@@ -232,18 +245,14 @@ export async function executeCallContextQueries({ input }: BasicQueryData, queri
 			const targets = retrieveAllCallAliases(nodeId, dataflow.graph);
 			for(const [l, ids] of targets.entries()) {
 				for(const query of queriesWhichWantAliases) {
-					if(query.callName.test(l)) {
-						initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({
-							id:         nodeId,
-							name:       info.name,
-							aliasRoots: ids
-						}));
+					if(query.callName instanceof RegExp ? query.callName.test(l) : query.callName.has(l)) {
+						initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({ id: nodeId, name: info.name, aliasRoots: ids }));
 					}
 				}
 			}
 		}
 
-		for(const query of promotedQueries.filter(q => !q.includeAliases && q.callName.test(info.name))) {
+		for(const query of promotedQueries.filter(q => !q.includeAliases && (q.callName instanceof RegExp ? q.callName.test(info.name) : q.callName.has(info.name)))) {
 			const file = ast.idMap.get(nodeId)?.info.file;
 			if(!doesFilepathMatch(file, query.fileFilter)) {
 				continue;
@@ -263,7 +272,7 @@ export async function executeCallContextQueries({ input }: BasicQueryData, queri
 				continue;
 			}
 			let linkedIds: Set<NodeId | { id: NodeId, info: object }> | undefined = undefined;
-			if(cfg && isSubCallQuery(query)) {
+			if(cfg && 'linkTo' in query && query.linkTo !== undefined) {
 				const linked = Array.isArray(query.linkTo) ? query.linkTo : [query.linkTo];
 				for(const link of linked) {
 					/* if we have a linkTo query, we have to find the last call */

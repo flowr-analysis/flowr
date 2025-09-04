@@ -32,6 +32,17 @@ describe.sequential('Simple', withShell(shell => {
 			);
 		});
 	}
+	describe('Assignments with the assign function', () => {
+		assertSliced(label('assign to string', []),
+			shell, 'x <- "a"\nassign(x, 3)\nprint(a)', ['3@a'], 'x <- "a"\nassign(x, 3)\na'
+		);
+		assertSliced(label('assign to string jump', []),
+			shell, 'x <- "a"\nassign(x, 3)\nprint(x)', ['3@x'], 'x <- "a"\nx'
+		);
+		assertSliced(label('assign to other string', []),
+			shell, 'x <- "b"\nassign(x, 3)\nprint(a)', ['3@a'], 'a'
+		);
+	});
 	describe('Constant conditionals', () => {
 		assertSliced(label('if(TRUE)', ['name-normal', 'logical', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'if']),
 			shell, 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'x <- 3\nx'

@@ -93,13 +93,13 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
 	completer?:           (splitLine: readonly string[], config: FlowrConfigOptions) => string[]
     /** optional query construction from an, e.g., repl line */
 	fromLine?:            (splitLine: readonly string[], config: FlowrConfigOptions) => Query | Query[] | undefined
-	asciiSummarizer:      (formatter: OutputFormatter, processed: {dataflow: DataflowInformation, normalize: NormalizedAst}, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
+	asciiSummarizer:      (formatter: OutputFormatter, processed: {dataflow: DataflowInformation, normalize: NormalizedAst}, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => boolean
 	schema:               Joi.ObjectSchema
 	/**
 	 * Flattens the involved query nodes to be added to a flowR search when the {@link fromQuery} function is used based on the given result after this query is executed.
 	 * If this query does not involve any nodes, an empty array can be returned.
 	 */
-	flattenInvolvedNodes: (queryResults: BaseQueryResult) => NodeId[]
+	flattenInvolvedNodes: (queryResults: BaseQueryResult, query: readonly Query[]) => NodeId[]
 }
 
 export const SupportedQueries = {

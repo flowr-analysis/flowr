@@ -1,5 +1,5 @@
 import type { RShell } from '../../r-bridge/shell';
-import type { Queries, QueryResults, SupportedQueryTypes } from '../../queries/query';
+import type { Queries, SupportedQueryTypes } from '../../queries/query';
 import { executeQueries } from '../../queries/query';
 import { requestFromInput } from '../../r-bridge/retriever';
 import { jsonReplacer } from '../../util/json';
@@ -51,7 +51,7 @@ ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary
 _Results (prettified and summarized):_
 
 ${
-	asciiSummaryOfQueryResult(markdownFormatter, duration, results as QueryResults<SupportedQueryTypes>, { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalizedAst() })
+	asciiSummaryOfQueryResult(markdownFormatter, duration, results, { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalizedAst() }, queries)
 }
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>

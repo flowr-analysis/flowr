@@ -14,7 +14,7 @@ import {
 	identifyLinkToLastCallRelation
 } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { guard, isNotUndefined } from '../../util/assert';
-import { extractCfgQuick } from '../../control-flow/extract-cfg';
+import { extractCfg, extractCfgQuick } from '../../control-flow/extract-cfg';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
@@ -24,6 +24,7 @@ import { cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../contro
 import type { AsyncOrSync, AsyncOrSyncType } from 'ts-essentials';
 import type { FlowrAnalysisInput } from '../../project/flowr-analyzer';
 import type { DataflowInformation } from '../../dataflow/info';
+import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
@@ -164,7 +165,7 @@ export const Enrichments = {
 				for(const arg of args) {
 					const lastCalls = identifyLinkToLastCallRelation(vertex[0].id, cfg.graph, data.dataflow.graph, {
 						...arg,
-						callName: new RegExp(arg.callName),
+						callName: promoteCallName(arg.callName),
 						type:     'link-to-last-call',
 					});
 					for(const lastCall of lastCalls) {
@@ -200,7 +201,7 @@ export const Enrichments = {
 
 			const content: CfgInformationSearchContent = {
 				...prev,
-				cfg: await data.controlFlow(args.simplificationPasses, true),
+				cfg: extractCfg(await data.normalizedAst(), data.flowrConfig, (await data.dataflow()).graph, args.simplificationPasses),
 			};
 			if(args.checkReachable) {
 				content.reachableNodes = cfgFindAllReachable(content.cfg);

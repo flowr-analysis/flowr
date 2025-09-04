@@ -1,6 +1,6 @@
 import type { OutputFormatter } from '../util/text/ansi';
 import { bold, italic, markdownFormatter } from '../util/text/ansi';
-import type { QueryResult, QueryResults, SupportedQueryTypes } from './query';
+import type { Queries, Query, QueryResult, QueryResults, SupportedQueryTypes } from './query';
 import { SupportedQueries } from './query';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { textWithTooltip } from '../util/html-hover-over';
@@ -76,7 +76,7 @@ export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly 
 	return formatter === markdownFormatter ? textWithTooltip(acc, JSON.stringify(ids)) : acc;
 }
 
-export function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(formatter: OutputFormatter, totalInMs: number, results: Awaited<QueryResults<S>>, processed: {dataflow: DataflowInformation, normalize: NormalizedAst}): string {
+export function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(formatter: OutputFormatter, totalInMs: number, results: QueryResults<S>, processed: {dataflow: DataflowInformation, normalize: NormalizedAst}, queries: Queries<S>): string {
 	const result: string[] = [];
 
 	for(const [query, queryResults] of Object.entries(results)) {
@@ -85,7 +85,8 @@ export function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(formatt
 		}
 
 		const queryType = SupportedQueries[query as SupportedQueryTypes];
-		if(queryType.asciiSummarizer(formatter, processed, queryResults as BaseQueryResult, result)) {
+		const relevantQueries = queries.filter(q => q.type === query as SupportedQueryTypes) as Query[];
+		if(queryType.asciiSummarizer(formatter, processed, queryResults as BaseQueryResult, result, relevantQueries)) {
 			continue;
 		}
 

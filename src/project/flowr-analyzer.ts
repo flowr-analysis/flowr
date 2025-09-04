@@ -15,12 +15,18 @@ import type { DataflowInformation } from '../dataflow/info';
 import type { CfgSimplificationPassName } from '../control-flow/cfg-simplification';
 import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
 import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize';
+import { ArrayMap } from '../util/collections/arraymap';
 
 export type FlowrAnalysisInput = {
 	normalizedAst(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation>;
 	dataflow(force?: boolean): Promise<DataflowInformation & PipelinePerStepMetaInformation>;
 	controlFlow(simplifications?: readonly CfgSimplificationPassName[], useDataflow?: boolean, force?: boolean): Promise<ControlFlowInformation>;
 	flowrConfig: FlowrConfigOptions;
+}
+
+interface ControlFlowCache {
+	simplified: ArrayMap<CfgSimplificationPassName, ControlFlowInformation>,
+	quick: 		   ControlFlowInformation
 }
 
 export class FlowrAnalyzer {
@@ -32,8 +38,10 @@ export class FlowrAnalyzer {
 	private parse = undefined as unknown as ParseStepOutput<any>;
 	private ast = undefined as unknown as NormalizedAst;
 	private dataflowInfo = undefined as unknown as DataflowInformation;
-	private controlFlowInfo = undefined as unknown as ControlFlowInformation;
-	private simpleControlFlowInfo = undefined as unknown as ControlFlowInformation; // TODO Differentiate between simple and regular CFG
+	private controlFlowInfos: ControlFlowCache = {
+		simplified: new ArrayMap<CfgSimplificationPassName, ControlFlowInformation>(),
+		quick:      undefined as unknown as ControlFlowInformation
+	};
 
 	constructor(config: FlowrConfigOptions, parser: KnownParser, request: RParseRequests, requiredInput: Omit<NormalizeRequiredInput, 'request'>) {
 		this.flowrConfig = config;
@@ -45,7 +53,10 @@ export class FlowrAnalyzer {
 	public reset() {
 		this.ast = undefined as unknown as NormalizedAst;
 		this.dataflowInfo = undefined as unknown as DataflowInformation;
-		this.controlFlowInfo = undefined as unknown as ControlFlowInformation;
+		this.controlFlowInfos = { 
+			simplified: new ArrayMap<CfgSimplificationPassName, ControlFlowInformation>(),
+			quick:      undefined as unknown as ControlFlowInformation
+		};
 	}
 
 	public parserName(): string {
@@ -109,8 +120,11 @@ export class FlowrAnalyzer {
 	}
 
 	public async controlFlow(simplifications?: readonly CfgSimplificationPassName[], useDataflow?: boolean, force?: boolean): Promise<ControlFlowInformation> {
-		if(this.controlFlowInfo && !force) {
-			return this.controlFlowInfo;
+		if(!force) {
+			const value = this.controlFlowInfos.simplified.get(simplifications ?? []);
+			if(value !== undefined) {
+				return value;
+			}
 		}
 
 		if(force || !this.ast) {
@@ -122,16 +136,21 @@ export class FlowrAnalyzer {
 		}
 
 		const result = extractCfg(this.ast, this.flowrConfig, this.dataflowInfo?.graph, simplifications);
-		this.controlFlowInfo = result;
+		this.controlFlowInfos.simplified.set(simplifications ?? [], result);
 		return result;
 	}
 
-	public async simpleControlFlow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation> {
-		if(this.simpleControlFlowInfo && !force) {
-			return this.simpleControlFlowInfo;
-		} else if(this.controlFlowInfo && !force) {
-			// Use the full CFG is it is already available
-			return this.controlFlowInfo;
+	public async controlFlowQuick(force?: boolean): Promise<ControlFlowInformation> {
+		if(!force) {
+			if(this.controlFlowInfos.quick) {
+				return this.controlFlowInfos.quick;
+			}
+
+			// Use the unsimplified CFG if it is already available
+			const value = this.controlFlowInfos.simplified.get([]);
+			if(value !== undefined) {
+				return value;
+			}
 		}
 
 		if(force || !this.ast) {
@@ -139,7 +158,7 @@ export class FlowrAnalyzer {
 		}
 
 		const result = extractCfgQuick(this.ast);
-		this.simpleControlFlowInfo = result;
+		this.controlFlowInfos.quick = result;
 		return result;
 	}
 

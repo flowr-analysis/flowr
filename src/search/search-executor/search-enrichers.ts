@@ -14,7 +14,7 @@ import {
 	identifyLinkToLastCallRelation
 } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { guard, isNotUndefined } from '../../util/assert';
-import { extractCfg, extractCfgQuick } from '../../control-flow/extract-cfg';
+import { extractCfgQuick } from '../../control-flow/extract-cfg';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
@@ -201,7 +201,7 @@ export const Enrichments = {
 
 			const content: CfgInformationSearchContent = {
 				...prev,
-				cfg: extractCfg(await data.normalizedAst(), data.flowrConfig, (await data.dataflow()).graph, args.simplificationPasses),
+				cfg: await data.controlFlow(args.simplificationPasses, true),
 			};
 			if(args.checkReachable) {
 				content.reachableNodes = cfgFindAllReachable(content.cfg);

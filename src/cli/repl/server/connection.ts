@@ -389,7 +389,6 @@ export class FlowRServerConnection {
 
 export function sanitizeAnalysisResults(parse: ParseStepOutput<any>, normalize: NormalizedAst, dataflow: DataflowInformation): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>> {
 	return {
-		// TODO Results missing?
 		parse,
 		normalize: {
 			...normalize,

@@ -53,7 +53,6 @@ export class FlowrAnalyzer {
 	}
 
 	// TODO TSchoeller Fix type
-	// TODO TSchoeller Do we want to expose parsing as primary view in addition to the AST, CFG, and dataflow?
 	public async parseOutput(force?: boolean): Promise<ParseStepOutput<any> & PipelinePerStepMetaInformation> {
 		if(this.parse && !force) {
 			return {

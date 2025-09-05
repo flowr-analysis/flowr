@@ -15,7 +15,8 @@ export class FlowrAnalyzerBuilder {
 	private input?:           Omit<NormalizeRequiredInput, 'request'>;
 	private plugins:          FlowrAnalyzerPlugin[];
 
-	public amendConfig(func: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions): this {
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+	public amendConfig(func: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions | void): this {
 		this.flowrConfig = amendConfig(this.flowrConfig, func);
 		return this;
 	}

@@ -18,7 +18,7 @@ import { log } from '../../../src/util/log';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import type { FlowrLaxSourcingOptions } from '../../../src/config';
-import { amendConfig, defaultConfigOptions, DropPathsOption } from '../../../src/config';
+import { DropPathsOption } from '../../../src/config';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
@@ -33,21 +33,18 @@ export function assertLinter<Name extends LintingRuleNames>(
 	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string }
 ) {
 	test(decorateLabelContext(name, ['linter']), async() => {
-		const flowrConfig = amendConfig(defaultConfigOptions, c => {
-			(c.solver.resolveSource as FlowrLaxSourcingOptions)  = {
-				...c.solver.resolveSource as FlowrLaxSourcingOptions,
-				dropPaths: DropPathsOption.All
-			};
-			return c;
-		});
-
 		const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
 			.setInput({
 				getId:             deterministicCountingIdGenerator(0),
 				overwriteFilePath: lintingRuleConfig?.useAsFilePath
 			})
 			.setParser(parser)
-			.setConfig(flowrConfig)
+			.amendConfig(c => {
+				(c.solver.resolveSource as FlowrLaxSourcingOptions) = {
+					...c.solver.resolveSource as FlowrLaxSourcingOptions,
+					dropPaths: DropPathsOption.All
+				};
+			})
 			.build();
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;

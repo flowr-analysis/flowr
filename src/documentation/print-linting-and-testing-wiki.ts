@@ -208,6 +208,8 @@ Please follow the official guide [here](https://www.jetbrains.com/help/webstorm/
 Note that the working directory has to be set to the project root directory, not the test subdirectory!
 Otherwise, the tests will not be instantiated.
 
+![Webstorm test configuration](img/testing-webstorm.png)
+
 <a id='ci-pipeline'></a>
 ## 🪈 CI Pipeline
 

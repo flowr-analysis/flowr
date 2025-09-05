@@ -2,7 +2,7 @@ import type { ControlFlowInformation } from '../../control-flow/control-flow-gra
 import type { SemanticCfgGuidedVisitorConfiguration } from '../../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../../control-flow/semantic-cfg-guided-visitor';
 import { EdgeType } from '../../dataflow/graph/edge';
-import type { DataflowGraph } from '../../dataflow/graph/graph';
+import { isNamedArgument, isPositionalArgument, type DataflowGraph } from '../../dataflow/graph/graph';
 import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexUse,
@@ -13,13 +13,15 @@ import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type {
+import {
 	SDValue ,
 	Top,
-	type AbstractOperationsStringDomain,
+	AbstractOperationsStringDomain,
 } from './domain';
 import { inspect } from 'util';
 import { sdEqual } from './equality';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { ReferenceType } from '../../dataflow/environments/identifier';
 
 function obj<T>(obj: T) {
 	return inspect(obj, false, null, true);
@@ -231,5 +233,48 @@ export class StringDomainVisitor<
 			this.dirty = true;
 			console.log('onVariableUse: ', obj(nVertex));
 		}
+	}
+
+	protected onDefaultFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall; }): void {
+			if (call.name === "paste") {
+				const callNode = this.getNormalizedAst(call.id);
+				if(!callNode) {
+					return;
+				}
+
+				const named = call.args.filter(it => isNamedArgument(it))
+				const positional = call.args.filter(it => isPositionalArgument(it))
+
+				let sepValue: SDValue;
+				const sepId = named.find(it => it.name === "sep")?.nodeId;
+				if (sepId) {
+					const sepNode = this.getNormalizedAst(sepId)!;
+					if(!sepNode) {
+						return;
+					}
+
+					const valueNode = sepNode.value as RNode<OtherInfo & StringDomainInfo>;
+
+					sepValue = valueNode.info.sdvalue ?? Top;
+				} else {
+					sepValue = this.domain.const(" ");
+				}
+
+				if (positional.length == 0) {
+					return;
+				}
+
+				const argNodes = positional.map(arg => this.getNormalizedAst(arg.nodeId));
+				if (!argNodes.every(it => it)) {
+					return;
+				}
+
+				const value = this.domain.concat(sepValue, ...argNodes.map(it => it!.info.sdvalue ?? Top))
+				if (!sdEqual(value, callNode.info.sdvalue)) {
+					callNode.info.sdvalue = value;
+					this.dirty = true;
+					console.log('onDefaultFunctionCall: ', obj(callNode));
+				}
+			}
 	}
 }

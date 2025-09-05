@@ -76,6 +76,11 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalyzer, rem
 	};
 }
 
+/**
+ * Function for splitting the input line.
+ * The first token is the query command.
+ * The rest of the line is treated as input code.
+ */
 function parseArgs(line: string) {
 	const args = splitAtEscapeSensitive(line);
 	const command = args.shift();

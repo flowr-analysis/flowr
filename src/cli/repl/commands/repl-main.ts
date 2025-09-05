@@ -28,10 +28,10 @@ export const standardReplOutput: ReplOutput = {
 	stderr:    console.error
 };
 
-/**
- * Information passed to each repl command function
- */
 
+/**
+ * Information passed to each {@link ReplCommand#fn}.
+ */
 export interface ReplCommandInformation {
 	output:              ReplOutput,
 	allowRSessionAccess: boolean,
@@ -40,6 +40,11 @@ export interface ReplCommandInformation {
 	config:              FlowrConfigOptions
 }
 
+
+/**
+ * Information passed to each {@link ReplCodeCommand#fn}.
+ * The {@link analyzer} has the {@link RParseRequest}.
+ */
 export interface ReplCodeCommandInformation {
 	output:        ReplOutput,
 	analyzer:      FlowrAnalyzer
@@ -70,6 +75,10 @@ export interface ReplCommand extends ReplBaseCommand {
 	fn:           (info: ReplCommandInformation) => Promise<void> | void
 }
 
+
+/**
+ * Repl command that uses the {@link FlowrAnalyzer}
+ */
 export interface ReplCodeCommand extends ReplBaseCommand {
 	usesAnalyzer: true;
 	/**
@@ -77,6 +86,8 @@ export interface ReplCodeCommand extends ReplBaseCommand {
 	 * Furthermore, it has to obey the formatter defined in the {@link ReplOutput}.
 	 */
 	fn:           (info: ReplCodeCommandInformation) => Promise<void> | void
-	/** Argument parser */
+	/**
+	 * Argument parser function which handles the input given after the repl command
+	 */
 	argsParser:   (remainingLine: string) => { input: string, remaining: string[]}
 }

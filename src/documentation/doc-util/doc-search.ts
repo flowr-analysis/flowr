@@ -1,7 +1,5 @@
 import type { RShell } from '../../r-bridge/shell';
 import type { SupportedQueryTypes } from '../../queries/query';
-import { PipelineExecutor } from '../../core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
 import { getFilePathMd } from './doc-files';
 import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
@@ -13,7 +11,6 @@ import { runSearch } from '../../search/flowr-search-executor';
 import { flowrSearchToCode, flowrSearchToMermaid } from '../../search/flowr-search-printer';
 import { recoverContent } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { formatRange } from '../../util/mermaid/dfg';
-import { defaultConfigOptions } from '../../config';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 
 export interface ShowSearchOptions {
@@ -23,13 +20,8 @@ export interface ShowSearchOptions {
 
 export async function showSearch(shell: RShell, code: string, search: FlowrSearchLike, { collapseResult = true }: ShowSearchOptions = {}): Promise<string> {
 	const now = performance.now();
-	const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		parser:  shell,
-		request: requestFromInput(code)
-	}, defaultConfigOptions).allRemainingSteps();
 	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
 		.setParser(shell)
-		.setConfig(defaultConfigOptions)
 		.build();
 	const result = await runSearch(search, analyzer);
 	const duration = performance.now() - now;
@@ -37,6 +29,8 @@ export async function showSearch(shell: RShell, code: string, search: FlowrSearc
 	const metaInfo = `
 The search required _${printAsMs(duration)}_ (including parsing and normalization and the query) within the generation environment.
 	`.trim();
+
+	const dataflow = await analyzer.dataflow();
 
 	return `
 
@@ -63,7 +57,7 @@ ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary
 
 The query returns the following vetices (all references to \`x\` in the code):
 ${
-	result.getElements().map(({ node }) => `<b>${node.info.id} ('${recoverContent(node.info.id, analysis.dataflow.graph)}')</b> at L${formatRange(node.location)}`).join(', ')
+	result.getElements().map(({ node }) => `<b>${node.info.id} ('${recoverContent(node.info.id, dataflow.graph)}')</b> at L${formatRange(node.location)}`).join(', ')
 }
 
 ${metaInfo}	

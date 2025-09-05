@@ -1,3 +1,4 @@
+import { SDValue } from '../../../abstract-interpretation/eval/domain';
 import { VariableResolve } from '../../../config';
 import type { LinkTo } from '../../../queries/catalog/call-context-query/call-context-query-format';
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -156,6 +157,40 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 	const node = typeof id === 'object' ? id : idMap?.get(id);
 	if(node === undefined) {
 		return Top;
+	}
+
+	if (node.info.sdvalue) {
+		const value = node.info.sdvalue as SDValue;
+
+		if (value.kind === "top") {
+			return Top;
+		} else if (value.kind === "bottom") {
+			return Bottom;
+		} else if (value.kind === "const") {
+			return {
+				type: "set",
+				elements: [
+					{
+						type: "string",
+						value: {
+							str: value.value,
+							quotes: "\"",
+						}
+					}
+				],
+			};
+		} else if (value.kind === "const-set") {
+			return {
+				type: "set",
+				elements: value.value.map(it => ({
+					type: "string",
+					value: {
+						str: it,
+						quotes: "\"",
+					},
+				})),
+			};
+		}
 	}
 
 	switch(node.type) {

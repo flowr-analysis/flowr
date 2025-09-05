@@ -1,7 +1,15 @@
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { FlowrLogger, LogLevel } from '../util/log';
 import { codeBlock } from './doc-util/doc-code';
-import { FlowrCodecovRef, FlowrDockerRef, FlowrGithubBaseRef, FlowrSiteBaseRef, FlowrWikiBaseRef, getFilePathMd, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
+import {
+	FlowrCodecovRef,
+	FlowrDockerRef,
+	FlowrGithubBaseRef,
+	FlowrSiteBaseRef,
+	FlowrWikiBaseRef,
+	getFilePathMd,
+	RemoteFlowrFilePathBaseRef
+} from './doc-util/doc-files';
 import { block } from './doc-util/doc-structure';
 import { getTypesFromFolder, mermaidHide, shortLink } from './doc-util/doc-types';
 import path from 'path';
@@ -197,6 +205,8 @@ To get started, install the [vitest Extension](https://marketplace.visualstudio.
 #### Webstorm
 
 Please follow the official guide [here](https://www.jetbrains.com/help/webstorm/vitest.html).
+Note that the working directory has to be set to the project root directory, not the test subdirectory!
+Otherwise, the tests will not be instantiated.
 
 <a id='ci-pipeline'></a>
 ## 🪈 CI Pipeline

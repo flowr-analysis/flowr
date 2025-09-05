@@ -37,6 +37,7 @@ export async function printVersionInformation(output: ReplOutput, parser: KnownP
 
 export const versionCommand: ReplCommand = {
 	description:  'Prints the version of flowR as well as the current version of R',
+	usesAnalyzer: false,
 	aliases:      [],
 	usageExample: ':version',
 	script:       false,

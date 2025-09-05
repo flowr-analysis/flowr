@@ -1,4 +1,4 @@
-import fs, { promises as fsPromise } from 'fs';
+import fs, { type PathLike, promises as fsPromise } from 'fs';
 import path from 'path';
 import { log } from './log';
 import LineByLine from 'n-readlines';
@@ -158,4 +158,50 @@ export function readLineByLineSync(filePath: string, onLine: (line: Buffer, line
 export function getParentDirectory(directory: string): string{
 	// apparently this is somehow the best way to do it in node, what
 	return directory.split(path.sep).slice(0, -1).join(path.sep);
+}
+
+/**
+ * Parses the given file in the 'Debian Control Format'.
+ * @param file - The file to parse
+ * @returns Map containing the keys and values of the provided file.
+ */
+export function parseDCF(file: PathLike): Map<string, string[]> {
+	const result = new Map<string, string[]>();
+	let currentKey = '';
+	let currentValue = '';
+	const indentRegex = new RegExp(/^\s/);
+	const firstColonRegex = new RegExp(/:(.*)/s);
+
+	const fileContent = fs.readFileSync(file, 'utf-8').split('\n');
+
+	for(const line of fileContent) {
+		if(indentRegex.test(line)) {
+			currentValue += '\n' + line.trim();
+		} else {
+			if(currentKey) {
+				const values = currentValue ? cleanValues(currentValue) : [];
+				result.set(currentKey, values);
+			}
+
+			const [key, rest] = line.split(firstColonRegex).map(s => s.trim());
+			currentKey = key.trim();
+			currentValue = rest.trim();
+		}
+	}
+
+	if(currentKey) {
+		const values = currentValue ? cleanValues(currentValue) : [];
+		result.set(currentKey, values);
+	}
+
+	return result;
+}
+
+function cleanValues(values: string): string[] {
+	const splitRegex = new RegExp(/[\n,]+/);
+	const quotesRegex = new RegExp(/'/g);
+	return values
+		.split(splitRegex)
+		.map(s => s.trim().replace(quotesRegex, ''))
+		.filter(s => s.length > 0);
 }

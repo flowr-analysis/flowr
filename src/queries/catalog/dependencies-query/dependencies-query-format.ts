@@ -30,9 +30,9 @@ export const DefaultDependencyCategories = {
 		functions:          LibraryFunctions,
 		defaultValue:       Unknown,
 		/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
-		additionalAnalysis: (data, ignoreDefault, _functions, _queryResults, result) => {
+		additionalAnalysis: async(data, ignoreDefault, _functions, _queryResults, result) => {
 			if(!ignoreDefault) {
-				visitAst(data.ast.ast, n => {
+				visitAst((await data.input.normalizedAst()).ast, n => {
 					if(n.type === RType.Symbol && n.namespace) {
 						/* we should improve the identification of ':::' */
 						result.push({

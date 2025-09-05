@@ -1,4 +1,4 @@
-import type { ReplCommand, ReplOutput } from '../../cli/repl/commands/repl-main';
+import type { ReplBaseCommand, ReplOutput } from '../../cli/repl/commands/repl-main';
 import { getReplCommands } from '../../cli/repl/commands/repl-commands';
 import { getReplCommand } from './doc-cli-option';
 import { textWithTooltip } from '../../util/html-hover-over';
@@ -11,7 +11,7 @@ import { versionReplString } from '../../cli/repl/print-version';
 import type { KnownParser } from '../../r-bridge/parser';
 import { defaultConfigOptions } from '../../config';
 
-function printHelpForScript(script: [string, ReplCommand], starredVersion?: ReplCommand): string {
+function printHelpForScript(script: [string, ReplBaseCommand], starredVersion?: ReplBaseCommand): string {
 	let base = `| **${getReplCommand(script[0], false, starredVersion !== undefined)}** | ${script[1].description}`;
 	if(starredVersion) {
 		base += ` (star: ${starredVersion.description})`;

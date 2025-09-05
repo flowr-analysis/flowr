@@ -67,6 +67,7 @@ export function getLineage(criterion: SingleSlicingCriterion, graph: DataflowGra
 
 export const lineageCommand: ReplCommand = {
 	description:  'Get the lineage of an R object',
+	usesAnalyzer: false,
 	usageExample: ':lineage',
 	aliases:      ['lin'],
 	script:       false,

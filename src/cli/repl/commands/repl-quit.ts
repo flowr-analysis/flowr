@@ -3,6 +3,7 @@ import { log } from '../../../util/log';
 
 export const quitCommand: ReplCommand = {
 	description:  'End the repl',
+	usesAnalyzer: false,
 	aliases:      [ 'q', 'exit' ],
 	usageExample: ':quit',
 	script:       false,

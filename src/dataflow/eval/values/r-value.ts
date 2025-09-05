@@ -49,12 +49,12 @@ export interface ValueLogical {
 
 export type Value = Lift<
         ValueInterval
-		| ValueVector
+				| ValueVector
         | ValueSet
         | ValueNumber
         | ValueString
         | ValueLogical
-		| ValueMissing
+				| ValueMissing
     >
 export type ValueType<V> = V extends { type: infer T } ? T : never
 export type ValueTypes = ValueType<Value>

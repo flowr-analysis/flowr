@@ -1,6 +1,5 @@
 import type { RShell } from '../../r-bridge/shell';
 import type { Queries, SupportedQueryTypes } from '../../queries/query';
-import { executeQueries } from '../../queries/query';
 import { requestFromInput } from '../../r-bridge/retriever';
 import { jsonReplacer } from '../../util/json';
 import { markdownFormatter } from '../../util/text/ansi';
@@ -26,7 +25,7 @@ export async function showQuery<
 >(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult, collapseQuery }: ShowQueryOptions = {}): Promise<string> {
 	const now = performance.now();
 	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code)).setParser(shell).build();
-	const results = executeQueries({ input: analyzer }, queries);
+	const results = await analyzer.query(queries);
 	const duration = performance.now() - now;
 
 	const metaInfo = `

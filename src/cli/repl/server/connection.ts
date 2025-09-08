@@ -40,7 +40,6 @@ import { requestLineageMessage } from './messages/message-lineage';
 import { getLineage } from '../commands/repl-lineage';
 import type { QueryRequestMessage, QueryResponseMessage } from './messages/message-query';
 import { requestQueryMessage } from './messages/message-query';
-import { executeQueries } from '../../../queries/query';
 import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 import { compact } from './compact';
 import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
@@ -369,7 +368,7 @@ export class FlowRServerConnection {
 			return;
 		}
 
-		void Promise.resolve(executeQueries({ input: fileInformation.analyzer }, request.query)).then(results => {
+		void Promise.resolve(fileInformation.analyzer.query(request.query)).then(results => {
 			sendMessage<QueryResponseMessage>(this.socket, {
 				type: 'response-query',
 				id:   request.id,

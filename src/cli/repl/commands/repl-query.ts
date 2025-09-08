@@ -67,10 +67,10 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalyzer, rem
 	const dummyProject = await getDummyFlowrProject();
 
 	return {
-		query: executeQueries({
+		query: await Promise.resolve(executeQueries({
 			input:     analyzer,
 			libraries: dummyProject.libraries },
-		parsedQuery),
+		parsedQuery)),
 		parsedQuery,
 		processed: { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalizedAst() }
 	};

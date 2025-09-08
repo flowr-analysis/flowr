@@ -16,13 +16,13 @@ export function executeConfigQuery({ input }: BasicQueryData, queries: readonly 
 		deepMergeObject(config, update);
 	}
 
-	return new Promise<ConfigQueryResult>(() => {
-		return {
+	return new Promise<ConfigQueryResult>((resolve) => {
+		resolve({
 			'.meta': {
 				/* there is no sense in measuring a get */
 				timing: 0
 			},
 			config: config
-		};
+		});
 	});
 }

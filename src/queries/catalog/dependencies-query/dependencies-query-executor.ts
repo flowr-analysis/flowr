@@ -73,7 +73,7 @@ export async function executeDependenciesQuery({
 	} as DependenciesQueryResult;
 }
 
-function makeCallContextQuery(functions: readonly FunctionInfo[], kind: string): CallContextQuery[] {
+function makeCallContextQuery(functions: readonly FunctionInfo[], kind: DependencyCategoryName): CallContextQuery[] {
 	return functions.map(f => ({
 		type:           'call-context',
 		callName:       f.name,

@@ -31,7 +31,7 @@ export const NETWORK_FUNCTIONS = {
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Marks network functions that execute network operations, such as downloading files or making HTTP requests.',
 		defaultConfig: {
-			fns:                     ['read.table', 'read.csv', 'read.csv2', 'read.delim', 'read.delim2', 'readRDS', 'download.file', 'url', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'content', 'handle', 'get_callback','VERB', 'fread', 'gzcon'],
+			fns:                     ['read.table', 'read.csv', 'read.csv2', 'read.delim', 'read.delim2', 'readRDS', 'download.file', 'url', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'content', 'handle', 'get_callback','VERB', 'fread', 'gzcon', 'readlines', 'source', 'load', 'curl_download', 'curl_fetch_memory', 'getURL', 'getForm', 'read_html', 'html_nodes', 'html_text', 'fromJSON', 'read.xlsx', 'drive_download', 'drive_get', 's3read_using', 's3write_using', 'storage_download', 'AnnotationHub', 'ExperimentHub'],
 			onlyTriggerWithArgument: /^(https?|ftps?|file):\/\//
 		}
 	}

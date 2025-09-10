@@ -59,7 +59,7 @@ export async function executeDependenciesQuery({
 		await executeQueriesOfSameType<CallContextQuery>(data, functions.entries().map(([c, f]) => makeCallContextQuery(f, c)).toArray().flat());
 
 	const results = Object.fromEntries(functions.entries().map(([c, f]) => {
-		const results = getResults(queries, { dataflow, config, normalize }, queryResults, c, f);
+		const results = getResults(queries, { dataflow, config, normalize }, queryResults, c, f, data);
 		// only default categories allow additional analyses, so we null coalese here!
 		(DefaultDependencyCategories as Record<string, DependencyCategorySettings>)[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
 		return [c, results];
@@ -96,7 +96,7 @@ function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: o
 const readOnlyModes = new Set(['r', 'rt', 'rb']);
 const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab']);
 
-function getResults(queries: readonly DependenciesQuery[], { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfigOptions, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[]): DependencyInfo[] {
+function getResults(queries: readonly DependenciesQuery[], { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfigOptions, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data?: BasicQueryData): DependencyInfo[] {
 	const defaultValue = getAllCategories(queries)[kind].defaultValue;
 	const functionMap = new Map<string, FunctionInfo>(functions.map(f => [f.name, f]));
 	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});
@@ -139,11 +139,13 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 		for(const [arg, values] of foundValues.entries()) {
 			for(const value of values) {
 				const result = compactRecord({
-					nodeId:           id,
-					functionName:     vertex.name,
-					lexemeOfArgument: getLexeme(value, arg),
-					linkedIds:        linked?.length ? linked : undefined,
-					value:            value ?? defaultValue
+					nodeId:             id,
+					functionName:       vertex.name,
+					lexemeOfArgument:   getLexeme(value, arg),
+					linkedIds:          linked?.length ? linked : undefined,
+					value:              value ?? defaultValue,
+					versionConstraints:	data?.libraries?.find(f => f.name === value)?.versionConstraints ?? undefined,
+					derivedVersion:	    data?.libraries?.find(f => f.name === value)?.derivedVersion ?? undefined,
 				} as DependencyInfo);
 				if(result) {
 					results.push(result);

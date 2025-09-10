@@ -14,6 +14,7 @@ import { VisualizeFunctions } from './function-info/visualize-functions';
 import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
+import type { Range } from 'semver';
 
 export const Unknown = 'unknown';
 
@@ -39,6 +40,7 @@ export const DefaultDependencyCategories = {
 							nodeId:       n.info.id,
 							functionName: (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
 							value:        n.namespace,
+							libraryInfo:  data.libraries ?? undefined,
 						});
 					}
 				});
@@ -79,13 +81,15 @@ export type DependenciesQueryResult = BaseQueryResult & { [C in DefaultDependenc
 
 
 export interface DependencyInfo extends Record<string, unknown>{
-    nodeId:         NodeId
-    functionName:   string
-    linkedIds?:     readonly NodeId[]
+    nodeId:           NodeId
+    functionName:     string
+    linkedIds?:       readonly NodeId[]
 	/** the lexeme is presented whenever the specific info is of {@link Unknown} */
-	lexemeOfArgument?: string;
+	lexemeOfArgument?:   string;
     /** The library name, file, source, destination etc. being sourced, read from, or written to. */
-    value?:         string
+    value?:           string
+	versionConstraints?: Range[],
+	derivedVersion?:     Range
 }
 
 function printResultSection(title: string, infos: DependencyInfo[], result: string[]): void {
@@ -104,7 +108,7 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	}, new Map<string, DependencyInfo[]>());
 	for(const [functionName, infos] of grouped) {
 		result.push(`       ╰ \`${functionName}\``);
-		result.push(infos.map(i => `           ╰ Node Id: ${i.nodeId}${i.value !== undefined ? `, \`${i.value}\`` : ''}`).join('\n'));
+		result.push(infos.map(i => `           ╰ Node Id: ${i.nodeId}${i.value !== undefined ? `, \`${i.value}\`` : ''}${i.derivedVersion !== undefined ? `, Version: \`${i.derivedVersion.toString()}\`` : ''}`).join('\n'));
 	}
 }
 

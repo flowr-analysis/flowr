@@ -44,7 +44,7 @@ export function processIfThenElse<OtherInfo>(
 		return cond;
 	}
 
-	const originalDependency = data.controlDependencies;
+	const originalDependency = data.controlDependencies?.slice();
 	// currently we update the cd afterward :sweat:
 	data = { ...data, environment: cond.environment };
 
@@ -95,22 +95,21 @@ export function processIfThenElse<OtherInfo>(
 	const cdTrue = { id: rootId, when: true };
 	const cdFalse = { id: rootId, when: false };
 	// again within an if-then-else we consider all actives to be read
-	const ingoing: IdentifierReference[] = [
-		...cond.in,
-		...(makeThenMaybe ? makeAllMaybe(then?.in, nextGraph, finalEnvironment, false, cdTrue) : then?.in ?? []),
-		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.in, nextGraph, finalEnvironment, false, cdFalse) : otherwise?.in ?? []),
-		...cond.unknownReferences,
-		...(makeThenMaybe ? makeAllMaybe(then?.unknownReferences, nextGraph, finalEnvironment, false, cdTrue) : then?.unknownReferences ?? []),
-		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.unknownReferences, nextGraph, finalEnvironment, false, cdFalse) : otherwise?.unknownReferences ?? []),
-	];
+	const ingoing: IdentifierReference[] = cond.in.concat(
+		makeThenMaybe ? makeAllMaybe(then?.in, nextGraph, finalEnvironment, false, cdTrue) : then?.in ?? [],
+		makeOtherwiseMaybe ? makeAllMaybe(otherwise?.in, nextGraph, finalEnvironment, false, cdFalse) : otherwise?.in ?? [],
+		cond.unknownReferences,
+		makeThenMaybe ? makeAllMaybe(then?.unknownReferences, nextGraph, finalEnvironment, false, cdTrue) : then?.unknownReferences ?? [],
+		makeOtherwiseMaybe ? makeAllMaybe(otherwise?.unknownReferences, nextGraph, finalEnvironment, false, cdFalse) : otherwise?.unknownReferences ?? [],
+	);
 
 	// we assign all with a maybe marker
 	// we do not merge even if they appear in both branches because the maybe links will refer to different ids
-	const outgoing = [
-		...cond.out,
-		...(makeThenMaybe ? makeAllMaybe(then?.out, nextGraph, finalEnvironment, true, cdTrue) : then?.out ?? []),
-		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.out, nextGraph, finalEnvironment, true, cdFalse) : otherwise?.out ?? []),
-	];
+	const outgoing =
+		cond.out.concat(
+			(makeThenMaybe ? makeAllMaybe(then?.out, nextGraph, finalEnvironment, true, cdTrue) : then?.out ?? []),
+			(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.out, nextGraph, finalEnvironment, true, cdFalse) : otherwise?.out ?? []),
+		);
 
 	patchFunctionCall({
 		nextGraph,
@@ -124,10 +123,8 @@ export function processIfThenElse<OtherInfo>(
 	// as an if always evaluates its condition, we add a 'reads'-edge
 	nextGraph.addEdge(name.info.id, cond.entryPoint, EdgeType.Reads);
 
-	const exitPoints = [
-		...(then?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeThenMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: true }] : e.controlDependencies })),
-		...(otherwise?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeOtherwiseMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: false }] : e.controlDependencies }))
-	];
+	const exitPoints = (then?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeThenMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: true }] : e.controlDependencies }))
+		.concat((otherwise?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeOtherwiseMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: false }] : e.controlDependencies })));
 
 	return {
 		unknownReferences: [],

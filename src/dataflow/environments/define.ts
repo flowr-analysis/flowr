@@ -1,6 +1,5 @@
 import { guard, isNotUndefined } from '../../util/assert';
-import { BuiltInEnvironment } from './environment';
-import type { IEnvironment, REnvironmentInformation  } from './environment';
+import type { IEnvironment, REnvironmentInformation } from './environment';
 
 import { cloneEnvironmentInformation } from './clone';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
@@ -154,7 +153,7 @@ export function define(definition: IdentifierDefinition, superAssign: boolean | 
 			}
 			last = current;
 			current = current.parent;
-		} while(current.id !== BuiltInEnvironment.id);
+		} while(!current.builtInEnv);
 		if(!found) {
 			guard(last !== undefined, () => `Could not find global scope for ${name}`);
 			last.memory.set(name, [definition]);

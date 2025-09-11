@@ -27,8 +27,6 @@ import { processLibrary } from '../internal/process/functions/call/built-in/buil
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source';
 import type { ForceArguments } from '../internal/process/functions/call/common';
 import { processApply } from '../internal/process/functions/call/built-in/built-in-apply';
-import { registerBuiltInDefinitions } from './built-in-config';
-import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
 import { processVector } from '../internal/process/functions/call/built-in/built-in-vector';
@@ -39,9 +37,15 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
-import { resolveAsVector, resolveAsSeq, resolveAsMinus, resolveAsPlus } from '../eval/resolve/resolve';
+import { resolveAsMinus, resolveAsPlus, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
 import type { DataflowGraph } from '../graph/graph';
 import type { VariableResolve } from '../../config';
+import type {
+	BuiltInConstantDefinition,
+	BuiltInDefinition,
+	BuiltInFunctionDefinition,
+	BuiltInReplacementDefinition
+} from './built-in-config';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -165,31 +169,6 @@ function defaultBuiltInProcessor<OtherInfo>(
 	return res;
 }
 
-export function registerBuiltInFunctions<Config extends object, Proc extends BuiltInIdentifierProcessorWithConfig<Config>>(
-	both:      boolean,
-	names:     readonly Identifier[],
-	processor: Proc,
-	config:    Config
-): void {
-	for(const name of names) {
-		guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
-		const id = builtInId(name);
-		const d: IdentifierDefinition[] = [{
-			type:                ReferenceType.BuiltInFunction,
-			definedAt:           id,
-			controlDependencies: undefined,
-			processor:           (name, args, rootId, data) => processor(name, args, rootId, data, config),
-			config,
-			name,
-			nodeId:              id
-		}];
-		BuiltInMemory.set(name, d);
-		if(both) {
-			EmptyBuiltInMemory.set(name, d);
-		}
-	}
-}
-
 export const BuiltInProcessorMapper = {
 	'builtin:default':             defaultBuiltInProcessor,
 	'builtin:eval':                processEvalCall,
@@ -224,7 +203,112 @@ export const BuiltInEvalHandlerMapper = {
 export type BuiltInMappingName = keyof typeof BuiltInProcessorMapper;
 export type ConfigOfBuiltInMappingName<N extends BuiltInMappingName> = Parameters<typeof BuiltInProcessorMapper[N]>[4];
 
-export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
-export const EmptyBuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+export type BuiltInMemory = Map<Identifier, IdentifierDefinition[]>
 
-registerBuiltInDefinitions(DefaultBuiltinConfig);
+export class BuiltIns {
+	/**
+	 * Register a built-in constant (like `NULL` or `TRUE`) to the given {@link builtIns}
+	 */
+	registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>): void {
+		for(const name of names) {
+			const id = builtInId(name);
+			const d: IdentifierDefinition[] = [{
+				type:                ReferenceType.BuiltInConstant,
+				definedAt:           id,
+				controlDependencies: undefined,
+				value,
+				name,
+				nodeId:              id
+			}];
+			this.set(name, d, assumePrimitive);
+		}
+	}
+
+	/**
+	 * Register a built-in function (like `print` or `c`) to the given {@link builtIns}
+	 */
+	registerBuiltInFunctions<BuiltInProcessor extends BuiltInMappingName>({ names, processor, config, assumePrimitive }: BuiltInFunctionDefinition<BuiltInProcessor> ): void {
+		const mappedProcessor = BuiltInProcessorMapper[processor];
+		guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
+		for(const name of names) {
+			guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
+			const id = builtInId(name);
+			const d: IdentifierDefinition[] = [{
+				type:                ReferenceType.BuiltInFunction,
+				definedAt:           id,
+				controlDependencies: undefined,
+				/* eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-argument */
+				processor:           (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as any),
+				config,
+				name,
+				nodeId:              id
+			}];
+			this.set(name, d, assumePrimitive);
+		}
+	}
+
+	/**
+	 * Registers all combinations of replacements
+	 */
+	registerReplacementFunctions({ names, suffixes, assumePrimitive, config }: BuiltInReplacementDefinition): void {
+		const replacer = BuiltInProcessorMapper['builtin:replacement'];
+		guard(replacer !== undefined, () => 'Processor for builtin:replacement is undefined!');
+		for(const assignment of names) {
+			for(const suffix of suffixes) {
+				const effectiveName = `${assignment}${suffix}`;
+				const id = builtInId(effectiveName);
+				const d: IdentifierDefinition[] = [{
+					type:      ReferenceType.BuiltInFunction,
+					definedAt: id,
+					processor: (name, args, rootId, data) => replacer(name, args, rootId, data, { makeMaybe: true, assignmentOperator: suffix, readIndices: config.readIndices }),
+					config:    {
+						...config,
+						assignmentOperator: suffix,
+						makeMaybe:          true
+					},
+					name:                effectiveName,
+					controlDependencies: undefined,
+					nodeId:              id
+				}];
+				this.set(effectiveName, d, assumePrimitive);
+			}
+		}
+	}
+
+	/**
+	 * Register a single {@link BuiltInDefinition} to the given memories in {@link builtIns}
+	 */
+	registerBuiltInDefinition(definition: BuiltInDefinition) {
+		switch(definition.type) {
+			case 'constant':
+				return this.registerBuiltInConstant(definition);
+			case 'function':
+				return this.registerBuiltInFunctions(definition);
+			case 'replacement':
+				return this.registerReplacementFunctions(definition);
+		}
+	}
+	
+	/**
+     * The built-in {@link REnvironmentInformation|environment} is the root of all environments.
+     *
+     * For its default content (when not overwritten by a flowR config),
+     * see the {@link DefaultBuiltinConfig}.
+     */
+	builtInMemory:      BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+	/**
+     * The twin of the {@link builtInMemory} but with less built ins defined for
+     * cases in which we want some commonly overwritten variables to remain open.
+     * If you do not know if you need the empty environment, you do not need the empty environment (right now).
+     *
+     * @see {@link builtInMemory}
+     */
+	emptyBuiltInMemory: BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+
+	set(identifier: Identifier, definition: IdentifierDefinition[], includeInEmptyMemory: boolean | undefined): void {
+		this.builtInMemory.set(identifier, definition);
+		if(includeInEmptyMemory) {
+			this.emptyBuiltInMemory.set(identifier, definition);
+		}
+	}
+}

@@ -1,10 +1,11 @@
-import { log } from '../../../util/log';
 import type {
 	LocationMapQuery,
 	LocationMapQueryResult
 } from './location-map-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
+import { isNotUndefined } from '../../../util/assert';
 
 const fileIdRegex = /^(?<file>.*(\.[rR]))-/;
 
@@ -26,10 +27,12 @@ function fuzzyFindFile(node: RNodeWithParent | undefined, idMap: AstIdMap): stri
 }
 
 export function executeLocationMapQuery({ ast, dataflow: { graph } }: BasicQueryData, queries: readonly LocationMapQuery[]): LocationMapQueryResult {
-	if(queries.length !== 1) {
-		log.warn('Id-Map query expects only up to one query, but got', queries.length);
-	}
 	const start = Date.now();
+	const criteriaOfInterest = new Set(queries
+		.flatMap(q => q.ids ?? [])
+		.map(c => tryResolveSliceCriterionToId(c, ast.idMap))
+		.filter(isNotUndefined))
+	;
 	const locationMap: LocationMapQueryResult['map'] = {
 		files: {},
 		ids:   {}
@@ -42,7 +45,7 @@ export function executeLocationMapQuery({ ast, dataflow: { graph } }: BasicQuery
 		count++;
 	}
 	for(const [id, node] of ast.idMap.entries()) {
-		if(node.location) {
+		if(node.location && (criteriaOfInterest.size === 0 || criteriaOfInterest.has(id))) {
 			const file = fuzzyFindFile(node, ast.idMap);
 			locationMap.ids[id] = [
 				inverseMap.get(file) ?? -1,

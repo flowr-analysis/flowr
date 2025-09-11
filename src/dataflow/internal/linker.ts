@@ -1,5 +1,5 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
-import { guard } from '../../util/assert';
+import { guard, isNotUndefined } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -24,13 +24,14 @@ import type { BuiltIn } from '../environments/built-in';
 import { isBuiltIn } from '../environments/built-in';
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
+import type { ExitPoint } from '../info';
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
 export function findNonLocalReads(graph: DataflowGraph, ignore: readonly IdentifierReference[]): IdentifierReference[] {
 	const ignores = new Set(ignore.map(i => i.nodeId));
 	const ids = new Set(
-		[...graph.vertices(true)]
+		graph.vertices(true)
 			.filter(([_, info]) => info.tag === VertexType.Use || info.tag === VertexType.FunctionCall)
 			.map(([id, _]) => id)
 	);
@@ -83,7 +84,7 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 
 export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<ParentInformation>[], graph: DataflowGraph): void {
 	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
-	const nameParamMap = new Map<string, RParameter<ParentInformation>>(params.filter(p => p !== undefined && p.name !== undefined && p.name.content !== undefined).map(p => [p.name.content, p]));
+	const nameParamMap = new Map<string, RParameter<ParentInformation>>(params.filter(p => p?.name?.content !== undefined).map(p => [p.name.content, p]));
 
 	const specialDotParameter = params.find(p => p.special);
 
@@ -93,21 +94,21 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 
 	// first map names
 	for(const [name, arg] of nameArgMap) {
-		const pmatchName = findByPrefixIfUnique(name, [...nameParamMap.keys()]) ?? name;
+		const pmatchName = findByPrefixIfUnique(name, nameParamMap.keys()) ?? name;
 		const param = nameParamMap.get(pmatchName);
-		if(param !== undefined && param.name) {
+		if(param?.name) {
 			dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`);
 			graph.addEdge(arg.nodeId, param.name.info.id, EdgeType.DefinesOnCall);
 			graph.addEdge(param.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
 			matchedParameters.add(name);
-		} else if(specialDotParameter !== undefined && specialDotParameter.name) {
+		} else if(specialDotParameter?.name) {
 			dataflowLogger.trace(`mapping named argument "${name}" to dot-dot-dot parameter`);
 			graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, EdgeType.DefinesOnCall);
 			graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
 		}
 	}
 
-	const remainingParameter = params.filter(p => !p || !p.name || !matchedParameters.has(p.name.content));
+	const remainingParameter = params.filter(p => !p?.name || !matchedParameters.has(p.name.content));
 	const remainingArguments = args.filter(a => !isNamedArgument(a));
 
 	for(let i = 0; i < remainingArguments.length; i++) {
@@ -215,7 +216,7 @@ function linkFunctionCall(
 		guard(def.tag === VertexType.FunctionDefinition, () => `expected function definition, but got ${def.tag}`);
 		linkFunctionCallWithSingleTarget(graph, def, info, idMap);
 	}
-	if(thisGraph.isRoot(id)) {
+	if(thisGraph.isRoot(id) && functionDefs.size > 0) {
 		calledFunctionDefinitions.push({ functionCall: id, called: [...functionDefs.values()] });
 	}
 }
@@ -233,11 +234,11 @@ export function linkFunctionCalls(
 	idMap: AstIdMap,
 	thisGraph: DataflowGraph
 ): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[] }[] {
-	const functionCalls = [...thisGraph.vertices(true)]
-		.filter(([_,info]) => info.tag === VertexType.FunctionCall);
 	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] = [];
-	for(const [id, info] of functionCalls) {
-		linkFunctionCall(graph, id, info as DataflowGraphVertexFunctionCall, idMap, thisGraph, calledFunctionDefinitions);
+	for(const [id, info] of thisGraph.vertices(true)) {
+		if(info.tag === VertexType.FunctionCall) {
+			linkFunctionCall(graph, id, info as DataflowGraphVertexFunctionCall, idMap, thisGraph, calledFunctionDefinitions);
+		}
 	}
 	return calledFunctionDefinitions;
 }
@@ -387,6 +388,23 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 				for(const target of targets) {
 					graph.addEdge(target.nodeId, out.nodeId, EdgeType.Reads);
 				}
+			}
+		}
+	}
+}
+
+export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: readonly IdentifierReference[]): void {
+	// just apply the cds of all exit points not already present
+	const exitCds = new Set(exits.flatMap(e => e.controlDependencies).filter(isNotUndefined));
+
+	for(const ref of references) {
+		for(const cd of exitCds) {
+			if(ref.controlDependencies) {
+				if(!ref.controlDependencies?.find(c => c.id === cd.id && c.when === cd.when)) {
+					ref.controlDependencies.push(cd);
+				}
+			} else {
+				ref.controlDependencies = [cd];
 			}
 		}
 	}

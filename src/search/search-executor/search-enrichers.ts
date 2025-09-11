@@ -11,7 +11,7 @@ import {
 	identifyLinkToLastCallRelation
 } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { guard, isNotUndefined } from '../../util/assert';
-import { extractCfg, extractSimpleCfg } from '../../control-flow/extract-cfg';
+import { extractCfg, extractCfgQuick } from '../../control-flow/extract-cfg';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
@@ -19,6 +19,7 @@ import type { QueryResult, SynchronousQuery } from '../../queries/query';
 import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
 import { cfgFindAllReachable , DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
 import type { AsyncOrSyncType } from 'ts-essentials';
+import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
@@ -155,11 +156,11 @@ export const Enrichments = {
 			const content = prev ?? { linkedIds: [] };
 			const vertex = data.dataflow.graph.get(e.node.info.id);
 			if(vertex !== undefined && vertex[0].tag === VertexType.FunctionCall) {
-				const cfg = extractSimpleCfg(data.normalize);
+				const cfg = extractCfgQuick(data.normalize);
 				for(const arg of args) {
 					const lastCalls = identifyLinkToLastCallRelation(vertex[0].id, cfg.graph, data.dataflow.graph, {
 						...arg,
-						callName: new RegExp(arg.callName),
+						callName: promoteCallName(arg.callName),
 						type:     'link-to-last-call',
 					});
 					for(const lastCall of lastCalls) {

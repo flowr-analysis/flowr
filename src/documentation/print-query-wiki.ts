@@ -40,6 +40,8 @@ import { executeDatatypeQuery } from '../queries/catalog/datatype-query/datatype
 import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
 import { printCfgCode } from './doc-util/doc-cfg';
 import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
+import { SliceDirection } from '../core/steps/all/static-slicing/00-slice';
+import { documentReplSession } from './doc-util/doc-repl';
 
 
 registerQueryDocumentation('call-context', {
@@ -372,10 +374,31 @@ registerQueryDocumentation('config', {
 	shortDescription: 'Returns the current configuration of flowR.',
 	functionName:     executeConfigQuery.name,
 	functionFile:     '../queries/catalog/config-query/config-query-format.ts',
-	// eslint-disable-next-line @typescript-eslint/require-await -- no need for async here
-	buildExplanation: async() => {
+	 
+	buildExplanation: async(shell: RShell) => {
 		return `
-This query provides access to the current configuration of the flowR instance. See the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on what the configuration represents.`;
+This query provides access to the current configuration of the flowR instance. See the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on what the configuration represents.
+Additionally, you can use this query to update the configuration of flowR on-the-fly (please do not rely on this mechanism it is mostly of interest for demonstrations).
+${
+	await showQuery(shell, '', [{
+		type:   'config',
+		update: {
+			ignoreSourceCalls: true
+		}
+	}], { showCode: false, collapseQuery: true, collapseResult: true })
+}
+
+Please note that, in the repl, a special syntax starting with \`+\` (which should be autocompleted) can be used to update the configuration on the fly:
+
+${
+	await documentReplSession(shell, [
+		{
+			command:     ':query @config +solver.slicer.threshold=10000',
+			description: 'Set the slicing threshold to 10,000.'
+		}
+	])
+}
+`;
 	}
 });
 
@@ -463,15 +486,15 @@ Now, the results no longer contain calls to \`plot\` that are not defined locall
 registerQueryDocumentation('static-slice', {
 	name:             'Static Slice Query',
 	type:             'active',
-	shortDescription: 'Slice the dataflow graph reducing the code to just the parts relevant for the given criteria.',
+	shortDescription: 'Slice the dataflow graph reducing the code to just the parts relevant for the given criteria (backward and forward).',
 	functionName:     executeStaticSliceQuery.name,
 	functionFile:     '../queries/catalog/static-slice-query/static-slice-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- 1\ny <- 2\nx';
 		return `
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
-return of the call) that you want to slice the dataflow graph for. 
-Given this, the slice is essentially the subpart of the program that may influence the value of the variables you are interested in.
+return of the call) that you want to slice the dataflow graph for (additionally, you have to tell flowR if you want to have a forward slice). 
+Given this, the backward slice is essentially the subpart of the program that may influence the value of the variables you are interested in.
 To specify a variable of interest, you have to present flowR with a [slicing criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion) (or, respectively, an array of them).
 
 To exemplify the capabilities, consider the following code:
@@ -496,6 +519,16 @@ ${
 			noReconstruction: true
 		}], { showCode: false })
 	)
+}
+
+Likewise, if you want the forward slice for the first use of \`x\`, you can do it like this:
+
+${
+	await showQuery(shell, exampleCode, [{
+		type:      'static-slice',
+		criteria:  ['1@x'],
+		direction: SliceDirection.Forward
+	}], { showCode: false })
 }
 
 You can disable [magic comments](${FlowrWikiBaseRef}/Interface#slice-magic-comments) using the \`noMagicComments\` flag.
@@ -578,10 +611,8 @@ ${
 	await showQuery(shell, longerCode, [{
 		type:                   'dependencies',
 		ignoreDefaultFunctions: true,
+		enabledCategories:      ['library'],
 		libraryFunctions:       [{ package: 'base', name: 'print', argIdx: 0, argName: 'library', resolveValue: true }],
-		sourceFunctions:        [],
-		readFunctions:          [],
-		writeFunctions:         []
 	}], { showCode: false, collapseQuery: false, collapseResult: true })
 }
 
@@ -756,7 +787,7 @@ ${tocForQueryType('virtual')}
 
 <summary>Detailed Query Format (Automatically Generated)</summary>
 
-Although it is probably better to consult the detailed explanations below, if you want to have a look at the scehma, here is its description:
+Although it is probably better to consult the detailed explanations below, if you want to have a look at the schema, here is its description:
 
 ${describeSchema(QueriesSchema(), markdownFormatter)}
 

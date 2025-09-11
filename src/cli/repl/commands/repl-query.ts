@@ -5,8 +5,8 @@ import type { ReplCommand, ReplOutput } from './repl-main';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { ansiFormatter, italic } from '../../../util/text/ansi';
 import { describeSchema } from '../../../util/schema';
-import type { Query, QueryResults, SupportedQueryTypes } from '../../../queries/query';
-import { AnyQuerySchema, executeQueries, QueriesSchema } from '../../../queries/query';
+import type { Query, QueryResults, SupportedQuery, SupportedQueryTypes } from '../../../queries/query';
+import { SupportedQueries , AnyQuerySchema, executeQueries, QueriesSchema } from '../../../queries/query';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
@@ -32,7 +32,7 @@ function printHelp(output: ReplOutput) {
 	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
 }
 
-async function processQueryArgs(line: string, parser: KnownParser, output: ReplOutput, config: FlowrConfigOptions): Promise<undefined | { query: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> }> {
+async function processQueryArgs(line: string, parser: KnownParser, output: ReplOutput, config: FlowrConfigOptions): Promise<undefined | { parsedQuery: Query[], query: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> }> {
 	const args = splitAtEscapeSensitive(line);
 	const query = args.shift();
 
@@ -47,7 +47,14 @@ async function processQueryArgs(line: string, parser: KnownParser, output: ReplO
 
 	let parsedQuery: Query[] = [];
 	if(query.startsWith('@')) {
-		parsedQuery = [{ type: query.slice(1) as SupportedQueryTypes } as Query];
+		const queryName = query.slice(1);
+		const queryObj = SupportedQueries[queryName as keyof typeof SupportedQueries] as SupportedQuery;
+		if(queryObj?.fromLine) {
+			const q = queryObj.fromLine(args, config);
+			parsedQuery = q ? (Array.isArray(q) ? q : [q]) : [];
+		} else {
+			parsedQuery = [{ type: query.slice(1) as SupportedQueryTypes } as Query];
+		}
 		const validationResult = QueriesSchema().validate(parsedQuery);
 		if(validationResult.error) {
 			output.stderr(`Invalid query: ${validationResult.error.message}`);
@@ -68,7 +75,8 @@ async function processQueryArgs(line: string, parser: KnownParser, output: ReplO
 
 	const processed = await getDataflow(config, parser, args.join(' '));
 	return {
-		query: await Promise.resolve(executeQueries({ dataflow: processed.dataflow, ast: processed.normalize, config: config }, parsedQuery)),
+		parsedQuery,
+		query: await Promise.resolve(executeQueries({ dataflow: processed.dataflow, ast: processed.normalize, config }, parsedQuery)),
 		processed
 	};
 }
@@ -83,7 +91,7 @@ export const queryCommand: ReplCommand = {
 		const results = await processQueryArgs(remainingLine, parser, output, config);
 		const totalEnd = Date.now();
 		if(results) {
-			output.stdout(asciiSummaryOfQueryResult(ansiFormatter, totalEnd - totalStart, results.query, results.processed));
+			output.stdout(asciiSummaryOfQueryResult(ansiFormatter, totalEnd - totalStart, results.query, results.processed, results.parsedQuery));
 		}
 	}
 };

@@ -8,7 +8,7 @@ import { envFingerprint } from '../../../slicing/static/fingerprint';
 import { VisitingQueue } from '../../../slicing/static/visiting-queue';
 import { guard } from '../../../util/assert';
 import type { BuiltInIdentifierConstant } from '../../environments/built-in';
-import type { REnvironmentInformation } from '../../environments/environment';
+import type { IEnvironment, REnvironmentInformation } from '../../environments/environment';
 import { initializeCleanEnvironments } from '../../environments/environment';
 import type { Identifier } from '../../environments/identifier';
 import { ReferenceType } from '../../environments/identifier';
@@ -27,7 +27,7 @@ import { resolveNode } from './resolve';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
-type AliasHandler = (s: NodeId, d: DataflowGraph, e: REnvironmentInformation) => NodeId[] | undefined;
+type AliasHandler = (s: NodeId, d: DataflowGraph, e: REnvironmentInformation, def: IEnvironment) => NodeId[] | undefined;
 const AliasHandler = {
 	[VertexType.Value]:              (sourceId: NodeId) => [sourceId],
 	[VertexType.Use]:                getUseAlias,
@@ -97,16 +97,16 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 
 /**
  * Gets the definitions / aliases of a node
- * 
- * This function is called by the built-in-assignment processor so that we can 
+ *
+ * This function is called by the built-in-assignment processor so that we can
  * track assignments inside the environment. The returned ids are stored in
  * the sourceIds value field of their InGraphIdentifierDefinition. This enables
- * us later, in the {@link trackAliasInEnvironments} function, to get all the 
+ * us later, in the {@link trackAliasInEnvironments} function, to get all the
  * aliases of an identifier.
- * 
- * @param sourceIds    - node ids to get the definitions for
- * @param dataflow     - dataflow graph
- * @param environment  - environment
+ *
+ * @param sourceIds          - node ids to get the definitions for
+ * @param dataflow           - dataflow graph
+ * @param environment        - environment
  * @returns node id of alias
  */
 export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
@@ -129,23 +129,23 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 
 /**
  * Evaluates the value of a node in the set domain.
- * 
+ *
  * resolveIdToValue tries to resolve the value using the data it has been given.
- * If the environment is provided the approximation is more precise, as we can 
+ * If the environment is provided the approximation is more precise, as we can
  * track aliases in the environment.
  * Otherwise, the graph is used to try and resolve the nodes value.
  * If neither is provided the value cannot be resolved.
- * 
+ *
  * This function is also used by the Resolve Value Query and the Dependency Query
  * to resolve values. For e.g. in the Dependency Query it is used to resolve calls
  * like `lapply(c("a", "b", "c"), library, character.only = TRUE)`
  *
- * @param id          - The node id or node to resolve
- * @param environment - The current environment used for name resolution
- * @param graph       - The graph to resolve in
- * @param idMap       - The id map to resolve the node if given as an id
- * @param full        - Whether to track aliases on resolve
- * @param resolve     - Variable resolve mode
+ * @param id                 - The node id or node to resolve
+ * @param environment        - The current environment used for name resolution
+ * @param graph              - The graph to resolve in
+ * @param idMap              - The id map to resolve the node if given as an id
+ * @param full               - Whether to track aliases on resolve
+ * @param resolve            - Variable resolve mode
  */
 export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, resolve }: ResolveInfo): ResolveResult {
 	if(id === undefined) {
@@ -191,7 +191,7 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
  * @param resolve    - Variable resolve mode
  * @param identifier - Identifier to resolve
  * @param use        - Environment to use
- * @param graph      - Dataflow graph
+ * @param graph      - dataflow graph
  * @param idMap      - id map of Dataflow graph
  * @returns Value of Identifier or Top
  */
@@ -240,7 +240,7 @@ export function trackAliasInEnvironments(resolve: VariableResolve, identifier: I
 
 
 /** given an unknown alias, we have to clear all values in the environments */
-onUnknownSideEffect((_graph: DataflowGraph, env: REnvironmentInformation, _id: NodeId, target?: LinkTo) => {
+onUnknownSideEffect((_graph: DataflowGraph, env: REnvironmentInformation, _id: NodeId, target?: LinkTo<RegExp | string>) => {
 	if(target) {
 		return;
 	}
@@ -383,11 +383,11 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 
 /**
  * Please use {@link resolveIdToValue}
- * 
+ *
  * Resolve an Identifier to a constant, if the identifier is a constant
- * 
- * @param name        - Identifier to resolve
- * @param environment - Environment to use
+ *
+ * @param name               - Identifier to resolve
+ * @param environment        - Environment to use
  * @returns Value of Constant or Top
  */
 export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): ResolveResult {

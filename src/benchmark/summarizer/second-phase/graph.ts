@@ -7,7 +7,7 @@ interface BenchmarkGraphEntry extends MergeableRecord {
 	name:   string,
 	unit:   string,
 	value:  number,
-	range?: number,
+	range?: string,
 	extra?: string
 }
 
@@ -18,7 +18,7 @@ export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath:
 
 	for(const { name, measurements } of [{ name: 'per-file', measurements: ultimate.commonMeasurements }, { name: 'per-slice', measurements: ultimate.perSliceMeasurements }]) {
 		for(const [point, measurement] of measurements) {
-			if(point === 'close R session' || point === 'initialize R session') {
+			if(point === 'close R session' || point === 'initialize R session' || !measurement?.mean || !measurement?.std) {
 				continue;
 			}
 			const pointName = point === 'total'? `total ${name}` : point;
@@ -26,7 +26,7 @@ export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath:
 				name:  pointName[0].toUpperCase() + pointName.slice(1),
 				unit:  'ms',
 				value: Number(measurement.mean / 1e6),
-				range: Number(measurement.std / 1e6),
+				range: String(Number(measurement.std / 1e6)),
 				extra: `median: ${(measurement.median / 1e6).toFixed(2)}ms`
 			});
 		}
@@ -58,7 +58,7 @@ export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath:
 		name:  'memory (df-graph)',
 		unit:  'KiB',
 		value: ultimate.dataflow.sizeOfObject.mean / 1024,
-		range: ultimate.dataflow.sizeOfObject.std / 1024,
+		range: String(ultimate.dataflow.sizeOfObject.std / 1024),
 		extra: `median: ${(ultimate.dataflow.sizeOfObject.median / 1024).toFixed(2)}`
 	});
 

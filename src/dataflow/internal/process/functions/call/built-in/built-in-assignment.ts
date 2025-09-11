@@ -37,11 +37,11 @@ import type { REnvironmentInformation } from '../../../../../environments/enviro
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { addSubIndicesToLeafIndices, resolveIndicesByName } from '../../../../../../util/containers';
-import type { FlowrConfigOptions } from '../../../../../../config';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { getAliases } from '../../../../../eval/resolve/alias-tracking';
+import { getAliases, resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { isValue } from '../../../../../eval/values/r-value';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -152,18 +152,56 @@ export function processAssignment<OtherInfo>(
 	}
 	const { type, named } = target;
 
-	if(!config.targetVariable && type === RType.Symbol) {
-		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget, forceArgs: config.forceArgs, origin: 'builtin:assignment' });
-		return processAssignmentToSymbol<OtherInfo & ParentInformation>({
-			...config,
-			nameOfAssignmentFunction: name.content,
-			source,
-			target,
-			args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
-			rootId,
-			data,
-			information:              res.information,
-		});
+	if(type === RType.Symbol) {
+		if(!config.targetVariable) {
+			const res = processKnownFunctionCall({
+				name,
+				args,
+				rootId,
+				data,
+				reverseOrder: !config.swapSourceAndTarget,
+				forceArgs:    config.forceArgs,
+				origin:       'builtin:assignment'
+			});
+			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
+				...config,
+				nameOfAssignmentFunction: name.content,
+				source,
+				targetId:                 target.info.id,
+				args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
+				rootId,
+				data,
+				information:              res.information,
+			});
+		}  else {
+			// try to resolve the variable first
+			const n = resolveIdToValue(target.info.id, { environment: data.environment, resolve: data.flowrConfig.solver.variables, idMap: data.completeAst.idMap, full: true });
+			if(n.type === 'set' && n.elements.length === 1 && n.elements[0].type === 'string') {
+				const val = n.elements[0].value;
+				if(isValue(val)) {
+					const res = processKnownFunctionCall({
+						name,
+						args,
+						rootId,
+						data,
+						reverseOrder: !config.swapSourceAndTarget,
+						forceArgs:    config.forceArgs,
+						origin:       'builtin:assignment'
+					});
+					return processAssignmentToSymbol<OtherInfo & ParentInformation>({
+						...config,
+						nameOfAssignmentFunction: name.content,
+						source,
+						targetId:                 target.info.id,
+						targetName:               val.str,
+						args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
+						rootId,
+						data,
+						information:              res.information,
+					});
+				}
+			}
+		}
 	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
 		dataflowLogger.debug(`Assignment ${name.content} has a function call as target ==> replacement function ${target.lexeme}`);
@@ -190,7 +228,7 @@ export function processAssignment<OtherInfo>(
 				...config,
 				nameOfAssignmentFunction: name.content,
 				source,
-				target:                   rootArg,
+				targetId:                 rootArg.info.id,
 				args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
 				rootId,
 				data,
@@ -214,7 +252,6 @@ export function processAssignment<OtherInfo>(
 function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]) {
 	const source = unpackArgument(args[1], false);
 	const target = unpackArgument(args[0], false);
-
 	return { source, target };
 }
 
@@ -222,12 +259,12 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
  * Promotes the ingoing/unknown references of target (an assignment) to definitions
  */
 function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): InGraphIdentifierDefinition[] {
-	return [...target.in, ...target.unknownReferences].map(ref => ({
+	return target.in.concat(target.unknownReferences).map(ref => ({
 		...ref,
 		type:                referenceType,
 		definedAt:           rootId,
 		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
-		value:               value
+		value
 	}));
 }
 
@@ -268,7 +305,7 @@ function processAssignmentToString<OtherInfo>(
 		...config,
 		nameOfAssignmentFunction: name.content,
 		source,
-		target:                   symbol,
+		targetId:                 symbol.info.id,
 		args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
 		rootId,
 		data,
@@ -293,7 +330,9 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
 	readonly nameOfAssignmentFunction: string
 	readonly source:                   RNode<OtherInfo & ParentInformation>
 	readonly args:                     [DataflowInformation, DataflowInformation]
-	readonly target:                   RSymbol<OtherInfo & ParentInformation>
+	readonly targetId:                 NodeId
+	/** pass only if the assignment target differs from normal R assignments (i.e., if the symbol is to be resolved) */
+	readonly targetName?:              string
 	readonly rootId:                   NodeId
 	readonly data:                     DataflowProcessorInformation<OtherInfo>
 	readonly information:              DataflowInformation
@@ -305,10 +344,10 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
  * @param nodeToDefine       - `x`
  * @param sourceIds          - `v`
  * @param rootIdOfAssignment - `<-`
- * @param config             - The flowr config
+ * @param data               - The dataflow analysis fold backpack
  * @param assignmentConfig   - configuration for the assignment processing
  */
-export function markAsAssignment(
+export function markAsAssignment<OtherInfo>(
 	information: {
 		environment: REnvironmentInformation,
 		graph:       DataflowGraph
@@ -316,10 +355,10 @@ export function markAsAssignment(
 	nodeToDefine: InGraphIdentifierDefinition,
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
-	config: FlowrConfigOptions,
+	data: DataflowProcessorInformation<OtherInfo>,
 	assignmentConfig?: AssignmentConfiguration
 ) {
-	if(config.solver.pointerTracking) {
+	if(data.flowrConfig.solver.pointerTracking) {
 		let indicesCollection: ContainerIndicesCollection = undefined;
 		if(sourceIds.length === 1) {
 			// support for tracking indices.
@@ -349,7 +388,7 @@ export function markAsAssignment(
 		nodeToDefine.indicesCollection ??= indicesCollection;
 	}
 
-	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, config);
+	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, data.flowrConfig);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
 	if(!assignmentConfig?.quoteSource) {
 		for(const sourceId of sourceIds) {
@@ -371,11 +410,19 @@ export function markAsAssignment(
  * Helper function whenever it is known that the _target_ of an assignment is a (single) symbol (i.e. `x <- ...`, but not `names(x) <- ...`).
  */
 function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
-	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], target, rootId, data, information, makeMaybe, quoteSource } = config;
+	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], targetId, targetName, rootId, data, information, makeMaybe, quoteSource } = config;
 	const referenceType = checkTargetReferenceType(source, sourceArg);
 
 	const aliases = getAliases([source.info.id], information.graph, information.environment);
-	const writeNodes = produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
+	const writeNodes = targetName ? [{
+		nodeId:   		         targetId,
+		name: 				           targetName,
+		type:                referenceType,
+		definedAt:           rootId,
+		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
+		value:               aliases
+	} satisfies InGraphIdentifierDefinition]
+		: produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
 
 	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`);
@@ -384,15 +431,19 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	// we drop the first arg which we use to pass along arguments :D
 	const readFromSourceWritten = sourceArg.out.slice(1);
 	const readTargets: readonly IdentifierReference[] = [
-		{ nodeId: rootId, name: nameOfAssignmentFunction, controlDependencies: data.controlDependencies, type: ReferenceType.Function },
-		...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten
-	];
+		{ nodeId: rootId, name: nameOfAssignmentFunction, controlDependencies: data.controlDependencies, type: ReferenceType.Function } as IdentifierReference
+	].concat(
+		sourceArg.unknownReferences,
+		sourceArg.in,
+		targetName ? targetArg.in : targetArg.in.filter(i => i.nodeId !== targetId),
+		readFromSourceWritten
+	);
 
 	information.environment = overwriteEnvironment(sourceArg.environment, targetArg.environment);
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
-		markAsAssignment(information, write, [source.info.id], rootId, data.flowrConfig, config);
+		markAsAssignment(information, write, [source.info.id], rootId, data, config);
 	}
 
 	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);

@@ -100,15 +100,35 @@ export interface LintingResult {
 	readonly quickFix?: LintQuickFix[]
 }
 
+
 export interface ConfiguredLintingRule<Name extends LintingRuleNames = LintingRuleNames> {
 	readonly name:   Name
 	readonly config: DeepPartial<LintingRuleConfig<Name>>
 }
 
-export interface LintingResults<Name extends LintingRuleNames> {
+/**
+ * For when a linting rule throws an error during execution
+ */
+export interface LintingResultsError {
+	readonly error: string
+} 
+
+
+export interface LintingResultsSuccess<Name extends LintingRuleNames> {
 	results: LintingRuleResult<Name>[];
 	'.meta': LintingRuleMetadata<Name> & { readonly searchTimeMs: number; readonly processTimeMs: number; };
 }
+
+export function isLintingResultsError<Name extends LintingRuleNames>(o: LintingResults<Name>): o is LintingResultsError {
+	return 'error' in o;
+}
+
+export function isLintingResultsSuccess<Name extends LintingRuleNames>(o: LintingResults<Name>): o is LintingResultsSuccess<Name> {
+	return 'results' in o;
+}
+
+export type LintingResults<Name extends LintingRuleNames> = LintingResultsSuccess<Name> | LintingResultsError;
+
 
 export enum LintingResultCertainty {
 	/**

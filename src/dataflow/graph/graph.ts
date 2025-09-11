@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert';
-import type { DataflowGraphEdge , EdgeType } from './edge';
+import type { DataflowGraphEdge, EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
 import { equalFunctionArguments } from './diff-dataflow-graph';
 import type {
@@ -15,7 +15,7 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { EnvironmentMemory, IEnvironment, REnvironmentInformation } from '../environments/environment';
+import type { IEnvironment, REnvironmentInformation } from '../environments/environment';
 import { initializeCleanEnvironments } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
@@ -23,6 +23,7 @@ import { jsonReplacer } from '../../util/json';
 import { dataflowLogger } from '../logger';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
+import type { BuiltInMemory } from '../environments/built-in';
 
 /**
  * Describes the information we store per function body.
@@ -258,7 +259,7 @@ export class DataflowGraph<
 	 *
 	 * @see #edges
 	 */
-	public* vertices(includeDefinedFunctions: boolean): IterableIterator<[NodeId, Vertex]> {
+	public* vertices(includeDefinedFunctions: boolean): MapIterator<[NodeId, Vertex]> {
 		if(includeDefinedFunctions) {
 			yield* this.vertexInformation.entries();
 		} else {
@@ -273,7 +274,7 @@ export class DataflowGraph<
 	 *
 	 * @see #vertices
 	 */
-	public* edges(): IterableIterator<[NodeId, OutgoingEdges]> {
+	public* edges(): MapIterator<[NodeId, OutgoingEdges]> {
 		yield* this.edgeInformation.entries();
 	}
 
@@ -460,9 +461,12 @@ export class DataflowGraph<
 	}
 
 	/** Marks the given node as having unknown side effects */
-	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo): this {
+	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo<RegExp | string>): this {
 		if(target) {
-			this._unknownSideEffects.add({ id: normalizeIdToNumberIfPossible(id), linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp> });
+			this._unknownSideEffects.add({
+				id:     normalizeIdToNumberIfPossible(id),
+				linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp>
+			});
 			return this;
 		}
 		this._unknownSideEffects.add(normalizeIdToNumberIfPossible(id));
@@ -519,9 +523,10 @@ function extractEdgeIds(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceF
 }
 
 export interface IEnvironmentJson {
-	readonly id: number;
-	parent:      IEnvironmentJson;
-	memory:      Record<Identifier, IdentifierDefinition[]>;
+    readonly id: number;
+    parent:      IEnvironmentJson;
+    memory:      Record<Identifier, IdentifierDefinition[]>;
+    builtInEnv:  true | undefined;
 }
 
 interface REnvironmentInformationJson {
@@ -531,15 +536,19 @@ interface REnvironmentInformationJson {
 
 function envFromJson(json: IEnvironmentJson): IEnvironment {
 	const parent = json.parent ? envFromJson(json.parent) : undefined;
-	const memory: EnvironmentMemory = new Map();
+	const memory: BuiltInMemory = new Map();
 	for(const [key, value] of Object.entries(json.memory)) {
 		memory.set(key as Identifier, value);
 	}
-	return {
+	const obj: Writable<IEnvironment> = {
 		id:     json.id,
 		parent: parent as IEnvironment,
 		memory
 	};
+	if(json.builtInEnv) {
+		obj.builtInEnv = true;
+	}
+	return obj as IEnvironment;
 }
 
 function renvFromJson(json: REnvironmentInformationJson): REnvironmentInformation {

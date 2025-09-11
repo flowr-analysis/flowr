@@ -1,5 +1,5 @@
 import type {
-	CfgBasicBlockVertex, CfgEndMarkerVertex, CfgExpressionVertex, CfgMidMarkerVertex,
+	CfgBasicBlockVertex, CfgEndMarkerVertex, CfgExpressionVertex,
 	CfgSimpleVertex,
 	CfgStatementVertex,
 	ControlFlowInformation
@@ -96,9 +96,6 @@ export class BasicCfgGuidedVisitor<
 			case CfgVertexType.Expression:
 				this.onExpressionNode(vertex);
 				break;
-			case CfgVertexType.MidMarker:
-				this.onMidMarkerNode(vertex);
-				break;
 			case CfgVertexType.EndMarker:
 				this.onEndMarkerNode(vertex);
 				break;
@@ -127,10 +124,6 @@ export class BasicCfgGuidedVisitor<
 	}
 
 	protected onExpressionNode(_node: CfgExpressionVertex): void {
-		/* does nothing by default */
-	}
-
-	protected onMidMarkerNode(_node: CfgMidMarkerVertex): void {
 		/* does nothing by default */
 	}
 

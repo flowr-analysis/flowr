@@ -3,6 +3,7 @@ import * as Joi from 'joi';
 import type { SlicingCriteria } from '../../../../slicing/criterion/parse';
 import type { PipelineOutput } from '../../../../core/steps/pipeline/pipeline';
 import type { DEFAULT_DATAFLOW_PIPELINE, DEFAULT_SLICING_PIPELINE } from '../../../../core/steps/pipeline/default-pipelines';
+import { SliceDirection } from '../../../../core/steps/all/static-slicing/00-slice';
 
 /**
  * Can only be sent after you have sent the {@link FileAnalysisRequestMessage}.
@@ -15,6 +16,8 @@ export interface SliceRequestMessage extends IdMessageBase {
 	filetoken:        string,
 	/** The slicing criteria to use */
 	criterion:        SlicingCriteria,
+	/** The direction to slice in. Defaults to backward slicing if unset. */
+	direction?:       SliceDirection,
 	/**
 	 * Should the magic comments (force-including lines within the slice) be ignord?
 	 */
@@ -28,6 +31,7 @@ export const requestSliceMessage: MessageDefinition<SliceRequestMessage> = {
 		id:        Joi.string().optional().description('The id of the message, if you passed one in the request.'),
 		filetoken: Joi.string().required().description('The filetoken of the file to slice must be the same as with the analysis request.'),
 		criterion: Joi.array().items(Joi.string()).min(0).required().required().description('The slicing criteria to use.'),
+		direction: Joi.string().valid(...Object.values(SliceDirection)).description('The direction to slice in. Defaults to backward slicing if unset.')
 	})
 };
 

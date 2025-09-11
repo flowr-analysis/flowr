@@ -237,7 +237,7 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	/**
 	 * A convenience function that combines {@link with} and the {@link Mapper.Enrichment} mapper to immediately add an enrichment and then map to its value(s).
 	 */
-	get<ConcreteEnrichment extends Enrichment>(enrichment: ConcreteEnrichment, args?: EnrichmentElementArguments<ConcreteEnrichment>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with' | 'map'> {
+	to<ConcreteEnrichment extends Enrichment>(enrichment: ConcreteEnrichment, args?: EnrichmentElementArguments<ConcreteEnrichment>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with' | 'map'> {
 		return this.with(enrichment, args).map(Mapper.Enrichment, enrichment);
 	}
 

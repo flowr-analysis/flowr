@@ -157,18 +157,18 @@ export const ABSOLUTE_PATH = {
 					}
 				} else if(enrichmentContent(element, Enrichment.QueryData)) {
 					const result = queryResults[enrichmentContent(element, Enrichment.QueryData).query] as QueryResults<'dependencies'>['dependencies'];
-					const mappedStrings = result.readData.filter(r => r.source !== Unknown && isAbsolutePath(r.source, regex)).map(r => {
+					const mappedStrings = result.read.filter(r => r.value !== undefined && r.value !== Unknown && isAbsolutePath(r.value, regex)).map(r => {
 						const elem = data.normalize.idMap.get(r.nodeId);
 						return {
 							certainty: LintingResultCertainty.Certain,
-							filePath:  r.source,
+							filePath:  r.value,
 							range:     elem?.info.fullRange ?? elem?.location ?? rangeFrom(-1, -1, -1, -1),
-							quickFix:  buildQuickFix(elem, r.source, wd)
+							quickFix:  buildQuickFix(elem, r.value as string, wd)
 						};
 					});
 					if(mappedStrings.length > 0) {
 						return mappedStrings;
-					} else if(result.readData.every(r => r.source !== Unknown)) {
+					} else if(result.read.every(r => r.value !== Unknown)) {
 						// if we have no absolute paths, but all paths are known, we can return an empty array
 						return [];
 					}
@@ -181,7 +181,8 @@ export const ABSOLUTE_PATH = {
 							return strings.filter(s => isAbsolutePath(s, regex)).map(str => ({
 								certainty: LintingResultCertainty.Uncertain,
 								filePath:  str,
-								range:     node.info.fullRange ?? node.location ?? rangeFrom(-1, -1, -1, -1)
+								range:     node.info.fullRange ?? node.location ?? rangeFrom(-1, -1, -1, -1),
+								quickFix:  undefined
 							}));
 						}
 					}
@@ -196,7 +197,7 @@ export const ABSOLUTE_PATH = {
 	},
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} is not absolute`
+		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} is absolute`
 	},
 	info: {
 		name:          'Absolute Paths',

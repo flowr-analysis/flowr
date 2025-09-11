@@ -53,8 +53,8 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 	assertOrderBasic('simple assignment (basic blocks)', 'a <- 1', ['bb-3-exit', 3, 2, 0, 1, '2-exit', '3-exit'], ['bb-3-exit', '3-exit', '2-exit', 1, 0, 2, 3], true);
 	assertOrderBasic('sequence', 'a;b', [2, 0, 1, '2-exit']);
 	assertOrderBasic('while-loop', 'while(TRUE) a + b',
-		[6, 5, 0, '5-condition', '5-exit', '6-exit', 4, 3, 1, 2, '3-exit', '4-exit'],
-		['6-exit', '5-exit', '5-condition', 0, 5, '4-exit', '3-exit', 2, 1, 3, 4, 6]
+		[6, 5, 0, '5-exit', '6-exit', 4, 3, 1, 2, '3-exit', '4-exit'],
+		['6-exit', '5-exit', 0, 5, '4-exit', '3-exit', 2, 1, 3, 4, 6]
 	);
 
 }));

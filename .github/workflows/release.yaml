@@ -81,7 +81,7 @@ jobs:
 
       - name: "📦 Install R Packages"
         shell: Rscript {0}
-        run: lapply(c("xmlparsedata","dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
+        run:   lapply(c("xmlparsedata","dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
 
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
@@ -124,8 +124,12 @@ jobs:
           r-version: ${{ env.ACTION_R_VERSION }}
 
       - name: "📦 Install R Packages"
-        shell: Rscript {0}
-        run: lapply(c("xmlparsedata","dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::xmlparsedata
+            any::dplyr
+            any::readr
 
       - name: "⚙️ Name and Email for Git (config) and update"
         run: |
@@ -268,8 +272,12 @@ jobs:
           r-version: ${{ env.ACTION_R_VERSION }}
 
       - name: "📦 Install R Packages"
-        shell: Rscript {0}
-        run: lapply(c("xmlparsedata","dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::xmlparsedata
+            any::dplyr
+            any::readr
 
       - name: "⏱️ Run the performance benchmarks"
         run: bash .github/workflows/scripts/run-flowr-command.sh performance-test -- 1 1 "${{ matrix.name }}" "${{ matrix.parser }}"

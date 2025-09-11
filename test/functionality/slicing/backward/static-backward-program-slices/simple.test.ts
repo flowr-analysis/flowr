@@ -1,9 +1,9 @@
-import { assertSliced, withShell } from '../../_helper/shell';
-import { label } from '../../_helper/label';
-import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
+import { assertSliced, withShell } from '../../../_helper/shell';
+import { label } from '../../../_helper/label';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { describe } from 'vitest';
-import { amendConfig, defaultConfigOptions } from '../../../../src/config';
+import { amendConfig, defaultConfigOptions } from '../../../../../src/config';
 
 describe.sequential('Simple', withShell(shell => {
 	for(const withPointer of [true, false]) {
@@ -32,6 +32,17 @@ describe.sequential('Simple', withShell(shell => {
 			);
 		});
 	}
+	describe('Assignments with the assign function', () => {
+		assertSliced(label('assign to string', []),
+			shell, 'x <- "a"\nassign(x, 3)\nprint(a)', ['3@a'], 'x <- "a"\nassign(x, 3)\na'
+		);
+		assertSliced(label('assign to string jump', []),
+			shell, 'x <- "a"\nassign(x, 3)\nprint(x)', ['3@x'], 'x <- "a"\nx'
+		);
+		assertSliced(label('assign to other string', []),
+			shell, 'x <- "b"\nassign(x, 3)\nprint(a)', ['3@a'], 'a'
+		);
+	});
 	describe('Constant conditionals', () => {
 		assertSliced(label('if(TRUE)', ['name-normal', 'logical', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'if']),
 			shell, 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'x <- 3\nx'

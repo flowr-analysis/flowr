@@ -59,6 +59,26 @@ describe('flowR search', withTreeSitter(parser => {
 				} })
 			);
 		});
+		describe('origin', () => {
+			assertSearch('default', parser, 'x <- 2\ncat(x)', ['2@cat'],
+				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:default' } })
+			);
+			assertSearch('literal assignment', parser, 'x <- 2\ncat(x)', ['1@<-'],
+				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:assignment' } })
+			);
+			assertSearch('include function calls', parser, 'x <- 2\ncat(x)', ['1@<-', '1@x', '1@2', '2@x', '$3', '$5', '$7'],
+				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:assignment', keepNonFunctionCalls: true } })
+			);
+			assertSearch('regex assignment', parser, 'x <- 2\ncat(x)', ['1@<-'],
+				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: /:assignment/ } })
+			);
+			assertSearch('for loop', parser, "for (i in 1:10) { cat('hi') }", ['1@for'],
+				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:for-loop' } })
+			);
+			assertSearch('for loop (overridden)', parser, "for <- function() {}; for (i in 1:10) { cat('hi') }", [],
+				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:for-loop' } })
+			);
+		});
 	});
 
 	describe('From Query', () => {
@@ -75,20 +95,20 @@ describe('flowR search', withTreeSitter(parser => {
 		describe('call targets', () => {
 			assertSearch('local', parser, 'func <- function(x) { x + 1 }\nfunc(7)', ['1@function'],
 				Q.all().with(Enrichment.CallTargets).map(Mapper.Enrichment, Enrichment.CallTargets).select(0),
-				Q.all().get(Enrichment.CallTargets).select(0),
+				Q.all().to(Enrichment.CallTargets).select(0),
 			);
 			assertSearchEnrichment('global', parser, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'some', Q.all().with(Enrichment.CallTargets));
 			assertSearchEnrichment('global specific', parser, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'every', Q.all().with(Enrichment.CallTargets).select(1));
 			// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!
 			assertSearch('global mapper', parser, 'cat("hello")', [],
 				Q.all().with(Enrichment.CallTargets).map(Mapper.Enrichment, Enrichment.CallTargets),
-				Q.all().get(Enrichment.CallTargets),
+				Q.all().to(Enrichment.CallTargets),
 			);
 		});
 		describe('last call', () => {
 			assertSearch('plot mapper', parser, 'plot(x)\nplot(x)\npoints(y)', ['2@plot'],
 				Q.var('points').with(Enrichment.LastCall, [{ callName: 'plot' }]).map(Mapper.Enrichment, Enrichment.LastCall),
-				Q.var('points').get(Enrichment.LastCall, [{ callName: 'plot' }]),
+				Q.var('points').to(Enrichment.LastCall, [{ callName: 'plot' }]),
 			);
 		});
 		describe('cfg info', () => {

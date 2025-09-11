@@ -7,6 +7,7 @@ import { DEAD_CODE } from './rules/dead-code';
 import { SEEDED_RANDOMNESS } from './rules/seeded-randomness';
 import { NAMING_CONVENTION } from './rules/naming-convention';
 import { DATA_FRAME_ACCESS_VALIDATION } from './rules/dataframe-access-validation';
+import { USELESS_LOOP } from './rules/useless-loop';
 
 /**
  * The registry of currently supported linting rules.
@@ -21,6 +22,7 @@ export const LintingRules = {
 	'naming-convention':           NAMING_CONVENTION,
 	'dataframe-access-validation': DATA_FRAME_ACCESS_VALIDATION,
 	'dead-code':                   DEAD_CODE,
+	'useless-loop':                USELESS_LOOP
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules

@@ -53,7 +53,7 @@ export class DataFrameShapeInferenceVisitor<
 	protected override visitNode(nodeId: NodeId): boolean {
 		const vertex = this.getCfgVertex(nodeId);
 
-		// skip vertices representing mid markers or entries of complex nodes
+		// skip vertices representing entries of complex nodes
 		if(vertex === undefined || this.shouldSkipVertex(vertex)) {
 			return true;
 		}
@@ -64,7 +64,7 @@ export class DataFrameShapeInferenceVisitor<
 		const visitedCount = this.visited.get(vertex.id) ?? 0;
 		this.visited.set(vertex.id, visitedCount + 1);
 
-		// only continue visitor if the node has not been visited before or the data frame value of the node changed
+		// only continue visiting if the node has not been visited before or the data frame value of the node changed
 		return visitedCount === 0 || !equalDataFrameState(this.oldDomain, this.newDomain);
 	}
 

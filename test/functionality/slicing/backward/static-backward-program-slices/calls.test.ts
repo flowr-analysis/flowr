@@ -1,8 +1,8 @@
-import { assertSliced, withShell } from '../../_helper/shell';
-import { label } from '../../_helper/label';
-import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
-import { MIN_VERSION_LAMBDA } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
+import { assertSliced, withShell } from '../../../_helper/shell';
+import { label } from '../../../_helper/label';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { describe } from 'vitest';
 
 describe.sequential('Calls', withShell(shell => {
@@ -12,7 +12,9 @@ a <- function(x) { x }
 a(i)`;
 		for(const criterion of ['3:1', '3@a'] as const) {
 			assertSliced(label(JSON.stringify(code), ['function-definitions', 'resolve-arguments', 'formals-named', 'name-normal', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'unnamed-arguments']),
-				shell, code, [criterion], code
+				shell, code, [criterion], `i <- 4
+a <- function(x) x
+a(i)`
 			);
 		}
 		const constCapabilities: SupportedFlowrCapabilityId[] = ['function-definitions', 'resolve-arguments', 'formals-named', 'name-normal', 'numbers', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'unnamed-arguments', 'implicit-return'];
@@ -21,7 +23,7 @@ a <- function(x) { x <- 2; 1 }
 a(i)`;
 		/* actually, `i` does not have to be defined, as it is _not used_ by the function, so we do not have to include `i <- 4` */
 		assertSliced(label('Function call with constant function', constCapabilities),
-			shell, constFunction, ['3:1'], `a <- function(x) { 1 }
+			shell, constFunction, ['3:1'], `a <- function(x) 1
 a(i)`);
 		/* nothing of the function-content is required */
 		assertSliced(label('Slice function definition', constCapabilities),
@@ -37,7 +39,7 @@ foo(x, 3)
 x. <- function (x) { x }
 foo(x, x.(y))
 foo(x, x.(3))
-    `, ['4@foo'], `x. <- function(x) { x }
+    `, ['4@foo'], `x. <- function(x) x
 foo(x, x.(3))`);
 		assertSliced(label('Using ...', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'formals-dot-dot-dot', 'formals-named', 'implicit-return', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'numbers']),
 			shell, `
@@ -47,8 +49,8 @@ x <- 3
 WW <- 4
 y <- 3
 f2(1,x)
-    `, ['7@f2'], `f1 <- function(a, b) { WW }
-f2 <- function(...) { f1(...) }
+    `, ['7@f2'], `f1 <- function(a, b) WW
+f2 <- function(...) f1(...)
 x <- 3
 WW <- 4
 f2(1,x)`);
@@ -60,7 +62,9 @@ a <- function(x) { x + i }
 a(4)`;
 			for(const criterion of ['3:1', '3@a'] as const) {
 				assertSliced(label('Must include read', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'formals-named', 'implicit-return', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'numbers']),
-					shell, code, [criterion], code);
+					shell, code, [criterion], `i <- 4
+a <- function(x) x + i
+a(4)`);
 			}
 		});
 		describe('Read variable defined after', () => {
@@ -69,7 +73,9 @@ i <- 4
 a(5)`;
 			for(const criterion of ['3:1', '3@a'] as const) {
 				assertSliced(label('Must include read', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'formals-named', 'implicit-return', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'numbers']),
-					shell, code, [criterion], code);
+					shell, code, [criterion], `a <- function(x) x + i
+i <- 4
+a(5)`);
 			}
 		});
 		describe('Read variable defined before and after', () => {
@@ -78,7 +84,7 @@ a <- function(x) { x + i }
 i <- 4
 a(5)`;
 			for(const criterion of ['4:1', '4@a'] as const) {
-				assertSliced(label('Only keep second definition', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'formals-named', 'implicit-return', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'numbers']), shell, code, [criterion], `a <- function(x) { x + i }
+				assertSliced(label('Only keep second definition', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'formals-named', 'implicit-return', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'numbers']), shell, code, [criterion], `a <- function(x) x + i
 i <- 4
 a(5)`);
 			}
@@ -91,11 +97,11 @@ a()
 b()`;
 		const caps: SupportedFlowrCapabilityId[] = ['name-normal', 'normal-definition', 'implicit-return', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'binary-operator', 'infix-calls', 'numbers', 'return-value-of-assignments', 'precedence'];
 		assertSliced(label('Include only b-definition', caps),
-			shell, code, ['3@a'], `a <- b <- function() { x }
+			shell, code, ['3@a'], `a <- b <- function() x
 x <- 2
 a()`);
 		assertSliced(label('Include only b-definition', caps),
-			shell, code, ['4@b'], `b <- function() { x }
+			shell, code, ['4@b'], `b <- function() x
 x <- 2
 b()`);
 	});
@@ -103,7 +109,8 @@ b()`);
 		const code = `a <- function(x=4) { x }
 a(x = 3)`;
 		assertSliced(label('Must include function definition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'implicit-return', 'newlines', 'named-arguments','resolve-arguments', 'numbers']),
-			shell, code, ['2@a'], code);
+			shell, code, ['2@a'], `a <- function(x=4) x
+a(x = 3)`);
 
 		assertSliced(label('Must work for same named arguments too', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'named-arguments', 'newlines']),
 			shell, 'a <- 3\nb <- foo(a=a)', ['2@b'], 'a <- 3\nb <- foo(a=a)');
@@ -132,14 +139,14 @@ f()`);
 f()
 `;
 		assertSliced(label('Late bindings of parameter in parameters', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'newlines','binary-operator', 'infix-calls', 'numbers', 'call-normal', ...OperatorDatabase['+'].capabilities, 'semicolons']),
-			shell, lateCodeB, ['2@f'], `f <- function(a=b, b=3) { a + 1 }
+			shell, lateCodeB, ['2@f'], `f <- function(a=b, b=3) a + 1
 f()`);
 		assertSliced(label('Parameters binding context', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'implicit-return', 'newlines', 'numbers', 'call-normal']),
 			shell, `f <- function(a=y) { a }
 a <- 5
 y <- 3
 y <- 4
-f()`, ['5@f'], `f <- function(a=y) { a }
+f()`, ['5@f'], `f <- function(a=y) a
 y <- 4
 f()`);
 
@@ -152,10 +159,10 @@ f()`);
 b <- a()
 b()`;
 			assertSliced(label('Must include outer function', ['name-normal', 'closures', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'numbers', 'return', 'implicit-return', 'call-normal', 'newlines', 'semicolons']),
-				shell, code, ['2@a'], `a <- function() { return(function() { 1 }) }
+				shell, code, ['2@a'], `a <- function() return(function() { 1 })
 a()`);
 			assertSliced(label('Must include linked function', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'return', 'implicit-return', 'numbers', 'newlines', 'call-normal']),
-				shell, code, ['3@b'], `a <- function() { return(function() { 1 }) }
+				shell, code, ['3@b'], `a <- function() return(function() { 1 })
 b <- a()
 b()`);
 		});
@@ -173,7 +180,7 @@ u()`;
     }
 a()`);
 			assertSliced(label('Must include function shell on call', ['name-normal', 'closures', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'return', 'call-normal']), shell, code, ['6@u'], `a <- function() {
-        x <- function() { z + y }
+        x <- function() z + y
         y <- 12
         return(x)
     }
@@ -191,7 +198,7 @@ x <- (function() {
   3
  })()
 cat(x)
-    `, ['7@x'], `x <- (function() { 3 })()
+    `, ['7@x'], `x <- (function() 3)()
 x`);
 	});
 	describe('Higher-order Functions', () => {
@@ -202,7 +209,7 @@ b(a)`;
 		const caps: SupportedFlowrCapabilityId[] = ['name-normal', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'formals-named', 'call-normal', 'unnamed-arguments'];
 		assertSliced(label('Only i, not bound in context', caps), shell, code, ['1@i'], 'i');
 		assertSliced(label('Slice of b is independent', caps), shell, code, ['3@b'], 'b <- function(f) { }');
-		assertSliced(label('Slice of b-call uses function', caps), shell, code, ['4@b'], `a <- function() { i }
+		assertSliced(label('Slice of b-call uses function', caps), shell, code, ['4@b'], `a <- function() i
 b <- function(f) {
         i <- 5
         f()
@@ -216,7 +223,7 @@ a <- function(x) {
 }
 res <- a(m)()`, ['6@res'], `m <- 12
 a <- function(x) {
-        b <- function() { function() { x } }
+        b <- function() function() x
         return(b())
     }
 res <- a(m)()`);
@@ -224,7 +231,7 @@ res <- a(m)()`);
 			shell, `a <- function(b) {
   b
 }
-x <- a(function() 2 + 3)() + a(function() 7)()`, ['4@x'], `a <- function(b) { b }
+x <- a(function() 2 + 3)() + a(function() 7)()`, ['4@x'], `a <- function(b) b
 x <- a(function() 2 + 3)() + a(function() 7)()`);
 	});
 	describe('Side-Effects', () => {
@@ -250,7 +257,7 @@ cat(x)
 }
 b <- f()
     `, ['8@b'], `f <- function() {
-        a <- function() { x }
+        a <- function() x
         x <- 2
         a()
     }
@@ -268,7 +275,7 @@ b <- f()`);
 }
 b <- f()
     `, ['9@b'], `f <- function() {
-        a <- function() { x }
+        a <- function() x
         x <- 3
         b <- a()
         x <- 2
@@ -291,7 +298,7 @@ b <- f()`);
 res <- x()`;
 		assertSliced(label('Double return points', ['name-normal', 'closures', ...OperatorDatabase['<-'].capabilities, 'call-anonymous', 'normal-definition', 'implicit-return', 'numbers', 'if', 'return', 'implicit-return', 'call-normal', 'newlines']), shell, code, ['9@res'], `
 x <- (function() {
-        g <- function() { y }
+        g <- function() y
         y <- 5
         if(z) return(g)
         y <- 3
@@ -302,7 +309,8 @@ res <- x()`.trim());
 	describe('Recursive functions', () => {
 		const code = `f <- function() { f() }
 f()`;
-		assertSliced(label('Endless recursion', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'call-normal', 'newlines']), shell, code, ['2@f'], code);
+		assertSliced(label('Endless recursion', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'call-normal', 'newlines']), shell, code, ['2@f'], `f <- function() f()
+f()`);
 	});
 	describe('Uninteresting calls', () => {
 		const code = `
@@ -351,7 +359,7 @@ x`);
 y <- 5
 x <- 2
 a()(y)
-x`, ['5@x'], `a <- function() { function(b) x <<- b }
+x`, ['5@x'], `a <- function() function(b) x <<- b
 y <- 5
 a()(y)
 x`);
@@ -369,7 +377,7 @@ x`);
 y <- 5
 x <- 2
 a()(y)
-cat(x)`, ['5@x'], `a <- function() { function(b) if(runif() > .5) { x <<- b } }
+cat(x)`, ['5@x'], `a <- function() function(b) if(runif() > .5) { x <<- b }
 y <- 5
 x <- 2
 a()(y)
@@ -386,16 +394,16 @@ a()
 \`a\`()
     `;
 		const caps: SupportedFlowrCapabilityId[] = ['name-quoted', 'name-escaped', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'name-normal', 'numbers', 'semicolons', 'implicit-return', 'call-normal', 'newlines', 'name-escaped'];
-		assertSliced(label('Must link with string/string', caps), shell, code, ['3@\'a\''], `'a' <- function() { 4 }
+		assertSliced(label('Must link with string/string', caps), shell, code, ['3@\'a\''], `'a' <- function() 4
 'a'()`);
-		assertSliced(label('Must link with string/no-string', caps), shell, code, ['4@a'], `'a' <- function() { 4 }
+		assertSliced(label('Must link with string/no-string', caps), shell, code, ['4@a'], `'a' <- function() 4
 a()`);
-		assertSliced(label('Must link with no-string/string', caps), shell, code, ['6@\'a\''], `a <- function() { 5 }
+		assertSliced(label('Must link with no-string/string', caps), shell, code, ['6@\'a\''], `a <- function() 5
 'a'()`);
 		// the common case:
-		assertSliced(label('Must link with no-string/no-string', caps), shell, code, ['7@a'], `a <- function() { 5 }
+		assertSliced(label('Must link with no-string/no-string', caps), shell, code, ['7@a'], `a <- function() 5
 a()`);
-		assertSliced(label('Try with special backticks', caps), shell, code, ['8@`a`'], `a <- function() { 5 }
+		assertSliced(label('Try with special backticks', caps), shell, code, ['8@`a`'], `a <- function() 5
 \`a\`()`);
 	});
 	describe('Using own infix operators', () => {
@@ -410,9 +418,9 @@ cat(3 %a% 4)
 cat(4 %b% 5)
       `;
 		const caps: SupportedFlowrCapabilityId[] = ['name-escaped', 'resolve-arguments', 'name-quoted', 'infix-calls', 'formals-named', 'implicit-return', 'newlines', 'unnamed-arguments', 'special-operator'];
-		assertSliced(label('Must link with backticks', caps), shell, code, ['8:7'], `\`%a%\` <- function(x, y) { x + y }
+		assertSliced(label('Must link with backticks', caps), shell, code, ['8:7'], `\`%a%\` <- function(x, y) x + y
 3 %a% 4`);
-		assertSliced(label('Must link with backticks', caps), shell, code, ['9:7'], `'%b%' <- function(x, y) { x * y }
+		assertSliced(label('Must link with backticks', caps), shell, code, ['9:7'], `'%b%' <- function(x, y) x * y
 4 %b% 5`);
 		assertSliced(label('Must work with assigned custom pipes too', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'infix-calls', 'numbers', 'special-operator', 'precedence']),
 			shell, 'a <- b %>% c %>% d', ['1@a'], 'a <- b %>% c %>% d');
@@ -434,7 +442,7 @@ pkg::"%a%" <- function(x, y) { x + y }
 cat(4 %a% 5)
       `;
 		assertSliced(label('must link alias with namespace', ['accessing-exported-names', 'resolve-arguments', 'name-quoted', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'implicit-return', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'special-operator', 'unnamed-arguments']),
-			shell, code, ['4:1'], `pkg::"%a%" <- function(x, y) { x + y }
+			shell, code, ['4:1'], `pkg::"%a%" <- function(x, y) x + y
 "%a%" <- pkg::"%a%"
 cat(4 %a% 5)`);
 	});
@@ -478,14 +486,14 @@ f <- function() {
   get("a")
 }
 f()`, ['5@f'], `a <- 5
-f <- function() { get("a") }
+f <- function() get("a")
 f()`);
 			assertSliced(label('get in function argument', ['name-normal', 'formals-default', 'strings', 'implicit-return', ...OperatorDatabase['<-'].capabilities, 'newlines', 'numbers', 'name-created']),
 				shell, `a <- 5
 f <- function(a = get("a")) {
   a
 }
-f()`, ['5@f'], `f <- function(a=get("a")) { a }
+f()`, ['5@f'], `f <- function(a=get("a")) a
 f()`);
 		});
 		describe('Combine get and assign', () => {
@@ -551,13 +559,13 @@ x <- function() {
   calls <<- calls + 1
   4
 }
-x()`, ['6@x'], 'x <- function() { 4 }\nx()');
+x()`, ['6@x'], 'x <- function() 4\nx()');
 			assertSliced(label('With recursion', ['super-left-assignment', 'lexicographic-scope']), shell, `calls <- 0
 x <- function() {
   calls <<- calls + 1
   x()
 }
-x()`, ['6@x'], 'x <- function() { x() }\nx()');
+x()`, ['6@x'], 'x <- function() x()\nx()');
 			assertSliced(label('Counting fibonacci', ['super-left-assignment', 'lexicographic-scope']), shell, `calls <- 0
 fib <- function() {
   calls <<- calls + 1
@@ -567,8 +575,8 @@ fib <- function() {
     fib(n - 1) + fib(n - 2)
   }
 }
-fib(42)`, ['10@fib'], 'fib <- function() { if(n <= 1) { n } else\n' +
-				'    { fib(n - 1) + fib(n - 2) } }\nfib(42)');
+fib(42)`, ['10@fib'], 'fib <- function() if(n <= 1) { n } else\n' +
+				'    { fib(n - 1) + fib(n - 2) }\nfib(42)');
 		});
 		describe('Inverted Caller', () => {
 			assertSliced(label('Call from Higher', ['function-calls', 'lexicographic-scope']),
@@ -627,17 +635,17 @@ c <- (function() {
 				`
 f <- function(y) { y + 3 }
 foo(.x = f(3))
-`, ['3@foo'], `f <- function(y) { y + 3 }
+`, ['3@foo'], `f <- function(y) y + 3
 foo(.x = f(3))`);
 			assertSliced(label('definition in unknown foo', capabilities), shell,
 				'x <- 2;\nfoo(.x = function(y) { y + 3 })', ['2@foo'],
 				'foo(.x = function(y) { y + 3 })');
 			assertSliced(label('nested definition in unknown foo', capabilities), shell,
 				'x <- function() { 3 }\nfoo(.x = function(y) { c(X = x()) })', ['2@foo'],
-				'x <- function() { 3 }\nfoo(.x = function(y) { c(X = x()) })');
+				'x <- function() 3\nfoo(.x = function(y) { c(X = x()) })');
 			assertSliced(label('nested definition in unknown foo with reference', capabilities), shell,
 				'x <- function() { 3 }\ng = function(y) { c(X = x()) }\nfoo(.x = g)', ['3@foo'],
-				'x <- function() { 3 }\ng = function(y) { c(X = x()) }\nfoo(.x = g)');
+				'x <- function() 3\ng = function(y) c(X = x())\nfoo(.x = g)');
 		});
 		describe('Anonymous Function Recovery on Parameter', () => {
 			const caps: SupportedFlowrCapabilityId[] = [
@@ -759,7 +767,7 @@ x`);
 				 }
 				 foo(1:3)`, ['6@foo'],
 				`foo <- function(k) {
-        g <- function(x) { x + 1 }
+        g <- function(x) x + 1
         K <- ddply(k, k, .fun=function(xx,yy) { c(N=g(xx)) })
         return(K)
     }
@@ -832,7 +840,7 @@ print(df)`;
   function() x
 }
 g <- f(2)
-print(g())`, ['5@g'], `f <- function(x=1) { function() x }
+print(g())`, ['5@g'], `f <- function(x=1) function() x
 g <- f(2)
 g()`);
 		assertSliced(label('nested closures w/ default arguments', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'lambda-syntax', 'implicit-return', ...OperatorDatabase['+'].capabilities, 'closures', 'grouping']),
@@ -840,7 +848,7 @@ g()`);
   (\\(y = 2) function(z = 3) x + y + z)()
 }
 g <- f(8)
-print(g())`, ['5@g'], `f <- function(x=1) { (\\(y=2) function(z=3) x + y + z)() }
+print(g())`, ['5@g'], `f <- function(x=1) (\\(y=2) function(z=3) x + y + z)()
 g <- f(8)
 g()`, { minRVersion: MIN_VERSION_LAMBDA });
 		assertSliced(label('closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'closures', ...OperatorDatabase['<<-'].capabilities, 'side-effects-in-function-call', ...OperatorDatabase['+'].capabilities, 'numbers']),
@@ -852,7 +860,7 @@ g()`, { minRVersion: MIN_VERSION_LAMBDA });
 }
 x <- 2
 f()()
-print(x)`, ['9@x'], `f <- function() { function() x <<- x + 1 }
+print(x)`, ['9@x'], `f <- function() function() x <<- x + 1
 x <- 2
 f()()
 x`);

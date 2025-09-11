@@ -54,9 +54,20 @@ import { getEngineConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
-import { hasDataFrameExpressionInfo, type AbstractInterpretationInfo } from '../abstract-interpretation/data-frame/absint-info';
+import {
+	type AbstractInterpretationInfo,
+	hasDataFrameExpressionInfo
+} from '../abstract-interpretation/data-frame/absint-info';
 import type { IntervalDomain } from '../abstract-interpretation/data-frame/domain';
-import { ColNamesTop, DataFrameBottom, DataFrameTop, equalDataFrameDomain, equalInterval, IntervalBottom, IntervalTop } from '../abstract-interpretation/data-frame/domain';
+import {
+	ColNamesTop,
+	DataFrameBottom,
+	DataFrameTop,
+	equalDataFrameDomain,
+	equalInterval,
+	IntervalBottom,
+	IntervalTop
+} from '../abstract-interpretation/data-frame/domain';
 import { inferDataFrameShapes } from '../abstract-interpretation/data-frame/shape-inference';
 
 /**
@@ -194,7 +205,7 @@ export class BenchmarkSlicer {
 		guard(this.dataflow !== undefined, 'dataflow should be defined after initialization');
 
 		// collect dataflow graph size
-		const vertices = [...this.dataflow.graph.vertices(true)];
+		const vertices = this.dataflow.graph.vertices(true);
 		let numberOfEdges = 0;
 		let numberOfCalls = 0;
 		let numberOfDefinitions = 0;

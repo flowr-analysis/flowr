@@ -1,7 +1,9 @@
 /**
- * A map type that uses an array of strings as key.
+ * A map type that accepts an arbitrary object as key.
+ * {@link JSON.stringify} is used to create the actual key for the underlying map.
+ * This can be helpful if value equality is desired.
  */
-export class ArrayMap<K extends string, V> {
+export class ObjectMap<K extends string, V> {
 	private readonly internal = new Map<string, V>();
 
 	private makeKey(key: readonly K[]): string {
@@ -9,14 +11,14 @@ export class ArrayMap<K extends string, V> {
 	}
 
 	/**
-	 * Sets a value for a given key array.
+	 * Sets a value for a given key.
 	 */
 	public set(key: readonly K[], v: V): void {
 		this.internal.set(this.makeKey(key), v);
 	}
 
 	/**
-	 * Return the value for the key array.
+	 * Return the value for the key.
 	 */
 	public get(key: readonly K[]): V | undefined {
 		return this.internal.get(this.makeKey(key));

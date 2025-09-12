@@ -15,7 +15,7 @@ import type { DataflowInformation } from '../dataflow/info';
 import type { CfgSimplificationPassName } from '../control-flow/cfg-simplification';
 import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
 import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize';
-import { ArrayMap } from '../util/collections/arraymap';
+import { ObjectMap } from '../util/collections/objectmap';
 
 /**
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs
@@ -28,7 +28,7 @@ export type FlowrAnalysisInput = {
 }
 
 interface ControlFlowCache {
-	simplified: ArrayMap<CfgSimplificationPassName, ControlFlowInformation>,
+	simplified: ObjectMap<CfgSimplificationPassName, ControlFlowInformation>,
 	quick: 		   ControlFlowInformation
 }
 
@@ -46,7 +46,7 @@ export class FlowrAnalyzer {
 	private ast = undefined as unknown as NormalizedAst;
 	private dataflowInfo = undefined as unknown as DataflowInformation;
 	private controlFlowInfos: ControlFlowCache = {
-		simplified: new ArrayMap<CfgSimplificationPassName, ControlFlowInformation>(),
+		simplified: new ObjectMap<CfgSimplificationPassName, ControlFlowInformation>(),
 		quick:      undefined as unknown as ControlFlowInformation
 	};
 
@@ -69,7 +69,7 @@ export class FlowrAnalyzer {
 		this.ast = undefined as unknown as NormalizedAst;
 		this.dataflowInfo = undefined as unknown as DataflowInformation;
 		this.controlFlowInfos = { 
-			simplified: new ArrayMap<CfgSimplificationPassName, ControlFlowInformation>(),
+			simplified: new ObjectMap<CfgSimplificationPassName, ControlFlowInformation>(),
 			quick:      undefined as unknown as ControlFlowInformation
 		};
 	}

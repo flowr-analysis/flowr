@@ -6,14 +6,14 @@ import type { ControlFlowInformation } from '../../../control-flow/control-flow-
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { CfgSimplificationPassName } from '../../../control-flow/cfg-simplification';
 import { DefaultCfgSimplificationOrder } from '../../../control-flow/cfg-simplification';
-import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';
+import type { FlowrAnalysisInput } from '../../../project/flowr-analyzer';
 import { handleString } from '../core';
 
 function formatInfo(out: ReplOutput, type: string): string {
 	return out.formatter.format(`Copied ${type} to clipboard.`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
 }
 
-async function produceAndPrintCfg(analyzer: FlowrAnalyzer, output: ReplOutput, simplifications: readonly CfgSimplificationPassName[], cfgConverter: (cfg: ControlFlowInformation, ast: NormalizedAst) => string) {
+async function produceAndPrintCfg(analyzer: FlowrAnalysisInput, output: ReplOutput, simplifications: readonly CfgSimplificationPassName[], cfgConverter: (cfg: ControlFlowInformation, ast: NormalizedAst) => string) {
 	const cfg = await analyzer.controlFlow([...DefaultCfgSimplificationOrder, ...simplifications]);
 	const result = await analyzer.normalizedAst();
 	const mermaid = cfgConverter(cfg, result);

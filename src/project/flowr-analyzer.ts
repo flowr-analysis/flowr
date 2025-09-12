@@ -36,13 +36,13 @@ interface ControlFlowCache {
  * Central class for creating analyses in FlowR.
  * Use the {@link FlowrAnalyzerBuilder} to create a new instance.
  */
-export class FlowrAnalyzer {
+export class FlowrAnalyzer<Parser extends KnownParser> {
 	public readonly flowrConfig:    FlowrConfigOptions;
 	private readonly request:       RParseRequests;
-	private readonly parser:        KnownParser;
+	private readonly parser:        Parser;
 	private readonly requiredInput: Omit<NormalizeRequiredInput, 'request'>;
 
-	private parse = undefined as unknown as ParseStepOutput<any>;
+	private parse = undefined as unknown as ParseStepOutput<Awaited<ReturnType<Parser['parse']>>>;
 	private ast = undefined as unknown as NormalizedAst;
 	private dataflowInfo = undefined as unknown as DataflowInformation;
 	private controlFlowInfos: ControlFlowCache = {
@@ -58,7 +58,7 @@ export class FlowrAnalyzer {
      * @param request       - The code to analyze.
      * @param requiredInput - Additional parameters used for the analyses.
      */
-	constructor(config: FlowrConfigOptions, parser: KnownParser, request: RParseRequests, requiredInput: Omit<NormalizeRequiredInput, 'request'>) {
+	constructor(config: FlowrConfigOptions, parser: Parser, request: RParseRequests, requiredInput: Omit<NormalizeRequiredInput, 'request'>) {
 		this.flowrConfig = config;
 		this.request = request;
 		this.parser = parser;
@@ -83,8 +83,7 @@ export class FlowrAnalyzer {
      * The parse result type depends on the {@link KnownParser} used by the analyzer.
      * @param force - Do not use the cache, instead force a new parse.
      */
-	// TODO TSchoeller Fix type
-	public async parseOutput(force?: boolean): Promise<ParseStepOutput<any> & PipelinePerStepMetaInformation> {
+	public async parseOutput(force?: boolean): Promise<ParseStepOutput<Awaited<ReturnType<Parser['parse']>>> & PipelinePerStepMetaInformation> {
 		if(this.parse && !force) {
 			return {
 				...this.parse,

@@ -96,7 +96,7 @@ export class FlowrAnalyzerBuilder {
 	/**
      * Create the {@link FlowrAnalyzer} instance using the given information.
      */
-	public async build(): Promise<FlowrAnalyzer> {
+	public async build(): Promise<FlowrAnalyzer<KnownParser>> {
 		let parser: KnownParser;
 		if(this.parser) {
 			parser = this.parser;

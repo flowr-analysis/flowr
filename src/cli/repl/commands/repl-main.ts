@@ -2,7 +2,7 @@ import type { OutputFormatter } from '../../../util/text/ansi';
 import { formatter } from '../../../util/text/ansi';
 import type { KnownParser } from '../../../r-bridge/parser';
 import type { FlowrConfigOptions } from '../../../config';
-import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';
+import type { FlowrAnalysisInput } from '../../../project/flowr-analyzer';
 
 /**
  * Defines the main interface for output of the repl.
@@ -47,7 +47,7 @@ export interface ReplCommandInformation {
  */
 export interface ReplCodeCommandInformation {
 	output:        ReplOutput,
-	analyzer:      FlowrAnalyzer
+	analyzer:      FlowrAnalysisInput
 	remainingArgs: string[]
 }
 

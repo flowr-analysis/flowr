@@ -7,7 +7,7 @@ import type { Query, QueryResults, SupportedQuery, SupportedQueryTypes } from '.
 import { AnyQuerySchema, executeQueries, QueriesSchema, SupportedQueries } from '../../../queries/query';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
-import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';
+import type { FlowrAnalysisInput } from '../../../project/flowr-analyzer';
 import { getDummyFlowrProject } from '../../../project/flowr-project';
 import type { DataflowInformation } from '../../../dataflow/info';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -24,7 +24,7 @@ function printHelp(output: ReplOutput) {
 	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
 }
 
-async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalyzer, remainingArgs: string[]): Promise<undefined | { parsedQuery: Query[], query: QueryResults<SupportedQueryTypes>, processed: {dataflow: DataflowInformation, normalize: NormalizedAst} }> {
+async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisInput, remainingArgs: string[]): Promise<undefined | { parsedQuery: Query[], query: QueryResults<SupportedQueryTypes>, processed: {dataflow: DataflowInformation, normalize: NormalizedAst} }> {
 	const query = remainingArgs.shift();
 
 	if(!query) {

@@ -2,7 +2,7 @@ import { FlowrAnalyzerPackageVersionsPlugin } from './flowr-analyzer-package-ver
 import { FlowrAnalyzerDescriptionFilePlugin } from '../file-plugins/flowr-analyzer-description-file-plugin';
 import type { FlowrAnalyzerPlugin } from '../flowr-analyzer-plugin';
 import { SemVer } from 'semver';
-import type { FlowrAnalyzer } from '../../flowr-analyzer';
+import type { FlowrAnalysisInput } from '../../flowr-analyzer';
 import type { FlowrConfigOptions } from '../../../config';
 import type { PackageType } from './package';
 import { Package } from './package';
@@ -15,7 +15,7 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 	dependencies:    FlowrAnalyzerPlugin[] = [new FlowrAnalyzerDescriptionFilePlugin()];
 	descriptionFile: Map<string, string[]> = new Map<string, string[]>();
 
-	async processor(analyzer: FlowrAnalyzer, pluginConfig: FlowrConfigOptions): Promise<void> {
+	async processor(analyzer: FlowrAnalysisInput, pluginConfig: FlowrConfigOptions): Promise<void> {
 		const plugin = this.dependencies[0] as FlowrAnalyzerDescriptionFilePlugin;
 		await plugin.processor(analyzer, pluginConfig);
 		this.descriptionFile = plugin.information;

@@ -43,6 +43,8 @@ import { PipelineExecutor } from '../core/pipeline-executor';
 import { createPipeline } from '../core/steps/pipeline/pipeline';
 import { staticSlice } from '../slicing/static/static-slicer';
 import { defaultConfigOptions } from '../config';
+import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+import { FlowrAnalyzer } from '../project/flowr-analyzer';
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -83,6 +85,7 @@ See the [Getting flowR to Talk](#getting-flowr-to-talk) section below for more i
 `
 })}
 	
+* [Creating and Using a flowR Analyzer Instance](#creating-and-using-a-flowr-analyzer-instance)
 * [Pipelines and their Execution](#pipelines-and-their-execution)
 * [How flowR Produces Dataflow Graphs](#how-flowr-produces-dataflow-graphs)
   * [Overview](#overview)
@@ -92,10 +95,38 @@ See the [Getting flowR to Talk](#getting-flowr-to-talk) section below for more i
 * [Beyond the Dataflow Graph](#beyond-the-dataflow-graph)
   * [Static Backward Slicing](#static-backward-slicing)
 * [Getting flowR to Talk](#getting-flowr-to-talk)
+
+## Creating and Using a flowR Analyzer Instance
+
+The ${shortLink(FlowrAnalyzerBuilder.name, info)} class should be used as a starting point to create analyses in _flowR_.
+It provides a fluent interface for the configuration and creation of a ${shortLink(FlowrAnalyzer.name, info)} instance:
+
+${codeBlock('typescript', `
+const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('x <- 1; y <- x; print(y);'))
+    .amendConfig(c => {
+        c.ignoreSourceCalls = true;
+    })
+    .setEngine('r-shell')
+    .build();
+`)}
+
+${shortLink(requestFromInput.name, info)} is merely a convenience function to create a request object from a code string.
+
+The analyzer instance can then be used to access analysis results like the normalized AST, the dataflow graph, and the controlflow graph:
+
+${codeBlock('typescript', `
+const normalizedAst = await analyzer.normalizedAst();
+const dataflow = await analyzer.dataflow();
+const cfg = await analyzer.controlFlow();
+`)}
+
+The analyzer also exposes the query API:
+
+
 	
 ## Pipelines and their Execution
 
-At the core of every analysis by flowR is the ${shortLink(PipelineExecutor.name, info)} class which takes a sequence of analysis steps (in the form of a ${shortLink('Pipeline', info)}) and executes it
+At the core of every analysis done via a ${shortLink(FlowrAnalyzer.name, info)} is the ${shortLink(PipelineExecutor.name, info)} class which takes a sequence of analysis steps (in the form of a ${shortLink('Pipeline', info)}) and executes it
 on a given input. In general, these pipeline steps are analysis agnostic and may use arbitrary input and ordering. However, two important and predefined pipelines, 
 the ${shortLink('DEFAULT_DATAFLOW_PIPELINE', info)} and the ${shortLink('TREE_SITTER_DATAFLOW_PIPELINE', info)} adequately cover the most common analysis steps 
 (differentiated only by the [Engine](${FlowrWikiBaseRef}/Engines) used).
@@ -118,10 +149,9 @@ const executor = new PipelineExecutor(TREE_SITTER_DATAFLOW_PIPELINE, {
 const result = await executor.allRemainingSteps();
 `)}
 
-This is, roughly, what the ${shortLink('replGetDataflow', info)} function does for the ${getReplCommand('dataflow')} REPL command when using the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines).
+This is, roughly, what the ${shortLink('dataflow', info)} function does when using the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines).
 We create a new ${shortLink(PipelineExecutor.name, info)} with the ${shortLink('TREE_SITTER_DATAFLOW_PIPELINE', info)} and then use ${shortLink(`${PipelineExecutor.name}::${new PipelineExecutor(TREE_SITTER_PARSE_PIPELINE, { parser: new TreeSitterExecutor(), request: requestFromInput('') }, defaultConfigOptions).allRemainingSteps.name}`, info)} 
 to cause the execution of all contained steps (in general, pipelines can be executed step-by-step, but this is usually not required if you just want the result).
-${shortLink(requestFromInput.name, info)} is merely a convenience function to create a request object from a code string.
 
 In general, however, most flowR-internal functions which are tasked with generating dataflow prefer the use of ${shortLink(createDataflowPipeline.name, info)} as this function
 automatically selects the correct pipeline based on the engine used.

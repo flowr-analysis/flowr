@@ -17,6 +17,9 @@ import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipe
 import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize';
 import { ArrayMap } from '../util/collections/arraymap';
 
+/**
+ * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs
+ */
 export type FlowrAnalysisInput = {
 	normalizedAst(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation>;
 	dataflow(force?: boolean): Promise<DataflowInformation & PipelinePerStepMetaInformation>;
@@ -29,6 +32,10 @@ interface ControlFlowCache {
 	quick: 		   ControlFlowInformation
 }
 
+/**
+ * Central class for creating analyses in FlowR.
+ * Use the {@link FlowrAnalyzerBuilder} to create a new instance.
+ */
 export class FlowrAnalyzer {
 	public readonly flowrConfig:    FlowrConfigOptions;
 	private readonly request:       RParseRequests;
@@ -43,6 +50,14 @@ export class FlowrAnalyzer {
 		quick:      undefined as unknown as ControlFlowInformation
 	};
 
+	/**
+     * Create a new analyzer instance.
+     * Prefer the use of the {@link FlowrAnalyzerBuilder} instead of calling this constructor directly.
+     * @param config        - The FlowR config to use for the analyses
+     * @param parser        - The parser to use for parsing the given request.
+     * @param request       - The code to analyze.
+     * @param requiredInput - Additional parameters used for the analyses.
+     */
 	constructor(config: FlowrConfigOptions, parser: KnownParser, request: RParseRequests, requiredInput: Omit<NormalizeRequiredInput, 'request'>) {
 		this.flowrConfig = config;
 		this.request = request;
@@ -63,6 +78,11 @@ export class FlowrAnalyzer {
 		return this.parser.name;
 	}
 
+	/**
+     * Get the parse output for the request.
+     * The parse result type depends on the {@link KnownParser} used by the analyzer.
+     * @param force - Do not use the cache, instead force a new parse.
+     */
 	// TODO TSchoeller Fix type
 	public async parseOutput(force?: boolean): Promise<ParseStepOutput<any> & PipelinePerStepMetaInformation> {
 		if(this.parse && !force) {
@@ -82,6 +102,10 @@ export class FlowrAnalyzer {
 		return result.parse;
 	}
 
+	/**
+     * Get the normalized abstract syntax tree for the request.
+     * @param force - Do not use the cache, instead force new analyses.
+     */
 	public async normalizedAst(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation> {
 		if(this.ast && !force) {
 			return {
@@ -100,6 +124,10 @@ export class FlowrAnalyzer {
 		return result.normalize;
 	}
 
+	/**
+     * Get the dataflow graph for the request.
+     * @param force - Do not use the cache, instead force new analyses.
+     */
 	public async dataflow(force?: boolean): Promise<DataflowInformation & PipelinePerStepMetaInformation> {
 		if(this.dataflowInfo && !force) {
 			return {
@@ -119,6 +147,12 @@ export class FlowrAnalyzer {
 		return result.dataflow;
 	}
 
+	/**
+     * Get the control flow graph (CFG) for the request.
+     * @param simplifications - Simplification passes to be applied to the CFG.
+     * @param useDataflow     - Whether to use the dataflow graph for the creation of the CFG.
+     * @param force           - Do not use the cache, instead force new analyses.
+     */
 	public async controlFlow(simplifications?: readonly CfgSimplificationPassName[], useDataflow?: boolean, force?: boolean): Promise<ControlFlowInformation> {
 		if(!force) {
 			const value = this.controlFlowInfos.simplified.get(simplifications ?? []);
@@ -140,6 +174,10 @@ export class FlowrAnalyzer {
 		return result;
 	}
 
+	/**
+     * Get a more performant version of the control flow graph.
+     * @param force - Do not use the cache, instead force new analyses.
+     */
 	public async controlFlowQuick(force?: boolean): Promise<ControlFlowInformation> {
 		if(!force) {
 			if(this.controlFlowInfos.quick) {
@@ -162,10 +200,11 @@ export class FlowrAnalyzer {
 		return result;
 	}
 
-	public async query(query: Queries<SupportedQueryTypes>, force?: boolean) {
-		if(!this.dataflowInfo) {
-			await this.dataflow(force);
-		}
-		return executeQueries({ input: this }, query);
+	/**
+     * Access the query API for the request.
+     * @param query - The list of queries.
+     */
+	public async query(query: Queries<SupportedQueryTypes>) {
+		return await Promise.resolve(executeQueries({ input: this }, query));
 	}
 }

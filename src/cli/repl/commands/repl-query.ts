@@ -25,7 +25,7 @@ function printHelp(output: ReplOutput) {
 }
 
 async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalyzer, remainingArgs: string[]): Promise<undefined | { parsedQuery: Query[], query: QueryResults<SupportedQueryTypes>, processed: {dataflow: DataflowInformation, normalize: NormalizedAst} }> {
-	const query = remainingArgs[0];
+	const query = remainingArgs.shift();
 
 	if(!query) {
 		output.stderr('No query provided, use \':query help\' to get more information.');
@@ -83,10 +83,9 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalyzer, rem
  */
 function parseArgs(line: string) {
 	const args = splitAtEscapeSensitive(line);
-	const command = args.shift();
 	return {
 		input:     args.join(' ').trim(),
-		remaining: command ? [command] : []
+		remaining: args
 	};
 }
 

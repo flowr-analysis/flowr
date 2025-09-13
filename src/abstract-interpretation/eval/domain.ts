@@ -22,3 +22,16 @@ export function isTop(value: SDValue): value is Top {
 export function isBottom(value: SDValue): value is Bottom {
 	return value.kind === 'bottom';
 }
+
+export function isElement(value: string, domainValue: SDValue): boolean {
+	switch (domainValue.kind) {
+		case 'top':
+			return true;
+		case 'bottom':
+			return false;
+		case 'const':
+			return domainValue.value === value;
+		case 'const-set':
+			return domainValue.value.some(it => it == value);
+	}
+}

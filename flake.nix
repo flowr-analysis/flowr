@@ -40,7 +40,7 @@
                 mv dist/src $out/share/flowR/src
                 mv dist/node_modules $out/share/flowR/node_modules
                 echo "#!/usr/bin/env sh" >> $out/bin/flowR
-                echo "${pkgs.nodejs}/bin/node $out/share/flowR/src/cli/flowr.min.js" >> $out/bin/flowR
+                echo "${pkgs.nodejs}/bin/node $out/share/flowR/src/cli/flowr.min.js \"\$@\"" >> $out/bin/flowR
                 chmod +x $out/bin/flowR
               '';
             };

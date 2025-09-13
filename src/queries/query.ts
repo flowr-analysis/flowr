@@ -49,6 +49,7 @@ import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-forma
 import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 import type { StringDomainQuery } from './catalog/string-domain-query/string-domain-query-format';
 import { StringDomainQueryDefinition } from './catalog/string-domain-query/string-domain-query-format';
+import { SdeQuery, SdeQueryDefinition } from './catalog/sde-query/sde-query-format';
 
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -70,6 +71,7 @@ export type Query = CallContextQuery
 	| OriginQuery
 	| LinterQuery
 	| StringDomainQuery
+	| SdeQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -113,6 +115,7 @@ export const SupportedQueries = {
 	'origin':           OriginQueryDefinition,
 	'linter':           LinterQueryDefinition,
 	'string-domain':    StringDomainQueryDefinition,
+	'sde':              SdeQueryDefinition,
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

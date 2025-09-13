@@ -13,17 +13,17 @@ import { SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/sl
 import { RShell } from '../../../../src/r-bridge/shell';
 import { SDValue, Top } from '../../../../src/abstract-interpretation/eval/domain';
 import { sdEqual } from '../../../../src/abstract-interpretation/eval/equality';
+import { withShell } from '../../_helper/shell';
 
 function assertStringDomain(
 	name: string,
+	shell: RShell,
 	stringDomain: FlowrConfigOptions["abstractInterpretation"]["string"]["domain"],
 	input: string,
 	criterion: SingleSlicingCriterion,
 	expectedDomain: SDValue,
 ) {
-  console.log(input);
   test(name, async () => {
-    const shell = new RShell();
   	const output: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> = await createDataflowPipeline(shell, { request: requestFromInput(input) }, defaultConfigOptions).allRemainingSteps();
   	const dfg = output.dataflow.graph;
   	const normalizedAst: NormalizedAst<ParentInformation & StringDomainInfo> = output.normalize;
@@ -47,10 +47,11 @@ function assertStringDomain(
   })
 }
 
-describe('string-domain-inference', () => {
+describe.sequential('string-domain-inference', withShell((shell) => {
   describe('const-set', () => {
     assertStringDomain(
     	'assignment',
+    	shell,
     	"const-set",
     	'a <- "foo"',
     	"1@a",
@@ -59,6 +60,7 @@ describe('string-domain-inference', () => {
 
     assertStringDomain(
     	'indirect assignment',
+    	shell,
     	"const-set",
     	'a <- "foo"\nb <- a',
     	"2@b",
@@ -67,6 +69,7 @@ describe('string-domain-inference', () => {
 
     assertStringDomain(
     	'reassignment',
+    	shell,
     	"const-set",
     	'a <- "foo"\na <- "bar"',
     	"2@a",
@@ -75,6 +78,7 @@ describe('string-domain-inference', () => {
 
     assertStringDomain(
     	'conditional assignment',
+    	shell,
     	"const-set",
     	'a <- "foo"\nif (x) { a <- "bar" }\na',
     	"3@a",
@@ -83,6 +87,7 @@ describe('string-domain-inference', () => {
 
     assertStringDomain(
     	'if true branch',
+    	shell,
     	"const-set",
     	'if(TRUE) { "foo" } else { "bar" }',
     	"1:1",
@@ -91,6 +96,7 @@ describe('string-domain-inference', () => {
 
     assertStringDomain(
     	'if false branch',
+    	shell,
     	"const-set",
     	'if(FALSE) { "foo" } else { "bar" }',
     	"1:1",
@@ -99,6 +105,7 @@ describe('string-domain-inference', () => {
 
     assertStringDomain(
     	'if else',
+    	shell,
     	"const-set",
     	'if(a) { "foo" } else { "bar" }',
     	"1:1",
@@ -187,6 +194,7 @@ describe('string-domain-inference', () => {
     function assertGeneratedPaste(sep: GeneratedVar, ...args: GeneratedVar[]) {
       assertStringDomain(
       	`paste (${args.map(it => it.type).join(", ")}, sep=${sep.type})`,
+      	shell,
       	"const-set",
       	`${sep.definition}\n${args.map(it => it.definition).join("\n")}\npaste(${args.map(it => it.reference).join(", ")}, sep=${sep.reference})`,
       	`${args.length + 2}:1`,
@@ -214,6 +222,7 @@ describe('string-domain-inference', () => {
   describe('const', () => {
     assertStringDomain(
     	'assignment',
+    	shell,
     	"const",
     	'a <- "foo"',
     	"1@a",
@@ -222,6 +231,7 @@ describe('string-domain-inference', () => {
 
     assertStringDomain(
     	'indirect assignment',
+    	shell,
     	"const",
     	'a <- "foo"\nb <- a',
     	"2@b",
@@ -230,6 +240,7 @@ describe('string-domain-inference', () => {
 
     assertStringDomain(
     	'reassignment',
+    	shell,
     	"const",
     	'a <- "foo"\na <- "bar"',
     	"2@a",
@@ -238,6 +249,7 @@ describe('string-domain-inference', () => {
 
     assertStringDomain(
     	'conditional assignment',
+    	shell,
     	"const",
     	'a <- "foo"\nif (x) { a <- "bar" }\na',
     	"3@a",
@@ -246,6 +258,7 @@ describe('string-domain-inference', () => {
 
     assertStringDomain(
     	'if true branch',
+    	shell,
     	"const",
     	'if(TRUE) { "foo" } else { "bar" }',
     	"1:1",
@@ -254,6 +267,7 @@ describe('string-domain-inference', () => {
 
     assertStringDomain(
     	'if false branch',
+    	shell,
     	"const",
     	'if(FALSE) { "foo" } else { "bar" }',
     	"1:1",
@@ -262,6 +276,7 @@ describe('string-domain-inference', () => {
 
     assertStringDomain(
     	'if else',
+    	shell,
     	"const",
     	'if(a) { "foo" } else { "bar" }',
     	"1:1",
@@ -332,6 +347,7 @@ describe('string-domain-inference', () => {
     function assertGeneratedPaste(sep: GeneratedVar, ...args: GeneratedVar[]) {
       assertStringDomain(
       	`paste (${args.map(it => it.type).join(", ")}, sep=${sep.type})`,
+      	shell,
       	"const",
       	`${sep.definition}\n${args.map(it => it.definition).join("\n")}\npaste(${args.map(it => it.reference).join(", ")}, sep=${sep.reference})`,
       	`${args.length + 2}:1`,
@@ -355,4 +371,4 @@ describe('string-domain-inference', () => {
       }
     }
   })
-})
+}))

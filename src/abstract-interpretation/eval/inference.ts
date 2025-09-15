@@ -7,7 +7,7 @@ import { ConstStringDomain } from "./domains/constant";
 import { ConstSetStringDomain } from "./domains/constant-set";
 import { StringDomainInfo, StringDomainVisitor } from "./visitor";
 
-function createDomain(config: FlowrConfigOptions): AbstractOperationsStringDomain {
+function createDomain(config: FlowrConfigOptions): AbstractOperationsStringDomain | undefined {
 	switch (config.abstractInterpretation.string.domain) {
 		case "const":
 			return new ConstStringDomain()
@@ -23,9 +23,12 @@ export function inferStringDomains(
 	ast: NormalizedAst<ParentInformation & StringDomainInfo>,
 	config: FlowrConfigOptions
 ) {
+	const domain = createDomain(config);
+	if (!domain) return;
+	
 	for (let i = 0; i < 100; i++) {
 		console.log(`string domain iteration: ${i}`)
-		const visitor = new StringDomainVisitor(createDomain(config), { controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, flowrConfig: config });
+		const visitor = new StringDomainVisitor(domain, { controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, flowrConfig: config });
 		visitor.start()
 
 		if(!visitor.dirty) {

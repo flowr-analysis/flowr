@@ -8,6 +8,7 @@ import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
 import type { DeepWritable } from 'ts-essentials';
+import { StringDomainName } from './abstract-interpretation/eval/domain';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -190,7 +191,7 @@ export interface FlowrConfigOptions extends MergeableRecord {
 		 * The configuration of the string domain
 		 */
 		readonly string: {
-			readonly domain: 'const' | 'const-set',
+			readonly domain: StringDomainName | undefined,
 		},
 	}
 }

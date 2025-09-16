@@ -22,6 +22,7 @@ import { inspect } from 'util';
 import { sdEqual } from './equality';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { ReferenceType } from '../../dataflow/environments/identifier';
+import { unescapeSpecialChars } from '../data-frame/resolve-args';
 
 function obj<T>(obj: T) {
 	return inspect(obj, false, null, true);
@@ -118,7 +119,7 @@ export class StringDomainVisitor<
 		}
 
 		if(!nVertex.info.sdvalue) {
-			nVertex.info.sdvalue = this.domain.const(node.content.str);
+			nVertex.info.sdvalue = this.domain.const(unescapeSpecialChars(node.content.str));
 			this.dirty = true;
 			console.log('onStringConstant: ', obj(nVertex));
 		}

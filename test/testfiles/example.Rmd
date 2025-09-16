@@ -1,0 +1,28 @@
+---
+title: "Sample Document"
+output: pdf_document
+---
+
+# Hello World
+This is a test 
+
+Simple Code R Chunk:
+```{r}
+test <- 42
+```
+
+With Label
+```{r abc}
+x <- "Hello World"
+```
+
+With Options
+```{r ops, echo=FALSE}
+cat("Hi")
+```
+
+Unrelated Block
+```c
+printf("Hello World");
+```
+

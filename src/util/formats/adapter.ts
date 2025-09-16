@@ -5,11 +5,11 @@ import path from 'path';
 
 export const FileAdapters = {
 	'.R':   RAdapter,
-	'.rmd': RmdAdapter
+	'.Rmd': RmdAdapter
 } as const satisfies Record<string, FileAdapter>;
 
 
-export function readFile(p: string): FileData | undefined{
+export function readFile(p: string): FileData | undefined {
 	const extension = path.extname(p);
 
 	if(!Object.hasOwn(FileAdapters, extension)) {

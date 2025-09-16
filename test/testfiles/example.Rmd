@@ -11,7 +11,7 @@ Simple Code R Chunk:
 test <- 42
 ```
 
-With Label
+With Label `r test`
 ```{r abc}
 x <- "Hello World"
 ```
@@ -21,7 +21,15 @@ With Options
 cat("Hi")
 ```
 
-Unrelated Block
+
+With Body Opts
+```{r, echo=FALSE}
+#| cache=FALSE
+cat("hi!")
+```
+
+
+Unrelated Block `right here with unrelated code`
 ```c
 printf("Hello World");
 ```

@@ -19,7 +19,7 @@ x <- "Hello World"
 
 With Options
 ```{r ops, echo=FALSE}
-cat("Hi")
+  cat("Hi")
 ```
 
 

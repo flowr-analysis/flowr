@@ -2,10 +2,15 @@ import type { FileAdapter } from '../adapter-format';
 import fs from 'fs';
 import { Parser } from 'commonmark';
 import matter from 'gray-matter';
+import { guard } from '../../assert';
 
 export interface CodeBlock {
 	options: string,
-	code:    string
+	code:    string,
+}
+
+type CodeBlockEx = CodeBlock & {
+	startpos: { line: number, col: number }
 }
 
 export interface RmdInfo {
@@ -25,7 +30,7 @@ export const RmdAdapter = {
 
 		// Parse Codeblocks
 		const walker = ast.walker();
-		const blocks: CodeBlock[] = [];
+		const blocks: CodeBlockEx[] = [];
 		let e;
 		while((e = walker.next())) {
 			const node = e.node;
@@ -36,30 +41,61 @@ export const RmdAdapter = {
 				   !node.info.endsWith('}')) {
 					continue;
 				}
-
+				
 				blocks.push({
-					code:    node.literal,
-					options: parseOptions(node.info, node.literal)
+					code:     node.literal,
+					options:  parseOptions(node.info, node.literal),
+					startpos: { line: node.sourcepos[0][0] + 1, col: 0 }
 				});
-			} else if(node.type === 'code') {
-				if(node.literal && node.literal.startsWith('r ')) {
-					blocks.push({
-						code:    node.literal.substring(2),
-						options: ''
-					});
-				}
-			}
+			} 
+			// else if(node.type === 'code') {
+			// 	if(node.literal && node.literal.startsWith('r ')) {
+			// 		blocks.push({
+			// 			code:     node.literal.substring(2),
+			// 			options:  '',
+			// 			startpos: { line: node.sourcepos[0][0], col: node.sourcepos[0][1] }
+			// 		});
+			// 	}
+			// }
 		}
 
 		return {
 			type:    '.Rmd',
-			code:    blocks.map(b => b.code).join('\n'),
-			blocks:  blocks,
+			code:    restoreBlocksWithoutMd(blocks),
+			// eslint-disable-next-line unused-imports/no-unused-vars
+			blocks:  blocks.map(({ startpos, ...block }) => block), 
 			options: frontmatter.data
-		};
+		} as RmdInfo;
 	}
 } as FileAdapter<RmdInfo>;
 
+
+function restoreBlocksWithoutMd(blocks: CodeBlockEx[]): string {
+	let line = 1;
+	let output = '';
+
+
+	const goToLine = (n: number) => {
+		const diff = n - line;
+		guard(diff >= 0);
+		line += diff;
+		output += '\n'.repeat(diff);
+	};
+
+
+	const countNewlines = (str: string) => {
+		return str.split(/\r\n|\r|\n/).length - 1;
+	};
+
+
+	for(const block of blocks) {
+		goToLine(block.startpos.line);
+		output += block.code;
+		line += countNewlines(block.code);
+	}
+
+	return output;	
+}
 
 function parseOptions(header: string, content: string): string {
 	let opts = header.length === 3 

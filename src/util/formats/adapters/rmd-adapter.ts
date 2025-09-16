@@ -16,7 +16,7 @@ export interface RmdInfo {
 export const RmdAdapter = {
 	readFile: (p: string) => {
 		// Read and Parse Markdown
-		const raw = fs.readFileSync(p).toString();
+		const raw = fs.readFileSync(p, 'utf-8').toString();
 		const parser = new Parser();
 		const ast = parser.parse(raw);
 		

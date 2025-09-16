@@ -14,6 +14,7 @@ import { stats2string } from '../benchmark/stats/print';
 import { makeMagicCommentHandler } from '../reconstruct/auto-select/magic-comments';
 import { doNotAutoSelect } from '../reconstruct/auto-select/auto-select-defaults';
 import { getConfig, getEngineConfig } from '../config';
+import { readFileWithAdapter } from '../util/formats/adapter';
 
 export interface SlicerCliOptions {
 	verbose:             boolean
@@ -99,7 +100,7 @@ async function getSlice() {
 		console.log(JSON.stringify(output, jsonReplacer));
 	} else {
 		if(doSlicing && options.diff) {
-			const originalCode = options['input-is-text'] ? options.input : fs.readFileSync(options.input).toString();
+			const originalCode = options['input-is-text'] ? options.input : readFileWithAdapter(options.input).code;
 			console.log(sliceDiffAnsi((slice as SliceResult).result, normalize, new Set(mappedSlices.map(({ id }) => id)), originalCode));
 		}
 		if(options.stats) {

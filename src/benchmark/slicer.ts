@@ -5,7 +5,6 @@
 
 import type { IStoppableStopwatch } from './stopwatch';
 import { Measurements } from './stopwatch';
-import fs from 'fs';
 import seedrandom from 'seedrandom';
 import { log, LogLevel } from '../util/log';
 import type { MergeableRecord } from '../util/objects';
@@ -69,6 +68,7 @@ import {
 	IntervalTop
 } from '../abstract-interpretation/data-frame/domain';
 import { inferDataFrameShapes } from '../abstract-interpretation/data-frame/shape-inference';
+import { getCodeFromRequestWithAdapter } from '../util/formats/adapter';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -181,7 +181,7 @@ export class BenchmarkSlicer {
 	}
 
 	private async calculateStatsAfterInit(request: RParseRequestFromFile | RParseRequestFromText) {
-		const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8');
+		const loadedContent = getCodeFromRequestWithAdapter(request);
 		let numberOfRTokens: number;
 		let numberOfRTokensNoComments: number;
 		if(this.parser.name === 'r-shell') {

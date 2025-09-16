@@ -11,6 +11,7 @@ import { deterministicCountingIdGenerator } from './lang-4.x/ast/model/processin
 import { RawRType } from './lang-4.x/ast/model/type';
 import fs from 'fs';
 import path from 'path';
+import { isNormalRFile, readFileWithAdapter } from '../util/formats/adapter';
 
 export const fileProtocol = 'file://';
 
@@ -135,11 +136,19 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
 	if(isEmptyRequest(request)) {
 		return Promise.resolve('');
 	}
-	const suffix = request.request === 'file' ? ', encoding="utf-8"' : '';
-	/* call the function with the request */
-	const command =`flowr_get_ast(${request.request}=${JSON.stringify(
-		request.content
-	)}${suffix})`;
+
+	let command = '';
+	if(request.request === 'file' && !isNormalRFile(request.content)) {
+		command =`flowr_get_ast(text=${JSON.stringify(
+			readFileWithAdapter(request.content).code
+		)})`;
+	} else {
+		/* call the function with the request */
+		const suffix = request.request === 'file' ? ', encoding="utf-8"' : '';
+		command =`flowr_get_ast(${request.request}=${JSON.stringify(
+			request.content
+		)}${suffix})`;
+	}
 
 	if(shell instanceof RShellExecutor) {
 		return guardRetrievedOutput(shell.run(command), request);

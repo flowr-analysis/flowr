@@ -7,8 +7,9 @@ import { runSearch } from '../search/flowr-search-executor';
 import type { DeepPartial } from 'ts-essentials';
 import { deepMergeObject } from '../util/objects';
 import type { FlowrConfigOptions } from '../config';
+import type { KnownParserType, ParseStepOutput } from '../r-bridge/parser';
 
-export function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions }, lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>>): LintingResults<Name> {
+export function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: { parse: ParseStepOutput<KnownParserType>, normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions }, lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>>): LintingResults<Name> {
 	try {
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
 		const fullConfig = deepMergeObject<LintingRuleConfig<Name>>(rule.info.defaultConfig, lintingRuleConfig);

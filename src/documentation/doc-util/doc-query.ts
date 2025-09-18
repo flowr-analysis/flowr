@@ -34,6 +34,7 @@ export async function showQuery<
 		request: requestFromInput(code)
 	}, defaultConfigOptions).allRemainingSteps();
 	const results = await Promise.resolve(executeQueries({
+		parse:    analysis.parse,
 		dataflow: analysis.dataflow,
 		ast:      analysis.normalize,
 		config:   cloneConfig(defaultConfigOptions)

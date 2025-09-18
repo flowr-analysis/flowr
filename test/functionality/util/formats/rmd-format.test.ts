@@ -1,11 +1,35 @@
 import { assert, describe, test } from 'vitest';
 import { readFileWithAdapter } from '../../../../src/util/formats/adapter';
-import type { RmdInfo } from '../../../../src/util/formats/adapters/rmd-adapter';
+import { isRCodeBlock, type RmdInfo } from '../../../../src/util/formats/adapters/rmd-adapter';
 import type { FileData } from '../../../../src/util/formats/adapter-format';
+import { Node } from 'commonmark';
 
-describe('rmd', () => { 
-	test('simple', () => {
-		const data = readFileWithAdapter('test/testfiles/example.Rmd');
+describe('rmd', () => {
+	describe('utility functions', () => {
+
+		test.each([
+			/* Positive Cases           */
+			['{r}',                 true],
+			['{R}',                 true],
+			['{r, some.options=5}', true],
+			['{r, name, option=3}', true],
+			['{r some.options=5}',  true],
+			['{R name, option=3}',  true],
+			/* Negative Cases           */
+			['{rust}',              false],
+			['{c}',                 false],
+			['r',                   false],
+		])('isRCodeBlock(\'%s\') -> %s', (str, expected) => {
+			const node = new Node('code_block');
+			node.literal = 'Test';
+			node.info = str;
+			assert.equal(isRCodeBlock(node), expected);
+		});
+	});
+	
+
+	test('load complete', () => {
+		const data = readFileWithAdapter('test/testfiles/notebook/example.Rmd');
 		assert.deepEqual(data, {
 			type: '.Rmd',
 			code: '\n\n\n\n\n\n\n\n\n\n' +

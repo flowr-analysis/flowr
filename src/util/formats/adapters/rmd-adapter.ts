@@ -1,5 +1,6 @@
 import type { FileAdapter } from '../adapter-format';
 import fs from 'fs';
+import type { Node } from 'commonmark';
 import { Parser } from 'commonmark';
 import matter from 'gray-matter';
 import { guard } from '../../assert';
@@ -34,29 +35,15 @@ export const RmdAdapter = {
 		let e;
 		while((e = walker.next())) {
 			const node = e.node;
-			if(node.type === 'code_block') {
-				if(!node.info || 
-				   !node.literal ||
-				   !node.info.startsWith('{r') || 
-				   !node.info.endsWith('}')) {
-					continue;
-				}
+			if(!isRCodeBlock(node)) {
+				continue;
+			}
 				
-				blocks.push({
-					code:     node.literal,
-					options:  parseOptions(node.info, node.literal),
-					startpos: { line: node.sourcepos[0][0] + 1, col: 0 }
-				});
-			} 
-			// else if(node.type === 'code') {
-			// 	if(node.literal && node.literal.startsWith('r ')) {
-			// 		blocks.push({
-			// 			code:     node.literal.substring(2),
-			// 			options:  '',
-			// 			startpos: { line: node.sourcepos[0][0], col: node.sourcepos[0][1] }
-			// 		});
-			// 	}
-			// }
+			blocks.push({
+				code:     node.literal,
+				options:  parseCodeBlockOptions(node.info, node.literal),
+				startpos: { line: node.sourcepos[0][0] + 1, col: 0 }
+			});
 		}
 
 		return {
@@ -70,10 +57,15 @@ export const RmdAdapter = {
 } as FileAdapter<RmdInfo>;
 
 
+const RTagRegex = /{[rR](?:[\s,][^}]*)?}/;
+export function isRCodeBlock(node: Node): node is Node & { literal: string, info: string } {
+	return node.type === 'code_block' && node.literal !== null && node.info !== null && RTagRegex.test(node.info);
+}
+
+const LineRegex = /\r\n|\r|\n/;
 function restoreBlocksWithoutMd(blocks: CodeBlockEx[]): string {
 	let line = 1;
 	let output = '';
-
 
 	const goToLine = (n: number) => {
 		const diff = n - line;
@@ -82,9 +74,8 @@ function restoreBlocksWithoutMd(blocks: CodeBlockEx[]): string {
 		output += '\n'.repeat(diff);
 	};
 
-
 	const countNewlines = (str: string) => {
-		return str.split(/\r\n|\r|\n/).length - 1;
+		return str.split(LineRegex).length - 1;
 	};
 
 
@@ -97,7 +88,7 @@ function restoreBlocksWithoutMd(blocks: CodeBlockEx[]): string {
 	return output;	
 }
 
-function parseOptions(header: string, content: string): string {
+export function parseCodeBlockOptions(header: string, content: string): string {
 	let opts = header.length === 3 
 		? '' 
 		: header.substring(3, header.length-1).trim();
@@ -110,7 +101,7 @@ function parseOptions(header: string, content: string): string {
 
 		const opt = line.substring(3);
 
-		opts += opts.length === 0 ? `${opt}` : `, ${opt}`;
+		opts += opts.length === 0 ? opt : `, ${opt}`;
 	}	
 
 	return opts;

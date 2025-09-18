@@ -138,13 +138,13 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
 	}
 
 	let command = '';
+	const suffix = request.request === 'file' ? ', encoding="utf-8"' : '';
 	if(request.request === 'file' && !isNormalRFile(request.content)) {
 		command =`flowr_get_ast(text=${JSON.stringify(
 			readFileWithAdapter(request.content).code
-		)})`;
+		)}${suffix})`;
 	} else {
 		/* call the function with the request */
-		const suffix = request.request === 'file' ? ', encoding="utf-8"' : '';
 		command =`flowr_get_ast(${request.request}=${JSON.stringify(
 			request.content
 		)}${suffix})`;

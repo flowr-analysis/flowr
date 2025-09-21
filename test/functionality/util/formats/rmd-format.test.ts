@@ -65,12 +65,4 @@ describe('rmd', () => {
 			}
 		} satisfies RParseRequestFromText<RmdInfo>);
 	});
-
-
-	// test('load sample', () => {
-	// 	const data = convertRequestWithAdapter('test/testfiles/notebook/svm-rmarkdown-article-example.Rmd');
-	// 	console.log(data);
-
-
-	// });
 });

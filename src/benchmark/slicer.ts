@@ -28,8 +28,6 @@ import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/
 import type { SlicingCriteria } from '../slicing/criterion/parse';
 import type { DEFAULT_SLICING_PIPELINE, TREE_SITTER_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import { createSlicePipeline } from '../core/steps/pipeline/default-pipelines';
-
-
 import type { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever';
 import { retrieveNumberOfRTokensOfLastParse } from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
@@ -68,7 +66,8 @@ import {
 	IntervalTop
 } from '../abstract-interpretation/data-frame/domain';
 import { inferDataFrameShapes } from '../abstract-interpretation/data-frame/shape-inference';
-import { getCodeFromRequestWithAdapter } from '../util/formats/adapter';
+import fs from 'fs';
+import { convertRequestWithAdapter } from '../util/formats/adapter';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -180,8 +179,9 @@ export class BenchmarkSlicer {
 		await this.calculateStatsAfterInit(request);
 	}
 
-	private async calculateStatsAfterInit(request: RParseRequestFromFile | RParseRequestFromText) {
-		const loadedContent = getCodeFromRequestWithAdapter(request);
+	private async calculateStatsAfterInit(r: RParseRequestFromFile | RParseRequestFromText) {
+		const request = convertRequestWithAdapter(r);
+		const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8');
 		let numberOfRTokens: number;
 		let numberOfRTokensNoComments: number;
 		if(this.parser.name === 'r-shell') {

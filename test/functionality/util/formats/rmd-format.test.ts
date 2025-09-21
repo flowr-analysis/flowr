@@ -1,12 +1,11 @@
 import { assert, describe, test } from 'vitest';
-import { readFileWithAdapter } from '../../../../src/util/formats/adapter';
+import { convertRequestWithAdapter } from '../../../../src/util/formats/adapter';
 import { isRCodeBlock, type RmdInfo } from '../../../../src/util/formats/adapters/rmd-adapter';
-import type { FileData } from '../../../../src/util/formats/adapter-format';
 import { Node } from 'commonmark';
+import type { RParseRequestFromFile, RParseRequestFromText } from '../../../../src/r-bridge/retriever';
 
 describe('rmd', () => {
 	describe('utility functions', () => {
-
 		test.each([
 			/* Positive Cases           */
 			['{r}',                 true],
@@ -28,36 +27,50 @@ describe('rmd', () => {
 	});
 	
 
-	test('load complete', () => {
-		const data = readFileWithAdapter('test/testfiles/notebook/example.Rmd');
+	test('load simple', () => {
+		const data = convertRequestWithAdapter({
+			request: 'file',
+			content: 'test/testfiles/notebook/example.Rmd'
+		} satisfies RParseRequestFromFile);
 		assert.deepEqual(data, {
-			type: '.Rmd',
-			code: '\n\n\n\n\n\n\n\n\n\n' +
+			request: 'text',
+			content: '\n\n\n\n\n\n\n\n\n\n' +
                   'test <- 42\n' +
                   'cat(test)\n\n\n\n\n' +
                   'x <- "Hello World"\n\n\n\n\n' +
                   '  cat("Hi")\n\n\n\n\n\n' +
                   '#| cache=FALSE\n' +
                   'cat(test)\n',
-			blocks: [
-				{
-					code:    'test <- 42\ncat(test)\n',
-					options: '',
-				},
-				{
-					code:    'x <- "Hello World"\n',
-					options: 'abc',
-				},
-				{
-					code:    '  cat("Hi")\n',
-					options: 'ops, echo=FALSE',
-				},
-				{
-					code:    '#| cache=FALSE\ncat(test)\n',
-					options: 'echo=FALSE, cache=FALSE',
-				}
-			],
-			options: { title: 'Sample Document', output: 'pdf_document' }
-		} as FileData<RmdInfo>);
+			info: {
+				type:   'Rmd',
+				blocks: [
+					{
+						code:    'test <- 42\ncat(test)\n',
+						options: '',
+					},
+					{
+						code:    'x <- "Hello World"\n',
+						options: 'abc',
+					},
+					{
+						code:    '  cat("Hi")\n',
+						options: 'ops, echo=FALSE',
+					},
+					{
+						code:    '#| cache=FALSE\ncat(test)\n',
+						options: 'echo=FALSE, cache=FALSE',
+					}
+				],
+				options: { title: 'Sample Document', output: 'pdf_document' }
+			}
+		} satisfies RParseRequestFromText<RmdInfo>);
 	});
+
+
+	// test('load sample', () => {
+	// 	const data = convertRequestWithAdapter('test/testfiles/notebook/svm-rmarkdown-article-example.Rmd');
+	// 	console.log(data);
+
+
+	// });
 });

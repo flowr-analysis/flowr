@@ -1,9 +1,10 @@
-import type { FileAdapter } from '../adapter-format';
 import fs from 'fs';
 import type { Node } from 'commonmark';
 import { Parser } from 'commonmark';
 import matter from 'gray-matter';
 import { guard } from '../../assert';
+import type { FileAdapter } from '../adapter-format';
+import type { RParseRequest, RParseRequestFromText } from '../../../r-bridge/retriever';
 
 export interface CodeBlock {
 	options: string,
@@ -15,14 +16,18 @@ type CodeBlockEx = CodeBlock & {
 }
 
 export interface RmdInfo {
+	type:    'Rmd'
 	blocks:  CodeBlock[]
 	options: object
 }
 
 export const RmdAdapter = {
-	readFile: (p: string) => {
+	convertRequest: (request: RParseRequest) => {
 		// Read and Parse Markdown
-		const raw = fs.readFileSync(p, 'utf-8').toString();
+		const raw = request.request === 'text' 
+			? request.content
+			: fs.readFileSync(request.content, 'utf-8').toString();
+
 		const parser = new Parser();
 		const ast = parser.parse(raw);
 		
@@ -47,14 +52,18 @@ export const RmdAdapter = {
 		}
 
 		return {
-			type:    '.Rmd',
-			code:    restoreBlocksWithoutMd(blocks),
-			// eslint-disable-next-line unused-imports/no-unused-vars
-			blocks:  blocks.map(({ startpos, ...block }) => block), 
-			options: frontmatter.data
-		} as RmdInfo;
+			request: 'text',
+			content: restoreBlocksWithoutMd(blocks),
+			info:    {
+				// eslint-disable-next-line unused-imports/no-unused-vars
+				blocks:  blocks.map(({ startpos, ...block }) => block), 
+				options: frontmatter.data,
+				type:    'Rmd'
+			}
+		} as RParseRequestFromText<RmdInfo>;
+
 	}
-} as FileAdapter<RmdInfo>;
+} satisfies FileAdapter;
 
 
 const RTagRegex = /{[rR](?:[\s,][^}]*)?}/;

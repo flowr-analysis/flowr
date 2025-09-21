@@ -1,12 +1,7 @@
-import type { FileAdapters } from './adapter';
+import type { RParseRequest } from '../../r-bridge/retriever';
 
-export interface FileAdapter<AdditionalInfo = object> {
-    readFile(p: string): FileData<AdditionalInfo>
+export interface FileAdapter {
+    convertRequest(request: RParseRequest): RParseRequest
 }
 
-export type FileData<AdditionalInfo = object> = FileDataBase & AdditionalInfo;
-
-export interface FileDataBase {
-    type: keyof typeof FileAdapters
-    code: string
-}
+export type SupportedFormats = 'R' | 'Rmd';

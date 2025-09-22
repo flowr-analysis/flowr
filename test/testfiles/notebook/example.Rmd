@@ -35,3 +35,8 @@ Unrelated Block `right here with unrelated code`
 printf("Hello World");
 ```
 
+```{r, test}
+v <- c(1,2,3)
+```
+
+

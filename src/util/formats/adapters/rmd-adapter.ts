@@ -11,7 +11,7 @@ export interface CodeBlock {
 	code:    string,
 }
 
-type CodeBlockEx = CodeBlock & {
+export type CodeBlockEx = CodeBlock & {
 	startpos: { line: number, col: number }
 }
 
@@ -53,7 +53,7 @@ export const RmdAdapter = {
 
 		return {
 			request: 'text',
-			content: restoreBlocksWithoutMd(blocks),
+			content: restoreBlocksWithoutMd(blocks, countNewlines(raw)),
 			info:    {
 				// eslint-disable-next-line unused-imports/no-unused-vars
 				blocks:  blocks.map(({ startpos, ...block }) => block), 
@@ -72,7 +72,11 @@ export function isRCodeBlock(node: Node): node is Node & { literal: string, info
 }
 
 const LineRegex = /\r\n|\r|\n/;
-function restoreBlocksWithoutMd(blocks: CodeBlockEx[]): string {
+function countNewlines(str: string): number {
+	return str.split(LineRegex).length - 1;
+}
+
+export function restoreBlocksWithoutMd(blocks: CodeBlockEx[], totalLines: number): string {
 	let line = 1;
 	let output = '';
 
@@ -83,16 +87,14 @@ function restoreBlocksWithoutMd(blocks: CodeBlockEx[]): string {
 		output += '\n'.repeat(diff);
 	};
 
-	const countNewlines = (str: string) => {
-		return str.split(LineRegex).length - 1;
-	};
-
-
 	for(const block of blocks) {
 		goToLine(block.startpos.line);
 		output += block.code;
 		line += countNewlines(block.code);
 	}
+
+	// Add remainder of file 
+	goToLine(totalLines + 1);
 
 	return output;	
 }

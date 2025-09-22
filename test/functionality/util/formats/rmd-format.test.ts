@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { convertRequestWithAdapter } from '../../../../src/util/formats/adapter';
-import { isRCodeBlock, type RmdInfo } from '../../../../src/util/formats/adapters/rmd-adapter';
+import { restoreBlocksWithoutMd,  isRCodeBlock, type RmdInfo } from '../../../../src/util/formats/adapters/rmd-adapter';
 import { Node } from 'commonmark';
 import type { RParseRequestFromFile, RParseRequestFromText } from '../../../../src/r-bridge/retriever';
 
@@ -24,6 +24,79 @@ describe('rmd', () => {
 			node.info = str;
 			assert.equal(isRCodeBlock(node), expected);
 		});
+
+
+		test.each([
+			[ // #1 - simple
+				[ 
+					{
+						options:  'dont care',
+						code:     'Hello World\n',
+						startpos: {
+							line: 1,
+							col:  1
+						}
+					},
+					{
+						options:  'dont care',
+						code:     'Hello World\n',
+						startpos: {
+							line: 2,
+							col:  1
+						}
+					}
+				], 
+				2, 
+				'Hello World\nHello World\n'
+			],
+			[ // #2 - new lines at end
+				[ 
+					{
+						options:  'dont care',
+						code:     'Hello World\n',
+						startpos: {
+							line: 1,
+							col:  1
+						}
+					},
+					{
+						options:  'dont care',
+						code:     'Hello World\n',
+						startpos: {
+							line: 2,
+							col:  1
+						}
+					}
+				], 
+				4, 
+				'Hello World\nHello World\n\n\n'
+			],
+			[ // #3 - new lines between and at end
+				[ 
+					{
+						options:  'dont care',
+						code:     'Hello World\n',
+						startpos: {
+							line: 1,
+							col:  1
+						}
+					},
+					{
+						options:  'dont care',
+						code:     'Hello World\n',
+						startpos: {
+							line: 5,
+							col:  1
+						}
+					}
+				], 
+				7, 
+				'Hello World\n\n\n\nHello World\n\n\n'
+			]
+		])('resotre block (%#)', (blocks, lines, expected) => {
+			const restored = restoreBlocksWithoutMd(blocks, lines);
+			assert.equal(restored, expected);
+		});
 	});
 	
 
@@ -32,6 +105,9 @@ describe('rmd', () => {
 			request: 'file',
 			content: 'test/testfiles/notebook/example.Rmd'
 		} satisfies RParseRequestFromFile);
+		console.log('stzart');
+		console.log(data.content);
+		console.log('end');
 		assert.deepEqual(data, {
 			request: 'text',
 			content: '\n\n\n\n\n\n\n\n\n\n' +
@@ -40,7 +116,8 @@ describe('rmd', () => {
                   'x <- "Hello World"\n\n\n\n\n' +
                   '  cat("Hi")\n\n\n\n\n\n' +
                   '#| cache=FALSE\n' +
-                  'cat(test)\n',
+                  'cat(test)\n\n\n\n\n\n\n\n\n\n'  +
+				  'v <- c(1,2,3)\n\n\n\n',
 			info: {
 				type:   'Rmd',
 				blocks: [
@@ -59,6 +136,10 @@ describe('rmd', () => {
 					{
 						code:    '#| cache=FALSE\ncat(test)\n',
 						options: 'echo=FALSE, cache=FALSE',
+					},
+					{
+						code:    'v <- c(1,2,3)\n',
+						options: 'test'
 					}
 				],
 				options: { title: 'Sample Document', output: 'pdf_document' }

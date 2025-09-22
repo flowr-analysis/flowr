@@ -11,7 +11,7 @@ import type {
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
 	SDValue ,
@@ -20,12 +20,18 @@ import {
 } from './domain';
 import { inspect } from 'util';
 import { sdEqual } from './equality';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { ReferenceType } from '../../dataflow/environments/identifier';
 import { unescapeSpecialChars } from '../data-frame/resolve-args';
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 
 function obj<T>(obj: T) {
 	return inspect(obj, false, null, true);
+}
+
+function resolveNodeToString(node: RNode<StringDomainInfo & ParentInformation> | undefined): SDValue {
+	if (node === undefined) return Top;
+	if (node.info.sdvalue === undefined) return Top;
+	console.log(`${node.type}(${node.lexeme}) resolved ${obj(node.info.sdvalue)}`)
+	return node.info.sdvalue;
 }
 
 export type StringDomainInfo = {
@@ -71,6 +77,29 @@ export class StringDomainVisitor<
 	domain: AbstractOperationsStringDomain;
 	dirty: boolean = false;
 
+	resolveIdToString(id: NodeId | undefined): SDValue {
+		if (id === undefined) return Top;
+		const node = this.getNormalizedAst(id);
+		return resolveNodeToString(node);
+	}
+
+	updateNodeValue(node: RNode<StringDomainInfo & ParentInformation> | undefined, calculation: (node: RNode<StringDomainInfo & ParentInformation>) => SDValue) {
+		if (node === undefined) return;
+		const newValue = calculation(node)
+		const oldValue = node.info.sdvalue;
+		if (!sdEqual(newValue, oldValue)) {
+			this.dirty = true;
+			node.info.sdvalue = newValue;
+			console.log(`${node.type}(${node.lexeme}) assigned ${obj(newValue)}`)
+		}
+	}
+
+	updateIdValue(id: NodeId | undefined, calculation: (node: RNode<StringDomainInfo & ParentInformation>) => SDValue) {
+		if (id === undefined) return;
+		const node = this.getNormalizedAst(id);
+		this.updateNodeValue(node, calculation)
+	}
+
 	constructor(domain: AbstractOperationsStringDomain, config: Config) {
 		super({
 			...config,
@@ -89,20 +118,8 @@ export class StringDomainVisitor<
     target?: NodeId;
     source?: NodeId;
   }): void {
-		const nCall = this.getNormalizedAst(call.id);
-		const nTarget = this.getNormalizedAst(target);
-		const nSource = this.getNormalizedAst(source);
-
-		if(!nTarget || !nSource || !nCall) {
-			return;
-		}
-
-		if(nSource.info.sdvalue && !sdEqual(nSource.info.sdvalue, nTarget.info.sdvalue)) {
-			nTarget.info.sdvalue = nSource.info.sdvalue;
-			nCall.info.sdvalue = nSource.info.sdvalue;
-			this.dirty = true;
-			console.log('onAssignmentCall: ', obj(nCall));
-		}
+		this.updateIdValue(target, () => this.resolveIdToString(source));
+		this.updateIdValue(call.id, () => this.resolveIdToString(source));
 	}
 
 	protected onStringConstant({
@@ -112,68 +129,29 @@ export class StringDomainVisitor<
     vertex: DataflowGraphVertexValue;
     node:   RString;
   }): void {
-		const nVertex = this.getNormalizedAst(vertex.id);
-
-		if(!nVertex) {
-			return;
-		}
-
-		if(!nVertex.info.sdvalue) {
-			nVertex.info.sdvalue = this.domain.const(unescapeSpecialChars(node.content.str));
-			this.dirty = true;
-			console.log('onStringConstant: ', obj(nVertex));
-		}
+	  this.updateIdValue(vertex.id, () => this.domain.const(unescapeSpecialChars(node.content.str)));
 	}
 
 	protected onIfThenElseCall({
 		call,
-		then,
-		else: els,
 	}: {
     call:      DataflowGraphVertexFunctionCall;
     condition: NodeId | undefined;
     then:      NodeId | undefined;
     else:      NodeId | undefined;
   }): void {
-		const nCall = this.getNormalizedAst(call.id);
-		const nThen = this.getNormalizedAst(then);
-		const nEls = this.getNormalizedAst(els);
+  	this.updateIdValue(call.id, () => {
+			const returns = this.config.dfg.outgoingEdges(call.id);
+			if (!returns) return Top;
+  		const values = returns
+  			.entries()
+  			.filter(it => it[1].types & EdgeType.Returns)
+  			.map(it => this.resolveIdToString(it[0]))
+  			.toArray();
 
-		if(!nCall || !nThen || !nEls) {
-			return;
-		}
-
-		const returns = this.config.dfg .outgoingEdges(nCall.info.id);
-		if(!returns) {
-			return;
-		}
-
-		const nReturns = returns
-			.entries()
-			.filter(it => it[1].types & EdgeType.Returns)
-			.map(it => this.getNormalizedAst(it[0]))
-			.toArray();
-
-		if(!nReturns.every(it => it !== undefined)) {
-			return;
-		}
-
-		const values = nReturns.map(it => it.info.sdvalue);
-
-		if(!values.every(it => it !== undefined)) {
-			return;
-		}
-
-		if(values.length === 0) {
-			return;
-		}
-
-		const value = this.domain.join(...values);
-		if(!sdEqual(value, nCall.info.sdvalue)) {
-			nCall.info.sdvalue = value;
-			this.dirty = true;
-			console.log('onIfThenElseCall: ', obj(nThen), obj(nEls));
-		}
+  		if (values.length === 0) return Top;
+			return this.domain.join(...values);
+  	});  
 	}
 
 	protected onExpressionList({
@@ -181,101 +159,42 @@ export class StringDomainVisitor<
 	}: {
     call: DataflowGraphVertexFunctionCall;
   }): void {
-		const nCall = this.getNormalizedAst(call.id);
-
-		if(!nCall) {
-			return;
-		}
-
-		const nodes = nCall.children as RNode<OtherInfo & StringDomainInfo>[];
-		const node = nodes.at(nodes.length - 1);
-		if(!node) {
-			return; 
-		}
-		const value = node.info.sdvalue ?? Top;
-
-		if(!sdEqual(nCall.info.sdvalue, value)) {
-			nCall.info.sdvalue = value;
-			this.dirty = true;
-			console.log('onExpressionList: ', obj(nCall));
-		}
+	  this.updateIdValue(call.id, (node) => {
+	  	const children = node.children as RNode<StringDomainInfo & ParentInformation>[]
+	  	const last = children.at(children.length - 1);
+	  	if (!last) return Top;
+	  	return resolveNodeToString(last)
+	  });
 	}
 
 	protected onVariableUse({ vertex }: { vertex: DataflowGraphVertexUse; }): void {
-		const nVertex = this.getNormalizedAst(vertex.id);
-
-		if(!nVertex) {
-			return;
-		}
-
-		const origins = this.getOrigins(nVertex.info.id);
-
-		if(!origins) {
-			return;
-		}
-
-		const nOrigins = origins
-			.filter(it => it.type === OriginType.ReadVariableOrigin)
-			.map(it => this.getNormalizedAst(it.id));
-
-		if(!nOrigins.every(it => it !== undefined)) {
-			return;
-		}
-
-		const values = nOrigins.map(it => it.info.sdvalue);
-
-		if(!values.every(it => it !== undefined)) {
-			return;
-		}
-
-		const value = this.domain.join(...values);
-		if(!sdEqual(nVertex.info.sdvalue, value)) {
-			nVertex.info.sdvalue = value;
-			this.dirty = true;
-			console.log('onVariableUse: ', obj(nVertex));
-		}
+		this.updateIdValue(vertex.id, () => {
+			const origins = this.getOrigins(vertex.id);
+			if (!origins) return Top;
+			const values = origins
+				.filter(it => it.type === OriginType.ReadVariableOrigin)
+				.map(it => this.resolveIdToString(it.id))
+			return this.domain.join(...values)
+		});
 	}
 
 	protected onDefaultFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall; }): void {
-			if (call.name === "paste") {
-				const callNode = this.getNormalizedAst(call.id);
-				if(!callNode) {
-					return;
-				}
+		switch (call.name) {
+			case "paste":
+				this.updateIdValue(call.id, () => {
+					const named = call.args.filter(it => isNamedArgument(it))
+					const positional = call.args.filter(it => isPositionalArgument(it))
 
-				const named = call.args.filter(it => isNamedArgument(it))
-				const positional = call.args.filter(it => isPositionalArgument(it))
+					const sepId = named.find(it => it.name === "sep")?.nodeId;
+					const sepValue = (sepId !== undefined) ? (this.getNormalizedAst(sepId)?.value as RNode<StringDomainInfo & ParentInformation> | undefined) : undefined;
+					const sep = (sepValue !== undefined) ? resolveNodeToString(sepValue) : this.domain.const(" ");
 
-				let sepValue: SDValue;
-				const sepId = named.find(it => it.name === "sep")?.nodeId;
-				if (sepId) {
-					const sepNode = this.getNormalizedAst(sepId)!;
-					if(!sepNode) {
-						return;
-					}
+					if (positional.length == 0) return Top;
 
-					const valueNode = sepNode.value as RNode<OtherInfo & StringDomainInfo>;
-
-					sepValue = valueNode.info.sdvalue ?? Top;
-				} else {
-					sepValue = this.domain.const(" ");
-				}
-
-				if (positional.length == 0) {
-					return;
-				}
-
-				const argNodes = positional.map(arg => this.getNormalizedAst(arg.nodeId));
-				if (!argNodes.every(it => it)) {
-					return;
-				}
-
-				const value = this.domain.concat(sepValue, ...argNodes.map(it => it!.info.sdvalue ?? Top))
-				if (!sdEqual(value, callNode.info.sdvalue)) {
-					callNode.info.sdvalue = value;
-					this.dirty = true;
-					console.log('onDefaultFunctionCall: ', obj(callNode));
-				}
-			}
+					const values = positional.map(it => this.resolveIdToString(it.nodeId))
+					return this.domain.concat(sep, ...values)
+				});
+				break;
+		}
 	}
 }

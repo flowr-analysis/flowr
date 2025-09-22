@@ -1,4 +1,4 @@
-import type { RParseRequest } from '../../r-bridge/retriever';
+import type { RParseRequest, RParseRequestFromFile } from '../../r-bridge/retriever';
 import type { FileAdapter, SupportedDocumentTypes, SupportedFormats } from './adapter-format';
 import { RAdapter } from './adapters/r-adapter';
 import path from 'path';
@@ -16,9 +16,15 @@ export const DocumentTypeToFormat = {
 
 export type AdapterReturnTypes = ReturnType<typeof FileAdapters[keyof typeof FileAdapters]['convertRequest']>;
 
-export function convertRequestWithAdapter(request: RParseRequest): AdapterReturnTypes {
-	const type = inferFileType(request);
-	return FileAdapters[type].convertRequest(request);
+export function requestFromFile(path: string): AdapterReturnTypes {
+	const baseRequest = {
+		request: 'file',
+		content: path
+	} satisfies RParseRequestFromFile;
+	
+	
+	const type = inferFileType(baseRequest);
+	return FileAdapters[type].convertRequest(baseRequest);
 }
 
 export function inferFileType(request: RParseRequest): keyof typeof FileAdapters {

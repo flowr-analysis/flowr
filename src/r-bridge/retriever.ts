@@ -11,8 +11,8 @@ import { deterministicCountingIdGenerator } from './lang-4.x/ast/model/processin
 import { RawRType } from './lang-4.x/ast/model/type';
 import fs from 'fs';
 import path from 'path';
-import { convertRequestWithAdapter } from '../util/formats/adapter';
 import type { SupportedFormats } from '../util/formats/adapter-format';
+import { requestFromFile } from '../util/formats/adapter';
 
 export const fileProtocol = 'file://';
 
@@ -83,10 +83,15 @@ export function requestFromInput(input: `${typeof fileProtocol}${string}` | stri
 	}
 	const content = input as string;
 	const file = content.startsWith(fileProtocol);
-	return {
-		request: file ? 'file' : 'text',
-		content: file ? content.slice(7) : content
-	};
+
+	if(file) {
+		return requestFromFile(content.slice(7));
+	} else {
+		return {
+			request: 'text',
+			content: content
+		};
+	}
 }
 
 
@@ -152,8 +157,6 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
 	if(isEmptyRequest(request)) {
 		return Promise.resolve('');
 	}
-
-	request = convertRequestWithAdapter(request);
 
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : '';
 	/* call the function with the request */

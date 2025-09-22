@@ -4,7 +4,6 @@ import type { RParseRequest } from '../../retriever';
 import type { SyncParser } from '../../parser';
 import type { TreeSitterEngineConfig } from '../../../config';
 import { log } from '../../../util/log';
-import { convertRequestWithAdapter } from '../../../util/formats/adapter';
 import fs from 'fs';
 
 export const DEFAULT_TREE_SITTER_R_WASM_PATH = './node_modules/@eagleoutice/tree-sitter-r/tree-sitter-r.wasm';
@@ -60,8 +59,6 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 	}
 
 	public parse(request: RParseRequest): Parser.Tree {
-		request = convertRequestWithAdapter(request);
-
 		let sourceCode: string;
 		if(request.request === 'file' ){
 			sourceCode = fs.readFileSync(request.content, 'utf8');

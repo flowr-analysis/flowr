@@ -1,8 +1,8 @@
 import { assert, describe, test } from 'vitest';
-import { convertRequestWithAdapter } from '../../../../src/util/formats/adapter';
+import { requestFromFile } from '../../../../src/util/formats/adapter';
 import { restoreBlocksWithoutMd,  isRCodeBlock, type RmdInfo } from '../../../../src/util/formats/adapters/rmd-adapter';
 import { Node } from 'commonmark';
-import type { RParseRequestFromFile, RParseRequestFromText } from '../../../../src/r-bridge/retriever';
+import type { RParseRequestFromText } from '../../../../src/r-bridge/retriever';
 
 describe('rmd', () => {
 	describe('utility functions', () => {
@@ -101,13 +101,7 @@ describe('rmd', () => {
 	
 
 	test('load simple', () => {
-		const data = convertRequestWithAdapter({
-			request: 'file',
-			content: 'test/testfiles/notebook/example.Rmd'
-		} satisfies RParseRequestFromFile);
-		console.log('stzart');
-		console.log(data.content);
-		console.log('end');
+		const data = requestFromFile('test/testfiles/notebook/example.Rmd');
 		assert.deepEqual(data, {
 			request: 'text',
 			content: '\n\n\n\n\n\n\n\n\n\n' +

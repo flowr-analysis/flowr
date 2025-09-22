@@ -100,7 +100,7 @@ export function restoreBlocksWithoutMd(blocks: CodeBlockEx[], totalLines: number
 }
 
 export function parseCodeBlockOptions(header: string, content: string): string {
-	let opts = header.length === 3 
+	let opts = header.length === 3 // '{r}' => header.length=3 (no options in header)
 		? '' 
 		: header.substring(3, header.length-1).trim();
 	

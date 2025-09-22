@@ -5,3 +5,5 @@ export interface FileAdapter {
 }
 
 export type SupportedFormats = 'R' | 'Rmd';
+
+export type SupportedDocumentTypes = '.r' | '.rmd';

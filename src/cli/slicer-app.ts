@@ -14,6 +14,7 @@ import { stats2string } from '../benchmark/stats/print';
 import { makeMagicCommentHandler } from '../reconstruct/auto-select/magic-comments';
 import { doNotAutoSelect } from '../reconstruct/auto-select/auto-select-defaults';
 import { getConfig, getEngineConfig } from '../config';
+import { requestFromFile } from '../util/formats/adapter';
 
 export interface SlicerCliOptions {
 	verbose:             boolean
@@ -50,7 +51,7 @@ async function getSlice() {
 	await slicer.init(
 		options['input-is-text']
 			? { request: 'text', content: options.input.replaceAll('\\n', '\n') }
-			: { request: 'file', content: options.input },
+			: requestFromFile(options.input),
 		config,
 		options['no-magic-comments'] ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
 	);
@@ -99,7 +100,11 @@ async function getSlice() {
 		console.log(JSON.stringify(output, jsonReplacer));
 	} else {
 		if(doSlicing && options.diff) {
-			const originalCode = options['input-is-text'] ? options.input : fs.readFileSync(options.input).toString();
+			let originalCode = options.input;
+			if(!options['input-is-text']) {
+				const request = requestFromFile(options.input);
+				originalCode = request.request === 'text' ? request.content : fs.readFileSync(request.content).toString(); 
+			}
 			console.log(sliceDiffAnsi((slice as SliceResult).result, normalize, new Set(mappedSlices.map(({ id }) => id)), originalCode));
 		}
 		if(options.stats) {

@@ -21,7 +21,6 @@ import {
 import { inspect } from 'util';
 import { sdEqual } from './equality';
 import { unescapeSpecialChars } from '../data-frame/resolve-args';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 
 function obj<T>(obj: T) {
 	return inspect(obj, false, null, true);
@@ -188,6 +187,18 @@ export class StringDomainVisitor<
 					const sepId = named.find(it => it.name === "sep")?.nodeId;
 					const sepValue = (sepId !== undefined) ? (this.getNormalizedAst(sepId)?.value as RNode<StringDomainInfo & ParentInformation> | undefined) : undefined;
 					const sep = (sepValue !== undefined) ? resolveNodeToString(sepValue) : this.domain.const(" ");
+
+					if (positional.length == 0) return Top;
+
+					const values = positional.map(it => this.resolveIdToString(it.nodeId))
+					return this.domain.concat(sep, ...values)
+				});
+				break;
+
+			case "paste0":
+				this.updateIdValue(call.id, () => {
+					const positional = call.args.filter(it => isPositionalArgument(it))
+					const sep = this.domain.const("");
 
 					if (positional.length == 0) return Top;
 

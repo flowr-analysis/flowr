@@ -87,7 +87,7 @@ Set WindowBar Colorful
 Set CursorBlink false
 Set PlaybackSpeed 3.0
 Set TypingSpeed 0.15
-
+`
 Type "docker run -it --rm eagleoutice/flowr"
 Sleep 200ms
 Enter

@@ -112,6 +112,15 @@ describe.sequential('string-domain-inference', withShell((shell) => {
     	{ kind: 'const-set', value: ['foo', 'bar'] },
     );
 
+    assertStringDomain(
+    	'super assignment',
+    	shell,
+    	"const-set",
+    	'a <- "foo"\nf <- function() { a <<- "bar" }\nf()\na',
+    	"4:1",
+    	{ kind: 'const-set', value: ['bar'] },
+    );
+
     type VarType = "literal" | "variable" | "unknown";
     type GeneratedVar = {
       type: VarType;
@@ -281,6 +290,15 @@ describe.sequential('string-domain-inference', withShell((shell) => {
     	'if(a) { "foo" } else { "bar" }',
     	"1:1",
     	Top,
+    );
+
+    assertStringDomain(
+    	'super assignment',
+    	shell,
+    	"const",
+    	'a <- "foo"\nf <- function() { a <<- "bar" }\nf()\na',
+    	"4:1",
+    	{ kind: 'const', value: 'bar' },
     );
 
     type VarType = "literal" | "unknown";

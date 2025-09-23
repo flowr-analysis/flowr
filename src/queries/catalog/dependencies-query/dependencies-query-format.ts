@@ -37,10 +37,11 @@ export const DefaultDependencyCategories = {
 					if(n.type === RType.Symbol && n.namespace) {
 						/* we should improve the identification of ':::' */
 						result.push({
-							nodeId:       n.info.id,
-							functionName: (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
-							value:        n.namespace,
-							libraryInfo:  data.libraries ?? undefined,
+							nodeId:             n.info.id,
+							functionName:       (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
+							value:              n.namespace,
+							versionConstraints:	data?.libraries?.find(f => f.name === n.namespace)?.versionConstraints ?? undefined,
+							derivedVersion:	    data?.libraries?.find(f => f.name === n.namespace)?.derivedVersion ?? undefined,
 						});
 					}
 				});

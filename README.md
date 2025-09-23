@@ -33,7 +33,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: [;1mlinter[0m (2 ms)
+    Query: [;1mlinter[0m (3 ms)
        ╰ **Deprecated Functions** (deprecated-functions):
            ╰ _Metadata_: <code>{"totalDeprecatedCalls":0,"totalDeprecatedFunctionDefinitions":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **File Path Validity** (file-path-validity):
@@ -45,9 +45,9 @@ It offers a wide variety of features, for example:
        ╰ **Absolute Paths** (absolute-file-paths):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
-           ╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":0,"processTimeMs":0}</code>
+           ╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":1,"processTimeMs":0}</code>
        ╰ **Unused Definitions** (unused-definitions):
-           ╰ _Metadata_: <code>{"totalConsidered":0,"searchTimeMs":1,"processTimeMs":0}</code>
+           ╰ _Metadata_: <code>{"totalConsidered":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Naming Convention** (naming-convention):
            ╰ _Metadata_: <code>{"numMatches":0,"numBreak":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Dataframe Access Validation** (dataframe-access-validation):
@@ -56,7 +56,7 @@ It offers a wide variety of features, for example:
            ╰ _Metadata_: <code>{"consideredNodes":5,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Useless Loops** (useless-loop):
            ╰ _Metadata_: <code>{"numOfUselessLoops":0,"searchTimeMs":0,"processTimeMs":0}</code>
-    [;3mAll queries together required ≈2 ms (1ms accuracy, total 8 ms)[0m[0m
+    [;3mAll queries together required ≈3 ms (1ms accuracy, total 9 ms)[0m[0m
     ```
     
     
@@ -78,7 +78,7 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (14 ms)\
+    Query: **linter** (15 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalDeprecatedCalls":0,"totalDeprecatedFunctionDefinitions":0,"searchTimeMs":2,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
@@ -96,16 +96,16 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Naming Convention** (naming-convention):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"numMatches":0,"numBreak":0,"searchTimeMs":0,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"numOperations":0,"numAccesses":0,"totalAccessed":0,"searchTimeMs":0,"processTimeMs":3}</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"numOperations":0,"numAccesses":0,"totalAccessed":0,"searchTimeMs":0,"processTimeMs":4}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"consideredNodes":5,"searchTimeMs":1,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Useless Loops** (useless-loop):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"numOfUselessLoops":0,"searchTimeMs":0,"processTimeMs":0}</code>\
-    _All queries together required ≈15 ms (1ms accuracy, total 213 ms)_
+    _All queries together required ≈16 ms (1ms accuracy, total 209 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _213.2 ms_ (including parsing and normalization and the query) within the generation environment.	
+    The analysis required _209.2 ms_ (including parsing and normalization and the query) within the generation environment.	
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -203,7 +203,7 @@ It offers a wide variety of features, for example:
               "numAccesses": 0,
               "totalAccessed": 0,
               "searchTimeMs": 0,
-              "processTimeMs": 3
+              "processTimeMs": 4
             }
           },
           "dead-code": {
@@ -224,11 +224,11 @@ It offers a wide variety of features, for example:
           }
         },
         ".meta": {
-          "timing": 14
+          "timing": 15
         }
       },
       ".meta": {
-        "timing": 15
+        "timing": 16
       }
     }
     ```
@@ -727,6 +727,12 @@ You can enter <span title="Description (Repl Command): Show help information (al
 <summary>Example REPL session</summary>
 
 ![Example of a simple REPL session](wiki/gif/repl-demo-opt.gif)
+
+If you want to use the same commands:
+
+1. First this runs `docker run -it --rm eagleoutice/flowr` in a terminal to start the REPL.
+2. In the REPL, it runs `:slicer -c '11@prod' demo.R --diff` to slice the example file `demo.R` for the print statement in line 11.
+   Please note that the `11` refers to the 11th line number to slice for!
 
 </details>
 

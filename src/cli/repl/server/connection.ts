@@ -107,13 +107,13 @@ export class FlowRServerConnection {
 				void this.handleFileAnalysisRequest(request.message as FileAnalysisRequestMessage);
 				break;
 			case 'request-slice':
-				void this.handleSliceRequest(request.message as SliceRequestMessage);
+				this.handleSliceRequest(request.message as SliceRequestMessage);
 				break;
 			case 'request-repl-execution':
 				this.handleRepl(request.message as ExecuteRequestMessage);
 				break;
 			case 'request-lineage':
-				void this.handleLineageRequest(request.message as LineageRequestMessage);
+				this.handleLineageRequest(request.message as LineageRequestMessage);
 				break;
 			case 'request-query':
 				this.handleQueryRequest(request.message as QueryRequestMessage);
@@ -233,7 +233,7 @@ export class FlowRServerConnection {
 		return analyzer;
 	}
 
-	private async handleSliceRequest(base: SliceRequestMessage) {
+	private handleSliceRequest(base: SliceRequestMessage) {
 		const requestResult = validateMessage(base, requestSliceMessage);
 		if(requestResult.type === 'error') {
 			answerForValidationError(this.socket, requestResult, base.id);
@@ -254,14 +254,12 @@ export class FlowRServerConnection {
 			return;
 		}
 
-		try {
-			const result = await fileInformation.analyzer.query([{
-				type:            'static-slice',
-				criteria:        request.criterion,
-				noMagicComments: request.noMagicComments,
-				direction: 		    request.direction
-			}]);
-
+		void fileInformation.analyzer.query([{
+			type:            'static-slice',
+			criteria:        request.criterion,
+			noMagicComments: request.noMagicComments,
+			direction: 		    request.direction
+		}]).then(result => {
 			sendMessage<SliceResponseMessage>(this.socket, {
 				type:    'response-slice',
 				id:      request.id,
@@ -270,7 +268,7 @@ export class FlowRServerConnection {
 						.filter(([k,]) => DEFAULT_SLICING_PIPELINE.steps.get(k)?.executed === PipelineStepStage.OncePerRequest)
 				) as SliceResponseMessage['results']
 			});
-		} catch(e) {
+		}).catch(e => {
 			this.logger.error(`[${this.name}] Error while analyzing file for token ${request.filetoken}: ${String(e)}`);
 			sendMessage<FlowrErrorMessage>(this.socket, {
 				id:     request.id,
@@ -278,7 +276,7 @@ export class FlowRServerConnection {
 				fatal:  false,
 				reason: `Error while analyzing file for token ${request.filetoken}: ${String(e)}`
 			});
-		}
+		});
 	}
 
 

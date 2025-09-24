@@ -5,18 +5,6 @@ import type { Tree } from 'web-tree-sitter';
 import type { ParseRequiredInput } from '../../../../r-bridge/parser';
 import { parseRequests } from '../../../../r-bridge/parser';
 
-export interface ParseStepOutputTS {
-    readonly parsed: Tree
-}
-
-export interface TreeSitterParseJson {
-	readonly '.meta': {
-		readonly tokenCount:           number,
-		readonly tokenCountNoComments: number
-	},
-	readonly str: string
-}
-
 export const PARSE_WITH_TREE_SITTER_STEP = {
 	name:              'parse',
 	humanReadableName: 'parse with tree-sitter',

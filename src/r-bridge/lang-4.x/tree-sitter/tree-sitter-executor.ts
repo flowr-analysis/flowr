@@ -1,3 +1,4 @@
+import type { QueryCapture } from 'web-tree-sitter';
 import Parser from 'web-tree-sitter';
 
 import type { RParseRequest } from '../../retriever';
@@ -66,6 +67,12 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 			sourceCode = request.content;
 		}
 		return this.parser.parse(sourceCode);
+	}
+
+	public query(source: string, tree: Parser.Tree): QueryCapture[] {
+		const query = this.parser.getLanguage().query(source);
+		const matches = query.matches(tree.rootNode);
+		return matches.flatMap(m => m.captures);
 	}
 
 	public close(): void {

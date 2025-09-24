@@ -375,10 +375,11 @@ export class FlowRServerConnection {
 			return;
 		}
 
-		const { dataflow: dfg, normalize: ast } = fileInformation.pipeline.getResults(true);
+		const { parse, dataflow: dfg, normalize: ast } = fileInformation.pipeline.getResults(true);
+		guard(parse !== undefined, `Parse results must be present (request: ${request.filetoken})`);
 		guard(dfg !== undefined, `Dataflow graph must be present (request: ${request.filetoken})`);
 		guard(ast !== undefined, `AST must be present (request: ${request.filetoken})`);
-		void Promise.resolve(executeQueries({ dataflow: dfg, ast, config: this.config }, request.query)).then(results => {
+		void Promise.resolve(executeQueries({ parse, dataflow: dfg, ast, config: this.config }, request.query)).then(results => {
 			sendMessage<QueryResponseMessage>(this.socket, {
 				type: 'response-query',
 				id:   request.id,

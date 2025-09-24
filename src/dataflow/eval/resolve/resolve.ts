@@ -38,6 +38,8 @@ export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, env?: 
 		return intervalFrom(a.content.num, a.content.num);
 	} else if(a.type === RType.Logical) {
 		return a.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
+	} else if(a.type === RType.FunctionDefinition) {
+		return { type: 'function-definition' };
 	} else if((a.type === RType.FunctionCall || a.type === RType.BinaryOp || a.type === RType.UnaryOp) && graph) {
 		const origin = getOriginInDfg(graph, a.info.id)?.[0];
 		if(origin === undefined || origin.type !== OriginType.BuiltInFunctionOrigin) {

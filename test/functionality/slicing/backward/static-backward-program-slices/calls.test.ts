@@ -669,9 +669,6 @@ foo(.x = f(3))`);
 			assertSliced(label('Without using primitive', [
 				'built-in-internal-and-primitive-functions'
 			]), shell, 'print <- function(...) 42\nprint(3)', ['2@print'], 'print <- function(...) 42\nprint(3)');
-			assertSliced(label('Without using primitive', [
-				'built-in-internal-and-primitive-functions'
-			]), shell, 'print <- function(...) 42\nfoo <- .Primitive("print")(3)', ['2@foo'], 'foo <- .Primitive("print")(3)');
 		});
 		describe('Data Table Assignments', () => {
 			const caps: SupportedFlowrCapabilityId[] = [

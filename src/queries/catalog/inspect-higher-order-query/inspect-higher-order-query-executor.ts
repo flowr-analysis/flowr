@@ -9,7 +9,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { isHigherOrder } from '../../../dataflow/fn/higher-order-function';
 
 
-export function executeHigherOrderQuery({ dataflow: { graph }, ast, _config }: BasicQueryData, queries: readonly InspectHigherOrderQuery[]): InspectHigherOrderQueryResult {
+export function executeHigherOrderQuery({ dataflow: { graph }, ast }: BasicQueryData, queries: readonly InspectHigherOrderQuery[]): InspectHigherOrderQueryResult {
 	const start = Date.now();
 	let filters: SingleSlicingCriterion[] | undefined = undefined;
 	// filter will remain undefined if at least one of the queries wants all functions

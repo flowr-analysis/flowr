@@ -17,20 +17,20 @@ describe('DESCRIPTION-file', function() {
 	const descriptionFilePlugin = new FlowrAnalyzerDescriptionFilePlugin();
 	descriptionFilePlugin.addFiles(path.resolve('test/testfiles/project/DESCRIPTION'));
 	describe.sequential('Parsing', function() {
-		test('Library-Versions-Plugin', async() => {
+		test('Library-Versions-Plugin', () => {
 			const flowrAnalyzerPackageVersionsDescriptionFilePlugin = new FlowrAnalyzerPackageVersionsDescriptionFilePlugin();
 			flowrAnalyzerPackageVersionsDescriptionFilePlugin.dependencies = [descriptionFilePlugin];
 
-			await flowrAnalyzerPackageVersionsDescriptionFilePlugin.processor({} as FlowrAnalyzer, {} as FlowrConfigOptions);
+			flowrAnalyzerPackageVersionsDescriptionFilePlugin.processor({} as FlowrAnalyzer, {} as FlowrConfigOptions);
 
 			assert.isNotEmpty(flowrAnalyzerPackageVersionsDescriptionFilePlugin.packages);
 		});
 
-		test('Loading-Order-Plugin', async() => {
+		test('Loading-Order-Plugin', () => {
 			const flowrAnalyzerLoadingOrderDescriptionFilePlugin = new FlowrAnalyzerLoadingOrderDescriptionFilePlugin();
 			flowrAnalyzerLoadingOrderDescriptionFilePlugin.dependencies = [descriptionFilePlugin];
 
-			await flowrAnalyzerLoadingOrderDescriptionFilePlugin.processor({} as FlowrAnalyzer, {} as FlowrConfigOptions);
+			flowrAnalyzerLoadingOrderDescriptionFilePlugin.processor({} as FlowrAnalyzer, {} as FlowrConfigOptions);
 
 			assert.isNotEmpty(flowrAnalyzerLoadingOrderDescriptionFilePlugin.loadingOrder);
 		});

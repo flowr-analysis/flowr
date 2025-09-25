@@ -5,7 +5,7 @@ import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../slicing/criterion/parse';
 import { isNotUndefined } from '../../util/assert';
-import type { Query, SupportedQuery, SynchronousQuery } from '../../queries/query';
+import type { Query, SupportedQuery } from '../../queries/query';
 import { executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -88,7 +88,7 @@ function generateFrom(_input: FlowrAnalysisInput, args: { from: FlowrSearchEleme
 }
 
 async function generateFromQuery(input: FlowrAnalysisInput, args: {
-	from: readonly SynchronousQuery[]
+	from: readonly Query[]
 }): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 	const result = await executeQueries({ input }, args.from);
 
@@ -112,7 +112,9 @@ async function generateFromQuery(input: FlowrAnalysisInput, args: {
 	const dataflow = await input.dataflow();
 	const cfg = await input.controlFlow();
 
-	const elements = await new FlowrSearchElements([...nodesByQuery].flatMap(([_, nodes]) => [...nodes])).enrich(input, Enrichment.QueryData, { queries: result });
+	const elements = await new FlowrSearchElements([...nodesByQuery]
+		.flatMap(([_, nodes]) => [...nodes]))
+		.enrich(input, Enrichment.QueryData, { queries: result });
 	return elements.mutate(s => Promise.all(s.map(async e => {
 		const [query, _] = [...nodesByQuery].find(([_, nodes]) => nodes.has(e)) as [Query['type'], Set<FlowrSearchElement<ParentInformation>>];
 		return await enrichElement(e, elements, { normalize, dataflow, cfg }, Enrichment.QueryData, { query });

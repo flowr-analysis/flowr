@@ -6,7 +6,7 @@ import {
 	createParsePipeline
 } from '../core/steps/pipeline/default-pipelines';
 import type { KnownParser, ParseStepOutput } from '../r-bridge/parser';
-import type { Queries, SupportedQueryTypes } from '../queries/query';
+import type { Queries, QueryResults, SupportedQueryTypes } from '../queries/query';
 import { executeQueries } from '../queries/query';
 import { extractCfg, extractCfgQuick } from '../control-flow/extract-cfg';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
@@ -21,6 +21,8 @@ import { ObjectMap } from '../util/collections/objectmap';
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs
  */
 export type FlowrAnalysisInput = {
+    parserName(): string
+    parseOutput(force?: boolean): Promise<ParseStepOutput<Awaited<ReturnType<KnownParser['parse']>>> & PipelinePerStepMetaInformation>
 	normalizedAst(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation>;
 	dataflow(force?: boolean): Promise<DataflowInformation & PipelinePerStepMetaInformation>;
 	controlFlow(simplifications?: readonly CfgSimplificationPassName[], useDataflow?: boolean, force?: boolean): Promise<ControlFlowInformation>;
@@ -36,13 +38,13 @@ interface ControlFlowCache {
  * Central class for creating analyses in FlowR.
  * Use the {@link FlowrAnalyzerBuilder} to create a new instance.
  */
-export class FlowrAnalyzer<Parser extends KnownParser> {
+export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> {
 	public readonly flowrConfig:    FlowrConfigOptions;
 	private readonly request:       RParseRequests;
 	private readonly parser:        Parser;
 	private readonly requiredInput: Omit<NormalizeRequiredInput, 'request'>;
 
-	private parse = undefined as unknown as ParseStepOutput<Awaited<ReturnType<Parser['parse']>>>;
+	private parse = undefined as unknown as ParseStepOutput<Awaited<ReturnType<Parser['parse']>>> & PipelinePerStepMetaInformation;
 	private ast = undefined as unknown as NormalizedAst;
 	private dataflowInfo = undefined as unknown as DataflowInformation;
 	private controlFlowInfos: ControlFlowCache = {
@@ -97,8 +99,8 @@ export class FlowrAnalyzer<Parser extends KnownParser> {
 			this.parser,
 			{ request: this.request },
 			this.flowrConfig).allRemainingSteps();
-		this.parse = result.parse;
-		return result.parse;
+		this.parse = result.parse as unknown as ParseStepOutput<Awaited<ReturnType<Parser['parse']>>> & PipelinePerStepMetaInformation;
+		return this.parse;
 	}
 
 	/**
@@ -203,7 +205,9 @@ export class FlowrAnalyzer<Parser extends KnownParser> {
      * Access the query API for the request.
      * @param query - The list of queries.
      */
-	public async query(query: Queries<SupportedQueryTypes>) {
-		return await Promise.resolve(executeQueries({ input: this }, query));
+	public async query<
+        Types extends SupportedQueryTypes = SupportedQueryTypes
+    >(query: Queries<Types>): Promise<QueryResults<Types>> {
+		return executeQueries({ input: this }, query);
 	}
 }

@@ -14,13 +14,11 @@ export function executeConfigQuery({ input }: BasicQueryData, queries: readonly 
 		deepMergeObjectInPlace(input.flowrConfig, update);
 	}
 
-	return new Promise<ConfigQueryResult>((resolve) => {
-		resolve({
-			'.meta': {
-				/* there is no sense in measuring a get */
-				timing: 0
-			},
-			config: input.flowrConfig
-		});
+	return Promise.resolve({
+		'.meta': {
+			/* there is no sense in measuring a get */
+			timing: 0
+		},
+		config: input.flowrConfig
 	});
 }

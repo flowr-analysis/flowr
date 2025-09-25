@@ -20,7 +20,7 @@ export interface FlowrProject {
 
 export async function getDummyFlowrProject(){
 	const exampleFlowrProject: FlowrProject = {
-		analyzer:    {} as FlowrAnalyzer,
+		analyzer:    {} as   FlowrAnalyzer,
 		builder:     {} as   FlowrAnalyzerBuilder,
 		plugins:     [],
 		projectRoot: path.resolve('test/testfiles/project/'),

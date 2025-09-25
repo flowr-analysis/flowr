@@ -178,7 +178,7 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, await analyzer.parseOutput(), StepOutputFormat.RdfQuads, config()),
+					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, await analyzer.parseOutput() as ParseStepOutput<string>, StepOutputFormat.RdfQuads, config()),
 					normalize: await printStepResult(NORMALIZE, await analyzer.normalizedAst(), StepOutputFormat.RdfQuads, config()),
 					dataflow:  await printStepResult(STATIC_DATAFLOW, await analyzer.dataflow(), StepOutputFormat.RdfQuads, config())
 				}

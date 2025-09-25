@@ -5,13 +5,17 @@ import path from 'path';
 import { flowrScriptSummarizer } from '../../../src/cli/script-core/summarizer-core';
 import { SummarizerType } from '../../../src/util/summarizer';
 import { getPlatform } from '../../../src/util/os';
-import { describe, test } from 'vitest';
+import { describe, test, vi } from 'vitest';
 import { defaultConfigOptions } from '../../../src/config';
 
 
 describe('Post-Processing', () => {
 	/* if we are on windows, skip, as there are maybe cleanup problems */
 	test.skipIf(getPlatform() === 'windows' || getPlatform() === 'unknown')('Full Extraction on Sample Folder (Shellesc)', async() => {
+		// mock console.log to avoid cluttering the test output
+		vi.spyOn(console, 'log').mockImplementation(() => {});
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+        
 		const tempfolder = fs.mkdtempSync(path.resolve(os.tmpdir(), 'flowr-test-temp-'));
 		// run the basic statistics script
 		await flowrScriptGetStats({

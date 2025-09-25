@@ -23,7 +23,6 @@ describe('DESCRIPTION-file', function() {
 
 			await flowrAnalyzerPackageVersionsDescriptionFilePlugin.processor({} as FlowrAnalyzer, {} as FlowrConfigOptions);
 
-			console.log(flowrAnalyzerPackageVersionsDescriptionFilePlugin.packages);
 			assert.isNotEmpty(flowrAnalyzerPackageVersionsDescriptionFilePlugin.packages);
 		});
 
@@ -33,7 +32,6 @@ describe('DESCRIPTION-file', function() {
 
 			await flowrAnalyzerLoadingOrderDescriptionFilePlugin.processor({} as FlowrAnalyzer, {} as FlowrConfigOptions);
 
-			console.log(flowrAnalyzerLoadingOrderDescriptionFilePlugin.loadingOrder);
 			assert.isNotEmpty(flowrAnalyzerLoadingOrderDescriptionFilePlugin.loadingOrder);
 		});
 	});

@@ -79,7 +79,7 @@ export function assertQuery<
 		// we run the dfa analysis to make sure normalization post-patches are ready!
 		await analyzer.dataflow();
 
-		const dummyProject = await getDummyFlowrProject();
+		const dummyProject = getDummyFlowrProject();
 		const result = await executeQueries<Queries['type'], VirtualArguments>({
 			input:     analyzer,
 			libraries: dummyProject.libraries

@@ -15,15 +15,13 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 	dependencies:    FlowrAnalyzerPlugin[] = [new FlowrAnalyzerDescriptionFilePlugin()];
 	descriptionFile: Map<string, string[]> = new Map<string, string[]>();
 
-	async processor(analyzer: FlowrAnalysisInput, pluginConfig: FlowrConfigOptions): Promise<void> {
+	processor(analyzer: FlowrAnalysisInput, pluginConfig: FlowrConfigOptions): void {
 		const plugin = this.dependencies[0] as FlowrAnalyzerDescriptionFilePlugin;
-		await plugin.processor(analyzer, pluginConfig);
+		plugin.processor(analyzer, pluginConfig);
 		this.descriptionFile = plugin.information;
 
 		this.retrieveVersionsFromField('Depends', 'r');
 		this.retrieveVersionsFromField('Imports', 'package');
-
-		return Promise.resolve(undefined);
 	}
 
 	private retrieveVersionsFromField(field: string, type?: PackageType): void{

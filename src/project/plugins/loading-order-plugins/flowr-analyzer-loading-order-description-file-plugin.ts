@@ -13,13 +13,11 @@ export class FlowrAnalyzerLoadingOrderDescriptionFilePlugin extends FlowrAnalyze
 	dependencies:    FlowrAnalyzerPlugin[] = [new FlowrAnalyzerDescriptionFilePlugin()];
 	descriptionFile: Map<string, string[]> = new Map<string, string[]>();
 
-	async processor(analyzer: FlowrAnalysisInput, pluginConfig: FlowrConfigOptions): Promise<void> {
+	processor(analyzer: FlowrAnalysisInput, pluginConfig: FlowrConfigOptions): void {
 		const plugin = this.dependencies[0] as FlowrAnalyzerDescriptionFilePlugin;
-		await plugin.processor(analyzer, pluginConfig);
+		plugin.processor(analyzer, pluginConfig);
 		this.descriptionFile = plugin.information;
 
-		this.loadingOrder = this.descriptionFile?.get('Collate')?.slice() || [];
-
-		return Promise.resolve(undefined);
+		this.loadingOrder = this.descriptionFile?.get('Collate')?.slice() ?? [];
 	}
 }

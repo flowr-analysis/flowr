@@ -24,7 +24,7 @@ function printHelp(output: ReplOutput) {
 	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
 }
 
-async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisInput, remainingArgs: string[]): Promise<undefined | { parsedQuery: Query[], query: QueryResults<SupportedQueryTypes>, processed: {dataflow: DataflowInformation, normalize: NormalizedAst} }> {
+async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisInput, remainingArgs: string[]): Promise<undefined | { parsedQuery: Query[], query: QueryResults, processed: {dataflow: DataflowInformation, normalize: NormalizedAst} }> {
 	const query = remainingArgs.shift();
 
 	if(!query) {
@@ -64,13 +64,13 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisInput
 		parsedQuery = [{ type: 'call-context', callName: query }];
 	}
 
-	const dummyProject = await getDummyFlowrProject();
+	const dummyProject = getDummyFlowrProject();
 
 	return {
-		query: await Promise.resolve(executeQueries({
+		query: await executeQueries({
 			input:     analyzer,
 			libraries: dummyProject.libraries },
-		parsedQuery)),
+		parsedQuery),
 		parsedQuery,
 		processed: { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalize() }
 	};

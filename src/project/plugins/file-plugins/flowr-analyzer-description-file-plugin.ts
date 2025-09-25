@@ -4,6 +4,9 @@ import type { FlowrAnalysisInput } from '../../flowr-analyzer';
 import type { FlowrConfigOptions } from '../../../config';
 import type { FlowrAnalyzerPlugin } from '../flowr-analyzer-plugin';
 import { parseDCF } from '../../../util/files';
+import { log } from '../../../util/log';
+
+const analyzerDescriptionLog = log.getSubLogger({ name: 'flowr-analyzer-description-log' });
 
 export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-description-file-plugin';
@@ -12,15 +15,15 @@ export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin 
 	public readonly dependencies: FlowrAnalyzerPlugin[] = [];
 	public information:           Map<string, string[]> = new Map<string, string[]>();
 
-	public async processor(_analyzer: FlowrAnalysisInput, _pluginConfig: FlowrConfigOptions): Promise<void> {
+	public processor(_analyzer: FlowrAnalysisInput, _pluginConfig: FlowrConfigOptions): void {
 		if(this.files.length === 0) {
-			throw new Error('FlowrAnalyzerDescriptionFilePlugin: No DESCRIPTION file found.');
+			analyzerDescriptionLog.error(Error('No DESCRIPTION file found.'));
+			return;
 		}
-		if(this.files.length > 1){
-			throw new Error('FlowrAnalyzerDescriptionFilePlugin: Found more than one DESCRIPTION file.');
+		if(this.files.length > 1) {
+			analyzerDescriptionLog.error(Error('Found more than one DESCRIPTION file.'));
+			return;
 		}
 		this.information = parseDCF(this.files[0]);
-
-		return Promise.resolve();
 	}
 }

@@ -5,7 +5,7 @@ export abstract class FlowrAnalyzerFilePlugin extends FlowrAnalyzerPlugin {
 	public readonly type = 'file';
 	protected files: PathLike[] = [];
 
-	public addFiles(...files: PathLike[]): void {
-		this.files.push(...files);
+	public addFiles(...files: readonly PathLike[]): void {
+		this.files = this.files.concat(files);
 	}
 }

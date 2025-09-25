@@ -2,6 +2,7 @@ import type { SemVer } from 'semver';
 import type { FlowrAnalysisInput } from '../flowr-analyzer';
 import type { FlowrConfigOptions } from '../../config';
 import type { PathLike } from 'fs';
+import type { AsyncOrSync } from 'ts-essentials';
 
 export type PluginType = 'package-versions' | 'loading-order' | 'scoping' | 'file';
 
@@ -12,7 +13,7 @@ export interface FlowrAnalyzerPluginInterface {
 	readonly type:        PluginType;
 	dependencies:         FlowrAnalyzerPlugin[];
 
-	processor(analyzer: FlowrAnalysisInput, pluginConfig: FlowrConfigOptions): Promise<void>;
+	processor(analyzer: FlowrAnalysisInput, pluginConfig: FlowrConfigOptions): AsyncOrSync<void>;
 }
 
 export abstract class FlowrAnalyzerPlugin implements FlowrAnalyzerPluginInterface {
@@ -27,6 +28,6 @@ export abstract class FlowrAnalyzerPlugin implements FlowrAnalyzerPluginInterfac
 		this.rootPath = rootPath;
 	}
 
-	public abstract processor(analyzer: FlowrAnalysisInput, pluginConfig: FlowrConfigOptions): Promise<void>;
+	public abstract processor(analyzer: FlowrAnalysisInput, pluginConfig: FlowrConfigOptions): AsyncOrSync<void>;
 }
 

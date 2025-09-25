@@ -3,7 +3,7 @@ import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 
 
-export async function executeDataflowQuery({ input }: BasicQueryData, queries: readonly DataflowQuery[]): Promise<DataflowQueryResult> {
+export async function executeDataflowQuery({ analyzer }: BasicQueryData, queries: readonly DataflowQuery[]): Promise<DataflowQueryResult> {
 	if(queries.length !== 1) {
 		log.warn('Dataflow query expects only up to one query, but got', queries.length);
 	}
@@ -12,6 +12,6 @@ export async function executeDataflowQuery({ input }: BasicQueryData, queries: r
 			/* there is no sense in measuring a get */
 			timing: 0
 		},
-		graph: (await input.dataflow()).graph
+		graph: (await analyzer.dataflow()).graph
 	};
 }

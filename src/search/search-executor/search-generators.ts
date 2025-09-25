@@ -90,7 +90,7 @@ function generateFrom(_input: FlowrAnalysisProvider, args: { from: FlowrSearchEl
 async function generateFromQuery(input: FlowrAnalysisProvider, args: {
 	from: readonly Query[]
 }): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
-	const result = await executeQueries({ input }, args.from);
+	const result = await executeQueries({ analyzer: input }, args.from);
 
 	// collect involved nodes
 	const nodesByQuery = new Map<Query['type'], Set<FlowrSearchElement<ParentInformation>>>();

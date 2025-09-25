@@ -3,7 +3,7 @@ import type { NormalizedAstQuery, NormalizedAstQueryResult } from './normalized-
 import type { BasicQueryData } from '../../base-query-format';
 
 
-export async function executeNormalizedAstQuery({ input }: BasicQueryData, queries: readonly NormalizedAstQuery[]): Promise<NormalizedAstQueryResult> {
+export async function executeNormalizedAstQuery({ analyzer }: BasicQueryData, queries: readonly NormalizedAstQuery[]): Promise<NormalizedAstQueryResult> {
 	if(queries.length !== 1) {
 		log.warn('Normalized-Ast query expects only up to one query, but got', queries.length);
 	}
@@ -12,6 +12,6 @@ export async function executeNormalizedAstQuery({ input }: BasicQueryData, queri
 			/* there is no sense in measuring a get */
 			timing: 0
 		},
-		normalized: await input.normalize()
+		normalized: await analyzer.normalize()
 	};
 }

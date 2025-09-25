@@ -25,7 +25,7 @@ function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
 	if(vertex === undefined) {
 		return false;
 	}
-	return [...vertex.values()].some(({ types }) => edgeIncludesType(types, EdgeType.NonStandardEvaluation));
+	return vertex.values().some(({ types }) => edgeIncludesType(types, EdgeType.NonStandardEvaluation));
 }
 
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
@@ -140,9 +140,10 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 		const [info, outgoing] = vertex;
 
 		if(info.tag !== VertexType.FunctionCall) {
-			const x = [...outgoing]
+			const x = outgoing.entries()
 				.filter(([,{ types }]) => edgeIncludesType(types, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall))
-				.map(([t]) => [recoverContent(t, graph) ?? '', t] as const);
+				.map(([t]) => [recoverContent(t, graph) ?? '', t] as const)
+				.toArray();
 			/** only follow defined-by and reads */
 			queue = queue.concat(x);
 			continue;
@@ -152,7 +153,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 		if(id !== nodeId) {
 			track |= EdgeType.Returns;
 		}
-		const out = [...outgoing]
+		const out = outgoing.entries()
 			.filter(([, e]) => edgeIncludesType(e.types, track) && (nodeId !== id || !edgeIncludesType(e.types, EdgeType.Argument)))
 			.map(([t]) => t)
 		;
@@ -212,9 +213,9 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
  *    This happens during the main resolution!
  * 4. Attach `linkTo` calls to the respective calls.
  */
-export async function executeCallContextQueries({ input }: BasicQueryData, queries: readonly CallContextQuery[]): Promise<CallContextQueryResult> {
-	const ast = await input.normalize();
-	const dataflow = await input.dataflow();
+export async function executeCallContextQueries({ analyzer }: BasicQueryData, queries: readonly CallContextQuery[]): Promise<CallContextQueryResult> {
+	const dataflow = await analyzer.dataflow();
+	const ast = await analyzer.normalize();
 
 	/* omit performance page load */
 	const now = Date.now();
@@ -226,7 +227,7 @@ export async function executeCallContextQueries({ input }: BasicQueryData, queri
 
 	let cfg = undefined;
 	if(requiresCfg) {
-		cfg = await input.controlflow([], true);
+		cfg = await analyzer.controlflow([], true);
 	}
 
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);

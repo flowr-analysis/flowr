@@ -26,7 +26,7 @@ import { guard } from '../../../util/assert';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 export async function executeDependenciesQuery({
-	input,
+	analyzer,
 	libraries
 }: BasicQueryData, queries: readonly DependenciesQuery[]): Promise<DependenciesQueryResult> {
 	if(queries.length !== 1) {
@@ -34,13 +34,13 @@ export async function executeDependenciesQuery({
 	}
 
 	const data = {
-		input,
+		input:     analyzer,
 		libraries: libraries
 	};
 
-	const normalize = await input.normalize();
-	const dataflow = await input.dataflow();
-	const config = input.flowrConfig;
+	const normalize = await analyzer.normalize();
+	const dataflow = await analyzer.dataflow();
+	const config = analyzer.flowrConfig;
 
 	const now = Date.now();
 	const [query] = queries;

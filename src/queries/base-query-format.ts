@@ -18,5 +18,5 @@ export interface BaseQueryResult {
 export interface BasicQueryData {
 	readonly lib?:       Record<string, SemVer>;
 	readonly libraries?: Package[];
-	readonly input:      FlowrAnalysisProvider;
+	readonly analyzer:   FlowrAnalysisProvider;
 }

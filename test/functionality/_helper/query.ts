@@ -81,7 +81,7 @@ export function assertQuery<
 
 		const dummyProject = getDummyFlowrProject();
 		const result = await executeQueries<Queries['type'], VirtualArguments>({
-			input:     analyzer,
+			analyzer:  analyzer,
 			libraries: dummyProject.libraries
 		}, queries);
 

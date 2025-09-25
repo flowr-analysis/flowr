@@ -122,7 +122,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> {
 	public async query<
         Types extends SupportedQueryTypes = SupportedQueryTypes
     >(query: Queries<Types>): Promise<QueryResults<Types>> {
-		return executeQueries({ input: this }, query);
+		return executeQueries({ analyzer: this }, query);
 	}
 
 	/**

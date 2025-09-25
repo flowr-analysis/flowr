@@ -8,12 +8,12 @@ export function fingerPrintOfQuery(query: ResolveValueQuery): string {
 	return JSON.stringify(query);
 }
 
-export async function executeResolveValueQuery({ input }: BasicQueryData, queries: readonly ResolveValueQuery[]): Promise<ResolveValueQueryResult> {
+export async function executeResolveValueQuery({ analyzer }: BasicQueryData, queries: readonly ResolveValueQuery[]): Promise<ResolveValueQueryResult> {
 	const start = Date.now();
 	const results: ResolveValueQueryResult['results'] = {};
 
-	const graph = (await input.dataflow()).graph;
-	const ast = await input.normalize();
+	const graph = (await analyzer.dataflow()).graph;
+	const ast = await analyzer.normalize();
 
 	for(const query of queries) {
 		const key = fingerPrintOfQuery(query);
@@ -24,7 +24,7 @@ export async function executeResolveValueQuery({ input }: BasicQueryData, querie
 
 		const values = query.criteria
 			.map(criteria => slicingCriterionToId(criteria, ast.idMap))
-			.flatMap(ident => resolveIdToValue(ident, { graph, full: true, idMap: ast.idMap, resolve: input.flowrConfig.solver.variables }));
+			.flatMap(ident => resolveIdToValue(ident, { graph, full: true, idMap: ast.idMap, resolve: analyzer.flowrConfig.solver.variables }));
 
 		results[key] = {
 			values: values

@@ -66,7 +66,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 
 	return {
 		query: await executeQueries({
-			input:     analyzer,
+			analyzer:  analyzer,
 			libraries: dummyProject.libraries },
 		parsedQuery),
 		parsedQuery,

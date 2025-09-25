@@ -87,13 +87,13 @@ Set WindowBar Colorful
 Set CursorBlink false
 Set PlaybackSpeed 3.0
 Set TypingSpeed 0.15
-
+`
 Type "docker run -it --rm eagleoutice/flowr"
 Sleep 200ms
 Enter
 Sleep 4000ms
 
-Type ":slicer -c '11@prod' demo.R --diffDataflowGraph"
+Type ":slicer -c '11@prod' demo.R --diff"
 Sleep 400ms
 Enter
 Sleep 500ms

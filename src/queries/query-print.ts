@@ -8,8 +8,8 @@ import type { CallContextQuerySubKindResult } from './catalog/call-context-query
 import type { BaseQueryMeta, BaseQueryResult } from './base-query-format';
 import { printAsMs } from '../util/text/time';
 import { isBuiltIn } from '../dataflow/environments/built-in';
-import type { AstIdMap, NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { DataflowInformation } from '../dataflow/info';
+import type { AstIdMap, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 function nodeString(nodeId: NodeId | { id: NodeId, info?: object}, formatter: OutputFormatter, idMap: AstIdMap<ParentInformation>): string {
 	const isObj = typeof nodeId === 'object' && nodeId !== null && 'id' in nodeId;
@@ -76,7 +76,10 @@ export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly 
 	return formatter === markdownFormatter ? textWithTooltip(acc, JSON.stringify(ids)) : acc;
 }
 
-export function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(formatter: OutputFormatter, totalInMs: number, results: QueryResults<S>, processed: {dataflow: DataflowInformation, normalize: NormalizedAst}, queries: Queries<S>): string {
+export async function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(
+	formatter: OutputFormatter, totalInMs: number, results: QueryResults<S>,
+	analyzer: FlowrAnalysisProvider, queries: Queries<S>
+): Promise<string> {
 	const result: string[] = [];
 
 	for(const [query, queryResults] of Object.entries(results)) {
@@ -86,7 +89,7 @@ export function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(formatt
 
 		const queryType = SupportedQueries[query as SupportedQueryTypes];
 		const relevantQueries = queries.filter(q => q.type === query as SupportedQueryTypes) as Query[];
-		if(queryType.asciiSummarizer(formatter, processed, queryResults as BaseQueryResult, result, relevantQueries)) {
+		if(await queryType.asciiSummarizer(formatter, analyzer, queryResults as BaseQueryResult, result, relevantQueries)) {
 			continue;
 		}
 

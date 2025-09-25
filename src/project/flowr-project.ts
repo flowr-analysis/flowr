@@ -18,9 +18,9 @@ export interface FlowrProject {
 	projectRoot: PathLike;
 }
 
-export async function getDummyFlowrProject(){
+export function getDummyFlowrProject(): FlowrProject{
 	const exampleFlowrProject: FlowrProject = {
-		analyzer:    {} as FlowrAnalyzer,
+		analyzer:    {} as   FlowrAnalyzer,
 		builder:     {} as   FlowrAnalyzerBuilder,
 		plugins:     [],
 		projectRoot: path.resolve('test/testfiles/project/'),
@@ -33,7 +33,7 @@ export async function getDummyFlowrProject(){
 	const flowrAnalyzerPackageVersionsDescriptionFilePlugin = new FlowrAnalyzerPackageVersionsDescriptionFilePlugin();
 	flowrAnalyzerPackageVersionsDescriptionFilePlugin.dependencies = [descriptionFilePlugin];
 
-	await flowrAnalyzerPackageVersionsDescriptionFilePlugin
+	flowrAnalyzerPackageVersionsDescriptionFilePlugin
 		.processor({} as FlowrAnalyzer, {} as FlowrConfigOptions);
 
 	exampleFlowrProject.libraries = flowrAnalyzerPackageVersionsDescriptionFilePlugin.packages;

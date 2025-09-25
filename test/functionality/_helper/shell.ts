@@ -42,7 +42,6 @@ import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
-import { runSearch } from '../../../src/search/flowr-search-executor';
 import type { ContainerIndex } from '../../../src/dataflow/graph/vertex';
 import type { REnvironmentInformation } from '../../../src/dataflow/environments/environment';
 import { resolveByName } from '../../../src/dataflow/environments/resolve-by-name';
@@ -54,7 +53,7 @@ import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-prop
 import type { FlowrConfigOptions } from '../../../src/config';
 import { cloneConfig, defaultConfigOptions } from '../../../src/config';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import type { FlowrAnalysisInput } from '../../../src/project/flowr-analyzer';
+import type { FlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
 
@@ -361,7 +360,7 @@ export function assertDataflow(
 	name: string | TestLabel,
 	shell: RShell,
 	input: string | RParseRequests,
-	expected: DataflowGraph | ((input: FlowrAnalysisInput) => Promise<DataflowGraph>),
+	expected: DataflowGraph | ((input: FlowrAnalysisProvider) => Promise<DataflowGraph>),
 	userConfig?: Partial<DataflowTestConfiguration>,
 	startIndexForDeterministicIds = 0,
 	config = cloneConfig(defaultConfigOptions)
@@ -380,7 +379,7 @@ export function assertDataflow(
 			expected = await expected(analyzer);
 		}
 
-		const normalize = await analyzer.normalizedAst();
+		const normalize = await analyzer.normalize();
 		const dataflow = await analyzer.dataflow();
 
 		// assign the same id map to the expected graph, so that resolves work as expected
@@ -652,8 +651,8 @@ export function assertContainerIndicesDefinition(
 			.setParser(shell)
 			.build();
 		const dataflow = await analyzer.dataflow();
-		const normalize = await analyzer.normalizedAst();
-		const result = (await runSearch(search, analyzer)).getElements();
+		const normalize = await analyzer.normalize();
+		const result = (await analyzer.runSearch(search)).getElements();
 		let findIndices: (id: NodeId) => ContainerIndex[] | undefined;
 		if(userConfig.searchIn === 'dfg') {
 			findIndices = id => findInDfg(id, dataflow.graph);

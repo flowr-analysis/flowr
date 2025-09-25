@@ -9,21 +9,21 @@ import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/domain';
 
-export async function executeDfShapeQuery({ input }: BasicQueryData, queries: readonly DfShapeQuery[]): Promise<DfShapeQueryResult> {
+export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries: readonly DfShapeQuery[]): Promise<DfShapeQueryResult> {
 	if(queries.length !== 1 && queries.some(query => query.criterion === undefined)) {
 		log.warn('The dataframe shape query expects only up to one query without slicing criterion, but got', queries.length);
 		queries = [{ type: 'df-shape' }];
 	}
 
-	const ast = await input.normalizedAst();
-	const graph = (await input.dataflow()).graph;
+	const ast = await analyzer.normalize();
+	const graph = (await analyzer.dataflow()).graph;
 
 	const start = Date.now();
 	const domains = inferDataFrameShapes(
-		await input.controlFlow(),
+		await analyzer.controlflow(),
 		graph,
 		ast,
-		input.flowrConfig);
+		analyzer.flowrConfig);
 
 	if(queries.length === 1 && queries[0].criterion === undefined) {
 		return {

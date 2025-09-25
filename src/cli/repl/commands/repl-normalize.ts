@@ -6,7 +6,7 @@ import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipelin
 import { handleString } from '../core';
 
 function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInformation): string {
-	return out.formatter.format(`Copied ${type} to clipboard (normalize: ${meta['.meta'].cached ? 'cached' : meta['.meta'].timing + 'ms'}).`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
+	return out.formatter.format(`Copied ${type} to clipboard (normalize: ${meta['.meta'].timing + 'ms'}).`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
 }
 
 export const normalizeCommand: ReplCodeCommand = {
@@ -17,7 +17,7 @@ export const normalizeCommand: ReplCodeCommand = {
 	script:       false,
 	argsParser:   (args: string) => handleString(args),
 	fn:           async({ output, analyzer }) => {
-		const result = await analyzer.normalizedAst();
+		const result = await analyzer.normalize();
 		const mermaid = normalizedAstToMermaid(result.ast);
 		output.stdout(mermaid);
 		try {
@@ -36,7 +36,7 @@ export const normalizeStarCommand: ReplCodeCommand = {
 	script:       false,
 	argsParser:   (args: string) => handleString(args),
 	fn:           async({ output, analyzer }) => {
-		const result = await analyzer.normalizedAst();
+		const result = await analyzer.normalize();
 		const mermaid = normalizedAstToMermaidUrl(result.ast);
 		output.stdout(mermaid);
 		try {

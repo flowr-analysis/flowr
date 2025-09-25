@@ -15,6 +15,7 @@ import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visito
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { Range } from 'semver';
+import type { AsyncOrSync } from 'ts-essentials';
 
 export const Unknown = 'unknown';
 
@@ -22,7 +23,7 @@ export interface DependencyCategorySettings {
     queryDisplayName?:   string
     functions:           FunctionInfo[]
     defaultValue?:       string
-    additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => void
+    additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => AsyncOrSync<void>
 }
 
 export const DefaultDependencyCategories = {
@@ -33,14 +34,15 @@ export const DefaultDependencyCategories = {
 		/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
 		additionalAnalysis: async(data, ignoreDefault, _functions, _queryResults, result) => {
 			if(!ignoreDefault) {
-				visitAst((await data.input.normalizedAst()).ast, n => {
+				visitAst((await data.analyzer.normalize()).ast, n => {
 					if(n.type === RType.Symbol && n.namespace) {
 						/* we should improve the identification of ':::' */
 						result.push({
-							nodeId:       n.info.id,
-							functionName: (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
-							value:        n.namespace,
-							libraryInfo:  data.libraries ?? undefined,
+							nodeId:             n.info.id,
+							functionName:       (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
+							value:              n.namespace,
+							versionConstraints:	data?.libraries?.find(f => f.name === n.namespace)?.versionConstraints ?? undefined,
+							derivedVersion:	    data?.libraries?.find(f => f.name === n.namespace)?.derivedVersion ?? undefined,
 						});
 					}
 				});
@@ -108,7 +110,7 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	}, new Map<string, DependencyInfo[]>());
 	for(const [functionName, infos] of grouped) {
 		result.push(`       ╰ \`${functionName}\``);
-		result.push(infos.map(i => `           ╰ Node Id: ${i.nodeId}${i.value !== undefined ? `, \`${i.value}\`` : ''}${i.derivedVersion !== undefined ? `, Version: \`${i.derivedVersion.toString()}\`` : ''}`).join('\n'));
+		result.push(infos.map(i => `           ╰ Node Id: ${i.nodeId}${i.value !== undefined ? `, \`${i.value}\`` : ''}${i.derivedVersion !== undefined ? `, Version: \`${i.derivedVersion.format()}\`` : ''}`).join('\n'));
 	}
 }
 
@@ -131,7 +133,7 @@ const functionInfoSchema: Joi.ArraySchema = Joi.array().items(Joi.object({
 
 export const DependenciesQueryDefinition = {
 	executor:        executeDependenciesQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result, queries) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result, queries) => {
 		const out = queryResults as DependenciesQueryResult;
 		result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [category, value] of Object.entries(getAllCategories(queries as DependenciesQuery[]))) {

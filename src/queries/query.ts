@@ -42,16 +42,14 @@ import { LinterQueryDefinition } from './catalog/linter-query/linter-query-forma
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowQuery } from './catalog/control-flow-query/control-flow-query-format';
 import { ControlFlowQueryDefinition } from './catalog/control-flow-query/control-flow-query-format';
-import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { DataflowInformation } from '../dataflow/info';
 import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-format';
 import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 import type { AsyncOrSync, Writable } from 'ts-essentials';
 import type { FlowrConfigOptions } from '../config';
+import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 /**
  * These are all queries that can be executed from within flowR
- * {@link SynchronousQuery} are queries that can be executed synchronously, i.e., they do not return a Promise.
  */
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -74,16 +72,12 @@ export type Query = CallContextQuery
 	| LinterQuery
 	;
 
-
-export type SynchronousQuery = Exclude<Query, { executor: (query: Query) => Promise<unknown> }>;
-export type SupportedSynchronousQueryTypes = SynchronousQuery['type'];
-
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
 /* Each executor receives all queries of its type in case it wants to avoid repeated traversal */
 export type QueryExecutor<Query extends BaseQueryFormat, Result extends Promise<BaseQueryResult>> = (data: BasicQueryData, query: readonly Query[]) => Result;
 
-type SupportedQueries = {
+type SupportedQueriesType = {
 	[QueryType in Query['type']]: SupportedQuery<QueryType>
 }
 
@@ -93,7 +87,7 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
 	completer?:           (splitLine: readonly string[], config: FlowrConfigOptions) => string[]
     /** optional query construction from an, e.g., repl line */
 	fromLine?:            (splitLine: readonly string[], config: FlowrConfigOptions) => Query | Query[] | undefined
-	asciiSummarizer:      (formatter: OutputFormatter, processed: {dataflow: DataflowInformation, normalize: NormalizedAst}, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => boolean
+	asciiSummarizer:      (formatter: OutputFormatter, analyzer: FlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>
 	schema:               Joi.ObjectSchema
 	/**
 	 * Flattens the involved query nodes to be added to a flowR search when the {@link fromQuery} function is used based on the given result after this query is executed.
@@ -122,21 +116,18 @@ export const SupportedQueries = {
 	'project':          ProjectQueryDefinition,
 	'origin':           OriginQueryDefinition,
 	'linter':           LinterQueryDefinition
-} as const satisfies SupportedQueries;
+} as const satisfies SupportedQueriesType;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
-export type QueryResult<Type extends Query['type']> = AsyncOrSync<ReturnType<typeof SupportedQueries[Type]['executor']>>;
+export type QueryResult<Type extends Query['type']> = Promise<ReturnType<typeof SupportedQueries[Type]['executor']>>;
 
-export async function executeQueriesOfSameType<SpecificQuery extends SynchronousQuery>(data: BasicQueryData, queries: readonly SpecificQuery[]): Promise<QueryResult<SpecificQuery['type']>>
-export async function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, queries: readonly SpecificQuery[]): Promise<QueryResult<SpecificQuery['type']>>
-export async function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, queries: readonly SpecificQuery[]): Promise<QueryResult<SpecificQuery['type']>> {
+export async function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']> {
 	guard(queries.length > 0, 'At least one query must be provided');
 	/* every query must have the same type */
 	guard(queries.every(q => q.type === queries[0].type), 'All queries must have the same type');
 	const query = SupportedQueries[queries[0].type];
 	guard(query !== undefined, `Unsupported query type: ${queries[0].type}`);
-	const result = await query.executor(data, queries as never);
-	return result as QueryResult<SpecificQuery['type']>;
+	return query.executor(data, queries as never) as QueryResult<SpecificQuery['type']>;
 }
 
 function isVirtualQuery<
@@ -170,7 +161,7 @@ function groupQueriesByType<
 }
 
 /* a record mapping the query type present to its respective result */
-export type QueryResults<Base extends SupportedQueryTypes> = {
+export type QueryResults<Base extends SupportedQueryTypes = SupportedQueryTypes> = {
 	readonly [QueryType in Base]: Awaited<QueryResult<QueryType>>
 } & BaseQueryResult
 
@@ -194,14 +185,6 @@ function isPromiseLike(value: unknown): value is Promise<unknown> {
 /**
  * This is the main query execution function that takes a set of queries and executes them on the given data.
  */
-export function executeQueries<
-	Base extends SupportedSynchronousQueryTypes,
-	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): QueryResults<Base>
-export function executeQueries<
-	Base extends SupportedQueryTypes,
-	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): AsyncOrSync<QueryResults<Base>>
 export function executeQueries<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>

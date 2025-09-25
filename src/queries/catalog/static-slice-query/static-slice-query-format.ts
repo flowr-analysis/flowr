@@ -44,7 +44,7 @@ export interface StaticSliceQueryResult extends BaseQueryResult {
 
 export const StaticSliceQueryDefinition = {
 	executor:        executeStaticSliceQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'static-slice'>['static-slice'];
 		result.push(`Query: ${bold('static-slice', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [fingerprint, obj] of Object.entries(out.results)) {

@@ -26,7 +26,7 @@ import { guard } from '../../../util/assert';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 export async function executeDependenciesQuery({
-	input,
+	analyzer,
 	libraries
 }: BasicQueryData, queries: readonly DependenciesQuery[]): Promise<DependenciesQueryResult> {
 	if(queries.length !== 1) {
@@ -34,13 +34,13 @@ export async function executeDependenciesQuery({
 	}
 
 	const data = {
-		input,
-		libraries: libraries
+		analyzer,
+		libraries
 	};
 
-	const normalize = await input.normalizedAst();
-	const dataflow = await input.dataflow();
-	const config = input.flowrConfig;
+	const normalize = await analyzer.normalize();
+	const dataflow = await analyzer.dataflow();
+	const config = analyzer.flowrConfig;
 
 	const now = Date.now();
 	const [query] = queries;
@@ -60,7 +60,7 @@ export async function executeDependenciesQuery({
 
 	const results = Object.fromEntries(functions.entries().map(([c, f]) => {
 		const results = getResults(queries, { dataflow, config, normalize }, queryResults, c, f, data);
-		// only default categories allow additional analyses, so we null coalese here!
+		// only default categories allow additional analyses, so we null-coalesce here!
 		(DefaultDependencyCategories as Record<string, DependencyCategorySettings>)[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
 		return [c, results];
 	})) as {[C in DependencyCategoryName]?: DependencyInfo[]};

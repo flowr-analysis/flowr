@@ -9,7 +9,7 @@ export function fingerPrintOfQuery(query: OriginQuery): SingleSlicingCriterion {
 	return query.criterion;
 }
 
-export async function executeResolveValueQuery({ input }: BasicQueryData, queries: readonly OriginQuery[]): Promise<OriginQueryResult> {
+export async function executeResolveValueQuery({ analyzer }: BasicQueryData, queries: readonly OriginQuery[]): Promise<OriginQueryResult> {
 	const start = Date.now();
 	const results: OriginQueryResult['results'] = {};
 	for(const query of queries) {
@@ -19,12 +19,12 @@ export async function executeResolveValueQuery({ input }: BasicQueryData, querie
 			log.warn(`Duplicate Key for origin-query: ${key}, skipping...`);
 		}
 
-		const astId = slicingCriterionToId(key, (await input.normalizedAst()).idMap);
+		const astId = slicingCriterionToId(key, (await analyzer.normalize()).idMap);
 		if(astId === undefined) {
 			log.warn(`Could not resolve id for ${key}, skipping...`);
 			continue;
 		}
-		results[key] = getOriginInDfg((await input.dataflow()).graph, astId);
+		results[key] = getOriginInDfg((await analyzer.dataflow()).graph, astId);
 	}
 
 	return {

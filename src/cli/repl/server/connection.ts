@@ -28,6 +28,7 @@ import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
 import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
 import { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
 import { ansiFormatter, voidFormatter } from '../../../util/text/ansi';
+import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import { DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type { DeepPartial } from 'ts-essentials';
@@ -50,6 +51,7 @@ import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
 import { PipelineStepStage } from '../../../core/steps/pipeline-step';
+import type { Tree } from 'web-tree-sitter';
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -107,7 +109,7 @@ export class FlowRServerConnection {
 				void this.handleFileAnalysisRequest(request.message as FileAnalysisRequestMessage);
 				break;
 			case 'request-slice':
-				void this.handleSliceRequest(request.message as SliceRequestMessage);
+				this.handleSliceRequest(request.message as SliceRequestMessage);
 				break;
 			case 'request-repl-execution':
 				this.handleRepl(request.message as ExecuteRequestMessage);
@@ -166,11 +168,11 @@ export class FlowRServerConnection {
 	private async sendFileAnalysisResponse(analyzer: FlowrAnalyzer, message: FileAnalysisRequestMessage): Promise<void> {
 		let cfg: ControlFlowInformation | undefined = undefined;
 		if(message.cfg) {
-			cfg = await analyzer.controlFlow();
+			cfg = await analyzer.controlflow();
 		}
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() });
-		const sanitizedResults = sanitizeAnalysisResults(await analyzer.parseOutput(), await analyzer.normalizedAst(), await analyzer.dataflow());
+		const sanitizedResults = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalize(), await analyzer.dataflow());
 		if(message.format === 'n-quads') {
 			sendMessage<FileAnalysisResponseMessageNQuads>(this.socket, {
 				type:    'response-file-analysis',
@@ -178,8 +180,8 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, await analyzer.parseOutput(), StepOutputFormat.RdfQuads, config()),
-					normalize: await printStepResult(NORMALIZE, await analyzer.normalizedAst(), StepOutputFormat.RdfQuads, config()),
+					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, await analyzer.parse() as ParseStepOutput<string>, StepOutputFormat.RdfQuads, config()),
+					normalize: await printStepResult(NORMALIZE, await analyzer.normalize(), StepOutputFormat.RdfQuads, config()),
 					dataflow:  await printStepResult(STATIC_DATAFLOW, await analyzer.dataflow(), StepOutputFormat.RdfQuads, config())
 				}
 			});
@@ -233,7 +235,7 @@ export class FlowRServerConnection {
 		return analyzer;
 	}
 
-	private async handleSliceRequest(base: SliceRequestMessage) {
+	private handleSliceRequest(base: SliceRequestMessage) {
 		const requestResult = validateMessage(base, requestSliceMessage);
 		if(requestResult.type === 'error') {
 			answerForValidationError(this.socket, requestResult, base.id);
@@ -254,14 +256,12 @@ export class FlowRServerConnection {
 			return;
 		}
 
-		try {
-			const result = await fileInformation.analyzer.query([{
-				type:            'static-slice',
-				criteria:        request.criterion,
-				noMagicComments: request.noMagicComments,
-				direction: 		    request.direction
-			}]);
-
+		void fileInformation.analyzer.query([{
+			type:            'static-slice',
+			criteria:        request.criterion,
+			noMagicComments: request.noMagicComments,
+			direction: 		    request.direction
+		}]).then(result => {
 			sendMessage<SliceResponseMessage>(this.socket, {
 				type:    'response-slice',
 				id:      request.id,
@@ -270,7 +270,7 @@ export class FlowRServerConnection {
 						.filter(([k,]) => DEFAULT_SLICING_PIPELINE.steps.get(k)?.executed === PipelineStepStage.OncePerRequest)
 				) as SliceResponseMessage['results']
 			});
-		} catch(e) {
+		}).catch(e => {
 			this.logger.error(`[${this.name}] Error while analyzing file for token ${request.filetoken}: ${String(e)}`);
 			sendMessage<FlowrErrorMessage>(this.socket, {
 				id:     request.id,
@@ -278,7 +278,7 @@ export class FlowRServerConnection {
 				fatal:  false,
 				reason: `Error while analyzing file for token ${request.filetoken}: ${String(e)}`
 			});
-		}
+		});
 	}
 
 
@@ -338,7 +338,7 @@ export class FlowRServerConnection {
 		}
 
 		const analyzer = fileInformation.analyzer;
-		const lineageIds = getLineage(request.criterion, (await analyzer.dataflow()).graph, (await analyzer.normalizedAst()).idMap);
+		const lineageIds = getLineage(request.criterion, (await analyzer.dataflow()).graph, (await analyzer.normalize()).idMap);
 		sendMessage<LineageResponseMessage>(this.socket, {
 			type:    'response-lineage',
 			id:      request.id,
@@ -386,9 +386,9 @@ export class FlowRServerConnection {
 	}
 }
 
-export function sanitizeAnalysisResults(parse: ParseStepOutput<any>, normalize: NormalizedAst, dataflow: DataflowInformation): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>> {
+export function sanitizeAnalysisResults(parse: ParseStepOutput<string | Tree>, normalize: NormalizedAst, dataflow: DataflowInformation): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>> {
 	return {
-		parse,
+		parse:     parse as ParseStepOutput<string>,
 		normalize: {
 			...normalize,
 			idMap: undefined

@@ -2,7 +2,6 @@ import { bench, describe } from 'vitest';
 import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { runSearch } from '../../../../src/search/flowr-search-executor';
 import { Q } from '../../../../src/search/flowr-search-builder';
 import { guard } from '../../../../src/util/assert';
 import { staticSlice } from '../../../../src/slicing/static/static-slicer';
@@ -39,10 +38,10 @@ x[2] <- x[1] + x[3]
 				const exec = new TreeSitterExecutor();
 				const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
 					.setParser(exec).build();
-				result = { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalizedAst() };
-				ids = (await runSearch(Q.var('print').first(), analyzer)).getElements().map(n => n.node.info.id);
+				result = { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalize() };
+				ids = (await analyzer.runSearch(Q.var('print').first())).getElements().map(n => n.node.info.id);
 			}
-			guard(result !== undefined && ids !== undefined, () => 'no result');
+			guard(ids !== undefined, () => 'no result');
 			staticSlice(result.dataflow, result.normalize, [`$${ids[0]}`], SliceDirection.Backward, threshold);
 		});
 	}

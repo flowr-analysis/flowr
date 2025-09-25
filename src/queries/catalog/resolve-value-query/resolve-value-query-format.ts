@@ -22,7 +22,7 @@ export interface ResolveValueQueryResult extends BaseQueryResult {
 
 export const ResolveValueQueryDefinition = {
 	executor:        executeResolveValueQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'resolve-value'>['resolve-value'];
 		result.push(`Query: ${bold('resolve-value', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [fingerprint, obj] of Object.entries(out.results)) {

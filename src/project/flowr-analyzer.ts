@@ -1,54 +1,47 @@
 import type { FlowrConfigOptions } from '../config';
 import type { RParseRequests } from '../r-bridge/retriever';
-import {
-	createDataflowPipeline,
-	createNormalizePipeline,
-	createParsePipeline
+import type { DEFAULT_DATAFLOW_PIPELINE
 } from '../core/steps/pipeline/default-pipelines';
-import type { KnownParser, ParseStepOutput } from '../r-bridge/parser';
-import type { Queries, SupportedQueryTypes } from '../queries/query';
+
+
+import type { KnownParser, KnownParserName, ParseStepOutput } from '../r-bridge/parser';
+import type { Queries, QueryResults, SupportedQueryTypes } from '../queries/query';
 import { executeQueries } from '../queries/query';
-import { extractCfg, extractCfgQuick } from '../control-flow/extract-cfg';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../dataflow/info';
 import type { CfgSimplificationPassName } from '../control-flow/cfg-simplification';
-import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
-import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize';
-import { ObjectMap } from '../util/collections/objectmap';
+import type { PipelineInput, PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
+import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
+import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-builder';
+import type { GetSearchElements } from '../search/flowr-search-executor';
+import { runSearch } from '../search/flowr-search-executor';
 
 /**
- * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs
+ * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
+ * This allows us to exchange the underlying implementation of the analyzer without affecting the APIs.
  */
-export type FlowrAnalysisInput = {
-	normalizedAst(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation>;
+export type FlowrAnalysisProvider = {
+    parserName(): string
+    parse(force?: boolean): Promise<ParseStepOutput<Awaited<ReturnType<KnownParser['parse']>>> & PipelinePerStepMetaInformation>
+	normalize(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation>;
 	dataflow(force?: boolean): Promise<DataflowInformation & PipelinePerStepMetaInformation>;
-	controlFlow(simplifications?: readonly CfgSimplificationPassName[], useDataflow?: boolean, force?: boolean): Promise<ControlFlowInformation>;
+	controlflow(simplifications?: readonly CfgSimplificationPassName[], useDataflow?: boolean, force?: boolean): Promise<ControlFlowInformation>;
 	flowrConfig: FlowrConfigOptions;
 }
 
-interface ControlFlowCache {
-	simplified: ObjectMap<CfgSimplificationPassName, ControlFlowInformation>,
-	quick: 		   ControlFlowInformation
-}
 
 /**
  * Central class for creating analyses in FlowR.
  * Use the {@link FlowrAnalyzerBuilder} to create a new instance.
  */
-export class FlowrAnalyzer {
-	public readonly flowrConfig:    FlowrConfigOptions;
-	private readonly request:       RParseRequests;
-	private readonly parser:        KnownParser;
-	private readonly requiredInput: Omit<NormalizeRequiredInput, 'request'>;
+export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> {
+	/** This is the config used for the analyzer */
+	public readonly flowrConfig: FlowrConfigOptions;
+	/** The parser and engine backend */
+	private readonly parser:     Parser;
 
-	private parse = undefined as unknown as ParseStepOutput<any>;
-	private ast = undefined as unknown as NormalizedAst;
-	private dataflowInfo = undefined as unknown as DataflowInformation;
-	private controlFlowInfos: ControlFlowCache = {
-		simplified: new ObjectMap<CfgSimplificationPassName, ControlFlowInformation>(),
-		quick:      undefined as unknown as ControlFlowInformation
-	};
+	private readonly cache: FlowrAnalyzerCache<Parser>;
 
 	/**
      * Create a new analyzer instance.
@@ -58,93 +51,50 @@ export class FlowrAnalyzer {
      * @param request       - The code to analyze.
      * @param requiredInput - Additional parameters used for the analyses.
      */
-	constructor(config: FlowrConfigOptions, parser: KnownParser, request: RParseRequests, requiredInput: Omit<NormalizeRequiredInput, 'request'>) {
+	constructor(config: FlowrConfigOptions, parser: Parser, request: RParseRequests, requiredInput: Omit<PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>, 'parser' | 'request'>) {
 		this.flowrConfig = config;
-		this.request = request;
 		this.parser = parser;
-		this.requiredInput = requiredInput;
+		this.cache = FlowrAnalyzerCache.create({ parser, config, request, ...requiredInput });
 	}
 
+	/**
+     * Reset all caches used by the analyzer and effectively force all analyses to be redone.
+     */
 	public reset() {
-		this.ast = undefined as unknown as NormalizedAst;
-		this.dataflowInfo = undefined as unknown as DataflowInformation;
-		this.controlFlowInfos = { 
-			simplified: new ObjectMap<CfgSimplificationPassName, ControlFlowInformation>(),
-			quick:      undefined as unknown as ControlFlowInformation
-		};
+		this.cache.reset();
 	}
 
-	public parserName(): string {
+	/**
+     * Get the name of the parser used by the analyzer.
+     */
+	public parserName(): KnownParserName {
 		return this.parser.name;
 	}
 
 	/**
      * Get the parse output for the request.
+     *
      * The parse result type depends on the {@link KnownParser} used by the analyzer.
      * @param force - Do not use the cache, instead force a new parse.
      */
-	// TODO TSchoeller Fix type
-	public async parseOutput(force?: boolean): Promise<ParseStepOutput<any> & PipelinePerStepMetaInformation> {
-		if(this.parse && !force) {
-			return {
-				...this.parse,
-				'.meta': {
-					cached: true
-				}
-			};
-		}
-
-		const result = await createParsePipeline(
-			this.parser,
-			{ request: this.request },
-			this.flowrConfig).allRemainingSteps();
-		this.parse = result.parse;
-		return result.parse;
+	public async parse(force?: boolean): ReturnType<typeof this.cache.parse> {
+		return this.cache.parse(force);
 	}
 
 	/**
      * Get the normalized abstract syntax tree for the request.
      * @param force - Do not use the cache, instead force new analyses.
      */
-	public async normalizedAst(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation> {
-		if(this.ast && !force) {
-			return {
-				...this.ast,
-				'.meta': {
-					cached: true
-				}
-			};
-		}
-
-		const result = await createNormalizePipeline(
-			this.parser,
-			{ request: this.request, ...this.requiredInput },
-			this.flowrConfig).allRemainingSteps();
-		this.ast = result.normalize;
-		return result.normalize;
+	public async normalize(force?: boolean): ReturnType<typeof this.cache.normalize> {
+		return this.cache.normalize(force);
 	}
 
 	/**
      * Get the dataflow graph for the request.
      * @param force - Do not use the cache, instead force new analyses.
      */
-	public async dataflow(force?: boolean): Promise<DataflowInformation & PipelinePerStepMetaInformation> {
-		if(this.dataflowInfo && !force) {
-			return {
-				...this.dataflowInfo,
-				'.meta': {
-					cached: true
-				}
-			};
-		}
-
-		const result = await createDataflowPipeline(
-			this.parser,
-			{ request: this.request },
-			this.flowrConfig).allRemainingSteps();
-		this.dataflowInfo = result.dataflow;
-		this.ast = result.normalize;
-		return result.dataflow;
+	public async dataflow(force?: boolean): ReturnType<typeof this.cache.dataflow> {
+		return this.cache.dataflow(force);
 	}
 
 	/**
@@ -153,58 +103,34 @@ export class FlowrAnalyzer {
      * @param useDataflow     - Whether to use the dataflow graph for the creation of the CFG.
      * @param force           - Do not use the cache, instead force new analyses.
      */
-	public async controlFlow(simplifications?: readonly CfgSimplificationPassName[], useDataflow?: boolean, force?: boolean): Promise<ControlFlowInformation> {
-		if(!force) {
-			const value = this.controlFlowInfos.simplified.get(simplifications ?? []);
-			if(value !== undefined) {
-				return value;
-			}
-		}
-
-		if(force || !this.ast) {
-			await this.normalizedAst(force);
-		}
-
-		if(useDataflow && (force || !this.dataflowInfo)) {
-			await this.dataflow(force);
-		}
-
-		const result = extractCfg(this.ast, this.flowrConfig, this.dataflowInfo?.graph, simplifications);
-		this.controlFlowInfos.simplified.set(simplifications ?? [], result);
-		return result;
+	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], useDataflow?: boolean, force?: boolean): Promise<ControlFlowInformation> {
+		return this.cache.controlflow(force, useDataflow ?? false, simplifications);
 	}
 
 	/**
-     * Get a more performant version of the control flow graph.
+     * Get a quick and dirty control flow graph (CFG) for the request.
      * @param force - Do not use the cache, instead force new analyses.
      */
-	public async controlFlowQuick(force?: boolean): Promise<ControlFlowInformation> {
-		if(!force) {
-			if(this.controlFlowInfos.quick) {
-				return this.controlFlowInfos.quick;
-			}
-
-			// Use the unsimplified CFG if it is already available
-			const value = this.controlFlowInfos.simplified.get([]);
-			if(value !== undefined) {
-				return value;
-			}
-		}
-
-		if(force || !this.ast) {
-			await this.normalizedAst(force);
-		}
-
-		const result = extractCfgQuick(this.ast);
-		this.controlFlowInfos.quick = result;
-		return result;
+	public async controlflowQuick(force?: boolean): Promise<ControlFlowInformation> {
+		return this.controlflow(undefined, false, force);
 	}
 
 	/**
      * Access the query API for the request.
      * @param query - The list of queries.
      */
-	public async query(query: Queries<SupportedQueryTypes>) {
-		return await Promise.resolve(executeQueries({ input: this }, query));
+	public async query<
+        Types extends SupportedQueryTypes = SupportedQueryTypes
+    >(query: Queries<Types>): Promise<QueryResults<Types>> {
+		return executeQueries({ analyzer: this }, query);
+	}
+
+	/**
+     * Run a search on the current analysis.
+     */
+	public async runSearch<
+        Search extends FlowrSearchLike
+    >(search: Search): Promise<GetSearchElements<SearchOutput<Search>>> {
+		return runSearch(search, this);
 	}
 }

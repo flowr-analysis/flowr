@@ -24,7 +24,7 @@ export interface LineageQueryResult extends BaseQueryResult {
 
 export const LineageQueryDefinition = {
 	executor:        executeLineageQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'lineage'>['lineage'];
 		result.push(`Query: ${bold('lineage', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [criteria, lineage] of Object.entries(out.lineages)) {

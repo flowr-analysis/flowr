@@ -7,7 +7,6 @@ import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock } from './doc-code';
 import { printAsMs } from '../../util/text/time';
 import type { FlowrSearchLike } from '../../search/flowr-search-builder';
-import { runSearch } from '../../search/flowr-search-executor';
 import { flowrSearchToCode, flowrSearchToMermaid } from '../../search/flowr-search-printer';
 import { recoverContent } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { formatRange } from '../../util/mermaid/dfg';
@@ -23,7 +22,7 @@ export async function showSearch(shell: RShell, code: string, search: FlowrSearc
 	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
 		.setParser(shell)
 		.build();
-	const result = await runSearch(search, analyzer);
+	const result = await analyzer.runSearch(search);
 	const duration = performance.now() - now;
 
 	const metaInfo = `

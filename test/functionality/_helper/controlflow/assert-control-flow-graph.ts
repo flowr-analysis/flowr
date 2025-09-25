@@ -40,12 +40,14 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 			.setConfig(config)
 			.setParser(parser)
 			.build();
-		let cfg = await analyzer.controlFlow(undefined, true);
+		let cfg: ControlFlowInformation;
 
 		if(options?.withBasicBlocks) {
-			cfg = await analyzer.controlFlow(['to-basic-blocks', 'remove-dead-code', ...options.simplificationPasses ?? []]);
+			cfg = await analyzer.controlflow(['to-basic-blocks', 'remove-dead-code', ...options.simplificationPasses ?? []], true);
 		} else if(options?.simplificationPasses) {
-			cfg = await analyzer.controlFlow(options.simplificationPasses ?? []);
+			cfg = await analyzer.controlflow(options.simplificationPasses ?? [], true);
+		} else {
+			cfg = await analyzer.controlflow(undefined, true);
 		}
 
 		let diff: GraphDifferenceReport | undefined;
@@ -64,14 +66,14 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 			});
 			assert.isTrue(diff.isEqual(), 'graphs differ:' + (diff?.comments() ?? []).join('\n'));
 			if(options?.additionalAsserts) {
-				options.additionalAsserts(cfg, await analyzer.normalizedAst(), await analyzer.dataflow());
+				options.additionalAsserts(cfg, await analyzer.normalize(), await analyzer.dataflow());
 			}
 		} /* v8 ignore next 7 */ catch(e: unknown) {
 			if(diff) {
 				console.error(diff.comments());
 			}
-			console.error(`expected: ${cfgToMermaidUrl(expected, await analyzer.normalizedAst())}`);
-			console.error(`actual: ${cfgToMermaidUrl(cfg, await analyzer.normalizedAst())}`);
+			console.error(`expected: ${cfgToMermaidUrl(expected, await analyzer.normalize())}`);
+			console.error(`actual: ${cfgToMermaidUrl(cfg, await analyzer.normalize())}`);
 			throw e;
 		}
 	});

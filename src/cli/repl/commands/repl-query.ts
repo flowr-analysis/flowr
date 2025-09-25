@@ -7,10 +7,8 @@ import type { Query, QueryResults, SupportedQuery, SupportedQueryTypes } from '.
 import { AnyQuerySchema, executeQueries, QueriesSchema, SupportedQueries } from '../../../queries/query';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
-import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';
+import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import { getDummyFlowrProject } from '../../../project/flowr-project';
-import type { DataflowInformation } from '../../../dataflow/info';
-import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 
 function printHelp(output: ReplOutput) {
@@ -24,7 +22,7 @@ function printHelp(output: ReplOutput) {
 	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
 }
 
-async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalyzer, remainingArgs: string[]): Promise<undefined | { parsedQuery: Query[], query: QueryResults<SupportedQueryTypes>, processed: {dataflow: DataflowInformation, normalize: NormalizedAst} }> {
+async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvider, remainingArgs: string[]): Promise<undefined | { parsedQuery: Query[], query: QueryResults, analyzer: FlowrAnalysisProvider }> {
 	const query = remainingArgs.shift();
 
 	if(!query) {
@@ -64,15 +62,15 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalyzer, rem
 		parsedQuery = [{ type: 'call-context', callName: query }];
 	}
 
-	const dummyProject = await getDummyFlowrProject();
+	const dummyProject = getDummyFlowrProject();
 
 	return {
-		query: await Promise.resolve(executeQueries({
-			input:     analyzer,
+		query: await executeQueries({
+			analyzer:  analyzer,
 			libraries: dummyProject.libraries },
-		parsedQuery)),
+		parsedQuery),
 		parsedQuery,
-		processed: { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalizedAst() }
+		analyzer
 	};
 }
 
@@ -101,7 +99,7 @@ export const queryCommand: ReplCodeCommand = {
 		const results = await processQueryArgs(output, analyzer, remainingArgs);
 		const totalEnd = Date.now();
 		if(results) {
-			output.stdout(asciiSummaryOfQueryResult(ansiFormatter, totalEnd - totalStart, results.query, results.processed, results.parsedQuery));
+			output.stdout(await asciiSummaryOfQueryResult(ansiFormatter, totalEnd - totalStart, results.query, results.analyzer, results.parsedQuery));
 		}
 	}
 };

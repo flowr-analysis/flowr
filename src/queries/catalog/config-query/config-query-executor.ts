@@ -4,23 +4,21 @@ import type { BasicQueryData } from '../../base-query-format';
 import { isNotUndefined } from '../../../util/assert';
 import { deepMergeObjectInPlace } from '../../../util/objects';
 
-export function executeConfigQuery({ input }: BasicQueryData, queries: readonly ConfigQuery[]): Promise<ConfigQueryResult> {
+export function executeConfigQuery({ analyzer }: BasicQueryData, queries: readonly ConfigQuery[]): Promise<ConfigQueryResult> {
 	if(queries.length !== 1) {
 		log.warn('Config query usually expects only up to one query, but got', queries.length);
 	}
 	const updates = queries.map(q => q.update).filter(isNotUndefined);
 
 	for(const update of updates) {
-		deepMergeObjectInPlace(input.flowrConfig, update);
+		deepMergeObjectInPlace(analyzer.flowrConfig, update);
 	}
 
-	return new Promise<ConfigQueryResult>((resolve) => {
-		resolve({
-			'.meta': {
-				/* there is no sense in measuring a get */
-				timing: 0
-			},
-			config: input.flowrConfig
-		});
+	return Promise.resolve({
+		'.meta': {
+			/* there is no sense in measuring a get */
+			timing: 0
+		},
+		config: analyzer.flowrConfig
 	});
 }

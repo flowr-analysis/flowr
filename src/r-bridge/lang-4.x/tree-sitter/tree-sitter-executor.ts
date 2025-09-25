@@ -1,10 +1,10 @@
 import Parser from 'web-tree-sitter';
 
 import type { RParseRequest } from '../../retriever';
-import fs from 'fs';
 import type { SyncParser } from '../../parser';
 import type { TreeSitterEngineConfig } from '../../../config';
 import { log } from '../../../util/log';
+import fs from 'fs';
 
 export const DEFAULT_TREE_SITTER_R_WASM_PATH = './node_modules/@eagleoutice/tree-sitter-r/tree-sitter-r.wasm';
 export const DEFAULT_TREE_SITTER_WASM_PATH = './node_modules/web-tree-sitter/tree-sitter.wasm';

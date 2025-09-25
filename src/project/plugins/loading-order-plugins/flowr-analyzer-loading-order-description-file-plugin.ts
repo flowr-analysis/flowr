@@ -1,7 +1,7 @@
 import { FlowrAnalyzerDescriptionFilePlugin } from '../file-plugins/flowr-analyzer-description-file-plugin';
 import type { FlowrAnalyzerPlugin } from '../flowr-analyzer-plugin';
 import { SemVer } from 'semver';
-import type { FlowrAnalyzer } from '../../flowr-analyzer';
+import type { FlowrAnalysisProvider } from '../../flowr-analyzer';
 import type { FlowrConfigOptions } from '../../../config';
 import { FlowrAnalyzerLoadingOrderPlugin } from './flowr-analyzer-loading-order-plugin';
 
@@ -13,13 +13,11 @@ export class FlowrAnalyzerLoadingOrderDescriptionFilePlugin extends FlowrAnalyze
 	dependencies:    FlowrAnalyzerPlugin[] = [new FlowrAnalyzerDescriptionFilePlugin()];
 	descriptionFile: Map<string, string[]> = new Map<string, string[]>();
 
-	async processor(analyzer: FlowrAnalyzer, pluginConfig: FlowrConfigOptions): Promise<void> {
+	processor(analyzer: FlowrAnalysisProvider, pluginConfig: FlowrConfigOptions): void {
 		const plugin = this.dependencies[0] as FlowrAnalyzerDescriptionFilePlugin;
-		await plugin.processor(analyzer, pluginConfig);
+		plugin.processor(analyzer, pluginConfig);
 		this.descriptionFile = plugin.information;
 
-		this.loadingOrder = this.descriptionFile?.get('Collate')?.slice() || [];
-
-		return Promise.resolve(undefined);
+		this.loadingOrder = this.descriptionFile?.get('Collate')?.slice() ?? [];
 	}
 }

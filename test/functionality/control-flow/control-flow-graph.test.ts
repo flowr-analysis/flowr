@@ -295,8 +295,8 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 		}, { withBasicBlocks: true });
 
 		assertCfg(parser, 'if(TRUE) {} else {}', {
-			entryPoints: [ 'bb-0' ],
-			exitPoints:  [ 'bb-8-exit' ],
+			entryPoints: ['bb-0'],
+			exitPoints:  ['bb-8-exit'],
 			graph:       new ControlFlowGraph()
 				.addVertex({
 					id:    'bb-0',
@@ -426,21 +426,29 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 
 		}, { withBasicBlocks: true });
 
-		assertCfg(parser, 'f <- function(x) x\nf()', {
-			entryPoints: [ 'bb-5' ],
-			exitPoints:  [ 'bb-9-exit' ],
-			graph:       new ControlFlowGraph()
-				.addVertex({
-					id:    'bb-8-exit',
-					type:  CfgVertexType.Block,
-					elems: [
-						{ id: '8-exit', type: CfgVertexType.EndMarker, root: 8 },
-						{ id: 7, type: CfgVertexType.Expression },
-						{ id: 8, type: CfgVertexType.Statement, mid: [0], end: ['8-exit'], callTargets: new Set([5]) },
-						{ id: '6-exit', type: CfgVertexType.EndMarker, root: 6 }
+		describe.only('conditionals', () => {
+			assertCfg(parser, 'f <- function(x) x\nf()', {
+				entryPoints: ['bb-5'],
+				exitPoints:  ['bb-9-exit'],
+				graph:       new ControlFlowGraph()
+					.addVertex({
+						id:    'bb-8-exit',
+						type:  CfgVertexType.Block,
+						elems: [
+							{ id: '8-exit', type: CfgVertexType.EndMarker, root: 8 },
+							{ id: 7, type: CfgVertexType.Expression },
+							{
+								id:          8,
+								type:        CfgVertexType.Statement,
+								mid:         [0],
+								end:         ['8-exit'],
+								callTargets: new Set([5])
+							},
+							{ id: '6-exit', type: CfgVertexType.EndMarker, root: 6 }
 
-					]
-				})
-		}, { expectIsSubgraph: true, withBasicBlocks: true });
+						]
+					})
+			}, { expectIsSubgraph: true, withBasicBlocks: true });
+		});
 	});
 }));

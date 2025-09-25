@@ -315,7 +315,7 @@ For example, a program slice can be created like this:
 
 ${
 	codeBlock('ts', `
-const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('x <- 1\ny <- x\nx')).build();
+const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('x <- 1\\ny <- x\\nx')).build();
 const result = await analyzer.query([
 	{
 		type:     'static-slice',

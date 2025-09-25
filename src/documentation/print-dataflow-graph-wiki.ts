@@ -8,7 +8,6 @@ import { DataflowGraphBuilder, emptyGraph } from '../dataflow/graph/dataflowgrap
 import { guard } from '../util/assert';
 import { formatSideEffect, printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
-import { PipelineExecutor } from '../core/pipeline-executor';
 import { requestFromInput } from '../r-bridge/retriever';
 import { jsonReplacer } from '../util/json';
 import { printEnvironmentToMarkdown } from './doc-util/doc-env';
@@ -26,8 +25,7 @@ import { recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/proc
 import { ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { resolveByName, resolvesToBuiltInConstant, } from '../dataflow/environments/resolve-by-name';
-import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
-import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
+import { createDataflowPipeline } from '../core/steps/pipeline/default-pipelines';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { nth } from '../util/text/text';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
@@ -45,6 +43,8 @@ import {
 } from '../dataflow/internal/process/functions/call/unnamed-call-handling';
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
 import { defaultConfigOptions } from '../config';
+import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+import type { DataflowInformation } from '../dataflow/info';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -862,14 +862,9 @@ ${details('Example: While-Loop Body', await printDfGraphForCode(shell, 'while(TR
 	return results.join('\n');
 }
 
-async function dummyDataflow(): Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> {
-	const shell = new RShell();
-	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		parser:  shell,
-		request: requestFromInput('x <- 1\nx + 1')
-	}, defaultConfigOptions).allRemainingSteps();
-	shell.close();
-	return result;
+async function dummyDataflow(): Promise<DataflowInformation> {
+	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('x <- 1\nx + 1')).build();
+	return await analyzer.dataflow();
 }
 
 async function getText(shell: RShell) {
@@ -1009,16 +1004,12 @@ ${details('Example: Nested Conditionals', await printDfGraphForCode(shell, 'if(x
 
 ${section('Dataflow Information', 2, 'dataflow-information')}
 
-Using _flowR's_ code interface (see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more), you can generate the dataflow information
-for a given piece of R code (in this case \`x <- 1; x + 1\`) as follows (using the ${shortLink(RShell.name, vertexType.info)} and the ${shortLink(PipelineExecutor.name, vertexType.info)} classes):
+Using _flowR's_ code interface (see the [Interface](${FlowrWikiBaseRef}/Interface#creating-flowr-analyses) wiki page for more), you can generate the dataflow information
+for a given piece of R code (in this case \`x <- 1; x + 1\`) as follows:
 
 ${codeBlock('ts', `
-const shell = new ${RShell.name}()
-const result = await new ${PipelineExecutor.name}(DEFAULT_DATAFLOW_PIPELINE, {
-    shell,
-    request:   ${requestFromInput.name}('x <- 1; x + 1')
-}).allRemainingSteps();
-shell.close();
+const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('x <- 1\nx + 1')).build();
+const result = await analyzer.dataflow();
 `)}
 
 <details>
@@ -1037,7 +1028,7 @@ Now, you can find the dataflow _information_ with \`result.dataflow\`. More spec
 ${
 	await (async() => {
 		const result = await dummyDataflow();
-		const dfGraphString = printDfGraph(result.dataflow.graph);
+		const dfGraphString = printDfGraph(result.graph);
 
 		return `
 ${dfGraphString}
@@ -1049,7 +1040,7 @@ However, the dataflow information contains more, quite a lot of information in f
 <summary style="color:gray">Dataflow Information as Json</summary>
 
 _As the information is pretty long, we inhibit pretty printing and syntax highlighting:_
-${codeBlock('text', JSON.stringify(result.dataflow, jsonReplacer))}
+${codeBlock('text', JSON.stringify(result, jsonReplacer))}
 
 </details>
 
@@ -1059,15 +1050,15 @@ ${
 		printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'DataflowInformation' })
 		}
 
-Let's start by looking at the properties of the dataflow information object: ${Object.keys(result.dataflow).map(k => `\`${k}\``).join(', ')}.
+Let's start by looking at the properties of the dataflow information object: ${Object.keys(result).map(k => `\`${k}\``).join(', ')}.
 
 ${ (() => {
 			/* this includes the meta field for timing */
-			guard(Object.keys(result.dataflow).length === 8, () => 'Update Dataflow Documentation!'); return ''; 
+			guard(Object.keys(result).length === 8, () => 'Update Dataflow Documentation!'); return ''; 
 		})() }
 
 There are three sets of references.
-**in** (ids: ${JSON.stringify(new Set(result.dataflow.in.map(n => n.nodeId)), jsonReplacer)}) and **out** (ids: ${JSON.stringify(new Set(result.dataflow.out.map(n => n.nodeId)), jsonReplacer)}) contain the 
+**in** (ids: ${JSON.stringify(new Set(result.in.map(n => n.nodeId)), jsonReplacer)}) and **out** (ids: ${JSON.stringify(new Set(result.out.map(n => n.nodeId)), jsonReplacer)}) contain the 
 ingoing and outgoing references of the subgraph at hand (in this case, the whole code, as we are at the end of the dataflow analysis).
 Besides the Ids, they also contain important meta-information (e.g., what is to be read).
 The third set, **unknownReferences**, contains all references that are not yet identified as read or written 
@@ -1077,15 +1068,15 @@ The **environment** property contains the active environment information of the 
 In other words, this is a linked list of tables (scopes), mapping identifiers to their respective definitions.
 A summarized version of the produced environment looks like this:
 
-${printEnvironmentToMarkdown(result.dataflow.environment.current)}
+${printEnvironmentToMarkdown(result.environment.current)}
 
 This shows us that the local environment contains a single definition for \`x\` (with id 0) and that the parent environment is the built-in environment.
 Additionally, we get the information that the node with the id 2 was responsible for the definition of \`x\`.
 
 Last but not least, the information contains the single **entry point** (${
-		JSON.stringify(result.dataflow.entryPoint)
+		JSON.stringify(result.entryPoint)
 		}) and a set of **exit points** (${
-			JSON.stringify(result.dataflow.exitPoints.map(e => e.nodeId))
+			JSON.stringify(result.exitPoints.map(e => e.nodeId))
 		}). 
 Besides marking potential exits, the exit points also provide information about why the exit occurs and which control dependencies affect the exit.
 

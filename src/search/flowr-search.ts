@@ -10,7 +10,7 @@ import type {
 	EnrichmentSearchContent
 } from './search-executor/search-enrichers';
 import { Enrichments } from './search-executor/search-enrichers';
-import type { FlowrAnalysisInput } from '../project/flowr-analyzer';
+import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 /**
  * Yes, for now we do technically not need a wrapper around the RNode, but this allows us to attach caches etc.
@@ -101,7 +101,7 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 	 *
 	 * Please note that this function does not also enrich individual elements, which is done through {@link enrichElement}. Both functions are called in a concise manner in {@link FlowrSearchBuilder.with}, which is the preferred way to add enrichments to a search.
 	 */
-	public async enrich<E extends Enrichment>(data: FlowrAnalysisInput, enrichment: E, args?: EnrichmentSearchArguments<E>): Promise<this> {
+	public async enrich<E extends Enrichment>(data: FlowrAnalysisProvider, enrichment: E, args?: EnrichmentSearchArguments<E>): Promise<this> {
 		const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>, EnrichmentSearchContent<E>, EnrichmentSearchArguments<E>>;
 		if(enrichmentData.enrichSearch !== undefined) {
 			this.enrichments = {

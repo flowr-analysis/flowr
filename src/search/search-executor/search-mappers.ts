@@ -4,20 +4,20 @@ import type { Enrichment, EnrichmentData, EnrichmentElementContent } from './sea
 import { enrichmentContent, Enrichments } from './search-enrichers';
 
 import type { MergeableRecord } from '../../util/objects';
-import type { FlowrAnalysisInput } from '../../project/flowr-analyzer';
+import type { FlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
 export enum Mapper {
     Enrichment = 'enrichment'
 }
 
 export interface MapperData<Arguments extends string | MergeableRecord> {
-	mapper: (e: FlowrSearchElement<ParentInformation>, data: FlowrAnalysisInput, args: Arguments) => FlowrSearchElement<ParentInformation>[]
+	mapper: (e: FlowrSearchElement<ParentInformation>, data: FlowrAnalysisProvider, args: Arguments) => FlowrSearchElement<ParentInformation>[]
 }
 export type MapperArguments<M extends Mapper> = typeof Mappers[M] extends MapperData<infer Arguments> ? Arguments : never;
 
 const Mappers = {
 	[Mapper.Enrichment]: {
-		mapper: (e: FlowrSearchElement<ParentInformation>, _data: FlowrAnalysisInput, enrichment: Enrichment) => {
+		mapper: (e: FlowrSearchElement<ParentInformation>, _data: FlowrAnalysisProvider, enrichment: Enrichment) => {
 			const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<Enrichment>>;
 			const content = enrichmentContent(e, enrichment);
 			return content !== undefined ? enrichmentData.mapper?.(content) ?? [] : [];
@@ -26,6 +26,6 @@ const Mappers = {
 } as const;
 
 export function map<Element extends FlowrSearchElement<ParentInformation>, MapperType extends Mapper>(
-	e: Element, data: FlowrAnalysisInput, mapper: MapperType, args: MapperArguments<MapperType>): Element[] {
+	e: Element, data: FlowrAnalysisProvider, mapper: MapperType, args: MapperArguments<MapperType>): Element[] {
 	return (Mappers[mapper] as MapperData<MapperArguments<MapperType>>).mapper(e, data, args) as Element[];
 }

@@ -22,7 +22,7 @@ export interface DataflowQueryResult extends BaseQueryResult {
 
 export const DataflowQueryDefinition = {
 	executor:        executeDataflowQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dataflow'>['dataflow'];
 		result.push(`Query: ${bold('dataflow', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		result.push(`   ╰ [Dataflow Graph](${graphToMermaidUrl(out.graph)})`);

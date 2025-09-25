@@ -50,7 +50,7 @@ ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary
 _Results (prettified and summarized):_
 
 ${
-	asciiSummaryOfQueryResult(markdownFormatter, duration, results, { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalize() }, queries)
+	await asciiSummaryOfQueryResult(markdownFormatter, duration, results, analyzer, queries)
 }
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>

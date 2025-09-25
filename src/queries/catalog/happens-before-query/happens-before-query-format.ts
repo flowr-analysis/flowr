@@ -19,7 +19,7 @@ export interface HappensBeforeQueryResult extends BaseQueryResult {
 
 export const HappensBeforeQueryDefinition = {
 	executor:        executeHappensBefore,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'happens-before'>['happens-before'];
 		result.push(`Query: ${bold('happens-before', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [key, value] of Object.entries(out.results)) {

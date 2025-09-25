@@ -21,7 +21,7 @@ export interface DataflowLensQueryResult extends BaseQueryResult {
 
 export const DataflowLensQueryDefinition = {
 	executor:        executeDataflowLensQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dataflow-lens'>['dataflow-lens'];
 		result.push(`Query: ${bold('dataflow-lens', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		result.push(`   ╰ [Simplified Graph](${graphToMermaidUrl(out.simplifiedGraph, false, undefined, true)})`);

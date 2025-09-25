@@ -1,6 +1,6 @@
 import { FlowrAnalyzerFilePlugin } from './flowr-analyzer-file-plugin';
 import { SemVer } from 'semver';
-import type { FlowrAnalysisInput } from '../../flowr-analyzer';
+import type { FlowrAnalysisProvider } from '../../flowr-analyzer';
 import type { FlowrConfigOptions } from '../../../config';
 import type { FlowrAnalyzerPlugin } from '../flowr-analyzer-plugin';
 import { parseDCF } from '../../../util/files';
@@ -15,7 +15,7 @@ export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin 
 	public readonly dependencies: FlowrAnalyzerPlugin[] = [];
 	public information:           Map<string, string[]> = new Map<string, string[]>();
 
-	public processor(_analyzer: FlowrAnalysisInput, _pluginConfig: FlowrConfigOptions): void {
+	public processor(_analyzer: FlowrAnalysisProvider, _pluginConfig: FlowrConfigOptions): void {
 		if(this.files.length === 0) {
 			analyzerDescriptionLog.error(Error('No DESCRIPTION file found.'));
 			return;

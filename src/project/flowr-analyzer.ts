@@ -21,7 +21,7 @@ import { runSearch } from '../search/flowr-search-executor';
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
  * This allows us to exchange the underlying implementation of the analyzer without affecting the APIs.
  */
-export type FlowrAnalysisInput = {
+export type FlowrAnalysisProvider = {
     parserName(): string
     parse(force?: boolean): Promise<ParseStepOutput<Awaited<ReturnType<KnownParser['parse']>>> & PipelinePerStepMetaInformation>
 	normalize(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation>;

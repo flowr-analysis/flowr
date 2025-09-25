@@ -133,7 +133,7 @@ const functionInfoSchema: Joi.ArraySchema = Joi.array().items(Joi.object({
 
 export const DependenciesQueryDefinition = {
 	executor:        executeDependenciesQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result, queries) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result, queries) => {
 		const out = queryResults as DependenciesQueryResult;
 		result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [category, value] of Object.entries(getAllCategories(queries as DependenciesQuery[]))) {

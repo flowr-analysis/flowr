@@ -72,7 +72,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisInput
 			libraries: dummyProject.libraries },
 		parsedQuery)),
 		parsedQuery,
-		processed: { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalizedAst() }
+		processed: { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalize() }
 	};
 }
 

@@ -172,7 +172,7 @@ export class FlowRServerConnection {
 		}
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() });
-		const sanitizedResults = sanitizeAnalysisResults(await analyzer.parseOutput(), await analyzer.normalizedAst(), await analyzer.dataflow());
+		const sanitizedResults = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalizedAst(), await analyzer.dataflow());
 		if(message.format === 'n-quads') {
 			sendMessage<FileAnalysisResponseMessageNQuads>(this.socket, {
 				type:    'response-file-analysis',
@@ -180,7 +180,7 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, await analyzer.parseOutput() as ParseStepOutput<string>, StepOutputFormat.RdfQuads, config()),
+					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, await analyzer.parse() as ParseStepOutput<string>, StepOutputFormat.RdfQuads, config()),
 					normalize: await printStepResult(NORMALIZE, await analyzer.normalizedAst(), StepOutputFormat.RdfQuads, config()),
 					dataflow:  await printStepResult(STATIC_DATAFLOW, await analyzer.dataflow(), StepOutputFormat.RdfQuads, config())
 				}

@@ -11,7 +11,7 @@ export async function executeControlFlowQuery({ input }: BasicQueryData, queries
 	const query = queries[0];
 
 	const start = Date.now();
-	const controlFlow = await input.controlFlow(query.config?.simplificationPasses, true);
+	const controlFlow = await input.controlflow(query.config?.simplificationPasses, true);
 	return {
 		'.meta': {
 			timing: Date.now() - start

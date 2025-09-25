@@ -42,7 +42,7 @@ export async function executeLocationMapQuery({ input }: BasicQueryData, queries
 		count++;
 	}
 
-	const ast = await input.normalizedAst();
+	const ast = await input.normalize();
 	for(const [id, node] of ast.idMap.entries()) {
 		if(node.location && (criteriaOfInterest.size === 0 || criteriaOfInterest.has(id))) {
 			const file = fuzzyFindFile(node, ast.idMap);

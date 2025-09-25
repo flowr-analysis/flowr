@@ -9,7 +9,7 @@ import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 export async function executeHappensBefore({ input }: BasicQueryData, queries: readonly HappensBeforeQuery[]): Promise<HappensBeforeQueryResult> {
 	const start = Date.now();
 	const results: Record<string, Ternary> = {};
-	const ast = await input.normalizedAst();
+	const ast = await input.normalize();
 	const cfg = extractCfgQuick(ast);
 	for(const query of queries) {
 		const { a, b } = query;

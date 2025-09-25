@@ -14,9 +14,9 @@ function formatInfo(out: ReplOutput, type: string): string {
 }
 
 async function produceAndPrintCfg(analyzer: FlowrAnalysisInput, output: ReplOutput, simplifications: readonly CfgSimplificationPassName[], cfgConverter: (cfg: ControlFlowInformation, ast: NormalizedAst) => string) {
-	const cfg = await analyzer.controlFlow([...DefaultCfgSimplificationOrder, ...simplifications]);
-	const result = await analyzer.normalizedAst();
-	const mermaid = cfgConverter(cfg, result);
+	const cfg = await analyzer.controlflow([...DefaultCfgSimplificationOrder, ...simplifications]);
+	const normalizedAst = await analyzer.normalize();
+	const mermaid = cfgConverter(cfg, normalizedAst);
 	output.stdout(mermaid);
 	try {
 		const clipboard = await import('clipboardy');

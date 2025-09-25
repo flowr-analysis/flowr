@@ -201,7 +201,7 @@ export const Enrichments = {
 
 			const content: CfgInformationSearchContent = {
 				...prev,
-				cfg: await data.controlFlow(args.simplificationPasses, true),
+				cfg: await data.controlflow(args.simplificationPasses, true),
 			};
 			if(args.checkReachable) {
 				content.reachableNodes = cfgFindAllReachable(content.cfg);

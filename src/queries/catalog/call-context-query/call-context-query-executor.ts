@@ -213,7 +213,7 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
  * 4. Attach `linkTo` calls to the respective calls.
  */
 export async function executeCallContextQueries({ input }: BasicQueryData, queries: readonly CallContextQuery[]): Promise<CallContextQueryResult> {
-	const ast = await input.normalizedAst();
+	const ast = await input.normalize();
 	const dataflow = await input.dataflow();
 
 	/* omit performance page load */
@@ -226,7 +226,7 @@ export async function executeCallContextQueries({ input }: BasicQueryData, queri
 
 	let cfg = undefined;
 	if(requiresCfg) {
-		cfg = await input.controlFlow([], true);
+		cfg = await input.controlflow([], true);
 	}
 
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);

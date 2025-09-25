@@ -17,7 +17,7 @@ export const normalizeCommand: ReplCodeCommand = {
 	script:       false,
 	argsParser:   (args: string) => handleString(args),
 	fn:           async({ output, analyzer }) => {
-		const result = await analyzer.normalizedAst();
+		const result = await analyzer.normalize();
 		const mermaid = normalizedAstToMermaid(result.ast);
 		output.stdout(mermaid);
 		try {
@@ -36,7 +36,7 @@ export const normalizeStarCommand: ReplCodeCommand = {
 	script:       false,
 	argsParser:   (args: string) => handleString(args),
 	fn:           async({ output, analyzer }) => {
-		const result = await analyzer.normalizedAst();
+		const result = await analyzer.normalize();
 		const mermaid = normalizedAstToMermaidUrl(result.ast);
 		output.stdout(mermaid);
 		try {

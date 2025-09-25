@@ -44,14 +44,14 @@ async function generateAll(data: FlowrAnalysisInput): Promise<FlowrSearchElement
 }
 
 async function getAllNodes(data: FlowrAnalysisInput): Promise<RNodeWithParent[]> {
-	const normalize = await data.normalizedAst();
+	const normalize = await data.normalize();
 	return [...new Map([...normalize.idMap.values()].map(n => [n.info.id, n]))
 		.values()];
 }
 
 
 async function generateGet(input: FlowrAnalysisInput, { filter: { line, column, id, name, nameIsRegex } }: { filter: FlowrSearchGetFilter }): Promise<FlowrSearchElements<ParentInformation>> {
-	const normalize = await input.normalizedAst();
+	const normalize = await input.normalize();
 	let potentials = (id ?
 		[normalize.idMap.get(id)].filter(isNotUndefined) :
 		await getAllNodes(input)
@@ -101,16 +101,16 @@ async function generateFromQuery(input: FlowrAnalysisInput, args: {
 		const nodes = new Set<FlowrSearchElement<ParentInformation>>();
 		const queryDef = SupportedQueries[query as Query['type']] as SupportedQuery<Query['type']>;
 		for(const node of queryDef.flattenInvolvedNodes(content as BaseQueryResult, args.from)) {
-			nodes.add({ node: (await input.normalizedAst()).idMap.get(node) as RNode<ParentInformation> });
+			nodes.add({ node: (await input.normalize()).idMap.get(node) as RNode<ParentInformation> });
 		}
 		nodesByQuery.set(query as Query['type'], nodes);
 	}
 
 	// enrich elements with query data
 
-	const normalize = await input.normalizedAst();
+	const normalize = await input.normalize();
 	const dataflow = await input.dataflow();
-	const cfg = await input.controlFlow();
+	const cfg = await input.controlflow();
 
 	const elements = await new FlowrSearchElements([...nodesByQuery]
 		.flatMap(([_, nodes]) => [...nodes]))
@@ -122,7 +122,7 @@ async function generateFromQuery(input: FlowrAnalysisInput, args: {
 }
 
 async function generateCriterion(input: FlowrAnalysisInput, args: { criterion: SlicingCriteria }): Promise<FlowrSearchElements<ParentInformation>> {
-	const idMap = (await input.normalizedAst()).idMap;
+	const idMap = (await input.normalize()).idMap;
 	return new FlowrSearchElements(
 		args.criterion.map(c => ({ node: idMap.get(slicingCriterionToId(c, idMap)) as RNodeWithParent }))
 	);

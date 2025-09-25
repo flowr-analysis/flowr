@@ -10,7 +10,7 @@ export async function executeLineageQuery({ input }: BasicQueryData, queries: re
 		if(result[criterion]) {
 			log.warn('Duplicate criterion in lineage query:', criterion);
 		}
-		result[criterion] = getLineage(criterion, (await input.dataflow()).graph, (await input.normalizedAst()).idMap);
+		result[criterion] = getLineage(criterion, (await input.dataflow()).graph, (await input.normalize()).idMap);
 	}
 
 	return {

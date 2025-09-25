@@ -38,7 +38,7 @@ export async function executeDependenciesQuery({
 		libraries: libraries
 	};
 
-	const normalize = await input.normalizedAst();
+	const normalize = await input.normalize();
 	const dataflow = await input.dataflow();
 	const config = input.flowrConfig;
 

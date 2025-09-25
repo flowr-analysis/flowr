@@ -12,6 +12,6 @@ export async function executeNormalizedAstQuery({ input }: BasicQueryData, queri
 			/* there is no sense in measuring a get */
 			timing: 0
 		},
-		normalized: await input.normalizedAst()
+		normalized: await input.normalize()
 	};
 }

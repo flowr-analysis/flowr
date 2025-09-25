@@ -12,6 +12,6 @@ export async function executeIdMapQuery({ input }: BasicQueryData, queries: read
 			/* there is no sense in measuring a get */
 			timing: 0
 		},
-		idMap: (await input.normalizedAst()).idMap
+		idMap: (await input.normalize()).idMap
 	};
 }

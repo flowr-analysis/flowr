@@ -15,12 +15,12 @@ export async function executeDfShapeQuery({ input }: BasicQueryData, queries: re
 		queries = [{ type: 'df-shape' }];
 	}
 
-	const ast = await input.normalizedAst();
+	const ast = await input.normalize();
 	const graph = (await input.dataflow()).graph;
 
 	const start = Date.now();
 	const domains = inferDataFrameShapes(
-		await input.controlFlow(),
+		await input.controlflow(),
 		graph,
 		ast,
 		input.flowrConfig);

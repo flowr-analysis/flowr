@@ -159,9 +159,9 @@ async function getWith<Elements extends FlowrSearchElement<ParentInformation>[],
 	}): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 
 	const data = {
-		normalize: await input.normalizedAst(),
+		normalize: await input.normalize(),
 		dataflow:  await input.dataflow(),
-		cfg: 	     await input.controlFlow(),
+		cfg: 	     await input.controlflow(),
 		config:    input.flowrConfig
 	};
 

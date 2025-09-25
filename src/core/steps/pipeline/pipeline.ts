@@ -47,16 +47,6 @@ export interface PipelinePerStepMetaInformation {
 		 * the required accuracy is dependent on the measuring system, but usually at around 1 ms.
 		 */
 		readonly timing: number
-		/**
-		 * The result was newly created
-		 */
-		readonly cached: false;
-	} | {
-		/**
-		 * The result was cached.
-		 * Thus, no timing information is available.
-		 */
-		readonly cached: true;
 	}
 }
 

@@ -20,9 +20,9 @@ export async function executeLintingRule<Name extends LintingRuleNames>(ruleName
 		const processStart = Date.now();
 		const result = await rule.processSearchResult(searchResult, fullConfig,
 			{
-				normalize: await input.normalizedAst(),
+				normalize: await input.normalize(),
 				dataflow:  await input.dataflow(),
-				cfg:       await input.controlFlow(),
+				cfg:       await input.controlflow(),
 				config:    input.flowrConfig,
 			}
 		);

@@ -13,7 +13,7 @@ export async function executeResolveValueQuery({ input }: BasicQueryData, querie
 	const results: ResolveValueQueryResult['results'] = {};
 
 	const graph = (await input.dataflow()).graph;
-	const ast = await input.normalizedAst();
+	const ast = await input.normalize();
 
 	for(const query of queries) {
 		const key = fingerPrintOfQuery(query);

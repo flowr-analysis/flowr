@@ -28,6 +28,7 @@ import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
 import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
 import { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
 import { ansiFormatter, voidFormatter } from '../../../util/text/ansi';
+import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import { DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type { DeepPartial } from 'ts-essentials';
@@ -50,6 +51,7 @@ import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
 import { PipelineStepStage } from '../../../core/steps/pipeline-step';
+import type { Tree } from 'web-tree-sitter';
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -113,7 +115,7 @@ export class FlowRServerConnection {
 				this.handleRepl(request.message as ExecuteRequestMessage);
 				break;
 			case 'request-lineage':
-				this.handleLineageRequest(request.message as LineageRequestMessage);
+				void this.handleLineageRequest(request.message as LineageRequestMessage);
 				break;
 			case 'request-query':
 				this.handleQueryRequest(request.message as QueryRequestMessage);
@@ -384,9 +386,9 @@ export class FlowRServerConnection {
 	}
 }
 
-export function sanitizeAnalysisResults(parse: ParseStepOutput<any>, normalize: NormalizedAst, dataflow: DataflowInformation): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>> {
+export function sanitizeAnalysisResults(parse: ParseStepOutput<string | Tree>, normalize: NormalizedAst, dataflow: DataflowInformation): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>> {
 	return {
-		parse,
+		parse:     parse as ParseStepOutput<string>,
 		normalize: {
 			...normalize,
 			idMap: undefined

@@ -51,7 +51,7 @@ export const FILE_PATH_VALIDITY = {
 		readFunctions:     config.additionalReadFunctions,
 		writeFunctions:    config.additionalWriteFunctions
 	}).with(Enrichment.CfgInformation),
-	processSearchResult: async(elements, config, data): Promise<{ results: FilePathValidityResult[], '.meta': FilePathValidityMetadata }> => {
+	processSearchResult: (elements, config, data): { results: FilePathValidityResult[], '.meta': FilePathValidityMetadata } => {
 		const cfg = elements.enrichmentContent(Enrichment.CfgInformation).cfg.graph;
 		const metadata: FilePathValidityMetadata = {
 			totalReads:              0,
@@ -59,7 +59,7 @@ export const FILE_PATH_VALIDITY = {
 			totalWritesBeforeAlways: 0,
 			totalValid:              0
 		};
-		const results = await elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'];
+		const results = elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'];
 		return {
 			results: elements.getElements().flatMap(element => {
 				const matchingRead = results.read.find(r => r.nodeId == element.node.info.id);

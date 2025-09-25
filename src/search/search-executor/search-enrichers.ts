@@ -178,8 +178,8 @@ export const Enrichments = {
 		mapper: ({ linkedIds }) => linkedIds
 	} satisfies EnrichmentData<LastCallContent, Omit<LinkToLastCall, 'type'>[]>,
 	[Enrichment.CfgInformation]: {
-		enrichElement: async(e, search, _data, _args, prev) => {
-			const searchContent: CfgInformationSearchContent = await search.enrichmentContent(Enrichment.CfgInformation);
+		enrichElement: (e, search, _data, _args, prev) => {
+			const searchContent: CfgInformationSearchContent = search.enrichmentContent(Enrichment.CfgInformation);
 			return {
 				...prev,
 				isRoot:      searchContent.cfg.graph.rootIds().has(e.node.info.id),

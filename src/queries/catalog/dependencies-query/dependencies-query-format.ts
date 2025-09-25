@@ -15,6 +15,7 @@ import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visito
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { Range } from 'semver';
+import type { AsyncOrSync } from 'ts-essentials';
 
 export const Unknown = 'unknown';
 
@@ -22,7 +23,7 @@ export interface DependencyCategorySettings {
     queryDisplayName?:   string
     functions:           FunctionInfo[]
     defaultValue?:       string
-    additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => void
+    additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => AsyncOrSync<void>
 }
 
 export const DefaultDependencyCategories = {
@@ -109,7 +110,7 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	}, new Map<string, DependencyInfo[]>());
 	for(const [functionName, infos] of grouped) {
 		result.push(`       ╰ \`${functionName}\``);
-		result.push(infos.map(i => `           ╰ Node Id: ${i.nodeId}${i.value !== undefined ? `, \`${i.value}\`` : ''}${i.derivedVersion !== undefined ? `, Version: \`${i.derivedVersion.toString()}\`` : ''}`).join('\n'));
+		result.push(infos.map(i => `           ╰ Node Id: ${i.nodeId}${i.value !== undefined ? `, \`${i.value}\`` : ''}${i.derivedVersion !== undefined ? `, Version: \`${i.derivedVersion.format()}\`` : ''}`).join('\n'));
 	}
 }
 

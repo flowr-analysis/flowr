@@ -34,8 +34,8 @@ export async function executeDependenciesQuery({
 	}
 
 	const data = {
-		input:     analyzer,
-		libraries: libraries
+		analyzer,
+		libraries
 	};
 
 	const normalize = await analyzer.normalize();
@@ -60,7 +60,7 @@ export async function executeDependenciesQuery({
 
 	const results = Object.fromEntries(functions.entries().map(([c, f]) => {
 		const results = getResults(queries, { dataflow, config, normalize }, queryResults, c, f, data);
-		// only default categories allow additional analyses, so we null coalese here!
+		// only default categories allow additional analyses, so we null-coalesce here!
 		(DefaultDependencyCategories as Record<string, DependencyCategorySettings>)[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
 		return [c, results];
 	})) as {[C in DependencyCategoryName]?: DependencyInfo[]};

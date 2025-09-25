@@ -120,9 +120,16 @@ const dataflow = await analyzer.dataflow();
 const cfg = await analyzer.controlFlow();
 `)}
 
-The analyzer also exposes the query API:
+The analyzer also exposes the [query API](${FlowrWikiBaseRef}/Query-API):
 
-
+${codeBlock('typescript', `
+const result = await analyzer.query([
+	{
+		type:     'static-slice',
+		criteria: ['1@y']
+	}
+]);
+`)}
 	
 ## Pipelines and their Execution
 

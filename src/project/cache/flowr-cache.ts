@@ -50,7 +50,7 @@ export abstract class FlowrCache<Cache> implements CacheInvalidationEventReceive
      * Get the cached value or compute it if not present.
      * This will, by default, not trigger any {@link notifyDependents} calls, as this is only a cache retrieval.
      */
-	public computeIfAbsent(force: boolean | undefined, compute: () => Cache): Cache {
+	protected computeIfAbsent(force: boolean | undefined, compute: () => Cache): Cache {
 		if(this.value === undefined || force) {
 			this.value = compute();
 		}

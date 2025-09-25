@@ -6,7 +6,7 @@ import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipelin
 import { handleString } from '../core';
 
 function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInformation): string {
-	return out.formatter.format(`Copied ${type} to clipboard (normalize: ${meta['.meta'].cached ? 'cached' : meta['.meta'].timing + 'ms'}).`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
+	return out.formatter.format(`Copied ${type} to clipboard (normalize: ${meta['.meta'].timing + 'ms'}).`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
 }
 
 export const normalizeCommand: ReplCodeCommand = {

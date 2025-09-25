@@ -6,7 +6,7 @@ import { getTransformer } from './search-executor/search-transformer';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalysisInput } from '../project/flowr-analyzer';
 
-type GetSearchElements<S> = S extends FlowrSearch<infer _, infer _, infer _, infer Elements> ? Elements : never;
+export type GetSearchElements<S> = S extends FlowrSearch<infer _, infer _, infer _, infer Elements> ? Elements : never;
 
 /**
  * Run a search with the given search query and data.

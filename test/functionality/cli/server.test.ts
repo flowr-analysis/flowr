@@ -88,7 +88,7 @@ describe('flowr', () => {
 			const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('1 + 1'))
 				.setParser(shell)
 				.build();
-			const results = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalizedAst(), await analyzer.dataflow());
+			const results = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalize(), await analyzer.dataflow());
 
 			// cfg should not be set as we did not request it
 			assert.isUndefined(response.cfg, 'Expected the cfg to be undefined as we did not request it');
@@ -122,7 +122,7 @@ describe('flowr', () => {
 			const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('1 + 1'))
 				.setParser(shell)
 				.build();
-			const results = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalizedAst(), await analyzer.dataflow());
+			const results = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalize(), await analyzer.dataflow());
 
 			// cfg should not be set as we did not request it
 			assert.isUndefined(response.cfg, 'Expected the cfg to be undefined as we did not request it');

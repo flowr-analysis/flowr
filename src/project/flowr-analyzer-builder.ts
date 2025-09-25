@@ -7,16 +7,41 @@ import { retrieveEngineInstances } from '../engines';
 import type { KnownParser } from '../r-bridge/parser';
 import type { FlowrAnalyzerPlugin } from './plugins/flowr-analyzer-plugin';
 import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize';
+import { guard } from '../util/assert';
 
 /**
  * Builder for the {@link FlowrAnalyzer}.
  */
 export class FlowrAnalyzerBuilder {
-	private flowrConfig:      DeepWritable<FlowrConfigOptions> = cloneConfig(defaultConfigOptions);
-	private parser?:          KnownParser;
-	private readonly request: RParseRequests;
-	private input?:           Omit<NormalizeRequiredInput, 'request'>;
-	private plugins:          FlowrAnalyzerPlugin[];
+	private flowrConfig: DeepWritable<FlowrConfigOptions> = cloneConfig(defaultConfigOptions);
+	private parser?:     KnownParser;
+	private request:     RParseRequests | undefined;
+	private input?:      Omit<NormalizeRequiredInput, 'request'>;
+	private plugins:     FlowrAnalyzerPlugin[] = [];
+
+
+	/**
+     * Create a new builder instance.
+     * @param request - The code to analyze
+     */
+	constructor(request?: RParseRequests) {
+		this.request = request;
+	}
+
+	/**
+     * Add one or multiple requests to analyze the builder.
+     */
+	public addRequest(request: RParseRequests) {
+		if(this.request) {
+			if(Array.isArray(this.request)) {
+				this.request = this.request.concat(request);
+			} else {
+				this.request = [this.request].concat(request) as RParseRequests;
+			}
+		} else {
+			this.request = request;
+		}
+	}
 
 	/**
      * Apply an amendment to the configuration the builder currently holds.
@@ -52,7 +77,7 @@ export class FlowrAnalyzerBuilder {
      * @param engine - The engine to use.
      */
 	public setEngine(engine: EngineConfig['type']) {
-		this.flowrConfig.defaultEngine = engine;
+		(this.flowrConfig.defaultEngine as string) = engine;
 		return this;
 	}
 
@@ -63,16 +88,6 @@ export class FlowrAnalyzerBuilder {
 	public setInput(input: Omit<NormalizeRequiredInput, 'request'>) {
 		this.input = input;
 		return this;
-	}
-
-	/**
-     * Create a new builder instance.
-     * @param request - The code to analyze.
-     * @param plugins - The plugins to register.
-     */
-	constructor(request: RParseRequests, plugins?: FlowrAnalyzerPlugin[]) {
-		this.request = request;
-		this.plugins = plugins ?? [];
 	}
 
 	/**
@@ -104,6 +119,8 @@ export class FlowrAnalyzerBuilder {
 			const engines = await retrieveEngineInstances(this.flowrConfig);
 			parser = this.parser ?? engines.engines[engines.default] as KnownParser;
 		}
+
+		guard(this.request !== undefined, 'Currently we require at least one request to build an analyzer, please provide one using the constructor or the addRequest method');
 
 		return new FlowrAnalyzer(
 			this.flowrConfig,

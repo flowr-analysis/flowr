@@ -168,11 +168,11 @@ export class FlowRServerConnection {
 	private async sendFileAnalysisResponse(analyzer: FlowrAnalyzer, message: FileAnalysisRequestMessage): Promise<void> {
 		let cfg: ControlFlowInformation | undefined = undefined;
 		if(message.cfg) {
-			cfg = await analyzer.controlFlow();
+			cfg = await analyzer.controlflow();
 		}
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() });
-		const sanitizedResults = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalizedAst(), await analyzer.dataflow());
+		const sanitizedResults = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalize(), await analyzer.dataflow());
 		if(message.format === 'n-quads') {
 			sendMessage<FileAnalysisResponseMessageNQuads>(this.socket, {
 				type:    'response-file-analysis',
@@ -181,7 +181,7 @@ export class FlowRServerConnection {
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
 					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, await analyzer.parse() as ParseStepOutput<string>, StepOutputFormat.RdfQuads, config()),
-					normalize: await printStepResult(NORMALIZE, await analyzer.normalizedAst(), StepOutputFormat.RdfQuads, config()),
+					normalize: await printStepResult(NORMALIZE, await analyzer.normalize(), StepOutputFormat.RdfQuads, config()),
 					dataflow:  await printStepResult(STATIC_DATAFLOW, await analyzer.dataflow(), StepOutputFormat.RdfQuads, config())
 				}
 			});
@@ -338,7 +338,7 @@ export class FlowRServerConnection {
 		}
 
 		const analyzer = fileInformation.analyzer;
-		const lineageIds = getLineage(request.criterion, (await analyzer.dataflow()).graph, (await analyzer.normalizedAst()).idMap);
+		const lineageIds = getLineage(request.criterion, (await analyzer.dataflow()).graph, (await analyzer.normalize()).idMap);
 		sendMessage<LineageResponseMessage>(this.socket, {
 			type:    'response-lineage',
 			id:      request.id,

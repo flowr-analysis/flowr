@@ -62,7 +62,7 @@ export function assertLinter<Name extends LintingRuleNames>(
 		}
 
 		if(typeof expected === 'function') {
-			expected = expected(await analyzer.dataflow(), await analyzer.normalizedAst());
+			expected = expected(await analyzer.dataflow(), await analyzer.normalize());
 		}
 
 		try {

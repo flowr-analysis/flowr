@@ -24,14 +24,14 @@ export async function executeStaticSliceQuery({ input }: BasicQueryData, queries
 		const slice = staticSlice(await input.dataflow(), await input.normalize(), criteria, query.direction ?? SliceDirection.Backward, input.flowrConfig.solver.slicer?.threshold);
 		const sliceEnd = Date.now();
 		if(noReconstruction) {
-			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart, cached: false } } };
+			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };
 		} else {
 			const reconstructStart = Date.now();
 			const reconstruct = reconstructToCode(await input.normalize(), slice.result, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect));
 			const reconstructEnd = Date.now();
 			results[key] = {
-				slice:       { ...slice, '.meta': { timing: sliceEnd - sliceStart, cached: false } },
-				reconstruct: { ...reconstruct, '.meta': { timing: reconstructEnd - reconstructStart, cached: false } }
+				slice:       { ...slice, '.meta': { timing: sliceEnd - sliceStart } },
+				reconstruct: { ...reconstruct, '.meta': { timing: reconstructEnd - reconstructStart } }
 			};
 		}
 	}

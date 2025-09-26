@@ -33,6 +33,4 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		}
 		return this.dependencies.get(name);
 	}
-
-	// TODO: resolve system etc.
 }

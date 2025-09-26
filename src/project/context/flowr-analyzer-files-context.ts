@@ -48,7 +48,6 @@ function obtainFileAndPath(file: string | FlowrFileProvider<string> | RParseRequ
 	return { f, p };
 }
 
-// TODO: type of project (library vs. user code etc.)
 /**
  * This is the analyzer file context to be modified by all plugins that affect the files
  */

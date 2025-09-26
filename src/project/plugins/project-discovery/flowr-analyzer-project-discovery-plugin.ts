@@ -6,7 +6,6 @@ import type { FlowrFile } from '../../context/flowr-file';
 import { FlowrTextFile } from '../../context/flowr-file';
 import { getAllFilesSync } from '../../../util/files';
 
-// TODO: also identify descipriotn files etc and project type!
 export abstract class FlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerPlugin<RProjectAnalysisRequest, (RParseRequest | FlowrFile<string>)[]> {
 	public readonly type = PluginType.ProjectDiscovery;
 

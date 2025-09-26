@@ -3,7 +3,6 @@ import { guard } from '../../../util/assert';
 
 export type PackageType = 'package' | 'system' | 'r';
 
-// TODO: separate specified vs. inferred (e.g. from system)
 export class Package {
 	public name:               string;
 	public derivedVersion?:    Range;

@@ -2,6 +2,7 @@ import type { EngineConfig, FlowrConfigOptions } from '../config';
 import { amendConfig, cloneConfig, defaultConfigOptions } from '../config';
 import type { DeepWritable } from 'ts-essentials';
 import type { RParseRequests } from '../r-bridge/retriever';
+import { requestFromInput } from '../r-bridge/retriever';
 import { FlowrAnalyzer } from './flowr-analyzer';
 import { retrieveEngineInstances } from '../engines';
 import type { KnownParser } from '../r-bridge/parser';
@@ -41,6 +42,15 @@ export class FlowrAnalyzerBuilder {
 		} else {
 			this.request = request;
 		}
+	}
+
+	/**
+     * Add a request created from the given input.
+     * This is a convenience method that uses {@link requestFromInput} internally.
+     */
+	public addRequestFromInput(input: Parameters<typeof requestFromInput>[0]) {
+		this.addRequest(requestFromInput(input));
+		return this;
 	}
 
 	/**
@@ -92,10 +102,12 @@ export class FlowrAnalyzerBuilder {
 
 	/**
      * Register one or multiple additional plugins.
-     * @param plugin - One or multiple plugins.
+     * @param plugin - One or multiple plugins to register.
+     *
+     * @see {@link FlowrAnalyzerBuilder#unregisterPlugin} to remove plugins.
      */
-	public registerPlugin(...plugin: FlowrAnalyzerPlugin[]): this {
-		this.plugins.push(...plugin);
+	public registerPlugin(...plugin: readonly FlowrAnalyzerPlugin[]): this {
+		this.plugins = this.plugins.concat(plugin);
 		return this;
 	}
 
@@ -103,7 +115,7 @@ export class FlowrAnalyzerBuilder {
      * Remove one or multiple plugins.
      * @param plugin - One or multiple plugins.
      */
-	public unregisterPlugin(...plugin: FlowrAnalyzerPlugin[]): this {
+	public unregisterPlugin(...plugin: readonly FlowrAnalyzerPlugin[]): this {
 		this.plugins = this.plugins.filter(p => !plugin.includes(p));
 		return this;
 	}
@@ -111,7 +123,7 @@ export class FlowrAnalyzerBuilder {
 	/**
      * Create the {@link FlowrAnalyzer} instance using the given information.
      */
-	public async build(): Promise<FlowrAnalyzer<KnownParser>> {
+	public async build(): Promise<FlowrAnalyzer> {
 		let parser: KnownParser;
 		if(this.parser) {
 			parser = this.parser;

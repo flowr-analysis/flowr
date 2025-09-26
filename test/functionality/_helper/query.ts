@@ -2,7 +2,6 @@ import type {
 	DEFAULT_DATAFLOW_PIPELINE,
 	TREE_SITTER_DATAFLOW_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { Query, QueryResults, QueryResultsWithoutMeta } from '../../../src/queries/query';
 import { executeQueries, SupportedQueries } from '../../../src/queries/query';
 import type { VirtualQueryArgumentsWithType } from '../../../src/queries/virtual-query/virtual-queries';
@@ -72,12 +71,13 @@ export function assertQuery<
 		}
 
 
-		const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
+		const analyzer = await new FlowrAnalyzerBuilder()
+			.addRequestFromInput(code)
 			.setParser(parser)
 			.build();
 
 		// we run the dfa analysis to make sure normalization post-patches are ready!
-		await analyzer.dataflow();
+		await analyzer.runFull();
 
 		const dummyProject = getDummyFlowrProject();
 		const result = await executeQueries<Queries['type'], VirtualArguments>({

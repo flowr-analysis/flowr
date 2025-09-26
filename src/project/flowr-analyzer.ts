@@ -32,8 +32,10 @@ export type FlowrAnalysisProvider = {
 
 
 /**
- * Central class for creating analyses in FlowR.
+ * Central class for conducting analyses in FlowR.
  * Use the {@link FlowrAnalyzerBuilder} to create a new instance.
+ *
+ * If you want the original pattern of creating a pipeline and running all steps, you can still do this with {@link FlowrAnalyzer#runFull}.
  */
 export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> {
 	/** This is the config used for the analyzer */
@@ -45,7 +47,8 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> {
 
 	/**
      * Create a new analyzer instance.
-     * Prefer the use of the {@link FlowrAnalyzerBuilder} instead of calling this constructor directly.
+     * **Prefer the use of the {@link FlowrAnalyzerBuilder} instead of calling this constructor directly.**
+     *
      * @param config        - The FlowR config to use for the analyses
      * @param parser        - The parser to use for parsing the given request.
      * @param request       - The code to analyze.
@@ -95,6 +98,14 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> {
      */
 	public async dataflow(force?: boolean): ReturnType<typeof this.cache.dataflow> {
 		return this.cache.dataflow(force);
+	}
+
+	/**
+     * This executes all steps of the core analysis (parse, normalize, dataflow).
+     */
+	public async runFull(force?: boolean): Promise<void> {
+		await this.dataflow(force);
+		return;
 	}
 
 	/**

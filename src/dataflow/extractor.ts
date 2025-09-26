@@ -24,7 +24,7 @@ import {
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
-import type { ControlFlowGraph } from '../control-flow/control-flow-graph';
+import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { FlowrConfigOptions } from '../config';
 import { getBuiltInDefinitions } from './environments/built-in-config';
 
@@ -68,14 +68,14 @@ export const processors: DataflowProcessors<ParentInformation> = {
 
 
 function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
-	let cfg: ControlFlowGraph | undefined = undefined;
+	let cf: ControlFlowInformation | undefined = undefined;
 	for(const s of graph.unknownSideEffects) {
 		if(typeof s !== 'object') {
 			continue;
 		}
-		cfg ??= extractCfgQuick(ast).graph;
+		cf ??= extractCfgQuick(ast);
 		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */
-		const potentials = identifyLinkToLastCallRelation(s.id, cfg, graph, s.linkTo);
+		const potentials = identifyLinkToLastCallRelation(s.id, cf?.graph, graph, s.linkTo);
 		for(const pot of potentials) {
 			graph.addEdge(s.id, pot, EdgeType.Reads);
 		}
@@ -83,6 +83,8 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 			graph.unknownSideEffects.delete(s);
 		}
 	}
+
+	return cf as ControlFlowInformation;
 }
 
 /**
@@ -96,7 +98,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	request:     RParseRequests,
 	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
 	config:      FlowrConfigOptions
-): DataflowInformation {
+): DataflowInformation & { cfgQuick: ControlFlowInformation } {
 	let firstRequest: RParseRequest;
 
 	const multifile = Array.isArray(request);
@@ -137,6 +139,8 @@ export function produceDataFlowGraph<OtherInfo>(
 	updateNestedFunctionCalls(df.graph, df.environment);
 
 
-	resolveLinkToSideEffects(completeAst, df.graph);
-	return df;
+	const cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
+
+	// performance optimization: return cfgQuick as part of the result to avoid recomputation
+	return { ...df, cfgQuick };
 }

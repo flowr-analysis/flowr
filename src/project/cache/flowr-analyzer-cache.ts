@@ -185,10 +185,19 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		if(useDataflow) {
 			/* if force is active, it will have triggered with normalize */
 			dataflow = await this.dataflow();
+		} else {
+			dataflow = this.peekDataflow();
 		}
 
-		const result = simplifications.length === 0 && !useDataflow ? extractCfgQuick(normalized) :
-			extractCfg(normalized, this.args.config, dataflow?.graph, simplifications);
+		let result: ControlFlowInformation;
+		if(useDataflow || simplifications.length > 0) {
+			result = extractCfg(normalized, this.args.config, dataflow?.graph, simplifications);
+		} else if(dataflow !== undefined) {
+			result = dataflow.cfgQuick;
+		} else {
+			result = extractCfgQuick(normalized);
+		}
+
 		this.controlFlowCache.simplified.set([simplifications, useDataflow], result);
 		return result;
 	}

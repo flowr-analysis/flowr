@@ -1,14 +1,17 @@
 import type { EngineConfig, FlowrConfigOptions } from '../config';
 import { amendConfig, cloneConfig, defaultConfigOptions } from '../config';
 import type { DeepWritable } from 'ts-essentials';
-import type { RParseRequests } from '../r-bridge/retriever';
+import type { RParseRequest } from '../r-bridge/retriever';
 import { requestFromInput } from '../r-bridge/retriever';
 import { FlowrAnalyzer } from './flowr-analyzer';
 import { retrieveEngineInstances } from '../engines';
 import type { KnownParser } from '../r-bridge/parser';
-import type { FlowrAnalyzerPlugin } from './plugins/flowr-analyzer-plugin';
+import type { FlowrAnalyzerPlugin, PluginType } from './plugins/flowr-analyzer-plugin';
 import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize';
 import { guard } from '../util/assert';
+import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
+import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
+
 
 /**
  * Builder for the {@link FlowrAnalyzer}.
@@ -16,31 +19,28 @@ import { guard } from '../util/assert';
 export class FlowrAnalyzerBuilder {
 	private flowrConfig: DeepWritable<FlowrConfigOptions> = cloneConfig(defaultConfigOptions);
 	private parser?:     KnownParser;
-	private request:     RParseRequests | undefined;
+	private request:     RAnalysisRequest[] | undefined;
 	private input?:      Omit<NormalizeRequiredInput, 'request'>;
-	private plugins:     FlowrAnalyzerPlugin[] = [];
+	private plugins:     Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
 
 
 	/**
      * Create a new builder instance.
      * @param request - The code to analyze
      */
-	constructor(request?: RParseRequests) {
-		this.request = request;
+	constructor(request?: RAnalysisRequest) {
+		this.addRequest(request ?? []);
 	}
 
 	/**
      * Add one or multiple requests to analyze the builder.
      */
-	public addRequest(request: RParseRequests) {
+	public addRequest(request: RAnalysisRequest | readonly RAnalysisRequest[]): void {
+		const r = Array.isArray(request) ? request : [request] as RParseRequest[];
 		if(this.request) {
-			if(Array.isArray(this.request)) {
-				this.request = this.request.concat(request);
-			} else {
-				this.request = [this.request].concat(request) as RParseRequests;
-			}
+			this.request = this.request.concat(request);
 		} else {
-			this.request = request;
+			this.request = r;
 		}
 	}
 
@@ -107,7 +107,14 @@ export class FlowrAnalyzerBuilder {
      * @see {@link FlowrAnalyzerBuilder#unregisterPlugin} to remove plugins.
      */
 	public registerPlugin(...plugin: readonly FlowrAnalyzerPlugin[]): this {
-		this.plugins = this.plugins.concat(plugin);
+		for(const p of plugin) {
+			const g = this.plugins.get(p.type);
+			if(g === undefined) {
+				this.plugins.set(p.type, [p]);
+			} else {
+				g.push(p);
+			}
+		}
 		return this;
 	}
 
@@ -116,7 +123,12 @@ export class FlowrAnalyzerBuilder {
      * @param plugin - One or multiple plugins.
      */
 	public unregisterPlugin(...plugin: readonly FlowrAnalyzerPlugin[]): this {
-		this.plugins = this.plugins.filter(p => !plugin.includes(p));
+		for(const p of plugin) {
+			const g = this.plugins.get(p.type);
+			if(g !== undefined) {
+				this.plugins.set(p.type, g.filter(x => x !== p));
+			}
+		}
 		return this;
 	}
 
@@ -134,10 +146,15 @@ export class FlowrAnalyzerBuilder {
 
 		guard(this.request !== undefined, 'Currently we require at least one request to build an analyzer, please provide one using the constructor or the addRequest method');
 
+		const context = new FlowrAnalyzerContext(this.plugins);
+		context.addRequests(this.request);
+		// we do it here to save time later if the analyzer is to be duplicated
+		context.resolvePreAnalysis();
+
 		return new FlowrAnalyzer(
 			this.flowrConfig,
 			parser,
-			this.request,
+			context,
 			this.input ?? {}
 		);
 	}

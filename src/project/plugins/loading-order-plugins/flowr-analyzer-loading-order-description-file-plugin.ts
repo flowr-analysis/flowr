@@ -7,7 +7,7 @@ import { FlowrAnalyzerLoadingOrderPlugin } from './flowr-analyzer-loading-order-
 
 export class FlowrAnalyzerLoadingOrderDescriptionFilePlugin extends FlowrAnalyzerLoadingOrderPlugin {
 	public readonly name = 'flowr-analyzer-package-version-description-file-plugin';
-	public readonly description = 'This plugin does...';
+	public readonly description = 'This plugin determines loading order based on the Collate field in DESCRIPTION files.';
 	public readonly version = new SemVer('0.1.0');
 
 	dependencies:    FlowrAnalyzerPlugin[] = [new FlowrAnalyzerDescriptionFilePlugin()];

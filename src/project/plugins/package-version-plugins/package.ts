@@ -9,11 +9,11 @@ export class Package {
 	public dependencies?:      Package[];
 	public versionConstraints: Range[] = [];
 
-	constructor(name?: string, type?: PackageType, dependencies?: Package[], ...versionConstraints: Range[]) {
+	constructor(name?: string, type?: PackageType, dependencies?: Package[], ...versionConstraints: readonly Range[]) {
 		this.addInfo(name, type, dependencies, ...(versionConstraints ?? []));
 	}
 
-	public addInfo(name?: string, type?: PackageType, dependencies?: Package[], ...versionConstraints: Range[]): void {
+	public addInfo(name?: string, type?: PackageType, dependencies?: Package[], ...versionConstraints: readonly Range[]): void {
 		if(name !== undefined) {
 			this.name = name;
 		}

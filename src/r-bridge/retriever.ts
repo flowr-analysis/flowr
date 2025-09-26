@@ -16,11 +16,11 @@ import { requestFromFile } from '../util/formats/adapter';
 
 export const fileProtocol = 'file://';
 
-export interface PraseRequestAdditionalInfoBase {
+export interface ParseRequestAdditionalInfoBase {
 	type: SupportedFormats
 }
 
-export interface RParseRequestFromFile<AdditionalInfo extends PraseRequestAdditionalInfoBase = PraseRequestAdditionalInfoBase> {
+export interface RParseRequestFromFile<AdditionalInfo extends ParseRequestAdditionalInfoBase = ParseRequestAdditionalInfoBase> {
 	readonly request: 'file';
 	/**
 	 * The path to the file (an absolute path is probably best here).
@@ -29,13 +29,12 @@ export interface RParseRequestFromFile<AdditionalInfo extends PraseRequestAdditi
 	readonly content: string;
 
 	/**
-	 * Aditional info from different file formates like .Rmd
+	 * Additional info from different file formates like .Rmd
 	 */
 	readonly info?: AdditionalInfo;
-
 }
 
-export interface RParseRequestFromText<AdditionalInfo extends PraseRequestAdditionalInfoBase = PraseRequestAdditionalInfoBase> {
+export interface RParseRequestFromText<AdditionalInfo extends ParseRequestAdditionalInfoBase = ParseRequestAdditionalInfoBase> {
 	readonly request: 'text'
 	/**
 	 * Source code to parse (not a file path).
@@ -46,7 +45,7 @@ export interface RParseRequestFromText<AdditionalInfo extends PraseRequestAdditi
 	readonly content: string
 
 	/**
-	 * Aditional info from different file formates like .Rmd
+	 * Additional info from different file formates like .Rmd
 	 */
 	readonly info?: AdditionalInfo;
 }

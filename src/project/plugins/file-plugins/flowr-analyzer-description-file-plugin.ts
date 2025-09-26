@@ -10,7 +10,7 @@ const analyzerDescriptionLog = log.getSubLogger({ name: 'flowr-analyzer-descript
 
 export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-description-file-plugin';
-	public readonly description = 'This plugin does...';
+	public readonly description = 'This plugin parses DESCRIPTION files and extracts their metadata.';
 	public readonly version = new SemVer('0.1.0');
 	public readonly dependencies: FlowrAnalyzerPlugin[] = [];
 	public information:           Map<string, string[]> = new Map<string, string[]>();

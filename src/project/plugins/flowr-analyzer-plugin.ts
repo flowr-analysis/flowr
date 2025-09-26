@@ -4,7 +4,11 @@ import type { FlowrConfigOptions } from '../../config';
 import type { PathLike } from 'fs';
 import type { AsyncOrSync } from 'ts-essentials';
 
-export type PluginType = 'package-versions' | 'loading-order' | 'scoping' | 'file';
+export enum PluginType {
+    DependencyIdentification = 'package-versions',
+    LoadingOrder             = 'loading-order',
+    File                     = 'file'
+}
 
 export interface FlowrAnalyzerPluginInterface {
 	readonly name:        string;

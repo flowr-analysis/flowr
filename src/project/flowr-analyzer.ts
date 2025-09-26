@@ -60,7 +60,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> {
 		this.flowrConfig = config;
 		this.parser = parser;
 		this.ctx = ctx;
-		this.cache = FlowrAnalyzerCache.create({ parser, config, request: ctx.files.calculateLoadingOrder(), ...requiredInput });
+		this.cache = FlowrAnalyzerCache.create({ parser, config, request: ctx.files.computeLoadingOrder(), ...requiredInput });
 	}
 
 	/** Returns project context information */

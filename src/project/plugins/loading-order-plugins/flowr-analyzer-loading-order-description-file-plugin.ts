@@ -5,8 +5,8 @@ import {
 } from '../file-plugins/flowr-analyzer-description-file-plugin';
 import { SemVer } from 'semver';
 import { FlowrAnalyzerLoadingOrderPlugin } from './flowr-analyzer-loading-order-plugin';
-import { SpecialFileRole } from '../../context/flowr-analyzer-files-context';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
+import { SpecialFileRole } from '../../context/flowr-file';
 
 export class FlowrAnalyzerLoadingOrderDescriptionFilePlugin extends FlowrAnalyzerLoadingOrderPlugin {
 	public readonly name = 'flowr-analyzer-package-version-description-file-plugin';

@@ -11,6 +11,7 @@ import type {
 import type {
 	FlowrAnalyzerProjectDiscoveryPlugin
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
+import type { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
 
 /** This summarizes the other context layers */
 export class FlowrAnalyzerContext {
@@ -21,7 +22,8 @@ export class FlowrAnalyzerContext {
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		/* TODO:  groupedPlugins.get(PluginType.File) as FlowrAnalyzerFilePlugin[] */
 		// TODO: default plugins!!
-		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, plugins.get(PluginType.ProjectDiscovery) as FlowrAnalyzerProjectDiscoveryPlugin[]);
+		this.files = new FlowrAnalyzerFilesContext(loadingOrder, plugins.get(PluginType.ProjectDiscovery) as FlowrAnalyzerProjectDiscoveryPlugin[],
+            plugins.get(PluginType.FileLoad) as FlowrAnalyzerFilePlugin[]);
 		this.deps  = new FlowrAnalyzerDependenciesContext(this, plugins.get(PluginType.DependencyIdentification) as FlowrAnalyzerPackageVersionsPlugin[]);
 	}
 
@@ -32,7 +34,7 @@ export class FlowrAnalyzerContext {
 
 	/** this conducts all of the step that can be done before the main analysis run */
 	public resolvePreAnalysis(): void {
-		this.files.calculateLoadingOrder();
+		this.files.computeLoadingOrder();
 		// TODO: pre-file dependency analysis and identification
 	}
 

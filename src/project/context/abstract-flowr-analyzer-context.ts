@@ -1,5 +1,4 @@
 import type { FlowrAnalyzerPlugin } from '../plugins/flowr-analyzer-plugin';
-import type { AsyncOrSync } from 'ts-essentials';
 import { isNotUndefined } from '../../util/assert';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 
@@ -11,17 +10,29 @@ export abstract class AbstractFlowrAnalyzerContext<In, Out, Plugin extends Flowr
     protected readonly plugins: readonly Plugin[];
     protected readonly ctx:     FlowrAnalyzerContext;
 
-    protected constructor(ctx: FlowrAnalyzerContext, plugins?: readonly Plugin[]) {
-    	this.plugins = plugins ?? [];
+
+    protected constructor(ctx: FlowrAnalyzerContext, defaultPlugin: Plugin, plugins?: readonly Plugin[]) {
+    	this.plugins = [...plugins ?? [], defaultPlugin];
     	this.ctx = ctx;
     }
 
-
-    protected async applyPlugins(args: Parameters<Plugin['processor']>[1]): Promise<Awaited<Out>[]> {
-    	const res: AsyncOrSync<Out | undefined>[] = [];
+    /**
+     * Run all registered plugins on the given args, please be aware that if they are async, it is up to you to
+     * await them.
+     */
+    protected applyPlugins(args: Parameters<Plugin['processor']>[1]): Out[] {
+    	const res: (Out | undefined)[] = [];
     	for(const plugin of this.plugins) {
     		res.push(plugin.processor(this.ctx, args));
     	}
-    	return Promise.all(res).then(f => f.filter(isNotUndefined));
+    	return res.filter(isNotUndefined);
+    }
+
+
+    /**
+     * Returns the project context this sub-context is attached to
+     */
+    public getAttachedContext(): FlowrAnalyzerContext {
+    	return this.ctx;
     }
 }

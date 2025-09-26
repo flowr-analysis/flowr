@@ -1,67 +1,18 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
 import type { RParseRequest, RParseRequestFromFile } from '../../r-bridge/retriever';
-import type { PathLike } from 'fs';
-import fs from 'fs';
-import { assertUnreachable, guard } from '../../util/assert';
+import { isParseRequest } from '../../r-bridge/retriever';
+import { guard } from '../../util/assert';
 import type { FlowrAnalyzerLoadingOrderContext } from './flowr-analyzer-loading-order-context';
-import type {
+import {
 	FlowrAnalyzerProjectDiscoveryPlugin
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
-import { FlowrDescriptionFile } from '../plugins/file-plugins/flowr-analyzer-description-file-plugin';
 import type { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
-import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
+import type { FilePath, FlowrFile, FlowrFileProvider } from './flowr-file';
+import {  FlowrTextFile , SpecialFileRole } from './flowr-file';
+import type { FlowrDescriptionFile } from '../plugins/file-plugins/flowr-description-file';
+import { log } from '../../util/log';
 
-type FilePath = string;
-
-export interface FlowrFileProvider<Content = unknown> {
-    role?: SpecialFileRole;
-    path(): PathLike;
-    content(): Content;
-}
-
-export abstract class FlowrFile<Content = unknown> implements FlowrFileProvider {
-	private contentCache:  Content | undefined;
-	protected filePath:    PathLike;
-	public readonly role?: SpecialFileRole;
-
-	public constructor(filePath: PathLike, role?: SpecialFileRole) {
-		this.filePath = filePath;
-		this.role     = role;
-	}
-
-	public path(): PathLike {
-		return this.filePath;
-	}
-
-	public content(): Content {
-		if(this.contentCache === undefined) {
-			this.contentCache = this.loadContent(); // fs.readFileSync(this.filePath, 'utf8');
-		}
-		return this.contentCache;
-	}
-
-    protected abstract loadContent(): Content;
-
-    assignRole(role: SpecialFileRole): void {
-    	guard(this.role === undefined || this.role === role, `File ${this.filePath.toString()} already has a role assigned: ${this.role}`);
-    	(this as { role?: SpecialFileRole }).role = role;
-    }
-}
-
-export class FlowrTextFile extends FlowrFile<string> {
-	protected loadContent(): string {
-		return fs.readFileSync(this.filePath, 'utf8');
-	}
-}
-
-export enum SpecialFileRole {
-    Description = 'description',
-    Namespace   = 'namespace',
-    Data        = 'data',
-    Other       = 'other'
-}
-
-
+const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
 export interface RProjectAnalysisRequest {
     readonly request: 'project';
@@ -81,28 +32,48 @@ export type SpecialFiles = {
     [SpecialFileRole.Other]:       FlowrFileProvider[];
 }
 
+function obtainFileAndPath(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: SpecialFileRole): { f: FlowrFileProvider<string> | RParseRequestFromFile, p: string } {
+	let f: FlowrFileProvider<string> | RParseRequestFromFile;
+	let p: FilePath;
+	if(typeof file === 'string') {
+		f = new FlowrTextFile(file, role);
+		p = file;
+	} else if('request' in file) {
+		f = file;
+		p = file.content;
+	} else {
+		f = file;
+		p = file.path().toString();
+	}
+	return { f, p };
+}
+
 // TODO: type of project (library vs. user code etc.)
 /**
  * This is the analyzer file context to be modified by all plugins that affect the files
  */
-export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RProjectAnalysisRequest, RParseRequest[], FlowrAnalyzerProjectDiscoveryPlugin> {
+export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RProjectAnalysisRequest, (RParseRequest | FlowrFile<string>)[], FlowrAnalyzerProjectDiscoveryPlugin> {
 	public readonly name = 'flowr-analyzer-files-context';
 
 	public readonly loadingOrder: FlowrAnalyzerLoadingOrderContext;
-	/* all project files etc, this contains *all* files, loading orders etc. are to be handled by plugins */
+	/* all project files etc., this contains *all* files, loading orders etc. are to be handled by plugins */
 	private files:                Map<FilePath, FlowrFileProvider | RParseRequestFromFile> = new Map<FilePath, FlowrFileProvider | RParseRequestFromFile>();
-	private fileLoaders:          readonly FlowrAnalyzerFilePlugin[] = [/* TODO */];
+	private readonly fileLoaders: readonly FlowrAnalyzerFilePlugin[];
 	/* files that are part of the analysis, e.g. source files */
 	private specialFiles:        SpecialFiles = {
 		[SpecialFileRole.Description]: [],
 		[SpecialFileRole.Namespace]:   [],
 		[SpecialFileRole.Data]:        [],
 		[SpecialFileRole.Other]:       []
-	};
+	} satisfies Record<SpecialFileRole, FlowrFileProvider[]>;
 
-	// TODO: file load plugins
-	constructor(ctx: FlowrAnalyzerContext, loadingOrder: FlowrAnalyzerLoadingOrderContext, plugins: readonly FlowrAnalyzerProjectDiscoveryPlugin[]) {
-		super(ctx, plugins);
+	constructor(
+		loadingOrder: FlowrAnalyzerLoadingOrderContext,
+		plugins: readonly FlowrAnalyzerProjectDiscoveryPlugin[],
+		fileLoaders: readonly FlowrAnalyzerFilePlugin[]
+	) {
+		super(loadingOrder.getAttachedContext(), FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin(), plugins);
+		this.fileLoaders = fileLoaders;
 		this.loadingOrder = loadingOrder;
 	}
 
@@ -112,55 +83,62 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		}
 	}
 
-
 	public addRequest(request: RAnalysisRequest): void {
-		this.loadingOrder.addRequest(request);
-		if(request.request === 'file') {
-			this.files.set(request.content, request);
+		if(request.request !== 'project') {
+			this.loadingOrder.addRequest(request);
+			if(request.request === 'file') {
+				this.files.set(request.content, request);
+			}
+			return;
+		}
+
+		const expandedRequests = this.applyPlugins(request).flat();
+		for(const req of expandedRequests) {
+			if(isParseRequest(req)) {
+				this.addRequest(req);
+			} else {
+				this.addFile(req, req.role);
+			}
 		}
 	}
 
-	private addSpecialFile(file: FlowrFileProvider, role: SpecialFileRole): void {
-		// TODO: decided by the plugins, this should not be fixed from the outside, this should ask the plugins whether they apply and aplly based on this
-		switch(role) {
-			case SpecialFileRole.Description:
-				this.specialFiles[role].push(FlowrDescriptionFile.from(file));
-				break;
-			case SpecialFileRole.Namespace:
-			case SpecialFileRole.Data:
-			case SpecialFileRole.Other:
-				this.specialFiles[role].push(file);
-				break;
-			default:
-				assertUnreachable(role);
+	public addFiles(...files: (string | FlowrFileProvider<string> | RParseRequestFromFile)[]): void {
+		for(const file of files) {
+			this.addFile(file);
 		}
 	}
 
-	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile, role?: SpecialFileRole): void {
-		let f: FlowrFileProvider | RParseRequestFromFile;
-		let p: FilePath;
-		if(typeof file === 'string') {
-			f = new FlowrTextFile(file, role);
-			p = file;
-		} else if('request' in file) {
-			f = file;
-			p = file.content;
-		} else {
-			f = file;
-			p = file.path().toString();
-		}
+	public addFile(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: SpecialFileRole): void {
+		const { f, p } = obtainFileAndPath(file, role);
+		const { f: fA, p: pA } = this.fileLoadPlugins(f, p);
 
-		const exist = this.files.get(p);
-		guard(exist === undefined || exist === f, `File ${p} already added to the context.`);
-		this.files.set(p, f);
-		if(role !== undefined) {
-			guard(!('request' in f), `Cannot assign role to RParseRequestFromFile: ${p}`);
-			this.addSpecialFile(f, role);
+		const exist = this.files.get(pA);
+		guard(exist === undefined || exist === fA, `File ${pA} already added to the context.`);
+		this.files.set(pA, fA);
+
+		if(!isParseRequest(fA) && fA.role) {
+			this.specialFiles[fA.role].push(fA as typeof this.specialFiles[SpecialFileRole.Description][number]);
 		}
 	}
 
 
-	public calculateLoadingOrder(): readonly RParseRequest[] {
+	private fileLoadPlugins(f: FlowrFileProvider<string> | RParseRequestFromFile, p: string) {
+		let fFinal: FlowrFileProvider | RParseRequestFromFile = f;
+		let pFinal: string = p;
+		if(!isParseRequest(f)) { // we have to change the types when we integrate the adapters
+			for(const loader of this.fileLoaders) {
+				if(loader.applies(p)) {
+					fileLog.debug(`Applying file loader ${loader.name} to file ${p}`);
+					fFinal = loader.processor(this.ctx, f);
+					pFinal = f.path().toString();
+					break;
+				}
+			}
+		}
+		return { f: fFinal, p: pFinal };
+	}
+
+	public computeLoadingOrder(): readonly RParseRequest[] {
 		return this.loadingOrder.getLoadingOrder();
 	}
 

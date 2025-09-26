@@ -2,7 +2,7 @@ import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context'
 import type { RParseRequest } from '../../r-bridge/retriever';
 import { log } from '../../util/log';
 import { arrayEqual } from '../../util/collections/arrays';
-import type { FlowrAnalyzerLoadingOrderPlugin } from '../plugins/loading-order-plugins/flowr-analyzer-loading-order-plugin';
+import { FlowrAnalyzerLoadingOrderPlugin } from '../plugins/loading-order-plugins/flowr-analyzer-loading-order-plugin';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 
 const loadingOrderLog = log.getSubLogger({ name: 'loading-order' });
@@ -13,7 +13,7 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 	private rerunRequired: boolean;
 
 	constructor(ctx: FlowrAnalyzerContext, plugins: readonly FlowrAnalyzerLoadingOrderPlugin[] | undefined) {
-		super(ctx, plugins);
+		super(ctx, FlowrAnalyzerLoadingOrderPlugin.defaultPlugin(), plugins);
 		this.rerunRequired = this.plugins.length > 0;
 	}
 
@@ -22,8 +22,16 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 	/** just the base collection of requests we know nothing about the order! */
 	private unordered:   RParseRequest[] = [];
 
+	public addRequests(requests: readonly RParseRequest[]): void {
+		this.unordered.push(...requests);
+		if(this.knownOrder || this.guesses.length > 0) {
+			loadingOrderLog.warn(`Adding requests ${requests.map(r => r.request).join(', ')} after known order!`);
+			this.rerunRequired = true;
+		}
+	}
+
 	public addRequest(request: RParseRequest): void  {
-		this.unordered?.push(request);
+		this.unordered.push(request);
 		if(this.knownOrder || this.guesses.length > 0) {
 			loadingOrderLog.warn(`Adding request ${request.request} ${request.content} after known order!`);
 			this.rerunRequired = true;
@@ -59,6 +67,7 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 	public getLoadingOrder(): readonly RParseRequest[] {
 		if(this.rerunRequired) {
 			this.rerunRequired = false;
+			this.applyPlugins(undefined);
 		}
 
 		return this.peekLoadingOrder() ?? this.unordered;

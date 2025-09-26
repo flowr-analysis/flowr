@@ -1,7 +1,5 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
-import type {
-	FlowrAnalyzerPackageVersionsPlugin
-} from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
+import { FlowrAnalyzerPackageVersionsPlugin } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 
@@ -9,9 +7,15 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	public readonly name = 'flowr-analyzer-dependencies-context';
 
 	private dependencies: Map<string, Package> = new Map();
+	private staticsLoaded = false;
 
 	public constructor(ctx: FlowrAnalyzerContext, plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]) {
-		super(ctx, plugins);
+		super(ctx, FlowrAnalyzerPackageVersionsPlugin.defaultPlugin(), plugins);
+	}
+
+	public resolveStaticDependencies(): void {
+		this.applyPlugins(undefined);
+		this.staticsLoaded = true;
 	}
 
 	public addDependency(pkg: Package): void {
@@ -24,6 +28,9 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	public getDependency(name: string): Package | undefined {
+		if(!this.staticsLoaded) {
+			this.resolveStaticDependencies();
+		}
 		return this.dependencies.get(name);
 	}
 

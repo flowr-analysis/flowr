@@ -65,6 +65,13 @@ export type RParseRequest = RParseRequestFromFile | RParseRequestFromText
  */
 export type RParseRequests = RParseRequest | ReadonlyArray<RParseRequest>
 
+export function isParseRequest(request: unknown): request is RParseRequest {
+	if(typeof request !== 'object' || request === null) {
+		return false;
+	}
+	return 'request' in request;
+}
+
 export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFile
 export function requestFromInput(input: `${typeof fileProtocol}${string}`[]): RParseRequestFromFile[]
 export function requestFromInput(input: string): RParseRequestFromText

@@ -12,6 +12,7 @@ import { guard } from '../util/assert';
 import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
 
+// TODO: automatically identify project type from path
 
 /**
  * Builder for the {@link FlowrAnalyzer}.

@@ -1,14 +1,13 @@
 import { FlowrAnalyzerPackageVersionsPlugin } from './flowr-analyzer-package-versions-plugin';
-import type {
-	DCF } from '../file-plugins/flowr-analyzer-description-file-plugin';
 import {
 	descriptionFileLog
 } from '../file-plugins/flowr-analyzer-description-file-plugin';
 import { SemVer } from 'semver';
 import type { PackageType } from './package';
 import { Package } from './package';
-import { SpecialFileRole } from '../../context/flowr-analyzer-files-context';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
+import { SpecialFileRole } from '../../context/flowr-file';
+import type { DCF } from '../file-plugins/flowr-description-file';
 
 const VersionRegex = /^([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([\d.]+)\))?$/;
 

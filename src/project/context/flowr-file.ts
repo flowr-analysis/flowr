@@ -32,12 +32,12 @@ export abstract class FlowrFile<Content = unknown> implements FlowrFileProvider<
 		return this.contentCache;
 	}
 
-    protected abstract loadContent(): Content;
+	protected abstract loadContent(): Content;
 
-    public assignRole(role: SpecialFileRole): void {
-    	guard(this.role === undefined || this.role === role, `File ${this.filePath.toString()} already has a role assigned: ${this.role}`);
-    	(this as { role?: SpecialFileRole }).role = role;
-    }
+	public assignRole(role: SpecialFileRole): void {
+		guard(this.role === undefined || this.role === role, `File ${this.filePath.toString()} already has a role assigned: ${this.role}`);
+		(this as { role?: SpecialFileRole }).role = role;
+	}
 }
 
 export class FlowrTextFile extends FlowrFile<string> {

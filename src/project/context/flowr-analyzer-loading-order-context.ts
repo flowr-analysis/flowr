@@ -3,25 +3,17 @@ import type { RParseRequest } from '../../r-bridge/retriever';
 import { log } from '../../util/log';
 import { arrayEqual } from '../../util/collections/arrays';
 import type { FlowrAnalyzerLoadingOrderPlugin } from '../plugins/loading-order-plugins/flowr-analyzer-loading-order-plugin';
+import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 
 const loadingOrderLog = log.getSubLogger({ name: 'loading-order' });
 
-export interface LoadingOrderPluginInterface {
-    currentGuesses(): readonly RParseRequest[][];
-    peekLoadingOrder(): readonly RParseRequest[] | undefined;
-    currentKnownOrder(): readonly RParseRequest[] | undefined;
-    addGuess(guess: readonly RParseRequest[], certain?: boolean): void;
-}
-
-export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerContext {
+export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerLoadingOrderPlugin> {
 	public readonly name = 'flowr-analyzer-loading-order-context';
 
-	private plugins:       readonly FlowrAnalyzerLoadingOrderPlugin[];
 	private rerunRequired: boolean;
 
-	constructor(plugins: readonly FlowrAnalyzerLoadingOrderPlugin[] | undefined) {
-		super();
-		this.plugins = plugins ?? [];
+	constructor(ctx: FlowrAnalyzerContext, plugins: readonly FlowrAnalyzerLoadingOrderPlugin[] | undefined) {
+		super(ctx, plugins);
 		this.rerunRequired = this.plugins.length > 0;
 	}
 
@@ -38,7 +30,7 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 		}
 	}
 
-	protected addGuess(guess: readonly RParseRequest[], certain?: boolean): void {
+	public addGuess(guess: readonly RParseRequest[], certain?: boolean): void {
 		if(certain) {
 			if(this.knownOrder) {
 				loadingOrderLog.warn(`Adding certain guess ${guess.map(g => g.request).join(', ')} after known order!`);

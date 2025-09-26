@@ -8,6 +8,9 @@ import type { FlowrAnalyzerLoadingOrderPlugin } from '../plugins/loading-order-p
 import type {
 	FlowrAnalyzerPackageVersionsPlugin
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
+import type {
+	FlowrAnalyzerProjectDiscoveryPlugin
+} from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 
 /** This summarizes the other context layers */
 export class FlowrAnalyzerContext {
@@ -15,11 +18,11 @@ export class FlowrAnalyzerContext {
 	public readonly deps:  FlowrAnalyzerDependenciesContext;
 
 	constructor(plugins: ReadonlyMap<PluginType, FlowrAnalyzerPlugin[]>) {
-		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
+		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		/* TODO:  groupedPlugins.get(PluginType.File) as FlowrAnalyzerFilePlugin[] */
-		// TODO: file discovery plugins
-		this.files = new FlowrAnalyzerFilesContext(loadingOrder);
-		this.deps  = new FlowrAnalyzerDependenciesContext(plugins.get(PluginType.DependencyIdentification) as FlowrAnalyzerPackageVersionsPlugin[]);
+		// TODO: default plugins!!
+		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, plugins.get(PluginType.ProjectDiscovery) as FlowrAnalyzerProjectDiscoveryPlugin[]);
+		this.deps  = new FlowrAnalyzerDependenciesContext(this, plugins.get(PluginType.DependencyIdentification) as FlowrAnalyzerPackageVersionsPlugin[]);
 	}
 
 	/** delegate request addition */

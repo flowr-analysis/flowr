@@ -1,32 +1,40 @@
 import { FlowrAnalyzerPackageVersionsPlugin } from './flowr-analyzer-package-versions-plugin';
-import { FlowrAnalyzerDescriptionFilePlugin } from '../file-plugins/flowr-analyzer-description-file-plugin';
-import type { FlowrAnalyzerPlugin } from '../flowr-analyzer-plugin';
+import type {
+	DCF } from '../file-plugins/flowr-analyzer-description-file-plugin';
+import {
+	descriptionFileLog
+} from '../file-plugins/flowr-analyzer-description-file-plugin';
 import { SemVer } from 'semver';
-import type { FlowrAnalysisProvider } from '../../flowr-analyzer';
-import type { FlowrConfigOptions } from '../../../config';
 import type { PackageType } from './package';
 import { Package } from './package';
+import { SpecialFileRole } from '../../context/flowr-analyzer-files-context';
+import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
+
+const VersionRegex = /^([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([\d.]+)\))?$/;
 
 export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name = 'flowr-analyzer-package-version-description-file-plugin';
 	public readonly description = 'This plugin does...';
 	public readonly version = new SemVer('0.1.0');
 
-	dependencies:    FlowrAnalyzerPlugin[] = [new FlowrAnalyzerDescriptionFilePlugin()];
-	descriptionFile: Map<string, string[]> = new Map<string, string[]>();
+	process(ctx: FlowrAnalyzerContext): void {
+		const descFiles = ctx.files.getFilesByRole(SpecialFileRole.Description);
+		if(descFiles.length !== 1) {
+			descriptionFileLog.warn(`Supporting only exactly one DESCRIPTION file, found ${descFiles.length}`);
+			return;
+		}
 
-	processor(analyzer: FlowrAnalysisProvider, pluginConfig: FlowrConfigOptions): void {
-		const plugin = this.dependencies[0] as FlowrAnalyzerDescriptionFilePlugin;
-		plugin.processor(analyzer, pluginConfig);
-		this.descriptionFile = plugin.information;
+		/** this will do the caching etc. for me */
+		const deps = descFiles[0].content();
 
-		this.retrieveVersionsFromField('Depends', 'r');
-		this.retrieveVersionsFromField('Imports', 'package');
+		this.retrieveVersionsFromField(ctx, deps, 'Depends', 'r');
+		this.retrieveVersionsFromField(ctx, deps, 'Imports', 'package');
 	}
 
-	private retrieveVersionsFromField(field: string, type?: PackageType): void{
-		for(const entry of this.descriptionFile?.get(field) || []) {
-			const match = RegExp(/^([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([\d.]+)\))?$/).exec(entry);
+
+	private retrieveVersionsFromField(ctx: FlowrAnalyzerContext, file: DCF, field: string, type?: PackageType): void {
+		for(const entry of file.get(field) ?? []) {
+			const match = VersionRegex.exec(entry);
 
 			if(match) {
 				const name = match[1];
@@ -36,7 +44,7 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 				const range = Package.parsePackageVersionRange(operator, version);
 
 				if(range){
-					this.packages.push(new Package(name, type, undefined, range));
+					ctx.deps.addDependency(new Package(name, type, undefined, range));
 				}
 			}
 		}

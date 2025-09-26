@@ -16,7 +16,6 @@ import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { defaultConfigOptions } from '../../../src/config';
 import type { KnownParser, ParseStepOutput } from '../../../src/r-bridge/parser';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
-import { getDummyFlowrProject } from '../../../src/project/flowr-project';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { Tree } from 'web-tree-sitter';
 
@@ -79,10 +78,8 @@ export function assertQuery<
 		// we run the dfa analysis to make sure normalization post-patches are ready!
 		await analyzer.runFull();
 
-		const dummyProject = getDummyFlowrProject();
 		const result = await executeQueries<Queries['type'], VirtualArguments>({
-			analyzer:  analyzer,
-			libraries: dummyProject.libraries
+			analyzer
 		}, queries);
 
 

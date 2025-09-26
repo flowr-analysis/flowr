@@ -1,7 +1,5 @@
-import type { Package } from './package';
-import { FlowrAnalyzerPlugin } from '../flowr-analyzer-plugin';
+import { FlowrAnalyzerPlugin, PluginType } from '../flowr-analyzer-plugin';
 
-export abstract class FlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPlugin {
-	readonly type = 'package-versions';
-	public packages: Package[] = [];
+export abstract class FlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPlugin<undefined, void> {
+	readonly type = PluginType.DependencyIdentification;
 }

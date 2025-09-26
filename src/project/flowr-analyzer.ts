@@ -23,6 +23,7 @@ import type { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
  */
 export type FlowrAnalysisProvider = {
     parserName(): string
+    context():  FlowrAnalyzerContext
     parse(force?: boolean): Promise<ParseStepOutput<Awaited<ReturnType<KnownParser['parse']>>> & PipelinePerStepMetaInformation>
 	normalize(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation>;
 	dataflow(force?: boolean): Promise<DataflowInformation & PipelinePerStepMetaInformation>;
@@ -60,6 +61,11 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> {
 		this.parser = parser;
 		this.ctx = ctx;
 		this.cache = FlowrAnalyzerCache.create({ parser, config, request: ctx.files.calculateLoadingOrder(), ...requiredInput });
+	}
+
+	/** Returns project context information */
+	public context(): FlowrAnalyzerContext {
+		return this.ctx;
 	}
 
 	/**

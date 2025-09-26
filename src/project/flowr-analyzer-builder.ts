@@ -28,7 +28,7 @@ export class FlowrAnalyzerBuilder {
      * Create a new builder instance.
      * @param request - The code to analyze
      */
-	constructor(request?: RAnalysisRequest) {
+	constructor(request?: RAnalysisRequest | readonly RAnalysisRequest[]) {
 		this.addRequest(request ?? []);
 	}
 

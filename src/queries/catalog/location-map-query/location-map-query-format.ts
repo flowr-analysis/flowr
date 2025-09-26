@@ -26,7 +26,7 @@ export interface LocationMapQueryResult extends BaseQueryResult {
 
 export const LocationMapQueryDefinition = {
 	executor:        executeLocationMapQuery,
-	asciiSummarizer: (formatter: OutputFormatter, _processed: unknown, queryResults: BaseQueryResult, result: string[]) => {
+	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as LocationMapQueryResult;
 		result.push(`Query: ${bold('location-map', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		result.push('   ╰ File List:');

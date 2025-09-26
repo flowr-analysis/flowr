@@ -1,24 +1,14 @@
-import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
-import { createDataflowPipeline } from '../../../core/steps/pipeline/default-pipelines';
-import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
-import type { ReplCommand, ReplOutput } from './repl-main';
+import { fileProtocol } from '../../../r-bridge/retriever';
+import type { ReplCodeCommand, ReplOutput } from './repl-main';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { ansiFormatter, italic } from '../../../util/text/ansi';
 import { describeSchema } from '../../../util/schema';
 import type { Query, QueryResults, SupportedQuery, SupportedQueryTypes } from '../../../queries/query';
-import { SupportedQueries , AnyQuerySchema, executeQueries, QueriesSchema } from '../../../queries/query';
-import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
+import { AnyQuerySchema, executeQueries, QueriesSchema, SupportedQueries } from '../../../queries/query';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
-import type { KnownParser } from '../../../r-bridge/parser';
-import type { FlowrConfigOptions } from '../../../config';
-
-
-async function getDataflow(config: FlowrConfigOptions, parser: KnownParser, remainingLine: string) {
-	return await createDataflowPipeline(parser, {
-		request: requestFromInput(remainingLine.trim())
-	}, config).allRemainingSteps();
-}
+import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import { getDummyFlowrProject } from '../../../project/flowr-project';
 
 
 function printHelp(output: ReplOutput) {
@@ -32,9 +22,8 @@ function printHelp(output: ReplOutput) {
 	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
 }
 
-async function processQueryArgs(line: string, parser: KnownParser, output: ReplOutput, config: FlowrConfigOptions): Promise<undefined | { parsedQuery: Query[], query: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> }> {
-	const args = splitAtEscapeSensitive(line);
-	const query = args.shift();
+async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvider, remainingArgs: string[]): Promise<undefined | { parsedQuery: Query[], query: QueryResults, analyzer: FlowrAnalysisProvider }> {
+	const query = remainingArgs.shift();
 
 	if(!query) {
 		output.stderr('No query provided, use \':query help\' to get more information.');
@@ -45,12 +34,12 @@ async function processQueryArgs(line: string, parser: KnownParser, output: ReplO
 		return;
 	}
 
-	let parsedQuery: Query[] = [];
+	let parsedQuery: Query[];
 	if(query.startsWith('@')) {
 		const queryName = query.slice(1);
 		const queryObj = SupportedQueries[queryName as keyof typeof SupportedQueries] as SupportedQuery;
 		if(queryObj?.fromLine) {
-			const q = queryObj.fromLine(args, config);
+			const q = queryObj.fromLine(remainingArgs, analyzer.flowrConfig);
 			parsedQuery = q ? (Array.isArray(q) ? q : [q]) : [];
 		} else {
 			parsedQuery = [{ type: query.slice(1) as SupportedQueryTypes } as Query];
@@ -73,36 +62,57 @@ async function processQueryArgs(line: string, parser: KnownParser, output: ReplO
 		parsedQuery = [{ type: 'call-context', callName: query }];
 	}
 
-	const processed = await getDataflow(config, parser, args.join(' '));
+	const dummyProject = getDummyFlowrProject();
+
 	return {
+		query: await executeQueries({
+			analyzer:  analyzer,
+			libraries: dummyProject.libraries },
+		parsedQuery),
 		parsedQuery,
-		query: await Promise.resolve(executeQueries({ dataflow: processed.dataflow, ast: processed.normalize, config }, parsedQuery)),
-		processed
+		analyzer
 	};
 }
 
-export const queryCommand: ReplCommand = {
+/**
+ * Function for splitting the input line.
+ * The first token is the query command.
+ * The rest of the line is treated as input code.
+ */
+function parseArgs(line: string) {
+	const args = splitAtEscapeSensitive(line);
+	return {
+		input:     args.join(' ').trim(),
+		remaining: args
+	};
+}
+
+export const queryCommand: ReplCodeCommand = {
 	description:  `Query the given R code, start with '${fileProtocol}' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).`,
+	usesAnalyzer: true,
 	usageExample: ':query "<query>" <code>',
 	aliases:      [],
 	script:       false,
-	fn:           async({ output, parser, remainingLine, config }) => {
+	argsParser:   parseArgs,
+	fn:           async({ output, analyzer, remainingArgs }) => {
 		const totalStart = Date.now();
-		const results = await processQueryArgs(remainingLine, parser, output, config);
+		const results = await processQueryArgs(output, analyzer, remainingArgs);
 		const totalEnd = Date.now();
 		if(results) {
-			output.stdout(asciiSummaryOfQueryResult(ansiFormatter, totalEnd - totalStart, results.query, results.processed, results.parsedQuery));
+			output.stdout(await asciiSummaryOfQueryResult(ansiFormatter, totalEnd - totalStart, results.query, results.analyzer, results.parsedQuery));
 		}
 	}
 };
 
-export const queryStarCommand: ReplCommand = {
+export const queryStarCommand: ReplCodeCommand = {
 	description:  'Similar to query, but returns the output in json format.',
+	usesAnalyzer: true,
 	usageExample: ':query* <query> <code>',
-	aliases:      [ ],
+	aliases:      [],
 	script:       false,
-	fn:           async({ output, parser, remainingLine, config }) => {
-		const results = await processQueryArgs(remainingLine, parser, output, config);
+	argsParser:   parseArgs,
+	fn:           async({ output, analyzer, remainingArgs }) => {
+		const results = await processQueryArgs(output, analyzer, remainingArgs);
 		if(results) {
 			output.stdout(JSON.stringify(results.query, jsonReplacer));
 		}

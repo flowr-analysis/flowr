@@ -1,7 +1,8 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type {
-	DEFAULT_DATAFLOW_PIPELINE, DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE,
+	DEFAULT_DATAFLOW_PIPELINE,
+	DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE,
 	DEFAULT_SLICING_PIPELINE
 } from '../../../core/steps/pipeline/default-pipelines';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
@@ -43,7 +44,7 @@ export interface StaticSliceQueryResult extends BaseQueryResult {
 
 export const StaticSliceQueryDefinition = {
 	executor:        executeStaticSliceQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'static-slice'>['static-slice'];
 		result.push(`Query: ${bold('static-slice', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [fingerprint, obj] of Object.entries(out.results)) {

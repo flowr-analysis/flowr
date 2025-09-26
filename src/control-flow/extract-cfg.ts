@@ -93,7 +93,7 @@ export function extractCfg<Info = ParentInformation>(
 }
 
 /**
- * A version of {@link extractCfg} that is much quicker and does not apply any simplifciations or dataflow information.
+ * A version of {@link extractCfg} that is much quicker and does not apply any simplifications or dataflow information.
  */
 export function extractCfgQuick<Info = ParentInformation>(ast: NormalizedAst<Info>) {
 	return foldAst(ast.ast, cfgFolds);

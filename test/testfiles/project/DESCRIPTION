@@ -1,0 +1,37 @@
+Package: mypackage
+Title: What the Package Does (One Line, Title Case)
+Version: 0.0.0.9000
+Authors@R:
+    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
+Description: What the package does (one paragraph).
+License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
+    license
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Description: The description of a package usually spans multiple lines.
+    The second and subsequent lines should be indented, usually with four
+    spaces.
+URL: https://github.com/flowr-analysis/flowr
+BugReports: https://github.com/flowr-analysis/flowr/issues
+Depends:
+    R (>= 4.0)
+Imports:
+    dplyr (>= 1.4.0),
+    tidyr,
+    ggplot2 (>= 2.5.8),
+    ads (>= 0.8.1)
+Suggests:
+    sf (>= 0.8-1),
+    tibble,
+    testthat (>= 2.1.5),
+    svglite (>= 1.1.2),
+    xml2
+    vdiffr (>= 1.5.6),
+Enhances:
+    something
+LazyData: true
+Collate:
+    'aaa.R'
+    'main.R'
+    'zzz.R'

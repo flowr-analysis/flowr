@@ -1,6 +1,13 @@
 import { executeQueriesOfSameType } from '../../query';
-import type { DefaultDependencyCategoryName,DependenciesQuery, DependenciesQueryResult, DependencyCategoryName, DependencyCategorySettings, DependencyInfo } from './dependencies-query-format';
-import { getAllCategories, DefaultDependencyCategories, Unknown } from './dependencies-query-format';
+import type {
+	DefaultDependencyCategoryName,
+	DependenciesQuery,
+	DependenciesQueryResult,
+	DependencyCategoryName,
+	DependencyCategorySettings,
+	DependencyInfo
+} from './dependencies-query-format';
+import { DefaultDependencyCategories, getAllCategories, Unknown } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { VertexType } from '../../../dataflow/graph/vertex';
@@ -13,14 +20,29 @@ import type { DependencyInfoLinkAttachedInfo, FunctionInfo } from './function-in
 import { DependencyInfoLinkConstraint } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
+import type { DataflowInformation } from '../../../dataflow/info';
+import type { FlowrConfigOptions } from '../../../config';
 import { guard } from '../../../util/assert';
+import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
-export function executeDependenciesQuery(data: BasicQueryData, queries: readonly DependenciesQuery[]): DependenciesQueryResult {
+export async function executeDependenciesQuery({
+	analyzer,
+	libraries
+}: BasicQueryData, queries: readonly DependenciesQuery[]): Promise<DependenciesQueryResult> {
 	if(queries.length !== 1) {
 		log.warn('Dependencies query expects only up to one query, but got ', queries.length, 'only using the first query');
 	}
-	const now = Date.now();
 
+	const data = {
+		analyzer,
+		libraries
+	};
+
+	const normalize = await analyzer.normalize();
+	const dataflow = await analyzer.dataflow();
+	const config = analyzer.flowrConfig;
+
+	const now = Date.now();
 	const [query] = queries;
 	const ignoreDefault = query.ignoreDefaultFunctions ?? false;
 	const functions = new Map<DependencyCategoryName, FunctionInfo[]>(Object.entries(DefaultDependencyCategories).map(([c,v]) => {
@@ -34,11 +56,11 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 	}
 
 	const queryResults = functions.values().toArray().flat().length === 0 ? { kinds: {}, '.meta': { timing: 0 } } :
-		executeQueriesOfSameType<CallContextQuery>(data, functions.entries().map(([c, f]) => makeCallContextQuery(f, c)).toArray().flat());
+		await executeQueriesOfSameType<CallContextQuery>(data, functions.entries().map(([c, f]) => makeCallContextQuery(f, c)).toArray().flat());
 
 	const results = Object.fromEntries(functions.entries().map(([c, f]) => {
-		const results = getResults(queries, data, queryResults, c, f);
-		// only default categories allow additional analyses, so we null coalese here!
+		const results = getResults(queries, { dataflow, config, normalize }, queryResults, c, f, data);
+		// only default categories allow additional analyses, so we null-coalesce here!
 		(DefaultDependencyCategories as Record<string, DependencyCategorySettings>)[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
 		return [c, results];
 	})) as {[C in DependencyCategoryName]?: DependencyInfo[]};
@@ -47,7 +69,7 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		'.meta': {
 			timing: Date.now() - now
 		},
-		...results
+		...results,
 	} as DependenciesQueryResult;
 }
 
@@ -74,16 +96,16 @@ function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: o
 const readOnlyModes = new Set(['r', 'rt', 'rb']);
 const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab']);
 
-function getResults(queries: readonly DependenciesQuery[], data: BasicQueryData, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[]): DependencyInfo[] {
+function getResults(queries: readonly DependenciesQuery[], { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfigOptions, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data?: BasicQueryData): DependencyInfo[] {
 	const defaultValue = getAllCategories(queries)[kind].defaultValue;
 	const functionMap = new Map<string, FunctionInfo>(functions.map(f => [f.name, f]));
 	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});
 	return kindEntries.flatMap(([name, results]) => results.flatMap(({ id, linkedIds }) => {
-		const vertex = data.dataflow.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
+		const vertex = dataflow.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
 		const info = functionMap.get(name) as FunctionInfo;
 
-		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
-		const linkedArgs = collectValuesFromLinks(args, data, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
+		const args = getArgumentStringValue(config.solver.variables, dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
+		const linkedArgs = collectValuesFromLinks(args, { dataflow, config }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
 		const linked = dropInfoOnLinkedIds(linkedIds);
 
 		const foundValues = linkedArgs ?? args;
@@ -103,7 +125,7 @@ function getResults(queries: readonly DependenciesQuery[], data: BasicQueryData,
 			guard('mode' in (info.additionalArgs ?? {}), 'Need additional argument mode when checking for mode');
 			const margs = info.additionalArgs?.mode;
 			guard(margs, 'Need additional argument mode when checking for mode');
-			const modeArgs = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, margs.argIdx, margs.argName, margs.resolveValue);
+			const modeArgs = getArgumentStringValue(config.solver.variables, dataflow.graph, vertex, margs.argIdx, margs.argName, margs.resolveValue);
 			const modeValues = modeArgs?.values().flatMap(v => [...v]) ?? [];
 			if(info.ignoreIf === 'mode-only-read' && modeValues.every(m => m && readOnlyModes.has(m))) {
 				// all modes are read-only, so we can ignore this
@@ -117,11 +139,13 @@ function getResults(queries: readonly DependenciesQuery[], data: BasicQueryData,
 		for(const [arg, values] of foundValues.entries()) {
 			for(const value of values) {
 				const result = compactRecord({
-					nodeId:           id,
-					functionName:     vertex.name,
-					lexemeOfArgument: getLexeme(value, arg),
-					linkedIds:        linked?.length ? linked : undefined,
-					value:            value ?? defaultValue
+					nodeId:             id,
+					functionName:       vertex.name,
+					lexemeOfArgument:   getLexeme(value, arg),
+					linkedIds:          linked?.length ? linked : undefined,
+					value:              value ?? defaultValue,
+					versionConstraints:	data?.libraries?.find(f => f.name === value)?.versionConstraints ?? undefined,
+					derivedVersion:	    data?.libraries?.find(f => f.name === value)?.derivedVersion ?? undefined,
 				} as DependencyInfo);
 				if(result) {
 					results.push(result);
@@ -135,7 +159,7 @@ function getResults(queries: readonly DependenciesQuery[], data: BasicQueryData,
 		if((argument && argument !== Unknown) || !id) {
 			return undefined;
 		}
-		let get = data.ast.idMap.get(id);
+		let get = normalize.idMap.get(id);
 		if(get?.type === RType.Argument) {
 			get = get.value;
 		}
@@ -143,7 +167,7 @@ function getResults(queries: readonly DependenciesQuery[], data: BasicQueryData,
 	}
 }
 
-function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undefined, data: BasicQueryData, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string|undefined>> | undefined {
+function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfigOptions }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string|undefined>> | undefined {
 	if(!linkedIds || linkedIds.length === 0) {
 		return undefined;
 	}

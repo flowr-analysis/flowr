@@ -1,11 +1,16 @@
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
-import type { Pipeline, PipelineOutput, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
-import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowInformation } from '../dataflow/info';
-import type { FlowrConfigOptions } from '../config';
-import type { Enrichment, EnrichmentSearchArguments, EnrichmentData, EnrichmentElementContent, EnrichmentSearchContent, EnrichmentElementArguments } from './search-executor/search-enrichers';
+import type {
+	Enrichment,
+	EnrichmentData,
+	EnrichmentElementArguments,
+	EnrichmentElementContent,
+	EnrichmentSearchArguments,
+	EnrichmentSearchContent
+} from './search-executor/search-enrichers';
 import { Enrichments } from './search-executor/search-enrichers';
+import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 /**
  * Yes, for now we do technically not need a wrapper around the RNode, but this allows us to attach caches etc.
@@ -51,17 +56,6 @@ export interface FlowrSearchGetFilter extends Record<string, unknown> {
     readonly id?:       NodeId;
 }
 
-type MinimumInputForFlowrSearch<P extends Pipeline> =
-    PipelineStepOutputWithName<P, 'normalize'> extends NormalizedAst ? (
-        PipelineStepOutputWithName<P, 'dataflow'> extends DataflowInformation ? PipelineOutput<P> & { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions }
-            : never
-    ): never
-
-/** we allow any pipeline, which provides us with a 'normalize' and 'dataflow' step */
-export type FlowrSearchInput<
-    P extends Pipeline
-> = MinimumInputForFlowrSearch<P>
-
 /** Intentionally, we abstract away from an array to avoid the use of conventional typescript operations */
 export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
 	private elements:    Elements = [] as unknown as Elements;
@@ -87,23 +81,32 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 		return this.elements;
 	}
 
-	public mutate<OutElements extends Elements>(mutator: (elements: Elements) => OutElements): this {
-		this.elements = mutator(this.elements);
-		return this;
+	public mutate<OutElements extends Elements>(mutator: (elements: Elements) => OutElements | Promise<OutElements>): this | Promise<this> {
+		const result = mutator(this.elements);
+		if(result instanceof Promise) {
+			return result.then(resolvedElements => {
+				this.elements = resolvedElements;
+				return this;
+			});
+		} else {
+			this.elements = result;
+			return this;
+		}
 	}
+
 
 	/**
 	 * Enriches this flowr search element collection with the given enrichment.
 	 * To retrieve enrichment content for a given enrichment type, use {@link enrichmentContent}.
 	 *
-	 * Please note that this function does not also enrich individual elements, which is done through {@link enrichElement}. Both functions are called in a consise manner in {@link FlowrSearchBuilder.with}, which is the preferred way to add enrichments to a search.
+	 * Please note that this function does not also enrich individual elements, which is done through {@link enrichElement}. Both functions are called in a concise manner in {@link FlowrSearchBuilder.with}, which is the preferred way to add enrichments to a search.
 	 */
-	public enrich<E extends Enrichment>(data: FlowrSearchInput<Pipeline>, enrichment: E, args?: EnrichmentSearchArguments<E>): this {
+	public async enrich<E extends Enrichment>(data: FlowrAnalysisProvider, enrichment: E, args?: EnrichmentSearchArguments<E>): Promise<this> {
 		const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>, EnrichmentSearchContent<E>, EnrichmentSearchArguments<E>>;
 		if(enrichmentData.enrichSearch !== undefined) {
 			this.enrichments = {
 				...this.enrichments ?? {},
-				[enrichment]: enrichmentData.enrichSearch(this as FlowrSearchElements<ParentInformation>, data, args, this.enrichments?.[enrichment])
+				[enrichment]: await enrichmentData.enrichSearch(this as FlowrSearchElements<ParentInformation>, data, args, this.enrichments?.[enrichment])
 			};
 		}
 		return this;

@@ -1,4 +1,4 @@
-import { describe, assert, test } from 'vitest';
+import { assert, describe, test } from 'vitest';
 import path from 'path';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import {
@@ -7,8 +7,12 @@ import {
 import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import type { PathLike } from 'fs';
 import { FlowrFile } from '../../../../src/project/context/flowr-file';
-import { FlowrAnalyzerPackageVersionsDescriptionFilePlugin } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-description-file-plugin';
-import { FlowrAnalyzerLoadingOrderDescriptionFilePlugin } from '../../../../src/project/plugins/loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
+import {
+	FlowrAnalyzerPackageVersionsDescriptionFilePlugin
+} from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-description-file-plugin';
+import {
+	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
+} from '../../../../src/project/plugins/loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
 
 
 class FakeFile extends FlowrFile<string> {

@@ -22,9 +22,9 @@ export class FlowrAnalyzerContext {
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		/* TODO:  groupedPlugins.get(PluginType.File) as FlowrAnalyzerFilePlugin[] */
 		// TODO: default plugins!!
-		this.files = new FlowrAnalyzerFilesContext(loadingOrder, plugins.get(PluginType.ProjectDiscovery) as FlowrAnalyzerProjectDiscoveryPlugin[],
-            plugins.get(PluginType.FileLoad) as FlowrAnalyzerFilePlugin[]);
-		this.deps  = new FlowrAnalyzerDependenciesContext(this, plugins.get(PluginType.DependencyIdentification) as FlowrAnalyzerPackageVersionsPlugin[]);
+		this.files = new FlowrAnalyzerFilesContext(loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
+            (plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
+		this.deps  = new FlowrAnalyzerDependenciesContext(this, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 	}
 
 	/** delegate request addition */

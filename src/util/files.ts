@@ -1,3 +1,4 @@
+import type { PathLike } from 'fs';
 import fs, { promises as fsPromise } from 'fs';
 import path from 'path';
 import { log } from './log';
@@ -216,11 +217,18 @@ export function parseDCF(file: FlowrFileProvider<string>): Map<string, string[]>
 	return result;
 }
 
+
+const cleanSplitRegex = /[\n,]+/;
+const cleanQuotesRegex = /'/g;
+
 function cleanValues(values: string): string[] {
-	const splitRegex = new RegExp(/[\n,]+/);
-	const quotesRegex = new RegExp(/'/g);
 	return values
-		.split(splitRegex)
-		.map(s => s.trim().replace(quotesRegex, ''))
+		.split(cleanSplitRegex)
+		.map(s => s.trim().replace(cleanQuotesRegex, ''))
 		.filter(s => s.length > 0);
+}
+
+
+export function isFilePath(p: PathLike) {
+	return fs.existsSync(p) && fs.statSync(p).isFile();
 }

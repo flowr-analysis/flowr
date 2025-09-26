@@ -2,7 +2,7 @@ import type { EngineConfig, FlowrConfigOptions } from '../config';
 import { amendConfig, cloneConfig, defaultConfigOptions } from '../config';
 import type { DeepWritable } from 'ts-essentials';
 import type { RParseRequest } from '../r-bridge/retriever';
-import { requestFromInput } from '../r-bridge/retriever';
+import { fileProtocol , isParseRequest , requestFromInput } from '../r-bridge/retriever';
 import { FlowrAnalyzer } from './flowr-analyzer';
 import { retrieveEngineInstances } from '../engines';
 import type { KnownParser } from '../r-bridge/parser';
@@ -11,8 +11,7 @@ import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize
 import { guard } from '../util/assert';
 import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
-
-// TODO: automatically identify project type from path
+import { isFilePath } from '../util/files';
 
 /**
  * Builder for the {@link FlowrAnalyzer}.
@@ -31,6 +30,22 @@ export class FlowrAnalyzerBuilder {
      */
 	constructor(request?: RAnalysisRequest | readonly RAnalysisRequest[]) {
 		this.addRequest(request ?? []);
+	}
+
+	public add(request: RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string): this {
+		if(Array.isArray(request) || isParseRequest(request)) {
+			this.addRequest(request);
+		} else if(typeof request === 'string') {
+			const trimmed = request.substring(fileProtocol.length);
+			if(request.startsWith(fileProtocol) && !isFilePath(trimmed)) {
+				this.addRequest({ request: 'project', content: trimmed });
+			} else {
+				this.addRequestFromInput(request);
+			}
+		} else {
+			this.addRequest(request);
+		}
+		return this;
 	}
 
 	/**

@@ -6,7 +6,7 @@ import type { FlowrAnalyzerLoadingOrderContext } from './flowr-analyzer-loading-
 import {
 	FlowrAnalyzerProjectDiscoveryPlugin
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
-import type { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
+import { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
 import type { FilePath, FlowrFile, FlowrFileProvider } from './flowr-file';
 import {  FlowrTextFile , SpecialFileRole } from './flowr-file';
 import type { FlowrDescriptionFile } from '../plugins/file-plugins/flowr-description-file';
@@ -73,7 +73,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		fileLoaders: readonly FlowrAnalyzerFilePlugin[]
 	) {
 		super(loadingOrder.getAttachedContext(), FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin(), plugins);
-		this.fileLoaders = fileLoaders;
+		this.fileLoaders = [...fileLoaders, FlowrAnalyzerFilePlugin.defaultPlugin()];
 		this.loadingOrder = loadingOrder;
 	}
 

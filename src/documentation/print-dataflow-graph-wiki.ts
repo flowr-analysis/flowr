@@ -864,7 +864,9 @@ ${details('Example: While-Loop Body', await printDfGraphForCode(shell, 'while(TR
 
 async function dummyDataflow(): Promise<DataflowInformation> {
 	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('x <- 1\nx + 1')).build();
-	return await analyzer.dataflow();
+	const result = await analyzer.dataflow();
+	analyzer.close();
+	return result;
 }
 
 async function getText(shell: RShell) {

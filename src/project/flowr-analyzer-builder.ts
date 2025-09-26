@@ -116,8 +116,8 @@ export class FlowrAnalyzerBuilder {
 		if(this.parser) {
 			parser = this.parser;
 		} else {
-			const engines = await retrieveEngineInstances(this.flowrConfig);
-			parser = this.parser ?? engines.engines[engines.default] as KnownParser;
+			const engines = await retrieveEngineInstances(this.flowrConfig, true);
+			parser = engines.engines[engines.default] as KnownParser;
 		}
 
 		guard(this.request !== undefined, 'Currently we require at least one request to build an analyzer, please provide one using the constructor or the addRequest method');

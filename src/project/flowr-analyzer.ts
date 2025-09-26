@@ -133,4 +133,12 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> {
     >(search: Search): Promise<GetSearchElements<SearchOutput<Search>>> {
 		return runSearch(search, this);
 	}
+
+
+	/**
+     * Close the parser if it was created by this builder. This is only required if you rely on an RShell/remote engine.
+     */
+	public close() {
+		return this.parser?.close();
+	}
 }

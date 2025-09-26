@@ -23,7 +23,26 @@ export class FlowrAnalyzerLoadingOrderDescriptionFilePlugin extends FlowrAnalyze
 		/** this will do the caching etc. for me */
 		const deps = descFiles[0].content();
 		if(deps.has('Collate')) {
-			// TODO: analyzer.context().files.loadingOrder.addGuess(deps.get('Collate'))
+			const collate = deps.get('Collate') ?? [];
+			/* we probably have to do some more guesswork here */
+			const unordered = ctx.files.loadingOrder.getUnorderedRequests();
+			// sort them by their path index in the Collate field
+			const sorted = unordered.slice().sort((a, b) => {
+				const aPath = a.request === 'file' ? a.content : undefined;
+				const bPath = b.request === 'file' ? b.content : undefined;
+				const aIndex = aPath ? collate.findIndex(c => aPath.endsWith(c.trim())) : -1;
+				const bIndex = bPath ? collate.findIndex(c => bPath.endsWith(c.trim())) : -1;
+				if(aIndex === -1 && bIndex === -1) {
+					return 0; // both not found, keep original order
+				} else if(aIndex === -1) {
+					return 1; // a not found, b found -> a after b
+				} else if(bIndex === -1) {
+					return -1; // b not found, a found -> a before b
+				} else {
+					return aIndex - bIndex; // both found, sort by index
+				}
+			});
+			ctx.files.loadingOrder.addGuess(sorted, true);
 		} else {
 			descriptionFileLog.info(`No Collate field in DESCRIPTION file ${descFiles[0].path().toString()}`);
 		}

@@ -64,6 +64,10 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 		return this.knownOrder ?? (this.guesses.length > 0 ? this.guesses[0] : undefined);
 	}
 
+	public getUnorderedRequests(): readonly RParseRequest[] {
+		return this.unordered;
+	}
+
 	public getLoadingOrder(): readonly RParseRequest[] {
 		if(this.rerunRequired) {
 			this.rerunRequired = false;

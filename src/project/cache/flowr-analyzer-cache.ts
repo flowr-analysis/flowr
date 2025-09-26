@@ -1,13 +1,11 @@
 import type { KnownParser } from '../../r-bridge/parser';
 import type { CacheInvalidationEvent } from './flowr-cache';
-import { FlowrCache , CacheInvalidationEventType } from './flowr-cache';
+import { CacheInvalidationEventType, FlowrCache } from './flowr-cache';
 import type {
 	DEFAULT_DATAFLOW_PIPELINE,
 	TREE_SITTER_DATAFLOW_PIPELINE
 } from '../../core/steps/pipeline/default-pipelines';
-import {
-	createDataflowPipeline
-} from '../../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
 import type { PipelineExecutor } from '../../core/pipeline-executor';
 import type { FlowrConfigOptions } from '../../config';
 import { defaultConfigOptions } from '../../config';
@@ -182,10 +180,19 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		if(useDataflow) {
 			/* if force is active, it will have triggered with normalize */
 			dataflow = await this.dataflow();
+		} else {
+			dataflow = this.peekDataflow();
 		}
 
-		const result = simplifications.length === 0 && !useDataflow ? extractCfgQuick(normalized) :
-			extractCfg(normalized, this.args.config ?? defaultConfigOptions, dataflow?.graph, simplifications);
+		let result: ControlFlowInformation;
+		if(useDataflow || simplifications.length > 0) {
+			result = extractCfg(normalized, this.args.config ?? defaultConfigOptions, dataflow?.graph, simplifications);
+		} else if(dataflow !== undefined) {
+			result = dataflow.cfgQuick;
+		} else {
+			result = extractCfgQuick(normalized);
+		}
+
 		this.controlFlowCache.simplified.set([simplifications, useDataflow], result);
 		return result;
 	}

@@ -12,14 +12,8 @@ import { fileProtocol, removeRQuotes, requestFromInput } from '../r-bridge/retri
 import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
-import type {
-	FlowrConfigOptions } from '../config';
-import {
-	DropPathsOption,
-	flowrConfigFileSchema,
-	InferWorkingDirectory,
-	VariableResolve
-} from '../config';
+import type { FlowrConfigOptions } from '../config';
+import { DropPathsOption, flowrConfigFileSchema, InferWorkingDirectory, VariableResolve } from '../config';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/text/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
@@ -29,6 +23,7 @@ import { block, details } from './doc-util/doc-structure';
 import { getTypesFromFolder, mermaidHide, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import { FlowrAnalyzer } from '../project/flowr-analyzer';
 
 async function explainServer(shell: RShell): Promise<string> {
 	documentAllServerMessages();
@@ -313,13 +308,31 @@ ${shortLink(RShell.name + '::' + shell.sendCommandWithOutput.name, types.info, t
 
 Besides that, the command ${shortLink(RShell.name + '::' + shell.tryToInjectHomeLibPath.name, types.info)} may be of interest, as it enables all libraries available on the host system.
 
+### Creating _flowR_ analyses
+
+Nowadays, instances of ${shortLink(FlowrAnalyzer.name, types.info)} should be used as central frontend to get analysis results from _flowR_.
+For example, a program slice can be created like this:
+
+${
+	codeBlock('ts', `
+const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('x <- 1\\ny <- x\\nx')).build();
+const result = await analyzer.query([
+	{
+		type:     'static-slice',
+		criteria: ['3@x']
+	}
+]);
+//console.log(result['static-slice']);
+`)
+}
+        
 ### The Pipeline Executor
 
 Once, in the beginning, _flowR_ was meant to produce a dataflow graph merely to provide *program slices*. 
 However, with continuous updates, the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph) repeatedly proves to be the more interesting part.
 With this, we restructured _flowR_'s originally *hardcoded* pipeline to be far more flexible. 
 Now, it can be theoretically extended or replaced with arbitrary steps, optional steps, and what we call 'decorations' of these steps. 
-In short, if you still "just want to slice" you can do it like this with the ${shortLink(PipelineExecutor.name, types.info)}:
+In short, a slicing pipeline using the ${shortLink(PipelineExecutor.name, types.info)} looks like this:
 
 ${
 	codeBlock('ts', `

@@ -1,5 +1,4 @@
 import type { FlowrConfigOptions } from '../config';
-import type { RParseRequests } from '../r-bridge/retriever';
 import type { DEFAULT_DATAFLOW_PIPELINE
 } from '../core/steps/pipeline/default-pipelines';
 
@@ -16,6 +15,7 @@ import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-builder';
 import type { GetSearchElements } from '../search/flowr-search-executor';
 import { runSearch } from '../search/flowr-search-executor';
+import type { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
 
 /**
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
@@ -23,6 +23,7 @@ import { runSearch } from '../search/flowr-search-executor';
  */
 export type FlowrAnalysisProvider = {
     parserName(): string
+    context():  FlowrAnalyzerContext
     parse(force?: boolean): Promise<ParseStepOutput<Awaited<ReturnType<KnownParser['parse']>>> & PipelinePerStepMetaInformation>
 	normalize(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation>;
 	dataflow(force?: boolean): Promise<DataflowInformation & PipelinePerStepMetaInformation>;
@@ -32,29 +33,39 @@ export type FlowrAnalysisProvider = {
 
 
 /**
- * Central class for creating analyses in FlowR.
+ * Central class for conducting analyses in FlowR.
  * Use the {@link FlowrAnalyzerBuilder} to create a new instance.
+ *
+ * If you want the original pattern of creating a pipeline and running all steps, you can still do this with {@link FlowrAnalyzer#runFull}.
  */
 export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> {
 	/** This is the config used for the analyzer */
 	public readonly flowrConfig: FlowrConfigOptions;
 	/** The parser and engine backend */
 	private readonly parser:     Parser;
-
-	private readonly cache: FlowrAnalyzerCache<Parser>;
+	/** The cache used for storing analysis results */
+	private readonly cache:      FlowrAnalyzerCache<Parser>;
+	private readonly ctx:        FlowrAnalyzerContext;
 
 	/**
      * Create a new analyzer instance.
-     * Prefer the use of the {@link FlowrAnalyzerBuilder} instead of calling this constructor directly.
+     * **Prefer the use of the {@link FlowrAnalyzerBuilder} instead of calling this constructor directly.**
+     *
      * @param config        - The FlowR config to use for the analyses
      * @param parser        - The parser to use for parsing the given request.
-     * @param request       - The code to analyze.
+     * @param ctx           - The context to use for the analyses.
      * @param requiredInput - Additional parameters used for the analyses.
      */
-	constructor(config: FlowrConfigOptions, parser: Parser, request: RParseRequests, requiredInput: Omit<PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>, 'parser' | 'request'>) {
+	constructor(config: FlowrConfigOptions, parser: Parser, ctx: FlowrAnalyzerContext, requiredInput: Omit<PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>, 'parser' | 'request'>) {
 		this.flowrConfig = config;
 		this.parser = parser;
-		this.cache = FlowrAnalyzerCache.create({ parser, config, request, ...requiredInput });
+		this.ctx = ctx;
+		this.cache = FlowrAnalyzerCache.create({ parser, config, request: ctx.files.computeLoadingOrder(), ...requiredInput });
+	}
+
+	/** Returns project context information */
+	public context(): FlowrAnalyzerContext {
+		return this.ctx;
 	}
 
 	/**
@@ -95,6 +106,14 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> {
      */
 	public async dataflow(force?: boolean): ReturnType<typeof this.cache.dataflow> {
 		return this.cache.dataflow(force);
+	}
+
+	/**
+     * This executes all steps of the core analysis (parse, normalize, dataflow).
+     */
+	public async runFull(force?: boolean): Promise<void> {
+		await this.dataflow(force);
+		return;
 	}
 
 	/**

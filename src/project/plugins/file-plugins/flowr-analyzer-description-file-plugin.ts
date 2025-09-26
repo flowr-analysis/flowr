@@ -1,29 +1,27 @@
 import { FlowrAnalyzerFilePlugin } from './flowr-analyzer-file-plugin';
 import { SemVer } from 'semver';
-import type { FlowrAnalysisProvider } from '../../flowr-analyzer';
-import type { FlowrConfigOptions } from '../../../config';
-import type { FlowrAnalyzerPlugin } from '../flowr-analyzer-plugin';
-import { parseDCF } from '../../../util/files';
+import type { PathLike } from 'fs';
 import { log } from '../../../util/log';
+import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
+import { FlowrDescriptionFile } from './flowr-description-file';
+import type { FlowrFileProvider } from '../../context/flowr-file';
+import { SpecialFileRole } from '../../context/flowr-file';
 
-const analyzerDescriptionLog = log.getSubLogger({ name: 'flowr-analyzer-description-log' });
+export const descriptionFileLog = log.getSubLogger({ name: 'flowr-analyzer-loading-order-description-file-plugin' });
 
 export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-description-file-plugin';
-	public readonly description = 'This plugin does...';
+	public readonly description = 'This plugin provides support for DESCRIPTION files and extracts their content into key-value(s) pairs.';
 	public readonly version = new SemVer('0.1.0');
-	public readonly dependencies: FlowrAnalyzerPlugin[] = [];
-	public information:           Map<string, string[]> = new Map<string, string[]>();
 
-	public processor(_analyzer: FlowrAnalysisProvider, _pluginConfig: FlowrConfigOptions): void {
-		if(this.files.length === 0) {
-			analyzerDescriptionLog.error(Error('No DESCRIPTION file found.'));
-			return;
-		}
-		if(this.files.length > 1) {
-			analyzerDescriptionLog.error(Error('Found more than one DESCRIPTION file.'));
-			return;
-		}
-		this.information = parseDCF(this.files[0]);
+	public applies(file: PathLike): boolean {
+		return /^(DESCRIPTION|DESCRIPTION\.txt)$/i.test(file.toString().split(/[/\\]/).pop() ?? '');
+	}
+
+	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider<string>): FlowrDescriptionFile {
+		const f = FlowrDescriptionFile.from(file, SpecialFileRole.Description);
+		// already load it here
+		f.content();
+		return f;
 	}
 }

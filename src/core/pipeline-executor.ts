@@ -199,7 +199,7 @@ export class PipelineExecutor<P extends Pipeline> {
 		const [step, result] = this._doNextStep(expectedStepName);
 		const awaitedResult = await result;
 
-		this.output[step as PipelineStepNames<P>] = { ...awaitedResult, '.meta': { timing: Date.now() - start, cached: false } };
+		this.output[step as PipelineStepNames<P>] = { ...awaitedResult, '.meta': { timing: Date.now() - start } };
 		this.stepCounter++;
 
 		return { name: step as PassedName, result: awaitedResult };

@@ -1,22 +1,30 @@
 import { Range } from 'semver';
+import { guard } from '../../../util/assert';
 
 export type PackageType = 'package' | 'system' | 'r';
 
 export class Package {
-	public name?:              string;
+	public name:               string;
 	public derivedVersion?:    Range;
 	public type?:              PackageType;
 	public dependencies?:      Package[];
 	public versionConstraints: Range[] = [];
 
-	constructor(name?: string, type?: PackageType, dependencies?: Package[], ...versionConstraints: Range[]) {
-		this.addInfo(name, type, dependencies, ...(versionConstraints ?? []));
+	constructor(name: string, type?: PackageType, dependencies?: Package[], ...versionConstraints: readonly Range[]) {
+		this.name = name;
+		this.addInfo(type, dependencies, ...(versionConstraints ?? []));
 	}
 
-	public addInfo(name?: string, type?: PackageType, dependencies?: Package[], ...versionConstraints: Range[]): void {
-		if(name !== undefined) {
-			this.name = name;
-		}
+	public mergeInPlace(other: Package): void {
+		guard(this.name === other.name, 'Can only merge packages with the same name');
+		this.addInfo(
+			other.type,
+			other.dependencies,
+			...other.versionConstraints
+		);
+	}
+
+	public addInfo(type?: PackageType, dependencies?: Package[], ...versionConstraints: readonly Range[]): void {
 		if(type !== undefined) {
 			this.type = type;
 		}

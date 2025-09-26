@@ -60,7 +60,7 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 
 	public parse(request: RParseRequest): Parser.Tree {
 		let sourceCode: string;
-		if(request.request === 'file' ){
+		if(request.request === 'file') {
 			sourceCode = fs.readFileSync(request.content, 'utf8');
 		} else {
 			sourceCode = request.content;

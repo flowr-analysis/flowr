@@ -10,7 +10,6 @@ import {
 } from '../../core/steps/pipeline/default-pipelines';
 import type { PipelineExecutor } from '../../core/pipeline-executor';
 import type { FlowrConfigOptions } from '../../config';
-import { defaultConfigOptions } from '../../config';
 import type { RParseRequests } from '../../r-bridge/retriever';
 import type { IdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -24,7 +23,7 @@ import { extractCfg, extractCfgQuick } from '../../control-flow/extract-cfg';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
     parser:             Parser;
-    config?:            FlowrConfigOptions;
+    config:             FlowrConfigOptions;
     request:            RParseRequests;
     getId?:             IdGenerator<NoInfo>
     overwriteFilePath?: string;
@@ -43,7 +42,8 @@ interface ControlFlowCache {
 }
 
 /**
- * This provides the full analyzer caching layer
+ * This provides the full analyzer caching layer, please avoid using this directly
+ * and prefer the {@link FlowrAnalyzer}.
  */
 export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<AnalyzerCacheType<Parser>> {
 	private args:             FlowrAnalyzerCacheOptions<Parser>;
@@ -61,7 +61,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 			request:           this.args.request,
 			getId:             this.args.getId,
 			overwriteFilePath: this.args.overwriteFilePath
-		}, this.args.config ?? defaultConfigOptions) as AnalyzerPipelineExecutor<Parser>;
+		}, this.args.config) as AnalyzerPipelineExecutor<Parser>;
 		this.controlFlowCache = {
 			simplified: new ObjectMap<[readonly CfgSimplificationPassName[], boolean], ControlFlowInformation>(),
 		};
@@ -110,7 +110,8 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
      * @see {@link FlowrAnalyzerCache#peekParse} - to get the parse output if already available without triggering a new parse.
      */
 	public async parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>> {
-		return this.runTapeUntil(force, () => this.get().parse);
+		const d = this.get();
+		return this.runTapeUntil(force, () => d.parse);
 	}
 
 	/**
@@ -129,7 +130,8 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
      * @see {@link FlowrAnalyzerCache#peekNormalize} - to get the normalized AST if already available without triggering a new normalization.
      */
 	public async normalize(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['normalize']>> {
-		return this.runTapeUntil(force, () => this.get().normalize);
+		const d = this.get();
+		return this.runTapeUntil(force, () => d.normalize);
 	}
 
 	/**
@@ -149,7 +151,8 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
      * @see {@link FlowrAnalyzerCache#peekDataflow} - to get the dataflow graph if already available without triggering a new computation.
      */
 	public async dataflow(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['dataflow']>> {
-		return this.runTapeUntil(force, () => this.get().dataflow);
+		const d = this.get();
+		return this.runTapeUntil(force, () => d.dataflow);
 	}
 
 	/**
@@ -185,7 +188,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		}
 
 		const result = simplifications.length === 0 && !useDataflow ? extractCfgQuick(normalized) :
-			extractCfg(normalized, this.args.config ?? defaultConfigOptions, dataflow?.graph, simplifications);
+			extractCfg(normalized, this.args.config, dataflow?.graph, simplifications);
 		this.controlFlowCache.simplified.set([simplifications, useDataflow], result);
 		return result;
 	}

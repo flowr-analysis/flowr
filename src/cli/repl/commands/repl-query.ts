@@ -8,7 +8,6 @@ import { AnyQuerySchema, executeQueries, QueriesSchema, SupportedQueries } from 
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import { getDummyFlowrProject } from '../../../project/flowr-project';
 
 
 function printHelp(output: ReplOutput) {
@@ -62,12 +61,10 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 		parsedQuery = [{ type: 'call-context', callName: query }];
 	}
 
-	const dummyProject = getDummyFlowrProject();
-
 	return {
 		query: await executeQueries({
-			analyzer:  analyzer,
-			libraries: dummyProject.libraries },
+			analyzer,
+		},
 		parsedQuery),
 		parsedQuery,
 		analyzer

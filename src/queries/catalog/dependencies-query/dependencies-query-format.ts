@@ -36,13 +36,14 @@ export const DefaultDependencyCategories = {
 			if(!ignoreDefault) {
 				visitAst((await data.analyzer.normalize()).ast, n => {
 					if(n.type === RType.Symbol && n.namespace) {
+						const dep = data.analyzer.context().deps.getDependency(n.namespace);
 						/* we should improve the identification of ':::' */
 						result.push({
 							nodeId:             n.info.id,
 							functionName:       (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
 							value:              n.namespace,
-							versionConstraints:	data?.libraries?.find(f => f.name === n.namespace)?.versionConstraints ?? undefined,
-							derivedVersion:	    data?.libraries?.find(f => f.name === n.namespace)?.derivedVersion ?? undefined,
+							versionConstraints:	dep?.versionConstraints,
+							derivedVersion:	    dep?.derivedVersion
 						});
 					}
 				});

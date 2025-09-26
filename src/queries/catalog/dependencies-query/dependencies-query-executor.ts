@@ -27,16 +27,12 @@ import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/process
 
 export async function executeDependenciesQuery({
 	analyzer,
-	libraries
 }: BasicQueryData, queries: readonly DependenciesQuery[]): Promise<DependenciesQueryResult> {
 	if(queries.length !== 1) {
 		log.warn('Dependencies query expects only up to one query, but got ', queries.length, 'only using the first query');
 	}
 
-	const data = {
-		analyzer,
-		libraries
-	};
+	const data = { analyzer };
 
 	const normalize = await analyzer.normalize();
 	const dataflow = await analyzer.dataflow();
@@ -138,14 +134,15 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 		const results: DependencyInfo[] = [];
 		for(const [arg, values] of foundValues.entries()) {
 			for(const value of values) {
+				const dep = value ? data?.analyzer.context().deps.getDependency(value) ?? undefined : undefined;
 				const result = compactRecord({
 					nodeId:             id,
 					functionName:       vertex.name,
 					lexemeOfArgument:   getLexeme(value, arg),
 					linkedIds:          linked?.length ? linked : undefined,
 					value:              value ?? defaultValue,
-					versionConstraints:	data?.libraries?.find(f => f.name === value)?.versionConstraints ?? undefined,
-					derivedVersion:	    data?.libraries?.find(f => f.name === value)?.derivedVersion ?? undefined,
+					versionConstraints:	dep?.versionConstraints,
+					derivedVersion:	    dep?.derivedVersion
 				} as DependencyInfo);
 				if(result) {
 					results.push(result);

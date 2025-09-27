@@ -72,6 +72,12 @@ async function sliceQueryExample(analyzer: FlowrAnalyzer) {
 	return result;
 }
 
+export function inspectContextExample(analyzer: FlowrAnalyzer) {
+	const ctx = analyzer.inspectContext();
+	console.log('dplyr version', ctx.deps.getDependency('dplyr'));
+	console.log('loading order', ctx.files.loadingOrder.getLoadingOrder());
+}
+
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -141,7 +147,11 @@ The underlying ${shortLink(FlowrAnalyzer.name, info)} instance will take care of
 It also exposes the [query API](${FlowrWikiBaseRef}/Query-API):
 
 ${printCodeOfElement({ program, info, dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true }, sliceQueryExample.name)}
-	
+
+One of the additional advantages of using the ${shortLink(FlowrAnalyzer.name, info)} is that it provides you with context information about the analyzed files:
+
+${printCodeOfElement({ program, info, dropLinesStart: 1, dropLinesEnd: 1, hideDefinedAt: true }, inspectContextExample.name)}
+
 ## Pipelines and their Execution
 
 At the core of every analysis done via a ${shortLink(FlowrAnalyzer.name, info)} is the ${shortLink(PipelineExecutor.name, info)} class which takes a sequence of analysis steps (in the form of a ${shortLink('Pipeline', info)}) and executes it

@@ -11,6 +11,10 @@ import type { DCF } from '../file-plugins/flowr-description-file';
 
 const VersionRegex = /^([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([\d.]+)\))?$/;
 
+/**
+ * This plugin extracts package versions from R `DESCRIPTION` files.
+ * It looks at the `Depends` and `Imports` fields to find package names and their version constraints.
+ */
 export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name = 'flowr-analyzer-package-version-description-file-plugin';
 	public readonly description = 'This plugin does...';
@@ -30,21 +34,15 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 		this.retrieveVersionsFromField(ctx, deps, 'Imports', 'package');
 	}
 
-
 	private retrieveVersionsFromField(ctx: FlowrAnalyzerContext, file: DCF, field: string, type?: PackageType): void {
 		for(const entry of file.get(field) ?? []) {
 			const match = VersionRegex.exec(entry);
 
 			if(match) {
-				const name = match[1];
-				const operator = match[2];
-				const version = match[3];
+				const [name, operator, version] = match;
 
 				const range = Package.parsePackageVersionRange(operator, version);
-
-				if(range){
-					ctx.deps.addDependency(new Package(name, type, undefined, range));
-				}
+				ctx.deps.addDependency(new Package(name, type, undefined, range));
 			}
 		}
 	}

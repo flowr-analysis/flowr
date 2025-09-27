@@ -19,6 +19,22 @@ import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
  * with {@link FlowrAnalyzerBuilder#build|`.build()`} or {@link FlowrAnalyzerBuilder#buildSync|`.buildSync()`}.
  *
  * You can add new files and folders to analyze using the constructor or the {@link FlowrAnalyzerBuilder#add|`.add()`} method.
+ *
+ * @example Let's create an analyzer for a single R script file:
+ *
+ * ```ts
+ * const analyzer = new FlowrAnalyzerBuilder()
+ *                      .add('file:///path/to/script.R')
+ *                      .setParser(new TreeSitterExecutor())
+ *                      .buildSync();
+ * ```
+ *
+ * If you now want to get the dataflow information for the file, you can do this:
+ *
+ * ```ts
+ * const dfInfo = await analyzer.dataflow();
+ * console.log(dfInfo);
+ * ```
  */
 export class FlowrAnalyzerBuilder {
 	private flowrConfig: DeepWritable<FlowrConfigOptions> = cloneConfig(defaultConfigOptions);

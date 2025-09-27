@@ -34,7 +34,7 @@ export function verifyAndBuildPipeline(steps: readonly IPipelineStep[]): Pipelin
 	initializeSteps(perRequestSteps, perRequestStepMap, initsPerRequest, visited);
 
 	const sortedPerRequest = topologicalSort(initsPerRequest, perRequestStepMap, visited);
-	const sorted = [...sortedPerFile, ...sortedPerRequest];
+	const sorted = sortedPerFile.concat(sortedPerRequest);
 	validateStepOutput(sorted, perRequestStepMap, steps);
 
 	return {
@@ -44,7 +44,7 @@ export function verifyAndBuildPipeline(steps: readonly IPipelineStep[]): Pipelin
 	};
 }
 
-function validateStepOutput(sorted: PipelineStepName[], stepMap: Map<PipelineStepName, IPipelineStep>, steps: readonly IPipelineStep[]) {
+function validateStepOutput(sorted: readonly PipelineStepName[], stepMap: Map<PipelineStepName, IPipelineStep>, steps: readonly IPipelineStep[]) {
 	if(sorted.length !== stepMap.size) {
 		// check if any of the dependencies in the map are invalid
 		checkForInvalidDependency(steps, stepMap);

@@ -1,5 +1,5 @@
 import { Range } from 'semver';
-import { guard } from '../../../util/assert';
+import { guard, isNotUndefined } from '../../../util/assert';
 
 export type PackageType = 'package' | 'system' | 'r';
 
@@ -10,9 +10,9 @@ export class Package {
 	public dependencies?:      Package[];
 	public versionConstraints: Range[] = [];
 
-	constructor(name: string, type?: PackageType, dependencies?: Package[], ...versionConstraints: readonly Range[]) {
+	constructor(name: string, type?: PackageType, dependencies?: Package[], ...versionConstraints: readonly (Range | undefined)[]) {
 		this.name = name;
-		this.addInfo(type, dependencies, ...(versionConstraints ?? []));
+		this.addInfo(type, dependencies, ...(versionConstraints ?? []).filter(isNotUndefined));
 	}
 
 	public mergeInPlace(other: Package): void {

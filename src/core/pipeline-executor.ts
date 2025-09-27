@@ -12,6 +12,10 @@ import type {
 import type { FlowrConfigOptions } from '../config';
 
 /**
+ * **Please note:** The {@link PipelineExecutor} is now considered to be a rather low-level API for flowR. While it still works
+ * and is the basis for all other layers, we strongly recommend using the {@link FlowrAnalyzer} and its {@link FlowrAnalyzerBuilder|builder}
+ * to create and use an analyzer instance that is pre-configured for your use-case.
+ *
  * The pipeline executor allows to execute arbitrary {@link Pipeline|pipelines} in a step-by-step fashion.
  * If you are not yet in the possession of a {@link Pipeline|pipeline}, you can use the {@link createPipeline} function
  * to create one for yourself, based on the steps that you want to execute.
@@ -110,6 +114,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * The required additional input is specified by the {@link IPipelineStep#requiredInput|required input configuration} of each step in the `pipeline`.
 	 *
 	 * Please see {@link createDataflowPipeline} and friends for engine agnostic shortcuts to create a pipeline executor.
+	 * And in general, please prefer using the {@link FlowrAnalyzer} and its {@link FlowrAnalyzerBuilder|builder} to create and use an analyzer instance.
 	 *
 	 * @param pipeline - The {@link Pipeline} to execute, probably created with {@link createPipeline}.
 	 * @param input    - External {@link PipelineInput|configuration and input} required to execute the given pipeline.

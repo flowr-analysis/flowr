@@ -26,24 +26,62 @@ import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
  *
  */
 export enum PluginType {
+	/**
+	 * Plugins that are applied right after the builder has been created and before any analysis is done.
+	 * @see {@link FlowrAnalyzerPackageVersionsPlugin} - for the base class to implement such a plugin.
+	 */
     DependencyIdentification = 'package-versions',
+	/**
+	 * Plugins that are used to determine the order in which files are loaded and analyzed.
+	 * @see {@link FlowrAnalyzerLoadingOrderPlugin} - for the base class to implement such a plugin.
+	 */
     LoadingOrder             = 'loading-order',
+	/**
+	 * Plugins that are applied to discover the project structure, files, and folders to analyze.
+	 * @see {@link FlowrAnalyzerProjectDiscoveryPlugin} - for the base class to implement such a plugin.
+	 */
     ProjectDiscovery         = 'project-discovery',
+	/**
+	 * Plugins that are applied to load and parse files.
+	 * @see {@link FlowrAnalyzerFilePlugin} - for the base class to implement such a plugin.
+	 */
     FileLoad                 = 'file-load'
 }
 
+/**
+ * This is the main interface that every plugin to be used with the {@link FlowrAnalyzer} must comply with.
+ *
+ * One of the most important decisions for the generics is also the {@link PluginType}, as this determines
+ * at which stage of the analysis the plugin is applied and what it is expected to do.
+ * Do yourself a favor and do not implement a corresponding class yourself but use the classes referenced alongside
+ * the {@link PluginType} values, as these already provide the correct generic restrictions, additional capabilities, and the `type` property.
+ */
 export interface FlowrAnalyzerPluginInterface<In = unknown, Out = In> {
+	/** A unique, human-readable name of the plugin. */
 	readonly name:        string;
+	/** A short description of what the plugin does. */
 	readonly description: string;
+	/** The version of the plugin, ideally following [semver](https://semver.org/). */
 	readonly version:     SemVer;
+	/** The type of the plugin, determining when and for what purpose it is applied during the analysis. */
 	readonly type:        PluginType;
 
+	/**
+	 * The main implementation of the plugin, receiving the current analysis context and the input arguments,
+	 * The plugin is (based on the restrictions of its {@link PluginType}) allowed to modify the context.
+	 */
 	processor(analyzer: FlowrAnalyzerContext, args: In): Out;
 }
 
 
 const generalPluginLog = log.getSubLogger({ name: 'plugins' });
 
+/**
+ * The base class every plugin to be used with the {@link FlowrAnalyzer} must extend.
+ * **Please do not create plugins directly based on this class, but use the classes referenced alongside the {@link PluginType} values!**
+ * For example, if you want to create a plugin that determines the loading order of files, extend {@link FlowrAnalyzerLoadingOrderPlugin} instead.
+ * These classes also provide sensible overrides of {@link FlowrAnalyzerPlugin.defaultPlugin} to be used when no plugin of this type is registered or triggered.
+ */
 export abstract class FlowrAnalyzerPlugin<In = unknown, Out extends AsyncOrSync<unknown> = In> implements FlowrAnalyzerPluginInterface<In, Out> {
 	public abstract readonly name:        string;
 	public abstract readonly description: string;

@@ -5,28 +5,14 @@ import {
 	FlowrAnalyzerDescriptionFilePlugin
 } from '../../../../src/project/plugins/file-plugins/flowr-analyzer-description-file-plugin';
 import { arraysGroupBy } from '../../../../src/util/collections/arrays';
-import type { PathLike } from 'fs';
-import { FlowrFile } from '../../../../src/project/context/flowr-file';
 import {
 	FlowrAnalyzerPackageVersionsDescriptionFilePlugin
 } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-description-file-plugin';
 import {
 	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
 } from '../../../../src/project/plugins/loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
+import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 
-
-class FakeFile extends FlowrFile<string> {
-	private readonly contentStr: string;
-    
-	constructor(path: PathLike, content: string) {
-		super(path);
-		this.contentStr = content;
-	}
-
-	protected loadContent(): string {
-		return this.contentStr;
-	}
-}
 
 describe('DESCRIPTION-file', function() {
 	const ctx = new FlowrAnalyzerContext(
@@ -37,7 +23,7 @@ describe('DESCRIPTION-file', function() {
 		], p => p.type)
 	);
 
-	ctx.files.addFiles(new FakeFile(path.resolve('DESCRIPTION'), `Package: mypackage
+	ctx.files.addFiles(new FlowrInlineTextFile(path.resolve('DESCRIPTION'), `Package: mypackage
 Title: What the Package Does (One Line, Title Case)
 Version: 0.0.0.9000
 Authors@R:

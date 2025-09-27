@@ -5,7 +5,7 @@ import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { block, details } from './doc-util/doc-structure';
 import { FlowrWikiBaseRef, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { getCliLongOptionOf, getReplCommand } from './doc-util/doc-cli-option';
-import { getTypesFromFolder, mermaidHide, printHierarchy, shortLink } from './doc-util/doc-types';
+import { getTypesFromFolder, mermaidHide, printCodeOfElement, printHierarchy, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { codeBlock } from './doc-util/doc-code';
 import { produceDataFlowGraph } from '../dataflow/extractor';
@@ -45,6 +45,39 @@ import { staticSlice } from '../slicing/static/static-slicer';
 import { defaultConfigOptions } from '../config';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
+
+async function makeAnalyzerExample() {
+	const analyzer = await new FlowrAnalyzerBuilder()
+		.addRequestFromInput('x <- 1; y <- x; print(y);')
+		.amendConfig(c => {
+			c.ignoreSourceCalls = true;
+		})
+		.setEngine('tree-sitter')
+		.build();
+	return analyzer;
+}
+
+async function extractStepsExample(analyzer: FlowrAnalyzer) {
+	const normalizedAst = await analyzer.normalize();
+	const dataflow = await analyzer.dataflow();
+	const cfg = await analyzer.controlflow();
+	return { normalizedAst, dataflow, cfg };
+}
+
+async function sliceQueryExample(analyzer: FlowrAnalyzer) {
+	const result = await analyzer.query([{
+		type:     'static-slice',
+		criteria: ['1@y']
+	}]);
+	return result;
+}
+
+export function inspectContextExample(analyzer: FlowrAnalyzer) {
+	const ctx = analyzer.inspectContext();
+	console.log('dplyr version', ctx.deps.getDependency('dplyr'));
+	console.log('loading order', ctx.files.loadingOrder.getLoadingOrder());
+}
+
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -101,36 +134,24 @@ See the [Getting flowR to Talk](#getting-flowr-to-talk) section below for more i
 The ${shortLink(FlowrAnalyzerBuilder.name, info)} class should be used as a starting point to create analyses in _flowR_.
 It provides a fluent interface for the configuration and creation of a ${shortLink(FlowrAnalyzer.name, info)} instance:
 
-${codeBlock('typescript', `
-const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('x <- 1; y <- x; print(y);'))
-    .amendConfig(c => {
-        c.ignoreSourceCalls = true;
-    })
-    .setEngine('r-shell')
-    .build();
-`)}
+${printCodeOfElement({ program, info, dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true }, makeAnalyzerExample.name)}
 
-${shortLink(requestFromInput.name, info)} is merely a convenience function to create a request object from a code string.
+Have a look at the [Engine](${FlowrWikiBaseRef}/Engines) wiki page to understand the different engines and parsers you can use.
 
-The analyzer instance can then be used to access analysis results like the normalized AST, the dataflow graph, and the controlflow graph:
+The analyzer instance can then be used to access analysis results like the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST),
+the [dataflow graph](${FlowrWikiBaseRef}/Dataflow-Graph), and the [controlflow graph](${FlowrWikiBaseRef}/Control-Flow-Graph):
 
-${codeBlock('typescript', `
-const normalizedAst = await analyzer.normalizedAst();
-const dataflow = await analyzer.dataflow();
-const cfg = await analyzer.controlFlow();
-`)}
+${printCodeOfElement({ program, info, dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true }, extractStepsExample.name)}
 
-The analyzer also exposes the [query API](${FlowrWikiBaseRef}/Query-API):
+The underlying ${shortLink(FlowrAnalyzer.name, info)} instance will take care of caching, updates, and running the appropriate steps.
+It also exposes the [query API](${FlowrWikiBaseRef}/Query-API):
 
-${codeBlock('typescript', `
-const result = await analyzer.query([
-	{
-		type:     'static-slice',
-		criteria: ['1@y']
-	}
-]);
-`)}
-	
+${printCodeOfElement({ program, info, dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true }, sliceQueryExample.name)}
+
+One of the additional advantages of using the ${shortLink(FlowrAnalyzer.name, info)} is that it provides you with context information about the analyzed files:
+
+${printCodeOfElement({ program, info, dropLinesStart: 1, dropLinesEnd: 1, hideDefinedAt: true }, inspectContextExample.name)}
+
 ## Pipelines and their Execution
 
 At the core of every analysis done via a ${shortLink(FlowrAnalyzer.name, info)} is the ${shortLink(PipelineExecutor.name, info)} class which takes a sequence of analysis steps (in the form of a ${shortLink('Pipeline', info)}) and executes it

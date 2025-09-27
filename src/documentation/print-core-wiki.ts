@@ -57,6 +57,22 @@ async function makeAnalyzerExample() {
 	return analyzer;
 }
 
+async function extractStepsExample(analyzer: FlowrAnalyzer) {
+	const normalizedAst = await analyzer.normalize();
+	const dataflow = await analyzer.dataflow();
+	const cfg = await analyzer.controlflow();
+	return { normalizedAst, dataflow, cfg };
+}
+
+async function sliceQueryExample(analyzer: FlowrAnalyzer) {
+	const result = await analyzer.query([{
+		type:     'static-slice',
+		criteria: ['1@y']
+	}]);
+	return result;
+}
+
+
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 	const sampleCode = 'x <- 1; print(x)';
@@ -112,26 +128,19 @@ See the [Getting flowR to Talk](#getting-flowr-to-talk) section below for more i
 The ${shortLink(FlowrAnalyzerBuilder.name, info)} class should be used as a starting point to create analyses in _flowR_.
 It provides a fluent interface for the configuration and creation of a ${shortLink(FlowrAnalyzer.name, info)} instance:
 
-${printCodeOfElement({ program, info, dropLinesStart: 1, dropLinesEnd: 2 }, makeAnalyzerExample.name)}
+${printCodeOfElement({ program, info, dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true }, makeAnalyzerExample.name)}
 
-The analyzer instance can then be used to access analysis results like the normalized AST, the dataflow graph, and the controlflow graph:
+Have a look at the [Engine](${FlowrWikiBaseRef}/Engines) wiki page to understand the different engines and parsers you can use.
 
-${codeBlock('typescript', `
-const normalizedAst = await analyzer.normalizedAst();
-const dataflow = await analyzer.dataflow();
-const cfg = await analyzer.controlFlow();
-`)}
+The analyzer instance can then be used to access analysis results like the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST),
+the [dataflow graph](${FlowrWikiBaseRef}/Dataflow-Graph), and the [controlflow graph](${FlowrWikiBaseRef}/Control-Flow-Graph):
 
-The analyzer also exposes the [query API](${FlowrWikiBaseRef}/Query-API):
+${printCodeOfElement({ program, info, dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true }, extractStepsExample.name)}
 
-${codeBlock('typescript', `
-const result = await analyzer.query([
-	{
-		type:     'static-slice',
-		criteria: ['1@y']
-	}
-]);
-`)}
+The underlying ${shortLink(FlowrAnalyzer.name, info)} instance will take care of caching, updates, and running the appropriate steps.
+It also exposes the [query API](${FlowrWikiBaseRef}/Query-API):
+
+${printCodeOfElement({ program, info, dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true }, sliceQueryExample.name)}
 	
 ## Pipelines and their Execution
 

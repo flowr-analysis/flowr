@@ -452,10 +452,11 @@ interface FnInfo {
 	program:          ts.Program,
 	dropLinesStart?:  number,
 	dropLinesEnd?:    number,
-	doNotAutoGobble?: boolean
+	doNotAutoGobble?: boolean,
+	hideDefinedAt?:   boolean
 }
 
-export function printCodeOfElement({ program, info, dropLinesEnd = 0, dropLinesStart = 0, doNotAutoGobble }: FnInfo, name: string): string {
+export function printCodeOfElement({ program, info, dropLinesEnd = 0, dropLinesStart = 0, doNotAutoGobble, hideDefinedAt }: FnInfo, name: string): string {
 	const node = info.find(e => e.name === name);
 	if(!node) {
 		console.error(`Could not find node ${name} when resolving function!`);
@@ -471,7 +472,7 @@ export function printCodeOfElement({ program, info, dropLinesEnd = 0, dropLinesS
 	}
 	if(!doNotAutoGobble) {
 		// gobble leading spaces
-		const lines = code.replace('\t', '    ').split(/\n/g);
+		const lines = code.replaceAll('\t', '    ').split(/\n/g);
 		let gobble = Number.POSITIVE_INFINITY;
 		for(const line of lines) {
 			const match = line.match(/^(\s+)\S+/);
@@ -483,7 +484,11 @@ export function printCodeOfElement({ program, info, dropLinesEnd = 0, dropLinesS
 			code = lines.map(line => line.startsWith(' '.repeat(gobble)) ? line.slice(gobble) : line).join('\n');
 		}
 	}
-	return `${codeBlock('ts', code)}\n<i>Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></i>\n`;
+	if(hideDefinedAt) {
+		return codeBlock('ts', code);
+	} else {
+		return `${codeBlock('ts', code)}\n<i>Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></i>\n`;
+	}
 }
 
 function fuzzyCompare(a: string, b: string): boolean {

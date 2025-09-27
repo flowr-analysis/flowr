@@ -5,7 +5,7 @@ import { parseDCF } from '../../../util/files';
 export type DCF = Map<string, string[]>;
 
 export class FlowrDescriptionFile extends FlowrFile<DCF> {
-	private wrapped: FlowrFileProvider<string>;
+	private readonly wrapped: FlowrFileProvider<string>;
 
 	constructor(file: FlowrFileProvider<string>) {
 		super(file.path(), file.role);

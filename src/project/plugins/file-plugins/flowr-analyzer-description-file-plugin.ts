@@ -9,6 +9,9 @@ import { SpecialFileRole } from '../../context/flowr-file';
 
 export const descriptionFileLog = log.getSubLogger({ name: 'flowr-analyzer-loading-order-description-file-plugin' });
 
+/**
+ * This plugin provides support for R `DESCRIPTION` files.
+ */
 export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-description-file-plugin';
 	public readonly description = 'This plugin provides support for DESCRIPTION files and extracts their content into key-value(s) pairs.';

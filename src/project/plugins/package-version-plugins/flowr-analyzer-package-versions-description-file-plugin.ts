@@ -39,7 +39,7 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 			const match = VersionRegex.exec(entry);
 
 			if(match) {
-				const [name, operator, version] = match;
+				const [, name, operator, version] = match;
 
 				const range = Package.parsePackageVersionRange(operator, version);
 				ctx.deps.addDependency(new Package(name, type, undefined, range));

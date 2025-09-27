@@ -15,6 +15,9 @@ import { log } from '../../util/log';
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
+/**
+ * This is a request to process a folder as a project, which will be expanded by the registered {@link FlowrAnalyzerProjectDiscoveryPlugin}s.
+ */
 export interface RProjectAnalysisRequest {
     readonly request: 'project';
     /**
@@ -104,12 +107,18 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		this.loadingOrder = loadingOrder;
 	}
 
+	/**
+	 * Add multiple requests to the context. This is just a convenience method that calls {@link addRequest} for each request.
+	 */
 	public addRequests(requests: readonly RAnalysisRequest[]): void {
 		for(const request of requests) {
 			this.addRequest(request);
 		}
 	}
 
+	/**
+	 * Add a request to the context. If the request is of type `project`, it will be expanded using the registered {@link FlowrAnalyzerProjectDiscoveryPlugin}s.
+	 */
 	public addRequest(request: RAnalysisRequest): void {
 		if(request.request !== 'project') {
 			this.loadingOrder.addRequest(request);
@@ -129,12 +138,19 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		}
 	}
 
+	/**
+	 * Add multiple files to the context. This is just a convenience method that calls {@link addFile} for each file.
+	 */
 	public addFiles(...files: (string | FlowrFileProvider<string> | RParseRequestFromFile)[]): void {
 		for(const file of files) {
 			this.addFile(file);
 		}
 	}
 
+	/**
+	 * Add a file to the context. If the file has a special role, it will be added to the corresponding list of special files.
+	 * This method also applies any registered {@link FlowrAnalyzerFilePlugin}s to the file before adding it to the context.
+	 */
 	public addFile(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: SpecialFileRole): void {
 		const { f, p } = obtainFileAndPath(file, role);
 		const { f: fA, p: pA } = this.fileLoadPlugins(f, p);
@@ -165,6 +181,10 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return { f: fFinal, p: pFinal };
 	}
 
+	/**
+	 * Get all requests that have been added to this context.
+	 * This is a convenience method that calls {@link FlowrAnalyzerLoadingOrderContext.getLoadingOrder}.
+	 */
 	public computeLoadingOrder(): readonly RParseRequest[] {
 		return this.loadingOrder.getLoadingOrder();
 	}

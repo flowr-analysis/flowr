@@ -5,7 +5,7 @@ import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { block, details } from './doc-util/doc-structure';
 import { FlowrWikiBaseRef, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { getCliLongOptionOf, getReplCommand } from './doc-util/doc-cli-option';
-import { getTypesFromFolder, mermaidHide, printHierarchy, shortLink } from './doc-util/doc-types';
+import { getTypesFromFolder, mermaidHide, printCodeOfElement, printHierarchy, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { codeBlock } from './doc-util/doc-code';
 import { produceDataFlowGraph } from '../dataflow/extractor';
@@ -45,6 +45,17 @@ import { staticSlice } from '../slicing/static/static-slicer';
 import { defaultConfigOptions } from '../config';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
+
+async function makeAnalyzerExample() {
+	const analyzer = await new FlowrAnalyzerBuilder()
+		.addRequestFromInput('x <- 1; y <- x; print(y);')
+		.amendConfig(c => {
+			c.ignoreSourceCalls = true;
+		})
+		.setEngine('tree-sitter')
+		.build();
+	return analyzer;
+}
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -101,16 +112,7 @@ See the [Getting flowR to Talk](#getting-flowr-to-talk) section below for more i
 The ${shortLink(FlowrAnalyzerBuilder.name, info)} class should be used as a starting point to create analyses in _flowR_.
 It provides a fluent interface for the configuration and creation of a ${shortLink(FlowrAnalyzer.name, info)} instance:
 
-${codeBlock('typescript', `
-const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('x <- 1; y <- x; print(y);'))
-    .amendConfig(c => {
-        c.ignoreSourceCalls = true;
-    })
-    .setEngine('r-shell')
-    .build();
-`)}
-
-${shortLink(requestFromInput.name, info)} is merely a convenience function to create a request object from a code string.
+${printCodeOfElement({ program, info, dropLinesStart: 1, dropLinesEnd: 2 }, makeAnalyzerExample.name)}
 
 The analyzer instance can then be used to access analysis results like the normalized AST, the dataflow graph, and the controlflow graph:
 

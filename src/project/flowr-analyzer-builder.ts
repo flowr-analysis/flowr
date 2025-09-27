@@ -12,9 +12,13 @@ import { guard } from '../util/assert';
 import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
 import { isFilePath } from '../util/files';
+import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 
 /**
- * Builder for the {@link FlowrAnalyzer}.
+ * Builder for the {@link FlowrAnalyzer}, use it to configure all analysis aspects before creating the analyzer instance
+ * with {@link FlowrAnalyzerBuilder#build|`.build()`}.
+ *
+ * You can add new files and folders to analyze using the constructor or the {@link FlowrAnalyzerBuilder#add|`.add()`} method.
  */
 export class FlowrAnalyzerBuilder {
 	private flowrConfig: DeepWritable<FlowrConfigOptions> = cloneConfig(defaultConfigOptions);
@@ -32,6 +36,11 @@ export class FlowrAnalyzerBuilder {
 		this.addRequest(request ?? []);
 	}
 
+	/**
+	 * Add one or multiple requests to analyze.
+	 * This is a convenience method that uses {@link addRequest} and {@link addRequestFromInput} internally.
+	 * @param request - One or multiple requests or a file path (with the `file://` protocol). If you just enter a string, it will be interpreted as R code.
+	 */
 	public add(request: RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string): this {
 		if(Array.isArray(request) || isParseRequest(request)) {
 			this.addRequest(request);
@@ -167,11 +176,18 @@ export class FlowrAnalyzerBuilder {
 		// we do it here to save time later if the analyzer is to be duplicated
 		context.resolvePreAnalysis();
 
+		const cache = FlowrAnalyzerCache.create({
+			parser,
+			config:  this.flowrConfig,
+			request: context.files.computeLoadingOrder(),
+			...(this.input ?? {})
+		});
+
 		return new FlowrAnalyzer(
 			this.flowrConfig,
 			parser,
 			context,
-			this.input ?? {}
+			cache
 		);
 	}
 }

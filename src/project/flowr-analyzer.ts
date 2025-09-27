@@ -1,6 +1,5 @@
 import type { FlowrConfigOptions } from '../config';
-import type { DEFAULT_DATAFLOW_PIPELINE
-} from '../core/steps/pipeline/default-pipelines';
+
 
 
 import type { KnownParser, KnownParserName, ParseStepOutput } from '../r-bridge/parser';
@@ -10,8 +9,8 @@ import type { ControlFlowInformation } from '../control-flow/control-flow-graph'
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../dataflow/info';
 import type { CfgSimplificationPassName } from '../control-flow/cfg-simplification';
-import type { PipelineInput, PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
-import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
+import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
+import type { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-builder';
 import type { GetSearchElements } from '../search/flowr-search-executor';
 import { runSearch } from '../search/flowr-search-executor';
@@ -33,7 +32,7 @@ export type FlowrAnalysisProvider = {
 
 
 /**
- * Central class for conducting analyses in FlowR.
+ * Central class for conducting analyses with FlowR.
  * Use the {@link FlowrAnalyzerBuilder} to create a new instance.
  *
  * If you want the original pattern of creating a pipeline and running all steps, you can still do this with {@link FlowrAnalyzer#runFull}.
@@ -51,16 +50,16 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> {
      * Create a new analyzer instance.
      * **Prefer the use of the {@link FlowrAnalyzerBuilder} instead of calling this constructor directly.**
      *
-     * @param config        - The FlowR config to use for the analyses
-     * @param parser        - The parser to use for parsing the given request.
-     * @param ctx           - The context to use for the analyses.
-     * @param requiredInput - Additional parameters used for the analyses.
+     * @param config - The FlowR config to use for the analyses
+     * @param parser - The parser to use for parsing the given request.
+     * @param ctx    - The context to use for the analyses.
+     * @param cache  - The caching layer to use for storing analysis results.
      */
-	constructor(config: FlowrConfigOptions, parser: Parser, ctx: FlowrAnalyzerContext, requiredInput: Omit<PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>, 'parser' | 'request'>) {
+	constructor(config: FlowrConfigOptions, parser: Parser, ctx: FlowrAnalyzerContext, cache: FlowrAnalyzerCache<Parser>) {
 		this.flowrConfig = config;
 		this.parser = parser;
 		this.ctx = ctx;
-		this.cache = FlowrAnalyzerCache.create({ parser, config, request: ctx.files.computeLoadingOrder(), ...requiredInput });
+		this.cache = cache;
 	}
 
 	/** Returns project context information */

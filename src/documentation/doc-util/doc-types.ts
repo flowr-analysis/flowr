@@ -448,17 +448,41 @@ export function printHierarchy({ program, info, root, collapseFromNesting = 1, i
 }
 
 interface FnInfo {
-	info:    TypeElementInSource[],
-	program: ts.Program
+	info:             TypeElementInSource[],
+	program:          ts.Program,
+	dropLinesStart?:  number,
+	dropLinesEnd?:    number,
+	doNotAutoGobble?: boolean
 }
 
-export function printCodeOfElement({ program, info }: FnInfo, name: string): string {
+export function printCodeOfElement({ program, info, dropLinesEnd = 0, dropLinesStart = 0, doNotAutoGobble }: FnInfo, name: string): string {
 	const node = info.find(e => e.name === name);
 	if(!node) {
 		console.error(`Could not find node ${name} when resolving function!`);
 		return '';
 	}
-	const code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName));
+	let code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName)).trim();
+	if(dropLinesStart > 0 || dropLinesEnd > 0) {
+		const lines = code.split(/\n/g);
+		if(dropLinesStart + dropLinesEnd >= lines.length) {
+			return '';
+		}
+		code = lines.slice(dropLinesStart, lines.length - dropLinesEnd).join('\n');
+	}
+	if(!doNotAutoGobble) {
+		// gobble leading spaces
+		const lines = code.replace('\t', '    ').split(/\n/g);
+		let gobble = Number.POSITIVE_INFINITY;
+		for(const line of lines) {
+			const match = line.match(/^(\s+)\S+/);
+			if(match) {
+				gobble = Math.min(gobble, match[1].length);
+			}
+		}
+		if(gobble !== Number.POSITIVE_INFINITY && gobble > 0) {
+			code = lines.map(line => line.startsWith(' '.repeat(gobble)) ? line.slice(gobble) : line).join('\n');
+		}
+	}
 	return `${codeBlock('ts', code)}\n<i>Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></i>\n`;
 }
 

@@ -9,9 +9,9 @@ import type { KnownParser } from '../r-bridge/parser';
 import type { FlowrAnalyzerPlugin, PluginType } from './plugins/flowr-analyzer-plugin';
 import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize';
 import { guard } from '../util/assert';
-import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
 import { isFilePath } from '../util/files';
+import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 
 /**
@@ -160,7 +160,7 @@ export class FlowrAnalyzerBuilder {
 	/**
      * Create the {@link FlowrAnalyzer} instance using the given information.
      */
-	public async build(): Promise<FlowrAnalyzer> {
+	public async build(): Promise<FlowrAnalyzer<KnownParser>> {
 		let parser: KnownParser;
 		if(this.parser) {
 			parser = this.parser;

@@ -104,7 +104,8 @@ ${(() => {
 	const lines = doc.split('\n');
 	const start = lines.findIndex(l => l.trim().startsWith('```text'));
 	const end = lines.findIndex((l, i) => i > start && l.trim().startsWith('```'));
-	return start >= 0 && end > start ? '```text\n' + lines.slice(start + 1, end).join('\n') + '\n```' : doc;
+	// github rendering pls fix xD
+	return start >= 0 && end > start ? '```text\n' + lines.slice(start + 1, end).join('\n').replaceAll('▶', '>') + '\n```' : doc;
 })()}
 
 We describe the different plugin types in more detail below.

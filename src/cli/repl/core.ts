@@ -167,7 +167,6 @@ export interface FlowrReplOptions extends MergeableRecord {
 	/**
 	 * A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
     * If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
-    * For the default arguments, see {@link DEFAULT_REPL_READLINE_CONFIGURATION}.
 	 */
 	readonly rl?:                  readline.Interface
 	/** Defines two methods that every function in the repl uses to output its data. */

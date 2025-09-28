@@ -8,6 +8,11 @@ import { FlowrAnalyzerLoadingOrderPlugin } from './flowr-analyzer-loading-order-
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { SpecialFileRole } from '../../context/flowr-file';
 
+/**
+ * This plugin extracts loading order information from R `DESCRIPTION` files.
+ * It looks at the `Collate` field to determine the order in which files should be loaded.
+ * If no `Collate` field is present, it does nothing.
+ */
 export class FlowrAnalyzerLoadingOrderDescriptionFilePlugin extends FlowrAnalyzerLoadingOrderPlugin {
 	public readonly name = 'flowr-analyzer-package-version-description-file-plugin';
 	public readonly description = 'This plugin determines loading order based on the Collate field in DESCRIPTION files.';

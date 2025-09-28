@@ -13,13 +13,13 @@ import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
  * ```text
  * ┌───────────┐   ┌───────────────────┐   ┌─────────────┐   ┌───────────────┐   ┌───────┐
  * │           │   │                   │   │             │   │               │   │       │
- * │ *Builder* ├──►│ Project Discovery ├──►│ File Loader ├──►│ Dependencies  ├──►│ *DFA* │
+ * │ *Builder* ├──▶│ Project Discovery ├──▶│ File Loader ├──▶│ Dependencies  ├──▶│ *DFA* │
  * │           │   │  (if necessary)   │   │             │   │   (static)    │   │       │
  * └───────────┘   └───────────────────┘   └──────┬──────┘   └───────────────┘   └───────┘
  *                                                │                                  ▲
  *                                                │          ┌───────────────┐       │
  *                                                │          │               │       │
- *                                                └─────────►│ Loading Order ├───────┘
+ *                                                └─────────▶│ Loading Order ├───────┘
  *                                                           │               │
  *                                                           └───────────────┘
  *```

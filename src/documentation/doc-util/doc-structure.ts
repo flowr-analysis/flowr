@@ -1,5 +1,6 @@
 import { prefixLines } from './doc-general';
 import { escapeId } from '../../util/mermaid/mermaid';
+import { joinWithLast } from '../../util/text/strings';
 
 export interface DetailsOptions {
     readonly color?:       string;
@@ -31,4 +32,32 @@ ${prefixLines(content, '> ')}
 
 export function section(title: string, depth: 1 | 2 | 3 | 4 | 5 | 6 = 2, anchor = escapeId(title)): string {
 	return `<h${depth} id="${anchor}">${title}</h${depth}>`;
+}
+
+
+function strToLink(str: string): string {
+	const match = str.match(/^(.*?)@(.*)$/);
+	if(match) {
+		const [, name, link] = match;
+		return `[${name}](${link})`;
+	}
+	return `[${str}](#${escapeId(str)})`;
+}
+/**
+ * Supported pattern: `Name@link`
+ */
+export function collapsibleToc(content: Record<string, Record<string, Record<string, undefined> | undefined> | undefined>): string {
+	let output = '';
+	for(const [section, subsections] of Object.entries(content)) {
+		output += `- ${strToLink(section)}\n`;
+		if(subsections) {
+			for(const [subsection, items] of Object.entries(subsections)) {
+				output += `  - ${strToLink(subsection)}  \n`;
+				if(items) {
+					output += `    ${joinWithLast(Object.keys(items).map(strToLink))}\n`;
+				}
+			}
+		}
+	}
+	return output;
 }

@@ -79,4 +79,12 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext{
 	public inspect(): ReadOnlyFlowrAnalyzerContext {
 		return this as ReadOnlyFlowrAnalyzerContext;
 	}
+
+	/**
+	 * Reset the context to its initial state, removing all files, dependencies, and loading orders.
+	 */
+	public reset(): void {
+		this.files.reset();
+		this.deps.reset();
+	}
 }

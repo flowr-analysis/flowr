@@ -8,6 +8,7 @@ export const quitCommand: ReplCommand = {
 	usageExample: ':quit',
 	script:       false,
 	fn:           () => {
-		log.info('bye'); process.exit(0);
+		log.info('bye');
+		process.exit(0);
 	}
 };

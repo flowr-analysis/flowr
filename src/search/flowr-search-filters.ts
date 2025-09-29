@@ -68,7 +68,7 @@ export interface OriginKindArgs {
 	keepNonFunctionCalls?: boolean
 }
 
-export function testFunctionsIgnoringPackage(functions: string[]): RegExp {
+export function testFunctionsIgnoringPackage(functions: readonly string[]): RegExp {
 	return new RegExp(`"(.+:::?)?(${functions.join('|')})"`);
 }
 

@@ -13,7 +13,7 @@ import { splitAtEscapeSensitive } from '../../util/text/args';
 import { FontStyles } from '../../util/text/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
-import { fileProtocol } from '../../r-bridge/retriever';
+import { fileProtocol, requestFromInput } from '../../r-bridge/retriever';
 import type { ReplOutput } from './commands/repl-main';
 import { standardReplOutput } from './commands/repl-main';
 import { RShell, RShellReviveOptions } from '../../r-bridge/shell';
@@ -24,6 +24,7 @@ import type { FlowrConfigOptions } from '../../config';
 import { getEngineConfig } from '../../config';
 import type { SupportedQuery } from '../../queries/query';
 import { SupportedQueries } from '../../queries/query';
+import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -99,6 +100,13 @@ export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.Re
 	};
 }
 
+export function handleString(code: string) {
+	return {
+		input:     code.startsWith('"') ? JSON.parse(code) as string : code,
+		remaining: []
+	};
+}
+
 async function replProcessStatement(output: ReplOutput, statement: string, parser: KnownParser, allowRSessionAccess: boolean, config: FlowrConfigOptions): Promise<void> {
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase();
@@ -106,7 +114,18 @@ async function replProcessStatement(output: ReplOutput, statement: string, parse
 		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
 		if(processor) {
 			try {
-				await processor.fn({ output, parser, remainingLine: statement.slice(command.length + 2).trim(), allowRSessionAccess, config });
+				const remainingLine = statement.slice(command.length + 2).trim();
+				if(processor.usesAnalyzer) {
+					const args = processor.argsParser(remainingLine);
+					const request = requestFromInput(args.input);
+					const analyzer = await new FlowrAnalyzerBuilder(request)
+						.setConfig(config)
+						.setParser(parser)
+						.build();
+					await processor.fn({ output, analyzer, remainingArgs: args.remaining });
+				} else {
+					await processor.fn({ output, parser, remainingLine, allowRSessionAccess, config });
+				}
 			} catch(e){
 				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
 				if(log.settings.minLevel < LogLevel.Fatal) {
@@ -148,7 +167,6 @@ export interface FlowrReplOptions extends MergeableRecord {
 	/**
 	 * A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
     * If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
-    * For the default arguments, see {@link DEFAULT_REPL_READLINE_CONFIGURATION}.
 	 */
 	readonly rl?:                  readline.Interface
 	/** Defines two methods that every function in the repl uses to output its data. */

@@ -5,7 +5,6 @@
 
 import type { IStoppableStopwatch } from './stopwatch';
 import { Measurements } from './stopwatch';
-import fs from 'fs';
 import seedrandom from 'seedrandom';
 import { log, LogLevel } from '../util/log';
 import type { MergeableRecord } from '../util/objects';
@@ -29,8 +28,6 @@ import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/
 import type { SlicingCriteria } from '../slicing/criterion/parse';
 import type { DEFAULT_SLICING_PIPELINE, TREE_SITTER_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import { createSlicePipeline } from '../core/steps/pipeline/default-pipelines';
-
-
 import type { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever';
 import { retrieveNumberOfRTokensOfLastParse } from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
@@ -69,6 +66,7 @@ import {
 	IntervalTop
 } from '../abstract-interpretation/data-frame/domain';
 import { inferDataFrameShapes } from '../abstract-interpretation/data-frame/shape-inference';
+import fs from 'fs';
 
 /**
  * The logger to be used for benchmarking as a global object.

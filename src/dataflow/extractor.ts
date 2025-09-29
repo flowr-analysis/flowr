@@ -92,10 +92,10 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
  * For the actual, canonical fold entry point, see {@link processDataflowFor}.
  */
 export function produceDataFlowGraph<OtherInfo>(
-	parser: Parser<KnownParserType>,
-	request: RParseRequests,
-	completeAst:     NormalizedAst<OtherInfo & ParentInformation>,
-	config: FlowrConfigOptions,
+	parser:      Parser<KnownParserType>,
+	request:     RParseRequests,
+	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
+	config:      FlowrConfigOptions
 ): DataflowInformation {
 	let firstRequest: RParseRequest;
 

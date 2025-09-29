@@ -1,6 +1,9 @@
-import type { FlowrSearchElement, FlowrSearchElements, FlowrSearchInput } from '../flowr-search';
-import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { Pipeline } from '../../core/steps/pipeline/pipeline';
+import type { FlowrSearchElement, FlowrSearchElements } from '../flowr-search';
+import type {
+	NormalizedAst,
+	ParentInformation,
+	RNodeWithParent
+} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { MergeableRecord } from '../../util/objects';
 import { deepMergeObject } from '../../util/objects';
 import { VertexType } from '../../dataflow/graph/vertex';
@@ -11,22 +14,25 @@ import {
 	identifyLinkToLastCallRelation
 } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { guard, isNotUndefined } from '../../util/assert';
-import { extractCfg, extractCfgQuick } from '../../control-flow/extract-cfg';
+import { extractCfgQuick } from '../../control-flow/extract-cfg';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
-import type { QueryResult, SynchronousQuery } from '../../queries/query';
+import type { Query, QueryResult } from '../../queries/query';
 import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
-import { cfgFindAllReachable , DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
-import type { AsyncOrSyncType } from 'ts-essentials';
+import { cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
+import type { AsyncOrSync, AsyncOrSyncType } from 'ts-essentials';
+import type { FlowrAnalysisProvider } from '../../project/flowr-analyzer';
+import type { DataflowInformation } from '../../dataflow/info';
+import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
 	/**
 	 * A function that is applied to each element of the search to enrich it with additional data.
 	 */
-	readonly enrichElement?: (element: FlowrSearchElement<ParentInformation>, search: FlowrSearchElements<ParentInformation>, data: FlowrSearchInput<Pipeline>, args: ElementArguments | undefined, previousValue: ElementContent | undefined) => ElementContent
-	readonly enrichSearch?:  (search: FlowrSearchElements<ParentInformation>, data: FlowrSearchInput<Pipeline>, args: SearchArguments | undefined, previousValue: SearchContent | undefined) => SearchContent
+	readonly enrichElement?: (element: FlowrSearchElement<ParentInformation>, search: FlowrSearchElements<ParentInformation>, data: {dataflow: DataflowInformation, normalize: NormalizedAst, cfg: ControlFlowInformation}, args: ElementArguments | undefined, previousValue: ElementContent | undefined) => AsyncOrSync<ElementContent>
+	readonly enrichSearch?:  (search: FlowrSearchElements<ParentInformation>, data: FlowrAnalysisProvider, args: SearchArguments | undefined, previousValue: SearchContent | undefined) => AsyncOrSync<SearchContent>
 	/**
 	 * The mapping function used by the {@link Mapper.Enrichment} mapper.
 	 */
@@ -93,11 +99,11 @@ export interface CfgInformationArguments extends MergeableRecord {
 
 export interface QueryDataElementContent extends MergeableRecord {
 	/** The name of the query that this element originated from. To get each query's data, see {@link QueryDataSearchContent}. */
-	query: SynchronousQuery['type']
+	query: Query['type']
 }
 
 export interface QueryDataSearchContent extends MergeableRecord {
-	queries: { [QueryType in SynchronousQuery['type']]: AsyncOrSyncType<QueryResult<QueryType>> }
+	queries: { [QueryType in Query['type']]: Awaited<QueryResult<QueryType>> }
 }
 
 /**
@@ -159,7 +165,7 @@ export const Enrichments = {
 				for(const arg of args) {
 					const lastCalls = identifyLinkToLastCallRelation(vertex[0].id, cfg.graph, data.dataflow.graph, {
 						...arg,
-						callName: new RegExp(arg.callName),
+						callName: promoteCallName(arg.callName),
 						type:     'link-to-last-call',
 					});
 					for(const lastCall of lastCalls) {
@@ -180,7 +186,7 @@ export const Enrichments = {
 				isReachable: searchContent.reachableNodes?.has(e.node.info.id)
 			};
 		},
-		enrichSearch: (_search, data, args, prev) => {
+		enrichSearch: async(_search, data, args, prev) => {
 			args = {
 				forceRefresh:         false,
 				checkReachable:       false,
@@ -195,14 +201,14 @@ export const Enrichments = {
 
 			const content: CfgInformationSearchContent = {
 				...prev,
-				cfg: extractCfg(data.normalize, data.config, data.dataflow.graph, args.simplificationPasses),
+				cfg: await data.controlflow(args.simplificationPasses, true),
 			};
 			if(args.checkReachable) {
 				content.reachableNodes = cfgFindAllReachable(content.cfg);
 			}
 			return content;
 		}
-	} satisfies EnrichmentData<CfgInformationElementContent, CfgInformationArguments, CfgInformationSearchContent>,
+	} satisfies EnrichmentData<CfgInformationElementContent, CfgInformationArguments, AsyncOrSyncType<CfgInformationSearchContent>>,
 	[Enrichment.QueryData]: {
 		// the query data enrichment is just a "pass-through" that passes the query data to the underlying search
 		enrichElement: (_e, _search, _data, args, prev) => (args ?? prev) as QueryDataElementContent,
@@ -220,15 +226,19 @@ export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<Pa
 	return e?.enrichments?.[enrichment] as EnrichmentElementContent<E>;
 }
 
-export function enrichElement<Element extends FlowrSearchElement<ParentInformation>, E extends Enrichment>(
-	e: Element, s: FlowrSearchElements<ParentInformation>, data: FlowrSearchInput<Pipeline>, enrichment: E, args?: EnrichmentElementArguments<E>): Element {
+export async function enrichElement<Element extends FlowrSearchElement<ParentInformation>, E extends Enrichment>(
+	e: Element, s: FlowrSearchElements<ParentInformation>, data: {
+		dataflow:  DataflowInformation,
+		normalize: NormalizedAst,
+		cfg:       ControlFlowInformation
+	}, enrichment: E, args?: EnrichmentElementArguments<E>): Promise<Element> {
 	const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>>;
 	const prev = e?.enrichments;
 	return {
 		...e,
 		enrichments: {
 			...prev ?? {},
-			[enrichment]: enrichmentData.enrichElement?.(e, s, data, args, prev?.[enrichment])
+			[enrichment]: await enrichmentData.enrichElement?.(e, s, data, args, prev?.[enrichment])
 		}
 	};
 }

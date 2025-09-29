@@ -16,9 +16,8 @@ import type { LinkTo } from '../../queries/catalog/call-context-query/call-conte
 import { DefaultBuiltinConfig, getDefaultProcessor } from '../environments/default-builtin-config';
 import type { FlowrSearchLike } from '../../search/flowr-search-builder';
 import { runSearch } from '../../search/flowr-search-executor';
-import type { Pipeline } from '../../core/steps/pipeline/pipeline';
-import type { FlowrSearchInput } from '../../search/flowr-search';
 import { guard } from '../../util/assert';
+import type { FlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
 export function emptyGraph(idMap?: AstIdMap) {
 	return new DataflowGraphBuilder(idMap);
@@ -205,12 +204,12 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		return this.addEdge(normalizeIdToNumberIfPossible(from), normalizeIdToNumberIfPossible(to as NodeId), type);
 	}
 
-	private queryHelper(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<Pipeline>, type: EdgeType) {
+	private async queryHelper(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider, type: EdgeType) {
 		let fromId: NodeId;
 		if('nodeId' in from) {
 			fromId = from.nodeId;
 		} else {
-			const result = runSearch(from.query, data).getElements();
+			const result = (await runSearch(from.query, data)).getElements();
 			guard(result.length === 1, `from query result should yield exactly one node, but yielded ${result.length}`);
 			fromId = result[0].node.info.id;
 		}
@@ -219,7 +218,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		if('target' in to) {
 			toIds = to.target;
 		} else {
-			const result = runSearch(to.query, data).getElements();
+			const result = (await runSearch(to.query, data)).getElements();
 			toIds = result.map(r => r.node.info.id);
 		}
 
@@ -242,10 +241,10 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @param from - Either a node id or a query to find the node id.
 	 * @param to - Either a node id or a query to find the node id.
-	 * @param data - The data to search in i.e. the dataflow graph.
+	 * @param input - The input to search in i.e. the dataflow graph.
 	 */
-	public readsQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
-		return this.queryHelper(from, to, data, EdgeType.Reads);
+	public readsQuery(from: FromQueryParam, to: ToQueryParam, input: FlowrAnalysisProvider) {
+		return this.queryHelper(from, to, input, EdgeType.Reads);
 	}
 
 	/**
@@ -263,7 +262,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public definedByQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+	public definedByQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.DefinedBy);
 	}
 
@@ -281,7 +280,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public callsQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+	public callsQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.Calls);
 	}
 
@@ -299,7 +298,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public returnsQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+	public returnsQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.Returns);
 	}
 
@@ -317,7 +316,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public definesOnCallQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+	public definesOnCallQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.DefinesOnCall);
 	}
 
@@ -335,7 +334,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public definedByOnCallQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+	public definedByOnCallQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.DefinedByOnCall);
 	}
 
@@ -353,7 +352,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public argumentQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+	public argumentQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.Argument);
 	}
 
@@ -371,7 +370,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public nseQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+	public nseQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.NonStandardEvaluation);
 	}
 
@@ -389,7 +388,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public sideEffectOnCallQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+	public sideEffectOnCallQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.SideEffectOnCall);
 	}
 

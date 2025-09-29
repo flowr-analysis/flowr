@@ -1,9 +1,20 @@
-import { type AbstractInterpretationInfo, type DataFrameOperationType, hasDataFrameExpressionInfo } from '../../abstract-interpretation/data-frame/absint-info';
-import { type DataFrameDomain, satisfiesColsNames, satisfiesLeqInterval } from '../../abstract-interpretation/data-frame/domain';
-import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../abstract-interpretation/data-frame/shape-inference';
+import {
+	type AbstractInterpretationInfo,
+	type DataFrameOperationType,
+	hasDataFrameExpressionInfo
+} from '../../abstract-interpretation/data-frame/absint-info';
+import {
+	type DataFrameDomain,
+	satisfiesColsNames,
+	satisfiesLeqInterval
+} from '../../abstract-interpretation/data-frame/domain';
+import {
+	inferDataFrameShapes,
+	resolveIdToDataFrameShape
+} from '../../abstract-interpretation/data-frame/shape-inference';
 import { amendConfig } from '../../config';
 import { extractCfg } from '../../control-flow/extract-cfg';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { FlowrSearchElements } from '../../search/flowr-search';
@@ -13,7 +24,7 @@ import { formatRange } from '../../util/mermaid/dfg';
 import { type MergeableRecord } from '../../util/objects';
 import { rangeFrom, type SourceRange } from '../../util/range';
 import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
 interface DataFrameAccessOperation {
@@ -68,7 +79,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 		const cfg = extractCfg(data.normalize, flowrConfig, data.dataflow.graph);
 		inferDataFrameShapes(cfg, data.dataflow.graph, data.normalize, flowrConfig);
 
-		const accessOperations = getAccessOperations(elements);
+		const accessOperations = getAccessOperations(elements, data.normalize);
 		const accesses: DataFrameAccessOperation[] = [];
 
 		for(const [nodeId, operations] of accessOperations) {
@@ -137,10 +148,17 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 } as const satisfies LintingRule<DataFrameAccessValidationResult, DataFrameAccessValidationMetadata, DataFrameAccessValidationConfig>;
 
 function getAccessOperations(
-	elements: FlowrSearchElements<ParentInformation & AbstractInterpretationInfo>
+	elements: FlowrSearchElements<ParentInformation & AbstractInterpretationInfo>,
+	normalize: NormalizedAst
 ): Map<NodeId, DataFrameOperationType<'accessCols' | 'accessRows'>[]> {
-	return new Map(elements.getElements()
-		.map(element => element.node)
+	const nodes = elements.getElements().map(
+		element => {
+			const id = element.node.info.id;
+			return normalize.idMap.get(id);
+		}
+	).filter(n => n !== undefined);
+
+	return new Map(nodes
 		.filter(hasDataFrameExpressionInfo)
 		.map<[NodeId, DataFrameOperationType<'accessCols' | 'accessRows'>[]]>(node =>
 			[node.info.id, node.info.dataFrame.operations

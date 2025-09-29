@@ -1,8 +1,10 @@
+import type { PathLike } from 'fs';
 import fs, { promises as fsPromise } from 'fs';
 import path from 'path';
 import { log } from './log';
 import LineByLine from 'n-readlines';
 import type { RParseRequestFromFile } from '../r-bridge/retriever';
+import type { FlowrFileProvider } from '../project/context/flowr-file';
 
 /**
  * Represents a table, identified by a header and a list of rows.
@@ -17,6 +19,8 @@ export interface Table {
  * @param dir    - Directory path to start the search from
  * @param suffix - Suffix of the files to be retrieved
  * Based on {@link https://stackoverflow.com/a/45130990}
+ *
+ * @see {@link getAllFilesSync} for a synchronous version.
  */
 export async function* getAllFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
 	const entries = await fsPromise.readdir(dir, { withFileTypes: true, recursive: false });
@@ -24,6 +28,23 @@ export async function* getAllFiles(dir: string, suffix = /.*/): AsyncGenerator<s
 		const res = path.resolve(dir, subEntries.name);
 		if(subEntries.isDirectory()) {
 			yield* getAllFiles(res, suffix);
+		} else if(suffix.test(subEntries.name)) {
+			yield res;
+		}
+	}
+}
+
+/**
+ * Retrieves all files in the given directory recursively (synchronously)
+ *
+ * @see {@link getAllFiles} - for an asynchronous version.
+ */
+export function* getAllFilesSync(dir: string, suffix = /.*/): Generator<string> {
+	const entries = fs.readdirSync(dir, { withFileTypes: true, recursive: false });
+	for(const subEntries of entries) {
+		const res = path.resolve(dir, subEntries.name);
+		if(subEntries.isDirectory()) {
+			yield* getAllFilesSync(res, suffix);
 		} else if(suffix.test(subEntries.name)) {
 			yield res;
 		}
@@ -63,7 +84,6 @@ export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE
 	}
 	return count;
 }
-
 
 /**
  * Retrieves all R files in a given set of directories and files (asynchronously)
@@ -158,4 +178,57 @@ export function readLineByLineSync(filePath: string, onLine: (line: Buffer, line
 export function getParentDirectory(directory: string): string{
 	// apparently this is somehow the best way to do it in node, what
 	return directory.split(path.sep).slice(0, -1).join(path.sep);
+}
+
+/**
+ * Parses the given file in the 'Debian Control Format'.
+ * @param file - The file to parse
+ * @returns Map containing the keys and values of the provided file.
+ */
+export function parseDCF(file: FlowrFileProvider<string>): Map<string, string[]> {
+	const result = new Map<string, string[]>();
+	let currentKey = '';
+	let currentValue = '';
+	const indentRegex = new RegExp(/^\s/);
+	const firstColonRegex = new RegExp(/:(.*)/s);
+
+	const fileContent = file.content().split(/\r?\n/);
+
+	for(const line of fileContent) {
+		if(indentRegex.test(line)) {
+			currentValue += '\n' + line.trim();
+		} else {
+			if(currentKey) {
+				const values = currentValue ? cleanValues(currentValue) : [];
+				result.set(currentKey, values);
+			}
+
+			const [key, rest] = line.split(firstColonRegex).map(s => s.trim());
+			currentKey = key.trim();
+			currentValue = rest.trim();
+		}
+	}
+
+	if(currentKey) {
+		const values = currentValue ? cleanValues(currentValue) : [];
+		result.set(currentKey, values);
+	}
+
+	return result;
+}
+
+
+const cleanSplitRegex = /[\n,]+/;
+const cleanQuotesRegex = /'/g;
+
+function cleanValues(values: string): string[] {
+	return values
+		.split(cleanSplitRegex)
+		.map(s => s.trim().replace(cleanQuotesRegex, ''))
+		.filter(s => s.length > 0);
+}
+
+
+export function isFilePath(p: PathLike) {
+	return fs.existsSync(p) && fs.statSync(p).isFile();
 }

@@ -5,13 +5,13 @@ import { reduceDfg } from '../../../util/simple-df/dfg-view';
 import { VertexType } from '../../../dataflow/graph/vertex';
 
 
-export function executeDataflowLensQuery({ dataflow: { graph } }: BasicQueryData, queries: readonly DataflowLensQuery[]): DataflowLensQueryResult {
+export async function executeDataflowLensQuery({ analyzer }: BasicQueryData, queries: readonly DataflowLensQuery[]): Promise<DataflowLensQueryResult> {
 	if(queries.length !== 1) {
 		log.warn('Dataflow query expects only up to one query, but got', queries.length);
 	}
 
 	const now = Date.now();
-	const simplifiedGraph = reduceDfg(graph, {
+	const simplifiedGraph = reduceDfg((await analyzer.dataflow()).graph, {
 		vertices: {
 			keepEnv:           false,
 			keepCd:            true,

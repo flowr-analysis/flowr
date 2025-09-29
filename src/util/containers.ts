@@ -36,7 +36,6 @@ export function getAccessOperands<OtherInfo>(
  *
  * @param name - Name to resolve
  * @param environment - Environment in which name is resolved
- * @param builtInEnvironment - Built-in environment
  * @returns The indicesCollection of the resolved definitions
  */
 export function resolveIndicesByName(name: Identifier, environment: REnvironmentInformation) {

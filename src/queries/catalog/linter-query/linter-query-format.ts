@@ -30,7 +30,7 @@ export interface LinterQueryResult extends BaseQueryResult {
 
 export const LinterQueryDefinition = {
 	executor:        executeLinterQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'linter'>['linter'];
 		result.push(`Query: ${bold('linter', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [ruleName, results] of Object.entries(out.results)) {

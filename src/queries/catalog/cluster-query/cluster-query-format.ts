@@ -22,7 +22,7 @@ export interface DataflowClusterQueryResult extends BaseQueryResult {
 
 export const ClusterQueryDefinition = {
 	executor:        executeDataflowClusterQuery,
-	asciiSummarizer: (formatter, processed, queryResults, result) => {
+	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dataflow-cluster'>['dataflow-cluster'];
 		result.push(`Query: ${bold('dataflow-cluster', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 		result.push(`   ╰ Found ${out.clusters.length} cluster${out.clusters.length === 1 ? '' : 's'}`);
@@ -31,7 +31,7 @@ export const ClusterQueryDefinition = {
 			let suffix = '';
 			if(formatter === markdownFormatter) {
 				suffix = `([marked](${
-					graphToMermaidUrl(processed.dataflow.graph, false, new Set(cluster.members))
+					graphToMermaidUrl((await analyzer.dataflow()).graph, false, new Set(cluster.members))
 				}))`;
 			}
 			result.push(`      ╰ ${unknownSideEffects} {${summarizeIdsIfTooLong(formatter, cluster.members)}} ${suffix}`);

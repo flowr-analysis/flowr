@@ -1,17 +1,15 @@
 import type { BasicQueryData } from '../../base-query-format';
-import type {
-	HappensBeforeQuery,
-	HappensBeforeQueryResult
-} from './happens-before-query-format';
+import type { HappensBeforeQuery, HappensBeforeQueryResult } from './happens-before-query-format';
 import { Ternary } from '../../../util/logic';
 import { log } from '../../../util/log';
 import { extractCfgQuick } from '../../../control-flow/extract-cfg';
 import { happensBefore } from '../../../control-flow/happens-before';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 
-export function executeHappensBefore({ ast }: BasicQueryData, queries: readonly HappensBeforeQuery[]): HappensBeforeQueryResult {
+export async function executeHappensBefore({ analyzer }: BasicQueryData, queries: readonly HappensBeforeQuery[]): Promise<HappensBeforeQueryResult> {
 	const start = Date.now();
 	const results: Record<string, Ternary> = {};
+	const ast = await analyzer.normalize();
 	const cfg = extractCfgQuick(ast);
 	for(const query of queries) {
 		const { a, b } = query;

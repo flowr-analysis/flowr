@@ -586,10 +586,8 @@ ${
 	await showQuery(shell, longerCode, [{
 		type:                   'dependencies',
 		ignoreDefaultFunctions: true,
+		enabledCategories:      ['library'],
 		libraryFunctions:       [{ package: 'base', name: 'print', argIdx: 0, argName: 'library', resolveValue: true }],
-		sourceFunctions:        [],
-		readFunctions:          [],
-		writeFunctions:         []
 	}], { showCode: false, collapseQuery: false, collapseResult: true })
 }
 

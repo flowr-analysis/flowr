@@ -5,11 +5,12 @@ import type { GeneratorNames } from '../search/search-executor/search-generators
 import type { TransformerNames } from '../search/search-executor/search-transformer';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from './linter-rules';
-import type { DataflowInformation } from '../dataflow/info';
-import type { FlowrConfigOptions } from '../config';
-import type { DeepPartial, DeepReadonly } from 'ts-essentials';
+import type { AsyncOrSync, DeepPartial, DeepReadonly } from 'ts-essentials';
 import type { LintingRuleTag } from './linter-tags';
 import type { SourceRange } from '../util/range';
+import type { DataflowInformation } from '../dataflow/info';
+import type { FlowrConfigOptions } from '../config';
+import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 
 export interface LinterRuleInformation<Config extends MergeableRecord = never> {
 	/** Human-Readable name of the linting rule. */
@@ -43,15 +44,15 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 	 * Creates a flowR search that will then be executed and whose results will be passed to {@link processSearchResult}.
 	 * In the future, additional optimizations and transformations may be applied to the search between this function and {@link processSearchResult}.
 	 */
-	readonly createSearch:        (config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation }) => FlowrSearchLike<Info, GeneratorNames, TransformerNames[], FlowrSearchElements<Info, Elements>>
+	readonly createSearch:        (config: Config) => FlowrSearchLike<Info, GeneratorNames, TransformerNames[], FlowrSearchElements<Info, Elements>>
 	/**
 	 * Processes the search results of the search created through {@link createSearch}.
 	 * This function is expected to return the linting results from this rule for the given search, ie usually the given script file.
 	 */
-	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions }) => {
+	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation, cfg: ControlFlowInformation, config: FlowrConfigOptions }) => AsyncOrSync<{
 		results: Result[],
 		'.meta': Metadata
-	}
+	}>
 	/**
 	 * A set of functions used to pretty-print the given linting result.
 	 * By default, the {@link LintingResult#certainty} and whether any {@link LintingResult#quickFix} values are available is automatically printed alongside this information.

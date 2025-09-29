@@ -1,11 +1,10 @@
-import type { ReplCommand } from './repl-main';
+import type { ReplCodeCommand } from './repl-main';
 import type { OutputFormatter } from '../../../util/text/ansi';
 import { FontStyles } from '../../../util/text/ansi';
 import type { JsonEntry } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
 import { convertPreparedParsedData, prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
 import { extractLocation, getTokenType, } from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta';
-import { createParsePipeline } from '../../../core/steps/pipeline/default-pipelines';
-import { fileProtocol, removeRQuotes, requestFromInput } from '../../../r-bridge/retriever';
+import { fileProtocol, removeRQuotes } from '../../../r-bridge/retriever';
 import type Parser from 'web-tree-sitter';
 
 type DepthList =  { depth: number, node: JsonEntry, leaf: boolean }[]
@@ -153,24 +152,28 @@ function depthListToTextTree(list: Readonly<DepthList>, f: OutputFormatter): str
 	return result;
 }
 
-
-export const parseCommand: ReplCommand = {
+export const parseCommand: ReplCodeCommand = {
 	description:  `Prints ASCII Art of the parsed, unmodified AST, start with '${fileProtocol}' to indicate a file`,
+	usesAnalyzer: true,
 	usageExample: ':parse',
 	aliases:      [ 'p' ],
 	script:       false,
-	fn:           async({ output, parser, remainingLine, config }) => {
-		const result = await createParsePipeline(parser, {
-			request: requestFromInput(removeRQuotes(remainingLine.trim()))
-		}, config).allRemainingSteps();
+	argsParser:   (line: string) => {
+		return {
+			// Threat the whole input line as R code
+			input:     removeRQuotes(line.trim()),
+			remaining: []
+		};
+	},
+	fn: async({ output, analyzer }) => {
+		const result = await analyzer.parse();
 
-		if(parser.name === 'r-shell') {
-			const object = convertPreparedParsedData(prepareParsedData(result.parse.parsed as unknown as string));
-
+		if(analyzer.parserName() === 'r-shell') {
+			const object = convertPreparedParsedData(prepareParsedData(result.parsed as unknown as string));
 			output.stdout(depthListToTextTree(toDepthMap(object), output.formatter));
 		} else {
 			// print the tree-sitter ast
-			output.stdout(depthListToTextTree(treeSitterToDepthList((result.parse.parsed as unknown as Parser.Tree).rootNode), output.formatter));
+			output.stdout(depthListToTextTree(treeSitterToDepthList((result.parsed as unknown as Parser.Tree).rootNode), output.formatter));
 		}
 	}
 };

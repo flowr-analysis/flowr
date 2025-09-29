@@ -85,7 +85,7 @@ function configQueryLineParser(line: readonly string[], _config: FlowrConfigOpti
 
 export const ConfigQueryDefinition = {
 	executor:        executeConfigQuery,
-	asciiSummarizer: (formatter: OutputFormatter, _processed: unknown, queryResults: BaseQueryResult, result: string[]) => {
+	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as ConfigQueryResult;
 		result.push(`Query: ${bold('config', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		result.push(`   ╰ Config:\n${JSON.stringify(out.config, jsonReplacer, 4)}`);

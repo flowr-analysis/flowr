@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.4.7",
+  "version": "2.5.0",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -30,6 +30,7 @@
     "wiki:normalized-ast": "ts-node src/documentation/print-normalized-ast-wiki.ts",
     "wiki:query-api": "ts-node src/documentation/print-query-wiki.ts",
     "wiki:core": "ts-node src/documentation/print-core-wiki.ts",
+    "wiki:analyzer": "ts-node src/documentation/print-analyzer-wiki.ts",
     "wiki:engines": "ts-node src/documentation/print-engines-wiki.ts",
     "wiki:search-api": "ts-node src/documentation/print-search-wiki.ts",
     "wiki:linting-and-testing": "ts-node src/documentation/print-linting-and-testing-wiki.ts",
@@ -183,6 +184,7 @@
     "@j-ulrich/release-it-regex-bumper": "^5.3.0",
     "@types/command-line-args": "^5.2.3",
     "@types/command-line-usage": "^5.0.4",
+    "@types/commonmark": "^0.27.10",
     "@types/n-readlines": "^1.0.6",
     "@types/n3": "^1.26.0",
     "@types/object-hash": "^3.0.6",
@@ -212,6 +214,8 @@
     "clipboardy": "^4.0.0",
     "command-line-args": "^6.0.1",
     "command-line-usage": "^7.0.3",
+    "commonmark": "^0.31.2",
+    "gray-matter": "^4.0.3",
     "joi": "^18.0.1",
     "lz-string": "^1.5.0",
     "n-readlines": "^1.0.1",

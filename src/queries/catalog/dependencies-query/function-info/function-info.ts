@@ -1,4 +1,4 @@
-import type { LinkTo } from '../../call-context-query/call-context-query-format';
+import type { CallNameTypes, LinkTo } from '../../call-context-query/call-context-query-format';
 
 /** when to read the argument value from a linked function */
 export enum DependencyInfoLinkConstraint {
@@ -10,7 +10,7 @@ export enum DependencyInfoLinkConstraint {
  * A dependency link may have attached information. If you pass it, we try to resolve the argument value from the linked function
  * if the `when` constraint is met.
  */
-export type DependencyInfoLink = LinkTo<RegExp | string, Omit<FunctionInfo, 'name' | 'linkTo' | 'package'> & { when: DependencyInfoLinkConstraint } | undefined>
+export type DependencyInfoLink = LinkTo<CallNameTypes, Omit<FunctionInfo, 'name' | 'linkTo' | 'package'> & { when: DependencyInfoLinkConstraint } | undefined>
 export type DependencyInfoLinkAttachedInfo = DependencyInfoLink['attachLinkInfo']
 
 export interface FunctionArgInfo {

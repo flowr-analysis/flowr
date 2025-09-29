@@ -334,8 +334,11 @@ export function parseConfig(jsonString: string): FlowrConfigOptions | undefined 
 /**
  * Creates a new flowr config that has the updated values.
  */
-export function amendConfig(config: FlowrConfigOptions, amendmentFunc: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions) {
-	return amendmentFunc(cloneConfig(config) as DeepWritable<FlowrConfigOptions>);
+// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+export function amendConfig(config: FlowrConfigOptions, amendmentFunc: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions | void): FlowrConfigOptions {
+	const newConfig = cloneConfig(config);
+	amendmentFunc(newConfig as DeepWritable<FlowrConfigOptions>);
+	return newConfig;
 }
 
 export function cloneConfig(config: FlowrConfigOptions): FlowrConfigOptions {

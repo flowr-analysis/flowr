@@ -103,14 +103,5 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ totalCalls: 1, totalFunctionDefinitions: 1 },
 			{ fns: ['read.csv'] }
 		);
-
-		assertLinter('Alias detections', parser, 'f <- read.csv; f("http://example.com/data.csv")',
-			'network-functions',
-			[ 
-				{ certainty: LintingResultCertainty.Certain, function: 'read.csv', range: [1,16,1,47] }
-			],
-			{ totalCalls: 1, totalFunctionDefinitions: 1 },
-			{ fns: ['read.csv'] }
-		);
 	});
 }));

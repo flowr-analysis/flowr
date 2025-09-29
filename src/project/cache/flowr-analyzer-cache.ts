@@ -1,13 +1,11 @@
 import type { KnownParser } from '../../r-bridge/parser';
 import type { CacheInvalidationEvent } from './flowr-cache';
-import { FlowrCache , CacheInvalidationEventType } from './flowr-cache';
+import { CacheInvalidationEventType, FlowrCache } from './flowr-cache';
 import type {
 	DEFAULT_DATAFLOW_PIPELINE,
 	TREE_SITTER_DATAFLOW_PIPELINE
 } from '../../core/steps/pipeline/default-pipelines';
-import {
-	createDataflowPipeline
-} from '../../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
 import type { PipelineExecutor } from '../../core/pipeline-executor';
 import type { FlowrConfigOptions } from '../../config';
 import type { RParseRequests } from '../../r-bridge/retriever';
@@ -87,7 +85,10 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		return this.computeIfAbsent(false, () => this.pipeline.getResults(true));
 	}
 
-	public reset() {
+	public reset(requests?: RParseRequests) {
+		if(requests) {
+			this.args.request = requests;
+		}
 		this.receive({ type: CacheInvalidationEventType.Full });
 	}
 

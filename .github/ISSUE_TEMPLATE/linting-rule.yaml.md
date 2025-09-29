@@ -29,6 +29,7 @@ body:
         - Deprecated Functions
         - File Path Validity
         - Naming Convention
+        - Network Functions
         - Seeded Randomness
         - Unused Definitions
         - Useless Loops

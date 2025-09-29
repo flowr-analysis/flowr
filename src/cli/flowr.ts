@@ -28,6 +28,7 @@ import type { KnownParser } from '../r-bridge/parser';
 import fs from 'fs';
 import path from 'path';
 import { retrieveEngineInstances } from '../engines';
+import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 
 export const toolName = 'flowr';
 
@@ -178,12 +179,17 @@ async function mainRepl() {
 	}
 	hookSignalHandlers(engines);
 
+	const analyzer = await new FlowrAnalyzerBuilder()
+		.setParser(defaultEngine)
+		.setConfig(config)
+		.build();
+
 	const allowRSessionAccess = options['r-session-access'] ?? false;
 	if(options.execute) {
-		await replProcessAnswer(config, standardReplOutput, options.execute, defaultEngine, allowRSessionAccess);
+		await replProcessAnswer(analyzer, standardReplOutput, options.execute, allowRSessionAccess);
 	} else {
 		await printVersionRepl(defaultEngine);
-		await repl(config, { parser: defaultEngine, allowRSessionAccess });
+		await repl({ analyzer: analyzer, allowRSessionAccess });
 	}
 	process.exit(0);
 }

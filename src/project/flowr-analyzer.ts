@@ -1,8 +1,7 @@
 import type { FlowrConfigOptions } from '../config';
 
 
-
-import type { KnownParser, KnownParserName, ParseStepOutput } from '../r-bridge/parser';
+import type { KnownParser, ParseStepOutput } from '../r-bridge/parser';
 import type { Queries, QueryResults, SupportedQueryTypes } from '../queries/query';
 import { executeQueries } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
@@ -22,9 +21,9 @@ import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './conte
  */
 export interface FlowrAnalysisProvider {
 	/**
-	 * Get the name of the parser used by the analyzer.
+	 * Get the parser used by the analyzer.
 	 */
-    parserName(): string
+    parser:   KnownParser
 	/**
 	 * Returns project context information.
 	 * If you are a user that wants to inspect the context, prefer {@link inspectContext} instead.
@@ -100,7 +99,7 @@ export interface FlowrAnalysisProvider {
 export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements FlowrAnalysisProvider {
 	public readonly flowrConfig: FlowrConfigOptions;
 	/** The parser and engine backend */
-	private readonly parser:     Parser;
+	public readonly parser:      Parser;
 	/** The cache used for storing analysis results */
 	private readonly cache:      FlowrAnalyzerCache<Parser>;
 	private readonly ctx:        FlowrAnalyzerContext;
@@ -131,10 +130,6 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public reset() {
 		this.cache.reset();
-	}
-
-	public parserName(): KnownParserName {
-		return this.parser.name;
 	}
 
 	public async parse(force?: boolean): ReturnType<typeof this.cache.parse> {

@@ -8,7 +8,7 @@ import type {
 	DataflowGraphVertexUse,
 	DataflowGraphVertexValue,
 } from '../../dataflow/graph/vertex';
-import { OriginType } from '../../dataflow/origin/dfg-get-origin';
+import { BuiltInFunctionOrigin, OriginType } from '../../dataflow/origin/dfg-get-origin';
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -178,7 +178,18 @@ export class StringDomainVisitor<
 	}
 
 	protected onDefaultFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall; }): void {
-		switch (call.name) {
+		const builtinOrigin = this.getOrigins(call.id)?.find(it => it.type == OriginType.BuiltInFunctionOrigin) 
+		if (builtinOrigin) {
+			this.onBuiltinFunctionCall({builtin: builtinOrigin, call});
+		} else {
+			switch (call.name) {
+				
+			}
+		}
+	}
+
+	private onBuiltinFunctionCall({ builtin, call }: { builtin: BuiltInFunctionOrigin, call: DataflowGraphVertexFunctionCall}): void {
+		switch (builtin.fn.name) {
 			case "paste":
 				this.updateIdValue(call.id, () => {
 					const named = call.args.filter(it => isNamedArgument(it))

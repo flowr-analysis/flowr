@@ -16,7 +16,7 @@ export interface ProjectQueryResult extends BaseQueryResult {
 
 export const ProjectQueryDefinition = {
 	executor:        executeProjectQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'project'>['project'];
 		result.push(`Query: ${bold('project', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		result.push(`   ╰ Contains ${out.files.length} file${out.files.length === 1 ? '' : 's'}`);

@@ -3,14 +3,17 @@ import { withTreeSitter } from '../_helper/shell';
 import type { LintingRuleNames } from '../../../src/linter/linter-rules';
 import { LintingRules } from '../../../src/linter/linter-rules';
 import type { LintingResult, LintingRule } from '../../../src/linter/linter-format';
-import { isLintingResultsError, LintingPrettyPrintContext, LintingRuleCertainty } from '../../../src/linter/linter-format';
+import {
+	isLintingResultsError,
+	LintingPrettyPrintContext,
+	LintingRuleCertainty
+} from '../../../src/linter/linter-format';
 import type { MergeableRecord } from '../../../src/util/objects';
 import { Q } from '../../../src/search/flowr-search-builder';
 import { LintingRuleTag } from '../../../src/linter/linter-tags';
 import { executeLintingRule } from '../../../src/linter/linter-executor';
-import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
-import { defaultConfigOptions } from '../../../src/config';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 
 describe('flowR linter', withTreeSitter(parser => {
 	test('Error Handling', async() => {
@@ -34,11 +37,11 @@ describe('flowR linter', withTreeSitter(parser => {
 			}
 		} as const satisfies LintingRule<LintingResult, MergeableRecord, MergeableRecord>;
 
-		const pipelineResults = await createDataflowPipeline(parser, {
-			request: requestFromInput('x <- "hi"')
-		}, defaultConfigOptions).allRemainingSteps();
+		const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('x <- "hi"'))
+			.setParser(parser)
+			.build();
 
-		const result = executeLintingRule('dummy' as unknown as LintingRuleNames, { ...pipelineResults, config: defaultConfigOptions }, undefined);
+		const result = await executeLintingRule('dummy' as unknown as LintingRuleNames, analyzer, undefined);
 
 		assert(isLintingResultsError(result), 'Dummy Rule should always return Error');
 		assert(result.error === 'Hello World');

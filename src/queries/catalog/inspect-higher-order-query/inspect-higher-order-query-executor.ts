@@ -9,7 +9,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { isHigherOrder } from '../../../dataflow/fn/higher-order-function';
 
 
-export function executeHigherOrderQuery({ dataflow: { graph }, ast }: BasicQueryData, queries: readonly InspectHigherOrderQuery[]): InspectHigherOrderQueryResult {
+export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, queries: readonly InspectHigherOrderQuery[]): Promise<InspectHigherOrderQueryResult> {
 	const start = Date.now();
 	let filters: SingleSlicingCriterion[] | undefined = undefined;
 	// filter will remain undefined if at least one of the queries wants all functions
@@ -23,6 +23,8 @@ export function executeHigherOrderQuery({ dataflow: { graph }, ast }: BasicQuery
 		}
 	}
 
+	const ast = await analyzer.normalize();
+
 	const filterFor = new Set<NodeId>();
 	if(filters) {
 		for(const f of filters) {
@@ -32,6 +34,9 @@ export function executeHigherOrderQuery({ dataflow: { graph }, ast }: BasicQuery
 			}
 		}
 	}
+
+	const graph = (await analyzer.dataflow()).graph;
+
 	const fns = graph.vertices(true)
 		.filter(([,v]) => isFunctionDefinitionVertex(v) && (filterFor.size === 0 || filterFor.has(v.id)));
 	const result: Record<NodeId, boolean> = {};

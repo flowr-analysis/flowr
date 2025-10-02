@@ -249,3 +249,18 @@ export function uniqueArrayMerge<T>(left: readonly T[], right: readonly T[]): T[
 	}
 	return Array.from(result);
 }
+
+
+export function arraysGroupBy<T, K>(arr: readonly T[], keyFn: (elem: T) => K): Map<K, T[]> {
+	const result = new Map<K, T[]>();
+	for(const elem of arr) {
+		const key = keyFn(elem);
+		const group = result.get(key);
+		if(group) {
+			group.push(elem);
+		} else {
+			result.set(key, [elem]);
+		}
+	}
+	return result;
+}

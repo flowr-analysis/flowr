@@ -23,7 +23,7 @@ export interface OriginQueryResult extends BaseQueryResult {
 
 export const OriginQueryDefinition = {
 	executor:        executeResolveValueQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'origin'>['origin'];
 		result.push(`Query: ${bold('origin', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [criteria, obj] of Object.entries(out.results)) {

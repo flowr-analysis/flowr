@@ -23,11 +23,11 @@ export interface InspectHigherOrderQueryResult extends BaseQueryResult {
 
 export const InspectHigherOrderQueryDefinition = {
 	executor:        executeHigherOrderQuery,
-	asciiSummarizer: (formatter, processed, queryResults, result) => {
+	asciiSummarizer: async(formatter, processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'inspect-higher-order'>['inspect-higher-order'];
 		result.push(`Query: ${bold('inspect-higher-order', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 		for(const [r, v] of Object.entries(out.higherOrder)) {
-			const loc = processed.normalize.idMap.get(normalizeIdToNumberIfPossible(r))?.location ?? undefined;
+			const loc = (await processed.normalize()).idMap.get(normalizeIdToNumberIfPossible(r))?.location ?? undefined;
 			result.push(`  - Function ${bold(r, formatter)} (${formatRange(loc)}) is ${v ? '' : 'not '}a higher-order function`);
 		}
 		return true;

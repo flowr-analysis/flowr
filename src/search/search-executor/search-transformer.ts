@@ -1,12 +1,4 @@
-import type {
-	FlowrSearchElement,
-	FlowrSearchElements,
-	FlowrSearchInput,
-	FlowrSearchTransformerNodeBase
-} from '../flowr-search';
-
-
-import type { Pipeline } from '../../core/steps/pipeline/pipeline';
+import type { FlowrSearchElement, FlowrSearchElements, FlowrSearchTransformerNodeBase } from '../flowr-search';
 import type { LastOfArray, Tail2TypesOrUndefined, TailOfArray } from '../../util/collections/arrays';
 import type { FlowrFilterExpression } from '../flowr-search-filters';
 import { evalFilter } from '../flowr-search-filters';
@@ -20,6 +12,7 @@ import { enrichElement } from './search-enrichers';
 import type { Mapper, MapperArguments } from './search-mappers';
 import { map } from './search-mappers';
 import type { ElementOf } from 'ts-essentials';
+import type { FlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
 
 /**
@@ -108,23 +101,23 @@ type CascadeEmpty<Elements extends FlowrSearchElement<ParentInformation>[], NewE
 	Elements extends [] ? FlowrSearchElements<ParentInformation, []> : FlowrSearchElements<ParentInformation, NewElements>;
 
 function getFirst<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
-	data: FlowrSearchInput<Pipeline>, elements: FSE
+	data: FlowrAnalysisProvider, elements: FSE
 ): CascadeEmpty<Elements, [Elements[0]]> {
 	return elements.mutate(e => [getFirstByLocation(e)] as Elements) as unknown as CascadeEmpty<Elements, [Elements[0]]>;
 }
 
 function getLast<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
-	data: FlowrSearchInput<Pipeline>, elements: FSE): CascadeEmpty<Elements, [LastOfArray<Elements>]> {
+	data: FlowrAnalysisProvider, elements: FSE): CascadeEmpty<Elements, [LastOfArray<Elements>]> {
 	return elements.mutate(e => [getLastByLocation(e)] as Elements) as unknown as CascadeEmpty<Elements, [LastOfArray<Elements>]>;
 }
 
 function getIndex<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
-	data: FlowrSearchInput<Pipeline>, elements: FSE, { index }: { index: number }): CascadeEmpty<Elements, [Elements[number]]> {
+	data: FlowrAnalysisProvider, elements: FSE, { index }: { index: number }): CascadeEmpty<Elements, [Elements[number]]> {
 	return elements.mutate(e => [sortFully(e)[index]] as Elements) as unknown as CascadeEmpty<Elements, [Elements[number]]>;
 }
 
 function getSelect<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
-	data: FlowrSearchInput<Pipeline>, elements: FSE, { select }: { select: number[] }): CascadeEmpty<Elements, Elements> {
+	data: FlowrAnalysisProvider, elements: FSE, { select }: { select: number[] }): CascadeEmpty<Elements, Elements> {
 	return elements.mutate(e => {
 		sortFully(e);
 		return select.map(i => e[i]).filter(isNotUndefined) as Elements;
@@ -132,7 +125,7 @@ function getSelect<Elements extends FlowrSearchElement<ParentInformation>[], FSE
 }
 
 function getTail<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
-	data: FlowrSearchInput<Pipeline>, elements: FSE): CascadeEmpty<Elements, TailOfArray<Elements>> {
+	data: FlowrAnalysisProvider, elements: FSE): CascadeEmpty<Elements, TailOfArray<Elements>> {
 	return elements.mutate(e => {
 		const first = getFirstByLocation(e);
 		return e.filter(el => el !== first) as Elements;
@@ -140,45 +133,62 @@ function getTail<Elements extends FlowrSearchElement<ParentInformation>[], FSE e
 }
 
 function getTake<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
-	data: FlowrSearchInput<Pipeline>, elements: FSE, { count }: { count: number }): CascadeEmpty<Elements, TailOfArray<Elements>> {
+	data: FlowrAnalysisProvider, elements: FSE, { count }: { count: number }): CascadeEmpty<Elements, TailOfArray<Elements>> {
 	return elements.mutate(e => sortFully(e).slice(0, count) as Elements) as unknown as CascadeEmpty<Elements, TailOfArray<Elements>>;
 }
 
 function getSkip<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
-	data: FlowrSearchInput<Pipeline>, elements: FSE, { count }: { count: number }): CascadeEmpty<Elements, TailOfArray<Elements>> {
+	data: FlowrAnalysisProvider, elements: FSE, { count }: { count: number }): CascadeEmpty<Elements, TailOfArray<Elements>> {
 	return elements.mutate(e => sortFully(e).slice(count) as Elements) as unknown as CascadeEmpty<Elements, TailOfArray<Elements>>;
 }
 
-function getFilter<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
-	data: FlowrSearchInput<Pipeline>, elements: FSE, { filter }: { filter: FlowrFilterExpression }): CascadeEmpty<Elements, Elements | []> {
+async function getFilter<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
+	data: FlowrAnalysisProvider, elements: FSE, { filter }: {
+		filter: FlowrFilterExpression
+	}): Promise<CascadeEmpty<Elements, Elements | []>> {
+	const dataflow = await data.dataflow();
 	return elements.mutate(
-		e => e.filter(e => evalFilter(filter, { element: e, data })) as Elements
+		e => e.filter(e => evalFilter(filter, { element: e, data: { dataflow } })) as Elements
 	) as unknown as CascadeEmpty<Elements, Elements | []>;
 }
 
-function getWith<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
-	data: FlowrSearchInput<Pipeline>, elements: FSE, { info, args }: { info: Enrichment, args?: EnrichmentElementArguments<Enrichment> }): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
-	return elements.enrich(data, info, args).mutate(
-		s => s.map(e => enrichElement(e, elements, data, info, args)) as Elements
+async function getWith<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
+	input: FlowrAnalysisProvider, elements: FSE, { info, args }: {
+		info:  Enrichment,
+		args?: EnrichmentElementArguments<Enrichment>
+	}): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+
+	const data = {
+		normalize: await input.normalize(),
+		dataflow:  await input.dataflow(),
+		cfg: 	     await input.controlflow(),
+		config:    input.flowrConfig
+	};
+
+	return (await elements.enrich(input, info, args)).mutate(
+		async s => await Promise.all(s.map(e => enrichElement(e, elements, data, info, args))) as Elements
 	) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
 }
 
 function getMap<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
-	data: FlowrSearchInput<Pipeline>, elements: FSE, { mapper, args }: { mapper: Mapper, args: MapperArguments<Mapper> }): FlowrSearchElements<ParentInformation, Elements> {
+	data: FlowrAnalysisProvider, elements: FSE, { mapper, args }: { mapper: Mapper, args: MapperArguments<Mapper> }): FlowrSearchElements<ParentInformation, Elements> {
 	return elements.mutate(
 		elements => elements.flatMap(e => map(e, data, mapper, args)) as Elements
 	) as unknown as FlowrSearchElements<ParentInformation, Elements>;
 }
 
-function getMerge<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
+async function getMerge<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
 	/* search has to be unknown because it is a recursive type */
-	data: FlowrSearchInput<Pipeline>, elements: FSE, other: { search: unknown[], generator: FlowrSearchGeneratorNode }): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
-	const resultOther = runSearch(other as FlowrSearch, data);
+	data: FlowrAnalysisProvider, elements: FSE, other: {
+		search:    unknown[],
+		generator: FlowrSearchGeneratorNode
+	}): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+	const resultOther = await runSearch(other as FlowrSearch, data);
 	return elements.addAll([...resultOther.getElements()]);
 }
 
 function getUnique<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
-	data: FlowrSearchInput<Pipeline>, elements: FSE): CascadeEmpty<Elements, Elements> {
+	data: FlowrAnalysisProvider, elements: FSE): CascadeEmpty<Elements, Elements> {
 	return elements.mutate(e =>
 		e.reduce((acc, cur) => {
 			if(!acc.some(el => el.node.id === cur.node.id)) {

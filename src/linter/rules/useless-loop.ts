@@ -1,4 +1,3 @@
-import { extractCfg } from '../../control-flow/extract-cfg';
 import { loopyFunctions, onlyLoopsOnce } from '../../control-flow/useless-loop';
 import type { BuiltInMappingName } from '../../dataflow/environments/built-in';
 import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
@@ -26,17 +25,15 @@ export interface UselessLoopMetadata extends MergeableRecord {
 
 export const USELESS_LOOP = {
 	createSearch:        () => Q.all().filter(VertexType.FunctionCall),
-	processSearchResult: (elements, config, data) => {
-		const cfg = extractCfg(data.normalize, data.config, data.dataflow.graph);
-
+	processSearchResult: (elements, useLessLoopConfig, { config, dataflow, normalize, cfg }) => {
 		const results = elements.getElements().filter(e => {
-			const vertex = data.dataflow.graph.getVertex(e.node.info.id);
-			return vertex 
-                && isFunctionCallVertex(vertex) 
-                && vertex.origin !== 'unnamed' 
-                && config.loopyFunctions.has(vertex.origin[0] as BuiltInMappingName);
-		}).filter(loop => 
-			onlyLoopsOnce(loop.node.info.id, data.dataflow.graph, cfg, data.normalize, data.config)   
+			const vertex = dataflow.graph.getVertex(e.node.info.id);
+			return vertex
+				&& isFunctionCallVertex(vertex)
+				&& vertex.origin !== 'unnamed'
+				&& useLessLoopConfig.loopyFunctions.has(vertex.origin[0] as BuiltInMappingName);
+		}).filter(loop =>
+			onlyLoopsOnce(loop.node.info.id, dataflow.graph, cfg, normalize, config)
 		).map(res => ({
 			certainty: LintingResultCertainty.Certain,
 			name:      res.node.lexeme as string,

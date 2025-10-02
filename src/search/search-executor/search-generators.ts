@@ -1,21 +1,16 @@
-import type {
-	FlowrSearchElement,
-	FlowrSearchGeneratorNodeBase,
-	FlowrSearchGetFilter,
-	FlowrSearchInput
-} from '../flowr-search';
+import type { FlowrSearchElement, FlowrSearchGeneratorNodeBase, FlowrSearchGetFilter } from '../flowr-search';
 import { FlowrSearchElements } from '../flowr-search';
-import type { Pipeline } from '../../core/steps/pipeline/pipeline';
 import type { TailTypesOrUndefined } from '../../util/collections/arrays';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../slicing/criterion/parse';
 import { isNotUndefined } from '../../util/assert';
-import type { Query, SupportedQuery, SynchronousQuery } from '../../queries/query';
+import type { Query, SupportedQuery } from '../../queries/query';
 import { executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { enrichElement, Enrichment } from './search-enrichers';
+import type { FlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
 /**
  * This is a union of all possible generator node types
@@ -43,26 +38,28 @@ export const generators = {
 	'from-query': generateFromQuery
 } as const;
 
-function generateAll(data: FlowrSearchInput<Pipeline>): FlowrSearchElements<ParentInformation> {
-	return new FlowrSearchElements(getAllNodes(data)
+async function generateAll(data: FlowrAnalysisProvider): Promise<FlowrSearchElements<ParentInformation>> {
+	return new FlowrSearchElements((await getAllNodes(data))
 		.map(node => ({ node })));
 }
 
-function getAllNodes(data: FlowrSearchInput<Pipeline>): RNodeWithParent[] {
-	return [...new Map([... data.normalize.idMap.values()].map(n => [n.info.id, n]))
+async function getAllNodes(data: FlowrAnalysisProvider): Promise<RNodeWithParent[]> {
+	const normalize = await data.normalize();
+	return [...new Map([...normalize.idMap.values()].map(n => [n.info.id, n]))
 		.values()];
 }
 
 
-function generateGet(data: FlowrSearchInput<Pipeline>, { filter: { line, column, id, name, nameIsRegex } }: { filter: FlowrSearchGetFilter }): FlowrSearchElements<ParentInformation> {
+async function generateGet(input: FlowrAnalysisProvider, { filter: { line, column, id, name, nameIsRegex } }: { filter: FlowrSearchGetFilter }): Promise<FlowrSearchElements<ParentInformation>> {
+	const normalize = await input.normalize();
 	let potentials = (id ?
-		[data.normalize.idMap.get(id)].filter(isNotUndefined) :
-		getAllNodes(data)
+		[normalize.idMap.get(id)].filter(isNotUndefined) :
+		await getAllNodes(input)
 	);
 
 	if(line && line < 0) {
-		const maxLines = data.normalize.ast.info.fullRange?.[2] ??
-			(id ? getAllNodes(data) : potentials).reduce(
+		const maxLines = normalize.ast.info.fullRange?.[2] ??
+			(id ? (await getAllNodes(input)) : potentials).reduce(
 				(maxLine, { location }) => location && location[2] > maxLine ? location[2] : maxLine,
 				0
 			);
@@ -86,12 +83,14 @@ function generateGet(data: FlowrSearchInput<Pipeline>, { filter: { line, column,
 	return new FlowrSearchElements(potentials.map(node => ({ node })));
 }
 
-function generateFrom(data: FlowrSearchInput<Pipeline>, args: { from: FlowrSearchElement<ParentInformation> | FlowrSearchElement<ParentInformation>[] }): FlowrSearchElements<ParentInformation> {
+function generateFrom(_input: FlowrAnalysisProvider, args: { from: FlowrSearchElement<ParentInformation> | FlowrSearchElement<ParentInformation>[] }): FlowrSearchElements<ParentInformation> {
 	return new FlowrSearchElements(Array.isArray(args.from) ? args.from : [args.from]);
 }
 
-function generateFromQuery(data: FlowrSearchInput<Pipeline>, args: { from: readonly SynchronousQuery[] } ): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
-	const result = executeQueries({ ast: data.normalize, dataflow: data.dataflow, config: data.config }, args.from);
+async function generateFromQuery(input: FlowrAnalysisProvider, args: {
+	from: readonly Query[]
+}): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+	const result = await executeQueries({ analyzer: input }, args.from);
 
 	// collect involved nodes
 	const nodesByQuery = new Map<Query['type'], Set<FlowrSearchElement<ParentInformation>>>();
@@ -102,22 +101,30 @@ function generateFromQuery(data: FlowrSearchInput<Pipeline>, args: { from: reado
 		const nodes = new Set<FlowrSearchElement<ParentInformation>>();
 		const queryDef = SupportedQueries[query as Query['type']] as SupportedQuery<Query['type']>;
 		for(const node of queryDef.flattenInvolvedNodes(content as BaseQueryResult, args.from)) {
-			nodes.add({ node: data.normalize.idMap.get(node) as RNode<ParentInformation> });
+			nodes.add({ node: (await input.normalize()).idMap.get(node) as RNode<ParentInformation> });
 		}
 		nodesByQuery.set(query as Query['type'], nodes);
 	}
 
 	// enrich elements with query data
-	const elements = new FlowrSearchElements([...nodesByQuery].flatMap(([_, nodes]) => [...nodes])).enrich(data, Enrichment.QueryData, { queries: result });
-	return elements.mutate(s => s.map(e => {
+
+	const normalize = await input.normalize();
+	const dataflow = await input.dataflow();
+	const cfg = await input.controlflow();
+
+	const elements = await new FlowrSearchElements([...nodesByQuery]
+		.flatMap(([_, nodes]) => [...nodes]))
+		.enrich(input, Enrichment.QueryData, { queries: result });
+	return elements.mutate(s => Promise.all(s.map(async e => {
 		const [query, _] = [...nodesByQuery].find(([_, nodes]) => nodes.has(e)) as [Query['type'], Set<FlowrSearchElement<ParentInformation>>];
-		return enrichElement(e, elements, data, Enrichment.QueryData, { query });
-	})) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
+		return await enrichElement(e, elements, { normalize, dataflow, cfg }, Enrichment.QueryData, { query });
+	}))) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
 }
 
-function generateCriterion(data: FlowrSearchInput<Pipeline>, args: { criterion: SlicingCriteria }): FlowrSearchElements<ParentInformation> {
+async function generateCriterion(input: FlowrAnalysisProvider, args: { criterion: SlicingCriteria }): Promise<FlowrSearchElements<ParentInformation>> {
+	const idMap = (await input.normalize()).idMap;
 	return new FlowrSearchElements(
-		args.criterion.map(c => ({ node: data.normalize.idMap.get(slicingCriterionToId(c, data.normalize.idMap)) as RNodeWithParent }))
+		args.criterion.map(c => ({ node: idMap.get(slicingCriterionToId(c, idMap)) as RNodeWithParent }))
 	);
 }
 

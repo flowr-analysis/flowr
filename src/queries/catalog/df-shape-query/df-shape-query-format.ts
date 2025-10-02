@@ -22,7 +22,7 @@ export interface DfShapeQueryResult extends BaseQueryResult {
 
 export const DfShapeQueryDefinition = {
 	executor:        executeDfShapeQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'df-shape'>['df-shape'];
 		result.push(`Query: ${bold('df-shape', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		result.push(...out.domains.entries().take(20).map(([key, domain]) => {

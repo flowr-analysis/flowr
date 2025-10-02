@@ -11,7 +11,7 @@ export function fingerPrintOfQuery(query: StaticSliceQuery): string {
 	return JSON.stringify(query);
 }
 
-export function executeStaticSliceQuery({ dataflow, ast, config }: BasicQueryData, queries: readonly StaticSliceQuery[]): StaticSliceQueryResult {
+export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, queries: readonly StaticSliceQuery[]): Promise<StaticSliceQueryResult> {
 	const start = Date.now();
 	const results: StaticSliceQueryResult['results'] = {};
 	for(const query of queries) {
@@ -21,13 +21,13 @@ export function executeStaticSliceQuery({ dataflow, ast, config }: BasicQueryDat
 		}
 		const { criteria, noReconstruction, noMagicComments } = query;
 		const sliceStart = Date.now();
-		const slice = staticSlice(dataflow, ast, criteria, query.direction ?? SliceDirection.Backward, config.solver.slicer?.threshold);
+		const slice = staticSlice(await analyzer.dataflow(), await analyzer.normalize(), criteria, query.direction ?? SliceDirection.Backward, analyzer.flowrConfig.solver.slicer?.threshold);
 		const sliceEnd = Date.now();
 		if(noReconstruction) {
 			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };
 		} else {
 			const reconstructStart = Date.now();
-			const reconstruct = reconstructToCode(ast, slice.result, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect));
+			const reconstruct = reconstructToCode(await analyzer.normalize(), slice.result, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect));
 			const reconstructEnd = Date.now();
 			results[key] = {
 				slice:       { ...slice, '.meta': { timing: sliceEnd - sliceStart } },

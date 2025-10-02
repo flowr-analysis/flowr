@@ -5,9 +5,9 @@ import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import type {
 	DependenciesQuery,
 	DependenciesQueryResult,
-	DependencyInfo } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
-import { Unknown
+	DependencyInfo
 } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 
 
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -82,7 +82,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 
 		testQuery('Library with variable', 'a <- "ggplot2"\nb <- TRUE\nlibrary(a,character.only=b)', { library: [
-			{ nodeId: '3@library', functionName: 'library', value: 'ggplot2' }
+			{ nodeId: '3@library', functionName: 'library', value: 'ggplot2'  }
 		] });
 
 		// for now, we want a better or (https://github.com/flowr-analysis/flowr/issues/1342)
@@ -164,7 +164,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		testQuery('Using a vector by variable (real world)', 'packages <- c("ggplot2", "dplyr", "tidyr")\nlapply(packages, library, character.only = TRUE)', { library: [
 			{ nodeId: '2@library', functionName: 'library', value: 'ggplot2' },
-			{ nodeId: '2@library', functionName: 'library', value: 'dplyr' },
+			{ nodeId: '2@library', functionName: 'library', value: 'dplyr'  },
 			{ nodeId: '2@library', functionName: 'library', value: 'tidyr' }
 		] });
 
@@ -178,6 +178,20 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '2@library', functionName: 'library', value: 'g' }
 		] });
 
+		testQuery('Library with version', 'library(ggplot2)', { library: [
+			{ nodeId: '1@library', functionName: 'library', value: 'ggplot2'  }
+		] });
+
+		testQuery('Libraries with versions', 'library(ggplot2)\nlibrary(dplyr)', { library: [
+			{ nodeId: '1@library', functionName: 'library', value: 'ggplot2' },
+			{ nodeId: '2@library', functionName: 'library', value: 'dplyr' },
+		] });
+
+		testQuery('Libraries with and without versions', 'library(ggplot2)\nlibrary(dplyr)\nlibrary(tidyr)', { library: [
+			{ nodeId: '1@library', functionName: 'library', value: 'ggplot2' },
+			{ nodeId: '2@library', functionName: 'library', value: 'dplyr' },
+			{ nodeId: '3@library', functionName: 'library', value: 'tidyr' },
+		] });
 
 		describe('Custom', () => {
 			const readCustomFile: Partial<DependenciesQuery> = {

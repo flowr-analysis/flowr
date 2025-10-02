@@ -49,4 +49,9 @@ export abstract class AbstractFlowrAnalyzerContext<In, Out, Plugin extends Flowr
 	public getAttachedContext(): FlowrAnalyzerContext {
 		return this.ctx;
 	}
+
+	/**
+	 * Reset the context to its initial state.
+	 */
+	public abstract reset(): void;
 }

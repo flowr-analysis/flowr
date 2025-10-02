@@ -38,6 +38,9 @@ export interface ValueString<Str extends Lift<RStringValue> = Lift<RStringValue>
     type:  'string'
     value: Str
 }
+export interface ValueFunctionDefinition {
+    type: 'function-definition'
+}
 export interface ValueMissing {
 	type: 'missing'
 }
@@ -55,6 +58,7 @@ export type Value = Lift<
         | ValueString
         | ValueLogical
 		| ValueMissing
+        | ValueFunctionDefinition
     >
 export type ValueType<V> = V extends { type: infer T } ? T : never
 export type ValueTypes = ValueType<Value>
@@ -143,6 +147,8 @@ export function stringifyValue(value: Lift<Value>): string {
 				return tryStringifyBoTop(v.value, l => l === 'maybe' ? 'maybe' : l ? 'TRUE' : 'FALSE',  () => '⊤ (logical)', () => '⊥ (logical)');
 			case 'missing':
 				return '(missing)';
+			case 'function-definition':
+				return 'fn-def';
 			default:
 				assertUnreachable(t);
 		}

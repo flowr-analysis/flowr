@@ -168,6 +168,8 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 			} else {
 				return Top;
 			}
+		case RType.FunctionDefinition:
+			return setFrom({ type: 'function-definition' });
 		case RType.FunctionCall:
 		case RType.BinaryOp:
 		case RType.UnaryOp:

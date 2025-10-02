@@ -46,10 +46,16 @@ import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-forma
 import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 import type { AsyncOrSync, Writable } from 'ts-essentials';
 import type { FlowrConfigOptions } from '../config';
+import type {
+	InspectHigherOrderQuery } from './catalog/inspect-higher-order-query/inspect-higher-order-query-format';
+import {
+	InspectHigherOrderQueryDefinition
+} from './catalog/inspect-higher-order-query/inspect-higher-order-query-format';
 import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 /**
  * These are all queries that can be executed from within flowR
+ * {@link SynchronousQuery} are queries that can be executed synchronously, i.e., they do not return a Promise.
  */
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -66,6 +72,7 @@ export type Query = CallContextQuery
 	| DependenciesQuery
 	| LocationMapQuery
 	| HappensBeforeQuery
+    | InspectHigherOrderQuery
 	| ResolveValueQuery
 	| ProjectQuery
 	| OriginQuery
@@ -97,25 +104,26 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
 }
 
 export const SupportedQueries = {
-	'call-context':     CallContextQueryDefinition,
-	'config':           ConfigQueryDefinition,
-	'control-flow':     ControlFlowQueryDefinition,
-	'dataflow':         DataflowQueryDefinition,
-	'dataflow-lens':    DataflowLensQueryDefinition,
-	'df-shape':         DfShapeQueryDefinition,
-	'id-map':           IdMapQueryDefinition,
-	'normalized-ast':   NormalizedAstQueryDefinition,
-	'dataflow-cluster': ClusterQueryDefinition,
-	'static-slice':     StaticSliceQueryDefinition,
-	'lineage':          LineageQueryDefinition,
-	'dependencies':     DependenciesQueryDefinition,
-	'location-map':     LocationMapQueryDefinition,
-	'search':           SearchQueryDefinition,
-	'happens-before':   HappensBeforeQueryDefinition,
-	'resolve-value':    ResolveValueQueryDefinition,
-	'project':          ProjectQueryDefinition,
-	'origin':           OriginQueryDefinition,
-	'linter':           LinterQueryDefinition
+	'call-context':         CallContextQueryDefinition,
+	'config':               ConfigQueryDefinition,
+	'control-flow':         ControlFlowQueryDefinition,
+	'dataflow':             DataflowQueryDefinition,
+	'dataflow-lens':        DataflowLensQueryDefinition,
+	'df-shape':             DfShapeQueryDefinition,
+	'id-map':               IdMapQueryDefinition,
+	'normalized-ast':       NormalizedAstQueryDefinition,
+	'dataflow-cluster':     ClusterQueryDefinition,
+	'static-slice':         StaticSliceQueryDefinition,
+	'lineage':              LineageQueryDefinition,
+	'dependencies':         DependenciesQueryDefinition,
+	'location-map':         LocationMapQueryDefinition,
+	'search':               SearchQueryDefinition,
+	'happens-before':       HappensBeforeQueryDefinition,
+	'inspect-higher-order': InspectHigherOrderQueryDefinition,
+	'resolve-value':        ResolveValueQueryDefinition,
+	'project':              ProjectQueryDefinition,
+	'origin':               OriginQueryDefinition,
+	'linter':               LinterQueryDefinition
 } as const satisfies SupportedQueriesType;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

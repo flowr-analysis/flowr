@@ -85,10 +85,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		return this.computeIfAbsent(false, () => this.pipeline.getResults(true));
 	}
 
-	public reset(requests?: RParseRequests) {
-		if(requests) {
-			this.args.request = requests;
-		}
+	public reset() {
 		this.receive({ type: CacheInvalidationEventType.Full });
 	}
 

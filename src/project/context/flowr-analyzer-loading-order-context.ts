@@ -64,8 +64,8 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 
 	public reset(): void {
 		this.knownOrder = undefined;
-		this.guesses = [];
-		this.unordered = [];
+		this.guesses.length = 0;
+		this.unordered.length = 0;
 		this.rerunRequired = this.plugins.length > 0;
 	}
 

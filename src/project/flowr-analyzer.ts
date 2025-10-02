@@ -130,7 +130,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public reset() {
 		this.ctx.reset();
-		this.cache.reset(this.ctx.files.computeLoadingOrder());
+		this.cache.reset();
 	}
 
 	public async parse(force?: boolean): ReturnType<typeof this.cache.parse> {

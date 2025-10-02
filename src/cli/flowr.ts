@@ -179,10 +179,10 @@ async function mainRepl() {
 	}
 	hookSignalHandlers(engines);
 
-	const analyzer = await new FlowrAnalyzerBuilder()
+	const analyzer = new FlowrAnalyzerBuilder()
 		.setParser(defaultEngine)
 		.setConfig(config)
-		.build();
+		.buildSync();
 
 	const allowRSessionAccess = options['r-session-access'] ?? false;
 	if(options.execute) {

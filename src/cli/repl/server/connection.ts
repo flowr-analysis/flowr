@@ -112,7 +112,7 @@ export class FlowRServerConnection {
 				this.handleSliceRequest(request.message as SliceRequestMessage);
 				break;
 			case 'request-repl-execution':
-				void this.handleRepl(request.message as ExecuteRequestMessage);
+				this.handleRepl(request.message as ExecuteRequestMessage);
 				break;
 			case 'request-lineage':
 				void this.handleLineageRequest(request.message as LineageRequestMessage);
@@ -282,7 +282,7 @@ export class FlowRServerConnection {
 	}
 
 
-	private async handleRepl(base: ExecuteRequestMessage) {
+	private handleRepl(base: ExecuteRequestMessage) {
 		const requestResult = validateMessage(base, requestExecuteReplExpressionMessage);
 
 		if(requestResult.type === 'error') {
@@ -301,10 +301,10 @@ export class FlowRServerConnection {
 			});
 		};
 
-		const analyzer = await new FlowrAnalyzerBuilder()
+		const analyzer = new FlowrAnalyzerBuilder()
 			.setConfig(this.config)
 			.setParser(this.parser)
-			.build();
+			.buildSync();
 
 		void replProcessAnswer(analyzer, {
 			formatter: request.ansi ? ansiFormatter : voidFormatter,

@@ -90,6 +90,8 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	}
 
 	private async runTapeUntil<T>(force: boolean | undefined, until: () => T | undefined): Promise<T> {
+		guard(this.args.request && (Array.isArray(this.args.request) ? this.args.request.length > 0 : true),
+			'At least one request must be set to run the analysis pipeline');
 		if(force) {
 			this.reset();
 		}

@@ -99,7 +99,7 @@ export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.Re
 
 export function handleString(code: string) {
 	return {
-		input:     code.startsWith('"') ? JSON.parse(code) as string : code,
+		input:     code.length == 0 ? undefined : code.startsWith('"') ? JSON.parse(code) as string : code,
 		remaining: []
 	};
 }
@@ -114,9 +114,10 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 				const remainingLine = statement.slice(command.length + 2).trim();
 				if(processor.usesAnalyzer) {
 					const args = processor.argsParser(remainingLine);
-					const request = requestFromInput(args.input);
-					analyzer.reset();
-					analyzer.context().addRequest(request);
+					if(args.input) {
+						analyzer.reset();
+						analyzer.context().addRequest(requestFromInput(args.input));
+					}
 					await processor.fn({ output, analyzer, remainingArgs: args.remaining });
 				} else {
 					await processor.fn({ output, parser: analyzer.parser, remainingLine, allowRSessionAccess, config: analyzer.flowrConfig });

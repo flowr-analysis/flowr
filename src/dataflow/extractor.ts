@@ -84,7 +84,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 		}
 	}
 
-	return cf as ControlFlowInformation;
+	return cf;
 }
 
 /**
@@ -98,7 +98,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	request:     RParseRequests,
 	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
 	config:      FlowrConfigOptions
-): DataflowInformation & { cfgQuick: ControlFlowInformation } {
+): DataflowInformation & { cfgQuick: ControlFlowInformation | undefined } {
 	let firstRequest: RParseRequest;
 
 	const multifile = Array.isArray(request);

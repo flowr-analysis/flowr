@@ -192,7 +192,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		let result: ControlFlowInformation;
 		if(useDataflow || simplifications.length > 0) {
 			result = extractCfg(normalized, this.args.config, dataflow?.graph, simplifications);
-		} else if(dataflow !== undefined) {
+		} else if(dataflow && dataflow.cfgQuick) {
 			result = dataflow.cfgQuick;
 		} else {
 			result = extractCfgQuick(normalized);

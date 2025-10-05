@@ -1,13 +1,11 @@
 import type { KnownParser } from '../../r-bridge/parser';
 import type { CacheInvalidationEvent } from './flowr-cache';
-import { FlowrCache , CacheInvalidationEventType } from './flowr-cache';
+import { CacheInvalidationEventType, FlowrCache } from './flowr-cache';
 import type {
 	DEFAULT_DATAFLOW_PIPELINE,
 	TREE_SITTER_DATAFLOW_PIPELINE
 } from '../../core/steps/pipeline/default-pipelines';
-import {
-	createDataflowPipeline
-} from '../../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
 import type { PipelineExecutor } from '../../core/pipeline-executor';
 import type { FlowrConfigOptions } from '../../config';
 import type { RParseRequests } from '../../r-bridge/retriever';
@@ -92,6 +90,8 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	}
 
 	private async runTapeUntil<T>(force: boolean | undefined, until: () => T | undefined): Promise<T> {
+		guard(this.args.request && (Array.isArray(this.args.request) ? this.args.request.length > 0 : true),
+			'At least one request must be set to run the analysis pipeline');
 		if(force) {
 			this.reset();
 		}

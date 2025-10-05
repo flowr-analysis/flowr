@@ -168,7 +168,7 @@ export const parseCommand: ReplCodeCommand = {
 	fn: async({ output, analyzer }) => {
 		const result = await analyzer.parse();
 
-		if(analyzer.parserName() === 'r-shell') {
+		if(analyzer.parser.name === 'r-shell') {
 			const object = convertPreparedParsedData(prepareParsedData(result.parsed as unknown as string));
 			output.stdout(depthListToTextTree(toDepthMap(object), output.formatter));
 		} else {

@@ -12,7 +12,7 @@ import { RawRType } from './lang-4.x/ast/model/type';
 import fs from 'fs';
 import path from 'path';
 import type { SupportedFormats } from '../util/formats/adapter-format';
-import { requestFromFile } from '../util/formats/adapter';
+import { requestFromFile, requestFromText } from '../util/formats/adapter';
 
 export const fileProtocol = 'file://';
 
@@ -83,7 +83,7 @@ export function requestFromInput(input: readonly string[] | string): RParseReque
  * Giving an array, you can mix file paths and text content (again using the {@link fileProtocol}).
  *
  */
-export function requestFromInput(input: `${typeof fileProtocol}${string}` | string | readonly string[]): RParseRequests  {
+export function requestFromInput(input: `${typeof fileProtocol}${string}` | string | readonly string[], fileTypeHint?: SupportedFormats): RParseRequests  {
 	if(Array.isArray(input)) {
 		return input.flatMap(requestFromInput);
 	}
@@ -93,10 +93,7 @@ export function requestFromInput(input: `${typeof fileProtocol}${string}` | stri
 	if(file) {
 		return requestFromFile(content.slice(7));
 	} else {
-		return {
-			request: 'text',
-			content: content
-		};
+		return requestFromText(content, fileTypeHint);
 	}
 }
 

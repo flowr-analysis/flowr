@@ -14,7 +14,7 @@ import { stats2string } from '../benchmark/stats/print';
 import { makeMagicCommentHandler } from '../reconstruct/auto-select/magic-comments';
 import { doNotAutoSelect } from '../reconstruct/auto-select/auto-select-defaults';
 import { getConfig, getEngineConfig } from '../config';
-import { requestFromFile } from '../util/formats/adapter';
+import { requestFromFile, requestFromText } from '../util/formats/adapter';
 
 export interface SlicerCliOptions {
 	verbose:             boolean
@@ -50,7 +50,7 @@ async function getSlice() {
 
 	await slicer.init(
 		options['input-is-text']
-			? { request: 'text', content: options.input.replaceAll('\\n', '\n') }
+			? requestFromText(options.input.replaceAll('\\n', '\n'))
 			: requestFromFile(options.input),
 		config,
 		options['no-magic-comments'] ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)

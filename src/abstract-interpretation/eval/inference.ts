@@ -7,7 +7,7 @@ import { ConstStringDomain } from "./domains/constant";
 import { ConstSetStringDomain } from "./domains/constant-set";
 import { StringDomainInfo, StringDomainVisitor } from "./visitor";
 
-function createDomain(config: FlowrConfigOptions): AbstractOperationsStringDomain | undefined {
+export function createDomain(config: FlowrConfigOptions): AbstractOperationsStringDomain | undefined {
 	switch (config.abstractInterpretation.string.domain) {
 		case "const":
 			return new ConstStringDomain()

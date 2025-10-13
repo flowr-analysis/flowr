@@ -21,6 +21,10 @@ import {
 import { inspect } from 'util';
 import { sdEqual } from './equality';
 import { unescapeSpecialChars } from '../data-frame/resolve-args';
+import { resolveIdToValue, ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
+import { VariableResolve } from '../../config';
+import { isValue, Value } from '../../dataflow/eval/values/r-value';
+import { format } from "util";
 
 function obj<T>(obj: T) {
 	return inspect(obj, false, null, true);
@@ -54,6 +58,55 @@ export type StringDomainVisitorConfiguration<
   'defaultVisitingOrder' | 'defaultVisitingType'
 >;
 
+function resolveValueToStringImplicit(value: Value, domain: AbstractOperationsStringDomain): SDValue {
+	switch (value.type) {
+		case "string":
+			if (!isValue(value.value)) return Top;
+			return domain.const(unescapeSpecialChars(value.value.str))
+
+		case "number":
+			if (!isValue(value.value)) return Top;
+			if (value.value.complexNumber) return Top;
+			return domain.const(format("%d", value.value.num));
+
+		case "interval":
+			if (!isValue(value.start.value)) return Top;
+			if (!isValue(value.end.value)) return Top;
+			if (value.start.value.complexNumber || value.end.value.complexNumber) return Top;
+			if (value.end.value.num - value.start.value.num > 20) return Top;
+			let results: number[] = []
+			let v = value.start.value.num;
+			while (v <= value.end.value.num) {
+				results.push(v);
+				v += 1.0;
+			}
+			return domain.join(...results.map(it => domain.const(format("%d", it))))
+
+		case "logical":
+			if (!isValue(value.value)) return Top;
+			if (value.value === "maybe") return Top;
+			return domain.const(value.value ? "TRUE" : "FALSE");
+
+		default:
+			console.log("unhandled type: ", value.type);
+			return Top;
+	}
+}
+
+// implicit conversions
+export function resolveNodeToStringImplicit(node: RNode<StringDomainInfo & ParentInformation> | undefined, domain: AbstractOperationsStringDomain, resolveInfo: ResolveInfo): SDValue {
+	if (node === undefined) return Top;
+	if (node.info.sdvalue !== undefined) return node.info.sdvalue;
+		const result = resolveIdToValue(node.info.id, resolveInfo);
+	if (!isValue(result)) return Top;
+	console.log(JSON.stringify(result))
+	const values = result.elements;
+	if (!values.every(it => isValue(it))) return Top;
+
+	const stringValues = values.map(it => resolveValueToStringImplicit(it, domain))
+	return domain.join(...stringValues)
+}
+
 export class StringDomainVisitor<
   OtherInfo = NoInfo,
   ControlFlow extends ControlFlowInformation = ControlFlowInformation,
@@ -75,6 +128,16 @@ export class StringDomainVisitor<
 > {
 	domain: AbstractOperationsStringDomain;
 	dirty: boolean = false;
+
+	// implicit conversions
+	resolveIdToStringImplicit(id: NodeId | undefined): SDValue {
+		if (id === undefined) return Top;
+		return resolveNodeToStringImplicit(this.getNormalizedAst(id), this.domain, {
+			resolve: this.config.flowrConfig.solver.variables,
+			graph: this.config.dfg,
+			idMap: this.config.normalizedAst.idMap,
+		});
+	}
 
 	resolveIdToString(id: NodeId | undefined): SDValue {
 		if (id === undefined) return Top;
@@ -201,7 +264,7 @@ export class StringDomainVisitor<
 
 					if (positional.length == 0) return Top;
 
-					const values = positional.map(it => this.resolveIdToString(it.nodeId))
+					const values = positional.map(it => this.resolveIdToStringImplicit(it.nodeId))
 					return this.domain.concat(sep, ...values)
 				});
 				break;
@@ -213,7 +276,7 @@ export class StringDomainVisitor<
 
 					if (positional.length == 0) return Top;
 
-					const values = positional.map(it => this.resolveIdToString(it.nodeId))
+					const values = positional.map(it => this.resolveIdToStringImplicit(it.nodeId))
 					return this.domain.concat(sep, ...values)
 				});
 				break;

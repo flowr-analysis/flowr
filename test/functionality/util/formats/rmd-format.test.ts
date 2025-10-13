@@ -1,5 +1,5 @@
 import { assert, describe, test } from 'vitest';
-import { requestFromFile } from '../../../../src/util/formats/adapter';
+import { requestFromFile, requestFromText } from '../../../../src/util/formats/adapter';
 import { restoreBlocksWithoutMd,  isRCodeBlock, type RmdInfo } from '../../../../src/util/formats/adapters/rmd-adapter';
 import { Node } from 'commonmark';
 import type { RParseRequestFromText } from '../../../../src/r-bridge/retriever';
@@ -138,6 +138,36 @@ describe('rmd', () => {
 				],
 				options: { title: 'Sample Document', output: 'pdf_document' }
 			}
+		} satisfies RParseRequestFromText<RmdInfo>);
+	});
+
+	test('load from str', () => {
+		const data = requestFromText(`---
+test: 1
+---
+
+# Hello World
+		
+\`\`\`{r}
+print(42)
+\`\`\`
+		`, 'Rmd');
+
+		assert.deepEqual(data, {
+			content: '\n\n\n\n\n\n\nprint(42)\n\n',
+			info:    {
+				blocks: [
+					{
+						code:    'print(42)\n',
+						options: '',
+					},
+				],
+				options: {
+					test: 1,
+				},
+				'type': 'Rmd',
+			},
+			request: 'text',
 		} satisfies RParseRequestFromText<RmdInfo>);
 	});
 });

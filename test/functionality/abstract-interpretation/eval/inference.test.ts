@@ -301,6 +301,51 @@ describe.sequential('string-domain-inference', withShell((shell) => {
     	{ kind: 'const', value: 'bar' },
     );
 
+    assertStringDomain(
+    	'implicit string conversion',
+    	shell,
+    	"const",
+    	'paste0(7)',
+    	"1:1",
+    	{ kind: 'const', value: '7' },
+    );
+
+    assertStringDomain(
+    	'indirect implicit string conversion',
+    	shell,
+    	"const",
+    	'a <- 7\npaste0(a)',
+    	"2:1",
+    	{ kind: 'const', value: '7' },
+    );
+
+    assertStringDomain(
+    	'indirect implicit string conversion',
+    	shell,
+    	"const",
+    	'a <- 7\npaste0(a)',
+    	"2:1",
+    	{ kind: 'const', value: '7' },
+    );
+
+    // assertStringDomain(
+    // 	'indirect implicit string conversion',
+    // 	shell,
+    // 	"const-set",
+    // 	'for (i in 1:5) {\npaste0(i)\n}',
+    // 	"2:1",
+    // 	{ kind: 'const-set', value: ["1", "2", "3", "4", "5"] },
+    // );
+
+    // assertStringDomain(
+    // 	'inside function call',
+    // 	shell,
+    // 	"const",
+    // 	'f <- function(x) { print(x) }\nf(7)',
+    // 	"1:26",
+    // 	{ kind: 'const', value: '7' },
+    // );
+
     type VarType = "literal" | "unknown";
     type GeneratedVar = {
       type: VarType;

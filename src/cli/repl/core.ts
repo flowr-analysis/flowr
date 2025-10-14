@@ -112,7 +112,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 		if(processor) {
 			try {
 				const remainingLine = statement.slice(command.length + 2).trim();
-				if(processor.usesAnalyzer) {
+				if(processor.isCodeCommand) {
 					const args = processor.argsParser(remainingLine);
 					if(args.input) {
 						analyzer.reset();
@@ -120,7 +120,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 					}
 					await processor.fn({ output, analyzer, remainingArgs: args.remaining });
 				} else {
-					await processor.fn({ output, parser: analyzer.parser, remainingLine, allowRSessionAccess, config: analyzer.flowrConfig });
+					await processor.fn({ output, analyzer, remainingLine, allowRSessionAccess });
 				}
 			} catch(e){
 				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
@@ -132,7 +132,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 			output.stdout(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
 		}
 	} else {
-		await tryExecuteRShellCommand({ output, parser: analyzer.parser, remainingLine: statement, allowRSessionAccess, config: analyzer.flowrConfig });
+		await tryExecuteRShellCommand({ output, analyzer, remainingLine: statement, allowRSessionAccess });
 	}
 }
 

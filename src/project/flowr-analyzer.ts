@@ -1,7 +1,7 @@
 import type { FlowrConfigOptions } from '../config';
 
 
-import type { KnownParser, ParseStepOutput } from '../r-bridge/parser';
+import type { KnownParser, KnownParserName, ParseStepOutput } from '../r-bridge/parser';
 import type { Queries, QueryResults, SupportedQueryTypes } from '../queries/query';
 import { executeQueries } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
@@ -14,6 +14,9 @@ import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-build
 import type { GetSearchElements } from '../search/flowr-search-executor';
 import { runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
+import type { OutputCollectorConfiguration } from '../r-bridge/shell';
+import { RShell } from '../r-bridge/shell';
+import { guard } from '../util/assert';
 
 /**
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
@@ -21,9 +24,15 @@ import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './conte
  */
 export interface FlowrAnalysisProvider {
 	/**
-	 * Get the parser used by the analyzer.
+     * Get the name of the parser used by the analyzer.
 	 */
-    parser:   KnownParser
+    parserInformation():   Promise<{ name: KnownParserName, isRShell: false } | { name: KnownParserName, isRShell: true, rVersion: string }>;
+	/**
+	 * Sends a command to the underlying R engine and collects the output.
+	 * @param command - The command to send to the R engine.
+	 * @param addonConfig - Additional configuration for the output collector.
+	 */
+	sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]>;
 	/**
 	 * Returns project context information.
 	 * If you are a user that wants to inspect the context, prefer {@link inspectContext} instead.
@@ -99,7 +108,7 @@ export interface FlowrAnalysisProvider {
 export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements FlowrAnalysisProvider {
 	public readonly flowrConfig: FlowrConfigOptions;
 	/** The parser and engine backend */
-	public readonly parser:      Parser;
+	private readonly parser:     Parser;
 	/** The cache used for storing analysis results */
 	private readonly cache:      FlowrAnalyzerCache<Parser>;
 	private readonly ctx:        FlowrAnalyzerContext;
@@ -122,6 +131,19 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public context(): FlowrAnalyzerContext {
 		return this.ctx;
+	}
+
+	async parserInformation():   Promise<{ name: KnownParserName, isRShell: false } | { name: KnownParserName, isRShell: true, rVersion: string }> {
+		return {
+			name:     this.parser.name,
+			isRShell: this.parser instanceof RShell,
+			rVersion: await this.parser.rVersion(),
+		};
+	}
+
+	public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
+		guard(this.parser instanceof RShell, 'sendCommandWithOutput can only be used with RShell parsers!');
+		return this.parser.sendCommandWithOutput(command, addonConfig);
 	}
 
 	public inspectContext(): ReadOnlyFlowrAnalyzerContext {

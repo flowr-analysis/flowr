@@ -63,8 +63,9 @@ export const lineageCommand: ReplCodeCommand = {
 	script:        false,
 	argsParser:    (args: string) => {
 		const [criterion, rest] = splitAt(args, args.indexOf(' '));
+		const code = rest.trim();
 		return {
-			input:     rest.trim(),
+			input:     code.startsWith('"') ? JSON.parse(code) as string : code,
 			remaining: [criterion]
 		};
 	},

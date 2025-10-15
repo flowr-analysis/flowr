@@ -1,7 +1,6 @@
 import type { FlowrConfigOptions } from '../config';
 
 
-
 import type { KnownParser, KnownParserName, ParseStepOutput } from '../r-bridge/parser';
 import type { Queries, QueryResults, SupportedQueryTypes } from '../queries/query';
 import { executeQueries } from '../queries/query';
@@ -15,6 +14,7 @@ import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-build
 import type { GetSearchElements } from '../search/flowr-search-executor';
 import { runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
+import { CfgKind } from './cfg-kind';
 
 /**
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
@@ -56,17 +56,10 @@ export interface FlowrAnalysisProvider {
 	/**
 	 * Get the control flow graph (CFG) for the request.
 	 * @param simplifications - Simplification passes to be applied to the CFG.
-	 * @param useDataflow     - Whether to use the dataflow graph for the creation of the CFG.
+	 * @param kind            - The kind of CFG that is requested. By default, the CFG without dataflow information is returned.
 	 * @param force           - Do not use the cache, instead force new analyses.
 	 */
-	controlflow(simplifications?: readonly CfgSimplificationPassName[], useDataflow?: boolean, force?: boolean): Promise<ControlFlowInformation>;
-	/**
-	 * Get a quick and dirty control flow graph (CFG) for the request.
-	 * This does not use the dataflow information and does not apply any simplifications.
-	 *
-	 * @param force - Do not use the cache, instead force new analyses.
-	 */
-	controlflowQuick(force?: boolean): Promise<ControlFlowInformation>;
+	controlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind, force?: boolean): Promise<ControlFlowInformation>;
 	/**
 	 * Access the query API for the request.
 	 * @param query - The list of queries.
@@ -154,12 +147,8 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return;
 	}
 
-	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], useDataflow?: boolean, force?: boolean): Promise<ControlFlowInformation> {
-		return this.cache.controlflow(force, useDataflow ?? false, simplifications);
-	}
-
-	public async controlflowQuick(force?: boolean): Promise<ControlFlowInformation> {
-		return this.controlflow(undefined, false, force);
+	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind, force?: boolean): Promise<ControlFlowInformation> {
+		return this.cache.controlflow(force, kind ?? CfgKind.NoDataflow, simplifications);
 	}
 
 	public async query<

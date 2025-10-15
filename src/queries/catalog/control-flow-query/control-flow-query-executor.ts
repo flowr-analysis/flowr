@@ -1,6 +1,7 @@
 import { log } from '../../../util/log';
 import type { ControlFlowQuery, ControlFlowQueryResult } from './control-flow-query-format';
 import type { BasicQueryData } from '../../base-query-format';
+import { CfgKind } from '../../../project/cfg-kind';
 
 
 export async function executeControlFlowQuery({ analyzer }: BasicQueryData, queries: readonly ControlFlowQuery[]): Promise<ControlFlowQueryResult> {
@@ -11,7 +12,7 @@ export async function executeControlFlowQuery({ analyzer }: BasicQueryData, quer
 	const query = queries[0];
 
 	const start = Date.now();
-	const controlFlow = await analyzer.controlflow(query.config?.simplificationPasses, true);
+	const controlFlow = await analyzer.controlflow(query.config?.simplificationPasses, CfgKind.WithDataflow);
 	return {
 		'.meta': {
 			timing: Date.now() - start

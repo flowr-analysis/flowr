@@ -25,6 +25,7 @@ import type { AsyncOrSync, AsyncOrSyncType } from 'ts-essentials';
 import type { FlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { DataflowInformation } from '../../dataflow/info';
 import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
+import { CfgKind } from '../../project/cfg-kind';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
@@ -201,7 +202,7 @@ export const Enrichments = {
 
 			const content: CfgInformationSearchContent = {
 				...prev,
-				cfg: await data.controlflow(args.simplificationPasses, true),
+				cfg: await data.controlflow(args.simplificationPasses, CfgKind.WithDataflow),
 			};
 			if(args.checkReachable) {
 				content.reachableNodes = cfgFindAllReachable(content.cfg);

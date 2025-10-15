@@ -18,6 +18,7 @@ import { ObjectMap } from '../../util/collections/objectmap';
 import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import { extractCfg, extractCfgQuick } from '../../control-flow/extract-cfg';
+import { CfgKind } from '../cfg-kind';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
     parser:             Parser;
@@ -37,15 +38,6 @@ type AnalyzerCacheType<Parser extends KnownParser> = Parser extends TreeSitterEx
 
 interface ControlFlowCache {
     simplified: ObjectMap<[passes: readonly CfgSimplificationPassName[], kind: CfgKind], ControlFlowInformation>,
-}
-
-/**
- * Denotes the kind of CFG.
- */
-enum CfgKind {
-	WithDataflow,
-	NoDataflow,
-	Quick
 }
 
 /**

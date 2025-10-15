@@ -8,7 +8,7 @@ import type { DeepReadonly } from 'ts-essentials';
 import { FlowRServer } from './repl/server/server';
 import type { Server } from './repl/server/net';
 import { NetServer, WebSocketServerWrapper } from './repl/server/net';
-import { flowrVersion } from '../util/version';
+import { flowrVersion, printVersionInformation } from '../util/version';
 import commandLineUsage from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
 import { FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/text/ansi';
@@ -21,13 +21,13 @@ import { scripts } from './common/scripts-info';
 import { waitOnScript } from './repl/execute';
 import { standardReplOutput } from './repl/commands/repl-main';
 import { repl, replProcessAnswer } from './repl/core';
-import { printVersionInformation } from './repl/commands/repl-version';
 import { printVersionRepl } from './repl/print-version';
 import { defaultConfigFile, flowrMainOptionDefinitions, getScriptsText } from './flowr-main-options';
 import type { KnownParser } from '../r-bridge/parser';
 import fs from 'fs';
 import path from 'path';
 import { retrieveEngineInstances } from '../engines';
+import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 
 export const toolName = 'flowr';
 
@@ -178,12 +178,17 @@ async function mainRepl() {
 	}
 	hookSignalHandlers(engines);
 
+	const analyzer = new FlowrAnalyzerBuilder()
+		.setParser(defaultEngine)
+		.setConfig(config)
+		.buildSync();
+
 	const allowRSessionAccess = options['r-session-access'] ?? false;
 	if(options.execute) {
-		await replProcessAnswer(config, standardReplOutput, options.execute, defaultEngine, allowRSessionAccess);
+		await replProcessAnswer(analyzer, standardReplOutput, options.execute, allowRSessionAccess);
 	} else {
 		await printVersionRepl(defaultEngine);
-		await repl(config, { parser: defaultEngine, allowRSessionAccess });
+		await repl({ analyzer: analyzer, allowRSessionAccess });
 	}
 	process.exit(0);
 }

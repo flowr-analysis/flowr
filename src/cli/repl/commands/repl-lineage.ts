@@ -1,6 +1,4 @@
-import type { ReplCommand } from './repl-main';
-import { createDataflowPipeline } from '../../../core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../r-bridge/retriever';
+import type { ReplCodeCommand } from './repl-main';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -9,17 +7,9 @@ import type { DataflowGraphEdge } from '../../../dataflow/graph/edge';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../../../util/assert';
-import type { KnownParser } from '../../../r-bridge/parser';
-import type { FlowrConfigOptions } from '../../../config';
 
 function splitAt(str: string, idx: number) {
 	return [str.slice(0, idx), str.slice(idx)];
-}
-
-async function getDfg(config: FlowrConfigOptions, parser: KnownParser, remainingLine: string) {
-	return await createDataflowPipeline(parser, {
-		request: requestFromInput(remainingLine.trim())
-	}, config).allRemainingSteps();
 }
 
 function filterRelevantEdges(edge: DataflowGraphEdge) {
@@ -65,16 +55,22 @@ export function getLineage(criterion: SingleSlicingCriterion, graph: DataflowGra
 	return result;
 }
 
-export const lineageCommand: ReplCommand = {
-	description:  'Get the lineage of an R object',
-	usesAnalyzer: false,
-	usageExample: ':lineage',
-	aliases:      ['lin'],
-	script:       false,
-	fn:           async({ output, parser, remainingLine, config }) => {
-		const [criterion, rest] = splitAt(remainingLine, remainingLine.indexOf(' '));
-		const { dataflow: dfg } = await getDfg(config, parser, rest);
-		const lineageIds = getLineage(criterion as SingleSlicingCriterion, dfg.graph);
+export const lineageCommand: ReplCodeCommand = {
+	description:   'Get the lineage of an R object',
+	isCodeCommand: true,
+	usageExample:  ':lineage',
+	aliases:       ['lin'],
+	script:        false,
+	argsParser:    (args: string) => {
+		const [criterion, rest] = splitAt(args, args.indexOf(' '));
+		const code = rest.trim();
+		return {
+			input:     code.startsWith('"') ? JSON.parse(code) as string : code,
+			remaining: [criterion]
+		};
+	},
+	fn: async({ output, analyzer, remainingArgs }) => {
+		const lineageIds = getLineage(remainingArgs[0] as SingleSlicingCriterion, (await analyzer.dataflow()).graph);
 		output.stdout([...lineageIds].join('\n'));
 	}
 };

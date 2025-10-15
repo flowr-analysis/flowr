@@ -1,5 +1,3 @@
-import type { VersionInformation } from '../commands/repl-version';
-import { retrieveVersionInformation } from '../commands/repl-version';
 import { FlowRServerConnection } from './connection';
 import { getUnnamedSocketName, sendMessage } from './send';
 import type { FlowrHelloResponseMessage } from './messages/message-hello';
@@ -9,6 +7,8 @@ import { NetServer } from './net';
 import { FlowrLogger } from '../../../util/log';
 import type { FlowrConfigOptions, KnownEngines } from '../../../config';
 import type { KnownParser } from '../../../r-bridge/parser';
+import type { VersionInformation } from '../../../util/version';
+import { retrieveVersionInformation } from '../../../util/version';
 
 // we detach from the main logger so that it can have its own switch
 export const serverLog = new FlowrLogger({ name: 'server' });

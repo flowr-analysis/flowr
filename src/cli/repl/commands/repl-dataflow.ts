@@ -11,13 +11,13 @@ function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInfo
 }
 
 export const dataflowCommand: ReplCodeCommand = {
-	description:  `Get mermaid code for the dataflow graph, start with '${fileProtocol}' to indicate a file`,
-	usesAnalyzer: true,
-	usageExample: ':dataflow',
-	aliases:      [ 'd', 'df' ],
-	script:       false,
-	argsParser:   (args: string) => handleString(args),
-	fn:           async({ output, analyzer }) => {
+	description:   `Get mermaid code for the dataflow graph, start with '${fileProtocol}' to indicate a file`,
+	isCodeCommand: true,
+	usageExample:  ':dataflow',
+	aliases:       [ 'd', 'df' ],
+	script:        false,
+	argsParser:    (args: string) => handleString(args),
+	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = graphToMermaid({ graph: result.graph, includeEnvironments: false }).string;
 		output.stdout(mermaid);
@@ -30,13 +30,13 @@ export const dataflowCommand: ReplCodeCommand = {
 };
 
 export const dataflowStarCommand: ReplCodeCommand = {
-	description:  'Returns the URL to mermaid.live',
-	usesAnalyzer: true,
-	usageExample: ':dataflow*',
-	aliases:      [ 'd*', 'df*' ],
-	script:       false,
-	argsParser:   (args: string) => handleString(args),
-	fn:           async({ output, analyzer }) => {
+	description:   'Returns the URL to mermaid.live',
+	isCodeCommand: true,
+	usageExample:  ':dataflow*',
+	aliases:       [ 'd*', 'df*' ],
+	script:        false,
+	argsParser:    (args: string) => handleString(args),
+	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = graphToMermaidUrl(result.graph, false);
 		output.stdout(mermaid);
@@ -50,13 +50,13 @@ export const dataflowStarCommand: ReplCodeCommand = {
 
 
 export const dataflowSimplifiedCommand: ReplCodeCommand = {
-	description:  `Get mermaid code for the simplified dataflow graph, start with '${fileProtocol}' to indicate a file`,
-	usesAnalyzer: true,
-	usageExample: ':dataflowsimple',
-	aliases:      [ 'ds', 'dfs' ],
-	script:       false,
-	argsParser:   (args: string) => handleString(args),
-	fn:           async({ output, analyzer }) => {
+	description:   `Get mermaid code for the simplified dataflow graph, start with '${fileProtocol}' to indicate a file`,
+	isCodeCommand: true,
+	usageExample:  ':dataflowsimple',
+	aliases:       [ 'ds', 'dfs' ],
+	script:        false,
+	argsParser:    (args: string) => handleString(args),
+	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = graphToMermaid({ graph: result.graph, includeEnvironments: false, simplified: true }).string;
 		output.stdout(mermaid);
@@ -69,13 +69,13 @@ export const dataflowSimplifiedCommand: ReplCodeCommand = {
 };
 
 export const dataflowSimpleStarCommand: ReplCodeCommand = {
-	description:  'Returns the URL to mermaid.live',
-	usesAnalyzer: true,
-	usageExample: ':dataflowsimple*',
-	aliases:      [ 'ds*', 'dfs*' ],
-	script:       false,
-	argsParser:   (args: string) => handleString(args),
-	fn:           async({ output, analyzer }) => {
+	description:   'Returns the URL to mermaid.live',
+	isCodeCommand: true,
+	usageExample:  ':dataflowsimple*',
+	aliases:       [ 'ds*', 'dfs*' ],
+	script:        false,
+	argsParser:    (args: string) => handleString(args),
+	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = graphToMermaidUrl(result.graph, false, undefined, true);
 		output.stdout(mermaid);

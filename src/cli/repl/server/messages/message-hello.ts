@@ -1,6 +1,6 @@
-import type { VersionInformation } from '../../commands/repl-version';
 import type { IdMessageBase, MessageDefinition } from './all-messages';
 import Joi from 'joi';
+import type { VersionInformation } from '../../../../util/version';
 
 /**
  * The hello message is automatically sent by the sever upon connection.

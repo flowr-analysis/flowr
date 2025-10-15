@@ -1,4 +1,4 @@
-import type { RParseRequest, RParseRequestFromFile } from '../../r-bridge/retriever';
+import type { RParseRequest, RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge/retriever';
 import type { FileAdapter, SupportedDocumentTypes, SupportedFormats } from './adapter-format';
 import { RAdapter } from './adapters/r-adapter';
 import path from 'path';
@@ -27,12 +27,20 @@ export function requestFromFile(path: string): AdapterReturnTypes {
 	return FileAdapters[type].convertRequest(baseRequest);
 }
 
+export function requestFromText(text: string, typeHint?: SupportedFormats): AdapterReturnTypes {
+	const baseRequest = {
+		request: 'text',
+		content: text,
+		info:    typeHint ? { type: typeHint } : undefined
+	} satisfies RParseRequestFromText;
+
+	const type = inferFileType(baseRequest);
+	return FileAdapters[type].convertRequest(baseRequest);
+}
+
 export function inferFileType(request: RParseRequest): keyof typeof FileAdapters {
 	if(request.request === 'text') {
-		// For now we don't know what type the request is 
-		// and have to assume it is normal R Code
-		// In the future we could add a heuristic to guess the type
-		return 'R';
+		return request.info ? request.info.type : 'R';
 	}
 
 	const type = path.extname(request.content).toLowerCase();

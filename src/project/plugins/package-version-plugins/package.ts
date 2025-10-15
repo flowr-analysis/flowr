@@ -1,5 +1,6 @@
 import { Range } from 'semver';
 import { guard, isNotUndefined } from '../../../util/assert';
+import type { NamespaceInfo } from '../file-plugins/flowr-namespace-file';
 
 export type PackageType = 'package' | 'system' | 'r';
 
@@ -8,11 +9,12 @@ export class Package {
 	public derivedVersion?:    Range;
 	public type?:              PackageType;
 	public dependencies?:      Package[];
+	public namespaceInfo?:     NamespaceInfo;
 	public versionConstraints: Range[] = [];
 
-	constructor(name: string, type?: PackageType, dependencies?: Package[], ...versionConstraints: readonly (Range | undefined)[]) {
+	constructor(name: string, type?: PackageType, dependencies?: Package[], namespaceInfo?: NamespaceInfo, ...versionConstraints: readonly (Range | undefined)[]) {
 		this.name = name;
-		this.addInfo(type, dependencies, ...(versionConstraints ?? []).filter(isNotUndefined));
+		this.addInfo(type, dependencies, namespaceInfo, ...(versionConstraints ?? []).filter(isNotUndefined));
 	}
 
 	public mergeInPlace(other: Package): void {
@@ -20,16 +22,20 @@ export class Package {
 		this.addInfo(
 			other.type,
 			other.dependencies,
+			other.namespaceInfo,
 			...other.versionConstraints
 		);
 	}
 
-	public addInfo(type?: PackageType, dependencies?: Package[], ...versionConstraints: readonly Range[]): void {
+	public addInfo(type?: PackageType, dependencies?: Package[], namespaceInfo?: NamespaceInfo, ...versionConstraints: readonly Range[]): void {
 		if(type !== undefined) {
 			this.type = type;
 		}
 		if(dependencies !== undefined) {
 			this.dependencies = dependencies;
+		}
+		if(namespaceInfo !== undefined) {
+			this.namespaceInfo = namespaceInfo;
 		}
 		if(versionConstraints !== undefined) {
 			this.derivedVersion ??= versionConstraints[0];

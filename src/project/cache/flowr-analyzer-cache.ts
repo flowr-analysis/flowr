@@ -171,6 +171,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
      * @param simplifications - Simplification passes to be applied to the CFG.
      */
 	public async controlflow(force: boolean | undefined, kind: CfgKind, simplifications: readonly CfgSimplificationPassName[] | undefined): Promise<ControlFlowInformation> {
+		guard(kind === CfgKind.Quick ? simplifications === undefined : true, 'Cannot apply simplifications to quick CFG');
 		simplifications ??= [];
 		if(!force) {
 			const value = this.controlFlowCache.simplified.get([simplifications, kind]);
@@ -183,9 +184,9 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 
 		let result: ControlFlowInformation;
 		switch(kind) {
-			case CfgKind.WithDataflow: {
+			case CfgKind.WithDataflow:
 				result = extractCfg(normalized, this.args.config, (await this.dataflow()).graph, simplifications);
-				break; }
+				break;
 			case CfgKind.NoDataflow:
 				result = extractCfg(normalized, this.args.config, undefined, simplifications);
 				break;

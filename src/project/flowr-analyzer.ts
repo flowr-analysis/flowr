@@ -61,13 +61,6 @@ export interface FlowrAnalysisProvider {
 	 */
 	controlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind, force?: boolean): Promise<ControlFlowInformation>;
 	/**
-	 * Get a quick and dirty control flow graph (CFG) for the request.
-	 * This does not use the dataflow information and does not apply any simplifications.
-	 *
-	 * @param force - Do not use the cache, instead force new analyses.
-	 */
-	controlflowQuick(force?: boolean): Promise<ControlFlowInformation>;
-	/**
 	 * Access the query API for the request.
 	 * @param query - The list of queries.
 	 */
@@ -156,10 +149,6 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind, force?: boolean): Promise<ControlFlowInformation> {
 		return this.cache.controlflow(force, kind ?? CfgKind.NoDataflow, simplifications);
-	}
-
-	public async controlflowQuick(force?: boolean): Promise<ControlFlowInformation> {
-		return this.controlflow(undefined, CfgKind.Quick, force);
 	}
 
 	public async query<

@@ -1,7 +1,7 @@
 import type { FlowrConfigOptions } from '../config';
 
 
-import type { KnownParser, KnownParserName, ParseStepOutput } from '../r-bridge/parser';
+import type { KnownParser, ParseStepOutput, RShellInformation, TreeSitterInformation } from '../r-bridge/parser';
 import type { Queries, QueryResults, SupportedQueryTypes } from '../queries/query';
 import { executeQueries } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
@@ -26,10 +26,10 @@ export interface FlowrAnalysisProvider {
 	/**
      * Get the name of the parser used by the analyzer.
 	 */
-    parserInformation():   Promise<{ name: KnownParserName, isRShell: false } | { name: KnownParserName, isRShell: true, rVersion: string }>;
+    parserInformation():   Promise<TreeSitterInformation | RShellInformation>;
 	/**
 	 * Sends a command to the underlying R engine and collects the output.
-	 * @param command - The command to send to the R engine.
+	 * @param command     - The command to send to the R engine.
 	 * @param addonConfig - Additional configuration for the output collector.
 	 */
 	sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]>;
@@ -133,12 +133,10 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this.ctx;
 	}
 
-	async parserInformation():   Promise<{ name: KnownParserName, isRShell: false } | { name: KnownParserName, isRShell: true, rVersion: string }> {
-		return {
-			name:     this.parser.name,
-			isRShell: this.parser instanceof RShell,
-			rVersion: await this.parser.rVersion(),
-		};
+	public async parserInformation(): Promise<TreeSitterInformation | RShellInformation> {
+		return this.parser.name === 'r-shell' ?
+			{ name: 'r-shell', rVersion: await (this.parser as RShell).rVersion() }
+			: { name: 'tree-sitter' };
 	}
 
 	public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {

@@ -11,6 +11,15 @@ interface ParserContent<T> {
     close(): void;
 }
 
+export interface TreeSitterInformation {
+	name: TreeSitterExecutor['name'];
+}
+
+export interface RShellInformation {
+	name:     RShell['name'],
+	rVersion: string
+}
+
 export type SyncParser<T> = ParserContent<Awaited<T>> & {readonly async?: false};
 export type AsyncParser<T> = ParserContent<Promise<T>> & {readonly async: true};
 export type Parser<T> = SyncParser<T> | AsyncParser<T>;

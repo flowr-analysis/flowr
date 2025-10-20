@@ -18,6 +18,7 @@ import { ObjectMap } from '../../util/collections/objectmap';
 import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import { extractCfg, extractCfgQuick } from '../../control-flow/extract-cfg';
+import { CfgKind } from '../cfg-kind';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
     parser:             Parser;
@@ -36,7 +37,7 @@ type AnalyzerCacheType<Parser extends KnownParser> = Parser extends TreeSitterEx
     : Partial<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>;
 
 interface ControlFlowCache {
-    simplified: ObjectMap<[passes: readonly CfgSimplificationPassName[], df: boolean], ControlFlowInformation>,
+    simplified: ObjectMap<[passes: readonly CfgSimplificationPassName[], kind: CfgKind], ControlFlowInformation>,
 }
 
 /**
@@ -61,7 +62,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 			overwriteFilePath: this.args.overwriteFilePath
 		}, this.args.config) as AnalyzerPipelineExecutor<Parser>;
 		this.controlFlowCache = {
-			simplified: new ObjectMap<[readonly CfgSimplificationPassName[], boolean], ControlFlowInformation>(),
+			simplified: new ObjectMap<[readonly CfgSimplificationPassName[], CfgKind], ControlFlowInformation>(),
 		};
 	}
 
@@ -168,39 +169,47 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	/**
      * Get the control flow graph (CFG) for the request, computing if necessary.
      * @param force - Do not use the cache, instead force new analyses.
-     * @param useDataflow - Whether to use the dataflow graph for the creation of the CFG.
+     * @param kind - The kind of CFG that is requested.
      * @param simplifications - Simplification passes to be applied to the CFG.
      */
-	public async controlflow(force: boolean | undefined, useDataflow: boolean, simplifications: readonly CfgSimplificationPassName[] | undefined): Promise<ControlFlowInformation> {
+	public async controlflow(force: boolean | undefined, kind: CfgKind, simplifications: readonly CfgSimplificationPassName[] | undefined): Promise<ControlFlowInformation> {
+		guard(kind === CfgKind.Quick ? simplifications === undefined : true, 'Cannot apply simplifications to quick CFG');
 		simplifications ??= [];
 		if(!force) {
-			const value = this.controlFlowCache.simplified.get([simplifications, useDataflow]);
+			const value = this.controlFlowCache.simplified.get([simplifications, kind]);
 			if(value !== undefined) {
 				return value;
 			}
 		}
 
 		const normalized = await this.normalize(force);
-		let dataflow: NonNullable<AnalyzerCacheType<Parser>>['dataflow'] | undefined = undefined;
-		if(useDataflow) {
-			/* if force is active, it will have triggered with normalize */
-			dataflow = await this.dataflow();
+
+		let result: ControlFlowInformation;
+		switch(kind) {
+			case CfgKind.WithDataflow:
+				result = extractCfg(normalized, this.args.config, (await this.dataflow()).graph, simplifications);
+				break;
+			case CfgKind.NoDataflow:
+				result = extractCfg(normalized, this.args.config, undefined, simplifications);
+				break;
+			case CfgKind.Quick:
+				result = this.peekDataflow()?.cfgQuick ?? extractCfgQuick(normalized);
+				break;
+
 		}
 
-		const result = simplifications.length === 0 && !useDataflow ? extractCfgQuick(normalized) :
-			extractCfg(normalized, this.args.config, dataflow?.graph, simplifications);
-		this.controlFlowCache.simplified.set([simplifications, useDataflow], result);
+		this.controlFlowCache.simplified.set([simplifications, kind], result);
 		return result;
 	}
 
 	/**
      * Get the control flow graph (CFG) for the request if already available, otherwise return `undefined`.
-     * @param useDataflow - Whether to use the dataflow graph for the creation of the CFG.
+	 * @param kind - The kind of CFG that is requested.
      * @param simplifications - Simplification passes to be applied to the CFG.
      *
      * @see {@link FlowrAnalyzerCache#controlflow} - to get the control flow graph, computing if necessary.
      */
-	public peekControlflow(useDataflow: boolean, simplifications: readonly CfgSimplificationPassName[] | undefined): ControlFlowInformation | undefined {
-		return this.controlFlowCache.simplified.get([simplifications ?? [], useDataflow]);
+	public peekControlflow(kind: CfgKind, simplifications: readonly CfgSimplificationPassName[] | undefined): ControlFlowInformation | undefined {
+		return this.controlFlowCache.simplified.get([simplifications ?? [], kind]);
 	}
 }

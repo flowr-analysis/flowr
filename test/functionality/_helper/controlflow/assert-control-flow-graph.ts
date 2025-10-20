@@ -15,6 +15,7 @@ import type { CfgSimplificationPassName } from '../../../../src/control-flow/cfg
 import type { DataflowInformation } from '../../../../src/dataflow/info';
 import type { NormalizedAst } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
+import { CfgKind } from '../../../../src/project/cfg-kind';
 
 function normAllIds(ids: readonly NodeId[]): NodeId[] {
 	return ids.map(normalizeIdToNumberIfPossible);
@@ -43,11 +44,11 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 		let cfg: ControlFlowInformation;
 
 		if(options?.withBasicBlocks) {
-			cfg = await analyzer.controlflow(['to-basic-blocks', 'remove-dead-code', ...options.simplificationPasses ?? []], true);
+			cfg = await analyzer.controlflow(['to-basic-blocks', 'remove-dead-code', ...options.simplificationPasses ?? []], CfgKind.WithDataflow);
 		} else if(options?.simplificationPasses) {
-			cfg = await analyzer.controlflow(options.simplificationPasses ?? [], true);
+			cfg = await analyzer.controlflow(options.simplificationPasses ?? [], CfgKind.WithDataflow);
 		} else {
-			cfg = await analyzer.controlflow(undefined, true);
+			cfg = await analyzer.controlflow(undefined, CfgKind.WithDataflow);
 		}
 
 		let diff: GraphDifferenceReport | undefined;

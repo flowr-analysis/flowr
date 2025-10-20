@@ -11,7 +11,7 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isNotUndefined } from '../../util/assert';
 import { type AbstractInterpretationInfo, DataFrameInfoMarker, hasDataFrameInfoMarker } from './absint-info';
 import { DataFrameShapeInferenceVisitor } from './absint-visitor';
-import { type DataFrameDomain, type DataFrameStateDomain, joinDataFrames, joinDataFrameStates } from './domain';
+import { type DataFrameDomain, DataFrameStateDomain } from './dataframe-domain';
 
 /**
  * Infers the shape of data frames by performing abstract interpretation using the control flow graph of a program.
@@ -34,9 +34,9 @@ export function inferDataFrameShapes(
 	visitor.start();
 	const exitPoints = cfinfo.exitPoints.map(id => cfinfo.graph.getVertex(id)).filter(isNotUndefined);
 	const exitNodes = exitPoints.map(vertex => ast.idMap.get(getVertexRootId(vertex))).filter(isNotUndefined);
-	const result = exitNodes.map(node => node.info.dataFrame?.domain ?? new Map<NodeId, DataFrameDomain>());
+	const result = exitNodes.map(node => node.info.dataFrame?.domain ?? DataFrameStateDomain.bottom());
 
-	return joinDataFrameStates(...result);
+	return DataFrameStateDomain.bottom().join(...result);
 }
 
 /**
@@ -58,18 +58,18 @@ export function resolveIdToDataFrameShape(
 
 	if(dfg === undefined || node === undefined || domain === undefined) {
 		return;
-	} else if(domain.has(node.info.id)) {
-		return domain.get(node.info.id);
+	} else if(domain.value.has(node.info.id)) {
+		return domain.value.get(node.info.id);
 	}
 	const vertex = dfg.getVertex(node.info.id);
 	const call = vertex?.tag === VertexType.FunctionCall ? vertex : undefined;
 	const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 	if(node.type === RType.Symbol) {
-		const values = getVariableOrigins(node.info.id, dfg).map(origin => domain.get(origin.info.id));
+		const values = getVariableOrigins(node.info.id, dfg).map(origin => domain.value.get(origin.info.id));
 
 		if(values.length > 0 && values.every(isNotUndefined)) {
-			return joinDataFrames(...values);
+			return values[0].join(...values.slice(1));
 		}
 	} else if(node.type === RType.Argument && node.value !== undefined) {
 		return resolveIdToDataFrameShape(node.value, dfg, domain);
@@ -88,7 +88,7 @@ export function resolveIdToDataFrameShape(
 			const values = [node.then, node.otherwise].map(entry => resolveIdToDataFrameShape(entry, dfg, domain));
 
 			if(values.length > 0 && values.every(isNotUndefined)) {
-				return joinDataFrames(...values);
+				return values[0].join(...values.slice(1));
 			}
 		}
 	} else if(origins.includes('builtin:if-then-else') && call?.args.every(arg => arg !== EmptyArgument)) {
@@ -96,7 +96,7 @@ export function resolveIdToDataFrameShape(
 			const values = call.args.slice(1, 3).map(entry => resolveIdToDataFrameShape(entry.nodeId, dfg, domain));
 
 			if(values.length > 0 && values.every(isNotUndefined)) {
-				return joinDataFrames(...values);
+				return values[0].join(...values.slice(1));
 			}
 		}
 	}

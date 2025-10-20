@@ -1,6 +1,8 @@
 import { assertUnreachable, isNotUndefined } from '../../util/assert';
-import type { DataFrameDomain, IntervalDomain } from './domain';
-import { addInterval, ColNamesTop, DataFrameTop, extendIntervalToInfinity, extendIntervalToZero, IntervalBottom, IntervalTop, joinColNames, joinInterval, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
+import { Bottom, Top } from '../domains/lattice';
+import { PosIntervalDomain, PosIntervalTop } from '../domains/positive-interval-domain';
+import { SetUpperBoundDomain } from '../domains/set-upper-bound-domain';
+import { DataFrameDomain } from './dataframe-domain';
 
 /**
  * Represents the different types of resulting constraints that are inferred by abstract data frame operations.
@@ -105,13 +107,15 @@ function applyCreateSemantics(
 	value: DataFrameDomain,
 	{ colnames, rows }: { colnames: (string | undefined)[] | undefined, rows: number | [number, number] | undefined }
 ): DataFrameDomain {
-	const cols = colnames?.length;
+	const colnamesValue = colnames?.every(isNotUndefined) ? colnames : Top;
+	const colsValue = colnames !== undefined ? [colnames.length, colnames.length] as const : PosIntervalTop;
+	const rowsValue = Array.isArray(rows) ? rows : typeof rows === 'number' ? [rows, rows] as const : PosIntervalTop;
 
-	return {
-		colnames: colnames?.every(isNotUndefined) ? colnames : ColNamesTop,
-		cols:     cols !== undefined ? [cols, cols] : IntervalTop,
-		rows:     Array.isArray(rows) ? rows : typeof rows === 'number' ? [rows, rows] : IntervalTop
-	};
+	return new DataFrameDomain({
+		colnames: new SetUpperBoundDomain(colnamesValue, value.maxColNames),
+		cols:     new PosIntervalDomain(colsValue),
+		rows:     new PosIntervalDomain(rowsValue)
+	});
 }
 
 function applyReadSemantics(
@@ -126,15 +130,17 @@ function applyAccessColsSemantics(
 	{ columns }: { columns: string[] | number[] | undefined }
 ): DataFrameDomain {
 	if(columns?.every(col => typeof col === 'string')) {
-		return {
-			...value,
-			colnames: joinColNames(value.colnames, columns)
-		};
+		return new DataFrameDomain({
+			colnames: value.colnames.join(columns),
+			cols:     value.cols,
+			rows:     value.rows
+		});
 	} else if(columns?.every(col => typeof col === 'number')) {
-		return {
-			...value,
-			cols: columns.reduce((a, b) => maxInterval(a, [b, b]), value.cols)
-		};
+		return new DataFrameDomain({
+			colnames: value.colnames,
+			cols:     columns?.reduce((current, col) => current.max([col, col]), value.cols),
+			rows:     value.rows
+		});
 	}
 	return value;
 }
@@ -144,10 +150,11 @@ function applyAccessRowsSemantics(
 	{ rows }: { rows: number[] | undefined }
 ): DataFrameDomain {
 	if(rows !== undefined) {
-		return {
-			...value,
-			rows: rows.reduce((a, b) => maxInterval(a, [b, b]), value.rows)
-		};
+		return new DataFrameDomain({
+			colnames: value.colnames,
+			cols:     value.cols,
+			rows:     rows.reduce((current, row) => current.max([row, row]), value.rows)
+		});
 	}
 	return value;
 }
@@ -159,23 +166,23 @@ function applyAssignColsSemantics(
 	if(columns?.every(col => typeof col === 'string')) {
 		const cols = columns.length;
 
-		return {
-			...value,
-			colnames: joinColNames(value.colnames, columns),
-			cols:     maxInterval(addInterval(value.cols, [0, cols]), [cols, cols])
-		};
+		return new DataFrameDomain({
+			colnames: value.colnames.join(columns),
+			cols:     value.cols.add([0, cols]).max([cols, cols]),
+			rows:     value.rows
+		});
 	} else if(columns?.every(col => typeof col === 'number')) {
-		return {
-			...value,
-			colnames: ColNamesTop,
-			cols:     columns.reduce((a, b) => maxInterval(a, [b, b]), value.cols)
-		};
+		return new DataFrameDomain({
+			colnames: value.colnames.top(),
+			cols:     columns.reduce((current, col) => current.max([col, col]), value.cols),
+			rows:     value.rows
+		});
 	}
-	return {
-		...value,
-		colnames: ColNamesTop,
-		cols:     extendIntervalToInfinity(value.cols)
-	};
+	return new DataFrameDomain({
+		colnames: value.colnames.top(),
+		cols:     value.cols.extendUp(),
+		rows:     value.rows
+	});
 }
 
 function applyAssignRowsSemantics(
@@ -183,15 +190,17 @@ function applyAssignRowsSemantics(
 	{ rows }: { rows: number[] | undefined }
 ): DataFrameDomain {
 	if(rows !== undefined) {
-		return {
-			...value,
-			rows: rows.reduce((a, b) => maxInterval(a, [b, b]), value.rows)
-		};
+		return new DataFrameDomain({
+			colnames: value.colnames,
+			cols:     value.cols,
+			rows:     rows.reduce((current, row) => current.max([row, row]), value.rows)
+		});
 	}
-	return {
-		...value,
-		rows: extendIntervalToInfinity(value.rows)
-	};
+	return new DataFrameDomain({
+		colnames: value.colnames,
+		cols:     value.cols,
+		rows:     value.rows.extendUp()
+	});
 }
 
 function applySetColNamesSemantics(
@@ -200,41 +209,41 @@ function applySetColNamesSemantics(
 	options?: { partial?: boolean }
 ): DataFrameDomain {
 	if(options?.partial) {
-		return {
-			...value,
-			colnames: colnames?.every(isNotUndefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
-		};
+		return new DataFrameDomain({
+			colnames: colnames?.every(isNotUndefined) ? value.colnames.join(colnames) : value.colnames.top(),
+			cols:     value.cols,
+			rows:     value.rows
+		});
 	}
-	const cols = colnames?.length;
-	const allColNames = value.cols !== IntervalBottom && cols !== undefined && cols >= value.cols[1];
+	const allColNames = colnames?.every(isNotUndefined) && value.cols.value !== Bottom && colnames.length >= value.cols.value[1];
 
-	return {
-		...value,
-		colnames: allColNames && colnames?.every(isNotUndefined) ? colnames : ColNamesTop,
-	};
+	return new DataFrameDomain({
+		colnames: allColNames ? new SetUpperBoundDomain(colnames, value.maxColNames) : value.colnames.top(),
+		cols:     value.cols,
+		rows:     value.rows
+	});
 }
 
 function applyAddColsSemantics(
 	value: DataFrameDomain,
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
-	const cols = colnames?.length;
-
-	return {
-		...value,
-		colnames: colnames?.every(isNotUndefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
-		cols:     cols !== undefined ? addInterval(value.cols, [cols, cols]) : extendIntervalToInfinity(value.cols)
-	};
+	return new DataFrameDomain({
+		colnames: colnames?.every(isNotUndefined) ? value.colnames.join(colnames) : value.colnames.top(),
+		cols:     colnames !== undefined ? value.cols.add([colnames.length, colnames.length]) : value.cols.extendUp(),
+		rows:     value.rows
+	});
 }
 
 function applyAddRowsSemantics(
 	value: DataFrameDomain,
 	{ rows }: { rows: number | undefined }
 ): DataFrameDomain {
-	return {
-		...value,
-		rows: rows !== undefined ? addInterval(value.rows, [rows, rows]) : extendIntervalToInfinity(value.rows)
-	};
+	return new DataFrameDomain({
+		colnames: value.colnames,
+		cols:     value.cols,
+		rows:     rows !== undefined ? value.rows.add([rows, rows]) : value.rows.extendUp()
+	});
 }
 
 function applyRemoveColsSemantics(
@@ -242,20 +251,18 @@ function applyRemoveColsSemantics(
 	{ colnames }: { colnames: (string | undefined)[] | undefined },
 	options?: { maybe?: boolean }
 ): DataFrameDomain {
-	const cols = colnames?.length;
-
 	if(options?.maybe) {
-		return {
-			...value,
-			colnames: colnames !== undefined ? subtractColNames(value.colnames, colnames.filter(isNotUndefined)) : value.colnames,
-			cols:     cols !== undefined ? subtractInterval(value.cols, [cols, 0]) : extendIntervalToZero(value.cols)
-		};
+		return new DataFrameDomain({
+			colnames: colnames !== undefined ? value.colnames.subtract(colnames.filter(isNotUndefined)) : value.colnames,
+			cols:     colnames !== undefined ? value.cols.subtract([colnames.length, 0]) : value.cols.extendDown(),
+			rows:     value.rows
+		});
 	}
-	return {
-		...value,
-		colnames: colnames !== undefined ? subtractColNames(value.colnames, colnames.filter(isNotUndefined)) : value.colnames,
-		cols:     cols !== undefined ? subtractInterval(value.cols, [cols, cols]) : extendIntervalToZero(value.cols)
-	};
+	return new DataFrameDomain({
+		colnames: colnames !== undefined ? value.colnames.subtract(colnames.filter(isNotUndefined)) : value.colnames,
+		cols:     colnames !== undefined ? value.cols.subtract([colnames.length, colnames.length]) : value.cols.extendDown(),
+		rows:     value.rows
+	});
 }
 
 function applyRemoveRowsSemantics(
@@ -264,44 +271,47 @@ function applyRemoveRowsSemantics(
 	options?: { maybe?: boolean }
 ): DataFrameDomain {
 	if(options?.maybe) {
-		return {
-			...value,
-			cols: rows !== undefined ? subtractInterval(value.cols, [rows, 0]) : extendIntervalToZero(value.cols)
-		};
+		return new DataFrameDomain({
+			colnames: value.colnames,
+			cols:     value.cols,
+			rows:     rows !== undefined ? value.rows.subtract([rows, 0]) : value.rows.extendDown()
+		});
 	}
-	return {
-		...value,
-		rows: rows !== undefined ? subtractInterval(value.rows, [rows, rows]) : extendIntervalToZero(value.rows)
-	};
+	return new DataFrameDomain({
+		colnames: value.colnames,
+		cols:     value.cols,
+		rows:     rows !== undefined ? value.rows.subtract([rows, rows]) : value.rows.extendDown()
+	});
 }
 
 function applyConcatColsSemantics(
 	value: DataFrameDomain,
 	{ other }: { other: DataFrameDomain }
 ): DataFrameDomain {
-	return {
-		...value,
-		colnames: joinColNames(value.colnames, other.colnames),
-		cols:     addInterval(value.cols, other.cols)
-	};
+	return new DataFrameDomain({
+		colnames: value.colnames.join(other.colnames),
+		cols:     value.cols.add(other.cols),
+		rows:     value.rows
+	});
 }
 
 function applyConcatRowsSemantics(
 	value: DataFrameDomain,
 	{ other }: { other: DataFrameDomain }
 ): DataFrameDomain {
-	if(value.cols !== IntervalBottom && value.cols[0] === 0) {
-		return {
+	if(value.cols.value !== Bottom && value.cols.value[0] === 0) {
+		return new DataFrameDomain({
 			...value,
-			colnames: joinColNames(value.colnames, other.colnames),
-			cols:     joinInterval(value.cols, other.cols),
-			rows:     addInterval(value.rows, other.rows)
-		};
+			colnames: value.colnames.join(other.colnames),
+			cols:     value.cols.join(other.cols),
+			rows:     value.rows.add(other.rows)
+		});
 	}
-	return {
-		...value,
-		rows: addInterval(value.rows, other.rows)
-	};
+	return new DataFrameDomain({
+		colnames: value.colnames,
+		cols:     value.cols,
+		rows:     value.rows.add(other.rows)
+	});
 }
 
 function applySubsetColsSemantics(
@@ -309,26 +319,24 @@ function applySubsetColsSemantics(
 	{ colnames }: { colnames: (string | undefined)[] | undefined },
 	options?: { duplicateCols?: boolean, renamedCols?: boolean }
 ): DataFrameDomain {
-	const cols = colnames?.length;
-
 	if(options?.duplicateCols) {
-		return {
-			...value,
-			colnames: ColNamesTop,
-			cols:     cols !== undefined ? [cols, cols] : IntervalTop
-		};
+		return new DataFrameDomain({
+			colnames: value.colnames.top(),
+			cols:     colnames !== undefined ? new PosIntervalDomain([colnames.length, colnames.length]) : value.cols.top(),
+			rows:     value.rows
+		});
 	} else if(options?.renamedCols) {
-		return {
-			...value,
-			colnames: ColNamesTop,
-			cols:     cols !== undefined ? minInterval(value.cols, [cols, cols]) : extendIntervalToZero(value.cols)
-		};
+		return new DataFrameDomain({
+			colnames: value.colnames.top(),
+			cols:     colnames !== undefined ? value.cols.min([colnames.length, colnames.length]) : value.cols.extendDown(),
+			rows:     value.rows
+		});
 	}
-	return {
-		...value,
-		colnames: colnames?.every(isNotUndefined) ? meetColNames(value.colnames, colnames) : value.colnames,
-		cols:     cols !== undefined ? minInterval(value.cols, [cols, cols]) : extendIntervalToZero(value.cols)
-	};
+	return new DataFrameDomain({
+		colnames: colnames?.every(isNotUndefined) ? value.colnames.meet(colnames) : value.colnames,
+		cols:     colnames !== undefined ? value.cols.min([colnames.length, colnames.length]) : value.cols.extendDown(),
+		rows:     value.rows
+	});
 }
 
 function applySubsetRowsSemantics(
@@ -337,38 +345,39 @@ function applySubsetRowsSemantics(
 	options?: { duplicateRows?: boolean }
 ): DataFrameDomain {
 	if(options?.duplicateRows) {
-		return {
-			...value,
-			rows: rows !== undefined ? [rows, rows] : IntervalTop
-		};
+		return new DataFrameDomain({
+			colnames: value.colnames,
+			cols:     value.cols,
+			rows:     rows !== undefined ? new PosIntervalDomain([rows, rows]) : value.rows.top()
+		});
 	}
-	return {
-		...value,
-		rows: rows !== undefined ? minInterval(value.rows, [rows, rows]) : extendIntervalToZero(value.rows)
-	};
+	return new DataFrameDomain({
+		colnames: value.colnames,
+		cols:     value.cols,
+		rows:     rows !== undefined ? value.rows.min([rows, rows]) : value.rows.extendDown()
+	});
 }
 
 function applyFilterRowsSemantics(
 	value: DataFrameDomain,
 	{ condition }: { condition: boolean | undefined }
 ): DataFrameDomain {
-	return {
-		...value,
-		rows: condition ? value.rows : condition === false ? [0, 0] : extendIntervalToZero(value.rows)
-	};
+	return new DataFrameDomain({
+		colnames: value.colnames,
+		cols:     value.cols,
+		rows:     condition ? value.rows : condition === false ? new PosIntervalDomain([0, 0]) : value.rows.extendDown()
+	});
 }
 
 function applyMutateColsSemantics(
 	value: DataFrameDomain,
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
-	const cols = colnames?.length;
-
-	return {
-		...value,
-		colnames: colnames?.every(isNotUndefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
-		cols:     cols !== undefined ? maxInterval(addInterval(value.cols, [0, cols]), [cols, cols]): extendIntervalToInfinity(value.cols)
-	};
+	return new DataFrameDomain({
+		colnames: colnames?.every(isNotUndefined) ? value.colnames.join(colnames) : value.colnames.top(),
+		cols:     colnames !== undefined ? value.cols.add([0, colnames.length]).max([colnames.length, colnames.length]) : value.cols.extendUp(),
+		rows:     value.rows
+	});
 }
 
 function applyGroupBySemantics(
@@ -377,11 +386,11 @@ function applyGroupBySemantics(
 	options?: { mutatedCols?: boolean }
 ): DataFrameDomain {
 	if(options?.mutatedCols) {
-		return {
-			...value,
-			colnames: by.every(isNotUndefined) ? joinColNames(value.colnames, by) : ColNamesTop,
-			cols:     addInterval(value.cols, [0, by.length])
-		};
+		return new DataFrameDomain({
+			colnames: by.every(isNotUndefined) ? value.colnames.join(by) : value.colnames.top(),
+			cols:     value.cols.add([0, by.length]),
+			rows:     value.rows
+		});
 	}
 	// Group by only marks columns as groups but does not change the shape itself
 	return value;
@@ -391,14 +400,11 @@ function applySummarizeSemantics(
 	value: DataFrameDomain,
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
-	const cols = colnames?.length;
-
-	return {
-		...value,
-		colnames: colnames?.every(isNotUndefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
-		cols:     cols !== undefined ? minInterval(addInterval(value.cols, [0, cols]), [cols, Infinity]) : extendIntervalToInfinity(value.rows),
-		rows:     maxInterval(minInterval(value.rows, [1, Infinity]), [0, 1])
-	};
+	return new DataFrameDomain({
+		colnames: colnames?.every(isNotUndefined) ? value.colnames.join(colnames) : value.colnames.top(),
+		cols:     colnames !== undefined ? value.cols.add([0, colnames.length]).min([colnames.length, +Infinity]) : value.cols.extendUp(),
+		rows:     value.rows.min([1, +Infinity]).max([0, 1])
+	});
 }
 
 function applyJoinSemantics(
@@ -407,48 +413,48 @@ function applyJoinSemantics(
 	options?: { join?: 'inner' | 'left' | 'right' | 'full', natural?: boolean }
 ): DataFrameDomain {
 	// Merge two intervals by creating the maximum of the lower bounds and adding the upper bounds
-	const mergeInterval = (interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain => {
-		if(interval1 === IntervalBottom || interval2 === IntervalBottom) {
-			return IntervalBottom;
+	const mergeInterval = (interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain => {
+		if(interval1.value === Bottom || interval2.value === Bottom) {
+			return interval1.bottom();
 		} else {
-			return [Math.max(interval1[0], interval2[0]), interval1[1] + interval2[1]];
+			return new PosIntervalDomain([Math.max(interval1.value[0], interval2.value[0]), interval1.value[1] + interval2.value[1]]);
 		}
 	};
 	// Creating the Cartesian product of two intervals by keeping the lower bound and multiplying the upper bounds
-	const productInterval = (lower: IntervalDomain, interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain => {
-		if(lower === IntervalBottom || interval1 === IntervalBottom || interval2 === IntervalBottom) {
-			return IntervalBottom;
+	const productInterval = (lower: PosIntervalDomain, interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain => {
+		if(lower.value === Bottom || interval1.value === Bottom || interval2.value === Bottom) {
+			return lower.bottom();
 		} else {
-			return [lower[0], interval1[1] * interval2[1]];
+			return new PosIntervalDomain([lower.value[0], interval1.value[1] * interval2.value[1]]);
 		}
 	};
-	const commonCols = meetColNames(value.colnames, other.colnames);
+	const commonCols = value.colnames.meet(other.colnames);
 	let duplicateCols: boolean;  // whether columns may be renamed due to occurrence in both data frames
 	let productRows: boolean;  // whether the resulting rows may be a Cartesian product of the rows of the data frames
 
 	if(options?.natural) {
 		duplicateCols = false;
-		productRows = commonCols !== ColNamesTop && commonCols.length === 0;
+		productRows = commonCols.isValue() && commonCols.value.size === 0;
 	} else if(by === undefined) {
 		duplicateCols = true;
 		productRows = true;
 	} else if(by.length === 0) {
-		duplicateCols = commonCols === ColNamesTop || commonCols.length > 0;
+		duplicateCols = commonCols.isTop() || (commonCols.isValue() && commonCols.value.size > 0);
 		productRows = true;
 	} else if(by.every(isNotUndefined)) {
-		const remainingCols = subtractColNames(commonCols, by);
-		duplicateCols = remainingCols === ColNamesTop || remainingCols.length > 0;
+		const remainingCols = commonCols.subtract(by);
+		duplicateCols = remainingCols.isTop() || (remainingCols.isValue() && remainingCols.value.size > 0);
 		productRows = false;
 	} else {
 		duplicateCols = true;
 		productRows = false;
 	}
 	const joinType = options?.join ?? 'inner';
-	let rows: IntervalDomain;
+	let rows: PosIntervalDomain;
 
 	switch(joinType) {
 		case 'inner':
-			rows = extendIntervalToZero(minInterval(value.rows, other.rows));
+			rows = value.rows.min(other.rows).extendDown();
 			break;
 		case 'left':
 			rows = value.rows;
@@ -462,14 +468,12 @@ function applyJoinSemantics(
 		default:
 			assertUnreachable(joinType);
 	}
-	const byCols = by?.length;
-
-	return {
+	return new DataFrameDomain({
 		...value,
-		colnames: duplicateCols ? ColNamesTop : joinColNames(value.colnames, other.colnames),
-		cols:     byCols !== undefined ? subtractInterval(addInterval(value.cols, other.cols), [byCols, byCols]) : mergeInterval(value.cols, other.cols),
+		colnames: duplicateCols ? value.colnames.top() : value.colnames.join(other.colnames),
+		cols:     by !== undefined ? value.cols.add(other.cols).subtract([by.length, by.length]) : mergeInterval(value.cols, other.cols),
 		rows:     productRows ? productInterval(rows, value.rows, other.rows) : rows
-	};
+	});
 }
 
 function applyIdentitySemantics(
@@ -481,9 +485,9 @@ function applyIdentitySemantics(
 }
 
 function applyUnknownSemantics(
-	_value: DataFrameDomain,
+	value: DataFrameDomain,
 	// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 	_args: {}
 ): DataFrameDomain {
-	return DataFrameTop;
+	return value.top();
 }

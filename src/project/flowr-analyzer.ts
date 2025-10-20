@@ -8,7 +8,7 @@ import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/de
 import type { DataflowInformation } from '../dataflow/info';
 import type { CfgSimplificationPassName } from '../control-flow/cfg-simplification';
 import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
-import type { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
+import type { AnalyzerCacheType, FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-builder';
 import type { GetSearchElements } from '../search/flowr-search-executor';
 import { runSearch } from '../search/flowr-search-executor';
@@ -146,15 +146,15 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.cache.reset();
 	}
 
-	public async parse(force?: boolean): ReturnType<typeof this.cache.parse> {
+	public async parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>> {
 		return this.cache.parse(force);
 	}
 
-	public async normalize(force?: boolean): ReturnType<typeof this.cache.normalize> {
+	public async normalize(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['normalize']>> {
 		return this.cache.normalize(force);
 	}
 
-	public async dataflow(force?: boolean): ReturnType<typeof this.cache.dataflow> {
+	public async dataflow(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['dataflow']>> {
 		return this.cache.dataflow(force);
 	}
 

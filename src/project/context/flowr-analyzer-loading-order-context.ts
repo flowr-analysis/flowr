@@ -62,6 +62,13 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 	/** just the base collection of requests we know nothing about the order! */
 	private unordered:   RParseRequest[] = [];
 
+	public reset(): void {
+		this.knownOrder = undefined;
+		this.guesses.length = 0;
+		this.unordered.length = 0;
+		this.rerunRequired = this.plugins.length > 0;
+	}
+
 	/**
 	 * Add one or multiple requests to the context.
 	 * These are considered unordered (i.e., ordered implicitly by the order of addition) until a plugin provides either a guess or a known order.

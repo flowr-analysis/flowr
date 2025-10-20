@@ -15,8 +15,8 @@ export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries:
 		queries = [{ type: 'df-shape' }];
 	}
 
-	const ast = await analyzer.normalize();
 	const graph = (await analyzer.dataflow()).graph;
+	const ast = await analyzer.normalize();
 
 	const start = Date.now();
 	const domains = inferDataFrameShapes(

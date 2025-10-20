@@ -64,7 +64,7 @@ describe('repl', () => {
 		assert.include(output, 'a <- 3\na');
 	});
 
-	describe.only(':query api', () => {
+	describe(':query api', () => {
 		describe('dependencies', () => {
 			test('Provide Library Load', async() => {
 				const output = await flowrRepl([':query @dependencies "library(x)"', ':quit']);

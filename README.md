@@ -33,36 +33,32 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: [;1mlinter[0m (15 ms)
+    Query: [;1mlinter[0m (6 ms)
        ╰ **Deprecated Functions** (deprecated-functions):
-           ╰ Error during execution of Rule: unable to parse R code (see the log for more information) for request {"request":"text","content":"@linter read.csv(\"/root/x.txt\")"}}
-     Report a Bug: https://github.com/flowr-analysis/flowr/issues/new?body=%3C!%2D%2D%20Please%20describe%20your%20issue%20in%20more%20detail%20below!%20%2D%2D%3E%0A%0A%0A%3C!%2D%2D%20Automatically%20generated%20issue%20metadata%2C%20please%20do%20not%20edit%20or%20delete%20content%20below%20this%20line%20%2D%2D%3E%0A%2D%2D%2D%0A%0AflowR%20version%3A%202.6.0%0Anode%20version%3A%20v22.14.0%0Anode%20arch%3A%20x64%0Anode%20platform%3A%20linux%0Amessage%3A%20%60unable%20to%20parse%20R%20code%20%28see%20the%20log%20for%20more%20information%29%20for%20request%20%7B%22request%22%3A%22text%22%2C%22content%22%3A%22%40linter%20read.csv%28%5C%22%2Froot%2Fx.txt%5C%22%29%22%7D%7D%60%0Astack%20trace%3A%0A%60%60%60%0A%20%20%20%20at%20guard%20%28%3C%3E%2Fsrc%2Futil%2Fassert.ts%3A75%3A9%29%0A%20%20%20%20at%20guardRetrievedOutput%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A210%3A7%29%0A%20%20%20%20at%20%2Fhome%2Frunner%2Fwork%2Fflowr%2Fflowr%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A174%3A4%0A%20%20%20%20at%20processTicksAndRejections%20%28node%3Ainternal%2Fprocess%2Ftask_queues%3A105%3A5%29%0A%20%20%20%20at%20async%20Object.parseRequests%20%5Bas%20processor%5D%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fparser.ts%3A67%3A18%29%0A%20%20%20%20at%20async%20PipelineExecutor.nextStep%20%28%3C%3E%2Fsrc%2Fcore%2Fpipeline%2Dexecutor.ts%3A205%3A25%29%0A%20%20%20%20at%20async%20FlowrAnalyzerCache.runTapeUntil%20%28%3C%3E%2Fsrc%2Fproject%2Fcache%2Fflowr%2Danalyzer%2Dcache.ts%3A101%3A4%29%0A%20%20%20%20at%20async%20getAllNodes%20%28%3C%3E%2Fsrc%2Fsearch%2Fsearch%2Dexecutor%2Fsearch%2Dgenerators.ts%3A47%3A20%29%0A%60%60%60%0A%0A%2D%2D%2D%0A%09
+           ╰ _Metadata_: <code>{"totalCalls":0,"totalFunctionDefinitions":0,"searchTimeMs":3,"processTimeMs":0}</code>
        ╰ **File Path Validity** (file-path-validity):
-           ╰ Error during execution of Rule: Cannot read properties of undefined (reading 'library')
+           ╰ certain:
+               ╰ Path `/root/x.txt` at 1.1-23
+           ╰ _Metadata_: <code>{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0,"searchTimeMs":1,"processTimeMs":0}</code>
        ╰ **Seeded Randomness** (seeded-randomness):
-           ╰ Error during execution of Rule: unable to parse R code (see the log for more information) for request {"request":"text","content":"@linter read.csv(\"/root/x.txt\")"}}
-     Report a Bug: https://github.com/flowr-analysis/flowr/issues/new?body=%3C!%2D%2D%20Please%20describe%20your%20issue%20in%20more%20detail%20below!%20%2D%2D%3E%0A%0A%0A%3C!%2D%2D%20Automatically%20generated%20issue%20metadata%2C%20please%20do%20not%20edit%20or%20delete%20content%20below%20this%20line%20%2D%2D%3E%0A%2D%2D%2D%0A%0AflowR%20version%3A%202.6.0%0Anode%20version%3A%20v22.14.0%0Anode%20arch%3A%20x64%0Anode%20platform%3A%20linux%0Amessage%3A%20%60unable%20to%20parse%20R%20code%20%28see%20the%20log%20for%20more%20information%29%20for%20request%20%7B%22request%22%3A%22text%22%2C%22content%22%3A%22%40linter%20read.csv%28%5C%22%2Froot%2Fx.txt%5C%22%29%22%7D%7D%60%0Astack%20trace%3A%0A%60%60%60%0A%20%20%20%20at%20guard%20%28%3C%3E%2Fsrc%2Futil%2Fassert.ts%3A75%3A9%29%0A%20%20%20%20at%20guardRetrievedOutput%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A210%3A7%29%0A%20%20%20%20at%20%2Fhome%2Frunner%2Fwork%2Fflowr%2Fflowr%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A174%3A4%0A%20%20%20%20at%20processTicksAndRejections%20%28node%3Ainternal%2Fprocess%2Ftask_queues%3A105%3A5%29%0A%20%20%20%20at%20async%20Object.parseRequests%20%5Bas%20processor%5D%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fparser.ts%3A67%3A18%29%0A%20%20%20%20at%20async%20PipelineExecutor.nextStep%20%28%3C%3E%2Fsrc%2Fcore%2Fpipeline%2Dexecutor.ts%3A205%3A25%29%0A%20%20%20%20at%20async%20FlowrAnalyzerCache.runTapeUntil%20%28%3C%3E%2Fsrc%2Fproject%2Fcache%2Fflowr%2Danalyzer%2Dcache.ts%3A101%3A4%29%0A%20%20%20%20at%20async%20getAllNodes%20%28%3C%3E%2Fsrc%2Fsearch%2Fsearch%2Dexecutor%2Fsearch%2Dgenerators.ts%3A47%3A20%29%0A%60%60%60%0A%0A%2D%2D%2D%0A%09
+           ╰ _Metadata_: <code>{"consumerCalls":0,"callsWithFunctionProducers":0,"callsWithAssignmentProducers":0,"callsWithNonConstantProducers":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Absolute Paths** (absolute-file-paths):
-           ╰ Error during execution of Rule: Cannot read properties of undefined (reading 'library')
+           ╰ certain:
+               ╰ Path `/root/x.txt` at 1.1-23
+           ╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":1,"processTimeMs":0}</code>
        ╰ **Unused Definitions** (unused-definitions):
-           ╰ Error during execution of Rule: unable to parse R code (see the log for more information) for request {"request":"text","content":"@linter read.csv(\"/root/x.txt\")"}}
-     Report a Bug: https://github.com/flowr-analysis/flowr/issues/new?body=%3C!%2D%2D%20Please%20describe%20your%20issue%20in%20more%20detail%20below!%20%2D%2D%3E%0A%0A%0A%3C!%2D%2D%20Automatically%20generated%20issue%20metadata%2C%20please%20do%20not%20edit%20or%20delete%20content%20below%20this%20line%20%2D%2D%3E%0A%2D%2D%2D%0A%0AflowR%20version%3A%202.6.0%0Anode%20version%3A%20v22.14.0%0Anode%20arch%3A%20x64%0Anode%20platform%3A%20linux%0Amessage%3A%20%60unable%20to%20parse%20R%20code%20%28see%20the%20log%20for%20more%20information%29%20for%20request%20%7B%22request%22%3A%22text%22%2C%22content%22%3A%22%40linter%20read.csv%28%5C%22%2Froot%2Fx.txt%5C%22%29%22%7D%7D%60%0Astack%20trace%3A%0A%60%60%60%0A%20%20%20%20at%20guard%20%28%3C%3E%2Fsrc%2Futil%2Fassert.ts%3A75%3A9%29%0A%20%20%20%20at%20guardRetrievedOutput%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A210%3A7%29%0A%20%20%20%20at%20%2Fhome%2Frunner%2Fwork%2Fflowr%2Fflowr%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A174%3A4%0A%20%20%20%20at%20processTicksAndRejections%20%28node%3Ainternal%2Fprocess%2Ftask_queues%3A105%3A5%29%0A%20%20%20%20at%20async%20Object.parseRequests%20%5Bas%20processor%5D%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fparser.ts%3A67%3A18%29%0A%20%20%20%20at%20async%20PipelineExecutor.nextStep%20%28%3C%3E%2Fsrc%2Fcore%2Fpipeline%2Dexecutor.ts%3A205%3A25%29%0A%20%20%20%20at%20async%20FlowrAnalyzerCache.runTapeUntil%20%28%3C%3E%2Fsrc%2Fproject%2Fcache%2Fflowr%2Danalyzer%2Dcache.ts%3A101%3A4%29%0A%20%20%20%20at%20async%20getAllNodes%20%28%3C%3E%2Fsrc%2Fsearch%2Fsearch%2Dexecutor%2Fsearch%2Dgenerators.ts%3A47%3A20%29%0A%60%60%60%0A%0A%2D%2D%2D%0A%09
+           ╰ _Metadata_: <code>{"totalConsidered":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Naming Convention** (naming-convention):
-           ╰ Error during execution of Rule: unable to parse R code (see the log for more information) for request {"request":"text","content":"@linter read.csv(\"/root/x.txt\")"}}
-     Report a Bug: https://github.com/flowr-analysis/flowr/issues/new?body=%3C!%2D%2D%20Please%20describe%20your%20issue%20in%20more%20detail%20below!%20%2D%2D%3E%0A%0A%0A%3C!%2D%2D%20Automatically%20generated%20issue%20metadata%2C%20please%20do%20not%20edit%20or%20delete%20content%20below%20this%20line%20%2D%2D%3E%0A%2D%2D%2D%0A%0AflowR%20version%3A%202.6.0%0Anode%20version%3A%20v22.14.0%0Anode%20arch%3A%20x64%0Anode%20platform%3A%20linux%0Amessage%3A%20%60unable%20to%20parse%20R%20code%20%28see%20the%20log%20for%20more%20information%29%20for%20request%20%7B%22request%22%3A%22text%22%2C%22content%22%3A%22%40linter%20read.csv%28%5C%22%2Froot%2Fx.txt%5C%22%29%22%7D%7D%60%0Astack%20trace%3A%0A%60%60%60%0A%20%20%20%20at%20guard%20%28%3C%3E%2Fsrc%2Futil%2Fassert.ts%3A75%3A9%29%0A%20%20%20%20at%20guardRetrievedOutput%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A210%3A7%29%0A%20%20%20%20at%20%2Fhome%2Frunner%2Fwork%2Fflowr%2Fflowr%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A174%3A4%0A%20%20%20%20at%20processTicksAndRejections%20%28node%3Ainternal%2Fprocess%2Ftask_queues%3A105%3A5%29%0A%20%20%20%20at%20async%20Object.parseRequests%20%5Bas%20processor%5D%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fparser.ts%3A67%3A18%29%0A%20%20%20%20at%20async%20PipelineExecutor.nextStep%20%28%3C%3E%2Fsrc%2Fcore%2Fpipeline%2Dexecutor.ts%3A205%3A25%29%0A%20%20%20%20at%20async%20FlowrAnalyzerCache.runTapeUntil%20%28%3C%3E%2Fsrc%2Fproject%2Fcache%2Fflowr%2Danalyzer%2Dcache.ts%3A101%3A4%29%0A%20%20%20%20at%20async%20getAllNodes%20%28%3C%3E%2Fsrc%2Fsearch%2Fsearch%2Dexecutor%2Fsearch%2Dgenerators.ts%3A47%3A20%29%0A%60%60%60%0A%0A%2D%2D%2D%0A%09
+           ╰ _Metadata_: <code>{"numMatches":0,"numBreak":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Network Functions** (network-functions):
-           ╰ Error during execution of Rule: unable to parse R code (see the log for more information) for request {"request":"text","content":"@linter read.csv(\"/root/x.txt\")"}}
-     Report a Bug: https://github.com/flowr-analysis/flowr/issues/new?body=%3C!%2D%2D%20Please%20describe%20your%20issue%20in%20more%20detail%20below!%20%2D%2D%3E%0A%0A%0A%3C!%2D%2D%20Automatically%20generated%20issue%20metadata%2C%20please%20do%20not%20edit%20or%20delete%20content%20below%20this%20line%20%2D%2D%3E%0A%2D%2D%2D%0A%0AflowR%20version%3A%202.6.0%0Anode%20version%3A%20v22.14.0%0Anode%20arch%3A%20x64%0Anode%20platform%3A%20linux%0Amessage%3A%20%60unable%20to%20parse%20R%20code%20%28see%20the%20log%20for%20more%20information%29%20for%20request%20%7B%22request%22%3A%22text%22%2C%22content%22%3A%22%40linter%20read.csv%28%5C%22%2Froot%2Fx.txt%5C%22%29%22%7D%7D%60%0Astack%20trace%3A%0A%60%60%60%0A%20%20%20%20at%20guard%20%28%3C%3E%2Fsrc%2Futil%2Fassert.ts%3A75%3A9%29%0A%20%20%20%20at%20guardRetrievedOutput%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A210%3A7%29%0A%20%20%20%20at%20%2Fhome%2Frunner%2Fwork%2Fflowr%2Fflowr%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A174%3A4%0A%20%20%20%20at%20processTicksAndRejections%20%28node%3Ainternal%2Fprocess%2Ftask_queues%3A105%3A5%29%0A%20%20%20%20at%20async%20Object.parseRequests%20%5Bas%20processor%5D%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fparser.ts%3A67%3A18%29%0A%20%20%20%20at%20async%20PipelineExecutor.nextStep%20%28%3C%3E%2Fsrc%2Fcore%2Fpipeline%2Dexecutor.ts%3A205%3A25%29%0A%20%20%20%20at%20async%20FlowrAnalyzerCache.runTapeUntil%20%28%3C%3E%2Fsrc%2Fproject%2Fcache%2Fflowr%2Danalyzer%2Dcache.ts%3A101%3A4%29%0A%20%20%20%20at%20async%20getAllNodes%20%28%3C%3E%2Fsrc%2Fsearch%2Fsearch%2Dexecutor%2Fsearch%2Dgenerators.ts%3A47%3A20%29%0A%60%60%60%0A%0A%2D%2D%2D%0A%09
+           ╰ _Metadata_: <code>{"totalCalls":0,"totalFunctionDefinitions":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Dataframe Access Validation** (dataframe-access-validation):
-           ╰ Error during execution of Rule: unable to parse R code (see the log for more information) for request {"request":"text","content":"@linter read.csv(\"/root/x.txt\")"}}
-     Report a Bug: https://github.com/flowr-analysis/flowr/issues/new?body=%3C!%2D%2D%20Please%20describe%20your%20issue%20in%20more%20detail%20below!%20%2D%2D%3E%0A%0A%0A%3C!%2D%2D%20Automatically%20generated%20issue%20metadata%2C%20please%20do%20not%20edit%20or%20delete%20content%20below%20this%20line%20%2D%2D%3E%0A%2D%2D%2D%0A%0AflowR%20version%3A%202.6.0%0Anode%20version%3A%20v22.14.0%0Anode%20arch%3A%20x64%0Anode%20platform%3A%20linux%0Amessage%3A%20%60unable%20to%20parse%20R%20code%20%28see%20the%20log%20for%20more%20information%29%20for%20request%20%7B%22request%22%3A%22text%22%2C%22content%22%3A%22%40linter%20read.csv%28%5C%22%2Froot%2Fx.txt%5C%22%29%22%7D%7D%60%0Astack%20trace%3A%0A%60%60%60%0A%20%20%20%20at%20guard%20%28%3C%3E%2Fsrc%2Futil%2Fassert.ts%3A75%3A9%29%0A%20%20%20%20at%20guardRetrievedOutput%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A210%3A7%29%0A%20%20%20%20at%20%2Fhome%2Frunner%2Fwork%2Fflowr%2Fflowr%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A174%3A4%0A%20%20%20%20at%20processTicksAndRejections%20%28node%3Ainternal%2Fprocess%2Ftask_queues%3A105%3A5%29%0A%20%20%20%20at%20async%20Object.parseRequests%20%5Bas%20processor%5D%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fparser.ts%3A67%3A18%29%0A%20%20%20%20at%20async%20PipelineExecutor.nextStep%20%28%3C%3E%2Fsrc%2Fcore%2Fpipeline%2Dexecutor.ts%3A205%3A25%29%0A%20%20%20%20at%20async%20FlowrAnalyzerCache.runTapeUntil%20%28%3C%3E%2Fsrc%2Fproject%2Fcache%2Fflowr%2Danalyzer%2Dcache.ts%3A101%3A4%29%0A%20%20%20%20at%20async%20getAllNodes%20%28%3C%3E%2Fsrc%2Fsearch%2Fsearch%2Dexecutor%2Fsearch%2Dgenerators.ts%3A47%3A20%29%0A%60%60%60%0A%0A%2D%2D%2D%0A%09
+           ╰ _Metadata_: <code>{"numOperations":0,"numAccesses":0,"totalAccessed":0,"searchTimeMs":0,"processTimeMs":1}</code>
        ╰ **Dead Code** (dead-code):
-           ╰ Error during execution of Rule: unable to parse R code (see the log for more information) for request {"request":"text","content":"@linter read.csv(\"/root/x.txt\")"}}
-     Report a Bug: https://github.com/flowr-analysis/flowr/issues/new?body=%3C!%2D%2D%20Please%20describe%20your%20issue%20in%20more%20detail%20below!%20%2D%2D%3E%0A%0A%0A%3C!%2D%2D%20Automatically%20generated%20issue%20metadata%2C%20please%20do%20not%20edit%20or%20delete%20content%20below%20this%20line%20%2D%2D%3E%0A%2D%2D%2D%0A%0AflowR%20version%3A%202.6.0%0Anode%20version%3A%20v22.14.0%0Anode%20arch%3A%20x64%0Anode%20platform%3A%20linux%0Amessage%3A%20%60unable%20to%20parse%20R%20code%20%28see%20the%20log%20for%20more%20information%29%20for%20request%20%7B%22request%22%3A%22text%22%2C%22content%22%3A%22%40linter%20read.csv%28%5C%22%2Froot%2Fx.txt%5C%22%29%22%7D%7D%60%0Astack%20trace%3A%0A%60%60%60%0A%20%20%20%20at%20guard%20%28%3C%3E%2Fsrc%2Futil%2Fassert.ts%3A75%3A9%29%0A%20%20%20%20at%20guardRetrievedOutput%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A210%3A7%29%0A%20%20%20%20at%20%2Fhome%2Frunner%2Fwork%2Fflowr%2Fflowr%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A174%3A4%0A%20%20%20%20at%20processTicksAndRejections%20%28node%3Ainternal%2Fprocess%2Ftask_queues%3A105%3A5%29%0A%20%20%20%20at%20async%20Object.parseRequests%20%5Bas%20processor%5D%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fparser.ts%3A67%3A18%29%0A%20%20%20%20at%20async%20PipelineExecutor.nextStep%20%28%3C%3E%2Fsrc%2Fcore%2Fpipeline%2Dexecutor.ts%3A205%3A25%29%0A%20%20%20%20at%20async%20FlowrAnalyzerCache.runTapeUntil%20%28%3C%3E%2Fsrc%2Fproject%2Fcache%2Fflowr%2Danalyzer%2Dcache.ts%3A101%3A4%29%0A%20%20%20%20at%20async%20getAllNodes%20%28%3C%3E%2Fsrc%2Fsearch%2Fsearch%2Dexecutor%2Fsearch%2Dgenerators.ts%3A47%3A20%29%0A%60%60%60%0A%0A%2D%2D%2D%0A%09
+           ╰ _Metadata_: <code>{"consideredNodes":5,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Useless Loops** (useless-loop):
-           ╰ Error during execution of Rule: unable to parse R code (see the log for more information) for request {"request":"text","content":"@linter read.csv(\"/root/x.txt\")"}}
-     Report a Bug: https://github.com/flowr-analysis/flowr/issues/new?body=%3C!%2D%2D%20Please%20describe%20your%20issue%20in%20more%20detail%20below!%20%2D%2D%3E%0A%0A%0A%3C!%2D%2D%20Automatically%20generated%20issue%20metadata%2C%20please%20do%20not%20edit%20or%20delete%20content%20below%20this%20line%20%2D%2D%3E%0A%2D%2D%2D%0A%0AflowR%20version%3A%202.6.0%0Anode%20version%3A%20v22.14.0%0Anode%20arch%3A%20x64%0Anode%20platform%3A%20linux%0Amessage%3A%20%60unable%20to%20parse%20R%20code%20%28see%20the%20log%20for%20more%20information%29%20for%20request%20%7B%22request%22%3A%22text%22%2C%22content%22%3A%22%40linter%20read.csv%28%5C%22%2Froot%2Fx.txt%5C%22%29%22%7D%7D%60%0Astack%20trace%3A%0A%60%60%60%0A%20%20%20%20at%20guard%20%28%3C%3E%2Fsrc%2Futil%2Fassert.ts%3A75%3A9%29%0A%20%20%20%20at%20guardRetrievedOutput%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A210%3A7%29%0A%20%20%20%20at%20%2Fhome%2Frunner%2Fwork%2Fflowr%2Fflowr%2Fsrc%2Fr%2Dbridge%2Fretriever.ts%3A174%3A4%0A%20%20%20%20at%20processTicksAndRejections%20%28node%3Ainternal%2Fprocess%2Ftask_queues%3A105%3A5%29%0A%20%20%20%20at%20async%20Object.parseRequests%20%5Bas%20processor%5D%20%28%3C%3E%2Fsrc%2Fr%2Dbridge%2Fparser.ts%3A67%3A18%29%0A%20%20%20%20at%20async%20PipelineExecutor.nextStep%20%28%3C%3E%2Fsrc%2Fcore%2Fpipeline%2Dexecutor.ts%3A205%3A25%29%0A%20%20%20%20at%20async%20FlowrAnalyzerCache.runTapeUntil%20%28%3C%3E%2Fsrc%2Fproject%2Fcache%2Fflowr%2Danalyzer%2Dcache.ts%3A101%3A4%29%0A%20%20%20%20at%20async%20getAllNodes%20%28%3C%3E%2Fsrc%2Fsearch%2Fsearch%2Dexecutor%2Fsearch%2Dgenerators.ts%3A47%3A20%29%0A%60%60%60%0A%0A%2D%2D%2D%0A%09
-    [;3mAll queries together required ≈15 ms (1ms accuracy, total 18 ms)[0m[0m
+           ╰ _Metadata_: <code>{"numOfUselessLoops":0,"searchTimeMs":0,"processTimeMs":0}</code>
+    [;3mAll queries together required ≈6 ms (1ms accuracy, total 9 ms)[0m[0m
     ```
     
     
@@ -84,21 +80,21 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (210 ms)\
+    Query: **linter** (212 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalCalls":0,"totalFunctionDefinitions":0,"searchTimeMs":197,"processTimeMs":0}</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalCalls":0,"totalFunctionDefinitions":0,"searchTimeMs":199,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalReads":1,"totalUnknown":0,"totalWritesBeforeAlways":0,"totalValid":0,"searchTimeMs":5,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"consumerCalls":0,"callsWithFunctionProducers":0,"callsWithAssignmentProducers":0,"callsWithNonConstantProducers":0,"searchTimeMs":0,"processTimeMs":0}</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"consumerCalls":0,"callsWithFunctionProducers":0,"callsWithAssignmentProducers":0,"callsWithNonConstantProducers":0,"searchTimeMs":1,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":2,"processTimeMs":1}</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":2,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalConsidered":0,"searchTimeMs":0,"processTimeMs":0}</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"totalConsidered":0,"searchTimeMs":1,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Naming Convention** (naming-convention):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"numMatches":0,"numBreak":0,"searchTimeMs":0,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions):\
@@ -109,11 +105,11 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"consideredNodes":5,"searchTimeMs":1,"processTimeMs":0}</code>\
     &nbsp;&nbsp;&nbsp;╰ **Useless Loops** (useless-loop):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>{"numOfUselessLoops":0,"searchTimeMs":0,"processTimeMs":0}</code>\
-    _All queries together required ≈210 ms (1ms accuracy, total 212 ms)_
+    _All queries together required ≈212 ms (1ms accuracy, total 215 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _211.6 ms_ (including parsing and normalization and the query) within the generation environment.	
+    The analysis required _215.5 ms_ (including parsing and normalization and the query) within the generation environment.	
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -130,7 +126,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalCalls": 0,
               "totalFunctionDefinitions": 0,
-              "searchTimeMs": 197,
+              "searchTimeMs": 199,
               "processTimeMs": 0
             }
           },
@@ -163,7 +159,7 @@ It offers a wide variety of features, for example:
               "callsWithFunctionProducers": 0,
               "callsWithAssignmentProducers": 0,
               "callsWithNonConstantProducers": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -184,14 +180,14 @@ It offers a wide variety of features, for example:
               "totalConsidered": 1,
               "totalUnknown": 0,
               "searchTimeMs": 2,
-              "processTimeMs": 1
+              "processTimeMs": 0
             }
           },
           "unused-definitions": {
             "results": [],
             ".meta": {
               "totalConsidered": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -241,11 +237,11 @@ It offers a wide variety of features, for example:
           }
         },
         ".meta": {
-          "timing": 210
+          "timing": 212
         }
       },
       ".meta": {
-        "timing": 210
+        "timing": 212
       }
     }
     ```
@@ -698,7 +694,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _14.6 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _14.4 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

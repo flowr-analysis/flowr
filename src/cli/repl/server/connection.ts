@@ -301,11 +301,16 @@ export class FlowRServerConnection {
 			});
 		};
 
-		void replProcessAnswer(this.config, {
+		const analyzer = new FlowrAnalyzerBuilder()
+			.setConfig(this.config)
+			.setParser(this.parser)
+			.buildSync();
+
+		void replProcessAnswer(analyzer, {
 			formatter: request.ansi ? ansiFormatter : voidFormatter,
 			stdout:    msg => out('stdout', msg),
 			stderr:    msg => out('stderr', msg)
-		}, request.expression, this.parser,
+		}, request.expression,
 		this.allowRSessionAccess
 		).then(() => {
 			sendMessage<ExecuteEndMessage>(this.socket, {

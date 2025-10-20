@@ -1,7 +1,6 @@
 import type { FlowrConfigOptions } from '../config';
 
-
-import type { KnownParser, KnownParserName, ParseStepOutput } from '../r-bridge/parser';
+import type { KnownParser, ParseStepOutput, RShellInformation, TreeSitterInformation } from '../r-bridge/parser';
 import type { Queries, QueryResults, SupportedQueryTypes } from '../queries/query';
 import { executeQueries } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
@@ -15,6 +14,9 @@ import type { GetSearchElements } from '../search/flowr-search-executor';
 import { runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { CfgKind } from './cfg-kind';
+import type { OutputCollectorConfiguration } from '../r-bridge/shell';
+import { RShell } from '../r-bridge/shell';
+import { guard } from '../util/assert';
 
 /**
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
@@ -22,9 +24,15 @@ import { CfgKind } from './cfg-kind';
  */
 export interface FlowrAnalysisProvider {
 	/**
-	 * Get the name of the parser used by the analyzer.
+     * Get the name of the parser used by the analyzer.
 	 */
-    parserName(): string
+    parserInformation():   Promise<TreeSitterInformation | RShellInformation>;
+	/**
+	 * Sends a command to the underlying R engine and collects the output.
+	 * @param command     - The command to send to the R engine.
+	 * @param addonConfig - Additional configuration for the output collector.
+	 */
+	sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]>;
 	/**
 	 * Returns project context information.
 	 * If you are a user that wants to inspect the context, prefer {@link inspectContext} instead.
@@ -118,16 +126,24 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this.ctx;
 	}
 
+	public async parserInformation(): Promise<TreeSitterInformation | RShellInformation> {
+		return this.parser.name === 'r-shell' ?
+			{ name: 'r-shell', rVersion: await (this.parser as RShell).rVersion() }
+			: { name: 'tree-sitter' };
+	}
+
+	public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
+		guard(this.parser instanceof RShell, 'sendCommandWithOutput can only be used with RShell parsers!');
+		return this.parser.sendCommandWithOutput(command, addonConfig);
+	}
+
 	public inspectContext(): ReadOnlyFlowrAnalyzerContext {
 		return this.ctx.inspect();
 	}
 
 	public reset() {
+		this.ctx.reset();
 		this.cache.reset();
-	}
-
-	public parserName(): KnownParserName {
-		return this.parser.name;
 	}
 
 	public async parse(force?: boolean): ReturnType<typeof this.cache.parse> {

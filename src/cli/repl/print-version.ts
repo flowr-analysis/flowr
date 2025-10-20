@@ -1,5 +1,5 @@
-import { retrieveVersionInformation } from './commands/repl-version';
 import type { KnownParser } from '../../r-bridge/parser';
+import { retrieveVersionInformation } from '../../util/version';
 
 export async function versionReplString(parser: KnownParser): Promise<string> {
 	const version = await retrieveVersionInformation(parser);

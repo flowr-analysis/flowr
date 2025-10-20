@@ -41,6 +41,9 @@ import { printCfgCode } from './doc-util/doc-cfg';
 import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
 import { SliceDirection } from '../core/steps/all/static-slicing/00-slice';
 import { documentReplSession } from './doc-util/doc-repl';
+import {
+	executeHigherOrderQuery
+} from '../queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -268,6 +271,29 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:     'resolve-value',
 		criteria: ['2@x']
+	}], { showCode: true })
+}
+		`;
+	}
+});
+
+
+registerQueryDocumentation('inspect-higher-order', {
+	name:             'Inspect Higher-Order Functions Query',
+	type:             'active',
+	shortDescription: 'Determine whether functions are higher-order functions',
+	functionName:     executeHigherOrderQuery.name,
+	functionFile:     '../queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'f <- function() function(x) x; f()';
+		return `
+With this query you can identify which functions in the code are higher-order functions, i.e., either take a function as an argument or return a function.
+Please note, that functions that are just identities (e.g., \`function(x) x\`) are not considered higher-order if they do not take a function as an argument.
+
+Using the example code \`${exampleCode}\` the following query returns the information for all identified function definitions whether they are higher-order functions:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'inspect-higher-order',
 	}], { showCode: true })
 }
 		`;

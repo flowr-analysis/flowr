@@ -5,8 +5,6 @@ import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../..
 import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
 import type { AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
-import { PosIntervalDomain } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
-import { SetUpperBoundDomain } from '../../../../src/abstract-interpretation/domains/set-upper-bound-domain';
 import type { FlowrConfigOptions } from '../../../../src/config';
 import { defaultConfigOptions } from '../../../../src/config';
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
@@ -187,7 +185,7 @@ export function assertDataFrameDomain(
 	test.skipIf(skipTestBecauseConfigNotMet(config)).each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
 		const [inferred] = getInferredDomainForCriterion(result, criterion, flowRConfig);
-		assertDomainMatches(inferred, expect, DataFrameShapeExact, flowRConfig);
+		assertDomainMatches(inferred, expect, DataFrameShapeExact);
 	});
 }
 
@@ -282,7 +280,7 @@ export function testDataFrameDomainAgainstReal(
 
 		for(const { criterion, inferred, matching } of testEntries) {
 			const expected = getRealDomainFromOutput(criterion, output);
-			assertDomainMatches(inferred, expected, matching, flowRConfig);
+			assertDomainMatches(inferred, expected, matching);
 		}
 	});
 }
@@ -290,8 +288,7 @@ export function testDataFrameDomainAgainstReal(
 function assertDomainMatches(
 	inferred: DataFrameDomain | undefined,
 	expected: ExpectedDataFrameShape | undefined,
-	matching: DataFrameShapeMatching,
-	config: FlowrConfigOptions
+	matching: DataFrameShapeMatching
 ): void {
 	if(Object.values(matching).some(type => type === DomainMatchingType.Exact)) {
 		assert.ok(inferred === expected || (inferred !== undefined && expected !== undefined), `result differs: expected ${JSON.stringify(inferred)} to equal ${JSON.stringify(expected)}`);
@@ -299,9 +296,9 @@ function assertDomainMatches(
 		assert.ok(inferred === undefined || expected !== undefined, `result is no over-approximation: expected ${JSON.stringify(inferred)} to be an over-approximation of ${JSON.stringify(expected)}`);
 	}
 	if(inferred !== undefined && expected !== undefined) {
-		assertPropertyMatches('colnames', inferred.colnames, new SetUpperBoundDomain(expected.colnames, config.abstractInterpretation.dataFrame.maxColNames), matching.colnames);
-		assertPropertyMatches('cols', inferred.cols, new PosIntervalDomain(expected.cols), matching.cols);
-		assertPropertyMatches('rows', inferred.rows, new PosIntervalDomain(expected.rows), matching.rows);
+		assertPropertyMatches('colnames', inferred.colnames, inferred.colnames.create(expected.colnames), matching.colnames);
+		assertPropertyMatches('cols', inferred.cols, inferred.cols.create(expected.cols), matching.cols);
+		assertPropertyMatches('rows', inferred.rows, inferred.rows.create(expected.rows), matching.rows);
 	}
 }
 

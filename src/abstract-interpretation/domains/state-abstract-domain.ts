@@ -8,8 +8,5 @@ import { MappedAbstractDomain } from './mapped-abstract-domain';
  * @template Domain - Type of the abstract domain to map the AST node IDs to
  * @see {@link NodeId} for the node IDs of the AST nodes
  */
-export class StateAbstractDomain<Domain extends AnyAbstractDomain> extends MappedAbstractDomain<StateAbstractDomain<Domain>, NodeId, Domain> {
-	public create(value: ReadonlyMap<NodeId, Domain>): StateAbstractDomain<Domain> {
-		return new StateAbstractDomain(value);
-	}
-}
+export abstract class StateAbstractDomain<StateDomain extends StateAbstractDomain<StateDomain, Domain>, Domain extends AnyAbstractDomain>
+	extends MappedAbstractDomain<StateDomain, NodeId, Domain> {}

@@ -36,6 +36,10 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 		}
 	}
 
+	public create(value: PosIntervalLift): PosIntervalDomain {
+		return new PosIntervalDomain(value);
+	}
+
 	public get value(): Value {
 		return this._value;
 	}
@@ -89,7 +93,7 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 				result = [Math.min(result[0], otherValue[0]), Math.max(result[1], otherValue[1])];
 			}
 		}
-		return new PosIntervalDomain(result);
+		return this.create(result);
 	}
 
 	public meet(...values: PosIntervalDomain[]): PosIntervalDomain;
@@ -108,16 +112,16 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 				result = [Math.max(result[0], otherValue[0]), Math.min(result[1], otherValue[1])];
 			}
 		}
-		return new PosIntervalDomain(result);
+		return this.create(result);
 	}
 
 	public widen(other: PosIntervalDomain): PosIntervalDomain {
 		if(this.value === Bottom) {
-			return new PosIntervalDomain(other.value);
+			return this.create(other.value);
 		} else if(other.value === Bottom) {
-			return new PosIntervalDomain(this.value);
+			return this.create(this.value);
 		} else {
-			return new PosIntervalDomain([
+			return this.create([
 				this.value[0] <= other.value[0] ? this.value[0] : 0,
 				this.value[1] >= other.value[1] ? this.value[1] : +Infinity
 			]);
@@ -130,7 +134,7 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 		} else if(Math.max(this.value[0], other.value[0]) > Math.min(this.value[1], other.value[1])) {
 			return this.bottom();
 		}
-		return new PosIntervalDomain([
+		return this.create([
 			this.value[0] === 0 ? other.value[0] : this.value[0],
 			this.value[1] === +Infinity ? other.value[1] : this.value[1]
 		]);
@@ -177,7 +181,7 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 		if(this.value === Bottom || otherValue === Bottom) {
 			return this.bottom();
 		} else {
-			return new PosIntervalDomain([this.value[0] + otherValue[0], this.value[1] + otherValue[1]]);
+			return this.create([this.value[0] + otherValue[0], this.value[1] + otherValue[1]]);
 		}
 	}
 
@@ -190,7 +194,7 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 		if(this.value === Bottom || otherValue === Bottom) {
 			return this.bottom();
 		} else {
-			return new PosIntervalDomain([Math.max(this.value[0] - otherValue[0], 0), Math.max(this.value[1] - otherValue[1], 0)]);
+			return this.create([Math.max(this.value[0] - otherValue[0], 0), Math.max(this.value[1] - otherValue[1], 0)]);
 		}
 	}
 
@@ -203,7 +207,7 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 		if(this.value === Bottom || otherValue === Bottom) {
 			return this.bottom();
 		} else {
-			return new PosIntervalDomain([Math.min(this.value[0], otherValue[0]), Math.min(this.value[1], otherValue[1])]);
+			return this.create([Math.min(this.value[0], otherValue[0]), Math.min(this.value[1], otherValue[1])]);
 		}
 	}
 
@@ -216,7 +220,7 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 		if(this.value === Bottom || otherValue === Bottom) {
 			return this.bottom();
 		} else {
-			return new PosIntervalDomain([Math.max(this.value[0], otherValue[0]), Math.max(this.value[1], otherValue[1])]);
+			return this.create([Math.max(this.value[0], otherValue[0]), Math.max(this.value[1], otherValue[1])]);
 		}
 	}
 
@@ -227,7 +231,7 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {
-			return new PosIntervalDomain([0, this.value[1]]);
+			return this.create([0, this.value[1]]);
 		}
 	}
 
@@ -238,7 +242,7 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {
-			return new PosIntervalDomain([this.value[0], +Infinity]);
+			return this.create([this.value[0], +Infinity]);
 		}
 	}
 

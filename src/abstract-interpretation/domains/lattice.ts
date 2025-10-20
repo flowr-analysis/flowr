@@ -23,6 +23,11 @@ export interface Lattice<Lat extends Lattice<Lat, Value, Top, Bot>, Value, Top =
 	get value(): Lift;
 
 	/**
+	 * Creates an abstract value of the lattice for a given value.
+	 */
+	create(value: Value | Top | Bot): Lat;
+
+	/**
 	 * Gets the Top element (greatest element) of the complete lattice (should additionally be provided as static function).
 	 */
 	top(): Lat & Lattice<Lat, Value, Top, Bot, Top>;

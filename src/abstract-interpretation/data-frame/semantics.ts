@@ -1,7 +1,6 @@
 import { assertUnreachable, isNotUndefined } from '../../util/assert';
 import { Bottom, Top } from '../domains/lattice';
 import { PosIntervalDomain, PosIntervalTop } from '../domains/positive-interval-domain';
-import { SetUpperBoundDomain } from '../domains/set-upper-bound-domain';
 import { DataFrameDomain } from './dataframe-domain';
 
 /**
@@ -112,9 +111,9 @@ function applyCreateSemantics(
 	const rowsValue = Array.isArray(rows) ? rows : typeof rows === 'number' ? [rows, rows] as const : PosIntervalTop;
 
 	return new DataFrameDomain({
-		colnames: new SetUpperBoundDomain(colnamesValue, value.maxColNames),
-		cols:     new PosIntervalDomain(colsValue),
-		rows:     new PosIntervalDomain(rowsValue)
+		colnames: value.colnames.create(colnamesValue),
+		cols:     value.cols.create(colsValue),
+		rows:     value.rows.create(rowsValue)
 	});
 }
 
@@ -218,7 +217,7 @@ function applySetColNamesSemantics(
 	const allColNames = colnames?.every(isNotUndefined) && value.cols.value !== Bottom && colnames.length >= value.cols.value[1];
 
 	return new DataFrameDomain({
-		colnames: allColNames ? new SetUpperBoundDomain(colnames, value.maxColNames) : value.colnames.top(),
+		colnames: allColNames ? value.colnames.create(colnames) : value.colnames.top(),
 		cols:     value.cols,
 		rows:     value.rows
 	});
@@ -322,7 +321,7 @@ function applySubsetColsSemantics(
 	if(options?.duplicateCols) {
 		return new DataFrameDomain({
 			colnames: value.colnames.top(),
-			cols:     colnames !== undefined ? new PosIntervalDomain([colnames.length, colnames.length]) : value.cols.top(),
+			cols:     colnames !== undefined ? value.cols.create([colnames.length, colnames.length]) : value.cols.top(),
 			rows:     value.rows
 		});
 	} else if(options?.renamedCols) {
@@ -348,7 +347,7 @@ function applySubsetRowsSemantics(
 		return new DataFrameDomain({
 			colnames: value.colnames,
 			cols:     value.cols,
-			rows:     rows !== undefined ? new PosIntervalDomain([rows, rows]) : value.rows.top()
+			rows:     rows !== undefined ? value.rows.create([rows, rows]) : value.rows.top()
 		});
 	}
 	return new DataFrameDomain({
@@ -365,7 +364,7 @@ function applyFilterRowsSemantics(
 	return new DataFrameDomain({
 		colnames: value.colnames,
 		cols:     value.cols,
-		rows:     condition ? value.rows : condition === false ? new PosIntervalDomain([0, 0]) : value.rows.extendDown()
+		rows:     condition ? value.rows : condition === false ? value.rows.create([0, 0]) : value.rows.extendDown()
 	});
 }
 

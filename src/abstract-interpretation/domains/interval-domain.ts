@@ -36,6 +36,10 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		}
 	}
 
+	public create(value: IntervalLift): IntervalDomain {
+		return new IntervalDomain(value);
+	}
+
 	public get value(): Value {
 		return this._value;
 	}
@@ -89,7 +93,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 				result = [Math.min(result[0], otherValue[0]), Math.max(result[1], otherValue[1])];
 			}
 		}
-		return new IntervalDomain(result);
+		return this.create(result);
 	}
 
 	public meet(...values: IntervalDomain[]): IntervalDomain;
@@ -108,16 +112,16 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 				result = [Math.max(result[0], otherValue[0]), Math.min(result[1], otherValue[1])];
 			}
 		}
-		return new IntervalDomain(result);
+		return this.create(result);
 	}
 
 	public widen(other: IntervalDomain): IntervalDomain {
 		if(this.value === Bottom) {
-			return new IntervalDomain(other.value);
+			return this.create(other.value);
 		} else if(other.value === Bottom) {
-			return new IntervalDomain(this.value);
+			return this.create(this.value);
 		} else {
-			return new IntervalDomain([
+			return this.create([
 				this.value[0] <= other.value[0] ? this.value[0] : -Infinity,
 				this.value[1] >= other.value[1] ? this.value[1] : +Infinity
 			]);
@@ -130,7 +134,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		} else if(Math.max(this.value[0], other.value[0]) > Math.min(this.value[1], other.value[1])) {
 			return this.bottom();
 		}
-		return new IntervalDomain([
+		return this.create([
 			this.value[0] === -Infinity ? other.value[0] : this.value[0],
 			this.value[1] === +Infinity ? other.value[1] : this.value[1]
 		]);
@@ -177,7 +181,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		if(this.value === Bottom || otherValue === Bottom) {
 			return this.bottom();
 		} else {
-			return new IntervalDomain([this.value[0] + otherValue[0], this.value[1] + otherValue[1]]);
+			return this.create([this.value[0] + otherValue[0], this.value[1] + otherValue[1]]);
 		}
 	}
 
@@ -190,7 +194,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		if(this.value === Bottom || otherValue === Bottom) {
 			return this.bottom();
 		} else {
-			return new IntervalDomain([this.value[0] - otherValue[0], this.value[1] - otherValue[1]]);
+			return this.create([this.value[0] - otherValue[0], this.value[1] - otherValue[1]]);
 		}
 	}
 
@@ -203,7 +207,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		if(this.value === Bottom || otherValue === Bottom) {
 			return this.bottom();
 		} else {
-			return new IntervalDomain([Math.min(this.value[0], otherValue[0]), Math.min(this.value[1], otherValue[1])]);
+			return this.create([Math.min(this.value[0], otherValue[0]), Math.min(this.value[1], otherValue[1])]);
 		}
 	}
 
@@ -216,7 +220,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		if(this.value === Bottom || otherValue === Bottom) {
 			return this.bottom();
 		} else {
-			return new IntervalDomain([Math.max(this.value[0], otherValue[0]), Math.max(this.value[1], otherValue[1])]);
+			return this.create([Math.max(this.value[0], otherValue[0]), Math.max(this.value[1], otherValue[1])]);
 		}
 	}
 
@@ -227,7 +231,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {
-			return new IntervalDomain([-Infinity, this.value[1]]);
+			return this.create([-Infinity, this.value[1]]);
 		}
 	}
 
@@ -238,7 +242,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {
-			return new IntervalDomain([this.value[0], +Infinity]);
+			return this.create([this.value[0], +Infinity]);
 		}
 	}
 

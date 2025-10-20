@@ -26,6 +26,10 @@ implements AbstractDomain<SingletonDomain<T>, T, SingletonValue<T>, SingletonTop
 		this._value = value;
 	}
 
+	public create(value: SingletonLift<T>): SingletonDomain<T> {
+		return new SingletonDomain(value);
+	}
+
 	public get value(): Value {
 		return this._value;
 	}
@@ -80,7 +84,7 @@ implements AbstractDomain<SingletonDomain<T>, T, SingletonValue<T>, SingletonTop
 				break;
 			}
 		}
-		return new SingletonDomain(result);
+		return this.create(result);
 	}
 
 	public meet(...values: SingletonDomain<T>[]): SingletonDomain<T>;
@@ -100,7 +104,7 @@ implements AbstractDomain<SingletonDomain<T>, T, SingletonValue<T>, SingletonTop
 				break;
 			}
 		}
-		return new SingletonDomain(result);
+		return this.create(result);
 	}
 
 	public widen(other: SingletonDomain<T>): SingletonDomain<T> {

@@ -20,14 +20,11 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, Map<Key, Domain>,
 		this._value = new Map(value);
 	}
 
+	public abstract create(value: ReadonlyMap<Key, Domain>): MapDomain;
+
 	public get value(): Map<Key, Domain> {
 		return this._value;
 	}
-
-	/**
-	 * Creates an abstract value of the mapped abstract domain for a given abstract mapping.
-	 */
-	public abstract create(value: ReadonlyMap<Key, Domain>): MapDomain;
 
 	public bottom(): MapDomain {
 		return this.create(new Map<Key, Domain>());

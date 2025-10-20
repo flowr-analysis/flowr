@@ -25,9 +25,6 @@ implements AbstractDomain<Domain, ConcreteProduct<Product>, Product, Product, Pr
 		this._value = value;
 	}
 
-	/**
-	 * Creates an abstract value of the product domain for a given abstract value.
-	 */
 	public abstract create(value: Product): Domain;
 
 	public get value(): Product {

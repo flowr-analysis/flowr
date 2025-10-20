@@ -147,7 +147,7 @@ export class DataFrameShapeInferenceVisitor<
 
 			if(identifier !== undefined) {
 				identifier.info.dataFrame ??= {};
-				identifier.info.dataFrame.domain = new DataFrameStateDomain(this.newDomain.value);
+				identifier.info.dataFrame.domain = this.newDomain.create(this.newDomain.value);
 			}
 		}
 	}

@@ -9,7 +9,7 @@ import { assertAbstractDomain } from './domain';
 
 describe('Abstract Domains', () => {
 	describe('Singleton Domain', () => {
-		const create = (value: AbstractDomainValue<SingletonDomain<number>>) => new SingletonDomain<number>(value);
+		const create = (value: AbstractDomainValue<SingletonDomain<number>>) => new SingletonDomain(value);
 
 		assertAbstractDomain(create, Bottom, Bottom, {
 			equal: true, leq: true, join: Bottom, meet: Bottom, widen: Bottom, narrow: Bottom, concrete: []
@@ -47,8 +47,7 @@ describe('Abstract Domains', () => {
 	});
 
 	describe('Bounded Set Domain', () => {
-		const create = (value: string[] | typeof Top) =>
-			new BoundedSetDomain<string>(value === Top ? Top : new Set(value));
+		const create = (value: string[] | typeof Top) => new BoundedSetDomain(value);
 
 		assertAbstractDomain(create, [], [], {
 			equal: true, leq: true, join: [], meet: [], widen: [], narrow: [], concrete: []

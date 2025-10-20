@@ -37,6 +37,10 @@ implements AbstractDomain<SetUpperBoundDomain<T>, ReadonlySet<T>, SetUpperBoundV
 		this.limit = limit;
 	}
 
+	public create(value: SetUpperBoundLift<T> | T[]): SetUpperBoundDomain<T> {
+		return new SetUpperBoundDomain(value, this.limit);
+	}
+
 	public get value(): Value {
 		return this._value;
 	}
@@ -95,7 +99,7 @@ implements AbstractDomain<SetUpperBoundDomain<T>, ReadonlySet<T>, SetUpperBoundV
 				result = join.size > this.limit ? Top : join;
 			}
 		}
-		return new SetUpperBoundDomain(result, this.limit);
+		return this.create(result);
 	}
 
 	public meet(...values: SetUpperBoundDomain<T>[]): SetUpperBoundDomain<T>;
@@ -118,7 +122,7 @@ implements AbstractDomain<SetUpperBoundDomain<T>, ReadonlySet<T>, SetUpperBoundV
 				result = result.intersection(otherValue);
 			}
 		}
-		return new SetUpperBoundDomain(result, this.limit);
+		return this.create(result);
 	}
 
 	/**
@@ -132,26 +136,26 @@ implements AbstractDomain<SetUpperBoundDomain<T>, ReadonlySet<T>, SetUpperBoundV
 		} else if(this.value === Bottom) {
 			return this.bottom();
 		} else if(otherValue === Top || otherValue === Bottom) {
-			return new SetUpperBoundDomain(this.value, this.limit);
+			return this.create(this.value);
 		} else {
-			return new SetUpperBoundDomain(this.value.difference(otherValue), this.limit);
+			return this.create(this.value.difference(otherValue));
 		}
 	}
 
 	public widen(other: SetUpperBoundDomain<T>): SetUpperBoundDomain<T> {
 		if(this.value === Bottom) {
-			return new SetUpperBoundDomain(other.value, this.limit);
+			return this.create(other.value);
 		} else if(other.value === Bottom) {
-			return new SetUpperBoundDomain(this.value, this.limit);
+			return this.create(this.value);
 		}
-		return other.leq(this) ? new SetUpperBoundDomain(this.value, this.limit) : this.top();
+		return other.leq(this) ? this.create(this.value) : this.top();
 	}
 
 	public narrow(other: SetUpperBoundDomain<T>): SetUpperBoundDomain<T> {
 		if(this.value === Bottom || other.value === Bottom) {
 			return this.bottom();
 		}
-		return this.isTop() ? new SetUpperBoundDomain(other.value, this.limit) : new SetUpperBoundDomain(this.value, this.limit);
+		return this.isTop() ? this.create(other.value) : this.create(this.value);
 	}
 
 	public concretize(limit: number = DEFAULT_INFERENCE_LIMIT): ReadonlySet<ReadonlySet<T>> |  typeof Top {

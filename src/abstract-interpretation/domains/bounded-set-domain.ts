@@ -40,6 +40,10 @@ implements AbstractDomain<BoundedSetDomain<T>, T, BoundedSetValue<T>, BoundedSet
 		this.limit = limit;
 	}
 
+	public create(value: BoundedSetLift<T> | T[]): BoundedSetDomain<T> {
+		return new BoundedSetDomain(value, this.limit);
+	}
+
 	public get value(): Value {
 		return this._value;
 	}
@@ -89,7 +93,7 @@ implements AbstractDomain<BoundedSetDomain<T>, T, BoundedSetValue<T>, BoundedSet
 				result = join.size > this.limit ? Top : join;
 			}
 		}
-		return new BoundedSetDomain(result, this.limit);
+		return this.create(result);
 	}
 
 	public meet(...values: BoundedSetDomain<T>[]): BoundedSetDomain<T>;
@@ -109,7 +113,7 @@ implements AbstractDomain<BoundedSetDomain<T>, T, BoundedSetValue<T>, BoundedSet
 				result = result.intersection(otherValue);
 			}
 		}
-		return new BoundedSetDomain<T>(result, this.limit);
+		return this.create(result);
 	}
 
 	/**
@@ -121,18 +125,18 @@ implements AbstractDomain<BoundedSetDomain<T>, T, BoundedSetValue<T>, BoundedSet
 		if(this.value === Top) {
 			return this.top();
 		} else if(otherValue === Top) {
-			return new BoundedSetDomain(this.value, this.limit);
+			return this.create(this.value);
 		} else {
-			return new BoundedSetDomain(this.value.difference(otherValue), this.limit);
+			return this.create(this.value.difference(otherValue));
 		}
 	}
 
 	public widen(other: BoundedSetDomain<T>): BoundedSetDomain<T> {
-		return other.leq(this) ? new BoundedSetDomain(this.value, this.limit) : this.top();
+		return other.leq(this) ? this.create(this.value) : this.top();
 	}
 
 	public narrow(other: BoundedSetDomain<T>): BoundedSetDomain<T> {
-		return this.isTop() ? new BoundedSetDomain(other.value, this.limit) : new BoundedSetDomain(this.value, this.limit);
+		return this.isTop() ? this.create(other.value) : this.create(this.value);
 	}
 
 	public concretize(limit: number = this.limit): ReadonlySet<T> |  typeof Top {

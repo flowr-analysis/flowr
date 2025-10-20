@@ -1,6 +1,4 @@
-import { Ternary } from '../../util/logic';
-import type { AbstractDomain, SatifiableDomain } from './abstract-domain';
-import { DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
+import { IntervalDomain } from './interval-domain';
 import { Bottom, Top } from './lattice';
 
 /** The Top element of the positive interval domain as interval [0, +∞] */
@@ -20,28 +18,17 @@ type PosIntervalLift = PosIntervalValue | PosIntervalTop | PosIntervalBottom;
  * The Bottom element is defined as {@link Bottom} symbol and the Top element is defined as the interval [0, +∞].
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
-export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift>
-implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosIntervalTop, PosIntervalBottom, Value>, SatifiableDomain<number> {
-	private readonly _value: Value;
-
+export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> extends IntervalDomain<Value> {
 	constructor(value: Value) {
-		if(Array.isArray(value)) {
-			if(value.some(isNaN) || value[0] > value[1] || value[0] < 0 || value[0] === Infinity) {
-				this._value = Bottom as Value;
-			} else {
-				this._value = [value[0], value[1]] as PosIntervalValue as Value;
-			}
+		if(Array.isArray(value) && value[0] < 0) {
+			super(Bottom as Value);
 		} else {
-			this._value = value;
+			super(value);
 		}
 	}
 
 	public create(value: PosIntervalLift): PosIntervalDomain {
 		return new PosIntervalDomain(value);
-	}
-
-	public get value(): Value {
-		return this._value;
 	}
 
 	public static top(): PosIntervalDomain<PosIntervalTop> {
@@ -67,14 +54,6 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 
 	public bottom(): PosIntervalDomain<PosIntervalBottom> {
 		return PosIntervalDomain.bottom();
-	}
-
-	public equals(other: PosIntervalDomain): boolean {
-		return this.value === other.value || (this.isValue() && other.isValue() && this.value[0] === other.value[0] && this.value[1] === other.value[1]);
-	}
-
-	public leq(other: PosIntervalDomain): boolean {
-		return this.value === Bottom || (other.isValue() && other.value[0] <= this.value[0] && this.value[1] <= other.value[1]);
 	}
 
 	public join(...values: PosIntervalDomain[]): PosIntervalDomain;
@@ -140,41 +119,10 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 		]);
 	}
 
-	public concretize(limit: number = DEFAULT_INFERENCE_LIMIT): ReadonlySet<number> | typeof Top {
-		if(this.value === Bottom) {
-			return new Set();
-		} else if(!isFinite(this.value[1]) || this.value[1] - this.value[0] + 1 > limit) {
-			return Top;
-		}
-		const set = new Set<number>();
-
-		for(let x = this.value[0]; x <= this.value[1]; x++) {
-			set.add(x);
-		}
-		return set;
-	}
-
 	public abstract(concrete: ReadonlySet<number> | typeof Top): PosIntervalDomain {
 		return PosIntervalDomain.abstract(concrete);
 	}
 
-	public satisfies(value: number): Ternary {
-		if(this.isValue() && this.value[0] <= value && value <= this.value[1]) {
-			return this.value[0] === this.value[1] ? Ternary.Always : Ternary.Maybe;
-		}
-		return Ternary.Never;
-	}
-
-	public satisfiesLeq(value: number): Ternary {
-		if(this.isValue() && 0 <= value && value <= this.value[1]) {
-			return value <= this.value[0] ? Ternary.Always : Ternary.Maybe;
-		}
-		return Ternary.Never;
-	}
-
-	/**
-	 * Adds another abstract value to the current abstract value by adding the two lower and upper bounds, respectively.
-	 */
 	public add(other: PosIntervalDomain | PosIntervalLift): PosIntervalDomain {
 		const otherValue = other instanceof PosIntervalDomain ? other.value : other;
 
@@ -185,9 +133,6 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 		}
 	}
 
-	/**
-	 * Subtracts another abstract value from the current abstract value by subtracting the two lower and upper bounds from each other, respectively.
-	 */
 	public subtract(other: PosIntervalDomain | PosIntervalLift): PosIntervalDomain {
 		const otherValue = other instanceof PosIntervalDomain ? other.value : other;
 
@@ -198,9 +143,6 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 		}
 	}
 
-	/**
-	 * Creates the minimum between the current abstract value and another abstract value by creating the minimum of the two lower and upper bounds, respectively.
-	 */
 	public min(other: PosIntervalDomain | PosIntervalLift): PosIntervalDomain {
 		const otherValue = other instanceof PosIntervalDomain ? other.value : other;
 
@@ -211,9 +153,6 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 		}
 	}
 
-	/**
-	 * Creates the maximum between the current abstract value and another abstract value by creating the maximum of the two lower and upper bounds, respectively.
-	 */
 	public max(other: PosIntervalDomain | PosIntervalLift): PosIntervalDomain {
 		const otherValue = other instanceof PosIntervalDomain ? other.value : other;
 
@@ -235,9 +174,6 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 		}
 	}
 
-	/**
-	 * Extends the upper bound of the current abstract value up to +∞.
-	 */
 	public extendUp(): PosIntervalDomain {
 		if(this.value === Bottom) {
 			return this.bottom();
@@ -246,22 +182,7 @@ implements AbstractDomain<PosIntervalDomain, number, PosIntervalValue, PosInterv
 		}
 	}
 
-	public toString(): string {
-		if(this.value === Bottom) {
-			return '⊥';
-		}
-		return `[${this.value[0]}, ${isFinite(this.value[1]) ? this.value[1] : '+∞'}]`;
-	}
-
 	public isTop(): this is PosIntervalDomain<PosIntervalTop> {
 		return this.value !== Bottom && this.value[0] === 0 && this.value[1] === +Infinity;
-	}
-
-	public isBottom(): this is PosIntervalDomain<PosIntervalBottom> {
-		return this.value === Bottom;
-	}
-
-	public isValue(): this is PosIntervalDomain<PosIntervalValue> {
-		return this.value !== Bottom;
 	}
 }

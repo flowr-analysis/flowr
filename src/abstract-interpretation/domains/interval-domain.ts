@@ -4,7 +4,7 @@ import { DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Bottom, Top } from './lattice';
 
 /** The Top element of the interval domain as interval [-∞, +∞] */
-export const IntervalTop = [-Infinity, +Infinity] as const satisfies readonly [number, number];
+export const IntervalTop = [-Infinity, +Infinity] satisfies readonly [number, number];
 
 /** The type of the actual values of the interval domain as tuple of the lower and upper bound */
 type IntervalValue = readonly [number, number];

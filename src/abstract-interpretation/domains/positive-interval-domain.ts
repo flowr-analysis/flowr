@@ -2,7 +2,7 @@ import { IntervalDomain } from './interval-domain';
 import { Bottom, Top } from './lattice';
 
 /** The Top element of the positive interval domain as interval [0, +∞] */
-export const PosIntervalTop = [0, +Infinity] as const satisfies readonly [number, number];
+export const PosIntervalTop = [0, +Infinity] satisfies readonly [number, number];
 
 /** The type of the actual values of the positive interval domain as tuple of the lower and upper bound */
 type PosIntervalValue = readonly [number, number];

@@ -153,16 +153,15 @@ function depthListToTextTree(list: Readonly<DepthList>, f: OutputFormatter): str
 }
 
 export const parseCommand: ReplCodeCommand = {
-	description:   `Prints ASCII Art of the parsed, unmodified AST, start with '${fileProtocol}' to indicate a file`,
-	isCodeCommand: true,
-	usageExample:  ':parse',
-	aliases:       [ 'p' ],
-	script:        false,
-	argsParser:    (line: string) => {
+	description:  `Prints ASCII Art of the parsed, unmodified AST, start with '${fileProtocol}' to indicate a file`,
+	kind:         'code',
+	usageExample: ':parse',
+	aliases:      [ 'p' ],
+	script:       false,
+	argsParser:   (line) => {
 		return {
 			// Threat the whole input line as R code
-			input:     removeRQuotes(line.trim()),
-			remaining: []
+			input: removeRQuotes(line.trim()),
 		};
 	},
 	fn: async({ output, analyzer }) => {

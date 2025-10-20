@@ -1,4 +1,4 @@
-import type { ReplCodeCommand } from './repl-main';
+import type { ReplCodeCommandWithArgs } from './repl-main';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -55,22 +55,24 @@ export function getLineage(criterion: SingleSlicingCriterion, graph: DataflowGra
 	return result;
 }
 
-export const lineageCommand: ReplCodeCommand = {
-	description:   'Get the lineage of an R object',
-	isCodeCommand: true,
-	usageExample:  ':lineage',
-	aliases:       ['lin'],
-	script:        false,
-	argsParser:    (args: string) => {
-		const [criterion, rest] = splitAt(args, args.indexOf(' '));
+export const lineageCommand: ReplCodeCommandWithArgs<{criterion: SingleSlicingCriterion}> = {
+	description:  'Get the lineage of an R object',
+	kind:         'codeWithArgs',
+	usageExample: ':lineage',
+	aliases:      ['lin'],
+	script:       false,
+	argsParser:   ({ line }) => {
+		const [criterion, rest] = splitAt(line, line.indexOf(' '));
 		const code = rest.trim();
 		return {
-			input:     code.startsWith('"') ? JSON.parse(code) as string : code,
-			remaining: [criterion]
+			input: code.startsWith('"') ? JSON.parse(code) as string : code,
+			args:  {
+				criterion: criterion as SingleSlicingCriterion
+			}
 		};
 	},
-	fn: async({ output, analyzer, remainingArgs }) => {
-		const lineageIds = getLineage(remainingArgs[0] as SingleSlicingCriterion, (await analyzer.dataflow()).graph);
+	fn: async({ output, analyzer, args }) => {
+		const lineageIds = getLineage(args.criterion, (await analyzer.dataflow()).graph);
 		output.stdout([...lineageIds].join('\n'));
 	}
 };

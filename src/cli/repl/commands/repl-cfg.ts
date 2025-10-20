@@ -27,52 +27,52 @@ async function produceAndPrintCfg(analyzer: FlowrAnalysisProvider, output: ReplO
 }
 
 export const controlflowCommand: ReplCodeCommand = {
-	description:   `Get mermaid code for the control-flow graph of R code, start with '${fileProtocol}' to indicate a file`,
-	isCodeCommand: true,
-	usageExample:  ':controlflow',
-	aliases:       [ 'cfg', 'cf' ],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
+	description:  `Get mermaid code for the control-flow graph of R code, start with '${fileProtocol}' to indicate a file`,
+	kind:         'code',
+	usageExample: ':controlflow',
+	aliases:      [ 'cfg', 'cf' ],
+	script:       false,
+	argsParser:   (line) => handleString(line),
+	fn:           async({ output, analyzer }) => {
 		await produceAndPrintCfg(analyzer, output, [], cfgToMermaid);
 	}
 };
 
 
 export const controlflowStarCommand: ReplCodeCommand = {
-	description:   'Returns the URL to mermaid.live',
-	isCodeCommand: true,
-	usageExample:  ':controlflow*',
-	aliases:       [ 'cfg*', 'cf*' ],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
+	description:  'Returns the URL to mermaid.live',
+	kind:         'code',
+	usageExample: ':controlflow*',
+	aliases:      [ 'cfg*', 'cf*' ],
+	script:       false,
+	argsParser:   (line) => handleString(line),
+	fn:           async({ output, analyzer }) => {
 		await produceAndPrintCfg(analyzer, output, [], cfgToMermaidUrl);
 	}
 };
 
 
 export const controlflowBbCommand: ReplCodeCommand = {
-	description:   `Get mermaid code for the control-flow graph with basic blocks, start with '${fileProtocol}' to indicate a file`,
-	isCodeCommand: true,
-	usageExample:  ':controlflowbb',
-	aliases:       [ 'cfgb', 'cfb' ],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
+	description:  `Get mermaid code for the control-flow graph with basic blocks, start with '${fileProtocol}' to indicate a file`,
+	kind: 	       'code',
+	usageExample: ':controlflowbb',
+	aliases:      [ 'cfgb', 'cfb' ],
+	script:       false,
+	argsParser:   (line) => handleString(line),
+	fn:           async({ output, analyzer }) => {
 		await produceAndPrintCfg(analyzer, output, ['to-basic-blocks'], cfgToMermaid);
 	}
 };
 
 
 export const controlflowBbStarCommand: ReplCodeCommand = {
-	description:   'Returns the URL to mermaid.live',
-	isCodeCommand: true,
-	usageExample:  ':controlflowbb*',
-	aliases:       [ 'cfgb*', 'cfb*' ],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
+	description:  'Returns the URL to mermaid.live',
+	kind: 	       'code',
+	usageExample: ':controlflowbb*',
+	aliases:      [ 'cfgb*', 'cfb*' ],
+	script:       false,
+	argsParser:   (line) => handleString(line),
+	fn:           async({ output, analyzer }) => {
 		await produceAndPrintCfg(analyzer, output, ['to-basic-blocks' ], cfgToMermaidUrl);
 	}
 };

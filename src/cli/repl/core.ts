@@ -14,7 +14,7 @@ import { FontStyles } from '../../util/text/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
 import { fileProtocol, requestFromInput } from '../../r-bridge/retriever';
-import type { ReplOutput } from './commands/repl-main';
+import type { ReplCodeCommand, ReplCodeCommandWithArgs, ReplCommand, ReplOutput } from './commands/repl-main';
 import { standardReplOutput } from './commands/repl-main';
 import type { MergeableRecord } from '../../util/objects';
 import { log, LogLevel } from '../../util/log';
@@ -99,26 +99,36 @@ export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.Re
 
 export function handleString(code: string) {
 	return {
-		input:     code.length == 0 ? undefined : code.startsWith('"') ? JSON.parse(code) as string : code,
-		remaining: []
+		input: code.length == 0 ? undefined : code.startsWith('"') ? JSON.parse(code) as string : code,
 	};
 }
 
 async function replProcessStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean): Promise<void> {
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase();
-		const processor = getCommand(command);
+		const processor = getCommand(command) as ReplCommand | ReplCodeCommand | ReplCodeCommandWithArgs<unknown> | undefined; // TODO Better solution?
 		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
 		if(processor) {
 			try {
 				const remainingLine = statement.slice(command.length + 2).trim();
-				if(processor.isCodeCommand) {
+				if(processor.kind === 'code') {
 					const args = processor.argsParser(remainingLine);
 					if(args.input) {
 						analyzer.reset();
 						analyzer.context().addRequest(requestFromInput(args.input));
 					}
-					await processor.fn({ output, analyzer, remainingArgs: args.remaining });
+					await processor.fn({ output, analyzer });
+				} else if(processor.kind === 'codeWithArgs') {
+					const args = processor.argsParser({ output, config: analyzer.flowrConfig, line: remainingLine });
+					if(!args) {
+						return;
+					}
+					if(args.input) {
+						analyzer.reset();
+						analyzer.context().addRequest(requestFromInput(args.input));
+					}
+					// TODO Handle case when no request is set
+					await processor.fn({ output, analyzer, args: args.args });
 				} else {
 					await processor.fn({ output, analyzer, remainingLine, allowRSessionAccess });
 				}
@@ -199,7 +209,7 @@ export async function repl(
 	}
 
 	// the incredible repl :D, we kill it with ':quit'
-	 
+	// noinspection InfiniteLoopJS
 	while(true) {
 		await new Promise<void>((resolve, reject) => {
 			rl.question(prompt(), answer => {

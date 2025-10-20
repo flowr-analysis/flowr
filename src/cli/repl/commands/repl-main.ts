@@ -1,6 +1,7 @@
 import type { OutputFormatter } from '../../../util/text/ansi';
 import { formatter } from '../../../util/text/ansi';
 import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import type { FlowrConfigOptions } from '../../../config';
 
 /**
  * Defines the main interface for output of the repl.
@@ -43,9 +44,12 @@ export interface ReplCommandInformation {
  * The {@link analyzer} has the {@link RParseRequest}.
  */
 export interface ReplCodeCommandInformation {
-	output:        ReplOutput,
-	analyzer:      FlowrAnalysisProvider
-	remainingArgs: string[]
+	output:   ReplOutput,
+	analyzer: FlowrAnalysisProvider
+}
+
+export interface ReplCodeCommandInformationWithArgs<Args> extends ReplCodeCommandInformation{
+	args: Args;
 }
 
 /**
@@ -64,12 +68,12 @@ export interface ReplBaseCommand {
 }
 
 export interface ReplCommand extends ReplBaseCommand {
-	isCodeCommand: false;
+	kind: 'plain';
 	/**
 	 * Function to execute when the command is invoked, it must not write to the command line but instead use the output handler.
 	 * Furthermore, it has to obey the formatter defined in the {@link ReplOutput}.
 	 */
-	fn:            (info: ReplCommandInformation) => Promise<void> | void
+	fn:   (info: ReplCommandInformation) => Promise<void> | void
 }
 
 
@@ -77,14 +81,27 @@ export interface ReplCommand extends ReplBaseCommand {
  * Repl command that uses the {@link FlowrAnalyzer}
  */
 export interface ReplCodeCommand extends ReplBaseCommand {
-	isCodeCommand: true;
+	kind:       'code';
 	/**
 	 * Function to execute when the command is invoked, it must not write to the command line but instead use the output handler.
 	 * Furthermore, it has to obey the formatter defined in the {@link ReplOutput}.
 	 */
-	fn:            (info: ReplCodeCommandInformation) => Promise<void> | void
+	fn:         (info: ReplCodeCommandInformation) => Promise<void> | void
 	/**
 	 * Argument parser function which handles the input given after the repl command
 	 */
-	argsParser:    (remainingLine: string) => { input: string | undefined, remaining: string[]}
+	argsParser: (line: string) => { input?: string }
+}
+
+export interface ReplCodeCommandWithArgs<Args> extends ReplBaseCommand {
+	kind:       'codeWithArgs';
+	/**
+	 * Function to execute when the command is invoked, it must not write to the command line but instead use the output handler.
+	 * Furthermore, it has to obey the formatter defined in the {@link ReplOutput}.
+	 */
+	fn:         (info: ReplCodeCommandInformationWithArgs<Args>) => Promise<void> | void
+	/**
+	 * Argument parser function which handles the input given after the repl command
+	 */
+	argsParser: (info: { output: ReplOutput, config: FlowrConfigOptions, line: string }) => { input?: string, args: Args } | undefined
 }

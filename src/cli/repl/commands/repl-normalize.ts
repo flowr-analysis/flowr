@@ -10,13 +10,13 @@ function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInfo
 }
 
 export const normalizeCommand: ReplCodeCommand = {
-	description:   `Get mermaid code for the normalized AST of R code, start with '${fileProtocol}' to indicate a file`,
-	isCodeCommand: true,
-	usageExample:  ':normalize',
-	aliases:       [ 'n' ],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
+	description:  `Get mermaid code for the normalized AST of R code, start with '${fileProtocol}' to indicate a file`,
+	kind:         'code',
+	usageExample: ':normalize',
+	aliases:      [ 'n' ],
+	script:       false,
+	argsParser:   (line) => handleString(line),
+	fn:           async({ output, analyzer }) => {
 		const result = await analyzer.normalize();
 		const mermaid = normalizedAstToMermaid(result.ast);
 		output.stdout(mermaid);
@@ -29,13 +29,13 @@ export const normalizeCommand: ReplCodeCommand = {
 };
 
 export const normalizeStarCommand: ReplCodeCommand = {
-	description:   'Returns the URL to mermaid.live',
-	isCodeCommand: true,
-	usageExample:  ':normalize*',
-	aliases:       [ 'n*' ],
-	script:        false,
-	argsParser:    (args: string) => handleString(args),
-	fn:            async({ output, analyzer }) => {
+	description:  'Returns the URL to mermaid.live',
+	kind:         'code',
+	usageExample: ':normalize*',
+	aliases:      [ 'n*' ],
+	script:       false,
+	argsParser:   (line) => handleString(line),
+	fn:           async({ output, analyzer }) => {
 		const result = await analyzer.normalize();
 		const mermaid = normalizedAstToMermaidUrl(result.ast);
 		output.stdout(mermaid);

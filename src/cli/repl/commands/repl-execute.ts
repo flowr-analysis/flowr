@@ -27,10 +27,10 @@ async function executeRShellCommand(output: ReplOutput, analyzer: FlowrAnalysisP
 }
 
 export const executeCommand: ReplCommand = {
-	description:   'Execute the given code as R code (essentially similar to using now command). This requires the `--r-session-access` flag to be set and requires the r-shell engine.',
-	isCodeCommand: false,
-	usageExample:  ':execute',
-	aliases:       [ 'e', 'r' ],
-	script:        false,
-	fn:            tryExecuteRShellCommand
+	description:  'Execute the given code as R code (essentially similar to using now command). This requires the `--r-session-access` flag to be set and requires the r-shell engine.',
+	kind:         'plain',
+	usageExample: ':execute',
+	aliases:      [ 'e', 'r' ],
+	script:       false,
+	fn:           tryExecuteRShellCommand
 };

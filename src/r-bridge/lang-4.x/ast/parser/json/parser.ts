@@ -5,11 +5,11 @@ import { decorateAst, deterministicCountingIdGenerator } from '../../model/proce
 import type { NoInfo, RNode } from '../../model/model';
 import { normalizeRootObjToAst } from '../main/internal/structure/normalize-root';
 import type { NormalizerData } from '../main/normalizer-data';
-import type { ParseStepOutputTS } from '../../../../../core/steps/all/core/01-parse-tree-sitter';
 import { normalizeTreeSitterTreeToAst } from '../../../tree-sitter/tree-sitter-normalize';
 import type { ParseStepOutput } from '../../../../parser';
 import type { FlowrConfigOptions } from '../../../../../config';
 import { getEngineConfig } from '../../../../../config';
+import type { Tree } from 'web-tree-sitter';
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' });
 
@@ -44,7 +44,7 @@ export function normalizeButNotDecorated(
  * Tree-Sitter pendant to {@link normalize}.
  */
 export function normalizeTreeSitter(
-	{ parsed }: ParseStepOutputTS,
+	{ parsed }: ParseStepOutput<Tree>,
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),
 	config: FlowrConfigOptions,
 	file?: string

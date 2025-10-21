@@ -31,11 +31,12 @@ export type GetGenerator<Name extends GeneratorNames> = FlowrSearchGeneratorNode
  * All supported generators!
  */
 export const generators = {
-	all:          generateAll,
-	get:          generateGet,
-	criterion:    generateCriterion,
-	from:         generateFrom,
-	'from-query': generateFromQuery
+	all:                      generateAll,
+	get:                      generateGet,
+	criterion:                generateCriterion,
+	from:                     generateFrom,
+	'from-query':             generateFromQuery,
+	'from-tree-sitter-query': generateFromTreeSitterQuery
 } as const;
 
 async function generateAll(data: FlowrAnalysisProvider): Promise<FlowrSearchElements<ParentInformation>> {
@@ -120,6 +121,13 @@ async function generateFromQuery(input: FlowrAnalysisProvider, args: {
 		return await enrichElement(e, elements, { normalize, dataflow, cfg }, Enrichment.QueryData, { query });
 	}))) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
 }
+
+function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: { source: string } ): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
+	// TODO run query using TreeSitterExecutor and convert nodes to our ids using a map that we will generate in tree sitter normalization
+	return new FlowrSearchElements([]);
+}
+
+
 
 async function generateCriterion(input: FlowrAnalysisProvider, args: { criterion: SlicingCriteria }): Promise<FlowrSearchElements<ParentInformation>> {
 	const idMap = (await input.normalize()).idMap;

@@ -15,6 +15,8 @@ export interface AbstractOperationsStringDomain {
 	const(value: string): SDValue,
 	concat: (sep: SDValue, ...args: readonly SDValue[]) => SDValue,
 	join:   (...args: readonly SDValue[]) => SDValue,
+	map: (value: SDValue, func: (str: string) => string) => SDValue,
+	sprintf: (fmt: SDValue, ...args: readonly SDValue[]) => SDValue,
 }
 
 export function isTop(value: SDValue): value is Top {

@@ -1,6 +1,8 @@
 import type { SDValue, AbstractOperationsStringDomain } from '../domain';
 import { Bottom, Top } from '../domain';
 
+const sprintf = require('sprintf-js').sprintf;
+
 export type ConstSet = {
   kind:  'const-set',
   value: string[],
@@ -96,4 +98,32 @@ export class ConstSetStringDomain implements AbstractOperationsStringDomain {
     
 		return constSet(...value);
 	}
+
+	map(value: SDValue, func: (str: string) => string): SDValue {
+		const innerValue = toConstSet(value);
+		if (!isConstSet(innerValue)) return Top;
+		return { kind: "const-set", value: innerValue.value.map(func) };
+	}
+
+  sprintf(fmt: SDValue, ...args: readonly SDValue[]): SDValue {
+  	if (!isConstSet(fmt)) return Top;
+  	if (!args.every(isConstSet)) return Top;
+
+		const variants = fmt.value.length * args
+			.map(it => it.value.length)
+			.reduce((l, r) => l * r);
+
+		if(variants > this.MAX_VARIANTS) {
+			return Top;
+		}
+
+		const values = args.reduce(
+			(l, r) => l
+				.flatMap(l => r.value.map(r => [...l, r])),
+			fmt.value.map(it => [it])
+		);
+
+		const results = values.map(args => sprintf(...args) as string);
+		return constSet(...results)
+  }
 }

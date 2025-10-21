@@ -209,7 +209,6 @@ export async function executeQueries<
 		}
 	}
 
-	// all results are synchronous, we can return them directly
 	const r = Object.fromEntries(results) as Writable<QueryResults<Base>>;
 	r['.meta'] = {
 		timing: Date.now() - now

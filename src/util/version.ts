@@ -5,7 +5,7 @@ import type { ReplOutput } from '../cli/repl/commands/repl-main';
 import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 // this is automatically replaced with the current version by release-it
-const version = '2.6.0';
+const version = '2.6.1';
 
 export function flowrVersion(): SemVer {
 	return new SemVer(version);

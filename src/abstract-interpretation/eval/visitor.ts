@@ -96,11 +96,12 @@ function resolveValueToStringImplicit(value: Value, domain: AbstractOperationsSt
 // implicit conversions
 export function resolveNodeToStringImplicit(node: RNode<StringDomainInfo & ParentInformation> | undefined, domain: AbstractOperationsStringDomain, resolveInfo: ResolveInfo): SDValue {
 	if (node === undefined) return Top;
-	if (node.info.sdvalue !== undefined) return node.info.sdvalue;
-		const result = resolveIdToValue(node.info.id, resolveInfo);
+	if (node.info.sdvalue !== undefined && node.info.sdvalue !== Top) return node.info.sdvalue;
+	const result = resolveIdToValue(node.info.id, resolveInfo);
+	console.log(node)
 	if (!isValue(result)) return Top;
-	console.log(JSON.stringify(result))
 	const values = result.elements;
+	if (values.length > 1) return Top;
 	if (!values.every(it => isValue(it))) return Top;
 
 	const stringValues = values.map(it => resolveValueToStringImplicit(it, domain))
@@ -241,17 +242,44 @@ export class StringDomainVisitor<
 	}
 
 	protected onDefaultFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall; }): void {
+		console.log("default", call.name)
 		const builtinOrigin = this.getOrigins(call.id)?.find(it => it.type == OriginType.BuiltInFunctionOrigin) 
 		if (builtinOrigin) {
 			this.onBuiltinFunctionCall({builtin: builtinOrigin, call});
 		} else {
 			switch (call.name) {
-				
+				case "tolower":
+					this.updateIdValue(call.id, () => {
+						const positional = call.args.filter(it => isPositionalArgument(it))
+						if (positional.length != 1) return Top;
+						const value = this.resolveIdToStringImplicit(positional[0].nodeId)
+						return this.domain.map(value, it => it.toLowerCase())
+					});
+					break;
+
+				case "toupper":
+					this.updateIdValue(call.id, () => {
+						const positional = call.args.filter(it => isPositionalArgument(it))
+						if (positional.length != 1) return Top;
+						const value = this.resolveIdToStringImplicit(positional[0].nodeId)
+						return this.domain.map(value, it => it.toUpperCase())
+					});
+					break;
+
+				case "sprintf":
+					this.updateIdValue(call.id, () => {
+						const positional = call.args.filter(it => isPositionalArgument(it))
+						if (positional.length == 0) return Top;
+						const values = positional.map(it => this.resolveIdToStringImplicit(it.nodeId))
+						return this.domain.sprintf(values[0], ...values.slice(1))
+					});
+					break;
 			}
 		}
 	}
 
 	private onBuiltinFunctionCall({ builtin, call }: { builtin: BuiltInFunctionOrigin, call: DataflowGraphVertexFunctionCall}): void {
+		console.log("builtin", builtin.fn.name)
 		switch (builtin.fn.name) {
 			case "paste":
 				this.updateIdValue(call.id, () => {

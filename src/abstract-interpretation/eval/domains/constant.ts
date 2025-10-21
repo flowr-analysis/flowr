@@ -1,6 +1,8 @@
 import type { SDValue, AbstractOperationsStringDomain } from '../domain';
 import { Bottom, Top } from '../domain';
 
+const sprintf = require('sprintf-js').sprintf;
+
 export type Const = {
   kind:  'const',
   value: string,
@@ -77,4 +79,17 @@ export class ConstStringDomain implements AbstractOperationsStringDomain {
 			return Top;
 		}
 	}
+
+	map(value: SDValue, func: (str: string) => string): SDValue {
+		const innerValue = toConst(value);
+		if (!isConst(innerValue)) return Top;
+		return { kind: "const", value: func(innerValue.value) }
+	}
+
+  sprintf(fmt: SDValue, ...args: readonly SDValue[]): SDValue {
+  	if (!isConst(fmt)) return Top;
+  	if (!args.every(isConst)) return Top;
+
+  	return konst(sprintf(fmt.value, args.map(it => it.value)))
+  }
 }

@@ -4,7 +4,7 @@ import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
-import { mermaidHide, printHierarchy, getTypesFromFolder, shortLink } from './doc-util/doc-types';
+import { getTypesFromFolder, mermaidHide, printHierarchy, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
@@ -16,6 +16,7 @@ import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { collectAllIds } from '../r-bridge/lang-4.x/ast/model/collect';
 import { DefaultNormalizedAstFold } from '../abstract-interpretation/normalized-ast-fold';
 import { createNormalizePipeline } from '../core/steps/pipeline/default-pipelines';
+import { FlowrAnalyzer } from '../project/flowr-analyzer';
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -92,17 +93,14 @@ The following segments intend to give you an overview of how to work with the no
 
 ## How to Get a Normalized AST
 
-As explained alongside the [Interface](${FlowrWikiBaseRef}/Interface#the-pipeline-executor) wiki page, you can use the 
-${shortLink(PipelineExecutor.name, types.info)} to get the ${shortLink('NormalizedAst', types.info)}. If you are only interested in the normalization,
-a pipeline like the ${shortLink('DEFAULT_NORMALIZE_PIPELINE', types.info)} suffices:
+As explained alongside the [Interface](${FlowrWikiBaseRef}/Interface#creating-flowr-analyses) wiki page, you can use an instance of
+${shortLink(FlowrAnalyzer.name, types.info)} to get the ${shortLink('NormalizedAst', types.info)}:
 
 ${codeBlock('ts', `
 async function getAst(code: string): Promise<RNode> {
-    const result = await new ${PipelineExecutor.name}(DEFAULT_NORMALIZE_PIPELINE, {
-        parser:  new ${RShell.name}(),
-        request: ${requestFromInput.name}(code.trim())
-    }).allRemainingSteps();
-    return result.normalize.ast;
+    const analyzer = await new FlowrAnalyzerBuilder(${requestFromInput.name}(code.trim())).build();
+    const result = analyzer.normalizedAst();
+    return result.ast;
 }`)}
 
 From the REPL, you can use the ${getReplCommand('normalize')} command.

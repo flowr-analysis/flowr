@@ -21,7 +21,7 @@ export interface SearchQueryResult extends BaseQueryResult {
 
 export const SearchQueryDefinition = {
 	executor:        executeSearch,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'search'>['search'];
 		result.push(`Query: ${bold('search', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [, { ids, search }] of out.results.entries()) {

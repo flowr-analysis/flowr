@@ -40,7 +40,7 @@ if git log -1 --pretty=%B | grep -q "\[release"; then
   $NPM_CMD run checkup
 else
   echo "Linting project (local mode)..."
-  $NPM_CMD run lint-local
+  $NPM_CMD run lint-local -- --fix
 fi
 
 

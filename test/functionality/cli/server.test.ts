@@ -1,7 +1,6 @@
 import { withShell } from '../_helper/shell';
 import { fakeSend, withSocket } from '../_helper/net';
 import type { FlowrHelloResponseMessage } from '../../../src/cli/repl/server/messages/message-hello';
-import { retrieveVersionInformation } from '../../../src/cli/repl/commands/repl-version';
 import type {
 	ExecuteEndMessage,
 	ExecuteIntermediateResponseMessage,
@@ -12,10 +11,8 @@ import type {
 	FileAnalysisResponseMessageCompact,
 	FileAnalysisResponseMessageJson
 } from '../../../src/cli/repl/server/messages/message-analysis';
-import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { jsonReplacer } from '../../../src/util/json';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { sanitizeAnalysisResults } from '../../../src/cli/repl/server/connection';
 import type { QueryRequestMessage, QueryResponseMessage } from '../../../src/cli/repl/server/messages/message-query';
@@ -23,6 +20,8 @@ import { assert, describe, test } from 'vitest';
 import { uncompact } from '../../../src/cli/repl/server/compact';
 import { getPlatform } from '../../../src/util/os';
 import { defaultConfigOptions } from '../../../src/config';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { retrieveVersionInformation } from '../../../src/util/version';
 
 describe('flowr', () => {
 	const skip = getPlatform() !== 'linux';
@@ -86,10 +85,10 @@ describe('flowr', () => {
 			const response = messages[1] as FileAnalysisResponseMessageJson;
 
 			// we are testing the server and not the slicer here!
-			const results = sanitizeAnalysisResults(await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-				parser:  shell,
-				request: requestFromInput('1 + 1'),
-			}, defaultConfigOptions).allRemainingSteps());
+			const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('1 + 1'))
+				.setParser(shell)
+				.build();
+			const results = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalize(), await analyzer.dataflow());
 
 			// cfg should not be set as we did not request it
 			assert.isUndefined(response.cfg, 'Expected the cfg to be undefined as we did not request it');
@@ -120,10 +119,10 @@ describe('flowr', () => {
 			const response = messages[1] as FileAnalysisResponseMessageCompact;
 
 			// we are testing the server and not the slicer here!
-			const results = sanitizeAnalysisResults(await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-				parser:  shell,
-				request: requestFromInput('1 + 1'),
-			}, defaultConfigOptions).allRemainingSteps());
+			const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('1 + 1'))
+				.setParser(shell)
+				.build();
+			const results = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalize(), await analyzer.dataflow());
 
 			// cfg should not be set as we did not request it
 			assert.isUndefined(response.cfg, 'Expected the cfg to be undefined as we did not request it');

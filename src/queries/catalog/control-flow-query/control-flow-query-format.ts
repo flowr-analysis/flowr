@@ -30,10 +30,10 @@ export interface ControlFlowQueryResult extends BaseQueryResult {
 
 export const ControlFlowQueryDefinition = {
 	executor:        executeControlFlowQuery,
-	asciiSummarizer: (formatter, processed, queryResults, result) => {
+	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'control-flow'>['control-flow'];
 		result.push(`Query: ${bold('control-flow', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
-		result.push(`   ╰ CFG: ${cfgToMermaidUrl(out.controlFlow, processed.normalize)}`);
+		result.push(`   ╰ CFG: ${cfgToMermaidUrl(out.controlFlow, await analyzer.normalize())}`);
 		return true;
 	},
 	schema: Joi.object({

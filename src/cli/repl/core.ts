@@ -13,17 +13,15 @@ import { splitAtEscapeSensitive } from '../../util/text/args';
 import { FontStyles } from '../../util/text/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
-import { fileProtocol } from '../../r-bridge/retriever';
+import { fileProtocol, requestFromInput } from '../../r-bridge/retriever';
 import type { ReplOutput } from './commands/repl-main';
 import { standardReplOutput } from './commands/repl-main';
-import { RShell, RShellReviveOptions } from '../../r-bridge/shell';
 import type { MergeableRecord } from '../../util/objects';
-import type { KnownParser } from '../../r-bridge/parser';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfigOptions } from '../../config';
-import { getEngineConfig } from '../../config';
 import type { SupportedQuery } from '../../queries/query';
 import { SupportedQueries } from '../../queries/query';
+import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -99,14 +97,31 @@ export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.Re
 	};
 }
 
-async function replProcessStatement(output: ReplOutput, statement: string, parser: KnownParser, allowRSessionAccess: boolean, config: FlowrConfigOptions): Promise<void> {
+export function handleString(code: string) {
+	return {
+		input:     code.length == 0 ? undefined : code.startsWith('"') ? JSON.parse(code) as string : code,
+		remaining: []
+	};
+}
+
+async function replProcessStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean): Promise<void> {
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase();
 		const processor = getCommand(command);
 		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
 		if(processor) {
 			try {
-				await processor.fn({ output, parser, remainingLine: statement.slice(command.length + 2).trim(), allowRSessionAccess, config });
+				const remainingLine = statement.slice(command.length + 2).trim();
+				if(processor.isCodeCommand) {
+					const args = processor.argsParser(remainingLine);
+					if(args.input) {
+						analyzer.reset();
+						analyzer.context().addRequest(requestFromInput(args.input));
+					}
+					await processor.fn({ output, analyzer, remainingArgs: args.remaining });
+				} else {
+					await processor.fn({ output, analyzer, remainingLine, allowRSessionAccess });
+				}
 			} catch(e){
 				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
 				if(log.settings.minLevel < LogLevel.Fatal) {
@@ -117,25 +132,24 @@ async function replProcessStatement(output: ReplOutput, statement: string, parse
 			output.stdout(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
 		}
 	} else {
-		await tryExecuteRShellCommand({ output, parser, remainingLine: statement, allowRSessionAccess, config });
+		await tryExecuteRShellCommand({ output, analyzer, remainingLine: statement, allowRSessionAccess });
 	}
 }
 
 /**
  * This function interprets the given `expr` as a REPL command (see {@link repl} for more on the semantics).
  *
- * @param config              - flowr Config
+ * @param analyzer            - The flowR analyzer to use.
  * @param output              - Defines two methods that every function in the repl uses to output its data.
  * @param expr                - The expression to process.
- * @param parser               - The {@link RShell} or {@link TreeSitterExecutor} to use (see {@link repl}).
  * @param allowRSessionAccess - If true, allows the execution of arbitrary R code.
  */
-export async function replProcessAnswer(config: FlowrConfigOptions, output: ReplOutput, expr: string, parser: KnownParser, allowRSessionAccess: boolean): Promise<void> {
+export async function replProcessAnswer(analyzer: FlowrAnalyzer, output: ReplOutput, expr: string, allowRSessionAccess: boolean): Promise<void> {
 
 	const statements = splitAtEscapeSensitive(expr, false, ';');
 
 	for(const statement of statements) {
-		await replProcessStatement(output, statement, parser, allowRSessionAccess, config);
+		await replProcessStatement(output, statement, analyzer, allowRSessionAccess);
 	}
 }
 
@@ -143,12 +157,13 @@ export async function replProcessAnswer(config: FlowrConfigOptions, output: Repl
  * Options for the {@link repl} function.
  */
 export interface FlowrReplOptions extends MergeableRecord {
-	/** The shell to use, if you do not pass one it will automatically create a new one with the `revive` option set to 'always'. */
-	readonly parser?:              KnownParser
+	/**
+	 * The flowR analyzer to use.
+	 */
+	readonly analyzer:             FlowrAnalyzer
 	/**
 	 * A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
     * If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
-    * For the default arguments, see {@link DEFAULT_REPL_READLINE_CONFIGURATION}.
 	 */
 	readonly rl?:                  readline.Interface
 	/** Defines two methods that every function in the repl uses to output its data. */
@@ -167,16 +182,14 @@ export interface FlowrReplOptions extends MergeableRecord {
  * - Starting with anything else, indicating default R code to be directly executed. If you kill the underlying shell, that is on you! </li>
  *
  * @param options - The options for the repl. See {@link FlowrReplOptions} for more information.
- * @param config  - The flowr config
  *
  * For the execution, this function makes use of {@link replProcessAnswer}.
  *
  */
 export async function repl(
-	config: FlowrConfigOptions,
 	{
-		parser = new RShell(getEngineConfig(config, 'r-shell'), { revive: RShellReviveOptions.Always }),
-		rl = readline.createInterface(makeDefaultReplReadline(config)),
+		analyzer,
+		rl = readline.createInterface(makeDefaultReplReadline(analyzer.flowrConfig)),
 		output = standardReplOutput,
 		historyFile = defaultHistoryFile,
 		allowRSessionAccess = false
@@ -191,7 +204,7 @@ export async function repl(
 		await new Promise<void>((resolve, reject) => {
 			rl.question(prompt(), answer => {
 				rl.pause();
-				replProcessAnswer(config, output, answer, parser, allowRSessionAccess).then(() => {
+				replProcessAnswer(analyzer, output, answer, allowRSessionAccess).then(() => {
 					rl.resume();
 					resolve();
 				}).catch(reject);

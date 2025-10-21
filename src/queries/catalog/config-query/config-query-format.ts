@@ -6,6 +6,7 @@ import Joi from 'joi';
 import type { FlowrConfigOptions } from '../../../config';
 import { jsonReplacer } from '../../../util/json';
 import type { DeepPartial } from 'ts-essentials';
+import type { SupportedQuery } from '../../query';
 
 export interface ConfigQuery extends BaseQueryFormat {
     readonly type:    'config';
@@ -85,7 +86,7 @@ function configQueryLineParser(line: readonly string[], _config: FlowrConfigOpti
 
 export const ConfigQueryDefinition = {
 	executor:        executeConfigQuery,
-	asciiSummarizer: (formatter: OutputFormatter, _processed: unknown, queryResults: BaseQueryResult, result: string[]) => {
+	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as ConfigQueryResult;
 		result.push(`Query: ${bold('config', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		result.push(`   ╰ Config:\n${JSON.stringify(out.config, jsonReplacer, 4)}`);
@@ -98,4 +99,4 @@ export const ConfigQueryDefinition = {
 		update: Joi.object().optional().description('An optional partial configuration to update the current configuration with before returning it. Only the provided fields will be updated, all other fields will remain unchanged.')
 	}).description('The config query retrieves the current configuration of the flowR instance and optionally also updates it.'),
 	flattenInvolvedNodes: () => []
-} as const;
+} as const satisfies SupportedQuery<'config'>;

@@ -114,6 +114,7 @@ jobs:
           update_page wiki/"Query API" wiki:query-api
           update_page wiki/"Search API" wiki:search-api
           update_page wiki/"Engines" wiki:engines
+          update_page wiki/"Analyzer" wiki:analyzer
           update_page wiki/"Interface" wiki:interface
           update_page wiki/"Normalized AST" wiki:normalized-ast
           update_page wiki/"Control Flow Graph" wiki:cfg

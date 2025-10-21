@@ -1,6 +1,6 @@
 import { quitCommand } from './repl-quit';
 import { stdioCaptureProcessor, waitOnScript } from '../execute';
-import type { ReplCommand } from './repl-main';
+import type { ReplBaseCommand, ReplCodeCommand, ReplCommand } from './repl-main';
 import { rawPrompt } from '../prompt';
 import { versionCommand } from './repl-version';
 import { parseCommand } from './repl-parse';
@@ -21,7 +21,7 @@ import { scripts } from '../../common/scripts-info';
 import { lineageCommand } from './repl-lineage';
 import { queryCommand, queryStarCommand } from './repl-query';
 
-function printHelpForScript(script: [string, ReplCommand], f: OutputFormatter, starredVersion?: ReplCommand): string {
+function printHelpForScript(script: [string, ReplBaseCommand], f: OutputFormatter, starredVersion?: ReplBaseCommand): string {
 	let base = `  ${bold(padCmd(':' + script[0] + (starredVersion ? '[*]' : '')), f)}${script[1].description}`;
 	if(starredVersion) {
 		base += ` (star: ${starredVersion.description})`;
@@ -48,11 +48,12 @@ function printCommandHelp(formatter: OutputFormatter) {
 }
 
 export const helpCommand: ReplCommand = {
-	description:  'Show help information',
-	script:       false,
-	usageExample: ':help',
-	aliases:      [ 'h', '?' ],
-	fn:           ({ output }) => {
+	description:   'Show help information',
+	isCodeCommand: false,
+	script:        false,
+	usageExample:  ':help',
+	aliases:       [ 'h', '?' ],
+	fn:            ({ output }) => {
 		initCommandMapping();
 		output.stdout(`
 If enabled ('--r-session-access' and if using the 'r-shell' engine), you can just enter R expressions which get evaluated right away:
@@ -79,7 +80,7 @@ You can combine commands by separating them with a semicolon ${bold(';',output.f
 /**
  * All commands that should be available in the REPL.
  */
-const _commands: Record<string, ReplCommand> = {
+const _commands: Record<string, ReplCommand | ReplCodeCommand> = {
 	'help':            helpCommand,
 	'quit':            quitCommand,
 	'version':         versionCommand,
@@ -119,10 +120,11 @@ export function getReplCommands() {
 		if(type === 'master script') {
 			_commands[script] = {
 				description,
-				aliases:      [],
-				script:       true,
-				usageExample: `:${script} --help`,
-				fn:           async({ output, remainingLine }) => {
+				aliases:       [],
+				script:        true,
+				usageExample:  `:${script} --help`,
+				isCodeCommand: false,
+				fn:            async({ output, remainingLine }) => {
 					// check if the target *module* exists in the current directory, else try two dirs up, otherwise, fail with a message
 					let path = `${__dirname}/${target}`;
 					if(!hasModule(path)) {
@@ -177,7 +179,7 @@ function initCommandMapping() {
  * Get the command for a given command name or alias.
  * @param command - The name of the command (without the leading `:`)
  */
-export function getCommand(command: string): ReplCommand | undefined {
+export function getCommand(command: string): ReplCodeCommand | ReplCommand | undefined {
 	if(commandMapping === undefined) {
 		initCommandMapping();
 	}

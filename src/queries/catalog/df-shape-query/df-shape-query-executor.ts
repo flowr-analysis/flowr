@@ -1,21 +1,29 @@
 import type { DfShapeQuery, DfShapeQueryResult } from './df-shape-query-format';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
-import { extractCfg } from '../../../control-flow/extract-cfg';
-import { inferDataFrameShapes , resolveIdToDataFrameShape } from '../../../abstract-interpretation/data-frame/shape-inference';
+import {
+	inferDataFrameShapes,
+	resolveIdToDataFrameShape
+} from '../../../abstract-interpretation/data-frame/shape-inference';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/domain';
 
-export function executeDfShapeQuery({ dataflow: { graph }, ast, config }: BasicQueryData, queries: readonly DfShapeQuery[]): DfShapeQueryResult {
+export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries: readonly DfShapeQuery[]): Promise<DfShapeQueryResult> {
 	if(queries.length !== 1 && queries.some(query => query.criterion === undefined)) {
 		log.warn('The dataframe shape query expects only up to one query without slicing criterion, but got', queries.length);
 		queries = [{ type: 'df-shape' }];
 	}
 
+	const graph = (await analyzer.dataflow()).graph;
+	const ast = await analyzer.normalize();
+
 	const start = Date.now();
-	const cfg = extractCfg(ast, config, graph);
-	const domains = inferDataFrameShapes(cfg, graph, ast, config);
+	const domains = inferDataFrameShapes(
+		await analyzer.controlflow(),
+		graph,
+		ast,
+		analyzer.flowrConfig);
 
 	if(queries.length === 1 && queries[0].criterion === undefined) {
 		return {

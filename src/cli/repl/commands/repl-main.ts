@@ -1,7 +1,6 @@
 import type { OutputFormatter } from '../../../util/text/ansi';
 import { formatter } from '../../../util/text/ansi';
-import type { KnownParser } from '../../../r-bridge/parser';
-import type { FlowrConfigOptions } from '../../../config';
+import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 /**
  * Defines the main interface for output of the repl.
@@ -27,22 +26,33 @@ export const standardReplOutput: ReplOutput = {
 	stderr:    console.error
 };
 
+
 /**
- * Information passed to each repl command function
+ * Information passed to each {@link ReplCommand#fn}.
  */
 export interface ReplCommandInformation {
 	output:              ReplOutput,
-	parser:              KnownParser,
-	remainingLine:       string,
 	allowRSessionAccess: boolean,
-	config:              FlowrConfigOptions
+	analyzer:            FlowrAnalysisProvider,
+	remainingLine:       string,
+}
+
+
+/**
+ * Information passed to each {@link ReplCodeCommand#fn}.
+ * The {@link analyzer} has the {@link RParseRequest}.
+ */
+export interface ReplCodeCommandInformation {
+	output:        ReplOutput,
+	analyzer:      FlowrAnalysisProvider
+	remainingArgs: string[]
 }
 
 /**
  * Content of a single command in the repl.
  * The command may execute an external script or simply call *flowR* functions.
  */
-export interface ReplCommand {
+export interface ReplBaseCommand {
 	/** Aliases of the command (without the leading colon), every alias must be unique (this is checked at runtime) */
 	aliases:      string[]
 	/** A human-readable description of what the command does */
@@ -51,9 +61,30 @@ export interface ReplCommand {
 	script:       boolean
 	/** Example of how to use the command, for example `:slicer --help` */
 	usageExample: string
+}
+
+export interface ReplCommand extends ReplBaseCommand {
+	isCodeCommand: false;
 	/**
 	 * Function to execute when the command is invoked, it must not write to the command line but instead use the output handler.
 	 * Furthermore, it has to obey the formatter defined in the {@link ReplOutput}.
 	 */
-	fn:           (info: ReplCommandInformation) => Promise<void> | void
+	fn:            (info: ReplCommandInformation) => Promise<void> | void
+}
+
+
+/**
+ * Repl command that uses the {@link FlowrAnalyzer}
+ */
+export interface ReplCodeCommand extends ReplBaseCommand {
+	isCodeCommand: true;
+	/**
+	 * Function to execute when the command is invoked, it must not write to the command line but instead use the output handler.
+	 * Furthermore, it has to obey the formatter defined in the {@link ReplOutput}.
+	 */
+	fn:            (info: ReplCodeCommandInformation) => Promise<void> | void
+	/**
+	 * Argument parser function which handles the input given after the repl command
+	 */
+	argsParser:    (remainingLine: string) => { input: string | undefined, remaining: string[]}
 }

@@ -152,6 +152,12 @@ You can enter ${getReplCommand('help')} to gain more information on its capabili
 
 ![Example of a simple REPL session](wiki/gif/repl-demo-opt.gif)
 
+If you want to use the same commands:
+
+1. First this runs \`docker run -it --rm eagleoutice/flowr\` in a terminal to start the REPL.
+2. In the REPL, it runs \`:slicer -c '11@prod' demo.R --diff\` to slice the example file \`demo.R\` for the print statement in line 11.
+   Please note that the \`11\` refers to the 11th line number to slice for!
+
 </details>
 
 ## 📜 More Information
@@ -171,7 +177,7 @@ We welcome every contribution! Please check out the [developer onboarding](${Flo
 
 ----
 
-*flowr* is actively developed by [Florian Sihler](https://eagleoutice.github.io/portfolio/) under the
+*flowr* is actively developed by [Florian Sihler](https://eagleoutice.github.io/portfolio/) and (since October 1st 2025) [Oliver Gerstl](https://www.linkedin.com/in/oliver-gerstl) under the
 [GPLv3 License](LICENSE).\\
 It is partially supported by the German Research Foundation (DFG) under the grant [504226141](https://gepris.dfg.de/gepris/projekt/504226141) ("CodeInspector").
 

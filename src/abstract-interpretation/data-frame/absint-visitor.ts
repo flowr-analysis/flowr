@@ -42,7 +42,7 @@ export class DataFrameShapeInferenceVisitor<
 	private oldDomain: DataFrameStateDomain = new Map();
 	/**
 	 * The new domain of an AST node during and after processing the node.
-	 * This information is stored in the {@link AbstractInterpretationInfo} afterwards.
+	 * This information is stored in the {@link AbstractInterpretationInfo} afterward.
 	 */
 	private newDomain: DataFrameStateDomain = new Map();
 

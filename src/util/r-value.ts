@@ -1,4 +1,11 @@
-import type { Value, ValueInterval, ValueLogical, ValueNumber, ValueString, ValueVector } from '../dataflow/eval/values/r-value';
+import type {
+	Value,
+	ValueInterval,
+	ValueLogical,
+	ValueNumber,
+	ValueString,
+	ValueVector
+} from '../dataflow/eval/values/r-value';
 import { isValue } from '../dataflow/eval/values/r-value';
 import type { RLogicalValue } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { RFalse, RTrue, type RNumberValue, type RStringValue } from '../r-bridge/lang-4.x/convert-values';
@@ -80,8 +87,8 @@ export function unliftRValue(value: ValueString): RStringValue | undefined;
 export function unliftRValue(value: ValueNumber | ValueInterval): RNumberValue | undefined;
 export function unliftRValue(value: ValueLogical): RLogicalValue | undefined;
 export function unliftRValue(value: ValueVector): (RStringValue | RNumberValue | RLogicalValue)[] | undefined;
-export function unliftRValue(value: Value): RStringValue | RNumberValue | boolean | (RStringValue | RNumberValue | RLogicalValue)[] | undefined;
-export function unliftRValue(value: Value): RStringValue | RNumberValue | boolean | (RStringValue | RNumberValue | RLogicalValue)[] | undefined {
+export function unliftRValue(value: Value): RStringValue | RNumberValue | 'fn-def' | boolean | ('fn-def' | RStringValue | RNumberValue | RLogicalValue)[] | undefined;
+export function unliftRValue(value: Value): RStringValue | RNumberValue | 'fn-def' | boolean | ('fn-def' | RStringValue | RNumberValue | RLogicalValue)[] | undefined {
 	if(!isValue(value)) {
 		return undefined;
 	}
@@ -112,6 +119,8 @@ export function unliftRValue(value: Value): RStringValue | RNumberValue | boolea
 		case 'missing': {
 			return undefined;
 		}
+		case 'function-definition':
+			return 'fn-def';
 		default:
 			assertUnreachable(type);
 	}

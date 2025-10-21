@@ -11,19 +11,30 @@ import { deterministicCountingIdGenerator } from './lang-4.x/ast/model/processin
 import { RawRType } from './lang-4.x/ast/model/type';
 import fs from 'fs';
 import path from 'path';
+import type { SupportedFormats } from '../util/formats/adapter-format';
+import { requestFromFile, requestFromText } from '../util/formats/adapter';
 
 export const fileProtocol = 'file://';
 
-export interface RParseRequestFromFile {
+export interface ParseRequestAdditionalInfoBase {
+	type: SupportedFormats
+}
+
+export interface RParseRequestFromFile<AdditionalInfo extends ParseRequestAdditionalInfoBase = ParseRequestAdditionalInfoBase> {
 	readonly request: 'file';
 	/**
 	 * The path to the file (an absolute path is probably best here).
 	 * See {@link RParseRequests} for multiple files.
 	 */
 	readonly content: string;
+
+	/**
+	 * Additional info from different file formates like .Rmd
+	 */
+	readonly info?: AdditionalInfo;
 }
 
-export interface RParseRequestFromText {
+export interface RParseRequestFromText<AdditionalInfo extends ParseRequestAdditionalInfoBase = ParseRequestAdditionalInfoBase> {
 	readonly request: 'text'
 	/**
 	 * Source code to parse (not a file path).
@@ -32,6 +43,11 @@ export interface RParseRequestFromText {
 	 * or concatenate their contents to pass them with this request.
 	 */
 	readonly content: string
+
+	/**
+	 * Additional info from different file formates like .Rmd
+	 */
+	readonly info?: AdditionalInfo;
 }
 
 /**
@@ -49,6 +65,13 @@ export type RParseRequest = RParseRequestFromFile | RParseRequestFromText
  */
 export type RParseRequests = RParseRequest | ReadonlyArray<RParseRequest>
 
+export function isParseRequest(request: unknown): request is RParseRequest {
+	if(typeof request !== 'object' || request === null) {
+		return false;
+	}
+	return 'request' in request;
+}
+
 export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFile
 export function requestFromInput(input: `${typeof fileProtocol}${string}`[]): RParseRequestFromFile[]
 export function requestFromInput(input: string): RParseRequestFromText
@@ -60,16 +83,18 @@ export function requestFromInput(input: readonly string[] | string): RParseReque
  * Giving an array, you can mix file paths and text content (again using the {@link fileProtocol}).
  *
  */
-export function requestFromInput(input: `${typeof fileProtocol}${string}` | string | readonly string[]): RParseRequests  {
+export function requestFromInput(input: `${typeof fileProtocol}${string}` | string | readonly string[], fileTypeHint?: SupportedFormats): RParseRequests  {
 	if(Array.isArray(input)) {
 		return input.flatMap(requestFromInput);
 	}
 	const content = input as string;
 	const file = content.startsWith(fileProtocol);
-	return {
-		request: file ? 'file' : 'text',
-		content: file ? content.slice(7) : content
-	};
+
+	if(file) {
+		return requestFromFile(content.slice(7));
+	} else {
+		return requestFromText(content, fileTypeHint);
+	}
 }
 
 
@@ -135,6 +160,7 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
 	if(isEmptyRequest(request)) {
 		return Promise.resolve('');
 	}
+
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : '';
 	/* call the function with the request */
 	const command =`flowr_get_ast(${request.request}=${JSON.stringify(

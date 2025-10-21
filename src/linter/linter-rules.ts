@@ -8,6 +8,7 @@ import { SEEDED_RANDOMNESS } from './rules/seeded-randomness';
 import { NAMING_CONVENTION } from './rules/naming-convention';
 import { DATA_FRAME_ACCESS_VALIDATION } from './rules/dataframe-access-validation';
 import { USELESS_LOOP } from './rules/useless-loop';
+import { NETWORK_FUNCTIONS } from './rules/network-functions';
 
 /**
  * The registry of currently supported linting rules.
@@ -20,6 +21,7 @@ export const LintingRules = {
 	'absolute-file-paths':         ABSOLUTE_PATH,
 	'unused-definitions':          UNUSED_DEFINITION,
 	'naming-convention':           NAMING_CONVENTION,
+	'network-functions':           NETWORK_FUNCTIONS,
 	'dataframe-access-validation': DATA_FRAME_ACCESS_VALIDATION,
 	'dead-code':                   DEAD_CODE,
 	'useless-loop':                USELESS_LOOP

@@ -41,8 +41,10 @@ flowchart TD
 The [mermaid](https://mermaid.js.org/) diagram above presents the architecture of _flowR_,
 with the important components directly related to the analysis highlighted accordingly.
 
-Primarily, _flowR_ provides a backward [program slicer](https://en.wikipedia.org/wiki/Program_slicing) for the [*R*](https://www.r-project.org/) programming language, which is available with the corresponding [slicer](https://github.com/flowr-analysis/flowr/tree/main/src/slicing) module and exposed by the [`slicer`](#generate-static-slices) script.
-Its subcomponents (like the custom [R bridge](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge) or the static [dataflow analysis]("https://github.com/flowr-analysis/flowr/tree/main/src/dataflow)) are not important if you simply wish to use _flowR_.
+Primarily, _flowR_ provides a dataflow analysis framework for the [*R*](https://www.r-project.org/) programming language.
+Its subcomponents (like the custom [R bridge](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge) or the internals of the static [dataflow analysis]("https://github.com/flowr-analysis/flowr/tree/main/src/dataflow)) are not important if you simply wish to use _flowR_.
+If you wish to use flowR, check out one of its extensions (e.g., the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr))
+or its coding API with the [`FlowrAnalyzer`](https://github.com/flowr-analysis/flowr/wiki/Core).
 
 The benchmark module is only of interest if you want to benchmark/measure the runtime performance and reduction of the slicer. It is available with the [`benchmark`](#benchmark-the-slicer) script.
 
@@ -93,7 +95,7 @@ Sleep 200ms
 Enter
 Sleep 4000ms
 
-Type ":slicer -c '11@prod' demo.R --diffDataflowGraph"
+Type ":slicer -c '11@prod' demo.R --diff"
 Sleep 400ms
 Enter
 Sleep 500ms

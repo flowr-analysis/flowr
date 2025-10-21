@@ -1,11 +1,11 @@
 import { RType, ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import { ValidVertexTypes, VertexType } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { FlowrSearchElement, FlowrSearchInput } from './flowr-search';
+import type { FlowrSearchElement } from './flowr-search';
 import type { Enrichment } from './search-executor/search-enrichers';
 import { enrichmentContent } from './search-executor/search-enrichers';
 import type { BuiltInMappingName } from '../dataflow/environments/built-in';
-import type { Pipeline } from '../core/steps/pipeline/pipeline';
+import type { DataflowInformation } from '../dataflow/info';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {
@@ -31,7 +31,7 @@ export enum FlowrFilter {
 	 */
 	OriginKind = 'origin-kind'
 }
-export type FlowrFilterFunction <T> = (e: FlowrSearchElement<ParentInformation>, args: T, data: FlowrSearchInput<Pipeline>) => boolean;
+export type FlowrFilterFunction <T> = (e: FlowrSearchElement<ParentInformation>, args: T, data: {dataflow: DataflowInformation}) => boolean;
 
 export const ValidFlowrFilters: Set<string> = new Set(Object.values(FlowrFilter));
 export const ValidFlowrFiltersReverse = Object.fromEntries(Object.entries(FlowrFilter).map(([k, v]) => [v, k]));
@@ -44,7 +44,7 @@ export const FlowrFilters = {
 		const content = JSON.stringify(enrichmentContent(e, args.enrichment));
 		return content !== undefined && args.test.test(content);
 	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>,
-	[FlowrFilter.OriginKind]: ((e: FlowrSearchElement<ParentInformation>, args: OriginKindArgs, data: FlowrSearchInput<Pipeline>) => {
+	[FlowrFilter.OriginKind]: ((e: FlowrSearchElement<ParentInformation>, args: OriginKindArgs, data: { dataflow: DataflowInformation }) => {
 		const dfgNode = data.dataflow.graph.getVertex(e.node.info.id);
 		if(!dfgNode || dfgNode.tag !== VertexType.FunctionCall) {
 			return args.keepNonFunctionCalls ?? false;
@@ -68,7 +68,7 @@ export interface OriginKindArgs {
 	keepNonFunctionCalls?: boolean
 }
 
-export function testFunctionsIgnoringPackage(functions: string[]): RegExp {
+export function testFunctionsIgnoringPackage(functions: readonly string[]): RegExp {
 	return new RegExp(`"(.+:::?)?(${functions.join('|')})"`);
 }
 
@@ -211,7 +211,7 @@ export function isBinaryTree(tree: unknown): tree is { tree: BooleanNode } {
 
 interface FilterData {
 	readonly element: FlowrSearchElement<ParentInformation>,
-	readonly data:    FlowrSearchInput<Pipeline>
+	readonly data:    { dataflow: DataflowInformation }
 }
 
 const evalVisit = {
@@ -225,8 +225,8 @@ const evalVisit = {
 		!evalTree(operand, data),
 	'r-type': ({ value }: LeafRType, { element }: FilterData) =>
 		element.node.type === value,
-	'vertex-type': ({ value }: LeafVertexType, { data: { dataflow }, element }: FilterData) =>
-		dataflow.graph.getVertex(element.node.info.id)?.tag === value,
+	'vertex-type': ({ value }: LeafVertexType, { data, element }: FilterData) =>
+		data.dataflow.graph.getVertex(element.node.info.id)?.tag === value,
 	'special': ({ value }: LeafSpecial, { data, element }: FilterData) => {
 		const name = typeof value === 'string' ? value : value.name;
 		const args = typeof value === 'string' ? undefined as unknown as FlowrFilterArgs<FlowrFilter> : value.args;

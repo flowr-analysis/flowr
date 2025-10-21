@@ -126,7 +126,7 @@ async function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: {
 	const parse = await input.parse();
 	// the output needs to be a tree-sitter tree, but the RShell outputs a string, so we fail here
 	guard(typeof parse.parsed !== 'string', 'The from-tree-sitter-query generator is only supported when using the tree-sitter parser');
-	// TODO run query using TreeSitterExecutor (which is stored in the input - how do we get at it?) and convert nodes to our ids using a map that we will generate in tree sitter normalization
+	// TODO run query using TreeSitterExecutor (which is stored in the input - how do we get at it?) and convert nodes to our ids using the TreeSitterInfo on our nodes
 	return new FlowrSearchElements([]);
 }
 

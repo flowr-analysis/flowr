@@ -33,7 +33,7 @@ type AnalyzerPipeline<Parser extends KnownParser> = Parser extends TreeSitterExe
 type AnalyzerPipelineExecutor<Parser extends KnownParser> = PipelineExecutor<AnalyzerPipeline<Parser>>;
 
 /* for whatever reason moving the ternary in with `AnalyzerPipeline` just breaks the type system */
-type AnalyzerCacheType<Parser extends KnownParser> = Parser extends TreeSitterExecutor ? Partial<PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>>
+export type AnalyzerCacheType<Parser extends KnownParser> = Parser extends TreeSitterExecutor ? Partial<PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>>
     : Partial<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>;
 
 interface ControlFlowCache {
@@ -91,6 +91,8 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	}
 
 	private async runTapeUntil<T>(force: boolean | undefined, until: () => T | undefined): Promise<T> {
+		guard(this.args.request && (Array.isArray(this.args.request) ? this.args.request.length > 0 : true),
+			'At least one request must be set to run the analysis pipeline');
 		if(force) {
 			this.reset();
 		}

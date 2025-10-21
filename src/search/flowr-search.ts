@@ -6,7 +6,6 @@ import type { DataflowInformation } from '../dataflow/info';
 import type { FlowrConfigOptions } from '../config';
 import type { Enrichment, EnrichmentSearchArguments, EnrichmentData, EnrichmentElementContent, EnrichmentSearchContent, EnrichmentElementArguments } from './search-executor/search-enrichers';
 import { Enrichments } from './search-executor/search-enrichers';
-import type { KnownParserType, ParseStepOutput } from '../r-bridge/parser';
 
 /**
  * Yes, for now we do technically not need a wrapper around the RNode, but this allows us to attach caches etc.
@@ -53,11 +52,9 @@ export interface FlowrSearchGetFilter extends Record<string, unknown> {
 }
 
 type MinimumInputForFlowrSearch<P extends Pipeline> =
-    PipelineStepOutputWithName<P, 'parse'> extends ParseStepOutput<KnownParserType> ? (
-        PipelineStepOutputWithName<P, 'normalize'> extends NormalizedAst ? (
-            PipelineStepOutputWithName<P, 'dataflow'> extends DataflowInformation ? PipelineOutput<P> & { parse: { parsed: KnownParserType }, normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions }
-                : never
-        ): never
+    PipelineStepOutputWithName<P, 'normalize'> extends NormalizedAst ? (
+        PipelineStepOutputWithName<P, 'dataflow'> extends DataflowInformation ? PipelineOutput<P> & { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions }
+            : never
     ): never
 
 /** we allow any pipeline, which provides us with a 'normalize' and 'dataflow' step */

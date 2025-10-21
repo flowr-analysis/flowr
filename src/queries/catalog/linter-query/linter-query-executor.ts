@@ -6,7 +6,7 @@ import { log } from '../../../util/log';
 import type { ConfiguredLintingRule } from '../../../linter/linter-format';
 import { executeLintingRule } from '../../../linter/linter-executor';
 
-export function executeLinterQuery({ parse, ast, dataflow, config }: BasicQueryData, queries: readonly LinterQuery[]): LinterQueryResult {
+export function executeLinterQuery({ ast, dataflow, config }: BasicQueryData, queries: readonly LinterQuery[]): LinterQueryResult {
 	const flattened = queries.flatMap(q => q.rules ?? (Object.keys(LintingRules) as LintingRuleNames[]));
 	const distinct = new Set(flattened);
 	if(distinct.size !== flattened.length) {
@@ -18,7 +18,7 @@ export function executeLinterQuery({ parse, ast, dataflow, config }: BasicQueryD
 
 	const start = Date.now();
 
-	const input = { parse, normalize: ast, dataflow, config };
+	const input = { normalize: ast, dataflow, config };
 	for(const entry of distinct) {
 		const ruleName = typeof entry === 'string' ? entry : entry.name;
 		results.results[ruleName] = executeLintingRule<typeof ruleName>(ruleName, input, (entry as ConfiguredLintingRule)?.config);	

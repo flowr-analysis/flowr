@@ -58,7 +58,7 @@ import type { CfgProperty } from '../../../src/control-flow/cfg-properties';
 import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
 import type { FlowrConfigOptions } from '../../../src/config';
 import { cloneConfig, defaultConfigOptions } from '../../../src/config';
-import type { KnownParser, KnownParserType, ParseStepOutput } from '../../../src/r-bridge/parser';
+import type { KnownParser } from '../../../src/r-bridge/parser';
 import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
@@ -364,7 +364,7 @@ export function assertDataflow<P extends Pipeline>(
 	name: string | TestLabel,
 	shell: RShell,
 	input: string | RParseRequests,
-	expected: DataflowGraph | ((data: PipelineOutput<P> & { parse: ParseStepOutput<KnownParserType>, normalize: NormalizedAst, dataflow: DataflowInformation }) => DataflowGraph),
+	expected: DataflowGraph | ((data: PipelineOutput<P> & { normalize: NormalizedAst, dataflow: DataflowInformation }) => DataflowGraph),
 	userConfig?: Partial<DataflowTestConfiguration>,
 	startIndexForDeterministicIds = 0,
 	config = cloneConfig(defaultConfigOptions)

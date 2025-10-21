@@ -72,7 +72,7 @@ export function assertQuery<
 			getId:   deterministicCountingIdGenerator(0)
 		}, defaultConfigOptions).allRemainingSteps();
 
-		const result = await Promise.resolve(executeQueries<Queries['type'], VirtualArguments>({ parse: info.parse, dataflow: info.dataflow, ast: info.normalize, config: defaultConfigOptions }, queries));
+		const result = await Promise.resolve(executeQueries<Queries['type'], VirtualArguments>({ dataflow: info.dataflow, ast: info.normalize, config: defaultConfigOptions }, queries));
 
 		log.info(`total query time: ${result['.meta'].timing.toFixed(0)}ms (~1ms accuracy)`);
 

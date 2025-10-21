@@ -36,12 +36,11 @@ export type GetGenerator<Name extends GeneratorNames> = FlowrSearchGeneratorNode
  * All supported generators!
  */
 export const generators = {
-	all:                      generateAll,
-	get:                      generateGet,
-	criterion:                generateCriterion,
-	from:                     generateFrom,
-	'from-query':             generateFromQuery,
-	'from-tree-sitter-query': generateFromTreeSitterQuery
+	all:          generateAll,
+	get:          generateGet,
+	criterion:    generateCriterion,
+	from:         generateFrom,
+	'from-query': generateFromQuery
 } as const;
 
 function generateAll(data: FlowrSearchInput<Pipeline>): FlowrSearchElements<ParentInformation> {
@@ -92,7 +91,7 @@ function generateFrom(data: FlowrSearchInput<Pipeline>, args: { from: FlowrSearc
 }
 
 function generateFromQuery(data: FlowrSearchInput<Pipeline>, args: { from: readonly SynchronousQuery[] } ): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
-	const result = executeQueries({ parse: data.parse, ast: data.normalize, dataflow: data.dataflow, config: data.config }, args.from);
+	const result = executeQueries({ ast: data.normalize, dataflow: data.dataflow, config: data.config }, args.from);
 
 	// collect involved nodes
 	const nodesByQuery = new Map<Query['type'], Set<FlowrSearchElement<ParentInformation>>>();
@@ -114,15 +113,6 @@ function generateFromQuery(data: FlowrSearchInput<Pipeline>, args: { from: reado
 		const [query, _] = [...nodesByQuery].find(([_, nodes]) => nodes.has(e)) as [Query['type'], Set<FlowrSearchElement<ParentInformation>>];
 		return enrichElement(e, elements, data, Enrichment.QueryData, { query });
 	})) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
-}
-
-function generateFromTreeSitterQuery(data: FlowrSearchInput<Pipeline>, args: { source: string } ): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
-	if(typeof data.parse.parsed === 'string') {
-		// TODO maybe a warning or something here?
-		return new FlowrSearchElements([]);
-	}
-	// TODO run query using TreeSitterExecutor and convert nodes to our ids using a map that we will generate in tree sitter normalization
-	return new FlowrSearchElements([]);
 }
 
 function generateCriterion(data: FlowrSearchInput<Pipeline>, args: { criterion: SlicingCriteria }): FlowrSearchElements<ParentInformation> {

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1761028229957,
+  "lastUpdate": 1761028232526,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -20220,6 +20220,116 @@ window.BENCHMARK_DATA = {
             "extra": "median: 34.18"
           }
         ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "9b5e57d9348c4f48dbe7f3176e759a70611069e7",
+          "message": "[release:patch] 2.6.1 Fixes, Higher-Order-Fn Query",
+          "timestamp": "2025-10-21T08:08:34+02:00",
+          "tree_id": "2f91cf50597d2820d504537ae42bb4f6cbfd3d39",
+          "url": "https://github.com/flowr-analysis/flowr/commit/9b5e57d9348c4f48dbe7f3176e759a70611069e7"
+        },
+        "date": 1761028231203,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 13.116464636363636,
+            "range": "14.627774810247615",
+            "unit": "ms",
+            "extra": "median: 9.58ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 15.972998045454545,
+            "range": "21.59063269126927",
+            "unit": "ms",
+            "extra": "median: 11.16ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 78.14236759090909,
+            "range": "172.55683289528895",
+            "unit": "ms",
+            "extra": "median: 39.45ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 601.1105252272728,
+            "range": "1491.1305303580828",
+            "unit": "ms",
+            "extra": "median: 162.85ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 9.679087909090908,
+            "range": "22.885891437713305",
+            "unit": "ms",
+            "extra": "median: 3.07ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.88449066528418,
+            "range": "0.47879966024674314",
+            "unit": "ms",
+            "extra": "median: 0.69ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.24487821796566164,
+            "range": "0.2057345963325523",
+            "unit": "ms",
+            "extra": "median: 0.12ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 1.1439702790991835,
+            "range": "0.6408172874855941",
+            "unit": "ms",
+            "extra": "median: 0.81ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7801660063880064,
+            "unit": "#",
+            "extra": "std: 0.1261285782699485"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7575735855163274,
+            "unit": "#",
+            "extra": "std: 0.12942676908005035"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 117.67085404829545,
+            "range": "300.9854515829695",
+            "unit": "KiB",
+            "extra": "median: 34.18"
+          }
+        ]
       }
     ],
     "\"social-science\" Benchmark Suite (tree-sitter)": [
@@ -23158,6 +23268,116 @@ window.BENCHMARK_DATA = {
             "range": "14.599457400284564",
             "unit": "ms",
             "extra": "median: 1.22ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 12710 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8756158680153058,
+            "unit": "#",
+            "extra": "std: 0.10721898268233483"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8211374732182364,
+            "unit": "#",
+            "extra": "std: 0.15273706188196837"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 111.78912109375,
+            "range": "123.57176620731515",
+            "unit": "KiB",
+            "extra": "median: 54.67"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "9b5e57d9348c4f48dbe7f3176e759a70611069e7",
+          "message": "[release:patch] 2.6.1 Fixes, Higher-Order-Fn Query",
+          "timestamp": "2025-10-21T08:08:34+02:00",
+          "tree_id": "2f91cf50597d2820d504537ae42bb4f6cbfd3d39",
+          "url": "https://github.com/flowr-analysis/flowr/commit/9b5e57d9348c4f48dbe7f3176e759a70611069e7"
+        },
+        "date": 1761028232519,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 19.0833903,
+            "range": "11.581445091702275",
+            "unit": "ms",
+            "extra": "median: 13.40ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 20.696359899999997,
+            "range": "11.729944300850565",
+            "unit": "ms",
+            "extra": "median: 16.69ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 97.84310116,
+            "range": "93.58821455713483",
+            "unit": "ms",
+            "extra": "median: 53.38ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 2267.84490542,
+            "range": "4026.861792481456",
+            "unit": "ms",
+            "extra": "median: 320.80ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 10.143896779999999,
+            "range": "9.268433135301485",
+            "unit": "ms",
+            "extra": "median: 6.64ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 5.214299506026792,
+            "range": "14.79517040606329",
+            "unit": "ms",
+            "extra": "median: 0.95ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2652533871322946,
+            "range": "0.1715935214549508",
+            "unit": "ms",
+            "extra": "median: 0.15ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 5.487303907613115,
+            "range": "14.833282607055555",
+            "unit": "ms",
+            "extra": "median: 1.25ms"
           },
           {
             "name": "failed to reconstruct/re-parse",

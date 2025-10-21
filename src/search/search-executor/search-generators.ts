@@ -4,7 +4,7 @@ import type { TailTypesOrUndefined } from '../../util/collections/arrays';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../slicing/criterion/parse';
-import { isNotUndefined } from '../../util/assert';
+import { guard, isNotUndefined } from '../../util/assert';
 import type { Query, SupportedQuery } from '../../queries/query';
 import { executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
@@ -122,12 +122,13 @@ async function generateFromQuery(input: FlowrAnalysisProvider, args: {
 	}))) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
 }
 
-function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: { source: string } ): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
-	// TODO run query using TreeSitterExecutor and convert nodes to our ids using a map that we will generate in tree sitter normalization
+async function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: { source: string } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+	const parse = await input.parse();
+	// the output needs to be a tree-sitter tree, but the RShell outputs a string, so we fail here
+	guard(typeof parse.parsed !== 'string', 'The from-tree-sitter-query generator is only supported when using the tree-sitter parser');
+	// TODO run query using TreeSitterExecutor (which is stored in the input - how do we get at it?) and convert nodes to our ids using a map that we will generate in tree sitter normalization
 	return new FlowrSearchElements([]);
 }
-
-
 
 async function generateCriterion(input: FlowrAnalysisProvider, args: { criterion: SlicingCriteria }): Promise<FlowrSearchElements<ParentInformation>> {
 	const idMap = (await input.normalize()).idMap;

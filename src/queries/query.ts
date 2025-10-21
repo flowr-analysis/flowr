@@ -95,6 +95,7 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
     /** optional query construction from an, e.g., repl line */
 	fromLine?:            (splitLine: readonly string[], config: FlowrConfigOptions) => Query | Query[] | undefined
 	asciiSummarizer:      (formatter: OutputFormatter, analyzer: FlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>
+	jsonFormatter?:       (queryResults: BaseQueryResult) => object
 	schema:               Joi.ObjectSchema
 	/**
 	 * Flattens the involved query nodes to be added to a flowR search when the {@link fromQuery} function is used based on the given result after this query is executed.

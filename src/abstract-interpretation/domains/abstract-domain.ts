@@ -1,5 +1,6 @@
 import type { Ternary } from '../../util/logic';
-import type { Bottom, Lattice, Top } from './lattice';
+import type { Lattice } from './lattice';
+import { Bottom, Top } from './lattice';
 
 /**
  * The default limit of inferred constraints in {@link AbstractDomain|AbstractDomains}.
@@ -96,6 +97,37 @@ export function domainElementToString(value: AnyAbstractDomain | unknown): strin
 	if(typeof value === 'object' && value !== null && value.toString !== Object.prototype.toString) {
 		// eslint-disable-next-line @typescript-eslint/no-base-to-string
 		return value.toString();
+	} else if(value === Top) {
+		return '⊤';
+	} else if(value === Bottom) {
+		return '⊥';
 	}
 	return JSON.stringify(value);
+}
+
+/**
+ * Converts an element of an abstract domain into a JSON-representable object or value.
+ */
+export function domainElementToJson(value: AnyAbstractDomain | unknown): unknown {
+	if(isAbstractDomain(value)) {
+		return domainElementToJson(value.value);
+	} else if(value instanceof Map) {
+		return Object.fromEntries(value.entries().map(([key, value]) => [domainElementToJson(key), domainElementToJson(value)]));
+	} else if(Array.isArray(value) || value instanceof Set) {
+		return [...value].map(domainElementToJson);
+	} else if(typeof value === 'object' && value !== null) {
+		return Object.fromEntries(Object.entries(value).map(([key, value]) => [key, domainElementToJson(value)]));
+	} else if(value === Top) {
+		return 'top';
+	} else if(value === Bottom) {
+		return 'bottom';
+	}
+	return value;
+}
+
+export function isAbstractDomain(value: unknown): value is AnyAbstractDomain {
+	if(typeof value !== 'object' || value === null) {
+		return false;
+	}
+	return ['value', 'top', 'bottom', 'leq', 'join', 'meet', 'widen', 'narrow', 'concretize', 'abstract'].every(property => property in value);
 }

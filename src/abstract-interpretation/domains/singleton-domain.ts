@@ -1,5 +1,5 @@
 import { Ternary } from '../../util/logic';
-import type { AbstractDomain, SatifiableDomain } from './abstract-domain';
+import type { AbstractDomain, SatisfiableDomain } from './abstract-domain';
 import { domainElementToString } from './abstract-domain';
 import { Bottom, Top } from './lattice';
 
@@ -19,7 +19,7 @@ type SingletonLift<T> = SingletonValue<T> | SingletonTop | SingletonBottom;
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T>>
-implements AbstractDomain<SingletonDomain<T>, T, SingletonValue<T>, SingletonTop, SingletonBottom, Value>, SatifiableDomain<T> {
+implements AbstractDomain<SingletonDomain<T>, T, SingletonValue<T>, SingletonTop, SingletonBottom, Value>, SatisfiableDomain<T> {
 	private readonly _value: Value;
 
 	constructor(value: Value) {

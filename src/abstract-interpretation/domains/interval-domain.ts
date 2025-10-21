@@ -1,5 +1,5 @@
 import { Ternary } from '../../util/logic';
-import type { AbstractDomain, SatifiableDomain } from './abstract-domain';
+import type { AbstractDomain, SatisfiableDomain } from './abstract-domain';
 import { DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Bottom, Top } from './lattice';
 
@@ -21,7 +21,7 @@ type IntervalLift = IntervalValue | IntervalTop | IntervalBottom;
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class IntervalDomain<Value extends IntervalLift = IntervalLift>
-implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, IntervalBottom, Value>, SatifiableDomain<number> {
+implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, IntervalBottom, Value>, SatisfiableDomain<number> {
 	private readonly _value: Value;
 
 	constructor(value: Value) {

@@ -1,6 +1,6 @@
 import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
-import type { AbstractDomain, SatifiableDomain } from './abstract-domain';
+import type { AbstractDomain, SatisfiableDomain } from './abstract-domain';
 import { DEFAULT_INFERENCE_LIMIT, domainElementToString } from './abstract-domain';
 import { Bottom, Top } from './lattice';
 
@@ -20,7 +20,7 @@ type SetUpperBoundLift<T> = SetUpperBoundValue<T> | SetUpperBoundTop | SetUpperB
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUpperBoundLift<T>>
-implements AbstractDomain<SetUpperBoundDomain<T>, ReadonlySet<T>, SetUpperBoundValue<T>, SetUpperBoundTop, SetUpperBoundBottom, Value>, SatifiableDomain<ReadonlySet<T>> {
+implements AbstractDomain<SetUpperBoundDomain<T>, ReadonlySet<T>, SetUpperBoundValue<T>, SetUpperBoundTop, SetUpperBoundBottom, Value>, SatisfiableDomain<ReadonlySet<T>> {
 	public readonly limit:   number;
 	private readonly _value: Value;
 

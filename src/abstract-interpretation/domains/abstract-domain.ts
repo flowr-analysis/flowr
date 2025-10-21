@@ -42,7 +42,7 @@ extends Lattice<Domain, Abstract, Top, Bot, Value> {
 /**
  * An abstract domain with satisfiability checks for concrete values.
  */
-export interface SatifiableDomain<T> {
+export interface SatisfiableDomain<T> {
 	/**
 	 * Checks whether the current abstract value satisfies a concrete value (i.e. includes a concrete value).
 	 * @see {@link Ternary} for the returned satisfiability result

@@ -96,6 +96,8 @@ describe('flowR search', withTreeSitter(parser => {
 			assertSearch('string', parser, 'x <- "hello"', ['1@"hello"'], Q.fromTreeSitterQuery('(string) @s'));
 			assertSearch('number', parser, 'x <- 2', ['1@2'], Q.fromTreeSitterQuery('(float) @f'));
 			assertSearch('identifier', parser, 'x <- 2', ['1@x'], Q.fromTreeSitterQuery('(identifier) @i'));
+			assertSearch('assignment', parser, 'x <- 2; y = 7', ['1@<-', '1@='], Q.fromTreeSitterQuery('(binary_operator) @o'));
+			assertSearch('<-', parser, 'x <- 2; y = 7', ['1@<-'], Q.fromTreeSitterQuery('(binary_operator operator: "<-") @o'));
 		});
 		describe('multiple', () => {
 			assertSearch('identifier', parser, 'x <- 2; y <- 17\ncat(y)', ['1@x', '1@y', '2@y'], Q.fromTreeSitterQuery('(identifier) @i'));

@@ -1,16 +1,21 @@
 import type { FlowrSearchElement, FlowrSearchGeneratorNodeBase, FlowrSearchGetFilter } from '../flowr-search';
 import { FlowrSearchElements } from '../flowr-search';
 import type { TailTypesOrUndefined } from '../../util/collections/arrays';
-import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type {
+	ParentInformation,
+	RNodeWithParent
+} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../slicing/criterion/parse';
-import { guard, isNotUndefined } from '../../util/assert';
+import { isNotUndefined } from '../../util/assert';
 import type { Query, SupportedQuery } from '../../queries/query';
 import { executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { enrichElement, Enrichment } from './search-enrichers';
 import type { FlowrAnalysisProvider } from '../../project/flowr-analyzer';
+import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
+import type { TreeSitterInfo } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
 
 /**
  * This is a union of all possible generator node types
@@ -123,11 +128,33 @@ async function generateFromQuery(input: FlowrAnalysisProvider, args: {
 }
 
 async function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: { source: string } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
-	const parse = await input.parse();
-	// the output needs to be a tree-sitter tree, but the RShell outputs a string, so we fail here
-	guard(typeof parse.parsed !== 'string', 'The from-tree-sitter-query generator is only supported when using the tree-sitter parser');
-	// TODO run query using TreeSitterExecutor (which is stored in the input - how do we get at it?) and convert nodes to our ids using the TreeSitterInfo on our nodes
-	return new FlowrSearchElements([]);
+	const result = await input.parserInformation().treeSitterQuery(args.source);
+
+	if(!result.length) {
+		console.log(`empty tree-sitter query result for query ${args.source}`);
+		return new FlowrSearchElements([]);
+	}
+
+	const nodesByTreeSitterId = new Map<number, RNode<ParentInformation>>();
+	visitAst((await input.normalize()).ast, node => {
+		const treeSitterInfo = node.info as unknown as TreeSitterInfo;
+		if(treeSitterInfo.treeSitterId) {
+			nodesByTreeSitterId.set(treeSitterInfo.treeSitterId, node);
+		} else {
+			console.log(`normalized ast node ${node.lexeme} with type ${node.type} does not have a tree-sitter id`);
+		}
+	});
+
+	const ret: FlowrSearchElement<ParentInformation>[] = [];
+	for(const capture of result) {
+		const node = nodesByTreeSitterId.get(capture.node.id);
+		if(node) {
+			ret.push({ node });
+		} else {
+			console.log(`tree-sitter node ${capture.node.id} with type ${capture.node.type} does not have a corresponding normalized ast node`);
+		}
+	}
+	return new FlowrSearchElements(ret);
 }
 
 async function generateCriterion(input: FlowrAnalysisProvider, args: { criterion: SlicingCriteria }): Promise<FlowrSearchElements<ParentInformation>> {

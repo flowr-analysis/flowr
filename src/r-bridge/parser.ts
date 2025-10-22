@@ -1,8 +1,8 @@
 import type { RParseRequest, RParseRequests } from './retriever';
-import type { RShell } from './shell';
+import type { OutputCollectorConfiguration, RShell } from './shell';
 import type { RShellExecutor } from './shell-executor';
 import type { TreeSitterExecutor } from './lang-4.x/tree-sitter/tree-sitter-executor';
-import type { SyntaxNode } from 'web-tree-sitter';
+import type { QueryCapture, SyntaxNode } from 'web-tree-sitter';
 
 interface ParserContent<T> {
     readonly name: string;
@@ -11,13 +11,33 @@ interface ParserContent<T> {
     close(): void;
 }
 
-export interface TreeSitterInformation {
+export interface TreeSitterMetadata {
 	name: TreeSitterExecutor['name'];
 }
 
-export interface RShellInformation {
+export interface RShellMetadata {
 	name:     RShell['name'],
 	rVersion: string
+}
+
+export interface ParserInformation {
+
+    /**
+     * Get the name and optional version information of the parser used by the analyzer.
+     */
+    metadata():   Promise<TreeSitterMetadata | RShellMetadata>;
+    /**
+     * Sends a command to the underlying R engine and collects the output.
+     * @param command     - The command to send to the R engine.
+     * @param addonConfig - Additional configuration for the output collector.
+     */
+    sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]>;
+    /**
+     * Runs the given tree-sitter query using the underlying tree-sitter parser and returns the resulting capture.
+     * @param source - The tree-sitter query to run.
+     * @param force  - Do not use the cache, instead force a new parse.
+     */
+    treeSitterQuery(source: string, force?: boolean): Promise<QueryCapture[]>;
 }
 
 export type SyncParser<T> = ParserContent<Awaited<T>> & {readonly async?: false};

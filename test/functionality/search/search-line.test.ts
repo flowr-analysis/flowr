@@ -91,6 +91,17 @@ describe('flowR search', withTreeSitter(parser => {
 		}));
 	});
 
+	describe('From Tree-Sitter Query', () => {
+		describe('simple', () => {
+			assertSearch('string', parser, 'x <- "hello"', ['1@"hello"'], Q.fromTreeSitterQuery('(string) @s'));
+			assertSearch('number', parser, 'x <- 2', ['1@2'], Q.fromTreeSitterQuery('(float) @f'));
+			assertSearch('identifier', parser, 'x <- 2', ['1@x'], Q.fromTreeSitterQuery('(identifier) @i'));
+		});
+		describe('multiple', () => {
+			assertSearch('identifier', parser, 'x <- 2; y <- 17\ncat(y)', ['1@x', '1@y', '2@y'], Q.fromTreeSitterQuery('(identifier) @i'));
+		});
+	});
+
 	describe('Enrichments', () => {
 		describe('call targets', () => {
 			assertSearch('local', parser, 'func <- function(x) { x + 1 }\nfunc(7)', ['1@function'],

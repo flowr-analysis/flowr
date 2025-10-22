@@ -81,54 +81,57 @@ jobs:
           npm ci
           CHANGED_ANY=false
           CHANGED_FILES=()
+          # $1: file to update (without .md/file ending)
+          # $2: file ending
+          # $3: command to run  
           function update_page {
             # test if the file exists
-            if [ -f "$1.md" ]; then
-                cp "$1.md" "$1-Old.md"
+            if [ -f "$1.$2" ]; then
+                cp "$1.$2" "$1-Old.$2"
             else
-                touch "$1-Old.md"
+                touch "$1-Old.$2"
             fi
-            npm run $2 --silent > "$1.md"
+            npm run $3 --silent > "$1.$2"
             # test if the file changed, but ignore the first line which contains the time stamp
             # we additionally used sed to remove any measurement stamp for the comparison as they of course change
             # additionally, we remove any part "timing": <number>.
-            tail -n +2 "$1.md" | sed -E 's/[0-9]+(\.[0-9]+)?( |\s*)?ms//g; s/tmp[%A-Za-z0-9-]+//g; s/"(timing|searchTimeMs|processTimeMs)":\s*[0-9]+(\.0-9)?,?//g; s/"format":"compact".+//g' > "$1.md.tmp"
-            tail -n +2 "$1-Old.md" | sed -E 's/[0-9]+(\.[0-9]+)?( |\s*)?ms//g; s/tmp[%A-Za-z0-9-]+//g; s/"(timing|searchTimeMs|processTimeMs)":\s*[0-9]+(\.0-9)?,?//g; s/"format":"compact".+//g' > "$1-Old.md.tmp"
+            tail -n +2 "$1.$2" | sed -E 's/[0-9]+(\.[0-9]+)?( |\s*)?ms//g; s/tmp[%A-Za-z0-9-]+//g; s/"(timing|searchTimeMs|processTimeMs)":\s*[0-9]+(\.0-9)?,?//g; s/"format":"compact".+//g' > "$1.$2.tmp"
+            tail -n +2 "$1-Old.$2" | sed -E 's/[0-9]+(\.[0-9]+)?( |\s*)?ms//g; s/tmp[%A-Za-z0-9-]+//g; s/"(timing|searchTimeMs|processTimeMs)":\s*[0-9]+(\.0-9)?,?//g; s/"format":"compact".+//g' > "$1-Old.$2.tmp"
           
-            if ! diff -q "$1.md.tmp" "$1-Old.md.tmp"; then
+            if ! diff -q "$1.$2.tmp" "$1-Old.$2.tmp"; then
                 echo "$1 changed!"
                 echo "CHANGED=true" >> $GITHUB_ENV
                 CHANGED_ANY=true
-                git add -f "$1.md"
+                git add -f "$1.$2"
                 CHANGED_FILES+=("$1")
             else
                 echo "$1 did not change!"
             fi
             # delete the old file again
-            rm "$1-Old.md"
+            rm "$1-Old.$2"
           }
 
           echo "====== Updating Wiki Pages ======"
-          update_page wiki/"Capabilities" capabilities-markdown
-          update_page wiki/"Dataflow Graph" wiki:df-graph
-          update_page wiki/"Query API" wiki:query-api
-          update_page wiki/"Search API" wiki:search-api
-          update_page wiki/"Engines" wiki:engines
-          update_page wiki/"Analyzer" wiki:analyzer
-          update_page wiki/"Interface" wiki:interface
-          update_page wiki/"Normalized AST" wiki:normalized-ast
-          update_page wiki/"Control Flow Graph" wiki:cfg
-          update_page wiki/"Linting and Testing" wiki:linting-and-testing
-          update_page wiki/"Core" wiki:core
-          update_page wiki/"Onboarding" wiki:onboarding
-          update_page wiki/"FAQ" wiki:faq
-          update_page wiki/"Linter" wiki:linter
+          update_page wiki/"Capabilities" md capabilities-markdown
+          update_page wiki/"Dataflow Graph" md wiki:df-graph
+          update_page wiki/"Query API" md wiki:query-api
+          update_page wiki/"Search API" md wiki:search-api
+          update_page wiki/"Engines" md wiki:engines
+          update_page wiki/"Analyzer" md wiki:analyzer
+          update_page wiki/"Interface" md wiki:interface
+          update_page wiki/"Normalized AST" md wiki:normalized-ast
+          update_page wiki/"Control Flow Graph" md wiki:cfg
+          update_page wiki/"Linting and Testing" md wiki:linting-and-testing
+          update_page wiki/"Core" md wiki:core
+          update_page wiki/"Onboarding" md wiki:onboarding
+          update_page wiki/"FAQ" md wiki:faq
+          update_page wiki/"Linter" md wiki:linter
           
           git add wiki/lint-*.md
           echo "====== Updating Issue Templates ======"
-          update_page .github/ISSUE_TEMPLATE/linting-rule.yaml gen:linter-issue
+          update_page .github/ISSUE_TEMPLATE/linting-rule yaml gen:linter-issue
           echo "====== Updating Main Readme ======"
-          update_page README gen:readme
+          update_page README md gen:readme
           
           echo "====== Producing Update (if necessary) ======"
           # check for an update in the versions! (including the updated name information)

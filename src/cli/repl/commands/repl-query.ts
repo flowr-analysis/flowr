@@ -79,7 +79,8 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 function parseArgs(line: string) {
 	const args = splitAtEscapeSensitive(line);
 	return {
-		input:     args[0].trim() === 'help' ? '' : args.slice(1).join(' ').trim(),
+		// TODO Discuss future solution so that parentheses around code are not needed
+		input:     args[0].trim() === 'help' ? '' : args[args.length - 1],
 		remaining: args
 	};
 }

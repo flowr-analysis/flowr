@@ -2,10 +2,15 @@ import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
 import { executeLinterQuery } from './linter-query-executor';
-import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from '../../../linter/linter-rules';
+import type {
+	LintingRuleConfig,
+	LintingRuleMetadata,
+	LintingRuleNames,
+	LintingRuleResult
+} from '../../../linter/linter-rules';
 import { LintingRules } from '../../../linter/linter-rules';
 import type { ConfiguredLintingRule, LintingResults, LintingRule } from '../../../linter/linter-format';
-import { isLintingResultsError, LintingPrettyPrintContext , LintingResultCertainty } from '../../../linter/linter-format';
+import { isLintingResultsError, LintingPrettyPrintContext, LintingResultCertainty } from '../../../linter/linter-format';
 
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
@@ -27,6 +32,23 @@ export interface LinterQueryResult extends BaseQueryResult {
 	readonly results: { [L in LintingRuleNames]?: LintingResults<L>}
 }
 
+function linterQueryLineParser(line: readonly string[], _config: unknown): [LinterQuery] {
+	if(line.length > 0 && line[0].startsWith('rules:')) {
+		const rulesPart = line[0].slice('rules:'.length).split(',');
+		const rules: (LintingRuleNames | ConfiguredLintingRule)[] = [];
+		for(const ruleEntry of rulesPart) {
+			const ruleName = ruleEntry.trim();
+			if(!(ruleName in LintingRules)) {
+				console.error(`Unknown linting rule '${ruleName}'`);
+				continue;
+			}
+			rules.push(ruleName as LintingRuleNames);
+		}
+		return [{ type: 'linter', rules }];
+	}
+	console.error('Invalid linter query syntax, expected "linter rules:rule1,rule2,..."');
+	return [{ type: 'linter' }];
+}
 
 export const LinterQueryDefinition = {
 	executor:        executeLinterQuery,
@@ -38,7 +60,8 @@ export const LinterQueryDefinition = {
 		}
 		return true;
 	},
-	schema: Joi.object({
+	fromLine: linterQueryLineParser,
+	schema:   Joi.object({
 		type:  Joi.string().valid('linter').required().description('The type of the query.'),
 		rules: Joi.array().items(
 			Joi.string().valid(...Object.keys(LintingRules)),

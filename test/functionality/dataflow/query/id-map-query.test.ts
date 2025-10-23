@@ -6,7 +6,10 @@ import { withTreeSitter } from '../../_helper/shell';
 
 describe('Id Map Query', withTreeSitter(parser => {
 	function testQuery(name: string, code: string, query: readonly IdMapQuery[]) {
-		assertQuery(label(name), parser, code, query, (({ normalize }) => ({ 'id-map': { idMap: normalize.idMap } })));
+		assertQuery(label(name), parser, code, query,
+			(({ normalize }) => ({ 'id-map': { idMap: normalize.idMap } })),
+			true
+		);
 	}
 
 	testQuery('Single normalized AST', 'x + 1', [{ type: 'id-map' }]);

@@ -345,6 +345,10 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
  * @returns Value of node or Top/Bottom
  */
 export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: AstIdMap): ResolveResult {
+	if(!graph.get(id)) {
+		return Bottom;
+	}
+	
 	idMap ??= graph.idMap;
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
 
@@ -353,7 +357,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 	const cleanFingerprint = envFingerprint(clean);
 	queue.add(id, clean, cleanFingerprint, false);
 
-	let forceBot = false;
+	let forceTop = false;
 
 	const resultIds: NodeId[] = [];
 	while(queue.nonEmpty()) {
@@ -369,15 +373,15 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 			if(target === undefined) {
 				continue;
 			}
-			if(target.type === RType.WhileLoop || target.type === RType.RepeatLoop) {
-				forceBot = true;
+			if(target.type === RType.WhileLoop || target.type === RType.RepeatLoop || target.type === RType.ForLoop) {
+				forceTop = true;
 				break;
 			}
 		}
-		if(!forceBot && (cds?.length === 0 && isNestedInLoop(idMap.get(id), idMap))) {
-			forceBot = true;
+		if(!forceTop && (cds?.length === 0 && isNestedInLoop(idMap.get(id), idMap))) {
+			forceTop = true;
 		}
-		if(forceBot) {
+		if(forceTop) {
 			break;
 		}
 		if(vertex.tag === VertexType.Value) {
@@ -405,9 +409,11 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 			}
 		}
 	}
-	if(forceBot || resultIds.length === 0) {
-		return Bottom;
+
+	if(forceTop || resultIds.length === 0) {
+		return Top;
 	}
+
 	const values: Set<Value> = new Set<Value>();
 	for(const id of resultIds) {
 		const node = idMap.get(id);

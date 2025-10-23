@@ -21,7 +21,7 @@ export function executeResolveValueQuery({ dataflow: { graph }, ast, config }: B
 		if(results[key]) {
 			log.warn(`Duplicate Key for resolve-value-query: ${key}, skipping...`);
 		}
-
+		
 		const values = query.criteria
 			.map(criteria => slicingCriterionToId(criteria, ast.idMap))
 			.flatMap(ident => resolveIdToValue(ident, { graph, full: true, idMap: ast.idMap, resolve: config.solver.variables }));

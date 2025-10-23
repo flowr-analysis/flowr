@@ -15,9 +15,11 @@ import type { GenericDifferenceInformation, WriteableDifferenceReport } from '..
  */
 export interface ControlDependency {
 	/** The id of the node that causes the control dependency to be active (e.g., the condition of an if) */
-	readonly id:    NodeId,
+	readonly id:           NodeId,
 	/** when does this control dependency trigger (if the condition is true or false)? */
-	readonly when?: boolean
+	readonly when?:        boolean
+	/** whether this control dependency was created due to iteration (e.g., a loop) */
+	readonly byIteration?: boolean
 }
 
 

@@ -68,9 +68,9 @@ relevant documentation. If you don't know the origin of the package, you can use
 \`??<function name>\` in an R shell to fuzzy find all documentations containing 
 \`<function name>\` or something similar. 
 
-🌐 Secondly, if you don't have or don't want to install the package you can simply google the fully qualified name of the function. Good sources include [\`rdrr.io\`](https://rdrr.io/)
-or [\`rdocumentation.org\`](https://rdocumentation.org/). Additionally, the package documentation PDF can also
-be downloaded directly from [\`cran\`](https://cran.r-project.org/).
+🌐 Secondly, if you don't have or don't want to install the package you can simply google the fully qualified name of the function. Good sources include [rdrr.io](https://rdrr.io/)
+or [rdocumentation.org](https://rdocumentation.org/). Additionally, the package documentation PDF can also
+be downloaded directly from [cran](https://cran.r-project.org/).
 `)
 	;
 

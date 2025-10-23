@@ -3,7 +3,7 @@ import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { executeQueries, QueriesSchema } from '../queries/query';
-import { FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
+import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import {
 	explainQueries,
 	linkToQueryOfName,
@@ -164,7 +164,6 @@ ${
 	}
 });
 
-
 registerQueryDocumentation('normalized-ast', {
 	name:             'Normalized AST Query',
 	type:             'active',
@@ -276,7 +275,6 @@ ${
 		`;
 	}
 });
-
 
 registerQueryDocumentation('inspect-higher-order', {
 	name:             'Inspect Higher-Order Functions Query',
@@ -506,7 +504,6 @@ Now, the results no longer contain calls to \`plot\` that are not defined locall
 		`;
 	}
 });
-
 
 registerQueryDocumentation('static-slice', {
 	name:             'Static Slice Query',
@@ -761,7 +758,9 @@ ${
 		content: `
 There are many ways to query a dataflow graph created by flowR.
 For example, you can use the [\`request-query\`](${FlowrWikiBaseRef}/Interface#message-request-query) message
-with a running flowR server, or the ${getReplCommand('query')} command in the flowR [REPL](${FlowrWikiBaseRef}/Interface#repl).	
+with a running flowR server, or the ${getReplCommand('query')} command in the flowR [REPL](${FlowrWikiBaseRef}/Interface#repl).
+
+Also, check out the [${FlowrGithubGroupName}/query-project-sample](${FlowrGithubBaseRef}/query-project-sample) repository for a complete example project using the query API.
 			`.trim()
 	})
 }

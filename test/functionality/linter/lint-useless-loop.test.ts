@@ -20,7 +20,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		}], undefined, undefined);
 	});
 
-	describe.only('Not a Useless Loop', () => {
+	describe('Not a Useless Loop', () => {
 		assertLinter('repeat with break', parser, 'repeat { x <- x + 2; if(u) { break } else {} }', 'useless-loop', [], undefined, undefined);
 	});
 }));

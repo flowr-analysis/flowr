@@ -86,5 +86,5 @@ export interface ReplCodeCommand extends ReplBaseCommand {
 	/**
 	 * Argument parser function which handles the input given after the repl command
 	 */
-	argsParser:    (remainingLine: string) => { input: string | undefined, remaining: string[]}
+	argsParser:    (remainingLine: string) => { input?: string | undefined, remaining: string[]}
 }

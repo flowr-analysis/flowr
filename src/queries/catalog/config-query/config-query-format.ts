@@ -7,6 +7,7 @@ import type { FlowrConfigOptions } from '../../../config';
 import { jsonReplacer } from '../../../util/json';
 import type { DeepPartial } from 'ts-essentials';
 import type { SupportedQuery } from '../../query';
+import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 export interface ConfigQuery extends BaseQueryFormat {
     readonly type:    'config';
@@ -46,7 +47,7 @@ function configReplCompleter(partialLine: readonly string[], config: FlowrConfig
 	return [];
 }
 
-function configQueryLineParser(line: readonly string[], _config: FlowrConfigOptions): [ConfigQuery] {
+function configQueryLineParser(line: readonly string[], _analyzer: FlowrAnalysisProvider): [ConfigQuery] {
 	if(line.length > 0 && line[0].startsWith('+')) {
 		const [pathPart, ...valueParts] = line[0].slice(1).split('=');
 		// build the update object

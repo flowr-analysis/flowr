@@ -1,4 +1,4 @@
-import { fileProtocol } from '../../../r-bridge/retriever';
+import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { ansiFormatter, italic } from '../../../util/text/ansi';
@@ -38,10 +38,15 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 		const queryName = query.slice(1);
 		const queryObj = SupportedQueries[queryName as keyof typeof SupportedQueries] as SupportedQuery;
 		if(queryObj?.fromLine) {
-			const q = queryObj.fromLine(remainingArgs, analyzer.flowrConfig);
+			const q = queryObj.fromLine(remainingArgs, analyzer);
 			parsedQuery = q ? (Array.isArray(q) ? q : [q]) : [];
 		} else {
 			parsedQuery = [{ type: query.slice(1) as SupportedQueryTypes } as Query];
+			const input = remainingArgs.join(' ').trim();
+			if(input) {
+				analyzer.reset();
+				analyzer.context().addRequest(requestFromInput(input));
+			}
 		}
 		const validationResult = QueriesSchema().validate(parsedQuery);
 		if(validationResult.error) {
@@ -79,8 +84,6 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 function parseArgs(line: string) {
 	const args = splitAtEscapeSensitive(line);
 	return {
-		// TODO Discuss future solution so that parentheses around code are not needed
-		input:     args[0].trim() === 'help' ? '' : args[args.length - 1],
 		remaining: args
 	};
 }

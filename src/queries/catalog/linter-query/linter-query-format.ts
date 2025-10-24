@@ -15,6 +15,8 @@ import { isLintingResultsError, LintingPrettyPrintContext, LintingResultCertaint
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import { codeInline } from '../../../documentation/doc-util/doc-code';
+import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import { requestFromInput } from '../../../r-bridge/retriever';
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:   'linter';
@@ -32,22 +34,33 @@ export interface LinterQueryResult extends BaseQueryResult {
 	readonly results: { [L in LintingRuleNames]?: LintingResults<L>}
 }
 
-function linterQueryLineParser(line: readonly string[], _config: unknown): [LinterQuery] {
+function rulesFromInput(rulesPart: string[]): (LintingRuleNames | ConfiguredLintingRule)[] {
+	return rulesPart.map(rule => {
+		const ruleName = rule.trim();
+		if(!(ruleName in LintingRules)) {
+			console.error(`Unknown linting rule '${ruleName}'`);
+			return;
+		}
+		return ruleName as LintingRuleNames;
+	}).filter(r => !(r === undefined));
+}
+
+function linterQueryLineParser(line: readonly string[], analyzer: FlowrAnalysisProvider): [LinterQuery] {
+	let rules: (LintingRuleNames | ConfiguredLintingRule)[] | undefined = undefined;
+	let input: string | undefined = undefined;
 	if(line.length > 0 && line[0].startsWith('rules:')) {
 		const rulesPart = line[0].slice('rules:'.length).split(',');
-		const rules: (LintingRuleNames | ConfiguredLintingRule)[] = [];
-		for(const ruleEntry of rulesPart) {
-			const ruleName = ruleEntry.trim();
-			if(!(ruleName in LintingRules)) {
-				console.error(`Unknown linting rule '${ruleName}'`);
-				continue;
-			}
-			rules.push(ruleName as LintingRuleNames);
-		}
-		return [{ type: 'linter', rules }];
+		rules = rulesFromInput(rulesPart);
+		input = line[1];
+	} else if(line.length > 0) {
+		input = line[0];
 	}
-	console.error('Invalid linter query syntax, expected "linter rules:rule1,rule2,..."');
-	return [{ type: 'linter' }];
+
+	if(input) {
+		analyzer.reset();
+		analyzer.context().addRequest(requestFromInput(input));
+	}
+	return [{ type: 'linter', rules: rules }];
 }
 
 export const LinterQueryDefinition = {

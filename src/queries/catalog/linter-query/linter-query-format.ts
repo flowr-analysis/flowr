@@ -1,15 +1,21 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import type { QueryResults, SupportedQuery } from '../../query';
+import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
 import { executeLinterQuery } from './linter-query-executor';
-import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from '../../../linter/linter-rules';
+import type {
+	LintingRuleConfig,
+	LintingRuleMetadata,
+	LintingRuleNames,
+	LintingRuleResult
+} from '../../../linter/linter-rules';
 import { LintingRules } from '../../../linter/linter-rules';
 import type { ConfiguredLintingRule, LintingResults, LintingRule } from '../../../linter/linter-format';
-import { isLintingResultsError, LintingPrettyPrintContext , LintingResultCertainty } from '../../../linter/linter-format';
+import { isLintingResultsError, LintingPrettyPrintContext, LintingResultCertainty } from '../../../linter/linter-format';
 
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import { codeInline } from '../../../documentation/doc-util/doc-code';
+import type { FlowrConfigOptions } from '../../../config';
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:   'linter';
@@ -27,6 +33,29 @@ export interface LinterQueryResult extends BaseQueryResult {
 	readonly results: { [L in LintingRuleNames]?: LintingResults<L>}
 }
 
+function rulesFromInput(rulesPart: string[]): (LintingRuleNames | ConfiguredLintingRule)[] {
+	return rulesPart.map(rule => {
+		const ruleName = rule.trim();
+		if(!(ruleName in LintingRules)) {
+			console.error(`Unknown linting rule '${ruleName}'`);
+			return;
+		}
+		return ruleName as LintingRuleNames;
+	}).filter(r => !(r === undefined));
+}
+
+function linterQueryLineParser(line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine {
+	let rules: (LintingRuleNames | ConfiguredLintingRule)[] | undefined = undefined;
+	let input: string | undefined = undefined;
+	if(line.length > 0 && line[0].startsWith('rules:')) {
+		const rulesPart = line[0].slice('rules:'.length).split(',');
+		rules = rulesFromInput(rulesPart);
+		input = line[1];
+	} else if(line.length > 0) {
+		input = line[0];
+	}
+	return { query: [{ type: 'linter', rules: rules }], input } ;
+}
 
 export const LinterQueryDefinition = {
 	executor:        executeLinterQuery,
@@ -38,7 +67,8 @@ export const LinterQueryDefinition = {
 		}
 		return true;
 	},
-	schema: Joi.object({
+	fromLine: linterQueryLineParser,
+	schema:   Joi.object({
 		type:  Joi.string().valid('linter').required().description('The type of the query.'),
 		rules: Joi.array().items(
 			Joi.string().valid(...Object.keys(LintingRules)),

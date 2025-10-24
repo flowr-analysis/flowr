@@ -45,6 +45,10 @@ describe.sequential('Resolve', withShell(shell => {
 		);
 	}
 
+	function constant(value: unknown) {
+		return valueFromTsValue(value);
+	}
+
 	function vector(values: unknown[]) {
 		return setFrom(vectorFrom(values.map(v => valueFromTsValue(v))));
 	}
@@ -111,14 +115,13 @@ describe.sequential('Resolve', withShell(shell => {
 		});
 	}
 
-	describe('Negative Tests', () => { 	
-		testResolve('Unknown if',           '2@x', 'if(u) { x <- 2 } else { x <- foo() } \n x', Top);
-	
+	describe('Negative Tests', () => {
 		testResolve('Unknown Fn',           '2@x', 'x <- foo(1) \n x', Top);
+		testResolve('Unknown if',           '2@x', 'if(u) { x <- 2 } else { x <- foo() } \n x', Top);
 		testResolve('Unknown Fn 2',         '2@f', 'f <- function(x = 3) { foo(x) } \n f()', Top);
 		testResolve('Recursion',            '2@f', 'f <- function(x = 3) { f(x) } \n f()', Top);
 		testResolve('Get Unknown',          '3@x', 'y <- 5 \n x <- get(u) \n x', Top);
-		
+
 		testResolve('rm()',                 '3@x', 'x <- 1 \n rm(x) \n x', Bottom, Allow.Top);
 	
 		testResolve('Eval before Variable', '3@x', 'x <- 1 \n eval(u) \n x', Top);
@@ -128,6 +131,9 @@ describe.sequential('Resolve', withShell(shell => {
 		testResolve('Constant Value',       '1@x', 'x <- 5', set([5]));
 		testResolve('Constant Value Str',   '1@x', 'x <- "foo"', set(['foo']));
 		testResolve('Alias Constant Value', '3@x', 'y <- 5 \n x <- y \n x', set([5]));
+		describe.only('x', ()=> {
+			testResolve('Simple Arith',          '2@y', 'x <- 5\ny <- x + 1', set([6]));
+		});
 
 		testResolve('rm() with alias',      '4@x', 'y <- 2 \n x <- y \n rm(y) \n x', set([2]));
 	});
@@ -153,6 +159,7 @@ describe.sequential('Resolve', withShell(shell => {
 		testMutate('Constant Value branch', 4, 'x', 'if(u) { \n x <- 5} else { \n x <- 6 } \n x', set([5, 6]));
 		testMutate('Alias Constant Value',  3, 'x', 'y <- 5 \n x <- y \n x',                      set([5]));
 		testMutate('Vector',                2, 'x', 'x <- 1 \n x <- c(1,2,3)',                    vector([1,2,3]));
+		testMutate('Optional While',        2, 'y', 'x <- 5; while(u) { x <- 6 }\ny <- x',        set([5, 6]));
 	});
 
 	describe('Resolve (vectors)', () => {

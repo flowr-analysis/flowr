@@ -1,7 +1,6 @@
 import { withShell } from '../_helper/shell';
 import { fakeSend, withSocket } from '../_helper/net';
 import type { FlowrHelloResponseMessage } from '../../../src/cli/repl/server/messages/message-hello';
-import { retrieveVersionInformation } from '../../../src/cli/repl/commands/repl-version';
 import type {
 	ExecuteEndMessage,
 	ExecuteIntermediateResponseMessage,
@@ -22,6 +21,7 @@ import { uncompact } from '../../../src/cli/repl/server/compact';
 import { getPlatform } from '../../../src/util/os';
 import { defaultConfigOptions } from '../../../src/config';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { retrieveVersionInformation } from '../../../src/util/version';
 
 describe('flowr', () => {
 	const skip = getPlatform() !== 'linux';

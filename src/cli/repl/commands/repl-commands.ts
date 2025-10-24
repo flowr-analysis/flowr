@@ -48,12 +48,12 @@ function printCommandHelp(formatter: OutputFormatter) {
 }
 
 export const helpCommand: ReplCommand = {
-	description:  'Show help information',
-	usesAnalyzer: false,
-	script:       false,
-	usageExample: ':help',
-	aliases:      [ 'h', '?' ],
-	fn:           ({ output }) => {
+	description:   'Show help information',
+	isCodeCommand: false,
+	script:        false,
+	usageExample:  ':help',
+	aliases:       [ 'h', '?' ],
+	fn:            ({ output }) => {
 		initCommandMapping();
 		output.stdout(`
 If enabled ('--r-session-access' and if using the 'r-shell' engine), you can just enter R expressions which get evaluated right away:
@@ -120,11 +120,11 @@ export function getReplCommands() {
 		if(type === 'master script') {
 			_commands[script] = {
 				description,
-				aliases:      [],
-				script:       true,
-				usageExample: `:${script} --help`,
-				usesAnalyzer: false,
-				fn:           async({ output, remainingLine }) => {
+				aliases:       [],
+				script:        true,
+				usageExample:  `:${script} --help`,
+				isCodeCommand: false,
+				fn:            async({ output, remainingLine }) => {
 					// check if the target *module* exists in the current directory, else try two dirs up, otherwise, fail with a message
 					let path = `${__dirname}/${target}`;
 					if(!hasModule(path)) {

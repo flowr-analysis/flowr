@@ -217,6 +217,14 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{ type: 'function', names: ['('],                                          processor: 'builtin:default',             config: { returnsNthArgument: 0 },                                                     assumePrimitive: true  },
 	{ type: 'function', names: ['load', 'load_all', 'setwd', 'set.seed'],      processor: 'builtin:default',             config: { hasUnknownSideEffects: true, forceArgs: [true] },                            assumePrimitive: false },
 	{ type: 'function', names: ['body', 'formals', 'environment'],             processor: 'builtin:default',             config: { hasUnknownSideEffects: true, forceArgs: [true] },                            assumePrimitive: true },
+	{ type:      'function', names:     ['.Call', '.External', '.C', '.Fortran'],       processor: 'builtin:default',             config:    { hasUnknownSideEffects: true, forceArgs:             [true],
+		treatAsFnCall:         {
+			'.Call':     ['.NAME'],
+			'.External': ['.NAME'],
+			'.C':        ['.NAME'],
+			'.Fortran':  ['.NAME']
+		}
+	},                            assumePrimitive: true },
 	{ type: 'function', names: ['eval'],                                       processor: 'builtin:eval',                config: { includeFunctionCall: true },                                                 assumePrimitive: true },
 	{ type: 'function', names: ['cat'],                                        processor: 'builtin:default',             config: { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } },                                                         assumePrimitive: false },
 	{ type: 'function', names: ['switch'],                                     processor: 'builtin:default',             config: { forceArgs: [true] },                                                         assumePrimitive: false },

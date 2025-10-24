@@ -36,7 +36,8 @@ function normalizeResults<Queries extends Query>(result: QueryResults<Queries['t
  * @param parser   - R Shell Session/Parser to use
  * @param code     - R code to execute the query on
  * @param queries  - Queries to execute
- * @param expected - Expected result of the queries (without attached meta-information like timing)
+ * @param expected - Expected result of the queries (without attached meta-information like timing), if this is empty, you just want to check that no exception has been thrown
+ * @param runFull  - Whether to run the full analysis beforehand
  */
 export function assertQuery<
 	Queries extends Query,
@@ -46,7 +47,8 @@ export function assertQuery<
 	parser: KnownParser,
 	code: string,
 	queries: readonly (Queries | VirtualQueryArgumentsWithType<Queries['type'], VirtualArguments>)[],
-	expected: QueryResultsWithoutMeta<Queries> | ((info: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>) => (QueryResultsWithoutMeta<Queries> | Promise<QueryResultsWithoutMeta<Queries>>))
+	expected?: QueryResultsWithoutMeta<Queries> | ((info: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>) => (QueryResultsWithoutMeta<Queries> | Promise<QueryResultsWithoutMeta<Queries>>)),
+	runFull = false
 ) {
 	const effectiveName = decorateLabelContext(name, ['query']);
 
@@ -75,8 +77,10 @@ export function assertQuery<
 			.setParser(parser)
 			.build();
 
-		// we run the dfa analysis to make sure normalization post-patches are ready!
-		await analyzer.runFull();
+		if(runFull) {
+			// we run the dfa analysis to make sure normalization post-patches are ready!
+			await analyzer.runFull();
+		}
 
 		const result = await executeQueries<Queries['type'], VirtualArguments>({
 			analyzer
@@ -85,6 +89,10 @@ export function assertQuery<
 
 		log.info(`total query time: ${result['.meta'].timing.toFixed(0)}ms (~1ms accuracy)`);
 
+		if(expected === undefined) {
+			// we only assert that we had no error!
+			return;
+		}
 		const normalized = normalizeResults(result);
 
 		/* expect them to be deeply equal */

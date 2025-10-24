@@ -46,10 +46,17 @@ import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-forma
 import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 import type { AsyncOrSync, Writable } from 'ts-essentials';
 import type { FlowrConfigOptions } from '../config';
+import type {
+	InspectHigherOrderQuery } from './catalog/inspect-higher-order-query/inspect-higher-order-query-format';
+import {
+	InspectHigherOrderQueryDefinition
+} from './catalog/inspect-higher-order-query/inspect-higher-order-query-format';
 import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
+import { log } from '../util/log';
 
 /**
  * These are all queries that can be executed from within flowR
+ * {@link SynchronousQuery} are queries that can be executed synchronously, i.e., they do not return a Promise.
  */
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -66,6 +73,7 @@ export type Query = CallContextQuery
 	| DependenciesQuery
 	| LocationMapQuery
 	| HappensBeforeQuery
+    | InspectHigherOrderQuery
 	| ResolveValueQuery
 	| ProjectQuery
 	| OriginQuery
@@ -97,25 +105,26 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
 }
 
 export const SupportedQueries = {
-	'call-context':     CallContextQueryDefinition,
-	'config':           ConfigQueryDefinition,
-	'control-flow':     ControlFlowQueryDefinition,
-	'dataflow':         DataflowQueryDefinition,
-	'dataflow-lens':    DataflowLensQueryDefinition,
-	'df-shape':         DfShapeQueryDefinition,
-	'id-map':           IdMapQueryDefinition,
-	'normalized-ast':   NormalizedAstQueryDefinition,
-	'dataflow-cluster': ClusterQueryDefinition,
-	'static-slice':     StaticSliceQueryDefinition,
-	'lineage':          LineageQueryDefinition,
-	'dependencies':     DependenciesQueryDefinition,
-	'location-map':     LocationMapQueryDefinition,
-	'search':           SearchQueryDefinition,
-	'happens-before':   HappensBeforeQueryDefinition,
-	'resolve-value':    ResolveValueQueryDefinition,
-	'project':          ProjectQueryDefinition,
-	'origin':           OriginQueryDefinition,
-	'linter':           LinterQueryDefinition
+	'call-context':         CallContextQueryDefinition,
+	'config':               ConfigQueryDefinition,
+	'control-flow':         ControlFlowQueryDefinition,
+	'dataflow':             DataflowQueryDefinition,
+	'dataflow-lens':        DataflowLensQueryDefinition,
+	'df-shape':             DfShapeQueryDefinition,
+	'id-map':               IdMapQueryDefinition,
+	'normalized-ast':       NormalizedAstQueryDefinition,
+	'dataflow-cluster':     ClusterQueryDefinition,
+	'static-slice':         StaticSliceQueryDefinition,
+	'lineage':              LineageQueryDefinition,
+	'dependencies':         DependenciesQueryDefinition,
+	'location-map':         LocationMapQueryDefinition,
+	'search':               SearchQueryDefinition,
+	'happens-before':       HappensBeforeQueryDefinition,
+	'inspect-higher-order': InspectHigherOrderQueryDefinition,
+	'resolve-value':        ResolveValueQueryDefinition,
+	'project':              ProjectQueryDefinition,
+	'origin':               OriginQueryDefinition,
+	'linter':               LinterQueryDefinition
 } as const satisfies SupportedQueriesType;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
@@ -173,55 +182,38 @@ type OmitFromValues<T, K extends string | number | symbol> = {
 export type QueryResultsWithoutMeta<Queries extends Query> = OmitFromValues<Omit<QueryResults<Queries['type']>, '.meta'>, '.meta'>;
 
 export type Queries<
-	Base extends SupportedQueryTypes,
+	Base extends SupportedQueryTypes = SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
 > = readonly (QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>)[];
-
-
-function isPromiseLike(value: unknown): value is Promise<unknown> {
-	return value !== null && typeof value === 'object' && typeof (value as Promise<unknown>).then === 'function';
-}
 
 /**
  * This is the main query execution function that takes a set of queries and executes them on the given data.
  */
-export function executeQueries<
+export async function executeQueries<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): AsyncOrSync<QueryResults<Base>> {
+>(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): Promise<QueryResults<Base>> {
 	const now = Date.now();
 	const grouped = groupQueriesByType(queries);
 	const entries = Object.entries(grouped) as [Base, typeof grouped[Base]][];
 
-	const results = entries.map(([type, group]) =>
-		[type, executeQueriesOfSameType(data, group)]
-	);
+	const results: [Base, Awaited<QueryResult<Base>> | undefined][] = [];
 
-
-	if(results.length === 0 || results.every(([_, r]) => !isPromiseLike(r))) {
-		// all results are synchronous, we can return them directly
-		const r = Object.fromEntries(results) as Writable<QueryResults<Base>>;
-		r['.meta'] = {
-			timing: Date.now() - now
-		};
-		return r as QueryResults<Base>;
+	for(const [type, group] of entries) {
+		try {
+			const result = await Promise.resolve(executeQueriesOfSameType(data, group));
+			results.push([type, result] as [Base, Awaited<QueryResult<Base>>]);
+		} catch(e) {
+			log.error(e);
+			results.push([type, undefined]);
+		}
 	}
 
-	return Promise.all(
-		results.map(([type, result]) => Promise.resolve(result).then(
-			resolvedResult => [type, resolvedResult] as const
-		).catch(() => {
-			return [type, undefined] as const;
-		}))
-	).then(resultsArray => {
-
-		const results = Object.fromEntries(resultsArray) as Writable<QueryResults<Base>>;
-
-		results['.meta'] = {
-			timing: Date.now() - now
-		};
-		return results as QueryResults<Base>;
-	});
+	const r = Object.fromEntries(results) as Writable<QueryResults<Base>>;
+	r['.meta'] = {
+		timing: Date.now() - now
+	};
+	return r as QueryResults<Base>;
 }
 
 export function SupportedQueriesSchema() {

@@ -1,8 +1,6 @@
 import type { FlowrConfigOptions } from '../config';
 
-
-
-import type { KnownParser, KnownParserName, ParseStepOutput } from '../r-bridge/parser';
+import type { KnownParser, ParseStepOutput, RShellInformation, TreeSitterInformation } from '../r-bridge/parser';
 import type { Queries, QueryResults, SupportedQueryTypes } from '../queries/query';
 import { executeQueries } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
@@ -10,11 +8,15 @@ import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/de
 import type { DataflowInformation } from '../dataflow/info';
 import type { CfgSimplificationPassName } from '../control-flow/cfg-simplification';
 import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
-import type { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
+import type { AnalyzerCacheType, FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-builder';
 import type { GetSearchElements } from '../search/flowr-search-executor';
 import { runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
+import { CfgKind } from './cfg-kind';
+import type { OutputCollectorConfiguration } from '../r-bridge/shell';
+import { RShell } from '../r-bridge/shell';
+import { guard } from '../util/assert';
 
 /**
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
@@ -22,9 +24,15 @@ import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './conte
  */
 export interface FlowrAnalysisProvider {
 	/**
-	 * Get the name of the parser used by the analyzer.
+     * Get the name of the parser used by the analyzer.
 	 */
-    parserName(): string
+    parserInformation():   Promise<TreeSitterInformation | RShellInformation>;
+	/**
+	 * Sends a command to the underlying R engine and collects the output.
+	 * @param command     - The command to send to the R engine.
+	 * @param addonConfig - Additional configuration for the output collector.
+	 */
+	sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]>;
 	/**
 	 * Returns project context information.
 	 * If you are a user that wants to inspect the context, prefer {@link inspectContext} instead.
@@ -56,17 +64,10 @@ export interface FlowrAnalysisProvider {
 	/**
 	 * Get the control flow graph (CFG) for the request.
 	 * @param simplifications - Simplification passes to be applied to the CFG.
-	 * @param useDataflow     - Whether to use the dataflow graph for the creation of the CFG.
+	 * @param kind            - The kind of CFG that is requested. By default, the CFG without dataflow information is returned.
 	 * @param force           - Do not use the cache, instead force new analyses.
 	 */
-	controlflow(simplifications?: readonly CfgSimplificationPassName[], useDataflow?: boolean, force?: boolean): Promise<ControlFlowInformation>;
-	/**
-	 * Get a quick and dirty control flow graph (CFG) for the request.
-	 * This does not use the dataflow information and does not apply any simplifications.
-	 *
-	 * @param force - Do not use the cache, instead force new analyses.
-	 */
-	controlflowQuick(force?: boolean): Promise<ControlFlowInformation>;
+	controlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind, force?: boolean): Promise<ControlFlowInformation>;
 	/**
 	 * Access the query API for the request.
 	 * @param query - The list of queries.
@@ -125,27 +126,35 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this.ctx;
 	}
 
+	public async parserInformation(): Promise<TreeSitterInformation | RShellInformation> {
+		return this.parser.name === 'r-shell' ?
+			{ name: 'r-shell', rVersion: await (this.parser as RShell).rVersion() }
+			: { name: 'tree-sitter' };
+	}
+
+	public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
+		guard(this.parser instanceof RShell, 'sendCommandWithOutput can only be used with RShell parsers!');
+		return this.parser.sendCommandWithOutput(command, addonConfig);
+	}
+
 	public inspectContext(): ReadOnlyFlowrAnalyzerContext {
 		return this.ctx.inspect();
 	}
 
 	public reset() {
+		this.ctx.reset();
 		this.cache.reset();
 	}
 
-	public parserName(): KnownParserName {
-		return this.parser.name;
-	}
-
-	public async parse(force?: boolean): ReturnType<typeof this.cache.parse> {
+	public async parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>> {
 		return this.cache.parse(force);
 	}
 
-	public async normalize(force?: boolean): ReturnType<typeof this.cache.normalize> {
+	public async normalize(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['normalize']>> {
 		return this.cache.normalize(force);
 	}
 
-	public async dataflow(force?: boolean): ReturnType<typeof this.cache.dataflow> {
+	public async dataflow(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['dataflow']>> {
 		return this.cache.dataflow(force);
 	}
 
@@ -154,12 +163,8 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return;
 	}
 
-	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], useDataflow?: boolean, force?: boolean): Promise<ControlFlowInformation> {
-		return this.cache.controlflow(force, useDataflow ?? false, simplifications);
-	}
-
-	public async controlflowQuick(force?: boolean): Promise<ControlFlowInformation> {
-		return this.controlflow(undefined, false, force);
+	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind, force?: boolean): Promise<ControlFlowInformation> {
+		return this.cache.controlflow(force, kind ?? CfgKind.NoDataflow, simplifications);
 	}
 
 	public async query<

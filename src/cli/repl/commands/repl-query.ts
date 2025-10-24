@@ -79,19 +79,19 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 function parseArgs(line: string) {
 	const args = splitAtEscapeSensitive(line);
 	return {
-		input:     args.join(' ').trim(),
+		input:     args[0].trim() === 'help' ? '' : args.slice(1).join(' ').trim(),
 		remaining: args
 	};
 }
 
 export const queryCommand: ReplCodeCommand = {
-	description:  `Query the given R code, start with '${fileProtocol}' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).`,
-	usesAnalyzer: true,
-	usageExample: ':query "<query>" <code>',
-	aliases:      [],
-	script:       false,
-	argsParser:   parseArgs,
-	fn:           async({ output, analyzer, remainingArgs }) => {
+	description:   `Query the given R code, start with '${fileProtocol}' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).`,
+	isCodeCommand: true,
+	usageExample:  ':query "<query>" <code>',
+	aliases:       [],
+	script:        false,
+	argsParser:    parseArgs,
+	fn:            async({ output, analyzer, remainingArgs }) => {
 		const totalStart = Date.now();
 		const results = await processQueryArgs(output, analyzer, remainingArgs);
 		const totalEnd = Date.now();
@@ -102,13 +102,13 @@ export const queryCommand: ReplCodeCommand = {
 };
 
 export const queryStarCommand: ReplCodeCommand = {
-	description:  'Similar to query, but returns the output in json format.',
-	usesAnalyzer: true,
-	usageExample: ':query* <query> <code>',
-	aliases:      [],
-	script:       false,
-	argsParser:   parseArgs,
-	fn:           async({ output, analyzer, remainingArgs }) => {
+	description:   'Similar to query, but returns the output in json format.',
+	isCodeCommand: true,
+	usageExample:  ':query* <query> <code>',
+	aliases:       [],
+	script:        false,
+	argsParser:    parseArgs,
+	fn:            async({ output, analyzer, remainingArgs }) => {
 		const results = await processQueryArgs(output, analyzer, remainingArgs);
 		if(results) {
 			output.stdout(JSON.stringify(results.query, jsonReplacer));

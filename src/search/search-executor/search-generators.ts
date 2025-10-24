@@ -137,9 +137,11 @@ async function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: {
 		args.source += ` @${defaultCaptureName}`;
 		args.captures = [defaultCaptureName];
 	}
+	// allow specifying capture names with or without the @ in front :)
+	const captures = new Set<string>(args.captures.map(c => c.startsWith('@') ? c.substring(1) : c));
 
 	const result = await input.parserInformation().treeSitterQuery(args.source);
-	const relevant = result.filter(c => args.captures.includes(c.name));
+	const relevant = result.filter(c => captures.has(c.name));
 
 	if(!relevant.length) {
 		searchLogger.debug(`empty tree-sitter query result for query ${JSON.stringify(args)}`);

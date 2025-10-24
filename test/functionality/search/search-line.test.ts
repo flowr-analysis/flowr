@@ -105,8 +105,8 @@ describe('flowR search', withTreeSitter(parser => {
 		});
 
 		describe('custom capture', () => {
-			assertSearch('string', parser, 'x <- "hello"', ['1@"hello"'], Q.fromTreeSitterQuery('(string)'));
 			assertSearch('correct capture', parser, 'x <- "hello"', ['1@"hello"'], Q.fromTreeSitterQuery('(string) @s', 's'));
+			assertSearch('capture with @', parser, 'x <- "hello"', ['1@"hello"'], Q.fromTreeSitterQuery('(string) @s', '@s'));
 			assertSearch('incorrect capture', parser, 'x <- "hello"', [], Q.fromTreeSitterQuery('(string) @s', 'k'));
 
 			describe('multiple', () => {

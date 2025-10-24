@@ -269,7 +269,7 @@ as well as the deployed [code documentation](https://flowr-analysis.github.io/fl
 ## 📃 Publications on flowR
 
 If you are interested in the theoretical background of _flowR_,
-please check out the following publications (if you find that a paper is missing here, please open [a new isse](${NewIssueUrl})):
+please check out the following publications (if you find that a paper is missing here, please open [a new issue](${NewIssueUrl})):
 
 ${printPublications()}
 

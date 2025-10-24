@@ -1,14 +1,14 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-
-import type { QueryResults, SupportedQuery } from '../../query';
+import Joi from 'joi';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
-import Joi from 'joi';
+import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { QueryResults, SupportedQuery } from '../../query';
 
-import type { DataFrameDomain, DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/domain';
-import { executeDfShapeQuery } from './df-shape-query-executor';
-import { jsonReplacer } from '../../../util/json';
+import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
+import { DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import { executeDfShapeQuery } from './df-shape-query-executor';
+import { domainElementToJson } from '../../../abstract-interpretation/domains/abstract-domain';
 
 /** Infer the shape of data frames using abstract interpretation. */
 export interface DfShapeQuery extends BaseQueryFormat {
@@ -24,14 +24,23 @@ export const DfShapeQueryDefinition = {
 	executor:        executeDfShapeQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'df-shape'>['df-shape'];
+		const domains = out.domains instanceof DataFrameStateDomain ? out.domains.value : out.domains;
 		result.push(`Query: ${bold('df-shape', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push(...out.domains.entries().take(20).map(([key, domain]) => {
-			return `   ╰ ${key}: ${JSON.stringify(domain, jsonReplacer)}`;
+		result.push(...domains.entries().take(20).map(([key, domain]) => {
+			return `   ╰ ${key}: ${domain?.toString()}`;
 		}));
-		if(out.domains.size > 20) {
+		if(domains.size > 20) {
 			result.push('   ╰ ... (see JSON)');
 		}
 		return true;
+	},
+	jsonFormatter: (queryResults: BaseQueryResult) => {
+		const out = queryResults as QueryResults<'df-shape'>['df-shape'];
+		const domains = out.domains instanceof DataFrameStateDomain ? out.domains.value : out.domains;
+		const entries = domains.entries().map(([key, domain]) => [key, domainElementToJson(domain)]).toArray();
+		const json = Object.fromEntries(entries) as object;
+
+		return json;
 	},
 	schema: Joi.object({
 		type:      Joi.string().valid('df-shape').required().description('The type of the query.'),

@@ -122,8 +122,10 @@ function removeInformation<T extends Record<string, unknown>>(obj: T, includeTok
 		} else if(key === 'additionalTokens' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
 			return undefined;
 		} else if(ignoreColumns && (key == 'location' || key == 'fullRange') && Array.isArray(value) && value.length === 4) {
-
 			value = [value[0], 0, value[2], 0];
+		} else if(key === 'treeSitterId') {
+			// we ignore tree-sitter-specific metadata
+			return undefined;
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return value;

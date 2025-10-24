@@ -35,7 +35,7 @@ export async function retrieveVersionInformation(input: KnownParser | FlowrAnaly
 		r = await input.rVersion();
 		name = input.name;
 	} else {
-		const parserInformation = await input.parserInformation();
+		const parserInformation = await input.parserInformation().metadata();
 		r = parserInformation.name === 'r-shell' ? parserInformation.rVersion : 'unknown';
 		name = parserInformation.name;
 	}

@@ -1,6 +1,10 @@
 import type { FlowrConfigOptions } from '../config';
 
-import type { KnownParser, ParseStepOutput, RShellInformation, TreeSitterInformation } from '../r-bridge/parser';
+import type {
+	KnownParser,
+	ParserInformation,
+	ParseStepOutput
+} from '../r-bridge/parser';
 import type { Queries, QueryResults, SupportedQueryTypes } from '../queries/query';
 import { executeQueries } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
@@ -14,25 +18,21 @@ import type { GetSearchElements } from '../search/flowr-search-executor';
 import { runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { CfgKind } from './cfg-kind';
+import { guard } from '../util/assert';
 import type { OutputCollectorConfiguration } from '../r-bridge/shell';
 import { RShell } from '../r-bridge/shell';
-import { guard } from '../util/assert';
+import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import type { Tree } from 'web-tree-sitter';
 
 /**
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
  * This allows us to exchange the underlying implementation of the analyzer without affecting the APIs.
  */
 export interface FlowrAnalysisProvider {
-	/**
-     * Get the name of the parser used by the analyzer.
-	 */
-    parserInformation():   Promise<TreeSitterInformation | RShellInformation>;
-	/**
-	 * Sends a command to the underlying R engine and collects the output.
-	 * @param command     - The command to send to the R engine.
-	 * @param addonConfig - Additional configuration for the output collector.
-	 */
-	sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]>;
+    /**
+     * Returns a set of additional data and helper functions exposed by the underlying {@link KnownParser}.
+     */
+    parserInformation(): ParserInformation
 	/**
 	 * Returns project context information.
 	 * If you are a user that wants to inspect the context, prefer {@link inspectContext} instead.
@@ -105,6 +105,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	/** The cache used for storing analysis results */
 	private readonly cache:      FlowrAnalyzerCache<Parser>;
 	private readonly ctx:        FlowrAnalyzerContext;
+	private parserInfo:          ParserInformation | undefined;
 
 	/**
      * Create a new analyzer instance.
@@ -126,15 +127,23 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this.ctx;
 	}
 
-	public async parserInformation(): Promise<TreeSitterInformation | RShellInformation> {
-		return this.parser.name === 'r-shell' ?
-			{ name: 'r-shell', rVersion: await (this.parser as RShell).rVersion() }
-			: { name: 'tree-sitter' };
-	}
-
-	public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
-		guard(this.parser instanceof RShell, 'sendCommandWithOutput can only be used with RShell parsers!');
-		return this.parser.sendCommandWithOutput(command, addonConfig);
+	public parserInformation(): ParserInformation {
+		this.parserInfo ??= {
+			metadata: async() => {
+				return this.parser.name === 'r-shell' ?
+					{ name: 'r-shell', rVersion: await (this.parser as RShell).rVersion() }
+					: { name: 'tree-sitter' };
+			},
+			sendCommandWithOutput: (command: string, addonConfig?: Partial<OutputCollectorConfiguration>) => {
+				guard(this.parser instanceof RShell, 'sendCommandWithOutput can only be used with RShell parsers!');
+				return this.parser.sendCommandWithOutput(command, addonConfig);
+			},
+			treeSitterQuery: async(source: string, force?: boolean) => {
+				guard(this.parser instanceof TreeSitterExecutor, 'treeSitterQuery can only be used with TreeSitterExecutor parsers!');
+				return this.parser.query(source, (await this.parse(force)).parsed as Tree);
+			}
+		};
+		return this.parserInfo;
 	}
 
 	public inspectContext(): ReadOnlyFlowrAnalyzerContext {

@@ -91,6 +91,30 @@ describe('flowR search', withTreeSitter(parser => {
 		}));
 	});
 
+	describe('From Tree-Sitter Query', () => {
+		describe('simple', () => {
+			assertSearch('string', parser, 'x <- "hello"', ['1@"hello"'], Q.fromTreeSitterQuery('(string)'));
+			assertSearch('number', parser, 'x <- 2', ['1@2'], Q.fromTreeSitterQuery('(float)'));
+			assertSearch('identifier', parser, 'x <- 2', ['1@x'], Q.fromTreeSitterQuery('(identifier)'));
+			assertSearch('assignment', parser, 'x <- 2; y = 7', ['1@<-', '1@='], Q.fromTreeSitterQuery('(binary_operator)'));
+			assertSearch('<-', parser, 'x <- 2; y = 7', ['1@<-'], Q.fromTreeSitterQuery('(binary_operator operator: "<-")'));
+
+			describe('multiple', () => {
+				assertSearch('identifier', parser, 'x <- 2; y <- 17\ncat(y)', ['1@x', '1@y', '2@y'], Q.fromTreeSitterQuery('(identifier)'));
+			});
+		});
+
+		describe('custom capture', () => {
+			assertSearch('correct capture', parser, 'x <- "hello"', ['1@"hello"'], Q.fromTreeSitterQuery('(string) @s', 's'));
+			assertSearch('capture with @', parser, 'x <- "hello"', ['1@"hello"'], Q.fromTreeSitterQuery('(string) @s', '@s'));
+			assertSearch('incorrect capture', parser, 'x <- "hello"', [], Q.fromTreeSitterQuery('(string) @s', 'k'));
+
+			describe('multiple', () => {
+				assertSearch('binary op', parser, 'x <- 2\ny <- 17\ncat(y)', ['1@<-', '2@<-', '1@x', '2@y'], Q.fromTreeSitterQuery('(binary_operator lhs: (identifier) @id) @op', 'op', 'id'));
+			});
+		});
+	});
+
 	describe('Enrichments', () => {
 		describe('call targets', () => {
 			assertSearch('local', parser, 'func <- function(x) { x + 1 }\nfunc(7)', ['1@function'],

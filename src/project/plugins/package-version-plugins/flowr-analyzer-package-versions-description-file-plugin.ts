@@ -42,7 +42,7 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 				const [, name, operator, version] = match;
 
 				const range = Package.parsePackageVersionRange(operator, version);
-				ctx.deps.addDependency(new Package(name, type, undefined, range));
+				ctx.deps.addDependency(new Package(name, type, undefined, undefined, range));
 			}
 		}
 	}

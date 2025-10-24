@@ -16,6 +16,9 @@ import { enrichElement, Enrichment } from './search-enrichers';
 import type { FlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import type { TreeSitterInfo } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
+import { log } from '../../util/log';
+
+export const searchLogger = log.getSubLogger({ name: 'search' });
 
 /**
  * This is a union of all possible generator node types
@@ -139,7 +142,7 @@ async function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: {
 	const relevant = result.filter(c => args.captures.includes(c.name));
 
 	if(!relevant.length) {
-		console.log(`empty tree-sitter query result for query ${JSON.stringify(args)}`);
+		searchLogger.debug(`empty tree-sitter query result for query ${JSON.stringify(args)}`);
 		return new FlowrSearchElements([]);
 	}
 
@@ -149,7 +152,7 @@ async function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: {
 		if(treeSitterInfo.treeSitterId) {
 			nodesByTreeSitterId.set(treeSitterInfo.treeSitterId, node);
 		} else {
-			console.log(`normalized ast node ${node.lexeme} with type ${node.type} does not have a tree-sitter id`);
+			searchLogger.debug(`normalized ast node ${node.lexeme} with type ${node.type} does not have a tree-sitter id`);
 		}
 	});
 
@@ -159,7 +162,7 @@ async function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: {
 		if(node) {
 			ret.push({ node });
 		} else {
-			console.log(`tree-sitter node ${capture.node.id} with type ${capture.node.type} does not have a corresponding normalized ast node`);
+			searchLogger.debug(`tree-sitter node ${capture.node.id} with type ${capture.node.type} does not have a corresponding normalized ast node`);
 		}
 	}
 	return new FlowrSearchElements(ret);

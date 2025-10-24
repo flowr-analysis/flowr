@@ -69,6 +69,7 @@ export function processIfThenElse<OtherInfo>(
 	let otherwise: DataflowInformation | undefined;
 	let makeOtherwiseMaybe = false;
 	if(otherwiseArg !== undefined && !conditionIsAlwaysTrue) {
+		data = { ...data, controlDependencies: originalDependency?.slice() };
 		otherwise = processDataflowFor(otherwiseArg, data);
 		if(otherwise.entryPoint) {
 			otherwise.graph.addEdge(name.info.id, otherwise.entryPoint, EdgeType.Returns);

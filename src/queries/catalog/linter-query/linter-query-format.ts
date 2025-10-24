@@ -1,5 +1,5 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import type { QueryResults, SupportedQuery } from '../../query';
+import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
 import { executeLinterQuery } from './linter-query-executor';
 import type {
@@ -15,8 +15,7 @@ import { isLintingResultsError, LintingPrettyPrintContext, LintingResultCertaint
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import { codeInline } from '../../../documentation/doc-util/doc-code';
-import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import { requestFromInput } from '../../../r-bridge/retriever';
+import type { FlowrConfigOptions } from '../../../config';
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:   'linter';
@@ -45,7 +44,7 @@ function rulesFromInput(rulesPart: string[]): (LintingRuleNames | ConfiguredLint
 	}).filter(r => !(r === undefined));
 }
 
-function linterQueryLineParser(line: readonly string[], analyzer: FlowrAnalysisProvider): [LinterQuery] {
+function linterQueryLineParser(line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine {
 	let rules: (LintingRuleNames | ConfiguredLintingRule)[] | undefined = undefined;
 	let input: string | undefined = undefined;
 	if(line.length > 0 && line[0].startsWith('rules:')) {
@@ -55,12 +54,7 @@ function linterQueryLineParser(line: readonly string[], analyzer: FlowrAnalysisP
 	} else if(line.length > 0) {
 		input = line[0];
 	}
-
-	if(input) {
-		analyzer.reset();
-		analyzer.context().addRequest(requestFromInput(input));
-	}
-	return [{ type: 'linter', rules: rules }];
+	return { query: [{ type: 'linter', rules: rules }], input } ;
 }
 
 export const LinterQueryDefinition = {

@@ -34,19 +34,18 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 	}
 
 	let parsedQuery: Query[];
+	let input: string | undefined;
 	if(query.startsWith('@')) {
 		const queryName = query.slice(1);
 		const queryObj = SupportedQueries[queryName as keyof typeof SupportedQueries] as SupportedQuery;
 		if(queryObj?.fromLine) {
-			const q = queryObj.fromLine(remainingArgs, analyzer);
+			const parseResult = queryObj.fromLine(remainingArgs, analyzer.flowrConfig);
+			const q = parseResult.query;
 			parsedQuery = q ? (Array.isArray(q) ? q : [q]) : [];
+			input = parseResult.input;
 		} else {
 			parsedQuery = [{ type: query.slice(1) as SupportedQueryTypes } as Query];
-			const input = remainingArgs.join(' ').trim();
-			if(input) {
-				analyzer.reset();
-				analyzer.context().addRequest(requestFromInput(input));
-			}
+			input = remainingArgs.join(' ').trim();
 		}
 		const validationResult = QueriesSchema().validate(parsedQuery);
 		if(validationResult.error) {
@@ -62,8 +61,14 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 			printHelp(output);
 			return;
 		}
+		input = remainingArgs.join(' ').trim();
 	} else {
 		parsedQuery = [{ type: 'call-context', callName: query }];
+	}
+
+	if(input) {
+		analyzer.reset();
+		analyzer.context().addRequest(requestFromInput(input));
 	}
 
 	return {

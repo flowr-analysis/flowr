@@ -6,8 +6,7 @@ import Joi from 'joi';
 import type { FlowrConfigOptions } from '../../../config';
 import { jsonReplacer } from '../../../util/json';
 import type { DeepPartial } from 'ts-essentials';
-import type { SupportedQuery } from '../../query';
-import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import type { ParsedQueryLine, SupportedQuery } from '../../query';
 
 export interface ConfigQuery extends BaseQueryFormat {
     readonly type:    'config';
@@ -47,7 +46,7 @@ function configReplCompleter(partialLine: readonly string[], config: FlowrConfig
 	return [];
 }
 
-function configQueryLineParser(line: readonly string[], _analyzer: FlowrAnalysisProvider): [ConfigQuery] {
+function configQueryLineParser(line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine {
 	if(line.length > 0 && line[0].startsWith('+')) {
 		const [pathPart, ...valueParts] = line[0].slice(1).split('=');
 		// build the update object
@@ -74,15 +73,12 @@ function configQueryLineParser(line: readonly string[], _analyzer: FlowrAnalysis
 					current = current[key] as Record<string, unknown>;
 				}
 			}
-			return [{
-				type: 'config',
-				update
-			}];
+			return { query: [{ type: 'config', update }]
+			};
 		}
 	}
-	return [{
-		type: 'config'
-	}];
+	return { query: [{ type: 'config' }]
+	};
 }
 
 export const ConfigQueryDefinition = {

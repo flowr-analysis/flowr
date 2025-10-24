@@ -88,12 +88,17 @@ type SupportedQueriesType = {
 	[QueryType in Query['type']]: SupportedQuery<QueryType>
 }
 
+export interface ParsedQueryLine {
+	query:  Query | Query[] | undefined;
+	input?: string;
+}
+
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = BaseQueryFormat['type']> {
 	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, Promise<BaseQueryResult>>
     /** optional completion in, e.g., the repl */
 	completer?:           (splitLine: readonly string[], config: FlowrConfigOptions) => string[]
     /** optional query construction from an, e.g., repl line */
-	fromLine?:            (splitLine: readonly string[], analyzer: FlowrAnalysisProvider) => Query | Query[] | undefined
+	fromLine?:            (splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine
 	asciiSummarizer:      (formatter: OutputFormatter, analyzer: FlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>
 	schema:               Joi.ObjectSchema
 	/**

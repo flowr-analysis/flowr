@@ -22,6 +22,107 @@ import { fileNameForGenHeader } from './doc-util/doc-auto-gen';
 import { prefixLines } from './doc-util/doc-general';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { showQuery } from './doc-util/doc-query';
+import { NewIssueUrl } from './doc-util/doc-issue';
+import { joinWithLast } from '../util/text/strings';
+
+const PublicationsMain: { header: string, description: string, doi: string, bibtex: string }[] = [
+	{
+		header:      'Statically Analyzing the Dataflow of R Programs (OOPSLA \'25)',
+		description: 'Please cite this paper if you are using flowR in your research.',
+		doi:         'https://doi.org/10.1145/3763087',
+		bibtex:      `@article{10.1145/3763087,
+	author = {Sihler, Florian and Tichy, Matthias},
+	title = {Statically Analyzing the Dataflow of R Programs},
+	year = {2025},
+	issue_date = {October 2025},
+	publisher = {Association for Computing Machinery},
+	address = {New York, NY, USA},
+	volume = {9},
+	number = {OOPSLA2},
+	url = {https://doi.org/10.1145/3763087},
+	doi = {10.1145/3763087},
+	abstract = {The R programming language is primarily designed for statistical computing and mostly used by researchers without a background in computer science. R provides a wide range of dynamic features and peculiarities that are difficult to analyze statically like dynamic scoping and lazy evaluation with dynamic side effects. At the same time, the R ecosystem lacks sophisticated analysis tools that support researchers in understanding and improving their code.   In this paper, we present a novel static dataflow analysis framework for the R programming language that is capable of handling the dynamic nature of R programs and produces the dataflow graph of given R programs. This graph can be essential in a range of analyses, including program slicing, which we implement as a proof of concept. The core analysis works as a stateful fold over a normalized version of the abstract syntax tree of the R program, which tracks (re-)definitions, values, function calls, side effects, external files, and a dynamic control flow to produce one dataflow graph per program.   We evaluate the correctness of our analysis using output equivalence testing on a manually curated dataset of 779 sensible slicing points from executable real-world R scripts. Additionally, we use a set of systematic test cases based on the capabilities of the R language and the implementation of the R interpreter and measure the runtimes well as the memory consumption on a set of 4,230 real-world R scripts and 20,815 packages available on R’s package manager CRAN.   Furthermore, we evaluate the recall of our program slicer, its accuracy using shrinking, and its improvement over the state of the art. We correctly analyze almost all programs in our equivalence test suite, preserving the identical output for 99.7\\% of the manually curated slicing points. On average, we require 576ms to analyze the dataflow and around 213kB to store the graph of a research script.   This shows that our analysis is capable of analyzing real-world sources quickly and correctly. Our slicer achieves an average reduction of 84.8\\% of tokens indicating its potential to improve program comprehension.},
+	journal = {Proc. ACM Program. Lang.},
+	month = oct,
+	articleno = {309},
+	numpages = {29},
+	keywords = {Dataflow Analysis, R Programming Language, Static Analysis}
+}`
+	},
+	{
+		header:      'flowR: A Static Program Slicer for R (ASE \'24, Tool)',
+		description: `This refers to the tool-demonstration of the <a href="${FlowrVsCode}">VS Code Extension</a>.`,
+		doi:         'https://doi.org/10.1145/3691620.3695359',
+		bibtex:      `@inproceedings{DBLP:conf/kbse/SihlerT24,
+  author       = {Florian Sihler and
+                  Matthias Tichy},
+  editor       = {Vladimir Filkov and
+                  Baishakhi Ray and
+                  Minghui Zhou},
+  title        = {flowR: {A} Static Program Slicer for {R}},
+  booktitle    = {Proceedings of the 39th {IEEE/ACM} International Conference on Automated
+                  Software Engineering, {ASE} 2024, Sacramento, CA, USA, October 27
+                  - November 1, 2024},
+  pages        = {2390--2393},
+  publisher    = {{ACM}},
+  year         = {2024},
+  url          = {https://doi.org/10.1145/3691620.3695359},
+  doi          = {10.1145/3691620.3695359},
+  timestamp    = {Mon, 03 Mar 2025 21:16:51 +0100},
+  biburl       = {https://dblp.org/rec/conf/kbse/SihlerT24.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
+}`
+	},
+	{
+		header:      'On the Anatomy of Real-World R Code for Static Analysis (MSR \'24)',
+		description: 'This paper lays the foundation for flowR by analyzing the characteristics of real-world R code.',
+		doi:         'https://doi.org/10.1145/3643991.3644911',
+		bibtex:      `
+
+@inproceedings{DBLP:conf/msr/SihlerPSTDD24,
+  author       = {Florian Sihler and
+                  Lukas Pietzschmann and
+                  Raphael Straub and
+                  Matthias Tichy and
+                  Andor Diera and
+                  Abdelhalim Hafedh Dahou},
+  editor       = {Diomidis Spinellis and
+                  Alberto Bacchelli and
+                  Eleni Constantinou},
+  title        = {On the Anatomy of Real-World {R} Code for Static Analysis},
+  booktitle    = {21st {IEEE/ACM} International Conference on Mining Software Repositories,
+                  {MSR} 2024, Lisbon, Portugal, April 15-16, 2024},
+  pages        = {619--630},
+  publisher    = {{ACM}},
+  year         = {2024},
+  url          = {https://doi.org/10.1145/3643991.3644911},
+  doi          = {10.1145/3643991.3644911},
+  timestamp    = {Sun, 19 Jan 2025 13:31:27 +0100},
+  biburl       = {https://dblp.org/rec/conf/msr/SihlerPSTDD24.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
+}`
+	}
+];
+
+const OtherWorksUsingFlowr: { name: string, doi: string }[] = [
+	{ name: 'Computational Reproducibility of R Code Supplements on OSF', doi: 'https://doi.org/10.36190/2025.49' },
+	{ name: 'Multi-View Structural Graph Summaries', doi: 'https://doi.org/10.1109/WI-IAT62293.2024.00037' }
+];
+
+function printPublications() {
+	return PublicationsMain.map(pub => {
+		return `
+* [${pub.header}](${pub.doi})  
+  ${pub.description}
+  <details><summary>BibTeX</summary>
+  
+${prefixLines(codeBlock('bibtex', pub.bibtex), '   ')}
+  
+  </details>
+		`.trim();
+	}).join('\n\n') + '\n\n Works using flowR include:\n' +
+		joinWithLast(OtherWorksUsingFlowr.map(pub => `[${pub.name}](${pub.doi})`)) + '.\n';
+}
 
 async function getText(shell: RShell) {
 	const dateOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
@@ -164,6 +265,13 @@ If you want to use the same commands:
 
 For more details on how to use _flowR_ please refer to the [wiki pages](${FlowrGithubBaseRef}/flowr/wiki),
 as well as the deployed [code documentation](https://flowr-analysis.github.io/flowr/doc/).
+
+### Publications featuring flowR
+
+If you are interested in the theoretical background of _flowR_,
+please check out the following publications (if you find that a paper is missing here, please open [a new isse](${NewIssueUrl})):
+
+${printPublications()}
 
 ## 🚀 Contributing
 

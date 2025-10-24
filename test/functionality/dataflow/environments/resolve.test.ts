@@ -24,7 +24,7 @@ enum Allow {
 	None = 0,
 	Top = 1,
 	Bottom = 2
-};
+}
 
 enum With {
 	Graph,
@@ -132,7 +132,7 @@ describe.sequential('Resolve', withShell(shell => {
 		testResolve('rm() with alias',      '4@x', 'y <- 2 \n x <- y \n rm(y) \n x', set([2]));
 	});
 	
-	describe('Graph vs. Environemnt', () => {
+	describe('Graph vs. Environment', () => {
 		testWithGraphAndEnvironment('Not yet supported', (resolveWith) => {
 			// Not yet Supported
 			testResolve('Loop plus x',          '5@x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top, resolveWith);

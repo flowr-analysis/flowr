@@ -15,7 +15,7 @@ import path from 'path';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { block, collapsibleToc, section } from './doc-util/doc-structure';
-import { FlowrWikiBaseRef } from './doc-util/doc-files';
+import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef } from './doc-util/doc-files';
 
 async function analyzerQuickExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -84,6 +84,10 @@ ${block({
 ${printCodeOfElement({ program: types.program, info: types.info, dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true }, analyzerQuickExample.name)}
 		`
 })} 
+
+In general, we work on providing a set of example repositories that demonstrate how to use the analyzer in different scenarios:
+
+* [${FlowrGithubGroupName}/query-project-sample](${FlowrGithubBaseRef}/query-project-sample) for an example project that runs queries on an R project
 
 **TODO**: mention [Context](#Context_Information) 
 

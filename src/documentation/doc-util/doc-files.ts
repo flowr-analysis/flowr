@@ -1,12 +1,13 @@
 import fs from 'fs';
 
-export const FlowrGithubBaseRef = 'https://github.com/flowr-analysis';
-export const FlowrSiteBaseRef = 'https://flowr-analysis.github.io/flowr';
+export const FlowrGithubGroupName = 'flowr-analysis';
+export const FlowrGithubBaseRef = `https://github.com/${FlowrGithubGroupName}`;
+export const FlowrSiteBaseRef = `https://${FlowrGithubGroupName}.github.io/flowr`;
 export const RemoteFlowrFilePathBaseRef = `${FlowrGithubBaseRef}/flowr/tree/main/`;
 export const FlowrWikiBaseRef = `${FlowrGithubBaseRef}/flowr/wiki`;
 export const FlowrNpmRef = 'https://www.npmjs.com/package/@eagleoutice/flowr';
 export const FlowrDockerRef = 'https://hub.docker.com/r/eagleoutice/flowr';
-export const FlowrCodecovRef = 'https://app.codecov.io/gh/flowr-analysis/flowr';
+export const FlowrCodecovRef = `https://app.codecov.io/gh/${FlowrGithubGroupName}/flowr`;
 export const FlowrVsCode = 'https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr';
 export const FlowrPositron = 'https://open-vsx.org/extension/code-inspect/vscode-flowr';
 

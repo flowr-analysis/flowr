@@ -127,11 +127,19 @@ async function generateFromQuery(input: FlowrAnalysisProvider, args: {
 	}))) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
 }
 
-async function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: { source: string } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
-	const result = await input.parserInformation().treeSitterQuery(args.source);
+async function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: { source: string, captures: string[] } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+	// if the user didn't specify a specific capture, we want to capture the outermost item
+	if(!args.captures?.length) {
+		const defaultCaptureName = 'defaultCapture';
+		args.source += ` @${defaultCaptureName}`;
+		args.captures = [defaultCaptureName];
+	}
 
-	if(!result.length) {
-		console.log(`empty tree-sitter query result for query ${args.source}`);
+	const result = await input.parserInformation().treeSitterQuery(args.source);
+	const relevant = result.filter(c => args.captures.includes(c.name));
+
+	if(!relevant.length) {
+		console.log(`empty tree-sitter query result for query ${JSON.stringify(args)}`);
 		return new FlowrSearchElements([]);
 	}
 
@@ -146,7 +154,7 @@ async function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: {
 	});
 
 	const ret: FlowrSearchElement<ParentInformation>[] = [];
-	for(const capture of result) {
+	for(const capture of relevant) {
 		const node = nodesByTreeSitterId.get(capture.node.id);
 		if(node) {
 			ret.push({ node });

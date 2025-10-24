@@ -266,7 +266,7 @@ If you want to use the same commands:
 For more details on how to use _flowR_ please refer to the [wiki pages](${FlowrGithubBaseRef}/flowr/wiki),
 as well as the deployed [code documentation](https://flowr-analysis.github.io/flowr/doc/).
 
-### Publications featuring flowR
+## 📃 Publications on flowR
 
 If you are interested in the theoretical background of _flowR_,
 please check out the following publications (if you find that a paper is missing here, please open [a new isse](${NewIssueUrl})):

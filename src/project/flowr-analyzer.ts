@@ -17,6 +17,7 @@ import { CfgKind } from './cfg-kind';
 import type { OutputCollectorConfiguration } from '../r-bridge/shell';
 import { RShell } from '../r-bridge/shell';
 import { guard } from '../util/assert';
+import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
 
 /**
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
@@ -34,11 +35,19 @@ export interface FlowrAnalysisProvider {
 	 */
 	sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]>;
 	/**
+	 * Add multiple analysis requests to the analyzer instance
+	 */
+	addRequests(requests: readonly RAnalysisRequest[]): void
+	/**
+	 * Add a single analysis request to the analyzer instance
+	 */
+	addRequest(request: RAnalysisRequest): void
+	/**
 	 * Returns project context information.
 	 * If you are a user that wants to inspect the context, prefer {@link inspectContext} instead.
 	 * Please be aware that modifications to the context may break analyzer assumptions.
 	 */
-    context():  FlowrAnalyzerContext
+	context():  FlowrAnalyzerContext
 	/**
 	 * Returns a read-only version of the project context information.
 	 * This is the preferred method for users that want to inspect the context.
@@ -82,7 +91,7 @@ export interface FlowrAnalysisProvider {
 	 */
 	runFull(force?: boolean): Promise<void>;
 	/**
-	 * Reset all caches used by the analyzer and effectively force all analyses to be redone.
+	 * Reset the analyzer state, including the context and the cache.
 	 */
 	reset(): void;
 	/** This is the config used for the analyzer */
@@ -144,6 +153,14 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	public reset() {
 		this.ctx.reset();
 		this.cache.reset();
+	}
+
+	public addRequests(requests: readonly RAnalysisRequest[]): void {
+		this.ctx.addRequests(requests);
+	}
+
+	public addRequest(request: RAnalysisRequest): void {
+		this.ctx.addRequest(request);
 	}
 
 	public async parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>> {

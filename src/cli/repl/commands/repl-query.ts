@@ -68,7 +68,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 
 	if(input) {
 		analyzer.reset();
-		analyzer.context().addRequest(requestFromInput(input));
+		analyzer.addRequest(requestFromInput(input));
 	}
 
 	return {

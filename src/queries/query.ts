@@ -88,9 +88,14 @@ type SupportedQueriesType = {
 	[QueryType in Query['type']]: SupportedQuery<QueryType>
 }
 
+/**
+ * The result of parsing a query line from, e.g., the repl.
+ */
 export interface ParsedQueryLine {
+	/** The parsed query or queries from the line. */
 	query:  Query | Query[] | undefined;
-	input?: string;
+	/** Optional R code associated with the query. */
+	rCode?: string;
 }
 
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = BaseQueryFormat['type']> {

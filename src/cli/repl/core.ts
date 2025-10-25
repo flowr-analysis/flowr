@@ -114,9 +114,9 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 				const remainingLine = statement.slice(command.length + 2).trim();
 				if(processor.isCodeCommand) {
 					const args = processor.argsParser(remainingLine);
-					if(args.input) {
+					if(args.rCode) {
 						analyzer.reset();
-						analyzer.context().addRequest(requestFromInput(args.input));
+						analyzer.context().addRequest(requestFromInput(args.rCode));
 					}
 					await processor.fn({ output, analyzer, remainingArgs: args.remaining });
 				} else {

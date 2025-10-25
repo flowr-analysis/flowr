@@ -84,7 +84,8 @@ export interface ReplCodeCommand extends ReplBaseCommand {
 	 */
 	fn:            (info: ReplCodeCommandInformation) => Promise<void> | void
 	/**
-	 * Argument parser function which handles the input given after the repl command
+	 * Argument parser function which handles the input given after the repl command.
+	 * If no R code is returned, the input R code of a previous REPL command will be re-used for processing the current REPL command.
 	 */
-	argsParser:    (remainingLine: string) => { input?: string | undefined, remaining: string[]}
+	argsParser:    (remainingLine: string) => { rCode?: string | undefined, remaining: string[]}
 }

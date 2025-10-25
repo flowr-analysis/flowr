@@ -16,6 +16,7 @@ import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import { codeInline } from '../../../documentation/doc-util/doc-code';
 import type { FlowrConfigOptions } from '../../../config';
+import { isNotUndefined } from '../../../util/assert';
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:   'linter';
@@ -33,7 +34,7 @@ export interface LinterQueryResult extends BaseQueryResult {
 	readonly results: { [L in LintingRuleNames]?: LintingResults<L>}
 }
 
-function rulesFromInput(rulesPart: string[]): (LintingRuleNames | ConfiguredLintingRule)[] {
+function rulesFromInput(rulesPart: readonly string[]): (LintingRuleNames | ConfiguredLintingRule)[] {
 	return rulesPart.map(rule => {
 		const ruleName = rule.trim();
 		if(!(ruleName in LintingRules)) {
@@ -41,7 +42,7 @@ function rulesFromInput(rulesPart: string[]): (LintingRuleNames | ConfiguredLint
 			return;
 		}
 		return ruleName as LintingRuleNames;
-	}).filter(r => !(r === undefined));
+	}).filter(r => isNotUndefined(r));
 }
 
 function linterQueryLineParser(line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine {
@@ -54,7 +55,7 @@ function linterQueryLineParser(line: readonly string[], _config: FlowrConfigOpti
 	} else if(line.length > 0) {
 		input = line[0];
 	}
-	return { query: [{ type: 'linter', rules: rules }], input } ;
+	return { query: [{ type: 'linter', rules: rules }], rCode: input } ;
 }
 
 export const LinterQueryDefinition = {

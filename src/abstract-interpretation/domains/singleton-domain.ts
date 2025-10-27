@@ -1,7 +1,8 @@
 import { Ternary } from '../../util/logic';
-import type { AbstractDomain, SatisfiableDomain } from './abstract-domain';
+import type { AbstractDomain } from './abstract-domain';
 import { domainElementToString } from './abstract-domain';
 import { Bottom, Top } from './lattice';
+import type { SatisfiableDomain } from './satisfiable-domain';
 
 /** The type of the actual values of the singleton domain as single value */
 type SingletonValue<T> = T;
@@ -67,9 +68,9 @@ implements AbstractDomain<SingletonDomain<T>, T, SingletonValue<T>, SingletonTop
 		return this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value <= other.value);
 	}
 
-	public join(...values: SingletonDomain<T>[]): SingletonDomain<T>;
-	public join(...values: SingletonLift<T>[]): SingletonDomain<T>;
-	public join(...values: SingletonDomain<T>[] | SingletonLift<T>[]): SingletonDomain<T> {
+	public join(...values: readonly SingletonDomain<T>[]): SingletonDomain<T>;
+	public join(...values: readonly SingletonLift<T>[]): SingletonDomain<T>;
+	public join(...values: readonly SingletonDomain<T>[] | readonly SingletonLift<T>[]): SingletonDomain<T> {
 		let result: SingletonLift<T> = this.value;
 
 		for(const other of values) {
@@ -87,9 +88,9 @@ implements AbstractDomain<SingletonDomain<T>, T, SingletonValue<T>, SingletonTop
 		return this.create(result);
 	}
 
-	public meet(...values: SingletonDomain<T>[]): SingletonDomain<T>;
-	public meet(...values: SingletonLift<T>[]): SingletonDomain<T>;
-	public meet(...values: SingletonDomain<T>[] | SingletonLift<T>[]): SingletonDomain<T> {
+	public meet(...values: readonly SingletonDomain<T>[]): SingletonDomain<T>;
+	public meet(...values: readonly SingletonLift<T>[]): SingletonDomain<T>;
+	public meet(...values: readonly SingletonDomain<T>[] | readonly SingletonLift<T>[]): SingletonDomain<T> {
 		let result: SingletonLift<T> = this.value;
 
 		for(const other of values) {
@@ -137,8 +138,13 @@ implements AbstractDomain<SingletonDomain<T>, T, SingletonValue<T>, SingletonTop
 		return Ternary.Never;
 	}
 
-	public satisfiesLeq(value: T): Ternary {
-		return this.satisfies(value);
+	public toJson(): unknown {
+		if(this.value === Top) {
+			return Top.description;
+		} else if(this.value === Bottom) {
+			return Bottom.description;
+		}
+		return this.value;
 	}
 
 	public toString(): string {

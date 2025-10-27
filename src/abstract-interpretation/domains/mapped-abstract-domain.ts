@@ -13,7 +13,7 @@ type ConcreteMap<Key, Domain extends AnyAbstractDomain> = ReadonlyMap<Key, Concr
  * @template Domain    - Type of the abstract domain to map the keys to
  */
 export abstract class MappedAbstractDomain<MapDomain extends MappedAbstractDomain<MapDomain, Key, Domain>, Key, Domain extends AnyAbstractDomain>
-implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, Map<Key, Domain>, Map<Key, Domain>, Map<Key, Domain>> {
+implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, ReadonlyMap<Key, Domain>, ReadonlyMap<Key, Domain>, ReadonlyMap<Key, Domain>> {
 	private readonly _value: Map<Key, Domain>;
 
 	constructor(value: ReadonlyMap<Key, Domain>) {
@@ -22,8 +22,20 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, Map<Key, Domain>,
 
 	public abstract create(value: ReadonlyMap<Key, Domain>): MapDomain;
 
-	public get value(): Map<Key, Domain> {
+	public get value(): ReadonlyMap<Key, Domain> {
 		return this._value;
+	}
+
+	public get(key: Key): Domain | undefined {
+		return this._value.get(key);
+	}
+
+	public has(key: Key): boolean {
+		return this._value.has(key);
+	}
+
+	public set(key: Key, value: Domain): void {
+		this._value.set(key, value);
 	}
 
 	public bottom(): MapDomain {
@@ -46,7 +58,7 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, Map<Key, Domain>,
 			return false;
 		}
 		for(const [key, value] of this.value) {
-			const otherValue = other.value.get(key);
+			const otherValue = other.get(key);
 
 			if(otherValue === undefined || !value.equals(otherValue)) {
 				return false;
@@ -62,7 +74,7 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, Map<Key, Domain>,
 			return false;
 		}
 		for(const [key, value] of this.value) {
-			const otherValue = other.value.get(key);
+			const otherValue = other.get(key);
 
 			if(otherValue === undefined || !value.leq(otherValue)) {
 				return false;
@@ -71,37 +83,37 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, Map<Key, Domain>,
 		return true;
 	}
 
-	public join(...values: MapDomain[]): MapDomain {
+	public join(...values: readonly MapDomain[]): MapDomain {
 		const result = this.create(this.value);
 
 		for(const other of values) {
 			for(const [key, value] of other.value) {
-				const currValue = result.value.get(key);
+				const currValue = result.get(key);
 
 				if(currValue === undefined) {
-					result.value.set(key, value);
+					result._value.set(key, value);
 				} else {
-					result.value.set(key, currValue.join(value) as Domain);
+					result._value.set(key, currValue.join(value) as Domain);
 				}
 			}
 		}
 		return result;
 	}
 
-	public meet(...values: MapDomain[]): MapDomain {
+	public meet(...values: readonly MapDomain[]): MapDomain {
 		const result = this.create(this.value);
 
 		for(const other of values) {
 			for(const [key] of result.value) {
-				if(!other.value.has(key)) {
-					result.value.delete(key);
+				if(!other.has(key)) {
+					result._value.delete(key);
 				}
 			}
 			for(const [key, value] of other.value) {
-				const currValue = result.value.get(key);
+				const currValue = result.get(key);
 
 				if(currValue !== undefined) {
-					result.value.set(key, currValue.meet(value) as Domain);
+					result._value.set(key, currValue.meet(value) as Domain);
 				}
 			}
 		}
@@ -112,12 +124,12 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, Map<Key, Domain>,
 		const result = this.create(this.value);
 
 		for(const [key, value] of other.value) {
-			const currValue = result.value.get(key);
+			const currValue = result.get(key);
 
 			if(currValue === undefined) {
-				result.value.set(key, value);
+				result._value.set(key, value);
 			} else {
-				result.value.set(key, currValue.widen(value) as Domain);
+				result._value.set(key, currValue.widen(value) as Domain);
 			}
 		}
 		return result;
@@ -127,15 +139,15 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, Map<Key, Domain>,
 		const result = this.create(this.value);
 
 		for(const [key] of this.value) {
-			if(!other.value.has(key)) {
-				result.value.delete(key);
+			if(!other.has(key)) {
+				result._value.delete(key);
 			}
 		}
 		for(const [key, value] of other.value) {
-			const currValue = result.value.get(key);
+			const currValue = result.get(key);
 
 			if(currValue !== undefined) {
-				result.value.set(key, currValue.narrow(value) as Domain);
+				result._value.set(key, currValue.narrow(value) as Domain);
 			}
 		}
 		return result;
@@ -195,6 +207,10 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, Map<Key, Domain>,
 			result.set(key, entry.abstract(values) as Domain);
 		}
 		return this.create(result);
+	}
+
+	public toJson(): unknown {
+		return Object.fromEntries(this.value.entries().map(([key, value]) => [key, value.toJson()]));
 	}
 
 	public toString(): string {

@@ -74,6 +74,14 @@ export class DataFrameDomain extends ProductDomain<DataFrameDomain, AbstractData
 			rows:     PosIntervalDomain.top()
 		});
 	}
+
+	public static join(values: DataFrameDomain[]): DataFrameDomain {
+		return values[0]?.join(...values.slice(1)) ?? DataFrameDomain.bottom();
+	}
+
+	public static meet(values: DataFrameDomain[]): DataFrameDomain {
+		return values[0]?.meet(...values.slice(1)) ?? DataFrameDomain.bottom();
+	}
 }
 
 /**
@@ -86,5 +94,13 @@ export class DataFrameStateDomain extends StateAbstractDomain<DataFrameStateDoma
 
 	public static bottom(): DataFrameStateDomain {
 		return new DataFrameStateDomain(new Map<NodeId, DataFrameDomain>());
+	}
+
+	public static join(values: DataFrameStateDomain[]): DataFrameStateDomain {
+		return values[0]?.join(...values.slice(1)) ?? DataFrameStateDomain.bottom();
+	}
+
+	public static meet(values: DataFrameStateDomain[]): DataFrameStateDomain {
+		return values[0]?.meet(...values.slice(1)) ?? DataFrameStateDomain.bottom();
 	}
 }

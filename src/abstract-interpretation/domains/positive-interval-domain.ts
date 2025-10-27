@@ -2,16 +2,16 @@ import { IntervalDomain } from './interval-domain';
 import { Bottom, Top } from './lattice';
 
 /** The Top element of the positive interval domain as interval [0, +∞] */
-export const PosIntervalTop = [0, +Infinity] satisfies readonly [number, number];
+export const PosIntervalTop: PosIntervalValue = [0, +Infinity];
 
 /** The type of the actual values of the positive interval domain as tuple of the lower and upper bound */
-type PosIntervalValue = readonly [number, number];
+type PosIntervalValue = readonly [lower: number, upper: number];
 /** The type of the Top element of the positive interval domain as interval [0, +∞] */
 type PosIntervalTop = typeof PosIntervalTop;
 /** The type of the Bottom element of the positive interval domain as {@link Bottom} symbol */
 type PosIntervalBottom = typeof Bottom;
 /** The type of the abstract values of the positive interval domain that are Top, Bottom, or actual values */
-type PosIntervalLift = PosIntervalValue | PosIntervalTop | PosIntervalBottom;
+type PosIntervalLift = PosIntervalValue | PosIntervalBottom;
 
 /**
  * The positive interval abstract domain as positive intervals with possibly zero lower bounds and infinite upper bounds representing possible numeric values.
@@ -56,9 +56,9 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 		return PosIntervalDomain.bottom();
 	}
 
-	public join(...values: PosIntervalDomain[]): PosIntervalDomain;
-	public join(...values: PosIntervalLift[]): PosIntervalDomain;
-	public join(...values: PosIntervalDomain[] | PosIntervalLift[]): PosIntervalDomain {
+	public join(...values: readonly PosIntervalDomain[]): PosIntervalDomain;
+	public join(...values: readonly PosIntervalLift[]): PosIntervalDomain;
+	public join(...values: readonly PosIntervalDomain[] | readonly PosIntervalLift[]): PosIntervalDomain {
 		let result: PosIntervalLift = this.value;
 
 		for(const other of values) {
@@ -75,9 +75,9 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 		return this.create(result);
 	}
 
-	public meet(...values: PosIntervalDomain[]): PosIntervalDomain;
-	public meet(...values: PosIntervalLift[]): PosIntervalDomain;
-	public meet(...values: PosIntervalDomain[] | PosIntervalLift[]): PosIntervalDomain {
+	public meet(...values: readonly PosIntervalDomain[]): PosIntervalDomain;
+	public meet(...values: readonly PosIntervalLift[]): PosIntervalDomain;
+	public meet(...values: readonly PosIntervalDomain[] | readonly PosIntervalLift[]): PosIntervalDomain {
 		let result: PosIntervalLift = this.value;
 
 		for(const other of values) {

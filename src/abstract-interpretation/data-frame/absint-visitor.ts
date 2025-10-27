@@ -58,7 +58,7 @@ export class DataFrameShapeInferenceVisitor<
 		}
 		const predecessors = this.getPredecessorNodes(vertex.id);
 		const predecessorDomains = predecessors.map(node => node.info.dataFrame?.domain ?? DataFrameStateDomain.bottom());
-		this.newDomain = DataFrameStateDomain.bottom().join(...predecessorDomains);
+		this.newDomain = DataFrameStateDomain.join(predecessorDomains);
 		this.onVisitNode(nodeId);
 
 		const visitedCount = this.visited.get(vertex.id) ?? 0;
@@ -142,7 +142,7 @@ export class DataFrameShapeInferenceVisitor<
 		const value = resolveIdToDataFrameShape(node.info.dataFrame.expression, this.config.dfg, this.newDomain);
 
 		if(value !== undefined) {
-			this.newDomain.value.set(node.info.dataFrame.identifier, value);
+			this.newDomain.set(node.info.dataFrame.identifier, value);
 			const identifier = this.getNormalizedAst(node.info.dataFrame.identifier);
 
 			if(identifier !== undefined) {
@@ -165,13 +165,13 @@ export class DataFrameShapeInferenceVisitor<
 			const constraintType = type ?? getConstraintType(operation);
 
 			if(operand !== undefined && constraintType === ConstraintType.OperandModification) {
-				this.newDomain.value.set(operand, value);
+				this.newDomain.set(operand, value);
 
 				for(const origin of getVariableOrigins(operand, this.config.dfg)) {
-					this.newDomain.value.set(origin.info.id, value);
+					this.newDomain.set(origin.info.id, value);
 				}
 			} else if(constraintType === ConstraintType.ResultPostcondition) {
-				this.newDomain.value.set(node.info.id, value);
+				this.newDomain.set(node.info.id, value);
 			}
 		}
 	}

@@ -73,7 +73,7 @@ implements AbstractDomain<Domain, ConcreteProduct<Product>, Product, Product, Pr
 		return true;
 	}
 
-	public join(...values: Domain[]): Domain {
+	public join(...values: readonly Domain[]): Domain {
 		const result = this.create(this.value);
 
 		for(const value of values) {
@@ -84,7 +84,7 @@ implements AbstractDomain<Domain, ConcreteProduct<Product>, Product, Product, Pr
 		return result;
 	}
 
-	public meet(...values: Domain[]): Domain {
+	public meet(...values: readonly Domain[]): Domain {
 		const result = this.create(this.value);
 
 		for(const value of values) {
@@ -148,6 +148,10 @@ implements AbstractDomain<Domain, ConcreteProduct<Product>, Product, Product, Pr
 			result._value[key] = result.value[key].abstract(concreteValues) as Product[Extract<keyof Product, string>];
 		}
 		return result;
+	}
+
+	public toJson(): unknown {
+		return Object.fromEntries(Object.entries(this.value).map(([key, value]) => [key, value.toJson()]));
 	}
 
 	public toString(): string {

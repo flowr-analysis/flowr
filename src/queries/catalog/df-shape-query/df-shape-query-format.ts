@@ -1,14 +1,12 @@
 import Joi from 'joi';
+import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
+import { DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
+import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { QueryResults, SupportedQuery } from '../../query';
-
-import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
-import { DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { executeDfShapeQuery } from './df-shape-query-executor';
-import { domainElementToJson } from '../../../abstract-interpretation/domains/abstract-domain';
 
 /** Infer the shape of data frames using abstract interpretation. */
 export interface DfShapeQuery extends BaseQueryFormat {
@@ -37,8 +35,7 @@ export const DfShapeQueryDefinition = {
 	jsonFormatter: (queryResults: BaseQueryResult) => {
 		const out = queryResults as QueryResults<'df-shape'>['df-shape'];
 		const domains = out.domains instanceof DataFrameStateDomain ? out.domains.value : out.domains;
-		const entries = domains.entries().map(([key, domain]) => [key, domainElementToJson(domain)]).toArray();
-		const json = Object.fromEntries(entries) as object;
+		const json = Object.fromEntries(domains.entries().map(([key, domain]) => [key, domain?.toJson()])) as object;
 
 		return json;
 	},

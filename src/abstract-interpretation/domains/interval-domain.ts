@@ -1,19 +1,22 @@
+import { assertUnreachable } from '../../util/assert';
 import { Ternary } from '../../util/logic';
-import type { AbstractDomain, SatisfiableDomain } from './abstract-domain';
+import type { AbstractDomain } from './abstract-domain';
 import { DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Bottom, Top } from './lattice';
+import type { SatisfiableDomain } from './satisfiable-domain';
+import { NumericalComparator } from './satisfiable-domain';
 
 /** The Top element of the interval domain as interval [-∞, +∞] */
-export const IntervalTop = [-Infinity, +Infinity] satisfies readonly [number, number];
+export const IntervalTop: IntervalValue = [-Infinity, +Infinity];
 
 /** The type of the actual values of the interval domain as tuple of the lower and upper bound */
-type IntervalValue = readonly [number, number];
+type IntervalValue = readonly [lower: number, upper: number];
 /** The type of the Top element of the interval domain as interval [-∞, +∞] */
 type IntervalTop = typeof IntervalTop;
 /** The type of the Bottom element of the interval domain as {@link Bottom} symbol */
 type IntervalBottom = typeof Bottom;
 /** The type of the abstract values of the interval domain that are Top, Bottom, or actual values */
-type IntervalLift = IntervalValue | IntervalTop | IntervalBottom;
+type IntervalLift = IntervalValue | IntervalBottom;
 
 /**
  * The interval abstract domain as intervals with possibly infinite bounds representing possible numeric values.
@@ -77,9 +80,9 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		return this.value === Bottom || (other.isValue() && other.value[0] <= this.value[0] && this.value[1] <= other.value[1]);
 	}
 
-	public join(...values: IntervalDomain[]): IntervalDomain;
-	public join(...values: IntervalLift[]): IntervalDomain;
-	public join(...values: IntervalDomain[] | IntervalLift[]): IntervalDomain {
+	public join(...values: readonly IntervalDomain[]): IntervalDomain;
+	public join(...values: readonly IntervalLift[]): IntervalDomain;
+	public join(...values: readonly IntervalDomain[] | readonly IntervalLift[]): IntervalDomain {
 		let result: IntervalLift = this.value;
 
 		for(const other of values) {
@@ -96,9 +99,9 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		return this.create(result);
 	}
 
-	public meet(...values: IntervalDomain[]): IntervalDomain;
-	public meet(...values: IntervalLift[]): IntervalDomain;
-	public meet(...values: IntervalDomain[] | IntervalLift[]): IntervalDomain {
+	public meet(...values: readonly IntervalDomain[]): IntervalDomain;
+	public meet(...values: readonly IntervalLift[]): IntervalDomain;
+	public meet(...values: readonly IntervalDomain[] | readonly IntervalLift[]): IntervalDomain {
 		let result: IntervalLift = this.value;
 
 		for(const other of values) {
@@ -158,18 +161,47 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		return IntervalDomain.abstract(concrete);
 	}
 
-	public satisfies(value: number): Ternary {
-		if(this.isValue() && this.value[0] <= value && value <= this.value[1]) {
-			return this.value[0] === this.value[1] ? Ternary.Always : Ternary.Maybe;
+	public satisfies(value: number, comparator: NumericalComparator = NumericalComparator.Equal): Ternary {
+		switch(comparator) {
+			case NumericalComparator.Equal: {
+				if(this.isValue() && this.value[0] <= value && value <= this.value[1]) {
+					return this.value[0] === this.value[1] ? Ternary.Always : Ternary.Maybe;
+				} else {
+					return Ternary.Never;
+				}
+			}
+			case NumericalComparator.Less: {
+				if(this.isValue() && value < this.value[1]) {
+					return value < this.value[0] ? Ternary.Always : Ternary.Maybe;
+				} else {
+					return Ternary.Never;
+				}
+			}
+			case NumericalComparator.LessOrEqual: {
+				if(this.isValue() && value <= this.value[1]) {
+					return value <= this.value[0] ? Ternary.Always : Ternary.Maybe;
+				} else {
+					return Ternary.Never;
+				}
+			}
+			case NumericalComparator.Greater: {
+				if(this.isValue() && this.value[0] <= value) {
+					return this.value[1] <= value ? Ternary.Always : Ternary.Maybe;
+				} else {
+					return Ternary.Never;
+				}
+			}
+			case NumericalComparator.GreaterOrEqual: {
+				if(this.isValue() && this.value[0] < value) {
+					return this.value[1] < value ? Ternary.Always : Ternary.Maybe;
+				} else {
+					return Ternary.Never;
+				}
+			}
+			default: {
+				assertUnreachable(comparator);
+			}
 		}
-		return Ternary.Never;
-	}
-
-	public satisfiesLeq(value: number): Ternary {
-		if(this.isValue() && value <= this.value[1]) {
-			return value <= this.value[0] ? Ternary.Always : Ternary.Maybe;
-		}
-		return Ternary.Never;
 	}
 
 	/**
@@ -244,6 +276,13 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		} else {
 			return this.create([this.value[0], +Infinity]);
 		}
+	}
+
+	public toJson(): unknown {
+		if(this.value === Bottom) {
+			return this.value.description;
+		}
+		return this.value;
 	}
 
 	public toString(): string {

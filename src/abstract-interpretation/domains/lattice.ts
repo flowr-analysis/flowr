@@ -50,12 +50,17 @@ export interface Lattice<Lat extends Lattice<Lat, Value, Top, Bot>, Value, Top =
 	/**
 	 * Joins the current abstract value with other abstract values by creating the least upper bound (LUB) in the lattice.
 	 */
-	join(...values: Lat[]): Lat;
+	join(...values: readonly Lat[]): Lat;
 
 	/**
 	 * Meets the current abstract value with other abstract values by creating the greatest lower bound (GLB) in the lattice.
 	 */
-	meet(...values: Lat[]): Lat;
+	meet(...values: readonly Lat[]): Lat;
+
+	/**
+	 * Converts the lattice into a JSON serializable value.
+	 */
+	toJson(): unknown;
 
 	/**
 	 * Converts the lattice into a human-readable string.

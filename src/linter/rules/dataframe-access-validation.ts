@@ -1,6 +1,7 @@
 import { type AbstractInterpretationInfo, type DataFrameOperationType, hasDataFrameExpressionInfo } from '../../abstract-interpretation/data-frame/absint-info';
 import type { DataFrameDomain } from '../../abstract-interpretation/data-frame/dataframe-domain';
 import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../abstract-interpretation/data-frame/shape-inference';
+import { SetComparator , NumericalComparator } from '../../abstract-interpretation/domains/satisfiable-domain';
 import { amendConfig } from '../../config';
 import { extractCfg } from '../../control-flow/extract-cfg';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -160,14 +161,14 @@ function findInvalidDataFrameAccesses(
 
 	if(operandShape !== undefined) {
 		for(const row of accessedRows ?? []) {
-			if(operandShape.rows.satisfiesLeq(row) === Ternary.Never) {
+			if(operandShape.rows.satisfies(row, NumericalComparator.LessOrEqual) === Ternary.Never) {
 				invalidAccesses.push({ type: 'row',accessed: row });
 			}
 		}
 		for(const col of accessedCols ?? []) {
-			if(typeof col === 'string' && operandShape.colnames.satisfiesLeq([col]) === Ternary.Never) {
+			if(typeof col === 'string' && operandShape.colnames.satisfies([col], SetComparator.SubsetOrEqual) === Ternary.Never) {
 				invalidAccesses.push({ type: 'column',accessed: col });
-			} else if(typeof col === 'number' && operandShape.cols.satisfiesLeq(col) === Ternary.Never) {
+			} else if(typeof col === 'number' && operandShape.cols.satisfies(col, NumericalComparator.LessOrEqual) === Ternary.Never) {
 				invalidAccesses.push({ type: 'column',accessed: col });
 			}
 		}

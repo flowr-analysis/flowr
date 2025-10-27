@@ -65,7 +65,7 @@ type DataFrameSemanticsApplier<Arguments extends object, Options extends object 
 export type DataFrameOperationName = keyof typeof DataFrameSemanticsMapper;
 
 /** The names of all abstract data frame operations */
-export const DataFrameOperationNames = Object.keys(DataFrameSemanticsMapper) as DataFrameOperationName[];
+export const DataFrameOperationNames = Object.keys(DataFrameSemanticsMapper) as readonly DataFrameOperationName[];
 
 /** The required arguments for an abstract data frame operation */
 export type DataFrameOperationArgs<N extends DataFrameOperationName> = Parameters<typeof DataFrameSemanticsMapper[N]['apply']>[1];

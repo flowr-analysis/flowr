@@ -446,7 +446,7 @@ export class BenchmarkSlicer {
 			stats.sizeOfInfo += safeSizeOf([node.info.dataFrame]);
 
 			const expression = hasDataFrameExpressionInfo(node) ? node.info.dataFrame : undefined;
-			const value = node.info.dataFrame.domain?.value.get(node.info.id);
+			const value = node.info.dataFrame.domain?.get(node.info.id);
 
 			// Only store per-node information for nodes representing expressions or nodes with abstract values
 			if(expression === undefined && value === undefined) {

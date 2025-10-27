@@ -71,18 +71,17 @@ export function replCompleter(line: string, config: FlowrConfigOptions): [string
 function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions): string[] {
 	const nonEmpty = splitLine.slice(1).map(s => s.trim()).filter(s => s.length > 0);
 	const queryShorts = Object.keys(SupportedQueries).map(q => `@${q}`).concat(['help']);
-	let candidates: string[] = [];
 	if(nonEmpty.length == 0 || (nonEmpty.length == 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q && !startingNewArg))) {
-		candidates = candidates.concat(queryShorts.map(q => `${q} `));
+		return queryShorts.map(q => `${q} `);
 	} else {
 		const q = nonEmpty[0].slice(1);
 		const queryElement = SupportedQueries[q as keyof typeof SupportedQueries] as SupportedQuery;
 		if(queryElement?.completer) {
-			candidates = candidates.concat(queryElement.completer(nonEmpty.slice(1), startingNewArg, config));
+			return queryElement.completer(nonEmpty.slice(1), startingNewArg, config);
 		}
 	}
 
-	return candidates;
+	return [];
 }
 
 export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.ReadLineOptions {

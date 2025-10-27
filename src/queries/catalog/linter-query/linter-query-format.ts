@@ -17,6 +17,7 @@ import { printAsMs } from '../../../util/text/time';
 import { codeInline } from '../../../documentation/doc-util/doc-code';
 import type { FlowrConfigOptions } from '../../../config';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
+import { isNotUndefined } from '../../../util/assert';
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:   'linter';
@@ -68,13 +69,12 @@ function linterQueryLineParser(output: ReplOutput, line: readonly string[], _con
 }
 
 function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfigOptions): string[] {
-	const completions: string[] = [];
 	const rulesPrefixNotPresent = line.length == 0 || (line.length == 1 && line[0].length < rulesPrefix.length);
 	const rulesNotFinished = line.length == 1 && line[0].startsWith(rulesPrefix) && !startingNewArg;
 
 	if(rulesPrefixNotPresent) {
 		// Return complete rules prefix
-		completions.push(`${rulesPrefix}`);
+		return [`${rulesPrefix}`];
 	} else if(rulesNotFinished) {
 		const allRules = Object.keys(LintingRules);
 		const existingRules = line[0].slice(rulesPrefix.length).split(',').map(r => r.trim());
@@ -83,23 +83,22 @@ function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, 
 
 		if(!allRules.includes(lastRule)) {
 			// Complete the last rule or add all possible rules that are not used yet
-			for(const ruleName of unusedRules) {
-				if(ruleName.startsWith(lastRule)) {
+			return unusedRules.map(r => {
+				if(r.startsWith(lastRule)) {
 					const ending = unusedRules.length > 1 ? ',' : ' ';
-					completions.push(`${rulesPrefix}${existingRules.slice(0, -1).concat([ruleName]).join(',')}${ending}`);
+					return `${rulesPrefix}${existingRules.slice(0, -1).concat([r]).join(',')}${ending}`;
 				}
-			}
+			}).filter(r => isNotUndefined(r));
 		} else if(unusedRules.length > 0) {
 			// Add a comma, if the current last rule is complete
-			completions.push(`${rulesPrefix}${existingRules.join(',')},`);
+			return [`${rulesPrefix}${existingRules.join(',')},`];
 		} else {
 			// All rules are used, complete with a space
-			completions.push(`${rulesPrefix}${existingRules.join(',')} `);
+			return [`${rulesPrefix}${existingRules.join(',')} `];
 		}
 	}
-
 	// TODO Add file protocol if rules are finished
-	return completions;
+	return [];
 }
 
 export const LinterQueryDefinition = {

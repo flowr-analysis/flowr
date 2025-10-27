@@ -31,15 +31,14 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 			}
 		}
 	}
-	const node = graph.get(ref.nodeId, true);
+	const node = graph.getVertex(ref.nodeId, true);
 	if(node) {
-		const [fst] = node;
-		if(fst.cds) {
-			if(defaultCd && !fst.cds.find(c => c.id === defaultCd.id && c.when === defaultCd.when)) {
-				fst.cds.push(defaultCd);
+		if(node.cds) {
+			if(defaultCd && !node.cds.find(c => c.id === defaultCd.id && c.when === defaultCd.when)) {
+				node.cds.push(defaultCd);
 			}
 		} else {
-			fst.cds = defaultCd ? [defaultCd] : [];
+			node.cds = defaultCd ? [defaultCd] : [];
 		}
 	}
 	if(ref.controlDependencies) {

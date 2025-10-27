@@ -24,7 +24,12 @@ enum Allow {
 	None = 0,
 	Top = 1,
 	Bottom = 2
-};
+}
+
+enum With {
+	Graph,
+	Environment
+}
 
 describe.sequential('Resolve', withShell(shell => {
 	function set(values: unknown[]) {
@@ -44,12 +49,23 @@ describe.sequential('Resolve', withShell(shell => {
 		return setFrom(vectorFrom(values.map(v => valueFromTsValue(v))));
 	}
 
+	function testWithGraphAndEnvironment(name: string, tests: (withWhat: With) => void) {
+		describe(`${name} (Graph)`, () => {
+			tests(With.Graph);
+		});
+
+		describe(`${name} (Environment)`, () => {
+			tests(With.Environment);
+		});
+	}
+
 	function testResolve(
 		name: string,
 		identifier: SingleSlicingCriterion,
 		code: string,
 		expectedValues: Value,
-		allow: Allow = Allow.None 
+		allow: Allow = Allow.None,
+		withEnv: With = With.Environment 
 	): void {
 		const effectiveName = decorateLabelContext(label(name), ['resolve']);
 
@@ -60,7 +76,7 @@ describe.sequential('Resolve', withShell(shell => {
 			}, defaultConfigOptions).allRemainingSteps();
 
 			const resolved = resolveIdToValue(slicingCriterionToId(identifier, dataflow.normalize.idMap), {
-				environment: dataflow.dataflow.environment,
+				environment: withEnv === With.Environment ? dataflow.dataflow.environment : undefined,
 				graph:       dataflow.dataflow.graph,
 				idMap:       dataflow.normalize.idMap,
 				full:        true,
@@ -114,18 +130,22 @@ describe.sequential('Resolve', withShell(shell => {
 		testResolve('Alias Constant Value', '3@x', 'y <- 5 \n x <- y \n x', set([5]));
 
 		testResolve('rm() with alias',      '4@x', 'y <- 2 \n x <- y \n rm(y) \n x', set([2]));
-
-		// Not yet supported
-		testResolve('Fn Default Arg',       '2@f', 'f <- function(x = 3) { x } \n f()', set([3]), Allow.Top);
-		testResolve('Get',                  '3@x', 'y <- 5 \n x <- get("y") \n x', set([5]), Allow.Top);
-		testResolve('Super Assign',         '4@x', 'x <- 1 \n f <- function() { x <<- 2} \n f() \n x', set([2]), Allow.Top);
-		testResolve('Plus One',             '3@x', 'x <- 1 \n x <- x+1 \n x', interval(1, Top), Allow.Top);
+	});
+	
+	describe('Graph vs. Environment', () => {
+		testWithGraphAndEnvironment('Not yet supported', (resolveWith) => {
+			// Not yet Supported
+			testResolve('Loop plus x',          '5@x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top, resolveWith);
+			testResolve('Get',                  '3@x', 'y <- 5 \n x <- get("y") \n x', set([5]), Allow.Top, resolveWith);
+			testResolve('Super Assign',         '4@x', 'x <- 1 \n f <- function() { x <<- 2} \n f() \n x', set([2]), Allow.Top, resolveWith);
+			testResolve('Plus One',             '3@x', 'x <- 1 \n x <- x+1 \n x', interval(1, Top), Allow.Top, resolveWith);
 				
-		testResolve('Random Loop',          '4@x', 'x <- 1 \n while(TRUE) { x <- x + 1 \n if(runif(1) > 0.5) { break } } \n x', Top);
-		testResolve('Loop plus one',        '4@i', 'for(i in 1:10) { i \n i <- i + 1 \n i} \n i', interval(2, 11), Allow.Top);
-		testResolve('Loop plus x',          '5@x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top);
-			
-		testResolve('Superassign Arith',    '5@x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', interval(8), Allow.Top);
+			testResolve('Random Loop',          '4@x', 'x <- 1 \n while(TRUE) { x <- x + 1 \n if(runif(1) > 0.5) { break } } \n x', Top, Allow.Top, resolveWith);
+			testResolve('Loop plus one',        '4@i', 'for(i in 1:10) { i \n i <- i + 1 \n i} \n i', interval(2, 11), Allow.Top, resolveWith);
+			testResolve('Loop plus x',          '5@x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top, resolveWith);
+		
+			testResolve('Superassign Arith',    '5@x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', interval(8), Allow.Top, resolveWith);
+		});
 	});
 
 	describe('Resolve Value (distractors)', () => {
@@ -133,7 +153,6 @@ describe.sequential('Resolve', withShell(shell => {
 		testMutate('Constant Value branch', 4, 'x', 'if(u) { \n x <- 5} else { \n x <- 6 } \n x', set([5, 6]));
 		testMutate('Alias Constant Value',  3, 'x', 'y <- 5 \n x <- y \n x',                      set([5]));
 		testMutate('Vector',                2, 'x', 'x <- 1 \n x <- c(1,2,3)',                    vector([1,2,3]));
-
 	});
 
 	describe('Resolve (vectors)', () => {

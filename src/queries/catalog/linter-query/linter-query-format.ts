@@ -47,8 +47,9 @@ function rulesFromInput(output: ReplOutput, rulesPart: readonly string[]): {vali
 		}, { valid: [] as (LintingRuleNames | ConfiguredLintingRule)[], invalid: [] as string[] });
 }
 
+const rulesPrefix = 'rules:';
+
 function linterQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine {
-	const rulesPrefix = 'rules:';
 	let rules: (LintingRuleNames | ConfiguredLintingRule)[] | undefined = undefined;
 	let input: string | undefined = undefined;
 	if(line.length > 0 && line[0].startsWith(rulesPrefix)) {
@@ -66,6 +67,41 @@ function linterQueryLineParser(output: ReplOutput, line: readonly string[], _con
 	return { query: [{ type: 'linter', rules: rules }], rCode: input } ;
 }
 
+function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfigOptions): string[] {
+	const completions: string[] = [];
+	const rulesPrefixNotPresent = line.length == 0 || (line.length == 1 && line[0].length < rulesPrefix.length);
+	const rulesNotFinished = line.length == 1 && line[0].startsWith(rulesPrefix) && !startingNewArg;
+
+	if(rulesPrefixNotPresent) {
+		// Return complete rules prefix
+		completions.push(`${rulesPrefix}`);
+	} else if(rulesNotFinished) {
+		const allRules = Object.keys(LintingRules);
+		const existingRules = line[0].slice(rulesPrefix.length).split(',').map(r => r.trim());
+		const lastRule = existingRules[existingRules.length - 1];
+		const unusedRules = allRules.filter(r => !existingRules.includes(r));
+
+		if(!allRules.includes(lastRule)) {
+			// Complete the last rule or add all possible rules that are not used yet
+			for(const ruleName of unusedRules) {
+				if(ruleName.startsWith(lastRule)) {
+					const ending = unusedRules.length > 1 ? ',' : ' ';
+					completions.push(`${rulesPrefix}${existingRules.slice(0, -1).concat([ruleName]).join(',')}${ending}`);
+				}
+			}
+		} else if(unusedRules.length > 0) {
+			// Add a comma, if the current last rule is complete
+			completions.push(`${rulesPrefix}${existingRules.join(',')},`);
+		} else {
+			// All rules are used, complete with a space
+			completions.push(`${rulesPrefix}${existingRules.join(',')} `);
+		}
+	}
+
+	// TODO Add file protocol if rules are finished
+	return completions;
+}
+
 export const LinterQueryDefinition = {
 	executor:        executeLinterQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
@@ -76,8 +112,9 @@ export const LinterQueryDefinition = {
 		}
 		return true;
 	},
-	fromLine: linterQueryLineParser,
-	schema:   Joi.object({
+	completer: linterQueryCompleter,
+	fromLine:  linterQueryLineParser,
+	schema:    Joi.object({
 		type:  Joi.string().valid('linter').required().description('The type of the query.'),
 		rules: Joi.array().items(
 			Joi.string().valid(...Object.keys(LintingRules)),

@@ -102,7 +102,7 @@ export interface ParsedQueryLine {
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = BaseQueryFormat['type']> {
 	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, Promise<BaseQueryResult>>
     /** optional completion in, e.g., the repl */
-	completer?:           (splitLine: readonly string[], config: FlowrConfigOptions) => string[]
+	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions) => string[]
     /** optional query construction from an, e.g., repl line */
 	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine
 	asciiSummarizer:      (formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>

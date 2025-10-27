@@ -18,7 +18,7 @@ export interface ConfigQueryResult extends BaseQueryResult {
 	readonly config: FlowrConfigOptions;
 }
 
-function configReplCompleter(partialLine: readonly string[], config: FlowrConfigOptions): string[] {
+function configReplCompleter(partialLine: readonly string[], _startingNewArg: boolean, config: FlowrConfigOptions): string[] {
 	if(partialLine.length === 0) {
 		// update specific fields
 		return ['+'];

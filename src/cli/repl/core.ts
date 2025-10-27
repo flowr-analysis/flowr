@@ -78,7 +78,7 @@ function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolea
 		const q = nonEmpty[0].slice(1);
 		const queryElement = SupportedQueries[q as keyof typeof SupportedQueries] as SupportedQuery;
 		if(queryElement?.completer) {
-			candidates = candidates.concat(queryElement.completer(nonEmpty.slice(1), config));
+			candidates = candidates.concat(queryElement.completer(nonEmpty.slice(1), startingNewArg, config));
 		}
 	}
 

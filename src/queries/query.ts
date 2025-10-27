@@ -46,13 +46,13 @@ import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-forma
 import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 import type { AsyncOrSync, Writable } from 'ts-essentials';
 import type { FlowrConfigOptions } from '../config';
-import type {
-	InspectHigherOrderQuery } from './catalog/inspect-higher-order-query/inspect-higher-order-query-format';
+import type { InspectHigherOrderQuery } from './catalog/inspect-higher-order-query/inspect-higher-order-query-format';
 import {
 	InspectHigherOrderQueryDefinition
 } from './catalog/inspect-higher-order-query/inspect-higher-order-query-format';
-import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { log } from '../util/log';
+import type { ReplOutput } from '../cli/repl/commands/repl-main';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -89,13 +89,23 @@ type SupportedQueriesType = {
 	[QueryType in Query['type']]: SupportedQuery<QueryType>
 }
 
+/**
+ * The result of parsing a query line from, e.g., the repl.
+ */
+export interface ParsedQueryLine {
+	/** The parsed query or queries from the line. */
+	query:  Query | Query[] | undefined;
+	/** Optional R code associated with the query. */
+	rCode?: string;
+}
+
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = BaseQueryFormat['type']> {
 	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, Promise<BaseQueryResult>>
     /** optional completion in, e.g., the repl */
 	completer?:           (splitLine: readonly string[], config: FlowrConfigOptions) => string[]
     /** optional query construction from an, e.g., repl line */
-	fromLine?:            (splitLine: readonly string[], config: FlowrConfigOptions) => Query | Query[] | undefined
-	asciiSummarizer:      (formatter: OutputFormatter, analyzer: FlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>
+	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine
+	asciiSummarizer:      (formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>
 	schema:               Joi.ObjectSchema
 	/**
 	 * Flattens the involved query nodes to be added to a flowR search when the {@link fromQuery} function is used based on the given result after this query is executed.

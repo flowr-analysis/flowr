@@ -2,7 +2,7 @@ import { SemVer } from 'semver';
 import type { KnownParser } from '../r-bridge/parser';
 import { guard } from './assert';
 import type { ReplOutput } from '../cli/repl/commands/repl-main';
-import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 // this is automatically replaced with the current version by release-it
 const version = '2.6.1';
@@ -26,7 +26,7 @@ export interface VersionInformation {
 
 const versionRegex = /^\d+\.\d+\.\d+/m;
 
-export async function retrieveVersionInformation(input: KnownParser | FlowrAnalysisProvider): Promise<VersionInformation> {
+export async function retrieveVersionInformation(input: KnownParser | ReadonlyFlowrAnalysisProvider): Promise<VersionInformation> {
 	const flowr = flowrVersion().toString();
 
 	let r: string;
@@ -46,7 +46,7 @@ export async function retrieveVersionInformation(input: KnownParser | FlowrAnaly
 	return { flowr: flowr as Version, r: r as Version, engine: name };
 }
 
-export async function printVersionInformation(output: ReplOutput, input: KnownParser | FlowrAnalysisProvider) {
+export async function printVersionInformation(output: ReplOutput, input: KnownParser | ReadonlyFlowrAnalysisProvider) {
 	const { flowr, r, engine } = await retrieveVersionInformation(input);
 	output.stdout(`Engine: ${engine}`);
 	output.stdout(` flowR: ${flowr}`);

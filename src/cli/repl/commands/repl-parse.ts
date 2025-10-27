@@ -161,7 +161,7 @@ export const parseCommand: ReplCodeCommand = {
 	argsParser:    (line: string) => {
 		return {
 			// Threat the whole input line as R code
-			input:     removeRQuotes(line.trim()),
+			rCode:     removeRQuotes(line.trim()),
 			remaining: []
 		};
 	},

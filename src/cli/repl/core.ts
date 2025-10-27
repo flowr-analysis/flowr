@@ -53,7 +53,7 @@ export function replCompleter(line: string, config: FlowrConfigOptions): [string
 				const options = scripts[commandName as keyof typeof scripts].options;
 				completions.push(...getValidOptionsForCompletion(options, splitLine).map(o => `${o} `));
 			} else if(commandName.startsWith('query')) {
-				completions.push(...replQueryCompleter(splitLine, config));
+				completions.push(...replQueryCompleter(splitLine, startingNewArg, config));
 			} else {
 				// autocomplete command arguments (specifically, autocomplete the file:// protocol)
 				completions.push(fileProtocol);
@@ -68,11 +68,11 @@ export function replCompleter(line: string, config: FlowrConfigOptions): [string
 	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line];
 }
 
-function replQueryCompleter(splitLine: readonly string[], config: FlowrConfigOptions): string[] {
+function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions): string[] {
 	const nonEmpty = splitLine.slice(1).map(s => s.trim()).filter(s => s.length > 0);
 	const queryShorts = Object.keys(SupportedQueries).map(q => `@${q}`).concat(['help']);
 	let candidates: string[] = [];
-	if(nonEmpty.length == 0 || (nonEmpty.length == 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q))) {
+	if(nonEmpty.length == 0 || (nonEmpty.length == 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q && !startingNewArg))) {
 		candidates = candidates.concat(queryShorts.map(q => `${q} `));
 	} else {
 		const q = nonEmpty[0].slice(1);

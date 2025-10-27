@@ -53,6 +53,7 @@ import {
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { log } from '../util/log';
 import type { ReplOutput } from '../cli/repl/commands/repl-main';
+import type { CommandCompletions } from '../cli/repl/core';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -102,7 +103,7 @@ export interface ParsedQueryLine {
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = BaseQueryFormat['type']> {
 	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, Promise<BaseQueryResult>>
     /** optional completion in, e.g., the repl */
-	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions) => string[]
+	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions) => CommandCompletions;
     /** optional query construction from an, e.g., repl line */
 	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine
 	asciiSummarizer:      (formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>

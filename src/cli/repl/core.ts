@@ -33,6 +33,19 @@ function replCompleterKeywords() {
 const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory');
 
 /**
+ * Completion suggestions for a specific REPL command
+ */
+export interface CommandCompletions {
+	/** The possible completions for the current argument */
+	readonly completions:   string[];
+	/**
+	 * The current argument fragment being completed, if any.
+	 * This is relevant if an argument is composed of multiple parts (e.g. comma-separated lists).
+	 */
+	readonly argumentPart?: string;
+}
+
+/**
  * Used by the repl to provide automatic completions for a given (partial) input line
  */
 export function replCompleter(line: string, config: FlowrConfigOptions): [string[], string] {
@@ -45,6 +58,7 @@ export function replCompleter(line: string, config: FlowrConfigOptions): [string
 		const commandNameColon = replCompleterKeywords().find(k => splitLine[0] === k);
 		if(commandNameColon) {
 			const completions: string[] = [];
+			let currentArg = startingNewArg ? '' : splitLine[splitLine.length - 1];
 
 			const commandName = commandNameColon.slice(1);
 			const cmd = getCommand(commandName);
@@ -53,13 +67,16 @@ export function replCompleter(line: string, config: FlowrConfigOptions): [string
 				const options = scripts[commandName as keyof typeof scripts].options;
 				completions.push(...getValidOptionsForCompletion(options, splitLine).map(o => `${o} `));
 			} else if(commandName.startsWith('query')) {
-				completions.push(...replQueryCompleter(splitLine, startingNewArg, config));
+				const { completions: queryCompletions, argumentPart: splitArg } = replQueryCompleter(splitLine, startingNewArg, config);
+				if(splitArg !== undefined) {
+					currentArg = splitArg;
+				}
+				completions.push(...queryCompletions);
 			} else {
 				// autocomplete command arguments (specifically, autocomplete the file:// protocol)
 				completions.push(fileProtocol);
 			}
 
-			const currentArg = startingNewArg ? '' : splitLine[splitLine.length - 1];
 			return [completions.filter(a => a.startsWith(currentArg)), currentArg];
 		}
 	}
@@ -68,11 +85,11 @@ export function replCompleter(line: string, config: FlowrConfigOptions): [string
 	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line];
 }
 
-function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions): string[] {
+function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions): CommandCompletions {
 	const nonEmpty = splitLine.slice(1).map(s => s.trim()).filter(s => s.length > 0);
 	const queryShorts = Object.keys(SupportedQueries).map(q => `@${q}`).concat(['help']);
 	if(nonEmpty.length == 0 || (nonEmpty.length == 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q && !startingNewArg))) {
-		return queryShorts.map(q => `${q} `);
+		return { completions: queryShorts.map(q => `${q} `) };
 	} else {
 		const q = nonEmpty[0].slice(1);
 		const queryElement = SupportedQueries[q as keyof typeof SupportedQueries] as SupportedQuery;
@@ -81,7 +98,7 @@ function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolea
 		}
 	}
 
-	return [];
+	return { completions: [] };
 }
 
 export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.ReadLineOptions {

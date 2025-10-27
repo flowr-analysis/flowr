@@ -48,10 +48,11 @@ function rulesFromInput(output: ReplOutput, rulesPart: readonly string[]): {vali
 }
 
 function linterQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine {
+	const rulesPrefix = 'rules:';
 	let rules: (LintingRuleNames | ConfiguredLintingRule)[] | undefined = undefined;
 	let input: string | undefined = undefined;
-	if(line.length > 0 && line[0].startsWith('rules:')) {
-		const rulesPart = line[0].slice('rules:'.length).split(',');
+	if(line.length > 0 && line[0].startsWith(rulesPrefix)) {
+		const rulesPart = line[0].slice(rulesPrefix.length).split(',');
 		const parseResult = rulesFromInput(output, rulesPart);
 		if(parseResult.invalid.length > 0) {
 			output.stdout(`Invalid linting rule name(s): ${parseResult.invalid.map(r => bold(r, output.formatter)).join(', ')}`

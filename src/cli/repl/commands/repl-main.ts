@@ -1,6 +1,6 @@
 import type { OutputFormatter } from '../../../util/text/ansi';
 import { formatter } from '../../../util/text/ansi';
-import type { FlowrAnalysisProvider, ModifiableFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 /**
  * Defines the main interface for output of the repl.
@@ -33,7 +33,7 @@ export const standardReplOutput: ReplOutput = {
 export interface ReplCommandInformation {
 	output:              ReplOutput,
 	allowRSessionAccess: boolean,
-	analyzer:            FlowrAnalysisProvider,
+	analyzer:            ReadonlyFlowrAnalysisProvider,
 	remainingLine:       string,
 }
 
@@ -44,7 +44,7 @@ export interface ReplCommandInformation {
  */
 export interface ReplCodeCommandInformation {
 	output:        ReplOutput,
-	analyzer:      ModifiableFlowrAnalysisProvider
+	analyzer:      FlowrAnalysisProvider
 	remainingArgs: string[]
 }
 

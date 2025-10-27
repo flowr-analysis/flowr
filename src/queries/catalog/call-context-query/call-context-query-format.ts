@@ -12,7 +12,7 @@ import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { DataflowGraphVertexInfo } from '../../../dataflow/graph/vertex';
 import type { CascadeAction } from './cascade-action';
 import type { NoInfo } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 export interface FileFilter<FilterType> {
 	/**
@@ -125,7 +125,7 @@ const CallContextQueryLinkTo = Joi.object({
 
 export const CallContextQueryDefinition = {
 	executor:        executeCallContextQueries,
-	asciiSummarizer: async(formatter: OutputFormatter, analyzer: FlowrAnalysisProvider, queryResults: BaseQueryResult, result: string[]) => {
+	asciiSummarizer: async(formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as CallContextQueryResult;
 		result.push(`Query: ${bold('call-context', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		result.push(asciiCallContext(formatter, out, (await analyzer.normalize()).idMap));

@@ -20,9 +20,9 @@ import { guard } from '../util/assert';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
 
 /**
- * Extends the {@link FlowrAnalysisProvider} with methods that allow modifying the analyzer state.
+ * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
  */
-export interface ModifiableFlowrAnalysisProvider extends FlowrAnalysisProvider {
+export interface FlowrAnalysisProvider extends ReadonlyFlowrAnalysisProvider {
 	/**
 	 * Returns project context information.
 	 * If you are a user that wants to inspect the context, prefer {@link inspectContext} instead.
@@ -47,7 +47,7 @@ export interface ModifiableFlowrAnalysisProvider extends FlowrAnalysisProvider {
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
  * This allows us to exchange the underlying implementation of the analyzer without affecting the APIs.
  */
-export interface FlowrAnalysisProvider {
+export interface ReadonlyFlowrAnalysisProvider {
 	/**
      * Get the name of the parser used by the analyzer.
 	 */
@@ -113,7 +113,7 @@ export interface FlowrAnalysisProvider {
  *
  * To inspect the context of the analyzer, use {@link FlowrAnalyzer#inspectContext} (if you are a plugin and need to modify it, use {@link FlowrAnalyzer#context} instead).
  */
-export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements FlowrAnalysisProvider {
+export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements ReadonlyFlowrAnalysisProvider {
 	public readonly flowrConfig: FlowrConfigOptions;
 	/** The parser and engine backend */
 	private readonly parser:     Parser;

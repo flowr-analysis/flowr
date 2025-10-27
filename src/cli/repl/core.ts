@@ -99,7 +99,7 @@ export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.Re
 
 export function handleString(code: string) {
 	return {
-		input:     code.length == 0 ? undefined : code.startsWith('"') ? JSON.parse(code) as string : code,
+		rCode:     code.length == 0 ? undefined : code.startsWith('"') ? JSON.parse(code) as string : code,
 		remaining: []
 	};
 }

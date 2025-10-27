@@ -89,6 +89,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: ModifiableFlowrAna
 function parseArgs(line: string) {
 	const args = splitAtEscapeSensitive(line);
 	return {
+		rCode:     undefined,
 		remaining: args
 	};
 }

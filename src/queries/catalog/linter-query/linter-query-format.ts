@@ -72,12 +72,12 @@ function linterQueryLineParser(output: ReplOutput, line: readonly string[], _con
 function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfigOptions): CommandCompletions {
 	const rulesPrefixNotPresent = line.length == 0 || (line.length == 1 && line[0].length < rulesPrefix.length);
 	const rulesNotFinished = line.length == 1 && line[0].startsWith(rulesPrefix) && !startingNewArg;
-	const endOfRules = line.length == 1 && startingNewArg;
+	const endOfRules = line.length == 1 && startingNewArg || line.length == 2;
 
 	if(rulesPrefixNotPresent) {
 		return { completions: [`${rulesPrefix}`] };
 	} else if(endOfRules) {
-		return { completions: [fileProtocol], argumentPart: '' };
+		return { completions: [fileProtocol] };
 	} else if(rulesNotFinished) {
 		const rulesWithoutPrefix = line[0].slice(rulesPrefix.length);
 		const usedRules = rulesWithoutPrefix.split(',').map(r => r.trim());

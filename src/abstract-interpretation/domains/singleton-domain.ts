@@ -1,27 +1,34 @@
-import { domainElementToString, type AbstractDomain } from './abstract-domain';
+import { Ternary } from '../../util/logic';
+import type { AbstractDomain } from './abstract-domain';
+import { domainElementToString } from './abstract-domain';
 import { Bottom, Top } from './lattice';
+import type { SatisfiableDomain } from './satisfiable-domain';
 
 /** The type of the actual values of the singleton domain as single value */
-export type SingletonValue<T> = T;
+type SingletonValue<T> = T;
 /** The type of the Top element of the singleton domain as {@link Top} symbol */
-export type SingletonTop = typeof Top;
+type SingletonTop = typeof Top;
 /** The type of the Bottom element of the singleton domain as {@link Bottom} symbol */
-export type SingletonBottom = typeof Bottom;
+type SingletonBottom = typeof Bottom;
 /** The type of the abstract values of the singleton domain that are Top, Bottom, or actual values */
-export type SingletonLift<T> = SingletonValue<T> | SingletonTop | SingletonBottom;
+type SingletonLift<T> = SingletonValue<T> | SingletonTop | SingletonBottom;
 
 /**
- * The singleton abstract domain as single possible value.
+ * The singleton abstract domain as a single possible value.
  * The Bottom element is defined as {@link Bottom} symbol and the Top element is defined as {@link Top} symbol.
  * @template T     - Type of the value in the abstract domain
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T>>
-implements AbstractDomain<T, SingletonValue<T>, SingletonTop, SingletonBottom, Value> {
-	private _value: Value;
+implements AbstractDomain<SingletonDomain<T>, T, SingletonValue<T>, SingletonTop, SingletonBottom, Value>, SatisfiableDomain<T> {
+	private readonly _value: Value;
 
 	constructor(value: Value) {
 		this._value = value;
+	}
+
+	public create(value: SingletonLift<T>): SingletonDomain<T> {
+		return new SingletonDomain(value);
 	}
 
 	public get value(): Value {
@@ -61,34 +68,44 @@ implements AbstractDomain<T, SingletonValue<T>, SingletonTop, SingletonBottom, V
 		return this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value <= other.value);
 	}
 
-	public join(...values: SingletonDomain<T>[]): SingletonDomain<T> {
-		const result = new SingletonDomain<T>(this.value);
+	public join(...values: readonly SingletonDomain<T>[]): SingletonDomain<T>;
+	public join(...values: readonly SingletonLift<T>[]): SingletonDomain<T>;
+	public join(...values: readonly SingletonDomain<T>[] | readonly SingletonLift<T>[]): SingletonDomain<T> {
+		let result: SingletonLift<T> = this.value;
 
 		for(const other of values) {
-			if(result.value === Bottom) {
-				result._value = other.value;
-			} else if(other.value === Bottom) {
-				result._value = result.value;
-			} else if(result.value !== other.value) {
-				result._value = Top;
+			const otherValue = other instanceof SingletonDomain ? other.value : other;
+
+			if(result === Bottom) {
+				result = otherValue;
+			} else if(otherValue === Bottom) {
+				continue;
+			} else if(result !== otherValue) {
+				result = Top;
+				break;
 			}
 		}
-		return result;
+		return this.create(result);
 	}
 
-	public meet(...values: SingletonDomain<T>[]): SingletonDomain<T> {
-		const result = new SingletonDomain<T>(this.value);
+	public meet(...values: readonly SingletonDomain<T>[]): SingletonDomain<T>;
+	public meet(...values: readonly SingletonLift<T>[]): SingletonDomain<T>;
+	public meet(...values: readonly SingletonDomain<T>[] | readonly SingletonLift<T>[]): SingletonDomain<T> {
+		let result: SingletonLift<T> = this.value;
 
 		for(const other of values) {
-			if(result.value === Top) {
-				result._value = other.value;
-			} else if(other.value === Top) {
-				result._value = result.value;
-			} else if(result.value !== other.value) {
-				result._value = Bottom;
+			const otherValue = other instanceof SingletonDomain ? other.value : other;
+
+			if(result === Top) {
+				result = otherValue;
+			} else if(otherValue === Top) {
+				continue;
+			} else if(result !== otherValue) {
+				result = Bottom;
+				break;
 			}
 		}
-		return result;
+		return this.create(result);
 	}
 
 	public widen(other: SingletonDomain<T>): SingletonDomain<T> {
@@ -110,6 +127,24 @@ implements AbstractDomain<T, SingletonValue<T>, SingletonTop, SingletonBottom, V
 
 	public abstract(concrete: ReadonlySet<T> | typeof Top): SingletonDomain<T> {
 		return SingletonDomain.abstract(concrete);
+	}
+
+	public satisfies(value: T): Ternary {
+		if(this.isValue() && this.value === value) {
+			return Ternary.Always;
+		} else if(this.isTop()) {
+			return Ternary.Maybe;
+		}
+		return Ternary.Never;
+	}
+
+	public toJson(): unknown {
+		if(this.value === Top) {
+			return Top.description;
+		} else if(this.value === Bottom) {
+			return Bottom.description;
+		}
+		return this.value;
 	}
 
 	public toString(): string {

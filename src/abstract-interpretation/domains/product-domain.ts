@@ -1,38 +1,37 @@
-import { DEFAULT_INFERENCE_LIMIT, type AbstractDomain } from './abstract-domain';
+import type { AbstractDomain, AnyAbstractDomain } from './abstract-domain';
+import { DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Top } from './lattice';
 
 /** The type of an abstract product of a product domain mapping named properties of the product to abstract domains */
-export type AbstractProduct = Record<string, AbstractDomain<unknown, unknown, unknown, unknown>>;
+export type AbstractProduct = Record<string, AnyAbstractDomain>;
 
 /** The type of the concrete product of an abstract product mapping each property to a concrete value in the respective concrete domain */
 export type ConcreteProduct<Product extends AbstractProduct> = {
-	[Key in keyof Product]: Product[Key] extends AbstractDomain<infer Concrete, unknown, unknown, unknown> ? Concrete : never;
+	[Key in keyof Product]: Product[Key] extends AbstractDomain<infer _Domain, infer Concrete, unknown, unknown, unknown> ? Concrete : never;
 };
 
 /**
  * A product abstract domain as named Cartesian product of sub abstract domains.
  * The sub abstract domains are represented a record mapping property names to abstract domains.
  * The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as mapping every sub abstract domain to Top.
+ * @template Domain  - Type of the implemented product domain
  * @template Product - Type of the abstract product of the product domain mapping property names to abstract domains
  */
-export abstract class ProductDomain<Product extends AbstractProduct>
-implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
-	private _value: Product;
+export abstract class ProductDomain<Domain extends ProductDomain<Domain, Product>, Product extends AbstractProduct>
+implements AbstractDomain<Domain, ConcreteProduct<Product>, Product, Product, Product> {
+	private readonly _value: Product;
 
 	constructor(value: Product) {
 		this._value = value;
 	}
 
-	/**
-	 * Creates an abstract value of the product domain for a given abstract value.
-	 */
-	public abstract create(value: Product): ProductDomain<Product>;
+	public abstract create(value: Product): Domain;
 
 	public get value(): Product {
 		return this._value;
 	}
 
-	public bottom(): ProductDomain<Product> {
+	public bottom(): Domain {
 		const result = this.create(this.value);
 
 		for(const key in result.value) {
@@ -41,7 +40,7 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return result;
 	}
 
-	public top(): ProductDomain<Product> {
+	public top(): Domain {
 		const result = this.create(this.value);
 
 		for(const key in result.value) {
@@ -50,7 +49,7 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return result;
 	}
 
-	public equals(other: ProductDomain<Product>): boolean {
+	public equals(other: Domain): boolean {
 		if(this.value === other.value) {
 			return true;
 		}
@@ -62,7 +61,7 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return true;
 	}
 
-	public leq(other: ProductDomain<Product>): boolean {
+	public leq(other: Domain): boolean {
 		if(this.value === other.value) {
 			return true;
 		}
@@ -74,7 +73,7 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return true;
 	}
 
-	public join(...values: ProductDomain<Product>[]): ProductDomain<Product> {
+	public join(...values: readonly Domain[]): Domain {
 		const result = this.create(this.value);
 
 		for(const value of values) {
@@ -85,7 +84,7 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return result;
 	}
 
-	public meet(...values: ProductDomain<Product>[]): ProductDomain<Product> {
+	public meet(...values: readonly Domain[]): Domain {
 		const result = this.create(this.value);
 
 		for(const value of values) {
@@ -96,7 +95,7 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return result;
 	}
 
-	public widen(other: ProductDomain<Product>): ProductDomain<Product> {
+	public widen(other: Domain): Domain {
 		const result = this.create(this.value);
 
 		for(const key in result.value) {
@@ -105,7 +104,7 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return result;
 	}
 
-	public narrow(other: ProductDomain<Product>): ProductDomain<Product> {
+	public narrow(other: Domain): Domain {
 		const result = this.create(this.value);
 
 		for(const key in result.value) {
@@ -138,7 +137,7 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return result;
 	}
 
-	public abstract(concrete: ReadonlySet<ConcreteProduct<Product>> | typeof Top): ProductDomain<Product> {
+	public abstract(concrete: ReadonlySet<ConcreteProduct<Product>> | typeof Top): Domain {
 		if(concrete === Top) {
 			return this.top();
 		}
@@ -151,19 +150,23 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return result;
 	}
 
+	public toJson(): unknown {
+		return Object.fromEntries(Object.entries(this.value).map(([key, value]) => [key, value.toJson()]));
+	}
+
 	public toString(): string {
-		return '(' + Object.entries<AbstractDomain<unknown, unknown, unknown, unknown>>(this.value).map(([key, value]) => `${key}: ${value.toString()}`).join(', ') + ')';
+		return '(' + Object.entries(this.value).map(([key, value]) => `${key}: ${value.toString()}`).join(', ') + ')';
 	}
 
-	public isTop(): this is ProductDomain<Product> {
-		return Object.values<AbstractDomain<unknown, unknown, unknown, unknown>>(this.value).every(value => value.isTop());
+	public isTop(): this is Domain {
+		return Object.values(this.value).every(value => value.isTop());
 	}
 
-	public isBottom(): this is ProductDomain<Product> {
-		return Object.values<AbstractDomain<unknown, unknown, unknown, unknown>>(this.value).every(value => value.isBottom());
+	public isBottom(): this is Domain {
+		return Object.values(this.value).every(value => value.isBottom());
 	}
 
-	public isValue(): this is ProductDomain<Product> {
+	public isValue(): this is Domain {
 		return true;
 	}
 }

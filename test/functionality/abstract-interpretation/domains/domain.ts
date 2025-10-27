@@ -1,5 +1,5 @@
 import { assert, test } from 'vitest';
-import type { AbstractDomain, ConcreteDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
+import type { AnyAbstractDomain, ConcreteDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
 
 export interface DomainTestExpectation<ConcreteValue, AbstractValue>{
@@ -13,7 +13,7 @@ export interface DomainTestExpectation<ConcreteValue, AbstractValue>{
     readonly abstract?: AbstractValue
 }
 
-export function assertAbstractDomain<AbstractValue, Domain extends AbstractDomain<unknown, unknown, unknown, unknown>>(
+export function assertAbstractDomain<AbstractValue, Domain extends AnyAbstractDomain>(
 	create: (value: AbstractValue) => Domain,
 	value1: AbstractValue,
 	value2: AbstractValue,

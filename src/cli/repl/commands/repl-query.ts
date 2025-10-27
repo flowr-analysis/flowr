@@ -8,6 +8,7 @@ import { AnyQuerySchema, executeQueries, QueriesSchema, SupportedQueries } from 
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import type { BaseQueryResult } from '../../../queries/base-query-format';
 
 
 function printHelp(output: ReplOutput) {
@@ -111,7 +112,9 @@ export const queryStarCommand: ReplCodeCommand = {
 	fn:            async({ output, analyzer, remainingArgs }) => {
 		const results = await processQueryArgs(output, analyzer, remainingArgs);
 		if(results) {
-			output.stdout(JSON.stringify(results.query, jsonReplacer));
+			const json = Object.fromEntries(Object.entries(results.query)
+				.map(([query, queryResults]) => [query, (SupportedQueries[query as SupportedQueryTypes] as SupportedQuery)?.jsonFormatter?.(queryResults as BaseQueryResult) ?? queryResults]));
+			output.stdout(JSON.stringify(json, jsonReplacer));
 		}
 	}
 };

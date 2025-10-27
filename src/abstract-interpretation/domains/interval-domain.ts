@@ -1,14 +1,22 @@
-import { DEFAULT_INFERENCE_LIMIT, type AbstractDomain } from './abstract-domain';
+import { assertUnreachable } from '../../util/assert';
+import { Ternary } from '../../util/logic';
+import type { AbstractDomain } from './abstract-domain';
+import { DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Bottom, Top } from './lattice';
+import type { SatisfiableDomain } from './satisfiable-domain';
+import { NumericalComparator } from './satisfiable-domain';
+
+/** The Top element of the interval domain as interval [-∞, +∞] */
+export const IntervalTop: IntervalValue = [-Infinity, +Infinity];
 
 /** The type of the actual values of the interval domain as tuple of the lower and upper bound */
-export type IntervalValue = readonly [number, number];
-/** The type of the Top element of the interval domain as interval [-∞, +∞] from -∞ to +∞ */
-export type IntervalTop = readonly [typeof Infinity, typeof Infinity];
+type IntervalValue = readonly [lower: number, upper: number];
+/** The type of the Top element of the interval domain as interval [-∞, +∞] */
+type IntervalTop = typeof IntervalTop;
 /** The type of the Bottom element of the interval domain as {@link Bottom} symbol */
-export type IntervalBottom = typeof Bottom;
+type IntervalBottom = typeof Bottom;
 /** The type of the abstract values of the interval domain that are Top, Bottom, or actual values */
-export type IntervalLift = IntervalValue | IntervalTop | IntervalBottom;
+type IntervalLift = IntervalValue | IntervalBottom;
 
 /**
  * The interval abstract domain as intervals with possibly infinite bounds representing possible numeric values.
@@ -16,8 +24,8 @@ export type IntervalLift = IntervalValue | IntervalTop | IntervalBottom;
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class IntervalDomain<Value extends IntervalLift = IntervalLift>
-implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Value> {
-	private _value: Value;
+implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, IntervalBottom, Value>, SatisfiableDomain<number> {
+	private readonly _value: Value;
 
 	constructor(value: Value) {
 		if(Array.isArray(value)) {
@@ -31,12 +39,16 @@ implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Va
 		}
 	}
 
+	public create(value: IntervalLift): IntervalDomain {
+		return new IntervalDomain(value);
+	}
+
 	public get value(): Value {
 		return this._value;
 	}
 
 	public static top(): IntervalDomain<IntervalTop> {
-		return new IntervalDomain([-Infinity, +Infinity]);
+		return new IntervalDomain(IntervalTop);
 	}
 
 	public static bottom(): IntervalDomain<IntervalBottom> {
@@ -68,43 +80,51 @@ implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Va
 		return this.value === Bottom || (other.isValue() && other.value[0] <= this.value[0] && this.value[1] <= other.value[1]);
 	}
 
-	public join(...values: IntervalDomain[]): IntervalDomain {
-		const result = new IntervalDomain<IntervalLift>(this.value);
+	public join(...values: readonly IntervalDomain[]): IntervalDomain;
+	public join(...values: readonly IntervalLift[]): IntervalDomain;
+	public join(...values: readonly IntervalDomain[] | readonly IntervalLift[]): IntervalDomain {
+		let result: IntervalLift = this.value;
 
 		for(const other of values) {
-			if(result.value === Bottom) {
-				result._value = other.value;
-			} else if(other.value === Bottom) {
-				result._value = result.value;
+			const otherValue = other instanceof IntervalDomain ? other.value : other;
+
+			if(result === Bottom) {
+				result = otherValue;
+			} else if(otherValue === Bottom) {
+				continue;
 			} else {
-				result._value = [Math.min(result.value[0], other.value[0]), Math.max(result.value[1], other.value[1])];
+				result = [Math.min(result[0], otherValue[0]), Math.max(result[1], otherValue[1])];
 			}
 		}
-		return result;
+		return this.create(result);
 	}
 
-	public meet(...values: IntervalDomain[]): IntervalDomain {
-		const result = new IntervalDomain<IntervalLift>(this.value);
+	public meet(...values: readonly IntervalDomain[]): IntervalDomain;
+	public meet(...values: readonly IntervalLift[]): IntervalDomain;
+	public meet(...values: readonly IntervalDomain[] | readonly IntervalLift[]): IntervalDomain {
+		let result: IntervalLift = this.value;
 
 		for(const other of values) {
-			if(this.value === Bottom || other.value === Bottom) {
-				result._value = Bottom;
-			} else if(Math.max(this.value[0], other.value[0]) > Math.min(this.value[1], other.value[1])) {
-				result._value = Bottom;
+			const otherValue = other instanceof IntervalDomain ? other.value : other;
+
+			if(result === Bottom || otherValue === Bottom) {
+				result = Bottom;
+			} else if(Math.max(result[0], otherValue[0]) > Math.min(result[1], otherValue[1])) {
+				result = Bottom;
 			} else {
-				result._value = [Math.max(this.value[0], other.value[0]), Math.min(this.value[1], other.value[1])];
+				result = [Math.max(result[0], otherValue[0]), Math.min(result[1], otherValue[1])];
 			}
 		}
-		return result;
+		return this.create(result);
 	}
 
 	public widen(other: IntervalDomain): IntervalDomain {
 		if(this.value === Bottom) {
-			return new IntervalDomain(other.value);
+			return this.create(other.value);
 		} else if(other.value === Bottom) {
-			return new IntervalDomain(this.value);
+			return this.create(this.value);
 		} else {
-			return new IntervalDomain([
+			return this.create([
 				this.value[0] <= other.value[0] ? this.value[0] : -Infinity,
 				this.value[1] >= other.value[1] ? this.value[1] : +Infinity
 			]);
@@ -114,8 +134,10 @@ implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Va
 	public narrow(other: IntervalDomain): IntervalDomain {
 		if(this.value === Bottom || other.value === Bottom) {
 			return this.bottom();
+		} else if(Math.max(this.value[0], other.value[0]) > Math.min(this.value[1], other.value[1])) {
+			return this.bottom();
 		}
-		return new IntervalDomain([
+		return this.create([
 			this.value[0] === -Infinity ? other.value[0] : this.value[0],
 			this.value[1] === +Infinity ? other.value[1] : this.value[1]
 		]);
@@ -139,47 +161,98 @@ implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Va
 		return IntervalDomain.abstract(concrete);
 	}
 
+	public satisfies(value: number, comparator: NumericalComparator = NumericalComparator.Equal): Ternary {
+		switch(comparator) {
+			case NumericalComparator.Equal: {
+				if(this.isValue() && this.value[0] <= value && value <= this.value[1]) {
+					return this.value[0] === this.value[1] ? Ternary.Always : Ternary.Maybe;
+				} else {
+					return Ternary.Never;
+				}
+			}
+			case NumericalComparator.Less: {
+				if(this.isValue() && value < this.value[1]) {
+					return value < this.value[0] ? Ternary.Always : Ternary.Maybe;
+				} else {
+					return Ternary.Never;
+				}
+			}
+			case NumericalComparator.LessOrEqual: {
+				if(this.isValue() && value <= this.value[1]) {
+					return value <= this.value[0] ? Ternary.Always : Ternary.Maybe;
+				} else {
+					return Ternary.Never;
+				}
+			}
+			case NumericalComparator.Greater: {
+				if(this.isValue() && this.value[0] <= value) {
+					return this.value[1] <= value ? Ternary.Always : Ternary.Maybe;
+				} else {
+					return Ternary.Never;
+				}
+			}
+			case NumericalComparator.GreaterOrEqual: {
+				if(this.isValue() && this.value[0] < value) {
+					return this.value[1] < value ? Ternary.Always : Ternary.Maybe;
+				} else {
+					return Ternary.Never;
+				}
+			}
+			default: {
+				assertUnreachable(comparator);
+			}
+		}
+	}
+
 	/**
 	 * Adds another abstract value to the current abstract value by adding the two lower and upper bounds, respectively.
 	 */
-	public add(other: IntervalDomain): IntervalDomain {
-		if(this.value === Bottom || other.value === Bottom) {
+	public add(other: IntervalDomain | IntervalLift): IntervalDomain {
+		const otherValue = other instanceof IntervalDomain ? other.value : other;
+
+		if(this.value === Bottom || otherValue === Bottom) {
 			return this.bottom();
 		} else {
-			return new IntervalDomain([this.value[0] + other.value[0], this.value[1] + other.value[1]]);
+			return this.create([this.value[0] + otherValue[0], this.value[1] + otherValue[1]]);
 		}
 	}
 
 	/**
 	 * Subtracts another abstract value from the current abstract value by subtracting the two lower and upper bounds from each other, respectively.
 	 */
-	public subtract(other: IntervalDomain): IntervalDomain {
-		if(this.value === Bottom || other.value === Bottom) {
+	public subtract(other: IntervalDomain | IntervalLift): IntervalDomain {
+		const otherValue = other instanceof IntervalDomain ? other.value : other;
+
+		if(this.value === Bottom || otherValue === Bottom) {
 			return this.bottom();
 		} else {
-			return new IntervalDomain([this.value[0] - other.value[0], this.value[1] - other.value[1]]);
+			return this.create([this.value[0] - otherValue[0], this.value[1] - otherValue[1]]);
 		}
 	}
 
 	/**
 	 * Creates the minimum between the current abstract value and another abstract value by creating the minimum of the two lower and upper bounds, respectively.
 	 */
-	public min(other: IntervalDomain): IntervalDomain {
-		if(this.value === Bottom || other.value === Bottom) {
+	public min(other: IntervalDomain | IntervalLift): IntervalDomain {
+		const otherValue = other instanceof IntervalDomain ? other.value : other;
+
+		if(this.value === Bottom || otherValue === Bottom) {
 			return this.bottom();
 		} else {
-			return new IntervalDomain([Math.min(this.value[0], other.value[0]), Math.min(this.value[1], other.value[1])]);
+			return this.create([Math.min(this.value[0], otherValue[0]), Math.min(this.value[1], otherValue[1])]);
 		}
 	}
 
 	/**
 	 * Creates the maximum between the current abstract value and another abstract value by creating the maximum of the two lower and upper bounds, respectively.
 	 */
-	public max(other: IntervalDomain): IntervalDomain {
-		if(this.value === Bottom || other.value === Bottom) {
+	public max(other: IntervalDomain | IntervalLift): IntervalDomain {
+		const otherValue = other instanceof IntervalDomain ? other.value : other;
+
+		if(this.value === Bottom || otherValue === Bottom) {
 			return this.bottom();
 		} else {
-			return new IntervalDomain([Math.max(this.value[0], other.value[0]), Math.max(this.value[1], other.value[1])]);
+			return this.create([Math.max(this.value[0], otherValue[0]), Math.max(this.value[1], otherValue[1])]);
 		}
 	}
 
@@ -190,7 +263,7 @@ implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Va
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {
-			return new IntervalDomain([-Infinity, this.value[1]]);
+			return this.create([-Infinity, this.value[1]]);
 		}
 	}
 
@@ -201,8 +274,15 @@ implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Va
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {
-			return new IntervalDomain([this.value[0], +Infinity]);
+			return this.create([this.value[0], +Infinity]);
 		}
+	}
+
+	public toJson(): unknown {
+		if(this.value === Bottom) {
+			return this.value.description;
+		}
+		return this.value;
 	}
 
 	public toString(): string {

@@ -14,7 +14,7 @@ import { requestFromInput } from '../../../r-bridge/retriever';
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../util/assert';
 import { readLineByLineSync } from '../../../util/files';
 import type { DataFrameExpressionInfo, DataFrameOperation } from '../absint-info';
-import { DataFrameTop } from '../domain';
+import { DataFrameDomain } from '../dataframe-domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from '../resolve-args';
 import type { ConstraintType } from '../semantics';
 import { resolveIdToDataFrameShape } from '../shape-inference';
@@ -1236,7 +1236,8 @@ function mapDataFrameJoin(
 		joinLeft:       FunctionParameterLocation<boolean>,
 		joinRight:      FunctionParameterLocation<boolean>
 	},
-	info: ResolveInfo
+	info: ResolveInfo,
+	config: FlowrConfigOptions
 ): DataFrameOperation[] | undefined {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 	const joinAll = getArgumentValue(args, params.joinAll, info);
@@ -1255,7 +1256,7 @@ function mapDataFrameJoin(
 	const otherArg = getFunctionArgument(args, params.otherDataFrame, info);
 	const byArg = getFunctionArgument(args, params.by, info);
 
-	const otherDataFrame = resolveIdToDataFrameShape(otherArg, info.graph) ?? DataFrameTop;
+	const otherDataFrame = resolveIdToDataFrameShape(otherArg, info.graph) ?? DataFrameDomain.top(config.abstractInterpretation.dataFrame.maxColNames);
 	let byCols: (string | number | undefined)[] | undefined;
 
 	const joinType = getJoinType(joinAll, joinLeft, joinRight);

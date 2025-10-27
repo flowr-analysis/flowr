@@ -134,7 +134,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 		const results: DependencyInfo[] = [];
 		for(const [arg, values] of foundValues.entries()) {
 			for(const value of values) {
-				const dep = value ? data?.analyzer.context().deps.getDependency(value) ?? undefined : undefined;
+				const dep = value ? data?.analyzer.inspectContext().deps.getDependency(value) ?? undefined : undefined;
 				const result = compactRecord({
 					nodeId:             id,
 					functionName:       vertex.name,

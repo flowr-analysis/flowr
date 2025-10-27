@@ -17,7 +17,7 @@ import { DefaultBuiltinConfig, getDefaultProcessor } from '../environments/defau
 import type { FlowrSearchLike } from '../../search/flowr-search-builder';
 import { runSearch } from '../../search/flowr-search-executor';
 import { guard } from '../../util/assert';
-import type { FlowrAnalysisProvider } from '../../project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
 export function emptyGraph(idMap?: AstIdMap) {
 	return new DataflowGraphBuilder(idMap);
@@ -204,7 +204,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		return this.addEdge(normalizeIdToNumberIfPossible(from), normalizeIdToNumberIfPossible(to as NodeId), type);
 	}
 
-	private async queryHelper(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider, type: EdgeType) {
+	private async queryHelper(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider, type: EdgeType) {
 		let fromId: NodeId;
 		if('nodeId' in from) {
 			fromId = from.nodeId;
@@ -243,7 +243,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @param to - Either a node id or a query to find the node id.
 	 * @param input - The input to search in i.e. the dataflow graph.
 	 */
-	public readsQuery(from: FromQueryParam, to: ToQueryParam, input: FlowrAnalysisProvider) {
+	public readsQuery(from: FromQueryParam, to: ToQueryParam, input: ReadonlyFlowrAnalysisProvider) {
 		return this.queryHelper(from, to, input, EdgeType.Reads);
 	}
 
@@ -262,7 +262,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public definedByQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
+	public definedByQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.DefinedBy);
 	}
 
@@ -280,7 +280,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public callsQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
+	public callsQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.Calls);
 	}
 
@@ -298,7 +298,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public returnsQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
+	public returnsQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.Returns);
 	}
 
@@ -316,7 +316,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public definesOnCallQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
+	public definesOnCallQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.DefinesOnCall);
 	}
 
@@ -334,7 +334,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public definedByOnCallQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
+	public definedByOnCallQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.DefinedByOnCall);
 	}
 
@@ -352,7 +352,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public argumentQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
+	public argumentQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.Argument);
 	}
 
@@ -370,7 +370,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public nseQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
+	public nseQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.NonStandardEvaluation);
 	}
 
@@ -388,7 +388,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
-	public sideEffectOnCallQuery(from: FromQueryParam, to: ToQueryParam, data: FlowrAnalysisProvider) {
+	public sideEffectOnCallQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
 		return this.queryHelper(from, to, data, EdgeType.SideEffectOnCall);
 	}
 

@@ -9,7 +9,7 @@ import type { BaseQueryMeta, BaseQueryResult } from './base-query-format';
 import { printAsMs } from '../util/text/time';
 import { isBuiltIn } from '../dataflow/environments/built-in';
 import type { AstIdMap, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 function nodeString(nodeId: NodeId | { id: NodeId, info?: object}, formatter: OutputFormatter, idMap: AstIdMap<ParentInformation>): string {
 	const isObj = typeof nodeId === 'object' && nodeId !== null && 'id' in nodeId;
@@ -78,7 +78,7 @@ export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly 
 
 export async function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(
 	formatter: OutputFormatter, totalInMs: number, results: QueryResults<S>,
-	analyzer: FlowrAnalysisProvider, queries: Queries<S>
+	analyzer: ReadonlyFlowrAnalysisProvider, queries: Queries<S>
 ): Promise<string> {
 	const result: string[] = [];
 

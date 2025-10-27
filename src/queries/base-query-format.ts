@@ -1,4 +1,4 @@
-import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 export interface BaseQueryFormat {
 	/** used to select the query type :) */
@@ -14,5 +14,5 @@ export interface BaseQueryResult {
 }
 
 export interface BasicQueryData {
-	readonly analyzer: FlowrAnalysisProvider;
+	readonly analyzer: ReadonlyFlowrAnalysisProvider;
 }

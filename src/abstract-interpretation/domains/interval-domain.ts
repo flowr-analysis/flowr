@@ -24,7 +24,7 @@ type IntervalLift = IntervalValue | IntervalBottom;
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class IntervalDomain<Value extends IntervalLift = IntervalLift>
-implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, IntervalBottom, Value>, SatisfiableDomain<number> {
+implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Value>, SatisfiableDomain<number> {
 	private readonly _value: Value;
 
 	constructor(value: Value) {
@@ -39,6 +39,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		}
 	}
 
+	public create(value: IntervalLift): this;
 	public create(value: IntervalLift): IntervalDomain {
 		return new IntervalDomain(value);
 	}
@@ -64,25 +65,27 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		return new IntervalDomain([Math.min(...concrete), Math.max(...concrete)]);
 	}
 
+	public top(): this & IntervalDomain<IntervalTop>;
 	public top(): IntervalDomain<IntervalTop> {
 		return IntervalDomain.top();
 	}
 
+	public bottom(): this & IntervalDomain<IntervalBottom>;
 	public bottom(): IntervalDomain<IntervalBottom> {
 		return IntervalDomain.bottom();
 	}
 
-	public equals(other: IntervalDomain): boolean {
+	public equals(other: this): boolean {
 		return this.value === other.value || (this.isValue() && other.isValue() && this.value[0] === other.value[0] && this.value[1] === other.value[1]);
 	}
 
-	public leq(other: IntervalDomain): boolean {
+	public leq(other: this): boolean {
 		return this.value === Bottom || (other.isValue() && other.value[0] <= this.value[0] && this.value[1] <= other.value[1]);
 	}
 
-	public join(...values: readonly IntervalDomain[]): IntervalDomain;
-	public join(...values: readonly IntervalLift[]): IntervalDomain;
-	public join(...values: readonly IntervalDomain[] | readonly IntervalLift[]): IntervalDomain {
+	public join(...values: readonly this[]): this;
+	public join(...values: readonly IntervalLift[]): this;
+	public join(...values: readonly this[] | readonly IntervalLift[]): this {
 		let result: IntervalLift = this.value;
 
 		for(const other of values) {
@@ -99,9 +102,9 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		return this.create(result);
 	}
 
-	public meet(...values: readonly IntervalDomain[]): IntervalDomain;
-	public meet(...values: readonly IntervalLift[]): IntervalDomain;
-	public meet(...values: readonly IntervalDomain[] | readonly IntervalLift[]): IntervalDomain {
+	public meet(...values: readonly this[]): this;
+	public meet(...values: readonly IntervalLift[]): this;
+	public meet(...values: readonly this[] | readonly IntervalLift[]): this {
 		let result: IntervalLift = this.value;
 
 		for(const other of values) {
@@ -118,7 +121,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		return this.create(result);
 	}
 
-	public widen(other: IntervalDomain): IntervalDomain {
+	public widen(other: this): this {
 		if(this.value === Bottom) {
 			return this.create(other.value);
 		} else if(other.value === Bottom) {
@@ -131,7 +134,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		}
 	}
 
-	public narrow(other: IntervalDomain): IntervalDomain {
+	public narrow(other: this): this {
 		if(this.value === Bottom || other.value === Bottom) {
 			return this.bottom();
 		} else if(Math.max(this.value[0], other.value[0]) > Math.min(this.value[1], other.value[1])) {
@@ -157,6 +160,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 		return set;
 	}
 
+	public abstract(concrete: ReadonlySet<number> | typeof Top): this;
 	public abstract(concrete: ReadonlySet<number> | typeof Top): IntervalDomain {
 		return IntervalDomain.abstract(concrete);
 	}
@@ -207,7 +211,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 	/**
 	 * Adds another abstract value to the current abstract value by adding the two lower and upper bounds, respectively.
 	 */
-	public add(other: IntervalDomain | IntervalLift): IntervalDomain {
+	public add(other: this | IntervalLift): this {
 		const otherValue = other instanceof IntervalDomain ? other.value : other;
 
 		if(this.value === Bottom || otherValue === Bottom) {
@@ -220,7 +224,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 	/**
 	 * Subtracts another abstract value from the current abstract value by subtracting the two lower and upper bounds from each other, respectively.
 	 */
-	public subtract(other: IntervalDomain | IntervalLift): IntervalDomain {
+	public subtract(other: this | IntervalLift): this {
 		const otherValue = other instanceof IntervalDomain ? other.value : other;
 
 		if(this.value === Bottom || otherValue === Bottom) {
@@ -233,7 +237,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 	/**
 	 * Creates the minimum between the current abstract value and another abstract value by creating the minimum of the two lower and upper bounds, respectively.
 	 */
-	public min(other: IntervalDomain | IntervalLift): IntervalDomain {
+	public min(other: this | IntervalLift): this {
 		const otherValue = other instanceof IntervalDomain ? other.value : other;
 
 		if(this.value === Bottom || otherValue === Bottom) {
@@ -246,7 +250,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 	/**
 	 * Creates the maximum between the current abstract value and another abstract value by creating the maximum of the two lower and upper bounds, respectively.
 	 */
-	public max(other: IntervalDomain | IntervalLift): IntervalDomain {
+	public max(other: this | IntervalLift): this {
 		const otherValue = other instanceof IntervalDomain ? other.value : other;
 
 		if(this.value === Bottom || otherValue === Bottom) {
@@ -259,7 +263,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 	/**
 	 * Extends the lower bound of the current abstract value down to -∞.
 	 */
-	public extendDown(): IntervalDomain {
+	public extendDown(): this {
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {
@@ -270,7 +274,7 @@ implements AbstractDomain<IntervalDomain, number, IntervalValue, IntervalTop, In
 	/**
 	 * Extends the upper bound of the current abstract value up to +∞.
 	 */
-	public extendUp(): IntervalDomain {
+	public extendUp(): this {
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {

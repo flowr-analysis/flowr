@@ -14,24 +14,23 @@ export type ConcreteProduct<Product extends AbstractProduct> = {
  * A product abstract domain as named Cartesian product of sub abstract domains.
  * The sub abstract domains are represented a record mapping property names to abstract domains.
  * The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as mapping every sub abstract domain to Top.
- * @template Domain  - Type of the implemented product domain
  * @template Product - Type of the abstract product of the product domain mapping property names to abstract domains
  */
-export abstract class ProductDomain<Domain extends ProductDomain<Domain, Product>, Product extends AbstractProduct>
-implements AbstractDomain<Domain, ConcreteProduct<Product>, Product, Product, Product> {
+export abstract class ProductDomain<Product extends AbstractProduct>
+implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 	private readonly _value: Product;
 
 	constructor(value: Product) {
 		this._value = value;
 	}
 
-	public abstract create(value: Product): Domain;
+	public abstract create(value: Product): this;
 
 	public get value(): Product {
 		return this._value;
 	}
 
-	public bottom(): Domain {
+	public bottom(): this {
 		const result = this.create(this.value);
 
 		for(const key in result.value) {
@@ -40,7 +39,7 @@ implements AbstractDomain<Domain, ConcreteProduct<Product>, Product, Product, Pr
 		return result;
 	}
 
-	public top(): Domain {
+	public top(): this {
 		const result = this.create(this.value);
 
 		for(const key in result.value) {
@@ -49,7 +48,7 @@ implements AbstractDomain<Domain, ConcreteProduct<Product>, Product, Product, Pr
 		return result;
 	}
 
-	public equals(other: Domain): boolean {
+	public equals(other: this): boolean {
 		if(this.value === other.value) {
 			return true;
 		}
@@ -61,7 +60,7 @@ implements AbstractDomain<Domain, ConcreteProduct<Product>, Product, Product, Pr
 		return true;
 	}
 
-	public leq(other: Domain): boolean {
+	public leq(other: this): boolean {
 		if(this.value === other.value) {
 			return true;
 		}
@@ -73,42 +72,42 @@ implements AbstractDomain<Domain, ConcreteProduct<Product>, Product, Product, Pr
 		return true;
 	}
 
-	public join(...values: readonly Domain[]): Domain {
+	public join(...values: readonly this[]): this {
 		const result = this.create(this.value);
 
 		for(const value of values) {
 			for(const key in result.value) {
-				result._value[key] = result.value[key].join(value.value[key]) as Product[Extract<keyof Product, string>];
+				result._value[key] = result.value[key].join(value.value[key]);
 			}
 		}
 		return result;
 	}
 
-	public meet(...values: readonly Domain[]): Domain {
+	public meet(...values: readonly this[]): this {
 		const result = this.create(this.value);
 
 		for(const value of values) {
 			for(const key in result.value) {
-				result._value[key] = result.value[key].meet(value.value[key]) as Product[Extract<keyof Product, string>];
+				result._value[key] = result.value[key].meet(value.value[key]);
 			}
 		}
 		return result;
 	}
 
-	public widen(other: Domain): Domain {
+	public widen(other: this): this {
 		const result = this.create(this.value);
 
 		for(const key in result.value) {
-			result._value[key] = result.value[key].widen(other.value[key]) as Product[Extract<keyof Product, string>];
+			result._value[key] = result.value[key].widen(other.value[key]);
 		}
 		return result;
 	}
 
-	public narrow(other: Domain): Domain {
+	public narrow(other: this): this {
 		const result = this.create(this.value);
 
 		for(const key in result.value) {
-			result._value[key] = result.value[key].narrow(other.value[key]) as Product[Extract<keyof Product, string>];
+			result._value[key] = result.value[key].narrow(other.value[key]);
 		}
 		return result;
 	}
@@ -137,7 +136,7 @@ implements AbstractDomain<Domain, ConcreteProduct<Product>, Product, Product, Pr
 		return result;
 	}
 
-	public abstract(concrete: ReadonlySet<ConcreteProduct<Product>> | typeof Top): Domain {
+	public abstract(concrete: ReadonlySet<ConcreteProduct<Product>> | typeof Top): this {
 		if(concrete === Top) {
 			return this.top();
 		}
@@ -145,7 +144,7 @@ implements AbstractDomain<Domain, ConcreteProduct<Product>, Product, Product, Pr
 
 		for(const key in result.value) {
 			const concreteValues = new Set(concrete.values().map(value => value[key]));
-			result._value[key] = result.value[key].abstract(concreteValues) as Product[Extract<keyof Product, string>];
+			result._value[key] = result.value[key].abstract(concreteValues);
 		}
 		return result;
 	}
@@ -158,15 +157,15 @@ implements AbstractDomain<Domain, ConcreteProduct<Product>, Product, Product, Pr
 		return '(' + Object.entries(this.value).map(([key, value]) => `${key}: ${value.toString()}`).join(', ') + ')';
 	}
 
-	public isTop(): this is Domain {
+	public isTop(): this is this {
 		return Object.values(this.value).every(value => value.isTop());
 	}
 
-	public isBottom(): this is Domain {
+	public isBottom(): this is this {
 		return Object.values(this.value).every(value => value.isBottom());
 	}
 
-	public isValue(): this is Domain {
+	public isValue(): this is this {
 		return true;
 	}
 }

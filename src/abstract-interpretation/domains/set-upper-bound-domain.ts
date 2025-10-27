@@ -23,7 +23,7 @@ type SetUpperBoundLift<T> = SetUpperBoundValue<T> | SetUpperBoundTop | SetUpperB
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUpperBoundLift<T>>
-implements AbstractDomain<SetUpperBoundDomain<T>, ReadonlySet<T>, SetUpperBoundValue<T>, SetUpperBoundTop, SetUpperBoundBottom, Value>, SatisfiableDomain<ReadonlySet<T>> {
+implements AbstractDomain<ReadonlySet<T>, SetUpperBoundValue<T>, SetUpperBoundTop, SetUpperBoundBottom, Value>, SatisfiableDomain<ReadonlySet<T>> {
 	public readonly limit:    number;
 	private readonly _value:  Value;
 	private readonly setType: typeof Set<T>;
@@ -46,6 +46,7 @@ implements AbstractDomain<SetUpperBoundDomain<T>, ReadonlySet<T>, SetUpperBoundV
 		this.setType = setType;
 	}
 
+	public create(value: SetUpperBoundLift<T> | T[]): this;
 	public create(value: SetUpperBoundLift<T> | T[]): SetUpperBoundDomain<T> {
 		return new SetUpperBoundDomain(value, this.limit, this.setType);
 	}
@@ -71,26 +72,28 @@ implements AbstractDomain<SetUpperBoundDomain<T>, ReadonlySet<T>, SetUpperBoundV
 		return new SetUpperBoundDomain(concrete.values().reduce((result, set) => result.union(set)), limit, setType);
 	}
 
+	public top(): this & SetUpperBoundDomain<T, SetUpperBoundTop>;
 	public top(): SetUpperBoundDomain<T, SetUpperBoundTop> {
 		return SetUpperBoundDomain.top(this.limit, this.setType);
 	}
 
+	public bottom(): this & SetUpperBoundDomain<T, SetUpperBoundBottom>;
 	public bottom(): SetUpperBoundDomain<T, SetUpperBoundBottom> {
 		return SetUpperBoundDomain.bottom(this.limit, this.setType);
 	}
 
-	public equals(other: SetUpperBoundDomain<T>): boolean {
+	public equals(other: this): boolean {
 		return this.value === other.value || (this.isValue() && other.isValue() && setEquals(this.value, other.value));
 	}
 
-	public leq(other: SetUpperBoundDomain<T>): boolean {
+	public leq(other: this): boolean {
 		return this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value.isSubsetOf(other.value));
 	}
 
-	public join(...values: readonly SetUpperBoundDomain<T>[]): SetUpperBoundDomain<T>;
-	public join(...values: readonly SetUpperBoundLift<T>[]): SetUpperBoundDomain<T>;
-	public join(...values: readonly (T[] | typeof Top | typeof Bottom)[]): SetUpperBoundDomain<T>;
-	public join(...values: readonly SetUpperBoundDomain<T>[] | readonly (SetUpperBoundLift<T> | T[])[]): SetUpperBoundDomain<T> {
+	public join(...values: readonly this[]): this;
+	public join(...values: readonly SetUpperBoundLift<T>[]): this;
+	public join(...values: readonly (T[] | typeof Top | typeof Bottom)[]): this;
+	public join(...values: readonly this[] | readonly (SetUpperBoundLift<T> | T[])[]): this {
 		let result: SetUpperBoundLift<T> = this.value;
 
 		for(const other of values) {
@@ -111,10 +114,10 @@ implements AbstractDomain<SetUpperBoundDomain<T>, ReadonlySet<T>, SetUpperBoundV
 		return this.create(result);
 	}
 
-	public meet(...values: readonly SetUpperBoundDomain<T>[]): SetUpperBoundDomain<T>;
-	public meet(...values: readonly SetUpperBoundLift<T>[]): SetUpperBoundDomain<T>;
-	public meet(...values: readonly (T[] | typeof Top | typeof Bottom)[]): SetUpperBoundDomain<T>;
-	public meet(...values: readonly SetUpperBoundDomain<T>[] | readonly (SetUpperBoundLift<T> | T[])[]): SetUpperBoundDomain<T> {
+	public meet(...values: readonly this[]): this;
+	public meet(...values: readonly SetUpperBoundLift<T>[]): this;
+	public meet(...values: readonly (T[] | typeof Top | typeof Bottom)[]): this;
+	public meet(...values: readonly this[] | readonly (SetUpperBoundLift<T> | T[])[]): this {
 		let result: SetUpperBoundLift<T> = this.value;
 
 		for(const other of values) {
@@ -137,7 +140,7 @@ implements AbstractDomain<SetUpperBoundDomain<T>, ReadonlySet<T>, SetUpperBoundV
 	/**
 	 * Subtracts another abstract value from the current abstract value by removing all elements of the other abstract value from the current abstract value.
 	 */
-	public subtract(other: SetUpperBoundDomain<T> | SetUpperBoundLift<T> | T[]): SetUpperBoundDomain<T> {
+	public subtract(other: this | SetUpperBoundLift<T> | T[]): this {
 		const otherValue = other instanceof SetUpperBoundDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
 
 		if(this.value === Top) {
@@ -151,7 +154,7 @@ implements AbstractDomain<SetUpperBoundDomain<T>, ReadonlySet<T>, SetUpperBoundV
 		}
 	}
 
-	public widen(other: SetUpperBoundDomain<T>): SetUpperBoundDomain<T> {
+	public widen(other: this): this {
 		if(this.value === Bottom) {
 			return this.create(other.value);
 		} else if(other.value === Bottom) {
@@ -160,7 +163,7 @@ implements AbstractDomain<SetUpperBoundDomain<T>, ReadonlySet<T>, SetUpperBoundV
 		return other.leq(this) ? this.create(this.value) : this.top();
 	}
 
-	public narrow(other: SetUpperBoundDomain<T>): SetUpperBoundDomain<T> {
+	public narrow(other: this): this {
 		if(this.value === Bottom || other.value === Bottom) {
 			return this.bottom();
 		}
@@ -185,6 +188,7 @@ implements AbstractDomain<SetUpperBoundDomain<T>, ReadonlySet<T>, SetUpperBoundV
 		return new Set(subsets);
 	}
 
+	public abstract(concrete: ReadonlySet<ReadonlySet<T>> | typeof Top): this;
 	public abstract(concrete: ReadonlySet<ReadonlySet<T>> | typeof Top): SetUpperBoundDomain<T> {
 		return SetUpperBoundDomain.abstract(concrete, this.limit, this.setType);
 	}

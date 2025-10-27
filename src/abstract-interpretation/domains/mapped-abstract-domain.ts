@@ -8,19 +8,18 @@ type ConcreteMap<Key, Domain extends AnyAbstractDomain> = ReadonlyMap<Key, Concr
 /**
  * A mapped abstract domain as mapping of keys to abstract values of an abstract domain.
  * The Bottom element is defined as empty mapping and the Top element is defined as mapping every existing key to Top.
- * @template MapDomain - Type of the implemented mapped abstract domain
  * @template Key       - Type of the keys of the mapping to abstract values
  * @template Domain    - Type of the abstract domain to map the keys to
  */
-export abstract class MappedAbstractDomain<MapDomain extends MappedAbstractDomain<MapDomain, Key, Domain>, Key, Domain extends AnyAbstractDomain>
-implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, ReadonlyMap<Key, Domain>, ReadonlyMap<Key, Domain>, ReadonlyMap<Key, Domain>> {
+export abstract class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain>
+implements AbstractDomain<ConcreteMap<Key, Domain>, ReadonlyMap<Key, Domain>, ReadonlyMap<Key, Domain>, ReadonlyMap<Key, Domain>> {
 	private readonly _value: Map<Key, Domain>;
 
 	constructor(value: ReadonlyMap<Key, Domain>) {
 		this._value = new Map(value);
 	}
 
-	public abstract create(value: ReadonlyMap<Key, Domain>): MapDomain;
+	public abstract create(value: ReadonlyMap<Key, Domain>): this;
 
 	public get value(): ReadonlyMap<Key, Domain> {
 		return this._value;
@@ -38,11 +37,11 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, ReadonlyMap<Key, 
 		this._value.set(key, value);
 	}
 
-	public bottom(): MapDomain {
+	public bottom(): this {
 		return this.create(new Map<Key, Domain>());
 	}
 
-	public top(): MapDomain {
+	public top(): this {
 		const result = this.create(this.value);
 
 		for(const [key, value] of result.value) {
@@ -51,7 +50,7 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, ReadonlyMap<Key, 
 		return result;
 	}
 
-	public equals(other: MapDomain): boolean {
+	public equals(other: this): boolean {
 		if(this.value === other.value) {
 			return true;
 		} else if(this.value.size !== other.value.size) {
@@ -67,7 +66,7 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, ReadonlyMap<Key, 
 		return true;
 	}
 
-	public leq(other: MapDomain): boolean {
+	public leq(other: this): boolean {
 		if(this.value === other.value) {
 			return true;
 		} else if(this.value.size > other.value.size) {
@@ -83,7 +82,7 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, ReadonlyMap<Key, 
 		return true;
 	}
 
-	public join(...values: readonly MapDomain[]): MapDomain {
+	public join(...values: readonly this[]): this {
 		const result = this.create(this.value);
 
 		for(const other of values) {
@@ -93,14 +92,14 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, ReadonlyMap<Key, 
 				if(currValue === undefined) {
 					result._value.set(key, value);
 				} else {
-					result._value.set(key, currValue.join(value) as Domain);
+					result._value.set(key, currValue.join(value));
 				}
 			}
 		}
 		return result;
 	}
 
-	public meet(...values: readonly MapDomain[]): MapDomain {
+	public meet(...values: readonly this[]): this {
 		const result = this.create(this.value);
 
 		for(const other of values) {
@@ -113,14 +112,14 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, ReadonlyMap<Key, 
 				const currValue = result.get(key);
 
 				if(currValue !== undefined) {
-					result._value.set(key, currValue.meet(value) as Domain);
+					result._value.set(key, currValue.meet(value));
 				}
 			}
 		}
 		return result;
 	}
 
-	public widen(other: MapDomain): MapDomain {
+	public widen(other: this): this {
 		const result = this.create(this.value);
 
 		for(const [key, value] of other.value) {
@@ -129,13 +128,13 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, ReadonlyMap<Key, 
 			if(currValue === undefined) {
 				result._value.set(key, value);
 			} else {
-				result._value.set(key, currValue.widen(value) as Domain);
+				result._value.set(key, currValue.widen(value));
 			}
 		}
 		return result;
 	}
 
-	public narrow(other: MapDomain): MapDomain {
+	public narrow(other: this): this {
 		const result = this.create(this.value);
 
 		for(const [key] of this.value) {
@@ -147,7 +146,7 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, ReadonlyMap<Key, 
 			const currValue = result.get(key);
 
 			if(currValue !== undefined) {
-				result._value.set(key, currValue.narrow(value) as Domain);
+				result._value.set(key, currValue.narrow(value));
 			}
 		}
 		return result;
@@ -182,7 +181,7 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, ReadonlyMap<Key, 
 		return states;
 	}
 
-	public abstract(concrete: ReadonlySet<ConcreteMap<Key, Domain>> | typeof Top): MapDomain {
+	public abstract(concrete: ReadonlySet<ConcreteMap<Key, Domain>> | typeof Top): this {
 		const entry = [...this.value.values()][0];
 
 		if(concrete === Top || entry === undefined) {
@@ -204,7 +203,7 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, ReadonlyMap<Key, 
 		const result = new Map<Key, Domain>();
 
 		for(const [key, values] of mappings) {
-			result.set(key, entry.abstract(values) as Domain);
+			result.set(key, entry.abstract(values));
 		}
 		return this.create(result);
 	}
@@ -217,15 +216,15 @@ implements AbstractDomain<MapDomain, ConcreteMap<Key, Domain>, ReadonlyMap<Key, 
 		return '(' + this.value.entries().toArray().map(([key, value]) => `${domainElementToString(key)} -> ${value.toString()}`).join(', ') + ')';
 	}
 
-	public isTop(): this is MapDomain {
+	public isTop(): this is this {
 		return this.value.size > 0 && this.value.values().every(value => value.isTop());
 	}
 
-	public isBottom(): this is MapDomain {
+	public isBottom(): this is this {
 		return this.value.size === 0;
 	}
 
-	public isValue(): this is MapDomain {
+	public isValue(): this is this {
 		return true;
 	}
 }

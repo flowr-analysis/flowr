@@ -24,7 +24,7 @@ type BoundedSetLift<T> = BoundedSetValue<T> | BoundedSetTop | BoundedSetBottom;
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLift<T>>
-implements AbstractDomain<BoundedSetDomain<T>, T, BoundedSetValue<T>, BoundedSetTop, BoundedSetBottom, Value>, SatisfiableDomain<T> {
+implements AbstractDomain<T, BoundedSetValue<T>, BoundedSetTop, BoundedSetBottom, Value>, SatisfiableDomain<T> {
 	public readonly limit:    number;
 	private readonly _value:  Value;
 	private readonly setType: typeof Set<T>;
@@ -47,6 +47,7 @@ implements AbstractDomain<BoundedSetDomain<T>, T, BoundedSetValue<T>, BoundedSet
 		this.setType = setType;
 	}
 
+	public create(value: BoundedSetLift<T> | T[]): this;
 	public create(value: BoundedSetLift<T> | T[]): BoundedSetDomain<T> {
 		return new BoundedSetDomain(value, this.limit, this.setType);
 	}
@@ -67,32 +68,34 @@ implements AbstractDomain<BoundedSetDomain<T>, T, BoundedSetValue<T>, BoundedSet
 		return new BoundedSetDomain(concrete, limit, setType);
 	}
 
+	public top(): this & BoundedSetDomain<T, BoundedSetTop>;
 	public top(): BoundedSetDomain<T, BoundedSetTop> {
 		return BoundedSetDomain.top(this.limit, this.setType);
 	}
 
+	public bottom(): this & BoundedSetDomain<T, BoundedSetBottom>;
 	public bottom(): BoundedSetDomain<T, BoundedSetBottom> {
 		return BoundedSetDomain.bottom(this.limit, this.setType);
 	}
 
-	public equals(other: BoundedSetDomain<T>): boolean {
+	public equals(other: this): boolean {
 		return this.value === other.value || (this.isValue() && other.isValue() && setEquals(this.value, other.value));
 	}
 
-	public leq(other: BoundedSetDomain<T>): boolean {
+	public leq(other: this): boolean {
 		return other.value === Top || (this.isValue() && this.value.isSubsetOf(other.value));
 	}
 
-	public join(...values: readonly BoundedSetDomain<T>[]): BoundedSetDomain<T>;
-	public join(...values: readonly BoundedSetLift<T>[]): BoundedSetDomain<T>;
-	public join(...values: readonly (T[] | typeof Top | never[])[]): BoundedSetDomain<T>;
-	public join(...values: readonly BoundedSetDomain<T>[] | readonly (BoundedSetLift<T> | T[])[]): BoundedSetDomain<T> {
+	public join(...values: readonly this[]): this;
+	public join(...values: readonly BoundedSetLift<T>[]): this;
+	public join(...values: readonly (T[] | typeof Top | never[])[]): this;
+	public join(...values: readonly this[] | readonly (BoundedSetLift<T> | T[])[]): this {
 		let result: BoundedSetLift<T> = this.value;
 
 		for(const other of values) {
 			const otherValue = other instanceof BoundedSetDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
 
-			if(result === Top ||otherValue === Top) {
+			if(result === Top || otherValue === Top) {
 				result = Top;
 				break;
 			} else {
@@ -103,10 +106,10 @@ implements AbstractDomain<BoundedSetDomain<T>, T, BoundedSetValue<T>, BoundedSet
 		return this.create(result);
 	}
 
-	public meet(...values: readonly BoundedSetDomain<T>[]): BoundedSetDomain<T>;
-	public meet(...values: readonly BoundedSetLift<T>[]): BoundedSetDomain<T>;
-	public meet(...values: readonly (T[] | typeof Top | never[])[]): BoundedSetDomain<T>;
-	public meet(...values: readonly BoundedSetDomain<T>[] | readonly (BoundedSetLift<T> | T[])[]): BoundedSetDomain<T> {
+	public meet(...values: readonly this[]): this;
+	public meet(...values: readonly BoundedSetLift<T>[]): this;
+	public meet(...values: readonly (T[] | typeof Top | never[])[]): this;
+	public meet(...values: readonly this[] | readonly (BoundedSetLift<T> | T[])[]): this {
 		let result: BoundedSetLift<T> = this.value;
 
 		for(const other of values) {
@@ -126,7 +129,7 @@ implements AbstractDomain<BoundedSetDomain<T>, T, BoundedSetValue<T>, BoundedSet
 	/**
 	 * Subtracts another abstract value from the current abstract value by removing all elements of the other abstract value from the current abstract value.
 	 */
-	public subtract(other: BoundedSetDomain<T> | BoundedSetLift<T> | T[]): BoundedSetDomain<T> {
+	public subtract(other: this | BoundedSetLift<T> | T[]): this {
 		const otherValue = other instanceof BoundedSetDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
 
 		if(this.value === Top) {
@@ -138,11 +141,11 @@ implements AbstractDomain<BoundedSetDomain<T>, T, BoundedSetValue<T>, BoundedSet
 		}
 	}
 
-	public widen(other: BoundedSetDomain<T>): BoundedSetDomain<T> {
+	public widen(other: this): this {
 		return other.leq(this) ? this.create(this.value) : this.top();
 	}
 
-	public narrow(other: BoundedSetDomain<T>): BoundedSetDomain<T> {
+	public narrow(other: this): this {
 		return this.isTop() ? this.create(other.value) : this.create(this.value);
 	}
 
@@ -150,6 +153,7 @@ implements AbstractDomain<BoundedSetDomain<T>, T, BoundedSetValue<T>, BoundedSet
 		return this.value === Top || this.value.size > limit ? Top : this.value;
 	}
 
+	public abstract(concrete: ReadonlySet<T> | typeof Top): this;
 	public abstract(concrete: ReadonlySet<T> | typeof Top): BoundedSetDomain<T> {
 		return BoundedSetDomain.abstract(concrete, this.limit, this.setType);
 	}

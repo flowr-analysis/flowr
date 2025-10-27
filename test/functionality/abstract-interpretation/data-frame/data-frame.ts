@@ -302,7 +302,7 @@ function assertDomainMatches(
 	}
 }
 
-function assertPropertyMatches<K extends keyof AbstractDataFrameShape, T extends AbstractDataFrameShape[K] & AnyAbstractDomain>(
+function assertPropertyMatches<K extends keyof AbstractDataFrameShape, T extends AnyAbstractDomain>(
 	type: K,
 	inferred: T,
 	expected: T,

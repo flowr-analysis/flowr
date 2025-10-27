@@ -18,7 +18,7 @@ export type DataFrameShapeProperty<Property extends keyof AbstractDataFrameShape
 /**
  * The data frame abstract domain as product domain of a column names domain, column count domain, and row count domain.
  */
-export class DataFrameDomain extends ProductDomain<DataFrameDomain, AbstractDataFrameShape> {
+export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 	constructor(value: AbstractDataFrameShape, maxColNames?: number) {
 		super({
 			colnames: new SetUpperBoundDomain(value.colnames.value, maxColNames ?? value.colnames.limit),
@@ -27,6 +27,7 @@ export class DataFrameDomain extends ProductDomain<DataFrameDomain, AbstractData
 		});
 	}
 
+	public create(value: AbstractDataFrameShape): this;
 	public create(value: AbstractDataFrameShape): DataFrameDomain {
 		return new DataFrameDomain(value, this.maxColNames);
 	}
@@ -87,7 +88,8 @@ export class DataFrameDomain extends ProductDomain<DataFrameDomain, AbstractData
 /**
  * The data frame state abstract domain as state domain mapping AST node IDs to inferred abstract data frame shapes.
  */
-export class DataFrameStateDomain extends StateAbstractDomain<DataFrameStateDomain, DataFrameDomain> {
+export class DataFrameStateDomain extends StateAbstractDomain<DataFrameDomain> {
+	public create(value: ReadonlyMap<NodeId, DataFrameDomain>): this;
 	public create(value: ReadonlyMap<NodeId, DataFrameDomain>): DataFrameStateDomain {
 		return new DataFrameStateDomain(value);
 	}

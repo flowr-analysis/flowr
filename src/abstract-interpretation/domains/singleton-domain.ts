@@ -20,13 +20,14 @@ type SingletonLift<T> = SingletonValue<T> | SingletonTop | SingletonBottom;
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T>>
-implements AbstractDomain<SingletonDomain<T>, T, SingletonValue<T>, SingletonTop, SingletonBottom, Value>, SatisfiableDomain<T> {
+implements AbstractDomain<T, SingletonValue<T>, SingletonTop, SingletonBottom, Value>, SatisfiableDomain<T> {
 	private readonly _value: Value;
 
 	constructor(value: Value) {
 		this._value = value;
 	}
 
+	public create(value: SingletonLift<T>): this;
 	public create(value: SingletonLift<T>): SingletonDomain<T> {
 		return new SingletonDomain(value);
 	}
@@ -52,25 +53,27 @@ implements AbstractDomain<SingletonDomain<T>, T, SingletonValue<T>, SingletonTop
 		return new SingletonDomain([...concrete][0]);
 	}
 
+	public top(): this & SingletonDomain<T, SingletonTop>;
 	public top(): SingletonDomain<T, SingletonTop> {
 		return SingletonDomain.top();
 	}
 
+	public bottom(): this & SingletonDomain<T, SingletonBottom>;
 	public bottom(): SingletonDomain<T, SingletonBottom> {
 		return SingletonDomain.bottom();
 	}
 
-	public equals(other: SingletonDomain<T>): boolean {
+	public equals(other: this): boolean {
 		return this.value === other.value;
 	}
 
-	public leq(other: SingletonDomain<T>): boolean {
+	public leq(other: this): boolean {
 		return this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value <= other.value);
 	}
 
-	public join(...values: readonly SingletonDomain<T>[]): SingletonDomain<T>;
-	public join(...values: readonly SingletonLift<T>[]): SingletonDomain<T>;
-	public join(...values: readonly SingletonDomain<T>[] | readonly SingletonLift<T>[]): SingletonDomain<T> {
+	public join(...values: readonly this[]): this;
+	public join(...values: readonly SingletonLift<T>[]): this;
+	public join(...values: readonly this[] | readonly SingletonLift<T>[]): this {
 		let result: SingletonLift<T> = this.value;
 
 		for(const other of values) {
@@ -88,9 +91,9 @@ implements AbstractDomain<SingletonDomain<T>, T, SingletonValue<T>, SingletonTop
 		return this.create(result);
 	}
 
-	public meet(...values: readonly SingletonDomain<T>[]): SingletonDomain<T>;
-	public meet(...values: readonly SingletonLift<T>[]): SingletonDomain<T>;
-	public meet(...values: readonly SingletonDomain<T>[] | readonly SingletonLift<T>[]): SingletonDomain<T> {
+	public meet(...values: readonly this[]): this;
+	public meet(...values: readonly SingletonLift<T>[]): this;
+	public meet(...values: readonly this[] | readonly SingletonLift<T>[]): this {
 		let result: SingletonLift<T> = this.value;
 
 		for(const other of values) {
@@ -108,11 +111,11 @@ implements AbstractDomain<SingletonDomain<T>, T, SingletonValue<T>, SingletonTop
 		return this.create(result);
 	}
 
-	public widen(other: SingletonDomain<T>): SingletonDomain<T> {
+	public widen(other: this): this {
 		return this.join(other);  // Using join for widening as the lattice is finite
 	}
 
-	public narrow(other: SingletonDomain<T>): SingletonDomain<T> {
+	public narrow(other: this): this {
 		return this.meet(other);  // Using meet for narrowing as the lattice is finite
 	}
 
@@ -125,6 +128,7 @@ implements AbstractDomain<SingletonDomain<T>, T, SingletonValue<T>, SingletonTop
 		return new Set([this.value as T]);
 	}
 
+	public abstract(concrete: ReadonlySet<T> | typeof Top): this;
 	public abstract(concrete: ReadonlySet<T> | typeof Top): SingletonDomain<T> {
 		return SingletonDomain.abstract(concrete);
 	}

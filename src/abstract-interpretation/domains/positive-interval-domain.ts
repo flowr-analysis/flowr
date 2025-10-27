@@ -27,6 +27,7 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 		}
 	}
 
+	public create(value: PosIntervalLift): this;
 	public create(value: PosIntervalLift): PosIntervalDomain {
 		return new PosIntervalDomain(value);
 	}
@@ -48,17 +49,19 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 		return new PosIntervalDomain([Math.min(...concrete), Math.max(...concrete)]);
 	}
 
+	public top(): this & PosIntervalDomain<PosIntervalTop>;
 	public top(): PosIntervalDomain<PosIntervalTop> {
 		return PosIntervalDomain.top();
 	}
 
+	public bottom(): this & PosIntervalDomain<PosIntervalBottom>;
 	public bottom(): PosIntervalDomain<PosIntervalBottom> {
 		return PosIntervalDomain.bottom();
 	}
 
-	public join(...values: readonly PosIntervalDomain[]): PosIntervalDomain;
-	public join(...values: readonly PosIntervalLift[]): PosIntervalDomain;
-	public join(...values: readonly PosIntervalDomain[] | readonly PosIntervalLift[]): PosIntervalDomain {
+	public join(...values: readonly this[]): this;
+	public join(...values: readonly PosIntervalLift[]): this;
+	public join(...values: readonly this[] | readonly PosIntervalLift[]): this {
 		let result: PosIntervalLift = this.value;
 
 		for(const other of values) {
@@ -75,9 +78,9 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 		return this.create(result);
 	}
 
-	public meet(...values: readonly PosIntervalDomain[]): PosIntervalDomain;
-	public meet(...values: readonly PosIntervalLift[]): PosIntervalDomain;
-	public meet(...values: readonly PosIntervalDomain[] | readonly PosIntervalLift[]): PosIntervalDomain {
+	public meet(...values: readonly this[]): this;
+	public meet(...values: readonly PosIntervalLift[]): this;
+	public meet(...values: readonly this[] | readonly PosIntervalLift[]): this {
 		let result: PosIntervalLift = this.value;
 
 		for(const other of values) {
@@ -94,7 +97,7 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 		return this.create(result);
 	}
 
-	public widen(other: PosIntervalDomain): PosIntervalDomain {
+	public widen(other: this): this {
 		if(this.value === Bottom) {
 			return this.create(other.value);
 		} else if(other.value === Bottom) {
@@ -107,7 +110,7 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 		}
 	}
 
-	public narrow(other: PosIntervalDomain): PosIntervalDomain {
+	public narrow(other: this): this {
 		if(this.value === Bottom || other.value === Bottom) {
 			return this.bottom();
 		} else if(Math.max(this.value[0], other.value[0]) > Math.min(this.value[1], other.value[1])) {
@@ -119,11 +122,12 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 		]);
 	}
 
+	public abstract(concrete: ReadonlySet<number> | typeof Top): this;
 	public abstract(concrete: ReadonlySet<number> | typeof Top): PosIntervalDomain {
 		return PosIntervalDomain.abstract(concrete);
 	}
 
-	public add(other: PosIntervalDomain | PosIntervalLift): PosIntervalDomain {
+	public add(other: this | PosIntervalLift): this {
 		const otherValue = other instanceof PosIntervalDomain ? other.value : other;
 
 		if(this.value === Bottom || otherValue === Bottom) {
@@ -133,7 +137,7 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 		}
 	}
 
-	public subtract(other: PosIntervalDomain | PosIntervalLift): PosIntervalDomain {
+	public subtract(other: this | PosIntervalLift): this {
 		const otherValue = other instanceof PosIntervalDomain ? other.value : other;
 
 		if(this.value === Bottom || otherValue === Bottom) {
@@ -143,7 +147,7 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 		}
 	}
 
-	public min(other: PosIntervalDomain | PosIntervalLift): PosIntervalDomain {
+	public min(other: this | PosIntervalLift): this {
 		const otherValue = other instanceof PosIntervalDomain ? other.value : other;
 
 		if(this.value === Bottom || otherValue === Bottom) {
@@ -153,7 +157,7 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 		}
 	}
 
-	public max(other: PosIntervalDomain | PosIntervalLift): PosIntervalDomain {
+	public max(other: this | PosIntervalLift): this {
 		const otherValue = other instanceof PosIntervalDomain ? other.value : other;
 
 		if(this.value === Bottom || otherValue === Bottom) {
@@ -166,7 +170,7 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 	/**
 	 * Extends the lower bound of the current abstract value down to 0.
 	 */
-	public extendDown(): PosIntervalDomain {
+	public extendDown(): this {
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {
@@ -174,7 +178,7 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 		}
 	}
 
-	public extendUp(): PosIntervalDomain {
+	public extendUp(): this {
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {

@@ -7,7 +7,7 @@ import type { Query, QueryResults, SupportedQuery, SupportedQueryTypes } from '.
 import { AnyQuerySchema, executeQueries, QueriesSchema, SupportedQueries } from '../../../queries/query';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
-import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import type { FlowrAnalysisProvider, ModifiableFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 
 function printHelp(output: ReplOutput) {
@@ -21,7 +21,7 @@ function printHelp(output: ReplOutput) {
 	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
 }
 
-async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvider, remainingArgs: string[]): Promise<undefined | { parsedQuery: Query[], query: QueryResults, analyzer: FlowrAnalysisProvider }> {
+async function processQueryArgs(output: ReplOutput, analyzer: ModifiableFlowrAnalysisProvider, remainingArgs: string[]): Promise<undefined | { parsedQuery: Query[], query: QueryResults, analyzer: FlowrAnalysisProvider }> {
 	const query = remainingArgs.shift();
 
 	if(!query) {

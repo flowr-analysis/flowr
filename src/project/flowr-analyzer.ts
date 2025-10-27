@@ -20,6 +20,30 @@ import { guard } from '../util/assert';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
 
 /**
+ * Extends the {@link FlowrAnalysisProvider} with methods that allow modifying the analyzer state.
+ */
+export interface ModifiableFlowrAnalysisProvider extends FlowrAnalysisProvider {
+	/**
+	 * Returns project context information.
+	 * If you are a user that wants to inspect the context, prefer {@link inspectContext} instead.
+	 * Please be aware that modifications to the context may break analyzer assumptions.
+	 */
+	context():  FlowrAnalyzerContext
+	/**
+	 * Add multiple analysis requests to the analyzer instance
+	 */
+	addRequests(requests: readonly RAnalysisRequest[]): void
+	/**
+	 * Add a single analysis request to the analyzer instance
+	 */
+	addRequest(request: RAnalysisRequest): void
+	/**
+	 * Reset the analyzer state, including the context and the cache.
+	 */
+	reset(): void;
+}
+
+/**
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
  * This allows us to exchange the underlying implementation of the analyzer without affecting the APIs.
  */
@@ -34,20 +58,6 @@ export interface FlowrAnalysisProvider {
 	 * @param addonConfig - Additional configuration for the output collector.
 	 */
 	sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]>;
-	/**
-	 * Add multiple analysis requests to the analyzer instance
-	 */
-	addRequests(requests: readonly RAnalysisRequest[]): void
-	/**
-	 * Add a single analysis request to the analyzer instance
-	 */
-	addRequest(request: RAnalysisRequest): void
-	/**
-	 * Returns project context information.
-	 * If you are a user that wants to inspect the context, prefer {@link inspectContext} instead.
-	 * Please be aware that modifications to the context may break analyzer assumptions.
-	 */
-	context():  FlowrAnalyzerContext
 	/**
 	 * Returns a read-only version of the project context information.
 	 * This is the preferred method for users that want to inspect the context.
@@ -90,10 +100,6 @@ export interface FlowrAnalysisProvider {
 	 * This executes all steps of the core analysis (parse, normalize, dataflow).
 	 */
 	runFull(force?: boolean): Promise<void>;
-	/**
-	 * Reset the analyzer state, including the context and the cache.
-	 */
-	reset(): void;
 	/** This is the config used for the analyzer */
 	flowrConfig: FlowrConfigOptions;
 }

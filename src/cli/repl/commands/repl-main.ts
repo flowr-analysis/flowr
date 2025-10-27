@@ -1,6 +1,6 @@
 import type { OutputFormatter } from '../../../util/text/ansi';
 import { formatter } from '../../../util/text/ansi';
-import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import type { FlowrAnalysisProvider, ModifiableFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 /**
  * Defines the main interface for output of the repl.
@@ -44,7 +44,7 @@ export interface ReplCommandInformation {
  */
 export interface ReplCodeCommandInformation {
 	output:        ReplOutput,
-	analyzer:      FlowrAnalysisProvider
+	analyzer:      ModifiableFlowrAnalysisProvider
 	remainingArgs: string[]
 }
 

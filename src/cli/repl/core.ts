@@ -22,6 +22,7 @@ import type { FlowrConfigOptions } from '../../config';
 import type { SupportedQuery } from '../../queries/query';
 import { SupportedQueries } from '../../queries/query';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
+import { startAndEndsWith } from '../../util/text/strings';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -99,7 +100,7 @@ export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.Re
 
 export function handleString(code: string) {
 	return {
-		rCode:     code.length == 0 ? undefined : code.startsWith('"') ? JSON.parse(code) as string : code,
+		rCode:     code.length == 0 ? undefined : startAndEndsWith(code, '"') ? JSON.parse(code) as string : code,
 		remaining: []
 	};
 }

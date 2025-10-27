@@ -36,8 +36,8 @@ export interface LinterQueryResult extends BaseQueryResult {
 
 function rulesFromInput(output: ReplOutput, rulesPart: readonly string[]): {valid: (LintingRuleNames | ConfiguredLintingRule)[], invalid: string[]} {
 	return rulesPart
-		.map(r => r.trim())
 		.reduce((acc, ruleName) => {
+			ruleName = ruleName.trim();
 			if(ruleName in LintingRules) {
 				acc.valid.push(ruleName as LintingRuleNames);
 			} else {

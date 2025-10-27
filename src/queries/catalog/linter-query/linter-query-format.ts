@@ -16,7 +16,7 @@ import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import { codeInline } from '../../../documentation/doc-util/doc-code';
 import type { FlowrConfigOptions } from '../../../config';
-import { isNotUndefined } from '../../../util/assert';
+import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:   'linter';
@@ -34,23 +34,30 @@ export interface LinterQueryResult extends BaseQueryResult {
 	readonly results: { [L in LintingRuleNames]?: LintingResults<L>}
 }
 
-function rulesFromInput(rulesPart: readonly string[]): (LintingRuleNames | ConfiguredLintingRule)[] {
-	return rulesPart.map(rule => {
-		const ruleName = rule.trim();
-		if(!(ruleName in LintingRules)) {
-			console.error(`Unknown linting rule '${ruleName}'`);
-			return;
-		}
-		return ruleName as LintingRuleNames;
-	}).filter(r => isNotUndefined(r));
+function rulesFromInput(output: ReplOutput, rulesPart: readonly string[]): {valid: (LintingRuleNames | ConfiguredLintingRule)[], invalid: string[]} {
+	return rulesPart
+		.map(r => r.trim())
+		.reduce((acc, ruleName) => {
+			if(ruleName in LintingRules) {
+				acc.valid.push(ruleName as LintingRuleNames);
+			} else {
+				acc.invalid.push(ruleName);
+			}
+			return acc;
+		}, { valid: [] as (LintingRuleNames | ConfiguredLintingRule)[], invalid: [] as string[] });
 }
 
-function linterQueryLineParser(line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine {
+function linterQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine {
 	let rules: (LintingRuleNames | ConfiguredLintingRule)[] | undefined = undefined;
 	let input: string | undefined = undefined;
 	if(line.length > 0 && line[0].startsWith('rules:')) {
 		const rulesPart = line[0].slice('rules:'.length).split(',');
-		rules = rulesFromInput(rulesPart);
+		const parseResult = rulesFromInput(output, rulesPart);
+		if(parseResult.invalid.length > 0) {
+			output.stdout(`Invalid linting rule name(s): ${parseResult.invalid.map(r => bold(r, output.formatter)).join(', ')}`
+				+`\nValid rule names are: ${Object.keys(LintingRules).map(r => bold(r, output.formatter)).join(', ')}`);
+		}
+		rules = parseResult.valid;
 		input = line[1];
 	} else if(line.length > 0) {
 		input = line[0];

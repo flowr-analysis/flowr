@@ -7,6 +7,7 @@ import type { FlowrConfigOptions } from '../../../config';
 import { jsonReplacer } from '../../../util/json';
 import type { DeepPartial } from 'ts-essentials';
 import type { ParsedQueryLine, SupportedQuery } from '../../query';
+import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 
 export interface ConfigQuery extends BaseQueryFormat {
     readonly type:    'config';
@@ -46,13 +47,13 @@ function configReplCompleter(partialLine: readonly string[], config: FlowrConfig
 	return [];
 }
 
-function configQueryLineParser(line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine {
+function configQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine {
 	if(line.length > 0 && line[0].startsWith('+')) {
 		const [pathPart, ...valueParts] = line[0].slice(1).split('=');
 		// build the update object
 		const path = pathPart.split('.').filter(p => p.length > 0);
 		if(path.length === 0 || valueParts.length !== 1) {
-			console.error('Invalid config update syntax, must be of the form +path.to.field=value');
+			output.stdout(`Invalid config update syntax, must be of the form ${bold('+path.to.field=value', output.formatter)}`);
 		} else {
 			const update: DeepPartial<FlowrConfigOptions> = {};
 			const value = valueParts[0];

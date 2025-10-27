@@ -52,6 +52,7 @@ import {
 } from './catalog/inspect-higher-order-query/inspect-higher-order-query-format';
 import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { log } from '../util/log';
+import type { ReplOutput } from '../cli/repl/commands/repl-main';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -103,7 +104,7 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
     /** optional completion in, e.g., the repl */
 	completer?:           (splitLine: readonly string[], config: FlowrConfigOptions) => string[]
     /** optional query construction from an, e.g., repl line */
-	fromLine?:            (splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine
+	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine
 	asciiSummarizer:      (formatter: OutputFormatter, analyzer: FlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>
 	schema:               Joi.ObjectSchema
 	/**

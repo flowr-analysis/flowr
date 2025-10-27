@@ -39,7 +39,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 		const queryName = query.slice(1);
 		const queryObj = SupportedQueries[queryName as keyof typeof SupportedQueries] as SupportedQuery;
 		if(queryObj?.fromLine) {
-			const parseResult = queryObj.fromLine(remainingArgs, analyzer.flowrConfig);
+			const parseResult = queryObj.fromLine(output, remainingArgs, analyzer.flowrConfig);
 			const q = parseResult.query;
 			parsedQuery = q ? (Array.isArray(q) ? q : [q]) : [];
 			input = parseResult.rCode;

@@ -9,6 +9,7 @@ import { Enrichment } from '../../../src/search/search-executor/search-enrichers
 import { Mapper } from '../../../src/search/search-executor/search-mappers';
 import { CallTargets } from '../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-simplification';
+import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 
 describe('flowR search', withTreeSitter(parser => {
 	assertSearch('simple search for first', parser, 'x <- 1\nprint(x)', ['1@x'],
@@ -114,11 +115,18 @@ describe('flowR search', withTreeSitter(parser => {
 			});
 		});
 
-		describe('Reuse queries', () => {
+		describe('reuse queries', () => {
 			const query = parser.createQuery('(string) @s');
 			assertSearch('first', parser, 'x <- "hello"', ['1@"hello"'], Q.fromTreeSitterQuery(query, 's'));
 			assertSearch('second', parser, 'x <- 1', [], Q.fromTreeSitterQuery(query, 's'));
 			assertSearch('third', parser, 'x <- "world"', ['1@"world"'], Q.fromTreeSitterQuery(query, 's'));
+		});
+
+		describe('filtered query', () => {
+			assertSearch('builtin assignment', parser, '`<-` <- function() {}\nx <- 2; y = 7', ['1@<-', '2@='],
+				Q.fromTreeSitterQuery('(binary_operator)').filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:assignment' } }));
+			assertSearch('number assignment', parser, 'x <- 2; y <- "hello"', ['1@2'],
+				Q.fromTreeSitterQuery('(binary_operator rhs: (_) @rhs)', 'rhs').filter(RType.Number));
 		});
 	});
 

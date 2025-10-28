@@ -40,12 +40,12 @@ export type GetGenerator<Name extends GeneratorNames> = FlowrSearchGeneratorNode
  * All supported generators!
  */
 export const generators = {
-	all:                      generateAll,
-	get:                      generateGet,
-	criterion:                generateCriterion,
-	from:                     generateFrom,
-	'from-query':             generateFromQuery,
-	'from-tree-sitter-query': generateFromTreeSitterQuery
+	all:          generateAll,
+	get:          generateGet,
+	criterion:    generateCriterion,
+	from:         generateFrom,
+	'from-query': generateFromQuery,
+	syntax:       generateSyntax
 } as const;
 
 async function generateAll(data: FlowrAnalysisProvider): Promise<FlowrSearchElements<ParentInformation>> {
@@ -131,7 +131,7 @@ async function generateFromQuery(input: FlowrAnalysisProvider, args: {
 	}))) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
 }
 
-async function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+async function generateSyntax(input: FlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 	// if the user didn't specify a specific capture, we want to capture the outermost item
 	if(!args.captures?.length) {
 		guard(typeof args.source === 'string', `Cannot use default capture name for pre-compiled query ${JSON.stringify(args.source)}, specify captures explicitly`);

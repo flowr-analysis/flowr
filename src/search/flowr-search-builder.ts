@@ -42,11 +42,11 @@ export const FlowrSearchGenerator = {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'from-query', args: { from } });
 	},
 	/**
-	 * Initializes a new search query based on the results of the given tree-sitter query.
+	 * Initializes a new search query based on the results of the given tree-sitter syntax query.
 	 * Please note that this search generator is incompatible with the {@link RShell} parser and only works when using flowR with the {@link TreeSitterExecutor}.
 	 */
-	fromTreeSitterQuery(source: TreeSitter.Query | string, ...captures: readonly string[]): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
-		return new FlowrSearchBuilder({ type: 'generator', name: 'from-tree-sitter-query', args: { source, captures } });
+	syntax(source: TreeSitter.Query | string, ...captures: readonly string[]): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+		return new FlowrSearchBuilder({ type: 'generator', name: 'syntax', args: { source, captures } });
 	},
 	/**
 	 * Returns all elements (nodes/dataflow vertices) from the given data.

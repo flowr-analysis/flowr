@@ -66,7 +66,7 @@ export function replCompleter(line: string, config: FlowrConfigOptions): [string
 			if(cmd?.script === true){
 				// autocomplete script arguments
 				const options = scripts[commandName as keyof typeof scripts].options;
-				completions.push(...getValidOptionsForCompletion(options, splitLine).map(o => `${o} `));
+				completions.concat(...getValidOptionsForCompletion(options, splitLine).map(o => `${o} `));
 			} else if(commandName.startsWith('query')) {
 				const { completions: queryCompletions, argumentPart: splitArg } = replQueryCompleter(splitLine, startingNewArg, config);
 				if(splitArg !== undefined) {

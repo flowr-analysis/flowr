@@ -17,23 +17,42 @@ import type { GetSearchElements } from '../search/flowr-search-executor';
 import { runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { CfgKind } from './cfg-kind';
+import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
 
 /**
- * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
- * This allows us to exchange the underlying implementation of the analyzer without affecting the APIs.
+ * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
  */
-export interface FlowrAnalysisProvider {
-    /**
-     * Returns a set of additional data and helper functions exposed by the underlying {@link KnownParser},
-     * including the parser's {@link BaseParserInformation.name} and corresponding version information.
-     */
-    parserInformation(): KnownParserInformation
+export interface FlowrAnalysisProvider extends ReadonlyFlowrAnalysisProvider {
 	/**
 	 * Returns project context information.
 	 * If you are a user that wants to inspect the context, prefer {@link inspectContext} instead.
 	 * Please be aware that modifications to the context may break analyzer assumptions.
 	 */
-    context():  FlowrAnalyzerContext
+	context():  FlowrAnalyzerContext
+	/**
+	 * Add multiple analysis requests to the analyzer instance
+	 */
+	addRequests(requests: readonly RAnalysisRequest[]): void
+	/**
+	 * Add a single analysis request to the analyzer instance
+	 */
+	addRequest(request: RAnalysisRequest): void
+	/**
+	 * Reset the analyzer state, including the context and the cache.
+	 */
+	reset(): void;
+}
+
+/**
+ * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
+ * This allows us to exchange the underlying implementation of the analyzer without affecting the APIs.
+ */
+export interface ReadonlyFlowrAnalysisProvider {
+    /**
+     * Returns a set of additional data and helper functions exposed by the underlying {@link KnownParser},
+     * including the parser's {@link BaseParserInformation.name} and corresponding version information.
+     */
+    parserInformation(): KnownParserInformation
 	/**
 	 * Returns a read-only version of the project context information.
 	 * This is the preferred method for users that want to inspect the context.
@@ -76,10 +95,6 @@ export interface FlowrAnalysisProvider {
 	 * This executes all steps of the core analysis (parse, normalize, dataflow).
 	 */
 	runFull(force?: boolean): Promise<void>;
-	/**
-	 * Reset all caches used by the analyzer and effectively force all analyses to be redone.
-	 */
-	reset(): void;
 	/** This is the config used for the analyzer */
 	flowrConfig: FlowrConfigOptions;
 }
@@ -93,7 +108,7 @@ export interface FlowrAnalysisProvider {
  *
  * To inspect the context of the analyzer, use {@link FlowrAnalyzer#inspectContext} (if you are a plugin and need to modify it, use {@link FlowrAnalyzer#context} instead).
  */
-export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements FlowrAnalysisProvider {
+export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements ReadonlyFlowrAnalysisProvider {
 	public readonly flowrConfig: FlowrConfigOptions;
 	/** The parser and engine backend */
 	private readonly parser:     Parser;
@@ -134,6 +149,14 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	public reset() {
 		this.ctx.reset();
 		this.cache.reset();
+	}
+
+	public addRequests(requests: readonly RAnalysisRequest[]): void {
+		this.ctx.addRequests(requests);
+	}
+
+	public addRequest(request: RAnalysisRequest): void {
+		this.ctx.addRequest(request);
 	}
 
 	public async parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>> {

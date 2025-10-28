@@ -1,6 +1,6 @@
 import type { ReplCommand, ReplCommandInformation, ReplOutput } from './repl-main';
 import { ColorEffect, Colors, FontStyles, italic } from '../../../util/text/ansi';
-import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import type { RShellInformation } from '../../../r-bridge/parser';
 
 export async function tryExecuteRShellCommand({ output, analyzer, allowRSessionAccess, remainingLine }: ReplCommandInformation) {
@@ -15,7 +15,7 @@ If you want to do so, please restart flowR with the ${output.formatter.format('-
 	}
 }
 
-async function executeRShellCommand(output: ReplOutput, analyzer: FlowrAnalysisProvider, statement: string) {
+async function executeRShellCommand(output: ReplOutput, analyzer: ReadonlyFlowrAnalysisProvider, statement: string) {
 	try {
 		const result = await (analyzer.parserInformation() as RShellInformation).sendCommandWithOutput(statement, {
 			from:                    'both',

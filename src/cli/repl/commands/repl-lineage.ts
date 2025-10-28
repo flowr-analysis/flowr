@@ -7,6 +7,7 @@ import type { DataflowGraphEdge } from '../../../dataflow/graph/edge';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../../../util/assert';
+import { startAndEndsWith } from '../../../util/text/strings';
 
 function splitAt(str: string, idx: number) {
 	return [str.slice(0, idx), str.slice(idx)];
@@ -65,7 +66,7 @@ export const lineageCommand: ReplCodeCommand = {
 		const [criterion, rest] = splitAt(args, args.indexOf(' '));
 		const code = rest.trim();
 		return {
-			input:     code.startsWith('"') ? JSON.parse(code) as string : code,
+			rCode:     startAndEndsWith(code, '"') ? JSON.parse(code) as string : code,
 			remaining: [criterion]
 		};
 	},

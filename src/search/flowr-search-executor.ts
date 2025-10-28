@@ -4,7 +4,7 @@ import type { FlowrSearchElements } from './flowr-search';
 import { getGenerator } from './search-executor/search-generators';
 import { getTransformer } from './search-executor/search-transformer';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 export type GetSearchElements<S> = S extends FlowrSearch<infer _, infer _, infer _, infer Elements> ? Elements : never;
 
@@ -13,7 +13,7 @@ export type GetSearchElements<S> = S extends FlowrSearch<infer _, infer _, infer
  */
 export async function runSearch<S extends FlowrSearchLike>(
 	search: S,
-	input: FlowrAnalysisProvider
+	input: ReadonlyFlowrAnalysisProvider
 ): Promise<GetSearchElements<SearchOutput<S>>> {
 	const s = getFlowrSearch(search);
 

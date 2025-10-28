@@ -22,6 +22,7 @@ import type { FlowrConfigOptions } from '../../config';
 import type { SupportedQuery } from '../../queries/query';
 import { SupportedQueries } from '../../queries/query';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
+import { startAndEndsWith } from '../../util/text/strings';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -99,7 +100,7 @@ export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.Re
 
 export function handleString(code: string) {
 	return {
-		input:     code.length == 0 ? undefined : code.startsWith('"') ? JSON.parse(code) as string : code,
+		rCode:     code.length == 0 ? undefined : startAndEndsWith(code, '"') ? JSON.parse(code) as string : code,
 		remaining: []
 	};
 }
@@ -114,9 +115,9 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 				const remainingLine = statement.slice(command.length + 2).trim();
 				if(processor.isCodeCommand) {
 					const args = processor.argsParser(remainingLine);
-					if(args.input) {
+					if(args.rCode) {
 						analyzer.reset();
-						analyzer.context().addRequest(requestFromInput(args.input));
+						analyzer.addRequest(requestFromInput(args.rCode));
 					}
 					await processor.fn({ output, analyzer, remainingArgs: args.remaining });
 				} else {

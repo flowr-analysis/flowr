@@ -53,7 +53,7 @@ import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-prop
 import type { FlowrConfigOptions } from '../../../src/config';
 import { cloneConfig, defaultConfigOptions } from '../../../src/config';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import type { FlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
 
@@ -362,7 +362,7 @@ export function assertDataflow(
 	name: string | TestLabel,
 	shell: RShell,
 	input: string | RParseRequests,
-	expected: DataflowGraph | ((input: FlowrAnalysisProvider) => Promise<DataflowGraph>),
+	expected: DataflowGraph | ((input: ReadonlyFlowrAnalysisProvider) => Promise<DataflowGraph>),
 	userConfig?: Partial<DataflowTestConfiguration>,
 	startIndexForDeterministicIds = 0,
 	config = cloneConfig(defaultConfigOptions)

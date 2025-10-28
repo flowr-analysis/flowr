@@ -18,6 +18,7 @@ import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import type { TreeSitterInfo } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
 import { log } from '../../util/log';
 import type TreeSitter from 'web-tree-sitter';
+import type { TreeSitterInformation } from '../../r-bridge/parser';
 
 export const searchLogger = log.getSubLogger({ name: 'search' });
 
@@ -142,7 +143,9 @@ async function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: {
 	// allow specifying capture names with or without the @ in front :)
 	const captures = new Set<string>(args.captures.map(c => c.startsWith('@') ? c.substring(1) : c));
 
-	const result = await input.parserInformation().treeSitterQuery(args.source);
+	const info = input.parserInformation();
+	guard(info.name === 'tree-sitter', 'treeSitterQuery can only be used with TreeSitterExecutor parsers!');
+	const result = await (info as TreeSitterInformation).treeSitterQuery(args.source);
 	const relevant = result.filter(c => captures.has(c.name));
 
 	if(!relevant.length) {

@@ -1,8 +1,7 @@
 import type { FlowrConfigOptions } from '../config';
 
 import type {
-	KnownParser,
-	ParserInformation,
+	KnownParser, KnownParserInformation,
 	ParseStepOutput
 } from '../r-bridge/parser';
 import type { Queries, QueryResults, SupportedQueryTypes } from '../queries/query';
@@ -18,11 +17,6 @@ import type { GetSearchElements } from '../search/flowr-search-executor';
 import { runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { CfgKind } from './cfg-kind';
-import { guard } from '../util/assert';
-import type { OutputCollectorConfiguration } from '../r-bridge/shell';
-import { RShell } from '../r-bridge/shell';
-import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import type { Query, Tree } from 'web-tree-sitter';
 
 /**
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
@@ -30,11 +24,10 @@ import type { Query, Tree } from 'web-tree-sitter';
  */
 export interface FlowrAnalysisProvider {
     /**
-     * Returns a set of additional data and helper functions exposed by the underlying {@link KnownParser}.
-     * The returned {@link ParserInformation} also includes {@link ParserInformation.metadata},
-     * which can be used to retrieve versioning information for the used parser.
+     * Returns a set of additional data and helper functions exposed by the underlying {@link KnownParser},
+     * including the parser's {@link BaseParserInformation.name} and corresponding version information.
      */
-    parserInformation(): ParserInformation
+    parserInformation(): KnownParserInformation
 	/**
 	 * Returns project context information.
 	 * If you are a user that wants to inspect the context, prefer {@link inspectContext} instead.
@@ -107,7 +100,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	/** The cache used for storing analysis results */
 	private readonly cache:      FlowrAnalyzerCache<Parser>;
 	private readonly ctx:        FlowrAnalyzerContext;
-	private parserInfo:          ParserInformation | undefined;
+	private parserInfo:          KnownParserInformation | undefined;
 
 	/**
      * Create a new analyzer instance.
@@ -129,22 +122,8 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this.ctx;
 	}
 
-	public parserInformation(): ParserInformation {
-		this.parserInfo ??= {
-			metadata: async() => {
-				return this.parser.name === 'r-shell' ?
-					{ name: 'r-shell', rVersion: await (this.parser as RShell).rVersion() } :
-					{ name: 'tree-sitter', grammarVersion: this.parser.treeSitterVersion() };
-			},
-			sendCommandWithOutput: (command: string, addonConfig?: Partial<OutputCollectorConfiguration>) => {
-				guard(this.parser instanceof RShell, 'sendCommandWithOutput can only be used with RShell parsers!');
-				return this.parser.sendCommandWithOutput(command, addonConfig);
-			},
-			treeSitterQuery: async(source: Query | string, force?: boolean) => {
-				guard(this.parser instanceof TreeSitterExecutor, 'treeSitterQuery can only be used with TreeSitterExecutor parsers!');
-				return this.parser.query(source, (await this.parse(force)).parsed as Tree);
-			}
-		};
+	public parserInformation(): KnownParserInformation {
+		this.parserInfo ??= this.parser.information(this);
 		return this.parserInfo;
 	}
 

@@ -13,7 +13,7 @@ import { executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { enrichElement, Enrichment } from './search-enrichers';
-import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import type { TreeSitterInfo } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
 import { log } from '../../util/log';
@@ -131,7 +131,7 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 	}))) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
 }
 
-async function generateSyntax(input: FlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 	// if the user didn't specify a specific capture, we want to capture the outermost item
 	if(!args.captures?.length) {
 		guard(typeof args.source === 'string', `Cannot use default capture name for pre-compiled query ${JSON.stringify(args.source)}, specify captures explicitly`);

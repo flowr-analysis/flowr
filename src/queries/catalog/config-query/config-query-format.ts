@@ -8,6 +8,7 @@ import { jsonReplacer } from '../../../util/json';
 import type { DeepPartial } from 'ts-essentials';
 import type { ParsedQueryLine, SupportedQuery } from '../../query';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
+import type { CommandCompletions } from '../../../cli/repl/core';
 
 export interface ConfigQuery extends BaseQueryFormat {
     readonly type:    'config';
@@ -18,16 +19,16 @@ export interface ConfigQueryResult extends BaseQueryResult {
 	readonly config: FlowrConfigOptions;
 }
 
-function configReplCompleter(partialLine: readonly string[], config: FlowrConfigOptions): string[] {
+function configReplCompleter(partialLine: readonly string[], _startingNewArg: boolean, config: FlowrConfigOptions): CommandCompletions {
 	if(partialLine.length === 0) {
 		// update specific fields
-		return ['+'];
+		return { completions: ['+'] };
 	} else if(partialLine.length === 1 && partialLine[0].startsWith('+')) {
 		const path = partialLine[0].slice(1).split('.').filter(p => p.length > 0);
 		const fullPath = path.slice();
 		const lastPath = partialLine[0].endsWith('.') ? '' : path.pop() ?? '';
 		if(lastPath.endsWith('=')) {
-			return [];
+			return { completions: [] };
 		}
 		const subConfig = path.reduce<object | undefined>((obj, key) => (
 			obj && (obj as Record<string, unknown>)[key] !== undefined && typeof (obj as Record<string, unknown>)[key] === 'object') ? (obj as Record<string, unknown>)[key] as object : obj, config);
@@ -36,15 +37,15 @@ function configReplCompleter(partialLine: readonly string[], config: FlowrConfig
 				.filter(k => k.startsWith(lastPath) && k !== lastPath)
 				.map(k => `${partialLine[0].slice(0,1)}${[...path, k].join('.')}`);
 			if(have.length > 0) {
-				return have;
+				return { completions: have };
 			} else if(lastPath.length > 0) {
-				return [`${partialLine[0].slice(0,1)}${fullPath.join('.')}.`];
+				return { completions: [`${partialLine[0].slice(0,1)}${fullPath.join('.')}.`] };
 			}
 		}
-		return [`${partialLine[0].slice(0,1)}${fullPath.join('.')}=`];
+		return { completions: [`${partialLine[0].slice(0,1)}${fullPath.join('.')}=`] };
 	}
 
-	return [];
+	return { completions: [] };
 }
 
 function configQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine {

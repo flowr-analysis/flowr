@@ -58,7 +58,7 @@ export function replCompleter(line: string, config: FlowrConfigOptions): [string
 	if(splitLine.length > 1 || startingNewArg){
 		const commandNameColon = replCompleterKeywords().find(k => splitLine[0] === k);
 		if(commandNameColon) {
-			const completions: string[] = [];
+			let completions: string[] = [];
 			let currentArg = startingNewArg ? '' : splitLine[splitLine.length - 1];
 
 			const commandName = commandNameColon.slice(1);
@@ -66,13 +66,13 @@ export function replCompleter(line: string, config: FlowrConfigOptions): [string
 			if(cmd?.script === true){
 				// autocomplete script arguments
 				const options = scripts[commandName as keyof typeof scripts].options;
-				completions.concat(...getValidOptionsForCompletion(options, splitLine).map(o => `${o} `));
+				completions = completions.concat(getValidOptionsForCompletion(options, splitLine).map(o => `${o} `));
 			} else if(commandName.startsWith('query')) {
 				const { completions: queryCompletions, argumentPart: splitArg } = replQueryCompleter(splitLine, startingNewArg, config);
 				if(splitArg !== undefined) {
 					currentArg = splitArg;
 				}
-				completions.push(...queryCompletions);
+				completions = completions.concat(queryCompletions);
 			} else {
 				// autocomplete command arguments (specifically, autocomplete the file:// protocol)
 				completions.push(fileProtocol);

@@ -2,7 +2,7 @@ import type { RParseRequest, RParseRequests } from './retriever';
 import type { OutputCollectorConfiguration, RShell } from './shell';
 import type { RShellExecutor } from './shell-executor';
 import type { TreeSitterExecutor } from './lang-4.x/tree-sitter/tree-sitter-executor';
-import type { QueryCapture, SyntaxNode } from 'web-tree-sitter';
+import type { Query, QueryCapture, SyntaxNode } from 'web-tree-sitter';
 
 interface ParserContent<T> {
     readonly name: string;
@@ -12,7 +12,8 @@ interface ParserContent<T> {
 }
 
 export interface TreeSitterMetadata {
-	name: TreeSitterExecutor['name'];
+    name:           TreeSitterExecutor['name'];
+    grammarVersion: number
 }
 
 export interface RShellMetadata {
@@ -37,7 +38,7 @@ export interface ParserInformation {
      * @param source - The tree-sitter query to run.
      * @param force  - Do not use the cache, instead force a new parse.
      */
-    treeSitterQuery(source: string, force?: boolean): Promise<QueryCapture[]>;
+    treeSitterQuery(source: Query | string, force?: boolean): Promise<QueryCapture[]>;
 }
 
 export type SyncParser<T> = ParserContent<Awaited<T>> & {readonly async?: false};

@@ -22,7 +22,7 @@ import { guard } from '../util/assert';
 import type { OutputCollectorConfiguration } from '../r-bridge/shell';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import type { Tree } from 'web-tree-sitter';
+import type { Query, Tree } from 'web-tree-sitter';
 
 /**
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
@@ -31,6 +31,8 @@ import type { Tree } from 'web-tree-sitter';
 export interface FlowrAnalysisProvider {
     /**
      * Returns a set of additional data and helper functions exposed by the underlying {@link KnownParser}.
+     * The returned {@link ParserInformation} also includes {@link ParserInformation.metadata},
+     * which can be used to retrieve versioning information for the used parser.
      */
     parserInformation(): ParserInformation
 	/**
@@ -131,14 +133,14 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.parserInfo ??= {
 			metadata: async() => {
 				return this.parser.name === 'r-shell' ?
-					{ name: 'r-shell', rVersion: await (this.parser as RShell).rVersion() }
-					: { name: 'tree-sitter' };
+					{ name: 'r-shell', rVersion: await (this.parser as RShell).rVersion() } :
+					{ name: 'tree-sitter', grammarVersion: this.parser.treeSitterVersion() };
 			},
 			sendCommandWithOutput: (command: string, addonConfig?: Partial<OutputCollectorConfiguration>) => {
 				guard(this.parser instanceof RShell, 'sendCommandWithOutput can only be used with RShell parsers!');
 				return this.parser.sendCommandWithOutput(command, addonConfig);
 			},
-			treeSitterQuery: async(source: string, force?: boolean) => {
+			treeSitterQuery: async(source: Query | string, force?: boolean) => {
 				guard(this.parser instanceof TreeSitterExecutor, 'treeSitterQuery can only be used with TreeSitterExecutor parsers!');
 				return this.parser.query(source, (await this.parse(force)).parsed as Tree);
 			}

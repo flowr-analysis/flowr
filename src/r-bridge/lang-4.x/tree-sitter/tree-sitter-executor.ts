@@ -1,4 +1,4 @@
-import type { QueryCapture } from 'web-tree-sitter';
+import type { Query, QueryCapture } from 'web-tree-sitter';
 import Parser from 'web-tree-sitter';
 
 import type { RParseRequest } from '../../retriever';
@@ -18,7 +18,7 @@ const wasmLog = log.getSubLogger({ name: 'tree-sitter-wasm' });
 export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 
 	public readonly name = 'tree-sitter';
-	public readonly parser:  Parser;
+	private readonly parser: Parser;
 	private static language: Parser.Language;
 
 	/**
@@ -69,8 +69,12 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		return this.parser.parse(sourceCode);
 	}
 
-	public query(source: string, tree: Parser.Tree): QueryCapture[] {
-		const query = this.parser.getLanguage().query(source);
+	public createQuery(source: string): Query {
+		return this.parser.getLanguage().query(source);
+	}
+
+	public query(source: Query | string, tree: Parser.Tree): QueryCapture[] {
+		const query = typeof source === 'string' ? this.createQuery(source) : source;
 		const matches = query.matches(tree.rootNode);
 		return matches.flatMap(m => m.captures);
 	}

@@ -113,6 +113,13 @@ describe('flowR search', withTreeSitter(parser => {
 				assertSearch('binary op', parser, 'x <- 2\ny <- 17\ncat(y)', ['1@<-', '2@<-', '1@x', '2@y'], Q.fromTreeSitterQuery('(binary_operator lhs: (identifier) @id) @op', 'op', 'id'));
 			});
 		});
+
+		describe('Reuse queries', () => {
+			const query = parser.createQuery('(string) @s');
+			assertSearch('first', parser, 'x <- "hello"', ['1@"hello"'], Q.fromTreeSitterQuery(query, 's'));
+			assertSearch('second', parser, 'x <- 1', [], Q.fromTreeSitterQuery(query, 's'));
+			assertSearch('third', parser, 'x <- "world"', ['1@"world"'], Q.fromTreeSitterQuery(query, 's'));
+		});
 	});
 
 	describe('Enrichments', () => {

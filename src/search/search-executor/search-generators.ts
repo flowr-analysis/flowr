@@ -7,7 +7,7 @@ import type {
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../slicing/criterion/parse';
-import { isNotUndefined } from '../../util/assert';
+import { guard, isNotUndefined } from '../../util/assert';
 import type { Query, SupportedQuery } from '../../queries/query';
 import { executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
@@ -17,6 +17,7 @@ import type { FlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import type { TreeSitterInfo } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
 import { log } from '../../util/log';
+import type TreeSitter from 'web-tree-sitter';
 
 export const searchLogger = log.getSubLogger({ name: 'search' });
 
@@ -130,9 +131,10 @@ async function generateFromQuery(input: FlowrAnalysisProvider, args: {
 	}))) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
 }
 
-async function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: { source: string, captures: string[] } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+async function generateFromTreeSitterQuery(input: FlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 	// if the user didn't specify a specific capture, we want to capture the outermost item
 	if(!args.captures?.length) {
+		guard(typeof args.source === 'string', `Cannot use default capture name for pre-compiled query ${JSON.stringify(args.source)}, specify captures explicitly`);
 		const defaultCaptureName = 'defaultCapture';
 		args.source += ` @${defaultCaptureName}`;
 		args.captures = [defaultCaptureName];

@@ -281,7 +281,7 @@ function convertTreeNode(node: SyntaxNode): RNode<TreeSitterInfo> {
 				lexeme:   forNode.text,
 				info:     {
 					fullRange:        range,
-					additionalTokens: [...variableComments, ...sequenceComments].map(c => c[1]),
+					additionalTokens: variableComments.concat(sequenceComments).map(c => c[1]),
 					fullLexeme:       node.text,
 					treeSitterId:     node.id
 				}

@@ -15,7 +15,7 @@ import type { Enrichment, EnrichmentElementArguments } from './search-executor/s
 import type { MapperArguments } from './search-executor/search-mappers';
 import { Mapper } from './search-executor/search-mappers';
 import type { Query } from '../queries/query';
-
+import type TreeSitter from 'web-tree-sitter';
 
 type FlowrCriteriaReturn<C extends SlicingCriteria> = FlowrSearchElements<ParentInformation, C extends [] ? never : C extends [infer _] ?
 	[FlowrSearchElement<ParentInformation>] : FlowrSearchElement<ParentInformation>[]>;
@@ -40,6 +40,13 @@ export const FlowrSearchGenerator = {
 	 */
 	fromQuery(...from: readonly Query[]): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'from-query', args: { from } });
+	},
+	/**
+	 * Initializes a new search query based on the results of the given tree-sitter syntax query.
+	 * Please note that this search generator is incompatible with the {@link RShell} parser and only works when using flowR with the {@link TreeSitterExecutor}.
+	 */
+	syntax(source: TreeSitter.Query | string, ...captures: readonly string[]): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+		return new FlowrSearchBuilder({ type: 'generator', name: 'syntax', args: { source, captures } });
 	},
 	/**
 	 * Returns all elements (nodes/dataflow vertices) from the given data.

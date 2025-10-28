@@ -1,16 +1,25 @@
 import type { FlowrSearchElement, FlowrSearchGeneratorNodeBase, FlowrSearchGetFilter } from '../flowr-search';
 import { FlowrSearchElements } from '../flowr-search';
 import type { TailTypesOrUndefined } from '../../util/collections/arrays';
-import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type {
+	ParentInformation,
+	RNodeWithParent
+} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../slicing/criterion/parse';
-import { isNotUndefined } from '../../util/assert';
+import { guard, isNotUndefined } from '../../util/assert';
 import type { Query, SupportedQuery } from '../../queries/query';
 import { executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { enrichElement, Enrichment } from './search-enrichers';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
+import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
+import type { TreeSitterInfo } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
+import { log } from '../../util/log';
+import type TreeSitter from 'web-tree-sitter';
+
+export const searchLogger = log.getSubLogger({ name: 'search' });
 
 /**
  * This is a union of all possible generator node types
@@ -35,7 +44,8 @@ export const generators = {
 	get:          generateGet,
 	criterion:    generateCriterion,
 	from:         generateFrom,
-	'from-query': generateFromQuery
+	'from-query': generateFromQuery,
+	syntax:       generateSyntax
 } as const;
 
 async function generateAll(data: ReadonlyFlowrAnalysisProvider): Promise<FlowrSearchElements<ParentInformation>> {
@@ -119,6 +129,49 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 		const [query, _] = [...nodesByQuery].find(([_, nodes]) => nodes.has(e)) as [Query['type'], Set<FlowrSearchElement<ParentInformation>>];
 		return await enrichElement(e, elements, { normalize, dataflow, cfg }, Enrichment.QueryData, { query });
 	}))) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
+}
+
+async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+	// if the user didn't specify a specific capture, we want to capture the outermost item
+	if(!args.captures?.length) {
+		guard(typeof args.source === 'string', `Cannot use default capture name for pre-compiled query ${JSON.stringify(args.source)}, specify captures explicitly`);
+		const defaultCaptureName = 'defaultCapture';
+		args.source += ` @${defaultCaptureName}`;
+		args.captures = [defaultCaptureName];
+	}
+	// allow specifying capture names with or without the @ in front :)
+	const captures = new Set<string>(args.captures.map(c => c.startsWith('@') ? c.substring(1) : c));
+
+	const info = input.parserInformation();
+	guard(info.name === 'tree-sitter', 'treeSitterQuery can only be used with TreeSitterExecutor parsers!');
+	const result = await info.treeSitterQuery(args.source);
+	const relevant = result.filter(c => captures.has(c.name));
+
+	if(!relevant.length) {
+		searchLogger.debug(`empty tree-sitter query result for query ${JSON.stringify(args)}`);
+		return new FlowrSearchElements([]);
+	}
+
+	const nodesByTreeSitterId = new Map<number, RNode<ParentInformation>>();
+	visitAst((await input.normalize()).ast, node => {
+		const treeSitterInfo = node.info as unknown as TreeSitterInfo;
+		if(treeSitterInfo.treeSitterId) {
+			nodesByTreeSitterId.set(treeSitterInfo.treeSitterId, node);
+		} else {
+			searchLogger.debug(`normalized ast node ${node.lexeme} with type ${node.type} does not have a tree-sitter id`);
+		}
+	});
+
+	const ret: FlowrSearchElement<ParentInformation>[] = [];
+	for(const capture of relevant) {
+		const node = nodesByTreeSitterId.get(capture.node.id);
+		if(node) {
+			ret.push({ node });
+		} else {
+			searchLogger.debug(`tree-sitter node ${capture.node.id} with type ${capture.node.type} does not have a corresponding normalized ast node`);
+		}
+	}
+	return new FlowrSearchElements(ret);
 }
 
 async function generateCriterion(input: ReadonlyFlowrAnalysisProvider, args: { criterion: SlicingCriteria }): Promise<FlowrSearchElements<ParentInformation>> {

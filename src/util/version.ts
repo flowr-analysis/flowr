@@ -35,8 +35,8 @@ export async function retrieveVersionInformation(input: KnownParser | ReadonlyFl
 		r = await input.rVersion();
 		name = input.name;
 	} else {
-		const parserInformation = await input.parserInformation();
-		r = parserInformation.name === 'r-shell' ? parserInformation.rVersion : 'unknown';
+		const parserInformation = input.parserInformation();
+		r = parserInformation.name === 'r-shell' ? (await parserInformation.rVersion()) : 'unknown';
 		name = parserInformation.name;
 	}
 

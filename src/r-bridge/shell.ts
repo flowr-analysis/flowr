@@ -11,7 +11,7 @@ import type { AsyncOrSync, DeepReadonly } from 'ts-essentials';
 import { initCommand } from './init';
 import type { RShellEngineConfig } from '../config';
 import { ts2r } from './lang-4.x/convert-values';
-import type { AsyncParser } from './parser';
+import type { AsyncParser, RShellInformation } from './parser';
 import type { RParseRequest } from './retriever';
 import { retrieveParseDataFromRCode } from './retriever';
 
@@ -158,6 +158,16 @@ export class RShell implements AsyncParser<string> {
 
 	public parse(request: RParseRequest): Promise<string> {
 		return retrieveParseDataFromRCode(request, this);
+	}
+
+	public information(): RShellInformation {
+		return {
+			name:                  'r-shell',
+			rVersion:              async() => await this.rVersion(),
+			sendCommandWithOutput: (command: string, addonConfig?: Partial<OutputCollectorConfiguration>) => {
+				return this.sendCommandWithOutput(command, addonConfig);
+			}
+		};
 	}
 
 	private revive() {

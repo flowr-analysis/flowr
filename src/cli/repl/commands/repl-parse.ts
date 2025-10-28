@@ -167,7 +167,7 @@ export const parseCommand: ReplCodeCommand = {
 	},
 	fn: async({ output, analyzer }) => {
 		const result = await analyzer.parse();
-		const parserInfo = await analyzer.parserInformation();
+		const parserInfo = analyzer.parserInformation();
 
 		if(parserInfo.name === 'r-shell') {
 			const object = convertPreparedParsedData(prepareParsedData(result.parsed as unknown as string));

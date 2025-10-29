@@ -11,8 +11,8 @@ export const Bottom = Symbol('bottom');
 /**
  * A complete lattice with a partially ordered set, join operator (LUB), meet operator (GLB), top element, and bottom element (e.g. for abstract domains).
  * @template Value - Type of a lattice element representing a value (may exclude `Top` and `Bot`)
- * @template Top   - Type of the Top element (greatest element) of the complete lattice (defaults to {@link Top})
- * @template Bot   - Type of the Bottom element (least element) of the complete lattice (defaults to {@link Bottom})
+ * @template Top   - Type of the Top element (greatest element) of the complete lattice
+ * @template Bot   - Type of the Bottom element (least element) of the complete lattice
  * @template Lift  - Type of the lattice elements (defaults to `Value` or `Top` or `Bot`)
  */
 export interface Lattice<Value, Top, Bot, Lift extends Value | Top | Bot = Value | Top | Bot> {

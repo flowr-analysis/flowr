@@ -8,11 +8,10 @@ export const DEFAULT_INFERENCE_LIMIT = 50;
 
 /**
  * An abstract domain as complete lattice with a widening operator, narrowing operator, concretization function, and abstraction function.
- * @template Domain   - Type of the implemented abstract domain
  * @template Concrete - Type of an concrete element of the concrete domain for the abstract domain
  * @template Abstract - Type of an abstract element of the abstract domain representing possible elements (excludes `Top` and `Bot`)
- * @template Top      - Type of the Top element of the abstract domain representing all possible elements (defaults to {@link Top})
- * @template Bot      - Type of the Bottom element of the abstract domain representing no possible elements (defaults to {@link Bottom})
+ * @template Top      - Type of the Top element of the abstract domain representing all possible elements
+ * @template Bot      - Type of the Bottom element of the abstract domain representing no possible elements
  * @template Value    - Type of the abstract elements of the abstract domain (defaults to `Abstract` or `Top` or `Bot`)
  */
 export interface AbstractDomain<Concrete, Abstract, Top, Bot, Value extends Abstract | Top | Bot = Abstract | Top | Bot>

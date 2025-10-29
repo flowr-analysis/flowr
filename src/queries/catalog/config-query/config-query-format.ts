@@ -48,7 +48,7 @@ function configReplCompleter(partialLine: readonly string[], _startingNewArg: bo
 	return { completions: [] };
 }
 
-function configQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine {
+function configQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'config'> {
 	if(line.length > 0 && line[0].startsWith('+')) {
 		const [pathPart, ...valueParts] = line[0].slice(1).split('=');
 		// build the update object

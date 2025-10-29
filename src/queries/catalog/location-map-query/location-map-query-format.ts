@@ -7,6 +7,10 @@ import { summarizeIdsIfTooLong } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SourceRange } from '../../../util/range';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
+import type { FlowrConfigOptions } from '../../../config';
+import type { ParsedQueryLine } from '../../query';
+import { sliceQueryParser } from '../../../cli/repl/parser/slice-query-parser';
 
 export interface LocationMapQuery extends BaseQueryFormat {
 	readonly type: 'location-map';
@@ -36,6 +40,8 @@ export const LocationMapQueryDefinition = {
 		result.push(`   ╰ Id List: {${summarizeIdsIfTooLong(formatter, [...Object.keys(out.map.ids)])}}`);
 		return true;
 	},
+	fromLine: (output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'df-shape'> =>
+		sliceQueryParser({ type: 'df-shape', line, output, isMandatory: false }),
 	schema: Joi.object({
 		type: Joi.string().valid('location-map').required().description('The type of the query.'),
 		ids:  Joi.array().items(Joi.string()).optional().description('Optional list of ids to filter the results by.')

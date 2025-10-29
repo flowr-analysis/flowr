@@ -5,16 +5,17 @@ import { assert, expect, test } from 'vitest';
 import type { ReplOutput } from '../../../src/cli/repl/commands/repl-main';
 import { standardReplOutput } from '../../../src/cli/repl/commands/repl-main';
 import type { ParsedQueryLine } from '../../../src/queries/query';
+import type { BaseQueryFormat } from '../../../src/queries/base-query-format';
 
-export interface ReplParserTestCase {
-	parser:        (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine,
+export interface ReplParserTestCase<QueryType extends BaseQueryFormat['type']> {
+	parser:        (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine<QueryType>,
 	label:         string,
 	line:          readonly string[],
 	config?:       object,
-	expectedParse: ParsedQueryLine
+	expectedParse: ParsedQueryLine<QueryType>
 }
 
-export function assertReplParser({ label, parser, line, config = defaultConfigOptions, expectedParse }: ReplParserTestCase) {
+export function assertReplParser<QueryType extends BaseQueryFormat['type']>({ label, parser, line, config = defaultConfigOptions, expectedParse }: ReplParserTestCase<QueryType>) {
 	test(label, () => {
 		const result = parser(standardReplOutput, line, config as FlowrConfigOptions);
 		assert.deepEqual(result, expectedParse);

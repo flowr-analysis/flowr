@@ -1,13 +1,16 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
-import type { QueryResults, SupportedQuery } from '../../query';
+import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeResolveValueQuery } from './resolve-value-query-executor';
 import { stringifyValue } from '../../../dataflow/eval/values/r-value';
 import type { ResolveResult } from '../../../dataflow/eval/resolve/alias-tracking';
+import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
+import type { FlowrConfigOptions } from '../../../config';
+import { sliceQueryParser } from '../../../cli/repl/parser/slice-query-parser';
 
 
 export interface ResolveValueQuery extends BaseQueryFormat {
@@ -32,6 +35,8 @@ export const ResolveValueQueryDefinition = {
 		}
 		return true;
 	},
+	fromLine: (output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'resolve-value'> =>
+		sliceQueryParser({ type: 'resolve-value', line, output, isMandatory: true }),
 	schema: Joi.object({
 		type:     Joi.string().valid('resolve-value').required().description('The type of the query.'),
 		criteria: Joi.array().items(Joi.string()).min(1).required().description('The slicing criteria to use.'),

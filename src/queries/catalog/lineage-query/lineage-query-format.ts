@@ -1,13 +1,16 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { QueryResults, SupportedQuery } from '../../query';
+import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeLineageQuery } from './lineage-query-executor';
 
 import { summarizeIdsIfTooLong } from '../../query-print';
+import { sliceQueryParser } from '../../../cli/repl/parser/slice-query-parser';
+import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
+import type { FlowrConfigOptions } from '../../../config';
 
 /**
  * Calculates the lineage of the given criterion.
@@ -32,6 +35,8 @@ export const LineageQueryDefinition = {
 		}
 		return true;
 	},
+	fromLine: (output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'lineage'> =>
+		sliceQueryParser({ type: 'lineage', line, output, isMandatory: true }),
 	schema: Joi.object({
 		type:      Joi.string().valid('lineage').required().description('The type of the query.'),
 		criterion: Joi.string().required().description('The slicing criterion of the node to get the lineage of.')

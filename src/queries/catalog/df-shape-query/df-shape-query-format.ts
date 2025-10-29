@@ -1,6 +1,6 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 
-import type { QueryResults, SupportedQuery } from '../../query';
+import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
@@ -9,6 +9,9 @@ import type { DataFrameDomain, DataFrameStateDomain } from '../../../abstract-in
 import { executeDfShapeQuery } from './df-shape-query-executor';
 import { jsonReplacer } from '../../../util/json';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
+import type { FlowrConfigOptions } from '../../../config';
+import { sliceQueryParser } from '../../../cli/repl/parser/slice-query-parser';
 
 /** Infer the shape of data frames using abstract interpretation. */
 export interface DfShapeQuery extends BaseQueryFormat {
@@ -33,6 +36,8 @@ export const DfShapeQueryDefinition = {
 		}
 		return true;
 	},
+	fromLine: (output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'df-shape'> =>
+		sliceQueryParser({ type: 'df-shape', line, output, isMandatory: false }),
 	schema: Joi.object({
 		type:      Joi.string().valid('df-shape').required().description('The type of the query.'),
 		criterion: Joi.string().optional().description('The slicing criterion of the node to get the dataframe shape for.')

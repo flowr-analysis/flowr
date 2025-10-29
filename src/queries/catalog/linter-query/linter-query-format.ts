@@ -51,7 +51,7 @@ function rulesFromInput(output: ReplOutput, rulesPart: readonly string[]): {vali
 
 const rulesPrefix = 'rules:';
 
-function linterQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine {
+function linterQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'linter'> {
 	let rules: (LintingRuleNames | ConfiguredLintingRule)[] | undefined = undefined;
 	let input: string | undefined = undefined;
 	if(line.length > 0 && line[0].startsWith(rulesPrefix)) {

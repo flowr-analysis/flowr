@@ -1,8 +1,56 @@
 import { describe } from 'vitest';
-import { assertReplCompletions } from '../../_helper/repl';
+import { assertReplCompletions, assertReplParser } from '../../_helper/repl';
 import { SupportedQueries } from '../../../../src/queries/query';
 import { fileProtocol } from '../../../../src/r-bridge/retriever';
 import { LintingRules } from '../../../../src/linter/linter-rules';
+
+describe('Linter Query REPL Parser', () => {
+	const parser = SupportedQueries['linter'].fromLine;
+	assertReplParser({ parser,
+		label:         'empty line',
+		line:          [],
+		expectedParse: {
+			query: [{
+				type:  'linter',
+				rules: undefined
+			}],
+			rCode: undefined,
+		},
+	});
+	assertReplParser({ parser,
+		label:         'only prefix',
+		line:          ['rules:'],
+		expectedParse: {
+			query: [{
+				type:  'linter',
+				rules: []
+			}],
+			rCode: undefined,
+		},
+	});
+	assertReplParser({ parser,
+		label:         'valid and invalid rules, with R code',
+		line:          ['rules:invalid,file-path-validity,another-invalid,dead-code', 'some code'],
+		expectedParse: {
+			query: [{
+				type:  'linter',
+				rules: ['file-path-validity', 'dead-code']
+			}],
+			rCode: 'some code',
+		},
+	});
+	assertReplParser({ parser,
+		label:         'only R code',
+		line:          ['some code'],
+		expectedParse: {
+			query: [{
+				type:  'linter',
+				rules: undefined
+			}],
+			rCode: 'some code',
+		},
+	});
+});
 
 describe('Linter Query REPL Completions', () => {
 	const completer = SupportedQueries['linter'].completer;

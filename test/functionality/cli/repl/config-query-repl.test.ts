@@ -1,6 +1,47 @@
 import { describe } from 'vitest';
 import { SupportedQueries } from '../../../../src/queries/query';
-import { assertReplCompletions } from '../../_helper/repl';
+import { assertReplCompletions, assertReplParser } from '../../_helper/repl';
+
+describe('Config Query REPL Parser', () => {
+	const parser = SupportedQueries['config'].fromLine;
+	assertReplParser({ parser,
+		label:         'empty line',
+		line:          [],
+		expectedParse: {
+			query: [{
+				type: 'config',
+			}],
+		},
+	});
+	assertReplParser({ parser,
+		label:         'incomplete line',
+		line:          ['+'],
+		expectedParse: {
+			query: [{
+				type: 'config',
+			}],
+		},
+	});
+	assertReplParser({ parser,
+		label:         'valid update',
+		line:          ['+someConfig.secondLevel=new'],
+		expectedParse: {
+			query: [{
+				type:   'config',
+				update: { someConfig: { secondLevel: 'new' } },
+			}],
+		},
+	});
+	assertReplParser({ parser,
+		label:         'invalid update line',
+		line:          ['+someConfig.secondLevel'],
+		expectedParse: {
+			query: [{
+				type: 'config',
+			}],
+		},
+	});
+});
 
 describe('Config Query REPL Completions', () => {
 	const completer = SupportedQueries['config'].completer;

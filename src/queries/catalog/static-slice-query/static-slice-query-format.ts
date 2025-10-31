@@ -7,7 +7,7 @@ import type {
 } from '../../../core/steps/pipeline/default-pipelines';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { bold } from '../../../util/text/ansi';
+import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeStaticSliceQuery } from './static-slice-query-executor';
@@ -16,7 +16,7 @@ import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice'
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfigOptions } from '../../../config';
-import { sliceQueryParser } from '../../../cli/repl/parser/slice-query-parser';
+import { sliceCriteriaParser, sliceDirectionParser } from '../../../cli/repl/parser/slice-query-parser';
 
 /** Calculates and returns all clusters encountered in the dataflow graph. */
 export interface StaticSliceQuery extends BaseQueryFormat {
@@ -45,6 +45,25 @@ export interface StaticSliceQueryResult extends BaseQueryResult {
 	>
 }
 
+function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'static-slice'> {
+	const criteria = sliceCriteriaParser(line[0]);
+	const direction = sliceDirectionParser(line[0]);
+	const input = line[1];
+
+	if(!criteria || criteria.length == 0) {
+		output.stderr(output.formatter.format('Invalid static-slice query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"',
+			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
+		return { query: [] };
+	}
+
+	return { query: [
+		{
+			type:      'static-slice',
+			criteria:  criteria,
+			direction: direction,
+		}], rCode: input } ;
+}
+
 export const StaticSliceQueryDefinition = {
 	executor:        executeStaticSliceQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
@@ -68,9 +87,8 @@ export const StaticSliceQueryDefinition = {
 		}
 		return true;
 	},
-	fromLine: (output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'static-slice'> =>
-		sliceQueryParser({ type: 'static-slice', line, output, isMandatory: true, withDirection: true }),
-	schema: Joi.object({
+	fromLine: sliceQueryLineParser,
+	schema:   Joi.object({
 		type:             Joi.string().valid('static-slice').required().description('The type of the query.'),
 		criteria:         Joi.array().items(Joi.string()).min(0).required().description('The slicing criteria to use.'),
 		noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),

@@ -1,8 +1,8 @@
 import { describe } from 'vitest';
-import { assertReplCompletions, assertReplParser } from '../../_helper/repl';
-import { SupportedQueries } from '../../../../src/queries/query';
-import { fileProtocol } from '../../../../src/r-bridge/retriever';
-import { LintingRules } from '../../../../src/linter/linter-rules';
+import { assertReplCompletions, assertReplParser } from '../../../_helper/repl';
+import { SupportedQueries } from '../../../../../src/queries/query';
+import { fileProtocol } from '../../../../../src/r-bridge/retriever';
+import { LintingRules } from '../../../../../src/linter/linter-rules';
 
 describe('Linter Query REPL Parser', () => {
 	const parser = SupportedQueries['linter'].fromLine;

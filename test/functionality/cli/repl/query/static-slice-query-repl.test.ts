@@ -1,7 +1,7 @@
 import { describe } from 'vitest';
-import { SupportedQueries } from '../../../../src/queries/query';
-import { assertReplParser } from '../../_helper/repl';
-import { SliceDirection } from '../../../../src/core/steps/all/static-slicing/00-slice';
+import { SupportedQueries } from '../../../../../src/queries/query';
+import { assertReplParser } from '../../../_helper/repl';
+import { SliceDirection } from '../../../../../src/core/steps/all/static-slicing/00-slice';
 
 describe('Static Slice Query REPL Parser', () => {
 	const parser = SupportedQueries['static-slice'].fromLine;

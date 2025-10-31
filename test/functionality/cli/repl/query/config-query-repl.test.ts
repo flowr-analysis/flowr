@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
-import { SupportedQueries } from '../../../../src/queries/query';
-import { assertReplCompletions, assertReplParser } from '../../_helper/repl';
+import { SupportedQueries } from '../../../../../src/queries/query';
+import { assertReplCompletions, assertReplParser } from '../../../_helper/repl';
 
 describe('Config Query REPL Parser', () => {
 	const parser = SupportedQueries['config'].fromLine;

@@ -57,8 +57,8 @@ export class DataFrameShapeInferenceVisitor<
 			return true;
 		}
 		const predecessors = this.getPredecessorNodes(vertex.id);
-		const predecessorDomains = predecessors.map(node => node.info.dataFrame?.domain ?? DataFrameStateDomain.bottom());
-		this.newDomain = DataFrameStateDomain.join(predecessorDomains);
+		const predecessorDomains = predecessors.map(node => node.info.dataFrame?.domain).filter(isNotUndefined);
+		this.newDomain = DataFrameStateDomain.bottom().join(...predecessorDomains);
 		this.onVisitNode(nodeId);
 
 		const visitedCount = this.visited.get(vertex.id) ?? 0;
@@ -77,6 +77,9 @@ export class DataFrameShapeInferenceVisitor<
 		this.oldDomain = node.info.dataFrame?.domain ?? DataFrameStateDomain.bottom();
 		super.visitDataflowNode(vertex);
 
+		if(this.config.dfg.unknownSideEffects.has(getVertexRootId(vertex))) {
+			this.newDomain = this.newDomain.bottom();
+		}
 		if(this.shouldWiden(vertex)) {
 			this.newDomain = this.oldDomain.widen(this.newDomain);
 		}

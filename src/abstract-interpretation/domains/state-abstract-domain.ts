@@ -9,3 +9,10 @@ import { MappedAbstractDomain } from './mapped-abstract-domain';
  * @see {@link NodeId} for the node IDs of the AST nodes
  */
 export abstract class StateAbstractDomain<Domain extends AnyAbstractDomain> extends MappedAbstractDomain<NodeId, Domain> {}
+
+/**
+ * The type of the value abstract domain of a state abstract domain (i.e. the abstract domain a state abstract domain maps to).
+ * @template StateDomain - The state abstract domain to get the value abstract domain type for
+ */
+export type ValueAbstractDomain<StateDomain extends StateAbstractDomain<AnyAbstractDomain>> =
+    StateDomain extends StateAbstractDomain<infer Domain> ? Domain : never;

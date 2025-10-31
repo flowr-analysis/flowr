@@ -227,6 +227,42 @@ print(df)
 			`.trim(),
 			[['6@df', undefined]] // unreachable
 		);
+
+		assertDataFrameDomain(
+			shell, `
+df <- data.frame(id = 1:5, name = 6:10)
+load('object_file')
+print(df)
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }],
+				['3@df', undefined]
+			]
+		);
+
+		testDataFrameDomain(
+			shell, `
+df <- data.frame(id = 1:5, name = 6:10)
+eval(parse(text="df <- 12"))
+print(df)
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }],
+				['3@df', undefined]
+			]
+		);
+
+		testDataFrameDomain(
+			shell, `
+df <- data.frame(id = 1:5, score = 6:10)
+eval(parse(text="df$level <- df$score^2"))
+print(df)
+			`.trim(),
+			[
+				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
+				['3@df', undefined, DataFrameShapeOverapproximation]
+			]
+		);
 	});
 
 	describe('Create', () => {

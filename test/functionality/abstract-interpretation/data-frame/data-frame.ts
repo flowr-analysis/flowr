@@ -27,6 +27,12 @@ import type { TestConfiguration } from '../../_helper/shell';
 import { skipTestBecauseConfigNotMet } from '../../_helper/shell';
 
 /**
+ * The default flowR configuration options for performing abstract interpretation.
+ * As resolving eval calls from string is only supported in the data flow graph, we have to disable it when visiting the control flow graph to correctly identify eval statements as unknown side effects.
+ */
+const defaultAbsintConfig: FlowrConfigOptions = { ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, evalStrings: false } };
+
+/**
  * Whether the inferred values should match the actual values exactly, or should be an over-approximation of the actual values.
  */
 export enum DomainMatchingType {
@@ -116,7 +122,7 @@ export function testDataFrameDomain(
 	code: string,
 	criteria: ([SingleSlicingCriterion, ExpectedDataFrameShape | undefined] | [SingleSlicingCriterion, ExpectedDataFrameShape | undefined, Partial<DataFrameShapeMatching>])[],
 	config?: DataFrameTestOptions,
-	flowRConfig: FlowrConfigOptions = defaultConfigOptions
+	flowRConfig: FlowrConfigOptions = defaultAbsintConfig
 ) {
 	const { parser = shell, ...testConfig } = config ?? {};
 	criteria = criteria.map(([criterion, expected, matching]) => [criterion, expected, getDefaultMatchingType(expected, matching)]);
@@ -148,7 +154,7 @@ export function testDataFrameDomainWithSource(
 	getCode: (arg: string) => string,
 	criteria: ([SingleSlicingCriterion, ExpectedDataFrameShape] | [SingleSlicingCriterion, ExpectedDataFrameShape, Partial<DataFrameShapeMatching>])[],
 	config?: DataFrameTestOptions,
-	flowRConfig: FlowrConfigOptions = defaultConfigOptions
+	flowRConfig: FlowrConfigOptions = defaultAbsintConfig
 ) {
 	const { parser = shell, ...testConfig } = config ?? {};
 	criteria = criteria.map(([criterion, expected, matching]) => [criterion, expected, getDefaultMatchingType(expected, matching)]);
@@ -203,7 +209,7 @@ export function assertDataFrameOperation(
 	code: string,
 	expected: [SingleSlicingCriterion, ExpectedDataFrameOperation[]][],
 	config?: DataFrameTestOptions,
-	flowRConfig: FlowrConfigOptions = defaultConfigOptions
+	flowRConfig: FlowrConfigOptions = defaultAbsintConfig
 ) {
 	const { name = code } = config ?? {};
 	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
@@ -241,7 +247,7 @@ export function testDataFrameDomainAgainstReal(
 	/** The matching options describe whether the inferred properties should match exactly the actual properties or can be an over-approximation (defaults to exact for all properties) */
 	criteria: (SingleSlicingCriterion | [SingleSlicingCriterion, Partial<DataFrameShapeMatching>])[],
 	config?: DataFrameTestOptions,
-	flowRConfig: FlowrConfigOptions = defaultConfigOptions
+	flowRConfig: FlowrConfigOptions = defaultAbsintConfig
 ) {
 	const { parser = shell, name = code, skipRun = false } = config ?? {};
 

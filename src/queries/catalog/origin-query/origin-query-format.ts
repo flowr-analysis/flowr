@@ -28,7 +28,7 @@ function originQueryLineParser(output: ReplOutput, line: readonly string[], _con
 	const criterion = sliceCriterionParser(line[0]);
 
 	if(!criterion) {
-		output.stderr(output.formatter.format('Invalid lineage query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"',
+		output.stderr(output.formatter.format('Invalid origin query format, slicing criterion must be given in parentheses "(criterion)"',
 			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
 		return { query: [] };
 	}

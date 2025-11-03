@@ -163,7 +163,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
  */
 export async function replProcessAnswer(analyzer: FlowrAnalyzer, output: ReplOutput, expr: string, allowRSessionAccess: boolean): Promise<void> {
 
-	const statements = splitAtEscapeSensitive(expr, false, ';');
+	const statements = splitAtEscapeSensitive(expr, false, ';:');
 
 	for(const statement of statements) {
 		await replProcessStatement(output, statement, analyzer, allowRSessionAccess);

@@ -17,7 +17,7 @@ export function sliceCriteriaParser(argument: string | undefined): SlicingCriter
 	if(argument?.startsWith('(') && argument.includes(')')) {
 		const endBracket = argument.indexOf(')');
 		const criteriaPart = argument.slice(1, endBracket);
-		const criteria = criteriaPart.split(',');
+		const criteria = criteriaPart.split(';');
 
 		return criteria as SlicingCriteria;
 	}

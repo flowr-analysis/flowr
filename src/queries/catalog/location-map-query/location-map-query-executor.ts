@@ -24,6 +24,7 @@ function fuzzyFindFile(node: RNodeWithParent | undefined, idMap: AstIdMap): stri
 }
 
 export async function executeLocationMapQuery({ analyzer }: BasicQueryData, queries: readonly LocationMapQuery[]): Promise<LocationMapQueryResult> {
+	const ast = await analyzer.normalize();
 	const start = Date.now();
 	const criteriaOfInterest = new Set(queries
 		.flatMap(q => q.ids ?? [])
@@ -42,7 +43,6 @@ export async function executeLocationMapQuery({ analyzer }: BasicQueryData, quer
 		count++;
 	}
 
-	const ast = await analyzer.normalize();
 	for(const [id, node] of ast.idMap.entries()) {
 		if(node.location && (criteriaOfInterest.size === 0 || criteriaOfInterest.has(id))) {
 			const file = fuzzyFindFile(node, ast.idMap);

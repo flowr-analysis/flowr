@@ -31,7 +31,7 @@ describe('Resolve Value Query REPL Parser', () => {
 	});
 	assertReplParser({ parser,
 		label:         'multiple criteria',
-		line:          ['(1@var,$5,2@var,1:3)'],
+		line:          ['(1@var;$5;2@var;1:3)'],
 		expectedParse: {
 			query: [{
 				type:     'resolve-value',

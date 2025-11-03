@@ -33,7 +33,7 @@ describe('Static Slice Query REPL Parser', () => {
 	});
 	assertReplParser({ parser,
 		label:         'multiple criteria',
-		line:          ['(1@var,$5,2@var,1:3)'],
+		line:          ['(1@var;$5;2@var;1:3)'],
 		expectedParse: {
 			query: [{
 				type:      'static-slice',
@@ -45,7 +45,7 @@ describe('Static Slice Query REPL Parser', () => {
 	});
 	assertReplParser({ parser,
 		label:         'with direction',
-		line:          ['(1@var,1:5)f'],
+		line:          ['(1@var;1:5)f'],
 		expectedParse: {
 			query: [{
 				type:      'static-slice',
@@ -68,14 +68,3 @@ describe('Static Slice Query REPL Parser', () => {
 		},
 	});
 });
-
-//describe('Static Slice Query REPL Completions', () => {
-//	const completer = SupportedQueries['static-slice'].completer;
-//	assertReplCompletions({ completer,
-//		label:               'empty arguments',
-//		startingNewArg:      true,
-//		splitLine:           [],
-//		expectedCompletions: ['+']
-//	});
-//});
-//

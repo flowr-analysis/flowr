@@ -6,7 +6,7 @@ export type AbstractProduct = Record<string, AnyAbstractDomain>;
 
 /** The type of the concrete product of an abstract product mapping each property to a concrete value in the respective concrete domain */
 export type ConcreteProduct<Product extends AbstractProduct> = {
-	[Key in keyof Product]: Product[Key] extends AbstractDomain<infer _Domain, infer Concrete, unknown, unknown, unknown> ? Concrete : never;
+	[Key in keyof Product]: Product[Key] extends AbstractDomain<infer Concrete, unknown, unknown, unknown> ? Concrete : never;
 };
 
 /**

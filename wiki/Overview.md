@@ -67,9 +67,9 @@ Besides these two ways, there is a [Visual Studio Code extension](https://market
 Similarly, we offer an [Addin for RStudio](https://github.com/flowr-analysis/rstudio-addin-flowr), as well as an [R package](https://github.com/flowr-analysis/flowr-r-adapter).
 
 🐳️ If you use the docker-version, simply starting the docker container in interactive mode drops you right into the REPL (`docker run -it --rm eagleoutice/flowr:latest`), while launching with the `--server` argument starts the server (`docker run -it --rm eagleoutice/flowr:latest --server`).\
-⚒️ If you compile the _flowR_ sources yourself, you can access _flowR_ by first building the sources (`npm run build`) and executing then the root script (`node dist/src/flowr.js`).
+⚒️ If you compile the _flowR_ sources yourself, you can access _flowR_ by first building the sources (`npm run build`) and executing then the root script (`node dist/src/cli/flowr.js`).
 
-Independent of your way of launching *flowr*, we will write simply `flowr` for either (🐳️)&nbsp;`docker run -it --rm eagleoutice/flowr:latest` or (⚒️)&nbsp;`node dist/src/flowr.js`. See the [setup](https://github.com/flowr-analysis/flowr/wiki/Setup) wiki page for more information on how to get _flowR_ running.
+Independent of your way of launching *flowr*, we will write simply `flowr` for either (🐳️)&nbsp;`docker run -it --rm eagleoutice/flowr:latest` or (⚒️)&nbsp;`node dist/src/cli/flowr.js`. See the [setup](https://github.com/flowr-analysis/flowr/wiki/Setup) wiki page for more information on how to get _flowR_ running.
 
 ### The Read-Eval-Print Loop (REPL)
 

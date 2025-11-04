@@ -60,8 +60,8 @@ The following sections explain how to use these features.
 
 _flowR_ itself has two main ways to operate:
 
-- as a **server** which processes analysis and slicing requests (`--server` option)
-- as a **read-eval-print loop** (REPL) that can be accessed directly from the command line (default option)
+- as a [**server**](#the-server) which processes analysis and slicing requests (`--server` option)
+- as a [**read-eval-print loop** (REPL)](#the-read-eval-print-loop-repl) that can be accessed directly from the command line (default option)
 
 Besides these two ways, there is a [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) that allows you to use _flowR_ directly from within the editor (it is available on [open-vsx](https://open-vsx.org/extension/code-inspect/vscode-flowr) as well).
 Similarly, we offer an [Addin for RStudio](https://github.com/flowr-analysis/rstudio-addin-flowr), as well as an [R package](https://github.com/flowr-analysis/flowr-r-adapter).

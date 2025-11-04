@@ -29,7 +29,7 @@ function lineageQueryLineParser(output: ReplOutput, line: readonly string[], _co
 	const criterion = sliceCriterionParser(line[0]);
 
 	if(!criterion) {
-		output.stderr(output.formatter.format('Invalid lineage query format, slicing criterion must be given in parentheses "(criterion)"',
+		output.stderr(output.formatter.format('Invalid lineage query format, slicing criterion must be given in parentheses, e.g. (2@var), (1:5) or ($10)',
 			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
 		return { query: [] };
 	}

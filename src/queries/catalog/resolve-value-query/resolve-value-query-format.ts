@@ -25,19 +25,20 @@ export interface ResolveValueQueryResult extends BaseQueryResult {
 
 function resolveValueLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'resolve-value'> {
 	const criteria = sliceCriteriaParser(line[0]);
-	const input = line[1];
-
 	if(!criteria || criteria.length == 0) {
 		output.stderr(output.formatter.format('Invalid resolve-value query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"',
 			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
 		return { query: [] };
 	}
 
-	return { query: [
-		{
-			type:     'resolve-value',
-			criteria: criteria,
-		}], rCode: input } ;
+	return {
+		query: [
+			{
+				type:     'resolve-value',
+				criteria: criteria,
+			}],
+		rCode: line[1]
+	} ;
 }
 
 export const ResolveValueQueryDefinition = {

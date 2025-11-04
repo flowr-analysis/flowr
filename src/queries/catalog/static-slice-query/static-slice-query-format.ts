@@ -48,8 +48,6 @@ export interface StaticSliceQueryResult extends BaseQueryResult {
 function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'static-slice'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	const direction = sliceDirectionParser(line[0]);
-	const input = line[1];
-
 	if(!criteria || criteria.length == 0) {
 		output.stderr(output.formatter.format('Invalid static-slice query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"',
 			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
@@ -61,7 +59,7 @@ function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 			type:      'static-slice',
 			criteria:  criteria,
 			direction: direction,
-		}], rCode: input } ;
+		}], rCode: line[1] } ;
 }
 
 export const StaticSliceQueryDefinition = {

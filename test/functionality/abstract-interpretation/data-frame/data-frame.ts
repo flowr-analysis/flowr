@@ -1,9 +1,10 @@
 import { assert, beforeAll, test } from 'vitest';
 import { hasDataFrameExpressionInfo, type AbstractInterpretationInfo, type DataFrameOperation } from '../../../../src/abstract-interpretation/data-frame/absint-info';
-import { inferDataFrameShapes , resolveIdToDataFrameShape } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
-import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
-import { ColNamesTop, equalColNames, equalInterval, IntervalBottom, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
+import type { AbstractDataFrameShape, DataFrameDomain, DataFrameShapeProperty } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
 import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../../src/abstract-interpretation/data-frame/semantics';
+import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
+import type { AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
+import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import type { FlowrConfigOptions } from '../../../../src/config';
 import { defaultConfigOptions } from '../../../../src/config';
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
@@ -26,6 +27,12 @@ import type { TestConfiguration } from '../../_helper/shell';
 import { skipTestBecauseConfigNotMet } from '../../_helper/shell';
 
 /**
+ * The default flowR configuration options for performing abstract interpretation.
+ * As resolving eval calls from string is only supported in the data flow graph, we have to disable it when visiting the control flow graph to correctly identify eval statements as unknown side effects.
+ */
+const defaultAbsintConfig: FlowrConfigOptions = { ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, evalStrings: false } };
+
+/**
  * Whether the inferred values should match the actual values exactly, or should be an over-approximation of the actual values.
  */
 export enum DomainMatchingType {
@@ -34,57 +41,47 @@ export enum DomainMatchingType {
 }
 
 /**
- * The data frame test options defining which data frame shape property should match exactly, and which should be an over-approximation.
+ * The data frame shape matching options defining which data frame shape property should match exactly, and which should be an over-approximation.
  */
-export type DataFrameTestOptions = Record<keyof DataFrameDomain, DomainMatchingType>;
+export type DataFrameShapeMatching = Record<keyof AbstractDataFrameShape, DomainMatchingType>;
 
 /**
- * Data frame tests options defining that every shape property should exactly match the actual value.
+ * Data frame shape matching options defining that every shape property should exactly match the actual value.
  */
-export const DataFrameShapeExact: DataFrameTestOptions = {
+export const DataFrameShapeExact: DataFrameShapeMatching = {
 	colnames: DomainMatchingType.Exact,
 	cols:     DomainMatchingType.Exact,
 	rows:     DomainMatchingType.Exact
 };
 
 /**
- * Data frame tests options defining that every shape property should be an over-approximation of the actual value.
+ * Data frame shape matching options defining that every shape property should be an over-approximation of the actual value.
  */
-export const DataFrameShapeOverapproximation: DataFrameTestOptions = {
+export const DataFrameShapeOverapproximation: DataFrameShapeMatching = {
 	colnames: DomainMatchingType.Overapproximation,
 	cols:     DomainMatchingType.Overapproximation,
 	rows:     DomainMatchingType.Overapproximation
 };
 
 /**
- * Data frame tests options defining that the inferred columns names should be an over-approximation of the actual value.
+ * Data frame shape matching options defining that the inferred columns names should be an over-approximation of the actual value.
  */
-export const ColNamesOverapproximation: Partial<DataFrameTestOptions> = {
+export const ColNamesOverapproximation: Partial<DataFrameShapeMatching> = {
 	colnames: DomainMatchingType.Overapproximation
 };
+
+/**
+ * The expected data frame shape for data frame shape assertion tests.
+ */
+export interface ExpectedDataFrameShape {
+	colnames: Exclude<DataFrameShapeProperty<'colnames'>, ReadonlySet<string>> | string[],
+	cols:     DataFrameShapeProperty<'cols'>,
+	rows:     DataFrameShapeProperty<'rows'>
+}
 
 type ExpectedDataFrameOperation = {
 	[Name in DataFrameOperationName]: { operation: Name } & DataFrameOperationArgs<Name>
 }[DataFrameOperationName];
-
-/**
- * The mapper type for mapping each data frame shape property to an equality and ordering functon
- */
-type DomainComparisonMapping = {
-	[K in keyof DataFrameDomain]: {
-		equal: (value1: DataFrameDomain[K], value2: DataFrameDomain[K]) => boolean,
-		leq:   (value1: DataFrameDomain[K], value2: DataFrameDomain[K]) => boolean
-	}
-}
-
-/**
- * The equality and ordering comparison functons for each data frame shape property
- */
-const ComparisonFunctions: DomainComparisonMapping = {
-	colnames: { equal: equalColNames, leq: leqColNames },
-	cols:     { equal: equalInterval, leq: leqInterval },
-	rows:     { equal: equalInterval, leq: leqInterval }
-};
 
 /**
  * Stores the inferred data frame constraints and AST node for a tested slicing criterion.
@@ -94,18 +91,17 @@ interface CriterionTestEntry {
 	inferred:   DataFrameDomain | undefined,
 	node:       RSymbol<ParentInformation>,
 	lineNumber: number,
-	options:    DataFrameTestOptions
+	matching:   DataFrameShapeMatching
 }
 
-export interface DataFrameDomainTestOptions extends Partial<TestConfiguration> {
-	/** Whether the real test with the execution of the R code should be skipped (defaults to `false`) */
-	readonly skipRun?: boolean | (() => boolean)
+export interface DataFrameTestOptions extends Partial<TestConfiguration> {
 	/** The parser to use for the data flow graph creation (defaults to the R shell) */
 	readonly parser?:  KnownParser
 	/** An optional name or test label for the test (defaults to the code) */
 	readonly name?:    string | TestLabel
+	/** Whether the real test with the execution of the R code should be skipped (defaults to `false`) */
+	readonly skipRun?: boolean | (() => boolean)
 }
-
 
 /**
  * Combined test to assert the expected data frame shape constraints using {@link assertDataFrameDomain} and
@@ -116,23 +112,23 @@ export interface DataFrameDomainTestOptions extends Partial<TestConfiguration> {
  * Make sure that this does not break the provided code.
  *
  * @param shell       - The R shell to use to run the code
- * @param code        - The code to test
- * @param criteria    - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameShapeExact})
- * @param config      - Test-specific configuration options, including whether the real test should be skipped, the parser to use, and an optional name for the test (defaults to {@link DataFrameDomainTestOptions})
+ * @param code        - The R code to test
+ * @param criteria    - The slicing criteria to test including the expected shape constraints and a {@link DataFrameShapeMatching} option for each criterion (defaults to {@link DataFrameShapeExact})
+ * @param config      - The test configuration options including the parser to use, the name for the test, and whether the execution test should be skipped ({@link DataFrameTestOptions})
  * @param flowRConfig - The flowR config to use for the test (defaults to {@link defaultConfigOptions})
  */
 export function testDataFrameDomain(
 	shell: RShell,
 	code: string,
-	criteria: ([SingleSlicingCriterion, DataFrameDomain | undefined] | [SingleSlicingCriterion, DataFrameDomain | undefined, Partial<DataFrameTestOptions>])[],
-	config?: DataFrameDomainTestOptions,
-	flowRConfig: FlowrConfigOptions & DataFrameDomainTestOptions = defaultConfigOptions
+	criteria: ([SingleSlicingCriterion, ExpectedDataFrameShape | undefined] | [SingleSlicingCriterion, ExpectedDataFrameShape | undefined, Partial<DataFrameShapeMatching>])[],
+	config?: DataFrameTestOptions,
+	flowRConfig: FlowrConfigOptions = defaultAbsintConfig
 ) {
-	const { parser = shell, name = code, skipRun = false } = config ?? {};
-	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getDefaultTestOptions(expected, options)]);
+	const { parser = shell, ...testConfig } = config ?? {};
+	criteria = criteria.map(([criterion, expected, matching]) => [criterion, expected, getDefaultMatchingType(expected, matching)]);
 	guardValidCriteria(criteria);
-	assertDataFrameDomain(parser, code, criteria.map(entry => [entry[0], entry[1]]), name, config, flowRConfig);
-	testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]), { ...config, skipRun, parser, name }, flowRConfig);
+	assertDataFrameDomain(parser, code, criteria.map(entry => [entry[0], entry[1]]), testConfig, flowRConfig);
+	testDataFrameDomainAgainstReal(shell, code, criteria.map(entry => entry.length === 3 ? [entry[0], entry[2]] : entry[0]), config, flowRConfig);
 }
 
 /**
@@ -147,44 +143,43 @@ export function testDataFrameDomain(
  * @param shell       - The R shell to use to run the code
  * @param fileArg     - The argument for the assert run
  * @param textArg     - The argument for the full test run where the code is executed
- * @param getCode     - The function to get the code for `fileArg` or `textArg`
- * @param criteria    - The slicing criteria to test including the expected shape constraints and the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameShapeExact})
- * @param config      - Test-specific configuration options, including whether the real test should be skipped, the parser to use, and an optional name for the test (defaults to {@link DataFrameDomainTestOptions})
- * @param flowRConfig - The config to use for the test (defaults to {@link defaultConfigOptions})
+ * @param getCode     - The function to get the R code for `fileArg` or `textArg`
+ * @param criteria    - The slicing criteria to test including the expected shape constraints and a {@link DataFrameShapeMatching} option for each criterion (defaults to {@link DataFrameShapeExact})
+ * @param config      - The test configuration options including the parser to use, the name for the test, and whether the execution test should be skipped ({@link DataFrameTestOptions})
+ * @param flowRConfig - The flowR config to use for the test (defaults to {@link defaultConfigOptions})
  */
 export function testDataFrameDomainWithSource(
 	shell: RShell,
 	fileArg: string, textArg: string,
 	getCode: (arg: string) => string,
-	criteria: ([SingleSlicingCriterion, DataFrameDomain] | [SingleSlicingCriterion, DataFrameDomain, Partial<DataFrameTestOptions>])[],
-	config?: DataFrameDomainTestOptions,
-	flowRConfig: FlowrConfigOptions = defaultConfigOptions
+	criteria: ([SingleSlicingCriterion, ExpectedDataFrameShape] | [SingleSlicingCriterion, ExpectedDataFrameShape, Partial<DataFrameShapeMatching>])[],
+	config?: DataFrameTestOptions,
+	flowRConfig: FlowrConfigOptions = defaultAbsintConfig
 ) {
-	const { parser = shell, name, skipRun = false } = config ?? {};
-	criteria = criteria.map(([criterion, expected, options]) => [criterion, expected, getDefaultTestOptions(expected, options)]);
+	const { parser = shell, ...testConfig } = config ?? {};
+	criteria = criteria.map(([criterion, expected, matching]) => [criterion, expected, getDefaultMatchingType(expected, matching)]);
 	guardValidCriteria(criteria);
-	assertDataFrameDomain(parser, getCode(fileArg), criteria.map(entry => [entry[0], entry[1]]), name ?? getCode(fileArg), config, flowRConfig);
-	testDataFrameDomain(shell, getCode(textArg), criteria, { ...config, skipRun, parser, name: name ?? getCode(textArg) }, flowRConfig);
+	assertDataFrameDomain(parser, getCode(fileArg), criteria.map(entry => [entry[0], entry[1]]), testConfig, flowRConfig);
+	testDataFrameDomain(shell, getCode(textArg), criteria, config, flowRConfig);
 }
 
 /**
  * Asserts inferred data frame shape constraints for given slicing criteria.
  *
  * @param parser      - The parser to use for the data flow graph creation
- * @param code        - The code to test
+ * @param code        - The R code to test
  * @param expected    - The expected data frame shape constraints for each slicing criterion
- * @param name        - An optional name or test label for the test (defaults to the code)
- * @param config      - Test-specific config options
- * @param flowRConfig - The config to use for the test (defaults to {@link defaultConfigOptions})
+ * @param config      - The test configuration options including the parser to use, the name for the test, and whether the execution test should be skipped ({@link DataFrameTestOptions})
+ * @param flowRConfig - The flowR config to use for the test (defaults to {@link defaultConfigOptions})
  */
 export function assertDataFrameDomain(
 	parser: KnownParser,
 	code: string,
-	expected: [SingleSlicingCriterion, DataFrameDomain | undefined][],
-	name: string | TestLabel = code,
-	config?: Partial<TestConfiguration>,
+	expected: [SingleSlicingCriterion, ExpectedDataFrameShape | undefined][],
+	config?: DataFrameTestOptions,
 	flowRConfig: FlowrConfigOptions = defaultConfigOptions
 ) {
+	const { name = code } = config ?? {};
 	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
 
 	beforeAll(async() => {
@@ -203,55 +198,59 @@ export function assertDataFrameDomain(
 /**
  * Asserts an inferred abstract data frame operation for given slicing criteria.
  *
- * @param parser   - The parser to use for the data flow graph creation
- * @param code     - The code to test
- * @param expected - The expected abstract data frame operation for each slicing criterion
- * @param name     - An optional name or test label for the test (defaults to the code)
- * @param config   - The config to use for the test (defaults to {@link defaultConfigOptions})
+ * @param parser      - The parser to use for the data flow graph creation
+ * @param code        - The R code to test
+ * @param expected    - The expected abstract data frame operation for each slicing criterion
+ * @param config      - The test configuration options including the parser to use, the name for the test, and whether the execution test should be skipped ({@link DataFrameTestOptions})
+ * @param flowRConfig - The flowR config to use for the test (defaults to {@link defaultConfigOptions})
  */
 export function assertDataFrameOperation(
 	parser: KnownParser,
 	code: string,
 	expected: [SingleSlicingCriterion, ExpectedDataFrameOperation[]][],
-	name: string | TestLabel = code,
-	config: FlowrConfigOptions = defaultConfigOptions
+	config?: DataFrameTestOptions,
+	flowRConfig: FlowrConfigOptions = defaultAbsintConfig
 ) {
+	const { name = code } = config ?? {};
 	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
 
 	beforeAll(async() => {
-		result = await createDataflowPipeline(parser, { request: requestFromInput(code) }, config).allRemainingSteps();
+		if(!skipTestBecauseConfigNotMet(config)) {
+			result = await createDataflowPipeline(parser, { request: requestFromInput(code) }, flowRConfig).allRemainingSteps();
+		}
 	});
 
-	test.each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
+	test.skipIf(skipTestBecauseConfigNotMet(config)).each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
-		const operations = getInferredOperationsForCriterion(result, criterion, config);
+		const operations = getInferredOperationsForCriterion(result, criterion, flowRConfig);
 		assert.containSubset(operations, expect, `expected ${JSON.stringify(operations)} to equal ${JSON.stringify(expect)}`);
 	});
 }
 
 /**
  * Tests that the inferred data frame shape constraints at given slicing criteria match or over-approximate
- * the real shape properties of the slicing criteria by instrumentating the code.
+ * the real shape properties of the slicing criteria by instrumenting the code.
  * Only slicing criteria for symbols are allowed (e.g. no function calls or operators).
  *
  * Note that this functions inserts print statements for the shape properties in the line after each slicing criterion.
  * Make sure that this does not break the provided code.
  *
- * @param shell    - The R shell to use to run the instrumented code
- * @param code     - The code to test
- * @param criteria - The slicing criteria to test including the {@link DataFrameTestOptions} for each criterion (defaults to {@link DataFrameShapeExact})
- * @param config      - Test-specific configuration options, including whether the real test should be skipped, the parser to use, and an optional name for the test (defaults to {@link DataFrameDomainTestOptions})
- * @param flowRConfig   - The flowR config to use for the test (defaults to {@link defaultConfigOptions})
+ * @param shell       - The R shell to use to run the instrumented code
+ * @param code        - The R code to test
+ * @param criteria    - The slicing criteria to test including a {@link DataFrameShapeMatching} option for each criterion (defaults to {@link DataFrameShapeExact})
+ * @param config      - The test configuration options including the parser to use, the name for the test, and whether the execution test should be skipped ({@link DataFrameTestOptions})
+ * @param flowRConfig - The flowR config to use for the test (defaults to {@link defaultConfigOptions})
  */
 export function testDataFrameDomainAgainstReal(
 	shell: RShell,
 	code: string,
-	/** The options describe whether the inferred properties should match exactly the actual properties or can be an over-approximation (defaults to exact for all properties) */
-	criteria: (SingleSlicingCriterion | [SingleSlicingCriterion, Partial<DataFrameTestOptions>])[],
-	config?: DataFrameDomainTestOptions,
-	flowRConfig: FlowrConfigOptions = defaultConfigOptions
+	/** The matching options describe whether the inferred properties should match exactly the actual properties or can be an over-approximation (defaults to exact for all properties) */
+	criteria: (SingleSlicingCriterion | [SingleSlicingCriterion, Partial<DataFrameShapeMatching>])[],
+	config?: DataFrameTestOptions,
+	flowRConfig: FlowrConfigOptions = defaultAbsintConfig
 ) {
 	const { parser = shell, name = code, skipRun = false } = config ?? {};
+
 	test.skipIf(skipTestBecauseConfigNotMet(config))(decorateLabelContext(name, ['absint']), async({ skip })=> {
 		if(typeof skipRun === 'boolean' ? skipRun : skipRun()) {
 			skip();
@@ -261,18 +260,18 @@ export function testDataFrameDomainAgainstReal(
 
 		for(const entry of criteria) {
 			const criterion = Array.isArray(entry) ? entry[0] : entry;
-			const options = { ...DataFrameShapeExact, ...(Array.isArray(entry) ? entry[1] : {}) };
+			const matching = { ...DataFrameShapeExact, ...(Array.isArray(entry) ? entry[1] : {}) };
 			const [inferred, node] = getInferredDomainForCriterion(result, criterion, flowRConfig);
 
 			if(node.type !== RType.Symbol) {
-				throw new Error(`slicing criterion ${criterion} does not refer to a R symbol`);
+				throw new Error(`slicing criterion ${criterion} does not refer to an R symbol`);
 			}
 			const lineNumber = getRangeEnd(node.info.fullRange ?? node.location)?.[0];
 
 			if(lineNumber === undefined) {
 				throw new Error(`cannot resolve line of criterion ${criterion}`);
 			}
-			testEntries.push({ criterion, inferred, node, lineNumber, options });
+			testEntries.push({ criterion, inferred, node, lineNumber, matching });
 		}
 		testEntries.sort((a, b) => b.lineNumber - a.lineNumber);
 		const lines = code.split('\n');
@@ -285,46 +284,43 @@ export function testDataFrameDomainAgainstReal(
 		const instrumentedCode = lines.join('\n');
 		const output = await shell.sendCommandWithOutput(instrumentedCode);
 
-		for(const { criterion, inferred, options } of testEntries) {
+		for(const { criterion, inferred, matching } of testEntries) {
 			const expected = getRealDomainFromOutput(criterion, output);
-			assertDomainMatches(inferred, expected, options);
+			assertDomainMatches(inferred, expected, matching);
 		}
 	});
 }
 
 function assertDomainMatches(
 	inferred: DataFrameDomain | undefined,
-	expected: DataFrameDomain | undefined,
-	options: DataFrameTestOptions
+	expected: ExpectedDataFrameShape | undefined,
+	matching: DataFrameShapeMatching
 ): void {
-	if(Object.values(options).some(type => type === DomainMatchingType.Exact)) {
-		assert.ok(inferred === expected || (inferred !== undefined && expected !== undefined), `result differs: expected ${JSON.stringify(inferred)} to equal ${JSON.stringify(expected)}`);
+	if(Object.values(matching).some(type => type === DomainMatchingType.Exact)) {
+		assert.ok(inferred === expected || (inferred !== undefined && expected !== undefined), `result differs: expected ${inferred?.toString()} to equal ${JSON.stringify(expected)}`);
 	} else {
-		assert.ok(inferred === undefined || expected !== undefined, `result is no over-approximation: expected ${JSON.stringify(inferred)} to be an over-approximation of ${JSON.stringify(expected)}`);
+		assert.ok(inferred === undefined || expected !== undefined, `result is no over-approximation: expected ${inferred?.toString()} to be an over-approximation of ${JSON.stringify(expected)}`);
 	}
 	if(inferred !== undefined && expected !== undefined) {
-		assertPropertyMatches('colnames', inferred.colnames, expected.colnames, options.colnames);
-		assertPropertyMatches('cols', inferred.cols, expected.cols, options.cols);
-		assertPropertyMatches('rows', inferred.rows, expected.rows, options.rows);
+		assertPropertyMatches('colnames', inferred.colnames, inferred.colnames.create(expected.colnames), matching.colnames);
+		assertPropertyMatches('cols', inferred.cols, inferred.cols.create(expected.cols), matching.cols);
+		assertPropertyMatches('rows', inferred.rows, inferred.rows.create(expected.rows), matching.rows);
 	}
 }
 
-function assertPropertyMatches<K extends keyof DataFrameDomain, T extends DataFrameDomain[K]>(
+function assertPropertyMatches<K extends keyof AbstractDataFrameShape, T extends AnyAbstractDomain>(
 	type: K,
 	inferred: T,
 	expected: T,
-	matchingType: DomainMatchingType
+	matching: DomainMatchingType
 ): void {
-	const equalFunction = ComparisonFunctions[type].equal;
-	const leqFunction = ComparisonFunctions[type].leq;
-
-	switch(matchingType) {
+	switch(matching) {
 		case DomainMatchingType.Exact:
-			return assert.ok(equalFunction(inferred, expected), `${type} differs: expected ${JSON.stringify(inferred)} to equal ${JSON.stringify(expected)}`);
+			return assert.ok(inferred.equals(expected), `${type} differs: expected ${inferred.toString()} to equal ${expected.toString()}`);
 		case DomainMatchingType.Overapproximation:
-			return assert.ok(leqFunction(expected, inferred), `${type} is no over-approximation: expected ${JSON.stringify(inferred)} to be an over-approximation of ${JSON.stringify(expected)}`);
+			return assert.ok(expected.leq(inferred), `${type} is no over-approximation: expected ${inferred.toString()} to be an over-approximation of ${expected.toString()}`);
 		default:
-			assertUnreachable(matchingType);
+			assertUnreachable(matching);
 	}
 }
 
@@ -336,29 +332,29 @@ function createCodeForOutput(
 	return `cat(sprintf("${marker} %s,%s,%s,%s\\n", is.data.frame(${symbol}), paste(names(${symbol}), collapse = ";"), paste(ncol(${symbol}), collapse = ""), paste(nrow(${symbol}), collapse = "")))`;
 }
 
-function getDefaultTestOptions(expected: DataFrameDomain | undefined, options?: Partial<DataFrameTestOptions>): Partial<DataFrameTestOptions> {
-	const finalOptions: Partial<DataFrameTestOptions> = { ...options };
+function getDefaultMatchingType(expected: ExpectedDataFrameShape | undefined, matching?: Partial<DataFrameShapeMatching>): Partial<DataFrameShapeMatching> {
+	const matchingType: Partial<DataFrameShapeMatching> = { ...matching };
 
 	if(expected !== undefined) {
-		if(options?.colnames === undefined && expected.colnames === ColNamesTop) {
-			finalOptions.colnames = DomainMatchingType.Overapproximation;
+		if(matching?.colnames === undefined && expected.colnames === Top) {
+			matchingType.colnames = DomainMatchingType.Overapproximation;
 		}
-		if(options?.cols === undefined) {
-			if(expected.cols === IntervalBottom || expected.cols[0] === expected.cols[1]) {
-				finalOptions.cols = DomainMatchingType.Exact;
+		if(matching?.cols === undefined) {
+			if(expected.cols === Bottom || expected.cols[0] === expected.cols[1]) {
+				matchingType.cols = DomainMatchingType.Exact;
 			} else {
-				finalOptions.cols = DomainMatchingType.Overapproximation;
+				matchingType.cols = DomainMatchingType.Overapproximation;
 			}
 		}
-		if(options?.rows === undefined) {
-			if(expected.rows === IntervalBottom || expected.rows[0] === expected.rows[1]) {
-				finalOptions.rows = DomainMatchingType.Exact;
+		if(matching?.rows === undefined) {
+			if(expected.rows === Bottom || expected.rows[0] === expected.rows[1]) {
+				matchingType.rows = DomainMatchingType.Exact;
 			} else {
-				finalOptions.rows = DomainMatchingType.Overapproximation;
+				matchingType.rows = DomainMatchingType.Overapproximation;
 			}
 		}
 	}
-	return finalOptions;
+	return matchingType;
 }
 
 function getInferredDomainForCriterion(
@@ -401,7 +397,7 @@ function getInferredOperationsForCriterion(
 function getRealDomainFromOutput(
 	criterion: SingleSlicingCriterion,
 	output: string[]
-): DataFrameDomain | undefined {
+): ExpectedDataFrameShape | undefined {
 	const marker = getOutputMarker(criterion);
 	const line = output.find(line => line.startsWith(marker))?.replace(marker, '').trim();
 
@@ -427,22 +423,22 @@ function getOutputMarker(criterion: SingleSlicingCriterion): string {
 }
 
 function guardValidCriteria(
-	criteria: ([SingleSlicingCriterion, DataFrameDomain | undefined] | [SingleSlicingCriterion, DataFrameDomain | undefined, Partial<DataFrameTestOptions>])[]
+	criteria: ([SingleSlicingCriterion, ExpectedDataFrameShape | undefined] | [SingleSlicingCriterion, ExpectedDataFrameShape | undefined, Partial<DataFrameShapeMatching>])[]
 ): void {
-	for(const [criterion, domain, options] of criteria) {
+	for(const [criterion, domain, matching] of criteria) {
 		if(domain !== undefined) {
-			if(domain.colnames === ColNamesTop) {
-				guard(options?.colnames === DomainMatchingType.Overapproximation, `Domain matching type for column names of "${criterion}" must be \`Overapproximation\` if expected column names are ${JSON.stringify(domain.colnames)}`);
+			if(domain.colnames === Top) {
+				guard(matching?.colnames === DomainMatchingType.Overapproximation, `Domain matching type for column names of "${criterion}" must be \`Overapproximation\` if expected column names are ${domain.colnames.toString()}`);
 			}
-			if(domain.cols !== IntervalBottom && domain.cols[0] !== domain.cols[1]) {
-				guard(options?.cols === DomainMatchingType.Overapproximation, `Domain matching type for number of columns of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element ${JSON.stringify(domain.cols)}`);
+			if(domain.cols !== Bottom && domain.cols[0] !== domain.cols[1]) {
+				guard(matching?.cols === DomainMatchingType.Overapproximation, `Domain matching type for number of columns of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element ${domain.cols.toString()}`);
 			} else {
-				guard((options?.cols ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for number of columns of "${criterion}" must be \`Exact\` if expected interval has only 1 element ${JSON.stringify(domain.cols)}`);
+				guard((matching?.cols ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for number of columns of "${criterion}" must be \`Exact\` if expected interval has only 1 element ${domain.cols.toString()}`);
 			}
-			if(domain.rows !== IntervalBottom && domain.rows[0] !== domain.rows[1]) {
-				guard(options?.rows === DomainMatchingType.Overapproximation, `Domain matching type for number of rows of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element ${JSON.stringify(domain.rows)}`);
+			if(domain.rows !== Bottom && domain.rows[0] !== domain.rows[1]) {
+				guard(matching?.rows === DomainMatchingType.Overapproximation, `Domain matching type for number of rows of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element ${domain.rows.toString()}`);
 			} else {
-				guard((options?.rows ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for number of rows of "${criterion}" must be \`Exact\` if expected interval has only 1 element ${JSON.stringify(domain.rows)}`);
+				guard((matching?.rows ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for number of rows of "${criterion}" must be \`Exact\` if expected interval has only 1 element ${domain.rows.toString()}`);
 			}
 		}
 	}

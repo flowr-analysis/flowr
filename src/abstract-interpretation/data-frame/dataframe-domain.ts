@@ -1,19 +1,19 @@
-import type { AbstractDomain } from '../domains/abstract-domain';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { AbstractDomainValue } from '../domains/abstract-domain';
 import { PosIntervalDomain } from '../domains/positive-interval-domain';
 import { ProductDomain } from '../domains/product-domain';
-import { SetBoundedSetDomain } from '../domains/set-bounded-set-domain';
+import { SetUpperBoundDomain } from '../domains/set-upper-bound-domain';
 import { StateAbstractDomain } from '../domains/state-abstract-domain';
 
 /** The type of the abstract product representing the shape of data frames */
 export type AbstractDataFrameShape = {
-	colnames: SetBoundedSetDomain<string>;
+	colnames: SetUpperBoundDomain<string>;
 	cols:     PosIntervalDomain;
 	rows:     PosIntervalDomain;
 }
 
-/** The type of abstract values of a sub abstract domain (shape property) of the data frame shape product */
-type DataFrameShapeProperty<Property extends keyof AbstractDataFrameShape> =
-	AbstractDataFrameShape[Property] extends AbstractDomain<unknown, unknown, unknown, unknown, infer Lift> ? Lift : never;
+/** The type of abstract values of a sub abstract domain (shape property) of the data frame shape product domain */
+export type DataFrameShapeProperty<Property extends keyof AbstractDataFrameShape> = AbstractDomainValue<AbstractDataFrameShape[Property]>;
 
 /**
  * The data frame abstract domain as product domain of a column names domain, column count domain, and row count domain.
@@ -21,40 +21,48 @@ type DataFrameShapeProperty<Property extends keyof AbstractDataFrameShape> =
 export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 	constructor(value: AbstractDataFrameShape, maxColNames?: number) {
 		super({
-			colnames: new SetBoundedSetDomain(value.colnames.value, maxColNames),
+			colnames: new SetUpperBoundDomain(value.colnames.value, maxColNames ?? value.colnames.limit),
 			cols:     new PosIntervalDomain(value.cols.value),
 			rows:     new PosIntervalDomain(value.rows.value)
 		});
 	}
 
-	public create(value: AbstractDataFrameShape, maxColNames?: number): DataFrameDomain {
-		return new DataFrameDomain(value, maxColNames);
+	public create(value: AbstractDataFrameShape): this;
+	public create(value: AbstractDataFrameShape): DataFrameDomain {
+		return new DataFrameDomain(value, this.maxColNames);
 	}
 
 	/**
 	 * The current abstract value of the column names domain.
 	 */
-	public get colnames(): DataFrameShapeProperty<'colnames'> {
-		return this.value.colnames.value;
+	public get colnames(): AbstractDataFrameShape['colnames'] {
+		return this.value.colnames;
 	}
 
 	/**
 	 * The current abstract value of the column count domain.
 	 */
-	public get cols(): DataFrameShapeProperty<'cols'> {
-		return this.value.cols.value;
+	public get cols(): AbstractDataFrameShape['cols'] {
+		return this.value.cols;
 	}
 
 	/**
 	 * The current abstract value of the row count domain.
 	 */
-	public get rows(): DataFrameShapeProperty<'rows'> {
-		return this.value.rows.value;
+	public get rows(): AbstractDataFrameShape['rows'] {
+		return this.value.rows;
+	}
+
+	/**
+	 * The maximum number of inferred column names of the column names domain.
+	 */
+	public get maxColNames(): number {
+		return this.value.colnames.limit;
 	}
 
 	public static bottom(maxColNames?: number): DataFrameDomain {
 		return new DataFrameDomain({
-			colnames: SetBoundedSetDomain.bottom(maxColNames),
+			colnames: SetUpperBoundDomain.bottom(maxColNames),
 			cols:     PosIntervalDomain.bottom(),
 			rows:     PosIntervalDomain.bottom()
 		});
@@ -62,7 +70,7 @@ export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 
 	public static top(maxColNames?: number): DataFrameDomain {
 		return new DataFrameDomain({
-			colnames: SetBoundedSetDomain.top(maxColNames),
+			colnames: SetUpperBoundDomain.top(maxColNames),
 			cols:     PosIntervalDomain.top(),
 			rows:     PosIntervalDomain.top()
 		});
@@ -70,6 +78,15 @@ export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 }
 
 /**
- * The data frame state abstract domain as state abstract domain mapping AST node IDs to inferred abstract data frame shapes.
+ * The data frame state abstract domain as state domain mapping AST node IDs to inferred abstract data frame shapes.
  */
-export class DateFrameStateDomain extends StateAbstractDomain<DataFrameDomain> {}
+export class DataFrameStateDomain extends StateAbstractDomain<DataFrameDomain> {
+	public create(value: ReadonlyMap<NodeId, DataFrameDomain>): this;
+	public create(value: ReadonlyMap<NodeId, DataFrameDomain>): DataFrameStateDomain {
+		return new DataFrameStateDomain(value);
+	}
+
+	public static bottom(): DataFrameStateDomain {
+		return new DataFrameStateDomain(new Map<NodeId, DataFrameDomain>());
+	}
+}

@@ -55,16 +55,8 @@ import {
 	type AbstractInterpretationInfo,
 	hasDataFrameExpressionInfo
 } from '../abstract-interpretation/data-frame/absint-info';
-import type { IntervalDomain } from '../abstract-interpretation/data-frame/domain';
-import {
-	ColNamesTop,
-	DataFrameBottom,
-	DataFrameTop,
-	equalDataFrameDomain,
-	equalInterval,
-	IntervalBottom,
-	IntervalTop
-} from '../abstract-interpretation/data-frame/domain';
+import type { DataFrameDomain } from '../abstract-interpretation/data-frame/dataframe-domain';
+import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
 import { inferDataFrameShapes } from '../abstract-interpretation/data-frame/shape-inference';
 import fs from 'fs';
 
@@ -435,12 +427,12 @@ export class BenchmarkSlicer {
 		};
 
 		const result = this.measureSimpleStep('infer data frame shapes', () => inferDataFrameShapes(cfinfo, dfg, ast, config));
-		stats.numberOfResultConstraints = result.size;
+		stats.numberOfResultConstraints = result.value.size;
 
-		for(const value of result.values()) {
-			if(equalDataFrameDomain(value, DataFrameTop)) {
+		for(const value of result.value.values()) {
+			if(value.isTop()) {
 				stats.numberOfResultingTop++;
-			} else if(equalDataFrameDomain(value, DataFrameBottom)) {
+			} else if((value as DataFrameDomain).isBottom()) {
 				stats.numberOfResultingBottom++;
 			} else {
 				stats.numberOfResultingValues++;
@@ -462,18 +454,18 @@ export class BenchmarkSlicer {
 				return;
 			}
 			const nodeStats: PerNodeStatsDfShape = {
-				numberOfEntries: node.info.dataFrame?.domain?.size ?? 0
+				numberOfEntries: node.info.dataFrame?.domain?.value.size ?? 0
 			};
 			if(expression !== undefined) {
 				nodeStats.mappedOperations = expression.operations.map(op => op.operation);
 				stats.numberOfOperationNodes++;
 
 				if(value !== undefined) {
-					nodeStats.inferredColNames = value.colnames === ColNamesTop ? 'top' : value.colnames.length;
+					nodeStats.inferredColNames = value.colnames.isValue() ? value.colnames.value.size : value.colnames.isTop() ? 'top' : 'bottom';
 					nodeStats.inferredColCount = this.getInferredSize(value.cols);
 					nodeStats.inferredRowCount = this.getInferredSize(value.rows);
-					nodeStats.approxRangeColCount = value.cols === IntervalBottom ? 0 : value.cols[1] - value.cols[0];
-					nodeStats.approxRangeRowCount = value.rows === IntervalBottom ? 0 : value.rows[1] - value.rows[0];
+					nodeStats.approxRangeColCount = value.cols.isValue() ? value.cols.value[1] - value.cols.value[0] : 0;
+					nodeStats.approxRangeRowCount = value.rows.isValue() ? value.rows.value[1] - value.rows.value[0] : 0;
 				}
 			}
 			if(value !== undefined) {
@@ -491,15 +483,15 @@ export class BenchmarkSlicer {
 		return stats;
 	}
 
-	private getInferredSize(value: IntervalDomain): number | 'bottom' | 'infinite' | 'top' {
-		if(equalInterval(value, IntervalTop)) {
+	private getInferredSize(value: PosIntervalDomain): number | 'bottom' | 'infinite' | 'top' {
+		if(value.isTop()) {
 			return 'top';
-		} else if(value === IntervalBottom) {
-			return 'bottom';
-		} else if(!isFinite(value[1])) {
+		} else if(value.isValue() && !isFinite(value.value[1])) {
 			return 'infinite';
+		} else if(value.isValue()) {
+			return Math.floor((value.value[0] + value.value[1]) / 2);
 		}
-		return Math.floor((value[0] + value[1]) / 2);
+		return 'bottom';
 	}
 
 	/** Bridging the gap between the new internal and the old names for the benchmarking */

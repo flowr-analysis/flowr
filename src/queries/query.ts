@@ -57,7 +57,6 @@ import type { CommandCompletions } from '../cli/repl/core';
 
 /**
  * These are all queries that can be executed from within flowR
- * {@link SynchronousQuery} are queries that can be executed synchronously, i.e., they do not return a Promise.
  */
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -107,6 +106,7 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
     /** optional query construction from an, e.g., repl line */
 	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine
 	asciiSummarizer:      (formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>
+	jsonFormatter?:       (queryResults: BaseQueryResult) => object
 	schema:               Joi.ObjectSchema
 	/**
 	 * Flattens the involved query nodes to be added to a flowR search when the {@link fromQuery} function is used based on the given result after this query is executed.

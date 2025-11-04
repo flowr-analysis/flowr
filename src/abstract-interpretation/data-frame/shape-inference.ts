@@ -9,9 +9,10 @@ import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/a
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isNotUndefined } from '../../util/assert';
+import { AbstractDomain } from '../domains/abstract-domain';
 import { type AbstractInterpretationInfo, DataFrameInfoMarker, hasDataFrameInfoMarker } from './absint-info';
 import { DataFrameShapeInferenceVisitor } from './absint-visitor';
-import { type DataFrameDomain, type DataFrameStateDomain, joinDataFrames, joinDataFrameStates } from './domain';
+import { type DataFrameDomain, DataFrameStateDomain } from './dataframe-domain';
 
 /**
  * Infers the shape of data frames by performing abstract interpretation using the control flow graph of a program.
@@ -34,9 +35,9 @@ export function inferDataFrameShapes(
 	visitor.start();
 	const exitPoints = cfinfo.exitPoints.map(id => cfinfo.graph.getVertex(id)).filter(isNotUndefined);
 	const exitNodes = exitPoints.map(vertex => ast.idMap.get(getVertexRootId(vertex))).filter(isNotUndefined);
-	const result = exitNodes.map(node => node.info.dataFrame?.domain ?? new Map<NodeId, DataFrameDomain>());
+	const domains = exitNodes.map(node => node.info.dataFrame?.domain).filter(isNotUndefined);
 
-	return joinDataFrameStates(...result);
+	return DataFrameStateDomain.bottom().joinAll(domains);
 }
 
 /**
@@ -69,7 +70,7 @@ export function resolveIdToDataFrameShape(
 		const values = getVariableOrigins(node.info.id, dfg).map(origin => domain.get(origin.info.id));
 
 		if(values.length > 0 && values.every(isNotUndefined)) {
-			return joinDataFrames(...values);
+			return AbstractDomain.joinAll(values);
 		}
 	} else if(node.type === RType.Argument && node.value !== undefined) {
 		return resolveIdToDataFrameShape(node.value, dfg, domain);
@@ -88,7 +89,7 @@ export function resolveIdToDataFrameShape(
 			const values = [node.then, node.otherwise].map(entry => resolveIdToDataFrameShape(entry, dfg, domain));
 
 			if(values.length > 0 && values.every(isNotUndefined)) {
-				return joinDataFrames(...values);
+				return AbstractDomain.joinAll(values);
 			}
 		}
 	} else if(origins.includes('builtin:if-then-else') && call?.args.every(arg => arg !== EmptyArgument)) {
@@ -96,7 +97,7 @@ export function resolveIdToDataFrameShape(
 			const values = call.args.slice(1, 3).map(entry => resolveIdToDataFrameShape(entry.nodeId, dfg, domain));
 
 			if(values.length > 0 && values.every(isNotUndefined)) {
-				return joinDataFrames(...values);
+				return AbstractDomain.joinAll(values);
 			}
 		}
 	}

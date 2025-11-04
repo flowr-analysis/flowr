@@ -7,6 +7,13 @@ import { standardReplOutput } from '../../../src/cli/repl/commands/repl-main';
 import type { ParsedQueryLine } from '../../../src/queries/query';
 import type { BaseQueryFormat } from '../../../src/queries/base-query-format';
 
+// A ReplOutput that discards all output
+const discardingReplOutput: ReplOutput = {
+	formatter: standardReplOutput.formatter,
+	stdout:    () => {},
+	stderr:    () => {}
+};
+
 export interface ReplParserTestCase<QueryType extends BaseQueryFormat['type']> {
 	parser:        (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine<QueryType>,
 	label:         string,
@@ -17,7 +24,7 @@ export interface ReplParserTestCase<QueryType extends BaseQueryFormat['type']> {
 
 export function assertReplParser<QueryType extends BaseQueryFormat['type']>({ label, parser, line, config = defaultConfigOptions, expectedParse }: ReplParserTestCase<QueryType>) {
 	test(label, () => {
-		const result = parser(standardReplOutput, line, config as FlowrConfigOptions);
+		const result = parser(discardingReplOutput, line, config as FlowrConfigOptions);
 		assert.deepEqual(result, expectedParse);
 	});
 }

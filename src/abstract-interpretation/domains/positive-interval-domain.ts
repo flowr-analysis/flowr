@@ -91,6 +91,16 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift>
 		return PosIntervalDomain.abstract(concrete);
 	}
 
+	public subtract(other: this | PosIntervalLift): this {
+		const otherValue = other instanceof PosIntervalDomain ? other.value : other;
+
+		if(this.value === Bottom || otherValue === Bottom) {
+			return this.bottom();
+		} else {
+			return this.create([Math.max(this.value[0] - otherValue[0], 0), Math.max(this.value[1] - otherValue[1], 0)]);
+		}
+	}
+
 	/**
 	 * Extends the lower bound of the current abstract value down to 0.
 	 */

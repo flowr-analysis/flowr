@@ -149,7 +149,7 @@ implements AbstractDomain<T, BoundedSetValue<T>, BoundedSetTop, BoundedSetBottom
 		return this.isTop() ? this.create(other.value) : this.create(this.value);
 	}
 
-	public concretize(limit: number = this.limit): ReadonlySet<T> |  typeof Top {
+	public concretize(limit: number): ReadonlySet<T> |  typeof Top {
 		return this.value === Top || this.value.size > limit ? Top : this.value;
 	}
 

@@ -1,5 +1,4 @@
 import type { AbstractDomain, AnyAbstractDomain } from './abstract-domain';
-import { DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Top } from './lattice';
 
 /** The type of an abstract product of a product domain mapping named properties of the product to abstract domains */
@@ -112,7 +111,7 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return result;
 	}
 
-	public concretize(limit: number = DEFAULT_INFERENCE_LIMIT): ReadonlySet<ConcreteProduct<Product>> | typeof Top {
+	public concretize(limit: number): ReadonlySet<ConcreteProduct<Product>> | typeof Top {
 		let result = new Set<ConcreteProduct<Product>>([{} as ConcreteProduct<Product>]);
 
 		for(const key in this.value) {

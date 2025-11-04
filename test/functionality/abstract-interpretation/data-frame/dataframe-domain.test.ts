@@ -1,6 +1,7 @@
 import { describe } from 'vitest';
 import type { AbstractDataFrameShape } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
 import { DataFrameDomain, DataFrameStateDomain } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
+import { DEFAULT_INFERENCE_LIMIT } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import { PosIntervalDomain, PosIntervalTop } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
 import type { ConcreteProduct } from '../../../../src/abstract-interpretation/domains/product-domain';
@@ -32,8 +33,8 @@ describe('Data Frame Domains', () => {
 	const narrow1 = { colnames: ['id', 'name', 'age'], cols: Bottom, rows: [5, 5] } satisfies ExpectedDataFrameShape;
 	const widen2 = { colnames: Top, cols: [2, +Infinity], rows: [0, 6] } satisfies ExpectedDataFrameShape;
 	const narrow2 = { colnames: ['id', 'category'], cols: Bottom, rows: [5, 6] } satisfies ExpectedDataFrameShape;
-	const concrete1 = [...createDomain(domain1).concretize() as ReadonlySet<ConcreteProduct<AbstractDataFrameShape>>];
-	const concrete2 = [...createDomain(domain2).concretize() as ReadonlySet<ConcreteProduct<AbstractDataFrameShape>>];
+	const concrete1 = [...createDomain(domain1).concretize(DEFAULT_INFERENCE_LIMIT) as ReadonlySet<ConcreteProduct<AbstractDataFrameShape>>];
+	const concrete2 = [...createDomain(domain2).concretize(DEFAULT_INFERENCE_LIMIT) as ReadonlySet<ConcreteProduct<AbstractDataFrameShape>>];
 
 	describe('Data Frame Shape Domain', () => {
 		const create = createDomain;

@@ -1,5 +1,5 @@
 import { assert, test } from 'vitest';
-import type { AnyAbstractDomain, ConcreteDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
+import { DEFAULT_INFERENCE_LIMIT, type AnyAbstractDomain, type ConcreteDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
 
 export interface DomainTestExpectation<ConcreteValue, AbstractValue>{
@@ -57,10 +57,10 @@ export function assertAbstractDomain<AbstractValue, Domain extends AnyAbstractDo
 		assert.isTrue(domain2.narrow(domain2).leq(domain2), `expected narrowing ${domain1.narrow(domain2).toString()} to be less than or equal to ${domain2.toString()}`);
 	});
 	test(`γ(${domain1.toString()})`, () => {
-		assert.deepStrictEqual(domain1.concretize(), concrete, `expected ${toString(concrete)} but was ${toString(domain1.concretize())}`);
+		assert.deepStrictEqual(domain1.concretize(DEFAULT_INFERENCE_LIMIT), concrete, `expected ${toString(concrete)} but was ${toString(domain1.concretize(DEFAULT_INFERENCE_LIMIT))}`);
 	});
 	test(`α(γ(${domain1.toString()}))`, () => {
-		assert.isTrue(domain1.abstract(domain1.concretize()).equals(abstract), `expected ${abstract.toString()} but was ${domain1.abstract(domain1.concretize()).toString()}`);
+		assert.isTrue(domain1.abstract(domain1.concretize(DEFAULT_INFERENCE_LIMIT)).equals(abstract), `expected ${abstract.toString()} but was ${domain1.abstract(domain1.concretize(DEFAULT_INFERENCE_LIMIT)).toString()}`);
 	});
 }
 

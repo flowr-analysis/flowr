@@ -170,7 +170,7 @@ implements AbstractDomain<ReadonlySet<T>, SetUpperBoundValue<T>, SetUpperBoundTo
 		return this.isTop() ? this.create(other.value) : this.create(this.value);
 	}
 
-	public concretize(limit: number = DEFAULT_INFERENCE_LIMIT): ReadonlySet<ReadonlySet<T>> |  typeof Top {
+	public concretize(limit: number): ReadonlySet<ReadonlySet<T>> |  typeof Top {
 		if(this.value === Bottom) {
 			return new Set();
 		} else if(this.value === Top || 2**(this.value.size) > limit) {

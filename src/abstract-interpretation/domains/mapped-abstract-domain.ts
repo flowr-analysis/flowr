@@ -1,5 +1,5 @@
 import type { AbstractDomain, AnyAbstractDomain, ConcreteDomain } from './abstract-domain';
-import { DEFAULT_INFERENCE_LIMIT, domainElementToString } from './abstract-domain';
+import { domainElementToString } from './abstract-domain';
 import { Top } from './lattice';
 
 /** The type of the concrete mapping of the concrete domain of a mapped abstract domain mapping keys to a concrete value in the concrete domain */
@@ -152,7 +152,7 @@ implements AbstractDomain<ConcreteMap<Key, Domain>, ReadonlyMap<Key, Domain>, Re
 		return result;
 	}
 
-	public concretize(limit: number = DEFAULT_INFERENCE_LIMIT): ReadonlySet<ConcreteMap<Key, Domain>> | typeof Top {
+	public concretize(limit: number): ReadonlySet<ConcreteMap<Key, Domain>> | typeof Top {
 		if(this.value.values().some(value => value.isBottom())) {
 			return new Set();
 		}

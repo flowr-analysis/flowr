@@ -47,7 +47,7 @@ implements Lattice<Abstract, Top, Bot, Value> {
 	 * Maps the current abstract value into a set of possible concrete values as concretization function of the abstract domain.
 	 * The result should be `Top` if the number of concrete values would reach the `limit` or the resulting set would have infinite many elements.
 	 */
-	public abstract concretize(limit?: number): ReadonlySet<Concrete> | typeof Top;
+	public abstract concretize(limit: number): ReadonlySet<Concrete> | typeof Top;
 
 	/**
 	 * Maps a set of possible concrete values into an abstract value as abstraction function of the abstract domain (should additionally be provided as static function).

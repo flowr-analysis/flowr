@@ -1,7 +1,6 @@
 import { assertUnreachable } from '../../util/assert';
 import { Ternary } from '../../util/logic';
 import type { AbstractDomain } from './abstract-domain';
-import { DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Bottom, Top } from './lattice';
 import type { SatisfiableDomain } from './satisfiable-domain';
 import { NumericalComparator } from './satisfiable-domain';
@@ -146,7 +145,7 @@ implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Va
 		]);
 	}
 
-	public concretize(limit: number = DEFAULT_INFERENCE_LIMIT): ReadonlySet<number> | typeof Top {
+	public concretize(limit: number): ReadonlySet<number> | typeof Top {
 		if(this.value === Bottom) {
 			return new Set();
 		} else if(!isFinite(this.value[0]) || !isFinite(this.value[1]) || this.value[1] - this.value[0] + 1 > limit) {

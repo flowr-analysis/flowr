@@ -83,8 +83,8 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 
 /**
  * Function for splitting the input line.
- * The first token is the query command.
- * The rest of the line is treated as input code.
+ * All input is treated as arguments, no R code is separated so that the individual queries can handle it.
+ * @param line - The input line
  */
 function parseArgs(line: string) {
 	const args = splitAtEscapeSensitive(line);

@@ -14,7 +14,7 @@
  *
  * @param inputString - The string to split
  * @param escapeQuote - Keep quotes in args
- * @param split       - The **single** character to split on (can not be backslash or quote)
+ * @param split       - The character or character sequence to split on (can not be backslash or quote!)
  */
 export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, split = ' '): string[] {
 	const args = [];

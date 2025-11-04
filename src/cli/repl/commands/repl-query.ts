@@ -1,4 +1,4 @@
-import { fileProtocol } from '../../../r-bridge/retriever';
+import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { ansiFormatter, italic } from '../../../util/text/ansi';
@@ -7,8 +7,8 @@ import type { Query, QueryResults, SupportedQuery, SupportedQueryTypes } from '.
 import { AnyQuerySchema, executeQueries, QueriesSchema, SupportedQueries } from '../../../queries/query';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
-import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import type { BaseQueryResult } from '../../../queries/base-query-format';
+import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 
 function printHelp(output: ReplOutput) {
@@ -22,7 +22,7 @@ function printHelp(output: ReplOutput) {
 	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
 }
 
-async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvider, remainingArgs: string[]): Promise<undefined | { parsedQuery: Query[], query: QueryResults, analyzer: FlowrAnalysisProvider }> {
+async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvider, remainingArgs: string[]): Promise<undefined | { parsedQuery: Query[], query: QueryResults, analyzer: ReadonlyFlowrAnalysisProvider }> {
 	const query = remainingArgs.shift();
 
 	if(!query) {
@@ -35,14 +35,18 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 	}
 
 	let parsedQuery: Query[];
+	let input: string | undefined;
 	if(query.startsWith('@')) {
 		const queryName = query.slice(1);
 		const queryObj = SupportedQueries[queryName as keyof typeof SupportedQueries] as SupportedQuery;
 		if(queryObj?.fromLine) {
-			const q = queryObj.fromLine(remainingArgs, analyzer.flowrConfig);
+			const parseResult = queryObj.fromLine(output, remainingArgs, analyzer.flowrConfig);
+			const q = parseResult.query;
 			parsedQuery = q ? (Array.isArray(q) ? q : [q]) : [];
+			input = parseResult.rCode;
 		} else {
 			parsedQuery = [{ type: query.slice(1) as SupportedQueryTypes } as Query];
+			input = remainingArgs.join(' ').trim();
 		}
 		const validationResult = QueriesSchema().validate(parsedQuery);
 		if(validationResult.error) {
@@ -58,8 +62,14 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 			printHelp(output);
 			return;
 		}
+		input = remainingArgs.join(' ').trim();
 	} else {
 		parsedQuery = [{ type: 'call-context', callName: query }];
+	}
+
+	if(input) {
+		analyzer.reset();
+		analyzer.addRequest(requestFromInput(input));
 	}
 
 	return {
@@ -80,7 +90,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 function parseArgs(line: string) {
 	const args = splitAtEscapeSensitive(line);
 	return {
-		input:     args[1].trim() === 'help' ? '' : args.slice(1).join(' ').trim(),
+		rCode:     undefined,
 		remaining: args
 	};
 }

@@ -1,6 +1,9 @@
 import type { FlowrConfigOptions } from '../config';
 
-import type { KnownParser, ParseStepOutput, RShellInformation, TreeSitterInformation } from '../r-bridge/parser';
+import type {
+	KnownParser, KnownParserInformation,
+	ParseStepOutput
+} from '../r-bridge/parser';
 import type { Queries, QueryResults, SupportedQueryTypes } from '../queries/query';
 import { executeQueries } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
@@ -14,31 +17,42 @@ import type { GetSearchElements } from '../search/flowr-search-executor';
 import { runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { CfgKind } from './cfg-kind';
-import type { OutputCollectorConfiguration } from '../r-bridge/shell';
-import { RShell } from '../r-bridge/shell';
-import { guard } from '../util/assert';
+import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
 
 /**
- * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
- * This allows us to exchange the underlying implementation of the analyzer without affecting the APIs.
+ * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
  */
-export interface FlowrAnalysisProvider {
-	/**
-     * Get the name of the parser used by the analyzer.
-	 */
-    parserInformation():   Promise<TreeSitterInformation | RShellInformation>;
-	/**
-	 * Sends a command to the underlying R engine and collects the output.
-	 * @param command     - The command to send to the R engine.
-	 * @param addonConfig - Additional configuration for the output collector.
-	 */
-	sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]>;
+export interface FlowrAnalysisProvider extends ReadonlyFlowrAnalysisProvider {
 	/**
 	 * Returns project context information.
 	 * If you are a user that wants to inspect the context, prefer {@link inspectContext} instead.
 	 * Please be aware that modifications to the context may break analyzer assumptions.
 	 */
-    context():  FlowrAnalyzerContext
+	context():  FlowrAnalyzerContext
+	/**
+	 * Add multiple analysis requests to the analyzer instance
+	 */
+	addRequests(requests: readonly RAnalysisRequest[]): void
+	/**
+	 * Add a single analysis request to the analyzer instance
+	 */
+	addRequest(request: RAnalysisRequest): void
+	/**
+	 * Reset the analyzer state, including the context and the cache.
+	 */
+	reset(): void;
+}
+
+/**
+ * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
+ * This allows us to exchange the underlying implementation of the analyzer without affecting the APIs.
+ */
+export interface ReadonlyFlowrAnalysisProvider {
+    /**
+     * Returns a set of additional data and helper functions exposed by the underlying {@link KnownParser},
+     * including the parser's {@link BaseParserInformation.name} and corresponding version information.
+     */
+    parserInformation(): KnownParserInformation
 	/**
 	 * Returns a read-only version of the project context information.
 	 * This is the preferred method for users that want to inspect the context.
@@ -81,10 +95,6 @@ export interface FlowrAnalysisProvider {
 	 * This executes all steps of the core analysis (parse, normalize, dataflow).
 	 */
 	runFull(force?: boolean): Promise<void>;
-	/**
-	 * Reset all caches used by the analyzer and effectively force all analyses to be redone.
-	 */
-	reset(): void;
 	/** This is the config used for the analyzer */
 	flowrConfig: FlowrConfigOptions;
 }
@@ -98,13 +108,14 @@ export interface FlowrAnalysisProvider {
  *
  * To inspect the context of the analyzer, use {@link FlowrAnalyzer#inspectContext} (if you are a plugin and need to modify it, use {@link FlowrAnalyzer#context} instead).
  */
-export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements FlowrAnalysisProvider {
+export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements ReadonlyFlowrAnalysisProvider {
 	public readonly flowrConfig: FlowrConfigOptions;
 	/** The parser and engine backend */
 	private readonly parser:     Parser;
 	/** The cache used for storing analysis results */
 	private readonly cache:      FlowrAnalyzerCache<Parser>;
 	private readonly ctx:        FlowrAnalyzerContext;
+	private parserInfo:          KnownParserInformation | undefined;
 
 	/**
      * Create a new analyzer instance.
@@ -126,15 +137,9 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this.ctx;
 	}
 
-	public async parserInformation(): Promise<TreeSitterInformation | RShellInformation> {
-		return this.parser.name === 'r-shell' ?
-			{ name: 'r-shell', rVersion: await (this.parser as RShell).rVersion() }
-			: { name: 'tree-sitter' };
-	}
-
-	public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
-		guard(this.parser instanceof RShell, 'sendCommandWithOutput can only be used with RShell parsers!');
-		return this.parser.sendCommandWithOutput(command, addonConfig);
+	public parserInformation(): KnownParserInformation {
+		this.parserInfo ??= this.parser.information(this);
+		return this.parserInfo;
 	}
 
 	public inspectContext(): ReadOnlyFlowrAnalyzerContext {
@@ -144,6 +149,14 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	public reset() {
 		this.ctx.reset();
 		this.cache.reset();
+	}
+
+	public addRequests(requests: readonly RAnalysisRequest[]): void {
+		this.ctx.addRequests(requests);
+	}
+
+	public addRequest(request: RAnalysisRequest): void {
+		this.ctx.addRequest(request);
 	}
 
 	public async parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>> {

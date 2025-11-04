@@ -1,9 +1,10 @@
 import type { ReplCommand, ReplCommandInformation, ReplOutput } from './repl-main';
 import { ColorEffect, Colors, FontStyles, italic } from '../../../util/text/ansi';
-import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import type { RShellInformation } from '../../../r-bridge/parser';
 
 export async function tryExecuteRShellCommand({ output, analyzer, allowRSessionAccess, remainingLine }: ReplCommandInformation) {
-	const parserInfo = await analyzer.parserInformation();
+	const parserInfo = analyzer.parserInformation();
 	if(!allowRSessionAccess){
 		output.stderr(`${output.formatter.format('You are not allowed to execute arbitrary R code.', { style: FontStyles.Bold, color: Colors.Red, effect: ColorEffect.Foreground })} 
 If you want to do so, please restart flowR with the ${output.formatter.format('--r-session-access', { style: FontStyles.Bold })} flag${ parserInfo.name !== 'r-shell' ? '. Additionally, please enable the r-shell engine, e.g., with ' + output.formatter.format('--default-engine r-shell', { style: FontStyles.Bold }) : ''}. Please be careful of the security implications of this action. When running flowR with npm, you have to use an extra ${output.formatter.format('--', { style: FontStyles.Bold })} to separate flowR from npm arguments.`);
@@ -14,9 +15,9 @@ If you want to do so, please restart flowR with the ${output.formatter.format('-
 	}
 }
 
-async function executeRShellCommand(output: ReplOutput, analyzer: FlowrAnalysisProvider, statement: string) {
+async function executeRShellCommand(output: ReplOutput, analyzer: ReadonlyFlowrAnalysisProvider, statement: string) {
 	try {
-		const result = await analyzer.sendCommandWithOutput(statement, {
+		const result = await (analyzer.parserInformation() as RShellInformation).sendCommandWithOutput(statement, {
 			from:                    'both',
 			automaticallyTrimOutput: true
 		});

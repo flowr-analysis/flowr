@@ -7,7 +7,7 @@ import semver from 'semver/preload';
 import { expensiveTrace, log } from '../util/log';
 import { initCommand } from './init';
 import { ts2r } from './lang-4.x/convert-values';
-import type { SyncParser } from './parser';
+import type { BaseRShellInformation, SyncParser } from './parser';
 import { retrieveParseDataFromRCode, type RParseRequest } from './retriever';
 
 const executorLog = log.getSubLogger({ name: 'RShellExecutor' });
@@ -49,6 +49,13 @@ export class RShellExecutor implements SyncParser<string> {
 	 */
 	public rVersion(): Promise<string | 'unknown' | 'none'> {
 		return Promise.resolve(this.usedRVersion()?.format() ?? 'unknown');
+	}
+
+	public information(): BaseRShellInformation {
+		return {
+			name:     'r-shell',
+			rVersion: () => Promise.resolve(this.rVersion())
+		};
 	}
 
 	/**

@@ -46,17 +46,17 @@ import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-forma
 import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 import type { AsyncOrSync, Writable } from 'ts-essentials';
 import type { FlowrConfigOptions } from '../config';
-import type {
-	InspectHigherOrderQuery } from './catalog/inspect-higher-order-query/inspect-higher-order-query-format';
+import type { InspectHigherOrderQuery } from './catalog/inspect-higher-order-query/inspect-higher-order-query-format';
 import {
 	InspectHigherOrderQueryDefinition
 } from './catalog/inspect-higher-order-query/inspect-higher-order-query-format';
-import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { log } from '../util/log';
+import type { ReplOutput } from '../cli/repl/commands/repl-main';
+import type { CommandCompletions } from '../cli/repl/core';
 
 /**
  * These are all queries that can be executed from within flowR
- * {@link SynchronousQuery} are queries that can be executed synchronously, i.e., they do not return a Promise.
  */
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -89,13 +89,23 @@ type SupportedQueriesType = {
 	[QueryType in Query['type']]: SupportedQuery<QueryType>
 }
 
+/**
+ * The result of parsing a query line from, e.g., the repl.
+ */
+export interface ParsedQueryLine {
+	/** The parsed query or queries from the line. */
+	query:  Query | Query[] | undefined;
+	/** Optional R code associated with the query. */
+	rCode?: string;
+}
+
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = BaseQueryFormat['type']> {
 	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, Promise<BaseQueryResult>>
     /** optional completion in, e.g., the repl */
-	completer?:           (splitLine: readonly string[], config: FlowrConfigOptions) => string[]
+	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions) => CommandCompletions;
     /** optional query construction from an, e.g., repl line */
-	fromLine?:            (splitLine: readonly string[], config: FlowrConfigOptions) => Query | Query[] | undefined
-	asciiSummarizer:      (formatter: OutputFormatter, analyzer: FlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>
+	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine
+	asciiSummarizer:      (formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>
 	jsonFormatter?:       (queryResults: BaseQueryResult) => object
 	schema:               Joi.ObjectSchema
 	/**

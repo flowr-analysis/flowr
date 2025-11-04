@@ -1,23 +1,44 @@
 import type { RParseRequest, RParseRequests } from './retriever';
-import type { RShell } from './shell';
+import type { OutputCollectorConfiguration, RShell } from './shell';
 import type { RShellExecutor } from './shell-executor';
 import type { TreeSitterExecutor } from './lang-4.x/tree-sitter/tree-sitter-executor';
-import type { SyntaxNode } from 'web-tree-sitter';
+import type { Query, QueryCapture, SyntaxNode } from 'web-tree-sitter';
+import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 interface ParserContent<T> {
     readonly name: string;
-    rVersion(): Promise<string | 'unknown' | 'none'>;
+    information(analyzer: FlowrAnalysisProvider): BaseParserInformation;
     parse(request: RParseRequest): T;
     close(): void;
 }
 
-export interface TreeSitterInformation {
-	name: TreeSitterExecutor['name'];
+export interface BaseParserInformation {
+    readonly name: KnownParserName
 }
 
-export interface RShellInformation {
-	name:     RShell['name'],
-	rVersion: string
+export interface BaseRShellInformation extends BaseParserInformation {
+    readonly name: 'r-shell'
+    rVersion(): Promise<string>
+}
+
+export interface RShellInformation extends BaseRShellInformation {
+    /**
+     * Sends a command to the underlying R engine and collects the output.
+     * @param command     - The command to send to the R engine.
+     * @param addonConfig - Additional configuration for the output collector.
+     */
+    sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]>;
+}
+
+export interface TreeSitterInformation extends BaseParserInformation {
+    readonly name:           'tree-sitter'
+    readonly grammarVersion: number
+    /**
+     * Runs the given tree-sitter query using the underlying tree-sitter parser and returns the resulting capture.
+     * @param source - The tree-sitter query to run.
+     * @param force  - Do not use the cache, instead force a new parse.
+     */
+    treeSitterQuery(source: Query | string, force?: boolean): Promise<QueryCapture[]>;
 }
 
 export type SyncParser<T> = ParserContent<Awaited<T>> & {readonly async?: false};
@@ -26,6 +47,7 @@ export type Parser<T> = SyncParser<T> | AsyncParser<T>;
 
 export type KnownParser = RShell | RShellExecutor | TreeSitterExecutor;
 export type KnownParserType = Awaited<ReturnType<KnownParser['parse']>>;
+export type KnownParserInformation = ReturnType<KnownParser['information']>
 export type KnownParserName = KnownParser['name']
 
 export interface ParseRequiredInput<T> {

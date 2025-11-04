@@ -9,6 +9,7 @@ import { Enrichment } from '../../../src/search/search-executor/search-enrichers
 import { Mapper } from '../../../src/search/search-executor/search-mappers';
 import { CallTargets } from '../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-simplification';
+import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 
 describe('flowR search', withTreeSitter(parser => {
 	assertSearch('simple search for first', parser, 'x <- 1\nprint(x)', ['1@x'],
@@ -89,6 +90,44 @@ describe('flowR search', withTreeSitter(parser => {
 			callName:    'print',
 			callTargets: CallTargets.MustIncludeGlobal
 		}));
+	});
+
+	describe('From Tree-Sitter Query', () => {
+		describe('simple', () => {
+			assertSearch('string', parser, 'x <- "hello"', ['1@"hello"'], Q.syntax('(string)'));
+			assertSearch('number', parser, 'x <- 2', ['1@2'], Q.syntax('(float)'));
+			assertSearch('identifier', parser, 'x <- 2', ['1@x'], Q.syntax('(identifier)'));
+			assertSearch('assignment', parser, 'x <- 2; y = 7', ['1@<-', '1@='], Q.syntax('(binary_operator)'));
+			assertSearch('<-', parser, 'x <- 2; y = 7', ['1@<-'], Q.syntax('(binary_operator operator: "<-")'));
+
+			describe('multiple', () => {
+				assertSearch('identifier', parser, 'x <- 2; y <- 17\ncat(y)', ['1@x', '1@y', '2@y'], Q.syntax('(identifier)'));
+			});
+		});
+
+		describe('custom capture', () => {
+			assertSearch('correct capture', parser, 'x <- "hello"', ['1@"hello"'], Q.syntax('(string) @s', 's'));
+			assertSearch('capture with @', parser, 'x <- "hello"', ['1@"hello"'], Q.syntax('(string) @s', '@s'));
+			assertSearch('incorrect capture', parser, 'x <- "hello"', [], Q.syntax('(string) @s', 'k'));
+
+			describe('multiple', () => {
+				assertSearch('binary op', parser, 'x <- 2\ny <- 17\ncat(y)', ['1@<-', '2@<-', '1@x', '2@y'], Q.syntax('(binary_operator lhs: (identifier) @id) @op', 'op', 'id'));
+			});
+		});
+
+		describe('reuse queries', () => {
+			const query = parser.createQuery('(string) @s');
+			assertSearch('first', parser, 'x <- "hello"', ['1@"hello"'], Q.syntax(query, 's'));
+			assertSearch('second', parser, 'x <- 1', [], Q.syntax(query, 's'));
+			assertSearch('third', parser, 'x <- "world"', ['1@"world"'], Q.syntax(query, 's'));
+		});
+
+		describe('filtered query', () => {
+			assertSearch('builtin assignment', parser, '`<-` <- function() {}\nx <- 2; y = 7', ['1@<-', '2@='],
+				Q.syntax('(binary_operator)').filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:assignment' } }));
+			assertSearch('number assignment', parser, 'x <- 2; y <- "hello"', ['1@2'],
+				Q.syntax('(binary_operator rhs: (_) @rhs)', 'rhs').filter(RType.Number));
+		});
 	});
 
 	describe('Enrichments', () => {

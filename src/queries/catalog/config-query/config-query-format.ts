@@ -6,7 +6,9 @@ import Joi from 'joi';
 import type { FlowrConfigOptions } from '../../../config';
 import { jsonReplacer } from '../../../util/json';
 import type { DeepPartial } from 'ts-essentials';
-import type { SupportedQuery } from '../../query';
+import type { ParsedQueryLine, SupportedQuery } from '../../query';
+import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
+import type { CommandCompletions } from '../../../cli/repl/core';
 
 export interface ConfigQuery extends BaseQueryFormat {
     readonly type:    'config';
@@ -17,16 +19,16 @@ export interface ConfigQueryResult extends BaseQueryResult {
 	readonly config: FlowrConfigOptions;
 }
 
-function configReplCompleter(partialLine: readonly string[], config: FlowrConfigOptions): string[] {
+function configReplCompleter(partialLine: readonly string[], _startingNewArg: boolean, config: FlowrConfigOptions): CommandCompletions {
 	if(partialLine.length === 0) {
 		// update specific fields
-		return ['+'];
+		return { completions: ['+'] };
 	} else if(partialLine.length === 1 && partialLine[0].startsWith('+')) {
 		const path = partialLine[0].slice(1).split('.').filter(p => p.length > 0);
 		const fullPath = path.slice();
 		const lastPath = partialLine[0].endsWith('.') ? '' : path.pop() ?? '';
 		if(lastPath.endsWith('=')) {
-			return [];
+			return { completions: [] };
 		}
 		const subConfig = path.reduce<object | undefined>((obj, key) => (
 			obj && (obj as Record<string, unknown>)[key] !== undefined && typeof (obj as Record<string, unknown>)[key] === 'object') ? (obj as Record<string, unknown>)[key] as object : obj, config);
@@ -35,24 +37,24 @@ function configReplCompleter(partialLine: readonly string[], config: FlowrConfig
 				.filter(k => k.startsWith(lastPath) && k !== lastPath)
 				.map(k => `${partialLine[0].slice(0,1)}${[...path, k].join('.')}`);
 			if(have.length > 0) {
-				return have;
+				return { completions: have };
 			} else if(lastPath.length > 0) {
-				return [`${partialLine[0].slice(0,1)}${fullPath.join('.')}.`];
+				return { completions: [`${partialLine[0].slice(0,1)}${fullPath.join('.')}.`] };
 			}
 		}
-		return [`${partialLine[0].slice(0,1)}${fullPath.join('.')}=`];
+		return { completions: [`${partialLine[0].slice(0,1)}${fullPath.join('.')}=`] };
 	}
 
-	return [];
+	return { completions: [] };
 }
 
-function configQueryLineParser(line: readonly string[], _config: FlowrConfigOptions): [ConfigQuery] {
+function configQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine {
 	if(line.length > 0 && line[0].startsWith('+')) {
 		const [pathPart, ...valueParts] = line[0].slice(1).split('=');
 		// build the update object
 		const path = pathPart.split('.').filter(p => p.length > 0);
 		if(path.length === 0 || valueParts.length !== 1) {
-			console.error('Invalid config update syntax, must be of the form +path.to.field=value');
+			output.stdout(`Invalid config update syntax, must be of the form ${bold('+path.to.field=value', output.formatter)}`);
 		} else {
 			const update: DeepPartial<FlowrConfigOptions> = {};
 			const value = valueParts[0];
@@ -73,15 +75,12 @@ function configQueryLineParser(line: readonly string[], _config: FlowrConfigOpti
 					current = current[key] as Record<string, unknown>;
 				}
 			}
-			return [{
-				type: 'config',
-				update
-			}];
+			return { query: [{ type: 'config', update }]
+			};
 		}
 	}
-	return [{
-		type: 'config'
-	}];
+	return { query: [{ type: 'config' }]
+	};
 }
 
 export const ConfigQueryDefinition = {

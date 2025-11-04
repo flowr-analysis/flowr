@@ -53,7 +53,7 @@ import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-prop
 import type { FlowrConfigOptions } from '../../../src/config';
 import { cloneConfig, defaultConfigOptions } from '../../../src/config';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import type { FlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
 
@@ -122,8 +122,10 @@ function removeInformation<T extends Record<string, unknown>>(obj: T, includeTok
 		} else if(key === 'additionalTokens' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
 			return undefined;
 		} else if(ignoreColumns && (key == 'location' || key == 'fullRange') && Array.isArray(value) && value.length === 4) {
-
 			value = [value[0], 0, value[2], 0];
+		} else if(key === 'treeSitterId') {
+			// we ignore tree-sitter-specific metadata
+			return undefined;
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return value;
@@ -360,7 +362,7 @@ export function assertDataflow(
 	name: string | TestLabel,
 	shell: RShell,
 	input: string | RParseRequests,
-	expected: DataflowGraph | ((input: FlowrAnalysisProvider) => Promise<DataflowGraph>),
+	expected: DataflowGraph | ((input: ReadonlyFlowrAnalysisProvider) => Promise<DataflowGraph>),
 	userConfig?: Partial<DataflowTestConfiguration>,
 	startIndexForDeterministicIds = 0,
 	config = cloneConfig(defaultConfigOptions)

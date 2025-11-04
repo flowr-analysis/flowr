@@ -1,8 +1,8 @@
-import { DEFAULT_INFERENCE_LIMIT, type AbstractDomain } from './abstract-domain';
+import { AbstractDomain, type AnyAbstractDomain } from './abstract-domain';
 import { Top } from './lattice';
 
 /** The type of an abstract product of a product domain mapping named properties of the product to abstract domains */
-export type AbstractProduct = Record<string, AbstractDomain<unknown, unknown, unknown, unknown>>;
+export type AbstractProduct = Record<string, AnyAbstractDomain>;
 
 /** The type of the concrete product of an abstract product mapping each property to a concrete value in the respective concrete domain */
 export type ConcreteProduct<Product extends AbstractProduct> = {
@@ -16,23 +16,11 @@ export type ConcreteProduct<Product extends AbstractProduct> = {
  * @template Product - Type of the abstract product of the product domain mapping property names to abstract domains
  */
 export abstract class ProductDomain<Product extends AbstractProduct>
-implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
-	private _value: Product;
+	extends AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 
-	constructor(value: Product) {
-		this._value = value;
-	}
+	public abstract create(value: Product): this;
 
-	/**
-	 * Creates an abstract value of the product domain for a given abstract value.
-	 */
-	public abstract create(value: Product): ProductDomain<Product>;
-
-	public get value(): Product {
-		return this._value;
-	}
-
-	public bottom(): ProductDomain<Product> {
+	public bottom(): this {
 		const result = this.create(this.value);
 
 		for(const key in result.value) {
@@ -41,7 +29,7 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return result;
 	}
 
-	public top(): ProductDomain<Product> {
+	public top(): this {
 		const result = this.create(this.value);
 
 		for(const key in result.value) {
@@ -50,7 +38,7 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return result;
 	}
 
-	public equals(other: ProductDomain<Product>): boolean {
+	public equals(other: this): boolean {
 		if(this.value === other.value) {
 			return true;
 		}
@@ -62,7 +50,7 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return true;
 	}
 
-	public leq(other: ProductDomain<Product>): boolean {
+	public leq(other: this): boolean {
 		if(this.value === other.value) {
 			return true;
 		}
@@ -74,47 +62,43 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return true;
 	}
 
-	public join(...values: ProductDomain<Product>[]): ProductDomain<Product> {
-		const result = this.create(this.value);
-
-		for(const value of values) {
-			for(const key in result.value) {
-				result._value[key] = result.value[key].join(value.value[key]) as Product[Extract<keyof Product, string>];
-			}
-		}
-		return result;
-	}
-
-	public meet(...values: ProductDomain<Product>[]): ProductDomain<Product> {
-		const result = this.create(this.value);
-
-		for(const value of values) {
-			for(const key in result.value) {
-				result._value[key] = result.value[key].meet(value.value[key]) as Product[Extract<keyof Product, string>];
-			}
-		}
-		return result;
-	}
-
-	public widen(other: ProductDomain<Product>): ProductDomain<Product> {
+	public join(other: this): this {
 		const result = this.create(this.value);
 
 		for(const key in result.value) {
-			result._value[key] = result.value[key].widen(other.value[key]) as Product[Extract<keyof Product, string>];
+			result._value[key] = result.value[key].join(other.value[key]);
 		}
 		return result;
 	}
 
-	public narrow(other: ProductDomain<Product>): ProductDomain<Product> {
+	public meet(other: this): this {
 		const result = this.create(this.value);
 
 		for(const key in result.value) {
-			result._value[key] = result.value[key].narrow(other.value[key]) as Product[Extract<keyof Product, string>];
+			result._value[key] = result.value[key].meet(other.value[key]);
 		}
 		return result;
 	}
 
-	public concretize(limit: number = DEFAULT_INFERENCE_LIMIT): ReadonlySet<ConcreteProduct<Product>> | typeof Top {
+	public widen(other: this): this {
+		const result = this.create(this.value);
+
+		for(const key in result.value) {
+			result._value[key] = result.value[key].widen(other.value[key]);
+		}
+		return result;
+	}
+
+	public narrow(other: this): this {
+		const result = this.create(this.value);
+
+		for(const key in result.value) {
+			result._value[key] = result.value[key].narrow(other.value[key]);
+		}
+		return result;
+	}
+
+	public concretize(limit: number): ReadonlySet<ConcreteProduct<Product>> | typeof Top {
 		let result = new Set<ConcreteProduct<Product>>([{} as ConcreteProduct<Product>]);
 
 		for(const key in this.value) {
@@ -138,7 +122,7 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return result;
 	}
 
-	public abstract(concrete: ReadonlySet<ConcreteProduct<Product>> | typeof Top): ProductDomain<Product> {
+	public abstract(concrete: ReadonlySet<ConcreteProduct<Product>> | typeof Top): this {
 		if(concrete === Top) {
 			return this.top();
 		}
@@ -146,24 +130,28 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 
 		for(const key in result.value) {
 			const concreteValues = new Set(concrete.values().map(value => value[key]));
-			result._value[key] = result.value[key].abstract(concreteValues) as Product[Extract<keyof Product, string>];
+			result._value[key] = result.value[key].abstract(concreteValues);
 		}
 		return result;
 	}
 
+	public toJson(): unknown {
+		return Object.fromEntries(Object.entries(this.value).map(([key, value]) => [key, value.toJson()]));
+	}
+
 	public toString(): string {
-		return '(' + Object.entries<AbstractDomain<unknown, unknown, unknown, unknown>>(this.value).map(([key, value]) => `${key}: ${value.toString()}`).join(', ') + ')';
+		return '(' + Object.entries(this.value).map(([key, value]) => `${key}: ${value.toString()}`).join(', ') + ')';
 	}
 
-	public isTop(): this is ProductDomain<Product> {
-		return Object.values<AbstractDomain<unknown, unknown, unknown, unknown>>(this.value).every(value => value.isTop());
+	public isTop(): this is this {
+		return Object.values(this.value).every(value => value.isTop());
 	}
 
-	public isBottom(): this is ProductDomain<Product> {
-		return Object.values<AbstractDomain<unknown, unknown, unknown, unknown>>(this.value).every(value => value.isBottom());
+	public isBottom(): this is this {
+		return Object.values(this.value).every(value => value.isBottom());
 	}
 
-	public isValue(): this is ProductDomain<Product> {
+	public isValue(): this is this {
 		return true;
 	}
 }

@@ -67,7 +67,7 @@ export interface SlicerStatsDfShape<T = number> {
 export interface PerNodeStatsDfShape<T = number> {
 	numberOfEntries:      T,
 	mappedOperations?:    DataFrameOperationName[]
-	inferredColNames?:    T | 'top',
+	inferredColNames?:    T | 'bottom' | 'top',
 	inferredColCount?:    T | 'bottom' | 'infinite' | 'top',
 	inferredRowCount?:    T | 'bottom' | 'infinite' | 'top',
 	/** difference between upper and lower bound of interval domain (to estimate approximation) */

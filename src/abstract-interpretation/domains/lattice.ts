@@ -11,45 +11,55 @@ export const Bottom = Symbol('bottom');
 /**
  * A complete lattice with a partially ordered set, join operator (LUB), meet operator (GLB), top element, and bottom element (e.g. for abstract domains).
  * @template Value - Type of a lattice element representing a value (may exclude `Top` and `Bot`)
- * @template Top   - Type of the Top element (greatest element) of the complete lattice (defaults to {@link Top})
- * @template Bot   - Type of the Bottom element (least element) of the complete lattice (defaults to {@link Bottom})
+ * @template Top   - Type of the Top element (greatest element) of the complete lattice
+ * @template Bot   - Type of the Bottom element (least element) of the complete lattice
  * @template Lift  - Type of the lattice elements (defaults to `Value` or `Top` or `Bot`)
  */
-export interface Lattice<Value, Top = typeof Top, Bot = typeof Bottom, Lift extends Value | Top | Bot = Value | Top | Bot> {
+export interface Lattice<Value, Top, Bot, Lift extends Value | Top | Bot = Value | Top | Bot> {
 	/**
 	 * The current abstract value of the lattice.
 	 */
 	get value(): Lift;
 
 	/**
+	 * Creates an abstract value of the lattice for a given value.
+	 */
+	create(value: Value | Top | Bot): this;
+
+	/**
 	 * Gets the Top element (greatest element) of the complete lattice (should additionally be provided as static function).
 	 */
-	top(): Lattice<Value, Top, Bot, Top>;
+	top(): this & Lattice<Value, Top, Bot, Top>;
 
 	/**
 	 * Gets the Bottom element (least element) of the complete lattice (should additionally be provided as static function).
 	 */
-	bottom(): Lattice<Value, Top, Bot, Bot>;
+	bottom(): this & Lattice<Value, Top, Bot, Bot>;
 
 	/**
 	 * Checks whether the current abstract value equals to another abstract value.
 	 */
-	equals(other: Lattice<Value, Top, Bot>): boolean;
+	equals(other: this): boolean;
 
 	/**
 	 * Checks whether the current abstract value is less than or equal to another abstract value with respect to the partial order of the lattice.
 	 */
-	leq(other: Lattice<Value, Top, Bot>): boolean;
+	leq(other: this): boolean;
 
 	/**
-	 * Joins the current abstract value with other abstract values by creating the least upper bound (LUB) in the lattice.
+	 * Joins the current abstract value with another abstract value by creating the least upper bound (LUB) in the lattice.
 	 */
-	join(...values: Lattice<Value, Top, Bot>[]): Lattice<Value, Top, Bot>;
+	join(other: this): this;
 
 	/**
-	 * Meets the current abstract value with other abstract values by creating the greatest lower bound (GLB) in the lattice.
+	 * Meets the current abstract value with another abstract value by creating the greatest lower bound (GLB) in the lattice.
 	 */
-	meet(...values: Lattice<Value, Top, Bot>[]): Lattice<Value, Top, Bot>;
+	meet(other: this): this;
+
+	/**
+	 * Converts the lattice into a JSON serializable value.
+	 */
+	toJson(): unknown;
 
 	/**
 	 * Converts the lattice into a human-readable string.

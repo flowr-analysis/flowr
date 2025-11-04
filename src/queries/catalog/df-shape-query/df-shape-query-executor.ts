@@ -1,13 +1,10 @@
-import type { DfShapeQuery, DfShapeQueryResult } from './df-shape-query-format';
-import { log } from '../../../util/log';
-import type { BasicQueryData } from '../../base-query-format';
-import {
-	inferDataFrameShapes,
-	resolveIdToDataFrameShape
-} from '../../../abstract-interpretation/data-frame/shape-inference';
+import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
+import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../../abstract-interpretation/data-frame/shape-inference';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
-import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/domain';
+import { log } from '../../../util/log';
+import type { BasicQueryData } from '../../base-query-format';
+import type { DfShapeQuery, DfShapeQueryResult } from './df-shape-query-format';
 
 export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries: readonly DfShapeQuery[]): Promise<DfShapeQueryResult> {
 	if(queries.length !== 1 && queries.some(query => query.criterion === undefined)) {
@@ -15,15 +12,12 @@ export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries:
 		queries = [{ type: 'df-shape' }];
 	}
 
-	const graph = (await analyzer.dataflow()).graph;
 	const ast = await analyzer.normalize();
+	const dfg = (await analyzer.dataflow()).graph;
+	const cfg = await analyzer.controlflow();
 
 	const start = Date.now();
-	const domains = inferDataFrameShapes(
-		await analyzer.controlflow(),
-		graph,
-		ast,
-		analyzer.flowrConfig);
+	const domains = inferDataFrameShapes(cfg, dfg, ast, analyzer.flowrConfig);
 
 	if(queries.length === 1 && queries[0].criterion === undefined) {
 		return {
@@ -45,7 +39,7 @@ export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries:
 		}
 		const nodeId = slicingCriterionToId(query.criterion, ast.idMap);
 		const node = ast.idMap.get(nodeId);
-		const value = resolveIdToDataFrameShape(node?.info.id, graph);
+		const value = resolveIdToDataFrameShape(node?.info.id, dfg);
 		result.set(query.criterion, value);
 	}
 

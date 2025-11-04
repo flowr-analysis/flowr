@@ -18,7 +18,9 @@ type PosIntervalLift = PosIntervalValue | PosIntervalBottom;
  * The Bottom element is defined as {@link Bottom} symbol and the Top element is defined as the interval [0, +∞].
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
-export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> extends IntervalDomain<Value> {
+export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift>
+	extends IntervalDomain<Value> {
+
 	constructor(value: Value) {
 		if(Array.isArray(value) && value[0] < 0) {
 			super(Bottom as Value);
@@ -59,44 +61,6 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 		return PosIntervalDomain.bottom();
 	}
 
-	public join(...values: readonly this[]): this;
-	public join(...values: readonly PosIntervalLift[]): this;
-	public join(...values: readonly this[] | readonly PosIntervalLift[]): this {
-		let result: PosIntervalLift = this.value;
-
-		for(const other of values) {
-			const otherValue = other instanceof PosIntervalDomain ? other.value : other;
-
-			if(result === Bottom) {
-				result = otherValue;
-			} else if(otherValue === Bottom) {
-				continue;
-			} else {
-				result = [Math.min(result[0], otherValue[0]), Math.max(result[1], otherValue[1])];
-			}
-		}
-		return this.create(result);
-	}
-
-	public meet(...values: readonly this[]): this;
-	public meet(...values: readonly PosIntervalLift[]): this;
-	public meet(...values: readonly this[] | readonly PosIntervalLift[]): this {
-		let result: PosIntervalLift = this.value;
-
-		for(const other of values) {
-			const otherValue = other instanceof PosIntervalDomain ? other.value : other;
-
-			if(result === Bottom || otherValue === Bottom) {
-				result = Bottom;
-			} else if(Math.max(result[0], otherValue[0]) > Math.min(result[1], otherValue[1])) {
-				result = Bottom;
-			} else {
-				result = [Math.max(result[0], otherValue[0]), Math.min(result[1], otherValue[1])];
-			}
-		}
-		return this.create(result);
-	}
-
 	public widen(other: this): this {
 		if(this.value === Bottom) {
 			return this.create(other.value);
@@ -127,46 +91,6 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 		return PosIntervalDomain.abstract(concrete);
 	}
 
-	public add(other: this | PosIntervalLift): this {
-		const otherValue = other instanceof PosIntervalDomain ? other.value : other;
-
-		if(this.value === Bottom || otherValue === Bottom) {
-			return this.bottom();
-		} else {
-			return this.create([this.value[0] + otherValue[0], this.value[1] + otherValue[1]]);
-		}
-	}
-
-	public subtract(other: this | PosIntervalLift): this {
-		const otherValue = other instanceof PosIntervalDomain ? other.value : other;
-
-		if(this.value === Bottom || otherValue === Bottom) {
-			return this.bottom();
-		} else {
-			return this.create([Math.max(this.value[0] - otherValue[0], 0), Math.max(this.value[1] - otherValue[1], 0)]);
-		}
-	}
-
-	public min(other: this | PosIntervalLift): this {
-		const otherValue = other instanceof PosIntervalDomain ? other.value : other;
-
-		if(this.value === Bottom || otherValue === Bottom) {
-			return this.bottom();
-		} else {
-			return this.create([Math.min(this.value[0], otherValue[0]), Math.min(this.value[1], otherValue[1])]);
-		}
-	}
-
-	public max(other: this | PosIntervalLift): this {
-		const otherValue = other instanceof PosIntervalDomain ? other.value : other;
-
-		if(this.value === Bottom || otherValue === Bottom) {
-			return this.bottom();
-		} else {
-			return this.create([Math.max(this.value[0], otherValue[0]), Math.max(this.value[1], otherValue[1])]);
-		}
-	}
-
 	/**
 	 * Extends the lower bound of the current abstract value down to 0.
 	 */
@@ -175,14 +99,6 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift> 
 			return this.bottom();
 		} else {
 			return this.create([0, this.value[1]]);
-		}
-	}
-
-	public extendUp(): this {
-		if(this.value === Bottom) {
-			return this.bottom();
-		} else {
-			return this.create([this.value[0], +Infinity]);
 		}
 	}
 

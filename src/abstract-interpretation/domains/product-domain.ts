@@ -1,4 +1,4 @@
-import type { AbstractDomain, AnyAbstractDomain } from './abstract-domain';
+import { AbstractDomain, type AnyAbstractDomain } from './abstract-domain';
 import { Top } from './lattice';
 
 /** The type of an abstract product of a product domain mapping named properties of the product to abstract domains */
@@ -16,18 +16,9 @@ export type ConcreteProduct<Product extends AbstractProduct> = {
  * @template Product - Type of the abstract product of the product domain mapping property names to abstract domains
  */
 export abstract class ProductDomain<Product extends AbstractProduct>
-implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
-	private readonly _value: Product;
-
-	constructor(value: Product) {
-		this._value = value;
-	}
+	extends AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 
 	public abstract create(value: Product): this;
-
-	public get value(): Product {
-		return this._value;
-	}
 
 	public bottom(): this {
 		const result = this.create(this.value);
@@ -71,24 +62,20 @@ implements AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 		return true;
 	}
 
-	public join(...values: readonly this[]): this {
+	public join(other: this): this {
 		const result = this.create(this.value);
 
-		for(const value of values) {
-			for(const key in result.value) {
-				result._value[key] = result.value[key].join(value.value[key]);
-			}
+		for(const key in result.value) {
+			result._value[key] = result.value[key].join(other.value[key]);
 		}
 		return result;
 	}
 
-	public meet(...values: readonly this[]): this {
+	public meet(other: this): this {
 		const result = this.create(this.value);
 
-		for(const value of values) {
-			for(const key in result.value) {
-				result._value[key] = result.value[key].meet(value.value[key]);
-			}
+		for(const key in result.value) {
+			result._value[key] = result.value[key].meet(other.value[key]);
 		}
 		return result;
 	}

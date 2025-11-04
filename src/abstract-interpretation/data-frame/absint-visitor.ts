@@ -58,7 +58,7 @@ export class DataFrameShapeInferenceVisitor<
 		}
 		const predecessors = this.getPredecessorNodes(vertex.id);
 		const predecessorDomains = predecessors.map(node => node.info.dataFrame?.domain).filter(isNotUndefined);
-		this.newDomain = DataFrameStateDomain.bottom().join(...predecessorDomains);
+		this.newDomain = DataFrameStateDomain.bottom().joinAll(predecessorDomains);
 		this.onVisitNode(nodeId);
 
 		const visitedCount = this.visited.get(vertex.id) ?? 0;

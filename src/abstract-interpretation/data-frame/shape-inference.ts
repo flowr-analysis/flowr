@@ -35,9 +35,9 @@ export function inferDataFrameShapes(
 	visitor.start();
 	const exitPoints = cfinfo.exitPoints.map(id => cfinfo.graph.getVertex(id)).filter(isNotUndefined);
 	const exitNodes = exitPoints.map(vertex => ast.idMap.get(getVertexRootId(vertex))).filter(isNotUndefined);
-	const result = exitNodes.map(node => node.info.dataFrame?.domain).filter(isNotUndefined);
+	const domains = exitNodes.map(node => node.info.dataFrame?.domain).filter(isNotUndefined);
 
-	return DataFrameStateDomain.bottom().join(...result);
+	return DataFrameStateDomain.bottom().joinAll(domains);
 }
 
 /**
@@ -70,7 +70,7 @@ export function resolveIdToDataFrameShape(
 		const values = getVariableOrigins(node.info.id, dfg).map(origin => domain.get(origin.info.id));
 
 		if(values.length > 0 && values.every(isNotUndefined)) {
-			return AbstractDomain.join(values);
+			return AbstractDomain.joinAll(values);
 		}
 	} else if(node.type === RType.Argument && node.value !== undefined) {
 		return resolveIdToDataFrameShape(node.value, dfg, domain);
@@ -89,7 +89,7 @@ export function resolveIdToDataFrameShape(
 			const values = [node.then, node.otherwise].map(entry => resolveIdToDataFrameShape(entry, dfg, domain));
 
 			if(values.length > 0 && values.every(isNotUndefined)) {
-				return AbstractDomain.join(values);
+				return AbstractDomain.joinAll(values);
 			}
 		}
 	} else if(origins.includes('builtin:if-then-else') && call?.args.every(arg => arg !== EmptyArgument)) {
@@ -97,7 +97,7 @@ export function resolveIdToDataFrameShape(
 			const values = call.args.slice(1, 3).map(entry => resolveIdToDataFrameShape(entry.nodeId, dfg, domain));
 
 			if(values.length > 0 && values.every(isNotUndefined)) {
-				return AbstractDomain.join(values);
+				return AbstractDomain.joinAll(values);
 			}
 		}
 	}

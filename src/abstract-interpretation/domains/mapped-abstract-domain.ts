@@ -1,5 +1,4 @@
-import type { AbstractDomain, AnyAbstractDomain, ConcreteDomain } from './abstract-domain';
-import { domainElementToString } from './abstract-domain';
+import { AbstractDomain, domainElementToString, type AnyAbstractDomain, type ConcreteDomain } from './abstract-domain';
 import { Top } from './lattice';
 
 /** The type of the concrete mapping of the concrete domain of a mapped abstract domain mapping keys to a concrete value in the concrete domain */
@@ -12,18 +11,13 @@ type ConcreteMap<Key, Domain extends AnyAbstractDomain> = ReadonlyMap<Key, Concr
  * @template Domain    - Type of the abstract domain to map the keys to
  */
 export abstract class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain>
-implements AbstractDomain<ConcreteMap<Key, Domain>, ReadonlyMap<Key, Domain>, ReadonlyMap<Key, Domain>, ReadonlyMap<Key, Domain>> {
-	private readonly _value: Map<Key, Domain>;
+	extends AbstractDomain<ConcreteMap<Key, Domain>, ReadonlyMap<Key, Domain>, ReadonlyMap<Key, Domain>, ReadonlyMap<Key, Domain>> {
 
 	constructor(value: ReadonlyMap<Key, Domain>) {
-		this._value = new Map(value);
+		super(new Map(value));
 	}
 
 	public abstract create(value: ReadonlyMap<Key, Domain>): this;
-
-	public get value(): ReadonlyMap<Key, Domain> {
-		return this._value;
-	}
 
 	public get(key: Key): Domain | undefined {
 		return this._value.get(key);
@@ -34,7 +28,11 @@ implements AbstractDomain<ConcreteMap<Key, Domain>, ReadonlyMap<Key, Domain>, Re
 	}
 
 	public set(key: Key, value: Domain): void {
-		this._value.set(key, value);
+		(this._value as Map<Key, Domain>).set(key, value);
+	}
+
+	protected remove(key: Key): void {
+		(this._value as Map<Key, Domain>).delete(key);
 	}
 
 	public bottom(): this {
@@ -45,7 +43,7 @@ implements AbstractDomain<ConcreteMap<Key, Domain>, ReadonlyMap<Key, Domain>, Re
 		const result = this.create(this.value);
 
 		for(const [key, value] of result.value) {
-			result._value.set(key, value.top() as Domain);
+			result.set(key, value.top() as Domain);
 		}
 		return result;
 	}
@@ -82,38 +80,34 @@ implements AbstractDomain<ConcreteMap<Key, Domain>, ReadonlyMap<Key, Domain>, Re
 		return true;
 	}
 
-	public join(...values: readonly this[]): this {
+	public join(other: this): this {
 		const result = this.create(this.value);
 
-		for(const other of values) {
-			for(const [key, value] of other.value) {
-				const currValue = result.get(key);
+		for(const [key, value] of other.value) {
+			const currValue = result.get(key);
 
-				if(currValue === undefined) {
-					result._value.set(key, value);
-				} else {
-					result._value.set(key, currValue.join(value));
-				}
+			if(currValue === undefined) {
+				result.set(key, value);
+			} else {
+				result.set(key, currValue.join(value));
 			}
 		}
 		return result;
 	}
 
-	public meet(...values: readonly this[]): this {
+	public meet(other: this): this {
 		const result = this.create(this.value);
 
-		for(const other of values) {
-			for(const [key] of result.value) {
-				if(!other.has(key)) {
-					result._value.delete(key);
-				}
+		for(const [key] of result.value) {
+			if(!other.has(key)) {
+				result.remove(key);
 			}
-			for(const [key, value] of other.value) {
-				const currValue = result.get(key);
+		}
+		for(const [key, value] of other.value) {
+			const currValue = result.get(key);
 
-				if(currValue !== undefined) {
-					result._value.set(key, currValue.meet(value));
-				}
+			if(currValue !== undefined) {
+				result.set(key, currValue.meet(value));
 			}
 		}
 		return result;
@@ -126,9 +120,9 @@ implements AbstractDomain<ConcreteMap<Key, Domain>, ReadonlyMap<Key, Domain>, Re
 			const currValue = result.get(key);
 
 			if(currValue === undefined) {
-				result._value.set(key, value);
+				result.set(key, value);
 			} else {
-				result._value.set(key, currValue.widen(value));
+				result.set(key, currValue.widen(value));
 			}
 		}
 		return result;
@@ -139,14 +133,14 @@ implements AbstractDomain<ConcreteMap<Key, Domain>, ReadonlyMap<Key, Domain>, Re
 
 		for(const [key] of this.value) {
 			if(!other.has(key)) {
-				result._value.delete(key);
+				result.remove(key);
 			}
 		}
 		for(const [key, value] of other.value) {
 			const currValue = result.get(key);
 
 			if(currValue !== undefined) {
-				result._value.set(key, currValue.narrow(value));
+				result.set(key, currValue.narrow(value));
 			}
 		}
 		return result;

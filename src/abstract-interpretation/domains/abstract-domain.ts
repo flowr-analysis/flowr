@@ -17,7 +17,15 @@ export const DEFAULT_INFERENCE_LIMIT = 50;
  */
 export abstract class AbstractDomain<Concrete, Abstract, Top, Bot, Value extends Abstract | Top | Bot = Abstract | Top | Bot>
 implements Lattice<Abstract, Top, Bot, Value> {
-	public abstract get value(): Value;
+	protected readonly _value: Value;
+
+	constructor(value: Value) {
+		this._value = value;
+	}
+
+	public get value(): Value {
+		return this._value;
+	};
 
 	public abstract create(value: Abstract | Top | Bot): this;
 
@@ -29,9 +37,33 @@ implements Lattice<Abstract, Top, Bot, Value> {
 
 	public abstract leq(other: this): boolean;
 
-	public abstract join(...values: readonly this[]): this;
+	public abstract join(other: this): this;
 
-	public abstract meet(...values: readonly this[]): this;
+	/**
+	 * Joins the current abstract value with multiple other abstract values.
+	 */
+	public joinAll(values: readonly this[]): this {
+		let result = this.create(this.value);
+
+		for(const other of values) {
+			result = result.join(other);
+		}
+		return result;
+	}
+
+	public abstract meet(other: this): this;
+
+	/**
+	 * Meets the current abstract value with multiple other abstract values.
+	 */
+	public meetAll(values: readonly this[]): this {
+		let result = this.create(this.value);
+
+		for(const other of values) {
+			result = result.meet(other);
+		}
+		return result;
+	}
 
 	/**
 	 * Widens the current abstract value with another abstract value as a sound over-approximation of the join (least upper bound) for fixpoint iteration acceleration.
@@ -65,21 +97,21 @@ implements Lattice<Abstract, Top, Bot, Value> {
 	public abstract isValue(): this is AbstractDomain<Concrete, Abstract, Top, Bot, Abstract>;
 
 	/**
-	 * Joins an array of abstract values bei joining the first abstract value with the other values in the array.
+	 * Joins an array of abstract values by joining the first abstract value with the other values in the array.
 	 * The provided array of abstract values cannot be empty!
 	 */
-	public static join<Domain extends AnyAbstractDomain>(values: Domain[]): Domain {
+	public static joinAll<Domain extends AnyAbstractDomain>(values: Domain[]): Domain {
 		guard(values.length > 0, 'Abstract values to join cannot be empty');
-		return values[0].join(...values.slice(1));
+		return values[0].joinAll(values.slice(1));
 	}
 
 	/**
-	 * Meets an array of abstract values bei meeting the first abstract value with the other values in the array.
+	 * Meets an array of abstract values by meeting the first abstract value with the other values in the array.
 	 * The provided array of abstract values cannot be empty!
 	 */
-	public static meet<Domain extends AnyAbstractDomain>(values: Domain[]): Domain {
+	public static meetAll<Domain extends AnyAbstractDomain>(values: Domain[]): Domain {
 		guard(values.length > 0, 'Abstract values to meet cannot be empty');
-		return values[0].meet(...values.slice(1));
+		return values[0].meetAll(values.slice(1));
 	}
 }
 

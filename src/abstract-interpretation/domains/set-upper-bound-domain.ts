@@ -1,11 +1,11 @@
 import { assertUnreachable } from '../../util/assert';
 import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
-import type { AbstractDomain } from './abstract-domain';
-import { DEFAULT_INFERENCE_LIMIT, domainElementToString } from './abstract-domain';
+import { AbstractDomain, DEFAULT_INFERENCE_LIMIT, domainElementToString } from './abstract-domain';
 import { Bottom, Top } from './lattice';
 import type { SatisfiableDomain } from './satisfiable-domain';
 import { SetComparator } from './satisfiable-domain';
+/* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The type of the actual values of the set upper bound domain as set */
 type SetUpperBoundValue<T> = ReadonlySet<T>;
@@ -23,9 +23,10 @@ type SetUpperBoundLift<T> = SetUpperBoundValue<T> | SetUpperBoundTop | SetUpperB
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUpperBoundLift<T>>
-implements AbstractDomain<ReadonlySet<T>, SetUpperBoundValue<T>, SetUpperBoundTop, SetUpperBoundBottom, Value>, SatisfiableDomain<ReadonlySet<T>> {
+	extends AbstractDomain<ReadonlySet<T>, SetUpperBoundValue<T>, SetUpperBoundTop, SetUpperBoundBottom, Value>
+	implements SatisfiableDomain<ReadonlySet<T>> {
+
 	public readonly limit:    number;
-	private readonly _value:  Value;
 	private readonly setType: typeof Set<T>;
 
 	/**
@@ -35,12 +36,12 @@ implements AbstractDomain<ReadonlySet<T>, SetUpperBoundValue<T>, SetUpperBoundTo
 	constructor(value: Value | T[], limit: number = DEFAULT_INFERENCE_LIMIT, setType: typeof Set<T> = Set) {
 		if(value !== Top && value !== Bottom) {
 			if(Array.isArray(value)) {
-				this._value = (value.length > limit ? Top : new setType(value)) as Value;
+				super((value.length > limit ? Top : new setType(value)) as Value);
 			} else {
-				this._value = (value.size > limit ? Top : new setType(value)) as Value;
+				super((value.size > limit ? Top : new setType(value)) as Value);
 			}
 		} else {
-			this._value = value;
+			super(value);
 		}
 		this.limit = limit;
 		this.setType = setType;
@@ -49,10 +50,6 @@ implements AbstractDomain<ReadonlySet<T>, SetUpperBoundValue<T>, SetUpperBoundTo
 	public create(value: SetUpperBoundLift<T> | T[]): this;
 	public create(value: SetUpperBoundLift<T> | T[]): SetUpperBoundDomain<T> {
 		return new SetUpperBoundDomain(value, this.limit, this.setType);
-	}
-
-	public get value(): Value {
-		return this._value;
 	}
 
 	public static top<T>(limit?: number, setType?: typeof Set<T>): SetUpperBoundDomain<T, SetUpperBoundTop> {
@@ -90,51 +87,36 @@ implements AbstractDomain<ReadonlySet<T>, SetUpperBoundValue<T>, SetUpperBoundTo
 		return this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value.isSubsetOf(other.value));
 	}
 
-	public join(...values: readonly this[]): this;
-	public join(...values: readonly SetUpperBoundLift<T>[]): this;
-	public join(...values: readonly (T[] | typeof Top | typeof Bottom)[]): this;
-	public join(...values: readonly this[] | readonly (SetUpperBoundLift<T> | T[])[]): this {
-		let result: SetUpperBoundLift<T> = this.value;
+	public join(other: this): this;
+	public join(other: SetUpperBoundLift<T> | T[]): this;
+	public join(other: this | SetUpperBoundLift<T> | T[]): this {
+		const otherValue = other instanceof SetUpperBoundDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
 
-		for(const other of values) {
-			const otherValue = other instanceof SetUpperBoundDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
-
-			if(result === Top || otherValue === Top) {
-				result = Top;
-				break;
-			} else if(result === Bottom) {
-				result = otherValue;
-			} else if(otherValue === Bottom) {
-				continue;
-			} else {
-				const join = result.union(otherValue);
-				result = join.size > this.limit ? Top : join;
-			}
+		if(this.value === Top || otherValue === Top) {
+			return this.top();
+		} else if(this.value === Bottom) {
+			return this.create(otherValue);
+		} else if(otherValue === Bottom) {
+			return this.create(this.value);
+		} else {
+			return this.create(this.value.union(otherValue));
 		}
-		return this.create(result);
 	}
 
-	public meet(...values: readonly this[]): this;
-	public meet(...values: readonly SetUpperBoundLift<T>[]): this;
-	public meet(...values: readonly (T[] | typeof Top | typeof Bottom)[]): this;
-	public meet(...values: readonly this[] | readonly (SetUpperBoundLift<T> | T[])[]): this {
-		let result: SetUpperBoundLift<T> = this.value;
+	public meet(other: this): this;
+	public meet(other: SetUpperBoundLift<T> | T[]): this;
+	public meet(other: this | SetUpperBoundLift<T> | T[]): this {
+		const otherValue = other instanceof SetUpperBoundDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
 
-		for(const other of values) {
-			const otherValue = other instanceof SetUpperBoundDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
-
-			if(result === Bottom || otherValue === Bottom) {
-				result = Bottom;
-				break;
-			} else if(result === Top) {
-				result = otherValue;
-			} else if(otherValue === Top) {
-				continue;
-			} else {
-				result = result.intersection(otherValue);
-			}
+		if(this.value === Bottom || otherValue === Bottom) {
+			return this.bottom();
+		} else if(this.value === Top) {
+			return this.create(otherValue);
+		} else if(otherValue === Top) {
+			return this.create(this.value);
+		} else {
+			return this.create(this.value.intersection(otherValue));
 		}
-		return this.create(result);
 	}
 
 	/**

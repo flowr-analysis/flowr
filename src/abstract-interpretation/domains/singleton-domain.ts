@@ -1,8 +1,8 @@
 import { Ternary } from '../../util/logic';
-import type { AbstractDomain } from './abstract-domain';
-import { domainElementToString } from './abstract-domain';
+import { AbstractDomain, domainElementToString } from './abstract-domain';
 import { Bottom, Top } from './lattice';
 import type { SatisfiableDomain } from './satisfiable-domain';
+/* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The type of the actual values of the singleton domain as single value */
 type SingletonValue<T> = T;
@@ -20,20 +20,12 @@ type SingletonLift<T> = SingletonValue<T> | SingletonTop | SingletonBottom;
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T>>
-implements AbstractDomain<T, SingletonValue<T>, SingletonTop, SingletonBottom, Value>, SatisfiableDomain<T> {
-	private readonly _value: Value;
-
-	constructor(value: Value) {
-		this._value = value;
-	}
+	extends AbstractDomain<T, SingletonValue<T>, SingletonTop, SingletonBottom, Value>
+	implements SatisfiableDomain<T> {
 
 	public create(value: SingletonLift<T>): this;
 	public create(value: SingletonLift<T>): SingletonDomain<T> {
 		return new SingletonDomain(value);
-	}
-
-	public get value(): Value {
-		return this._value;
 	}
 
 	public static top<T>(): SingletonDomain<T, SingletonTop> {
@@ -71,44 +63,36 @@ implements AbstractDomain<T, SingletonValue<T>, SingletonTop, SingletonBottom, V
 		return this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value <= other.value);
 	}
 
-	public join(...values: readonly this[]): this;
-	public join(...values: readonly SingletonLift<T>[]): this;
-	public join(...values: readonly this[] | readonly SingletonLift<T>[]): this {
-		let result: SingletonLift<T> = this.value;
+	public join(other: this): this;
+	public join(other: SingletonLift<T>): this;
+	public join(other: this | SingletonLift<T>): this {
+		const otherValue = other instanceof SingletonDomain ? other.value : other;
 
-		for(const other of values) {
-			const otherValue = other instanceof SingletonDomain ? other.value : other;
-
-			if(result === Bottom) {
-				result = otherValue;
-			} else if(otherValue === Bottom) {
-				continue;
-			} else if(result !== otherValue) {
-				result = Top;
-				break;
-			}
+		if(this.value === Bottom) {
+			return this.create(otherValue);
+		} else if(otherValue === Bottom) {
+			return this.create(this.value);
+		} else if(this.value !== otherValue) {
+			return this.top();
+		} else {
+			return this.create(this.value);
 		}
-		return this.create(result);
 	}
 
-	public meet(...values: readonly this[]): this;
-	public meet(...values: readonly SingletonLift<T>[]): this;
-	public meet(...values: readonly this[] | readonly SingletonLift<T>[]): this {
-		let result: SingletonLift<T> = this.value;
+	public meet(other: this): this;
+	public meet(other: SingletonLift<T>): this;
+	public meet(other: this | SingletonLift<T>): this {
+		const otherValue = other instanceof SingletonDomain ? other.value : other;
 
-		for(const other of values) {
-			const otherValue = other instanceof SingletonDomain ? other.value : other;
-
-			if(result === Top) {
-				result = otherValue;
-			} else if(otherValue === Top) {
-				continue;
-			} else if(result !== otherValue) {
-				result = Bottom;
-				break;
-			}
+		if(this.value === Top) {
+			return this.create(otherValue);
+		} else if(otherValue === Top) {
+			return this.create(this.value);
+		} else if(this.value !== otherValue) {
+			return this.bottom();
+		} else {
+			return this.create(this.value);
 		}
-		return this.create(result);
 	}
 
 	public widen(other: this): this {

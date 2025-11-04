@@ -1,9 +1,10 @@
 import { assertUnreachable } from '../../util/assert';
 import { Ternary } from '../../util/logic';
-import type { AbstractDomain } from './abstract-domain';
+import { AbstractDomain } from './abstract-domain';
 import { Bottom, Top } from './lattice';
 import type { SatisfiableDomain } from './satisfiable-domain';
 import { NumericalComparator } from './satisfiable-domain';
+/* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The Top element of the interval domain as interval [-∞, +∞] */
 export const IntervalTop: IntervalValue = [-Infinity, +Infinity];
@@ -23,28 +24,24 @@ type IntervalLift = IntervalValue | IntervalBottom;
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class IntervalDomain<Value extends IntervalLift = IntervalLift>
-implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Value>, SatisfiableDomain<number> {
-	private readonly _value: Value;
+	extends AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Value>
+	implements SatisfiableDomain<number> {
 
 	constructor(value: Value) {
 		if(Array.isArray(value)) {
 			if(value.some(isNaN) || value[0] > value[1] || value[0] === +Infinity || value[1] === -Infinity) {
-				this._value = Bottom as Value;
+				super(Bottom as Value);
 			} else {
-				this._value = [value[0], value[1]] as IntervalValue as Value;
+				super([value[0], value[1]] as const as Value);
 			}
 		} else {
-			this._value = value;
+			super(value);
 		}
 	}
 
 	public create(value: IntervalLift): this;
 	public create(value: IntervalLift): IntervalDomain {
 		return new IntervalDomain(value);
-	}
-
-	public get value(): Value {
-		return this._value;
 	}
 
 	public static top(): IntervalDomain<IntervalTop> {
@@ -82,42 +79,32 @@ implements AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Va
 		return this.value === Bottom || (other.isValue() && other.value[0] <= this.value[0] && this.value[1] <= other.value[1]);
 	}
 
-	public join(...values: readonly this[]): this;
-	public join(...values: readonly IntervalLift[]): this;
-	public join(...values: readonly this[] | readonly IntervalLift[]): this {
-		let result: IntervalLift = this.value;
+	public join(other: this): this;
+	public join(other: IntervalLift): this;
+	public join(other: this | IntervalLift): this {
+		const otherValue = other instanceof IntervalDomain ? other.value : other;
 
-		for(const other of values) {
-			const otherValue = other instanceof IntervalDomain ? other.value : other;
-
-			if(result === Bottom) {
-				result = otherValue;
-			} else if(otherValue === Bottom) {
-				continue;
-			} else {
-				result = [Math.min(result[0], otherValue[0]), Math.max(result[1], otherValue[1])];
-			}
+		if(this.value === Bottom) {
+			return this.create(otherValue);
+		} else if(otherValue === Bottom) {
+			return this.create(this.value);
+		} else {
+			return this.create([Math.min(this.value[0], otherValue[0]), Math.max(this.value[1], otherValue[1])]);
 		}
-		return this.create(result);
 	}
 
-	public meet(...values: readonly this[]): this;
-	public meet(...values: readonly IntervalLift[]): this;
-	public meet(...values: readonly this[] | readonly IntervalLift[]): this {
-		let result: IntervalLift = this.value;
+	public meet(other: this): this;
+	public meet(other: IntervalLift): this;
+	public meet(other: this | IntervalLift): this {
+		const otherValue = other instanceof IntervalDomain ? other.value : other;
 
-		for(const other of values) {
-			const otherValue = other instanceof IntervalDomain ? other.value : other;
-
-			if(result === Bottom || otherValue === Bottom) {
-				result = Bottom;
-			} else if(Math.max(result[0], otherValue[0]) > Math.min(result[1], otherValue[1])) {
-				result = Bottom;
-			} else {
-				result = [Math.max(result[0], otherValue[0]), Math.min(result[1], otherValue[1])];
-			}
+		if(this.value === Bottom || otherValue === Bottom) {
+			return this.bottom();
+		} else if(Math.max(this.value[0], otherValue[0]) > Math.min(this.value[1], otherValue[1])) {
+			return this.bottom();
+		} else {
+			return this.create([Math.max(this.value[0], otherValue[0]), Math.min(this.value[1], otherValue[1])]);
 		}
-		return this.create(result);
 	}
 
 	public widen(other: this): this {

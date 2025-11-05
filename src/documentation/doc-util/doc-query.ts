@@ -12,17 +12,23 @@ import { printAsMs } from '../../util/text/time';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import { getReplCommand } from './doc-cli-option';
+import type { SingleSlicingCriterion } from '../../slicing/criterion/parse';
 
 export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
 	readonly collapseResult?: boolean;
 	readonly collapseQuery?:  boolean;
+	readonly shorthand?:      string;
 }
 
 export async function showQuery<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult, collapseQuery }: ShowQueryOptions = {}): Promise<string> {
+>(
+	shell: RShell, code: string,
+	queries: Queries<Base, VirtualArguments>,
+	{ showCode, collapseResult, collapseQuery, shorthand }: ShowQueryOptions = {}
+): Promise<string> {
 	const now = performance.now();
 	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code)).setParser(shell).build();
 	const results = await analyzer.query(queries);
@@ -40,6 +46,8 @@ ${codeBlock('json', collapseQuery ? str.split('\n').join(' ').replace(/([{[])\s{
 ${(function() {
 	if(queries.length === 1 && Object.keys(queries[0]).length === 1) {
 		return `(This query can be shortened to \`@${queries[0].type}\` when used within the REPL command ${getReplCommand('query')}).`;
+	} else if(shorthand) {
+		return `(This query can be shortened to \`@${queries[0].type} ${shorthand}\` when used within the REPL command ${getReplCommand('query')}).`;
 	} else {
 		return '';
 	}
@@ -100,6 +108,10 @@ export function registerQueryDocumentation(query: SupportedQueryTypes | Supporte
 		throw new Error(`Query ${query} already registered`);
 	}
 	map.set(query, doc);
+}
+
+export function sliceQueryShorthand(criterion: SingleSlicingCriterion, code: string) {
+	return `(${criterion}) "${code}"`;
 }
 
 function linkify(name: string) {

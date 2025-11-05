@@ -9,6 +9,7 @@ import {
 	linkToQueryOfName,
 	registerQueryDocumentation,
 	showQuery,
+	sliceQueryShorthand,
 	tocForQueryType
 } from './doc-util/doc-query';
 import { describeSchema } from '../util/schema';
@@ -44,6 +45,7 @@ import { documentReplSession } from './doc-util/doc-repl';
 import {
 	executeHigherOrderQuery
 } from '../queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor';
+import type { SlicingCriteria } from '../slicing/criterion/parse';
 
 
 registerQueryDocumentation('call-context', {
@@ -194,6 +196,7 @@ registerQueryDocumentation('lineage', {
 	functionFile:     '../queries/catalog/lineage-query/lineage-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- 1\nx';
+		const criterion = '2@x';
 
 		return `
 This query calculates the _lineage_ of a given slicing criterion. The lineage traces back all parts that the
@@ -207,8 +210,8 @@ For this, we use the criterion \`2@x\` (which is the first use of \`x\` in the s
 ${
 	await showQuery(shell, exampleCode, [{
 		type:      'lineage',
-		criterion: '2@x'
-	}], { showCode: false })
+		criterion: criterion
+	}], { showCode: false, shorthand: sliceQueryShorthand(criterion, exampleCode) })
 }
 
 In this simple scenario, the _lineage_ is equivalent to the slice (and in-fact the complete code). 
@@ -261,6 +264,7 @@ registerQueryDocumentation('resolve-value', {
 	functionFile:     '../queries/catalog/resolve-value-query/resolve-value-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- 1\nprint(x)';
+		const criteria = ['2@x'] as SlicingCriteria;
 		return `
 With this query you can use flowR's value-tracking capabilities to resolve identifiers to all potential values they may have at runtime (if possible).
 The extent to which flowR traces values (e.g., built-ins vs. constants) can be configured in flowR's Configuration file (see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information).
@@ -269,8 +273,8 @@ Using the example code \`${exampleCode}\` (with the \`print(x)\` in the second l
 ${
 	await showQuery(shell, exampleCode, [{
 		type:     'resolve-value',
-		criteria: ['2@x']
-	}], { showCode: true })
+		criteria: criteria
+	}], { showCode: true, shorthand: sliceQueryShorthand(criteria[0], exampleCode) })
 }
 		`;
 	}
@@ -306,6 +310,7 @@ registerQueryDocumentation('origin', {
 	functionFile:     '../queries/catalog/origin-query/origin-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- 1\nprint(x)';
+		const criterion = '2@x';
 		return `
 With this query you can use flowR's origin tracking to find out the read origins of a variable,
 the functions called by a call, and more.
@@ -314,8 +319,8 @@ Using the example code \`${exampleCode}\` (with the \`print(x)\` in the second l
 ${
 	await showQuery(shell, exampleCode, [{
 		type:      'origin',
-		criterion: '2@x'
-	}], { showCode: true })
+		criterion: criterion
+	}], { showCode: true, shorthand: sliceQueryShorthand(criterion, exampleCode) })
 }
 		`;
 	}
@@ -411,7 +416,7 @@ ${
 	}], { showCode: false, collapseQuery: true, collapseResult: true })
 }
 
-Please note that, in the repl, a special syntax starting with \`+\` (which should be autocompleted) can be used to update the configuration on the fly:
+Please note that, in the REPL, a special syntax starting with \`+\` (which should be autocompleted) can be used to update the configuration on the fly:
 
 ${
 	await documentReplSession(shell, [
@@ -513,6 +518,7 @@ registerQueryDocumentation('static-slice', {
 	functionFile:     '../queries/catalog/static-slice-query/static-slice-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- 1\ny <- 2\nx';
+		const criteria = ['3@x'] as SlicingCriteria;
 		return `
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
 return of the call) that you want to slice the dataflow graph for (additionally, you have to tell flowR if you want to have a forward slice). 
@@ -526,8 +532,8 @@ If you are interested in the parts required for the use of \`x\` in the last lin
 ${
 	await showQuery(shell, exampleCode, [{
 		type:     'static-slice',
-		criteria: ['3@x']
-	}], { showCode: false })
+		criteria: criteria
+	}], { showCode: false, shorthand: sliceQueryShorthand(criteria[0], exampleCode) })
 }
 
 In general, you may be uninterested in seeing the reconstructed version and want to save some computation time, for this,
@@ -637,7 +643,18 @@ ${
 	}], { showCode: false, collapseQuery: true })
 }
 
-You can also configure which rules to apply and what settings to use for these rules. 
+You can also configure which rules to apply and what settings to use for these rules:
+${
+	await showQuery(shell, exampleCode, [{
+		type:  'linter',
+		rules: ['file-path-validity'],
+	}], { 
+		showCode:      false, 
+		collapseQuery: true, 
+		shorthand:     `rules:file-path-validity "${exampleCode}"`
+	})
+}
+
 We welcome any feedback and suggestions for new rules on this (consider opening a [new issue](${NewIssueUrl})).
 		`;
 	}

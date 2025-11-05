@@ -1,8 +1,4 @@
-import {
-	documentServerMessage,
-	documentServerMessageResponse,
-	inServerContext
-} from '../../doc-util/doc-server-message';
+import { documentServerMessage, documentServerMessageResponse, inServerContext } from '../../doc-util/doc-server-message';
 import { helloMessageDefinition } from '../../../cli/repl/server/messages/message-hello';
 import { RShell } from '../../../r-bridge/shell';
 import { DockerName } from '../../doc-util/doc-docker';
@@ -21,10 +17,7 @@ import {
 	responseExecuteReplIntermediateMessage
 } from '../../../cli/repl/server/messages/message-repl';
 
-import {
-	requestQueryMessage,
-	responseQueryMessage
-} from '../../../cli/repl/server/messages/message-query';
+import { requestQueryMessage, responseQueryMessage } from '../../../cli/repl/server/messages/message-query';
 import { exampleQueryCode } from '../query/example-query-code';
 import { requestLineageMessage, responseLineageMessage } from '../../../cli/repl/server/messages/message-lineage';
 import { CallTargets } from '../../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
@@ -99,7 +92,7 @@ ${
 		messages:    [
 			{
 				type:        'request',
-				description: `Let' suppose you simply want to analyze the following script:\n ${codeBlock('r', 'x <- 1\nx + 1')}\n For this, you can send the following request:`,
+				description: `Let's suppose you simply want to analyze the following script:\n ${codeBlock('r', 'x <- 1\nx + 1')}\n For this, you can send the following request:`,
 				message:     {
 					type:      'request-file-analysis',
 					id:        '1',

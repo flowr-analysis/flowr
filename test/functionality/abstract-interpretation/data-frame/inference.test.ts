@@ -2078,6 +2078,18 @@ df <- rbind(df, data.frame(id = 1:5, name = "A"))
 
 		testDataFrameDomain(
 			shell,
+			`
+df <- data.frame()
+df <- rbind(df, 12)
+			`.trim(),
+			[
+				['1@df', { colnames: [], cols: [0, 0], rows: [0, 0] }],
+				['2@df', { colnames: Top, cols: [1, 1], rows: [1, 1] }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
 			'df <- rbind(1:3, 4:6)',
 			[['1@df', undefined, DataFrameShapeOverapproximation]]
 		);

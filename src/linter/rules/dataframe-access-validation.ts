@@ -162,14 +162,14 @@ function findInvalidDataFrameAccesses(
 	if(operandShape !== undefined) {
 		for(const row of accessedRows ?? []) {
 			if(operandShape.rows.satisfies(row, NumericalComparator.LessOrEqual) === Ternary.Never) {
-				invalidAccesses.push({ type: 'row',accessed: row });
+				invalidAccesses.push({ type: 'row', accessed: row });
 			}
 		}
 		for(const col of accessedCols ?? []) {
 			if(typeof col === 'string' && operandShape.colnames.satisfies([col], SetComparator.SubsetOrEqual) === Ternary.Never) {
-				invalidAccesses.push({ type: 'column',accessed: col });
+				invalidAccesses.push({ type: 'column', accessed: col });
 			} else if(typeof col === 'number' && operandShape.cols.satisfies(col, NumericalComparator.LessOrEqual) === Ternary.Never) {
-				invalidAccesses.push({ type: 'column',accessed: col });
+				invalidAccesses.push({ type: 'column', accessed: col });
 			}
 		}
 	}

@@ -1207,8 +1207,12 @@ function mapDataFrameSummarize(
 	const result: DataFrameOperation[] = [];
 	const summarizeArgs = args.filter(arg => arg !== dataFrame);
 
-	const accessedNames = summarizeArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph));
 	const summarizedCols = summarizeArgs.map(arg => resolveIdToArgName(arg, info));
+
+	// only column names that are not created by summarize are preconditions on the operand
+	const accessedNames = summarizeArgs
+		.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph))
+		.filter(arg => !summarizedCols.includes(arg));
 
 	if(accessedNames.length > 0) {
 		result.push({

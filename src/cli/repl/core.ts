@@ -166,7 +166,7 @@ export async function replProcessAnswer(analyzer: FlowrAnalyzer, output: ReplOut
 	const statements = splitAtEscapeSensitive(expr, false, /^;\s*:/);
 
 	for(const statement of statements) {
-		await replProcessStatement(output, statement, analyzer, allowRSessionAccess);
+		await replProcessStatement(output, statement.trim(), analyzer, allowRSessionAccess);
 	}
 }
 

@@ -16,7 +16,7 @@
  * @param escapeQuote - Keep quotes in args
  * @param split       - The character or character sequence to split on (can not be backslash or quote!)
  */
-export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, split = ' '): string[] {
+export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, split: RegExp | string = ' '): string[] {
 	const args = [];
 	let current = '';
 	let inQuotes = false;
@@ -24,6 +24,18 @@ export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, 
 
 	for(let i = 0; i < inputString.length;  i++) {
 		const c = inputString[i];
+		const sub = inputString.slice(i);
+		const match = () => {
+			if(split instanceof RegExp) {
+				const result = split.exec(sub);
+				if(result) {
+					return { true: true, length: result[0].length - 2 };
+				}
+				return { true: false, length: 0 };
+			}
+			return { true: inputString.slice(i, i + split.length) === split, length: split.length - 1 };
+		};
+
 		if(escaped) {
 			escaped = false;
 			switch(c) {
@@ -35,9 +47,10 @@ export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, 
 				case 'b': current += '\b'; break;
 				default: current += c;
 			}
-		} else if(inputString.slice(i, i + split.length) === split && !inQuotes && current !== '') {
+		} else if(!inQuotes && current !== '' && match().true) {
 			args.push(current);
 			current = '';
+			i += match().length;
 		} else if(c === '"' || c === "'") {
 			inQuotes = !inQuotes;
 			if(!escapeQuote) {

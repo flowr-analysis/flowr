@@ -448,7 +448,7 @@ ${
 	}], { showCode: true, collapseQuery: true })
 }
 
-The query also accepts an optional slice criterion that allows to filter the results to only include the shape of a specific data frame. For example:
+The query also accepts an optional slice criterion to narrow the results to a specific node. For example:
 ${
 	await showQuery(shell, exampleCode, [{
 		type:      'df-shape',

@@ -100,8 +100,6 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 
 		if(this.value === Bottom || otherValue === Bottom) {
 			return this.bottom();
-		} else if(Math.max(this.value[0], otherValue[0]) > Math.min(this.value[1], otherValue[1])) {
-			return this.bottom();
 		} else {
 			return this.create([Math.max(this.value[0], otherValue[0]), Math.min(this.value[1], otherValue[1])]);
 		}

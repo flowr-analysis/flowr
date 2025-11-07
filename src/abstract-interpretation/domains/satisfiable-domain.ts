@@ -3,7 +3,6 @@ import type { Ternary } from '../../util/logic';
 /**
  * An abstract domain with satisfiability checks for concrete values.
  */
-
 export interface SatisfiableDomain<T> {
 	/**
 	 * Checks whether the current abstract value satisfies a concrete value (i.e. includes a concrete value).
@@ -15,7 +14,6 @@ export interface SatisfiableDomain<T> {
 /**
  * Represents the different types of numerical comparators for satifiability checks for an abstract domain.
  */
-
 export enum NumericalComparator {
 	Equal,
 	Less,
@@ -27,7 +25,6 @@ export enum NumericalComparator {
 /**
  * Represents the different types of set comparators for satifiability checks for an abstract domain.
  */
-
 export enum SetComparator {
 	Equal,
 	Subset,

@@ -92,9 +92,9 @@ type SupportedQueriesType = {
 /**
  * The result of parsing a query line from, e.g., the repl.
  */
-export interface ParsedQueryLine {
+export interface ParsedQueryLine<QueryType extends BaseQueryFormat['type']> {
 	/** The parsed query or queries from the line. */
-	query:  Query | Query[] | undefined;
+	query:  QueryArgumentsWithType<QueryType> | QueryArgumentsWithType<QueryType>[] | undefined;
 	/** Optional R code associated with the query. */
 	rCode?: string;
 }
@@ -104,7 +104,7 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
     /** optional completion in, e.g., the repl */
 	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions) => CommandCompletions;
     /** optional query construction from an, e.g., repl line */
-	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine
+	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine<QueryType>
 	asciiSummarizer:      (formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>
 	jsonFormatter?:       (queryResults: BaseQueryResult) => object
 	schema:               Joi.ObjectSchema

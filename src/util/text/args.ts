@@ -14,15 +14,18 @@
  *
  * @param inputString - The string to split
  * @param escapeQuote - Keep quotes in args
- * @param split       - The **single** character to split on (can not be backslash or quote)
+ * @param split       - The character or character sequence to split on (can not be backslash or quote!)
  */
-export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, split = ' '): string[] {
+export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, split: RegExp | string = ' '): string[] {
 	const args = [];
 	let current = '';
 	let inQuotes = false;
 	let escaped = false;
 
-	for(const c of inputString) {
+	for(let i = 0; i < inputString.length;  i++) {
+		const c = inputString[i];
+		const sub = inputString.slice(i);
+
 		if(escaped) {
 			escaped = false;
 			switch(c) {
@@ -34,7 +37,10 @@ export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, 
 				case 'b': current += '\b'; break;
 				default: current += c;
 			}
-		} else if(c === split && !inQuotes && current !== '') {
+		} else if(!inQuotes
+				&& current !== ''
+				&& (split instanceof RegExp ? split.test(sub) : inputString.slice(i, i + split.length) === split)
+		) {
 			args.push(current);
 			current = '';
 		} else if(c === '"' || c === "'") {

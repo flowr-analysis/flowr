@@ -1,12 +1,15 @@
-import Joi from 'joi';
 import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
 import { DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import type { QueryResults, SupportedQuery } from '../../query';
+import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeDfShapeQuery } from './df-shape-query-executor';
+import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
+import type { FlowrConfigOptions } from '../../../config';
+import { sliceCriterionParser } from '../../../cli/repl/parser/slice-query-parser';
+import Joi from 'joi';
 
 /** Infer the shape of data frames using abstract interpretation. */
 export interface DfShapeQuery extends BaseQueryFormat {
@@ -16,6 +19,18 @@ export interface DfShapeQuery extends BaseQueryFormat {
 
 export interface DfShapeQueryResult extends BaseQueryResult {
 	domains: DataFrameStateDomain | Map<SingleSlicingCriterion, DataFrameDomain | undefined>
+}
+
+function dfShapeQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'df-shape'> {
+	const criterion = sliceCriterionParser(line[0]);
+
+	return {
+		query: {
+			type:      'df-shape',
+			criterion: criterion
+		},
+		rCode: criterion ? line[1] : line[0]
+	};
 }
 
 export const DfShapeQueryDefinition = {
@@ -39,7 +54,8 @@ export const DfShapeQueryDefinition = {
 
 		return json;
 	},
-	schema: Joi.object({
+	fromLine: dfShapeQueryLineParser,
+	schema:   Joi.object({
 		type:      Joi.string().valid('df-shape').required().description('The type of the query.'),
 		criterion: Joi.string().optional().description('The slicing criterion of the node to get the dataframe shape for.')
 	}).description('The df-shape query retrieves information on the shape of dataframes'),

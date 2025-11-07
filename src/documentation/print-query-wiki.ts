@@ -46,6 +46,7 @@ import {
 	executeHigherOrderQuery
 } from '../queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
+import { escapeNewline } from './doc-util/doc-escape';
 
 
 registerQueryDocumentation('call-context', {
@@ -211,7 +212,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:      'lineage',
 		criterion: criterion
-	}], { showCode: false, shorthand: sliceQueryShorthand(criterion, exampleCode) })
+	}], { showCode: false, shorthand: sliceQueryShorthand(criterion, escapeNewline(exampleCode)) })
 }
 
 In this simple scenario, the _lineage_ is equivalent to the slice (and in-fact the complete code). 
@@ -274,7 +275,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:     'resolve-value',
 		criteria: criteria
-	}], { showCode: true, shorthand: sliceQueryShorthand(criteria[0], exampleCode) })
+	}], { showCode: true, shorthand: sliceQueryShorthand(criteria[0], escapeNewline(exampleCode)) })
 }
 		`;
 	}
@@ -320,7 +321,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:      'origin',
 		criterion: criterion
-	}], { showCode: true, shorthand: sliceQueryShorthand(criterion, exampleCode) })
+	}], { showCode: true, shorthand: sliceQueryShorthand(criterion, escapeNewline(exampleCode)) })
 }
 		`;
 	}
@@ -533,7 +534,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:     'static-slice',
 		criteria: criteria
-	}], { showCode: false, shorthand: sliceQueryShorthand(criteria[0], exampleCode) })
+	}], { showCode: false, shorthand: sliceQueryShorthand(criteria[0], escapeNewline(exampleCode)) })
 }
 
 In general, you may be uninterested in seeing the reconstructed version and want to save some computation time, for this,

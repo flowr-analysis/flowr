@@ -17,3 +17,7 @@ export function escapeHTML(str: string | undefined): string | undefined {
 			}[tag] ?? tag)
 	);
 }
+
+export function escapeNewline(str: string): string {
+	return str.replace(/\n/g, '\\n');
+}

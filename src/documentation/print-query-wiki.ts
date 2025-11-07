@@ -275,7 +275,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:     'resolve-value',
 		criteria: criteria
-	}], { showCode: true, shorthand: sliceQueryShorthand(criteria[0], escapeNewline(exampleCode)) })
+	}], { showCode: true, multipleCriteria: true, shorthand: sliceQueryShorthand(criteria[0], escapeNewline(exampleCode)) })
 }
 		`;
 	}
@@ -542,7 +542,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:     'static-slice',
 		criteria: ['3@x'] as SlicingCriteria
-	}], { showCode: false, shorthand: sliceQueryShorthand('3@x', escapeNewline(exampleCode)) })
+	}], { showCode: false, multipleCriteria: true, shorthand: sliceQueryShorthand('3@x', escapeNewline(exampleCode)) })
 }
 
 In general, you may be uninterested in seeing the reconstructed version and want to save some computation time, for this,
@@ -565,7 +565,7 @@ ${
 		type:      'static-slice',
 		criteria:  ['1@x'],
 		direction: SliceDirection.Forward
-	}], { showCode: false, shorthand: sliceQueryShorthand('1@x', escapeNewline(exampleCode), true) })
+	}], { showCode: false, multipleCriteria: true, shorthand: sliceQueryShorthand('1@x', escapeNewline(exampleCode), true) })
 }
 
 You can disable [magic comments](${FlowrWikiBaseRef}/Interface#slice-magic-comments) using the \`noMagicComments\` flag.
@@ -770,7 +770,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type: 'location-map',
 		ids:  criteria
-	}], { showCode: false, collapseQuery: true, shorthand: sliceQueryShorthand(criteria[0], escapeNewline(exampleCode)) })
+	}], { showCode: false, collapseQuery: true, multipleCriteria: true, shorthand: sliceQueryShorthand(criteria[0], escapeNewline(exampleCode)) })
 }
 
 All locations are given as a ${shortLink('SourceRange', types.info)} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.	

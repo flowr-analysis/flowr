@@ -15,10 +15,11 @@ import { getReplCommand } from './doc-cli-option';
 import type { SingleSlicingCriterion } from '../../slicing/criterion/parse';
 
 export interface ShowQueryOptions {
-	readonly showCode?:       boolean;
-	readonly collapseResult?: boolean;
-	readonly collapseQuery?:  boolean;
-	readonly shorthand?:      string;
+	readonly showCode?:         boolean;
+	readonly collapseResult?:   boolean;
+	readonly collapseQuery?:    boolean;
+	readonly shorthand?:        string;
+	readonly multipleCriteria?: boolean;
 }
 
 export async function showQuery<
@@ -27,7 +28,7 @@ export async function showQuery<
 >(
 	shell: RShell, code: string,
 	queries: Queries<Base, VirtualArguments>,
-	{ showCode, collapseResult, collapseQuery, shorthand }: ShowQueryOptions = {}
+	{ showCode, collapseResult, collapseQuery, shorthand, multipleCriteria }: ShowQueryOptions = {}
 ): Promise<string> {
 	const now = performance.now();
 	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code)).setParser(shell).build();
@@ -44,10 +45,9 @@ The analysis required _${printAsMs(duration)}_ (including parsing and normalizat
 ${codeBlock('json', collapseQuery ? str.split('\n').join(' ').replace(/([{[])\s{2,}/g,'$1 ').replace(/\s{2,}([\]}])/g,' $1') : str)}
 
 ${(function() {
-	if(queries.length === 1 && Object.keys(queries[0]).length === 1) {
-		return `(This query can be shortened to \`@${queries[0].type}\` when used within the REPL command ${getReplCommand('query')}).`;
-	} else if(shorthand) {
-		return `(This query can be shortened to \`@${queries[0].type} ${shorthand}\` when used within the REPL command ${getReplCommand('query')}).`;
+	if((queries.length === 1 && Object.keys(queries[0]).length === 1) || shorthand) {
+		return `(This query can be shortened to \`@${queries[0].type}${shorthand ? ' ' + shorthand : ''}\` when used within the REPL command ${getReplCommand('query')}` + 
+			`${multipleCriteria ? '. Multiple criteria can be given by separating them with a semicolon: `(criterion1;criterion2;...;criterionN)`' : ''}).`;
 	} else {
 		return '';
 	}

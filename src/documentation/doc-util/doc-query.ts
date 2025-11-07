@@ -110,8 +110,8 @@ export function registerQueryDocumentation(query: SupportedQueryTypes | Supporte
 	map.set(query, doc);
 }
 
-export function sliceQueryShorthand(criterion: SingleSlicingCriterion, code: string) {
-	return `(${criterion}) "${code}"`;
+export function sliceQueryShorthand(criterion: SingleSlicingCriterion, code: string, forward?: boolean) {
+	return `(${criterion})${forward ? 'f' : ''} "${code}"`;
 }
 
 function linkify(name: string) {

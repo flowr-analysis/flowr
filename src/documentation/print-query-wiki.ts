@@ -45,7 +45,7 @@ import { documentReplSession } from './doc-util/doc-repl';
 import {
 	executeHigherOrderQuery
 } from '../queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor';
-import type { SlicingCriteria } from '../slicing/criterion/parse';
+import type { SingleSlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse';
 import { escapeNewline } from './doc-util/doc-escape';
 
 
@@ -439,12 +439,21 @@ registerQueryDocumentation('df-shape', {
 	functionFile:     '../queries/catalog/df-shape-query/df-shape-query-format.ts',
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- data.frame(a=1:3)\nfilter(x, FALSE)';
+		const criterion = '2@x' as SingleSlicingCriterion;
 		return `
 This query infers all shapes of dataframes within the code. For example, you can use:
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'df-shape'
 	}], { showCode: true, collapseQuery: true })
+}
+
+The query also accepts an optional slice criterion that allows to filter the results to only include the shape of a specific data frame. For example:
+${
+	await showQuery(shell, exampleCode, [{
+		type:      'df-shape',
+		criterion: criterion
+	}], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand(criterion, escapeNewline(exampleCode)) })
 }
 `;
 	}
@@ -519,7 +528,6 @@ registerQueryDocumentation('static-slice', {
 	functionFile:     '../queries/catalog/static-slice-query/static-slice-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- 1\ny <- 2\nx';
-		const criteria = ['3@x'] as SlicingCriteria;
 		return `
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
 return of the call) that you want to slice the dataflow graph for (additionally, you have to tell flowR if you want to have a forward slice). 
@@ -533,8 +541,8 @@ If you are interested in the parts required for the use of \`x\` in the last lin
 ${
 	await showQuery(shell, exampleCode, [{
 		type:     'static-slice',
-		criteria: criteria
-	}], { showCode: false, shorthand: sliceQueryShorthand(criteria[0], escapeNewline(exampleCode)) })
+		criteria: ['3@x'] as SlicingCriteria
+	}], { showCode: false, shorthand: sliceQueryShorthand('3@x', escapeNewline(exampleCode)) })
 }
 
 In general, you may be uninterested in seeing the reconstructed version and want to save some computation time, for this,
@@ -557,7 +565,7 @@ ${
 		type:      'static-slice',
 		criteria:  ['1@x'],
 		direction: SliceDirection.Forward
-	}], { showCode: false })
+	}], { showCode: false, shorthand: sliceQueryShorthand('1@x', escapeNewline(exampleCode), true) })
 }
 
 You can disable [magic comments](${FlowrWikiBaseRef}/Interface#slice-magic-comments) using the \`noMagicComments\` flag.
@@ -739,6 +747,7 @@ registerQueryDocumentation('location-map', {
 			files: [path.resolve('./src/util/range.ts')],
 		});
 		const exampleCode = 'x + 1\nx * 2';
+		const criteria = ['2@x'] as SlicingCriteria;
 		return `
 A query like the ${linkToQueryOfName('id-map')} query can return a huge result, especially for larger scripts.
 If you are not interested in all of the information contained within the full map, you can use the location map query to get a simple mapping of ids to their location in the source file.   
@@ -753,6 +762,15 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type: 'location-map'
 	}], { showCode: false, collapseQuery: true })
+}
+
+The query also accepts a list of slice criteria to filter the results to only include the locations of specific nodes. For example:
+
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'location-map',
+		ids:  criteria
+	}], { showCode: false, collapseQuery: true, shorthand: sliceQueryShorthand(criteria[0], escapeNewline(exampleCode)) })
 }
 
 All locations are given as a ${shortLink('SourceRange', types.info)} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.	

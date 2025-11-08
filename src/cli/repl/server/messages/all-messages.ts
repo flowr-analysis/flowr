@@ -8,7 +8,6 @@ import type { FileAnalysisRequestMessage, FileAnalysisResponseMessageJson } from
 import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './message-repl';
 import type { SliceRequestMessage, SliceResponseMessage } from './message-slice';
 import type { FlowrErrorMessage } from './message-error';
-import type { LineageRequestMessage, LineageResponseMessage } from './message-lineage';
 import type { QueryRequestMessage, QueryResponseMessage } from './message-query';
 
 /**
@@ -52,8 +51,6 @@ export type FlowrMessage = FlowrHelloResponseMessage
                          | ExecuteEndMessage
                          | SliceRequestMessage
                          | SliceResponseMessage
-                         | LineageRequestMessage
-                         | LineageResponseMessage
                          | QueryRequestMessage
                          | QueryResponseMessage
                          | FlowrErrorMessage

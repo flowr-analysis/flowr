@@ -24,7 +24,6 @@ import { executeIdMapQuery } from '../queries/catalog/id-map-query/id-map-query-
 import { executeNormalizedAstQuery } from '../queries/catalog/normalized-ast-query/normalized-ast-query-executor';
 import { executeDataflowClusterQuery } from '../queries/catalog/cluster-query/cluster-query-executor';
 import { executeStaticSliceQuery } from '../queries/catalog/static-slice-query/static-slice-query-executor';
-import { executeLineageQuery } from '../queries/catalog/lineage-query/lineage-query-executor';
 import { executeDependenciesQuery } from '../queries/catalog/dependencies-query/dependencies-query-executor';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { NewIssueUrl } from './doc-util/doc-issue';
@@ -182,41 +181,6 @@ ${
 		type: 'normalized-ast'
 	}], { showCode: true, collapseQuery: true })
 }
-		`;
-	}
-});
-
-registerQueryDocumentation('lineage', {
-	name:             'Lineage Query',
-	type:             'active',
-	shortDescription: 'Returns lineage of a criteria.',
-	functionName:     executeLineageQuery.name,
-	functionFile:     '../queries/catalog/lineage-query/lineage-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
-		const exampleCode = 'x <- 1\nx';
-
-		return `
-This query calculates the _lineage_ of a given slicing criterion. The lineage traces back all parts that the
-respective variables stems from given the reads, definitions, and returns in the dataflow graph.
-
-To understand this, let's start with a simple example query, to get the lineage of the second use of \`x\` in the following code:
-${codeBlock('r', exampleCode)}
- 
-For this, we use the criterion \`2@x\` (which is the first use of \`x\` in the second line).
- 
-${
-	await showQuery(shell, exampleCode, [{
-		type:      'lineage',
-		criterion: '2@x'
-	}], { showCode: false })
-}
-
-In this simple scenario, the _lineage_ is equivalent to the slice (and in-fact the complete code). 
-In general the lineage is smaller and makes no guarantees on executability. 
-It is just a quick and neither complete nor sound way to get information on where the variable originates from.
-
-This query replaces the old [\`request-lineage\`](${FlowrWikiBaseRef}/Interface#message-request-lineage) message.
-
 		`;
 	}
 });

@@ -6,7 +6,6 @@ import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
 import { type DataflowQuery , DataflowQueryDefinition } from './catalog/dataflow-query/dataflow-query-format';
 import { type IdMapQuery , IdMapQueryDefinition } from './catalog/id-map-query/id-map-query-format';
 import { type NormalizedAstQuery , NormalizedAstQueryDefinition } from './catalog/normalized-ast-query/normalized-ast-query-format';
-import { type LineageQuery , LineageQueryDefinition } from './catalog/lineage-query/lineage-query-format';
 import { type StaticSliceQuery , StaticSliceQueryDefinition } from './catalog/static-slice-query/static-slice-query-format';
 import { type DataflowClusterQuery , ClusterQueryDefinition } from './catalog/cluster-query/cluster-query-format';
 import { type DependenciesQuery , DependenciesQueryDefinition } from './catalog/dependencies-query/dependencies-query-format';
@@ -48,7 +47,6 @@ export type Query = CallContextQuery
 	| IdMapQuery
 	| DataflowClusterQuery
 	| StaticSliceQuery
-	| LineageQuery
 	| DependenciesQuery
 	| LocationMapQuery
 	| HappensBeforeQuery
@@ -105,7 +103,6 @@ export const SupportedQueries = {
 	'normalized-ast':       NormalizedAstQueryDefinition,
 	'dataflow-cluster':     ClusterQueryDefinition,
 	'static-slice':         StaticSliceQueryDefinition,
-	'lineage':              LineageQueryDefinition,
 	'dependencies':         DependenciesQueryDefinition,
 	'location-map':         LocationMapQueryDefinition,
 	'search':               SearchQueryDefinition,

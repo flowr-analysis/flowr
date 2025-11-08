@@ -17,7 +17,6 @@ import { type OutputFormatter , bold, italic } from '../../../util/text/ansi';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { guard } from '../../../util/assert';
 import { scripts } from '../../common/scripts-info';
-import { lineageCommand } from './repl-lineage';
 import { queryCommand, queryStarCommand } from './repl-query';
 
 function printHelpForScript(script: [string, ReplBaseCommand], f: OutputFormatter, starredVersion?: ReplBaseCommand): string {
@@ -95,7 +94,6 @@ const _commands: Record<string, ReplCommand | ReplCodeCommand> = {
 	'controlflow*':    controlflowStarCommand,
 	'controlflowbb':   controlflowBbCommand,
 	'controlflowbb*':  controlflowBbStarCommand,
-	'lineage':         lineageCommand,
 	'query':           queryCommand,
 	'query*':          queryStarCommand
 };

@@ -5,6 +5,7 @@ import { log } from './log';
 import LineByLine from 'n-readlines';
 import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import type { FlowrFileProvider } from '../project/context/flowr-file';
+import type { NAMESPACEFormat } from '../project/plugins/file-plugins/flowr-namespace-file';
 
 /**
  * Represents a table, identified by a header and a list of rows.
@@ -217,7 +218,78 @@ export function parseDCF(file: FlowrFileProvider<string>): Map<string, string[]>
 	return result;
 }
 
+/**
+ * Parses the given NAMESPACE file
+ * @param file - The file to parse
+ * @returns
+ */
+export function parseNAMESPACE(file: FlowrFileProvider<string>): NAMESPACEFormat {
+	const result = {
+		this: {
+			exportedSymbols:      [] as string[],
+			exportedFunctions:    [] as string[],
+			exportS3Generics:     new Map<string, string[]>(),
+			loadsWithSideEffects: false,
+		},
+	} as NAMESPACEFormat;
+	const fileContent = file.content().replaceAll(cleanLineCommentRegex, '').trim()
+		.split(/\r?\n/).filter(Boolean);
 
+	for(const line of fileContent) {
+		const match = line.trim().match(/^(\w+)\(([^)]*)\)$/);
+		if(!match) {
+			continue;
+		}
+		const [, type, args] = match;
+
+		switch(type) {
+			case 'exportClasses':
+			case 'exportMethods':
+				result.this.exportedFunctions.push(args);
+				break;
+			case 'S3method':
+			{
+				const parts = args.split(',').map(s => s.trim());
+				if(parts.length !== 2) {
+					continue;
+				}
+				const [pkg, func] = parts;
+				let arr = result.this.exportS3Generics.get(pkg);
+				if(!arr) {
+					arr = [];
+					result.this.exportS3Generics.set(pkg, arr);
+				}
+				arr.push(func);
+				break; 
+			}
+			case 'export':
+				result.this.exportedSymbols.push(args);
+				break;
+			case 'useDynLib':
+			{
+				const parts = args.split(',').map(s => s.trim());
+				if(parts.length !== 2) {
+					continue;
+				}
+				const [pkg, _func] = parts;
+				if(!result[pkg]) {
+					result[pkg] = {
+						exportedSymbols:      [],
+						exportedFunctions:    [],
+						exportS3Generics:     new Map<string, string[]>(),
+						loadsWithSideEffects: false,
+					};
+				}
+				result[pkg].loadsWithSideEffects = true;
+				break;
+			}
+		}
+	}
+
+	return result;
+}
+
+const cleanLineCommentRegex = /^#.*$/gm;
 const cleanSplitRegex = /[\n,]+/;
 const cleanQuotesRegex = /'/g;
 

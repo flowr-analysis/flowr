@@ -16,6 +16,7 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { Range } from 'semver';
 import type { AsyncOrSync } from 'ts-essentials';
+import type { NamespaceInfo } from '../../../project/plugins/file-plugins/flowr-namespace-file';
 
 export const Unknown = 'unknown';
 
@@ -43,7 +44,8 @@ export const DefaultDependencyCategories = {
 							functionName:       (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
 							value:              n.namespace,
 							versionConstraints:	dep?.versionConstraints,
-							derivedVersion:	    dep?.derivedVersion
+							derivedVersion:	    dep?.derivedVersion,
+							namespaceInfo:	     dep?.namespaceInfo
 						});
 					}
 				});
@@ -92,7 +94,8 @@ export interface DependencyInfo extends Record<string, unknown>{
     /** The library name, file, source, destination etc. being sourced, read from, or written to. */
     value?:           string
 	versionConstraints?: Range[],
-	derivedVersion?:     Range
+	derivedVersion?:     Range,
+	namespaceInfo?:	     NamespaceInfo,
 }
 
 function printResultSection(title: string, infos: DependencyInfo[], result: string[]): void {

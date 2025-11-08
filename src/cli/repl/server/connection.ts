@@ -31,8 +31,6 @@ import { DataflowGraph } from '../../../dataflow/graph/graph';
 import * as tmp from 'tmp';
 import fs from 'fs';
 import type { RParseRequests } from '../../../r-bridge/retriever';
-import { type LineageRequestMessage, type LineageResponseMessage , requestLineageMessage } from './messages/message-lineage';
-import { getLineage } from '../commands/repl-lineage';
 import { type QueryRequestMessage, type QueryResponseMessage , requestQueryMessage } from './messages/message-query';
 import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 import { compact } from './compact';
@@ -106,9 +104,6 @@ export class FlowRServerConnection {
 				break;
 			case 'request-repl-execution':
 				this.handleRepl(request.message as ExecuteRequestMessage);
-				break;
-			case 'request-lineage':
-				void this.handleLineageRequest(request.message as LineageRequestMessage);
 				break;
 			case 'request-query':
 				this.handleQueryRequest(request.message as QueryRequestMessage);
@@ -310,37 +305,6 @@ export class FlowRServerConnection {
 				type: 'end-repl-execution',
 				id:   request.id
 			});
-		});
-	}
-
-	private async handleLineageRequest(base: LineageRequestMessage) {
-		const requestResult = validateMessage(base, requestLineageMessage);
-
-		if(requestResult.type === 'error') {
-			answerForValidationError(this.socket, requestResult, base.id);
-			return;
-		}
-
-		const request = requestResult.message;
-		this.logger.info(`[${this.name}] Received lineage request for criterion ${request.criterion}`);
-
-		const fileInformation = this.fileMap.get(request.filetoken);
-		if(!fileInformation) {
-			sendMessage<FlowrErrorMessage>(this.socket, {
-				id:     request.id,
-				type:   'error',
-				fatal:  false,
-				reason: `The file token ${request.filetoken} has never been analyzed.`
-			});
-			return;
-		}
-
-		const analyzer = fileInformation.analyzer;
-		const lineageIds = getLineage(request.criterion, (await analyzer.dataflow()).graph, (await analyzer.normalize()).idMap);
-		sendMessage<LineageResponseMessage>(this.socket, {
-			type:    'response-lineage',
-			id:      request.id,
-			lineage: [...lineageIds]
 		});
 	}
 

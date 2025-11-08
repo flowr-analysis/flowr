@@ -16,7 +16,6 @@ import {
 	responseExecuteReplEndMessage,
 	responseExecuteReplIntermediateMessage
 } from '../../../cli/repl/server/messages/message-repl';
-
 import { requestQueryMessage, responseQueryMessage } from '../../../cli/repl/server/messages/message-query';
 import { exampleQueryCode } from '../query/example-query-code';
 import { requestLineageMessage, responseLineageMessage } from '../../../cli/repl/server/messages/message-lineage';

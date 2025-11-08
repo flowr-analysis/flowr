@@ -178,9 +178,8 @@ async function generateCriterion(input: ReadonlyFlowrAnalysisProvider, args: { c
 	);
 }
 
-
 /**
- *
+ * Gets the search generator function for the given name
  */
 export function getGenerator<Name extends GeneratorNames>(name: Name): typeof generators[Name] {
 	if(!generators[name]) {

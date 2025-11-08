@@ -24,6 +24,7 @@ type SyntaxAndRNode = [SyntaxNode, RNode<TreeSitterInfo>];
 
 /**
  * @param tree - The tree to normalize
+ * @param lax - Whether to use lax parsing (i.e., ignore errors) or strict parsing (i.e., fail on errors)
  */
 export function normalizeTreeSitterTreeToAst(tree: Tree, lax?: boolean): RExpressionList<TreeSitterInfo> {
 	if(lax) {
@@ -48,18 +49,18 @@ function nonErrorChildrenLax(node: SyntaxNode): SyntaxNode[] {
 
 let nonErrorChildren: (node: SyntaxNode) => SyntaxNode[] = nonErrorChildrenStrict;
 
-
 /**
- *
+ * Globally switch to lax parsing mode for tree-sitter normalization
+ * @see {@link makeTreeSitterStrict}
  */
 export function makeTreeSitterLax() {
 	log.info('[Tree-Sitter] Lax parsing active');
 	nonErrorChildren = nonErrorChildrenLax;
 }
 
-
 /**
- *
+ * Globally switch to strict parsing mode for tree-sitter normalization
+ * @see {@link makeTreeSitterLax}
  */
 export function makeTreeSitterStrict() {
 	log.info('[Tree-Sitter] Strict parsing active');

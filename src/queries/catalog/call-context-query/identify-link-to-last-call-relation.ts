@@ -28,9 +28,8 @@ export enum CallTargets {
     Any = 'any'
 }
 
-
 /**
- *
+ * Determines whether the given function call node satisfies the specified call target condition.
  */
 export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | 'no' {
 	const callVertex = graph.getVertex(id, true);
@@ -88,11 +87,8 @@ export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarge
 	}
 }
 
-
-
-
 /**
- *
+ * Gets the value node of the specified argument in the given function call, if it exists and matches the allowed types.
  */
 export function getValueOfArgument<Types extends readonly RType[] = readonly RType[]>(
 	graph: DataflowGraph, call: DataflowGraphVertexFunctionCall | undefined, argument: { name?: string, index: number }, additionalAllowedTypes?: Types
@@ -121,10 +117,8 @@ export function getValueOfArgument<Types extends readonly RType[] = readonly RTy
 	}
 }
 
-
-
 /**
- *
+ * Identifies nodes that link to the last call of a specified function from a given starting node in the control flow graph.
  */
 export function identifyLinkToLastCallRelation(
 	from: NodeId,

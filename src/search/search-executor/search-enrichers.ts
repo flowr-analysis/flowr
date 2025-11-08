@@ -224,9 +224,8 @@ export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<Pa
 	return e?.enrichments?.[enrichment] as EnrichmentElementContent<E>;
 }
 
-
 /**
- *
+ * Enriches the given search element with the given enrichment type, using the provided analysis data.
  */
 export async function enrichElement<Element extends FlowrSearchElement<ParentInformation>, E extends Enrichment>(
 	e: Element, s: FlowrSearchElements<ParentInformation>, data: {

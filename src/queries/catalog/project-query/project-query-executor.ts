@@ -2,9 +2,8 @@ import { log } from '../../../util/log';
 import type { ProjectQuery, ProjectQueryResult } from './project-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 
-
 /**
- *
+ * Executes the given project queries.
  */
 export async function executeProjectQuery({ analyzer }: BasicQueryData, queries: readonly ProjectQuery[]): Promise<ProjectQueryResult> {
 	if(queries.length !== 1) {

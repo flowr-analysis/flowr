@@ -28,7 +28,6 @@ const tempfile = (() => {
 	};
 })();
 
-
 function safeDivPercentage(a: number, b: number): number | undefined {
 	if(isNaN(a) || isNaN(b)) {
 		return undefined;
@@ -287,9 +286,8 @@ function summarizePerOperationStats(nodeStats: PerNodeStatsDfShape[]): Summarize
 	return perOperationNumber;
 }
 
-
 /**
- *
+ * Summarizes the given measurements by calculating the min, max, median, mean, standard deviation, and total.
  */
 export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): SummarizedMeasurement {
 	data = data.filter(isNotUndefined);
@@ -305,9 +303,8 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 	return { min, max, median, mean, std, total };
 }
 
-
 /**
- *
+ * Summarizes the given reductions of summarized measurements.
  */
 export function summarizeSummarizedReductions(reductions: Reduction<SummarizedMeasurement>[]): Reduction<SummarizedMeasurement> {
 	return {
@@ -333,9 +330,8 @@ function summarizeReductions(reductions: Reduction<number | undefined>[]): Reduc
 	};
 }
 
-
 /**
- *
+ * Summarizes the given times per token by calculating the min, max, median, mean, and standard deviation for each measurement.
  */
 export function summarizeSummarizedTimePerToken(times: TimePerToken[]): TimePerToken {
 	return {
@@ -344,9 +340,8 @@ export function summarizeSummarizedTimePerToken(times: TimePerToken[]): TimePerT
 	};
 }
 
-
 /**
- *
+ * Summarizes the given times per token by calculating the min, max, median, mean, and standard deviation for each measurement.
  */
 export function summarizeTimePerToken(times: TimePerToken<number>[]): TimePerToken {
 	return {

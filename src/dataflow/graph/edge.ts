@@ -75,9 +75,8 @@ export function edgeTypeToName(type: EdgeType): string {
 	return edgeTypeToHumanReadableName.get(type) as string;
 }
 
-
 /**
- *
+ * Takes joint edge types and splits them into their individual components.
  */
 export function splitEdgeTypes(types: EdgeTypeBits): EdgeType[] {
 	const split = [];
@@ -89,9 +88,8 @@ export function splitEdgeTypes(types: EdgeTypeBits): EdgeType[] {
 	return split;
 }
 
-
 /**
- *
+ * Takes joint edge types and returns their human-readable names.
  */
 export function edgeTypesToNames(bits: EdgeTypeBits): Set<EdgeTypeName> {
 	const types = new Set<EdgeTypeName>();
@@ -141,9 +139,8 @@ const alwaysTraverseEdgeTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.A
 
 const definedByOnCallTypes = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall;
 
-
 /**
- *
+ * Determines whether an edge should be traversed during dataflow analysis.
  */
 export function shouldTraverseEdge(types: EdgeTypeBits): TraverseEdge {
 	if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {

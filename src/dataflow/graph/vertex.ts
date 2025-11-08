@@ -48,9 +48,8 @@ export interface NamedArgumentId {
 	readonly lexeme: string,
 }
 
-
 /**
- *
+ * Type guard to check whether {@link identifier} is a {@link NamedArgumentId}.
  */
 export function isNamedArgumentId(identifier: IndexIdentifier): identifier is NamedArgumentId {
 	return 'lexeme' in identifier;
@@ -89,9 +88,8 @@ export interface ContainerParentIndex extends ContainerLeafIndex {
 	readonly subIndices: ContainerIndices[],
 }
 
-
 /**
- *
+ * Type guard to check whether {@link index} is a {@link ContainerParentIndex}.
  */
 export function isParentContainerIndex(index: ContainerIndex): index is ContainerParentIndex {
 	return 'subIndices' in index;
@@ -121,9 +119,8 @@ export function isAccessed(index: ContainerIndex, accessLexeme: string, isIndexB
 	return false;
 }
 
-
 /**
- *
+ * Checks whether two {@link ContainerIndex|container indices} are the same.
  */
 export function isSameIndex(a: ContainerIndex, b: ContainerIndex) {
 	if(isNamedArgumentId(a.identifier) && isNamedArgumentId(b.identifier)) {

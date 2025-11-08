@@ -20,9 +20,8 @@ type GetCfgReturn = {
 
 export function getCfg(parser: KnownParser, code: string, simplifications?: readonly CfgSimplificationPassName[], useDfg?: true): Promise<Required<GetCfgReturn>>
 export function getCfg(parser: KnownParser, code: string, simplifications?: readonly CfgSimplificationPassName[], useDfg?: boolean): Promise<GetCfgReturn>
-
 /**
- *
+ * Returns the control flow graph for the given code.
  */
 export async function getCfg(parser: KnownParser, code: string, simplifications: readonly CfgSimplificationPassName[] = [], useDfg = true): Promise<GetCfgReturn> {
 	const result = useDfg ? await createDataflowPipeline(parser, {
@@ -38,9 +37,8 @@ export async function getCfg(parser: KnownParser, code: string, simplifications:
 	};
 }
 
-
 /**
- *
+ * Serializes the given control flow graph to a mermaid diagram.
  */
 export function printCfg(cfg: ControlFlowInformation, ast: NormalizedAst, prefix = 'flowchart BT\n', simplify = false) {
 	return `
@@ -58,7 +56,7 @@ export interface PrintCfgOptions {
 }
 
 /**
- *
+ * Generates and prints the control flow graph for the given code, along with optional metadata and the original code.
  */
 export async function printCfgCode(parser: KnownParser, code: string, { showCode = true, openCode = false, prefix = 'flowchart BT\n', simplifications = [], simplify = false, useDfg = true }: PrintCfgOptions = {}) {
 	const now = performance.now();

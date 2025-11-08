@@ -13,9 +13,8 @@ function pad<T>(string: T) {
 	return String(string).padStart(padSize, ' ');
 }
 
-
 /**
- *
+ * Formats the given nanoseconds into a human-readable string.
  */
 export function formatNanoseconds(nanoseconds: bigint | number): string {
 	if(nanoseconds < 0) {
@@ -213,7 +212,7 @@ Dataframe shape inference:
 
 
 /**
- *
+ * Converts reduction stats to a human-readable string.
  */
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
 	let result = `

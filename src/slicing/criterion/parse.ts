@@ -114,7 +114,7 @@ export type DecodedCriteria = ReadonlyArray<DecodedCriterion>
 
 /**
  * Converts all slicing criteria to their corresponding node ids
- * @throws {CriteriaParseError} if any of the criteria can not be resolved
+ * @throws CriteriaParseError if any of the criteria can not be resolved
  */
 export function convertAllSlicingCriteriaToIds(criteria: SlicingCriteria, decorated: AstIdMap): DecodedCriteria {
 	return criteria.map(l => ({ criterion: l, id: slicingCriterionToId(l, decorated) }));

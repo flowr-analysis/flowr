@@ -39,17 +39,15 @@ export function deterministicCountingIdGenerator(id = 0): () => NodeId {
 	return () => id++;
 }
 
-
 /**
- *
+ * Generates ids with a fixed prefix and an incrementing counter.
  */
 export function deterministicPrefixIdGenerator(prefix: string, id = 0): () => NodeId {
 	return () => `${prefix}-${id++}`;
 }
 
-
 /**
- *
+ *  Generates ids with a fixed source path and location information as prefix and an incrementing counter.
  */
 export function sourcedDeterministicCountingIdGenerator(path: string, location: SourceRange, start = 0): () => NodeId {
 	let id = start;

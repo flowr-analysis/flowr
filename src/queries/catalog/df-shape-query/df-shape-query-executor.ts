@@ -5,9 +5,8 @@ import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import type { DfShapeQuery, DfShapeQueryResult } from './df-shape-query-format';
 
-
 /**
- *
+ * Executes the given dataframe shape queries using the provided analyzer.
  */
 export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries: readonly DfShapeQuery[]): Promise<DfShapeQueryResult> {
 	if(queries.length !== 1 && queries.some(query => query.criterion === undefined)) {

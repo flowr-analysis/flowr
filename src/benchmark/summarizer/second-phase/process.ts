@@ -14,9 +14,8 @@ import {
 import { type DataFrameOperationName , DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
 import { arraySum } from '../../../util/collections/arrays';
 
-
 /**
- *
+ * This big function summarizes multiple summarized stats into one ultimate stat.
  */
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => []);
@@ -160,9 +159,8 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 	};
 }
 
-
 /**
- *
+ * This big function summarizes multiple ultimate stats into one.
  */
 export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): UltimateSlicerStats {
 	return {
@@ -246,9 +244,8 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 	};
 }
 
-
 /**
- *
+ * Processes the next summary line.
  */
 export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicerStats[]): void {
 	let got = JSON.parse(line.toString()) as { summarize: SummarizedSlicerStats };
@@ -281,9 +278,8 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 	allSummarized.push(got.summarize);
 }
 
-
 /**
- *
+ * Processes the next ultimate summary line.
  */
 export function processNextUltimateSummary(line: Buffer, allSummarized: UltimateSlicerStats[]): void {
 	let got = JSON.parse(line.toString()) as UltimateSlicerStats;

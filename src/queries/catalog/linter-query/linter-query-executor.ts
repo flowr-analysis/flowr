@@ -5,9 +5,9 @@ import { log } from '../../../util/log';
 import type { ConfiguredLintingRule } from '../../../linter/linter-format';
 import { executeLintingRule } from '../../../linter/linter-executor';
 
-
 /**
- *
+ * Executes the given linter queries using the provided analyzer.
+ * @see {@link executeLintingRule}
  */
 export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: readonly LinterQuery[]): Promise<LinterQueryResult> {
 	const flattened = queries.flatMap(q => q.rules ?? (Object.keys(LintingRules) as LintingRuleNames[]));

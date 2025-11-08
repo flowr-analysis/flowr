@@ -4,9 +4,8 @@ import { jsonReplacer } from '../../util/json';
 import type { IdentifierReference } from './identifier';
 import { diffControlDependencies } from '../info';
 
-
 /**
- *
+ * Compares two identifier references and reports differences.
  */
 export function diffIdentifierReferences<Report extends WriteableDifferenceReport>(a: IdentifierReference | undefined, b: IdentifierReference | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
@@ -56,9 +55,8 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 	}
 }
 
-
 /**
- *
+ * Compares two environments and reports differences.
  */
 export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEnvironment | undefined, b: IEnvironment | undefined, info: GenericDifferenceInformation<Report>, depth: number): void {
 	if(a === undefined || b === undefined) {
@@ -81,9 +79,8 @@ export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEn
 	diffEnvironment(a.parent, b.parent, { ...info, position: `${info.position}Parents of ${a.id} & ${b.id}. ` }, depth--);
 }
 
-
 /**
- *
+ * Compares two REnvironmentInformation objects and reports differences.
  */
 export function diffEnvironmentInformation<Report extends WriteableDifferenceReport>(a: REnvironmentInformation | undefined, b: REnvironmentInformation | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {

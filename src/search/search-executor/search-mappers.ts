@@ -23,9 +23,8 @@ const Mappers = {
 	} satisfies MapperData<Enrichment>
 } as const;
 
-
 /**
- *
+ * Maps the given search element using the specified mapper and arguments.
  */
 export function map<Element extends FlowrSearchElement<ParentInformation>, MapperType extends Mapper>(
 	e: Element, data: ReadonlyFlowrAnalysisProvider, mapper: MapperType, args: MapperArguments<MapperType>): Element[] {

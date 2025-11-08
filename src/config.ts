@@ -313,9 +313,8 @@ export const flowrConfigFileSchema = Joi.object({
 	}).description('The configuration options for abstract interpretation.')
 }).description('The configuration file format for flowR.');
 
-
 /**
- *
+ * Parses the given JSON string as a flowR config file.
  */
 export function parseConfig(jsonString: string): FlowrConfigOptions | undefined {
 	try {
@@ -343,17 +342,15 @@ export function amendConfig(config: FlowrConfigOptions, amendmentFunc: (config: 
 	return newConfig;
 }
 
-
 /**
- *
+ * Clones the given flowr config object.
  */
 export function cloneConfig(config: FlowrConfigOptions): FlowrConfigOptions {
 	return JSON.parse(JSON.stringify(config)) as FlowrConfigOptions;
 }
 
-
 /**
- *
+ * Loads the flowr config from the given file or the default locations.
  */
 export function getConfig(configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfigOptions {
 	try {
@@ -364,9 +361,8 @@ export function getConfig(configFile?: string, configWorkingDirectory = process.
 	}
 }
 
-
 /**
- *
+ * Gets the configuration for the given engine type from the config.
  */
 export function getEngineConfig<T extends EngineConfig['type']>(config: FlowrConfigOptions, engine: T): EngineConfig & { type: T } | undefined {
 	const engines = config.engines;
@@ -386,15 +382,13 @@ function getPointerAnalysisThreshold(config: FlowrConfigOptions): number | 'unli
 	}
 }
 
-
 /**
- *
+ * Checks whether the given count is over the pointer analysis threshold configured in the config.
  */
 export function isOverPointerAnalysisThreshold(config: FlowrConfigOptions, count: number): boolean {
 	const threshold = getPointerAnalysisThreshold(config);
 	return threshold !== 'unlimited' && (threshold === 'disabled' || count > threshold);
 }
-
 
 
 function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfigOptions {

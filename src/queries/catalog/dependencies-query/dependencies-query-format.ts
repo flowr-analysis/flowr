@@ -115,9 +115,8 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	}
 }
 
-
 /**
- *
+ * Gets all dependency categories, including user-defined additional categories.
  */
 export function getAllCategories(queries: readonly DependenciesQuery[]): Record<DependencyCategoryName, DependencyCategorySettings> {
 	let categories = DefaultDependencyCategories;

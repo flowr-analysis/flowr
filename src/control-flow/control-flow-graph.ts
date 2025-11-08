@@ -85,9 +85,8 @@ export interface CfgBasicBlockVertex extends CfgBaseVertex {
  */
 export type CfgSimpleVertex = CfgStatementVertex | CfgExpressionVertex | CfgBasicBlockVertex | CfgEndMarkerVertex
 
-
 /**
- *
+ * Checks whether two vertices are equal.
  */
 export function equalVertex(a: CfgSimpleVertex, b: CfgSimpleVertex): boolean {
 	if(a.type !== b.type || a.id !== b.id) {
@@ -100,17 +99,16 @@ export function equalVertex(a: CfgSimpleVertex, b: CfgSimpleVertex): boolean {
 	return true;
 }
 
-
 /**
- *
+ * Checks whether a vertex is a marker vertex (i.e., does not correspond to an actual AST node
+ * but is a marker in the control flow graph).
  */
 export function isMarkerVertex(vertex: CfgSimpleVertex): vertex is CfgEndMarkerVertex {
 	return vertex.type === CfgVertexType.EndMarker;
 }
 
-
 /**
- *
+ * Get the root id of a vertex, i.e., the id of the AST node it corresponds to.
  */
 export function getVertexRootId(vertex: CfgSimpleVertex): NodeId {
 	return isMarkerVertex(vertex) ? vertex.root : vertex.id;
@@ -211,7 +209,7 @@ export interface ReadOnlyControlFlowGraph {
  * If you want to prohibit modification, please refer to the {@link ReadOnlyControlFlowGraph} interface.
  */
 export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> implements ReadOnlyControlFlowGraph {
-	private readonly rootVertices:      Set<NodeId>         = new Set<NodeId>();
+	private readonly rootVertices:      Set<NodeId> = new Set<NodeId>();
 	/** Nesting-Independent vertex information, mapping the id to the vertex */
 	private readonly vertexInformation: Map<NodeId, Vertex> = new Map<NodeId, Vertex>();
 	/** the basic block children map contains a mapping of ids to all vertices that are nested in basic blocks, mapping them to the Id of the block they appear in */
@@ -461,7 +459,10 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	}
 }
 
-/** Summarizes the control information of a program */
+/**
+ * Summarizes the control information of a program
+ * @see {@link emptyControlFlowInformation} - to create an empty control flow information object
+ */
 export interface ControlFlowInformation<Vertex extends CfgSimpleVertex = CfgSimpleVertex> extends MergeableRecord {
 	/** all active 'return'(-like) unconditional jumps */
     returns:     NodeId[],
@@ -477,9 +478,8 @@ export interface ControlFlowInformation<Vertex extends CfgSimpleVertex = CfgSimp
     graph:       ControlFlowGraph<Vertex>
 }
 
-
 /**
- *
+ * Create an empty control flow information object.
  */
 export function emptyControlFlowInformation(): ControlFlowInformation {
 	return {

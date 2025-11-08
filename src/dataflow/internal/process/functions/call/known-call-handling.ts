@@ -36,9 +36,8 @@ export interface ProcessKnownFunctionCallResult {
 	readonly fnRef:              IdentifierReference
 }
 
-
 /**
- *
+ * Marks the given arguments as being involved in R's non-standard evaluation.
  */
 export function markNonStandardEvaluationEdges(
 	markAsNSE:  readonly number[],
@@ -58,9 +57,9 @@ export function markNonStandardEvaluationEdges(
 	}
 }
 
-
 /**
- *
+ * The main processor for function calls for which we know the target but need not
+ * add any specific handling.
  */
 export function processKnownFunctionCall<OtherInfo>(
 	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect, origin }: ProcessKnownFunctionCallInput<OtherInfo>, indicesCollection: ContainerIndicesCollection = undefined,

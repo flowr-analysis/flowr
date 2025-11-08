@@ -23,9 +23,8 @@ import type { ExitPoint } from '../info';
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
-
 /**
- *
+ * Find all reads within the graph that do not reference a local definition in the graph.
  */
 export function findNonLocalReads(graph: DataflowGraph, ignore: readonly IdentifierReference[]): IdentifierReference[] {
 	const ignores = new Set(ignore.map(i => i.nodeId));
@@ -71,9 +70,8 @@ export function findNonLocalReads(graph: DataflowGraph, ignore: readonly Identif
 	return nonLocalReads;
 }
 
-
 /**
- *
+ * Produces a map from names to all identifier references sharing that name.
  */
 export function produceNameSharedIdMap(references: IdentifierReference[]): NameIdMap {
 	const nameIdShares = new DefaultMap<string, IdentifierReference[]>(() => []);
@@ -85,9 +83,8 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 	return nameIdShares;
 }
 
-
 /**
- *
+ * Links the given arguments to the given parameters within the given graph.
  */
 export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<ParentInformation>[], graph: DataflowGraph): void {
 	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
@@ -160,9 +157,8 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCa
 	linkArgumentsOnCall(callArgs, linkedFunction.parameters, finalGraph);
 }
 
-
 /**
- *
+ * Links a function call with a single target function definition.
  */
 export function linkFunctionCallWithSingleTarget(
 	graph: DataflowGraph,
@@ -288,9 +284,8 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 	return found;
 }
 
-
 /**
- *
+ * Finds all linked function definitions starting from the given set of read ids.
  */
 export function getAllLinkedFunctionDefinitions(
 	functionDefinitionReadIds: ReadonlySet<NodeId>,
@@ -321,7 +316,7 @@ export function getAllLinkedFunctionDefinitions(
 		const returnEdges = outgoingEdges.filter(([_, e]) => edgeIncludesType(e.types, EdgeType.Returns));
 		if(returnEdges.length > 0) {
 			// only traverse return edges and do not follow `calls` etc. as this indicates that we have a function call which returns a result, and not the function calls itself
-			potential = potential.concat(...returnEdges.map(([target]) => target).filter(id => !visited.has(id)));
+			potential = potential.concat(returnEdges.map(([target]) => target).filter(id => !visited.has(id)));
 			continue;
 		}
 
@@ -406,9 +401,8 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 	}
 }
 
-
 /**
- *
+ * Reapplies the loop exit points' control dependencies to the given identifier references.
  */
 export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: readonly IdentifierReference[]): void {
 	// just apply the cds of all exit points not already present

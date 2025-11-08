@@ -87,9 +87,8 @@ function diffFunctionArgumentsReferences(fn: NodeId, a: IdentifierReference | '<
 	diffIdentifierReferences(a, b, ctx);
 }
 
-
 /**
- *
+ * Checks whether two function argument lists are equal.
  */
 export function equalFunctionArguments(fn: NodeId, a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[]): boolean {
 	const ctx: GenericDifferenceInformation<GraphDifferenceReport> = {
@@ -103,9 +102,8 @@ export function equalFunctionArguments(fn: NodeId, a: false | readonly FunctionA
 	return ctx.report.isEqual();
 }
 
-
 /**
- *
+ * Compares two function argument lists and reports differences.
  */
 export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[], ctx: GenericDifferenceInformation<GraphDifferenceReport>): void {
 	if(a === false || b === false) {
@@ -143,10 +141,8 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
 	}
 }
 
-
-
 /**
- *
+ * Compares the vertices of two dataflow graphs and reports differences.
  */
 export function diffVertices(ctx: GraphDiffContext): void {
 	// collect vertices from both sides
@@ -271,9 +267,8 @@ function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: Gr
 	}
 }
 
-
 /**
- *
+ * Compares two sets of outgoing edges and reports differences.
  */
 export function diffEdges(ctx: GraphDiffContext, id: NodeId, lEdges: OutgoingEdges | undefined, rEdges: OutgoingEdges | undefined): void {
 	if(lEdges === undefined || rEdges === undefined) {

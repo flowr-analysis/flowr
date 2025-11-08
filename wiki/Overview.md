@@ -3,7 +3,7 @@ If you have never used _flowR_ before, please refer to the [setup](https://githu
 
 <!-- TOC -->
 - [_flowR_'s Modules](#flowrs-modules)
-- [Using _flowR_](#using-flowr)
+- [Using _flowR_ from the outside](#using-flowr-from-the-outside)
   - [The Read-Eval-Print Loop (REPL)](#the-read-eval-print-loop-repl)
   - [The Server](#the-server)
 - [Calling the Scripts Directly](#calling-the-scripts-directly)
@@ -43,8 +43,7 @@ with the important components directly related to the analysis highlighted accor
 
 Primarily, _flowR_ provides a dataflow analysis framework for the [*R*](https://www.r-project.org/) programming language.
 Its subcomponents (like the custom [R bridge](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge) or the internals of the static [dataflow analysis]("https://github.com/flowr-analysis/flowr/tree/main/src/dataflow)) are not important if you simply wish to use _flowR_.
-If you wish to use flowR, check out one of its extensions (e.g., the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr))
-or its coding API with the [`FlowrAnalyzer`](https://github.com/flowr-analysis/flowr/wiki/Core).
+If you wish to use flowR, check out one of its extensions (e.g., the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr)), the [REPL and server interfaces](#using-_flowr_-from-the-outside) or its coding API with the [`FlowrAnalyzer`](https://github.com/flowr-analysis/flowr/wiki/Core).
 
 The benchmark module is only of interest if you want to benchmark/measure the runtime performance and reduction of the slicer. It is available with the [`benchmark`](#benchmark-the-slicer) script.
 
@@ -56,7 +55,7 @@ The [utility](https://github.com/flowr-analysis/flowr/tree/main/src/util) module
 
 The following sections explain how to use these features.
 
-## Using _flowR_
+## Using _flowR_ from the outside
 
 _flowR_ itself has two main ways to operate:
 

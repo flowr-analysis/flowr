@@ -760,7 +760,7 @@ There are many ways to query a dataflow graph created by flowR.
 For example, you can use the [\`request-query\`](${FlowrWikiBaseRef}/Interface#message-request-query) message
 with a running flowR server, or the ${getReplCommand('query')} command in the flowR [REPL](${FlowrWikiBaseRef}/Interface#repl).
 
-Also, check out the [${FlowrGithubGroupName}/query-project-sample](${FlowrGithubBaseRef}/query-project-sample) repository for a complete example project using the query API.
+Also, check out the [${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) repository for a complete example project using the query API.
 			`.trim()
 	})
 }

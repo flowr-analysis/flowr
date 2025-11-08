@@ -212,7 +212,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:      'lineage',
 		criterion: criterion
-	}], { showCode: false, shorthand: sliceQueryShorthand(criterion, escapeNewline(exampleCode)) })
+	}], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)) })
 }
 
 In this simple scenario, the _lineage_ is equivalent to the slice (and in-fact the complete code). 
@@ -264,18 +264,18 @@ registerQueryDocumentation('resolve-value', {
 	functionName:     executeSearch.name,
 	functionFile:     '../queries/catalog/resolve-value-query/resolve-value-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
-		const exampleCode = 'x <- 1\nprint(x)';
-		const criteria = ['2@x'] as SlicingCriteria;
+		const exampleCode = 'x <- 1\ny <-2\nprint(x)\nprint(y)';
+		const criteria = ['3@x', '4@y'] as SlicingCriteria;
 		return `
 With this query you can use flowR's value-tracking capabilities to resolve identifiers to all potential values they may have at runtime (if possible).
 The extent to which flowR traces values (e.g., built-ins vs. constants) can be configured in flowR's Configuration file (see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information).
 
-Using the example code \`${exampleCode}\` (with the \`print(x)\` in the second line), the following query returns all values of \`x\` in the code:
+Using the example code \`${exampleCode}\` (with newlines), the following query returns all values of \`x\` in the code:
 ${
 	await showQuery(shell, exampleCode, [{
 		type:     'resolve-value',
 		criteria: criteria
-	}], { showCode: true, multipleCriteria: true, shorthand: sliceQueryShorthand(criteria[0], escapeNewline(exampleCode)) })
+	}], { showCode: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)) })
 }
 		`;
 	}
@@ -321,7 +321,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:      'origin',
 		criterion: criterion
-	}], { showCode: true, shorthand: sliceQueryShorthand(criterion, escapeNewline(exampleCode)) })
+	}], { showCode: true, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)) })
 }
 		`;
 	}
@@ -453,7 +453,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:      'df-shape',
 		criterion: criterion
-	}], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand(criterion, escapeNewline(exampleCode)) })
+	}], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)) })
 }
 `;
 	}
@@ -527,7 +527,8 @@ registerQueryDocumentation('static-slice', {
 	functionName:     executeStaticSliceQuery.name,
 	functionFile:     '../queries/catalog/static-slice-query/static-slice-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
-		const exampleCode = 'x <- 1\ny <- 2\nx';
+		const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
+		const criteria = ['3@z','4@x'] as SlicingCriteria;
 		return `
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
 return of the call) that you want to slice the dataflow graph for (additionally, you have to tell flowR if you want to have a forward slice). 
@@ -541,8 +542,8 @@ If you are interested in the parts required for the use of \`x\` in the last lin
 ${
 	await showQuery(shell, exampleCode, [{
 		type:     'static-slice',
-		criteria: ['3@x'] as SlicingCriteria
-	}], { showCode: false, multipleCriteria: true, shorthand: sliceQueryShorthand('3@x', escapeNewline(exampleCode)) })
+		criteria: criteria
+	}], { showCode: false, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)) })
 }
 
 In general, you may be uninterested in seeing the reconstructed version and want to save some computation time, for this,
@@ -552,7 +553,7 @@ ${
 	details('No Reconstruction Example',
 		await showQuery(shell, exampleCode, [{
 			type:             'static-slice',
-			criteria:         ['3@x'],
+			criteria:         ['4@x'],
 			noReconstruction: true
 		}], { showCode: false })
 	)
@@ -565,7 +566,7 @@ ${
 		type:      'static-slice',
 		criteria:  ['1@x'],
 		direction: SliceDirection.Forward
-	}], { showCode: false, multipleCriteria: true, shorthand: sliceQueryShorthand('1@x', escapeNewline(exampleCode), true) })
+	}], { showCode: false, shorthand: sliceQueryShorthand(['1@x'], escapeNewline(exampleCode), true) })
 }
 
 You can disable [magic comments](${FlowrWikiBaseRef}/Interface#slice-magic-comments) using the \`noMagicComments\` flag.
@@ -747,7 +748,7 @@ registerQueryDocumentation('location-map', {
 			files: [path.resolve('./src/util/range.ts')],
 		});
 		const exampleCode = 'x + 1\nx * 2';
-		const criteria = ['2@x'] as SlicingCriteria;
+		const criteria = ['1@x','2@x'] as SlicingCriteria;
 		return `
 A query like the ${linkToQueryOfName('id-map')} query can return a huge result, especially for larger scripts.
 If you are not interested in all of the information contained within the full map, you can use the location map query to get a simple mapping of ids to their location in the source file.   
@@ -770,7 +771,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type: 'location-map',
 		ids:  criteria
-	}], { showCode: false, collapseQuery: true, multipleCriteria: true, shorthand: sliceQueryShorthand(criteria[0], escapeNewline(exampleCode)) })
+	}], { showCode: false, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)) })
 }
 
 All locations are given as a ${shortLink('SourceRange', types.info)} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.	

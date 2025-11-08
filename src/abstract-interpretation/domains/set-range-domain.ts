@@ -119,14 +119,14 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	}
 
 	public leq(other: SetRangeDomain<T>): boolean {
-		if(this.min === Bottom || this.value === Bottom) {
+		if(this.min === Bottom || this.max === Bottom) {
 			return true;
-		} else if(other.min === Bottom || other.value === Bottom || !other.min.isSubsetOf(this.min)) {
+		} else if(other.min === Bottom || other.max === Bottom || !other.min.isSubsetOf(this.min)) {
 			return false;
-		} else if(other.value.range === Top) {
+		} else if(other.max === Top) {
 			return true;
 		}
-		return this.value.range !== Top && this.value.range.isSubsetOf(other.value.range);
+		return this.max !== Top && this.max.isSubsetOf(other.max);
 	}
 
 	public join(other: this | SetRangeDomain<T>): this {
@@ -136,14 +136,14 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 			return this.create(this.value);
 		}
 		const minJoin = this.min.intersection(other.min);
-		let rangeJoin;
+		let maxJoin;
 
 		if(this.max === Top || other.max === Top) {
-			rangeJoin = Top;
+			maxJoin = Top;
 		} else {
-			rangeJoin = this.max.union(other.max).difference(minJoin);
+			maxJoin = this.max.union(other.max);
 		}
-		return this.create({ min: minJoin, range: rangeJoin });
+		return this.create({ min: minJoin, range: maxJoin === Top ? Top : maxJoin.difference(minJoin) });
 	}
 
 	public meet(other: this | SetRangeDomain<T>): this {
@@ -151,22 +151,19 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 			return this.bottom();
 		}
 		const minMeet = this.min.union(other.min);
-		let rangeMeet;
+		let maxMeet;
 
-		if(this.max === Top && other.max !== Top) {
-			rangeMeet = other.max.difference(minMeet);
-		} else if(this.max !== Top && other.max === Top) {
-			rangeMeet = this.max.difference(minMeet);
-		} else if(this.max !== Top && other.max !== Top) {
-			if(!minMeet.isSubsetOf(this.max.intersection(other.max))) {
-				return this.bottom();
-			} else {
-				rangeMeet = this.max.intersection(other.max).difference(minMeet);
-			}
+		if(this.max === Top) {
+			maxMeet = other.max;
+		} else if(other.max === Top) {
+			maxMeet = this.max;
 		} else {
-			rangeMeet = Top;
+			maxMeet = this.max.intersection(other.max);
 		}
-		return this.create({ min: minMeet, range: rangeMeet });
+		if(maxMeet !== Top && !minMeet.isSubsetOf(maxMeet)) {
+			return this.bottom();
+		}
+		return this.create({ min: minMeet, range: maxMeet === Top ? Top : maxMeet.difference(minMeet) });
 	}
 
 	/**
@@ -185,16 +182,16 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		} else {
 			minSub = this.min.difference(other.max);
 		}
-		let rangeSub;
+		let maxSub;
 
 		if(this.max === Top) {
-			rangeSub = Top;
+			maxSub = Top;
 		} else if(other.max === Top) {
-			rangeSub = this.max.difference(other.min).difference(minSub);
+			maxSub = this.max.difference(other.min);
 		} else {
-			rangeSub = this.max.difference(other.max).difference(minSub);
+			maxSub = this.max.difference(other.max);
 		}
-		return this.create({ min: minSub, range: rangeSub });
+		return this.create({ min: minSub, range: maxSub === Top ? Top : maxSub.difference(minSub) });
 	}
 
 	public widen(other: this): this {
@@ -205,23 +202,35 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		}
 		let minWiden;
 
-		if(this.min.isSubsetOf(other.min)) {
-			minWiden = this.min;
-		} else {
+		if(!this.min.isSubsetOf(other.min)) {
 			minWiden = new Set<never>();
-		}
-		let rangeWiden;
-
-		if(this.max !== Top && other.max !== Top && other.max.isSubsetOf(this.max)) {
-			rangeWiden = this.max.difference(minWiden);
 		} else {
-			rangeWiden = Top;
+			minWiden = this.min;
 		}
-		return this.create({ min: minWiden, range: rangeWiden });
+		let maxWiden;
+
+		if(this.max === Top || other.max === Top || !other.max.isSubsetOf(this.max)) {
+			maxWiden = Top;
+		} else {
+			maxWiden = this.max;
+		}
+		return this.create({ min: minWiden, range: maxWiden === Top ? Top : maxWiden.difference(minWiden) });
 	}
 
 	public narrow(other: this): this {
 		if(this.min === Bottom || this.max === Bottom || other.min === Bottom || other.max === Bottom) {
+			return this.bottom();
+		}
+		let maxMeet;
+
+		if(this.max === Top) {
+			maxMeet = other.max;
+		} else if(other.max === Top) {
+			maxMeet = this.max;
+		} else {
+			maxMeet = this.max.intersection(other.max);
+		}
+		if(maxMeet !== Top && !this.min.union(other.min).isSubsetOf(maxMeet)) {
 			return this.bottom();
 		}
 		let minNarrow;
@@ -231,16 +240,14 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		} else {
 			minNarrow = this.min;
 		}
-		let rangeNarrow;
+		let maxNarrow;
 
-		if(this.max === Top && other.max !== Top) {
-			rangeNarrow = other.max.difference(minNarrow);
-		} else if(this.max !== Top) {
-			rangeNarrow = this.max.difference(minNarrow);
+		if(this.max === Top) {
+			maxNarrow = other.max;
 		} else {
-			rangeNarrow = Top;
+			maxNarrow = this.max;
 		}
-		return this.create({ min: minNarrow, range: rangeNarrow });
+		return this.create({ min: minNarrow, range: maxNarrow === Top ? Top : maxNarrow.difference(minNarrow) });
 	}
 
 	public concretize(limit: number): ReadonlySet<ReadonlySet<T>> |  typeof Top {

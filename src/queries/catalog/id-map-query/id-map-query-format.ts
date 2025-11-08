@@ -5,7 +5,6 @@ import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
-
 import { summarizeIdsIfTooLong } from '../../query-print';
 
 export interface IdMapQuery extends BaseQueryFormat {

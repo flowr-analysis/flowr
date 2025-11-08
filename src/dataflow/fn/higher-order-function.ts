@@ -1,7 +1,6 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../graph/graph';
-import type { DataflowGraphVertexArgument, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
-import { isFunctionCallVertex, isFunctionDefinitionVertex } from '../graph/vertex';
+import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionDefinition , isFunctionCallVertex, isFunctionDefinitionVertex } from '../graph/vertex';
 import { isNotUndefined } from '../../util/assert';
 import { edgeIncludesType, EdgeType } from '../graph/edge';
 import { resolveIdToValue } from '../eval/resolve/alias-tracking';

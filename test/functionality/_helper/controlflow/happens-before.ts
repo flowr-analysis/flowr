@@ -1,5 +1,4 @@
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assert, describe, test } from 'vitest';
 import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { Ternary } from '../../../../src/util/logic';
@@ -11,6 +10,10 @@ import { happensBefore } from '../../../../src/control-flow/happens-before';
 import { cfgToMermaidUrl } from '../../../../src/util/mermaid/cfg';
 import { defaultConfigOptions } from '../../../../src/config';
 
+
+/**
+ *
+ */
 export function assertHappensBefore(shell: RShell, code: string, a: SingleSlicingCriterion, b: SingleSlicingCriterion, expected: Ternary) {
 	// shallow copy is important to avoid killing the CFG :c
 	return describe(code, () => {

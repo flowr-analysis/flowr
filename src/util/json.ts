@@ -3,6 +3,11 @@
 
 import { builtInEnvJsonReplacer, isDefaultBuiltInEnvironment } from '../dataflow/environments/environment';
 
+/**
+ * This is flowR's custom JSON replacer, used to stringify flowR-internal structures.
+ * @see {@link jsonBigIntRetriever}
+ * @see {@link superBigJsonStringify}
+ */
 export function jsonReplacer(key: unknown, value: unknown): unknown {
 	if(key === 'fullLexeme') {
 		return undefined;
@@ -15,6 +20,11 @@ export function jsonReplacer(key: unknown, value: unknown): unknown {
 	}
 }
 
+/**
+ * This is flowR's custom JSON retriever, used to parse flowR-internal structures.
+ * @see {@link jsonReplacer}
+ * @see {@link superBigJsonStringify}
+ */
 export function jsonBigIntRetriever(key: string, value: unknown): unknown {
 	if(typeof value === 'string' && value.endsWith('n')) {
 		return BigInt(value.slice(0, -1));
@@ -24,6 +34,9 @@ export function jsonBigIntRetriever(key: string, value: unknown): unknown {
 }
 
 
+/**
+ * Stringifies potentially very large objects to JSON, sending chunks to the provided send function.
+ */
 export function superBigJsonStringify(obj: unknown, end: string, send: (s: string) => void): void {
 	try {
 		const tryOut = JSON.stringify(obj, jsonReplacer) + end;

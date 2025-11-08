@@ -1,6 +1,4 @@
 import { assert, describe, test } from 'vitest';
-
-
 import { assertLinter } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
 import { isAbsolutePath } from '../../../src/util/text/strings';

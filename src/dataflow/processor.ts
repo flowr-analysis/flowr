@@ -20,13 +20,13 @@ export interface DataflowProcessorInformation<OtherInfo> {
      */
 	readonly completeAst:         NormalizedAst<OtherInfo>
 	/**
-     * Correctly contains pushed local scopes introduced by `function` scopes.
-     * Will by default *not* contain any symbol-bindings introduced along the way; they have to be decorated when moving up the tree.
-     */
+	 * Correctly contains pushed local scopes introduced by `function` scopes.
+	 * Will by default *not* contain any symbol-bindings introduced along the way; they have to be decorated when moving up the tree.
+	 */
 	readonly environment:         REnvironmentInformation
 	/**
-     * Other processors to be called by the given functions
-     */
+	 * Other processors to be called by the given functions
+	 */
 	readonly processors:          DataflowProcessors<OtherInfo>
 	/**
 	 * The {@link RParseRequests} that is currently being parsed
@@ -48,7 +48,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	/**
 	 * The flowr configuration used for environment seeding, and precision control
 	 */
-	readonly flowrConfig:			      FlowrConfigOptions
+	readonly flowrConfig:         FlowrConfigOptions
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation
@@ -71,7 +71,6 @@ export type DataflowProcessors<OtherInfo> = {
  * <p>
  * Now this method can be called recursively within the other processors to parse the dataflow for nodes that you cannot narrow down
  * in type or context.
- *
  * @param current - The current node to start processing from
  * @param data    - The initial (/current) information to be passed down
  */

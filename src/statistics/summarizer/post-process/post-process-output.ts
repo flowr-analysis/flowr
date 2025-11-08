@@ -1,12 +1,10 @@
 import path from 'path';
 import fs from 'fs';
-import type { ClusterContextIdMap, ClusterReport } from './clusterer';
-import { clusterStatisticsOutput } from './clusterer';
+import { type ClusterContextIdMap, type ClusterReport , clusterStatisticsOutput } from './clusterer';
 import { log } from '../../../util/log';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { ColorEffect, Colors, FontStyles, formatter } from '../../../util/text/ansi';
-import type { FeatureKey, FeatureSelection } from '../../features/feature';
-import { ALL_FEATURES } from '../../features/feature';
+import { type FeatureKey, type FeatureSelection , ALL_FEATURES } from '../../features/feature';
 import { deterministicCountingIdGenerator } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { defaultStatisticsFileSuffix } from '../../output/file-provider';
@@ -14,10 +12,8 @@ import { arraySum } from '../../../util/collections/arrays';
 
 /**
  * Post process the collections in a given folder, reducing them in a memory preserving way.
- *
  * @param filepath - Path to the root file of the data collection like `statistics-out/top-2023-01-01-00-00-00/`
  * @param features - Collection of features to post process, expects corresponding folders to exist
- *
  * @returns non-aggregated reports for each sub-key of each feature
  */
 export function postProcessFeatureFolder(filepath: string, features: FeatureSelection): ClusterReport[] {
@@ -38,7 +34,6 @@ export function postProcessFeatureFolder(filepath: string, features: FeatureSele
 
 /**
  * Process a single feature folder like `Assignments/`
- *
  * @param filepath - Same as the input to {@link postProcessFeatureFolder}
  * @param feature  - The (single) feature to process
  */

@@ -524,7 +524,7 @@ describe.sequential('Parse function calls', withShell(shell => {
 						type:     RType.Argument,
 						location: rangeFrom(2, 17, 2, 17),
 						name:     {
-							type: 	    RType.Symbol,
+							type:      RType.Symbol,
 							location:  rangeFrom(2, 17, 2, 17),
 							lexeme:    'B',
 							content:   'B',

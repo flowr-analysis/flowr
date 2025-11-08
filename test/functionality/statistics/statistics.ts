@@ -1,12 +1,10 @@
 import { assert } from 'chai';
 import type { DeepPartial } from 'ts-essentials';
 import { jsonBigIntRetriever, jsonReplacer } from '../../../src/util/json';
-import type { TestConfiguration } from '../_helper/shell';
-import { skipTestBecauseConfigNotMet } from '../_helper/shell';
+import { type TestConfiguration , skipTestBecauseConfigNotMet } from '../_helper/shell';
 import { deepMergeObject } from '../../../src/util/objects';
 import { extractUsageStatistics, staticRequests } from '../../../src/statistics/statistics';
-import type { FeatureKey, FeatureValue } from '../../../src/statistics/features/feature';
-import { ALL_FEATURES } from '../../../src/statistics/features/feature';
+import { type FeatureKey, type FeatureValue , ALL_FEATURES } from '../../../src/statistics/features/feature';
 import type { RShell } from '../../../src/r-bridge/shell';
 import type { AppendFnType, DummyAppendMemoryMap } from '../../../src/statistics/output/file-provider';
 import { initDummyFileProvider } from '../../../src/statistics/output/statistics-file';
@@ -18,6 +16,10 @@ async function requestFeature<T extends FeatureKey>(shell: RShell, feature: T, c
 	return results.features[feature] as FeatureValue<T>;
 }
 
+
+/**
+ *
+ */
 export async function expectFeature<T extends FeatureKey>(shell: RShell, feature: T, code: string, expected: FeatureValue<T>, map: DummyAppendMemoryMap, expectedMap: Map<AppendFnType, string[]> | undefined): Promise<void> {
 	const result = await requestFeature(shell, feature, code);
 	assert.deepStrictEqual(result, JSON.parse(JSON.stringify(expected, jsonReplacer), jsonBigIntRetriever), `counts, for feature ${feature} in ${code}`);

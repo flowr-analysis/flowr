@@ -1,11 +1,9 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
-
 import { executeResolveValueQuery } from './origin-query-executor';
 import type { Origin } from '../../../dataflow/origin/dfg-get-origin';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -50,7 +48,7 @@ export const OriginQueryDefinition = {
 		result.push(`Query: ${bold('origin', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [criteria, obj] of Object.entries(out.results)) {
 			result.push(`   ╰ Origins for {${criteria}}`);
-			result.push(`   	╰ ${obj?.map(o => JSON.stringify(o)).join(', ')}`);
+			result.push(`     ╰ ${obj?.map(o => JSON.stringify(o)).join(', ')}`);
 		}
 		return true;
 	},

@@ -1,10 +1,8 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
-import type { ProcessKnownFunctionCallResult } from '../known-call-handling';
-import { processKnownFunctionCall } from '../known-call-handling';
+import { type ProcessKnownFunctionCallResult , processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -12,12 +10,10 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/environment';
 import type { ForceArguments } from '../common';
-import type { BuiltInMappingName } from '../../../../../environments/built-in';
-import { builtInId } from '../../../../../environments/built-in';
+import { type BuiltInMappingName , builtInId } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
 import { ReferenceType } from '../../../../../environments/identifier';
-import type { ContainerIndicesCollection, ContainerParentIndex } from '../../../../../graph/vertex';
-import { isParentContainerIndex } from '../../../../../graph/vertex';
+import { type ContainerIndicesCollection, type ContainerParentIndex , isParentContainerIndex } from '../../../../../graph/vertex';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { filterIndices, getAccessOperands, resolveSingleIndex } from '../../../../../../util/containers';
 
@@ -162,6 +158,10 @@ function processNumberBasedAccess<OtherInfo>(
 	return fnCall;
 }
 
+
+/**
+ *
+ */
 export function symbolArgumentsToStrings<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], firstIndexInclusive = 1, lastIndexInclusive = args.length - 1) {
 	const newArgs = [...args];
 	// if the argument is a symbol, we convert it to a string for this perspective
@@ -265,7 +265,6 @@ function referenceAccessedIndices<OtherInfo>(
 /**
  * Creates edges of type {@link EdgeType.Reads} to the accessed Indices and their sub-indices starting from
  * the node with {@link parentNodeId}.
- *
  * @param accessedIndicesCollection - All indices that were accessed by the access operation
  * @param fnCall                    - The {@link ProcessKnownFunctionCallResult} of the access operation
  * @param parentNodeId              - {@link NodeId} of the parent from which the edge starts

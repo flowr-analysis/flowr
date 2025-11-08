@@ -3,8 +3,7 @@ import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { withShell } from '../../_helper/shell';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import type { DataflowGraphVertexFunctionCall } from '../../../../src/dataflow/graph/vertex';
-import { VertexType } from '../../../../src/dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall , VertexType } from '../../../../src/dataflow/graph/vertex';
 import {
 	getValueOfArgument
 } from '../../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';

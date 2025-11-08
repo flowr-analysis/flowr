@@ -1,8 +1,7 @@
 /**
  * The summarizer intends to post-process and summarize the results of
- * * the benchmark tool, and
- * * the statistics extraction.
- *
+ * the benchmark tool, and
+ * the statistics extraction.
  * @module
  */
 

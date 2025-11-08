@@ -6,8 +6,7 @@ import { RShellExecutor } from './shell-executor';
 import { normalize } from './lang-4.x/ast/parser/json/parser';
 import { ErrorMarker } from './init';
 import { ts2r } from './lang-4.x/convert-values';
-import type { NormalizedAst } from './lang-4.x/ast/model/processing/decorate';
-import { deterministicCountingIdGenerator } from './lang-4.x/ast/model/processing/decorate';
+import { type NormalizedAst , deterministicCountingIdGenerator } from './lang-4.x/ast/model/processing/decorate';
 import { RawRType } from './lang-4.x/ast/model/type';
 import fs from 'fs';
 import path from 'path';
@@ -65,6 +64,9 @@ export type RParseRequest = RParseRequestFromFile | RParseRequestFromText
  */
 export type RParseRequests = RParseRequest | ReadonlyArray<RParseRequest>
 
+/**
+ * Type guard for {@link RParseRequest}
+ */
 export function isParseRequest(request: unknown): request is RParseRequest {
 	if(typeof request !== 'object' || request === null) {
 		return false;
@@ -97,7 +99,11 @@ export function requestFromInput(input: `${typeof fileProtocol}${string}` | stri
 	}
 }
 
-
+/**
+ * Creates a {@link RParseRequestProvider} that reads from the file system.
+ * Uses `fs.existsSync` to check for file existence.
+ * @see {@link requestProviderFromText} for a provider that reads from a text map.
+ */
 export function requestProviderFromFile(): RParseRequestProvider {
 	return {
 		exists(p: string, ignoreCase: boolean): string | undefined {
@@ -124,6 +130,10 @@ export function requestProviderFromFile(): RParseRequestProvider {
 	};
 }
 
+/**
+ * Creates a {@link RParseRequestProvider} that reads from the given text map.
+ * @see {@link requestProviderFromFile} for a provider that reads from the file system.
+ */
 export function requestProviderFromText(text: Readonly<{[path: string]: string}>): RParseRequestProvider {
 	return {
 		exists(path: string, ignoreCase: boolean): string | undefined {
@@ -141,6 +151,9 @@ export function requestProviderFromText(text: Readonly<{[path: string]: string}>
 	};
 }
 
+/**
+ * Checks whether the given {@link RParseRequest} is empty (has no content).
+ */
 export function isEmptyRequest(request: RParseRequest): boolean {
 	return request.content.trim().length === 0;
 }

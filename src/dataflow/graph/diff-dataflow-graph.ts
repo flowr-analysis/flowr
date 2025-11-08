@@ -1,25 +1,19 @@
-import type { FunctionArgument, OutgoingEdges } from './graph';
-import { isNamedArgument } from './graph';
-import type { GenericDiffConfiguration, GenericDifferenceInformation } from '../../util/diff';
-import { setDifference } from '../../util/diff';
+import { type FunctionArgument, type OutgoingEdges , isNamedArgument } from './graph';
+import { type GenericDiffConfiguration, type GenericDifferenceInformation , setDifference } from '../../util/diff';
 import { jsonReplacer } from '../../util/json';
 import { arrayEqual } from '../../util/collections/arrays';
 import { VertexType } from './vertex';
-import type { DataflowGraphEdge } from './edge';
-import { edgeTypesToNames, splitEdgeTypes } from './edge';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type DataflowGraphEdge , edgeTypesToNames, splitEdgeTypes } from './edge';
+import { type NodeId , recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../environments/identifier';
 import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments/diff';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { diffControlDependencies } from '../info';
-import type { GraphDiffContext, NamedGraph } from '../../util/diff-graph';
-import { initDiffContext, GraphDifferenceReport } from '../../util/diff-graph';
+import { type GraphDiffContext, type NamedGraph , initDiffContext, GraphDifferenceReport } from '../../util/diff-graph';
 
 /**
  * Compare two dataflow graphs and return a report on the differences.
  * If you simply want to check whether they equal, use {@link GraphDifferenceReport#isEqual|`<result>.isEqual()`}.
- *
  * @see {@link diffOfControlFlowGraphs} - for control flow graphs
  */
 export function diffOfDataflowGraphs(left: NamedGraph, right: NamedGraph, config?: Partial<GenericDiffConfiguration>): GraphDifferenceReport {
@@ -93,6 +87,9 @@ function diffFunctionArgumentsReferences(fn: NodeId, a: IdentifierReference | '<
 	diffIdentifierReferences(a, b, ctx);
 }
 
+/**
+ * Checks whether two function argument lists are equal.
+ */
 export function equalFunctionArguments(fn: NodeId, a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[]): boolean {
 	const ctx: GenericDifferenceInformation<GraphDifferenceReport> = {
 		report:    new GraphDifferenceReport(),
@@ -105,6 +102,9 @@ export function equalFunctionArguments(fn: NodeId, a: false | readonly FunctionA
 	return ctx.report.isEqual();
 }
 
+/**
+ * Compares two function argument lists and reports differences.
+ */
 export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[], ctx: GenericDifferenceInformation<GraphDifferenceReport>): void {
 	if(a === false || b === false) {
 		if(a !== b) {
@@ -141,7 +141,9 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
 	}
 }
 
-
+/**
+ * Compares the vertices of two dataflow graphs and reports differences.
+ */
 export function diffVertices(ctx: GraphDiffContext): void {
 	// collect vertices from both sides
 	const lVert = ctx.left.vertices(true).map(([id, info]) => ([id, info] as const)).toArray();
@@ -265,6 +267,9 @@ function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: Gr
 	}
 }
 
+/**
+ * Compares two sets of outgoing edges and reports differences.
+ */
 export function diffEdges(ctx: GraphDiffContext, id: NodeId, lEdges: OutgoingEdges | undefined, rEdges: OutgoingEdges | undefined): void {
 	if(lEdges === undefined || rEdges === undefined) {
 		if(

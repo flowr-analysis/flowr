@@ -5,11 +5,9 @@ import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../..
 import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
 import type { AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
-import type { FlowrConfigOptions } from '../../../../src/config';
-import { defaultConfigOptions } from '../../../../src/config';
+import { type FlowrConfigOptions , defaultConfigOptions } from '../../../../src/config';
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
-import type { DEFAULT_DATAFLOW_PIPELINE, TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
+import { type DEFAULT_DATAFLOW_PIPELINE, type TREE_SITTER_DATAFLOW_PIPELINE , createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
 import type { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -18,13 +16,11 @@ import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { RShell } from '../../../../src/r-bridge/shell';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
 import { getRangeEnd } from '../../../../src/util/range';
 import { decorateLabelContext, type TestLabel } from '../../_helper/label';
-import type { TestConfiguration } from '../../_helper/shell';
-import { skipTestBecauseConfigNotMet } from '../../_helper/shell';
+import { type TestConfiguration , skipTestBecauseConfigNotMet } from '../../_helper/shell';
 
 /**
  * The default flowR configuration options for performing abstract interpretation.
@@ -110,7 +106,6 @@ export interface DataFrameTestOptions extends Partial<TestConfiguration> {
  *
  * Note that this functions inserts print statements for the shape properties in the line after each slicing criterion.
  * Make sure that this does not break the provided code.
- *
  * @param shell       - The R shell to use to run the code
  * @param code        - The R code to test
  * @param criteria    - The slicing criteria to test including the expected shape constraints and a {@link DataFrameShapeMatching} option for each criterion (defaults to {@link DataFrameShapeExact})
@@ -139,7 +134,6 @@ export function testDataFrameDomain(
  *
  * Note that this functions inserts print statements for the shape properties in the line after each slicing criterion.
  * Make sure that this does not break the provided code.
- *
  * @param shell       - The R shell to use to run the code
  * @param fileArg     - The argument for the assert run
  * @param textArg     - The argument for the full test run where the code is executed
@@ -165,7 +159,6 @@ export function testDataFrameDomainWithSource(
 
 /**
  * Asserts inferred data frame shape constraints for given slicing criteria.
- *
  * @param parser      - The parser to use for the data flow graph creation
  * @param code        - The R code to test
  * @param expected    - The expected data frame shape constraints for each slicing criterion
@@ -197,7 +190,6 @@ export function assertDataFrameDomain(
 
 /**
  * Asserts an inferred abstract data frame operation for given slicing criteria.
- *
  * @param parser      - The parser to use for the data flow graph creation
  * @param code        - The R code to test
  * @param expected    - The expected abstract data frame operation for each slicing criterion
@@ -234,7 +226,6 @@ export function assertDataFrameOperation(
  *
  * Note that this functions inserts print statements for the shape properties in the line after each slicing criterion.
  * Make sure that this does not break the provided code.
- *
  * @param shell       - The R shell to use to run the instrumented code
  * @param code        - The R code to test
  * @param criteria    - The slicing criteria to test including a {@link DataFrameShapeMatching} option for each criterion (defaults to {@link DataFrameShapeExact})

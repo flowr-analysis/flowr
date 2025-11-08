@@ -1,18 +1,11 @@
 import type { SourceRange } from '../range';
-
-
 import { escapeId, escapeMarkdown, mermaidCodeToUrl } from './mermaid';
-import type { DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
-import { isNamedArgument, isPositionalArgument } from '../../dataflow/graph/graph';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IdentifierDefinition, IdentifierReference } from '../../dataflow/environments/identifier';
-import { ReferenceTypeReverseMapping } from '../../dataflow/environments/identifier';
+import { type DataflowFunctionFlowInformation, type DataflowGraph, type FunctionArgument , isNamedArgument, isPositionalArgument } from '../../dataflow/graph/graph';
+import { type NodeId , normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type IdentifierDefinition, type IdentifierReference , ReferenceTypeReverseMapping } from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { EdgeType } from '../../dataflow/graph/edge';
-import { edgeTypeToName, splitEdgeTypes } from '../../dataflow/graph/edge';
-import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
-import { VertexType } from '../../dataflow/graph/vertex';
+import { type EdgeType , edgeTypeToName, splitEdgeTypes } from '../../dataflow/graph/edge';
+import { type DataflowGraphVertexInfo , VertexType } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isBuiltIn } from '../../dataflow/environments/built-in';
@@ -151,6 +144,9 @@ function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: strin
 	return { open, close };
 }
 
+/**
+ * Prints an identifier definition in a human-readable format.
+ */
 export function printIdentifier(id: IdentifierDefinition): string {
 	return `**${id.name}** (id: ${id.nodeId}, type: ${ReferenceTypeReverseMapping.get(id.type)},${id.controlDependencies? ' cds: {' + id.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
 }
@@ -273,6 +269,9 @@ function graphToMermaidGraph(
 	return mermaid;
 }
 
+/**
+ * Converts a dataflow graph to mermaid graph code that visualizes the graph.
+ */
 export function graphToMermaid(config: MermaidGraphConfiguration): { string: string, mermaid: MermaidGraph } {
 	const mermaid = graphToMermaidGraph(config.graph.rootIds(), config);
 	return { string: `${mermaid.nodeLines.join('\n')}\n${mermaid.edgeLines.join('\n')}`, mermaid };
@@ -280,7 +279,6 @@ export function graphToMermaid(config: MermaidGraphConfiguration): { string: str
 
 /**
  * Converts a dataflow graph to a mermaid url that visualizes the graph.
- *
  * @param graph               - The graph to convert
  * @param includeEnvironments - Whether to include the environments in the mermaid graph code
  * @param mark                - Special nodes to mark (e.g., those included in the slice)
@@ -305,6 +303,9 @@ export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGr
 	return `${prefix}flowchart BT\nsubgraph "${left.label}"\n${leftGraph}\nend\nsubgraph "${right.label}"\n${rightGraph}\nend`;
 }
 
+/**
+ * Converts two dataflow graphs to a mermaid url that visualizes their differences.
+ */
 export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDiffGraph, prefix: string): string {
 	return mermaidCodeToUrl(diffGraphsToMermaid(left, right, prefix));
 }

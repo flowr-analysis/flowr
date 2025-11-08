@@ -9,13 +9,11 @@ import type {
 	LinkTo,
 	SubCallContextQueryFormat
 } from './call-context-query-format';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId , recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
-
 import type { BasicQueryData } from '../../base-query-format';
 import { identifyLinkToLastCallRelation, satisfiesCallTargets } from './identify-link-to-last-call-relation';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -60,6 +58,10 @@ function exactCallNameRegex(name: RegExp | string): RegExp {
 	return new RegExp(`^(${name})$`);
 }
 
+
+/**
+ *
+ */
 export function promoteCallName(callName: CallNameTypes, exact = false): RegExp | Set<string> {
 	return Array.isArray(callName) ? new Set<string>(callName) : exact ? exactCallNameRegex(callName) : new RegExp(callName);
 }

@@ -42,6 +42,9 @@ async function retrieveSummarizer(options: SummarizerCliOptions, outputBase: str
 	}
 }
 
+/**
+ * The core function for the 'flowr summarize' script.
+ */
 export async function flowrScriptSummarizer(options: SummarizerCliOptions) {
 	const outputBase = (options.output ?? options.input).replace(/\.json$|\/$/, '-summary');
 	console.log(`Writing outputs to base ${outputBase}`);

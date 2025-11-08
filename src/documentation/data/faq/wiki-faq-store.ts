@@ -59,11 +59,11 @@ ${collapsibleToc({
 	['💮 *flowR* FAQ']: {
 		[FlowrFaqTopics['flowr.development']]: {},
 		[FlowrFaqTopics['flowr.use']]:         {}
-	},                         
+	},
 	['🇷 R FAQ']: {
 		[FlowrFaqTopics['r.packages']]: {}
 	}
-})}		
+})}
 
 ${section('💮 <i>flowR</i> FAQ', 2)}
 

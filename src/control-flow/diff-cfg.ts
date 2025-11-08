@@ -1,18 +1,14 @@
 import { jsonReplacer } from '../util/json';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { GraphDiffContext, NamedGraph } from '../util/diff-graph';
-import { initDiffContext , GraphDifferenceReport } from '../util/diff-graph';
-import type { GenericDiffConfiguration } from '../util/diff';
-import { setDifference } from '../util/diff';
-import type { CfgEdge, CfgSimpleVertex, ControlFlowGraph } from './control-flow-graph';
-import { equalVertex } from './control-flow-graph';
+import { type GraphDiffContext, type NamedGraph , initDiffContext , GraphDifferenceReport } from '../util/diff-graph';
+import { type GenericDiffConfiguration , setDifference } from '../util/diff';
+import { type CfgEdge, type CfgSimpleVertex, type ControlFlowGraph , equalVertex } from './control-flow-graph';
 import { arrayEqual } from '../util/collections/arrays';
 
 
 /**
  * Compare two control flow graphs and return a report on the differences.
  * If you simply want to check whether they equal, use {@link GraphDifferenceReport#isEqual|`<result>.isEqual()`}.
- *
  * @see {@link diffOfDataflowGraphs} - for dataflow graphs
  */
 export function diffOfControlFlowGraphs(left: NamedGraph<ControlFlowGraph>, right: NamedGraph<ControlFlowGraph>, config?: Partial<GenericDiffConfiguration>): GraphDifferenceReport {

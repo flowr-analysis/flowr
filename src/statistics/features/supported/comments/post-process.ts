@@ -1,13 +1,11 @@
 import type { FeatureStatisticsWithMeta } from '../../feature';
-import type { CommentInfo } from './comments';
-import { initialCommentInfo } from './comments';
+import { type CommentInfo , initialCommentInfo } from './comments';
 import fs from 'fs';
 import path from 'path';
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer';
 import type { MergeableRecord } from '../../../../util/objects';
-import type {
-	SummarizedMeasurement } from '../../../../util/summarizer';
-import { summarizedMeasurement2Csv
+import {
+	type SummarizedMeasurement , summarizedMeasurement2Csv
 	,
 	summarizedMeasurement2CsvHeader,
 	summarizeMeasurement
@@ -49,6 +47,10 @@ function mapComments<In,Out>(data: CommentsPostProcessing<In>, fn: (input: In) =
 	return collected;
 }
 
+
+/**
+ *
+ */
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	// for each we collect the count and the number of files that contain them
 	const collected = mapComments(initialCommentInfo, initialCommentsMeta);

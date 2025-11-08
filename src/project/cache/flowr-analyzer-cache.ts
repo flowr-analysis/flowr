@@ -1,11 +1,9 @@
 import type { KnownParser } from '../../r-bridge/parser';
-import type { CacheInvalidationEvent } from './flowr-cache';
-import { CacheInvalidationEventType, FlowrCache } from './flowr-cache';
-import type {
-	DEFAULT_DATAFLOW_PIPELINE,
-	TREE_SITTER_DATAFLOW_PIPELINE
-} from '../../core/steps/pipeline/default-pipelines';
-import { createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
+import { type CacheInvalidationEvent , CacheInvalidationEventType, FlowrCache } from './flowr-cache';
+import {
+	type DEFAULT_DATAFLOW_PIPELINE,
+	type TREE_SITTER_DATAFLOW_PIPELINE
+	, createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
 import type { PipelineExecutor } from '../../core/pipeline-executor';
 import type { FlowrConfigOptions } from '../../config';
 import type { RParseRequests } from '../../r-bridge/retriever';
@@ -105,73 +103,68 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	}
 
 	/**
-     * Get the parse output for the request, parsing if necessary.
-     * @param force - Do not use the cache, instead force a new parse.
-     *
-     * @see {@link FlowrAnalyzerCache#peekParse} - to get the parse output if already available without triggering a new parse.
-     */
+	 * Get the parse output for the request, parsing if necessary.
+	 * @param force - Do not use the cache, instead force a new parse.
+	 * @see {@link FlowrAnalyzerCache#peekParse} - to get the parse output if already available without triggering a new parse.
+	 */
 	public async parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>> {
 		const d = this.get();
 		return this.runTapeUntil(force, () => d.parse);
 	}
 
 	/**
-     * Get the parse output for the request if already available, otherwise return `undefined`.
-     * This will not trigger a new parse.
-     *
-     * @see {@link FlowrAnalyzerCache#parse} - to get the parse output, parsing if necessary.
-     */
+	 * Get the parse output for the request if already available, otherwise return `undefined`.
+	 * This will not trigger a new parse.
+	 * @see {@link FlowrAnalyzerCache#parse} - to get the parse output, parsing if necessary.
+	 */
 	public peekParse(): NonNullable<AnalyzerCacheType<Parser>['parse']> | undefined {
 		return this.get().parse;
 	}
 
 	/**
-     * Get the normalized abstract syntax tree for the request, normalizing if necessary.
-     * @param force - Do not use the cache, instead force new analyses.
-     * @see {@link FlowrAnalyzerCache#peekNormalize} - to get the normalized AST if already available without triggering a new normalization.
-     */
+	 * Get the normalized abstract syntax tree for the request, normalizing if necessary.
+	 * @param force - Do not use the cache, instead force new analyses.
+	 * @see {@link FlowrAnalyzerCache#peekNormalize} - to get the normalized AST if already available without triggering a new normalization.
+	 */
 	public async normalize(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['normalize']>> {
 		const d = this.get();
 		return this.runTapeUntil(force, () => d.normalize);
 	}
 
 	/**
-     * Get the normalized abstract syntax tree for the request if already available, otherwise return `undefined`.
-     * This will not trigger a new normalization.
-     *
-     * @see {@link FlowrAnalyzerCache#normalize} - to get the normalized AST, normalizing if necessary.
-     */
+	 * Get the normalized abstract syntax tree for the request if already available, otherwise return `undefined`.
+	 * This will not trigger a new normalization.
+	 * @see {@link FlowrAnalyzerCache#normalize} - to get the normalized AST, normalizing if necessary.
+	 */
 	public peekNormalize(): NonNullable<AnalyzerCacheType<Parser>['normalize']> | undefined {
 		return this.get().normalize;
 	}
 
 	/**
-     * Get the dataflow graph for the request, computing if necessary.
-     * @param force - Do not use the cache, instead force new analyses.
-     *
-     * @see {@link FlowrAnalyzerCache#peekDataflow} - to get the dataflow graph if already available without triggering a new computation.
-     */
+	 * Get the dataflow graph for the request, computing if necessary.
+	 * @param force - Do not use the cache, instead force new analyses.
+	 * @see {@link FlowrAnalyzerCache#peekDataflow} - to get the dataflow graph if already available without triggering a new computation.
+	 */
 	public async dataflow(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['dataflow']>> {
 		const d = this.get();
 		return this.runTapeUntil(force, () => d.dataflow);
 	}
 
 	/**
-     * Get the dataflow graph for the request if already available, otherwise return `undefined`.
-     * This will not trigger a new computation.
-     *
-     * @see {@link FlowrAnalyzerCache#dataflow} - to get the dataflow graph, computing if necessary.
-     */
+	 * Get the dataflow graph for the request if already available, otherwise return `undefined`.
+	 * This will not trigger a new computation.
+	 * @see {@link FlowrAnalyzerCache#dataflow} - to get the dataflow graph, computing if necessary.
+	 */
 	public peekDataflow(): NonNullable<AnalyzerCacheType<Parser>['dataflow']> | undefined {
 		return this.get().dataflow;
 	}
 
 	/**
-     * Get the control flow graph (CFG) for the request, computing if necessary.
-     * @param force - Do not use the cache, instead force new analyses.
-     * @param kind - The kind of CFG that is requested.
-     * @param simplifications - Simplification passes to be applied to the CFG.
-     */
+	 * Get the control flow graph (CFG) for the request, computing if necessary.
+	 * @param force - Do not use the cache, instead force new analyses.
+	 * @param kind - The kind of CFG that is requested.
+	 * @param simplifications - Simplification passes to be applied to the CFG.
+	 */
 	public async controlflow(force: boolean | undefined, kind: CfgKind, simplifications: readonly CfgSimplificationPassName[] | undefined): Promise<ControlFlowInformation> {
 		guard(kind === CfgKind.Quick ? simplifications === undefined : true, 'Cannot apply simplifications to quick CFG');
 		simplifications ??= [];
@@ -203,12 +196,11 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	}
 
 	/**
-     * Get the control flow graph (CFG) for the request if already available, otherwise return `undefined`.
+	 * Get the control flow graph (CFG) for the request if already available, otherwise return `undefined`.
 	 * @param kind - The kind of CFG that is requested.
-     * @param simplifications - Simplification passes to be applied to the CFG.
-     *
-     * @see {@link FlowrAnalyzerCache#controlflow} - to get the control flow graph, computing if necessary.
-     */
+	 * @param simplifications - Simplification passes to be applied to the CFG.
+	 * @see {@link FlowrAnalyzerCache#controlflow} - to get the control flow graph, computing if necessary.
+	 */
 	public peekControlflow(kind: CfgKind, simplifications: readonly CfgSimplificationPassName[] | undefined): ControlFlowInformation | undefined {
 		return this.controlFlowCache.simplified.get([simplifications ?? [], kind]);
 	}

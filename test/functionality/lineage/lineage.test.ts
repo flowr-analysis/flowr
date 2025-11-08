@@ -4,8 +4,7 @@ import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/defa
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { SingleSlicingCriterion } from '../../../src/slicing/criterion/parse';
 import { getLineage } from '../../../src/cli/repl/commands/repl-lineage';
-import type { TestLabel } from '../_helper/label';
-import { decorateLabelContext, label } from '../_helper/label';
+import { type TestLabel , decorateLabelContext, label } from '../_helper/label';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { setEquals } from '../../../src/util/collections/set';
 import { OperatorDatabase } from '../../../src/r-bridge/lang-4.x/ast/model/operators';

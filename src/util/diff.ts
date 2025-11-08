@@ -1,7 +1,6 @@
 /**
  * Provides utility types and functions to provide difference information if two structures
  * are not equal. Maybe. Sometime, in the far future this will be as capable as the waldo package :dream:
- *
  * @module
  */
 
@@ -15,14 +14,14 @@ import type { MergeableRecord } from './objects';
  */
 export interface DifferenceReport {
 	/**
-     * A human-readable description of differences during the comparison
-     * In combination with {@link isEqual} this can be used to provide detailed
-     * explanation on equal structures as well (e.g., if structures _could_ be equal).
-     */
+	 * A human-readable description of differences during the comparison
+	 * In combination with {@link isEqual} this can be used to provide detailed
+	 * explanation on equal structures as well (e.g., if structures _could_ be equal).
+	 */
 	comments(): readonly string[] | undefined
 	/**
-     * @returns true iff the compared structures are equal (i.e., the diff is empty)
-     */
+	 * @returns true iff the compared structures are equal (i.e., the diff is empty)
+	 */
 	isEqual(): boolean
 }
 
@@ -61,6 +60,9 @@ export interface GenericDiffConfiguration {
 }
 
 
+/**
+ * Computes the difference of two sets and adds human-readable information to the current report
+ */
 export function setDifference<T, Report extends WriteableDifferenceReport = WriteableDifferenceReport>(left: ReadonlySet<T>, right: ReadonlySet<T>, info: GenericDifferenceInformation<Report>): void {
 	const lWithoutR = setMinus(left, right);
 	const rWithoutL = setMinus(right, left);

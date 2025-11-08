@@ -2,8 +2,7 @@ import { RType, ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import { ValidVertexTypes, VertexType } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElement } from './flowr-search';
-import type { Enrichment } from './search-executor/search-enrichers';
-import { enrichmentContent } from './search-executor/search-enrichers';
+import { type Enrichment , enrichmentContent } from './search-executor/search-enrichers';
 import type { BuiltInMappingName } from '../dataflow/environments/built-in';
 import type { DataflowInformation } from '../dataflow/info';
 
@@ -68,6 +67,9 @@ export interface OriginKindArgs {
 	keepNonFunctionCalls?: boolean
 }
 
+/**
+ * Helper to create a regular expression that matches function names, ignoring their package.
+ */
 export function testFunctionsIgnoringPackage(functions: readonly string[]): RegExp {
 	return new RegExp(`"(.+:::?)?(${functions.join('|')})"`);
 }
@@ -175,6 +177,9 @@ export class FlowrFilterCombinator {
 	}
 }
 
+/**
+ * Converts the given binary tree to a string representation.
+ */
 export function binaryTreeToString(tree: BooleanNode): string {
 	const res = treeToStringImpl(tree, 0);
 	// drop outer parens
@@ -204,7 +209,10 @@ function treeToStringImpl(tree: BooleanNode, depth: number): string {
 	return `(${left} ${typeToSymbol[tree.type]} ${right})`;
 }
 
-
+/**
+ * Checks whether the given value is a binary tree combinator.
+ * @see {@link FlowrFilterCombinator}
+ */
 export function isBinaryTree(tree: unknown): tree is { tree: BooleanNode } {
 	return typeof tree === 'object' && tree !== null && 'tree' in tree;
 }
@@ -243,6 +251,9 @@ function evalTree(tree: BooleanNode, data: FilterData): boolean {
 	return evalVisit[tree.type](tree as never, data);
 }
 
+/**
+ * Evaluates the given filter expression against the provided data.
+ */
 export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): boolean {
 	/* common lift, this can be improved easily :D */
 	const tree = FlowrFilterCombinator.is(filter as FlowrFilterExpression);

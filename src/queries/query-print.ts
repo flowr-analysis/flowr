@@ -1,7 +1,5 @@
-import type { OutputFormatter } from '../util/text/ansi';
-import { bold, italic, markdownFormatter } from '../util/text/ansi';
-import type { Queries, Query, QueryResult, QueryResults, SupportedQueryTypes } from './query';
-import { SupportedQueries } from './query';
+import { type OutputFormatter , bold, italic, markdownFormatter } from '../util/text/ansi';
+import { type Queries, type Query, type QueryResult, type QueryResults, type SupportedQueryTypes , SupportedQueries } from './query';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { textWithTooltip } from '../util/html-hover-over';
 import type { CallContextQuerySubKindResult } from './catalog/call-context-query/call-context-query-format';
@@ -13,8 +11,8 @@ import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 function nodeString(nodeId: NodeId | { id: NodeId, info?: object}, formatter: OutputFormatter, idMap: AstIdMap<ParentInformation>): string {
 	const isObj = typeof nodeId === 'object' && nodeId !== null && 'id' in nodeId;
-	const id = isObj ? nodeId.id : nodeId;
-	const info = isObj ? nodeId.info : undefined;
+	const id = isObj ? nodeId?.id : nodeId;
+	const info = isObj ? nodeId?.info : undefined;
 	if(isBuiltIn(id)) {
 		return italic(id, formatter) + (info ? ` (${JSON.stringify(info)})` : '');
 	}
@@ -48,6 +46,9 @@ function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly Ca
 	return result.join(', ');
 }
 
+/**
+ * Converts call context query results to an ASCII representation
+ */
 export function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'call-context'>['call-context'], idMap: AstIdMap<ParentInformation>): string {
 	/* traverse over 'kinds' and within them 'subkinds' */
 	const result: string[] = [];
@@ -60,6 +61,16 @@ export function asciiCallContext(formatter: OutputFormatter, results: QueryResul
 	return result.join('\n');
 }
 
+/**
+ * Summarizes a list of node IDs, shortening the output if it is too long
+ * @example
+ * ```ts
+ * summarizeIdsIfTooLong(markdownFormatter, ['id1', 'id2', 'id3']);
+ * // returns 'id1, id2, id3'
+ * summarizeIdsIfTooLong(markdownFormatter, [<array of many ids>]);
+ * // returns 'id1, id2, id3, ... (see JSON)' with a tooltip containing the full JSON array
+ * ```
+ */
 export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly NodeId[]) {
 	const naive = ids.join(', ');
 	if(naive.length <= 20) {
@@ -76,6 +87,9 @@ export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly 
 	return formatter === markdownFormatter ? textWithTooltip(acc, JSON.stringify(ids)) : acc;
 }
 
+/**
+ * Generates an ASCII summary of the given query results
+ */
 export async function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(
 	formatter: OutputFormatter, totalInMs: number, results: QueryResults<S>,
 	analyzer: ReadonlyFlowrAnalysisProvider, queries: Queries<S>

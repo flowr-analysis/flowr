@@ -2,9 +2,13 @@ import { FaqStore } from './wiki-faq-store';
 import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef, getFilePathMd } from '../../doc-util/doc-files';
 import { codeBlock } from '../../doc-util/doc-code';
 
+
+/**
+ *
+ */
 export function registerFaqs(): FaqStore {
 	const wikiFaq = new FaqStore();
-	
+
 	wikiFaq.withTopic('flowr.development')
 		.addFaq('What are *test labels*?', `
 Tests are labeled based on the *flowR* capabilities that they test for. 

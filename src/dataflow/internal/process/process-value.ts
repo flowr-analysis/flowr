@@ -5,6 +5,10 @@ import { DataflowGraph } from '../../graph/graph';
 import { VertexType } from '../../graph/vertex';
 import { ReferenceType } from '../../environments/identifier';
 
+
+/**
+ *
+ */
 export function processValue<OtherInfo>({ info: { id } }: RNodeWithParent, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	return {
 		unknownReferences: [],

@@ -1,8 +1,6 @@
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
-import type { DataflowGraphCluster, DataflowGraphClusters } from '../../../../src/dataflow/cluster';
-import { findAllClusters } from '../../../../src/dataflow/cluster';
-import type { SlicingCriteria } from '../../../../src/slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { type DataflowGraphCluster, type DataflowGraphClusters , findAllClusters } from '../../../../src/dataflow/cluster';
+import { type SlicingCriteria , slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';

@@ -17,6 +17,9 @@ export interface ShowSearchOptions {
 	readonly collapseResult?: boolean;
 }
 
+/**
+ * Visualizes a search and its results in markdown format.
+ */
 export async function showSearch(shell: RShell, code: string, search: FlowrSearchLike, { collapseResult = true }: ShowSearchOptions = {}): Promise<string> {
 	const now = performance.now();
 	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
@@ -59,7 +62,7 @@ ${
 	result.getElements().map(({ node }) => `<b>${node.info.id} ('${recoverContent(node.info.id, dataflow.graph)}')</b> at L${formatRange(node.location)}`).join(', ')
 }
 
-${metaInfo}	
+${metaInfo}
 
 The returned results are highlighted thick and blue within the dataflow graph:
 
@@ -86,6 +89,10 @@ export const RegisteredQueries = {
 	'virtual': new Map<string, QueryDocumentation>()
 };
 
+
+/**
+ *
+ */
 export function registerQueryDocumentation(query: SupportedQueryTypes | SupportedVirtualQueryTypes, doc: QueryDocumentation) {
 	const map = RegisteredQueries[doc.type];
 	if(map.has(query)) {
@@ -98,6 +105,10 @@ function linkify(name: string) {
 	return name.toLowerCase().replace(/ /g, '-');
 }
 
+
+/**
+ *
+ */
 export function linkToQueryOfName(id: SupportedQueryTypes | SupportedVirtualQueryTypes) {
 	const query = RegisteredQueries.active.get(id) ?? RegisteredQueries.virtual.get(id);
 	if(!query) {
@@ -106,6 +117,10 @@ export function linkToQueryOfName(id: SupportedQueryTypes | SupportedVirtualQuer
 	return `[${query.name}](#${linkify(query.name)})`;
 }
 
+
+/**
+ *
+ */
 export function tocForQueryType(type: 'active' | 'virtual') {
 	const queries = [...RegisteredQueries[type].entries()].sort(([,{ name: a }], [, { name: b }]) => a.localeCompare(b));
 	const result: string[] = [];
@@ -127,11 +142,15 @@ ${await buildExplanation(shell)}
 
 Responsible for the execution of the ${name} query is \`${functionName}\` in ${getFilePathMd(functionFile)}.
 
-</details>	
+</details>
 
 `;
 }
 
+
+/**
+ *
+ */
 export async function explainQueries(shell: RShell, type: 'active' | 'virtual'): Promise<string> {
 	const queries = [...RegisteredQueries[type].entries()].sort(([,{ name: a }], [, { name: b }]) => a.localeCompare(b));
 	const result: string[] = [];

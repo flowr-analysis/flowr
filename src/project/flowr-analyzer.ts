@@ -1,11 +1,9 @@
 import type { FlowrConfigOptions } from '../config';
-
 import type {
 	KnownParser, KnownParserInformation,
 	ParseStepOutput
 } from '../r-bridge/parser';
-import type { Queries, QueryResults, SupportedQueryTypes } from '../queries/query';
-import { executeQueries } from '../queries/query';
+import { type Queries, type QueryResults, type SupportedQueryTypes , executeQueries } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../dataflow/info';
@@ -13,8 +11,7 @@ import type { CfgSimplificationPassName } from '../control-flow/cfg-simplificati
 import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
 import type { AnalyzerCacheType, FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-builder';
-import type { GetSearchElements } from '../search/flowr-search-executor';
-import { runSearch } from '../search/flowr-search-executor';
+import { type GetSearchElements , runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { CfgKind } from './cfg-kind';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
@@ -118,14 +115,13 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	private parserInfo:          KnownParserInformation | undefined;
 
 	/**
-     * Create a new analyzer instance.
-     * **Prefer the use of the {@link FlowrAnalyzerBuilder} instead of calling this constructor directly.**
-     *
-     * @param config - The FlowR config to use for the analyses
-     * @param parser - The parser to use for parsing the given request.
-     * @param ctx    - The context to use for the analyses.
-     * @param cache  - The caching layer to use for storing analysis results.
-     */
+	 * Create a new analyzer instance.
+	 * **Prefer the use of the {@link FlowrAnalyzerBuilder} instead of calling this constructor directly.**
+	 * @param config - The FlowR config to use for the analyses
+	 * @param parser - The parser to use for parsing the given request.
+	 * @param ctx    - The context to use for the analyses.
+	 * @param cache  - The caching layer to use for storing analysis results.
+	 */
 	constructor(config: FlowrConfigOptions, parser: Parser, ctx: FlowrAnalyzerContext, cache: FlowrAnalyzerCache<Parser>) {
 		this.flowrConfig = config;
 		this.parser = parser;
@@ -193,8 +189,8 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	/**
-     * Close the parser if it was created by this builder. This is only required if you rely on an RShell/remote engine.
-     */
+	 * Close the parser if it was created by this builder. This is only required if you rely on an RShell/remote engine.
+	 */
 	public close() {
 		return this.parser?.close();
 	}

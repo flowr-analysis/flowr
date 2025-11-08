@@ -112,7 +112,7 @@ export interface ConfiguredLintingRule<Name extends LintingRuleNames = LintingRu
  */
 export interface LintingResultsError {
 	readonly error: string
-} 
+}
 
 
 export interface LintingResultsSuccess<Name extends LintingRuleNames> {
@@ -120,10 +120,18 @@ export interface LintingResultsSuccess<Name extends LintingRuleNames> {
 	'.meta': LintingRuleMetadata<Name> & { readonly searchTimeMs: number; readonly processTimeMs: number; };
 }
 
+/**
+ * Checks whether the given linting results represent an error.
+ * @see {@link isLintingResultsSuccess}
+ */
 export function isLintingResultsError<Name extends LintingRuleNames>(o: LintingResults<Name>): o is LintingResultsError {
 	return 'error' in o;
 }
 
+/**
+ * Checks whether the given linting results represent a successful linting result.
+ * @see {@link isLintingResultsError}
+ */
 export function isLintingResultsSuccess<Name extends LintingRuleNames>(o: LintingResults<Name>): o is LintingResultsSuccess<Name> {
 	return 'results' in o;
 }
@@ -163,5 +171,5 @@ export enum LintingRuleCertainty {
 
 export enum LintingPrettyPrintContext {
 	Query = 'query',
-	Full = 'full'
+	Full  = 'full'
 }

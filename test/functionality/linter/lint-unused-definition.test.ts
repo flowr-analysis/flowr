@@ -1,14 +1,10 @@
 import { describe } from 'vitest';
-
-
 import { assertLinter } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
-import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
-import { convertAllSlicingCriteriaToIds } from '../../../src/slicing/criterion/parse';
+import { type SlicingCriteria , convertAllSlicingCriteriaToIds } from '../../../src/slicing/criterion/parse';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { guard } from '../../../src/util/assert';
-import type { SourceRange } from '../../../src/util/range';
-import { rangeFrom } from '../../../src/util/range';
+import { type SourceRange , rangeFrom } from '../../../src/util/range';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('unused definitions', () => {

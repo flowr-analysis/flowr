@@ -112,7 +112,6 @@ class NodeVisitor<OtherInfo = NoInfo> {
 
 /**
  * Visits all node ids within a tree given by a respective root node using a depth-first search with prefix order.
- *
  * @param nodes          - The root id nodes to start collecting from
  * @param onVisit        - Called before visiting the subtree of each node. Can be used to stop visiting the subtree starting with this node (return `true` stop)
  * @param onExit         - Called after the subtree of a node has been visited, called for leafs too (even though their subtree is empty)

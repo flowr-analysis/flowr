@@ -1,6 +1,5 @@
 import { LintingRuleCertainty, type LintingRule } from '../linter-format';
-import type { FunctionsMetadata, FunctionsResult } from './function-finder-util';
-import { functionFinderUtil } from './function-finder-util';
+import { type FunctionsMetadata, type FunctionsResult , functionFinderUtil } from './function-finder-util';
 import { LintingRuleTag } from '../linter-tags';
 import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import type { MergeableRecord } from '../../util/objects';

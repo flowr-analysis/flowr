@@ -1,5 +1,4 @@
-import type { IEnvironment, REnvironmentInformation } from './environment';
-import {  Environment } from './environment';
+import { type IEnvironment, type REnvironmentInformation ,  Environment } from './environment';
 import type { Identifier, IdentifierDefinition } from './identifier';
 
 function cloneEnvironment(environment: IEnvironment, recurseParents: boolean): IEnvironment

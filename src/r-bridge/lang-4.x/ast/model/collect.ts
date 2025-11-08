@@ -5,7 +5,6 @@ import type { ParentInformation } from './processing/decorate';
 
 /**
  * Collects all node ids within a tree given by a respective root node
- *
  * @param nodes - The root id nodes to start collecting from
  * @param stop  - A function that determines whether to stop collecting at a given node, does not stop by default
  */

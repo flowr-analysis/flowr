@@ -72,6 +72,10 @@ async function sliceQueryExample(analyzer: FlowrAnalyzer) {
 	return result;
 }
 
+
+/**
+ *
+ */
 export function inspectContextExample(analyzer: FlowrAnalyzer) {
 	const ctx = analyzer.inspectContext();
 	console.log('dplyr version', ctx.deps.getDependency('dplyr'));
@@ -240,7 +244,7 @@ ${await documentReplSession(shell, [{
 	description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${shortLink(RShell.name,info)}. See the ${shortLink(initCommand.name, info)} function for more information on how we request a parse.`
 },
 {
-	command:     `:normalize* "${sampleCode}"`,	
+	command:     `:normalize* "${sampleCode}"`,
 	description: `Following the link output should show the following:\n${await printNormalizedAstForCode(shell, sampleCode, { showCode: false })}`
 },
 {
@@ -254,19 +258,19 @@ ${block({
 	content: `
 	All of these commands accept file paths as well, so you can write longer R code within a file, and then pass 
 	the file path prefixed with \`${fileProtocol}\` (e.g., \`${fileProtocol}test/testfiles/example.R\`) to the commands.`
-})}	
+})}
 
 Especially when you are just starting with flowR, we recommend using the REPL to explore the output of the different steps.
 
-${block({ 
-	type:    'NOTE', 
+${block({
+	type:    'NOTE',
 	content: 'Maybe you are left with the question: What is tree-sitter doing differently? Expand the following to get more information!\n\n' + details('And what changes with tree-sitter?', `
 
 Essentially not much (from a user perspective, it does essentially everything and all differently under the hood)! Have a look at the [Engines](${FlowrWikiBaseRef}/Engines) wiki page for more information on the differences between the engines.
 Below you can see the Repl commands for the tree-sitter engine (using ${getCliLongOptionOf('flowr', 'default-engine')} to set the engine to tree-sitter):
 
 ${await (async() => {
-	const exec = new TreeSitterExecutor(); 
+	const exec = new TreeSitterExecutor();
 	return await documentReplSession(exec, [{
 		command:     `:parse "${sampleCode}"`,
 		description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${shortLink(TreeSitterExecutor.name, info)}. See the [Engines](${FlowrWikiBaseRef}/Engines) wiki page for more information on the differences between the engines.`
@@ -321,7 +325,7 @@ While looking at the mermaid visualization of such an AST is nice and usually su
 
 Let's have a look at the normalized AST for the sample code \`${sampleCode}\` (please refer to the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) wiki page for more information):
 
-${details('Normalized AST for <code>x <- 1; print(x)</code>', codeBlock('json', 
+${details('Normalized AST for <code>x <- 1; print(x)</code>', codeBlock('json',
 	JSON.stringify((await createNormalizePipeline(shell, { request: requestFromInput(sampleCode) }, defaultConfigOptions).allRemainingSteps()).normalize.ast, jsonReplacer, 4)
 ))}
 
@@ -366,7 +370,7 @@ All ids conform to the ${shortLink('NodeId', info)} type.
 
 The core of the dataflow graph generation works as a "stateful [fold](https://en.wikipedia.org/wiki/Fold_(higher-order_function))", 
 which uses the tree-like structure of the AST to combine the dataflow information of the children, while tracking the currently active variables and control flow 
-information as a “backpack” (state).	
+information as a “backpack” (state).
 We use the ${shortLink(produceDataFlowGraph.name, info)} function as an entry point to the dataflow generation (the actual fold entry is in ${shortLink(processDataflowFor.name, info)}).
 The function is mainly backed by its ${shortLink('processors', info)} object which maps each type in the normalized AST to an appropriate handler ("fold-function").
 

@@ -1,7 +1,6 @@
 import type { DataflowGraph, UnknownSidEffect } from '../../dataflow/graph/graph';
 import type { RShell } from '../../r-bridge/shell';
-import type { MermaidMarkdownMark } from '../../util/mermaid/dfg';
-import { graphToMermaid } from '../../util/mermaid/dfg';
+import { type MermaidMarkdownMark , graphToMermaid } from '../../util/mermaid/dfg';
 import { PipelineExecutor } from '../../core/pipeline-executor';
 import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
@@ -17,6 +16,10 @@ import { codeBlock } from './doc-code';
 import type { GraphDifferenceReport } from '../../util/diff-graph';
 import { defaultConfigOptions } from '../../config';
 
+
+/**
+ *
+ */
 export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>, simplified = false) {
 	return `
 ${codeBlock('mermaid', graphToMermaid({
@@ -37,6 +40,10 @@ export interface PrintDataflowGraphOptions {
 	readonly simplified?:         boolean;
 }
 
+
+/**
+ *
+ */
 export function formatSideEffect(ef: UnknownSidEffect): string {
 	if(typeof ef === 'object') {
 		return `${ef.id} (linked)`;
@@ -47,6 +54,10 @@ export function formatSideEffect(ef: UnknownSidEffect): string {
 
 export async function printDfGraphForCode(parser: KnownParser, code: string, options: PrintDataflowGraphOptions & { exposeResult: true }): Promise<[string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]>;
 export async function printDfGraphForCode(parser: KnownParser, code: string, options?: PrintDataflowGraphOptions & { exposeResult?: false | undefined }): Promise<string>;
+
+/**
+ *
+ */
 export async function printDfGraphForCode(parser: KnownParser, code: string, { simplified = false, mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();
 	const result = await createDataflowPipeline(parser, {

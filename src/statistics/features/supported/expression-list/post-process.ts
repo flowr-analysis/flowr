@@ -1,9 +1,8 @@
 import type { FeatureStatisticsWithMeta } from '../../feature';
-import type {
-	ReplaceKeysForSummary,
-	SummarizedWithProject
-} from '../../post-processing';
 import {
+	type ReplaceKeysForSummary,
+	type SummarizedWithProject
+	,
 	emptySummarizedWithProject,
 	recordFilePath
 } from '../../post-processing';
@@ -19,6 +18,10 @@ import {
 
 type UsedExpressionListPostProcessing = ReplaceKeysForSummary<ExpressionListInfo, SummarizedWithProject>
 
+
+/**
+ *
+ */
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	const collected = {} as unknown as UsedExpressionListPostProcessing;
 

@@ -82,7 +82,7 @@ Most notably, the \`info\` field holds the \`id\` of the node, which is used to 
 
 In summary, we have the following types:
 
-${details('Normalized AST Node Types', 
+${details('Normalized AST Node Types',
 	printHierarchy({ program: types.program, info: types.info, root: 'RNode', collapseFromNesting: Number.MAX_VALUE })
 )}
 

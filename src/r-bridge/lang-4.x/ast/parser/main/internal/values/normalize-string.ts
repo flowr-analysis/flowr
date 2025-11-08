@@ -9,7 +9,6 @@ import type { JsonEntry } from '../../../json/format';
 /**
  * Normalize the given object as a R string (see {@link string2ts}).
  * This requires you to check the corresponding name beforehand.
- *
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param obj  - The JSON object to extract the meta-information from
  */

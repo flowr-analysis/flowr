@@ -1,6 +1,5 @@
 import { label } from '../../../_helper/label';
-import type { TestConfigurationWithOutput } from '../../../_helper/shell';
-import { assertSliced, withShell } from '../../../_helper/shell';
+import { type TestConfigurationWithOutput , assertSliced, withShell } from '../../../_helper/shell';
 import { makeMagicCommentHandler } from '../../../../../src/reconstruct/auto-select/magic-comments';
 import { describe } from 'vitest';
 

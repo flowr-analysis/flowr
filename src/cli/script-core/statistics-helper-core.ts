@@ -16,11 +16,10 @@ import { date2string } from '../../util/text/time';
 import type { StatsHelperCliOptions } from '../statistics-helper-app';
 import { create } from 'tar';
 import { setFormatter, voidFormatter } from '../../util/text/ansi';
-import type { FlowrConfigOptions } from '../../config';
-import { getEngineConfig } from '../../config';
+import { type FlowrConfigOptions , getEngineConfig } from '../../config';
 
 function compressFolder(folder: string, target: string) {
-	 
+
 	return create({
 		gzip:          true,
 		file:          target,
@@ -36,7 +35,9 @@ function compressFolder(folder: string, target: string) {
 	});
 }
 
-
+/**
+ * Get statistics for a single file
+ */
 export async function getStatsForSingleFile(options: StatsHelperCliOptions, config: FlowrConfigOptions) {
 	if(options['no-ansi']) {
 		log.info('disabling ansi colors');

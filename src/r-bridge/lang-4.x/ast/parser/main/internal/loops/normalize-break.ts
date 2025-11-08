@@ -7,6 +7,10 @@ import type { RBreak } from '../../../../model/nodes/r-break';
 import type { JsonEntry } from '../../../json/format';
 
 
+
+/**
+ *
+ */
 export function normalizeBreak(data: NormalizerData, obj: JsonEntry): RBreak {
 	expensiveTrace(parseLog, () => `[break] ${JSON.stringify(obj)}`);
 

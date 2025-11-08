@@ -1,7 +1,6 @@
 import { describe, assert, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { tryResolveSliceCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { type SingleSlicingCriterion , tryResolveSliceCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { defaultConfigOptions } from '../../../../src/config';

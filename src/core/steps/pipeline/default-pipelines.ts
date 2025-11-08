@@ -45,7 +45,6 @@ export function createParsePipeline(parser: KnownParser, inputs: Omit<PipelineIn
 /**
  * **Please use {@link FlowrAnalyzer} instead of this directly unless you really know what you are doing.**
  * Returns either a {@link DEFAULT_PARSE_PIPELINE} or a {@link TREE_SITTER_PARSE_PIPELINE} depending on the parser used.
- *
  * @see {@link createNormalizePipeline}, {@link createDataflowPipeline}, {@link createSlicePipeline}
  */
 export function createParsePipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_PARSE_PIPELINE>, 'parser'>, config: FlowrConfigOptions): PipelineExecutor<typeof DEFAULT_PARSE_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_PARSE_PIPELINE> {
@@ -63,7 +62,6 @@ export function createSlicePipeline(parser: KnownParser, inputs: Omit<PipelineIn
 /**
  * **Please use {@link FlowrAnalyzer} instead of this directly unless you really know what you are doing.**
  * Returns either a {@link DEFAULT_SLICING_PIPELINE} or a {@link TREE_SITTER_SLICING_PIPELINE} depending on the parser used.
- *
  * @see {@link createParsePipeline}, {@link createNormalizePipeline}, {@link createDataflowPipeline}
  */
 export function createSlicePipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_SLICING_PIPELINE>, 'parser'>, config: FlowrConfigOptions): PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_SLICING_PIPELINE> {
@@ -81,7 +79,6 @@ export function createNormalizePipeline(parser: KnownParser, inputs: Omit<Pipeli
 /**
  * **Please use {@link FlowrAnalyzer} instead of this directly unless you really know what you are doing.**
  * Returns either a {@link DEFAULT_NORMALIZE_PIPELINE} or a {@link TREE_SITTER_NORMALIZE_PIPELINE} depending on the parser used.
- *
  * @see {@link createParsePipeline}, {@link createDataflowPipeline}, {@link createSlicePipeline}
  */
 export function createNormalizePipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_NORMALIZE_PIPELINE>, 'parser'>, config: FlowrConfigOptions): PipelineExecutor<typeof DEFAULT_NORMALIZE_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_NORMALIZE_PIPELINE> {
@@ -100,7 +97,6 @@ export function createDataflowPipeline(parser: KnownParser, inputs: Omit<Pipelin
 /**
  * **Please use {@link FlowrAnalyzer} instead of this directly unless you really know what you are doing.**
  * Returns either a {@link DEFAULT_DATAFLOW_PIPELINE} or a {@link TREE_SITTER_DATAFLOW_PIPELINE} depending on the parser used.
- *
  * @see {@link createParsePipeline}, {@link createNormalizePipeline}, {@link createSlicePipeline}
  */
 export function createDataflowPipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>, 'parser'>, config: FlowrConfigOptions): PipelineExecutor<typeof DEFAULT_DATAFLOW_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_DATAFLOW_PIPELINE> {

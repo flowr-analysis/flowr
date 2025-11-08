@@ -1,7 +1,15 @@
+
+/**
+ *
+ */
 export function prefixLines(line: string, prefix: string) {
 	return line.split('\n').map(l => `${prefix}${l}`).join('\n');
 }
 
+
+/**
+ *
+ */
 export function lastJoin(elements: readonly string[], join: string, lastjoin: string) {
 	if(elements.length <= 1) {
 		return elements.join(lastjoin);

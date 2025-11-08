@@ -2,8 +2,7 @@ import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
 import { internalPrinter, StepOutputFormat } from '../../../print/print';
 import type { DeepReadonly } from 'ts-essentials';
 import type { Tree } from 'web-tree-sitter';
-import type { ParseRequiredInput } from '../../../../r-bridge/parser';
-import { parseRequests } from '../../../../r-bridge/parser';
+import { type ParseRequiredInput , parseRequests } from '../../../../r-bridge/parser';
 
 export const PARSE_WITH_TREE_SITTER_STEP = {
 	name:              'parse',

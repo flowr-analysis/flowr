@@ -1,5 +1,4 @@
-import type { OutputFormatter } from '../../../util/text/ansi';
-import { formatter } from '../../../util/text/ansi';
+import { type OutputFormatter , formatter } from '../../../util/text/ansi';
 import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 /**
@@ -7,7 +6,6 @@ import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../..
  * This allows us to redirect it (e.g., in the case of a server connection or tests).
  *
  * The formatter allows to dynamically change the use of ansi escape sequences (see {@link OutputFormatter})
- *
  * @see standardReplOutput
  */
 export interface ReplOutput {

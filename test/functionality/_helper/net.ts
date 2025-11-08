@@ -24,6 +24,9 @@ export class FakeServer implements Server {
 	}
 }
 
+/**
+ * Appends a fake message to the given fake socket.
+ */
 export function fakeSend<T extends IdMessageBase>(c: FakeSocket, message: T): void {
 	const msg = JSON.stringify(message, jsonReplacer);
 	c.send(`${msg}\n`);
@@ -106,9 +109,8 @@ export class FakeSocket implements Socket {
 
 	/**
 	 * Returns all messages received by the respective socket.
-	 *
 	 * @param expected - if given, this enforces the respective type field to be as given.
-	 * 									 In case of failure, this will throw an exception.
+	 *                   In case of failure, this will throw an exception.
 	 */
 	public getMessages(expected?: IdMessageBase['type'][]): readonly IdMessageBase[] {
 		if(expected) {
@@ -124,6 +126,10 @@ export class FakeSocket implements Socket {
 	}
 }
 
+
+/**
+ *
+ */
 export function withSocket<T = void>(shell: RShell, fn: (socket: FakeSocket, server: FakeServer) => Promise<T>): () => Promise<T>  {
 	return async function() {
 		const net = new FakeServer();

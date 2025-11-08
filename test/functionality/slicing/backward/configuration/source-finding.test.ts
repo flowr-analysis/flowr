@@ -3,10 +3,8 @@ import {
 	findSource,
 	setSourceProvider
 } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
-import type { RParseRequest } from '../../../../../src/r-bridge/retriever';
-import { requestProviderFromFile, requestProviderFromText } from '../../../../../src/r-bridge/retriever';
-import type { FlowrLaxSourcingOptions } from '../../../../../src/config';
-import { DropPathsOption, InferWorkingDirectory, } from '../../../../../src/config';
+import { type RParseRequest , requestProviderFromFile, requestProviderFromText } from '../../../../../src/r-bridge/retriever';
+import { type FlowrLaxSourcingOptions , DropPathsOption, InferWorkingDirectory, } from '../../../../../src/config';
 import path from 'path';
 
 describe('source finding', () => {

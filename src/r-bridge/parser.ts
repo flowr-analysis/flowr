@@ -84,7 +84,7 @@ export async function parseRequests<T extends KnownParserType>(_results: unknown
 	/* in the future, we want to expose all cases */
 	const request = (Array.isArray(input.request) ? input.request[0] : input.request) as RParseRequest;
 
-    
+
 	if(input.parser?.async){
 		const parsed = await input.parser.parse(request);
 		return {

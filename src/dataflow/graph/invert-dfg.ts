@@ -1,5 +1,9 @@
 import { DataflowGraph } from './graph';
 
+
+/**
+ *
+ */
 export function invertDfg(graph: DataflowGraph): DataflowGraph {
 	const invertedGraph = new DataflowGraph(graph.idMap);
 	for(const [,v] of graph.vertices(true)) {

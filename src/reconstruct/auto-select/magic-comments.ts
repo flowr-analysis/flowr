@@ -48,10 +48,9 @@ const commentTriggerRegex = / flowr@(\w+)/;
  * We support two formats:
  * - Line comments in the form of `# flowr@include_next_line` or `# flowr@include_this_line`.
  * - Block comments which start with `# flowr@include_start` and end with `# flowr@include_end`.
- *   This supports nesting, but they have to appear on a single line.
+ * This supports nesting, but they have to appear on a single line.
  *
  * Please note that these comments have to start exactly with this content to work.
- *
  * @param and - Predicate to composite this one with, If you do not pass a predicate, you may assume composition with
  *              {@link doNotAutoSelect}.
  */

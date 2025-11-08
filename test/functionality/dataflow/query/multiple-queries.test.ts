@@ -1,7 +1,5 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-
-
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
 import type { Queries } from '../../../../src/queries/query';

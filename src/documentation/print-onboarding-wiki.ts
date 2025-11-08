@@ -5,7 +5,7 @@ import { codeBlock } from './doc-util/doc-code';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 
 function print(): string {
-	return `${autoGenHeader({ filename: module.filename, purpose: 'developer onboarding process' })}	
+	return `${autoGenHeader({ filename: module.filename, purpose: 'developer onboarding process' })}
 	
 To get started developing on *flowR*, we recommend carefully reading the following pages:
 - 💻 [Setting up the *flowR* development environment](${FlowrWikiBaseRef}/Setup#%EF%B8%8F-building-from-scratch).\

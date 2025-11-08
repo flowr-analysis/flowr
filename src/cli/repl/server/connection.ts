@@ -1,46 +1,39 @@
 import { sendMessage } from './send';
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate';
-import type {
-	FileAnalysisRequestMessage,
-	FileAnalysisResponseMessageCompact,
-	FileAnalysisResponseMessageNQuads
-} from './messages/message-analysis';
-import { requestAnalysisMessage } from './messages/message-analysis';
-import type { SliceRequestMessage, SliceResponseMessage } from './messages/message-slice';
-import { requestSliceMessage } from './messages/message-slice';
+import {
+	type FileAnalysisRequestMessage,
+	type FileAnalysisResponseMessageCompact,
+	type FileAnalysisResponseMessageNQuads
+	, requestAnalysisMessage } from './messages/message-analysis';
+import { type SliceRequestMessage, type SliceResponseMessage , requestSliceMessage } from './messages/message-slice';
 import type { FlowrErrorMessage } from './messages/message-error';
 import type { Socket } from './net';
 import { serverLog } from './server';
 import type { ILogObj, Logger } from 'tslog';
-import type {
-	ExecuteEndMessage,
-	ExecuteIntermediateResponseMessage,
-	ExecuteRequestMessage
-} from './messages/message-repl';
-import { requestExecuteReplExpressionMessage } from './messages/message-repl';
+import {
+	type ExecuteEndMessage,
+	type ExecuteIntermediateResponseMessage,
+	type ExecuteRequestMessage
+	, requestExecuteReplExpressionMessage } from './messages/message-repl';
 import { replProcessAnswer } from '../core';
 import { LogLevel } from '../../../util/log';
 import { cfg2quads } from '../../../control-flow/extract-cfg';
-import type { QuadSerializationConfiguration } from '../../../util/quads';
-import { defaultQuadIdGenerator } from '../../../util/quads';
+import { type QuadSerializationConfiguration , defaultQuadIdGenerator } from '../../../util/quads';
 import { printStepResult, StepOutputFormat } from '../../../core/print/print';
 import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
 import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
 import { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
 import { ansiFormatter, voidFormatter } from '../../../util/text/ansi';
-import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
-import { DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
+import { type TREE_SITTER_DATAFLOW_PIPELINE , DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type { DeepPartial } from 'ts-essentials';
 import { DataflowGraph } from '../../../dataflow/graph/graph';
 import * as tmp from 'tmp';
 import fs from 'fs';
 import type { RParseRequests } from '../../../r-bridge/retriever';
-import type { LineageRequestMessage, LineageResponseMessage } from './messages/message-lineage';
-import { requestLineageMessage } from './messages/message-lineage';
+import { type LineageRequestMessage, type LineageResponseMessage , requestLineageMessage } from './messages/message-lineage';
 import { getLineage } from '../commands/repl-lineage';
-import type { QueryRequestMessage, QueryResponseMessage } from './messages/message-query';
-import { requestQueryMessage } from './messages/message-query';
+import { type QueryRequestMessage, type QueryResponseMessage , requestQueryMessage } from './messages/message-query';
 import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 import { compact } from './compact';
 import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
@@ -260,7 +253,7 @@ export class FlowRServerConnection {
 			type:            'static-slice',
 			criteria:        request.criterion,
 			noMagicComments: request.noMagicComments,
-			direction: 		    request.direction
+			direction:       request.direction
 		}]).then(result => {
 			sendMessage<SliceResponseMessage>(this.socket, {
 				type:    'response-slice',
@@ -391,6 +384,10 @@ export class FlowRServerConnection {
 	}
 }
 
+
+/**
+ * Sanitizes analysis results by removing any potentially sensitive information like id maps.
+ */
 export function sanitizeAnalysisResults(parse: ParseStepOutput<string | Tree>, normalize: NormalizedAst, dataflow: DataflowInformation): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>> {
 	return {
 		parse:     parse as ParseStepOutput<string>,

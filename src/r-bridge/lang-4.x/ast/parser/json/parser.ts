@@ -1,21 +1,18 @@
 import { convertPreparedParsedData, prepareParsedData } from './format';
 import { log } from '../../../../../util/log';
-import type { IdGenerator, NormalizedAst } from '../../model/processing/decorate';
-import { decorateAst, deterministicCountingIdGenerator } from '../../model/processing/decorate';
+import { type IdGenerator, type NormalizedAst , decorateAst, deterministicCountingIdGenerator } from '../../model/processing/decorate';
 import type { NoInfo, RNode } from '../../model/model';
 import { normalizeRootObjToAst } from '../main/internal/structure/normalize-root';
 import type { NormalizerData } from '../main/normalizer-data';
 import { normalizeTreeSitterTreeToAst } from '../../../tree-sitter/tree-sitter-normalize';
 import type { ParseStepOutput } from '../../../../parser';
-import type { FlowrConfigOptions } from '../../../../../config';
-import { getEngineConfig } from '../../../../../config';
+import { type FlowrConfigOptions , getEngineConfig } from '../../../../../config';
 import type { Tree } from 'web-tree-sitter';
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' });
 
 /**
  * Take the output as produced by the parse step and normalize the AST from the R parser.
- *
  * @see {@link normalizeButNotDecorated} for a version that does not decorate the AST
  * @see {@link normalizeTreeSitter} for a version that normalizes the AST from the TreeSitter parser
  */

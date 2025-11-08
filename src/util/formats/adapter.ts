@@ -16,17 +16,23 @@ export const DocumentTypeToFormat = {
 
 export type AdapterReturnTypes = ReturnType<typeof FileAdapters[keyof typeof FileAdapters]['convertRequest']>;
 
+/**
+ * Produce a parse request from a file path
+ */
 export function requestFromFile(path: string): AdapterReturnTypes {
 	const baseRequest = {
 		request: 'file',
 		content: path
 	} satisfies RParseRequestFromFile;
-	
-	
+
+
 	const type = inferFileType(baseRequest);
 	return FileAdapters[type].convertRequest(baseRequest);
 }
 
+/**
+ * Produce a parse request from a text input
+ */
 export function requestFromText(text: string, typeHint?: SupportedFormats): AdapterReturnTypes {
 	const baseRequest = {
 		request: 'text',
@@ -38,6 +44,9 @@ export function requestFromText(text: string, typeHint?: SupportedFormats): Adap
 	return FileAdapters[type].convertRequest(baseRequest);
 }
 
+/**
+ * Infer the file type from a parse request, using file extension or info hints
+ */
 export function inferFileType(request: RParseRequest): keyof typeof FileAdapters {
 	if(request.request === 'text') {
 		return request.info ? request.info.type : 'R';
@@ -51,4 +60,4 @@ export function inferFileType(request: RParseRequest): keyof typeof FileAdapters
 	}
 
 	return DocumentTypeToFormat[type as keyof typeof DocumentTypeToFormat];
-} 
+}

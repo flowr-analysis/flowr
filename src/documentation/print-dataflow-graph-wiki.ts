@@ -7,7 +7,7 @@ import { edgeIncludesType, EdgeType, edgeTypeToName, splitEdgeTypes } from '../d
 import { DataflowGraphBuilder, emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
 import { formatSideEffect, printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
-import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
+import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { requestFromInput } from '../r-bridge/retriever';
 import { jsonReplacer } from '../util/json';
 import { printEnvironmentToMarkdown } from './doc-util/doc-env';
@@ -249,8 +249,6 @@ There is another element of potential interest to you, the \`origin\` property w
 These origins may hold the name of any processor that is part of the ${shortLink('BuiltInProcessorMapper', vertexType.info)} to signal that the respective processor was responsible for creating the vertex.
 The entry \`function\` signals that flowR used a processor for a user-defined function defined within the source code, \`unnamed\` signals that the function as an anonymous function definition.
 However, in general, flowR may use any fitting handler as an origin. For example, within a access definition, flowR will correspondingly redefine the meaning of \`:=\` to that of the \`table:assign\`. 
-
-
 
 ${
 	details('Example: Simple Function Call (unresolved)', 
@@ -911,6 +909,8 @@ wiki page if you are unsure.
 > When using _flowR_ as a library, you may use the functions in ${getFilePathMd('../util/mermaid/dfg.ts')}.
 > 
 > If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](${FlowrWikiBaseRef}/Interface)), you can use ${shortLink(`${DataflowGraph.name}::${DataflowGraph.fromJson.name}`, vertexType.info, true, 'i')} to retrieve the graph from the JSON representation.
+>
+> Also, check out the [${FlowrGithubGroupName}/sample-analyzer-df-diff](${FlowrGithubBaseRef}/sample-analyzer-df-diff) repository for a complete example project creating and comparing dataflow graphs.
 
 ${await printDfGraphForCode(shell,'x <- 3\ny <- x + 1\ny')}
 

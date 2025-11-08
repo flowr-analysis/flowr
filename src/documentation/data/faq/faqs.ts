@@ -47,7 +47,7 @@ Check out the [Logging Section in the Linting and Testing wiki page](${FlowrWiki
 		.addFaq('How to *query* an R project?', `
 For this you can use flowR's [Query API](${FlowrWikiBaseRef}/Query-API).
 If you want to create your own project using flowR as a library, check out the 
-[${FlowrGithubGroupName}/query-project-sample](${FlowrGithubBaseRef}/query-project-sample) repository for an example project setup.
+[${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) repository for an example project setup.
 		`);
 
 	wikiFaq.withTopic('r.packages')

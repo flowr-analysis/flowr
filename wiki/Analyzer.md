@@ -49,7 +49,7 @@ what [Engine](https://github.com/flowr-analysis/flowr/wiki/Engines) to use for t
 
 In general, we work on providing a set of example repositories that demonstrate how to use the analyzer in different scenarios:
 
-* [flowr-analysis/query-project-sample](https://github.com/flowr-analysis/query-project-sample) for an example project that runs queries on an R project
+* [flowr-analysis/sample-analyzer-project-query](https://github.com/flowr-analysis/sample-analyzer-project-query) for an example project that runs queries on an R project
 
 **TODO**: mention [Context](#Context_Information) 
 

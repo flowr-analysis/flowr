@@ -9,7 +9,7 @@ Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interfac
 > For example, you can use the [`request-query`](https://github.com/flowr-analysis/flowr/wiki/Interface#message-request-query) message
 > with a running flowR server, or the <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span> command in the flowR [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#repl).
 > 
-> Also, check out the [flowr-analysis/query-project-sample](https://github.com/flowr-analysis/query-project-sample) repository for a complete example project using the query API.
+> Also, check out the [flowr-analysis/sample-analyzer-project-query](https://github.com/flowr-analysis/sample-analyzer-project-query) repository for a complete example project using the query API.
 
 
 ## The Query Format

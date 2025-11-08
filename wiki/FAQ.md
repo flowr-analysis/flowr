@@ -94,7 +94,7 @@ npm run flowR -- --help
 
 For this you can use flowR's [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API).
 If you want to create your own project using flowR as a library, check out the 
-[flowr-analysis/query-project-sample](https://github.com/flowr-analysis/query-project-sample) repository for an example project setup.
+[flowr-analysis/sample-analyzer-project-query](https://github.com/flowr-analysis/sample-analyzer-project-query) repository for an example project setup.
 
 </details>
     

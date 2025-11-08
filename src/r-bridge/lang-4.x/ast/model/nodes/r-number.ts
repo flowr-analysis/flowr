@@ -12,6 +12,7 @@ export interface RNumber<Info = NoInfo> extends Leaf<Info>, Location {
 	content:       RNumberValue
 }
 
+
 /**
  *
  */

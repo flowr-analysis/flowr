@@ -11,6 +11,7 @@ export const FlowrCodecovRef = `https://app.codecov.io/gh/${FlowrGithubGroupName
 export const FlowrVsCode = 'https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr';
 export const FlowrPositron = 'https://open-vsx.org/extension/code-inspect/vscode-flowr';
 
+
 /**
  *
  */
@@ -24,6 +25,7 @@ export function getFilePathMd(path: string): string {
 	return `[\`${relative}\`](${RemoteFlowrFilePathBaseRef}${relative})`;
 }
 
+
 /**
  *
  */
@@ -31,6 +33,7 @@ export function getFileContentFromRoot(path: string): string {
 	const fullpath = require.resolve('../../../' + path);
 	return fs.readFileSync(fullpath, 'utf-8');
 }
+
 
 /**
  *

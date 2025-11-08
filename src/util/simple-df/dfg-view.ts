@@ -6,12 +6,12 @@ import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/deco
 import { isNotUndefined } from '../assert';
 
 export interface ReduceVertexOptions extends MergeableRecord {
-    tags:             VertexType[]
-	nameRegex:           string
-	blacklistWithName:   boolean,
-	keepEnv:             boolean
-    keepCd:           boolean
-    compactFunctions: boolean
+	tags:              VertexType[]
+	nameRegex:         string
+	blacklistWithName: boolean,
+	keepEnv:           boolean
+	keepCd:            boolean
+	compactFunctions:  boolean
 }
 
 export interface ReduceOptions extends MergeableRecord {
@@ -20,7 +20,7 @@ export interface ReduceOptions extends MergeableRecord {
 
 const defaultReduceOptions: Required<ReduceOptions> = {
 	vertices: {
-		tags:              [...Object.values(VertexType)],
+		tags:              Object.values(VertexType),
 		nameRegex:         '.*',
 		blacklistWithName: false,
 		keepEnv:           false,
@@ -49,9 +49,8 @@ function makeFilter(options: ReduceVertexOptions, idMap?: AstIdMap): <T extends 
 	};
 }
 
-
 /**
- *
+ * Produces a reduced version of the given dataflow graph according to the given options.
  */
 export function reduceDfg(dfg: DataflowGraph, options: DeepPartial<ReduceOptions>): DataflowGraph {
 	const newDfg = new DataflowGraph(dfg.idMap);

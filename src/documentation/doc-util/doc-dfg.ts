@@ -16,6 +16,7 @@ import { codeBlock } from './doc-code';
 import type { GraphDifferenceReport } from '../../util/diff-graph';
 import { defaultConfigOptions } from '../../config';
 
+
 /**
  *
  */
@@ -39,6 +40,7 @@ export interface PrintDataflowGraphOptions {
 	readonly simplified?:         boolean;
 }
 
+
 /**
  *
  */
@@ -52,6 +54,7 @@ export function formatSideEffect(ef: UnknownSidEffect): string {
 
 export async function printDfGraphForCode(parser: KnownParser, code: string, options: PrintDataflowGraphOptions & { exposeResult: true }): Promise<[string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]>;
 export async function printDfGraphForCode(parser: KnownParser, code: string, options?: PrintDataflowGraphOptions & { exposeResult?: false | undefined }): Promise<string>;
+
 /**
  *
  */

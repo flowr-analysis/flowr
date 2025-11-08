@@ -8,6 +8,7 @@ export interface DetailsOptions {
     readonly hideIfEmpty?: boolean;
     readonly prefixInit?:  string;
 }
+
 /**
  *
  */
@@ -25,6 +26,7 @@ export interface BlockOptions {
     readonly type:    'NOTE' | 'WARNING' | 'TIP' | 'IMPORTANT';
     readonly content: string;
 }
+
 /**
  *
  */
@@ -34,6 +36,7 @@ export function block({ type, content }: BlockOptions): string {
 ${prefixLines(content, '> ')}
 `;
 }
+
 
 
 /**

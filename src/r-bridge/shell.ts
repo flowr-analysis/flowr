@@ -109,6 +109,7 @@ export const DEFAULT_R_PATH = getPlatform() === 'windows' ? 'R.exe' : 'R';
 
 let DEFAULT_R_SHELL_OPTIONS: RShellOptions | undefined = undefined;
 
+
 /**
  *
  */

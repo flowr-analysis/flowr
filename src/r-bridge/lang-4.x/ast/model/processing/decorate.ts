@@ -39,12 +39,14 @@ export function deterministicCountingIdGenerator(id = 0): () => NodeId {
 	return () => id++;
 }
 
+
 /**
  *
  */
 export function deterministicPrefixIdGenerator(prefix: string, id = 0): () => NodeId {
 	return () => `${prefix}-${id++}`;
 }
+
 
 /**
  *

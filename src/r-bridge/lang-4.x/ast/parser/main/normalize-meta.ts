@@ -28,6 +28,7 @@ export function retrieveMetaStructure(entry: JsonEntry): {
 	};
 }
 
+
 /**
  *
  */
@@ -46,6 +47,7 @@ export function getTokenType(content: JsonEntry): RawRType {
 	return content.token as RawRType;
 }
 
+
 /**
  *
  */
@@ -55,6 +57,7 @@ export function getWithTokenType(obj: JsonEntry[]) {
 		content
 	}));
 }
+
 
 /**
  *
@@ -78,6 +81,7 @@ export function ensureChildrenAreLhsAndRhsOrdered(first: JsonEntry, second: Json
 		throw new ParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`);
 	}
 }
+
 
 /**
  *

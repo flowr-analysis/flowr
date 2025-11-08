@@ -48,6 +48,7 @@ export interface NamedArgumentId {
 	readonly lexeme: string,
 }
 
+
 /**
  *
  */
@@ -88,6 +89,7 @@ export interface ContainerParentIndex extends ContainerLeafIndex {
 	readonly subIndices: ContainerIndices[],
 }
 
+
 /**
  *
  */
@@ -118,6 +120,7 @@ export function isAccessed(index: ContainerIndex, accessLexeme: string, isIndexB
 
 	return false;
 }
+
 
 /**
  *

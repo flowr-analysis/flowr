@@ -5,6 +5,7 @@ import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import type { DfShapeQuery, DfShapeQueryResult } from './df-shape-query-format';
 
+
 /**
  *
  */

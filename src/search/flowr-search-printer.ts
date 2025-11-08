@@ -52,7 +52,7 @@ function argsToAsciiString(args: Record<string, unknown> | undefined): string {
 }
 
 /**
- *
+ * Converts a {@link FlowrSearchLike} object to an ASCII representation.
  */
 export function flowrSearchToAscii(search: FlowrSearchLike): string {
 	return traverseFlowrSearchBuilderType(
@@ -75,7 +75,7 @@ function argsToCodeString(args: Record<string, unknown> | undefined): string {
 }
 
 /**
- *
+ * Converts a {@link FlowrSearchLike} object to code that can be used to recreate it.
  */
 export function flowrSearchToCode(search: FlowrSearchLike): string {
 	return traverseFlowrSearchBuilderType(

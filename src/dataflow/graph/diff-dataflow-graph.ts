@@ -87,6 +87,7 @@ function diffFunctionArgumentsReferences(fn: NodeId, a: IdentifierReference | '<
 	diffIdentifierReferences(a, b, ctx);
 }
 
+
 /**
  *
  */
@@ -101,6 +102,7 @@ export function equalFunctionArguments(fn: NodeId, a: false | readonly FunctionA
 	diffFunctionArguments(fn, a, b, ctx);
 	return ctx.report.isEqual();
 }
+
 
 /**
  *
@@ -140,6 +142,7 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
 		}
 	}
 }
+
 
 
 /**
@@ -267,6 +270,7 @@ function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: Gr
 		);
 	}
 }
+
 
 /**
  *

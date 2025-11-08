@@ -1,7 +1,8 @@
 import { guard } from '../assert';
 
 /**
- *
+ * Returns the nth ordinal representation of the given number.
+ * @example `nth(1)` returns '1st'
  */
 export function nth(n: number): string {
 	guard(isFinite(n) && n >= 1, 'n must be a non-negative number');

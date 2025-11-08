@@ -35,9 +35,8 @@ function compressFolder(folder: string, target: string) {
 	});
 }
 
-
 /**
- *
+ * Get statistics for a single file
  */
 export async function getStatsForSingleFile(options: StatsHelperCliOptions, config: FlowrConfigOptions) {
 	if(options['no-ansi']) {

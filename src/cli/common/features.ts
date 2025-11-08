@@ -2,7 +2,7 @@ import path from 'path';
 import { type FeatureKey , allFeatureNames } from '../../statistics/features/feature';
 
 /**
- *
+ * Validate that the given features are known by flowR.
  */
 export function validateFeatures(features: (string[] | ['all'] | FeatureKey[])): Set<FeatureKey> {
 	for(const feature of features) {
@@ -20,7 +20,7 @@ export function validateFeatures(features: (string[] | ['all'] | FeatureKey[])):
 }
 
 /**
- *
+ * Retrieve the archive name for the given path.
  */
 export function retrieveArchiveName(p: string): string {
 	const basepath = path.normalize(p);

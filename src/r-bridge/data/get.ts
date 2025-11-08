@@ -42,6 +42,7 @@ function search(id: FlowrCapabilityId, capabilities: readonly FlowrCapability[],
 
 const capabilityCache = new Map<FlowrCapabilityId, FlowrCapabilityWithPath>();
 
+
 /**
  *
  */
@@ -55,6 +56,7 @@ export function getCapabilityById(id: FlowrCapabilityId): FlowrCapabilityWithPat
 	capabilityCache.set(id, value);
 	return value;
 }
+
 
 /**
  *

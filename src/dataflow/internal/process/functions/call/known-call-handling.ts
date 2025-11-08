@@ -36,6 +36,7 @@ export interface ProcessKnownFunctionCallResult {
 	readonly fnRef:              IdentifierReference
 }
 
+
 /**
  *
  */
@@ -56,6 +57,7 @@ export function markNonStandardEvaluationEdges(
 		}
 	}
 }
+
 
 /**
  *

@@ -25,6 +25,7 @@ function printHelpForScript(script: [string, ReplBaseCommand], starredVersion?: 
 	}) |`;
 }
 
+
 /**
  *
  */
@@ -66,6 +67,7 @@ export interface DocumentReplCommand {
 	command:     string;
 	description: string;
 }
+
 
 /**
  *

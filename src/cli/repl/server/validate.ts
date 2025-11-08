@@ -9,7 +9,7 @@ export interface SuccessValidationResult<T extends IdMessageBase> { type: 'succe
 export type ValidationResult<T extends IdMessageBase> = SuccessValidationResult<T> | ValidationErrorResult
 
 /**
- *
+ * Check that the serialized input is a valid base message.
  */
 export function validateBaseMessageFormat(input: string): ValidationResult<IdMessageBase> {
 	try {
@@ -20,7 +20,7 @@ export function validateBaseMessageFormat(input: string): ValidationResult<IdMes
 }
 
 /**
- *
+ * Validates that the given input matches the given message definition.
  */
 export function validateMessage<T extends FlowrMessage | IdMessageBase>(input: IdMessageBase, def: MessageDefinition<T>): ValidationResult<T>  {
 	try {
@@ -32,7 +32,7 @@ export function validateMessage<T extends FlowrMessage | IdMessageBase>(input: I
 }
 
 /**
- *
+ * Sends an error message to the given client indicating a validation error.
  */
 export function answerForValidationError(client: Socket, result: ValidationErrorResult, id?: string): void {
 	sendMessage<FlowrErrorMessage>(client, {

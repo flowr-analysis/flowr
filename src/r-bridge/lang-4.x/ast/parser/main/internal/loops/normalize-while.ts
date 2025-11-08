@@ -7,7 +7,7 @@ import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { NamedJsonEntry } from '../../../json/format';
 
 /**
- *
+ * Tries to normalize a while-loop structure from the given tokens.
  */
 export function tryNormalizeWhile(
 	data: NormalizerData,

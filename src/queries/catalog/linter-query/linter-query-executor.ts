@@ -5,6 +5,7 @@ import { log } from '../../../util/log';
 import type { ConfiguredLintingRule } from '../../../linter/linter-format';
 import { executeLintingRule } from '../../../linter/linter-executor';
 
+
 /**
  *
  */

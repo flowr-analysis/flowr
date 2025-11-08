@@ -36,6 +36,7 @@ export interface CommonSyntaxTypeCounts<Measurement=bigint> {
 	other:        Record<string, Measurement>
 }
 
+
 /**
  *
  */
@@ -147,6 +148,7 @@ function appendRecord(a: Record<string, number[][] | undefined>, b: Record<strin
 	}
 }
 
+
 /**
  *
  */
@@ -173,6 +175,7 @@ export function appendCommonSyntaxTypeCounter(a: CommonSyntaxTypeCounts<number[]
 function summarizeRecord(a: Record<string, number[][]>): Record<string, SummarizedMeasurement> {
 	return Object.fromEntries(Object.entries(a).map(([key, val]) => [key, summarizeMeasurement(val.flat(), val.length)]));
 }
+
 
 /**
  *

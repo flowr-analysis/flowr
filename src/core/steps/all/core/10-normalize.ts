@@ -22,7 +22,7 @@ export interface NormalizeRequiredInput {
 }
 
 /**
- *
+ * Get the file attached to the current request, if any
  */
 export function getCurrentRequestFile(request: RParseRequests | undefined): string | undefined {
 	if(request === undefined) {

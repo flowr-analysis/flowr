@@ -79,6 +79,7 @@ function collectInformation(info: Map<string, FeatureStatisticsWithMeta>, config
 	return collected;
 }
 
+
 /**
  *
  */
@@ -92,6 +93,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 }
 
 type VariableInfoMap = Map<string, SummarizedWithProject & { linePercentageInFile: number[][] }>
+
 
 /**
  *

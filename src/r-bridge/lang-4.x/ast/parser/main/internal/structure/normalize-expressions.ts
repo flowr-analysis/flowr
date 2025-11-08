@@ -56,7 +56,7 @@ interface HandledExpressionList {
 }
 
 /**
- *
+ * Split a token collection into comments tokens and "other" tokens
  */
 export function splitComments(tokens: readonly NamedJsonEntry[]) {
 	const comments = [];
@@ -148,7 +148,7 @@ function processBraces([start, end]: [start: NamedJsonEntry, end: NamedJsonEntry
 }
 
 /**
- *
+ * Normalizes a list of expressions, handling semicolons and braces
  */
 export function normalizeExpressions(
 	data: NormalizerData,
@@ -199,7 +199,7 @@ export function normalizeExpressions(
 }
 
 /**
- *
+ * Parses nodes when their type is unknown
  */
 export function parseNodesWithUnknownType(data: NormalizerData, mappedWithName: readonly NamedJsonEntry[] | undefined): (RNode | RDelimiter)[] {
 	const parsedNodes: (RNode | RDelimiter)[] = [];

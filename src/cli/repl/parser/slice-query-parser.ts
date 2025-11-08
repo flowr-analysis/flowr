@@ -2,7 +2,7 @@ import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice'
 import type { SingleSlicingCriterion, SlicingCriteria } from '../../../slicing/criterion/parse';
 
 /**
- *
+ * Checks whether the given argument represents a slicing direction with an `f` suffix.
  */
 export function sliceDirectionParser(argument: string): SliceDirection {
 	const endBracket = argument.indexOf(')');
@@ -10,7 +10,7 @@ export function sliceDirectionParser(argument: string): SliceDirection {
 }
 
 /**
- *
+ * Parses a single slicing criterion from the given argument.
  */
 export function sliceCriterionParser(argument: string | undefined): SingleSlicingCriterion | undefined {
 	if(argument?.startsWith('(') && argument.includes(')')) {
@@ -20,7 +20,7 @@ export function sliceCriterionParser(argument: string | undefined): SingleSlicin
 }
 
 /**
- *
+ * Parses multiple slicing criteria from the given argument.
  */
 export function sliceCriteriaParser(argument: string | undefined): SlicingCriteria | undefined {
 	if(argument?.startsWith('(') && argument.includes(')')) {

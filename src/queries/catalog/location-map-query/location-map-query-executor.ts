@@ -24,7 +24,8 @@ function fuzzyFindFile(node: RNodeWithParent | undefined, idMap: AstIdMap): stri
 }
 
 /**
- *
+ * Executes a location map query
+ * @see {@link LocationMapQuery}
  */
 export async function executeLocationMapQuery({ analyzer }: BasicQueryData, queries: readonly LocationMapQuery[]): Promise<LocationMapQueryResult> {
 	const ast = await analyzer.normalize();

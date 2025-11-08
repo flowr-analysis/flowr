@@ -170,7 +170,7 @@ export function filterOutLoopExitPoints(exitPoints: readonly ExitPoint[]): reado
 }
 
 /**
- *
+ * Calculates the difference between two control dependencies.
  */
 export function diffControlDependency<Report extends WriteableDifferenceReport>(a: ControlDependency | undefined, b: ControlDependency | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
@@ -188,7 +188,7 @@ export function diffControlDependency<Report extends WriteableDifferenceReport>(
 }
 
 /**
- *
+ * Calculates the difference between two lists of control dependencies.
  */
 export function diffControlDependencies<Report extends WriteableDifferenceReport>(a: ControlDependency[] | undefined, b: ControlDependency[] | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {

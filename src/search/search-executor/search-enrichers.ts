@@ -224,6 +224,7 @@ export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<Pa
 	return e?.enrichments?.[enrichment] as EnrichmentElementContent<E>;
 }
 
+
 /**
  *
  */

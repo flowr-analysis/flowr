@@ -13,6 +13,7 @@ export interface DomainTestExpectation<ConcreteValue, AbstractValue>{
     readonly abstract?: AbstractValue
 }
 
+
 /**
  *
  */

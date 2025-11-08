@@ -23,6 +23,7 @@ const Mappers = {
 	} satisfies MapperData<Enrichment>
 } as const;
 
+
 /**
  *
  */

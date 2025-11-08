@@ -7,6 +7,7 @@ import { isBuiltIn } from '../../../../src/dataflow/environments/built-in';
 import type { IdentifierReference } from '../../../../src/dataflow/environments/identifier';
 import type { ControlDependency } from '../../../../src/dataflow/info';
 
+
 /**
  *
  */
@@ -24,6 +25,7 @@ export function wrap(id: string | NodeId | undefined): string {
 	}
 }
 
+
 /**
  *
  */
@@ -36,6 +38,7 @@ export function wrapControlDependencies(controlDependencies: ControlDependency[]
 		).join(', ')}]`;
 	}
 }
+
 /**
  *
  */

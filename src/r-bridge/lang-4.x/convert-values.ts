@@ -43,12 +43,14 @@ export const RTrue = 'TRUE';
 /** The R literal for the logical false */
 export const RFalse = 'FALSE';
 
+
 /**
  *
  */
 export function isBoolean(value: string): boolean {
 	return value === RTrue || value === RFalse;
 }
+
 
 /**
  *
@@ -79,6 +81,7 @@ export interface RNumberValue {
 	/** see {@link RImaginaryMarker}, compound imaginary numbers are expressions in R */
 	complexNumber: boolean
 }
+
 
 /**
  *
@@ -175,6 +178,7 @@ export function string2ts(value: string): RStringValue {
 
 export const RNa = 'NA';
 export const RNull = 'NULL';
+
 
 /**
  *

@@ -51,7 +51,7 @@ function containsAlpha(s: string): boolean {
 }
 
 /**
- *
+ * Attempts to detect the casing convention used in the given identifier.
  */
 export function detectCasing(identifier: string): CasingConvention {
 	if(identifier.trim() === '' || !containsAlpha(identifier)) {
@@ -100,7 +100,7 @@ export function detectCasing(identifier: string): CasingConvention {
 }
 
 /**
- *
+ * Determines the most used casing convention in the given list of symbols.
  */
 export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[] ): CasingConvention {
 	if(symbols.length === 0) {
@@ -119,7 +119,7 @@ export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[
 }
 
 /**
- *
+ * Attempts to fix the casing of the given identifier to match the provided convention.
  */
 export function fixCasing(identifier: string, convention: CasingConvention): string | undefined {
 	if(!containsAlpha(identifier)) {
@@ -157,7 +157,7 @@ export function fixCasing(identifier: string, convention: CasingConvention): str
 }
 
 /**
- *
+ * Creates quick fixes for renaming all references to the given node to match the provided replacement.
  */
 export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: NodeId, replacement: string, conv: CasingConvention): LintQuickFixReplacement[] | undefined {
 	const refs = getAllRefsToSymbol(graph, nodeId);

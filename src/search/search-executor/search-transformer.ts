@@ -46,9 +46,8 @@ export const transformers = {
 	map:    getMap
 } as const;
 
-
 /**
- *
+ * Gets a search-api transformer function for the given name.
  */
 export function getTransformer<Name extends TransformerNames>(name: Name): typeof transformers[Name] {
 	if(!transformers[name]) {

@@ -11,12 +11,14 @@ export type ReplacementOperatorHandler = (args: ReplacementOperatorHandlerArgs) 
 
 const handlers: ReplacementOperatorHandler[] = [];
 
+
 /**
  *
  */
 export function onReplacementOperator(handler: ReplacementOperatorHandler) {
 	handlers.push(handler);
 }
+
 
 /**
  *

@@ -85,6 +85,7 @@ function writeSingleOrDoubleBrackets(data: Map<string, SummarizedWithProject | C
 	}
 }
 
+
 /**
  *
  */

@@ -25,6 +25,7 @@ interface BenchmarkElementBench {
 }
 
 let benchmarkData = null as BenchmarkData | null;
+
 /**
  *
  */
@@ -39,6 +40,7 @@ export async function loadBenchmarkData(): Promise<BenchmarkData> {
 	return benchmarkData;
 }
 
+
 /**
  *
  */
@@ -48,6 +50,7 @@ export async function getLatestBenchmark(suite: string): Promise<BenchmarkElemen
 	guard(suiteData, `No benchmark data for suite '${suite}' found!`);
 	return suiteData.sort((a, b) => b.date - a.date)[0];
 }
+
 
 /**
  *
@@ -61,6 +64,7 @@ function getBenchmarkElement(bench: BenchmarkElement, name: string): BenchmarkEl
 	guard(element, `No benchmark data for '${name}' found!`);
 	return element;
 }
+
 
 /**
  *

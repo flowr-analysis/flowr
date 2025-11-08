@@ -37,7 +37,7 @@ const replacements = {
 };
 
 /**
- *
+ * Escapes markdown special characters in a string.
  */
 export function escapeMarkdown(text: string): string {
 	for(const [key, value] of Object.entries(replacements)) {
@@ -47,7 +47,7 @@ export function escapeMarkdown(text: string): string {
 }
 
 /**
- *
+ * Escapes a string or number to be used as a mermaid node id.
  */
 export function escapeId(text: string | number): string {
 	text = String(text).replace(/[^a-zA-Z0-9:-]/g, '_');

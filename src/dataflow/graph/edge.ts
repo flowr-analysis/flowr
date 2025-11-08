@@ -75,6 +75,7 @@ export function edgeTypeToName(type: EdgeType): string {
 	return edgeTypeToHumanReadableName.get(type) as string;
 }
 
+
 /**
  *
  */
@@ -87,6 +88,7 @@ export function splitEdgeTypes(types: EdgeTypeBits): EdgeType[] {
 	}
 	return split;
 }
+
 
 /**
  *
@@ -138,6 +140,7 @@ export function edgeDoesNotIncludeType(type: EdgeTypeBits, types: EdgeTypeBits):
 const alwaysTraverseEdgeTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.Argument | EdgeType.Calls;
 
 const definedByOnCallTypes = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall;
+
 
 /**
  *

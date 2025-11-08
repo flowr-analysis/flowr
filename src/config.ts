@@ -313,6 +313,7 @@ export const flowrConfigFileSchema = Joi.object({
 	}).description('The configuration options for abstract interpretation.')
 }).description('The configuration file format for flowR.');
 
+
 /**
  *
  */
@@ -342,12 +343,14 @@ export function amendConfig(config: FlowrConfigOptions, amendmentFunc: (config: 
 	return newConfig;
 }
 
+
 /**
  *
  */
 export function cloneConfig(config: FlowrConfigOptions): FlowrConfigOptions {
 	return JSON.parse(JSON.stringify(config)) as FlowrConfigOptions;
 }
+
 
 /**
  *
@@ -360,6 +363,7 @@ export function getConfig(configFile?: string, configWorkingDirectory = process.
 		return defaultConfigOptions;
 	}
 }
+
 
 /**
  *
@@ -381,6 +385,7 @@ function getPointerAnalysisThreshold(config: FlowrConfigOptions): number | 'unli
 		return pointerTracking ? 'unlimited' : 'disabled';
 	}
 }
+
 
 /**
  *

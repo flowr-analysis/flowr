@@ -55,6 +55,7 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 	}
 }
 
+
 /**
  *
  */

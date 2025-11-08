@@ -121,7 +121,9 @@ export type SupportedQueryTypes = keyof typeof SupportedQueries;
 export type QueryResult<Type extends Query['type']> = Promise<ReturnType<typeof SupportedQueries[Type]['executor']>>;
 
 /**
- *
+ * Executes a set of queries that are all of the same type.
+ * Only use this function if you are sure all queries are of the same type.
+ * Otherwise, use {@link executeQueries}.
  */
 export async function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']> {
 	guard(queries.length > 0, 'At least one query must be provided');
@@ -181,6 +183,7 @@ export type Queries<
 
 /**
  * This is the main query execution function that takes a set of queries and executes them on the given data.
+ * @see {@link executeQueriesOfSameType}
  */
 export async function executeQueries<
 	Base extends SupportedQueryTypes,
@@ -210,7 +213,7 @@ export async function executeQueries<
 }
 
 /**
- *
+ * Produces a Joi schema representing all supported queries.
  */
 export function SupportedQueriesSchema() {
 	return Joi.alternatives(
@@ -224,16 +227,18 @@ export const CompoundQuerySchema = Joi.object({
 	commonArguments: Joi.object().required().description('Common arguments for all queries.'),
 	arguments:       Joi.array().items(Joi.object()).required().description('Arguments for each query.')
 }).description('Compound query used to combine queries of the same type');
+
 /**
- *
+ * Produces a Joi schema representing all virtual queries.
  */
 export function VirtualQuerySchema() {
 	return Joi.alternatives(
 		CompoundQuerySchema
 	).description('Virtual queries (used for structure)');
 }
+
 /**
- *
+ * Produces a Joi schema representing any supported query (including virtual queries).
  */
 export function AnyQuerySchema() {
 	return Joi.alternatives(
@@ -241,8 +246,9 @@ export function AnyQuerySchema() {
 		VirtualQuerySchema()
 	).description('Any query');
 }
+
 /**
- *
+ * Produces a Joi schema representing an array of supported queries.
  */
 export function QueriesSchema() {
 	return Joi.array().items(AnyQuerySchema()).description('Queries to run on the file analysis information (in the form of an array)');

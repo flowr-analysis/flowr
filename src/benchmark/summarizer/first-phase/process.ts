@@ -287,6 +287,7 @@ function summarizePerOperationStats(nodeStats: PerNodeStatsDfShape[]): Summarize
 	return perOperationNumber;
 }
 
+
 /**
  *
  */
@@ -303,6 +304,7 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 	const total = arraySum(data.map(d => d.total).filter(isNotUndefined));
 	return { min, max, median, mean, std, total };
 }
+
 
 /**
  *
@@ -331,6 +333,7 @@ function summarizeReductions(reductions: Reduction<number | undefined>[]): Reduc
 	};
 }
 
+
 /**
  *
  */
@@ -340,6 +343,7 @@ export function summarizeSummarizedTimePerToken(times: TimePerToken[]): TimePerT
 		normalized: summarizeSummarizedMeasurement(times.map(t => t.normalized)),
 	};
 }
+
 
 /**
  *

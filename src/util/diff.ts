@@ -61,7 +61,7 @@ export interface GenericDiffConfiguration {
 
 
 /**
- *
+ * Computes the difference of two sets and adds human-readable information to the current report
  */
 export function setDifference<T, Report extends WriteableDifferenceReport = WriteableDifferenceReport>(left: ReadonlySet<T>, right: ReadonlySet<T>, info: GenericDifferenceInformation<Report>): void {
 	const lWithoutR = setMinus(left, right);

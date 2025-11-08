@@ -3,6 +3,7 @@ import { bottomTopGuard } from '../general';
 import { type Lift, type Value, type ValueString , Bottom, isValue, Top } from '../r-value';
 
 
+
 /**
  *
  */
@@ -16,6 +17,7 @@ export function stringFrom(str: RStringValue | string): ValueString {
 	};
 }
 
+
 /**
  *
  */
@@ -25,6 +27,7 @@ export function liftString(str: Lift<RStringValue>): ValueString {
 		value: str
 	};
 }
+
 
 /**
  *

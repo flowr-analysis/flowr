@@ -19,12 +19,14 @@ export interface ExplanationParameters {
 	readonly expectedSubgraph: DataflowGraph
 }
 
+
 /**
  *
  */
 export function getAllVertices(): [string, VertexType][] {
 	return Object.entries(VertexType) as [string, VertexType][];
 }
+
 
 /**
  *

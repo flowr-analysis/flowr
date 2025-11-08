@@ -6,7 +6,7 @@ import { deepMergeObject } from '../util/objects';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 /**
- *
+ * Executes a specific linting rule on the given analysis provider input.
  */
 export async function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: ReadonlyFlowrAnalysisProvider, lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>>): Promise<LintingResults<Name>> {
 	try {

@@ -11,6 +11,7 @@ import type { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-
 import { VertexType } from '../../../graph/vertex';
 
 
+
 /**
  *
  */
@@ -23,6 +24,7 @@ export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentIn
 		graph.addEdge(root.info.id, ref, EdgeType.Reads);
 	}
 }
+
 
 /**
  *

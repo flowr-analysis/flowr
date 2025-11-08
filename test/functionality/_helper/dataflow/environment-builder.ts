@@ -12,12 +12,14 @@ import type { ControlDependency } from '../../../../src/dataflow/info';
 import { defaultConfigOptions } from '../../../../src/config';
 import { appendEnvironment } from '../../../../src/dataflow/environments/append';
 
+
 /**
  *
  */
 export function variable(name: string, definedAt: NodeId): IdentifierDefinition {
 	return { name, type: ReferenceType.Variable, nodeId: '_0', definedAt, controlDependencies: undefined };
 }
+
 
 /**
  *

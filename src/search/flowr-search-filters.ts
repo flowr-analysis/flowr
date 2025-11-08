@@ -68,7 +68,7 @@ export interface OriginKindArgs {
 }
 
 /**
- *
+ * Helper to create a regular expression that matches function names, ignoring their package.
  */
 export function testFunctionsIgnoringPackage(functions: readonly string[]): RegExp {
 	return new RegExp(`"(.+:::?)?(${functions.join('|')})"`);
@@ -178,7 +178,7 @@ export class FlowrFilterCombinator {
 }
 
 /**
- *
+ * Converts the given binary tree to a string representation.
  */
 export function binaryTreeToString(tree: BooleanNode): string {
 	const res = treeToStringImpl(tree, 0);
@@ -209,9 +209,9 @@ function treeToStringImpl(tree: BooleanNode, depth: number): string {
 	return `(${left} ${typeToSymbol[tree.type]} ${right})`;
 }
 
-
 /**
- *
+ * Checks whether the given value is a binary tree combinator.
+ * @see {@link FlowrFilterCombinator}
  */
 export function isBinaryTree(tree: unknown): tree is { tree: BooleanNode } {
 	return typeof tree === 'object' && tree !== null && 'tree' in tree;
@@ -252,7 +252,7 @@ function evalTree(tree: BooleanNode, data: FilterData): boolean {
 }
 
 /**
- *
+ * Evaluates the given filter expression against the provided data.
  */
 export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): boolean {
 	/* common lift, this can be improved easily :D */

@@ -99,8 +99,9 @@ function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolea
 	return { completions: [] };
 }
 
+
 /**
- *
+ * Produces default readline options for the flowR REPL
  */
 export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.ReadLineOptions {
 	return {
@@ -114,8 +115,9 @@ export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.Re
 	};
 }
 
+
 /**
- *
+ * Handles a string input for the REPL, returning the parsed string and any remaining input.
  */
 export function handleString(code: string) {
 	return {
@@ -230,8 +232,9 @@ export async function repl(
 	}
 }
 
+
 /**
- *
+ * Loads the REPL history from the given file.
  */
 export function loadReplHistory(historyFile: string): string[] | undefined {
 	try {

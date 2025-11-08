@@ -42,7 +42,7 @@ function processDefaultFunctionProcessor<OtherInfo>(
 }
 
 /**
- *
+ * Marks the given function call node as only calling built-in functions.
  */
 export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId) {
 	const v = graph.getVertex(rootId);
@@ -53,7 +53,7 @@ export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId) {
 }
 
 /**
- *
+ * Processes a named function call within the dataflow analysis.
  */
 export function processNamedCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

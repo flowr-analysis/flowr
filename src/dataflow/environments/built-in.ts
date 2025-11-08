@@ -48,13 +48,14 @@ import type {
 export type BuiltIn = `built-in:${string}`;
 
 /**
- *
+ * Generate a built-in id for the given name
  */
 export function builtInId(name: string): BuiltIn {
 	return `built-in:${name}`;
 }
+
 /**
- *
+ * Checks whether the given name is a built-in identifier
  */
 export function isBuiltIn(name: NodeId | string): name is BuiltIn {
 	return String(name).startsWith('built-in:');

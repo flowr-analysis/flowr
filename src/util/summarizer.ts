@@ -6,7 +6,6 @@ export const enum SummarizerType {
 	Statistics = 'statistics',
 }
 
-
 export interface CommonSummarizerConfiguration extends MergeableRecord{
 	logger: (message: string) => void
 }
@@ -32,7 +31,6 @@ export abstract class Summarizer<Output, Configuration extends CommonSummarizerC
 		this.log = this.config.logger;
 	}
 
-
 	/**
 	 * First phase of the summary, can be used to extract all data of interest from the individual
 	 * benchmark or statistic results. This can write temporary files based on the configuration.
@@ -48,22 +46,23 @@ export abstract class Summarizer<Output, Configuration extends CommonSummarizerC
 }
 
 /**
- *
+ * Converts the summarized measurement to a CSV line.
  */
 export function summarizedMeasurement2Csv(a: SummarizedMeasurement): string {
 	return `${a.min},${a.max},${a.median},${a.mean},${a.std},${a.total}`;
 }
 
 const summarizedKeys = ['min', 'max', 'median', 'mean', 'std', 'total'];
+
 /**
- *
+ * Generates the CSV header for summarized measurements.
  */
 export function summarizedMeasurement2CsvHeader(prefix?: string): string {
 	return summarizedKeys.map(k => prefix ? `${prefix}-${k}` : k).join(',');
 }
 
 /**
- *
+ * Summarizes the given measurement data.
  */
 export function summarizeMeasurement(data: number[], totalNumberOfDataPoints?: number): SummarizedMeasurement {
 	// just to avoid in-place modification

@@ -4,7 +4,8 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analy
 import type { RShellInformation } from '../../../r-bridge/parser';
 
 /**
- *
+ * Tries to execute the given R shell command.
+ * If not allowed, an error message is printed to the output.
  */
 export async function tryExecuteRShellCommand({ output, analyzer, allowRSessionAccess, remainingLine }: ReplCommandInformation) {
 	const parserInfo = analyzer.parserInformation();

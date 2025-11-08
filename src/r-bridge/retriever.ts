@@ -64,6 +64,7 @@ export type RParseRequest = RParseRequestFromFile | RParseRequestFromText
  */
 export type RParseRequests = RParseRequest | ReadonlyArray<RParseRequest>
 
+
 /**
  *
  */
@@ -100,6 +101,7 @@ export function requestFromInput(input: `${typeof fileProtocol}${string}` | stri
 }
 
 
+
 /**
  *
  */
@@ -129,6 +131,7 @@ export function requestProviderFromFile(): RParseRequestProvider {
 	};
 }
 
+
 /**
  *
  */
@@ -148,6 +151,7 @@ export function requestProviderFromText(text: Readonly<{[path: string]: string}>
 		}
 	};
 }
+
 
 /**
  *

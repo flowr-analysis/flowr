@@ -128,6 +128,7 @@ function writeAssignmentOperatorsToCsv(outputPath: string, collected: Summarized
 	fnOutStream.close();
 }
 
+
 /**
  *
  */

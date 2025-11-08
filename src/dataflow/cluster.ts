@@ -23,7 +23,7 @@ export interface DataflowGraphCluster {
 }
 
 /**
- *
+ * Find all clusters in the given dataflow graph.
  */
 export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
 	const clusters: DataflowGraphClusters = [];

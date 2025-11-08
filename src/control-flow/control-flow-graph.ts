@@ -85,6 +85,7 @@ export interface CfgBasicBlockVertex extends CfgBaseVertex {
  */
 export type CfgSimpleVertex = CfgStatementVertex | CfgExpressionVertex | CfgBasicBlockVertex | CfgEndMarkerVertex
 
+
 /**
  *
  */
@@ -99,12 +100,14 @@ export function equalVertex(a: CfgSimpleVertex, b: CfgSimpleVertex): boolean {
 	return true;
 }
 
+
 /**
  *
  */
 export function isMarkerVertex(vertex: CfgSimpleVertex): vertex is CfgEndMarkerVertex {
 	return vertex.type === CfgVertexType.EndMarker;
 }
+
 
 /**
  *
@@ -473,6 +476,7 @@ export interface ControlFlowInformation<Vertex extends CfgSimpleVertex = CfgSimp
 	/** the control flow graph summarizing the flow information */
     graph:       ControlFlowGraph<Vertex>
 }
+
 
 /**
  *

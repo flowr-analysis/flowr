@@ -5,7 +5,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import type { FlowrSearch } from '../../../search/flowr-search-builder';
 
 /**
- *
+ * Executes the given search queries using the provided analyzer.
  */
 export async function executeSearch({ analyzer }: BasicQueryData, queries: readonly SearchQuery[]): Promise<SearchQueryResult> {
 	const start = Date.now();

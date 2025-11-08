@@ -32,6 +32,7 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 	readonly resolveValue?:           boolean
 }
 
+
 /**
  *
  */

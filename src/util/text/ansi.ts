@@ -126,7 +126,7 @@ export const ansiFormatter = {
 export let formatter: OutputFormatter = ansiFormatter;
 
 /**
- *
+ * (Globally) sets the output formatter used by the utility functions in this module.
  */
 export function setFormatter(setFormatter: OutputFormatter): void {
 	formatter = setFormatter;

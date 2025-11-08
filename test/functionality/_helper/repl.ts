@@ -20,6 +20,7 @@ export interface ReplParserTestCase<QueryType extends BaseQueryFormat['type']> {
 	expectedParse: ParsedQueryLine<QueryType>
 }
 
+
 /**
  *
  */
@@ -38,6 +39,7 @@ export interface ReplCompletionTestCase {
 	splitLine:           readonly string[],
 	expectedCompletions: readonly string[]
 }
+
 
 /**
  *

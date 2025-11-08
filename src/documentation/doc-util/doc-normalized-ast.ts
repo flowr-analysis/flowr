@@ -13,6 +13,7 @@ import { FlowrWikiBaseRef } from './doc-files';
 import type { GraphDifferenceReport } from '../../util/diff-graph';
 import { defaultConfigOptions } from '../../config';
 
+
 /**
  *
  */
@@ -28,6 +29,7 @@ export interface PrintNormalizedAstOptions {
 	readonly showCode?: boolean;
 	readonly prefix?:   string;
 }
+
 /**
  *
  */

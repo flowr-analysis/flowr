@@ -1,6 +1,7 @@
 import { type Lift, type ValueNumber , Bottom , Top } from '../r-value';
 import type { RNumberValue } from '../../../../r-bridge/lang-4.x/convert-values';
 
+
 /**
  *
  */
@@ -14,6 +15,7 @@ export function getScalarFromInteger(num: number, markedAsInt = Number.isInteger
 		}
 	};
 }
+
 
 /**
  *

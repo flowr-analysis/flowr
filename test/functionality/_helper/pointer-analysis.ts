@@ -206,6 +206,7 @@ function queryAccessInLine(
 	return { query: fn(Q.varInLine(type, line)) };
 }
 
+
 /**
  *
  */

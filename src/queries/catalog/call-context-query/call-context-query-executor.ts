@@ -58,6 +58,7 @@ function exactCallNameRegex(name: RegExp | string): RegExp {
 	return new RegExp(`^(${name})$`);
 }
 
+
 /**
  *
  */

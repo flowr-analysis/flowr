@@ -21,6 +21,7 @@ type LoopInfoPostProcess = MergeableRecord & {
 	[k in keyof LoopInfo]: LoopInfo[k] extends number | bigint ? SummarizedWithProject : CommonSyntaxTypeCounts<number[][]>
 }
 
+
 /**
  *
  */

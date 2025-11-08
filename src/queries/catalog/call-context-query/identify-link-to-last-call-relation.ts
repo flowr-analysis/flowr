@@ -28,6 +28,7 @@ export enum CallTargets {
     Any = 'any'
 }
 
+
 /**
  *
  */
@@ -89,6 +90,7 @@ export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarge
 
 
 
+
 /**
  *
  */
@@ -118,6 +120,7 @@ export function getValueOfArgument<Types extends readonly RType[] = readonly RTy
 		return !additionalAllowedTypes || additionalAllowedTypes.includes(valueNode.type) ? valueNode : undefined;
 	}
 }
+
 
 
 /**

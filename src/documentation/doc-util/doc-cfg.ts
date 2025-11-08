@@ -20,6 +20,7 @@ type GetCfgReturn = {
 
 export function getCfg(parser: KnownParser, code: string, simplifications?: readonly CfgSimplificationPassName[], useDfg?: true): Promise<Required<GetCfgReturn>>
 export function getCfg(parser: KnownParser, code: string, simplifications?: readonly CfgSimplificationPassName[], useDfg?: boolean): Promise<GetCfgReturn>
+
 /**
  *
  */
@@ -36,6 +37,7 @@ export async function getCfg(parser: KnownParser, code: string, simplifications:
 		dataflow: 'dataflow' in result ? (result as {dataflow: DataflowInformation}).dataflow : undefined
 	};
 }
+
 
 /**
  *
@@ -54,6 +56,7 @@ export interface PrintCfgOptions {
 	readonly simplify?:        boolean;
 	readonly useDfg?:          boolean;
 }
+
 /**
  *
  */

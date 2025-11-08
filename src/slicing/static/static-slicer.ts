@@ -131,7 +131,8 @@ export function staticSlice(
 }
 
 /**
- *
+ * Updates the potential addition for the given target node in the visiting queue.
+ * This describes vertices that might be added *if* another path reaches them.
  */
 export function updatePotentialAddition(queue: VisitingQueue, id: NodeId, target: NodeId, baseEnvironment: REnvironmentInformation, envFingerprint: string): void {
 	const n = queue.potentialAdditions.get(target);

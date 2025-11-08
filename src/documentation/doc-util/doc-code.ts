@@ -1,6 +1,7 @@
 import { jsonReplacer } from '../../util/json';
 import { builtInEnvJsonReplacer } from '../../dataflow/environments/environment';
 
+
 /**
  *
  */
@@ -8,12 +9,14 @@ export function codeBlock(language: string, code: string): string {
 	return `\n\`\`\`${language}\n${code?.trim() ?? ''}\n\`\`\`\n`;
 }
 
+
 /**
  *
  */
 export function codeInline(code: string): string {
 	return `<code>${code}</code>`;
 }
+
 
 /**
  *

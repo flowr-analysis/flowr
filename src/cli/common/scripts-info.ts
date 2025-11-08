@@ -13,7 +13,6 @@ import {
 import type { MergeableRecord } from '../../util/objects';
 import { asOptionName } from '../repl/commands/repl-commands';
 
-
 interface BaseScriptInformation extends MergeableRecord {
 	/** name of the tool to present to the user */
 	toolName:     string
@@ -105,7 +104,7 @@ const _scripts = {
 export const scripts = _scripts as Record<keyof typeof _scripts, ScriptInformation>;
 
 /**
- *
+ * Given a set of option definitions and previously provided arguments, determine which options can still be added.
  */
 export function getValidOptionsForCompletion(options: readonly OptionDefinition[], prevArgs: readonly string[]): string[] {
 	return options.filter(o => canAddOption(o, prevArgs)).flatMap(o => {

@@ -10,7 +10,7 @@ function isPositiveFiniteInteger(length: number): boolean {
 }
 
 /**
- *
+ * Generates a random string of the given length using the provided symbols.
  */
 export function randomString(length: number, symbols = ALPHABET): string {
 	guard(isPositiveFiniteInteger(length), `length must be a positive, finite integer (${length} >= 0)`);

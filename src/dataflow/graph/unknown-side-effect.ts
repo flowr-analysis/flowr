@@ -7,12 +7,14 @@ export type UnknownSideEffectHandler = (graph: DataflowGraph, env: REnvironmentI
 
 const handlers: UnknownSideEffectHandler[] = [];
 
+
 /**
  *
  */
 export function onUnknownSideEffect(handler: UnknownSideEffectHandler) {
 	handlers.push(handler);
 }
+
 
 /**
  *

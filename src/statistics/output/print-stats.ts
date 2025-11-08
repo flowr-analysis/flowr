@@ -6,6 +6,7 @@ import { arraySum } from '../../util/collections/arrays';
 
 interface MinMaxAvgMedian { sum: number, min: number, max: number, avg: number, median: number}
 
+
 /**
  *
  */
@@ -25,12 +26,14 @@ function formatStatNumber(num: number | undefined): string {
 	return num === undefined ? '<?>' : Number(num.toFixed(3)).toLocaleString();
 }
 
+
 /**
  *
  */
 export function statsString(data: MinMaxAvgMedian, suffix = ''): string {
 	return `[${formatStatNumber(data.min)}${suffix} .. ${formatStatNumber(data.max)}${suffix}] (avg: ${formatStatNumber(data.avg)}${suffix}, median: ${formatStatNumber(data.median)}${suffix})`;
 }
+
 
 
 
@@ -63,6 +66,7 @@ export function printFeatureStatistics(statistics: {features: FeatureStatistics,
 }
 
 const pad = 3;
+
 
 /**
  *

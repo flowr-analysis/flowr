@@ -4,12 +4,14 @@ import type { BasicQueryData } from '../../base-query-format';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 import { resolveIdToValue } from '../../../dataflow/eval/resolve/alias-tracking';
 
+
 /**
  *
  */
 export function fingerPrintOfQuery(query: ResolveValueQuery): string {
 	return JSON.stringify(query);
 }
+
 
 /**
  *

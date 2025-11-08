@@ -13,6 +13,7 @@ function pad<T>(string: T) {
 	return String(string).padStart(padSize, ' ');
 }
 
+
 /**
  *
  */
@@ -209,6 +210,7 @@ Dataframe shape inference:
 
 	return result;
 }
+
 
 /**
  *

@@ -52,8 +52,9 @@ export function defaultQuadIdGenerator(): QuadIdRetriever {
 }
 
 const ignoredKeysArray = ['complexNumber', 'markedAsInt', 'info'];
+
 /**
- *
+ * A default ignore function that ignores undefined values and some common keys.
  */
 export function defaultQuadIgnoreIf(): QuadIgnoreIf {
 	return (key: string, value: unknown) => value === undefined || ignoredKeysArray.includes(key);

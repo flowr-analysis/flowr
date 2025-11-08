@@ -11,8 +11,8 @@ import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 function nodeString(nodeId: NodeId | { id: NodeId, info?: object}, formatter: OutputFormatter, idMap: AstIdMap<ParentInformation>): string {
 	const isObj = typeof nodeId === 'object' && nodeId !== null && 'id' in nodeId;
-	const id = isObj ? nodeId.id : nodeId;
-	const info = isObj ? nodeId.info : undefined;
+	const id = isObj ? nodeId?.id : nodeId;
+	const info = isObj ? nodeId?.info : undefined;
 	if(isBuiltIn(id)) {
 		return italic(id, formatter) + (info ? ` (${JSON.stringify(info)})` : '');
 	}
@@ -47,7 +47,7 @@ function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly Ca
 }
 
 /**
- *
+ * Converts call context query results to an ASCII representation
  */
 export function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'call-context'>['call-context'], idMap: AstIdMap<ParentInformation>): string {
 	/* traverse over 'kinds' and within them 'subkinds' */
@@ -62,7 +62,14 @@ export function asciiCallContext(formatter: OutputFormatter, results: QueryResul
 }
 
 /**
- *
+ * Summarizes a list of node IDs, shortening the output if it is too long
+ * @example
+ * ```ts
+ * summarizeIdsIfTooLong(markdownFormatter, ['id1', 'id2', 'id3']);
+ * // returns 'id1, id2, id3'
+ * summarizeIdsIfTooLong(markdownFormatter, [<array of many ids>]);
+ * // returns 'id1, id2, id3, ... (see JSON)' with a tooltip containing the full JSON array
+ * ```
  */
 export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly NodeId[]) {
 	const naive = ids.join(', ');
@@ -81,7 +88,7 @@ export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly 
 }
 
 /**
- *
+ * Generates an ASCII summary of the given query results
  */
 export async function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(
 	formatter: OutputFormatter, totalInMs: number, results: QueryResults<S>,

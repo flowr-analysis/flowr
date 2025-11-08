@@ -23,6 +23,7 @@ import type { ExitPoint } from '../info';
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
+
 /**
  *
  */
@@ -70,6 +71,7 @@ export function findNonLocalReads(graph: DataflowGraph, ignore: readonly Identif
 	return nonLocalReads;
 }
 
+
 /**
  *
  */
@@ -82,6 +84,7 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 	}
 	return nameIdShares;
 }
+
 
 /**
  *
@@ -156,6 +159,7 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCa
 	expensiveTrace(dataflowLogger, () => `linking arguments for ${functionCallName} (${functionRootId}) to ${JSON.stringify(linkedFunction.location)}`);
 	linkArgumentsOnCall(callArgs, linkedFunction.parameters, finalGraph);
 }
+
 
 /**
  *
@@ -284,6 +288,7 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 	return found;
 }
 
+
 /**
  *
  */
@@ -400,6 +405,7 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 		}
 	}
 }
+
 
 /**
  *

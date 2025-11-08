@@ -48,6 +48,7 @@ function nonErrorChildrenLax(node: SyntaxNode): SyntaxNode[] {
 
 let nonErrorChildren: (node: SyntaxNode) => SyntaxNode[] = nonErrorChildrenStrict;
 
+
 /**
  *
  */
@@ -55,6 +56,7 @@ export function makeTreeSitterLax() {
 	log.info('[Tree-Sitter] Lax parsing active');
 	nonErrorChildren = nonErrorChildrenLax;
 }
+
 
 /**
  *

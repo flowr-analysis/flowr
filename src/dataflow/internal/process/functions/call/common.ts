@@ -77,6 +77,7 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 }
 
 
+
 /**
  *
  */
@@ -158,6 +159,7 @@ export interface PatchFunctionCallInput<OtherInfo> {
 	readonly origin:                FunctionOriginInformation
 	readonly link?:                 DataflowGraphVertexAstLink
 }
+
 
 /**
  *

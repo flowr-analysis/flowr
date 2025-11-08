@@ -99,7 +99,11 @@ export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGen
 }
 
 /**
- *
+ * Writes the given table as a CSV file.
+ * @param table   - The table to write
+ * @param file    - The file path to write the CSV to
+ * @param sep     - The separator to use (default: `,`)
+ * @param newline - The newline character to use (default: `\n`)
  */
 export function writeTableAsCsv(table: Table, file: string, sep = ',', newline = '\n') {
 	const csv = [table.header.join(sep), ...table.rows.map(row => row.join(sep))].join(newline);
@@ -220,9 +224,8 @@ function cleanValues(values: string): string[] {
 		.filter(s => s.length > 0);
 }
 
-
 /**
- *
+ * Checks whether the given path-like object is a file that exists on the local filesystem.
  */
 export function isFilePath(p: PathLike) {
 	return fs.existsSync(p) && fs.statSync(p).isFile();

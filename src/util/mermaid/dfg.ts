@@ -145,7 +145,7 @@ function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: strin
 }
 
 /**
- *
+ * Prints an identifier definition in a human-readable format.
  */
 export function printIdentifier(id: IdentifierDefinition): string {
 	return `**${id.name}** (id: ${id.nodeId}, type: ${ReferenceTypeReverseMapping.get(id.type)},${id.controlDependencies? ' cds: {' + id.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
@@ -270,7 +270,7 @@ function graphToMermaidGraph(
 }
 
 /**
- *
+ * Converts a dataflow graph to mermaid graph code that visualizes the graph.
  */
 export function graphToMermaid(config: MermaidGraphConfiguration): { string: string, mermaid: MermaidGraph } {
 	const mermaid = graphToMermaidGraph(config.graph.rootIds(), config);
@@ -304,7 +304,7 @@ export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGr
 }
 
 /**
- *
+ * Converts two dataflow graphs to a mermaid url that visualizes their differences.
  */
 export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDiffGraph, prefix: string): string {
 	return mermaidCodeToUrl(diffGraphsToMermaid(left, right, prefix));

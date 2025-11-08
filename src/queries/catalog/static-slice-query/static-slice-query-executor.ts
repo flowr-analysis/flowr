@@ -8,14 +8,17 @@ import type { BasicQueryData } from '../../base-query-format';
 import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
 
 /**
- *
+ * Produce a fingerprint string for a static slice query
  */
 export function fingerPrintOfQuery(query: StaticSliceQuery): string {
 	return JSON.stringify(query);
 }
 
 /**
- *
+ * Execute static slice queries, catching duplicates with the same fingerprint
+ * @param analyzer - The basic query data containing the analyzer
+ * @param queries - The static slice queries to execute
+ * @returns The results of the static slice queries
  */
 export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, queries: readonly StaticSliceQuery[]): Promise<StaticSliceQueryResult> {
 	const start = Date.now();

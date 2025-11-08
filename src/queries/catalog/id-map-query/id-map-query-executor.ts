@@ -3,7 +3,7 @@ import type { IdMapQuery, IdMapQueryResult } from './id-map-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 
 /**
- *
+ * Executes the given ID map queries using the provided analyzer.
  */
 export async function executeIdMapQuery({ analyzer }: BasicQueryData, queries: readonly IdMapQuery[]): Promise<IdMapQueryResult> {
 	if(queries.length !== 1) {

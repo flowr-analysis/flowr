@@ -384,8 +384,9 @@ export class FlowRServerConnection {
 	}
 }
 
+
 /**
- *
+ * Sanitizes analysis results by removing any potentially sensitive information like id maps.
  */
 export function sanitizeAnalysisResults(parse: ParseStepOutput<string | Tree>, normalize: NormalizedAst, dataflow: DataflowInformation): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>> {
 	return {

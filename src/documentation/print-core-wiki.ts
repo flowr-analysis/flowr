@@ -72,6 +72,7 @@ async function sliceQueryExample(analyzer: FlowrAnalyzer) {
 	return result;
 }
 
+
 /**
  *
  */

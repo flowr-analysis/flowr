@@ -4,6 +4,7 @@ import { jsonReplacer } from '../../util/json';
 import type { IdentifierReference } from './identifier';
 import { diffControlDependencies } from '../info';
 
+
 /**
  *
  */
@@ -55,6 +56,7 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 	}
 }
 
+
 /**
  *
  */
@@ -78,6 +80,7 @@ export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEn
 	diffMemory(a, b, { ...info, position: `${info.position}[at level: ${depth}] ` });
 	diffEnvironment(a.parent, b.parent, { ...info, position: `${info.position}Parents of ${a.id} & ${b.id}. ` }, depth--);
 }
+
 
 /**
  *

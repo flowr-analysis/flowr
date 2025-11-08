@@ -110,8 +110,9 @@ function hasModule(path: string): boolean {
 	}
 }
 
+
 /**
- *
+ * Retrieve all REPL commands (including those generated from master scripts)
  */
 export function getReplCommands() {
 	if(commandsInitialized) {
@@ -189,7 +190,7 @@ export function getCommand(command: string): ReplCodeCommand | ReplCommand | und
 }
 
 /**
- *
+ * Formats the given argument name as a command line option (with single or double dashes).
  */
 export function asOptionName(argument: string): string{
 	if(argument.length == 1) {
@@ -201,8 +202,9 @@ export function asOptionName(argument: string): string{
 
 
 let _longestCommandName: number | undefined = undefined;
+
 /**
- *
+ * Retrieve the length of the longest command name (including star and brackets if applicable)
  */
 export function longestCommandName(): number {
 	if(_longestCommandName === undefined) {
@@ -210,8 +212,10 @@ export function longestCommandName(): number {
 	}
 	return _longestCommandName;
 }
+
 /**
- *
+ * Pad the given command string to the length of the longest command name plus two spaces.
+ * @see {@link longestCommandName}
  */
 export function padCmd<T>(string: T) {
 	return String(string).padEnd(longestCommandName() + 2, ' ');

@@ -8,6 +8,7 @@ export interface SummarizedWithProject<Uniques=Set<string>, Count=number[]> {
 	count:          Count
 }
 
+
 /**
  *
  */
@@ -22,6 +23,7 @@ export function emptySummarizedWithProject(): SummarizedWithProject {
 export type ReplaceKeysForSummary<Source, Target> = MergeableRecord & {
 	[K in keyof Source]: Target
 }
+
 
 /**
  *

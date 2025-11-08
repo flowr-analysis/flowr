@@ -16,21 +16,32 @@ export function normalizedAstToJson(ast: NormalizedAst): string {
 }
 
 /**
- *
+ * Normalized AST to quads serialization
+ * @see {@link serialize2quads}
+ * @see {@link QuadSerializationConfiguration}
+ * @see {@link normalizedAstToMermaid}
+ * @see {@link normalizedAstToMermaidUrl}
+ * @see {@link printNormalizedAstToMermaidUrl}
  */
 export function normalizedAstToQuads(ast: NormalizedAst, config: QuadSerializationConfiguration): string {
 	return serialize2quads(ast.ast, config);
 }
 
 /**
- *
+ * Serialize the normalized AST to mermaid format
+ * @see {@link normalizedAstToMermaid}
+ * @see {@link normalizedAstToMermaidUrl}
+ * @see {@link printNormalizedAstToMermaidUrl}
  */
 export function printNormalizedAstToMermaid(ast: NormalizedAst): string {
 	return normalizedAstToMermaid(ast.ast);
 }
 
 /**
- *
+ * Serialize the normalized AST to a mermaid URL
+ * @see {@link normalizedAstToMermaid}
+ * @see {@link normalizedAstToMermaidUrl}
+ * @see {@link printNormalizedAstToMermaid}
  */
 export function printNormalizedAstToMermaidUrl(ast: NormalizedAst): string {
 	return normalizedAstToMermaidUrl(ast.ast);

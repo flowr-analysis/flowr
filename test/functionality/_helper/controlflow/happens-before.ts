@@ -10,6 +10,7 @@ import { happensBefore } from '../../../../src/control-flow/happens-before';
 import { cfgToMermaidUrl } from '../../../../src/util/mermaid/cfg';
 import { defaultConfigOptions } from '../../../../src/config';
 
+
 /**
  *
  */

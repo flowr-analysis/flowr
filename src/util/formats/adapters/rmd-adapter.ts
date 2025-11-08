@@ -66,8 +66,9 @@ export const RmdAdapter = {
 
 
 const RTagRegex = /{[rR](?:[\s,][^}]*)?}/;
+
 /**
- *
+ * Checks whether a CommonMark node is an R code block
  */
 export function isRCodeBlock(node: Node): node is Node & { literal: string, info: string } {
 	return node.type === 'code_block' && node.literal !== null && node.info !== null && RTagRegex.test(node.info);
@@ -79,7 +80,7 @@ function countNewlines(str: string): number {
 }
 
 /**
- *
+ * Restores an Rmd file from code blocks, filling non-code lines with empty lines
  */
 export function restoreBlocksWithoutMd(blocks: CodeBlockEx[], totalLines: number): string {
 	let line = 1;
@@ -105,7 +106,7 @@ export function restoreBlocksWithoutMd(blocks: CodeBlockEx[], totalLines: number
 }
 
 /**
- *
+ * Parses the options of an R code block from its header and content
  */
 export function parseCodeBlockOptions(header: string, content: string): string {
 	let opts = header.length === 3 // '{r}' => header.length=3 (no options in header)

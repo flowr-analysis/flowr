@@ -22,6 +22,7 @@ import { array2bag } from '../../../../util/collections/arrays';
 type UsedPackagesPostProcessing = ReplaceKeysForSummary<UsedPackageInfo, SummarizedWithProject>
 
 
+
 /**
  *
  */

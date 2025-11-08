@@ -37,7 +37,7 @@ export function getRangeStart(p: undefined): undefined
 export function getRangeStart(p: SourceRange): SourcePosition
 export function getRangeStart(p: SourceRange | undefined): SourcePosition | undefined
 /**
- *
+ * Returns the start position of a source range.
  */
 export function getRangeStart(p: SourceRange | undefined): SourcePosition | undefined {
 	return p === undefined ? undefined : [p[0], p[1]];
@@ -47,7 +47,7 @@ export function getRangeEnd(p: undefined): undefined
 export function getRangeEnd(p: SourceRange): SourcePosition
 export function getRangeEnd(p: SourceRange | undefined): SourcePosition | undefined
 /**
- *
+ * Returns the end position of a source range.
  */
 export function getRangeEnd(p: SourceRange | undefined): SourcePosition | undefined {
 	return p === undefined ? undefined : [p[2], p[3]];
@@ -65,7 +65,9 @@ export function rangeFrom(sl: number | string, sc: number | string, el: number |
 }
 
 /**
- *
+ * Merges multiple source ranges into a single source range that spans from the earliest start to the latest end.
+ * If you are interested in combining overlapping ranges into a minimal set of ranges, see {@link combineRanges}.
+ * @throws if no ranges are provided
  */
 export function mergeRanges(...rs: (SourceRange | undefined)[]): SourceRange {
 	const rsSafe: SourceRange[] = rs.filter(isNotUndefined);
@@ -117,7 +119,8 @@ export function rangeIsSubsetOf([r1sl,r1sc,r1el,r1ec]: SourceRange, [r2sl,r2sc,r
 }
 
 /**
- *
+ * Combines overlapping or subset ranges into a minimal set of ranges.
+ * If you are interested in merging overlapping ranges, see {@link mergeRanges}.
  */
 export function combineRanges(...ranges: SourceRange[]): SourceRange[] {
 	return ranges.filter(range => !ranges.some(other => range !== other && rangeIsSubsetOf(range, other)));

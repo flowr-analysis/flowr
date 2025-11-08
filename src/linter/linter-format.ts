@@ -121,14 +121,16 @@ export interface LintingResultsSuccess<Name extends LintingRuleNames> {
 }
 
 /**
- *
+ * Checks whether the given linting results represent an error.
+ * @see {@link isLintingResultsSuccess}
  */
 export function isLintingResultsError<Name extends LintingRuleNames>(o: LintingResults<Name>): o is LintingResultsError {
 	return 'error' in o;
 }
 
 /**
- *
+ * Checks whether the given linting results represent a successful linting result.
+ * @see {@link isLintingResultsError}
  */
 export function isLintingResultsSuccess<Name extends LintingRuleNames>(o: LintingResults<Name>): o is LintingResultsSuccess<Name> {
 	return 'results' in o;
@@ -169,5 +171,5 @@ export enum LintingRuleCertainty {
 
 export enum LintingPrettyPrintContext {
 	Query = 'query',
-	Full = 'full'
+	Full  = 'full'
 }

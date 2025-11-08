@@ -7,6 +7,7 @@ function flattenSetElements(s: Lift<Value[]>): Lift<Value[]> {
 	});
 }
 
+
 /**
  *
  */
@@ -20,6 +21,7 @@ export function setFrom<V extends Value[]>(...elements: V): Lift<ValueSet<Value[
 		elements: vals
 	};
 }
+
 
 /**
  *

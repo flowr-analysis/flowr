@@ -97,6 +97,7 @@ export const RegisteredQueries = {
 	'virtual': new Map<string, QueryDocumentation>()
 };
 
+
 /**
  *
  */
@@ -112,6 +113,7 @@ function linkify(name: string) {
 	return name.toLowerCase().replace(/ /g, '-');
 }
 
+
 /**
  *
  */
@@ -122,6 +124,7 @@ export function linkToQueryOfName(id: SupportedQueryTypes | SupportedVirtualQuer
 	}
 	return `[${query.name}](#${linkify(query.name)})`;
 }
+
 
 /**
  *
@@ -151,6 +154,7 @@ Responsible for the execution of the ${name} query is \`${functionName}\` in ${g
 
 `;
 }
+
 
 /**
  *

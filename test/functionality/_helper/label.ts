@@ -73,6 +73,7 @@ export function label(testname: string, ids?: readonly SupportedFlowrCapabilityI
 	}
 }
 
+
 /**
  *
  */
@@ -99,6 +100,7 @@ function getFullNameOfLabel(label: TestLabel): string {
 export function modifyLabelName(label: TestLabel, nameModification: (name: string) => string): TestLabel
 export function modifyLabelName(label: string, nameModification: (name: string) => string): string
 export function modifyLabelName(label: TestLabel | string, nameModification: (name: string) => string): TestLabel | string
+
 /**
  *
  */
@@ -138,6 +140,7 @@ function printMissingCapability(label: FlowrCapabilityWithPath, testNames: reado
 		}
 	}
 }
+
 
 /**
  *

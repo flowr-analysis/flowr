@@ -28,7 +28,7 @@ function highlight(s: string, selected: boolean): string {
 }
 
 /**
- *
+ * Print a slice diff with ANSI colors
  */
 export function sliceDiffAnsi(slice: ReadonlySet<NodeId>, normalized: NormalizedAst, criteriaIds: ReadonlySet<NodeId>, originalCode: string) {
 	let importantLocations = Array.from(normalized.idMap.entries())

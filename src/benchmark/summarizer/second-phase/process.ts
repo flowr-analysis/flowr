@@ -14,6 +14,7 @@ import {
 import { type DataFrameOperationName , DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
 import { arraySum } from '../../../util/collections/arrays';
 
+
 /**
  *
  */
@@ -159,6 +160,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 	};
 }
 
+
 /**
  *
  */
@@ -244,6 +246,7 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 	};
 }
 
+
 /**
  *
  */
@@ -277,6 +280,7 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 	};
 	allSummarized.push(got.summarize);
 }
+
 
 /**
  *

@@ -32,22 +32,21 @@ import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 let sourceProvider = requestProviderFromFile();
 
 /**
- *
+ * Returns the current (global) source provider
  */
 export function getSourceProvider(): RParseRequestProvider {
 	return sourceProvider;
 }
 
 /**
- *
+ * Sets the current (global) source provider
  */
 export function setSourceProvider(provider: RParseRequestProvider): void {
 	sourceProvider = provider;
 }
 
-
 /**
- *
+ * Infers working directories based on the given option and reference chain
  */
 export function inferWdFromScript(option: InferWorkingDirectory, referenceChain: readonly RParseRequest[]): string[] {
 	switch(option) {
@@ -150,9 +149,8 @@ export function findSource(resolveSource: FlowrLaxSourcingOptions | undefined, s
 	return found;
 }
 
-
 /**
- *
+ * Processes a named function call (i.e., not an anonymous function)
  */
 export function processSourceCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -220,7 +218,7 @@ export function processSourceCall<OtherInfo>(
 }
 
 /**
- *
+ * Processes a source request with the given dataflow processor information and existing dataflow information
  */
 export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, getId: IdGenerator<NoInfo>): DataflowInformation {
 	if(request.request === 'file') {
@@ -239,7 +237,8 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 		const file = request.request === 'file' ? request.content : undefined;
 		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(request);
 		normalized = (typeof parsed !== 'string' ?
-			normalizeTreeSitter({ parsed }, getId, data.flowrConfig, file) : normalize({ parsed }, getId, file)) as NormalizedAst<OtherInfo & ParentInformation>;
+			normalizeTreeSitter({ parsed }, getId, data.flowrConfig, file)
+			: normalize({ parsed }, getId, file)) as NormalizedAst<OtherInfo & ParentInformation>;
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
 			currentRequest: request,
@@ -280,9 +279,8 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 	};
 }
 
-
 /**
- *
+ * Processes a standalone source file (i.e., not from a source function call)
  */
 export function standaloneSourceFile<OtherInfo>(
 	inputRequest: RParseRequest,

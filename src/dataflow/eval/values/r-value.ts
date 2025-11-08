@@ -63,6 +63,7 @@ export type Value = Lift<
 export type ValueType<V> = V extends { type: infer T } ? T : never
 export type ValueTypes = ValueType<Value>
 
+
 /**
  *
  */
@@ -130,6 +131,7 @@ function renderString(value: RStringValue): string {
 		return `${quote}${JSON.stringify(value.str).slice(1, -1)}${quote}`;
 	}
 }
+
 
 /**
  *

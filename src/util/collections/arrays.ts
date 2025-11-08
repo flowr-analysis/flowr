@@ -102,7 +102,8 @@ export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {
 }
 
 /**
- *
+ * Returns a tuple of two arrays, where the first one contains all elements for which the predicate returned true,
+ * and the second one contains all elements for which the predicate returned false.
  */
 export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T[]] {
 	const left: T[] = [];
@@ -182,7 +183,7 @@ export function array2bag<T>(arr: T[]): Map<T, number> {
 }
 
 /**
- *
+ * Compares two arrays for equality, using the given comparison function for the elements.
  */
 export function arrayEqual<T>(
 	a: readonly T[] | undefined,
@@ -251,9 +252,8 @@ export function uniqueArrayMerge<T>(left: readonly T[], right: readonly T[]): T[
 	return Array.from(result);
 }
 
-
 /**
- *
+ * Groups the elements of the given array by the key returned by the given key function.
  */
 export function arraysGroupBy<T, K>(arr: readonly T[], keyFn: (elem: T) => K): Map<K, T[]> {
 	const result = new Map<K, T[]>();

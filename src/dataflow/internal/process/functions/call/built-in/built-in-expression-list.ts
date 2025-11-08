@@ -124,6 +124,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	return inputEnvironment;
 }
 
+
 /**
  *
  */

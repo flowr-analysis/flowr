@@ -58,7 +58,7 @@ async function collectFileArguments(options: StatsCliOptions, verboseAdd: readon
 }
 
 /**
- *
+ * The core function for the 'flowr stats' script.
  */
 export async function flowrScriptGetStats(options: StatsCliOptions, config: FlowrConfigOptions) {
 	if(options.input.length === 0) {

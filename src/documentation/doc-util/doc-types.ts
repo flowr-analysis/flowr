@@ -23,6 +23,7 @@ export interface TypeElementInSource {
 	readonly properties?: string[];
 }
 
+
 /**
  *
  */
@@ -46,6 +47,7 @@ export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files:
 	}
 }
 
+
 /**
  *
  */
@@ -58,6 +60,7 @@ export function dropGenericsFromTypeName(type: string): string {
 	return type;
 }
 
+
 /**
  *
  */
@@ -69,6 +72,7 @@ export function removeCommentSymbolsFromTypeScriptComment(comment: string): stri
 		.replace(/\{@[a-zA-Z]+ ([^}]+\|)?(?<name>[^}]+)}/gm, '<code>$<name></code>')
 		.trim();
 }
+
 
 /**
  *
@@ -88,6 +92,7 @@ export function getTextualCommentsFromTypeScript(node: ts.Node): string[] {
 	return out;
 }
 
+
 /**
  *
  */
@@ -95,6 +100,7 @@ export function getStartLineOfTypeScriptNode(node: ts.Node, sourceFile: ts.Sourc
 	const lineStart = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line;
 	return lineStart + 1;
 }
+
 
 /**
  *
@@ -105,6 +111,7 @@ export function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
 }
 
 const defaultSkip = ['Pick', 'Partial', 'Required', 'Readonly', 'Omit', 'DeepPartial', 'DeepReadonly', 'DeepWritable', 'StrictOmit'];
+
 
 /**
  *
@@ -287,12 +294,14 @@ interface MermaidCompact {
 	edgeLines: string[]
 }
 
+
 /**
  *
  */
 export function getTypePathForTypeScript({ filePath }: Pick<TypeElementInSource, 'filePath' >) {
 	return filePath.replace(/^.*\/src\//, 'src/').replace(/^.*\/test\//, 'test/');
 }
+
 
 /**
  *
@@ -419,6 +428,7 @@ export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport
 	return getTypesFromFileAsMermaid(files, options);
 }
 
+
 /**
  *
  */
@@ -449,6 +459,7 @@ export interface PrintHierarchyArguments {
 }
 
 export const mermaidHide = ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial', 'RAccessBase'];
+
 /**
  *
  */
@@ -488,6 +499,7 @@ interface FnInfo {
 	doNotAutoGobble?: boolean,
 	hideDefinedAt?:   boolean
 }
+
 
 /**
  *
@@ -582,6 +594,7 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 	}${codeStyle ? '</code>' : ''}</a>`;
 }
 
+
 /**
  *
  */
@@ -599,6 +612,7 @@ export interface GetDocumentationForTypeFilters {
     fuzzy?: boolean;
     type?:  TypeElementKind;
 }
+
 
 /**
  *

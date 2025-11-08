@@ -17,6 +17,7 @@ interface BenchmarkData {
 	stats:     SlicerStats
 }
 
+
 /**
  *
  */
@@ -71,6 +72,7 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 	console.log(`    - Append textual summary to ${textOutputAppendPath}`);
 	fs.appendFileSync(textOutputAppendPath, `${stats2string(summarized)}\n`);
 }
+
 
 /**
  *

@@ -11,6 +11,7 @@ interface BenchmarkGraphEntry extends MergeableRecord {
 	extra?: string
 }
 
+
 /**
  *
  */

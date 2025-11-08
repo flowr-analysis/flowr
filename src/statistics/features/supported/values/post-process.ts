@@ -24,6 +24,7 @@ import type { StatisticsOutputFormat } from '../../../output/statistics-file';
 
 type ValuesPostProcessing = ReplaceKeysForSummary<ValueInfo, SummarizedWithProject>
 
+
 /**
  *
  */

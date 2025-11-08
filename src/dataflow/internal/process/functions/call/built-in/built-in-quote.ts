@@ -10,6 +10,9 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 
 
+/**
+ *
+ */
 export function processQuote<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],

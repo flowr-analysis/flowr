@@ -1,5 +1,4 @@
-import type { Fingerprint } from './fingerprint';
-import { fingerprint } from './fingerprint';
+import { type Fingerprint , fingerprint } from './fingerprint';
 import type { NodeToSlice, SliceResult } from './slicer-types';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';

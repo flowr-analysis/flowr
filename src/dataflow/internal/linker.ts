@@ -1,33 +1,31 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { guard, isNotUndefined } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IdentifierReference } from '../environments/identifier';
-import { isReferenceType, ReferenceType } from '../environments/identifier';
-import type { DataflowGraph, FunctionArgument } from '../graph/graph';
-import { isNamedArgument } from '../graph/graph';
+import { type NodeId , recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type IdentifierReference , isReferenceType, ReferenceType } from '../environments/identifier';
+import { type DataflowGraph, type FunctionArgument , isNamedArgument } from '../graph/graph';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import type {
-	DataflowGraphVertexFunctionCall,
-	DataflowGraphVertexFunctionDefinition,
-	DataflowGraphVertexInfo
-} from '../graph/vertex';
-import { VertexType } from '../graph/vertex';
+import {
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexFunctionDefinition,
+	type DataflowGraphVertexInfo
+	, VertexType } from '../graph/vertex';
 import { resolveByName } from '../environments/resolve-by-name';
-import type { BuiltIn } from '../environments/built-in';
-import { isBuiltIn } from '../environments/built-in';
+import { type BuiltIn , isBuiltIn } from '../environments/built-in';
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
 import type { ExitPoint } from '../info';
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
+/**
+ *
+ */
 export function findNonLocalReads(graph: DataflowGraph, ignore: readonly IdentifierReference[]): IdentifierReference[] {
 	const ignores = new Set(ignore.map(i => i.nodeId));
 	const ids = new Set(
@@ -72,6 +70,9 @@ export function findNonLocalReads(graph: DataflowGraph, ignore: readonly Identif
 	return nonLocalReads;
 }
 
+/**
+ *
+ */
 export function produceNameSharedIdMap(references: IdentifierReference[]): NameIdMap {
 	const nameIdShares = new DefaultMap<string, IdentifierReference[]>(() => []);
 	for(const reference of references) {
@@ -82,6 +83,9 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 	return nameIdShares;
 }
 
+/**
+ *
+ */
 export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<ParentInformation>[], graph: DataflowGraph): void {
 	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
 	const nameParamMap = new Map<string, RParameter<ParentInformation>>(params.filter(p => p?.name?.content !== undefined).map(p => [p.name.content, p]));
@@ -153,6 +157,9 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCa
 	linkArgumentsOnCall(callArgs, linkedFunction.parameters, finalGraph);
 }
 
+/**
+ *
+ */
 export function linkFunctionCallWithSingleTarget(
 	graph: DataflowGraph,
 	def: DataflowGraphVertexFunctionDefinition,
@@ -224,7 +231,6 @@ function linkFunctionCall(
 /**
  * Returns the called functions within the current graph, which can be used to merge the environments with the call.
  * Furthermore, it links the corresponding arguments.
- *
  * @param graph     - The graph to use for search and resolution traversals (ideally a superset of the `thisGraph`)
  * @param idMap     - The map to resolve ids to names
  * @param thisGraph - The graph to search for function calls in
@@ -278,6 +284,9 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 	return found;
 }
 
+/**
+ *
+ */
 export function getAllLinkedFunctionDefinitions(
 	functionDefinitionReadIds: ReadonlySet<NodeId>,
 	dataflowGraph: DataflowGraph
@@ -326,13 +335,11 @@ export function getAllLinkedFunctionDefinitions(
 
 /**
  * This method links a set of read variables to definitions in an environment.
- *
  * @param referencesToLinkAgainstEnvironment - The set of references to link against the environment
  * @param environmentInformation             - The environment information to link against
  * @param givenInputs                        - The existing list of inputs that might be extended
  * @param graph                              - The graph to enter the found links
  * @param maybeForRemaining                  - Each input that can not be linked, will be added to `givenInputs`. If this flag is `true`, it will be marked as `maybe`.
- *
  * @returns the given inputs, possibly extended with the remaining inputs (those of `referencesToLinkAgainstEnvironment` that could not be linked against the environment)
  */
 export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
@@ -363,7 +370,8 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 	return givenInputs;
 }
 
-/** all loops variables which are open read (not already bound by a redefinition within the loop) get a maybe read marker to their last definition within the loop
+/**
+ * all loops variables which are open read (not already bound by a redefinition within the loop) get a maybe read marker to their last definition within the loop
  * e.g. with:
  * ```R
  * for(i in 1:10) {
@@ -393,6 +401,9 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 	}
 }
 
+/**
+ *
+ */
 export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: readonly IdentifierReference[]): void {
 	// just apply the cds of all exit points not already present
 	const exitCds = new Set(exits.flatMap(e => e.controlDependencies).filter(isNotUndefined));

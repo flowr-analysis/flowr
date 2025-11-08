@@ -1,6 +1,5 @@
 /**
  * Escapes HTML special characters in a string.
- *
  * @param str - The string to escape
  * @returns The escaped string
  */

@@ -4,8 +4,7 @@ import type { PathLike } from 'fs';
 import { log } from '../../../util/log';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { FlowrDescriptionFile } from './flowr-description-file';
-import type { FlowrFileProvider } from '../../context/flowr-file';
-import { SpecialFileRole } from '../../context/flowr-file';
+import { type FlowrFileProvider , SpecialFileRole } from '../../context/flowr-file';
 
 export const descriptionFileLog = log.getSubLogger({ name: 'flowr-analyzer-loading-order-description-file-plugin' });
 

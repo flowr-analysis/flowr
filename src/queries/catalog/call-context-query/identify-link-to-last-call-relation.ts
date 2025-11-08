@@ -1,9 +1,7 @@
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { getReferenceOfArgument } from '../../../dataflow/graph/graph';
+import { type DataflowGraph , getReferenceOfArgument } from '../../../dataflow/graph/graph';
 import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
-import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
-import { VertexType } from '../../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall , VertexType } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
 import { ReferenceType } from '../../../dataflow/environments/identifier';
@@ -30,6 +28,9 @@ export enum CallTargets {
     Any = 'any'
 }
 
+/**
+ *
+ */
 export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | 'no' {
 	const callVertex = graph.getVertex(id, true);
 	if(callVertex === undefined || callVertex.tag !== VertexType.FunctionCall) {
@@ -88,6 +89,9 @@ export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarge
 
 
 
+/**
+ *
+ */
 export function getValueOfArgument<Types extends readonly RType[] = readonly RType[]>(
 	graph: DataflowGraph, call: DataflowGraphVertexFunctionCall | undefined, argument: { name?: string, index: number }, additionalAllowedTypes?: Types
 ): (RNodeWithParent & { type: Types[number] } ) | undefined {
@@ -116,6 +120,9 @@ export function getValueOfArgument<Types extends readonly RType[] = readonly RTy
 }
 
 
+/**
+ *
+ */
 export function identifyLinkToLastCallRelation(
 	from: NodeId,
 	cfg: ControlFlowGraph,

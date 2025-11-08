@@ -1,7 +1,6 @@
 import type { Feature, FeatureProcessorInput } from '../../feature';
 import type { Writable } from 'ts-essentials';
-import type { CommonSyntaxTypeCounts } from '../../common-syntax-probability';
-import {
+import { type CommonSyntaxTypeCounts ,
 	emptyCommonSyntaxTypeCounts,
 	updateCommonSyntaxTypeCounts
 } from '../../common-syntax-probability';

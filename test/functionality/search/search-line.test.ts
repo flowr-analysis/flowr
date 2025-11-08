@@ -4,8 +4,7 @@ import { FlowrSearchGenerator as Q } from '../../../src/search/flowr-search-buil
 import { assertSearch, assertSearchEnrichment } from '../_helper/search';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { FlowrFilter } from '../../../src/search/flowr-search-filters';
-import type { CfgInformationArguments } from '../../../src/search/search-executor/search-enrichers';
-import { Enrichment } from '../../../src/search/search-executor/search-enrichers';
+import { type CfgInformationArguments , Enrichment } from '../../../src/search/search-executor/search-enrichers';
 import { Mapper } from '../../../src/search/search-executor/search-mappers';
 import { CallTargets } from '../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-simplification';

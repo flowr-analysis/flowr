@@ -19,10 +19,16 @@ export interface ExplanationParameters {
 	readonly expectedSubgraph: DataflowGraph
 }
 
+/**
+ *
+ */
 export function getAllVertices(): [string, VertexType][] {
 	return Object.entries(VertexType) as [string, VertexType][];
 }
 
+/**
+ *
+ */
 export function getAllEdges(): [string, EdgeType][] {
 	return Object.entries(EdgeType).filter(([, v]) => Number.isInteger(v)) as [string, EdgeType][];
 }

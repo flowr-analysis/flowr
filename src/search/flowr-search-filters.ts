@@ -2,8 +2,7 @@ import { RType, ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import { ValidVertexTypes, VertexType } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElement } from './flowr-search';
-import type { Enrichment } from './search-executor/search-enrichers';
-import { enrichmentContent } from './search-executor/search-enrichers';
+import { type Enrichment , enrichmentContent } from './search-executor/search-enrichers';
 import type { BuiltInMappingName } from '../dataflow/environments/built-in';
 import type { DataflowInformation } from '../dataflow/info';
 
@@ -68,6 +67,9 @@ export interface OriginKindArgs {
 	keepNonFunctionCalls?: boolean
 }
 
+/**
+ *
+ */
 export function testFunctionsIgnoringPackage(functions: readonly string[]): RegExp {
 	return new RegExp(`"(.+:::?)?(${functions.join('|')})"`);
 }
@@ -175,6 +177,9 @@ export class FlowrFilterCombinator {
 	}
 }
 
+/**
+ *
+ */
 export function binaryTreeToString(tree: BooleanNode): string {
 	const res = treeToStringImpl(tree, 0);
 	// drop outer parens
@@ -205,6 +210,9 @@ function treeToStringImpl(tree: BooleanNode, depth: number): string {
 }
 
 
+/**
+ *
+ */
 export function isBinaryTree(tree: unknown): tree is { tree: BooleanNode } {
 	return typeof tree === 'object' && tree !== null && 'tree' in tree;
 }
@@ -243,6 +251,9 @@ function evalTree(tree: BooleanNode, data: FilterData): boolean {
 	return evalVisit[tree.type](tree as never, data);
 }
 
+/**
+ *
+ */
 export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): boolean {
 	/* common lift, this can be improved easily :D */
 	const tree = FlowrFilterCombinator.is(filter as FlowrFilterExpression);

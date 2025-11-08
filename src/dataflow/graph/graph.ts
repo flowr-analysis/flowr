@@ -2,21 +2,18 @@ import { guard } from '../../util/assert';
 import type { DataflowGraphEdge, EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
 import { equalFunctionArguments } from './diff-dataflow-graph';
-import type {
-	DataflowGraphVertexArgument,
-	DataflowGraphVertexFunctionCall,
-	DataflowGraphVertexFunctionDefinition,
-	DataflowGraphVertexInfo,
-	DataflowGraphVertices
-} from './vertex';
-import { VertexType } from './vertex';
+import {
+	type DataflowGraphVertexArgument,
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexFunctionDefinition,
+	type DataflowGraphVertexInfo,
+	type DataflowGraphVertices
+	, VertexType } from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IEnvironment, REnvironmentInformation } from '../environments/environment';
-import { initializeCleanEnvironments } from '../environments/environment';
+import { type NodeId , normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type IEnvironment, type REnvironmentInformation , initializeCleanEnvironments } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
 import { jsonReplacer } from '../../util/json';
@@ -37,7 +34,6 @@ export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' 
  * ```r
  * foo(a = 3, b = 2)
  * ```
- *
  * @see #isNamedArgument
  * @see PositionalFunctionArgument
  */
@@ -51,7 +47,6 @@ export interface NamedFunctionArgument extends IdentifierReference {
  * ```r
  * foo(3, 2)
  * ```
- *
  * @see #isPositionalArgument
  * @see NamedFunctionArgument
  */
@@ -130,7 +125,6 @@ export type UnknownSidEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> }
  * However, this does not have to hold during the construction as edges may point from or to vertices which are yet to be constructed.
  *
  * All methods return the modified graph to allow for chaining.
- *
  * @see {@link DataflowGraph#addEdge|`addEdge`} - to add an edge to the graph
  * @see {@link DataflowGraph#addVertex|`addVertex`} - to add a vertex to the graph
  * @see {@link DataflowGraph#fromJson|`fromJson`} - to construct a dataflow graph object from a deserialized JSON object.
@@ -165,11 +159,9 @@ export class DataflowGraph<
 
 	/**
 	 * Get the {@link DataflowGraphVertexInfo} attached to a node as well as all outgoing edges.
-	 *
 	 * @param id                      - The id of the node to get
 	 * @param includeDefinedFunctions - If true this will search function definitions as well and not just the toplevel
 	 * @returns the node info for the given id (if it exists)
-	 *
 	 * @see #getVertex
 	 */
 	public get(id: NodeId, includeDefinedFunctions = true): [Vertex, OutgoingEdges] | undefined {
@@ -181,11 +173,9 @@ export class DataflowGraph<
 
 	/**
 	 * Get the {@link DataflowGraphVertexInfo} attached to a vertex.
-	 *
 	 * @param id                      - The id of the node to get
 	 * @param includeDefinedFunctions - If true this will search function definitions as well and not just the toplevel
 	 * @returns the node info for the given id (if it exists)
-	 *
 	 * @see #get
 	 */
 	public getVertex(id: NodeId, includeDefinedFunctions = true): Vertex | undefined {
@@ -208,9 +198,9 @@ export class DataflowGraph<
 
 	/**
 	 * Given a node in the normalized AST this either:
-	 * * returns the id if the node directly exists in the DFG
-	 * * returns the ids of all vertices in the DFG that are linked to this
-	 * * returns undefined if the node is not part of the DFG and not linked to any node
+	 * returns the id if the node directly exists in the DFG
+	 * returns the ids of all vertices in the DFG that are linked to this
+	 * returns undefined if the node is not part of the DFG and not linked to any node
 	 */
 	public getLinked(nodeId: NodeId): NodeId[] | undefined {
 		if(this.vertexInformation.has(nodeId)) {
@@ -256,7 +246,6 @@ export class DataflowGraph<
 	/**
 	 * @param includeDefinedFunctions - If true this will iterate over function definitions as well and not just the toplevel
 	 * @returns the ids of all toplevel vertices in the graph together with their vertex information
-	 *
 	 * @see #edges
 	 */
 	public* vertices(includeDefinedFunctions: boolean): MapIterator<[NodeId, Vertex]> {
@@ -271,7 +260,6 @@ export class DataflowGraph<
 
 	/**
 	 * @returns the ids of all edges in the graph together with their edge information
-	 *
 	 * @see #vertices
 	 */
 	public* edges(): MapIterator<[NodeId, OutgoingEdges]> {
@@ -280,7 +268,6 @@ export class DataflowGraph<
 
 	/**
 	 * Returns true if the graph contains a node with the given id.
-	 *
 	 * @param id                      - The id to check for
 	 * @param includeDefinedFunctions - If true this will check function definitions as well and not just the toplevel
 	 */
@@ -301,12 +288,10 @@ export class DataflowGraph<
 
 	/**
 	 * Adds a new vertex to the graph, for ease of use, some arguments are optional and filled automatically.
-	 *
 	 * @param vertex - The vertex to add
 	 * @param asRoot - If false, this will only add the vertex but do not add it to the {@link rootIds|root vertices} of the graph.
 	 *                 This is probably only of use, when you construct dataflow graphs for tests.
 	 * @param overwrite - If true, this will overwrite the vertex if it already exists in the graph (based on the id).
-	 *
 	 * @see DataflowGraphVertexInfo
 	 * @see DataflowGraphVertexArgument
 	 */
@@ -365,10 +350,9 @@ export class DataflowGraph<
 
 	/**
 	 * Merges the other graph into *this* one (in-place). The return value is only for convenience.
-	 *
 	 * @param otherGraph        - The graph to merge into this one
 	 * @param mergeRootVertices - If false, this will only merge the vertices and edges but exclude the root vertices this is probably only of use
-	 * 													  in the context of function definitions
+	 *                            in the context of function definitions
 	 */
 	public mergeWith(otherGraph: DataflowGraph<Vertex, Edge> | undefined, mergeRootVertices = true): this {
 		if(otherGraph === undefined) {

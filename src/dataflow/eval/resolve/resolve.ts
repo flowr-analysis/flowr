@@ -9,8 +9,7 @@ import type { DataflowGraph } from '../../graph/graph';
 import { getOriginInDfg, OriginType } from '../../origin/dfg-get-origin';
 import { intervalFrom } from '../values/intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
-import type { Lift, Value, ValueNumber, ValueVector } from '../values/r-value';
-import { Top } from '../values/r-value';
+import { type Lift, type Value, type ValueNumber, type ValueVector , Top } from '../values/r-value';
 import { stringFrom } from '../values/string/string-constants';
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
 import { resolveIdToValue } from './alias-tracking';
@@ -23,7 +22,6 @@ import { liftScalar } from '../values/scalar/scalar-consatnts';
  *
  * This function converts an RNode to its Value, but also recursively resolves
  * aliases and vectors (in case of a vector).
- *
  * @param a       - Ast node to resolve
  * @param resolve - Variable resolve mode
  * @param env     - Environment to use
@@ -70,7 +68,6 @@ export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, env?: 
  *
  * This function resolves a vector function call `c` to a {@link ValueVector}
  * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
- *
  * @param resolve - Variable resolve mode
  * @param node    - Node of the vector function to resolve
  * @param env     - Environment to use
@@ -94,7 +91,6 @@ export function resolveAsVector(resolve: VariableResolve, node: RNodeWithParent,
  *
  * This function resolves a binary sequence operator `:` to a {@link ValueVector} of {@link ValueNumber}s
  * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
- *
  * @param resolve  - Variable resolve mode
  * @param operator - Node of the sequence operator to resolve
  * @param env      - Environment to use
@@ -124,7 +120,6 @@ export function resolveAsSeq(resolve: VariableResolve, operator: RNodeWithParent
  *
  * This function resolves a unary plus operator `+` to a {@link ValueNumber} or {@link ValueVector} of ValueNumbers
  * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
- *
  * @param resolve  - Variable resolve mode
  * @param operator - Node of the plus operator to resolve
  * @param env      - Environment to use
@@ -154,7 +149,6 @@ export function resolveAsPlus(resolve: VariableResolve, operator: RNodeWithParen
  *
  * This function resolves a unary minus operator `-` to a {@link ValueNumber} or {@link ValueVector} of ValueNumbers
  * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
- *
  * @param resolve  - Variable resolve mode
  * @param operator - Node of the minus operator to resolve
  * @param env      - Environment to use

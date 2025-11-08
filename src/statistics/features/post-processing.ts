@@ -8,6 +8,9 @@ export interface SummarizedWithProject<Uniques=Set<string>, Count=number[]> {
 	count:          Count
 }
 
+/**
+ *
+ */
 export function emptySummarizedWithProject(): SummarizedWithProject {
 	return {
 		uniqueProjects: new Set(),
@@ -20,6 +23,9 @@ export type ReplaceKeysForSummary<Source, Target> = MergeableRecord & {
 	[K in keyof Source]: Target
 }
 
+/**
+ *
+ */
 export function recordFilePath(
 	summarize: SummarizedWithProject,
 	filepath: string,

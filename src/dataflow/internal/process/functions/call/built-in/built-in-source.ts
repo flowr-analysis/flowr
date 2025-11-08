@@ -1,22 +1,17 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
-import { initializeCleanDataflowInformation } from '../../../../../info';
-import type { FlowrLaxSourcingOptions } from '../../../../../../config';
-import { DropPathsOption, InferWorkingDirectory } from '../../../../../../config';
+import { type DataflowInformation , initializeCleanDataflowInformation } from '../../../../../info';
+import { type FlowrLaxSourcingOptions , DropPathsOption, InferWorkingDirectory } from '../../../../../../config';
 import { processKnownFunctionCall } from '../known-call-handling';
-import type { RParseRequest, RParseRequestProvider } from '../../../../../../r-bridge/retriever';
-import { removeRQuotes, requestProviderFromFile } from '../../../../../../r-bridge/retriever';
-import type {
-	IdGenerator,
-	NormalizedAst,
-	ParentInformation
-} from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { type RParseRequest, type RParseRequestProvider , removeRQuotes, requestProviderFromFile } from '../../../../../../r-bridge/retriever';
 import {
+	type IdGenerator,
+	type NormalizedAst,
+	type ParentInformation
+	,
 	deterministicPrefixIdGenerator,
 	sourcedDeterministicCountingIdGenerator
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -36,15 +31,24 @@ import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 
 let sourceProvider = requestProviderFromFile();
 
+/**
+ *
+ */
 export function getSourceProvider(): RParseRequestProvider {
 	return sourceProvider;
 }
 
+/**
+ *
+ */
 export function setSourceProvider(provider: RParseRequestProvider): void {
 	sourceProvider = provider;
 }
 
 
+/**
+ *
+ */
 export function inferWdFromScript(option: InferWorkingDirectory, referenceChain: readonly RParseRequest[]): string[] {
 	switch(option) {
 		case InferWorkingDirectory.MainScript:
@@ -147,6 +151,9 @@ export function findSource(resolveSource: FlowrLaxSourcingOptions | undefined, s
 }
 
 
+/**
+ *
+ */
 export function processSourceCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
@@ -212,6 +219,9 @@ export function processSourceCall<OtherInfo>(
 	return information;
 }
 
+/**
+ *
+ */
 export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, getId: IdGenerator<NoInfo>): DataflowInformation {
 	if(request.request === 'file') {
 		/* check if the file exists and if not, fail */
@@ -271,6 +281,9 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 }
 
 
+/**
+ *
+ */
 export function standaloneSourceFile<OtherInfo>(
 	inputRequest: RParseRequest,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,

@@ -1,16 +1,13 @@
 import type { FlowrSearchElement, FlowrSearchElements, FlowrSearchTransformerNodeBase } from '../flowr-search';
 import type { LastOfArray, Tail2TypesOrUndefined, TailOfArray } from '../../util/collections/arrays';
-import type { FlowrFilterExpression } from '../flowr-search-filters';
-import { evalFilter } from '../flowr-search-filters';
+import { type FlowrFilterExpression , evalFilter } from '../flowr-search-filters';
 import type { FlowrSearchGeneratorNode } from './search-generators';
 import { runSearch } from '../flowr-search-executor';
 import type { FlowrSearch } from '../flowr-search-builder';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { isNotUndefined } from '../../util/assert';
-import type { Enrichment, EnrichmentElementArguments } from './search-enrichers';
-import { enrichElement } from './search-enrichers';
-import type { Mapper, MapperArguments } from './search-mappers';
-import { map } from './search-mappers';
+import { type Enrichment, type EnrichmentElementArguments , enrichElement } from './search-enrichers';
+import { type Mapper, type MapperArguments , map } from './search-mappers';
 import type { ElementOf } from 'ts-essentials';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
@@ -50,6 +47,9 @@ export const transformers = {
 } as const;
 
 
+/**
+ *
+ */
 export function getTransformer<Name extends TransformerNames>(name: Name): typeof transformers[Name] {
 	if(!transformers[name]) {
 		throw new Error(`Unknown transformer: ${name}`);
@@ -161,7 +161,7 @@ async function getWith<Elements extends FlowrSearchElement<ParentInformation>[],
 	const data = {
 		normalize: await input.normalize(),
 		dataflow:  await input.dataflow(),
-		cfg: 	     await input.controlflow(),
+		cfg:       await input.controlflow(),
 		config:    input.flowrConfig
 	};
 

@@ -12,8 +12,7 @@ import type { SlicingCriteria } from '../slicing/criterion/parse';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../util/assert';
 import type { Enrichment, EnrichmentElementArguments } from './search-executor/search-enrichers';
-import type { MapperArguments } from './search-executor/search-mappers';
-import { Mapper } from './search-executor/search-mappers';
+import { type MapperArguments , Mapper } from './search-executor/search-mappers';
 import type { Query } from '../queries/query';
 import type TreeSitter from 'web-tree-sitter';
 
@@ -119,7 +118,6 @@ export type FlowrSearchBuilderType<Generator extends GeneratorNames = GeneratorN
 /**
  * The search query is a combination of a generator and a list of transformers
  * and allows this view to pass such queries in a serialized form.
- *
  * @typeParam Transformers - The list of transformers that are applied to the generator's output.
  */
 export interface FlowrSearch<
@@ -143,7 +141,6 @@ type FlowrSearchBuilderOut<Generator extends GeneratorNames, Transformers extend
  * Please use the {@link Q} object to create an object of this class!
  * In the end, you _can_ freeze the search by calling {@link FlowrSearchBuilder#build},
  * however, the search executors may do that for you.
- *
  * @see {@link FlowrSearchGenerator}
  * @see {@link FlowrSearch}
  * @see {@link FlowrSearchLike}
@@ -268,7 +265,6 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 
 	/**
 	 * Construct the final search (this may happen automatically with most search handlers).
-	 *
 	 * @param shouldOptimize - This may optimize the search.
 	 */
 	build(shouldOptimize = true): FlowrSearch<Info, Generator, Transformers, ElementType> {

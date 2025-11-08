@@ -7,6 +7,9 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 
 const voidRange = rangeFrom(-1, -1, -1, -1);
 
+/**
+ *
+ */
 export function toUnnamedArgument<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation> | undefined,
 	idMap: AstIdMap<OtherInfo>
@@ -30,6 +33,9 @@ export function toUnnamedArgument<OtherInfo>(
 	return arg;
 }
 
+/**
+ *
+ */
 export function wrapArgumentsUnnamed<OtherInfo>(
 	nodes: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[],
 	idMap: AstIdMap<OtherInfo>

@@ -1,6 +1,5 @@
 import { describe } from 'vitest';
-import type { AbstractDataFrameShape } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
-import { DataFrameDomain, DataFrameStateDomain } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
+import { type AbstractDataFrameShape , DataFrameDomain, DataFrameStateDomain } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
 import { DEFAULT_INFERENCE_LIMIT } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import { PosIntervalDomain, PosIntervalTop } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';

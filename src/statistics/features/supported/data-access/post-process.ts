@@ -1,21 +1,18 @@
 import type { FeatureStatisticsWithMeta } from '../../feature';
-import type {
-	CommonSyntaxTypeCounts } from '../../common-syntax-probability';
 import {
+	type CommonSyntaxTypeCounts ,
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability';
-import type { SummarizedWithProject } from '../../post-processing';
-import { emptySummarizedWithProject, recordFilePath } from '../../post-processing';
+import { type SummarizedWithProject , emptySummarizedWithProject, recordFilePath } from '../../post-processing';
 import type { DataAccessInfo } from './data-access';
 import fs from 'fs';
 import path from 'path';
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer';
 import { bigint2number } from '../../../../util/numbers';
 import type { MergeableRecord } from '../../../../util/objects';
-import type {
-	SummarizedMeasurement } from '../../../../util/summarizer';
 import {
+	type SummarizedMeasurement ,
 	summarizedMeasurement2Csv,
 	summarizedMeasurement2CsvHeader, summarizeMeasurement
 } from '../../../../util/summarizer';
@@ -88,6 +85,9 @@ function writeSingleOrDoubleBrackets(data: Map<string, SummarizedWithProject | C
 	}
 }
 
+/**
+ *
+ */
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	const summarize: DataAccessMetaPostProcessing<SummarizedWithProject> = {
 		singleBracket:         new Map(),

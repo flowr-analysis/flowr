@@ -1,5 +1,4 @@
-import type { MergeableRecord } from './util/objects';
-import { deepMergeObject } from './util/objects';
+import { type MergeableRecord , deepMergeObject } from './util/objects';
 import path from 'path';
 import fs from 'fs';
 import { log } from './util/log';
@@ -68,10 +67,9 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 	 */
 	readonly repeatedSourceLimit?:  number
 	/**
-	 * sometimes files may have a different name in the source call	(e.g., due to later replacements),
+	 * sometimes files may have a different name in the source call (e.g., due to later replacements),
 	 * with this setting you can provide a list of replacements to apply for each sourced file.
 	 * Every replacement consists of a record that maps a regex to a replacement string.
-	 *
 	 * @example
 	 * ```ts
 	 * [
@@ -315,6 +313,9 @@ export const flowrConfigFileSchema = Joi.object({
 	}).description('The configuration options for abstract interpretation.')
 }).description('The configuration file format for flowR.');
 
+/**
+ *
+ */
 export function parseConfig(jsonString: string): FlowrConfigOptions | undefined {
 	try {
 		const parsed   = JSON.parse(jsonString) as FlowrConfigOptions;
@@ -341,10 +342,16 @@ export function amendConfig(config: FlowrConfigOptions, amendmentFunc: (config: 
 	return newConfig;
 }
 
+/**
+ *
+ */
 export function cloneConfig(config: FlowrConfigOptions): FlowrConfigOptions {
 	return JSON.parse(JSON.stringify(config)) as FlowrConfigOptions;
 }
 
+/**
+ *
+ */
 export function getConfig(configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfigOptions {
 	try {
 		return loadConfigFromFile(configFile, configWorkingDirectory);
@@ -354,6 +361,9 @@ export function getConfig(configFile?: string, configWorkingDirectory = process.
 	}
 }
 
+/**
+ *
+ */
 export function getEngineConfig<T extends EngineConfig['type']>(config: FlowrConfigOptions, engine: T): EngineConfig & { type: T } | undefined {
 	const engines = config.engines;
 	if(!engines.length) {
@@ -372,6 +382,9 @@ function getPointerAnalysisThreshold(config: FlowrConfigOptions): number | 'unli
 	}
 }
 
+/**
+ *
+ */
 export function isOverPointerAnalysisThreshold(config: FlowrConfigOptions, count: number): boolean {
 	const threshold = getPointerAnalysisThreshold(config);
 	return threshold !== 'unlimited' && (threshold === 'disabled' || count > threshold);

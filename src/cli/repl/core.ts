@@ -1,6 +1,5 @@
 /**
  * Basically a helper file to allow the main 'flowr' script (located in the source root) to provide its repl
- *
  * @module
  */
 import { prompt } from './prompt';
@@ -14,13 +13,11 @@ import { FontStyles } from '../../util/text/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
 import { fileProtocol, requestFromInput } from '../../r-bridge/retriever';
-import type { ReplOutput } from './commands/repl-main';
-import { standardReplOutput } from './commands/repl-main';
+import { type ReplOutput , standardReplOutput } from './commands/repl-main';
 import type { MergeableRecord } from '../../util/objects';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfigOptions } from '../../config';
-import type { SupportedQuery } from '../../queries/query';
-import { SupportedQueries } from '../../queries/query';
+import { type SupportedQuery , SupportedQueries } from '../../queries/query';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
 import { startAndEndsWith } from '../../util/text/strings';
 
@@ -102,6 +99,9 @@ function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolea
 	return { completions: [] };
 }
 
+/**
+ *
+ */
 export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.ReadLineOptions {
 	return {
 		input:                   process.stdin,
@@ -114,6 +114,9 @@ export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.Re
 	};
 }
 
+/**
+ *
+ */
 export function handleString(code: string) {
 	return {
 		rCode:     code.length == 0 ? undefined : startAndEndsWith(code, '"') ? JSON.parse(code) as string : code,
@@ -155,7 +158,6 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 
 /**
  * This function interprets the given `expr` as a REPL command (see {@link repl} for more on the semantics).
- *
  * @param analyzer            - The flowR analyzer to use.
  * @param output              - Defines two methods that every function in the repl uses to output its data.
  * @param expr                - The expression to process.
@@ -180,7 +182,7 @@ export interface FlowrReplOptions extends MergeableRecord {
 	readonly analyzer:             FlowrAnalyzer
 	/**
 	 * A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
-    * If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
+	 * If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
 	 */
 	readonly rl?:                  readline.Interface
 	/** Defines two methods that every function in the repl uses to output its data. */
@@ -197,11 +199,9 @@ export interface FlowrReplOptions extends MergeableRecord {
  * The repl allows for two kinds of inputs:
  * - Starting with a colon `:`, indicating a command (probe `:help`, and refer to {@link commands}) </li>
  * - Starting with anything else, indicating default R code to be directly executed. If you kill the underlying shell, that is on you! </li>
- *
  * @param options - The options for the repl. See {@link FlowrReplOptions} for more information.
  *
  * For the execution, this function makes use of {@link replProcessAnswer}.
- *
  */
 export async function repl(
 	{
@@ -216,7 +216,7 @@ export async function repl(
 	}
 
 	// the incredible repl :D, we kill it with ':quit'
-	 
+
 	while(true) {
 		await new Promise<void>((resolve, reject) => {
 			rl.question(prompt(), answer => {
@@ -230,6 +230,9 @@ export async function repl(
 	}
 }
 
+/**
+ *
+ */
 export function loadReplHistory(historyFile: string): string[] | undefined {
 	try {
 		if(!fs.existsSync(historyFile)) {

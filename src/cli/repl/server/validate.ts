@@ -1,7 +1,6 @@
 import type * as Joi from 'joi';
 import { sendMessage } from './send';
-import type { FlowrMessage, IdMessageBase, MessageDefinition } from './messages/all-messages';
-import { baseMessage } from './messages/all-messages';
+import { type FlowrMessage, type IdMessageBase, type MessageDefinition , baseMessage } from './messages/all-messages';
 import type { FlowrErrorMessage } from './messages/message-error';
 import type { Socket } from './net';
 
@@ -9,6 +8,9 @@ export interface ValidationErrorResult { type: 'error', reason: Joi.ValidationEr
 export interface SuccessValidationResult<T extends IdMessageBase> { type: 'success', message: T }
 export type ValidationResult<T extends IdMessageBase> = SuccessValidationResult<T> | ValidationErrorResult
 
+/**
+ *
+ */
 export function validateBaseMessageFormat(input: string): ValidationResult<IdMessageBase> {
 	try {
 		return validateMessage(JSON.parse(input) as IdMessageBase, baseMessage);
@@ -17,6 +19,9 @@ export function validateBaseMessageFormat(input: string): ValidationResult<IdMes
 	}
 }
 
+/**
+ *
+ */
 export function validateMessage<T extends FlowrMessage | IdMessageBase>(input: IdMessageBase, def: MessageDefinition<T>): ValidationResult<T>  {
 	try {
 		const result = def.schema.validate(input);
@@ -26,6 +31,9 @@ export function validateMessage<T extends FlowrMessage | IdMessageBase>(input: I
 	}
 }
 
+/**
+ *
+ */
 export function answerForValidationError(client: Socket, result: ValidationErrorResult, id?: string): void {
 	sendMessage<FlowrErrorMessage>(client, {
 		type:   'error',

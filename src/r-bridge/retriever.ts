@@ -6,8 +6,7 @@ import { RShellExecutor } from './shell-executor';
 import { normalize } from './lang-4.x/ast/parser/json/parser';
 import { ErrorMarker } from './init';
 import { ts2r } from './lang-4.x/convert-values';
-import type { NormalizedAst } from './lang-4.x/ast/model/processing/decorate';
-import { deterministicCountingIdGenerator } from './lang-4.x/ast/model/processing/decorate';
+import { type NormalizedAst , deterministicCountingIdGenerator } from './lang-4.x/ast/model/processing/decorate';
 import { RawRType } from './lang-4.x/ast/model/type';
 import fs from 'fs';
 import path from 'path';
@@ -65,6 +64,9 @@ export type RParseRequest = RParseRequestFromFile | RParseRequestFromText
  */
 export type RParseRequests = RParseRequest | ReadonlyArray<RParseRequest>
 
+/**
+ *
+ */
 export function isParseRequest(request: unknown): request is RParseRequest {
 	if(typeof request !== 'object' || request === null) {
 		return false;
@@ -98,6 +100,9 @@ export function requestFromInput(input: `${typeof fileProtocol}${string}` | stri
 }
 
 
+/**
+ *
+ */
 export function requestProviderFromFile(): RParseRequestProvider {
 	return {
 		exists(p: string, ignoreCase: boolean): string | undefined {
@@ -124,6 +129,9 @@ export function requestProviderFromFile(): RParseRequestProvider {
 	};
 }
 
+/**
+ *
+ */
 export function requestProviderFromText(text: Readonly<{[path: string]: string}>): RParseRequestProvider {
 	return {
 		exists(path: string, ignoreCase: boolean): string | undefined {
@@ -141,6 +149,9 @@ export function requestProviderFromText(text: Readonly<{[path: string]: string}>
 	};
 }
 
+/**
+ *
+ */
 export function isEmptyRequest(request: RParseRequest): boolean {
 	return request.content.trim().length === 0;
 }

@@ -1,11 +1,13 @@
 import type { BasicQueryData } from '../../base-query-format';
 import type { LinterQuery, LinterQueryResult } from './linter-query-format';
-import type { LintingRuleNames } from '../../../linter/linter-rules';
-import { LintingRules } from '../../../linter/linter-rules';
+import { type LintingRuleNames , LintingRules } from '../../../linter/linter-rules';
 import { log } from '../../../util/log';
 import type { ConfiguredLintingRule } from '../../../linter/linter-format';
 import { executeLintingRule } from '../../../linter/linter-executor';
 
+/**
+ *
+ */
 export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: readonly LinterQuery[]): Promise<LinterQueryResult> {
 	const flattened = queries.flatMap(q => q.rules ?? (Object.keys(LintingRules) as LintingRuleNames[]));
 	const distinct = new Set(flattened);

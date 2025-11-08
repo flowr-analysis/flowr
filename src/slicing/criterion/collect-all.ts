@@ -4,7 +4,6 @@
  * @module
  */
 import type { MergeableRecord } from '../../util/objects';
-
 import type { SingleSlicingCriterion, SlicingCriteria } from './parse';
 import { guard } from '../../util/assert';
 import { getUniqueCombinationsOfSize } from '../../util/collections/arrays';
@@ -18,20 +17,20 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
  */
 export interface SlicingCriteriaFilter extends MergeableRecord {
 	/**
-   * Inclusive minimum size of the slicing criteria (number of included slice points).
-   * Should be at least `1` to make sense (and of course at most {@link SlicingCriteriaFilter#maximumSize|maximum size}).
-   */
+	 * Inclusive minimum size of the slicing criteria (number of included slice points).
+	 * Should be at least `1` to make sense (and of course at most {@link SlicingCriteriaFilter#maximumSize|maximum size}).
+	 */
 	minimumSize: number
 	/**
-   * Inclusive maximum size of the slicing criteria (number of included slice points).
-   * Should be at least `1` to make sense (and of course at least {@link SlicingCriteriaFilter#minimumSize|minimum size}).
-   * <p>
-   * Be really careful with this one, as the number of possible slicing criteria can grow exponentially with the maximum size.
-   */
+	 * Inclusive maximum size of the slicing criteria (number of included slice points).
+	 * Should be at least `1` to make sense (and of course at least {@link SlicingCriteriaFilter#minimumSize|minimum size}).
+	 * <p>
+	 * Be really careful with this one, as the number of possible slicing criteria can grow exponentially with the maximum size.
+	 */
 	maximumSize: number
 	/**
-   * Function that determines the ids of all nodes that can be used as slicing criteria.
-   */
+	 * Function that determines the ids of all nodes that can be used as slicing criteria.
+	 */
 	collectAll:  (root: RNodeWithParent) => NodeId[]
 }
 

@@ -1,7 +1,5 @@
-import type { DataflowProcessorInformation } from '../../../../../processor';
-import { processDataflowFor } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
-import { ExitPointType } from '../../../../../info';
+import { type DataflowProcessorInformation , processDataflowFor } from '../../../../../processor';
+import { type DataflowInformation , ExitPointType } from '../../../../../info';
 import {
 	getAllFunctionCallTargets,
 	linkCircularRedefinitionsWithinALoop,
@@ -14,23 +12,22 @@ import { guard } from '../../../../../../util/assert';
 import { dataflowLogger } from '../../../../../logger';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowFunctionFlowInformation } from '../../../../../graph/graph';
-import { DataflowGraph } from '../../../../../graph/graph';
-import type { IdentifierReference } from '../../../../../environments/identifier';
-import { isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { type DataflowFunctionFlowInformation , DataflowGraph } from '../../../../../graph/graph';
+import { type IdentifierReference , isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
-import { initializeCleanEnvironments } from '../../../../../environments/environment';
+import { type REnvironmentInformation , initializeCleanEnvironments } from '../../../../../environments/environment';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
 import { isBuiltIn } from '../../../../../environments/built-in';
 
+/**
+ * Process a function definition, i.e., `function(a, b) { ... }`
+ */
 export function processFunctionDefinition<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
@@ -124,7 +121,7 @@ export function processFunctionDefinition<OtherInfo>(
 		environment: popLocalEnvironment(outEnvironment),
 		cds:         data.controlDependencies,
 		subflow:     flow,
-		exitPoints:  exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default).map(e => e.nodeId)	?? []
+		exitPoints:  exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default).map(e => e.nodeId) ?? []
 	});
 	return {
 		/* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */
@@ -140,6 +137,9 @@ export function processFunctionDefinition<OtherInfo>(
 
 // this is no longer necessary when we update environments to be back to front (e.g., with a list of environments)
 // this favors the bigger environment
+/**
+ *
+ */
 export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 	callerEnvironment ??= initializeCleanEnvironments(undefined, true);
 	let level = callerEnvironment.level ?? 0;

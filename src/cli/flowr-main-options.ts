@@ -3,6 +3,9 @@ import { scripts } from './common/scripts-info';
 
 let _scriptsText: string | undefined;
 
+/**
+ *
+ */
 export function getScriptsText() {
 	if(_scriptsText === undefined) {
 		_scriptsText = Array.from(Object.entries(scripts).filter(([, { type }]) => type === 'master script'), ([k]) => k).join(', ');

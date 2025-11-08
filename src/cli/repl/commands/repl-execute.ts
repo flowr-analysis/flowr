@@ -3,6 +3,9 @@ import { ColorEffect, Colors, FontStyles, italic } from '../../../util/text/ansi
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import type { RShellInformation } from '../../../r-bridge/parser';
 
+/**
+ *
+ */
 export async function tryExecuteRShellCommand({ output, analyzer, allowRSessionAccess, remainingLine }: ReplCommandInformation) {
 	const parserInfo = analyzer.parserInformation();
 	if(!allowRSessionAccess){

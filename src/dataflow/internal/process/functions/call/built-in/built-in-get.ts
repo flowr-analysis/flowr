@@ -12,6 +12,9 @@ import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 
+/**
+ *
+ */
 export function processGet<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],

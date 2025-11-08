@@ -3,6 +3,9 @@
 
 import { builtInEnvJsonReplacer, isDefaultBuiltInEnvironment } from '../dataflow/environments/environment';
 
+/**
+ *
+ */
 export function jsonReplacer(key: unknown, value: unknown): unknown {
 	if(key === 'fullLexeme') {
 		return undefined;
@@ -15,6 +18,9 @@ export function jsonReplacer(key: unknown, value: unknown): unknown {
 	}
 }
 
+/**
+ *
+ */
 export function jsonBigIntRetriever(key: string, value: unknown): unknown {
 	if(typeof value === 'string' && value.endsWith('n')) {
 		return BigInt(value.slice(0, -1));
@@ -24,6 +30,9 @@ export function jsonBigIntRetriever(key: string, value: unknown): unknown {
 }
 
 
+/**
+ *
+ */
 export function superBigJsonStringify(obj: unknown, end: string, send: (s: string) => void): void {
 	try {
 		const tryOut = JSON.stringify(obj, jsonReplacer) + end;

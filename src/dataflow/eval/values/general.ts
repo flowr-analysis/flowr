@@ -2,8 +2,7 @@ import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/proce
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { intervalFrom } from './intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from './logical/logical-constants';
-import type { Lift, Value, ValueSet } from './r-value';
-import { Bottom, isBottom, isTop, Top } from './r-value';
+import { type Lift, type Value, type ValueSet , Bottom, isBottom, isTop, Top } from './r-value';
 import { stringFrom } from './string/string-constants';
 
 /**
@@ -20,8 +19,7 @@ export function bottomTopGuard(...a: Lift<unknown>[]): typeof Top | typeof Botto
 /**
  * Returns a value set, if a is not bottom or top, otherwise undefined.
  * Useful when working with values returned by {@link resolveIdToValue}
- * 
- * @param a - value set to check 
+ * @param a - value set to check
  * @returns value set if a is not top or bottom
  */
 export function valueSetGuard(a: Lift<ValueSet<Value[]>>): ValueSet<Value[]> | undefined {
@@ -59,10 +57,10 @@ export function valueFromRNodeConstant(a: RNodeWithParent): Value {
 	if(a.type === RType.String) {
 		return stringFrom(a.content.str);
 	} else if(a.type === RType.Number) {
-		return intervalFrom(a.content.num, a.content.num);	
+		return intervalFrom(a.content.num, a.content.num);
 	} else if(a.type === RType.Logical) {
 		return a.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
-	} 
+	}
 
 	return Top;
 }

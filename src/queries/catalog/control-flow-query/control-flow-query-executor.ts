@@ -4,6 +4,9 @@ import type { BasicQueryData } from '../../base-query-format';
 import { CfgKind } from '../../../project/cfg-kind';
 
 
+/**
+ *
+ */
 export async function executeControlFlowQuery({ analyzer }: BasicQueryData, queries: readonly ControlFlowQuery[]): Promise<ControlFlowQueryResult> {
 	if(queries.length !== 1) {
 		log.warn('The control flow query expects only up to one query, but got', queries.length);

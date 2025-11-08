@@ -125,6 +125,9 @@ export const ansiFormatter = {
 
 export let formatter: OutputFormatter = ansiFormatter;
 
+/**
+ *
+ */
 export function setFormatter(setFormatter: OutputFormatter): void {
 	formatter = setFormatter;
 }

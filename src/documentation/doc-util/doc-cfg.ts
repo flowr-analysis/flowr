@@ -9,8 +9,7 @@ import type { DataflowInformation } from '../../dataflow/info';
 import { cfgToMermaid } from '../../util/mermaid/cfg';
 import { codeBlock } from './doc-code';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
-import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
-import { DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
+import { type CfgSimplificationPassName , DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
 import { defaultConfigOptions } from '../../config';
 
 type GetCfgReturn = {
@@ -21,6 +20,9 @@ type GetCfgReturn = {
 
 export function getCfg(parser: KnownParser, code: string, simplifications?: readonly CfgSimplificationPassName[], useDfg?: true): Promise<Required<GetCfgReturn>>
 export function getCfg(parser: KnownParser, code: string, simplifications?: readonly CfgSimplificationPassName[], useDfg?: boolean): Promise<GetCfgReturn>
+/**
+ *
+ */
 export async function getCfg(parser: KnownParser, code: string, simplifications: readonly CfgSimplificationPassName[] = [], useDfg = true): Promise<GetCfgReturn> {
 	const result = useDfg ? await createDataflowPipeline(parser, {
 		request: requestFromInput(code)
@@ -35,6 +37,9 @@ export async function getCfg(parser: KnownParser, code: string, simplifications:
 	};
 }
 
+/**
+ *
+ */
 export function printCfg(cfg: ControlFlowInformation, ast: NormalizedAst, prefix = 'flowchart BT\n', simplify = false) {
 	return `
 ${codeBlock('mermaid', cfgToMermaid(cfg, ast, prefix, simplify))}
@@ -49,6 +54,9 @@ export interface PrintCfgOptions {
 	readonly simplify?:        boolean;
 	readonly useDfg?:          boolean;
 }
+/**
+ *
+ */
 export async function printCfgCode(parser: KnownParser, code: string, { showCode = true, openCode = false, prefix = 'flowchart BT\n', simplifications = [], simplify = false, useDfg = true }: PrintCfgOptions = {}) {
 	const now = performance.now();
 	const res = await getCfg(parser, code, simplifications, useDfg);

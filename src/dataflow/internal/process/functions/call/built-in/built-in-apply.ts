@@ -1,8 +1,7 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -12,8 +11,7 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { VertexType } from '../../../../../graph/vertex';
 import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
-import type { IdentifierReference } from '../../../../../environments/identifier';
-import { isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { type IdentifierReference , isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { valueSetGuard } from '../../../../../eval/values/general';
@@ -34,6 +32,9 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 	readonly resolveValue?:           boolean
 }
 
+/**
+ *
+ */
 export function processApply<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],

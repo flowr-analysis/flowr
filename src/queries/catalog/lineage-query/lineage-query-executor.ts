@@ -3,6 +3,9 @@ import { log } from '../../../util/log';
 import { getLineage } from '../../../cli/repl/commands/repl-lineage';
 import type { BasicQueryData } from '../../base-query-format';
 
+/**
+ *
+ */
 export async function executeLineageQuery({ analyzer }: BasicQueryData, queries: readonly LineageQuery[]): Promise<LineageQueryResult> {
 	const start = Date.now();
 	const result: LineageQueryResult['lineages'] = {};

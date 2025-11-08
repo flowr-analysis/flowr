@@ -1,5 +1,4 @@
-import type { SourceRange } from '../../util/range';
-import { mergeRanges, rangeCompare, rangesOverlap } from '../../util/range';
+import { type SourceRange , mergeRanges, rangeCompare, rangesOverlap } from '../../util/range';
 import { isNotUndefined } from '../../util/assert';
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -28,6 +27,9 @@ function highlight(s: string, selected: boolean): string {
 	return selected ? ansiFormatter.format(primary, { style: FontStyles.Underline }) : primary;
 }
 
+/**
+ *
+ */
 export function sliceDiffAnsi(slice: ReadonlySet<NodeId>, normalized: NormalizedAst, criteriaIds: ReadonlySet<NodeId>, originalCode: string) {
 	let importantLocations = Array.from(normalized.idMap.entries())
 		.filter(([id, { location }]) => slice.has(id) && isNotUndefined(location))

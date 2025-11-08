@@ -7,8 +7,7 @@ import { Ternary } from '../../../../src/util/logic';
 import { assert, describe, expect, test } from 'vitest';
 import { valueFromTsValue } from '../../../../src/dataflow/eval/values/general';
 import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
-import type { Lift, Value } from '../../../../src/dataflow/eval/values/r-value';
-import { Bottom, isBottom, isTop, Top } from '../../../../src/dataflow/eval/values/r-value';
+import { type Lift, type Value , Bottom, isBottom, isTop, Top } from '../../../../src/dataflow/eval/values/r-value';
 import { withShell } from '../../_helper/shell';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
@@ -65,7 +64,7 @@ describe.sequential('Resolve', withShell(shell => {
 		code: string,
 		expectedValues: Value,
 		allow: Allow = Allow.None,
-		withEnv: With = With.Environment 
+		withEnv: With = With.Environment
 	): void {
 		const effectiveName = decorateLabelContext(label(name), ['resolve']);
 
@@ -82,7 +81,7 @@ describe.sequential('Resolve', withShell(shell => {
 				full:        true,
 				resolve:     defaultConfigOptions.solver.variables
 			});
-			
+
 			if((allow & Allow.Top) == Allow.Top && isTop(resolved)) {
 				return;
 			}
@@ -98,7 +97,7 @@ describe.sequential('Resolve', withShell(shell => {
 	function testMutate(name: string, line: number, identifier: string, code: string, expected: Value, allow: Allow = Allow.None) {
 		const distractors: string[] = [
 			`while(FALSE) { ${identifier} <- 0 }`,
-			`if(FALSE) { ${identifier} <- 0 }`, 
+			`if(FALSE) { ${identifier} <- 0 }`,
 			'u <- u + 1',
 			`if(FALSE) { rm(${identifier})}`
 		];
@@ -111,27 +110,27 @@ describe.sequential('Resolve', withShell(shell => {
 		});
 	}
 
-	describe('Negative Tests', () => { 	
+	describe('Negative Tests', () => {
 		testResolve('Unknown if',           '2@x', 'if(u) { x <- 2 } else { x <- foo() } \n x', Top);
-	
+
 		testResolve('Unknown Fn',           '2@x', 'x <- foo(1) \n x', Top);
 		testResolve('Unknown Fn 2',         '2@f', 'f <- function(x = 3) { foo(x) } \n f()', Top);
 		testResolve('Recursion',            '2@f', 'f <- function(x = 3) { f(x) } \n f()', Top);
 		testResolve('Get Unknown',          '3@x', 'y <- 5 \n x <- get(u) \n x', Top);
-		
+
 		testResolve('rm()',                 '3@x', 'x <- 1 \n rm(x) \n x', Bottom, Allow.Top);
-	
+
 		testResolve('Eval before Variable', '3@x', 'x <- 1 \n eval(u) \n x', Top);
 	});
-	
-	describe('Resolve Value', () => {	
+
+	describe('Resolve Value', () => {
 		testResolve('Constant Value',       '1@x', 'x <- 5', set([5]));
 		testResolve('Constant Value Str',   '1@x', 'x <- "foo"', set(['foo']));
 		testResolve('Alias Constant Value', '3@x', 'y <- 5 \n x <- y \n x', set([5]));
 
 		testResolve('rm() with alias',      '4@x', 'y <- 2 \n x <- y \n rm(y) \n x', set([2]));
 	});
-	
+
 	describe('Graph vs. Environment', () => {
 		testWithGraphAndEnvironment('Not yet supported', (resolveWith) => {
 			// Not yet Supported
@@ -139,11 +138,11 @@ describe.sequential('Resolve', withShell(shell => {
 			testResolve('Get',                  '3@x', 'y <- 5 \n x <- get("y") \n x', set([5]), Allow.Top, resolveWith);
 			testResolve('Super Assign',         '4@x', 'x <- 1 \n f <- function() { x <<- 2} \n f() \n x', set([2]), Allow.Top, resolveWith);
 			testResolve('Plus One',             '3@x', 'x <- 1 \n x <- x+1 \n x', interval(1, Top), Allow.Top, resolveWith);
-				
+
 			testResolve('Random Loop',          '4@x', 'x <- 1 \n while(TRUE) { x <- x + 1 \n if(runif(1) > 0.5) { break } } \n x', Top, Allow.Top, resolveWith);
 			testResolve('Loop plus one',        '4@i', 'for(i in 1:10) { i \n i <- i + 1 \n i} \n i', interval(2, 11), Allow.Top, resolveWith);
 			testResolve('Loop plus x',          '5@x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top, resolveWith);
-		
+
 			testResolve('Superassign Arith',    '5@x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', interval(8), Allow.Top, resolveWith);
 		});
 	});
@@ -164,9 +163,9 @@ describe.sequential('Resolve', withShell(shell => {
 		testResolve('Vector with alias',      '2@x', 'y <- 1 \n x <- c(y,2)',                        vector([1, 2]));
 		testResolve('Vector in vector',       '1@x', 'x <- c(1, 2, c(3, 4, 5))',                     vector([1, 2, 3, 4, 5]));
 		testResolve('Vector in vector alias', '2@x', 'y <- c(1, 2, c(3,4)) \n x <- c(y, 5, c(6,7))', vector([1, 2, 3, 4, 5, 6, 7]));
-		
+
 		testResolve('c aliased',              '2@x', 'f <- c \n x <- f(1,2,3)',                      vector([1,2,3]));
-		testResolve('c aliased deeply',       '3@x', 'f <- c \n g <- f \n x <- g(1,2,3)',            vector([1,2,3]));		
+		testResolve('c aliased deeply',       '3@x', 'f <- c \n g <- f \n x <- g(1,2,3)',            vector([1,2,3]));
 	});
 
 	describe('Resolve (vectors replacement operators)', () => {
@@ -212,7 +211,7 @@ describe.sequential('Resolve', withShell(shell => {
 	describe('Builtin Constants', () => {
 		// Always Resolve
 		test.each([
-			//Identifier  Wanted Value  
+			//Identifier  Wanted Value
 			['TRUE',  true],
 			['TRUE',  true],
 			['T',     true],
@@ -250,7 +249,7 @@ describe.sequential('Resolve', withShell(shell => {
 		describe('Builtin Constants New', () => {
 			// Always Resolve
 			test.each([
-				//Identifier  Wanted Value  
+				//Identifier  Wanted Value
 				['TRUE',  true],
 				['TRUE',  true],
 				['T',     true],
@@ -262,7 +261,7 @@ describe.sequential('Resolve', withShell(shell => {
 				const defs = resolveToConstants(identifier, defaultEnv());
 				assert.deepEqual(defs, setFrom(valueFromTsValue(wantedValue)));
 			});
-	
+
 			// Maybe Resolve
 			test.each([
 				//Identifier  Wanted Value                       Environment
@@ -272,7 +271,7 @@ describe.sequential('Resolve', withShell(shell => {
 				const defs = resolveToConstants(identifier, environment);
 				assert.deepEqual(defs, wantedValue);
 			});
-	
+
 			// Never Resolve
 			test.each([
 				//Identifier  Wanted Value      Environment

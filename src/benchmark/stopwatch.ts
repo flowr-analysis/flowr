@@ -38,9 +38,9 @@ export class Measurements<T> {
 	private measurements = new Map<T, Stopwatch>();
 
 	/**
-   * Start a timer for the given key, and guards that this is the first time this key is started.
-   * Call {@link IStoppableStopwatch#stop} on the returned stopwatch to stop the timer.
-   */
+	 * Start a timer for the given key, and guards that this is the first time this key is started.
+	 * Call {@link IStoppableStopwatch#stop} on the returned stopwatch to stop the timer.
+	 */
 	public start(key: T): IStoppableStopwatch {
 		// we guard *before* starting so there is no additional time penalty
 		guard(!this.measurements.has(key), `already started stop watch for ${JSON.stringify(key)}`);
@@ -51,9 +51,9 @@ export class Measurements<T> {
 	}
 
 	/**
-   * Automatically call {@link Measurements#start | start} and the corresponding stop to measure the execution time of the given function.
-   * @see {@link measureAsync}
-   */
+	 * Automatically call {@link Measurements#start | start} and the corresponding stop to measure the execution time of the given function.
+	 * @see {@link measureAsync}
+	 */
 	public measure<Out>(key: T, fn: () => Out): Out {
 		const stopwatch = this.start(key);
 		const result = fn();
@@ -63,13 +63,11 @@ export class Measurements<T> {
 
 
 	/**
-   * Similar to {@link measure}, but await the promise as part of the measurement
-   *
+	 * Similar to {@link measure}, but await the promise as part of the measurement
 	 * @param key - The key to write the resulting measurement to
 	 * @param fn  - The function to measure
-	 *
-   * @see measure
-   */
+	 * @see measure
+	 */
 	public async measureAsync<Out>(key: T, fn: () => Promise<Out>): Promise<Out> {
 		const stopwatch = this.start(key);
 		const result = await fn();
@@ -77,8 +75,8 @@ export class Measurements<T> {
 		return result;
 	}
 	/**
-   * Retrieve all measure-results, requires that all stop-watches that have been started have also been stopped.
-   */
+	 * Retrieve all measure-results, requires that all stop-watches that have been started have also been stopped.
+	 */
 	public get(): Map<T, bigint> {
 		const result = new Map<T, bigint>();
 		for(const [key, stopwatch] of this.measurements) {

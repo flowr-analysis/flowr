@@ -2,11 +2,9 @@ import type {
 	DEFAULT_DATAFLOW_PIPELINE,
 	TREE_SITTER_DATAFLOW_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines';
-import type { Query, QueryResults, QueryResultsWithoutMeta } from '../../../src/queries/query';
-import { executeQueries, SupportedQueries } from '../../../src/queries/query';
+import { type Query, type QueryResults, type QueryResultsWithoutMeta , executeQueries, SupportedQueries } from '../../../src/queries/query';
 import type { VirtualQueryArgumentsWithType } from '../../../src/queries/virtual-query/virtual-queries';
-import type { TestLabel } from './label';
-import { decorateLabelContext } from './label';
+import { type TestLabel , decorateLabelContext } from './label';
 import type { VirtualCompoundConstraint } from '../../../src/queries/virtual-query/compound-query';
 import { log } from '../../../src/util/log';
 import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-printer';
@@ -31,7 +29,6 @@ function normalizeResults<Queries extends Query>(result: QueryResults<Queries['t
 
 /**
  * Asserts the result of a query
- *
  * @param name     - Name of the test case to generate
  * @param parser   - R Shell Session/Parser to use
  * @param code     - R code to execute the query on

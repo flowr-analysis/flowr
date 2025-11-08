@@ -1,11 +1,13 @@
 import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
 import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../../abstract-interpretation/data-frame/shape-inference';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../slicing/criterion/parse';
+import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../slicing/criterion/parse';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import type { DfShapeQuery, DfShapeQueryResult } from './df-shape-query-format';
 
+/**
+ *
+ */
 export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries: readonly DfShapeQuery[]): Promise<DfShapeQueryResult> {
 	if(queries.length !== 1 && queries.some(query => query.criterion === undefined)) {
 		log.warn('The dataframe shape query expects only up to one query without slicing criterion, but got', queries.length);

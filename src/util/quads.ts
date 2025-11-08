@@ -4,16 +4,13 @@
  * <p>
  * At the time of writing this module I am unaware of any sophisticated rdf library for typescript which allows to serialize objects
  * directly as rdf quads. Therefore, this module provides a simple serialization mechanism based on the popular n3.js library.
- *
  * @module
  */
 
-import type { NamedNode, Quad } from 'n3';
-import { DataFactory, Writer } from 'n3';
+import { type NamedNode, type Quad , DataFactory, Writer } from 'n3';
 const namedNode = (v: string) => DataFactory.namedNode(v);
 const quad = (s: RDF.Quad_Subject, p: RDF.Quad_Predicate, o: RDF.Quad_Object, g?: RDF.Quad_Graph) => DataFactory.quad(s, p, o, g);
-import type { MergeableRecord } from './objects';
-import { deepMergeObject, isObjectOrArray } from './objects';
+import { type MergeableRecord , deepMergeObject, isObjectOrArray } from './objects';
 import { guard } from './assert';
 import { DefaultMap } from './collections/defaultmap';
 const literal = (v: string, n?: string | RDF.NamedNode) => DataFactory.literal(v, n);
@@ -29,7 +26,6 @@ type ContextForQuad = string
 
 /**
  * Predicate that allows you to ignore given elements based on their key/value
- *
  * @returns true if the given key/value should be ignored, false otherwise
  */
 export type QuadIgnoreIf = (key: string, value: unknown) => boolean
@@ -56,6 +52,9 @@ export function defaultQuadIdGenerator(): QuadIdRetriever {
 }
 
 const ignoredKeysArray = ['complexNumber', 'markedAsInt', 'info'];
+/**
+ *
+ */
 export function defaultQuadIgnoreIf(): QuadIgnoreIf {
 	return (key: string, value: unknown) => value === undefined || ignoredKeysArray.includes(key);
 }
@@ -65,22 +64,22 @@ export function defaultQuadIgnoreIf(): QuadIgnoreIf {
  */
 export interface QuadSerializationConfiguration extends MergeableRecord {
 	/**
-   * Ignore certain keys or values when serializing to quads.
-   * @see defaultQuadIgnoreIf
-   */
+	 * Ignore certain keys or values when serializing to quads.
+	 * @see defaultQuadIgnoreIf
+	 */
 	ignore?: QuadIgnoreIf
 	/**
-   * Retrieve a unique id for a given object.
-   * @see defaultQuadIdGenerator
-   */
+	 * Retrieve a unique id for a given object.
+	 * @see defaultQuadIdGenerator
+	 */
 	getId?:  QuadIdRetriever
 	/**
-   * The context of the serialized quads, probably the file-name (constant) or whatever is desired.
-   */
+	 * The context of the serialized quads, probably the file-name (constant) or whatever is desired.
+	 */
 	context: QuadContextRetriever
 	/**
-   * The basic domain name to use for the quads.
-   */
+	 * The basic domain name to use for the quads.
+	 */
 	domain?: string
 }
 
@@ -100,12 +99,9 @@ const writer = new Writer( { format: 'N-Quads' });
 
 /**
  * Serializes the given object or array to rdf quads.
- *
  * @param obj    - The object to serialize (must be a Record and no array etc.)
  * @param config - Further configuration options
- *
  * @returns the serialized quads
- *
  * @see graph2quads
  */
 export function serialize2quads(obj: RecordForQuad, config: QuadSerializationConfiguration): string {
@@ -139,7 +135,6 @@ export interface GraphInformationForQuad<AdditionalVertexInformation extends Mer
 /**
  * Serializes the given directed graph to rdf quads.
  * This is a mere (type-)convenience wrapper for {@link serialize2quads}.
- *
  * @see serialize2quads
  */
 export function graph2quads<AdditionalVertexInformation extends MergeableRecord, AdditionalEdgeInformation extends MergeableRecord>(

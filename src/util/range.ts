@@ -15,7 +15,6 @@ export type SourcePosition = [
 
 /**
  * Describe the start and end {@link SourcePosition|source position} of an element.
- *
  * @see {@link rangeFrom} - to create a range
  * @see {@link mergeRanges} - to merge multiple ranges
  * @see {@link getRangeStart} - to get the start of a range
@@ -37,6 +36,9 @@ export type SourceRange = [
 export function getRangeStart(p: undefined): undefined
 export function getRangeStart(p: SourceRange): SourcePosition
 export function getRangeStart(p: SourceRange | undefined): SourcePosition | undefined
+/**
+ *
+ */
 export function getRangeStart(p: SourceRange | undefined): SourcePosition | undefined {
 	return p === undefined ? undefined : [p[0], p[1]];
 }
@@ -44,13 +46,15 @@ export function getRangeStart(p: SourceRange | undefined): SourcePosition | unde
 export function getRangeEnd(p: undefined): undefined
 export function getRangeEnd(p: SourceRange): SourcePosition
 export function getRangeEnd(p: SourceRange | undefined): SourcePosition | undefined
+/**
+ *
+ */
 export function getRangeEnd(p: SourceRange | undefined): SourcePosition | undefined {
 	return p === undefined ? undefined : [p[2], p[3]];
 }
 
 /**
  * This does not ensure ordering of start and end!
- *
  * @param sl - start line
  * @param sc - start column
  * @param el - end line
@@ -60,6 +64,9 @@ export function rangeFrom(sl: number | string, sc: number | string, el: number |
 	return [Number(sl), Number(sc), Number(el), Number(ec)];
 }
 
+/**
+ *
+ */
 export function mergeRanges(...rs: (SourceRange | undefined)[]): SourceRange {
 	const rsSafe: SourceRange[] = rs.filter(isNotUndefined);
 	guard(rsSafe.length > 0, 'Cannot merge no ranges');
@@ -92,7 +99,6 @@ export function addRanges([r1sl,r1sc,r1el,r1ec]: SourceRange, [r2sl,r2sc,r2el,r2
 
 /**
  * Provides a comparator for {@link SourceRange}s that sorts them in ascending order.
- *
  * @returns a positive number if `r1` comes after `r2`, a negative number if `r1` comes before `r2`, and `0` if they are equal
  */
 export function rangeCompare([r1sl,r1sc,,]: SourceRange, [r2sl,r2sc,,]: SourceRange): number {
@@ -110,6 +116,9 @@ export function rangeIsSubsetOf([r1sl,r1sc,r1el,r1ec]: SourceRange, [r2sl,r2sc,r
 	return (r1sl > r2sl || r1sl === r2sl && r1sc >= r2sc) && (r1el < r2el || r1sl === r2sl && r1ec <= r2ec);
 }
 
+/**
+ *
+ */
 export function combineRanges(...ranges: SourceRange[]): SourceRange[] {
 	return ranges.filter(range => !ranges.some(other => range !== other && rangeIsSubsetOf(range, other)));
 }

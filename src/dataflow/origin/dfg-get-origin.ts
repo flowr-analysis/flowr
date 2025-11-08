@@ -1,13 +1,11 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../graph/graph';
-import type {
-	DataflowGraphVertexFunctionCall,
-	DataflowGraphVertexUse,
-	DataflowGraphVertexVariableDefinition
-} from '../graph/vertex';
-import { VertexType } from '../graph/vertex';
-import type { EdgeTypeBits } from '../graph/edge';
-import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge';
+import {
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexUse,
+	type DataflowGraphVertexVariableDefinition
+	, VertexType } from '../graph/vertex';
+import { type EdgeTypeBits , edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { isNotUndefined } from '../../util/assert';
 import { isBuiltIn } from '../environments/built-in';
@@ -24,7 +22,6 @@ export const enum OriginType {
 /**
  * An origin that indicates that the definition is read, written, or simply a constant.
  * These origins only reference the 'direct' dependencies. There is no transitivity.
- *
  * @example
  * ```r
  * x <- 2
@@ -43,7 +40,6 @@ export interface SimpleOrigin {
 /**
  * Determines the (transitive) origin of a function call (i.e., all anonymous function definitions within the program that
  * can be called).
- *
  * @example
  * ```r
  * f <- function(x) {

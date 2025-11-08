@@ -61,7 +61,7 @@ describe.sequential('Controlflow', withShell(shell => {
 			code:     'if(c) { x }',
 			expected: {
 				ifThen: {
-					total: 		  1n,
+					total:     1n,
 					singleVar: {
 						c: 1n
 					}
@@ -80,7 +80,7 @@ describe.sequential('Controlflow', withShell(shell => {
 			code:     'if(c) { x } else { y }',
 			expected: {
 				ifThenElse: {
-					total: 		  1n,
+					total:     1n,
 					singleVar: {
 						c: 1n
 					}

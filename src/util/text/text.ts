@@ -1,5 +1,8 @@
 import { guard } from '../assert';
 
+/**
+ *
+ */
 export function nth(n: number): string {
 	guard(isFinite(n) && n >= 1, 'n must be a non-negative number');
 	const num = String(n);

@@ -3,8 +3,7 @@ import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { RShell } from '../../../../src/r-bridge/shell';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import type { ReplacementOperatorHandlerArgs } from '../../../../src/dataflow/graph/unknown-replacement';
-import { handleReplacementOperator, onReplacementOperator } from '../../../../src/dataflow/graph/unknown-replacement';
+import { type ReplacementOperatorHandlerArgs , handleReplacementOperator, onReplacementOperator } from '../../../../src/dataflow/graph/unknown-replacement';
 import { handleUnknownSideEffect, onUnknownSideEffect } from '../../../../src/dataflow/graph/unknown-side-effect';
 import { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { Environment } from '../../../../src/dataflow/environments/environment';
@@ -26,7 +25,7 @@ describe('unknown-replacement', () =>  {
 		handleReplacementOperator({} as unknown as ReplacementOperatorHandlerArgs);
 		expect(mockHandler).toHaveBeenCalled();
 	});
-	
+
 	test('mock-handler-test', async() => {
 		const mockHandler = vi.fn();
 		onReplacementOperator(mockHandler);

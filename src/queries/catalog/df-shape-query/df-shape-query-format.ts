@@ -1,5 +1,4 @@
-import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
-import { DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
+import { type DataFrameDomain , DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';

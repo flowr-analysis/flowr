@@ -2,9 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import type { StatisticsSummarizerConfiguration } from '../summarizer';
 import { date2string } from '../../../util/text/time';
-import type {
-	CommonSummarizerConfiguration } from '../../../util/summarizer';
 import {
+	type CommonSummarizerConfiguration ,
 	summarizedMeasurement2Csv,
 	summarizedMeasurement2CsvHeader,
 	summarizeMeasurement
@@ -12,10 +11,12 @@ import {
 import { arraySum } from '../../../util/collections/arrays';
 import { readLineByLineSync } from '../../../util/files';
 import { guard } from '../../../util/assert';
-import type { FeatureStatistics, FeatureStatisticsWithMeta } from '../../features/feature';
-import { ALL_FEATURES } from '../../features/feature';
+import { type FeatureStatistics, type FeatureStatisticsWithMeta , ALL_FEATURES } from '../../features/feature';
 import type { MetaStatistics } from '../../meta-statistics';
 
+/**
+ *
+ */
 export function postProcessFeatures(config: StatisticsSummarizerConfiguration, filepath: string, outputPath: string, logger: (message: string) => void, metaFeatureInformation: Map<string, FeatureStatisticsWithMeta>) {
 	for(const featureName of config.featuresToUse) {
 		const featureInfo = ALL_FEATURES[featureName];
@@ -78,7 +79,6 @@ function postProcessMeta(config: StatisticsSummarizerConfiguration, filepath: st
 
 /**
  * Post process the collections in a given folder, retrieving the final summaries.
- *
  * @param logger       - The logger to use for outputs
  * @param filepath     - Path to the root file of the data collection (contains all the archives)
  * @param config       - Configuration of the summarizer

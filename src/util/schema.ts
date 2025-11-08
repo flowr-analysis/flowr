@@ -1,12 +1,14 @@
 import type Joi from 'joi';
-import type { OutputFormatter } from './text/ansi';
-import { italic , formatter ,  bold, ColorEffect, Colors } from './text/ansi';
+import { type OutputFormatter , italic , formatter ,  bold, ColorEffect, Colors } from './text/ansi';
 
 interface SchemaLine {
 	level: number;
 	text:  string;
 }
 
+/**
+ *
+ */
 export function describeSchema(schema: Joi.Schema, f: OutputFormatter = formatter): string {
 	const description = schema.describe();
 	const lines = genericDescription(1, f, f.format('.', { effect: ColorEffect.Foreground, color: Colors.White }), description);
@@ -14,6 +16,9 @@ export function describeSchema(schema: Joi.Schema, f: OutputFormatter = formatte
 	return lines.map(line => `${indent.repeat(line.level - 1)}${line.text}`).join('\n');
 }
 
+/**
+ *
+ */
 export function genericDescription(level: number, formatter: OutputFormatter, name: string, desc: Joi.Description | undefined): SchemaLine[] {
 	if(!desc) {
 		return [];
@@ -61,6 +66,9 @@ function printFlags(flags: object | undefined): string {
 	return flagText.trim().length > 0 ? '[' + flagText + ']' : '';
 }
 
+/**
+ *
+ */
 export function headerLine(level: number, formatter: OutputFormatter, name: string, type: string, flags: object | undefined): SchemaLine[] {
 	const text = `- ${bold(name, formatter)} ${formatter.format(type, { effect: ColorEffect.Foreground, color: Colors.White })} ${printFlags(flags)}`;
 	const baseLine = { level, text };
@@ -70,6 +78,9 @@ export function headerLine(level: number, formatter: OutputFormatter, name: stri
 	return [baseLine];
 }
 
+/**
+ *
+ */
 export function describeObject(level: number, formatter: OutputFormatter, desc: Joi.Description): SchemaLine[] {
 	const lines: SchemaLine[] = [];
 

@@ -1,5 +1,3 @@
-
-
 import {
 	descriptionFileLog
 } from '../file-plugins/flowr-analyzer-description-file-plugin';

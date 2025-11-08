@@ -7,10 +7,16 @@ export type UnknownSideEffectHandler = (graph: DataflowGraph, env: REnvironmentI
 
 const handlers: UnknownSideEffectHandler[] = [];
 
+/**
+ *
+ */
 export function onUnknownSideEffect(handler: UnknownSideEffectHandler) {
 	handlers.push(handler);
 }
 
+/**
+ *
+ */
 export function handleUnknownSideEffect(graph: DataflowGraph, env: REnvironmentInformation, id: NodeId, target?: LinkTo<RegExp | string>) {
 	graph.markIdForUnknownSideEffects(id, target);
 	handlers.forEach(handler => handler(graph, env, id, target));

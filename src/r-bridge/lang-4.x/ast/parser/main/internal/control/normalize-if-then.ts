@@ -1,5 +1,4 @@
-import type { NormalizerData } from '../../normalizer-data';
-import { ParseError } from '../../normalizer-data';
+import { type NormalizerData , ParseError } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
 import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta';
 import { RawRType, RType } from '../../../../model/type';

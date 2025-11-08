@@ -6,6 +6,9 @@ import { exec } from 'child_process';
  * @returns Repl Output
  */
 
+/**
+ *
+ */
 export async function flowrRepl(input: string[]): Promise<string> {
 	const process = new Promise<string>((resolve, reject) => {
 		const child = exec('npm run flowr', { timeout: 60 * 1000 }, (error, stdout, _) => {
@@ -36,7 +39,6 @@ export async function flowrRepl(input: string[]): Promise<string> {
 /**
  * Runs a command and terminates it automatically if it outputs a certain string
  * This is useful, so we don't have to set timeouts and hope the output will be produced in time.
- *
  * @param command - Command to run
  * @param terminateOn - (optional) string to kill the process on
  * @param timeout - (optional) timeout in milliseconds

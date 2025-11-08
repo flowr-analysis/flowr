@@ -2,26 +2,25 @@ import type { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/r
 
 /**
  * Statistics on skipped files, the time required, and more.
- *
  * @see extractUsageStatistics
  * @see initialMetaStatistics
  */
 export interface MetaStatistics {
 	/**
-   * The number of requests that were parsed successfully
-   */
+	 * The number of requests that were parsed successfully
+	 */
 	successfulParsed:        number
 	/**
-   * The processing time for each request
-   */
+	 * The processing time for each request
+	 */
 	processingTimeMs:        number[]
 	/**
-   * All failed requests (e.g., if they can not be converted to XML)
-   */
+	 * All failed requests (e.g., if they can not be converted to XML)
+	 */
 	failedRequests:          (RParseRequestFromText | RParseRequestFromFile)[]
 	/**
-   * Number of lines with each individual line length consumed for each request
-   */
+	 * Number of lines with each individual line length consumed for each request
+	 */
 	lines:                   number[][]
 	/**
 	 * The number of nodes in the normalized AST

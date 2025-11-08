@@ -1,23 +1,20 @@
 import { executeQueriesOfSameType } from '../../query';
-import type {
-	DefaultDependencyCategoryName,
-	DependenciesQuery,
-	DependenciesQueryResult,
-	DependencyCategoryName,
-	DependencyCategorySettings,
-	DependencyInfo
-} from './dependencies-query-format';
-import { DefaultDependencyCategories, getAllCategories, Unknown } from './dependencies-query-format';
+import {
+	type DefaultDependencyCategoryName,
+	type DependenciesQuery,
+	type DependenciesQueryResult,
+	type DependencyCategoryName,
+	type DependencyCategorySettings,
+	type DependencyInfo
+	, DefaultDependencyCategories, getAllCategories, Unknown } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
-import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
-import { VertexType } from '../../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall , VertexType } from '../../../dataflow/graph/vertex';
 import { log } from '../../../util/log';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BasicQueryData } from '../../base-query-format';
 import { compactRecord } from '../../../util/objects';
-import type { DependencyInfoLinkAttachedInfo, FunctionInfo } from './function-info/function-info';
-import { DependencyInfoLinkConstraint } from './function-info/function-info';
+import { type DependencyInfoLinkAttachedInfo, type FunctionInfo , DependencyInfoLinkConstraint } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowInformation } from '../../../dataflow/info';
@@ -25,6 +22,9 @@ import type { FlowrConfigOptions } from '../../../config';
 import { guard } from '../../../util/assert';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
+/**
+ *
+ */
 export async function executeDependenciesQuery({
 	analyzer,
 }: BasicQueryData, queries: readonly DependenciesQuery[]): Promise<DependenciesQueryResult> {
@@ -141,8 +141,8 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 					lexemeOfArgument:   getLexeme(value, arg),
 					linkedIds:          linked?.length ? linked : undefined,
 					value:              value ?? defaultValue,
-					versionConstraints:	dep?.versionConstraints,
-					derivedVersion:	    dep?.derivedVersion
+					versionConstraints: dep?.versionConstraints,
+					derivedVersion:     dep?.derivedVersion
 				} as DependencyInfo);
 				if(result) {
 					results.push(result);

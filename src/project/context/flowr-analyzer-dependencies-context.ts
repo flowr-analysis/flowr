@@ -19,7 +19,6 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * Get the dependency with the given name, if it exists.
 	 *
 	 * If the static dependencies have not yet been loaded, this may trigger a resolution step.
-	 *
 	 * @param name - The name of the dependency to get.
 	 * @returns The dependency with the given name, or undefined if it does not exist.
 	 */

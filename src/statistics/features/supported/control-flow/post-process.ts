@@ -1,14 +1,12 @@
 import type { FeatureStatisticsWithMeta } from '../../feature';
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer';
-import type {
-	CommonSyntaxTypeCounts } from '../../common-syntax-probability';
 import {
+	type CommonSyntaxTypeCounts ,
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability';
 import type { ControlflowInfo } from './control-flow';
-import type { SummarizedWithProject } from '../../post-processing';
-import { emptySummarizedWithProject, recordFilePath } from '../../post-processing';
+import { type SummarizedWithProject , emptySummarizedWithProject, recordFilePath } from '../../post-processing';
 import fs from 'fs';
 import path from 'path';
 import type { MergeableRecord } from '../../../../util/objects';
@@ -29,6 +27,9 @@ interface ControlFlowMetaPostProcessing<Measurement> extends MergeableRecord {
 	switchCase:       CommonSyntaxTypeCounts<Measurement>
 }
 
+/**
+ *
+ */
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	const collected: ControlFlowMetaPostProcessing<number[][]> = {
 		ifThen:           emptyCommonSyntaxTypeCounts(() => []),

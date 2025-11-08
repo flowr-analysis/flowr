@@ -28,7 +28,7 @@ describe('rmd', () => {
 
 		test.each([
 			[ // #1 - simple
-				[ 
+				[
 					{
 						options:  'dont care',
 						code:     'Hello World\n',
@@ -45,12 +45,12 @@ describe('rmd', () => {
 							col:  1
 						}
 					}
-				], 
-				2, 
+				],
+				2,
 				'Hello World\nHello World\n'
 			],
 			[ // #2 - new lines at end
-				[ 
+				[
 					{
 						options:  'dont care',
 						code:     'Hello World\n',
@@ -67,12 +67,12 @@ describe('rmd', () => {
 							col:  1
 						}
 					}
-				], 
-				4, 
+				],
+				4,
 				'Hello World\nHello World\n\n\n'
 			],
 			[ // #3 - new lines between and at end
-				[ 
+				[
 					{
 						options:  'dont care',
 						code:     'Hello World\n',
@@ -89,8 +89,8 @@ describe('rmd', () => {
 							col:  1
 						}
 					}
-				], 
-				7, 
+				],
+				7,
 				'Hello World\n\n\n\nHello World\n\n\n'
 			]
 		])('resotre block (%#)', (blocks, lines, expected) => {
@@ -98,7 +98,7 @@ describe('rmd', () => {
 			assert.equal(restored, expected);
 		});
 	});
-	
+
 
 	test('load simple', () => {
 		const data = requestFromFile('test/testfiles/notebook/example.Rmd');

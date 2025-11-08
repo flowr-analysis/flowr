@@ -7,10 +7,16 @@ import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
 
+/**
+ *
+ */
 export function fingerPrintOfQuery(query: StaticSliceQuery): string {
 	return JSON.stringify(query);
 }
 
+/**
+ *
+ */
 export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, queries: readonly StaticSliceQuery[]): Promise<StaticSliceQueryResult> {
 	const start = Date.now();
 	const results: StaticSliceQueryResult['results'] = {};

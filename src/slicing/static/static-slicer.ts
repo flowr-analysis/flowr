@@ -1,15 +1,12 @@
 import { assertUnreachable, guard } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
 import type { SliceResult } from './slicer-types';
-import type { Fingerprint } from './fingerprint';
-import { envFingerprint } from './fingerprint';
+import { type Fingerprint , envFingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
 import { handleReturns, sliceForCall } from './slice-call';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { SlicingCriteria } from '../criterion/parse';
-import { convertAllSlicingCriteriaToIds } from '../criterion/parse';
-import type { REnvironmentInformation } from '../../dataflow/environments/environment';
-import { initializeCleanEnvironments } from '../../dataflow/environments/environment';
+import { type SlicingCriteria , convertAllSlicingCriteriaToIds } from '../criterion/parse';
+import { type REnvironmentInformation , initializeCleanEnvironments } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
@@ -23,8 +20,8 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  * This returns the ids to include in the static slice of the given type, when slicing with the given seed id's (must be at least one).
  * <p>
  * The returned ids can be used to {@link reconstructToCode|reconstruct the slice to R code}.
- *
  * @param info      - The dataflow information used for slicing.
+ * @param idMap     - The mapping from node ids to their information in the AST.
  * @param criteria  - The criteria to slice on.
  * @param direction - The direction to slice in.
  * @param threshold - The maximum number of nodes to visit in the graph. If the threshold is reached, the slice will side with inclusion and drop its minimal guarantee. The limit ensures that the algorithm halts.
@@ -133,6 +130,9 @@ export function staticSlice(
 	return { ...queue.status(), decodedCriteria };
 }
 
+/**
+ *
+ */
 export function updatePotentialAddition(queue: VisitingQueue, id: NodeId, target: NodeId, baseEnvironment: REnvironmentInformation, envFingerprint: string): void {
 	const n = queue.potentialAdditions.get(target);
 	if(n) {

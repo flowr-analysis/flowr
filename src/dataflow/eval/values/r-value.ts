@@ -63,23 +63,38 @@ export type Value = Lift<
 export type ValueType<V> = V extends { type: infer T } ? T : never
 export type ValueTypes = ValueType<Value>
 
+/**
+ *
+ */
 export function typeOfValue<V extends Value>(value: V): V['type'] {
 	return value.type;
 }
 
 // @ts-expect-error -- this is a save cast
+/**
+ *
+ */
 export function isTop<V extends Lift<unknown>>(value: V): value is typeof Top {
 	return value === Top;
 }
 // @ts-expect-error -- this is a save cast
+/**
+ *
+ */
 export function isBottom<V extends Lift<unknown>>(value: V): value is typeof Bottom {
 	return value === Bottom;
 }
 
+/**
+ *
+ */
 export function isValue<V extends Lift<unknown>>(value: V): value is Unlift<V> {
 	return !isTop(value) && !isBottom(value);
 }
 
+/**
+ *
+ */
 export function asValue<V extends Lift<unknown>>(value: V): Unlift<V> {
 	guard(isValue(value), 'Expected a value, but got a top or bottom value');
 	return value;
@@ -122,6 +137,9 @@ function renderString(value: RStringValue): string {
 	}
 }
 
+/**
+ *
+ */
 export function stringifyValue(value: Lift<Value>): string {
 	return tryStringifyBoTop(value, v => {
 		const t = v.type;

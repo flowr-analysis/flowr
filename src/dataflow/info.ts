@@ -10,7 +10,6 @@ import type { GenericDifferenceInformation, WriteableDifferenceReport } from '..
  * A control dependency links a vertex to the control flow element which
  * may have an influence on its execution.
  * Within `if(p) a else b`, `a` and `b` have a control dependency on the `if` (which in turn decides based on `p`).
- *
  * @see {@link happensInEveryBranch} - to check whether a list of control dependencies is exhaustive
  */
 export interface ControlDependency {
@@ -25,7 +24,6 @@ export interface ControlDependency {
 
 /**
  * Classifies the type of exit point encountered.
- *
  * @see {@link ExitPoint}
  */
 export const enum ExitPointType {
@@ -42,7 +40,6 @@ export const enum ExitPointType {
 /**
  * An exit point describes the position which ends the current control flow structure.
  * This may be as innocent as the last expression or explicit with a `return`/`break`/`next`.
- *
  * @see {@link ExitPointType} - for the different types of exit points
  * @see {@link addNonDefaultExitPoints} - to easily modify lists of exit points
  * @see {@link alwaysExits} - to check whether a list of control dependencies always triggers an exit
@@ -56,7 +53,6 @@ export interface ExitPoint {
 	/**
 	 * Control dependencies which influence if the exit point triggers
 	 * (e.g., if the `return` is contained within an `if` statement).
-	 *
 	 * @see {@link happensInEveryBranch} - to check whether control dependencies are exhaustive
 	 */
 	readonly controlDependencies: ControlDependency[] | undefined
@@ -85,7 +81,6 @@ export interface DataflowCfgInformation {
  * to produce a new state of the dataflow information.
  *
  * You may initialize a new dataflow information with {@link initializeCleanDataflowInformation}.
- *
  * @see {@link DataflowCfgInformation} - the control flow aspects
  */
 export interface DataflowInformation extends DataflowCfgInformation {
@@ -94,19 +89,16 @@ export interface DataflowInformation extends DataflowCfgInformation {
 	 *
 	 * For example, when we analyze the `x` vertex in `x <- 3`, we will first create an unknown reference for `x`
 	 * as we have not yet seen the assignment!
-	 *
 	 * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
 	 */
 	unknownReferences: readonly IdentifierReference[]
 	/**
 	 * References which are read within the current subtree.
-	 *
 	 * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
-	 * */
+	 */
 	in:                readonly IdentifierReference[]
 	/**
 	 * References which are written to within the current subtree
-	 *
 	 * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
 	 */
 	out:               readonly IdentifierReference[]
@@ -119,7 +111,6 @@ export interface DataflowInformation extends DataflowCfgInformation {
 /**
  * Initializes an empty {@link DataflowInformation} object with the given entry point and data.
  * This is to be used as a "starting point" when processing leaf nodes during the dataflow extraction.
- *
  * @see {@link DataflowInformation}
  */
 export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'builtInEnvironment' | 'completeAst'>): DataflowInformation {
@@ -178,6 +169,9 @@ export function filterOutLoopExitPoints(exitPoints: readonly ExitPoint[]): reado
 	return exitPoints.filter(({ type }) => type === ExitPointType.Return || type === ExitPointType.Default);
 }
 
+/**
+ *
+ */
 export function diffControlDependency<Report extends WriteableDifferenceReport>(a: ControlDependency | undefined, b: ControlDependency | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
@@ -193,6 +187,9 @@ export function diffControlDependency<Report extends WriteableDifferenceReport>(
 	}
 }
 
+/**
+ *
+ */
 export function diffControlDependencies<Report extends WriteableDifferenceReport>(a: ControlDependency[] | undefined, b: ControlDependency[] | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {

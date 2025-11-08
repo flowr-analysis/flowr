@@ -1,7 +1,6 @@
 import type { SupportedFlowrCapabilityId } from '../../../src/r-bridge/data/get';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
-import type { FlowrSearchBuilder, FlowrSearchLike } from '../../../src/search/flowr-search-builder';
-import { Q } from '../../../src/search/flowr-search-builder';
+import { type FlowrSearchBuilder, type FlowrSearchLike , Q } from '../../../src/search/flowr-search-builder';
 
 /**
  * Type of container. Maps to R container creation functions.
@@ -22,7 +21,6 @@ export const enum AccessType {
 
 /**
  * Returns the closing bracket for the given access type.
- *
  * @param type - Access type
  * @returns Closing bracket
  */
@@ -43,7 +41,6 @@ function getClosingBracket(type: AccessType): string {
 
 /**
  * Returns the capability for the given access type.
- *
  * @param type - Access type
  * @returns Capability ID
  */
@@ -138,7 +135,6 @@ function definitionHelper(
  * Queries an argument in a specific line.
  *
  * Depending on {@link hasNamedArguments}, either {@link queryNamedArgument} or {@link queryUnnamedArgument} is used.
- *
  * @param hasNamedArguments - Whether arguments are named
  * @param index - Argument index
  * @param value - Argument value
@@ -161,7 +157,6 @@ function queryArgument(hasNamedArguments: boolean, index: number, value: string,
  * a <- list(arg1 = 1)
  * # queries first parameter 'arg1 = 1'
  * ```
- *
  * @param name - Argument name
  * @param line - Line number
  * @returns Query object
@@ -178,7 +173,6 @@ function queryNamedArgument(name: string, line: number) {
  * a <- list(1, 2)
  * # queries first parameter '1'
  * ```
- *
  * @param value - Argument value
  * @param line - Line number
  * @returns Query object
@@ -199,7 +193,6 @@ function queryUnnamedArgument(value: string, line: number) {
  * ```ts
  * queryAccInLine(AccessType.Dollar, 1, query => query.last())
  * ```
- *
  * @param type - Access type
  * @param line - Line number
  * @param fn - Optional function to modify the query, default is identity function
@@ -213,6 +206,9 @@ function queryAccessInLine(
 	return { query: fn(Q.varInLine(type, line)) };
 }
 
+/**
+ *
+ */
 export function setupContainerFunctions(
 	containerType: ContainerType,
 	accessType: AccessType,

@@ -3,18 +3,30 @@
 /* v8 ignore next */
 import { flowrVersion } from './version';
 
+/**
+ *
+ */
 export function assertUnreachable(x: never): never {
 	throw new Error(`Unexpected object: ${JSON.stringify(x)}`);
 }
 
+/**
+ *
+ */
 export function isNotUndefined<T>(x: T | undefined): x is T {
 	return x !== undefined;
 }
 
+/**
+ *
+ */
 export function isUndefined<T>(x: T | undefined): x is undefined {
 	return x === undefined;
 }
 
+/**
+ *
+ */
 export function isNotNull<T>(x: T | null): x is T {
 	return x !== null;
 }

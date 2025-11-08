@@ -2,6 +2,9 @@ export type Os = 'mac-os' | 'linux' | 'windows' | 'unknown'
 
 let platformCache: Os | null = null;
 
+/**
+ *
+ */
 export function getPlatform(): Os {
 	if(platformCache !== null) {
 		return platformCache;

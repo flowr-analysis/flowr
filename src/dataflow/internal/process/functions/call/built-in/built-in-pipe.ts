@@ -14,6 +14,9 @@ import { EdgeType } from '../../../../../graph/edge';
 import { ReferenceType } from '../../../../../environments/identifier';
 
 
+/**
+ *
+ */
 export function processPipe<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],

@@ -1,7 +1,6 @@
 import { assertAst, withShell } from '../../../_helper/shell';
 import { exprList, numVal } from '../../../_helper/ast-builder';
-import type { SourceRange } from '../../../../../src/util/range';
-import { addRanges, rangeFrom } from '../../../../../src/util/range';
+import { type SourceRange , addRanges, rangeFrom } from '../../../../../src/util/range';
 import { label } from '../../../_helper/label';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
@@ -171,7 +170,7 @@ const ElseSpacingVariants: ElseSpacing[] = [{
 const ElseGroupingVariants: ElseSpacing[] = [{
 	str:          ' else {2}',
 	locationElse: rangeFrom(0, 8, 0, 8),
-	otherwise: 	  off => inBrace(
+	otherwise:    off => inBrace(
 		addRanges(off, rangeFrom(0, 7, 0, 7)), addRanges(off, rangeFrom(0, 9, 0, 9)),
 		{ type: RType.Number, location: addRanges(off, rangeFrom(0, 8, 0, 8)), lexeme: '2', content: numVal(2), info: {} }
 	),
@@ -351,7 +350,7 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 					content:  numVal(2),
 					info:     {}
 				})
-			})	, {
+			}), {
 				ignoreAdditionalTokens: true,
 				ignoreColumns:          true
 			}

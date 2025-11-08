@@ -11,6 +11,9 @@ interface BenchmarkGraphEntry extends MergeableRecord {
 	extra?: string
 }
 
+/**
+ *
+ */
 export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath: string) {
 	console.log(`Producing benchmark graph data (${outputGraphPath})...`);
 

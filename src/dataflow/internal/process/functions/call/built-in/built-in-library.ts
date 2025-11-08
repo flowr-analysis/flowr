@@ -12,6 +12,9 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 
 
+/**
+ *
+ */
 export function processLibrary<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],

@@ -238,7 +238,7 @@ edges in both directions. From this perspective,
 the code \`${exampleA}\` has one cluster (given that all code is related), 
 while the code \`${exampleB}\` has two clusters (given that the \`y\` has no relation to the previous definition).
 
-${details('Example <code>' + exampleA + '</code>',  
+${details('Example <code>' + exampleA + '</code>',
 	await showQuery(shell, exampleA, [{ type: 'dataflow-cluster' }], { showCode: false }))}
 ${details('Example <code>' + exampleB + '</code>',
 	await showQuery(shell, exampleB, [{ type: 'dataflow-cluster' }], { showCode: false }))}
@@ -397,7 +397,7 @@ registerQueryDocumentation('config', {
 	shortDescription: 'Returns the current configuration of flowR.',
 	functionName:     executeConfigQuery.name,
 	functionFile:     '../queries/catalog/config-query/config-query-format.ts',
-	 
+
 	buildExplanation: async(shell: RShell) => {
 		return `
 This query provides access to the current configuration of the flowR instance. See the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on what the configuration represents.
@@ -737,7 +737,7 @@ ${
 	}], { showCode: false, collapseQuery: true })
 }
 
-All locations are given as a ${shortLink('SourceRange', types.info)} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.	
+All locations are given as a ${shortLink('SourceRange', types.info)} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.
 
 		`;
 	}

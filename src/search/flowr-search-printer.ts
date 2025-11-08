@@ -33,7 +33,7 @@ function argsToMermaidString(args: Record<string, unknown> | undefined): string 
 		return '';
 	}
 	return Object.entries(args).map(([key, value]) =>
-		`${key}: ${isBinaryTree(value) ? '_' + escapeMarkdown(binaryTreeToString(value.tree)) + '_' 
+		`${key}: ${isBinaryTree(value) ? '_' + escapeMarkdown(binaryTreeToString(value.tree)) + '_'
 			: escapeMarkdown(JSON.stringify(value))}`)
 		.join(', ');
 }
@@ -51,6 +51,9 @@ function argsToAsciiString(args: Record<string, unknown> | undefined): string {
 		.join(', ');
 }
 
+/**
+ *
+ */
 export function flowrSearchToAscii(search: FlowrSearchLike): string {
 	return traverseFlowrSearchBuilderType(
 		search,
@@ -71,6 +74,9 @@ function argsToCodeString(args: Record<string, unknown> | undefined): string {
 		.join(', ');
 }
 
+/**
+ *
+ */
 export function flowrSearchToCode(search: FlowrSearchLike): string {
 	return traverseFlowrSearchBuilderType(
 		search,

@@ -12,6 +12,9 @@ export interface RNumber<Info = NoInfo> extends Leaf<Info>, Location {
 	content:       RNumberValue
 }
 
+/**
+ *
+ */
 export function isRNumber(node: RNode | undefined): node is RNumber {
 	return node?.type === RType.Number;
 }

@@ -4,12 +4,10 @@ import type {
 	ParentInformation,
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { MergeableRecord } from '../../util/objects';
-import { deepMergeObject } from '../../util/objects';
+import { type MergeableRecord , deepMergeObject } from '../../util/objects';
 import { VertexType } from '../../dataflow/graph/vertex';
 import type { Identifier } from '../../dataflow/environments/identifier';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
-
 import {
 	identifyLinkToLastCallRelation
 } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
@@ -19,8 +17,7 @@ import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import type { Query, QueryResult } from '../../queries/query';
-import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
-import { cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
+import { type CfgSimplificationPassName , cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
 import type { AsyncOrSync, AsyncOrSyncType } from 'ts-essentials';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { DataflowInformation } from '../../dataflow/info';
@@ -227,6 +224,9 @@ export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<Pa
 	return e?.enrichments?.[enrichment] as EnrichmentElementContent<E>;
 }
 
+/**
+ *
+ */
 export async function enrichElement<Element extends FlowrSearchElement<ParentInformation>, E extends Enrichment>(
 	e: Element, s: FlowrSearchElements<ParentInformation>, data: {
 		dataflow:  DataflowInformation,

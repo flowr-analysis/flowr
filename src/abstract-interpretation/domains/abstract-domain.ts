@@ -1,6 +1,5 @@
 import { guard } from '../../util/assert';
-import type { Lattice } from './lattice';
-import { Bottom, Top } from './lattice';
+import { type Lattice , Bottom, Top } from './lattice';
 
 /**
  * The default limit of inferred constraints in {@link AbstractDomain|AbstractDomains}.
@@ -163,6 +162,9 @@ export function domainElementToString(value: AnyAbstractDomain | unknown): strin
 	return JSON.stringify(value);
 }
 
+/**
+ *
+ */
 export function isAbstractDomain(value: unknown): value is AnyAbstractDomain {
 	if(typeof value !== 'object' || value === null) {
 		return false;

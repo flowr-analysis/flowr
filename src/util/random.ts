@@ -9,6 +9,9 @@ function isPositiveFiniteInteger(length: number): boolean {
 	return isFinite(length) && length >= 0 && length === Math.floor(length);
 }
 
+/**
+ *
+ */
 export function randomString(length: number, symbols = ALPHABET): string {
 	guard(isPositiveFiniteInteger(length), `length must be a positive, finite integer (${length} >= 0)`);
 	guard(symbols.length > 0, 'there must be at least one symbol to use');

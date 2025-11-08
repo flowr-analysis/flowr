@@ -15,7 +15,7 @@ describe('Post-Processing', () => {
 		// mock console.log to avoid cluttering the test output
 		vi.spyOn(console, 'log').mockImplementation(() => {});
 		vi.spyOn(console, 'error').mockImplementation(() => {});
-        
+
 		const tempfolder = fs.mkdtempSync(path.resolve(os.tmpdir(), 'flowr-test-temp-'));
 		// run the basic statistics script
 		await flowrScriptGetStats({

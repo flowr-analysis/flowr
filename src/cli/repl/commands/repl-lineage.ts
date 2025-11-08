@@ -1,10 +1,8 @@
 import type { ReplCodeCommand } from './repl-main';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../slicing/criterion/parse';
+import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../slicing/criterion/parse';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph, OutgoingEdges } from '../../../dataflow/graph/graph';
-import type { DataflowGraphEdge } from '../../../dataflow/graph/edge';
-import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
+import { type DataflowGraphEdge , edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../../../util/assert';
 import { startAndEndsWith } from '../../../util/text/strings';
@@ -23,7 +21,6 @@ function pushRelevantEdges(queue: [NodeId, DataflowGraphEdge][], outgoingEdges: 
 
 /**
  * Get the lineage of a node in the dataflow graph
- *
  * @param criterion - The criterion to get the lineage of
  * @param graph - The dataflow graph to search in
  * @param idMap - The ID map to use for resolving the criterion (will default to that shipped with the dfgraph)

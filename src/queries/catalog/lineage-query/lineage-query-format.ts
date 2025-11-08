@@ -6,7 +6,6 @@ import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeLineageQuery } from './lineage-query-executor';
-
 import { summarizeIdsIfTooLong } from '../../query-print';
 import { sliceCriterionParser } from '../../../cli/repl/parser/slice-query-parser';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';

@@ -1,28 +1,26 @@
-import type {
-	LintingRuleConfig,
-	LintingRuleMetadata,
-	LintingRuleNames,
-	LintingRuleResult
-} from '../../../src/linter/linter-rules';
-import { LintingRules } from '../../../src/linter/linter-rules';
-import type { TestLabel } from './label';
-import { decorateLabelContext } from './label';
+import {
+	type LintingRuleConfig,
+	type LintingRuleMetadata,
+	type LintingRuleNames,
+	type LintingRuleResult
+	, LintingRules } from '../../../src/linter/linter-rules';
+import { type TestLabel , decorateLabelContext } from './label';
 import { assert, test } from 'vitest';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
-import type { NormalizedAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { type NormalizedAst , deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { executeLintingRule } from '../../../src/linter/linter-executor';
-import type { LintingRule } from '../../../src/linter/linter-format';
-import { isLintingResultsError, LintingPrettyPrintContext } from '../../../src/linter/linter-format';
+import { type LintingRule , isLintingResultsError, LintingPrettyPrintContext } from '../../../src/linter/linter-format';
 import { log } from '../../../src/util/log';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser } from '../../../src/r-bridge/parser';
-import type { FlowrLaxSourcingOptions } from '../../../src/config';
-import { DropPathsOption } from '../../../src/config';
+import { type FlowrLaxSourcingOptions , DropPathsOption } from '../../../src/config';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 
+/**
+ *
+ */
 export function assertLinter<Name extends LintingRuleNames>(
 	name: string | TestLabel,
 	parser: KnownParser,

@@ -3,8 +3,7 @@ import {
 	descriptionFileLog
 } from '../file-plugins/flowr-analyzer-description-file-plugin';
 import { SemVer } from 'semver';
-import type { PackageType } from './package';
-import { Package } from './package';
+import { type PackageType , Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { SpecialFileRole } from '../../context/flowr-file';
 import type { DCF } from '../file-plugins/flowr-description-file';

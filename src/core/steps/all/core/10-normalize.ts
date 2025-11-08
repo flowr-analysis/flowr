@@ -5,8 +5,7 @@ import {
 	printNormalizedAstToMermaid,
 	printNormalizedAstToMermaidUrl
 } from '../../../print/normalize-printer';
-import type { IPipelineStep } from '../../pipeline-step';
-import { PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep , PipelineStepStage } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import { normalize } from '../../../../r-bridge/lang-4.x/ast/parser/json/parser';
 import type { IdGenerator } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -22,6 +21,9 @@ export interface NormalizeRequiredInput {
 	readonly overwriteFilePath?: string
 }
 
+/**
+ *
+ */
 export function getCurrentRequestFile(request: RParseRequests | undefined): string | undefined {
 	if(request === undefined) {
 		return undefined;

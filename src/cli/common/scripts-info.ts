@@ -1,6 +1,5 @@
 /**
  * This file contains the references to all scripts, as well as their explanations and arguments.
- *
  * @module
  */
 import type { OptionDefinition } from 'command-line-usage';
@@ -105,6 +104,9 @@ const _scripts = {
 
 export const scripts = _scripts as Record<keyof typeof _scripts, ScriptInformation>;
 
+/**
+ *
+ */
 export function getValidOptionsForCompletion(options: readonly OptionDefinition[], prevArgs: readonly string[]): string[] {
 	return options.filter(o => canAddOption(o, prevArgs)).flatMap(o => {
 		const args = [asOptionName(o.name)];

@@ -1,13 +1,9 @@
 import { deepMergeObject } from '../../util/objects';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId , normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph';
-import { DataflowGraph, isPositionalArgument } from './graph';
-import type { IEnvironment, REnvironmentInformation } from '../environments/environment';
-import { initializeCleanEnvironments } from '../environments/environment';
-import type { DataflowGraphVertexAstLink, DataflowGraphVertexUse, FunctionOriginInformation } from './vertex';
-import { VertexType } from './vertex';
+import { type DataflowFunctionFlowInformation, type FunctionArgument , DataflowGraph, isPositionalArgument } from './graph';
+import { type IEnvironment, type REnvironmentInformation , initializeCleanEnvironments } from '../environments/environment';
+import { type DataflowGraphVertexAstLink, type DataflowGraphVertexUse, type FunctionOriginInformation , VertexType } from './vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isBuiltIn } from '../environments/built-in';
 import { EdgeType } from './edge';
@@ -19,6 +15,9 @@ import { runSearch } from '../../search/flowr-search-executor';
 import { guard } from '../../util/assert';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
+/**
+ *
+ */
 export function emptyGraph(idMap?: AstIdMap) {
 	return new DataflowGraphBuilder(idMap);
 }
@@ -33,7 +32,6 @@ export type DataflowGraphEdgeTarget = NodeId | (readonly NodeId[]);
 export class DataflowGraphBuilder extends DataflowGraph {
 	/**
 	 * Adds a **vertex** for a **function definition** (V1).
-	 *
 	 * @param id - AST node ID
 	 * @param subflow - Subflow data graph for the defined function.
 	 * @param exitPoints - Node IDs for exit point vertices.
@@ -64,7 +62,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **vertex** for a **function call** (V2).
-	 *
 	 * @param id - AST node ID
 	 * @param name - Function name
 	 * @param args - Function arguments; may be empty
@@ -131,7 +128,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **vertex** for a **variable definition** (V4).
-	 *
 	 * @param id - AST node ID
 	 * @param name - Variable name
 	 * @param info - Additional/optional properties.
@@ -156,7 +152,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **vertex** for **variable use** (V5). Intended for creating dataflow graphs as part of function tests.
-	 *
 	 * @param id - AST node id
 	 * @param name - Variable name
 	 * @param info - Additional/optional properties; i.e., scope, when, or environment.
@@ -179,7 +174,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **vertex** for a **constant value** (V6).
-	 *
 	 * @param id - AST node ID
 	 * @param options - Additional/optional properties;
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
@@ -227,7 +221,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **read edge**.
-	 *
 	 * @param from - NodeId of the source vertex
 	 * @param to   - Either a single or multiple target ids.
 	 *               If you pass multiple this will construct a single edge for each of them.
@@ -238,7 +231,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **read edge** with a query for the from and/or to vertices.
-	 * 
 	 * @param from - Either a node id or a query to find the node id.
 	 * @param to - Either a node id or a query to find the node id.
 	 * @param input - The input to search in i.e. the dataflow graph.
@@ -250,7 +242,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	/**
 	 * Adds a **defined-by edge** with from as defined variable, and to
 	 * as a variable/function contributing to its definition.
-	 *
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public definedBy(from: NodeId, to: DataflowGraphEdgeTarget) {
@@ -259,7 +250,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **defined-by edge** with a query for the from and/or to vertices.
-	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
 	public definedByQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
@@ -268,7 +258,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **call edge** with from as caller, and to as callee.
-	 *
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public calls(from: NodeId, to: DataflowGraphEdgeTarget) {
@@ -277,7 +266,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **call edge** with a query for the from and/or to vertices.
-	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
 	public callsQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
@@ -286,7 +274,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **return edge** with from as function, and to as exit point.
-	 *
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public returns(from: NodeId, to: DataflowGraphEdgeTarget) {
@@ -295,7 +282,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **return edge** with a query for the from and/or to vertices.
-	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
 	public returnsQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
@@ -304,7 +290,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **defines-on-call edge** with from as variable, and to as its definition
-	 *
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public definesOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
@@ -313,7 +298,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **defines-on-call edge** with a query for the from and/or to vertices.
-	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
 	public definesOnCallQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
@@ -322,7 +306,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **defined-by-on-call edge** with from as definition, and to as variable.
-	 *
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public definedByOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
@@ -331,7 +314,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **defined-by-on-call edge** with a query for the from and/or to vertices.
-	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
 	public definedByOnCallQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
@@ -340,7 +322,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds an **argument edge** with from as function call, and to as argument.
-	 *
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public argument(from: NodeId, to: DataflowGraphEdgeTarget) {
@@ -349,7 +330,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **argument edge** with a query for the from and/or to vertices.
-	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
 	public argumentQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
@@ -358,7 +338,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **non-standard evaluation edge** with from as vertex, and to as vertex.
-	 *
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public nse(from: NodeId, to: DataflowGraphEdgeTarget) {
@@ -367,7 +346,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **non-standard evaluation edge** with a query for the from and/or to vertices.
-	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
 	public nseQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
@@ -376,7 +354,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **side-effect-on-call edge** with from as vertex, and to as vertex.
-	 *
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public sideEffectOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
@@ -385,7 +362,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 	/**
 	 * Adds a **side-effect-on-call edge** with a query for the from and/or to vertices.
-	 * 
 	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
 	 */
 	public sideEffectOnCallQuery(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider) {
@@ -402,6 +378,9 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 }
 
+/**
+ *
+ */
 export function getBuiltInSideEffect(name: string): LinkTo<RegExp> | undefined {
 	const got = DefaultBuiltinConfig.find(e => e.names.includes(name));
 	if(got?.type !== 'function') {

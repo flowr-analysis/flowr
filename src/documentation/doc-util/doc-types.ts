@@ -23,6 +23,9 @@ export interface TypeElementInSource {
 	readonly properties?: string[];
 }
 
+/**
+ *
+ */
 export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[], program: ts.Program } {
 	try {
 		const program = ts.createProgram(fileNames, {
@@ -43,6 +46,9 @@ export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files:
 	}
 }
 
+/**
+ *
+ */
 export function dropGenericsFromTypeName(type: string): string {
 	let previous;
 	do{
@@ -52,6 +58,9 @@ export function dropGenericsFromTypeName(type: string): string {
 	return type;
 }
 
+/**
+ *
+ */
 export function removeCommentSymbolsFromTypeScriptComment(comment: string): string {
 	return comment
 	// remove '/** \n * \n */...
@@ -61,6 +70,9 @@ export function removeCommentSymbolsFromTypeScriptComment(comment: string): stri
 		.trim();
 }
 
+/**
+ *
+ */
 export function getTextualCommentsFromTypeScript(node: ts.Node): string[] {
 	const comments = ts.getJSDocCommentsAndTags(node);
 	const out: string[] = [];
@@ -76,11 +88,17 @@ export function getTextualCommentsFromTypeScript(node: ts.Node): string[] {
 	return out;
 }
 
+/**
+ *
+ */
 export function getStartLineOfTypeScriptNode(node: ts.Node, sourceFile: ts.SourceFile): number {
 	const lineStart = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line;
 	return lineStart + 1;
 }
 
+/**
+ *
+ */
 export function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
 	const tryDirect = typeChecker.getTypeAtLocation(node);
 	return tryDirect ? typeChecker.typeToString(tryDirect) : 'unknown';
@@ -88,6 +106,9 @@ export function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
 
 const defaultSkip = ['Pick', 'Partial', 'Required', 'Readonly', 'Omit', 'DeepPartial', 'DeepReadonly', 'DeepWritable', 'StrictOmit'];
 
+/**
+ *
+ */
 export function followTypeReference(type: ts.TypeReferenceNode, sourceFile: ts.SourceFile): string[] {
 	const node = type.typeName;
 	if(ts.isQualifiedName(node)) {
@@ -266,10 +287,16 @@ interface MermaidCompact {
 	edgeLines: string[]
 }
 
+/**
+ *
+ */
 export function getTypePathForTypeScript({ filePath }: Pick<TypeElementInSource, 'filePath' >) {
 	return filePath.replace(/^.*\/src\//, 'src/').replace(/^.*\/test\//, 'test/');
 }
 
+/**
+ *
+ */
 export function getTypePathLink(elem: Pick<TypeElementInSource, 'filePath' | 'lineNumber' >, prefix = RemoteFlowrFilePathBaseRef): string {
 	const fromSource = getTypePathForTypeScript(elem);
 	return `${prefix}/${fromSource}#L${elem.lineNumber}`;
@@ -392,6 +419,9 @@ export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport
 	return getTypesFromFileAsMermaid(files, options);
 }
 
+/**
+ *
+ */
 export function implSnippet(node: TypeElementInSource | undefined, program: ts.Program, showName = true, nesting = 0, open = false): string {
 	guard(node !== undefined, 'Node must be defined => invalid change of type name?');
 	const indent = ' '.repeat(nesting * 2);
@@ -419,6 +449,9 @@ export interface PrintHierarchyArguments {
 }
 
 export const mermaidHide = ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial', 'RAccessBase'];
+/**
+ *
+ */
 export function printHierarchy({ program, info, root, collapseFromNesting = 1, initialNesting = 0, maxDepth = 20, openTop }: PrintHierarchyArguments): string {
 	if(initialNesting > maxDepth) {
 		return '';
@@ -456,6 +489,9 @@ interface FnInfo {
 	hideDefinedAt?:   boolean
 }
 
+/**
+ *
+ */
 export function printCodeOfElement({ program, info, dropLinesEnd = 0, dropLinesStart = 0, doNotAutoGobble, hideDefinedAt }: FnInfo, name: string): string {
 	const node = info.find(e => e.name === name);
 	if(!node) {
@@ -546,6 +582,9 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 	}${codeStyle ? '</code>' : ''}</a>`;
 }
 
+/**
+ *
+ */
 export function shortLinkFile(name: string, hierarchy: readonly TypeElementInSource[]): string {
 	const res = retrieveNode(name, hierarchy);
 	if(!res) {
@@ -561,6 +600,9 @@ export interface GetDocumentationForTypeFilters {
     type?:  TypeElementKind;
 }
 
+/**
+ *
+ */
 export function getDocumentationForType(name: string, hierarchy: TypeElementInSource[], prefix = '', filter?: GetDocumentationForTypeFilters): string {
 	const res = retrieveNode(name, hierarchy, filter?.fuzzy, filter?.type);
 	if(!res) {

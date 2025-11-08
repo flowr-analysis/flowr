@@ -1,11 +1,9 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { executeCallContextQueries } from './call-context-query-executor';
-import type { OutputFormatter } from '../../../util/text/ansi';
-import { bold } from '../../../util/text/ansi';
+import { type OutputFormatter , bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
-
 import { asciiCallContext } from '../../query-print';
 import { CallTargets } from './identify-link-to-last-call-relation';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';

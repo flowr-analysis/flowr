@@ -1,6 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
-import { filterOutLoopExitPoints } from '../../../../../info';
+import { type DataflowInformation , filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
@@ -10,12 +9,14 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
 import { unpackArgument } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 
+/**
+ *
+ */
 export function processRepeatLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],

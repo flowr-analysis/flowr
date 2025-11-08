@@ -1,10 +1,8 @@
 import type { FeatureStatisticsWithMeta } from '../../feature';
-import type { SummarizedWithProject } from '../../post-processing';
-import { emptySummarizedWithProject, recordFilePath } from '../../post-processing';
+import { type SummarizedWithProject , emptySummarizedWithProject, recordFilePath } from '../../post-processing';
 import type { LoopInfo } from './loops';
-import type {
-	CommonSyntaxTypeCounts } from '../../common-syntax-probability';
 import {
+	type CommonSyntaxTypeCounts ,
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability';
@@ -23,6 +21,9 @@ type LoopInfoPostProcess = MergeableRecord & {
 	[k in keyof LoopInfo]: LoopInfo[k] extends number | bigint ? SummarizedWithProject : CommonSyntaxTypeCounts<number[][]>
 }
 
+/**
+ *
+ */
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	const collected: LoopInfoPostProcess = {
 		forLoops:               emptyCommonSyntaxTypeCounts(() => []),

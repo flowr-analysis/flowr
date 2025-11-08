@@ -1,5 +1,4 @@
-import type { NormalizerData } from '../../normalizer-data';
-import { ParseError } from '../../normalizer-data';
+import { type NormalizerData , ParseError } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
 import { ensureExpressionList, getWithTokenType, retrieveMetaStructure } from '../../normalize-meta';
 import { guard } from '../../../../../../../util/assert';
@@ -15,6 +14,9 @@ import type { RComment } from '../../../../model/nodes/r-comment';
 import type { JsonEntry, NamedJsonEntry } from '../../../json/format';
 
 
+/**
+ *
+ */
 export function tryNormalizeFor(
 	data: NormalizerData,
 	[forToken, head, body]: [NamedJsonEntry, NamedJsonEntry, NamedJsonEntry]

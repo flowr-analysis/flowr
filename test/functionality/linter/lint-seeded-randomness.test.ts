@@ -1,6 +1,4 @@
 import { describe } from 'vitest';
-
-
 import { assertLinter } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';

@@ -1,15 +1,12 @@
-import type { FlowrSearchElement, FlowrSearchGeneratorNodeBase, FlowrSearchGetFilter } from '../flowr-search';
-import { FlowrSearchElements } from '../flowr-search';
+import { type FlowrSearchElement, type FlowrSearchGeneratorNodeBase, type FlowrSearchGetFilter , FlowrSearchElements } from '../flowr-search';
 import type { TailTypesOrUndefined } from '../../util/collections/arrays';
 import type {
 	ParentInformation,
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { SlicingCriteria } from '../../slicing/criterion/parse';
-import { slicingCriterionToId } from '../../slicing/criterion/parse';
+import { type SlicingCriteria , slicingCriterionToId } from '../../slicing/criterion/parse';
 import { guard, isNotUndefined } from '../../util/assert';
-import type { Query, SupportedQuery } from '../../queries/query';
-import { executeQueries, SupportedQueries } from '../../queries/query';
+import { type Query, type SupportedQuery , executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { enrichElement, Enrichment } from './search-enrichers';
@@ -181,6 +178,9 @@ async function generateCriterion(input: ReadonlyFlowrAnalysisProvider, args: { c
 	);
 }
 
+/**
+ *
+ */
 export function getGenerator<Name extends GeneratorNames>(name: Name): typeof generators[Name] {
 	if(!generators[name]) {
 		throw new Error(`Unknown generator: ${name}`);

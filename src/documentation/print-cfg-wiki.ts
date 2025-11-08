@@ -17,34 +17,29 @@ import { getReplCommand } from './doc-util/doc-cli-option';
 import { block, details, section } from './doc-util/doc-structure';
 import { getCfg, printCfgCode } from './doc-util/doc-cfg';
 import { visitCfgInOrder, visitCfgInReverseOrder } from '../control-flow/simple-visitor';
-import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { CfgVertexType, ControlFlowGraph } from '../control-flow/control-flow-graph';
+import { type ControlFlowInformation , CfgVertexType, ControlFlowGraph } from '../control-flow/control-flow-graph';
 import { simplifyControlFlowInformation } from '../control-flow/cfg-simplification';
 import { extractCfg, ResolvedCallSuffix } from '../control-flow/extract-cfg';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { convertCfgToBasicBlocks } from '../control-flow/cfg-to-basic-blocks';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNumberValue } from '../r-bridge/lang-4.x/convert-values';
-import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
-import { isRNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { type RNumber , isRNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { happensBefore } from '../control-flow/happens-before';
 import { assertCfgSatisfiesProperties } from '../control-flow/cfg-properties';
 import { BasicCfgGuidedVisitor } from '../control-flow/basic-cfg-guided-visitor';
 import { SyntaxAwareCfgGuidedVisitor } from '../control-flow/syntax-cfg-guided-visitor';
 import { diffOfControlFlowGraphs } from '../control-flow/diff-cfg';
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId , recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
 import { DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-visitor';
 import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
-import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
-import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
+import { type SemanticCfgGuidedVisitorConfiguration , SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { EdgeType, edgeTypeToName } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import type { FlowrConfigOptions } from '../config';
-import { defaultConfigOptions } from '../config';
+import { type FlowrConfigOptions , defaultConfigOptions } from '../config';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -179,7 +174,7 @@ ${
 		content: `If you want to investigate the Control Flow Graph,
 you can use the ${getReplCommand('controlflow*')} command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information).
 By default, this view does _not_ use basic blocks as, for example, R allows unconditional jumps to occur in spots where conventional languages would assume expressions (e.g., if-conditions).
-Yet, by using ${getReplCommand('controlflowbb*')} you can inspect the CFG with basic blocks (although you have to keep in mind that now, there can be a value flow between basic blocks)` 
+Yet, by using ${getReplCommand('controlflowbb*')} you can inspect the CFG with basic blocks (although you have to keep in mind that now, there can be a value flow between basic blocks)`
 	})
 }
 
@@ -551,7 +546,7 @@ ${
 		.filter(n => n !== 'constructor').sort().map(
 			key => {
 				const doc = getDocumentationForType(`SemanticCfgGuidedVisitor::${key}`, types.info, '  ');
-				return `- ${shortLink(`SemanticCfgGuidedVisitor::${key}`, types.info)}\\\n${doc ?? '_no documentation available_'}\n`;	
+				return `- ${shortLink(`SemanticCfgGuidedVisitor::${key}`, types.info)}\\\n${doc ?? '_no documentation available_'}\n`;
 			}
 		).join('\n')
 }
@@ -570,7 +565,7 @@ ${await (async function() {
 	const numOfExits
 		= plusVertex.end?.length ?? 0;
 	guard(plusVertex.end && numOfExits === 1);
-	
+
 	return `${await printCfgCode(shell, 'x + 1', { showCode: true, prefix: 'flowchart RL\n' })}
 	
 Looking at the binary operation vertex for \`+\` (with id \`${plusVertexId}\`) we see that it is linked to a single exit ("end marker") point: \`${plusVertex.end[0]}\`.

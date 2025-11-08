@@ -6,6 +6,9 @@ import { extractCfgQuick } from '../../../control-flow/extract-cfg';
 import { happensBefore } from '../../../control-flow/happens-before';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 
+/**
+ *
+ */
 export async function executeHappensBefore({ analyzer }: BasicQueryData, queries: readonly HappensBeforeQuery[]): Promise<HappensBeforeQueryResult> {
 	const start = Date.now();
 	const results: Record<string, Ternary> = {};

@@ -2,6 +2,9 @@ import { log } from '../../../util/log';
 import type { IdMapQuery, IdMapQueryResult } from './id-map-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 
+/**
+ *
+ */
 export async function executeIdMapQuery({ analyzer }: BasicQueryData, queries: readonly IdMapQuery[]): Promise<IdMapQueryResult> {
 	if(queries.length !== 1) {
 		log.warn('Id-Map query expects only up to one query, but got', queries.length);

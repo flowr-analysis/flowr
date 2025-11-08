@@ -7,13 +7,22 @@ import type { RParameter } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/
 
 const emptyInfo = { fullRange: undefined, additionalTokens: [], fullLexeme: undefined, nesting: 0 };
 
+/**
+ *
+ */
 export function exprList(...children: RNode[]): RExpressionList {
 	return { type: RType.ExpressionList, children, lexeme: undefined, info: emptyInfo, grouping: undefined, location: undefined };
 }
+/**
+ *
+ */
 export function numVal(value: number, markedAsInt = false, complexNumber = false): RNumberValue {
 	return { num: value, markedAsInt, complexNumber };
 }
 
+/**
+ *
+ */
 export function parameter(name: string, location: SourceRange, defaultValue?: RNode, special = false): RParameter {
 	return {
 		type:   RType.Parameter,

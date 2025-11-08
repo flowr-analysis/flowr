@@ -1,5 +1,4 @@
-import type { NormalizerData } from '../../normalizer-data';
-import { ParseError } from '../../normalizer-data';
+import { type NormalizerData , ParseError } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
 import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta';
 import { RawRType, RType } from '../../../../model/type';
@@ -7,6 +6,9 @@ import type { RWhileLoop } from '../../../../model/nodes/r-while-loop';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { NamedJsonEntry } from '../../../json/format';
 
+/**
+ *
+ */
 export function tryNormalizeWhile(
 	data: NormalizerData,
 	[whileToken, leftParen, condition, rightParen, body]: [NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry]

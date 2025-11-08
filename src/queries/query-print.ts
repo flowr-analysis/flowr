@@ -1,7 +1,5 @@
-import type { OutputFormatter } from '../util/text/ansi';
-import { bold, italic, markdownFormatter } from '../util/text/ansi';
-import type { Queries, Query, QueryResult, QueryResults, SupportedQueryTypes } from './query';
-import { SupportedQueries } from './query';
+import { type OutputFormatter , bold, italic, markdownFormatter } from '../util/text/ansi';
+import { type Queries, type Query, type QueryResult, type QueryResults, type SupportedQueryTypes , SupportedQueries } from './query';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { textWithTooltip } from '../util/html-hover-over';
 import type { CallContextQuerySubKindResult } from './catalog/call-context-query/call-context-query-format';
@@ -48,6 +46,9 @@ function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly Ca
 	return result.join(', ');
 }
 
+/**
+ *
+ */
 export function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'call-context'>['call-context'], idMap: AstIdMap<ParentInformation>): string {
 	/* traverse over 'kinds' and within them 'subkinds' */
 	const result: string[] = [];
@@ -60,6 +61,9 @@ export function asciiCallContext(formatter: OutputFormatter, results: QueryResul
 	return result.join('\n');
 }
 
+/**
+ *
+ */
 export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly NodeId[]) {
 	const naive = ids.join(', ');
 	if(naive.length <= 20) {
@@ -76,6 +80,9 @@ export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly 
 	return formatter === markdownFormatter ? textWithTooltip(acc, JSON.stringify(ids)) : acc;
 }
 
+/**
+ *
+ */
 export async function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(
 	formatter: OutputFormatter, totalInMs: number, results: QueryResults<S>,
 	analyzer: ReadonlyFlowrAnalysisProvider, queries: Queries<S>

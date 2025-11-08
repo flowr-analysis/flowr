@@ -1,6 +1,5 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print';
-import type { IPipelineStep } from '../../pipeline-step';
-import { PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep , PipelineStepStage } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import type { DataflowInformation } from '../../../../dataflow/info';
 import type { SlicingCriteria } from '../../../../slicing/criterion/parse';

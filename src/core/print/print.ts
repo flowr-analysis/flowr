@@ -40,7 +40,6 @@ export const enum StepOutputFormat {
 
 /**
  * Helper function to support the {@link Internal} format, as it is simply returning the input.
- *
  * @see IPipelineStepPrinter
  */
 export function internalPrinter<Input>(input: Input): Input {

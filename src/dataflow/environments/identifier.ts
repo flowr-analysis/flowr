@@ -14,7 +14,6 @@ export type Identifier = string & { __brand?: 'identifier' }
  * a function when resolving an {@link Identifier|identifier}.
  * In `c <- 3; print(c(1, 2))` the call to `c` works normally (as the vector constructor),
  * while writing `c <- function(...) ..1` overshadows the built-in and causes `print` to only output the first element.
- *
  * @see {@link isReferenceType} - for checking if a (potentially joint) reference type contains a certain type
  * @see {@link ReferenceTypeReverseMapping} - for debugging
  */
@@ -50,7 +49,6 @@ export function isReferenceType(t: ReferenceType, target: ReferenceType): boolea
 /**
  * Describes all types of reference (definitions) that can appear within a graph (i.e., that are not built-in like the
  * default definition for the assignment operator `<-`).
- *
  * @see {@link InGraphIdentifierDefinition} - for the definition of an identifier within the graph
  */
 export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction>
@@ -67,7 +65,6 @@ export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInC
  * they indicate the references that are currently (during the analysis at this given node)
  * {@link DataflowInformation#in|read (`in`)}, {@link DataflowInformation#out|written (`out`)},
  * or {@link DataflowInformation#unknownReferences|unknown (`unknownReferences`)}.
- *
  * @see {@link InGraphIdentifierDefinition}
  */
 export interface IdentifierReference {
@@ -95,7 +92,6 @@ export interface IdentifierReference {
  * Within a code snippet like `a <- 3`, the symbol processor will first create an
  * {@link IdentifierReference|identifier reference} for `a` to reference the use
  * and then promote it to an {@link InGraphIdentifierDefinition|identifier definition}.
- *
  * @see {@link IdentifierReference}
  */
 export interface InGraphIdentifierDefinition extends IdentifierReference {

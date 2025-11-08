@@ -14,13 +14,11 @@ import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import { getCfg } from '../../doc-util/doc-cfg';
 import { NewIssueUrl } from '../../doc-util/doc-issue';
 import { requestSliceMessage, responseSliceMessage } from '../../../cli/repl/server/messages/message-slice';
-import type { ExecuteIntermediateResponseMessage } from '../../../cli/repl/server/messages/message-repl';
-import {
+import { type ExecuteIntermediateResponseMessage ,
 	requestExecuteReplExpressionMessage,
 	responseExecuteReplEndMessage,
 	responseExecuteReplIntermediateMessage
 } from '../../../cli/repl/server/messages/message-repl';
-
 import {
 	requestQueryMessage,
 	responseQueryMessage
@@ -29,6 +27,9 @@ import { exampleQueryCode } from '../query/example-query-code';
 import { requestLineageMessage, responseLineageMessage } from '../../../cli/repl/server/messages/message-lineage';
 import { CallTargets } from '../../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 
+/**
+ *
+ */
 export function documentAllServerMessages() {
 
 	documentServerMessage({
@@ -488,7 +489,7 @@ See [above](#message-request-file-analysis) for the general structure of the res
 					{
 						type:  'compound',
 						query: 'call-context',
-						 
+
 						commonArguments: {
 							kind:        'visualize',
 							subkind:     'text',

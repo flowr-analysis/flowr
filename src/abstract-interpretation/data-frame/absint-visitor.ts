@@ -1,7 +1,5 @@
-import type { CfgBasicBlockVertex, CfgSimpleVertex, ControlFlowInformation } from '../../control-flow/control-flow-graph';
-import { CfgVertexType, getVertexRootId, isMarkerVertex } from '../../control-flow/control-flow-graph';
-import type { SemanticCfgGuidedVisitorConfiguration } from '../../control-flow/semantic-cfg-guided-visitor';
-import { SemanticCfgGuidedVisitor } from '../../control-flow/semantic-cfg-guided-visitor';
+import { type CfgBasicBlockVertex, type CfgSimpleVertex, type ControlFlowInformation , CfgVertexType, getVertexRootId, isMarkerVertex } from '../../control-flow/control-flow-graph';
+import { type SemanticCfgGuidedVisitorConfiguration , SemanticCfgGuidedVisitor } from '../../control-flow/semantic-cfg-guided-visitor';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexVariableDefinition } from '../../dataflow/graph/vertex';
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';

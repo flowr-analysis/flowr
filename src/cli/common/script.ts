@@ -1,6 +1,5 @@
 /**
  * The goal of this module is simply to streamline the creation of new scripts.
- *
  * @module
  */
 import { scripts } from './scripts-info';
@@ -41,6 +40,9 @@ export function helpForOptions(script: keyof typeof scripts, content: HelpConten
 }
 
 
+/**
+ *
+ */
 export function processCommandLineArgs<T extends CommonOptions>(script: keyof typeof scripts, requireAdditionally: (keyof T)[], help: HelpContent): T {
 	const options = commandLineArgs(scripts[script].options) as T;
 
@@ -49,7 +51,7 @@ export function processCommandLineArgs<T extends CommonOptions>(script: keyof ty
 		process.exit(0);
 	} else if(requireAdditionally.length > 0) {
 		const keys = new Set(Object.keys(options));
-		 
+
 		const missing = requireAdditionally.filter(k => !keys.has(k as string) || options[k] === undefined);
 		if(missing.length > 0) {
 			console.error(italic(`Missing required arguments: ${missing.join(', ')}. Showing help.`));

@@ -1,8 +1,7 @@
 import { assert, describe, it } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { SemanticCfgGuidedVisitor } from '../../../src/control-flow/semantic-cfg-guided-visitor';
-import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
-import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
+import { type TREE_SITTER_DATAFLOW_PIPELINE , createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';

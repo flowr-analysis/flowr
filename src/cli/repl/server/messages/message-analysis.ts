@@ -59,9 +59,7 @@ export const requestAnalysisMessage: MessageDefinition<FileAnalysisRequestMessag
  *
  * The `idMap` of the normalization step (see {@link NormalizedAst}) is not serialized as it would essentially
  * repeat the complete normalized AST, you have to re-create it yourself if you require it.
- *
  * @note The serialization of maps and sets is controlled by the {@link jsonReplacer} as part of {@link sendMessage}.
- *
  * @see {@link FileAnalysisResponseMessageNQuads}
  * @see {@link FileAnalysisResponseMessageCompact}
  */

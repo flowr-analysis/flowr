@@ -13,6 +13,9 @@ export interface DomainTestExpectation<ConcreteValue, AbstractValue>{
     readonly abstract?: AbstractValue
 }
 
+/**
+ *
+ */
 export function assertAbstractDomain<AbstractValue, Domain extends AnyAbstractDomain>(
 	create: (value: AbstractValue) => Domain,
 	value1: AbstractValue,

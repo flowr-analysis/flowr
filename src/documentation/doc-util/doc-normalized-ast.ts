@@ -2,8 +2,7 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { RShell } from '../../r-bridge/shell';
 import { createDataflowPipeline, createNormalizePipeline } from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
-import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { type RNodeWithParent , deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
 import { diffOfDataflowGraphs } from '../../dataflow/graph/diff-dataflow-graph';
 import { guard } from '../../util/assert';
@@ -14,6 +13,9 @@ import { FlowrWikiBaseRef } from './doc-files';
 import type { GraphDifferenceReport } from '../../util/diff-graph';
 import { defaultConfigOptions } from '../../config';
 
+/**
+ *
+ */
 export function printNormalizedAst(ast: RNodeWithParent, prefix = 'flowchart TD\n') {
 	return `
 \`\`\`mermaid
@@ -26,6 +28,9 @@ export interface PrintNormalizedAstOptions {
 	readonly showCode?: boolean;
 	readonly prefix?:   string;
 }
+/**
+ *
+ */
 export async function printNormalizedAstForCode(parser: KnownParser, code: string, { showCode = true, prefix = 'flowchart TD\n' }: PrintNormalizedAstOptions = {}) {
 	const now = performance.now();
 	const result = await createNormalizePipeline(parser, {

@@ -1,5 +1,4 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
@@ -49,7 +48,7 @@ export const ResolveValueQueryDefinition = {
 		for(const [fingerprint, obj] of Object.entries(out.results)) {
 			const { criteria } = JSON.parse(fingerprint) as ResolveValueQuery;
 			result.push(`   ╰ Values for {${criteria.join(', ')}}`);
-			result.push(`   	╰ ${obj.values.map(v => stringifyValue(v)).join(', ')}`);
+			result.push(`     ╰ ${obj.values.map(v => stringifyValue(v)).join(', ')}`);
 		}
 		return true;
 	},

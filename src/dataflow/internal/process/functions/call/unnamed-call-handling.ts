@@ -1,5 +1,4 @@
-import type { DataflowProcessorInformation } from '../../../../processor';
-import { processDataflowFor } from '../../../../processor';
+import { type DataflowProcessorInformation , processDataflowFor } from '../../../../processor';
 import type { DataflowInformation } from '../../../../info';
 import { processAllArguments } from './common';
 import { linkArgumentsOnCall } from '../../../linker';
@@ -15,6 +14,9 @@ import { ReferenceType } from '../../../../environments/identifier';
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-';
 export const UnnamedFunctionCallOrigin = 'unnamed';
 
+/**
+ *
+ */
 export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const calledFunction = processDataflowFor(functionCall.calledFunction, data);
 

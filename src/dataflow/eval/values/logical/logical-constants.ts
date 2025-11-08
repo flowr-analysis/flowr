@@ -1,6 +1,8 @@
-import type { Lift, TernaryLogical, ValueLogical } from '../r-value';
-import { Bottom, Top } from '../r-value';
+import { type Lift, type TernaryLogical, type ValueLogical , Bottom, Top } from '../r-value';
 
+/**
+ *
+ */
 export function liftLogical(log: Lift<TernaryLogical>): ValueLogical {
 	if(log === Top) {
 		return ValueLogicalTop;

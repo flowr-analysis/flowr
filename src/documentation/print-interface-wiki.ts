@@ -12,8 +12,7 @@ import { fileProtocol, removeRQuotes, requestFromInput } from '../r-bridge/retri
 import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
-import type { FlowrConfigOptions } from '../config';
-import { DropPathsOption, flowrConfigFileSchema, InferWorkingDirectory, VariableResolve } from '../config';
+import { type FlowrConfigOptions , DropPathsOption, flowrConfigFileSchema, InferWorkingDirectory, VariableResolve } from '../config';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/text/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
@@ -158,7 +157,7 @@ ${await documentReplSession(shell, [{
 
 <details>
 
-<summary>File Content</summary>	
+<summary>File Content</summary>
 
 ${codeBlock('r', getFileContentFromRoot('test/testfiles/example.R'))}
 

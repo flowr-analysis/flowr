@@ -1,7 +1,6 @@
 import { DOMParser } from '@xmldom/xmldom';
 import fs from 'fs';
-import type { MetaStatistics } from './meta-statistics';
-import { initialMetaStatistics } from './meta-statistics';
+import { type MetaStatistics , initialMetaStatistics } from './meta-statistics';
 import { log } from '../util/log';
 import { jsonReplacer, jsonBigIntRetriever } from '../util/json';
 import { PipelineExecutor } from '../core/pipeline-executor';
@@ -9,8 +8,7 @@ import type { RParseRequestFromFile, RParseRequestFromText, RParseRequest } from
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import type { RShell } from '../r-bridge/shell';
-import type { Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features/feature';
-import { ALL_FEATURES , allFeatureNames } from './features/feature';
+import { type Feature, type FeatureKey, type FeatureSelection, type FeatureStatistics , ALL_FEATURES , allFeatureNames } from './features/feature';
 import { ts2r } from '../r-bridge/lang-4.x/convert-values';
 import type { FlowrConfigOptions } from '../config';
 
@@ -32,13 +30,12 @@ type DataflowResult = PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>
 
 /**
  * Extract all wanted statistic information from a set of requests using the presented R session.
- *
  * @param shell     - The R session to use
  * @param config    - The flowr config
  * @param onRequest - A callback that is called at the beginning of each request, this may be used to debug the requests.
  * @param features  - The features to extract (see {@link allFeatureNames}).
  * @param requests  - The requests to extract the features from. May generate them on demand (e.g., by traversing a folder).
- * 										If your request is statically known, you can use {@link staticRequests} to create this generator.
+ *                    If your request is statically known, you can use {@link staticRequests} to create this generator.
  * @param rootPath  - The root path to the project, this is used to relativize the file paths in the statistics.
  */
 export async function extractUsageStatistics<T extends RParseRequestFromText | RParseRequestFromFile>(

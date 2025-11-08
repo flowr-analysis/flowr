@@ -13,6 +13,9 @@ function pad<T>(string: T) {
 	return String(string).padStart(padSize, ' ');
 }
 
+/**
+ *
+ */
 export function formatNanoseconds(nanoseconds: bigint | number): string {
 	if(nanoseconds < 0) {
 		return '??';
@@ -207,6 +210,9 @@ Dataframe shape inference:
 	return result;
 }
 
+/**
+ *
+ */
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
 	let result = `
 Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices

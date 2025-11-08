@@ -1,5 +1,4 @@
-import type { ControlFlowGraph } from './control-flow-graph';
-import { CfgVertexType } from './control-flow-graph';
+import { type ControlFlowGraph , CfgVertexType } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
@@ -12,7 +11,6 @@ export type SimpleCfgVisitor = (graph: ControlFlowGraph, nodes: readonly NodeId[
  * @param visitor   - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
  *
  * This function is of type {@link SimpleCfgVisitor}.
- *
  * @see {@link visitCfgInOrder} for a traversal in order
  */
 export function visitCfgInReverseOrder(
@@ -52,7 +50,6 @@ export function visitCfgInReverseOrder(
  * @param visitor    - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
  *
  * This function is of type {@link SimpleCfgVisitor}.
- *
  * @see {@link visitCfgInReverseOrder} for a traversal in reversed order
  */
 export function visitCfgInOrder(

@@ -1,6 +1,5 @@
 /**
  * Just to avoid another library for splitting arguments, we use this module to provide what we need.
- *
  * @module
  */
 
@@ -11,7 +10,6 @@
  * this splits the arguments similar to common shell interpreters (i.e., `a`, `b c`, and `d`).
  *
  * When escapeQuote is set to false instead, we keep quotation marks in the result (i.e., `a`, `"b c"`, and `d`.).
- *
  * @param inputString - The string to split
  * @param escapeQuote - Keep quotes in args
  * @param split       - The character or character sequence to split on (can not be backslash or quote!)

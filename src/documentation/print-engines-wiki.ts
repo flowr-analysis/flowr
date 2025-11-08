@@ -1,8 +1,6 @@
 import { RShell } from '../r-bridge/shell';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
-
-
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { getTypesFromFolder, mermaidHide, shortLink } from './doc-util/doc-types';
 import path from 'path';

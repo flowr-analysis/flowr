@@ -36,7 +36,6 @@ export interface Histogram {
  *
  * Let's suppose you want histograms for the Assignments feature.
  * By default, for each clustered value, a histogram is produced (can be configured by `filter`).
- *
  * @param report  - The report to collect histogram information from
  * @param binSize - Size of each bin (see {@link histogramFromNumbers} for details on why we do not specify the bin-count)
  * @param relateValuesToNumberOfLines - If true, each value (like `<-` appeared in file 'x' exactly `N` times) will be divided by the number of lines in the file 'x'.
@@ -103,7 +102,6 @@ export function histogramFromNumbers(name: string, binSize: number, values: numb
  * - `from` - The exclusive lower bound of the bin
  * - `to`   - The inclusive upper bound of the bin
  * - a column with the name of each histogram, containing its count of values in the corresponding bin
- *
  * @param histograms     - The histogram to convert (assumed to have the same ranges and bins)
  * @param countAsDensity - If true, the count is divided by the total number of values (individually for each histogram, similar to pgfplots `hist/density` option)
  */

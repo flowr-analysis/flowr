@@ -1,9 +1,7 @@
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
-import { VertexType } from '../../dataflow/graph/vertex';
-import type { Identifier, IdentifierDefinition } from '../../dataflow/environments/identifier';
-import { ReferenceType } from '../../dataflow/environments/identifier';
+import { type DataflowGraphVertexInfo , VertexType } from '../../dataflow/graph/vertex';
+import { type Identifier, type IdentifierDefinition , ReferenceType } from '../../dataflow/environments/identifier';
 import sizeof from 'object-sizeof';
 import { compactRecord } from '../../util/objects';
 
@@ -77,7 +75,6 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 
 /**
  * Calculates the size of an array in bytes.
- *
  * @param array - The array to calculate the size of.
  * @returns The size of the array in bytes.
  */

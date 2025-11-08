@@ -7,8 +7,7 @@ import { assertUnreachable } from '../../util/assert';
 import { formatRange } from '../../util/mermaid/dfg';
 import type { MergeableRecord } from '../../util/objects';
 import type { SourceRange } from '../../util/range';
-import type { LintingResult, LintingRule, LintQuickFixReplacement } from '../linter-format';
-import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, type LintQuickFixReplacement , LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
 
@@ -16,8 +15,8 @@ export enum CasingConvention {
     CamelCase       = 'camelCase',
     PascalCase      = 'PascalCase',
     SnakeCase       = 'snake_case',
-    ConstantCase    = 'CONSTANT_CASE', 
-    CamelSnakeCase  = 'camel_Snake_Case', 
+    ConstantCase    = 'CONSTANT_CASE',
+    CamelSnakeCase  = 'camel_Snake_Case',
     PascalSnakeCase = 'Pascal_Snake_Case',
     Unknown         = 'unknown'
 }
@@ -51,6 +50,9 @@ function containsAlpha(s: string): boolean {
 	return /[A-Za-z]/.test(s);
 }
 
+/**
+ *
+ */
 export function detectCasing(identifier: string): CasingConvention {
 	if(identifier.trim() === '' || !containsAlpha(identifier)) {
 		return CasingConvention.Unknown;
@@ -60,13 +62,13 @@ export function detectCasing(identifier: string): CasingConvention {
 	const lower = identifier.toLowerCase();
 	const isAllUpper = identifier === upper;
 	const isAllLower = identifier === lower;
-	
+
 	if(identifier.includes('_')) {
 		if(isAllUpper) { // CONSTANT_CASE
 			return CasingConvention.ConstantCase;
 		} else if(isAllLower) { // snake_case
 			return CasingConvention.SnakeCase;
-		} 
+		}
 
 		// Returns true if the letter after an _ is uppercase
 		function expectUpperAfterScore(identifier: string) {
@@ -82,21 +84,24 @@ export function detectCasing(identifier: string): CasingConvention {
 		}
 
 		if(identifier[0] === lower[0] && expectUpperAfterScore(identifier)) {  // camel_Snake_Case
-			return CasingConvention.CamelSnakeCase; 
+			return CasingConvention.CamelSnakeCase;
 		} else if(identifier[0] === upper[0] && expectUpperAfterScore(identifier)) { // Pascal_Snake_Case
 			return CasingConvention.PascalSnakeCase;
 		}
-	} else {	
+	} else {
 		if(identifier[0] === lower[0]) { // camelCase
 			return CasingConvention.CamelCase;
 		} else if(identifier[0] === upper[0]) { // PascalCase
 			return CasingConvention.PascalCase;
 		}
-	}  
+	}
 
 	return CasingConvention.Unknown;
 }
 
+/**
+ *
+ */
 export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[] ): CasingConvention {
 	if(symbols.length === 0) {
 		return CasingConvention.Unknown;
@@ -109,10 +114,13 @@ export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[
 		map.set(symbol.detectedCasing, o + 1);
 	}
 
-	// Return element with most occurances 
+	// Return element with most occurances
 	return [...map].reduce((p, c) => p[1] > c[1] ? p : c)[0];
 }
 
+/**
+ *
+ */
 export function fixCasing(identifier: string, convention: CasingConvention): string | undefined {
 	if(!containsAlpha(identifier)) {
 		return undefined;
@@ -148,6 +156,9 @@ export function fixCasing(identifier: string, convention: CasingConvention): str
 	}
 }
 
+/**
+ *
+ */
 export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: NodeId, replacement: string, conv: CasingConvention): LintQuickFixReplacement[] | undefined {
 	const refs = getAllRefsToSymbol(graph, nodeId);
 	const idMap = graph.idMap;
@@ -178,7 +189,7 @@ export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: N
 		}
 	}
 
-	return result.length === 0 ? 
+	return result.length === 0 ?
 		undefined : // We sort so that when applied in order the fixes will start from the end of the line to avoid conflicts
 		result.sort((a, b) => a.range[0] == b.range[0] ? b.range[1] - a.range[1] : b.range[0] - a.range[0]);
 }
@@ -206,11 +217,11 @@ export const NAMING_CONVENTION = {
 			});
 		return {
 			results: results,
-			'.meta': { 
+			'.meta': {
 				numMatches: symbols.length - results.length,
 				numBreak:   results.length
 			}
-		};   
+		};
 	},
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: result => `Identifier '${result.name}' at ${formatRange(result.range)} (${result.detectedCasing})`,

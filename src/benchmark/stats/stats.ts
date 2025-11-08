@@ -78,7 +78,7 @@ export interface PerNodeStatsDfShape<T = number> {
 /**
  * Please note, that these measurement can be negative as there is no guarantee that the memory usage will increase
  * due to, e.g., garbage collection.
-*/
+ */
 export interface BenchmarkMemoryMeasurement<T = number> extends MergeableRecord {
 	/* used heap memory delta as reported by the node process in bytes */
 	heap:     T

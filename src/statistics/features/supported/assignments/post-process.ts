@@ -1,7 +1,6 @@
 import type { FeatureStatisticsWithMeta } from '../../feature';
-import type {
-	CommonSyntaxTypeCounts } from '../../common-syntax-probability';
 import {
+	type CommonSyntaxTypeCounts ,
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability';
@@ -129,6 +128,9 @@ function writeAssignmentOperatorsToCsv(outputPath: string, collected: Summarized
 	fnOutStream.close();
 }
 
+/**
+ *
+ */
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	const collected: SummarizedAssignmentInfo<number[][], Set<string>> = {
 		assignmentOperator:       {} as Record<string, OperatorInformation<number[][], Set<string>>>,

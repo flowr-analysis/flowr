@@ -1,6 +1,5 @@
 /**
  * Link certain concepts to the version they have been introduced in R
- *
  * @module
  */
 

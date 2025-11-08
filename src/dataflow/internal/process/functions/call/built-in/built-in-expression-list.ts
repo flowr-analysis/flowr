@@ -4,26 +4,22 @@
  */
 import type { ControlDependency, DataflowInformation, ExitPoint } from '../../../../../info';
 import { addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
-import type { DataflowProcessorInformation } from '../../../../../processor';
-import { processDataflowFor } from '../../../../../processor';
+import { type DataflowProcessorInformation , processDataflowFor } from '../../../../../processor';
 import { linkFunctionCalls } from '../../../../linker';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { unpackArgument } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
-import type {
-	IEnvironment,
-	REnvironmentInformation
-} from '../../../../../environments/environment';
 import {
+	type IEnvironment,
+	type REnvironmentInformation
+	,
 	makeAllMaybe } from '../../../../../environments/environment';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
-import type { IdentifierReference } from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { type IdentifierReference , ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
-import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
-import { VertexType } from '../../../../../graph/vertex';
+import { type DataflowGraphVertexInfo , VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
 import { builtInId, isBuiltIn } from '../../../../../environments/built-in';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
@@ -128,6 +124,9 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	return inputEnvironment;
 }
 
+/**
+ *
+ */
 export function processExpressionList<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],

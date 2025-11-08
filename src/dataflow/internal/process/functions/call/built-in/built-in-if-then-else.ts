@@ -1,7 +1,5 @@
-import type { DataflowProcessorInformation } from '../../../../../processor';
-import { processDataflowFor } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
-import { alwaysExits } from '../../../../../info';
+import { type DataflowProcessorInformation , processDataflowFor } from '../../../../../processor';
+import { type DataflowInformation , alwaysExits } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { patchFunctionCall } from '../common';
 import { unpackArgument } from '../argument/unpack-argument';
@@ -12,13 +10,14 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
 import { appendEnvironment } from '../../../../../environments/append';
-import type { IdentifierReference } from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
-import { makeAllMaybe } from '../../../../../environments/environment';
+import { type IdentifierReference , ReferenceType } from '../../../../../environments/identifier';
+import { type REnvironmentInformation , makeAllMaybe } from '../../../../../environments/environment';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 
+/**
+ *
+ */
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
 	args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],

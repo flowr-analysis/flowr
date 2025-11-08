@@ -51,14 +51,23 @@ export function dataflowGraphToJson(df: DataflowInformation): string {
 	return objectJson(df);
 }
 
+/**
+ *
+ */
 export function dataflowGraphToMermaid(df: DataflowInformation): string {
 	return graphToMermaid({ graph: df.graph }).string;
 }
 
+/**
+ *
+ */
 export function dataflowGraphToMermaidUrl(df: DataflowInformation): string {
 	return graphToMermaidUrl(df.graph);
 }
 
+/**
+ *
+ */
 export function dataflowGraphToQuads(df: DataflowInformation, config: QuadSerializationConfiguration): string {
 	return df2quads(df.graph, config);
 }

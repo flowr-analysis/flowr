@@ -2,6 +2,9 @@ import type { Leaf, Location, Namespace, NoInfo } from '../model';
 import type { RType } from '../type';
 import { RNa, RNull } from '../../../convert-values';
 
+/**
+ *
+ */
 export function isSpecialSymbol(symbol: RSymbol): boolean {
 	return symbol.content === RNull || symbol.content === RNa;
 }

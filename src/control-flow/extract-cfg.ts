@@ -1,8 +1,6 @@
-import type { QuadSerializationConfiguration } from '../util/quads';
-import { graph2quads } from '../util/quads';
+import { type QuadSerializationConfiguration , graph2quads } from '../util/quads';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { FoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/fold';
-import { foldAst } from '../r-bridge/lang-4.x/ast/model/processing/fold';
+import { type FoldFunctions , foldAst } from '../r-bridge/lang-4.x/ast/model/processing/fold';
 import type {
 	NormalizedAst,
 	ParentInformation,
@@ -14,8 +12,7 @@ import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-
 import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import type { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import type { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionCall , EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
@@ -23,10 +20,8 @@ import type { DataflowGraph } from '../dataflow/graph/graph';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import { isFunctionDefinitionVertex } from '../dataflow/graph/vertex';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import type { ControlFlowInformation } from './control-flow-graph';
-import { CfgEdgeType, CfgVertexType, ControlFlowGraph } from './control-flow-graph';
-import type { CfgSimplificationPassName } from './cfg-simplification';
-import { simplifyControlFlowInformation } from './cfg-simplification';
+import { type ControlFlowInformation , CfgEdgeType, CfgVertexType, ControlFlowGraph } from './control-flow-graph';
+import { type CfgSimplificationPassName , simplifyControlFlowInformation } from './cfg-simplification';
 import { guard } from '../util/assert';
 import type { FlowrConfigOptions } from '../config';
 
@@ -75,12 +70,10 @@ function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInf
  * Given a normalized AST, this approximates the control flow graph of the program.
  * This view is different from the computation of the dataflow graph and may differ,
  * especially because it focuses on intra-procedural analysis.
- *
  * @param ast             - the normalized AST
  * @param config          - the flowR config
  * @param graph           - additional dataflow facts to consider by the control flow extraction
  * @param simplifications - a list of simplification passes to apply to the control flow graph
- *
  * @see {@link extractCfgQuick} - for a simplified version of this function
  */
 export function extractCfg<Info = ParentInformation>(
@@ -545,7 +538,6 @@ function cfgExprList(node: RExpressionList<ParentInformation>, _grouping: unknow
 
 /**
  * Convert a cfg to RDF quads.
- *
  * @see {@link df2quads}
  * @see {@link serialize2quads}
  * @see {@link graph2quads}

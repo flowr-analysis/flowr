@@ -1,5 +1,4 @@
-import type { DataflowGraph } from '../../graph/graph';
-import { getReferenceOfArgument } from '../../graph/graph';
+import { type DataflowGraph , getReferenceOfArgument } from '../../graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';

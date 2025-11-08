@@ -4,6 +4,9 @@ import { runSearch } from '../../../search/flowr-search-executor';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FlowrSearch } from '../../../search/flowr-search-builder';
 
+/**
+ *
+ */
 export async function executeSearch({ analyzer }: BasicQueryData, queries: readonly SearchQuery[]): Promise<SearchQueryResult> {
 	const start = Date.now();
 	const results: { ids: NodeId[], search: FlowrSearch }[] = [];

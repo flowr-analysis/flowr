@@ -26,7 +26,6 @@ export type LastOfArray<T extends AnyArray> = T extends [...infer _, infer L] ? 
 /**
  * Splits the array every time the given predicate fires.
  * The element the split appears on will not be included!
- *
  * @example with this we can split on all empty strings:
  * ```
  * splitArrayOn(['a', '', 'b', '', '', 'c'], elem => elem === '')
@@ -77,7 +76,6 @@ export function partitionArray<T>(arr: readonly T[], predicate: (elem: T) => boo
 
 /**
  * Generate all permutations of the given array using Heap's algorithm (with its non-recursive variant).
- *
  * @param arr - The array to permute
  * @see getUniqueCombinationsOfSize
  */
@@ -103,6 +101,9 @@ export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {
 	}
 }
 
+/**
+ *
+ */
 export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T[]] {
 	const left: T[] = [];
 	const right: T[] = [];
@@ -122,7 +123,6 @@ export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T
  * but not, e.g., `[a,a]` or `[b,a]`.
  *
  * If `minSize!=maxSize`, the result is guaranteed to be sorted by size.
- *
  * @param array   - The array to generate combinations from
  * @param minSize - The inclusive minimum size of the combinations, must be at least `0` and at most `maxSize`
  * @param maxSize - The inclusive maximum size of the combinations, must be at least `minSize` and at most `array.length`
@@ -181,6 +181,9 @@ export function array2bag<T>(arr: T[]): Map<T, number> {
 	return result;
 }
 
+/**
+ *
+ */
 export function arrayEqual<T>(
 	a: readonly T[] | undefined,
 	b: readonly T[] | undefined,
@@ -205,7 +208,6 @@ export function arrayEqual<T>(
  *
  * If the number of elements to sample is greater or equal to the number of elements in the list, the list is returned as is.
  * If the number of elements to sample is less than or equal to 0, an empty list is returned.
- *
  * @param list - list of elements
  * @param sampleCount - number of elements to sample
  * @param rounding - rounding mode to use for the index calculation
@@ -235,7 +237,6 @@ export function equidistantSampling<T>(list: readonly T[], sampleCount: number, 
  * cartesianProduct([1, 2], ['a', 'b', 'c'], [true, false])
  * // -> [[1, 'a', true], [1, 'a', false], [1, 'b', true], [1, 'b', false], [1, 'c', true], [1, 'c', false], [2, 'a', true], [2, 'a', false], [2, 'b', true], [2, 'b', false], [2, 'c', true], [2, 'c', false]]
  * ```
- *
  */
 export function cartesianProduct<T>(...arrays: T[][]): T[][] {
 	return arrays.reduce((a, b) => a.flatMap(x => b.map(y => x.concat(y))), [[]] as T[][]);
@@ -251,6 +252,9 @@ export function uniqueArrayMerge<T>(left: readonly T[], right: readonly T[]): T[
 }
 
 
+/**
+ *
+ */
 export function arraysGroupBy<T, K>(arr: readonly T[], keyFn: (elem: T) => K): Map<K, T[]> {
 	const result = new Map<K, T[]>();
 	for(const elem of arr) {

@@ -7,6 +7,9 @@ import { isBuiltIn } from '../../../../src/dataflow/environments/built-in';
 import type { IdentifierReference } from '../../../../src/dataflow/environments/identifier';
 import type { ControlDependency } from '../../../../src/dataflow/info';
 
+/**
+ *
+ */
 export function wrap(id: string | NodeId | undefined): string {
 	if(id === undefined) {
 		return 'undefined';
@@ -21,15 +24,21 @@ export function wrap(id: string | NodeId | undefined): string {
 	}
 }
 
+/**
+ *
+ */
 export function wrapControlDependencies(controlDependencies: ControlDependency[] | undefined): string {
 	if(controlDependencies === undefined) {
 		return 'undefined';
 	} else {
 		return `[${controlDependencies.map(c =>
-			`{ id: ${wrap(c.id)}, when: ${c.when} }`	
+			`{ id: ${wrap(c.id)}, when: ${c.when} }`
 		).join(', ')}]`;
 	}
 }
+/**
+ *
+ */
 export function wrapReference(ref: IdentifierReference): string {
 	return `{ nodeId: ${wrap(ref.nodeId)}, name: ${wrap(ref.name)}, controlDependencies: ${wrapControlDependencies(ref.controlDependencies)} }`;
 }

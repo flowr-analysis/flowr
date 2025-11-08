@@ -25,6 +25,9 @@ function printHelpForScript(script: [string, ReplBaseCommand], starredVersion?: 
 	}) |`;
 }
 
+/**
+ *
+ */
 export function printReplHelpAsMarkdownTable(): string {
 	const scriptHelp = [];
 	const cmds = getReplCommands();
@@ -64,6 +67,9 @@ export interface DocumentReplCommand {
 	description: string;
 }
 
+/**
+ *
+ */
 export async function documentReplSession(parser: KnownParser, commands: readonly DocumentReplCommand[], options?: DocumentReplSessionOptions): Promise<string> {
 	const collect: Collect[] = [];
 

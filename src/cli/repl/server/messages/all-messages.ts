@@ -1,6 +1,5 @@
 /**
  * Provides the capability of connecting to the repl of flowr via messages.
- *
  * @module
  */
 import * as Joi from 'joi';

@@ -10,10 +10,8 @@ import type { NamedJsonEntry } from '../../../json/format';
  * Normalize the given object as an R symbol (incorporating namespace information).
  * <p>
  * The special symbols `T` and `F` are parsed as logic values.
- *
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param objs - The JSON object to extract the meta-information from
- *
  * @returns The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
  */
 export function tryNormalizeSymbol(data: NormalizerData, objs: readonly NamedJsonEntry[]): RSymbol | undefined {

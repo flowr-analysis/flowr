@@ -1,9 +1,8 @@
 import type { FeatureStatisticsWithMeta } from '../../feature';
-import type {
-	ReplaceKeysForSummary,
-	SummarizedWithProject
-} from '../../post-processing';
 import {
+	type ReplaceKeysForSummary,
+	type SummarizedWithProject
+	,
 	emptySummarizedWithProject,
 	recordFilePath
 } from '../../post-processing';
@@ -80,6 +79,9 @@ function collectInformation(info: Map<string, FeatureStatisticsWithMeta>, config
 	return collected;
 }
 
+/**
+ *
+ */
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	const collected = collectInformation(info, config);
 
@@ -91,6 +93,9 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 
 type VariableInfoMap = Map<string, SummarizedWithProject & { linePercentageInFile: number[][] }>
 
+/**
+ *
+ */
 export function writeVariableInfoToCsv(outputPath: string, filename: `${string}.csv`, data: VariableInfoMap): void {
 	const out = fs.createWriteStream(path.join(outputPath, filename));
 	out.write(`variable,unique-projects,unique-files,${summarizedMeasurement2CsvHeader('count')},${summarizedMeasurement2CsvHeader('line-frac')}\n`);

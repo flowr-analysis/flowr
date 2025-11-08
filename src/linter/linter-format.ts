@@ -112,7 +112,7 @@ export interface ConfiguredLintingRule<Name extends LintingRuleNames = LintingRu
  */
 export interface LintingResultsError {
 	readonly error: string
-} 
+}
 
 
 export interface LintingResultsSuccess<Name extends LintingRuleNames> {
@@ -120,10 +120,16 @@ export interface LintingResultsSuccess<Name extends LintingRuleNames> {
 	'.meta': LintingRuleMetadata<Name> & { readonly searchTimeMs: number; readonly processTimeMs: number; };
 }
 
+/**
+ *
+ */
 export function isLintingResultsError<Name extends LintingRuleNames>(o: LintingResults<Name>): o is LintingResultsError {
 	return 'error' in o;
 }
 
+/**
+ *
+ */
 export function isLintingResultsSuccess<Name extends LintingRuleNames>(o: LintingResults<Name>): o is LintingResultsSuccess<Name> {
 	return 'results' in o;
 }

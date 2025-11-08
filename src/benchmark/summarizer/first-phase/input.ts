@@ -17,6 +17,9 @@ interface BenchmarkData {
 	stats:     SlicerStats
 }
 
+/**
+ *
+ */
 export async function processRunMeasurement(line: Buffer, fileNum: number, lineNum: number, textOutputAppendPath: string, rawOutputPath: string) {
 	let got = JSON.parse(line.toString()) as BenchmarkData;
 	console.log(`[file ${fileNum}, line ${lineNum}] Summarize for ${got.filename}`);
@@ -69,6 +72,9 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 	fs.appendFileSync(textOutputAppendPath, `${stats2string(summarized)}\n`);
 }
 
+/**
+ *
+ */
 export function processSummarizedRunMeasurement(runNum: number, summarizedFiles: string[], appendPath: string) {
 	console.log(`Summarizing all file statistics for run ${runNum}`);
 

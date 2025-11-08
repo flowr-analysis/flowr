@@ -1,6 +1,5 @@
 import path from 'path';
-import type { Arguments } from '../../util/parallel';
-import { LimitedThreadPool } from '../../util/parallel';
+import { type Arguments , LimitedThreadPool } from '../../util/parallel';
 import { allRFilesFrom } from '../../util/files';
 import { retrieveArchiveName, validateFeatures } from '../common/features';
 import fs from 'fs';
@@ -21,7 +20,7 @@ const exampleRegex = /[^/]*\/example/i;
 function getPrefixForFile(file: string) {
 	if(testRegex.test(file)) {
 		return 'test-';
-	}	else if(exampleRegex.test(file)) {
+	} else if(exampleRegex.test(file)) {
 		return 'example-';
 	} else {
 		return '';
@@ -58,6 +57,9 @@ async function collectFileArguments(options: StatsCliOptions, verboseAdd: readon
 	return files;
 }
 
+/**
+ *
+ */
 export async function flowrScriptGetStats(options: StatsCliOptions, config: FlowrConfigOptions) {
 	if(options.input.length === 0) {
 		console.error('No input files given. Nothing to do. See \'--help\' if this is an error.');

@@ -1,39 +1,32 @@
-import type { MergeableRecord } from '../../../src/util/objects';
-import { deepMergeObject } from '../../../src/util/objects';
+import { type MergeableRecord , deepMergeObject } from '../../../src/util/objects';
 import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct';
 import { guard, isNotUndefined } from '../../../src/util/assert';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
-import type { TestLabel, TestLabelContext } from './label';
-import { decorateLabelContext, dropTestLabel, modifyLabelName } from './label';
+import { type TestLabel, type TestLabelContext , decorateLabelContext, dropTestLabel, modifyLabelName } from './label';
 import { printAsBuilder } from './dataflow/dataflow-builder-printer';
 import { RShell } from '../../../src/r-bridge/shell';
 import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
-import type { fileProtocol, RParseRequests } from '../../../src/r-bridge/retriever';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
-import type {
-	AstIdMap,
-	IdGenerator,
-	NormalizedAst,
-	RNodeWithParent
-} from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import type {
-	DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
-	TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE
-} from '../../../src/core/steps/pipeline/default-pipelines';
+import { type fileProtocol, type RParseRequests , requestFromInput } from '../../../src/r-bridge/retriever';
 import {
+	type AstIdMap,
+	type IdGenerator,
+	type NormalizedAst,
+	type RNodeWithParent
+	, deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import {
+	type DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
+	type TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE
+	,
 	createSlicePipeline,
 	DEFAULT_NORMALIZE_PIPELINE,
 	TREE_SITTER_NORMALIZE_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff-dataflow-graph';
-import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId , normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
-import type { SingleSlicingCriterion, SlicingCriteria } from '../../../src/slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../src/slicing/criterion/parse';
+import { type SingleSlicingCriterion, type SlicingCriteria , slicingCriterionToId } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
 import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph';
@@ -48,10 +41,8 @@ import { resolveByName } from '../../../src/dataflow/environments/resolve-by-nam
 import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/util/diff-graph';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
-import type { CfgProperty } from '../../../src/control-flow/cfg-properties';
-import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
-import type { FlowrConfigOptions } from '../../../src/config';
-import { cloneConfig, defaultConfigOptions } from '../../../src/config';
+import { type CfgProperty , assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
+import { type FlowrConfigOptions , cloneConfig, defaultConfigOptions } from '../../../src/config';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
 import type { KnownParser } from '../../../src/r-bridge/parser';
@@ -76,10 +67,8 @@ let testShell: RShell | undefined = undefined;
 /**
  * Produces a shell session for you, can be used within a `describe` block.
  * Please use **describe.sequential** as the RShell does not fare well with parallelization.
- *
  * @param fn       - function to use the shell
  * @param newShell - whether to create a new shell or reuse a global shell instance for the tests
- *
  * @see {@link withTreeSitter}
  */
 export function withShell(fn: (shell: RShell) => void, newShell = false): () => void {
@@ -149,7 +138,7 @@ function assertAstEqual<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTo
 export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileProtocol}${string}` | string): Promise<NormalizedAst> => {
 	const request = requestFromInput(input);
 	return (await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-		parser:	shell,
+		parser: shell,
 		request
 	}, defaultConfigOptions).allRemainingSteps()).normalize;
 };
@@ -187,7 +176,6 @@ function skipTestBecauseNoNetwork(): boolean {
 /**
  * Automatically skip a test if it does not satisfy the given version pattern
  * (for a [semver](https://www.npmjs.com/package/semver) version).
- *
  * @param versionToSatisfy - The version pattern to satisfy (e.g., `"<= 4.0.0 || 5.0.0 - 6.0.0"`)
  */
 function skipTestBecauseInsufficientRVersion(versionToSatisfy: string): boolean {
@@ -209,6 +197,9 @@ function skipTestBecauseXmlParseDataIsMissing(): boolean {
 
 
 
+/**
+ *
+ */
 export function skipTestBecauseConfigNotMet(userConfig?: Partial<TestConfiguration>): boolean {
 	const config = deepMergeObject(defaultTestConfiguration, userConfig);
 	return config.needsNetworkConnection && skipTestBecauseNoNetwork()
@@ -225,7 +216,6 @@ export function sameForSteps<T, S>(steps: S[], wanted: T): { step: S, wanted: T 
 
 /**
  * For a given input code, this takes multiple ASTs depending on the respective normalizer step to run!
- *
  * @see sameForSteps
  */
 export function assertAst(name: TestLabel | string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration & {
@@ -464,7 +454,6 @@ export type TestCaseFailType = 'fail-shell' | 'fail-tree-sitter' | 'fail-both' |
 
 /**
  * This is a forward slicing convenience function that allows you to assert the result of a forward slice.
- *
  * @see {@link assertSliced} - For the explanation of the parameters.
  */
 export function assertSlicedF(
@@ -637,6 +626,9 @@ function findInEnv(id: NodeId, ast: NormalizedAst, dfg: DataflowGraph, env: REnv
 	}
 }
 
+/**
+ *
+ */
 export function assertContainerIndicesDefinition(
 	name: TestLabel,
 	shell: RShell,

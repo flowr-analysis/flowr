@@ -1,21 +1,16 @@
-import type { DataflowProcessorInformation } from '../../../../processor';
-import { processDataflowFor } from '../../../../processor';
-import type { DataflowInformation } from '../../../../info';
-import { ExitPointType } from '../../../../info';
-import type { ForceArguments } from './common';
-import { processAllArguments } from './common';
+import { type DataflowProcessorInformation , processDataflowFor } from '../../../../processor';
+import { type DataflowInformation , ExitPointType } from '../../../../info';
+import { type ForceArguments , processAllArguments } from './common';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
-import type { IdentifierReference } from '../../../../environments/identifier';
-import { ReferenceType } from '../../../../environments/identifier';
+import { type IdentifierReference , ReferenceType } from '../../../../environments/identifier';
 import { DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
 import { dataflowLogger } from '../../../../logger';
-import type { ContainerIndicesCollection, FunctionOriginInformation } from '../../../../graph/vertex';
-import { VertexType } from '../../../../graph/vertex';
+import { type ContainerIndicesCollection, type FunctionOriginInformation , VertexType } from '../../../../graph/vertex';
 import { expensiveTrace } from '../../../../../util/log';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 
@@ -41,6 +36,9 @@ export interface ProcessKnownFunctionCallResult {
 	readonly fnRef:              IdentifierReference
 }
 
+/**
+ *
+ */
 export function markNonStandardEvaluationEdges(
 	markAsNSE:  readonly number[],
 	callArgs:   readonly (DataflowInformation | undefined)[],
@@ -59,6 +57,9 @@ export function markNonStandardEvaluationEdges(
 	}
 }
 
+/**
+ *
+ */
 export function processKnownFunctionCall<OtherInfo>(
 	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect, origin }: ProcessKnownFunctionCallInput<OtherInfo>, indicesCollection: ContainerIndicesCollection = undefined,
 ): ProcessKnownFunctionCallResult {

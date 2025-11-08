@@ -7,6 +7,9 @@ import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 // this is automatically replaced with the current version by release-it
 const version = '2.6.1';
 
+/**
+ *
+ */
 export function flowrVersion(): SemVer {
 	return new SemVer(version);
 }
@@ -26,6 +29,9 @@ export interface VersionInformation {
 
 const versionRegex = /^\d+\.\d+\.\d+/m;
 
+/**
+ *
+ */
 export async function retrieveVersionInformation(input: KnownParser | ReadonlyFlowrAnalysisProvider): Promise<VersionInformation> {
 	const flowr = flowrVersion().toString();
 
@@ -46,6 +52,9 @@ export async function retrieveVersionInformation(input: KnownParser | ReadonlyFl
 	return { flowr: flowr as Version, r: r as Version, engine: name };
 }
 
+/**
+ *
+ */
 export async function printVersionInformation(output: ReplOutput, input: KnownParser | ReadonlyFlowrAnalysisProvider) {
 	const { flowr, r, engine } = await retrieveVersionInformation(input);
 	output.stdout(`Engine: ${engine}`);

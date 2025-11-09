@@ -42,8 +42,8 @@ export const DefaultDependencyCategories = {
 							nodeId:             n.info.id,
 							functionName:       (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
 							value:              n.namespace,
-							versionConstraints:	dep?.versionConstraints,
-							derivedVersion:	    dep?.derivedVersion
+							versionConstraints: dep?.versionConstraints,
+							derivedVersion:     dep?.derivedVersion
 						});
 					}
 				});
@@ -115,6 +115,9 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	}
 }
 
+/**
+ * Gets all dependency categories, including user-defined additional categories.
+ */
 export function getAllCategories(queries: readonly DependenciesQuery[]): Record<DependencyCategoryName, DependencyCategorySettings> {
 	let categories = DefaultDependencyCategories;
 	for(const query of queries) {

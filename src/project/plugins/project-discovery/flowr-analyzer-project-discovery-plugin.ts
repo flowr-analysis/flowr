@@ -2,8 +2,7 @@ import { FlowrAnalyzerPlugin, PluginType } from '../flowr-analyzer-plugin';
 import type { RParseRequest } from '../../../r-bridge/retriever';
 import type { RProjectAnalysisRequest } from '../../context/flowr-analyzer-files-context';
 import { SemVer } from 'semver';
-import type { FlowrFile } from '../../context/flowr-file';
-import { FlowrTextFile } from '../../context/flowr-file';
+import { type FlowrFile , FlowrTextFile } from '../../context/flowr-file';
 import { getAllFilesSync } from '../../../util/files';
 
 /**

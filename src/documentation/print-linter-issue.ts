@@ -5,8 +5,7 @@ import path from 'path';
 import { LintingRuleTag } from '../linter/linter-tags';
 import { prefixLines } from './doc-util/doc-general';
 import { FlowrWikiBaseRef } from './doc-util/doc-files';
-import type { LintingRuleNames } from '../linter/linter-rules';
-import { LintingRules } from '../linter/linter-rules';
+import { type LintingRuleNames , LintingRules } from '../linter/linter-rules';
 
 /* this prints the yaml configuration for the GitHub issue template to request a new linter rule / an update */
 

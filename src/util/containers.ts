@@ -1,17 +1,15 @@
 import type { REnvironmentInformation } from '../dataflow/environments/environment';
 import type { Identifier, InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
 import { resolveByName } from '../dataflow/environments/resolve-by-name';
-import type {
-	ContainerIndex,
-	ContainerIndices,
-	ContainerIndicesCollection,
-	IndexIdentifier,
-} from '../dataflow/graph/vertex';
-import { isAccessed, isParentContainerIndex } from '../dataflow/graph/vertex';
+import {
+	type ContainerIndex,
+	type ContainerIndices,
+	type ContainerIndicesCollection,
+	type IndexIdentifier,
+	isAccessed, isParentContainerIndex } from '../dataflow/graph/vertex';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import type { RFunctionArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument , EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
@@ -33,7 +31,6 @@ export function getAccessOperands<OtherInfo>(
 
 /**
  * Resolves the passed name within the passed environment and returns the indicesCollection of the resolved definitions.
- *
  * @param name - Name to resolve
  * @param environment - Environment in which name is resolved
  * @returns The indicesCollection of the resolved definitions
@@ -47,7 +44,6 @@ export function resolveIndicesByName(name: Identifier, environment: REnvironment
  * Resolves {@link accessedArg} in the {@link environment} and filters its indices according to {@link accessArg}.
  *
  * If no indices could be found that match the `accessArg`, the original indices are returned as overapproximation.
- *
  * @param accessedArg        - The argument to resolve
  * @param accessArg          - The argument which is used to filter the indices
  * @param environment        - The environment in which {@link accessedArg} is resolved
@@ -73,7 +69,6 @@ export function resolveSingleIndex(
 
 /**
  * Filters the single indices of the {@link indicesCollection} according to the lexeme of the {@link accessArg}.
- *
  * @param indicesCollection  - The {@link ContainerIndicesCollection} to filter
  * @param accessArg          - The argument which is used to filter {@link indicesCollection}
  * @param isIndexBasedAccess - Whether the access is index-based (e.g. `x[1]`) or name-based (e.g. `x$name`)
@@ -109,7 +104,6 @@ export function filterIndices(
  * person$credentials$username
  * ```
  * would result in a list with the index `credentials`, which has the subIndex `username`.
- *
  * @param accessedArg         - The top level argument that is accessed
  * @param leafIndices         - The index at the end of the nested access i.e. `c` in `a$b$c`.
  * @param constructIdentifier - A function that constructs the identifier for the index from the argument
@@ -148,7 +142,6 @@ export function constructNestedAccess<OtherInfo>(
 
 /**
  * Adds the passed list of {@link leafSubIndices} to the leaf (sub-)indices of {@link indicesCollection}.
- *
  * @param indicesCollection - Indices where to add the sub indices.
  * @param leafSubIndices    - Indices that are added to the leaf indices.
  */

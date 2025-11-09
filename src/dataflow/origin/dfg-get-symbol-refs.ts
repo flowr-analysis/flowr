@@ -5,19 +5,17 @@ import { happensInEveryBranch } from '../info';
 import { getOriginInDfg } from './dfg-get-origin';
 
 /**
- * Finds the definition of a variable and all other uses from that point on 
- * 
+ * Finds the definition of a variable and all other uses from that point on
+ *
  * For example, for the following code
  * ```ts
- *   y <- 5
- *   f <- function() {
- *     y <- 8
- *     print(y)
- *   }
+ * y <- 5
+ * f <- function() {
+ * y <- 8
+ * print(y)
+ * }
  * ```
- * 
- * @example getAllRefsToSymbol('3\@y') returns ['3\@y', '4\@y'] 
- * 
+ * @example getAllRefsToSymbol('3\@y') returns ['3\@y', '4\@y']
  * @param graph  - Dataflow Graph
  * @param nodeId - NodeId of Symbol to resolve
  * @returns List including the Definitions and Refereneces to that definition
@@ -29,14 +27,14 @@ export function getAllRefsToSymbol(graph: DataflowGraph, nodeId: NodeId): NodeId
 		return undefined;
 	}
 
-	const definitiveOrigins = origins.filter(o => 
+	const definitiveOrigins = origins.filter(o =>
 		happensInEveryBranch(graph.getVertex(o.id)?.cds)
 	);
 	if(definitiveOrigins.length === 0 ) {
 		return undefined;
 	}
 
-	// Gather all the references 
+	// Gather all the references
 	const res = new Set<NodeId>();
 	for(const origin of definitiveOrigins) {
 		res.add(origin.id);

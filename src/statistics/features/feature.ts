@@ -2,7 +2,6 @@
  * This module holds the definition of what a {@link Feature} that can be extracted from an R AST is.
  *
  * Furthermore, it contains the definition of all features that are known in {@link ALL_FEATURES}.
- *
  * @module
  */
 
@@ -55,9 +54,7 @@ export type FeatureProcessor<T extends FeatureInfo> = (existing: T, input: Featu
 
 /**
  * A feature is something to be retrieved by the statistics.
- *
  * @typeParam T - The type of what should be collected for the feature
- *
  * @see ALL_FEATURES
  */
 export interface Feature<T extends FeatureInfo> {
@@ -71,7 +68,6 @@ export interface Feature<T extends FeatureInfo> {
 	 * If present, this feature allows to post-process the results of the feature extraction (for the summarizer).
 	 * <p>
 	 * The extraction can use the output path to write files to, and should return the final output.
-	 *
 	 * @param featureRoot - The root path to the feature directory which should contain all the files the feature can write to (already merged for every file processed)
 	 * @param info        - The feature statistic maps each file name/context encountered to the feature information as well as the meta statistics for the file
 	 * @param outputPath  - The path to write the output to (besides what is collected in the output and meta information)

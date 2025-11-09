@@ -1,15 +1,14 @@
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type {
-	Enrichment,
-	EnrichmentData,
-	EnrichmentElementArguments,
-	EnrichmentElementContent,
-	EnrichmentSearchArguments,
-	EnrichmentSearchContent
-} from './search-executor/search-enrichers';
-import { Enrichments } from './search-executor/search-enrichers';
+import {
+	type Enrichment,
+	type EnrichmentData,
+	type EnrichmentElementArguments,
+	type EnrichmentElementContent,
+	type EnrichmentSearchArguments,
+	type EnrichmentSearchContent
+	, Enrichments } from './search-executor/search-enrichers';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 /**

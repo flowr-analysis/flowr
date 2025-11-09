@@ -5,7 +5,6 @@ import type { ParentInformation, NormalizedAst } from '../../r-bridge/lang-4.x/a
  * The structure of the predicate that should be used to determine
  * if a given normalized node should be included in the reconstructed code,
  * independent of if it is selected by the slice or not.
- *
  * @see reconstructToCode
  * @see doNotAutoSelect
  * @see autoSelectLibrary

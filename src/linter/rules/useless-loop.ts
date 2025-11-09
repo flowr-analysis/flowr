@@ -5,8 +5,7 @@ import { Q } from '../../search/flowr-search-builder';
 import { formatRange } from '../../util/mermaid/dfg';
 import type { MergeableRecord } from '../../util/objects';
 import type { SourceRange } from '../../util/range';
-import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule , LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
 export interface UselessLoopResult extends LintingResult {
@@ -54,9 +53,9 @@ export const USELESS_LOOP = {
 	info: {
 		name:          'Useless Loops',
 		description:   'Detect loops which only iterate once',
-		certainty:     LintingRuleCertainty.BestEffort,  
+		certainty:     LintingRuleCertainty.BestEffort,
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Readability],
-		defaultConfig: { 
+		defaultConfig: {
 			loopyFunctions: loopyFunctions
 		}
 	}

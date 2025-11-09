@@ -33,16 +33,16 @@ export type NoInfo = object;
  */
 interface Source {
 	/**
-   * The range is different from the assigned {@link Location} as it refers to the complete source range covered by the given
-   * element.
-   * <p>
-   * As an example for the difference, consider a for loop, the location of `for` will be just the three characters,
-   * but the *range* will be everything including the loop body.
-   */
+	 * The range is different from the assigned {@link Location} as it refers to the complete source range covered by the given
+	 * element.
+	 * <p>
+	 * As an example for the difference, consider a for loop, the location of `for` will be just the three characters,
+	 * but the *range* will be everything including the loop body.
+	 */
 	fullRange?:        SourceRange
 	/**
-   * Similar to {@link Source.fullRange} this contains the complete R lexeme of the given element.
-   */
+	 * Similar to {@link Source.fullRange} this contains the complete R lexeme of the given element.
+	 */
 	fullLexeme?:       string
 	/**
 	 * This may contain additional elements that were part of the original R code, but are not part of the normalized R-ast.
@@ -57,7 +57,6 @@ interface Source {
 
 /**
  * Provides the common base of all {@link RNode|RNodes}.
- *
  * @typeParam Info       - can be used to store additional information about the node
  * @typeParam LexemeType - the type of the lexeme, probably always a `string` or `string | undefined`
  */
@@ -93,7 +92,6 @@ export interface Location {
 	/**
 	 * The location may differ from what is stated in {@link Source#fullRange} as it
 	 * represents the location identified by the R parser.
-	 *
 	 * @see Source#fullRange
 	 */
 	location: SourceRange
@@ -157,7 +155,6 @@ export type ROther<Info>          = RComment<Info> | RLineDirective<Info>
  * All other subtypes (like {@link RLoopConstructs}) listed above
  * can be used to restrict the kind of node. They do not have to be
  * exclusive, some nodes can appear in multiple subtypes.
- *
  * @see {@link recoverName} - to receive the name/lexeme from such a node
  * @see {@link recoverContent} - for a more rigorous approach to get the content of a node within a {@link DataflowGraph|dataflow graph}
  */

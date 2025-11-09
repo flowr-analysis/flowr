@@ -1,7 +1,6 @@
 /**
  * Provides an environment structure similar to R.
  * This allows the dataflow to hold current definition locations for variables, based on the current scope.
- *
  * @module
  */
 import type { IdentifierReference } from './identifier';
@@ -51,6 +50,10 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 	return ref;
 }
 
+
+/**
+ *
+ */
 export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference[] {
 	return references?.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, defaultCd)) ?? [];
 }
@@ -64,8 +67,8 @@ export interface IEnvironment {
 	/** Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions */
 	memory:      BuiltInMemory
 	/**
-     * Is this a built-in environment that is not allowed to change? Please use this carefully and only for the top-most envs!
-     */
+	 * Is this a built-in environment that is not allowed to change? Please use this carefully and only for the top-most envs!
+	 */
 	builtInEnv?: true | undefined
 }
 
@@ -114,8 +117,6 @@ export interface WorkingDirectoryReference {
  * One important environment is the {@link BuiltIns|BuiltInEnvironment} which contains the default definitions for R's built-in functions and constants.
  * Please use {@link initializeCleanEnvironments} to initialize the environments (which includes the built-ins).
  * During serialization, you may want to rely on the {@link builtInEnvJsonReplacer} to avoid the huge built-in environment.
- *
- *
  * @see {@link define} - to define a new {@link IdentifierDefinition|identifier definition} within an environment
  * @see {@link resolveByName} - to resolve an {@link Identifier|identifier/name} to its {@link IdentifierDefinition|definitions} within an environment
  * @see {@link makeReferenceMaybe} - to attach control dependencies to a reference

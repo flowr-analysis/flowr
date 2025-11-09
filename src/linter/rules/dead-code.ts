@@ -1,6 +1,5 @@
 import { LintingResultCertainty, LintingPrettyPrintContext, type LintingResult, type LintingRule, LintingRuleCertainty } from '../linter-format';
-import type { SourceRange } from '../../util/range';
-import { combineRanges } from '../../util/range';
+import { type SourceRange , combineRanges } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { formatRange } from '../../util/mermaid/dfg';

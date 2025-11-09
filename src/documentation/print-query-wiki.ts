@@ -25,7 +25,6 @@ import { executeIdMapQuery } from '../queries/catalog/id-map-query/id-map-query-
 import { executeNormalizedAstQuery } from '../queries/catalog/normalized-ast-query/normalized-ast-query-executor';
 import { executeDataflowClusterQuery } from '../queries/catalog/cluster-query/cluster-query-executor';
 import { executeStaticSliceQuery } from '../queries/catalog/static-slice-query/static-slice-query-executor';
-import { executeLineageQuery } from '../queries/catalog/lineage-query/lineage-query-executor';
 import { executeDependenciesQuery } from '../queries/catalog/dependencies-query/dependencies-query-executor';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { NewIssueUrl } from './doc-util/doc-issue';
@@ -189,42 +188,6 @@ ${
 	}
 });
 
-registerQueryDocumentation('lineage', {
-	name:             'Lineage Query',
-	type:             'active',
-	shortDescription: 'Returns lineage of a criteria.',
-	functionName:     executeLineageQuery.name,
-	functionFile:     '../queries/catalog/lineage-query/lineage-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
-		const exampleCode = 'x <- 1\nx';
-		const criterion = '2@x';
-
-		return `
-This query calculates the _lineage_ of a given slicing criterion. The lineage traces back all parts that the
-respective variables stems from given the reads, definitions, and returns in the dataflow graph.
-
-To understand this, let's start with a simple example query, to get the lineage of the second use of \`x\` in the following code:
-${codeBlock('r', exampleCode)}
- 
-For this, we use the criterion \`2@x\` (which is the first use of \`x\` in the second line).
- 
-${
-	await showQuery(shell, exampleCode, [{
-		type:      'lineage',
-		criterion: criterion
-	}], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)) })
-}
-
-In this simple scenario, the _lineage_ is equivalent to the slice (and in-fact the complete code). 
-In general the lineage is smaller and makes no guarantees on executability. 
-It is just a quick and neither complete nor sound way to get information on where the variable originates from.
-
-This query replaces the old [\`request-lineage\`](${FlowrWikiBaseRef}/Interface#message-request-lineage) message.
-
-		`;
-	}
-});
-
 registerQueryDocumentation('dataflow-cluster', {
 	name:             'Dataflow Cluster Query',
 	type:             'active',
@@ -242,7 +205,7 @@ edges in both directions. From this perspective,
 the code \`${exampleA}\` has one cluster (given that all code is related), 
 while the code \`${exampleB}\` has two clusters (given that the \`y\` has no relation to the previous definition).
 
-${details('Example <code>' + exampleA + '</code>',  
+${details('Example <code>' + exampleA + '</code>',
 	await showQuery(shell, exampleA, [{ type: 'dataflow-cluster' }], { showCode: false }))}
 ${details('Example <code>' + exampleB + '</code>',
 	await showQuery(shell, exampleB, [{ type: 'dataflow-cluster' }], { showCode: false }))}
@@ -403,7 +366,7 @@ registerQueryDocumentation('config', {
 	shortDescription: 'Returns the current configuration of flowR.',
 	functionName:     executeConfigQuery.name,
 	functionFile:     '../queries/catalog/config-query/config-query-format.ts',
-	 
+
 	buildExplanation: async(shell: RShell) => {
 		return `
 This query provides access to the current configuration of the flowR instance. See the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on what the configuration represents.
@@ -774,7 +737,7 @@ ${
 	}], { showCode: false, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)) })
 }
 
-All locations are given as a ${shortLink('SourceRange', types.info)} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.	
+All locations are given as a ${shortLink('SourceRange', types.info)} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.
 
 		`;
 	}
@@ -797,7 +760,7 @@ There are many ways to query a dataflow graph created by flowR.
 For example, you can use the [\`request-query\`](${FlowrWikiBaseRef}/Interface#message-request-query) message
 with a running flowR server, or the ${getReplCommand('query')} command in the flowR [REPL](${FlowrWikiBaseRef}/Interface#repl).
 
-Also, check out the [${FlowrGithubGroupName}/query-project-sample](${FlowrGithubBaseRef}/query-project-sample) repository for a complete example project using the query API.
+Also, check out the [${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) repository for a complete example project using the query API.
 			`.trim()
 	})
 }

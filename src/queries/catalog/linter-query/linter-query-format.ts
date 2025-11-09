@@ -2,16 +2,13 @@ import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
 import { executeLinterQuery } from './linter-query-executor';
-import type {
-	LintingRuleConfig,
-	LintingRuleMetadata,
-	LintingRuleNames,
-	LintingRuleResult
-} from '../../../linter/linter-rules';
-import { LintingRules } from '../../../linter/linter-rules';
-import type { ConfiguredLintingRule, LintingResults, LintingRule } from '../../../linter/linter-format';
-import { isLintingResultsError, LintingPrettyPrintContext, LintingResultCertainty } from '../../../linter/linter-format';
-
+import {
+	type LintingRuleConfig,
+	type LintingRuleMetadata,
+	type LintingRuleNames,
+	type LintingRuleResult
+	, LintingRules } from '../../../linter/linter-rules';
+import { type ConfiguredLintingRule, type LintingResults, type LintingRule , isLintingResultsError, LintingPrettyPrintContext, LintingResultCertainty } from '../../../linter/linter-format';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import { codeInline } from '../../../documentation/doc-util/doc-code';

@@ -2,8 +2,6 @@ import { RShell } from '../r-bridge/shell';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { FlowrWikiBaseRef } from './doc-util/doc-files';
-
-
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { showSearch } from './doc-util/doc-search';
 import { FlowrSearchBuilder, Q } from '../search/flowr-search-builder';
@@ -49,7 +47,7 @@ We offer the following generators:
 ${
 	Object.keys(Q).sort().map(
 		key => `- ${shortLink(`FlowrSearchGenerator::${key}`, types.info)}\\\n${getDocumentationForType(`FlowrSearchGenerator::${key}`, types.info)}`
-	).join('\n')	
+	).join('\n')
 }
 
 Likewise, we have a palette of _transformers_ and _modifiers_:

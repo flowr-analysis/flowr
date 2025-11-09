@@ -1,5 +1,4 @@
 import type { IEnvironment, REnvironmentInformation } from './environment';
-
 import type { Identifier } from './identifier';
 import { happensInEveryBranch } from '../info';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';

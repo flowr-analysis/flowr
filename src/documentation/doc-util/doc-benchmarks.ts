@@ -25,6 +25,10 @@ interface BenchmarkElementBench {
 }
 
 let benchmarkData = null as BenchmarkData | null;
+
+/**
+ *
+ */
 export async function loadBenchmarkData(): Promise<BenchmarkData> {
 	if(benchmarkData === null) {
 		// provide a window object to attach to in the import
@@ -36,6 +40,10 @@ export async function loadBenchmarkData(): Promise<BenchmarkData> {
 	return benchmarkData;
 }
 
+
+/**
+ *
+ */
 export async function getLatestBenchmark(suite: string): Promise<BenchmarkElement> {
 	// provide a window object to attach to in the import
 	const suiteData = (await loadBenchmarkData()).entries[suite];
@@ -43,6 +51,10 @@ export async function getLatestBenchmark(suite: string): Promise<BenchmarkElemen
 	return suiteData.sort((a, b) => b.date - a.date)[0];
 }
 
+
+/**
+ *
+ */
 export async function getLastBenchmarkUpdate(): Promise<number> {
 	return (await loadBenchmarkData()).lastUpdate;
 }
@@ -53,6 +65,10 @@ function getBenchmarkElement(bench: BenchmarkElement, name: string): BenchmarkEl
 	return element;
 }
 
+
+/**
+ *
+ */
 export async function getLatestDfAnalysisTime(suite: string): Promise<number> {
 	const elem = await getLatestBenchmark(suite);
 	const [parse, normalize, analyze] = ['Retrieve AST from R code', 'Normalize R AST', 'Produce dataflow information'].map(name => getBenchmarkElement(elem, name));

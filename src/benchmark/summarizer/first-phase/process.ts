@@ -1,12 +1,10 @@
 import * as tmp from 'tmp';
 import type { Reduction, SliceSizeCollection, SummarizedDfShapeStats, SummarizedSlicerStats, TimePerToken } from '../data';
-
 import fs from 'fs';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { log } from '../../../util/log';
 import { withoutWhitespace } from '../../../util/text/strings';
-import type { SummarizedMeasurement } from '../../../util/summarizer';
-import { summarizeMeasurement } from '../../../util/summarizer';
+import { type SummarizedMeasurement , summarizeMeasurement } from '../../../util/summarizer';
 import { isNotUndefined } from '../../../util/assert';
 import type { PerNodeStatsDfShape, PerSliceMeasurements, PerSliceStats, SlicerStats, SlicerStatsDfShape, SlicerStatsDataflow, SlicerStatsInput } from '../../stats/stats';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
@@ -29,7 +27,6 @@ const tempfile = (() => {
 		return _tempfile;
 	};
 })();
-
 
 function safeDivPercentage(a: number, b: number): number | undefined {
 	if(isNaN(a) || isNaN(b)) {
@@ -289,6 +286,9 @@ function summarizePerOperationStats(nodeStats: PerNodeStatsDfShape[]): Summarize
 	return perOperationNumber;
 }
 
+/**
+ * Summarizes the given measurements by calculating the min, max, median, mean, standard deviation, and total.
+ */
 export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): SummarizedMeasurement {
 	data = data.filter(isNotUndefined);
 	const min = Math.min(...data.map(d => d.min).filter(isNotUndefined));
@@ -303,6 +303,9 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 	return { min, max, median, mean, std, total };
 }
 
+/**
+ * Summarizes the given reductions of summarized measurements.
+ */
 export function summarizeSummarizedReductions(reductions: Reduction<SummarizedMeasurement>[]): Reduction<SummarizedMeasurement> {
 	return {
 		numberOfDataflowNodes:           summarizeSummarizedMeasurement(reductions.map(r => r.numberOfDataflowNodes)),
@@ -327,6 +330,9 @@ function summarizeReductions(reductions: Reduction<number | undefined>[]): Reduc
 	};
 }
 
+/**
+ * Summarizes the given times per token by calculating the min, max, median, mean, and standard deviation for each measurement.
+ */
 export function summarizeSummarizedTimePerToken(times: TimePerToken[]): TimePerToken {
 	return {
 		raw:        summarizeSummarizedMeasurement(times.map(t => t.raw)),
@@ -334,6 +340,9 @@ export function summarizeSummarizedTimePerToken(times: TimePerToken[]): TimePerT
 	};
 }
 
+/**
+ * Summarizes the given times per token by calculating the min, max, median, mean, and standard deviation for each measurement.
+ */
 export function summarizeTimePerToken(times: TimePerToken<number>[]): TimePerToken {
 	return {
 		raw:        summarizeMeasurement(times.map(t => t.raw)),

@@ -12,7 +12,6 @@ import type { JsonEntry } from '../../../json/format';
 
 /**
  * Returns an expression list if there are multiple children, otherwise returns the single child directly with no expr wrapper
- *
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param entry  - The JSON object to extract the meta-information from
  */

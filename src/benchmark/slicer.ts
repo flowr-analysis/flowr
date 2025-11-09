@@ -3,8 +3,7 @@
  * @module
  */
 
-import type { IStoppableStopwatch } from './stopwatch';
-import { Measurements } from './stopwatch';
+import { type IStoppableStopwatch , Measurements } from './stopwatch';
 import seedrandom from 'seedrandom';
 import { log, LogLevel } from '../util/log';
 import type { MergeableRecord } from '../util/objects';
@@ -26,13 +25,10 @@ import type {
 } from './stats/stats';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
-import type { DEFAULT_SLICING_PIPELINE, TREE_SITTER_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
-import { createSlicePipeline } from '../core/steps/pipeline/default-pipelines';
-import type { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever';
-import { retrieveNumberOfRTokensOfLastParse } from '../r-bridge/retriever';
+import { type DEFAULT_SLICING_PIPELINE, type TREE_SITTER_SLICING_PIPELINE , createSlicePipeline } from '../core/steps/pipeline/default-pipelines';
+import { type RParseRequestFromFile, type RParseRequestFromText , retrieveNumberOfRTokensOfLastParse } from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
-import type { SlicingCriteriaFilter } from '../slicing/criterion/collect-all';
-import { collectAllSlicingCriteria } from '../slicing/criterion/collect-all';
+import { type SlicingCriteriaFilter , collectAllSlicingCriteria } from '../slicing/criterion/collect-all';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
@@ -43,11 +39,9 @@ import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
-import type { ContainerIndicesCollection } from '../dataflow/graph/vertex';
-import { isParentContainerIndex } from '../dataflow/graph/vertex';
+import { type ContainerIndicesCollection , isParentContainerIndex } from '../dataflow/graph/vertex';
 import { equidistantSampling } from '../util/collections/arrays';
-import type { FlowrConfigOptions } from '../config';
-import { getEngineConfig } from '../config';
+import { type FlowrConfigOptions , getEngineConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
@@ -107,7 +101,6 @@ export type SamplingStrategy = 'random' | 'equidistant';
  *
  * Make sure to call {@link init} to initialize the slicer, before calling {@link slice}.
  * After slicing, call {@link finish} to close the R session and retrieve the stats.
- *
  * @note Under the hood, the benchmark slicer maintains a {@link PipelineExecutor} using the {@link DEFAULT_SLICING_PIPELINE} or the {@link TREE_SITTER_SLICING_PIPELINE}.
  */
 type SupportedPipelines = typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_SLICING_PIPELINE
@@ -319,7 +312,6 @@ export class BenchmarkSlicer {
 	/**
 	 * Slice for the given {@link SlicingCriteria}.
 	 * @see SingleSlicingCriterion
-	 *
 	 * @returns The per slice stats retrieved for this slicing criteria
 	 */
 	public async slice(...slicingCriteria: SlicingCriteria): Promise<BenchmarkSingleSliceStats> {
@@ -395,7 +387,6 @@ export class BenchmarkSlicer {
 
 	/**
 	 * Infer the shape of data frames using abstract interpretation with {@link inferDataFrameShapes}
-	 *
 	 * @returns The statistics of the data frame shape inference
 	 */
 	public inferDataFrameShapes(): SlicerStatsDfShape {
@@ -552,9 +543,7 @@ export class BenchmarkSlicer {
 	 * See {@link collectAllSlicingCriteria} for details.
 	 * <p>
 	 * the `report` function will be called *before* each *individual* slice is performed.
-	 *
 	 * @returns The number of slices that were produced
-	 *
 	 * @see collectAllSlicingCriteria
 	 * @see SlicingCriteriaFilter
 	 */

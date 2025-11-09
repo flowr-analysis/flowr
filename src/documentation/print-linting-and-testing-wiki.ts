@@ -101,7 +101,7 @@ ${block({
 We name all test files using the \`.test.ts\` suffix and try to run them in parallel.
 Whenever this is impossible (e.g., when using ${shortLink('withShell', info)}), please use _\`describe.sequential\`_
 to disable parallel execution for the respective test (otherwise, such tests are flaky).
-` 
+`
 })}
 
 <a id='test-labels'></a>

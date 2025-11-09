@@ -16,7 +16,6 @@ import { isValue } from '../dataflow/eval/values/r-value';
 type CachedValues<Val> = Map<NodeId, Val>;
 
 class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
-	
 
 	private readonly cachedConditions: CachedValues<Ternary> = new Map();
 
@@ -126,7 +125,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	protected onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
-		this.handleFunctionCall(data);	
+		this.handleFunctionCall(data);
 	}
 }
 
@@ -141,7 +140,7 @@ export function cfgAnalyzeDeadCode(cfg: ControlFlowInformation, info: CfgPassInf
 		controlFlow:          cfg,
 		normalizedAst:        info.ast,
 		dfg:                  info.dfg,
-		flowrConfig:			       info.config,
+		flowrConfig:          info.config,
 		defaultVisitingOrder: 'forward',
 	});
 	visitor.start();

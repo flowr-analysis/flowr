@@ -1,16 +1,13 @@
-import type { FlowrConfigOptions } from '../../../config';
-import { VariableResolve } from '../../../config';
+import { type FlowrConfigOptions , VariableResolve } from '../../../config';
 import { type ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { findSource, getSourceProvider } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument , EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { RParseRequest } from '../../../r-bridge/retriever';
-import { requestFromInput } from '../../../r-bridge/retriever';
+import { type RParseRequest , requestFromInput } from '../../../r-bridge/retriever';
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../util/assert';
 import { readLineByLineSync } from '../../../util/files';
 import type { DataFrameExpressionInfo, DataFrameOperation } from '../absint-info';
@@ -18,8 +15,7 @@ import { DataFrameDomain } from '../dataframe-domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from '../resolve-args';
 import type { ConstraintType } from '../semantics';
 import { resolveIdToDataFrameShape } from '../shape-inference';
-import type { FunctionParameterLocation } from './arguments';
-import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isNamedArgument, isRNull } from './arguments';
+import { type FunctionParameterLocation , escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isNamedArgument, isRNull } from './arguments';
 
 /**
  * Represents the different types of data frames in R
@@ -592,7 +588,6 @@ type DataFrameFunctionParamsMapping = {
 
 /**
  * Maps a concrete data frame function call to abstract data frame operations.
- *
  * @param node   - The R node of the function call
  * @param dfg    - The data flow graph for resolving the arguments
  * @param config - The flowR configuration to use

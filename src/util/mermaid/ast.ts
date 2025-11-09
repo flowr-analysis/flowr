@@ -5,6 +5,9 @@ import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
+/**
+ * Serialize the normalized AST to mermaid format
+ */
 export function normalizedAstToMermaid(ast: RNodeWithParent, prefix = 'flowchart TD\n'): string {
 	let output = prefix;
 	function showNode(n: RNodeWithParent): void {

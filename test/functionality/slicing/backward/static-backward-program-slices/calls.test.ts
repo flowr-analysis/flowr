@@ -697,7 +697,7 @@ if (x == 3)
 y <- 2 }
 else { x <- y <- 3 }
 }
-print(x)	
+print(x)
 			`;
 			assertSliced(label('Slice for initial x should return noting else', caps),
 				shell, code, ['1@x'], 'x <- 3', {

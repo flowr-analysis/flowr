@@ -13,10 +13,10 @@ import type { RShell } from '../../../../src/r-bridge/shell';
 function testRename(shell: RShell, name: string, input: string, symbol: SingleSlicingCriterion, expectedRefs: SlicingCriteria | undefined) {
 	test(decorateLabelContext(name, ['other']), async() => {
 		const { dataflow, normalize } = await createDataflowPipeline(shell, { request: requestFromInput(input.trim()) }, defaultConfigOptions).allRemainingSteps();
-			
+
 		const symbolId = slicingCriterionToId(symbol, normalize.idMap);
 		const refs = getAllRefsToSymbol(dataflow.graph, symbolId);
-			
+
 		// If we don't expect any renames make sure there are none
 		if(expectedRefs === undefined) {
 			assert.isUndefined(refs);
@@ -45,9 +45,9 @@ function testRename(shell: RShell, name: string, input: string, symbol: SingleSl
 		for(const range of replacements) {
 			const line = newInput[range[0] - 1];
 			newInput[range[0] - 1] = line.substring(0, range[1] - 1) + 'FooBar' + line.substring(range[3]);
-		}	
-			
-		// Generate original output	
+		}
+
+		// Generate original output
 		shell.clearEnvironment();
 		const expectedLines = await shell.sendCommandWithOutput(input);
 

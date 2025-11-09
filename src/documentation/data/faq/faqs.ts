@@ -2,9 +2,13 @@ import { FaqStore } from './wiki-faq-store';
 import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef, getFilePathMd } from '../../doc-util/doc-files';
 import { codeBlock } from '../../doc-util/doc-code';
 
+
+/**
+ *
+ */
 export function registerFaqs(): FaqStore {
 	const wikiFaq = new FaqStore();
-	
+
 	wikiFaq.withTopic('flowr.development')
 		.addFaq('What are *test labels*?', `
 Tests are labeled based on the *flowR* capabilities that they test for. 
@@ -47,7 +51,7 @@ Check out the [Logging Section in the Linting and Testing wiki page](${FlowrWiki
 		.addFaq('How to *query* an R project?', `
 For this you can use flowR's [Query API](${FlowrWikiBaseRef}/Query-API).
 If you want to create your own project using flowR as a library, check out the 
-[${FlowrGithubGroupName}/query-project-sample](${FlowrGithubBaseRef}/query-project-sample) repository for an example project setup.
+[${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) repository for an example project setup.
 		`);
 
 	wikiFaq.withTopic('r.packages')

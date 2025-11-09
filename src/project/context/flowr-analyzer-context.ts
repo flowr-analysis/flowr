@@ -1,9 +1,6 @@
-import type { RAnalysisRequest, ReadOnlyFlowrAnalyzerFilesContext } from './flowr-analyzer-files-context';
-import { FlowrAnalyzerFilesContext } from './flowr-analyzer-files-context';
-import type { ReadOnlyFlowrAnalyzerDependenciesContext } from './flowr-analyzer-dependencies-context';
-import { FlowrAnalyzerDependenciesContext } from './flowr-analyzer-dependencies-context';
-import type { FlowrAnalyzerPlugin } from '../plugins/flowr-analyzer-plugin';
-import { PluginType } from '../plugins/flowr-analyzer-plugin';
+import { type RAnalysisRequest, type ReadOnlyFlowrAnalyzerFilesContext , FlowrAnalyzerFilesContext } from './flowr-analyzer-files-context';
+import { type ReadOnlyFlowrAnalyzerDependenciesContext , FlowrAnalyzerDependenciesContext } from './flowr-analyzer-dependencies-context';
+import { type FlowrAnalyzerPlugin , PluginType } from '../plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerLoadingOrderContext } from './flowr-analyzer-loading-order-context';
 import type {
 	FlowrAnalyzerLoadingOrderPlugin

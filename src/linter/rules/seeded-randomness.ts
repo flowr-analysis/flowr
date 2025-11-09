@@ -1,5 +1,4 @@
-import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule , LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import type { SourceRange } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -8,8 +7,7 @@ import { Enrichment, enrichmentContent } from '../../search/search-executor/sear
 import type { Identifier } from '../../dataflow/environments/identifier';
 import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
-import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { getReferenceOfArgument } from '../../dataflow/graph/graph';
+import { type DataflowGraph , getReferenceOfArgument } from '../../dataflow/graph/graph';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { LintingRuleTag } from '../linter-tags';

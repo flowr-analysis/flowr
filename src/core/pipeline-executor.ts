@@ -1,6 +1,5 @@
 import { guard } from '../util/assert';
-import type { PipelineStepName } from './steps/pipeline-step';
-import { PipelineStepStage } from './steps/pipeline-step';
+import { type PipelineStepName , PipelineStepStage } from './steps/pipeline-step';
 import type {
 	Pipeline,
 	PipelineInput,
@@ -31,13 +30,13 @@ import type { FlowrConfigOptions } from '../config';
  * ```ts
  * const stepper = new PipelineExecutor( ... )
  * while(stepper.hasNextStep()) {
- *     await stepper.nextStep()
+ * await stepper.nextStep()
  * }
  *
  * stepper.switchToRequestStage()
  *
  * while(stepper.hasNextStep()) {
- *     await stepper.nextStep()
+ * await stepper.nextStep()
  * }
  *
  * const result = stepper.getResults()
@@ -75,10 +74,10 @@ import type { FlowrConfigOptions } from '../config';
  *
  * ```ts
  * const slicer = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {
- *    parser:    new RShell(),
- *    // of course, the criterion and request given here are just examples, you can use whatever you want to slice!
- *    criterion: ['2@b'],
- *    request:   requestFromInput('b <- 3; x <- 5\ncat(b)'),
+ * parser:    new RShell(),
+ * // of course, the criterion and request given here are just examples, you can use whatever you want to slice!
+ * criterion: ['2@b'],
+ * request:   requestFromInput('b <- 3; x <- 5\ncat(b)'),
  * })
  * const result = await slicer.allRemainingSteps()
  * ```
@@ -89,12 +88,10 @@ import type { FlowrConfigOptions } from '../config';
  * stepper.updateRequest({ criterion: ['1@x'] })
  * const result2 = await stepper.allRemainingSteps()
  * ```
- *
  * @note Even though using the pipeline executor introduces a small performance overhead, we consider
  * it to be the baseline for performance benchmarking. It may very well be possible to squeeze out a little bit more by
  * directly constructing the steps in the right order. However, we consider this to be negligible when compared with the time required
  * for, for example, the dataflow analysis of larger files.
- *
  * @see PipelineExecutor#allRemainingSteps
  * @see PipelineExecutor#nextStep
  */
@@ -115,7 +112,6 @@ export class PipelineExecutor<P extends Pipeline> {
 	 *
 	 * Please see {@link createDataflowPipeline} and friends for engine agnostic shortcuts to create a pipeline executor.
 	 * And in general, please prefer using the {@link FlowrAnalyzer} and its {@link FlowrAnalyzerBuilder|builder} to create and use an analyzer instance.
-	 *
 	 * @param pipeline - The {@link Pipeline} to execute, probably created with {@link createPipeline}.
 	 * @param input    - External {@link PipelineInput|configuration and input} required to execute the given pipeline.
 	 * @param flowrConfig   - The flowr config containing the built-in definitions
@@ -136,7 +132,6 @@ export class PipelineExecutor<P extends Pipeline> {
 
 	/**
 	 * Retrieve the current {@link PipelineStepStage|stage} the pipeline executor is in.
-	 *
 	 * @see currentExecutionStage
 	 * @see switchToRequestStage
 	 * @see PipelineStepStage
@@ -150,7 +145,6 @@ export class PipelineExecutor<P extends Pipeline> {
 	 *
 	 * This will fail if either a step change is currently not valid (as not all steps have been executed),
 	 * or if there is no next stage (i.e., the pipeline is already completed or in the last stage).
-	 *
 	 * @see PipelineExecutor
 	 * @see getCurrentStage
 	 */
@@ -166,10 +160,9 @@ export class PipelineExecutor<P extends Pipeline> {
 	public getResults(intermediate: boolean): PipelineOutput<P>
 	/**
 	 * Returns the results of the pipeline.
-	 *
 	 * @param intermediate - Normally you can only receive the results *after* the stepper completed the step of interested.
-	 * 		 However, if you pass `true` to this parameter, you can also receive the results *before* the {@link PipelineExecutor|pipeline executor}
-	 * 		 completed, although the typing system then cannot guarantee which of the steps have already happened.
+	 *                       However, if you pass `true` to this parameter, you can also receive the results *before* the {@link PipelineExecutor|pipeline executor}
+	 *                       completed, although the typing system then cannot guarantee which of the steps have already happened.
 	 */
 	public getResults(intermediate = false): PipelineOutput<P>   {
 		guard(intermediate || this.stepCounter >= this.length, 'Without the intermediate flag, the pipeline must be completed before providing access to the results.');
@@ -190,9 +183,8 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * Execute the next {@link IPipelineStep|step} and return the name of the {@link IPipelineStep|step} that was executed,
 	 * so you can guard if the {@link IPipelineStep|step} differs from what you are interested in.
 	 * Furthermore, it returns the {@link IPipelineStep|step's} result.
-	 *
 	 * @param expectedStepName - A safeguard if you want to retrieve the result.
-	 * 												   If given, it causes the execution to fail if the next step is not the one you expect.
+	 *                           If given, it causes the execution to fail if the next step is not the one you expect.
 	 *
 	 * _Without `expectedStepName`, please refrain from accessing the result, as you have no safeguards if the pipeline changes._
 	 */
@@ -227,7 +219,6 @@ export class PipelineExecutor<P extends Pipeline> {
 	/**
 	 * This only makes sense if you have already run a request and want to re-use the per-file results for a new one.
 	 * (or if for whatever reason, you did not pass information for the pipeline with the constructor).
-	 *
 	 * @param newRequestData - Data for the new request
 	 */
 	public updateRequest(newRequestData: PipelinePerRequestInput<P>): void {
@@ -252,7 +243,6 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * @param canSwitchStage - If true, automatically switch to the request stage if necessary
 	 *       (i.e., this is what you want if you have never executed {@link nextStep} and you want to execute *all* steps).
 	 *       However, passing false allows you to only execute the steps of the 'once-per-file' stage (i.e., the steps that can be cached).
-	 *
 	 * @note There is a small type difference if you pass 'false' and already have manually switched to the 'once-per-request' stage.
 	 *       Because now, the results of these steps are no longer part of the result type (although they are still included).
 	 *       In such a case, you may be better off with simply passing 'true' as the function will detect that the stage is already switched.

@@ -1,8 +1,6 @@
 import type { ReplCodeCommand } from './repl-main';
-import type { OutputFormatter } from '../../../util/text/ansi';
-import { FontStyles } from '../../../util/text/ansi';
-import type { JsonEntry } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
-import { convertPreparedParsedData, prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
+import { type OutputFormatter , FontStyles } from '../../../util/text/ansi';
+import { type JsonEntry , convertPreparedParsedData, prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
 import { extractLocation, getTokenType, } from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta';
 import { fileProtocol, removeRQuotes } from '../../../r-bridge/retriever';
 import type Parser from 'web-tree-sitter';

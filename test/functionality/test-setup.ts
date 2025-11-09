@@ -10,14 +10,14 @@ import { jsonReplacer } from '../../src/util/json';
 import { GlobalSummaryFile } from './summary-def';
 import { TreeSitterExecutor } from '../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
- 
+
 declare global {
     var hasNetwork: boolean;
     var rVersion: SemVer | null | undefined;
     var hasXmlParseData: boolean;
 	var produceLabelSummary: boolean;
 }
- 
+
 
 globalThis.hasNetwork = false;
 globalThis.hasXmlParseData = false;

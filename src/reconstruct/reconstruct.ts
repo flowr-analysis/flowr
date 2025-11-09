@@ -22,16 +22,13 @@ import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-
 import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import type { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
-import type { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionCall , EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
-import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
+import { type StatefulFoldFunctions , foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { AutoSelectPredicate } from './auto-select/auto-select-defaults';
-import { doNotAutoSelect } from './auto-select/auto-select-defaults';
+import { type AutoSelectPredicate , doNotAutoSelect } from './auto-select/auto-select-defaults';
 
 type Selection = ReadonlySet<NodeId>
 interface PrettyPrintLine {
@@ -484,11 +481,9 @@ function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], linesW
 
 /**
  * Reconstructs parts of a normalized R ast into R code on an expression basis.
- *
  * @param ast          - The {@link NormalizedAst|normalized ast} to be used as a basis for reconstruction
  * @param selection    - The selection of nodes to be reconstructed (probably the {@link NodeId|NodeIds} identified by the slicer)
  * @param autoSelectIf - A predicate that can be used to force the reconstruction of a node (for example to reconstruct library call statements, see {@link autoSelectLibrary}, {@link doNotAutoSelect})
- *
  * @returns The number of lines for which `autoSelectIf` triggered, as well as the reconstructed code itself.
  */
 export function reconstructToCode(ast: NormalizedAst, selection: Selection, autoSelectIf: AutoSelectPredicate = doNotAutoSelect): ReconstructionResult {

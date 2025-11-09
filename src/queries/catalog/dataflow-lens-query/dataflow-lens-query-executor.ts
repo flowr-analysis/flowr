@@ -4,7 +4,9 @@ import type { BasicQueryData } from '../../base-query-format';
 import { reduceDfg } from '../../../util/simple-df/dfg-view';
 import { VertexType } from '../../../dataflow/graph/vertex';
 
-
+/**
+ * Executes the given dataflow lens queries using the provided analyzer.
+ */
 export async function executeDataflowLensQuery({ analyzer }: BasicQueryData, queries: readonly DataflowLensQuery[]): Promise<DataflowLensQueryResult> {
 	if(queries.length !== 1) {
 		log.warn('Dataflow query expects only up to one query, but got', queries.length);

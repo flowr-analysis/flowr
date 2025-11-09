@@ -33,7 +33,6 @@ export enum SpecialFileRole {
  *
  * See {@link FlowrFile} for a basic single-cache implementation and {@link FlowrTextFile} for a text-file specific implementation.
  * If you want to pass in inline text files, see {@link FlowrInlineTextFile}.
- *
  * @typeParam Content - The type of the content returned by the `content()` method.
  */
 export interface FlowrFileProvider<Content = unknown> {

@@ -1,6 +1,5 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
-import type { RParseRequest, RParseRequestFromFile } from '../../r-bridge/retriever';
-import { isParseRequest } from '../../r-bridge/retriever';
+import { type RParseRequest, type RParseRequestFromFile , isParseRequest } from '../../r-bridge/retriever';
 import { guard } from '../../util/assert';
 import type {
 	FlowrAnalyzerLoadingOrderContext,
@@ -10,8 +9,7 @@ import {
 	FlowrAnalyzerProjectDiscoveryPlugin
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
-import type { FilePath, FlowrFile, FlowrFileProvider } from './flowr-file';
-import { FlowrTextFile, SpecialFileRole } from './flowr-file';
+import { type FilePath, type FlowrFile, type FlowrFileProvider , FlowrTextFile, SpecialFileRole } from './flowr-file';
 import type { FlowrDescriptionFile } from '../plugins/file-plugins/flowr-description-file';
 import { log } from '../../util/log';
 
@@ -70,7 +68,6 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	readonly loadingOrder: ReadOnlyFlowrAnalyzerLoadingOrderContext;
 	/**
 	 * Get all requests that have been added to this context.
-	 *
 	 * @example If you want to obtain all description files, use
 	 * ```ts
 	 * getFilesByRole(SpecialFileRole.Description)

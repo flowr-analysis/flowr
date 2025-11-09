@@ -1,26 +1,21 @@
-import type { DataflowInformation } from '../../../../info';
-import { happensInEveryBranch } from '../../../../info';
-import type { DataflowProcessorInformation } from '../../../../processor';
-import { processDataflowFor } from '../../../../processor';
+import { type DataflowInformation , happensInEveryBranch } from '../../../../info';
+import { type DataflowProcessorInformation , processDataflowFor } from '../../../../processor';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument , EmptyArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
-import type { IdentifierReference, InGraphIdentifierDefinition } from '../../../../environments/identifier';
-import { isReferenceType, ReferenceType } from '../../../../environments/identifier';
+import { type IdentifierReference, type InGraphIdentifierDefinition , isReferenceType, ReferenceType } from '../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
-import type {
-	ContainerIndicesCollection,
-	DataflowGraphVertexAstLink,
-	DataflowGraphVertexFunctionDefinition,
-	FunctionOriginInformation
-} from '../../../../graph/vertex';
-import { isFunctionDefinitionVertex, VertexType } from '../../../../graph/vertex';
+import {
+	type ContainerIndicesCollection,
+	type DataflowGraphVertexAstLink,
+	type DataflowGraphVertexFunctionDefinition,
+	type FunctionOriginInformation
+	, isFunctionDefinitionVertex, VertexType } from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
 
@@ -82,6 +77,10 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 }
 
 
+
+/**
+ *
+ */
 export function processAllArguments<OtherInfo>(
 	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData = d => d }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
@@ -161,6 +160,10 @@ export interface PatchFunctionCallInput<OtherInfo> {
 	readonly link?:                 DataflowGraphVertexAstLink
 }
 
+
+/**
+ *
+ */
 export function patchFunctionCall<OtherInfo>(
 	{ nextGraph, rootId, name, data, argumentProcessResult, origin, link }: PatchFunctionCallInput<OtherInfo>
 ): void {

@@ -10,17 +10,19 @@ import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import { getCfg } from '../../doc-util/doc-cfg';
 import { NewIssueUrl } from '../../doc-util/doc-issue';
 import { requestSliceMessage, responseSliceMessage } from '../../../cli/repl/server/messages/message-slice';
-import type { ExecuteIntermediateResponseMessage } from '../../../cli/repl/server/messages/message-repl';
-import {
+import { type ExecuteIntermediateResponseMessage ,
 	requestExecuteReplExpressionMessage,
 	responseExecuteReplEndMessage,
 	responseExecuteReplIntermediateMessage
 } from '../../../cli/repl/server/messages/message-repl';
 import { requestQueryMessage, responseQueryMessage } from '../../../cli/repl/server/messages/message-query';
 import { exampleQueryCode } from '../query/example-query-code';
-import { requestLineageMessage, responseLineageMessage } from '../../../cli/repl/server/messages/message-lineage';
 import { CallTargets } from '../../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 
+
+/**
+ *
+ */
 export function documentAllServerMessages() {
 
 	documentServerMessage({
@@ -75,7 +77,7 @@ Requests for the [REPL](#message-request-repl) are independent of that.
 			return `
 	
 The request allows the server to analyze a file and prepare it for slicing.
-The message can contain a \`filetoken\`, which is used to identify the file in later slice or lineage requests (if you do not add one, the request will not be stored and therefore, it is not available for subsequent requests).
+The message can contain a \`filetoken\`, which is used to identify the file in later slice or query requests (if you do not add one, the request will not be stored and therefore, it is not available for subsequent requests).
 
 > **Please note!**\\
 > If you want to send and process a lot of analysis requests, but do not want to slice them, please do not pass the \`filetoken\` field. This will save the server a lot of memory allocation.
@@ -480,7 +482,7 @@ See [above](#message-request-file-analysis) for the general structure of the res
 					{
 						type:  'compound',
 						query: 'call-context',
-						 
+
 						commonArguments: {
 							kind:        'visualize',
 							subkind:     'text',
@@ -502,70 +504,6 @@ See [above](#message-request-file-analysis) for the general structure of the res
 		}, {
 			type:         'response',
 			expectedType: 'response-query'
-		}]
-	})
-}
-
-	`;
-		}
-	});
-
-	documentServerMessage({
-		title:                  'Lineage',
-		type:                   'request',
-		definitionPath:         '../cli/repl/server/messages/message-lineage.ts',
-		defRequest:             requestLineageMessage,
-		defResponse:            responseLineageMessage,
-		mermaidSequenceDiagram: `
-    Client->>+Server: request-lineage
-
-    alt
-        Server-->>Client: response-lineage
-    else
-        Server-->>Client: error
-    end
-    deactivate  Server
-	`,
-		shortDescription: `${deprecatedByQuery} Obtain the lineage of a given slicing criterion.`,
-		text:             async(shell: RShell) => {
-			return `
-
-**We deprecated the lineage request in favor of the \`lineage\` [Query](${FlowrWikiBaseRef}/Query%20API).**
-
-In order to retrieve the lineage of an object, you have to send a file analysis request first. The \`filetoken\` you assign is of use here as you can re-use it to repeatedly retrieve the lineage of the same file.
-Besides that, you will need to add a [criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion) that specifies the object whose lineage you're interested in.
-
-${
-	await documentServerMessageResponse({
-		shell,
-		messageType: 'request-query',
-		messages:    [{
-			type:    'request',
-			message: {
-				type:      'request-file-analysis',
-				id:        '1',
-				filetoken: 'x',
-				content:   'x <- 1\nx + 1'
-			}
-		}, {
-			type:         'response',
-			expectedType: 'response-file-analysis',
-			description:  `
-See [above](#message-request-file-analysis) for the general structure of the response.
-			`
-		}, {
-			type:    'request',
-			message: {
-				type:      'request-lineage',
-				id:        '2',
-				filetoken: 'x',
-				criterion: '2@x'
-			},
-			mark: true
-		}, {
-			type:         'response',
-			expectedType: 'response-lineage',
-			description:  'The response contains the lineage of the desired object in form of an array of IDs (as the representation of a set).'
 		}]
 	})
 }

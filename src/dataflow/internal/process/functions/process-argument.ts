@@ -1,7 +1,5 @@
-import type { DataflowProcessorInformation } from '../../../processor';
-import { processDataflowFor } from '../../../processor';
-import type { DataflowInformation } from '../../../info';
-import { ExitPointType } from '../../../info';
+import { type DataflowProcessorInformation , processDataflowFor } from '../../../processor';
+import { type DataflowInformation , ExitPointType } from '../../../info';
 import { collectAllIds } from '../../../../r-bridge/lang-4.x/ast/model/collect';
 import type { ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
@@ -12,7 +10,9 @@ import { EdgeType } from '../../../graph/edge';
 import type { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { VertexType } from '../../../graph/vertex';
 
-
+/**
+ * Links all reads that occur before the argument to the argument root node.
+ */
 export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, ingoingRefs: readonly IdentifierReference[], graph: DataflowGraph) {
 	const allIdsBeforeArguments = new Set(collectAllIds(root, n => n.type === RType.Argument && n.info.id !== root.info.id));
 	const ingoingBeforeArgs = ingoingRefs.filter(r => allIdsBeforeArguments.has(r.nodeId));
@@ -23,6 +23,9 @@ export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentIn
 	}
 }
 
+/**
+ * Processes the dataflow information for a function argument.
+ */
 export function processFunctionArgument<OtherInfo>(
 	argument: RArgument<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>

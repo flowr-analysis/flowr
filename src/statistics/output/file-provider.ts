@@ -17,7 +17,6 @@ export class DummyAppendProvider implements StatisticAppendProvider {
 
 	/**
 	 * If you pass a map the dummy will log all append calls to the map, using the feature name and the appendage type as keys
-	 *
 	 * @param map - The map to log to
 	 */
 	constructor(map: DummyAppendMemoryMap | undefined = undefined) {
@@ -71,16 +70,16 @@ export class StatisticFileProvider implements StatisticAppendProvider{
 	}
 
 	/**
-   * @param name - the name of the feature {@link Feature#name}
-   * @param fn - the name of the feature-aspect to record
-   */
+	 * @param name - the name of the feature {@link Feature#name}
+	 * @param fn - the name of the feature-aspect to record
+	 */
 	private statisticsFile(name: string, fn: string): string {
 		return path.join(this.statisticsDirectory, name, `${fn}${defaultStatisticsFileSuffix}`);
 	}
 
 	/**
-   * Append the given content to the information for a feature of the given name and function.
-   */
+	 * Append the given content to the information for a feature of the given name and function.
+	 */
 	public append(name: string, fn: AppendFnType, content: string): void {
 		const descriptor = this.getHandle(name, String(fn));
 		fs.appendFileSync(descriptor, content + '\n', 'utf8');

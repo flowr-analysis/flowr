@@ -1,6 +1,5 @@
 import type { DataflowInformation } from './info';
-import type { DataflowProcessorInformation, DataflowProcessors } from './processor';
-import { processDataflowFor } from './processor';
+import { type DataflowProcessorInformation, type DataflowProcessors , processDataflowFor } from './processor';
 import { processUninterestingLeaf } from './internal/process/process-uninteresting-leaf';
 import { processSymbol } from './internal/process/process-symbol';
 import { processFunctionCall } from './internal/process/functions/call/default-call-handling';

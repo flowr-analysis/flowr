@@ -9,8 +9,7 @@ import { ReferenceType } from '../../../../../src/dataflow/environments/identifi
 import { setSourceProvider } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
 import { requestProviderFromFile, requestProviderFromText } from '../../../../../src/r-bridge/retriever';
 import { afterAll, beforeAll, describe } from 'vitest';
-import type { FlowrLaxSourcingOptions } from '../../../../../src/config';
-import { amendConfig, defaultConfigOptions } from '../../../../../src/config';
+import { type FlowrLaxSourcingOptions , amendConfig, defaultConfigOptions } from '../../../../../src/config';
 import { deepMergeObject } from '../../../../../src/util/objects';
 
 describe.sequential('source', withShell(shell => {

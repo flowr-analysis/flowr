@@ -3,7 +3,9 @@ import type { DataflowClusterQuery, DataflowClusterQueryResult } from './cluster
 import { findAllClusters } from '../../../dataflow/cluster';
 import type { BasicQueryData } from '../../base-query-format';
 
-
+/**
+ * Executes the given dataflow cluster queries using the provided analyzer.
+ */
 export async function executeDataflowClusterQuery({ analyzer }: BasicQueryData, queries: readonly DataflowClusterQuery[]): Promise<DataflowClusterQueryResult> {
 	if(queries.length !== 1) {
 		log.warn('The dataflow cluster query expects only up to one query, but got', queries.length);

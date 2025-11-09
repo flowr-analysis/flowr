@@ -76,7 +76,6 @@ export type DataFrameOperationOptions<N extends DataFrameOperationName> = Parame
 /**
  * Applies the abstract semantics of an abstract data frame operation with respect to the data frame shape domain.
  * This expects that all arguments have already been sanitized according to the original concrete data frame function (e.g. by replacing duplicate/invalid column names).
- *
  * @param operation - The name of the abstract operation to apply the semantics of
  * @param value     - The abstract data frame shape of the operand of the abstract operation
  * @param args      - The arguments for applying the abstract semantics of the abstract operation

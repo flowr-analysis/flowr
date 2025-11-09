@@ -6,6 +6,10 @@ import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/mod
 import type { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 
+
+/**
+ *
+ */
 export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	if(functionCall.named) {
 		return processNamedCall(functionCall.functionName, functionCall.arguments, functionCall.info.id, data);

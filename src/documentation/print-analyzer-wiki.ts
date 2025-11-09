@@ -1,8 +1,6 @@
 import { RShell } from '../r-bridge/shell';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
-
-
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import {
 	getDocumentationForType,
@@ -87,7 +85,7 @@ ${printCodeOfElement({ program: types.program, info: types.info, dropLinesStart:
 
 In general, we work on providing a set of example repositories that demonstrate how to use the analyzer in different scenarios:
 
-* [${FlowrGithubGroupName}/query-project-sample](${FlowrGithubBaseRef}/query-project-sample) for an example project that runs queries on an R project
+* [${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) for an example project that runs queries on an R project
 
 **TODO**: mention [Context](#Context_Information) 
 

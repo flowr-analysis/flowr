@@ -22,6 +22,9 @@ export interface DataflowGraphCluster {
 	readonly hasUnknownSideEffects: boolean;
 }
 
+/**
+ * Find all clusters in the given dataflow graph.
+ */
 export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
 	const clusters: DataflowGraphClusters = [];
 	// we reverse the vertices since dependencies usually point "backwards" from later nodes

@@ -1,24 +1,29 @@
-import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IdentifierDefinition } from '../../../../src/dataflow/environments/identifier';
-import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
+import { type NodeId , normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type IdentifierDefinition , ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import type { FunctionArgument } from '../../../../src/dataflow/graph/graph';
-import type {
-	Environment,
-	IEnvironment,
-	REnvironmentInformation
-} from '../../../../src/dataflow/environments/environment';
-import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment';
+import {
+	type Environment,
+	type IEnvironment,
+	type REnvironmentInformation
+	, initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment';
 import { define } from '../../../../src/dataflow/environments/define';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping';
 import type { ControlDependency } from '../../../../src/dataflow/info';
 import { defaultConfigOptions } from '../../../../src/config';
 import { appendEnvironment } from '../../../../src/dataflow/environments/append';
 
+
+/**
+ *
+ */
 export function variable(name: string, definedAt: NodeId): IdentifierDefinition {
 	return { name, type: ReferenceType.Variable, nodeId: '_0', definedAt, controlDependencies: undefined };
 }
 
+
+/**
+ *
+ */
 export function asFunction(name: string, definedAt: NodeId): IdentifierDefinition {
 	return { name, type: ReferenceType.Function, nodeId: '_0', definedAt, controlDependencies: undefined };
 }
@@ -99,7 +104,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param nodeId - AST Node ID of usage
 	 * @param definedAt - AST Node ID of definition
 	 * @param controlDependencies - Control dependencies
-	 * */
+	 */
 	defineParameter(name: string, nodeId: NodeId, definedAt: NodeId, controlDependencies: ControlDependency[] | undefined = undefined) {
 		return this.defineInEnv({
 			type: ReferenceType.Parameter,

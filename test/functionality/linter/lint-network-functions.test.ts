@@ -41,7 +41,7 @@ describe('flowR linter', withTreeSitter(parser => {
 
 			assertLinter(`network funcion with multiple arguments: ${prefix}`, parser, `download.file("${prefix}foo.org/bar.csv", "local.csv")`,
 				'network-functions',
-				[ 
+				[
 					{ certainty: LintingResultCertainty.Certain, function: 'download.file', range: [1,1,1,prefix.length+45] }
 				],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
@@ -51,7 +51,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		}
 		assertLinter('namespace call', parser, 'httr::GET("http://example.com")',
 			'network-functions',
-			[ 
+			[
 				{ certainty: LintingResultCertainty.Certain, function: 'httr::GET', range: [1,1,1,31] }
 			],
 			{ totalCalls: 1, totalFunctionDefinitions: 1 },
@@ -88,7 +88,7 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		assertLinter('Named argument', parser, 'read.csv(file = "http://example.com/data.csv")',
 			'network-functions',
-			[ 
+			[
 				{ certainty: LintingResultCertainty.Certain, function: 'read.csv', range: [1,1,1,46] }
 			],
 			{ totalCalls: 1, totalFunctionDefinitions: 1 },
@@ -97,7 +97,7 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		assertLinter('Resolve value', parser, 'url <- "http://example.com/data.csv"; read.csv(url)',
 			'network-functions',
-			[ 
+			[
 				{ certainty: LintingResultCertainty.Certain, function: 'read.csv', range: [1,39,1,51] }
 			],
 			{ totalCalls: 1, totalFunctionDefinitions: 1 },

@@ -14,6 +14,9 @@ export interface ShowSearchOptions {
 	readonly collapseResult?: boolean;
 }
 
+/**
+ * Visualizes a search and its results in markdown format.
+ */
 export async function showSearch(shell: RShell, code: string, search: FlowrSearchLike, { collapseResult = true }: ShowSearchOptions = {}): Promise<string> {
 	const now = performance.now();
 	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
@@ -56,7 +59,7 @@ ${
 	result.getElements().map(({ node }) => `<b>${node.info.id} ('${recoverContent(node.info.id, dataflow.graph)}')</b> at L${formatRange(node.location)}`).join(', ')
 }
 
-${metaInfo}	
+${metaInfo}
 
 The returned results are highlighted thick and blue within the dataflow graph:
 

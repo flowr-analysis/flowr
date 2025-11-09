@@ -1,20 +1,16 @@
-import type { TestLabel } from './label';
-import { decorateLabelContext } from './label';
+import { type TestLabel , decorateLabelContext } from './label';
 import { assert, beforeAll, describe, test } from 'vitest';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
-import type { NormalizedAst, ParentInformation } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { type NormalizedAst, type ParentInformation , deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-printer';
-import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
-import { getFlowrSearch } from '../../../src/search/flowr-search-builder';
+import { type FlowrSearchLike , getFlowrSearch } from '../../../src/search/flowr-search-builder';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { arrayEqual } from '../../../src/util/collections/arrays';
 import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../src/slicing/criterion/parse';
 import { guard, isNotUndefined } from '../../../src/util/assert';
 import { flowrSearchToAscii } from '../../../src/search/flowr-search-printer';
 import type { FlowrSearchElement } from '../../../src/search/flowr-search';
-import type { Enrichment, EnrichmentElementContent } from '../../../src/search/search-executor/search-enrichers';
-import { enrichmentContent } from '../../../src/search/search-executor/search-enrichers';
+import { type Enrichment, type EnrichmentElementContent , enrichmentContent } from '../../../src/search/search-executor/search-enrichers';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
@@ -85,6 +81,10 @@ export function assertSearch(
 	});
 }
 
+
+/**
+ *
+ */
 export function assertSearchEnrichment(
 	name: string | TestLabel,
 	parser: KnownParser,

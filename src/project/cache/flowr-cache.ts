@@ -38,8 +38,8 @@ export abstract class FlowrCache<Cache> implements CacheInvalidationEventReceive
 	}
 
 	/**
-     * Notify all dependents of a cache invalidation event.
-     */
+	 * Notify all dependents of a cache invalidation event.
+	 */
 	public notifyDependents(event: CacheInvalidationEvent) {
 		for(const dependent of this.dependents) {
 			dependent.receive(event);
@@ -47,9 +47,9 @@ export abstract class FlowrCache<Cache> implements CacheInvalidationEventReceive
 	}
 
 	/**
-     * Get the cached value or compute it if not present.
-     * This will, by default, not trigger any {@link notifyDependents} calls, as this is only a cache retrieval.
-     */
+	 * Get the cached value or compute it if not present.
+	 * This will, by default, not trigger any {@link notifyDependents} calls, as this is only a cache retrieval.
+	 */
 	protected computeIfAbsent(force: boolean | undefined, compute: () => Cache): Cache {
 		if(this.value === undefined || force) {
 			this.value = compute();

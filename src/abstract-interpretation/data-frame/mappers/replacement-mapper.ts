@@ -44,7 +44,6 @@ type DataFrameReplacementFunction = keyof typeof DataFrameReplacementFunctionMap
 
 /**
  * Maps a concrete data frame replacement function to abstract data frame operations.
- *
  * @param node - The R node of the replacement function
  * @param dfg  - The data flow graph for resolving the arguments
  * @returns Data frame expression info containing the mapped abstract data frame operations, or `undefined` if the node does not represent a data frame replacement function

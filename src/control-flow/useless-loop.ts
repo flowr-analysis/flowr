@@ -4,26 +4,20 @@ import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
 import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
-import { VertexType } from '../dataflow/graph/vertex';
-import type { ControlDependency } from '../dataflow/info';
-import { happensInEveryBranch } from '../dataflow/info';
+import { type DataflowGraphVertexFunctionCall , VertexType } from '../dataflow/graph/vertex';
+import { type ControlDependency , happensInEveryBranch } from '../dataflow/info';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard } from '../util/assert';
 import type { ControlFlowInformation } from './control-flow-graph';
-import type { SemanticCfgGuidedVisitorConfiguration } from './semantic-cfg-guided-visitor';
-import { SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
+import { type SemanticCfgGuidedVisitorConfiguration , SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
 
 
 export const loopyFunctions = new Set<BuiltInMappingName>(['builtin:for-loop', 'builtin:while-loop', 'builtin:repeat-loop']);
 
 /**
  * Checks whether a loop only loops once
- * 
- * 
- * 
  * @param loop        - nodeid of the loop to analyse
  * @param dataflow    - dataflow graph
  * @param controlflow - control flow graph
@@ -44,7 +38,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 	if(vertex.origin[0] === 'builtin:for-loop') {
 		if(vertex.args.length < 2) {
 			return undefined;
-		}	
+		}
 
 		const vectorOfLoop = vertex.args[1];
 		if(vectorOfLoop === EmptyArgument) {
@@ -74,7 +68,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 }
 
 class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
-	
+
 	private loopCds: ControlDependency[] | undefined = undefined;
 	private encounteredLoopBreaker = false;
 	private onlyLoopyOnce = false;

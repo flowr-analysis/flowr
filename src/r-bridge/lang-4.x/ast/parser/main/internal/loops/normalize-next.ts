@@ -6,6 +6,10 @@ import { RType } from '../../../../model/type';
 import type { RNext } from '../../../../model/nodes/r-next';
 import type { JsonEntry } from '../../../json/format';
 
+
+/**
+ *
+ */
 export function normalizeNext(data: NormalizerData, obj: JsonEntry): RNext {
 	expensiveTrace(parseLog, () => `[next] ${JSON.stringify(obj)}`);
 

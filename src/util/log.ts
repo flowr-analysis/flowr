@@ -28,8 +28,8 @@ export class FlowrLogger extends Logger<ILogObj> {
 	}
 
 	/**
-   * make the logger log to a file as well
-   */
+	 * make the logger log to a file as well
+	 */
 	public logToFile(
 		filename = 'flowr.log',
 		options: Options = {

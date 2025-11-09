@@ -103,7 +103,7 @@ async function getSlice() {
 			let originalCode = options.input;
 			if(!options['input-is-text']) {
 				const request = requestFromFile(options.input);
-				originalCode = request.request === 'text' ? request.content : fs.readFileSync(request.content).toString(); 
+				originalCode = request.request === 'text' ? request.content : fs.readFileSync(request.content).toString();
 			}
 			console.log(sliceDiffAnsi((slice as SliceResult).result, normalize, new Set(mappedSlices.map(({ id }) => id)), originalCode));
 		}

@@ -1,10 +1,9 @@
-import type {
-	CfgBasicBlockVertex, CfgEndMarkerVertex, CfgExpressionVertex,
-	CfgSimpleVertex,
-	CfgStatementVertex,
-	ControlFlowInformation
-} from './control-flow-graph';
-import { CfgVertexType } from './control-flow-graph';
+import {
+	type CfgBasicBlockVertex, type CfgEndMarkerVertex, type CfgExpressionVertex,
+	type CfgSimpleVertex,
+	type CfgStatementVertex,
+	type ControlFlowInformation
+	, CfgVertexType } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assertUnreachable } from '../util/assert';
 
@@ -36,10 +35,9 @@ export class BasicCfgGuidedVisitor<
 	}
 
 	/**
-     * call this function to indicate that a node is to be considered visited.
-     *
-     * @returns `true` if the node was not visited before, `false` otherwise
-     */
+	 * call this function to indicate that a node is to be considered visited.
+	 * @returns `true` if the node was not visited before, `false` otherwise
+	 */
 	protected visitNode(node: NodeId): boolean {
 		if(this.visited.has(node)) {
 			return false;
@@ -69,8 +67,8 @@ export class BasicCfgGuidedVisitor<
 	}
 
 	/**
-     * Start the visiting process.
-     */
+	 * Start the visiting process.
+	 */
 	public start(): void {
 		this.startVisitor(this.config.defaultVisitingOrder === 'forward' ? this.config.controlFlow.entryPoints : this.config.controlFlow.exitPoints);
 	}

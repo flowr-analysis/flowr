@@ -2,8 +2,7 @@
  * Defines the type of syntax constructs that we track (e.g., true, false, 0, 1, T, F, conditions...)
  */
 import { bigint2number } from '../../util/numbers';
-import type { SummarizedMeasurement } from '../../util/summarizer';
-import { summarizeMeasurement } from '../../util/summarizer';
+import { type SummarizedMeasurement , summarizeMeasurement } from '../../util/summarizer';
 import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -37,6 +36,10 @@ export interface CommonSyntaxTypeCounts<Measurement=bigint> {
 	other:        Record<string, Measurement>
 }
 
+
+/**
+ *
+ */
 export function emptyCommonSyntaxTypeCounts<T=bigint>(init: () => T = () => 0n as T): CommonSyntaxTypeCounts<T> {
 	return {
 		total:        init(),
@@ -145,6 +148,10 @@ function appendRecord(a: Record<string, number[][] | undefined>, b: Record<strin
 	}
 }
 
+
+/**
+ *
+ */
 export function appendCommonSyntaxTypeCounter(a: CommonSyntaxTypeCounts<number[][]>, b: CommonSyntaxTypeCounts) {
 	a.total.push([bigint2number(b.total)]);
 	a.empty.push([bigint2number(b.empty)]);
@@ -169,6 +176,10 @@ function summarizeRecord(a: Record<string, number[][]>): Record<string, Summariz
 	return Object.fromEntries(Object.entries(a).map(([key, val]) => [key, summarizeMeasurement(val.flat(), val.length)]));
 }
 
+
+/**
+ *
+ */
 export function summarizeCommonSyntaxTypeCounter(a: CommonSyntaxTypeCounts<number[][]>): CommonSyntaxTypeCounts<SummarizedMeasurement> {
 	return {
 		total:        summarizeMeasurement(a.total.flat(), a.total.length),

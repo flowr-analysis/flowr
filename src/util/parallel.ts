@@ -27,10 +27,10 @@ export class LimitedThreadPool {
 	private readonly timeLimitInMs: number | undefined;
 
 	/**
-   * Create a new parallel helper that runs the given `module` once for each list of {@link Arguments} in the `queue`.
-   * The `limit` stops the execution if `<limit>` number of runs exited successfully.
-   * The `parallel` parameter limits the number of parallel executions.
-   */
+	 * Create a new parallel helper that runs the given `module` once for each list of {@link Arguments} in the `queue`.
+	 * The `limit` stops the execution if `<limit>` number of runs exited successfully.
+	 * The `parallel` parameter limits the number of parallel executions.
+	 */
 	constructor(module: string, queue: WorkingQueue, limit: number, parallel: number, timeLimitInMs?: number) {
 		this.workingQueue = queue;
 		this.limit = limit;

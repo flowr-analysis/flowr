@@ -1,11 +1,7 @@
-import type { LintingResult, LintingRule, LintQuickFixReplacement } from '../linter-format';
-import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
-
-import type { MergeableRecord } from '../../util/objects';
-import { compactRecord } from '../../util/objects';
+import { type LintingResult, type LintingRule, type LintQuickFixReplacement , LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { type MergeableRecord , compactRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
-import type { SourceRange } from '../../util/range';
-import { rangeFrom } from '../../util/range';
+import { type SourceRange , rangeFrom } from '../../util/range';
 import { formatRange } from '../../util/mermaid/dfg';
 import { LintingRuleTag } from '../linter-tags';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -17,8 +13,7 @@ import { WriteFunctions } from '../../queries/catalog/dependencies-query/functio
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall , isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { QueryResults } from '../../queries/query';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { DataflowGraph } from '../../dataflow/graph/graph';

@@ -48,6 +48,9 @@ export interface NamedArgumentId {
 	readonly lexeme: string,
 }
 
+/**
+ * Type guard to check whether {@link identifier} is a {@link NamedArgumentId}.
+ */
 export function isNamedArgumentId(identifier: IndexIdentifier): identifier is NamedArgumentId {
 	return 'lexeme' in identifier;
 }
@@ -75,7 +78,6 @@ export interface ContainerLeafIndex {
  * A single index of a container, which is a container itself.
  *
  * This can be, e.g., a list, vector, or data frame.
- *
  * @see {@link ContainerLeafIndex} - for a single index of a container which is not a container itself
  * @see {@link isParentContainerIndex} - to check if an index is a parent container index
  */
@@ -86,6 +88,9 @@ export interface ContainerParentIndex extends ContainerLeafIndex {
 	readonly subIndices: ContainerIndices[],
 }
 
+/**
+ * Type guard to check whether {@link index} is a {@link ContainerParentIndex}.
+ */
 export function isParentContainerIndex(index: ContainerIndex): index is ContainerParentIndex {
 	return 'subIndices' in index;
 }
@@ -97,7 +102,6 @@ export type ContainerIndex = ContainerLeafIndex | ContainerParentIndex;
 
 /**
  * Checks whether {@link index} is accessed by {@link accessLexeme}.
- *
  * @param index - The {@link ContainerIndex}, which is accessed
  * @param accessLexeme - The access lexeme
  * @param isIndexBasedAccess - Whether the index of the {@link ContainerIndex} is accessed i.e. the position in the container and not e.g. the name of the index
@@ -115,6 +119,9 @@ export function isAccessed(index: ContainerIndex, accessLexeme: string, isIndexB
 	return false;
 }
 
+/**
+ * Checks whether two {@link ContainerIndex|container indices} are the same.
+ */
 export function isSameIndex(a: ContainerIndex, b: ContainerIndex) {
 	if(isNamedArgumentId(a.identifier) && isNamedArgumentId(b.identifier)) {
 		return a.identifier.lexeme === b.identifier.lexeme;
@@ -148,7 +155,6 @@ export type ContainerIndicesCollection = ContainerIndices[] | undefined
 
 /**
  * Arguments required to construct a vertex in the {@link DataflowGraph|dataflow graph}.
- *
  * @see DataflowGraphVertexUse
  * @see DataflowGraphVertexVariableDefinition
  * @see DataflowGraphVertexFunctionDefinition
@@ -195,7 +201,6 @@ export interface DataflowGraphVertexAstLink {
  *
  * If you have a {@link DataflowGraph|dataflow graph} named `graph`
  * with an {@link AstIdMap} and a value vertex object with name `value` the following Code should work:
- *
  * @example
  * ```ts
  * const node = graph.idMap.get(value.id)
@@ -206,7 +211,6 @@ export interface DataflowGraphVertexAstLink {
  *
  * This works similarly for {@link IdentifierReference|identifier references}
  * for which you can use the {@link IdentifierReference#nodeId|`nodeId`}.
- *
  * @see {@link isValueVertex} - to check if a vertex is a value vertex
  */
 export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
@@ -216,7 +220,6 @@ export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
 
 /**
  * Arguments required to construct a vertex which represents the usage of a variable in the {@link DataflowGraph|dataflow graph}.
- *
  * @see {@link isUseVertex} - to check if a vertex is a use vertex
  */
 export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
@@ -229,7 +232,6 @@ export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
  * Arguments required to construct a vertex which represents the call to a function in the {@link DataflowGraph|dataflow graph}.
  * This describes all kinds of function calls, including calls to built-ins and control-flow structures such as `if` or `for` (they are
  * treated as function calls in R).
- *
  * @see {@link isFunctionCallVertex} - to check if a vertex is a function call vertex
  */
 export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase {
@@ -256,7 +258,6 @@ export type FunctionOriginInformation = BuiltInMappingName | string
 
 /**
  * Arguments required to construct a vertex which represents the definition of a variable in the {@link DataflowGraph|dataflow graph}.
- *
  * @see {@link isVariableDefinitionVertex} - to check if a vertex is a variable definition vertex
  */
 export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVertexBase {
@@ -267,7 +268,6 @@ export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVert
 
 /**
  * Arguments required to construct a vertex which represents the definition of a function in the {@link DataflowGraph|dataflow graph}.
- *
  * @see {@link isFunctionDefinitionVertex} - to check if a vertex is a function definition vertex
  */
 export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVertexBase {

@@ -1,9 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import type { LintingRuleNames } from '../../../src/linter/linter-rules';
-import { LintingRules } from '../../../src/linter/linter-rules';
-import type { LintingResult, LintingRule } from '../../../src/linter/linter-format';
-import {
+import { type LintingRuleNames , LintingRules } from '../../../src/linter/linter-rules';
+import { type LintingResult, type LintingRule ,
 	isLintingResultsError,
 	LintingPrettyPrintContext,
 	LintingRuleCertainty
@@ -22,7 +20,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		(LintingRules as any)['dummy'] = {
 			createSearch:        () => Q.all(),
 			processSearchResult: () => {
-				throw new Error('Hello World'); 
+				throw new Error('Hello World');
 			},
 			prettyPrint: {
 				[LintingPrettyPrintContext.Query]: _ => 'Dummy Rule',

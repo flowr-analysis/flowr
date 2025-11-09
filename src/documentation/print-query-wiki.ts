@@ -621,9 +621,9 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:  'linter',
 		rules: ['file-path-validity'],
-	}], { 
-		showCode:      false, 
-		collapseQuery: true, 
+	}], {
+		showCode:      false,
+		collapseQuery: true,
 		shorthand:     `rules:file-path-validity "${exampleCode}"`
 	})
 }

@@ -115,6 +115,9 @@ export function registerQueryDocumentation(query: SupportedQueryTypes | Supporte
 	map.set(query, doc);
 }
 
+/**
+ * Creates a REPL shorthand for the given slicing criteria and R code.
+ */
 export function sliceQueryShorthand(criteria: SlicingCriteria, code: string, forward?: boolean) {
 	return `(${(criteria.join(';'))})${forward ? 'f' : ''} "${code}"`;
 }

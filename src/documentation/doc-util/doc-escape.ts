@@ -19,7 +19,6 @@ export function escapeHTML(str: string | undefined): string | undefined {
 
 /**
  * Escapes newline characters in a string (Supports Windows and Unix newlines).
- *
  * @param str - The string to escape
  * @returns The escaped string
  */

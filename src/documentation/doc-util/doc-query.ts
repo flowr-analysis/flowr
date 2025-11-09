@@ -12,11 +12,13 @@ import { printAsMs } from '../../util/text/time';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import { getReplCommand } from './doc-cli-option';
+import type { SlicingCriteria } from '../../slicing/criterion/parse';
 
 export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
 	readonly collapseResult?: boolean;
 	readonly collapseQuery?:  boolean;
+	readonly shorthand?:      string;
 }
 
 /**
@@ -25,7 +27,11 @@ export interface ShowQueryOptions {
 export async function showQuery<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult, collapseQuery }: ShowQueryOptions = {}): Promise<string> {
+>(
+	shell: RShell, code: string,
+	queries: Queries<Base, VirtualArguments>,
+	{ showCode, collapseResult, collapseQuery, shorthand }: ShowQueryOptions = {}
+): Promise<string> {
 	const now = performance.now();
 	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code)).setParser(shell).build();
 	const results = await analyzer.query(queries);
@@ -41,8 +47,8 @@ The analysis required _${printAsMs(duration)}_ (including parsing and normalizat
 ${codeBlock('json', collapseQuery ? str.split('\n').join(' ').replace(/([{[])\s{2,}/g,'$1 ').replace(/\s{2,}([\]}])/g,' $1') : str)}
 
 ${(function() {
-	if(queries.length === 1 && Object.keys(queries[0]).length === 1) {
-		return `(This query can be shortened to \`@${queries[0].type}\` when used within the REPL command ${getReplCommand('query')}).`;
+	if((queries.length === 1 && Object.keys(queries[0]).length === 1) || shorthand) {
+		return `(This query can be shortened to \`@${queries[0].type}${shorthand ? ' ' + shorthand : ''}\` when used within the REPL command ${getReplCommand('query')}).`;
 	} else {
 		return '';
 	}
@@ -107,6 +113,13 @@ export function registerQueryDocumentation(query: SupportedQueryTypes | Supporte
 		throw new Error(`Query ${query} already registered`);
 	}
 	map.set(query, doc);
+}
+
+/**
+ * Creates a REPL shorthand for the given slicing criteria and R code.
+ */
+export function sliceQueryShorthand(criteria: SlicingCriteria, code: string, forward?: boolean) {
+	return `(${(criteria.join(';'))})${forward ? 'f' : ''} "${code}"`;
 }
 
 function linkify(name: string) {

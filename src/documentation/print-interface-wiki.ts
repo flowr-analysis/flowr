@@ -115,10 +115,14 @@ for communication (although you can access the REPL using the server as well,
 with the [REPL Request](#message-request-repl-execution) message).
 
 The read-eval-print loop&nbsp;(REPL) works relatively simple.
-You can submit an expression (using enter),
+You can submit an expression (using <kbd>Enter</kbd>),
 which is interpreted as an R&nbsp;expression by default but interpreted as a *command* if it starts with a colon (\`:\`).
 The best command to get started with the REPL is ${getReplCommand('help')}.
-Besides, you can leave the REPL either with the command ${getReplCommand('quit')} or by pressing <kbd>CTRL</kbd>+<kbd>C</kbd> twice.
+Besides, you can leave the REPL either with the command ${getReplCommand('quit')} or by pressing <kbd>Ctrl</kbd>+<kbd>C</kbd> twice.
+When writing a *command*, you may press <kbd>Tab</kbd> to get a list of completions, if available.
+Multiple commands can be entered in a single line by separating them with a semicolon (\`;\`), e.g. \`:parse "x<-2"; :df*\`.
+If a command is given without R code, the REPL will re-use R code given in a previous command. 
+The prior example will hence return the dataflow graph for \`"x <- 2"\`.
 
 > [!NOTE]
 > If you develop flowR, you may want to launch the repl using the \`npm run main-dev\` command, this way, you get a non-minified version of flowR with debug information and hot-reloading of source files.

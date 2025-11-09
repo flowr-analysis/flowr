@@ -3,7 +3,7 @@ If you have never used _flowR_ before, please refer to the [setup](https://githu
 
 <!-- TOC -->
 - [_flowR_'s Modules](#flowrs-modules)
-- [Using _flowR_](#using-flowr)
+- [Using _flowR_ from the outside](#using-flowr-from-the-outside)
   - [The Read-Eval-Print Loop (REPL)](#the-read-eval-print-loop-repl)
   - [The Server](#the-server)
 - [Calling the Scripts Directly](#calling-the-scripts-directly)
@@ -43,8 +43,7 @@ with the important components directly related to the analysis highlighted accor
 
 Primarily, _flowR_ provides a dataflow analysis framework for the [*R*](https://www.r-project.org/) programming language.
 Its subcomponents (like the custom [R bridge](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge) or the internals of the static [dataflow analysis]("https://github.com/flowr-analysis/flowr/tree/main/src/dataflow)) are not important if you simply wish to use _flowR_.
-If you wish to use flowR, check out one of its extensions (e.g., the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr))
-or its coding API with the [`FlowrAnalyzer`](https://github.com/flowr-analysis/flowr/wiki/Core).
+If you wish to use flowR, check out one of its extensions (e.g., the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr)), the [REPL and server interfaces](#using-_flowr_-from-the-outside) or its coding API with the [`FlowrAnalyzer`](https://github.com/flowr-analysis/flowr/wiki/Core).
 
 The benchmark module is only of interest if you want to benchmark/measure the runtime performance and reduction of the slicer. It is available with the [`benchmark`](#benchmark-the-slicer) script.
 
@@ -56,25 +55,27 @@ The [utility](https://github.com/flowr-analysis/flowr/tree/main/src/util) module
 
 The following sections explain how to use these features.
 
-## Using _flowR_
+## Using _flowR_ from the outside
 
 _flowR_ itself has two main ways to operate:
 
-- as a **server** which processes analysis and slicing requests (`--server` option)
-- as a **read-eval-print loop** (REPL) that can be accessed directly from the command line (default option)
+- as a [**server**](#the-server) which processes analysis and slicing requests (`--server` option)
+- as a [**read-eval-print loop** (REPL)](#the-read-eval-print-loop-repl) that can be accessed directly from the command line (default option)
 
 Besides these two ways, there is a [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) that allows you to use _flowR_ directly from within the editor (it is available on [open-vsx](https://open-vsx.org/extension/code-inspect/vscode-flowr) as well).
 Similarly, we offer an [Addin for RStudio](https://github.com/flowr-analysis/rstudio-addin-flowr), as well as an [R package](https://github.com/flowr-analysis/flowr-r-adapter).
 
 🐳️ If you use the docker-version, simply starting the docker container in interactive mode drops you right into the REPL (`docker run -it --rm eagleoutice/flowr:latest`), while launching with the `--server` argument starts the server (`docker run -it --rm eagleoutice/flowr:latest --server`).\
-⚒️ If you compile the _flowR_ sources yourself, you can access _flowR_ by first building the sources (`npm run build`) and executing then the root script (`node dist/src/flowr.js`).
+⚒️ If you compile the _flowR_ sources yourself, you can access _flowR_ by first building the sources (`npm run build`) and executing then the root script (`node dist/src/cli/flowr.js`).
 
-Independent of your way of launching *flowr*, we will write simply `flowr` for either (🐳️)&nbsp;`docker run -it --rm eagleoutice/flowr:latest` or (⚒️)&nbsp;`node dist/src/flowr.js`. See the [setup](https://github.com/flowr-analysis/flowr/wiki/Setup) wiki page for more information on how to get _flowR_ running.
+Independent of your way of launching *flowr*, we will write simply `flowr` for either (🐳️)&nbsp;`docker run -it --rm eagleoutice/flowr:latest` or (⚒️)&nbsp;`node dist/src/cli/flowr.js`. See the [setup](https://github.com/flowr-analysis/flowr/wiki/Setup) wiki page for more information on how to get _flowR_ running.
 
 ### The Read-Eval-Print Loop (REPL)
 
 Once you launched _flowR_, you should see a small&nbsp;`R>` prompt. Use `:help` to receive instructions on how to use the REPL and what features are available (most prominently, you can access all [scripts](#calling-the-scripts-directly) simply by adding a colon before them).
-In general, all commands start with a colon (`:`), everything else is interpreted as a&nbsp;R expression which is directly evaluated by the underlying R shell (however, due to security concerns, you need to start _flowR_ with `--r-session-access` and use the `r-shell` engine to allow this). The following GIF showcases a simple example session:
+In general, all commands start with a colon (`:`), everything else is interpreted as a&nbsp;R expression which is directly evaluated by the underlying R shell (however, due to security concerns, you need to start _flowR_ with `--r-session-access` and use the `r-shell` engine to allow this).
+See the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on usage and the available commands.
+The following GIF showcases a simple example session:
 
 ![Example of a simple REPL session](gif/repl-demo-opt.gif)
 

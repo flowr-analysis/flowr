@@ -28,7 +28,7 @@ export interface LocationMapQueryResult extends BaseQueryResult {
 	}
 }
 
-function locationMapLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'location-map'> {
+function locationMapLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'location-map'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	return {
 		query: {

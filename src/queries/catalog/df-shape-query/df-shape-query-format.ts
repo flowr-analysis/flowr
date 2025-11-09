@@ -20,7 +20,7 @@ export interface DfShapeQueryResult extends BaseQueryResult {
 	domains: DataFrameStateDomain | Map<SingleSlicingCriterion, DataFrameDomain | undefined>
 }
 
-function dfShapeQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'df-shape'> {
+function dfShapeQueryLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'df-shape'> {
 	const criterion = sliceCriterionParser(line[0]);
 
 	return {

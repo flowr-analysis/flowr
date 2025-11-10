@@ -219,6 +219,7 @@ export async function repl(
 
 	// the incredible repl :D, we kill it with ':quit'
 
+	// noinspection InfiniteLoopJS
 	while(true) {
 		await new Promise<void>((resolve, reject) => {
 			rl.question(prompt(), answer => {

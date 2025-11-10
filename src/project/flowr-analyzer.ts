@@ -1,9 +1,6 @@
 import type { FlowrConfigOptions } from '../config';
-import type {
-	KnownParser, KnownParserInformation,
-	ParseStepOutput
-} from '../r-bridge/parser';
-import { type Queries, type QueryResults, type SupportedQueryTypes , executeQueries } from '../queries/query';
+import type { KnownParser, KnownParserInformation, ParseStepOutput } from '../r-bridge/parser';
+import { executeQueries, type Queries, type QueryResults, type SupportedQueryTypes } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../dataflow/info';
@@ -11,10 +8,13 @@ import type { CfgSimplificationPassName } from '../control-flow/cfg-simplificati
 import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
 import type { AnalyzerCacheType, FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-builder';
-import { type GetSearchElements , runSearch } from '../search/flowr-search-executor';
+import { type GetSearchElements, runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { CfgKind } from './cfg-kind';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
+import type { RParseRequest } from '../r-bridge/retriever';
+import { fileProtocol, isParseRequest, requestFromInput } from '../r-bridge/retriever';
+import { isFilePath } from '../util/files';
 
 /**
  * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
@@ -27,13 +27,10 @@ export interface FlowrAnalysisProvider extends ReadonlyFlowrAnalysisProvider {
 	 */
 	context():  FlowrAnalyzerContext
 	/**
-	 * Add multiple analysis requests to the analyzer instance
+	 * Add one or multiple requests to analyze.
+	 * @param request - One or multiple requests or a file path (with the `file://` protocol). If you just enter a string, it will be interpreted as R code.
 	 */
-	addRequests(requests: readonly RAnalysisRequest[]): void
-	/**
-	 * Add a single analysis request to the analyzer instance
-	 */
-	addRequest(request: RAnalysisRequest): void
+	addRequest(request: RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string): void
 	/**
 	 * Reset the analyzer state, including the context and the cache.
 	 */
@@ -147,12 +144,38 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.cache.reset();
 	}
 
-	public addRequests(requests: readonly RAnalysisRequest[]): void {
-		this.ctx.addRequests(requests);
+	public addRequest(request: RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string): this {
+		if(Array.isArray(request) || isParseRequest(request)) {
+			this.addAnalysisRequest(request);
+		} else if(typeof request === 'string') {
+			const trimmed = request.substring(fileProtocol.length);
+			if(request.startsWith(fileProtocol) && !isFilePath(trimmed)) {
+				this.addAnalysisRequest({ request: 'project', content: trimmed });
+			} else {
+				this.addRequestFromInput(request);
+			}
+		} else {
+			this.addAnalysisRequest(request);
+		}
+		return this;
 	}
 
-	public addRequest(request: RAnalysisRequest): void {
-		this.ctx.addRequest(request);
+	/**
+	 * Add a request created from the given input.
+	 * This is a convenience method that uses {@link requestFromInput} internally.
+	 */
+	private addRequestFromInput(input: Parameters<typeof requestFromInput>[0]): this {
+		this.addAnalysisRequest(requestFromInput(input));
+		return this;
+	}
+
+	/**
+	 * Add one or multiple requests to analyze the builder.
+	 */
+	private addAnalysisRequest(request: RAnalysisRequest | readonly RAnalysisRequest[]): this {
+		const r = Array.isArray(request) ? request : [request] as RParseRequest[];
+		this.ctx.addRequests(r);
+		return this;
 	}
 
 	public async parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>> {

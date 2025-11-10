@@ -189,7 +189,6 @@ export class FlowrAnalyzerBuilder {
 	 */
 	public buildSync(): FlowrAnalyzer {
 		guard(this.parser !== undefined, 'No parser set, please use the setParser or setEngine method to set a parser before building the analyzer');
-		guard(this.request !== undefined, 'Currently we require at least one request to build an analyzer, please provide one using the constructor or the addRequest method');
 
 		const context = new FlowrAnalyzerContext(this.plugins);
 		const cache = FlowrAnalyzerCache.create({
@@ -206,7 +205,7 @@ export class FlowrAnalyzerBuilder {
 			cache
 		);
 
-		analyzer.addRequest(this.request);
+		analyzer.addRequest(this.request ?? []);
 
 		// we do it here to save time later if the analyzer is to be duplicated
 		context.resolvePreAnalysis();

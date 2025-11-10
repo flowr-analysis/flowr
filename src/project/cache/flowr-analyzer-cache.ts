@@ -1,9 +1,10 @@
 import type { KnownParser } from '../../r-bridge/parser';
-import { type CacheInvalidationEvent , CacheInvalidationEventType, FlowrCache } from './flowr-cache';
+import { type CacheInvalidationEvent, CacheInvalidationEventType, FlowrCache } from './flowr-cache';
 import {
+	createDataflowPipeline,
 	type DEFAULT_DATAFLOW_PIPELINE,
 	type TREE_SITTER_DATAFLOW_PIPELINE
-	, createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
+} from '../../core/steps/pipeline/default-pipelines';
 import type { PipelineExecutor } from '../../core/pipeline-executor';
 import type { FlowrConfigOptions } from '../../config';
 import type { RParseRequests } from '../../r-bridge/retriever';
@@ -14,6 +15,7 @@ import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
 import { assertUnreachable, guard } from '../../util/assert';
 import { ObjectMap } from '../../util/collections/objectmap';
 import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
+import { simplifyControlFlowInformation } from '../../control-flow/cfg-simplification';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import { extractCfg, extractCfgQuick } from '../../control-flow/extract-cfg';
 import { CfgKind } from '../cfg-kind';
@@ -169,9 +171,19 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		guard(kind === CfgKind.Quick ? simplifications === undefined : true, 'Cannot apply simplifications to quick CFG');
 		simplifications ??= [];
 		if(!force) {
-			const value = this.controlFlowCache.simplified.get([simplifications, kind]);
-			if(value !== undefined) {
-				return value;
+			const desiredCfg = this.controlFlowCache.simplified.get([simplifications, kind]);
+			if(desiredCfg !== undefined) {
+				return desiredCfg;
+			}
+			if(simplifications.length > 0) {
+				const unsimplifiedCfg = this.controlFlowCache.simplified.get([[], kind]);
+				if(unsimplifiedCfg) {
+					return simplifyControlFlowInformation(unsimplifiedCfg, {
+						ast:    await this.normalize(),
+						dfg:    (await this.dataflow()).graph,
+						config: this.args.config
+					}, simplifications);
+				}
 			}
 		}
 

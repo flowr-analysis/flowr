@@ -18,6 +18,11 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('condition', parser, 'if(FALSE) { set.seed(17); }\nrunif(1);', 'seeded-randomness',
 			[{ range: [2,1,2,8], function: 'runif', certainty: LintingResultCertainty.Certain }], { consumerCalls: 1, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0 });
 		assertLinter('condition true', parser, 'if(TRUE) { set.seed(17); }\nrunif(1);', 'seeded-randomness', [], { consumerCalls: 1, callsWithFunctionProducers: 1, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0 });
+		assertLinter('condition unclear', parser, 'if(1 < 0) { set.seed(17); }\nrunif(1);', 'seeded-randomness',
+			[{ range: [2,1,2,8], function: 'runif', certainty: LintingResultCertainty.Certain }], { consumerCalls: 1, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 1 });
+		assertLinter('condition unclear after definite seed', parser, 'set.seed(17); if(1 < 0) { set.seed(17); }\nrunif(1);', 'seeded-randomness', [], { consumerCalls: 1, callsWithFunctionProducers: 1, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0 });
+		assertLinter('condition exhaustive', parser, 'if(1 < 0) { set.seed(17); } else { set.seed(18); }\nrunif(1);', 'seeded-randomness', [], { consumerCalls: 1, callsWithFunctionProducers: 1, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0 });
+		assertLinter('condition reversed', parser, 'set.seed(17);\nif(1 < 0) { runif(1) }', 'seeded-randomness', [], { consumerCalls: 1, callsWithFunctionProducers: 1, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0 });
 
 		assertLinter('non-constant seed', parser, 'num<-1 + 7;\nset.seed(num);\nrunif(1);', 'seeded-randomness', [
 			{ range: [3,1,3,8], function: 'runif', certainty: LintingResultCertainty.Certain }

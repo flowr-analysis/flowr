@@ -15,9 +15,10 @@ import type { BuiltInFunctionDefinition } from '../../dataflow/environments/buil
 import { resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
 import { valueSetGuard } from '../../dataflow/eval/values/general';
 import { VariableResolve } from '../../config';
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
+import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { asValue } from '../../dataflow/eval/values/r-value';
+import { happensInEveryBranch } from '../../dataflow/info';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -80,6 +81,7 @@ export const SEEDED_RANDOMNESS = {
 				}))
 				// filter by calls that aren't preceded by a randomness producer
 				.filter(element => {
+					const consumerAlwaysHappens = happensInEveryBranch((dataflow.graph.getVertex(element.searchElement.node.info.id) as DataflowGraphVertexInfo).cds);
 					const producers = enrichmentContent(element.searchElement, Enrichment.LastCall).linkedIds
 						.map(e => dataflow.graph.getVertex(e.node.info.id) as DataflowGraphVertexFunctionCall);
 					const { assignment, func } = Object.groupBy(producers, f => assignmentArgIndexes.has(f.name) ? 'assignment' : 'func');
@@ -87,7 +89,7 @@ export const SEEDED_RANDOMNESS = {
 
 					// function calls are already taken care of through the LastCall enrichment itself
 					for(const f of func ?? []) {
-						if(isConstantArgument(dataflow.graph, f, 0)) {
+						if(isConstantArgument(dataflow.graph, f, 0) && (!consumerAlwaysHappens || happensInEveryBranch(f.cds))) {
 							metadata.callsWithFunctionProducers++;
 							return false;
 						} else {
@@ -100,7 +102,7 @@ export const SEEDED_RANDOMNESS = {
 						const argIdx = assignmentArgIndexes.get(a.name) as number;
 						const dest = getReferenceOfArgument(a.args[argIdx]);
 						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)){
-							if(isConstantArgument(dataflow.graph, a, 1-argIdx)) {
+							if(isConstantArgument(dataflow.graph, a, 1-argIdx) && (!consumerAlwaysHappens || happensInEveryBranch(a.cds))) {
 								metadata.callsWithAssignmentProducers++;
 								return false;
 							} else {

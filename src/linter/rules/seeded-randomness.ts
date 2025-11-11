@@ -81,7 +81,7 @@ export const SEEDED_RANDOMNESS = {
 				}))
 				// filter by calls that aren't preceded by a randomness producer
 				.filter(element => {
-					const consumerAlwaysHappens = happensInEveryBranch((dataflow.graph.getVertex(element.searchElement.node.info.id) as DataflowGraphVertexInfo).cds);
+					const dfgElement = dataflow.graph.getVertex(element.searchElement.node.info.id) as DataflowGraphVertexInfo;
 					const producers = enrichmentContent(element.searchElement, Enrichment.LastCall).linkedIds
 						.map(e => dataflow.graph.getVertex(e.node.info.id) as DataflowGraphVertexFunctionCall);
 					const { assignment, func } = Object.groupBy(producers, f => assignmentArgIndexes.has(f.name) ? 'assignment' : 'func');
@@ -89,7 +89,7 @@ export const SEEDED_RANDOMNESS = {
 
 					// function calls are already taken care of through the LastCall enrichment itself
 					for(const f of func ?? []) {
-						if(isConstantArgument(dataflow.graph, f, 0) && (!consumerAlwaysHappens || happensInEveryBranch(f.cds))) {
+						if(isConstantArgument(dataflow.graph, f, 0) && (dfgElement.cds === f.cds || happensInEveryBranch(f.cds))) {
 							metadata.callsWithFunctionProducers++;
 							return false;
 						} else {
@@ -102,7 +102,7 @@ export const SEEDED_RANDOMNESS = {
 						const argIdx = assignmentArgIndexes.get(a.name) as number;
 						const dest = getReferenceOfArgument(a.args[argIdx]);
 						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)){
-							if(isConstantArgument(dataflow.graph, a, 1-argIdx) && (!consumerAlwaysHappens || happensInEveryBranch(a.cds))) {
+							if(isConstantArgument(dataflow.graph, a, 1-argIdx) && (dfgElement.cds === a.cds || happensInEveryBranch(a.cds))) {
 								metadata.callsWithAssignmentProducers++;
 								return false;
 							} else {

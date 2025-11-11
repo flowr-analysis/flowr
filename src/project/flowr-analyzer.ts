@@ -30,7 +30,7 @@ export interface FlowrAnalysisProvider extends ReadonlyFlowrAnalysisProvider {
 	 * Add one or multiple requests to analyze.
 	 * @param request - One or multiple requests or a file path (with the `file://` protocol). If you just enter a string, it will be interpreted as R code.
 	 */
-	addRequest(request: RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string): void
+	add(request: RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string): void
 	/**
 	 * Reset the analyzer state, including the context and the cache.
 	 */
@@ -144,18 +144,18 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.cache.reset();
 	}
 
-	public addRequest(request: RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string): this {
+	public add(request: RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string): this {
 		if(Array.isArray(request) || isParseRequest(request)) {
-			this.addAnalysisRequest(request);
+			this.addRequest(request);
 		} else if(typeof request === 'string') {
 			const trimmed = request.substring(fileProtocol.length);
 			if(request.startsWith(fileProtocol) && !isFilePath(trimmed)) {
-				this.addAnalysisRequest({ request: 'project', content: trimmed });
+				this.addRequest({ request: 'project', content: trimmed });
 			} else {
 				this.addRequestFromInput(request);
 			}
 		} else {
-			this.addAnalysisRequest(request);
+			this.addRequest(request);
 		}
 		return this;
 	}
@@ -165,14 +165,14 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	 * This is a convenience method that uses {@link requestFromInput} internally.
 	 */
 	private addRequestFromInput(input: Parameters<typeof requestFromInput>[0]): this {
-		this.addAnalysisRequest(requestFromInput(input));
+		this.addRequest(requestFromInput(input));
 		return this;
 	}
 
 	/**
 	 * Add one or multiple requests to analyze the builder.
 	 */
-	private addAnalysisRequest(request: RAnalysisRequest | readonly RAnalysisRequest[]): this {
+	private addRequest(request: RAnalysisRequest | readonly RAnalysisRequest[]): this {
 		const r = Array.isArray(request) ? request : [request] as RParseRequest[];
 		this.ctx.addRequests(r);
 		return this;

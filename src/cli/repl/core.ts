@@ -138,7 +138,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 					const args = processor.argsParser(remainingLine);
 					if(args.rCode) {
 						analyzer.reset();
-						analyzer.addRequest(args.rCode);
+						analyzer.add(args.rCode);
 					}
 					await processor.fn({ output, analyzer, remainingArgs: args.remaining });
 				} else {

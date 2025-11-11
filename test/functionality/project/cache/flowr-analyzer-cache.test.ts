@@ -1,0 +1,60 @@
+import { describe, expect, test } from 'vitest';
+import { FlowrAnalyzerCache } from '../../../../src/project/cache/flowr-analyzer-cache';
+import { CfgKind } from '../../../../src/project/cfg-kind';
+import { defaultConfigOptions } from '../../../../src/config';
+import { withTreeSitter } from '../../_helper/shell';
+import { requestFromInput } from '../../../../src/r-bridge/retriever';
+
+describe('Analyzer Cache', withTreeSitter( (shell) => {
+	const data = {
+		parser:  shell,
+		config:  defaultConfigOptions,
+		request: [requestFromInput('x <- 1')]
+	};
+
+	describe('Control Flow Caching', () => {
+		test('Force', async() => {
+			const cache = FlowrAnalyzerCache.create(data);
+			const original = await cache.controlflow(false, CfgKind.NoDataflow, []);
+			const cached = await cache.controlflow(true, CfgKind.NoDataflow, []);
+			expect(original).not.toBe(cached);
+		});
+
+		test('Should differentiate', async() => {
+			const cache = FlowrAnalyzerCache.create(data);
+			const original = await cache.controlflow(false, CfgKind.NoDataflow, []);
+			const cached = await cache.controlflow(false, CfgKind.WithDataflow, []);
+			expect(original).not.toBe(cached);
+		});
+
+		test('Disallow simplifications', async() => {
+			const cache = FlowrAnalyzerCache.create(data);
+			const fail = () =>
+				cache.controlflow(false, CfgKind.Quick, ['analyze-dead-code']);
+			await expect(fail).rejects.toThrowError();
+		});
+
+		/* Performance optimizations */
+		test('Should cache', async() => {
+			const cache = FlowrAnalyzerCache.create(data);
+			const original = await cache.controlflow(false, CfgKind.NoDataflow, []);
+			const cached = await cache.controlflow(false, CfgKind.NoDataflow, []);
+			expect(original).toBe(cached);
+		});
+
+		test('Re-use base CFG', async() => {
+			const cache = FlowrAnalyzerCache.create(data);
+			const original = await cache.controlflow(false, CfgKind.WithDataflow, []);
+			const cached = await cache.controlflow(false, CfgKind.WithDataflow, ['unique-cf-sets']);
+			expect(original.graph).toBe(cached.graph);
+		});
+
+		test('Re-use CFG Quick from dataflow', async() => {
+			// The request needs to have an unknown side effect for CFG Quick to be computed during dataflow
+			const cache = FlowrAnalyzerCache.create({ ...data, request: requestFromInput('x<-1\ncat(x)') });
+			const original = (await cache.dataflow()).cfgQuick;
+			const cached = await cache.controlflow(false, CfgKind.Quick, undefined);
+			expect(original).toBe(cached);
+		});
+	});
+}));

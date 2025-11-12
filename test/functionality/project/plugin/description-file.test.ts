@@ -60,7 +60,7 @@ Collate:
     'aaa.R'
     'main.R'
     'zzz.R'`));
-	ctx.files.addRequest({ request: 'file', content: 'pete.R' });
+	ctx.files.addRequests([{ request: 'file', content: 'pete.R' }]);
 	ctx.resolvePreAnalysis();
 	describe.sequential('Parsing', function() {
 		test('Library-Versions-Plugin', () => {

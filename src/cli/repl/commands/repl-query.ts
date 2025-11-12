@@ -1,9 +1,18 @@
-import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
+import { fileProtocol } from '../../../r-bridge/retriever';
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { ansiFormatter, italic } from '../../../util/text/ansi';
 import { describeSchema } from '../../../util/schema';
-import { type Query, type QueryResults, type SupportedQuery, type SupportedQueryTypes , AnyQuerySchema, executeQueries, QueriesSchema, SupportedQueries } from '../../../queries/query';
+import {
+	AnyQuerySchema,
+	executeQueries,
+	QueriesSchema,
+	type Query,
+	type QueryResults,
+	SupportedQueries,
+	type SupportedQuery,
+	type SupportedQueryTypes
+} from '../../../queries/query';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import type { BaseQueryResult } from '../../../queries/base-query-format';
@@ -68,7 +77,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 
 	if(input) {
 		analyzer.reset();
-		analyzer.addRequest(requestFromInput(input));
+		analyzer.addRequest(input);
 	}
 
 	return {

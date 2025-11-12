@@ -6,9 +6,17 @@ import {
 	type LintingRuleConfig,
 	type LintingRuleMetadata,
 	type LintingRuleNames,
-	type LintingRuleResult
-	, LintingRules } from '../../../linter/linter-rules';
-import { type ConfiguredLintingRule, type LintingResults, type LintingRule , isLintingResultsError, LintingPrettyPrintContext, LintingResultCertainty } from '../../../linter/linter-format';
+	type LintingRuleResult,
+	LintingRules
+} from '../../../linter/linter-rules';
+import {
+	type ConfiguredLintingRule,
+	isLintingResultsError,
+	LintingPrettyPrintContext,
+	LintingResultCertainty,
+	type LintingResults,
+	type LintingRule
+} from '../../../linter/linter-format';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import { codeInline } from '../../../documentation/doc-util/doc-code';
@@ -127,7 +135,7 @@ function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, res
 	result.push(`   ╰ **${rule.info.name}** (${ruleName}):`);
 
 	if(isLintingResultsError(results)) {
-		result.push(`       ╰ Error during execution of Rule: ${results.error}`);
+		result.push(`       ╰ Error during execution of rule: ${results.error}`);
 		return;
 	}
 

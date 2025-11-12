@@ -12,12 +12,12 @@ import { splitAtEscapeSensitive } from '../../util/text/args';
 import { FontStyles } from '../../util/text/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
-import { fileProtocol, requestFromInput } from '../../r-bridge/retriever';
-import { type ReplOutput , standardReplOutput } from './commands/repl-main';
+import { fileProtocol } from '../../r-bridge/retriever';
+import { type ReplOutput, standardReplOutput } from './commands/repl-main';
 import type { MergeableRecord } from '../../util/objects';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfigOptions } from '../../config';
-import { type SupportedQuery , SupportedQueries } from '../../queries/query';
+import { SupportedQueries, type SupportedQuery } from '../../queries/query';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
 import { startAndEndsWith } from '../../util/text/strings';
 
@@ -138,7 +138,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 					const args = processor.argsParser(remainingLine);
 					if(args.rCode) {
 						analyzer.reset();
-						analyzer.addRequest(requestFromInput(args.rCode));
+						analyzer.addRequest(args.rCode);
 					}
 					await processor.fn({ output, analyzer, remainingArgs: args.remaining });
 				} else {
@@ -219,6 +219,7 @@ export async function repl(
 
 	// the incredible repl :D, we kill it with ':quit'
 
+	// noinspection InfiniteLoopJS
 	while(true) {
 		await new Promise<void>((resolve, reject) => {
 			rl.question(prompt(), answer => {

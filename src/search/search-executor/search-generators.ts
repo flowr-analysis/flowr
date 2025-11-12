@@ -124,7 +124,7 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 		.enrich(input, Enrichment.QueryData, { queries: result });
 	return elements.mutate(s => Promise.all(s.map(async e => {
 		const [query, _] = [...nodesByQuery].find(([_, nodes]) => nodes.has(e)) as [Query['type'], Set<FlowrSearchElement<ParentInformation>>];
-		return await enrichElement(e, elements, { normalize, dataflow, cfg }, Enrichment.QueryData, { query });
+		return await enrichElement(e, elements, { normalize, dataflow, cfg, config: input.flowrConfig }, Enrichment.QueryData, { query });
 	}))) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
 }
 

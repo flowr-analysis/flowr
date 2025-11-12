@@ -205,7 +205,7 @@ export class FlowrAnalyzerBuilder {
 			cache
 		);
 
-		analyzer.add(this.request ?? []);
+		analyzer.addRequest(this.request ?? []);
 
 		// we do it here to save time later if the analyzer is to be duplicated
 		context.resolvePreAnalysis();

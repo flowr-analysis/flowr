@@ -242,7 +242,7 @@ function applyAddRowsSemantics(
 		return new DataFrameDomain({
 			...value,
 			colnames: value.colnames.top(),
-			cols:     value.cols.add([1, 1]),
+			cols:     rows !== undefined ? value.cols.add([1, 1]) : value.cols.top(),
 			rows:     rows !== undefined ? value.rows.add([rows, rows]) : value.rows.extendUp()
 		});
 	}

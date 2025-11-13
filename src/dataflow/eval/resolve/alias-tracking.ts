@@ -159,37 +159,39 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 		return Top;
 	}
 
-	if (node.info.sdvalue) {
-		const value = node.info.sdvalue as SDValue;
+	if (node.info.sdvalue && (node.info.sdvalue as SDValue).kind !== "top") {
+		if (node.info.sdvalue) {
+			const value = node.info.sdvalue as SDValue;
 
-		if (value.kind === "top") {
-			return Top;
-		} else if (value.kind === "bottom") {
-			return Bottom;
-		} else if (value.kind === "const") {
-			return {
-				type: "set",
-				elements: [
-					{
+			if (value.kind === "top") {
+				return Top;
+			} else if (value.kind === "bottom") {
+				return Bottom;
+			} else if (value.kind === "const") {
+				return {
+					type: "set",
+					elements: [
+						{
+							type: "string",
+							value: {
+								str: value.value,
+								quotes: "\"",
+							}
+						}
+					],
+				};
+			} else if (value.kind === "const-set") {
+				return {
+					type: "set",
+					elements: value.value.map(it => ({
 						type: "string",
 						value: {
-							str: value.value,
+							str: it,
 							quotes: "\"",
-						}
-					}
-				],
-			};
-		} else if (value.kind === "const-set") {
-			return {
-				type: "set",
-				elements: value.value.map(it => ({
-					type: "string",
-					value: {
-						str: it,
-						quotes: "\"",
-					},
-				})),
-			};
+						},
+					})),
+				};
+			}
 		}
 	}
 

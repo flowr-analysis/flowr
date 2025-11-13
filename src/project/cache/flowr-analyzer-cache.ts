@@ -13,12 +13,10 @@ import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { TreeSitterExecutor } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
 import { assertUnreachable, guard } from '../../util/assert';
-import { ObjectMap } from '../../util/collections/objectmap';
 import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
-import { CfgSimplificationPasses, simplifyControlFlowInformation } from '../../control-flow/cfg-simplification';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
-import { extractCfg, extractCfgQuick } from '../../control-flow/extract-cfg';
-import { CfgKind } from '../cfg-kind';
+import type { CfgKind } from '../cfg-kind';
+import { FlowrAnalyzerControlFlowCache } from './flowr-analyzer-controlflow-cache';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
     parser:             Parser;
@@ -36,8 +34,6 @@ type AnalyzerPipelineExecutor<Parser extends KnownParser> = PipelineExecutor<Ana
 export type AnalyzerCacheType<Parser extends KnownParser> = Parser extends TreeSitterExecutor ? Partial<PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>>
     : Partial<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>;
 
-type ControlFlowCache = ObjectMap<[passes: readonly CfgSimplificationPassName[], kind: CfgKind], ControlFlowInformation>;
-
 /**
  * This provides the full analyzer caching layer, please avoid using this directly
  * and prefer the {@link FlowrAnalyzer}.
@@ -45,7 +41,7 @@ type ControlFlowCache = ObjectMap<[passes: readonly CfgSimplificationPassName[],
 export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<AnalyzerCacheType<Parser>> {
 	private args:             FlowrAnalyzerCacheOptions<Parser>;
 	private pipeline:         AnalyzerPipelineExecutor<Parser> = undefined as unknown as AnalyzerPipelineExecutor<Parser>;
-	private controlFlowCache: ControlFlowCache = undefined as unknown as ControlFlowCache;
+	private controlFlowCache: FlowrAnalyzerControlFlowCache = undefined as unknown as FlowrAnalyzerControlFlowCache;
 
 	protected constructor(args: FlowrAnalyzerCacheOptions<Parser>) {
 		super();
@@ -59,7 +55,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 			getId:             this.args.getId,
 			overwriteFilePath: this.args.overwriteFilePath
 		}, this.args.config) as AnalyzerPipelineExecutor<Parser>;
-		this.controlFlowCache = new ObjectMap<[readonly CfgSimplificationPassName[], CfgKind], ControlFlowInformation>();
+		this.controlFlowCache = new FlowrAnalyzerControlFlowCache();
 	}
 
 	public static create<Parser extends KnownParser>(data: FlowrAnalyzerCacheOptions<Parser>): FlowrAnalyzerCache<Parser> {
@@ -164,78 +160,13 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 * @param simplifications - Simplification passes to be applied to the CFG.
 	 */
 	public async controlflow(force: boolean | undefined, kind: CfgKind, simplifications?: readonly CfgSimplificationPassName[]): Promise<ControlFlowInformation> {
-		guard(kind === CfgKind.Quick ? simplifications === undefined : true, 'Cannot apply simplifications to quick CFG');
-		simplifications ??= [];
-		const orderedSimplifications = this.normalizeSimplificationOrder(simplifications);
-
-		const cached = force ?
-			{ cfg: undefined, missingSimplifications: orderedSimplifications }
-			: this.tryGetCachedCfg(orderedSimplifications, kind);
-		let cfg = cached.cfg;
-
-		if(!cfg) {
-			cfg = await this.createAndCacheBaseCfg(force, kind);
-		}
-
-		if(cached.missingSimplifications.length > 0) {
-			cfg = simplifyControlFlowInformation(cfg, {
-				ast:    await this.normalize(),
-				dfg:    (await this.dataflow()).graph,
-				config: this.args.config
-			}, cached.missingSimplifications);
-		}
-
-		this.controlFlowCache.set([orderedSimplifications, kind], cfg);
-		return cfg;
-	}
-
-	/**
-	 * Create and cache the base CFG without simplifications.
-	 */
-	private async createAndCacheBaseCfg(force: undefined | boolean, kind: CfgKind): Promise<ControlFlowInformation> {
-		const normalized = await this.normalize(force);
-		let result: ControlFlowInformation;
-		switch(kind) {
-			case CfgKind.WithDataflow:
-				result = extractCfg(normalized, this.args.config, (await this.dataflow()).graph);
-				break;
-			case CfgKind.NoDataflow:
-				result = extractCfg(normalized, this.args.config, (await this.dataflow()).graph);
-				break;
-			case CfgKind.Quick:
-				result = this.peekDataflow()?.cfgQuick ?? extractCfgQuick(normalized);
-				break;
-		}
-		this.controlFlowCache.set([[], kind], result);
-		return result;
-	}
-
-	/**
-	 * Try to get a cached CFG with some of the requested simplifications already applied.
-	 * Matches the longest prefix of simplifications available.
-	 * @returns The cached CFG and the missing simplifications to be applied, or `undefined` if no cached CFG is available.
-	 */
-	private tryGetCachedCfg(simplifications: readonly CfgSimplificationPassName[], kind: CfgKind): { cfg: ControlFlowInformation | undefined, missingSimplifications: readonly CfgSimplificationPassName[] } {
-		for(let prefixLen = simplifications.length; prefixLen >= 0; prefixLen--) {
-			const prefix = simplifications.slice(0, prefixLen);
-			const cached = this.controlFlowCache.get([prefix, kind]);
-			if(cached !== undefined) {
-				return {
-					cfg:                    cached,
-					missingSimplifications: simplifications.slice(prefixLen)
-				};
-			}
-		}
-		return { cfg: undefined, missingSimplifications: simplifications };
-	}
-
-	/**
-	 * Normalize the order of simplification passes to represent their order of dependence.
-	 * @param simplifications - the requested simplification passes.
-	 */
-	private normalizeSimplificationOrder(simplifications: readonly CfgSimplificationPassName[]): readonly CfgSimplificationPassName[] {
-		const canonicalOrder = Object.keys(CfgSimplificationPasses) as CfgSimplificationPassName[];
-		return canonicalOrder.filter(p => simplifications.includes(p));
+		const cfgInfo = {
+			config:   this.args.config,
+			cfgQuick: this.peekDataflow()?.cfgQuick,
+			ast:      async() => await this.normalize(),
+			dfg:      async() => await this.dataflow()
+		};
+		return this.controlFlowCache.get(force, kind, cfgInfo, simplifications);
 	}
 
 	/**
@@ -245,6 +176,6 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 * @see {@link FlowrAnalyzerCache#controlflow} - to get the control flow graph, computing if necessary.
 	 */
 	public peekControlflow(kind: CfgKind, simplifications: readonly CfgSimplificationPassName[] | undefined): ControlFlowInformation | undefined {
-		return this.controlFlowCache.get([simplifications ?? [], kind]);
+		return this.controlFlowCache.peek(kind, simplifications);
 	}
 }

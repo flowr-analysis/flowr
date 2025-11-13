@@ -12,7 +12,7 @@ describe('Analyzer Cache', withTreeSitter( (shell) => {
 		request: [requestFromInput('x <- 1')]
 	};
 
-	describe('Control Flow Caching', () => {
+	describe('Control Flow', () => {
 		test('Force', async() => {
 			const cache = FlowrAnalyzerCache.create(data);
 			const original = await cache.controlflow(false, CfgKind.NoDataflow, []);
@@ -20,6 +20,7 @@ describe('Analyzer Cache', withTreeSitter( (shell) => {
 			expect(original).not.toBe(cached);
 		});
 
+		/* Caching */
 		test('Should differentiate', async() => {
 			const cache = FlowrAnalyzerCache.create(data);
 			const original = await cache.controlflow(false, CfgKind.NoDataflow, []);
@@ -47,6 +48,14 @@ describe('Analyzer Cache', withTreeSitter( (shell) => {
 			const original = await cache.controlflow(false, CfgKind.WithDataflow, []);
 			const cached = await cache.controlflow(false, CfgKind.WithDataflow, ['unique-cf-sets']);
 			expect(original.graph).toBe(cached.graph);
+		});
+
+		test('Keep cache unmodified', async() => {
+			const cache = FlowrAnalyzerCache.create(data);
+			const original = await cache.controlflow(false, CfgKind.WithDataflow, []);
+			await cache.controlflow(false, CfgKind.WithDataflow, ['unique-cf-sets']);
+			const afterReuse = await cache.controlflow(false, CfgKind.WithDataflow, []);
+			expect(original).toBe(afterReuse);
 		});
 
 		test('Re-use CFG Quick from dataflow', async() => {

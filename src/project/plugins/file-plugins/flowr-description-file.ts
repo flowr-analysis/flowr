@@ -1,4 +1,4 @@
-import { type FlowrFileProvider, type SpecialFileRole , FlowrFile } from '../../context/flowr-file';
+import { type FlowrFileProvider, type FileRole , FlowrFile } from '../../context/flowr-file';
 import { parseDCF } from '../../../util/files';
 
 export type DCF = Map<string, string[]>;
@@ -30,7 +30,7 @@ export class FlowrDescriptionFile extends FlowrFile<DCF> {
 	/**
 	 * Description file lifter, this does not re-create if already a description file
 	 */
-	public static from(file: FlowrFileProvider<string> | FlowrDescriptionFile, role?: SpecialFileRole): FlowrDescriptionFile {
+	public static from(file: FlowrFileProvider<string> | FlowrDescriptionFile, role?: FileRole): FlowrDescriptionFile {
 		if(role) {
 			file.assignRole(role);
 		}

@@ -13,13 +13,15 @@ export type FilePath = string;
  * This list may be extended in the future and reflects files that the {@link FlowrAnalyzer} can do something interesting with.
  * If you add an interesting file that is only part of your plugin infrastructure, please use the `other` role.
  */
-export enum SpecialFileRole {
+export enum FileRole {
 	/** The `DESCRIPTION` file in R packages, this is the only currently supported special file. */
 	Description = 'description',
 	/** The `NAMESPACE` file in R packages, currently not specially supported. */
 	Namespace   = 'namespace',
 	/** Data files, e.g., `R/sysdata.rda`, currently not specially supported. */
 	Data        = 'data',
+	/** Catch-all for any file that provides usable R code to incorporate into the analysis */
+	R           = 'r',
 	/** Other special files that are not specifically supported by flowR but may be interesting for some analyses. */
 	Other       = 'other'
 }
@@ -41,7 +43,7 @@ export interface FlowrFileProvider<Content = unknown> {
 	 * this is for the loaders plugins to decide (cf. {@link PluginType}) as they can, e.g., respect ignore files, updated mappings, etc.
 	 * However, they will 1) set this role as soon as they decide on it (using {@link assignRole}) and 2) try to respect an already assigned role (however, user configurations may override this).
 	 */
-    role?: SpecialFileRole;
+    role?: FileRole;
 
 	/**
 	 * The path to the file, this is used for identification and logging purposes.
@@ -61,7 +63,7 @@ export interface FlowrFileProvider<Content = unknown> {
 	 * Assign a role to this file, this should be done by the loader plugins (cf. {@link PluginType}).
 	 * **Do not call this method yourself unless you are a file-loader plugin and/or really know what you are doing, this may break plugin assumptions!**
 	 */
-    assignRole(role: SpecialFileRole): void;
+    assignRole(role: FileRole): void;
 }
 
 /**
@@ -72,9 +74,9 @@ export interface FlowrFileProvider<Content = unknown> {
 export abstract class FlowrFile<Content = unknown> implements FlowrFileProvider<Content> {
 	private contentCache:  Content | undefined;
 	protected filePath:    PathLike;
-	public readonly role?: SpecialFileRole;
+	public readonly role?: FileRole;
 
-	public constructor(filePath: PathLike, role?: SpecialFileRole) {
+	public constructor(filePath: PathLike, role?: FileRole) {
 		this.filePath = filePath;
 		this.role     = role;
 	}
@@ -92,9 +94,9 @@ export abstract class FlowrFile<Content = unknown> implements FlowrFileProvider<
 
 	protected abstract loadContent(): Content;
 
-	public assignRole(role: SpecialFileRole): void {
+	public assignRole(role: FileRole): void {
 		guard(this.role === undefined || this.role === role, `File ${this.filePath.toString()} already has a role assigned: ${this.role}`);
-		(this as { role?: SpecialFileRole }).role = role;
+		(this as { role?: FileRole }).role = role;
 	}
 }
 

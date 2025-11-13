@@ -4,7 +4,7 @@ import type { PathLike } from 'fs';
 import { log } from '../../../util/log';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { FlowrDescriptionFile } from './flowr-description-file';
-import { type FlowrFileProvider , SpecialFileRole } from '../../context/flowr-file';
+import { type FlowrFileProvider , FileRole } from '../../context/flowr-file';
 
 export const descriptionFileLog = log.getSubLogger({ name: 'flowr-analyzer-loading-order-description-file-plugin' });
 
@@ -21,7 +21,7 @@ export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin 
 	}
 
 	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider<string>): FlowrDescriptionFile {
-		const f = FlowrDescriptionFile.from(file, SpecialFileRole.Description);
+		const f = FlowrDescriptionFile.from(file, FileRole.Description);
 		// already load it here
 		f.content();
 		return f;

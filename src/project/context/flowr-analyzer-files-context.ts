@@ -9,7 +9,7 @@ import {
 	FlowrAnalyzerProjectDiscoveryPlugin
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
-import { type FilePath, type FlowrFile, type FlowrFileProvider, FlowrTextFile, SpecialFileRole } from './flowr-file';
+import { type FilePath, type FlowrFile, type FlowrFileProvider, FlowrTextFile, FileRole } from './flowr-file';
 import type { FlowrDescriptionFile } from '../plugins/file-plugins/flowr-description-file';
 import { log } from '../../util/log';
 
@@ -28,15 +28,15 @@ export interface RProjectAnalysisRequest {
 
 export type RAnalysisRequest = RParseRequest | RProjectAnalysisRequest
 
-export type SpecialFiles = {
-    [SpecialFileRole.Description]: FlowrDescriptionFile[];
+export type RoleBasedFiles = {
+    [FileRole.Description]: FlowrDescriptionFile[];
     /* currently no special support */
-    [SpecialFileRole.Namespace]:   FlowrFileProvider[];
-    [SpecialFileRole.Data]:        FlowrFileProvider[];
-    [SpecialFileRole.Other]:       FlowrFileProvider[];
+    [FileRole.Namespace]:   FlowrFileProvider[];
+    [FileRole.Data]:        FlowrFileProvider[];
+    [FileRole.Other]:       FlowrFileProvider[];
 }
 
-function obtainFileAndPath(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: SpecialFileRole): { f: FlowrFileProvider<string> | RParseRequestFromFile, p: string } {
+function obtainFileAndPath(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: FileRole): { f: FlowrFileProvider<string> | RParseRequestFromFile, p: string } {
 	let f: FlowrFileProvider<string> | RParseRequestFromFile;
 	let p: FilePath;
 	if(typeof file === 'string') {
@@ -73,7 +73,7 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * getFilesByRole(SpecialFileRole.Description)
 	 * ```
 	 */
-	getFilesByRole<Role extends SpecialFileRole>(role: Role): SpecialFiles[Role];
+	getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role];
 }
 
 /**
@@ -89,12 +89,12 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private files:                Map<FilePath, FlowrFileProvider | RParseRequestFromFile> = new Map<FilePath, FlowrFileProvider | RParseRequestFromFile>();
 	private readonly fileLoaders: readonly FlowrAnalyzerFilePlugin[];
 	/* files that are part of the analysis, e.g. source files */
-	private specialFiles:        SpecialFiles = {
-		[SpecialFileRole.Description]: [],
-		[SpecialFileRole.Namespace]:   [],
-		[SpecialFileRole.Data]:        [],
-		[SpecialFileRole.Other]:       []
-	} satisfies Record<SpecialFileRole, FlowrFileProvider[]>;
+	private byRole:        RoleBasedFiles = {
+		[FileRole.Description]: [],
+		[FileRole.Namespace]:   [],
+		[FileRole.Data]:        [],
+		[FileRole.Other]:       []
+	} satisfies Record<FileRole, FlowrFileProvider[]>;
 
 	constructor(
 		loadingOrder: FlowrAnalyzerLoadingOrderContext,
@@ -155,7 +155,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 * Add a file to the context. If the file has a special role, it will be added to the corresponding list of special files.
 	 * This method also applies any registered {@link FlowrAnalyzerFilePlugin}s to the file before adding it to the context.
 	 */
-	public addFile(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: SpecialFileRole): void {
+	public addFile(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: FileRole): void {
 		const { f, p } = obtainFileAndPath(file, role);
 		const { f: fA, p: pA } = this.fileLoadPlugins(f, p);
 
@@ -164,7 +164,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		this.files.set(pA, fA);
 
 		if(!isParseRequest(fA) && fA.role) {
-			this.specialFiles[fA.role].push(fA as typeof this.specialFiles[SpecialFileRole.Description][number]);
+			this.byRole[fA.role].push(fA as typeof this.byRole[FileRole.Description][number]);
 		}
 	}
 
@@ -193,7 +193,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return this.loadingOrder.getLoadingOrder();
 	}
 
-	public getFilesByRole<Role extends SpecialFileRole>(role: Role): SpecialFiles[Role] {
-		return this.specialFiles[role];
+	public getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role] {
+		return this.byRole[role];
 	}
 }

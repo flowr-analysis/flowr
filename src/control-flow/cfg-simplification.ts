@@ -16,7 +16,6 @@ export type CfgSimplificationPass = (cfg: ControlFlowInformation, info: CfgPassI
 
 /**
  * All available control flow graph simplification passes.
- * Note that the order of passes needs to represent their order of dependence!
  */
 export const CfgSimplificationPasses = {
 	'unique-cf-sets':    uniqueControlFlowSets,

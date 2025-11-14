@@ -1,6 +1,6 @@
 import { ObjectMap } from '../../util/collections/objectmap';
 import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
-import { CfgSimplificationPasses, simplifyControlFlowInformation } from '../../control-flow/cfg-simplification';
+import { simplifyControlFlowInformation } from '../../control-flow/cfg-simplification';
 import { CfgKind } from '../cfg-kind';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import { guard } from '../../util/assert';
@@ -20,7 +20,6 @@ interface CfgInfo {
 
 export class FlowrAnalyzerControlFlowCache {
 	private readonly cache: ControlFlowCache = new ObjectMap<[readonly CfgSimplificationPassName[], CfgKind], ControlFlowInformation>();
-	private readonly canonicalOrder = Object.keys(CfgSimplificationPasses) as CfgSimplificationPassName[];
 
 	public peek(kind: CfgKind, simplifications: readonly CfgSimplificationPassName[] | undefined): ControlFlowInformation | undefined  {
 		return this.cache.get([simplifications ?? [], kind]);
@@ -94,10 +93,11 @@ export class FlowrAnalyzerControlFlowCache {
 	}
 
 	/**
-	 * Normalize the order of simplification passes to represent their order of dependence.
+	 * Normalize the order of simplification passes.
+	 * Is currently an identity function, but may be extended in the future to enforce a specific order using heuristics.
 	 * @param simplifications - the requested simplification passes.
 	 */
 	private normalizeSimplificationOrder(simplifications: readonly CfgSimplificationPassName[]): readonly CfgSimplificationPassName[] {
-		return this.canonicalOrder.filter(p => simplifications.includes(p));
+		return simplifications;
 	}
 }

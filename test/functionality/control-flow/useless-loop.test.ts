@@ -1,18 +1,18 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { defaultConfigOptions } from '../../../src/config';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { onlyLoopsOnce } from '../../../src/control-flow/useless-loop';
 import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../src/slicing/criterion/parse';
+import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 
 
 describe('One Iteration Loop Detection', withTreeSitter(shell => {
 	function checkLoop(name: string, code: string, node: SingleSlicingCriterion, expectedLoopsOnlyOnce: boolean) {
 		test(name, async() => {
 			const result = await createDataflowPipeline(shell, {
-				requests: requestFromInput(code.trim())
+				context: contextFromInput(code.trim())
 			}, defaultConfigOptions).allRemainingSteps();
 			const cfg = extractCfg(result.normalize, defaultConfigOptions, result.dataflow.graph);
 

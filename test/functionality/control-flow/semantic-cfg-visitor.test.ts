@@ -2,7 +2,6 @@ import { assert, describe, it } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { SemanticCfgGuidedVisitor } from '../../../src/control-flow/semantic-cfg-guided-visitor';
 import { type TREE_SITTER_DATAFLOW_PIPELINE , createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import type { ControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
@@ -12,13 +11,14 @@ import { defaultConfigOptions } from '../../../src/config';
 import type { RSymbol } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
+import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 
 describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 	const config = defaultConfigOptions;
 
 	function testSemanticVisitor<V extends SemanticCfgGuidedVisitor>(code: string, visitor: (o: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>, controlFlow: ControlFlowInformation) => V, assert: (obj: V) => void) {
 		it(code, async() => {
-			const data = await createDataflowPipeline(ts, { requests: requestFromInput(code) }, config).allRemainingSteps();
+			const data = await createDataflowPipeline(ts, { context: contextFromInput(code) }, config).allRemainingSteps();
 			const cfg = extractCfg(data.normalize, config, data.dataflow.graph);
 			const v = visitor(data, cfg);
 			v.start();

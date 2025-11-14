@@ -19,6 +19,9 @@ import type {
 	FlowrAnalyzerProjectDiscoveryPlugin
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import type { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
+import { arraysGroupBy } from '../../util/collections/arrays';
+import type { fileProtocol, RParseRequests } from '../../r-bridge/retriever';
+import { requestFromInput } from '../../r-bridge/retriever';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -86,4 +89,24 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext{
 		this.files.reset();
 		this.deps.reset();
 	}
+}
+
+/**
+ * Lifting {@link requestFromInput} to create a full {@link FlowrAnalyzerContext} from input requests.
+ */
+export function contextFromInput(
+	input: `${typeof fileProtocol}${string}` | string | readonly string[] | RParseRequests,
+	plugins?: FlowrAnalyzerPlugin[]
+): FlowrAnalyzerContext {
+	const context = new FlowrAnalyzerContext(
+		arraysGroupBy(plugins ?? [], (p) => p.type)
+	);
+	if(typeof input === 'string' || Array.isArray(input) && input.every(i => typeof i === 'string')) {
+		const requests = requestFromInput(input);
+		context.addRequests(Array.isArray(requests) ? requests : [requests] );
+	} else {
+		const requests: RParseRequests = Array.isArray(input) ? input : [input];
+		context.addRequests(requests);
+	}
+	return context;
 }

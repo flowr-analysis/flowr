@@ -47,6 +47,7 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 import type { ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
+import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -135,11 +136,15 @@ function assertAstEqual<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTo
 	}
 }
 
+/**
+ * this is an old, and nowadays outdated method to retrieve the normalized AST for a given input
+ * Please prefer using the {@link FlowrAnalyzer} for new code!
+ */
 export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileProtocol}${string}` | string): Promise<NormalizedAst> => {
-	const request = requestFromInput(input);
+	const context = contextFromInput(input);
 	return (await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-		parser:   shell,
-		requests: request
+		parser: shell,
+		context
 	}, defaultConfigOptions).allRemainingSteps()).normalize;
 };
 
@@ -196,10 +201,8 @@ function skipTestBecauseXmlParseDataIsMissing(): boolean {
 }
 
 
-
-
 /**
- *
+ * Automatically skip a test if the given configuration is not met
  */
 export function skipTestBecauseConfigNotMet(userConfig?: Partial<TestConfiguration>): boolean {
 	const config = deepMergeObject(defaultTestConfiguration, userConfig);
@@ -258,8 +261,8 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 
 		async function makeShellAst(): Promise<RNode> {
 			const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-				parser:   shell,
-				requests: requestFromInput(input)
+				parser:  shell,
+				context: contextFromInput(input)
 			}, defaultConfigOptions);
 			const result = await pipeline.allRemainingSteps();
 			return result.normalize.ast;
@@ -267,8 +270,8 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 
 		async function makeTsAst(): Promise<RNode> {
 			const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
-				parser:   ts as TreeSitterExecutor,
-				requests: requestFromInput(input)
+				parser:  ts as TreeSitterExecutor,
+				context: contextFromInput(input)
 			}, defaultConfigOptions);
 			const result = await pipeline.allRemainingSteps();
 			return result.normalize.ast;
@@ -280,9 +283,9 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, expected: RNodeWithParent<Decorated>, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void {
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(name, async function() {
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-			getId:    deterministicCountingIdGenerator(startIndexForDeterministicIds),
-			parser:   shell,
-			requests: requestFromInput(input),
+			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds),
+			parser:  shell,
+			context: contextFromInput(input),
 		}, defaultConfigOptions).allRemainingSteps();
 
 		const ast = result.normalize.ast;
@@ -423,9 +426,9 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 	const selectedIds = Array.isArray(ids) ? ids : [ids];
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(decorateLabelContext(name, ['slice']), async function(this: unknown) {
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-			getId:    getId,
-			requests: requestFromInput(input),
-			parser:   shell
+			getId:   getId,
+			context: contextFromInput(input),
+			parser:  shell
 		}, defaultConfigOptions).allRemainingSteps();
 		const reconstructed = NAIVE_RECONSTRUCT.processor({
 			normalize: result.normalize,
@@ -566,7 +569,7 @@ export function assertSliced(
 		async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
 			return await createSlicePipeline(parser, {
 				getId:        getId(),
-				requests:     requestFromInput(input),
+				context:      contextFromInput(input),
 				criterion:    criteria,
 				autoSelectIf: testConfig?.autoSelectIf,
 				direction:    testConfig?.sliceDirection

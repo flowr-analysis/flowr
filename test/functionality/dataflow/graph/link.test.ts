@@ -3,14 +3,14 @@ import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../../
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { withShell } from '../../_helper/shell';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { defaultConfigOptions } from '../../../../src/config';
+import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 describe.sequential('dataflow graph links', withShell(shell => {
 	function assertLink(name: string, code: string, criterion: SingleSlicingCriterion, expect: NodeId[] | undefined) {
 		test(name, async() => {
 			const info = await createDataflowPipeline(shell, {
-				requests: requestFromInput(code),
+				context: contextFromInput(code),
 			}, defaultConfigOptions).allRemainingSteps();
 
 			const graph = info.dataflow.graph;

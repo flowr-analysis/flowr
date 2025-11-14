@@ -13,20 +13,19 @@ export const parseLog = log.getSubLogger({ name: 'ast-parser' });
 
 /**
  * Take the output as produced by the parse step and normalize the AST from the R parser.
- * @see {@link normalizeButNotDecorated} for a version that does not decorate the AST
- * @see {@link normalizeTreeSitter} for a version that normalizes the AST from the TreeSitter parser
+ * @see {@link normalizeButNotDecorated} - for a version that does not decorate the AST
+ * @see {@link normalizeTreeSitter}      - for a version that normalizes the AST from the TreeSitter parser
  */
 export function normalize(
 	parsed: ParseStepOutput<string>,
-	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),
-	file?: string
+	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)
 ): NormalizedAst {
-	return decorateAst(normalizeButNotDecorated(parsed), { getId, file });
+	return decorateAst(normalizeButNotDecorated(parsed), { getId, file: parsed.filePath });
 }
 
 /**
  * Take the output as produced by the parse step and normalize the AST from the R parser.
- * For additional decoration with ${@link decorateAst} use {@link normalize}.
+ * For additional decoration with {@link decorateAst} use {@link normalize}.
  */
 export function normalizeButNotDecorated(
 	{ parsed }: ParseStepOutput<string>

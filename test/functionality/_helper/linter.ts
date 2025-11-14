@@ -29,13 +29,12 @@ export function assertLinter<Name extends LintingRuleNames>(
 	ruleName: Name,
 	expected: LintingRuleResult<Name>[] | ((df: DataflowInformation, ast: NormalizedAst) => LintingRuleResult<Name>[]),
 	expectedMetadata?: LintingRuleMetadata<Name>,
-	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string }
+	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>>
 ) {
 	test(decorateLabelContext(name, ['linter']), async() => {
 		const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
 			.setInput({
-				getId:             deterministicCountingIdGenerator(0),
-				overwriteFilePath: lintingRuleConfig?.useAsFilePath
+				getId: deterministicCountingIdGenerator(0)
 			})
 			.setParser(parser)
 			.amendConfig(c => {

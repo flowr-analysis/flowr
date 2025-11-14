@@ -234,10 +234,11 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 	let dataflow: DataflowInformation;
 	try {
 		const file = request.request === 'file' ? request.content : undefined;
+		// TODO: make it return the path!!!
 		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(request);
 		normalized = (typeof parsed !== 'string' ?
 			normalizeTreeSitter({ parsed }, getId, data.flowrConfig, file)
-			: normalize({ parsed }, getId, file)) as NormalizedAst<OtherInfo & ParentInformation>;
+			: normalize({ parsed }, getId)) as NormalizedAst<OtherInfo & ParentInformation>;
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
 			currentRequest: request,

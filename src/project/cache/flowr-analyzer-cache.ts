@@ -6,7 +6,6 @@ import {
 	, createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
 import type { PipelineExecutor } from '../../core/pipeline-executor';
 import type { FlowrConfigOptions } from '../../config';
-import type { RParseRequests } from '../../r-bridge/retriever';
 import type { IdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { TreeSitterExecutor } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -17,13 +16,13 @@ import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplific
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import { extractCfg, extractCfgQuick } from '../../control-flow/extract-cfg';
 import { CfgKind } from '../cfg-kind';
+import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
-    parser:             Parser;
-    config:             FlowrConfigOptions;
-    request:            RParseRequests;
-    getId?:             IdGenerator<NoInfo>
-    overwriteFilePath?: string;
+    parser:  Parser;
+    config:  FlowrConfigOptions;
+    context: FlowrAnalyzerContext;
+    getId?:  IdGenerator<NoInfo>
 }
 
 type AnalyzerPipeline<Parser extends KnownParser> = Parser extends TreeSitterExecutor ?
@@ -55,9 +54,8 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 
 	private initCacheProviders() {
 		this.pipeline = createDataflowPipeline(this.args.parser, {
-			requests:          this.args.request,
-			getId:             this.args.getId,
-			overwriteFilePath: this.args.overwriteFilePath
+			context: this.args.context,
+			getId:   this.args.getId
 		}, this.args.config) as AnalyzerPipelineExecutor<Parser>;
 		this.controlFlowCache = {
 			simplified: new ObjectMap<[readonly CfgSimplificationPassName[], CfgKind], ControlFlowInformation>(),
@@ -89,7 +87,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	}
 
 	private async runTapeUntil<T>(force: boolean | undefined, until: () => T | undefined): Promise<T> {
-		guard(this.args.request && (Array.isArray(this.args.request) ? this.args.request.length > 0 : true),
+		guard(this.args.context.files.loadingOrder.getUnorderedRequests().length > 0,
 			'At least one request must be set to run the analysis pipeline');
 		if(force) {
 			this.reset();

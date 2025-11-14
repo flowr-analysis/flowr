@@ -1,9 +1,10 @@
-import type { RParseRequest, RParseRequests } from './retriever';
+import type { RParseRequest } from './retriever';
 import type { OutputCollectorConfiguration, RShell } from './shell';
 import type { RShellExecutor } from './shell-executor';
 import type { TreeSitterExecutor } from './lang-4.x/tree-sitter/tree-sitter-executor';
 import type { Query, QueryCapture, SyntaxNode } from 'web-tree-sitter';
 import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 interface ParserContent<T> {
     readonly name: string;
@@ -52,19 +53,25 @@ export type KnownParserName = KnownParser['name']
 
 export interface ParseRequiredInput<T> {
 	/** This is the {@link RShell}, {@link RShellExecutor} or {@link TreeSitterExecutor} connection to be used to obtain the original parses AST of the R code */
-	readonly parser:   Parser<T>
-	/** The request which essentially indicates the input to extract the AST from */
-	readonly requests: RParseRequests
+	readonly parser:  Parser<T>
+	// TODO: move environments also in context!! (especially built-in)
+	/**
+	 * The context from which to derive the requests from,
+	 * please either relay on the {@link FlowrAnalyzer}
+	 * or construct one with {@link contextFromInput}
+	 */
+	readonly context: FlowrAnalyzerContext
 }
 
 export interface ParseStepOutput<T> {
-    /** The parsed AST of the R code as given by the R parse side */
-    readonly parsed:         T
-    /** Additional meta information about the parse */
-    readonly '.parse-meta'?: {
-        /** The number of tokens in the AST */
-        readonly tokenCount: number
-    }
+	/** The parsed AST of the R code as given by the R parse side */
+	readonly parsed:         T
+	readonly filePath?:      string
+	/** Additional meta information about the parse */
+	readonly '.parse-meta'?: {
+		/** The number of tokens in the AST */
+		readonly tokenCount: number
+	}
 }
 
 function countChildren(node: SyntaxNode): number {
@@ -82,8 +89,7 @@ function countChildren(node: SyntaxNode): number {
  */
 export async function parseRequests<T extends KnownParserType>(_results: unknown, input: Partial<ParseRequiredInput<T>>): Promise<ParseStepOutput<T>> {
 	/* in the future, we want to expose all cases */
-	const request = (Array.isArray(input.requests) ? input.requests[0] : input.requests) as RParseRequest;
-
+	const request = (Array.isArray(input.context) ? input.context[0] : input.context) as RParseRequest;
 
 	if(input.parser?.async){
 		const parsed = await input.parser.parse(request);

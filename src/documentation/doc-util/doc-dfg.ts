@@ -3,7 +3,6 @@ import type { RShell } from '../../r-bridge/shell';
 import { type MermaidMarkdownMark , graphToMermaid } from '../../util/mermaid/dfg';
 import { PipelineExecutor } from '../../core/pipeline-executor';
 import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../r-bridge/retriever';
 import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
 import { diffOfDataflowGraphs } from '../../dataflow/graph/diff-dataflow-graph';
@@ -15,6 +14,7 @@ import { FlowrWikiBaseRef } from './doc-files';
 import { codeBlock } from './doc-code';
 import type { GraphDifferenceReport } from '../../util/diff-graph';
 import { defaultConfigOptions } from '../../config';
+import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 
 
 /**
@@ -64,7 +64,7 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, opt
 export async function printDfGraphForCode(parser: KnownParser, code: string, { simplified = false, mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();
 	const result = await createDataflowPipeline(parser, {
-		requests: requestFromInput(code)
+		context: contextFromInput(code)
 	}, defaultConfigOptions).allRemainingSteps();
 	const duration = performance.now() - now;
 
@@ -105,9 +105,9 @@ ${switchCodeAndGraph ? dfGraph : codeText}
 export async function verifyExpectedSubgraph(shell: RShell, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
 	/* we verify that we get what we want first! */
 	const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		parser:   shell,
-		requests: requestFromInput(code),
-		getId:    deterministicCountingIdGenerator(0)
+		parser:  shell,
+		context: contextFromInput(code),
+		getId:   deterministicCountingIdGenerator(0)
 	}, defaultConfigOptions).allRemainingSteps();
 
 	expectedSubgraph.setIdMap(info.normalize.idMap);

@@ -71,6 +71,8 @@ export function requestFromInput(input: readonly string[] | string): RParseReque
  * Creates a {@link RParseRequests} from a given input.
  * If your input starts with {@link fileProtocol}, it is assumed to be a file path and will be processed as such.
  * Giving an array, you can mix file paths and text content (again using the {@link fileProtocol}).
+ *
+ * To obtain a {@link FlowrAnalyzerContext} from such an input, use {@link contextFromInput}.
  */
 export function requestFromInput(input: `${typeof fileProtocol}${string}` | string | readonly string[]): RParseRequests  {
 	if(Array.isArray(input)) {
@@ -188,7 +190,7 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
  */
 export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell): Promise<NormalizedAst> {
 	const data = await retrieveParseDataFromRCode(request, shell);
-	return normalize({ parsed: data }, deterministicCountingIdGenerator(0), request.request === 'file' ? request.content : undefined);
+	return normalize({ parsed: data, filePath: request.request === 'file' ? request.content : undefined }, deterministicCountingIdGenerator(0));
 }
 
 /**

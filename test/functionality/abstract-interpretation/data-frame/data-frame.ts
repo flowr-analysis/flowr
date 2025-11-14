@@ -14,13 +14,13 @@ import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/
 import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { RShell } from '../../../../src/r-bridge/shell';
 import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
 import { getRangeEnd } from '../../../../src/util/range';
 import { decorateLabelContext, type TestLabel } from '../../_helper/label';
 import { type TestConfiguration , skipTestBecauseConfigNotMet } from '../../_helper/shell';
+import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 /**
  * The default flowR configuration options for performing abstract interpretation.
@@ -177,7 +177,7 @@ export function assertDataFrameDomain(
 
 	beforeAll(async() => {
 		if(!skipTestBecauseConfigNotMet(config)) {
-			result = await createDataflowPipeline(parser, { requests: requestFromInput(code) }, flowRConfig).allRemainingSteps();
+			result = await createDataflowPipeline(parser, { context: contextFromInput(code) }, flowRConfig).allRemainingSteps();
 		}
 	});
 
@@ -208,7 +208,7 @@ export function assertDataFrameOperation(
 
 	beforeAll(async() => {
 		if(!skipTestBecauseConfigNotMet(config)) {
-			result = await createDataflowPipeline(parser, { requests: requestFromInput(code) }, flowRConfig).allRemainingSteps();
+			result = await createDataflowPipeline(parser, { context: contextFromInput(code) }, flowRConfig).allRemainingSteps();
 		}
 	});
 
@@ -246,7 +246,7 @@ export function testDataFrameDomainAgainstReal(
 		if(typeof skipRun === 'boolean' ? skipRun : skipRun()) {
 			skip();
 		}
-		const result = await createDataflowPipeline(parser, { requests: requestFromInput(code) }, flowRConfig).allRemainingSteps();
+		const result = await createDataflowPipeline(parser, { context: contextFromInput(code) }, flowRConfig).allRemainingSteps();
 		const testEntries: CriterionTestEntry[] = [];
 
 		for(const entry of criteria) {

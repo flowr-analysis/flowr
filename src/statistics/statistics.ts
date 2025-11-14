@@ -11,6 +11,7 @@ import type { RShell } from '../r-bridge/shell';
 import { type Feature, type FeatureKey, type FeatureSelection, type FeatureStatistics , ALL_FEATURES , allFeatureNames } from './features/feature';
 import { ts2r } from '../r-bridge/lang-4.x/convert-values';
 import type { FlowrConfigOptions } from '../config';
+import { contextFromInput } from '../project/context/flowr-analyzer-context';
 
 /**
  * By default, {@link extractUsageStatistics} requires a generator, but sometimes you already know all the files
@@ -96,7 +97,7 @@ const parser = new DOMParser();
 
 async function extractSingle(result: FeatureStatistics, shell: RShell, request: RParseRequest, features: 'all' | Set<FeatureKey>, suffixFilePath: string | undefined, config: FlowrConfigOptions): Promise<{ stats: FeatureStatistics, output: DataflowResult}> {
 	const slicerOutput = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		requests: request, parser: shell
+		context: contextFromInput(request), parser: shell
 	}, config).allRemainingSteps();
 
 	// retrieve parsed xml through (legacy) xmlparsedata

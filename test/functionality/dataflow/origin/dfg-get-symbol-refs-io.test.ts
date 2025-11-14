@@ -1,7 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { withShell } from '../../_helper/shell';
 import { slicingCriterionToId, type SingleSlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { defaultConfigOptions } from '../../../../src/config';
 import { getAllRefsToSymbol } from '../../../../src/dataflow/origin/dfg-get-symbol-refs';
@@ -9,10 +8,11 @@ import { decorateLabelContext } from '../../_helper/label';
 import type { SourceRange } from '../../../../src/util/range';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RShell } from '../../../../src/r-bridge/shell';
+import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 function testRename(shell: RShell, name: string, input: string, symbol: SingleSlicingCriterion, expectedRefs: SlicingCriteria | undefined) {
 	test(decorateLabelContext(name, ['other']), async() => {
-		const { dataflow, normalize } = await createDataflowPipeline(shell, { requests: requestFromInput(input.trim()) }, defaultConfigOptions).allRemainingSteps();
+		const { dataflow, normalize } = await createDataflowPipeline(shell, { context: contextFromInput(input.trim()) }, defaultConfigOptions).allRemainingSteps();
 
 		const symbolId = slicingCriterionToId(symbol, normalize.idMap);
 		const refs = getAllRefsToSymbol(dataflow.graph, symbolId);

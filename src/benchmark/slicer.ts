@@ -53,6 +53,7 @@ import type { DataFrameDomain } from '../abstract-interpretation/data-frame/data
 import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
 import { inferDataFrameShapes } from '../abstract-interpretation/data-frame/shape-inference';
 import fs from 'fs';
+import { contextFromInput } from '../project/context/flowr-analyzer-context';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -148,7 +149,7 @@ export class BenchmarkSlicer {
 			}
 		);
 		this.executor = createSlicePipeline(this.parser, {
-			requests:  { ...request },
+			context:   contextFromInput({ ...request }),
 			criterion: [],
 			autoSelectIf,
 			threshold,

@@ -41,6 +41,7 @@ import { defaultEnv } from '../../test/functionality/_helper/dataflow/environmen
 import { defaultConfigOptions } from '../config';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { DataflowInformation } from '../dataflow/info';
+import { contextFromInput } from '../project/context/flowr-analyzer-context';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -1146,7 +1147,7 @@ ${await printDfGraphForCode(shell, 'print(x)', { mark: new Set(['3->1']) })}
 Retrieving the _types_ of the edge from the print call to its argument returns:
 ${await(async() => {
 			const dfg =  await createDataflowPipeline(shell, {
-				requests: requestFromInput('print(x)')
+				context: contextFromInput('print(x)')
 			}, defaultConfigOptions).allRemainingSteps();
 			const edge = dfg.dataflow.graph.outgoingEdges(3);
 			if(edge) {

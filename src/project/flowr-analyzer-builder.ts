@@ -37,7 +37,7 @@ export class FlowrAnalyzerBuilder {
 	private flowrConfig: DeepWritable<FlowrConfigOptions> = cloneConfig(defaultConfigOptions);
 	private parser?:     KnownParser;
 	private request:     RAnalysisRequest[] | undefined;
-	private input?:      Omit<NormalizeRequiredInput, 'requests'>;
+	private input?:      Omit<NormalizeRequiredInput, 'context'>;
 	private plugins:     Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
 
 
@@ -135,7 +135,7 @@ export class FlowrAnalyzerBuilder {
 	 * Additional parameters for the analyses.
 	 * @param input - The input.
 	 */
-	public setInput(input: Omit<NormalizeRequiredInput, 'requests'>): this {
+	public setInput(input: Omit<NormalizeRequiredInput, 'context'>): this {
 		this.input = input;
 		return this;
 	}
@@ -192,9 +192,9 @@ export class FlowrAnalyzerBuilder {
 
 		const context = new FlowrAnalyzerContext(this.plugins);
 		const cache = FlowrAnalyzerCache.create({
-			parser:  this.parser,
-			config:  this.flowrConfig,
-			request: context.files.computeLoadingOrder(),
+			parser: this.parser,
+			config: this.flowrConfig,
+			context,
 			...(this.input ?? {})
 		});
 

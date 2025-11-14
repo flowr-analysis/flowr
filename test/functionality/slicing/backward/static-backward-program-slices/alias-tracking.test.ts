@@ -4,17 +4,17 @@ import type { Identifier } from '../../../../../src/dataflow/environments/identi
 import type { RShell } from '../../../../../src/r-bridge/shell';
 import { PipelineExecutor } from '../../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../../../src/r-bridge/retriever';
 import { defaultConfigOptions } from '../../../../../src/config';
 import { setFrom } from '../../../../../src/dataflow/eval/values/sets/set-constants';
 import { valueFromTsValue } from '../../../../../src/dataflow/eval/values/general';
 import { Top } from '../../../../../src/dataflow/eval/values/r-value';
 import { trackAliasInEnvironments } from '../../../../../src/dataflow/eval/resolve/alias-tracking';
+import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 
 async function runPipeline(code: string, shell: RShell) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		parser:   shell,
-		requests: requestFromInput(code)
+		parser:  shell,
+		context: contextFromInput(code)
 	}, defaultConfigOptions).allRemainingSteps();
 }
 

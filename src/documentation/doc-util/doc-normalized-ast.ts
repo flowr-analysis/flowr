@@ -1,7 +1,6 @@
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { RShell } from '../../r-bridge/shell';
 import { createDataflowPipeline, createNormalizePipeline } from '../../core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../r-bridge/retriever';
 import { type RNodeWithParent , deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
 import { diffOfDataflowGraphs } from '../../dataflow/graph/diff-dataflow-graph';
@@ -12,6 +11,7 @@ import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrWikiBaseRef } from './doc-files';
 import type { GraphDifferenceReport } from '../../util/diff-graph';
 import { defaultConfigOptions } from '../../config';
+import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 
 
 /**
@@ -31,12 +31,13 @@ export interface PrintNormalizedAstOptions {
 }
 
 /**
- *
+ * Generates and prints the normalized AST for the given code, along with optional metadata and the original code.
+ * This is intended for documentation purposes.
  */
 export async function printNormalizedAstForCode(parser: KnownParser, code: string, { showCode = true, prefix = 'flowchart TD\n' }: PrintNormalizedAstOptions = {}) {
 	const now = performance.now();
 	const result = await createNormalizePipeline(parser, {
-		requests: requestFromInput(code)
+		context: contextFromInput(code)
 	}, defaultConfigOptions).allRemainingSteps();
 	const duration = performance.now() - now;
 
@@ -74,8 +75,8 @@ ${normalizedAstToMermaid(result.normalize.ast, prefix)}
 export async function verifyExpectedSubgraph(shell: RShell, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
 	/* we verify that we get what we want first! */
 	const info = await createDataflowPipeline(shell, {
-		requests: requestFromInput(code),
-		getId:    deterministicCountingIdGenerator(0)
+		context: contextFromInput(code),
+		getId:   deterministicCountingIdGenerator(0)
 	}, defaultConfigOptions).allRemainingSteps();
 
 	expectedSubgraph.setIdMap(info.normalize.idMap);

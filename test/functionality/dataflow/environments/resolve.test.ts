@@ -11,13 +11,13 @@ import { type Lift, type Value , Bottom, isBottom, isTop, Top } from '../../../.
 import { withShell } from '../../_helper/shell';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { intervalFromValues } from '../../../../src/dataflow/eval/values/intervals/interval-constants';
 import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-consatnts';
 import { vectorFrom } from '../../../../src/dataflow/eval/values/vectors/vector-constants';
 import { resolveIdToValue, resolveToConstants } from '../../../../src/dataflow/eval/resolve/alias-tracking';
 import { defaultConfigOptions } from '../../../../src/config';
+import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 enum Allow {
 	None = 0,
@@ -70,8 +70,8 @@ describe.sequential('Resolve', withShell(shell => {
 
 		test(effectiveName, async() => {
 			const dataflow = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-				parser:   shell,
-				requests: requestFromInput(code.trim()),
+				parser:  shell,
+				context: contextFromInput(code.trim()),
 			}, defaultConfigOptions).allRemainingSteps();
 
 			const resolved = resolveIdToValue(slicingCriterionToId(identifier, dataflow.normalize.idMap), {

@@ -4,7 +4,7 @@ import { CfgKind } from '../../../../src/project/cfg-kind';
 import { defaultConfigOptions } from '../../../../src/config';
 import { withTreeSitter } from '../../_helper/shell';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { extractCfg } from '../../../../src/control-flow/extract-cfg';
+import { extractCfg, extractCfgQuick } from '../../../../src/control-flow/extract-cfg';
 
 describe('Analyzer Cache', withTreeSitter( (shell) => {
 	const data = {
@@ -31,8 +31,8 @@ describe('Analyzer Cache', withTreeSitter( (shell) => {
 		test('CFG Quick', async() => {
 			const cache = FlowrAnalyzerCache.create({ parser: shell, config: defaultConfigOptions, request: requestFromInput('f <- function(x) x\nf()') });
 			const quick = await cache.controlflow(false, CfgKind.Quick);
-			const regular = extractCfg(await cache.normalize(), data.config);
-			expect(regular).not.toEqual(quick);
+			const regular = extractCfgQuick(await cache.normalize());
+			expect(regular).toEqual(quick);
 		});
 
 		test('Disallow simplifications', async() => {

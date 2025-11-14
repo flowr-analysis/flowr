@@ -1,7 +1,7 @@
 import type { SingleSlicingCriterion, SlicingCriteria } from '../../slicing/criterion/parse';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReconstructionResult } from '../../reconstruct/reconstruct';
-import type { RParseRequestFromFileOnDisk, RParseRequestFromText } from '../../r-bridge/retriever';
+import type { RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge/retriever';
 import type { TimePerToken } from '../summarizer/data';
 import type { MergeableRecord } from '../../util/objects';
 import type { DataFrameOperationName } from '../../abstract-interpretation/data-frame/semantics';
@@ -97,7 +97,7 @@ export interface SlicerStats {
 	commonMeasurements:          Map<CommonSlicerMeasurements, ElapsedTime>
 	perSliceMeasurements:        Map<SlicingCriteria, PerSliceStats>
 	memory:                      Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>,
-	request:                     RParseRequestFromFileOnDisk | RParseRequestFromText
+	request:                     RParseRequestFromFile | RParseRequestFromText
 	input:                       SlicerStatsInput
 	dataflow:                    SlicerStatsDataflow
 	dataFrameShape?:             SlicerStatsDfShape

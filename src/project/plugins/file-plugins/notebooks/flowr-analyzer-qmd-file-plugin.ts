@@ -5,7 +5,6 @@ import type { FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrAnalyzerFilePlugin } from '../flowr-analyzer-file-plugin';
 import { FlowrRMarkdownFile } from './flowr-rmarkdown-file';
 
-
 const QmdPattern = /\.qmd$/i;
 
 /**
@@ -15,12 +14,18 @@ export class FlowrAnalyzerRmdFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name =    'qmd-file-plugin';
 	public readonly description = 'Parses Quarto R Markdown files';
 	public readonly version = new SemVer('0.1.0');
+	private readonly pattern: RegExp;
 
-	public applies(file: PathLike): boolean {
-		return QmdPattern.test(file.toString());
+	constructor(filePattern: RegExp = QmdPattern) {
+		super();
+		this.pattern = filePattern;
 	}
 
-	protected process(analyzer: FlowrAnalyzerContext, args: FlowrFileProvider<string>): FlowrRMarkdownFile {
-		return new FlowrRMarkdownFile(args);
+	public applies(file: PathLike): boolean {
+		return this.pattern.test(file.toString());
+	}
+
+	protected process(_ctx: FlowrAnalyzerContext, arg: FlowrFileProvider<string>): FlowrRMarkdownFile {
+		return new FlowrRMarkdownFile(arg);
 	}
 }

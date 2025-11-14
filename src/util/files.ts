@@ -2,7 +2,7 @@ import fs, { type PathLike , promises as fsPromise } from 'fs';
 import path from 'path';
 import { log } from './log';
 import LineByLine from 'n-readlines';
-import type { RParseRequestFromFileOnDisk } from '../r-bridge/retriever';
+import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import type { FlowrFileProvider } from '../project/context/flowr-file';
 
 /**
@@ -58,7 +58,7 @@ const rFileRegex = /\.[rR]$/;
  *          Will be `1`, if `input` is an R file (and `0` if it isn't).
  * @see getAllFiles
  */
-export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFileOnDisk, number> {
+export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFile, number> {
 	let count = 0;
 	if(fs.statSync(input).isFile()) {
 		if(rFileRegex.test(input)) {
@@ -85,7 +85,7 @@ export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE
  * @returns Number of files processed (&le; limit)
  * @see allRFiles
  */
-export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGenerator<RParseRequestFromFileOnDisk, number> {
+export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGenerator<RParseRequestFromFile, number> {
 	limit ??= Number.MAX_VALUE;
 	if(inputs.length === 0) {
 		log.info('No inputs given, nothing to do');

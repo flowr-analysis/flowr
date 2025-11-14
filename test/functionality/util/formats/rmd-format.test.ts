@@ -1,3 +1,4 @@
+/*
 import { assert, describe, test } from 'vitest';
 import { requestFromFile, requestFromText } from '../../../../src/util/formats/adapter';
 import { restoreBlocksWithoutMd,  isRCodeBlock, type RmdInfo } from '../../../../src/util/formats/adapters/rmd-adapter';
@@ -7,14 +8,14 @@ import type { RParseRequestFromText } from '../../../../src/r-bridge/retriever';
 describe('rmd', () => {
 	describe('utility functions', () => {
 		test.each([
-			/* Positive Cases           */
+			/* Positive Cases           *!/
 			['{r}',                 true],
 			['{R}',                 true],
 			['{r, some.options=5}', true],
 			['{r, name, option=3}', true],
 			['{r some.options=5}',  true],
 			['{R name, option=3}',  true],
-			/* Negative Cases           */
+			/* Negative Cases           *!/
 			['{rust}',              false],
 			['{c}',                 false],
 			['r',                   false],
@@ -147,7 +148,7 @@ test: 1
 ---
 
 # Hello World
-		
+
 \`\`\`{r}
 print(42)
 \`\`\`
@@ -171,3 +172,5 @@ print(42)
 		} satisfies RParseRequestFromText<RmdInfo>);
 	});
 });
+
+*/

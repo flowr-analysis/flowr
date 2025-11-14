@@ -26,7 +26,7 @@ import type {
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
 import { type DEFAULT_SLICING_PIPELINE, type TREE_SITTER_SLICING_PIPELINE , createSlicePipeline } from '../core/steps/pipeline/default-pipelines';
-import { type RParseRequestFromFileOnDisk, type RParseRequestFromText , retrieveNumberOfRTokensOfLastParse } from '../r-bridge/retriever';
+import { type RParseRequestFromFile, type RParseRequestFromText , retrieveNumberOfRTokensOfLastParse } from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
 import { type SlicingCriteriaFilter , collectAllSlicingCriteria } from '../slicing/criterion/collect-all';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
@@ -131,7 +131,7 @@ export class BenchmarkSlicer {
 	 * Initialize the slicer on the given request.
 	 * Can only be called once for each instance.
 	 */
-	public async init(request: RParseRequestFromFileOnDisk | RParseRequestFromText, config: FlowrConfigOptions,
+	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfigOptions,
 		autoSelectIf?: AutoSelectPredicate, threshold?: number) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice');
 		this.config = config;
@@ -163,7 +163,7 @@ export class BenchmarkSlicer {
 		await this.calculateStatsAfterInit(request);
 	}
 
-	private async calculateStatsAfterInit(request: RParseRequestFromFileOnDisk | RParseRequestFromText) {
+	private async calculateStatsAfterInit(request: RParseRequestFromFile | RParseRequestFromText) {
 		const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8');
 		let numberOfRTokens: number;
 		let numberOfRTokensNoComments: number;

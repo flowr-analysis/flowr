@@ -15,12 +15,18 @@ export class FlowrAnalyzerRmdFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name =    'rmd-file-plugin';
 	public readonly description = 'Parses R Markdown files';
 	public readonly version = new SemVer('0.1.0');
+	private readonly pattern: RegExp;
 
-	public applies(file: PathLike): boolean {
-		return RmdPattern.test(file.toString());
+	constructor(filePattern: RegExp = RmdPattern) {
+		super();
+		this.pattern = filePattern;
 	}
 
-	protected process(analyzer: FlowrAnalyzerContext, args: FlowrFileProvider<string>): FlowrRMarkdownFile {
-		return new FlowrRMarkdownFile(args);
+	public applies(file: PathLike): boolean {
+		return this.pattern.test(file.toString());
+	}
+
+	protected process(_ctx: FlowrAnalyzerContext, arg: FlowrFileProvider<string>): FlowrRMarkdownFile {
+		return new FlowrRMarkdownFile(arg);
 	}
 }

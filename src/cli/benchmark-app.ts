@@ -6,7 +6,7 @@ import { allRFiles } from '../util/files';
 import { log } from '../util/log';
 import { LimitedThreadPool } from '../util/parallel';
 import { processCommandLineArgs } from './common/script';
-import type { RParseRequestFromFileOnDisk } from '../r-bridge/retriever';
+import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import type { KnownParserName } from '../r-bridge/parser';
 
 export interface BenchmarkCliOptions {
@@ -60,7 +60,7 @@ function removeIfExists(summarizedRaw: string) {
 }
 
 interface RequestFile {
-	request: RParseRequestFromFileOnDisk;
+	request: RParseRequestFromFile;
 	baseDir: string;
 }
 

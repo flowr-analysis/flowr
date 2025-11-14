@@ -10,30 +10,24 @@ import { type NormalizedAst , deterministicCountingIdGenerator } from './lang-4.
 import { RawRType } from './lang-4.x/ast/model/type';
 import fs from 'fs';
 import path from 'path';
-import type { SupportedFormats } from '../util/formats/adapter-format';
-import { requestFromFile, requestFromText } from '../util/formats/adapter';
 
 export const fileProtocol = 'file://';
 
-export interface ParseRequestAdditionalInfoBase {
-	type: SupportedFormats
-}
-
-export interface RParseRequestFromFileOnDisk<AdditionalInfo extends ParseRequestAdditionalInfoBase = ParseRequestAdditionalInfoBase> {
+export interface RParseRequestFromFile {
 	readonly request: 'file';
 	/**
-	 * The path to the file (an absolute path is probably best here).
+	 * The path to the file represented in the {@link FlowrAnalyzerFilesContext}.
 	 * See {@link RParseRequests} for multiple files.
 	 */
 	readonly content: string;
-
-	/**
-	 * Additional info from different file formates like .Rmd
-	 */
-	readonly info?: AdditionalInfo;
 }
 
-export interface RParseRequestFromText<AdditionalInfo extends ParseRequestAdditionalInfoBase = ParseRequestAdditionalInfoBase> {
+/**
+ * A request to parse R code given as text.
+ * This option is mostly useful for quick tests or injects, as usually files are controlled by the {@link RParseRequestFromFile} request
+ * referring to a file in the {@link FlowrAnalyzerFilesContext}.
+ */
+export interface RParseRequestFromText {
 	readonly request: 'text'
 	/**
 	 * Source code to parse (not a file path).
@@ -42,11 +36,6 @@ export interface RParseRequestFromText<AdditionalInfo extends ParseRequestAdditi
 	 * or concatenate their contents to pass them with this request.
 	 */
 	readonly content: string
-
-	/**
-	 * Additional info from different file formates like .Rmd
-	 */
-	readonly info?: AdditionalInfo;
 }
 
 /**
@@ -58,7 +47,7 @@ export interface RParseRequestProvider {
 	createRequest(path: string):                      RParseRequest
 }
 
-export type RParseRequest = RParseRequestFromFileOnDisk | RParseRequestFromText
+export type RParseRequest = RParseRequestFromFile | RParseRequestFromText
 /**
  * Several requests that can be passed along to {@link retrieveParseDataFromRCode}.
  */
@@ -74,8 +63,8 @@ export function isParseRequest(request: unknown): request is RParseRequest {
 	return 'request' in request;
 }
 
-export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFileOnDisk
-export function requestFromInput(input: `${typeof fileProtocol}${string}`[]): RParseRequestFromFileOnDisk[]
+export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFile
+export function requestFromInput(input: `${typeof fileProtocol}${string}`[]): RParseRequestFromFile[]
 export function requestFromInput(input: string): RParseRequestFromText
 export function requestFromInput(input: readonly string[] | string): RParseRequests
 
@@ -83,9 +72,8 @@ export function requestFromInput(input: readonly string[] | string): RParseReque
  * Creates a {@link RParseRequests} from a given input.
  * If your input starts with {@link fileProtocol}, it is assumed to be a file path and will be processed as such.
  * Giving an array, you can mix file paths and text content (again using the {@link fileProtocol}).
- *
  */
-export function requestFromInput(input: `${typeof fileProtocol}${string}` | string | readonly string[], fileTypeHint?: SupportedFormats): RParseRequests  {
+export function requestFromInput(input: `${typeof fileProtocol}${string}` | string | readonly string[]): RParseRequests  {
 	if(Array.isArray(input)) {
 		return input.flatMap(requestFromInput);
 	}
@@ -93,9 +81,15 @@ export function requestFromInput(input: `${typeof fileProtocol}${string}` | stri
 	const file = content.startsWith(fileProtocol);
 
 	if(file) {
-		return requestFromFile(content.slice(7));
+		return {
+			request: 'file',
+			content: content.substring(fileProtocol.length),
+		};
 	} else {
-		return requestFromText(content, fileTypeHint);
+		return {
+			request: 'text',
+			content
+		};
 	}
 }
 

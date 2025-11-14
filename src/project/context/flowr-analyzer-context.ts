@@ -22,6 +22,8 @@ import type { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-anal
 import { arraysGroupBy } from '../../util/collections/arrays';
 import type { fileProtocol, RParseRequests } from '../../r-bridge/retriever';
 import { requestFromInput } from '../../r-bridge/retriever';
+import type { FlowrConfigOptions } from '../../config';
+import { defaultConfigOptions } from '../../config';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -32,11 +34,15 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	/**
 	 * The files context provides access to the files to be analyzed and their loading order.
 	 */
-	readonly files: ReadOnlyFlowrAnalyzerFilesContext;
+	readonly files:  ReadOnlyFlowrAnalyzerFilesContext;
 	/**
 	 * The dependencies context provides access to the identified dependencies and their versions.
 	 */
-	readonly deps:  ReadOnlyFlowrAnalyzerDependenciesContext;
+	readonly deps:   ReadOnlyFlowrAnalyzerDependenciesContext;
+	/**
+	 * The configuration options used by the analyzer.
+	 */
+	readonly config: FlowrConfigOptions;
 }
 
 /**
@@ -51,11 +57,13 @@ export interface ReadOnlyFlowrAnalyzerContext {
  * {@link deps.getDependency}.
  * If you are just interested in inspecting the context, you can use {@link ReadOnlyFlowrAnalyzerContext} instead (e.g., via {@link inspect}).
  */
-export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext{
-	public readonly files: FlowrAnalyzerFilesContext;
-	public readonly deps:  FlowrAnalyzerDependenciesContext;
+export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
+	public readonly files:  FlowrAnalyzerFilesContext;
+	public readonly deps:   FlowrAnalyzerDependenciesContext;
+	public readonly config: FlowrConfigOptions;
 
-	constructor(plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>) {
+	constructor(config: FlowrConfigOptions, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>) {
+		this.config = config;
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		this.files = new FlowrAnalyzerFilesContext(loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
             (plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
@@ -96,9 +104,11 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext{
  */
 export function contextFromInput(
 	input: `${typeof fileProtocol}${string}` | string | readonly string[] | RParseRequests,
-	plugins?: FlowrAnalyzerPlugin[]
+	config = defaultConfigOptions,
+	plugins?: FlowrAnalyzerPlugin[],
 ): FlowrAnalyzerContext {
 	const context = new FlowrAnalyzerContext(
+		config,
 		arraysGroupBy(plugins ?? [], (p) => p.type)
 	);
 	if(typeof input === 'string' || Array.isArray(input) && input.every(i => typeof i === 'string')) {

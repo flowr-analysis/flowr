@@ -13,7 +13,7 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 		test(name, async() => {
 			const result = await createDataflowPipeline(shell, {
 				context: contextFromInput(code.trim())
-			}, defaultConfigOptions).allRemainingSteps();
+			}).allRemainingSteps();
 			const cfg = extractCfg(result.normalize, defaultConfigOptions, result.dataflow.graph);
 
 			const actual = onlyLoopsOnce(slicingCriterionToId(node, result.normalize.idMap), result.dataflow.graph, cfg, result.normalize, defaultConfigOptions);

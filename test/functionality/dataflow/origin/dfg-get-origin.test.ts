@@ -8,7 +8,6 @@ import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipelin
 import { guard } from '../../../../src/util/assert';
 import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import { builtInId } from '../../../../src/dataflow/environments/built-in';
-import { defaultConfigOptions } from '../../../../src/config';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 describe('Dataflow', withTreeSitter(ts => {
@@ -19,7 +18,7 @@ describe('Dataflow', withTreeSitter(ts => {
 				beforeAll(async() => {
 					analysis = await createDataflowPipeline(ts, {
 						context: contextFromInput(code)
-					}, defaultConfigOptions).allRemainingSteps();
+					}).allRemainingSteps();
 				});
 				test.each(Object.keys(expected) as SingleSlicingCriterion[])('%s', (interest: SingleSlicingCriterion) => {
 					guard(analysis !== undefined);

@@ -7,7 +7,6 @@ import { handleUnknownSideEffect, onUnknownSideEffect } from '../../../../src/da
 import { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { Environment } from '../../../../src/dataflow/environments/environment';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { defaultConfigOptions } from '../../../../src/config';
 import { defaultEnv } from '../../_helper/dataflow/environment-builder';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
@@ -15,7 +14,7 @@ async function runDataflowPipeline(code: string) {
 	await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  new RShell(),
 		context: contextFromInput(code.trim())
-	}, defaultConfigOptions).allRemainingSteps();
+	}).allRemainingSteps();
 }
 
 describe('unknown-replacement', () =>  {

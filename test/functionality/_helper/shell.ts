@@ -145,7 +145,7 @@ export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileP
 	return (await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 		parser: shell,
 		context
-	}, defaultConfigOptions).allRemainingSteps()).normalize;
+	}).allRemainingSteps()).normalize;
 };
 
 export interface TestConfiguration extends MergeableRecord {
@@ -263,7 +263,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 			const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 				parser:  shell,
 				context: contextFromInput(input)
-			}, defaultConfigOptions);
+			});
 			const result = await pipeline.allRemainingSteps();
 			return result.normalize.ast;
 		}
@@ -272,7 +272,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 			const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
 				parser:  ts as TreeSitterExecutor,
 				context: contextFromInput(input)
-			}, defaultConfigOptions);
+			});
 			const result = await pipeline.allRemainingSteps();
 			return result.normalize.ast;
 		}
@@ -286,7 +286,7 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds),
 			parser:  shell,
 			context: contextFromInput(input),
-		}, defaultConfigOptions).allRemainingSteps();
+		}).allRemainingSteps();
 
 		const ast = result.normalize.ast;
 
@@ -429,7 +429,7 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 			getId:   getId,
 			context: contextFromInput(input),
 			parser:  shell
-		}, defaultConfigOptions).allRemainingSteps();
+		}).allRemainingSteps();
 		const reconstructed = NAIVE_RECONSTRUCT.processor({
 			normalize: result.normalize,
 			slice:     {
@@ -569,11 +569,11 @@ export function assertSliced(
 		async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
 			return await createSlicePipeline(parser, {
 				getId:        getId(),
-				context:      contextFromInput(input),
+				context:      contextFromInput(input, cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions)),
 				criterion:    criteria,
 				autoSelectIf: testConfig?.autoSelectIf,
 				direction:    testConfig?.sliceDirection
-			}, cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions)).allRemainingSteps();
+			}).allRemainingSteps();
 		}
 		function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {
 			try {

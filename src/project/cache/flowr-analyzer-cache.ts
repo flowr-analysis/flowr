@@ -5,7 +5,6 @@ import {
 	type TREE_SITTER_DATAFLOW_PIPELINE
 	, createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
 import type { PipelineExecutor } from '../../core/pipeline-executor';
-import type { FlowrConfigOptions } from '../../config';
 import type { IdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { TreeSitterExecutor } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -20,7 +19,6 @@ import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
     parser:  Parser;
-    config:  FlowrConfigOptions;
     context: FlowrAnalyzerContext;
     getId?:  IdGenerator<NoInfo>
 }
@@ -56,7 +54,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		this.pipeline = createDataflowPipeline(this.args.parser, {
 			context: this.args.context,
 			getId:   this.args.getId
-		}, this.args.config) as AnalyzerPipelineExecutor<Parser>;
+		}) as AnalyzerPipelineExecutor<Parser>;
 		this.controlFlowCache = {
 			simplified: new ObjectMap<[readonly CfgSimplificationPassName[], CfgKind], ControlFlowInformation>(),
 		};
@@ -178,10 +176,10 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		let result: ControlFlowInformation;
 		switch(kind) {
 			case CfgKind.WithDataflow:
-				result = extractCfg(normalized, this.args.config, (await this.dataflow()).graph, simplifications);
+				result = extractCfg(normalized, this.args.context.config, (await this.dataflow()).graph, simplifications);
 				break;
 			case CfgKind.NoDataflow:
-				result = extractCfg(normalized, this.args.config, undefined, simplifications);
+				result = extractCfg(normalized, this.args.context.config, undefined, simplifications);
 				break;
 			case CfgKind.Quick:
 				result = this.peekDataflow()?.cfgQuick ?? extractCfgQuick(normalized);

@@ -190,16 +190,14 @@ export class FlowrAnalyzerBuilder {
 	public buildSync(): FlowrAnalyzer {
 		guard(this.parser !== undefined, 'No parser set, please use the setParser or setEngine method to set a parser before building the analyzer');
 
-		const context = new FlowrAnalyzerContext(this.plugins);
+		const context = new FlowrAnalyzerContext(this.flowrConfig, this.plugins);
 		const cache = FlowrAnalyzerCache.create({
 			parser: this.parser,
-			config: this.flowrConfig,
 			context,
 			...(this.input ?? {})
 		});
 
 		const analyzer = new FlowrAnalyzer(
-			this.flowrConfig,
 			this.parser,
 			context,
 			cache

@@ -72,7 +72,7 @@ describe.sequential('Resolve', withShell(shell => {
 			const dataflow = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 				parser:  shell,
 				context: contextFromInput(code.trim()),
-			}, defaultConfigOptions).allRemainingSteps();
+			}).allRemainingSteps();
 
 			const resolved = resolveIdToValue(slicingCriterionToId(identifier, dataflow.normalize.idMap), {
 				environment: withEnv === With.Environment ? dataflow.dataflow.environment : undefined,

@@ -1,6 +1,7 @@
 import type { PathLike } from 'fs';
 import fs from 'fs';
 import { guard } from '../../util/assert';
+import type { RParseRequest } from '../../r-bridge/retriever';
 
 /**
  * Just a readable alias for file paths, mostly for documentation purposes.
@@ -55,7 +56,7 @@ export interface FlowrFileProvider<Content = unknown> {
 	 * If the file does not exist on disk, this can be a virtual path (e.g. for inline files).
 	 * Even though this is a getter, please make sure that the operation is cheap and deterministic (some decorators may overwrite the path, e.g., because they support other protocols).
 	 */
-    path(): PathLike;
+    path(): string;
 
 	/**
 	 * The content of the file, this may be cached by the implementation and does not have to be expensive.
@@ -80,14 +81,15 @@ export abstract class FlowrFile<Content = unknown> implements FlowrFileProvider<
 	private contentCache:  Content | undefined;
 	protected filePath:    PathLike;
 	public readonly role?: FileRole;
+	public static readonly INLINE_PATH = '@inline';
 
 	public constructor(filePath: PathLike, role?: FileRole) {
 		this.filePath = filePath;
 		this.role     = role;
 	}
 
-	public path(): PathLike {
-		return this.filePath;
+	public path(): string {
+		return this.filePath.toString();
 	}
 
 	public content(): Content {
@@ -102,6 +104,19 @@ export abstract class FlowrFile<Content = unknown> implements FlowrFileProvider<
 	public assignRole(role: FileRole): void {
 		guard(this.role === undefined || this.role === role, `File ${this.filePath.toString()} already has a role assigned: ${this.role}`);
 		(this as { role?: FileRole }).role = role;
+	}
+
+	/**
+	 * Creates a {@link FlowrFile} from a given {@link RParseRequest}.
+	 * @see {@link FlowrTextFile}
+	 * @see {@link FlowrInlineTextFile}
+	 */
+	public static fromRequest(request: RParseRequest): FlowrFile<string> {
+		if(request.request === 'file') {
+			return new FlowrTextFile(request.content);
+		} else {
+			return new FlowrInlineTextFile(FlowrFile.INLINE_PATH, request.content);
+		}
 	}
 }
 

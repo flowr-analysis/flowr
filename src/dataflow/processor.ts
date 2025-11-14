@@ -11,7 +11,7 @@ import type { IEnvironment, REnvironmentInformation } from './environments/envir
 import type { RParseRequest } from '../r-bridge/retriever';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
-import type { FlowrConfigOptions } from '../config';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 export interface DataflowProcessorInformation<OtherInfo> {
 	readonly parser:              Parser<KnownParserType>
@@ -46,9 +46,9 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 */
 	readonly builtInEnvironment:  IEnvironment;
 	/**
-	 * The flowr configuration used for environment seeding, and precision control
+	 * The flowr context used for environment seeding, files, and precision control, ...
 	 */
-	readonly flowrConfig:         FlowrConfigOptions
+	readonly ctx:                 FlowrAnalyzerContext
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation

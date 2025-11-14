@@ -24,8 +24,8 @@ import {
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
-import type { FlowrConfigOptions } from '../config';
 import { getBuiltInDefinitions } from './environments/built-in-config';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -96,7 +96,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	parser:      Parser<KnownParserType>,
 	request:     RParseRequests,
 	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
-	config:      FlowrConfigOptions
+	ctx:         FlowrAnalyzerContext
 ): DataflowInformation & { cfgQuick: ControlFlowInformation | undefined } {
 	let firstRequest: RParseRequest;
 
@@ -107,7 +107,7 @@ export function produceDataFlowGraph<OtherInfo>(
 		firstRequest = request as RParseRequest;
 	}
 
-	const builtInsConfig = config.semantics.environment.overwriteBuiltIns;
+	const builtInsConfig = ctx.config.semantics.environment.overwriteBuiltIns;
 	const builtIns = getBuiltInDefinitions(builtInsConfig.definitions, builtInsConfig.loadDefaults);
 	const env = initializeCleanEnvironments(builtIns.builtInMemory);
 
@@ -120,7 +120,7 @@ export function produceDataFlowGraph<OtherInfo>(
 		currentRequest:      firstRequest,
 		controlDependencies: undefined,
 		referenceChain:      [firstRequest],
-		flowrConfig:         config
+		ctx
 	};
 	let df = processDataflowFor<OtherInfo>(completeAst.ast, dfData);
 

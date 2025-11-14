@@ -2,7 +2,6 @@ import { describe, assert, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { type SingleSlicingCriterion , tryResolveSliceCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { defaultConfigOptions } from '../../../../src/config';
 import { isHigherOrder } from '../../../../src/dataflow/fn/higher-order-function';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
@@ -20,7 +19,7 @@ describe('is-higher-order-function', withTreeSitter(ts => {
 				test(`${label} (expect ${c} to be ${exp ? 'ho' : 'not ho'})`, async() => {
 					const df = await createDataflowPipeline(ts, {
 						context: contextFromInput(code)
-					}, defaultConfigOptions).allRemainingSteps();
+					}).allRemainingSteps();
 
 					const id = tryResolveSliceCriterionToId(c, df.normalize.idMap);
 					// move up the error message :sparkles:

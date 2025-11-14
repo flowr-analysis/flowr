@@ -123,27 +123,28 @@ export interface ReadonlyFlowrAnalysisProvider {
  * To inspect the context of the analyzer, use {@link FlowrAnalyzer#inspectContext} (if you are a plugin and need to modify it, use {@link FlowrAnalyzer#context} instead).
  */
 export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements ReadonlyFlowrAnalysisProvider {
-	public readonly flowrConfig: FlowrConfigOptions;
 	/** The parser and engine backend */
-	private readonly parser:     Parser;
+	private readonly parser: Parser;
 	/** The cache used for storing analysis results */
-	private readonly cache:      FlowrAnalyzerCache<Parser>;
-	private readonly ctx:        FlowrAnalyzerContext;
-	private parserInfo:          KnownParserInformation | undefined;
+	private readonly cache:  FlowrAnalyzerCache<Parser>;
+	private readonly ctx:    FlowrAnalyzerContext;
+	private parserInfo:      KnownParserInformation | undefined;
 
 	/**
 	 * Create a new analyzer instance.
 	 * **Prefer the use of the {@link FlowrAnalyzerBuilder} instead of calling this constructor directly.**
-	 * @param config - The FlowR config to use for the analyses
 	 * @param parser - The parser to use for parsing the given request.
 	 * @param ctx    - The context to use for the analyses.
 	 * @param cache  - The caching layer to use for storing analysis results.
 	 */
-	constructor(config: FlowrConfigOptions, parser: Parser, ctx: FlowrAnalyzerContext, cache: FlowrAnalyzerCache<Parser>) {
-		this.flowrConfig = config;
+	constructor(parser: Parser, ctx: FlowrAnalyzerContext, cache: FlowrAnalyzerCache<Parser>) {
 		this.parser = parser;
 		this.ctx = ctx;
 		this.cache = cache;
+	}
+
+	public get flowrConfig(): FlowrConfigOptions {
+		return this.ctx.config;
 	}
 
 	public context(): FlowrAnalyzerContext {

@@ -177,7 +177,7 @@ export function assertDataFrameDomain(
 
 	beforeAll(async() => {
 		if(!skipTestBecauseConfigNotMet(config)) {
-			result = await createDataflowPipeline(parser, { context: contextFromInput(code) }, flowRConfig).allRemainingSteps();
+			result = await createDataflowPipeline(parser, { context: contextFromInput(code, flowRConfig) }).allRemainingSteps();
 		}
 	});
 
@@ -208,7 +208,7 @@ export function assertDataFrameOperation(
 
 	beforeAll(async() => {
 		if(!skipTestBecauseConfigNotMet(config)) {
-			result = await createDataflowPipeline(parser, { context: contextFromInput(code) }, flowRConfig).allRemainingSteps();
+			result = await createDataflowPipeline(parser, { context: contextFromInput(code, flowRConfig) }).allRemainingSteps();
 		}
 	});
 
@@ -246,7 +246,7 @@ export function testDataFrameDomainAgainstReal(
 		if(typeof skipRun === 'boolean' ? skipRun : skipRun()) {
 			skip();
 		}
-		const result = await createDataflowPipeline(parser, { context: contextFromInput(code) }, flowRConfig).allRemainingSteps();
+		const result = await createDataflowPipeline(parser, { context: contextFromInput(code, flowRConfig) }).allRemainingSteps();
 		const testEntries: CriterionTestEntry[] = [];
 
 		for(const entry of criteria) {

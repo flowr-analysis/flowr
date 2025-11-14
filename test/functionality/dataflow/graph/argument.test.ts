@@ -7,7 +7,6 @@ import { getValueOfArgument } from '../../../../src/queries/catalog/call-context
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { RNumber } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RLogical } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-logical';
-import { defaultConfigOptions } from '../../../../src/config';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 describe.sequential('Retrieve fitting Argument', withShell(shell => {
@@ -15,7 +14,7 @@ describe.sequential('Retrieve fitting Argument', withShell(shell => {
 		const dfg = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 			parser:  shell,
 			context: contextFromInput(code)
-		}, defaultConfigOptions).allRemainingSteps();
+		}).allRemainingSteps();
 		// we assume that the entry point of the graph is the function call
 		const graph = dfg.dataflow.graph;
 		const call = graph.getVertex(dfg.dataflow.entryPoint);

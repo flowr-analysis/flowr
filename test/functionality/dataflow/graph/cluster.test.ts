@@ -9,7 +9,6 @@ import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/process
 import { dataflowGraphToMermaidUrl } from '../../../../src/core/print/dataflow-printer';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { assert, describe, test } from 'vitest';
-import { defaultConfigOptions } from '../../../../src/config';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 describe('Graph Clustering', () => {
@@ -39,7 +38,7 @@ describe('Graph Clustering', () => {
 					parser:  shell,
 					context: contextFromInput(code),
 					getId:   deterministicCountingIdGenerator(0)
-				}, defaultConfigOptions).allRemainingSteps();
+				}).allRemainingSteps();
 
 				const graph = info.dataflow.graph;
 

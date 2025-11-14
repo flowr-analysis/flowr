@@ -15,7 +15,7 @@ async function runPipeline(code: string, shell: RShell) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
 		context: contextFromInput(code)
-	}, defaultConfigOptions).allRemainingSteps();
+	}).allRemainingSteps();
 }
 
 describe.sequential('Alias Tracking', withShell(shell => {

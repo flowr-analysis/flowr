@@ -10,7 +10,6 @@ import type { DataflowGraph } from '../../src/dataflow/graph/graph';
 import { emptyGraph } from '../../src/dataflow/graph/dataflowgraph-builder';
 import type { NormalizedAst } from '../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../src/util/mermaid/ast';
-import { defaultConfigOptions } from '../../src/config';
 import { contextFromInput } from '../../src/project/context/flowr-analyzer-context';
 
 describe('repl', () => {
@@ -18,7 +17,7 @@ describe('repl', () => {
 		return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 			parser:  shell,
 			context: contextFromInput(code)
-		}, defaultConfigOptions).allRemainingSteps();
+		}).allRemainingSteps();
 	}
 	describe.sequential('inspection', withShell(shell => {
 		for(const [code, str] of [

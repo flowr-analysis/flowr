@@ -14,7 +14,6 @@ import {
 import { doNotAutoSelect } from '../../../../src/reconstruct/auto-select/auto-select-defaults';
 import { makeMagicCommentHandler } from '../../../../src/reconstruct/auto-select/magic-comments';
 import { describe } from 'vitest';
-import { defaultConfigOptions } from '../../../../src/config';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 describe.sequential('Static Slice Query', withShell(shell => {
@@ -27,7 +26,7 @@ describe.sequential('Static Slice Query', withShell(shell => {
 					context:      contextFromInput(code),
 					criterion:    query.criteria,
 					autoSelectIf: query.noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
-				}, defaultConfigOptions).allRemainingSteps();
+				}).allRemainingSteps();
 				const key = fingerPrintOfQuery(query);
 				results[key] = query.noReconstruction ? { slice: out.slice } : { slice: out.slice, reconstruct: out.reconstruct };
 			}

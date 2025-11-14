@@ -3,7 +3,6 @@ import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../../
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { withShell } from '../../_helper/shell';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { defaultConfigOptions } from '../../../../src/config';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 describe.sequential('dataflow graph links', withShell(shell => {
@@ -11,7 +10,7 @@ describe.sequential('dataflow graph links', withShell(shell => {
 		test(name, async() => {
 			const info = await createDataflowPipeline(shell, {
 				context: contextFromInput(code),
-			}, defaultConfigOptions).allRemainingSteps();
+			}).allRemainingSteps();
 
 			const graph = info.dataflow.graph;
 			const id = slicingCriterionToId(criterion, graph.idMap ?? info.normalize.idMap);

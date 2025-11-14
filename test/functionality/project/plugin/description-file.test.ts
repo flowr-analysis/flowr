@@ -11,10 +11,12 @@ import {
 	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
 } from '../../../../src/project/plugins/loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
+import { defaultConfigOptions } from '../../../../src/config';
 
 
 describe('DESCRIPTION-file', function() {
 	const ctx = new FlowrAnalyzerContext(
+		defaultConfigOptions,
 		arraysGroupBy([
 			new FlowrAnalyzerDescriptionFilePlugin(),
 			new FlowrAnalyzerPackageVersionsDescriptionFilePlugin(),

@@ -18,7 +18,7 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 
 	function testSemanticVisitor<V extends SemanticCfgGuidedVisitor>(code: string, visitor: (o: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>, controlFlow: ControlFlowInformation) => V, assert: (obj: V) => void) {
 		it(code, async() => {
-			const data = await createDataflowPipeline(ts, { context: contextFromInput(code) }, config).allRemainingSteps();
+			const data = await createDataflowPipeline(ts, { context: contextFromInput(code, config) }).allRemainingSteps();
 			const cfg = extractCfg(data.normalize, config, data.dataflow.graph);
 			const v = visitor(data, cfg);
 			v.start();

@@ -40,13 +40,12 @@ export function normalizeButNotDecorated(
  * Tree-Sitter pendant to {@link normalize}.
  */
 export function normalizeTreeSitter(
-	{ parsed }: ParseStepOutput<Tree>,
+	{ parsed, filePath }: ParseStepOutput<Tree>,
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),
-	config: FlowrConfigOptions,
-	file?: string
+	config: FlowrConfigOptions
 ): NormalizedAst {
 	const lax = getEngineConfig(config, 'tree-sitter')?.lax;
-	const result = decorateAst(normalizeTreeSitterTreeToAst(parsed, lax), { getId, file });
+	const result = decorateAst(normalizeTreeSitterTreeToAst(parsed, lax), { getId, file: filePath });
 	result.hasError = parsed.rootNode.hasError;
 	return result;
 }

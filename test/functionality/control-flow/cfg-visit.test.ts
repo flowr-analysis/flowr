@@ -29,8 +29,8 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				}
 
 				const result = await createDataflowPipeline(parser, {
-					context: contextFromInput(code)
-				}, config).allRemainingSteps();
+					context: contextFromInput(code, config)
+				}).allRemainingSteps();
 				let cfg = extractCfg(result.normalize, config, result.dataflow?.graph);
 				if(useBasicBlocks) {
 					cfg = simplifyControlFlowInformation(cfg, { ast: result.normalize, dfg: result.dataflow.graph, config }, ['to-basic-blocks', 'remove-dead-code']);

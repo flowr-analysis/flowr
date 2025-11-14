@@ -1,4 +1,4 @@
-import type { RParseRequest } from './retriever';
+import type { RParseRequest, RParseRequestFromText } from './retriever';
 import type { OutputCollectorConfiguration, RShell } from './shell';
 import type { RShellExecutor } from './shell-executor';
 import type { TreeSitterExecutor } from './lang-4.x/tree-sitter/tree-sitter-executor';
@@ -9,7 +9,7 @@ import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-con
 interface ParserContent<T> {
     readonly name: string;
     information(analyzer: FlowrAnalysisProvider): BaseParserInformation;
-    parse(request: RParseRequest): T;
+    parse(request: RParseRequestFromText): T;
     close(): void;
 }
 
@@ -66,7 +66,7 @@ export interface ParseRequiredInput<T> {
 export interface ParseStepOutput<T> {
 	/** The parsed AST of the R code as given by the R parse side */
 	readonly parsed:         T
-	readonly filePath?:      string
+	readonly filePath:       string | undefined
 	/** Additional meta information about the parse */
 	readonly '.parse-meta'?: {
 		/** The number of tokens in the AST */
@@ -89,20 +89,25 @@ function countChildren(node: SyntaxNode): number {
  */
 export async function parseRequests<T extends KnownParserType>(_results: unknown, input: Partial<ParseRequiredInput<T>>): Promise<ParseStepOutput<T>> {
 	/* in the future, we want to expose all cases */
+	// TODO: get parse request!!!!!
 	const request = (Array.isArray(input.context) ? input.context[0] : input.context) as RParseRequest;
 
+	const translatedRequest = (input.context as FlowrAnalyzerContext).files.resolveRequest(request);
+
 	if(input.parser?.async){
-		const parsed = await input.parser.parse(request);
+		const parsed = await input.parser.parse(translatedRequest.r);
 		return {
 			parsed,
+			filePath:      translatedRequest.path,
 			'.parse-meta': typeof parsed === 'object' && 'rootNode' in parsed ? {
 				tokenCount: countChildren(parsed.rootNode),
 			} : undefined
 		};
 	} else {
-		const parsed = (input.parser as SyncParser<T>).parse(request);
+		const parsed = (input.parser as SyncParser<T>).parse(translatedRequest.r);
 		return {
 			parsed,
+			filePath:      translatedRequest.path,
 			'.parse-meta': typeof parsed === 'object' && 'rootNode' in parsed ? {
 				tokenCount: countChildren(parsed.rootNode),
 			} : undefined

@@ -10,7 +10,6 @@ import { printAsMs } from '../../util/text/time';
 import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrWikiBaseRef } from './doc-files';
 import type { GraphDifferenceReport } from '../../util/diff-graph';
-import { defaultConfigOptions } from '../../config';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 
 
@@ -38,7 +37,7 @@ export async function printNormalizedAstForCode(parser: KnownParser, code: strin
 	const now = performance.now();
 	const result = await createNormalizePipeline(parser, {
 		context: contextFromInput(code)
-	}, defaultConfigOptions).allRemainingSteps();
+	}).allRemainingSteps();
 	const duration = performance.now() - now;
 
 	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parsing with the [${parser.name}](${FlowrWikiBaseRef}/Engines) engine) within the generation environment.`;
@@ -77,7 +76,7 @@ export async function verifyExpectedSubgraph(shell: RShell, code: string, expect
 	const info = await createDataflowPipeline(shell, {
 		context: contextFromInput(code),
 		getId:   deterministicCountingIdGenerator(0)
-	}, defaultConfigOptions).allRemainingSteps();
+	}).allRemainingSteps();
 
 	expectedSubgraph.setIdMap(info.normalize.idMap);
 	expectedSubgraph = resolveDataflowGraph(expectedSubgraph);

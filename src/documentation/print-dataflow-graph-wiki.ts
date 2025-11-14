@@ -38,7 +38,6 @@ import {
 	UnnamedFunctionCallPrefix
 } from '../dataflow/internal/process/functions/call/unnamed-call-handling';
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
-import { defaultConfigOptions } from '../config';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { DataflowInformation } from '../dataflow/info';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
@@ -1148,7 +1147,7 @@ Retrieving the _types_ of the edge from the print call to its argument returns:
 ${await(async() => {
 			const dfg =  await createDataflowPipeline(shell, {
 				context: contextFromInput('print(x)')
-			}, defaultConfigOptions).allRemainingSteps();
+			}).allRemainingSteps();
 			const edge = dfg.dataflow.graph.outgoingEdges(3);
 			if(edge) {
 				const wanted = edge.get(1);

@@ -1,5 +1,9 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
-import { isParseRequest, type RParseRequest, type RParseRequestFromFile } from '../../r-bridge/retriever';
+import type {
+	RParseRequestFromText,
+	RParseRequest,
+	RParseRequestFromFile } from '../../r-bridge/retriever';
+import { isParseRequest } from '../../r-bridge/retriever';
 import { guard } from '../../util/assert';
 import type {
 	FlowrAnalyzerLoadingOrderContext,
@@ -9,9 +13,10 @@ import {
 	FlowrAnalyzerProjectDiscoveryPlugin
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
-import { type FilePath, type FlowrFile, type FlowrFileProvider, FlowrTextFile, FileRole } from './flowr-file';
+import { type FilePath, FlowrFile, type FlowrFileProvider, FlowrTextFile, FileRole } from './flowr-file';
 import type { FlowrDescriptionFile } from '../plugins/file-plugins/flowr-description-file';
 import { log } from '../../util/log';
+import fs from 'fs';
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
@@ -39,20 +44,14 @@ export type RoleBasedFiles = {
     [FileRole.Other]:       FlowrFileProvider[];
 }
 
-function obtainFileAndPath(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: FileRole): { f: FlowrFileProvider<string> | RParseRequestFromFile, p: string } {
-	let f: FlowrFileProvider<string> | RParseRequestFromFile;
-	let p: FilePath;
+function obtainFileAndPath(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: FileRole): FlowrFileProvider<string> {
 	if(typeof file === 'string') {
-		f = new FlowrTextFile(file, role);
-		p = file;
+		return new FlowrTextFile(file, role);
 	} else if('request' in file) {
-		f = file;
-		p = file.content;
+		return FlowrFile.fromRequest(file);
 	} else {
-		f = file;
-		p = file.path().toString();
+		return file;
 	}
-	return { f, p };
 }
 
 /**
@@ -88,8 +87,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	public readonly name = 'flowr-analyzer-files-context';
 
 	public readonly loadingOrder: FlowrAnalyzerLoadingOrderContext;
-	/* all project files etc., this contains *all* files, loading orders etc. are to be handled by plugins */
-	private files:                Map<FilePath, FlowrFileProvider | RParseRequestFromFile> = new Map<FilePath, FlowrFileProvider | RParseRequestFromFile>();
+	/* all project files etc., this contains *all* (non-inline) files, loading orders etc. are to be handled by plugins */
+	private files:                Map<FilePath, FlowrFileProvider> = new Map<FilePath, FlowrFileProvider>();
+	private inlineFiles:          FlowrFileProvider[] = [];
 	private readonly fileLoaders: readonly FlowrAnalyzerFilePlugin[];
 	/* files that are part of the analysis, e.g. source files */
 	private byRole:        RoleBasedFiles = {
@@ -112,7 +112,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public reset(): void {
 		this.loadingOrder.reset();
-		this.files = new Map<FilePath, FlowrFileProvider | RParseRequestFromFile>();
+		this.files = new Map<FilePath, FlowrFileProvider>();
 	}
 
 	/**
@@ -131,7 +131,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		if(request.request !== 'project') {
 			this.loadingOrder.addRequest(request);
 			if(request.request === 'file') {
-				this.files.set(request.content, request);
+				this.files.set(request.content, new FlowrTextFile(request.content));
 			}
 			return;
 		}
@@ -160,33 +160,69 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 * This method also applies any registered {@link FlowrAnalyzerFilePlugin}s to the file before adding it to the context.
 	 */
 	public addFile(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: FileRole): void {
-		const { f, p } = obtainFileAndPath(file, role);
-		const { f: fA, p: pA } = this.fileLoadPlugins(f, p);
+		const f = this.fileLoadPlugins(obtainFileAndPath(file, role));
 
-		const exist = this.files.get(pA);
-		guard(exist === undefined || exist === fA, `File ${pA} already added to the context.`);
-		this.files.set(pA, fA);
+		if(f.path() === FlowrFile.INLINE_PATH) {
+			this.inlineFiles.push(f);
+		} else {
+			const exist = this.files.get(f.path());
+			guard(exist === undefined || exist === f, `File ${f.path()} already added to the context.`);
+			this.files.set(f.path(), f);
+		}
 
-		if(!isParseRequest(fA) && fA.role) {
-			this.byRole[fA.role].push(fA as typeof this.byRole[FileRole.Description][number]);
+		if(f.role) {
+			this.byRole[f.role].push(f as typeof this.byRole[FileRole.Description][number]);
 		}
 	}
 
-
-	private fileLoadPlugins(f: FlowrFileProvider<string> | RParseRequestFromFile, p: string) {
-		let fFinal: FlowrFileProvider | RParseRequestFromFile = f;
-		let pFinal: string = p;
-		if(!isParseRequest(f)) { // we have to change the types when we integrate the adapters
-			for(const loader of this.fileLoaders) {
-				if(loader.applies(p)) {
-					fileLog.debug(`Applying file loader ${loader.name} to file ${p}`);
-					fFinal = loader.processor(this.ctx, f);
-					pFinal = f.path().toString();
-					break;
-				}
+	private fileLoadPlugins(f: FlowrFileProvider<string>) {
+		let fFinal: FlowrFileProvider = f;
+		for(const loader of this.fileLoaders) {
+			if(loader.applies(f.path())) {
+				fileLog.debug(`Applying file loader ${loader.name} to file ${f.path()}`);
+				fFinal = loader.processor(this.ctx, f);
+				break;
 			}
 		}
-		return { f: fFinal, p: pFinal };
+		return fFinal;
+	}
+
+	/**
+	 * Until parsers support multiple request types from the virtual context system,
+	 * we resolve their contents.
+	 */
+	public resolveRequest(r: RParseRequest): { r: RParseRequestFromText, path?: string } {
+		if(r.request === 'text') {
+			return { r };
+		}
+
+		const file = this.files.get(r.content);
+		// TODO: load from disk fallback (flowR context)
+		if(file === undefined && this.ctx.config.project.resolveUnknownPathsOnDisk) {
+			fileLog.debug(`File ${r.content} not found in context, trying to load from disk.`);
+			if(fs.existsSync(r.content)) {
+				const loadedFile = new FlowrTextFile(r.content);
+				this.addFile(loadedFile);
+				return {
+					r: {
+						request: 'text',
+						content: loadedFile.content(),
+					},
+				};
+			}
+		}
+		guard(file !== undefined && file !== null, `File ${r.content} not found in context.`);
+
+		// TODO: check R source
+
+		const content = file.content();
+		return {
+			r: {
+				request: 'text',
+				content: typeof content === 'string' ? content : '',
+			},
+			path: file.path()
+		};
 	}
 
 	/**

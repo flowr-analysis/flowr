@@ -2,7 +2,13 @@ import { type DataflowProcessorInformation, processDataflowFor } from '../../../
 import { type DataflowInformation , initializeCleanDataflowInformation } from '../../../../../info';
 import { type FlowrLaxSourcingOptions , DropPathsOption, InferWorkingDirectory } from '../../../../../../config';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { type RParseRequest, type RParseRequestProvider , removeRQuotes, requestProviderFromFile } from '../../../../../../r-bridge/retriever';
+import {
+	type RParseRequestFromText,
+	type RParseRequest,
+	type RParseRequestProvider,
+	removeRQuotes,
+	requestProviderFromFile
+} from '../../../../../../r-bridge/retriever';
 import {
 	type IdGenerator,
 	type NormalizedAst,
@@ -19,10 +25,9 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { expensiveTrace, log, LogLevel } from '../../../../../../util/log';
-import fs from 'fs';
 import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser';
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
-import { isNotUndefined } from '../../../../../../util/assert';
+import { guard, isNotUndefined } from '../../../../../../util/assert';
 import path from 'path';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
@@ -173,7 +178,7 @@ export function processSourceCall<OtherInfo>(
 
 	const sourceFileArgument = args[0];
 
-	if(!config.forceFollow && data.flowrConfig.ignoreSourceCalls) {
+	if(!config.forceFollow && data.ctx.config.ignoreSourceCalls) {
 		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFileArgument)} (disabled in config file)`);
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
@@ -184,13 +189,13 @@ export function processSourceCall<OtherInfo>(
 	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
 		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
 	} else if(sourceFileArgument !== EmptyArgument) {
-		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.flowrConfig.solver.variables }));
+		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables }));
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 
 	if(sourceFile && sourceFile.length === 1) {
 		const path = removeRQuotes(sourceFile[0]);
-		let filepath = path ? findSource(data.flowrConfig.solver.resolveSource, path, data) : path;
+		let filepath = path ? findSource(data.ctx.config.solver.resolveSource, path, data) : path;
 
 		if(Array.isArray(filepath)) {
 			filepath = filepath?.[0];
@@ -199,7 +204,7 @@ export function processSourceCall<OtherInfo>(
 			const request = sourceProvider.createRequest(filepath);
 
 			// check if the sourced file has already been dataflow analyzed, and if so, skip it
-			const limit = data.flowrConfig.solver.resolveSource?.repeatedSourceLimit ?? 0;
+			const limit = data.ctx.config.solver.resolveSource?.repeatedSourceLimit ?? 0;
 			const findCount = data.referenceChain.filter(e => e.request === request.request && e.content === request.content).length;
 			if(findCount > limit) {
 				dataflowLogger.warn(`Found cycle (>=${limit + 1}) in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
@@ -220,25 +225,25 @@ export function processSourceCall<OtherInfo>(
  * Processes a source request with the given dataflow processor information and existing dataflow information
  */
 export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, getId: IdGenerator<NoInfo>): DataflowInformation {
-	if(request.request === 'file') {
-		/* check if the file exists and if not, fail */
-		if(!fs.existsSync(request.content)) {
-			dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}: file does not exist`);
-			handleUnknownSideEffect(information.graph, information.environment, rootId);
-			return information;
-		}
+	const textRequest: { r: RParseRequestFromText, path?: string } | undefined = data.ctx.files.resolveRequest(request);
+
+	if(textRequest === undefined && request.request === 'file') {
+		// if translation failed there is nothing we can do!!
+		dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}: file does not exist`);
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
+		return information;
+	} else {
+		guard(textRequest !== undefined, `Expected text request to be defined for sourced file ${JSON.stringify(request)}`);
 	}
 
 	// parse, normalize and dataflow the sourced file
 	let normalized: NormalizedAst<OtherInfo & ParentInformation>;
 	let dataflow: DataflowInformation;
 	try {
-		const file = request.request === 'file' ? request.content : undefined;
-		// TODO: make it return the path!!!
-		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(request);
+		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r);
 		normalized = (typeof parsed !== 'string' ?
-			normalizeTreeSitter({ parsed }, getId, data.flowrConfig, file)
-			: normalize({ parsed }, getId)) as NormalizedAst<OtherInfo & ParentInformation>;
+			normalizeTreeSitter({ parsed, filePath: textRequest.path }, getId, data.ctx.config)
+			: normalize({ parsed, filePath: textRequest.path }, getId)) as NormalizedAst<OtherInfo & ParentInformation>;
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
 			currentRequest: request,

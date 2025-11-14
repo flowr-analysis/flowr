@@ -149,11 +149,11 @@ export class BenchmarkSlicer {
 			}
 		);
 		this.executor = createSlicePipeline(this.parser, {
-			context:   contextFromInput({ ...request }),
+			context:   contextFromInput({ ...request }, config),
 			criterion: [],
 			autoSelectIf,
 			threshold,
-		}, config);
+		});
 
 		this.loadedXml = (await this.measureCommonStep('parse', 'retrieve AST from R code')).parsed;
 		this.normalizedAst = await this.measureCommonStep('normalize', 'normalize R AST');

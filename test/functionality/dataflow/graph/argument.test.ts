@@ -15,8 +15,8 @@ import { defaultConfigOptions } from '../../../../src/config';
 describe.sequential('Retrieve fitting Argument', withShell(shell => {
 	async function retrieveArgOfCode(code: string, index: number, name?: string) {
 		const dfg = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			parser:  shell,
-			request: requestFromInput(code)
+			parser:   shell,
+			requests: requestFromInput(code)
 		}, defaultConfigOptions).allRemainingSteps();
 		// we assume that the entry point of the graph is the function call
 		const graph = dfg.dataflow.graph;

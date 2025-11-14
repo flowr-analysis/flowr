@@ -138,8 +138,8 @@ function assertAstEqual<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTo
 export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileProtocol}${string}` | string): Promise<NormalizedAst> => {
 	const request = requestFromInput(input);
 	return (await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-		parser: shell,
-		request
+		parser:   shell,
+		requests: request
 	}, defaultConfigOptions).allRemainingSteps()).normalize;
 };
 
@@ -258,8 +258,8 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 
 		async function makeShellAst(): Promise<RNode> {
 			const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-				parser:  shell,
-				request: requestFromInput(input)
+				parser:   shell,
+				requests: requestFromInput(input)
 			}, defaultConfigOptions);
 			const result = await pipeline.allRemainingSteps();
 			return result.normalize.ast;
@@ -267,8 +267,8 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 
 		async function makeTsAst(): Promise<RNode> {
 			const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
-				parser:  ts as TreeSitterExecutor,
-				request: requestFromInput(input)
+				parser:   ts as TreeSitterExecutor,
+				requests: requestFromInput(input)
 			}, defaultConfigOptions);
 			const result = await pipeline.allRemainingSteps();
 			return result.normalize.ast;
@@ -280,9 +280,9 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, expected: RNodeWithParent<Decorated>, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void {
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(name, async function() {
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds),
-			parser:  shell,
-			request: requestFromInput(input),
+			getId:    deterministicCountingIdGenerator(startIndexForDeterministicIds),
+			parser:   shell,
+			requests: requestFromInput(input),
 		}, defaultConfigOptions).allRemainingSteps();
 
 		const ast = result.normalize.ast;
@@ -423,9 +423,9 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 	const selectedIds = Array.isArray(ids) ? ids : [ids];
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(decorateLabelContext(name, ['slice']), async function(this: unknown) {
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-			getId:   getId,
-			request: requestFromInput(input),
-			parser:  shell
+			getId:    getId,
+			requests: requestFromInput(input),
+			parser:   shell
 		}, defaultConfigOptions).allRemainingSteps();
 		const reconstructed = NAIVE_RECONSTRUCT.processor({
 			normalize: result.normalize,
@@ -566,7 +566,7 @@ export function assertSliced(
 		async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
 			return await createSlicePipeline(parser, {
 				getId:        getId(),
-				request:      requestFromInput(input),
+				requests:     requestFromInput(input),
 				criterion:    criteria,
 				autoSelectIf: testConfig?.autoSelectIf,
 				direction:    testConfig?.sliceDirection

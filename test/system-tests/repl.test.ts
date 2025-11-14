@@ -16,8 +16,8 @@ import { defaultConfigOptions } from '../../src/config';
 describe('repl', () => {
 	async function analyze(shell: RShell, code: string): Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> {
 		return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			parser:  shell,
-			request: requestFromInput(code)
+			parser:   shell,
+			requests: requestFromInput(code)
 		}, defaultConfigOptions).allRemainingSteps();
 	}
 	describe.sequential('inspection', withShell(shell => {

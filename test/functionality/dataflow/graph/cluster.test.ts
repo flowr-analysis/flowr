@@ -36,9 +36,9 @@ describe('Graph Clustering', () => {
 		function check(name: string, code: string, clusters: readonly (SlicingCriteria | { members: SlicingCriteria, hasUnknownSideEffects: boolean })[]): void {
 			test(`${name} [${code.split('\n').join('\\n')}]`, async() => {
 				const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-					parser:  shell,
-					request: requestFromInput(code),
-					getId:   deterministicCountingIdGenerator(0)
+					parser:   shell,
+					requests: requestFromInput(code),
+					getId:    deterministicCountingIdGenerator(0)
 				}, defaultConfigOptions).allRemainingSteps();
 
 				const graph = info.dataflow.graph;

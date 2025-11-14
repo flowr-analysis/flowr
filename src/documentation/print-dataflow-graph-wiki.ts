@@ -1146,7 +1146,7 @@ ${await printDfGraphForCode(shell, 'print(x)', { mark: new Set(['3->1']) })}
 Retrieving the _types_ of the edge from the print call to its argument returns:
 ${await(async() => {
 			const dfg =  await createDataflowPipeline(shell, {
-				request: requestFromInput('print(x)')
+				requests: requestFromInput('print(x)')
 			}, defaultConfigOptions).allRemainingSteps();
 			const edge = dfg.dataflow.graph.outgoingEdges(3);
 			if(edge) {

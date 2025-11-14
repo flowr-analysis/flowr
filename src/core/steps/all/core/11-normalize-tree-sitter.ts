@@ -14,7 +14,7 @@ import type { ParseStepOutput } from '../../../../r-bridge/parser';
 import type { Tree } from 'web-tree-sitter';
 
 function processor(results: { 'parse'?: ParseStepOutput<Tree> }, input: Partial<NormalizeRequiredInput>, config: FlowrConfigOptions) {
-	return normalizeTreeSitter(results['parse'] as ParseStepOutput<Tree>, input.getId, config, input.overwriteFilePath ?? getCurrentRequestFile(input.request));
+	return normalizeTreeSitter(results['parse'] as ParseStepOutput<Tree>, input.getId, config, input.overwriteFilePath ?? getCurrentRequestFile(input.requests));
 }
 
 export const NORMALIZE_TREE_SITTER = {

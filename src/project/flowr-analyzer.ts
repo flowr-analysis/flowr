@@ -57,25 +57,45 @@ export interface ReadonlyFlowrAnalysisProvider {
 	 *
 	 * The parse result type depends on the {@link KnownParser} used by the analyzer.
 	 * @param force - Do not use the cache, instead force a new parse.
+	 * @see {@link ReadonlyFlowrAnalysisProvider#peekParse} - to get the parse output if already available without triggering a new computation.
 	 */
     parse(force?: boolean): Promise<ParseStepOutput<Awaited<ReturnType<KnownParser['parse']>>> & PipelinePerStepMetaInformation>
 	/**
+	 * Peek at the parse output for the request, if it was already computed.
+	 */
+	peekParse(): ParseStepOutput<Awaited<ReturnType<KnownParser['parse']>>> & PipelinePerStepMetaInformation | undefined;
+	/**
 	 * Get the normalized abstract syntax tree for the request.
 	 * @param force - Do not use the cache, instead force new analyses.
+	 * @see {@link ReadonlyFlowrAnalysisProvider#peekNormalize} - to get the normalized AST if already available without triggering a new computation.
 	 */
 	normalize(force?: boolean): Promise<NormalizedAst & PipelinePerStepMetaInformation>;
 	/**
+	 * Peek at the normalized abstract syntax tree for the request, if it was already computed.
+	 */
+	peekNormalize(): NormalizedAst & PipelinePerStepMetaInformation | undefined;
+	/**
 	 * Get the dataflow graph for the request.
 	 * @param force - Do not use the cache, instead force new analyses.
+	 * @see {@link ReadonlyFlowrAnalysisProvider#peekDataflow} - to get the dataflow graph if already available without triggering a new computation.
 	 */
 	dataflow(force?: boolean): Promise<DataflowInformation & PipelinePerStepMetaInformation>;
+	/**
+	 * Peek at the dataflow graph for the request, if it was already computed.
+	 */
+	peekDataflow(): DataflowInformation & PipelinePerStepMetaInformation | undefined;
 	/**
 	 * Get the control flow graph (CFG) for the request.
 	 * @param simplifications - Simplification passes to be applied to the CFG.
 	 * @param kind            - The kind of CFG that is requested. By default, the CFG without dataflow information is returned.
 	 * @param force           - Do not use the cache, instead force new analyses.
+	 * @see {@link ReadonlyFlowrAnalysisProvider#peekControlflow} - to get the CFG if already available without triggering a new computation.
 	 */
 	controlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind, force?: boolean): Promise<ControlFlowInformation>;
+	/**
+	 * Peek at the control flow graph (CFG) for the request, if it was already computed.
+	 */
+	peekControlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind): ControlFlowInformation | undefined;
 	/**
 	 * Access the query API for the request.
 	 * @param query - The list of queries.
@@ -182,12 +202,24 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this.cache.parse(force);
 	}
 
+	public peekParse(): NonNullable<AnalyzerCacheType<Parser>['parse']> | undefined {
+		return this.cache.peekParse();
+	}
+
 	public async normalize(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['normalize']>> {
 		return this.cache.normalize(force);
 	}
 
+	public peekNormalize(): NonNullable<AnalyzerCacheType<Parser>['normalize']> | undefined {
+		return this.cache.peekNormalize();
+	}
+
 	public async dataflow(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['dataflow']>> {
 		return this.cache.dataflow(force);
+	}
+
+	public peekDataflow(): NonNullable<AnalyzerCacheType<Parser>['dataflow']> | undefined {
+		return this.cache.peekDataflow();
 	}
 
 	public async runFull(force?: boolean): Promise<void> {
@@ -197,6 +229,10 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind, force?: boolean): Promise<ControlFlowInformation> {
 		return this.cache.controlflow(force, kind ?? CfgKind.NoDataflow, simplifications);
+	}
+
+	public peekControlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind): ControlFlowInformation | undefined {
+		return this.cache.peekControlflow(kind ?? CfgKind.NoDataflow, simplifications);
 	}
 
 	public async query<

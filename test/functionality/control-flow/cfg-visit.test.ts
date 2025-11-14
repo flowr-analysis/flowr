@@ -29,7 +29,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				}
 
 				const result = await createDataflowPipeline(parser, {
-					request: requestFromInput(code)
+					requests: requestFromInput(code)
 				}, config).allRemainingSteps();
 				let cfg = extractCfg(result.normalize, config, result.dataflow?.graph);
 				if(useBasicBlocks) {

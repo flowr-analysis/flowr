@@ -13,8 +13,8 @@ import { defaultEnv } from '../../_helper/dataflow/environment-builder';
 
 async function runDataflowPipeline(code: string) {
 	await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		parser:  new RShell(),
-		request: requestFromInput(code.trim())
+		parser:   new RShell(),
+		requests: requestFromInput(code.trim())
 	}, defaultConfigOptions).allRemainingSteps();
 }
 

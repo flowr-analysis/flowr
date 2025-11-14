@@ -10,7 +10,7 @@ describe.sequential('Get Symbol Refs Test', withTreeSitter(shell => {
 	function testCode(name: string, criterion: SingleSlicingCriterion, code: string, expected: SlicingCriteria | undefined) {
 		test(name, async() => {
 			const { dataflow, normalize } =
-			await createDataflowPipeline(shell, { request: requestFromInput(code.trim()) }, defaultConfigOptions).allRemainingSteps();
+			await createDataflowPipeline(shell, { requests: requestFromInput(code.trim()) }, defaultConfigOptions).allRemainingSteps();
 
 			const refs = getAllRefsToSymbol(dataflow.graph, slicingCriterionToId(criterion, normalize.idMap));
 			if(expected !== undefined) {

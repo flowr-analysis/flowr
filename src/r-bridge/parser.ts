@@ -51,10 +51,10 @@ export type KnownParserInformation = ReturnType<KnownParser['information']>
 export type KnownParserName = KnownParser['name']
 
 export interface ParseRequiredInput<T> {
-    /** This is the {@link RShell}, {@link RShellExecutor} or {@link TreeSitterExecutor} connection to be used to obtain the original parses AST of the R code */
-    readonly parser:  Parser<T>
-    /** The request which essentially indicates the input to extract the AST from */
-    readonly request: RParseRequests
+	/** This is the {@link RShell}, {@link RShellExecutor} or {@link TreeSitterExecutor} connection to be used to obtain the original parses AST of the R code */
+	readonly parser:   Parser<T>
+	/** The request which essentially indicates the input to extract the AST from */
+	readonly requests: RParseRequests
 }
 
 export interface ParseStepOutput<T> {
@@ -82,7 +82,7 @@ function countChildren(node: SyntaxNode): number {
  */
 export async function parseRequests<T extends KnownParserType>(_results: unknown, input: Partial<ParseRequiredInput<T>>): Promise<ParseStepOutput<T>> {
 	/* in the future, we want to expose all cases */
-	const request = (Array.isArray(input.request) ? input.request[0] : input.request) as RParseRequest;
+	const request = (Array.isArray(input.requests) ? input.requests[0] : input.requests) as RParseRequest;
 
 
 	if(input.parser?.async){

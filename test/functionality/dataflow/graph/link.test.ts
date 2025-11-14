@@ -10,7 +10,7 @@ describe.sequential('dataflow graph links', withShell(shell => {
 	function assertLink(name: string, code: string, criterion: SingleSlicingCriterion, expect: NodeId[] | undefined) {
 		test(name, async() => {
 			const info = await createDataflowPipeline(shell, {
-				request: requestFromInput(code),
+				requests: requestFromInput(code),
 			}, defaultConfigOptions).allRemainingSteps();
 
 			const graph = info.dataflow.graph;

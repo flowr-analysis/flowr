@@ -19,7 +19,7 @@ describe('is-higher-order-function', withTreeSitter(ts => {
 			for(const c of crit ?? []) {
 				test(`${label} (expect ${c} to be ${exp ? 'ho' : 'not ho'})`, async() => {
 					const df = await createDataflowPipeline(ts, {
-						request: requestFromInput(code)
+						requests: requestFromInput(code)
 					}, defaultConfigOptions).allRemainingSteps();
 
 					const id = tryResolveSliceCriterionToId(c, df.normalize.idMap);

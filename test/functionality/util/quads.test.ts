@@ -38,8 +38,8 @@ describe.sequential('Quads', withShell(shell => {
 
 	const compareQuadsDfg = async(code: string, expected: string) => {
 		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			request: requestFromInput(code),
-			parser:  shell
+			requests: requestFromInput(code),
+			parser:   shell
 		}, defaultConfigOptions).allRemainingSteps();
 
 		const serialized = dataflowGraphToQuads(info.dataflow, { context, domain, getId: defaultQuadIdGenerator() });

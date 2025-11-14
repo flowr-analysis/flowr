@@ -13,8 +13,8 @@ import { trackAliasInEnvironments } from '../../../../../src/dataflow/eval/resol
 
 async function runPipeline(code: string, shell: RShell) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		parser:  shell,
-		request: requestFromInput(code)
+		parser:   shell,
+		requests: requestFromInput(code)
 	}, defaultConfigOptions).allRemainingSteps();
 }
 

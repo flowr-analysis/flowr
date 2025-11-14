@@ -12,7 +12,7 @@ import type { RShell } from '../../../../src/r-bridge/shell';
 
 function testRename(shell: RShell, name: string, input: string, symbol: SingleSlicingCriterion, expectedRefs: SlicingCriteria | undefined) {
 	test(decorateLabelContext(name, ['other']), async() => {
-		const { dataflow, normalize } = await createDataflowPipeline(shell, { request: requestFromInput(input.trim()) }, defaultConfigOptions).allRemainingSteps();
+		const { dataflow, normalize } = await createDataflowPipeline(shell, { requests: requestFromInput(input.trim()) }, defaultConfigOptions).allRemainingSteps();
 
 		const symbolId = slicingCriterionToId(symbol, normalize.idMap);
 		const refs = getAllRefsToSymbol(dataflow.graph, symbolId);

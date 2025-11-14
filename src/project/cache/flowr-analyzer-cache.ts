@@ -55,7 +55,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 
 	private initCacheProviders() {
 		this.pipeline = createDataflowPipeline(this.args.parser, {
-			request:           this.args.request,
+			requests:          this.args.request,
 			getId:             this.args.getId,
 			overwriteFilePath: this.args.overwriteFilePath
 		}, this.args.config) as AnalyzerPipelineExecutor<Parser>;
@@ -161,8 +161,8 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 
 	/**
 	 * Get the control flow graph (CFG) for the request, computing if necessary.
-	 * @param force - Do not use the cache, instead force new analyses.
-	 * @param kind - The kind of CFG that is requested.
+	 * @param force           - Do not use the cache, instead force new analyses.
+	 * @param kind            - The kind of CFG that is requested.
 	 * @param simplifications - Simplification passes to be applied to the CFG.
 	 */
 	public async controlflow(force: boolean | undefined, kind: CfgKind, simplifications: readonly CfgSimplificationPassName[] | undefined): Promise<ControlFlowInformation> {
@@ -197,7 +197,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 
 	/**
 	 * Get the control flow graph (CFG) for the request if already available, otherwise return `undefined`.
-	 * @param kind - The kind of CFG that is requested.
+	 * @param kind            - The kind of CFG that is requested.
 	 * @param simplifications - Simplification passes to be applied to the CFG.
 	 * @see {@link FlowrAnalyzerCache#controlflow} - to get the control flow graph, computing if necessary.
 	 */

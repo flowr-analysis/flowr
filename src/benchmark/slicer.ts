@@ -148,7 +148,7 @@ export class BenchmarkSlicer {
 			}
 		);
 		this.executor = createSlicePipeline(this.parser, {
-			request:   { ...request },
+			requests:  { ...request },
 			criterion: [],
 			autoSelectIf,
 			threshold,

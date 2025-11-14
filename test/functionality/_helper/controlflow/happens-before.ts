@@ -19,7 +19,7 @@ export function assertHappensBefore(shell: RShell, code: string, a: SingleSlicin
 	return describe(code, () => {
 		test.each([shell, new TreeSitterExecutor()])('%s', async parser => {
 			const result = await createNormalizePipeline(parser, {
-				request: requestFromInput(code)
+				requests: requestFromInput(code)
 			}, defaultConfigOptions).allRemainingSteps();
 			const cfg = extractCfg(result.normalize, defaultConfigOptions);
 			const aResolved = slicingCriterionToId(a, result.normalize.idMap);

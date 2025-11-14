@@ -25,9 +25,9 @@ export function getCfg(parser: KnownParser, code: string, simplifications?: read
  */
 export async function getCfg(parser: KnownParser, code: string, simplifications: readonly CfgSimplificationPassName[] = [], useDfg = true): Promise<GetCfgReturn> {
 	const result = useDfg ? await createDataflowPipeline(parser, {
-		request: requestFromInput(code)
+		requests: requestFromInput(code)
 	}, defaultConfigOptions).allRemainingSteps() : await createNormalizePipeline(parser, {
-		request: requestFromInput(code)
+		requests: requestFromInput(code)
 	}, defaultConfigOptions).allRemainingSteps();
 	const cfg = extractCfg(result.normalize, defaultConfigOptions, useDfg ? (result as unknown as {dataflow: DataflowInformation}).dataflow.graph : undefined, [...DefaultCfgSimplificationOrder, ...simplifications]);
 	return {

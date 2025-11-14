@@ -18,7 +18,7 @@ describe('Dataflow', withTreeSitter(ts => {
 				let analysis: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
 				beforeAll(async() => {
 					analysis = await createDataflowPipeline(ts, {
-						request: requestFromInput(code)
+						requests: requestFromInput(code)
 					}, defaultConfigOptions).allRemainingSteps();
 				});
 				test.each(Object.keys(expected) as SingleSlicingCriterion[])('%s', (interest: SingleSlicingCriterion) => {

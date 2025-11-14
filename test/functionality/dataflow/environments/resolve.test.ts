@@ -70,8 +70,8 @@ describe.sequential('Resolve', withShell(shell => {
 
 		test(effectiveName, async() => {
 			const dataflow = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-				parser:  shell,
-				request: requestFromInput(code.trim()),
+				parser:   shell,
+				requests: requestFromInput(code.trim()),
 			}, defaultConfigOptions).allRemainingSteps();
 
 			const resolved = resolveIdToValue(slicingCriterionToId(identifier, dataflow.normalize.idMap), {

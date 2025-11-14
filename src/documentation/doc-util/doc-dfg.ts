@@ -64,7 +64,7 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, opt
 export async function printDfGraphForCode(parser: KnownParser, code: string, { simplified = false, mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();
 	const result = await createDataflowPipeline(parser, {
-		request: requestFromInput(code)
+		requests: requestFromInput(code)
 	}, defaultConfigOptions).allRemainingSteps();
 	const duration = performance.now() - now;
 
@@ -105,9 +105,9 @@ ${switchCodeAndGraph ? dfGraph : codeText}
 export async function verifyExpectedSubgraph(shell: RShell, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
 	/* we verify that we get what we want first! */
 	const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		parser:  shell,
-		request: requestFromInput(code),
-		getId:   deterministicCountingIdGenerator(0)
+		parser:   shell,
+		requests: requestFromInput(code),
+		getId:    deterministicCountingIdGenerator(0)
 	}, defaultConfigOptions).allRemainingSteps();
 
 	expectedSubgraph.setIdMap(info.normalize.idMap);

@@ -9,7 +9,7 @@ import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context'
  * Different from other plugins, these plugins trigger for each file that is loaded (if they {@link applies} to the file).
  * See the {@link FlowrAnalyzerFilesContext.addFile} for more information on how files are loaded and managed.
  *
- * It is upt to the construction to ensure that no two file plugins {@link applies} to the same file, otherwise, the loading order
+ * It is up to the construction to ensure that no two file plugins {@link applies} to the same file, otherwise, the loading order
  * of these plugins will determine which plugin gets to process the file.
  *
  * See {@link DefaultFlowrAnalyzerFilePlugin} for the no-op default implementation.

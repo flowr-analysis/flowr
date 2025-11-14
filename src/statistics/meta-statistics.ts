@@ -1,4 +1,4 @@
-import type { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever';
+import type { RParseRequestFromFileOnDisk, RParseRequestFromText } from '../r-bridge/retriever';
 
 /**
  * Statistics on skipped files, the time required, and more.
@@ -17,7 +17,7 @@ export interface MetaStatistics {
 	/**
 	 * All failed requests (e.g., if they can not be converted to XML)
 	 */
-	failedRequests:          (RParseRequestFromText | RParseRequestFromFile)[]
+	failedRequests:          (RParseRequestFromText | RParseRequestFromFileOnDisk)[]
 	/**
 	 * Number of lines with each individual line length consumed for each request
 	 */

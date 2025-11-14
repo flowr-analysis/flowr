@@ -112,9 +112,9 @@ export class PipelineExecutor<P extends Pipeline> {
 	 *
 	 * Please see {@link createDataflowPipeline} and friends for engine agnostic shortcuts to create a pipeline executor.
 	 * And in general, please prefer using the {@link FlowrAnalyzer} and its {@link FlowrAnalyzerBuilder|builder} to create and use an analyzer instance.
-	 * @param pipeline - The {@link Pipeline} to execute, probably created with {@link createPipeline}.
-	 * @param input    - External {@link PipelineInput|configuration and input} required to execute the given pipeline.
-	 * @param flowrConfig   - The flowr config containing the built-in definitions
+	 * @param pipeline    - The {@link Pipeline} to execute, probably created with {@link createPipeline}.
+	 * @param input       - External {@link PipelineInput|configuration and input} required to execute the given pipeline.
+	 * @param flowrConfig - The flowr config containing the built-in definitions
 	 */
 	constructor(pipeline: P, input: PipelineInput<P>, flowrConfig: FlowrConfigOptions) {
 		this.pipeline = pipeline;

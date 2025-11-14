@@ -1,5 +1,4 @@
 import { assert, describe, test } from 'vitest';
-import path from 'path';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import {
 	FlowrAnalyzerDescriptionFilePlugin
@@ -23,7 +22,7 @@ describe('DESCRIPTION-file', function() {
 		], p => p.type)
 	);
 
-	ctx.files.addFiles(new FlowrInlineTextFile(path.resolve('DESCRIPTION'), `Package: mypackage
+	ctx.files.addFiles(new FlowrInlineTextFile('DESCRIPTION', `Package: mypackage
 Title: What the Package Does (One Line, Title Case)
 Version: 0.0.0.9000
 Authors@R:
@@ -60,8 +59,10 @@ Collate:
     'aaa.R'
     'main.R'
     'zzz.R'`));
+	ctx.files.addFiles(new FlowrInlineTextFile('pete.R', 'x <- 2'));
 	ctx.files.addRequests([{ request: 'file', content: 'pete.R' }]);
 	ctx.resolvePreAnalysis();
+
 	describe.sequential('Parsing', function() {
 		test('Library-Versions-Plugin', () => {
 			const deps = ctx.deps.getDependency('dplyr');

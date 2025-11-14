@@ -4,7 +4,7 @@ import { type MetaStatistics , initialMetaStatistics } from './meta-statistics';
 import { log } from '../util/log';
 import { jsonReplacer, jsonBigIntRetriever } from '../util/json';
 import { PipelineExecutor } from '../core/pipeline-executor';
-import type { RParseRequestFromFile, RParseRequestFromText, RParseRequest } from '../r-bridge/retriever';
+import type { RParseRequestFromFileOnDisk, RParseRequestFromText, RParseRequest } from '../r-bridge/retriever';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import type { RShell } from '../r-bridge/shell';
@@ -16,7 +16,7 @@ import type { FlowrConfigOptions } from '../config';
  * By default, {@link extractUsageStatistics} requires a generator, but sometimes you already know all the files
  * that you want to process. This function simply reps your requests as a generator.
  */
-export function staticRequests(...requests: (RParseRequestFromText | RParseRequestFromFile)[]): AsyncGenerator<RParseRequestFromText | RParseRequestFromFile> {
+export function staticRequests(...requests: (RParseRequestFromText | RParseRequestFromFileOnDisk)[]): AsyncGenerator<RParseRequestFromText | RParseRequestFromFileOnDisk> {
 	// eslint-disable-next-line @typescript-eslint/require-await
 	return async function* () {
 		for(const request of requests) {
@@ -38,7 +38,7 @@ type DataflowResult = PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>
  *                    If your request is statically known, you can use {@link staticRequests} to create this generator.
  * @param rootPath  - The root path to the project, this is used to relativize the file paths in the statistics.
  */
-export async function extractUsageStatistics<T extends RParseRequestFromText | RParseRequestFromFile>(
+export async function extractUsageStatistics<T extends RParseRequestFromText | RParseRequestFromFileOnDisk>(
 	shell: RShell,
 	config: FlowrConfigOptions,
 	onRequest: (request: T) => void,
@@ -78,11 +78,11 @@ function initializeFeatureStatistics(): FeatureStatistics {
 	return result;
 }
 
-function processMetaOnUnsuccessful<T extends RParseRequestFromText | RParseRequestFromFile>(meta: MetaStatistics, request: T) {
+function processMetaOnUnsuccessful<T extends RParseRequestFromText | RParseRequestFromFileOnDisk>(meta: MetaStatistics, request: T) {
 	meta.failedRequests.push(request);
 }
 
-function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequestFromFile>(meta: MetaStatistics, request: T) {
+function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequestFromFileOnDisk>(meta: MetaStatistics, request: T) {
 	meta.successfulParsed++;
 	if(request.request === 'text') {
 		meta.lines.push(request.content.split('\n').map(l => l.length));

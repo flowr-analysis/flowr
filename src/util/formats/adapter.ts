@@ -1,4 +1,4 @@
-import type { RParseRequest, RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge/retriever';
+import type { RParseRequest, RParseRequestFromFileOnDisk, RParseRequestFromText } from '../../r-bridge/retriever';
 import type { FileAdapter, SupportedDocumentTypes, SupportedFormats } from './adapter-format';
 import { RAdapter } from './adapters/r-adapter';
 import path from 'path';
@@ -23,7 +23,7 @@ export function requestFromFile(path: string): AdapterReturnTypes {
 	const baseRequest = {
 		request: 'file',
 		content: path
-	} satisfies RParseRequestFromFile;
+	} satisfies RParseRequestFromFileOnDisk;
 
 
 	const type = inferFileType(baseRequest);

@@ -19,7 +19,7 @@ export interface ParseRequestAdditionalInfoBase {
 	type: SupportedFormats
 }
 
-export interface RParseRequestFromFile<AdditionalInfo extends ParseRequestAdditionalInfoBase = ParseRequestAdditionalInfoBase> {
+export interface RParseRequestFromFileOnDisk<AdditionalInfo extends ParseRequestAdditionalInfoBase = ParseRequestAdditionalInfoBase> {
 	readonly request: 'file';
 	/**
 	 * The path to the file (an absolute path is probably best here).
@@ -58,7 +58,7 @@ export interface RParseRequestProvider {
 	createRequest(path: string):                      RParseRequest
 }
 
-export type RParseRequest = RParseRequestFromFile | RParseRequestFromText
+export type RParseRequest = RParseRequestFromFileOnDisk | RParseRequestFromText
 /**
  * Several requests that can be passed along to {@link retrieveParseDataFromRCode}.
  */
@@ -74,8 +74,8 @@ export function isParseRequest(request: unknown): request is RParseRequest {
 	return 'request' in request;
 }
 
-export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFile
-export function requestFromInput(input: `${typeof fileProtocol}${string}`[]): RParseRequestFromFile[]
+export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFileOnDisk
+export function requestFromInput(input: `${typeof fileProtocol}${string}`[]): RParseRequestFromFileOnDisk[]
 export function requestFromInput(input: string): RParseRequestFromText
 export function requestFromInput(input: readonly string[] | string): RParseRequests
 

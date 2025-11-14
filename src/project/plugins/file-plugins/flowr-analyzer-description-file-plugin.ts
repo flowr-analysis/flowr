@@ -21,9 +21,6 @@ export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin 
 	}
 
 	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider<string>): FlowrDescriptionFile {
-		const f = FlowrDescriptionFile.from(file, FileRole.Description);
-		// already load it here
-		f.content();
-		return f;
+		return FlowrDescriptionFile.from(file, FileRole.Description);
 	}
 }

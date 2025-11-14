@@ -130,7 +130,6 @@ export function findSource(resolveSource: FlowrLaxSourcingOptions | undefined, s
 		tryPaths = tryPaths.flatMap(t => applyReplacements(t, r));
 	}
 
-
 	const found: string[] = [];
 	for(const explore of [undefined, ...explorePaths]) {
 		for(const tryPath of tryPaths) {

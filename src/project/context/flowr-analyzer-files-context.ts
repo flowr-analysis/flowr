@@ -1,5 +1,5 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
-import { isParseRequest, type RParseRequest, type RParseRequestFromFile } from '../../r-bridge/retriever';
+import { isParseRequest, type RParseRequest, type RParseRequestFromFileOnDisk } from '../../r-bridge/retriever';
 import { guard } from '../../util/assert';
 import type {
 	FlowrAnalyzerLoadingOrderContext,
@@ -32,12 +32,13 @@ export type RoleBasedFiles = {
     [FileRole.Description]: FlowrDescriptionFile[];
     /* currently no special support */
     [FileRole.Namespace]:   FlowrFileProvider[];
+    [FileRole.Source]:      FlowrFileProvider[];
     [FileRole.Data]:        FlowrFileProvider[];
     [FileRole.Other]:       FlowrFileProvider[];
 }
 
-function obtainFileAndPath(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: FileRole): { f: FlowrFileProvider<string> | RParseRequestFromFile, p: string } {
-	let f: FlowrFileProvider<string> | RParseRequestFromFile;
+function obtainFileAndPath(file: string | FlowrFileProvider<string> | RParseRequestFromFileOnDisk, role?: FileRole): { f: FlowrFileProvider<string> | RParseRequestFromFileOnDisk, p: string } {
+	let f: FlowrFileProvider<string> | RParseRequestFromFileOnDisk;
 	let p: FilePath;
 	if(typeof file === 'string') {
 		f = new FlowrTextFile(file, role);
@@ -86,12 +87,13 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public readonly loadingOrder: FlowrAnalyzerLoadingOrderContext;
 	/* all project files etc., this contains *all* files, loading orders etc. are to be handled by plugins */
-	private files:                Map<FilePath, FlowrFileProvider | RParseRequestFromFile> = new Map<FilePath, FlowrFileProvider | RParseRequestFromFile>();
+	private files:                Map<FilePath, FlowrFileProvider | RParseRequestFromFileOnDisk> = new Map<FilePath, FlowrFileProvider | RParseRequestFromFileOnDisk>();
 	private readonly fileLoaders: readonly FlowrAnalyzerFilePlugin[];
 	/* files that are part of the analysis, e.g. source files */
 	private byRole:        RoleBasedFiles = {
 		[FileRole.Description]: [],
 		[FileRole.Namespace]:   [],
+		[FileRole.Source]:      [],
 		[FileRole.Data]:        [],
 		[FileRole.Other]:       []
 	} satisfies Record<FileRole, FlowrFileProvider[]>;
@@ -108,7 +110,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public reset(): void {
 		this.loadingOrder.reset();
-		this.files = new Map<FilePath, FlowrFileProvider | RParseRequestFromFile>();
+		this.files = new Map<FilePath, FlowrFileProvider | RParseRequestFromFileOnDisk>();
 	}
 
 	/**
@@ -145,7 +147,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	/**
 	 * Add multiple files to the context. This is just a convenience method that calls {@link addFile} for each file.
 	 */
-	public addFiles(...files: (string | FlowrFileProvider<string> | RParseRequestFromFile)[]): void {
+	public addFiles(...files: (string | FlowrFileProvider<string> | RParseRequestFromFileOnDisk)[]): void {
 		for(const file of files) {
 			this.addFile(file);
 		}
@@ -155,7 +157,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 * Add a file to the context. If the file has a special role, it will be added to the corresponding list of special files.
 	 * This method also applies any registered {@link FlowrAnalyzerFilePlugin}s to the file before adding it to the context.
 	 */
-	public addFile(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: FileRole): void {
+	public addFile(file: string | FlowrFileProvider<string> | RParseRequestFromFileOnDisk, role?: FileRole): void {
 		const { f, p } = obtainFileAndPath(file, role);
 		const { f: fA, p: pA } = this.fileLoadPlugins(f, p);
 
@@ -169,8 +171,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	}
 
 
-	private fileLoadPlugins(f: FlowrFileProvider<string> | RParseRequestFromFile, p: string) {
-		let fFinal: FlowrFileProvider | RParseRequestFromFile = f;
+	private fileLoadPlugins(f: FlowrFileProvider<string> | RParseRequestFromFileOnDisk, p: string) {
+		let fFinal: FlowrFileProvider | RParseRequestFromFileOnDisk = f;
 		let pFinal: string = p;
 		if(!isParseRequest(f)) { // we have to change the types when we integrate the adapters
 			for(const loader of this.fileLoaders) {

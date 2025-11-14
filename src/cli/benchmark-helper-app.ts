@@ -3,7 +3,7 @@ import { log } from '../util/log';
 import { guard } from '../util/assert';
 import { jsonReplacer } from '../util/json';
 import { processCommandLineArgs } from './common/script';
-import type { RParseRequestFromFile } from '../r-bridge/retriever';
+import type { RParseRequestFromFileOnDisk } from '../r-bridge/retriever';
 import { type SamplingStrategy , BenchmarkSlicer } from '../benchmark/slicer';
 import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables';
 import path from 'path';
@@ -70,7 +70,7 @@ async function benchmark() {
 	const fileStat = fs.statSync(options.input);
 	guard(fileStat.isFile(), `File ${options.input} does not exist or is no file`);
 
-	const request: RParseRequestFromFile = { request: 'file', content: options.input };
+	const request: RParseRequestFromFileOnDisk = { request: 'file', content: options.input };
 
 	const maxSlices = options['max-slices'] ?? -1;
 	const slicer = new BenchmarkSlicer(options.parser);

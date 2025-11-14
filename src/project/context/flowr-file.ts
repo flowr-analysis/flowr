@@ -20,8 +20,13 @@ export enum FileRole {
 	Namespace   = 'namespace',
 	/** Data files, e.g., `R/sysdata.rda`, currently not specially supported. */
 	Data        = 'data',
-	/** Catch-all for any file that provides usable R code to incorporate into the analysis */
-	R           = 'r',
+	/**
+	 * Catch-all for any file that provides usable R source code to incorporate into the analysis.
+	 * Please note, that the loading order/inclusion and even potential relevance of these source files
+	 * is determined by the loading order plugins (cf. {@link PluginType.LoadingOrder})
+	 * in the {@link FlowrAnalyzerLoadingOrderContext}.
+	 */
+	Source      = 'source',
 	/** Other special files that are not specifically supported by flowR but may be interesting for some analyses. */
 	Other       = 'other'
 }

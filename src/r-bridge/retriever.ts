@@ -67,7 +67,6 @@ export function requestFromInput(input: `${typeof fileProtocol}${string}`): RPar
 export function requestFromInput(input: `${typeof fileProtocol}${string}`[]): RParseRequestFromFile[]
 export function requestFromInput(input: string): RParseRequestFromText
 export function requestFromInput(input: readonly string[] | string): RParseRequests
-
 /**
  * Creates a {@link RParseRequests} from a given input.
  * If your input starts with {@link fileProtocol}, it is assumed to be a file path and will be processed as such.

@@ -14,7 +14,7 @@ import { EdgeType } from '../../../../../graph/edge';
 
 
 /**
- *
+ * Processes a built-in 'get' function call.
  */
 export function processGet<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

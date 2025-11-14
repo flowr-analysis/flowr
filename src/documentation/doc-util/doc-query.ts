@@ -105,7 +105,7 @@ export const RegisteredQueries = {
 
 
 /**
- *
+ * Registers a new documentation for a query.
  */
 export function registerQueryDocumentation(query: SupportedQueryTypes | SupportedVirtualQueryTypes, doc: QueryDocumentation) {
 	const map = RegisteredQueries[doc.type];

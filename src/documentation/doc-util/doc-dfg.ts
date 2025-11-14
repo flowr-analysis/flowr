@@ -18,7 +18,8 @@ import { defaultConfigOptions } from '../../config';
 
 
 /**
- *
+ * Visualizes the dataflow graph as a mermaid graph inside a markdown code block.
+ * Please use this only for documentation purposes, for programmatic usage use {@link graphToMermaid} directly.
  */
 export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>, simplified = false) {
 	return `
@@ -42,7 +43,7 @@ export interface PrintDataflowGraphOptions {
 
 
 /**
- *
+ * Visualizes a side effect for documentation purposes.
  */
 export function formatSideEffect(ef: UnknownSidEffect): string {
 	if(typeof ef === 'object') {
@@ -56,7 +57,9 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, opt
 export async function printDfGraphForCode(parser: KnownParser, code: string, options?: PrintDataflowGraphOptions & { exposeResult?: false | undefined }): Promise<string>;
 
 /**
- *
+ * Visualizes the dataflow graph of the given R code using the given parser.
+ * This function returns a markdown string containing the dataflow graph as a mermaid code block,
+ * along with the R code itself in a collapsible section.
  */
 export async function printDfGraphForCode(parser: KnownParser, code: string, { simplified = false, mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();

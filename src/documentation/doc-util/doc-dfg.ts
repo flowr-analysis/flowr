@@ -1,6 +1,6 @@
-import type { DataflowGraph, UnknownSidEffect } from '../../dataflow/graph/graph';
+import type { DataflowGraph, UnknownSideEffect } from '../../dataflow/graph/graph';
 import type { RShell } from '../../r-bridge/shell';
-import { type MermaidMarkdownMark , graphToMermaid } from '../../util/mermaid/dfg';
+import { graphToMermaid, type MermaidMarkdownMark } from '../../util/mermaid/dfg';
 import { PipelineExecutor } from '../../core/pipeline-executor';
 import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
@@ -44,7 +44,7 @@ export interface PrintDataflowGraphOptions {
 /**
  *
  */
-export function formatSideEffect(ef: UnknownSidEffect): string {
+export function formatSideEffect(ef: UnknownSideEffect): string {
 	if(typeof ef === 'object') {
 		return `${ef.id} (linked)`;
 	} else {

@@ -1,6 +1,13 @@
-import { type RAnalysisRequest, type ReadOnlyFlowrAnalyzerFilesContext , FlowrAnalyzerFilesContext } from './flowr-analyzer-files-context';
-import { type ReadOnlyFlowrAnalyzerDependenciesContext , FlowrAnalyzerDependenciesContext } from './flowr-analyzer-dependencies-context';
-import { type FlowrAnalyzerPlugin , PluginType } from '../plugins/flowr-analyzer-plugin';
+import {
+	FlowrAnalyzerFilesContext,
+	type RAnalysisRequest,
+	type ReadOnlyFlowrAnalyzerFilesContext
+} from './flowr-analyzer-files-context';
+import {
+	FlowrAnalyzerDependenciesContext,
+	type ReadOnlyFlowrAnalyzerDependenciesContext
+} from './flowr-analyzer-dependencies-context';
+import { type FlowrAnalyzerPlugin, PluginType } from '../plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerLoadingOrderContext } from './flowr-analyzer-loading-order-context';
 import type {
 	FlowrAnalyzerLoadingOrderPlugin
@@ -55,11 +62,6 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext{
 	/** delegate request addition */
 	public addRequests(requests: readonly RAnalysisRequest[]): void {
 		this.files.addRequests(requests);
-	}
-
-	/** delegate request addition */
-	public addRequest(request: RAnalysisRequest): void {
-		this.files.addRequest(request);
 	}
 
 	/** this conducts all the step that can be done before the main analysis run */

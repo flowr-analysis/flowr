@@ -1,5 +1,5 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
-import { type RParseRequest, type RParseRequestFromFile , isParseRequest } from '../../r-bridge/retriever';
+import { isParseRequest, type RParseRequest, type RParseRequestFromFile } from '../../r-bridge/retriever';
 import { guard } from '../../util/assert';
 import type {
 	FlowrAnalyzerLoadingOrderContext,
@@ -9,7 +9,7 @@ import {
 	FlowrAnalyzerProjectDiscoveryPlugin
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
-import { type FilePath, type FlowrFile, type FlowrFileProvider , FlowrTextFile, SpecialFileRole } from './flowr-file';
+import { type FilePath, type FlowrFile, type FlowrFileProvider, FlowrTextFile, SpecialFileRole } from './flowr-file';
 import type { FlowrDescriptionFile } from '../plugins/file-plugins/flowr-description-file';
 import { log } from '../../util/log';
 
@@ -123,7 +123,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	/**
 	 * Add a request to the context. If the request is of type `project`, it will be expanded using the registered {@link FlowrAnalyzerProjectDiscoveryPlugin}s.
 	 */
-	public addRequest(request: RAnalysisRequest): void {
+	private addRequest(request: RAnalysisRequest): void {
 		if(request.request !== 'project') {
 			this.loadingOrder.addRequest(request);
 			if(request.request === 'file') {

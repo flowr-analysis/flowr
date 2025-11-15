@@ -2,11 +2,11 @@ import { assert, describe, it } from 'vitest';
 import { type BasicCfgGuidedVisitorConfiguration , BasicCfgGuidedVisitor } from '../../../src/control-flow/basic-cfg-guided-visitor';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { withTreeSitter } from '../_helper/shell';
 import { simplifyControlFlowInformation } from '../../../src/control-flow/cfg-simplification';
 import { defaultConfigOptions } from '../../../src/config';
+import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 
 describe('Control Flow Graph', withTreeSitter(parser => {
 	function assertOrderBasic(
@@ -28,12 +28,13 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					}
 				}
 
+				const context = contextFromInput(code, config);
 				const result = await createDataflowPipeline(parser, {
-					request: requestFromInput(code)
-				}, config).allRemainingSteps();
-				let cfg = extractCfg(result.normalize, config, result.dataflow?.graph);
+					context
+				}).allRemainingSteps();
+				let cfg = extractCfg(result.normalize, context, result.dataflow?.graph);
 				if(useBasicBlocks) {
-					cfg = simplifyControlFlowInformation(cfg, { ast: result.normalize, dfg: result.dataflow.graph, config }, ['to-basic-blocks', 'remove-dead-code']);
+					cfg = simplifyControlFlowInformation(cfg, { ast: result.normalize, dfg: result.dataflow.graph, ctx: context }, ['to-basic-blocks', 'remove-dead-code']);
 				}
 
 				const configuration: BasicCfgGuidedVisitorConfiguration = {

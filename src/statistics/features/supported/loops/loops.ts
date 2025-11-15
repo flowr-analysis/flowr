@@ -33,7 +33,7 @@ function visitLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 	// holds number of loops and their nesting depths
 	const loopStack: RNodeWithParent[] = [];
 
-	visitAst(input.normalizedRAst.ast,
+	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
 		node => {
 			switch(node.type) {
 				case RType.Next:         info.nextStatements++; return;

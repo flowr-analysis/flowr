@@ -5,7 +5,7 @@ import {
 import { SemVer } from 'semver';
 import { type PackageType , Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
-import { SpecialFileRole } from '../../context/flowr-file';
+import { FileRole } from '../../context/flowr-file';
 import type { DCF } from '../file-plugins/flowr-description-file';
 
 const VersionRegex = /^([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([\d.]+)\))?$/;
@@ -20,7 +20,7 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 	public readonly version = new SemVer('0.1.0');
 
 	process(ctx: FlowrAnalyzerContext): void {
-		const descFiles = ctx.files.getFilesByRole(SpecialFileRole.Description);
+		const descFiles = ctx.files.getFilesByRole(FileRole.Description);
 		if(descFiles.length !== 1) {
 			descriptionFileLog.warn(`Supporting only exactly one DESCRIPTION file, found ${descFiles.length}`);
 			return;

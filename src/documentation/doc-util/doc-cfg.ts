@@ -1,6 +1,5 @@
 import { extractCfg } from '../../control-flow/extract-cfg';
 import { createDataflowPipeline, createNormalizePipeline } from '../../core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../r-bridge/retriever';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { KnownParser } from '../../r-bridge/parser';
 import { printAsMs } from '../../util/text/time';
@@ -10,7 +9,7 @@ import { cfgToMermaid } from '../../util/mermaid/cfg';
 import { codeBlock } from './doc-code';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import { type CfgSimplificationPassName , DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
-import { defaultConfigOptions } from '../../config';
+import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 
 type GetCfgReturn = {
 	info:      ControlFlowInformation,
@@ -24,12 +23,10 @@ export function getCfg(parser: KnownParser, code: string, simplifications?: read
  * Returns the control flow graph for the given code.
  */
 export async function getCfg(parser: KnownParser, code: string, simplifications: readonly CfgSimplificationPassName[] = [], useDfg = true): Promise<GetCfgReturn> {
-	const result = useDfg ? await createDataflowPipeline(parser, {
-		request: requestFromInput(code)
-	}, defaultConfigOptions).allRemainingSteps() : await createNormalizePipeline(parser, {
-		request: requestFromInput(code)
-	}, defaultConfigOptions).allRemainingSteps();
-	const cfg = extractCfg(result.normalize, defaultConfigOptions, useDfg ? (result as unknown as {dataflow: DataflowInformation}).dataflow.graph : undefined, [...DefaultCfgSimplificationOrder, ...simplifications]);
+	const context = contextFromInput(code);
+	const result = await (useDfg ? createDataflowPipeline(parser, { context })
+		: createNormalizePipeline(parser, { context })).allRemainingSteps();
+	const cfg = extractCfg(result.normalize, context, useDfg ? (result as unknown as {dataflow: DataflowInformation}).dataflow.graph : undefined, [...DefaultCfgSimplificationOrder, ...simplifications]);
 	return {
 		info:     cfg,
 		ast:      result.normalize,

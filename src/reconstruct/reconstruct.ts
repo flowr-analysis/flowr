@@ -483,7 +483,7 @@ function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], linesW
  * Reconstructs parts of a normalized R ast into R code on an expression basis.
  * @param ast          - The {@link NormalizedAst|normalized ast} to be used as a basis for reconstruction
  * @param selection    - The selection of nodes to be reconstructed (probably the {@link NodeId|NodeIds} identified by the slicer)
- * @param autoSelectIf - A predicate that can be used to force the reconstruction of a node (for example to reconstruct library call statements, see {@link autoSelectLibrary}, {@link doNotAutoSelect})
+ * @param autoSelectIf - A predicate that can be used to force the reconstruction of a node
  * @returns The number of lines for which `autoSelectIf` triggered, as well as the reconstructed code itself.
  */
 export function reconstructToCode(ast: NormalizedAst, selection: Selection, autoSelectIf: AutoSelectPredicate = doNotAutoSelect): ReconstructionResult {
@@ -504,8 +504,9 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 	};
 
 	// fold of the normalized ast
+	// TODO: support project wide reconstruct!!!
 	const result = foldAstStateful(
-		ast.ast,
+		ast.ast.files[0].root,
 		{ selection, autoSelectIf: autoSelectIfWrapper, fullAst: ast },
 		reconstructAstFolds
 	);

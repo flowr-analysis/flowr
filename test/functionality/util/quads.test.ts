@@ -3,10 +3,9 @@ import { defaultQuadIdGenerator, serialize2quads } from '../../../src/util/quads
 import { dataflowGraphToQuads } from '../../../src/core/print/dataflow-printer';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { decorateAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 import { assert, describe, test } from 'vitest';
-import { defaultConfigOptions } from '../../../src/config';
+import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 
 describe.sequential('Quads', withShell(shell => {
 	const context = 'test';
@@ -15,7 +14,7 @@ describe.sequential('Quads', withShell(shell => {
 	const compareQuadsCfg = async(code: string, expected: string) => {
 		const ast = await retrieveNormalizedAst(shell, code);
 		const decorated = decorateAst(ast.ast, {}).ast;
-		const serialized = serialize2quads(decorated, { context, domain, getId: defaultQuadIdGenerator() });
+		const serialized = serialize2quads(decorated.files[0].root, { context, domain, getId: defaultQuadIdGenerator() });
 		assert.strictEqual(serialized.trim(), expected.trim());
 	};
 
@@ -38,9 +37,9 @@ describe.sequential('Quads', withShell(shell => {
 
 	const compareQuadsDfg = async(code: string, expected: string) => {
 		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			request: requestFromInput(code),
+			context: contextFromInput(code),
 			parser:  shell
-		}, defaultConfigOptions).allRemainingSteps();
+		}).allRemainingSteps();
 
 		const serialized = dataflowGraphToQuads(info.dataflow, { context, domain, getId: defaultQuadIdGenerator() });
 		assert.strictEqual(serialized.trim(), expected.trim());

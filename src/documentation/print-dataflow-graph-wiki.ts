@@ -7,7 +7,6 @@ import { DataflowGraphBuilder, emptyGraph } from '../dataflow/graph/dataflowgrap
 import { guard } from '../util/assert';
 import { formatSideEffect, printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
 import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
-import { requestFromInput } from '../r-bridge/retriever';
 import { jsonReplacer } from '../util/json';
 import { printEnvironmentToMarkdown } from './doc-util/doc-env';
 import { type ExplanationParameters, type SubExplanationParameters , getAllEdges, getAllVertices } from './data/dfg/doc-data-dfg-util';
@@ -38,9 +37,9 @@ import {
 	UnnamedFunctionCallPrefix
 } from '../dataflow/internal/process/functions/call/unnamed-call-handling';
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
-import { defaultConfigOptions } from '../config';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { DataflowInformation } from '../dataflow/info';
+import { contextFromInput } from '../project/context/flowr-analyzer-context';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -857,7 +856,8 @@ ${details('Example: While-Loop Body', await printDfGraphForCode(shell, 'while(TR
 }
 
 async function dummyDataflow(): Promise<DataflowInformation> {
-	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('x <- 1\nx + 1')).build();
+	const analyzer = await new FlowrAnalyzerBuilder().build();
+	analyzer.addRequest('x <- 1\nx + 1');
 	const result = await analyzer.dataflow();
 	analyzer.close();
 	return result;
@@ -1146,8 +1146,8 @@ ${await printDfGraphForCode(shell, 'print(x)', { mark: new Set(['3->1']) })}
 Retrieving the _types_ of the edge from the print call to its argument returns:
 ${await(async() => {
 			const dfg =  await createDataflowPipeline(shell, {
-				request: requestFromInput('print(x)')
-			}, defaultConfigOptions).allRemainingSteps();
+				context: contextFromInput('print(x)')
+			}).allRemainingSteps();
 			const edge = dfg.dataflow.graph.outgoingEdges(3);
 			if(edge) {
 				const wanted = edge.get(1);

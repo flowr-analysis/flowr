@@ -25,7 +25,7 @@ import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
 import { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
 import { ansiFormatter, voidFormatter } from '../../../util/text/ansi';
 import { type TREE_SITTER_DATAFLOW_PIPELINE , DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
-import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
+import type { PipelineOutput, PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import type { DeepPartial } from 'ts-essentials';
 import { DataflowGraph } from '../../../dataflow/graph/graph';
 import * as tmp from 'tmp';
@@ -208,10 +208,11 @@ export class FlowRServerConnection {
 			throw new Error('Either content or filepath must be defined.');
 		}
 
-		const analyzer = await new FlowrAnalyzerBuilder(request)
+		const analyzer = await new FlowrAnalyzerBuilder()
 			.setConfig(this.config)
 			.setParser(this.parser)
 			.build();
+		analyzer.addRequest(request);
 
 		if(message.filetoken) {
 			this.logger.info(`Storing file token ${message.filetoken}`);
@@ -354,7 +355,7 @@ export class FlowRServerConnection {
  */
 export function sanitizeAnalysisResults(parse: ParseStepOutput<string | Tree>, normalize: NormalizedAst, dataflow: DataflowInformation): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>> {
 	return {
-		parse:     parse as ParseStepOutput<string>,
+		parse:     parse as ParseStepOutput<string> & PipelinePerStepMetaInformation,
 		normalize: {
 			...normalize,
 			idMap: undefined

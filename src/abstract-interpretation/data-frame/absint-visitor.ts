@@ -119,7 +119,7 @@ export class DataFrameShapeInferenceVisitor<
 		const node = this.getNormalizedAst(call.id);
 
 		if(node !== undefined) {
-			node.info.dataFrame = mapDataFrameFunctionCall(node, this.config.dfg, this.config.flowrConfig);
+			node.info.dataFrame = mapDataFrameFunctionCall(node, this.config.dfg, this.config.ctx);
 			this.applyDataFrameExpression(node);
 		}
 	}
@@ -157,7 +157,7 @@ export class DataFrameShapeInferenceVisitor<
 		if(!hasDataFrameExpressionInfo(node)) {
 			return;
 		}
-		const maxColNames = this.config.flowrConfig.abstractInterpretation.dataFrame.maxColNames;
+		const maxColNames = this.config.ctx.config.abstractInterpretation.dataFrame.maxColNames;
 		let value = DataFrameDomain.top(maxColNames);
 
 		for(const { operation, operand, type, options, ...args } of node.info.dataFrame.operations) {
@@ -200,7 +200,7 @@ export class DataFrameShapeInferenceVisitor<
 	}
 
 	private shouldWiden(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): boolean {
-		return (this.visited.get(vertex.id) ?? 0) >= this.config.flowrConfig.abstractInterpretation.dataFrame.wideningThreshold;
+		return (this.visited.get(vertex.id) ?? 0) >= this.config.ctx.config.abstractInterpretation.dataFrame.wideningThreshold;
 	}
 
 	private clearUnassignedInfo(node: RNode<ParentInformation & AbstractInterpretationInfo>) {

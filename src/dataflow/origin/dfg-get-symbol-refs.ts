@@ -18,7 +18,7 @@ import { getOriginInDfg } from './dfg-get-origin';
  * @example getAllRefsToSymbol('3\@y') returns ['3\@y', '4\@y']
  * @param graph  - Dataflow Graph
  * @param nodeId - NodeId of Symbol to resolve
- * @returns List including the Definitions and Refereneces to that definition
+ * @returns List including the Definitions and References to that definition
  */
 export function getAllRefsToSymbol(graph: DataflowGraph, nodeId: NodeId): NodeId[] | undefined {
 	// Get all origins and filter for ones that happen for sure

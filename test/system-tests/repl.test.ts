@@ -4,21 +4,20 @@ import { graphToMermaid, graphToMermaidUrl } from '../../src/util/mermaid/dfg';
 import type { PipelineOutput } from '../../src/core/steps/pipeline/pipeline';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../src/core/steps/pipeline/default-pipelines';
 import { PipelineExecutor } from '../../src/core/pipeline-executor';
-import { requestFromInput } from '../../src/r-bridge/retriever';
 import { withShell } from '../functionality/_helper/shell';
 import type { RShell } from '../../src/r-bridge/shell';
 import type { DataflowGraph } from '../../src/dataflow/graph/graph';
 import { emptyGraph } from '../../src/dataflow/graph/dataflowgraph-builder';
 import type { NormalizedAst } from '../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../src/util/mermaid/ast';
-import { defaultConfigOptions } from '../../src/config';
+import { contextFromInput } from '../../src/project/context/flowr-analyzer-context';
 
 describe('repl', () => {
 	async function analyze(shell: RShell, code: string): Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> {
 		return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 			parser:  shell,
-			request: requestFromInput(code)
-		}, defaultConfigOptions).allRemainingSteps();
+			context: contextFromInput(code)
+		}).allRemainingSteps();
 	}
 	describe.sequential('inspection', withShell(shell => {
 		for(const [code, str] of [

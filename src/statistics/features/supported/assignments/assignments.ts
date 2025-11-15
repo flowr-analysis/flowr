@@ -24,7 +24,7 @@ export const AssignmentOperators: ReadonlySet<string> = new Set(Operators.filter
 function visitAssignment(info: AssignmentInfo, input: FeatureProcessorInput): void {
 	const assignmentStack: RNodeWithParent[] = [];
 
-	visitAst(input.normalizedRAst.ast,
+	visitAst(input.normalizedRAst.ast.files.map(r => r.root),
 		node => {
 			if(node.type !== RType.BinaryOp || !AssignmentOperators.has(node.operator)) {
 				return;

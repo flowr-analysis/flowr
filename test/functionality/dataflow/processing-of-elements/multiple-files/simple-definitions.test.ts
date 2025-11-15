@@ -1,12 +1,10 @@
-import { assertDataflow, retrieveNormalizedAst, withShell } from '../../../_helper/shell';
+import { assertDataflow, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall } from '../../../_helper/dataflow/environment-builder';
 import { assert, describe, test } from 'vitest';
-import { produceDataFlowGraph } from '../../../../../src/dataflow/extractor';
-import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
 import { builtInId } from '../../../../../src/dataflow/environments/built-in';
-import { defaultConfigOptions } from '../../../../../src/config';
+import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 
 describe.sequential('Simple Defs in Multiple Files', withShell(shell => {
 
@@ -53,8 +51,11 @@ describe.sequential('Simple Defs in Multiple Files', withShell(shell => {
 			request: 'file',
 			content: 'test/testfiles/parse-multiple/b.R'
 		}] as const;
-		const df = produceDataFlowGraph(new RShellExecutor(), requests, await retrieveNormalizedAst(shell, 'file://' + requests[0].content), defaultConfigOptions);
-		const idMap = df.graph.idMap;
+		const analyzer = await new FlowrAnalyzerBuilder()
+			.setEngine('tree-sitter')
+			.build();
+		analyzer.addRequest(requests);
+		const idMap = (await analyzer.normalize()).idMap;
 		assert(idMap !== undefined);
 		assert(idMap.size > 0);
 		for(const [id, node] of idMap.entries()) {

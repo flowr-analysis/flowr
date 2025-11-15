@@ -26,7 +26,7 @@ import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 type FoldOfType<T extends RType, Returns = void, Info = NoInfo> = (node: Extract<RNode<Info>, { type: T }>) => Returns;
 
 /** explicitly excludes types that are not visitable */
-export type FoldableRType = Exclude<RType, RType.Delimiter>;
+export type FoldableRType = Exclude<RType, RType.Delimiter | RType.Project>;
 
 /**
  * Describes the fold functions for each node type.

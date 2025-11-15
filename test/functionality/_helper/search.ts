@@ -1,6 +1,5 @@
 import { type TestLabel , decorateLabelContext } from './label';
 import { assert, beforeAll, describe, test } from 'vitest';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { type NormalizedAst, type ParentInformation , deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-printer';
 import { type FlowrSearchLike , getFlowrSearch } from '../../../src/search/flowr-search-builder';
@@ -34,12 +33,13 @@ export function assertSearch(
 		let ast: NormalizedAst | undefined;
 
 		beforeAll(async() => {
-			analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
+			analyzer = await new FlowrAnalyzerBuilder()
 				.setInput({
 					getId: deterministicCountingIdGenerator(0)
 				})
 				.setParser(parser)
 				.build();
+			analyzer.addRequest(code);
 			dataflow = await analyzer.dataflow();
 			ast = await analyzer.normalize();
 		});

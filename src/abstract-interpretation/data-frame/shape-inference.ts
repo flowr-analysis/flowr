@@ -1,4 +1,3 @@
-import type { FlowrConfigOptions } from '../../config';
 import { type ControlFlowInformation, getVertexRootId } from '../../control-flow/control-flow-graph';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { VertexType } from '../../dataflow/graph/vertex';
@@ -13,6 +12,7 @@ import { AbstractDomain } from '../domains/abstract-domain';
 import { type AbstractInterpretationInfo, DataFrameInfoMarker, hasDataFrameInfoMarker } from './absint-info';
 import { DataFrameShapeInferenceVisitor } from './absint-visitor';
 import { type DataFrameDomain, DataFrameStateDomain } from './dataframe-domain';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 /**
  * Infers the shape of data frames by performing abstract interpretation using the control flow graph of a program.
@@ -20,7 +20,7 @@ import { type DataFrameDomain, DataFrameStateDomain } from './dataframe-domain';
  * @param cfinfo - The control flow information containing the control flow graph
  * @param dfg    - The data flow graph to resolve variable origins and function arguments
  * @param ast    - The abstract syntax tree to resolve node IDs to AST nodes
- * @param config - The flowR configuration to use for the shape inference
+ * @param ctx    - The current flowr analyzer context
  * @returns The abstract data frame state at the exit node of the control flow graph (see {@link DataFrameStateDomain}).
  * The abstract data frame states for all other nodes are attached to the AST.
  */
@@ -28,9 +28,9 @@ export function inferDataFrameShapes(
 	cfinfo: ControlFlowInformation,
 	dfg: DataflowGraph,
 	ast: NormalizedAst<ParentInformation & AbstractInterpretationInfo>,
-	config: FlowrConfigOptions
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameStateDomain {
-	const visitor = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, flowrConfig: config });
+	const visitor = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, ctx });
 	visitor.start();
 	const exitPoints = cfinfo.exitPoints.map(id => cfinfo.graph.getVertex(id)).filter(isNotUndefined);
 	const exitNodes = exitPoints.map(vertex => ast.idMap.get(getVertexRootId(vertex))).filter(isNotUndefined);

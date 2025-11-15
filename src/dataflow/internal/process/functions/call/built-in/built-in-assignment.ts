@@ -173,7 +173,7 @@ export function processAssignment<OtherInfo>(
 			});
 		}  else {
 			// try to resolve the variable first
-			const n = resolveIdToValue(target.info.id, { environment: data.environment, resolve: data.flowrConfig.solver.variables, idMap: data.completeAst.idMap, full: true });
+			const n = resolveIdToValue(target.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true });
 			if(n.type === 'set' && n.elements.length === 1 && n.elements[0].type === 'string') {
 				const val = n.elements[0].value;
 				if(isValue(val)) {
@@ -356,7 +356,7 @@ export function markAsAssignment<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo>,
 	assignmentConfig?: AssignmentConfiguration
 ) {
-	if(data.flowrConfig.solver.pointerTracking) {
+	if(data.ctx.config.solver.pointerTracking) {
 		let indicesCollection: ContainerIndicesCollection = undefined;
 		if(sourceIds.length === 1) {
 			// support for tracking indices.
@@ -386,7 +386,7 @@ export function markAsAssignment<OtherInfo>(
 		nodeToDefine.indicesCollection ??= indicesCollection;
 	}
 
-	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, data.flowrConfig);
+	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, data.ctx.config);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
 	if(!assignmentConfig?.quoteSource) {
 		for(const sourceId of sourceIds) {

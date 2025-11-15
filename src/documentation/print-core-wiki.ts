@@ -42,18 +42,18 @@ import { NewIssueUrl } from './doc-util/doc-issue';
 import { PipelineExecutor } from '../core/pipeline-executor';
 import { createPipeline } from '../core/steps/pipeline/pipeline';
 import { staticSlice } from '../slicing/static/static-slicer';
-import { defaultConfigOptions } from '../config';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
+import { contextFromInput } from '../project/context/flowr-analyzer-context';
 
 async function makeAnalyzerExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
-		.addRequestFromInput('x <- 1; y <- x; print(y);')
 		.amendConfig(c => {
 			c.ignoreSourceCalls = true;
 		})
 		.setEngine('tree-sitter')
 		.build();
+	analyzer.addRequest('x <- 1; y <- x; print(y);');
 	return analyzer;
 }
 
@@ -64,6 +64,9 @@ async function extractStepsExample(analyzer: FlowrAnalyzer) {
 	return { normalizedAst, dataflow, cfg };
 }
 
+/**
+ * Shows how to use the query API to perform a static slice (please do not simplify).
+ */
 async function sliceQueryExample(analyzer: FlowrAnalyzer) {
 	const result = await analyzer.query([{
 		type:     'static-slice',
@@ -74,7 +77,7 @@ async function sliceQueryExample(analyzer: FlowrAnalyzer) {
 
 
 /**
- *
+ * Shows how to inspect the context of an analyzer instance.
  */
 export function inspectContextExample(analyzer: FlowrAnalyzer) {
 	const ctx = analyzer.inspectContext();
@@ -176,13 +179,14 @@ Using the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines) you can request 
 ${codeBlock('typescript', `
 const executor = new PipelineExecutor(TREE_SITTER_DATAFLOW_PIPELINE, {
 	parser:  new TreeSitterExecutor(),
-	request: requestFromInput('x <- 1; y <- x; print(y);')
+	context: contextFromInput('x <- 1; y <- x; print(y);')
 });
 const result = await executor.allRemainingSteps();
 `)}
 
 This is, roughly, what the ${shortLink('dataflow', info)} function does when using the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines).
-We create a new ${shortLink(PipelineExecutor.name, info)} with the ${shortLink('TREE_SITTER_DATAFLOW_PIPELINE', info)} and then use ${shortLink(`${PipelineExecutor.name}::${new PipelineExecutor(TREE_SITTER_PARSE_PIPELINE, { parser: new TreeSitterExecutor(), request: requestFromInput('') }, defaultConfigOptions).allRemainingSteps.name}`, info)} 
+We create a new ${shortLink(PipelineExecutor.name, info)} with the ${shortLink('TREE_SITTER_DATAFLOW_PIPELINE', info)} and then use 
+${shortLink(`${PipelineExecutor.name}::${new PipelineExecutor(TREE_SITTER_PARSE_PIPELINE, { parser: new TreeSitterExecutor(), context: contextFromInput('') }).allRemainingSteps.name}`, info)} 
 to cause the execution of all contained steps (in general, pipelines can be executed step-by-step, but this is usually not required if you just want the result).
 
 In general, however, most flowR-internal functions which are tasked with generating dataflow prefer the use of ${shortLink(createDataflowPipeline.name, info)} as this function
@@ -326,7 +330,7 @@ While looking at the mermaid visualization of such an AST is nice and usually su
 Let's have a look at the normalized AST for the sample code \`${sampleCode}\` (please refer to the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) wiki page for more information):
 
 ${details('Normalized AST for <code>x <- 1; print(x)</code>', codeBlock('json',
-	JSON.stringify((await createNormalizePipeline(shell, { request: requestFromInput(sampleCode) }, defaultConfigOptions).allRemainingSteps()).normalize.ast, jsonReplacer, 4)
+	JSON.stringify((await createNormalizePipeline(shell, { context: contextFromInput(sampleCode) }).allRemainingSteps()).normalize.ast, jsonReplacer, 4)
 ))}
 
 This is… a lot! We get the type from the ${shortLink('RType', info)} enum, the lexeme, location information, an id, the children of the node, and their parents.
@@ -349,7 +353,7 @@ For single nodes, we use ${shortLink(normalizeSingleNode.name, info)} which cont
 The output of just this pass is listed below (using the ${shortLink(normalizeButNotDecorated.name, info)} function):
 
 ${details('Ast for <code>x <- 1; print(x)</code> after the first normalization', codeBlock('json',
-	JSON.stringify(normalizeButNotDecorated((await createParsePipeline(shell, { request: requestFromInput(sampleCode) }, defaultConfigOptions).allRemainingSteps()).parse), jsonReplacer, 4)
+	JSON.stringify(normalizeButNotDecorated((await createParsePipeline(shell, { context: contextFromInput(sampleCode) }).allRemainingSteps()).parse.files[0]), jsonReplacer, 4)
 ))}
 
 

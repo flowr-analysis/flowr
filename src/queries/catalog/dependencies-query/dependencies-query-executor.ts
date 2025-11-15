@@ -24,7 +24,7 @@ import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/process
 
 
 /**
- *
+ * Executes a dependencies query.
  */
 export async function executeDependenciesQuery({
 	analyzer,

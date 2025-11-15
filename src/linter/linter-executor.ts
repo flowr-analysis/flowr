@@ -22,10 +22,11 @@ export async function executeLintingRule<Name extends LintingRuleNames>(ruleName
 		const processStart = Date.now();
 		const result = await rule.processSearchResult(searchResult, fullConfig,
 			{
-				normalize: await input.normalize(),
+				/* we currently await them here for simplicity (no redundant awaits in the linting rules), but they could be passed as promises too */
 				dataflow:  await input.dataflow(),
+				normalize: await input.normalize(),
 				cfg:       await input.controlflow(),
-				config:    input.flowrConfig,
+				analyzer:  input
 			}
 		);
 		const processTime = Date.now() - processStart;

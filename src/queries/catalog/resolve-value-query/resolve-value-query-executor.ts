@@ -6,7 +6,7 @@ import { resolveIdToValue } from '../../../dataflow/eval/resolve/alias-tracking'
 
 
 /**
- *
+ * Naive fingerprint to filter out duplicate queries.
  */
 export function fingerPrintOfQuery(query: ResolveValueQuery): string {
 	return JSON.stringify(query);
@@ -14,7 +14,7 @@ export function fingerPrintOfQuery(query: ResolveValueQuery): string {
 
 
 /**
- *
+ * Executes a resolve-value query.
  */
 export async function executeResolveValueQuery({ analyzer }: BasicQueryData, queries: readonly ResolveValueQuery[]): Promise<ResolveValueQueryResult> {
 	const start = Date.now();

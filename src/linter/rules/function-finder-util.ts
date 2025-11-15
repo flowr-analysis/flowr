@@ -55,8 +55,8 @@ export const functionFinderUtil = {
 	},
 	processSearchResult: <T extends FlowrSearchElement<ParentInformation>[]>(
 		elements: FlowrSearchElements<ParentInformation, T>,
-		_config: FunctionsToDetectConfig,
-		_data: { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions},
+		_config: unknown,
+		_data: unknown,
 		refineSearch: (elements: T) => T = e => e,
 	) => {
 		const metadata: FunctionsMetadata = {

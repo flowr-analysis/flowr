@@ -23,7 +23,7 @@ import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { BuiltInProcessorMapper } from '../dataflow/environments/built-in';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { FlowrConfigOptions } from '../config';
+import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 export interface SemanticCfgGuidedVisitorConfiguration<
 	OtherInfo = NoInfo,
@@ -31,7 +31,7 @@ export interface SemanticCfgGuidedVisitorConfiguration<
 	Ast extends NormalizedAst<OtherInfo>       = NormalizedAst<OtherInfo>,
 	Dfg extends DataflowGraph                  = DataflowGraph
 > extends DataflowCfgGuidedVisitorConfiguration<ControlFlow, Dfg>, SyntaxCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast> {
-	readonly flowrConfig: FlowrConfigOptions;
+	readonly ctx: ReadOnlyFlowrAnalyzerContext;
 }
 
 /**

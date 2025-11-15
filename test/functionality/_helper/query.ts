@@ -11,7 +11,6 @@ import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-prin
 import type { PipelineOutput, PipelinePerStepMetaInformation } from '../../../src/core/steps/pipeline/pipeline';
 import { assert, test } from 'vitest';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
-import { defaultConfigOptions } from '../../../src/config';
 import type { KnownParser, ParseStepOutput } from '../../../src/r-bridge/parser';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
@@ -70,10 +69,9 @@ export function assertQuery<
 
 
 		const analyzer = await new FlowrAnalyzerBuilder()
-			.addRequestFromInput(code)
 			.setParser(parser)
 			.build();
-
+		analyzer.addRequest(code);
 		if(runFull) {
 			// we run the dfa analysis to make sure normalization post-patches are ready!
 			await analyzer.runFull();
@@ -105,7 +103,7 @@ export function assertQuery<
 			assert.deepStrictEqual(normalized, expectedNormalized, 'The result of the query does not match the expected result');
 		} /* v8 ignore next 3 */ catch(e: unknown) {
 			console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(await analyzer.dataflow()));
-			console.error('Control-Flow-Graph', cfgToMermaidUrl(extractCfg(await analyzer.normalize(), defaultConfigOptions, (await analyzer.dataflow()).graph), await analyzer.normalize()));
+			console.error('Control-Flow-Graph', cfgToMermaidUrl(extractCfg(await analyzer.normalize(), analyzer.inspectContext(), (await analyzer.dataflow()).graph), await analyzer.normalize()));
 			throw e;
 		}
 	});

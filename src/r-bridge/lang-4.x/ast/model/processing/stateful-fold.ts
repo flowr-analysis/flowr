@@ -71,7 +71,6 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
 	}
 }
 
-
 /**
  * Folds in old functional-fashion over the AST structure but allowing for a down function which can pass context to child nodes.
  */

@@ -57,13 +57,13 @@ export function processEvalCall<OtherInfo>(
 		);
 	}
 
-	if(!data.flowrConfig.solver.evalStrings) {
+	if(!data.ctx.config.solver.evalStrings) {
 		expensiveTrace(dataflowLogger, () => `Skipping eval call ${JSON.stringify(evalArgument)} (disabled in config file)`);
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
 
-	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, data.environment, data.completeAst.idMap, data.flowrConfig);
+	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, data.environment, data.completeAst.idMap, data.ctx.config);
 
 	if(code) {
 		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId, name.location);

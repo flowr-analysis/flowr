@@ -39,7 +39,8 @@ import { NewIssueUrl } from './doc-util/doc-issue';
 import { EdgeType, edgeTypeToName } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { type FlowrConfigOptions , defaultConfigOptions } from '../config';
+import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import { contextFromInput } from '../project/context/flowr-analyzer-context';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -129,8 +130,8 @@ class CollectNumbersDataflowVisitor extends DataflowAwareCfgGuidedVisitor {
 class CollectSourcesSemanticVisitor extends SemanticCfgGuidedVisitor {
 	private sources: string[] = [];
 
-	constructor(controlFlow: ControlFlowInformation, normalizedAst: NormalizedAst, dataflow: DataflowGraph, config: FlowrConfigOptions) {
-		super({ controlFlow, normalizedAst, dfg: dataflow, flowrConfig: config, defaultVisitingOrder: 'forward' });
+	constructor(controlFlow: ControlFlowInformation, normalizedAst: NormalizedAst, dataflow: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext) {
+		super({ controlFlow, normalizedAst, dfg: dataflow, ctx, defaultVisitingOrder: 'forward' });
 	}
 
 	protected override onAssignmentCall({ source }: { source?: NodeId }): void {
@@ -532,7 +533,7 @@ Executing it with the CFG and Dataflow of the expression \`x <- 2; 3 -> x; assig
 
 ${await (async() => {
 	const res = await getCfg(shell, 'x <- 2; 3 -> x; assign("x", 42 + 21)');
-	const visitor = new CollectSourcesSemanticVisitor(res.info, res.ast, res.dataflow.graph, defaultConfigOptions);
+	const visitor = new CollectSourcesSemanticVisitor(res.info, res.ast, res.dataflow.graph, contextFromInput(''));
 	visitor.start();
 	const collected = visitor.getSources();
 	return collected.map(n => '\n- `' + n + '`').join('');

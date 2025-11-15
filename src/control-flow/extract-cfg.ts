@@ -23,7 +23,8 @@ import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-exp
 import { type ControlFlowInformation , CfgEdgeType, CfgVertexType, ControlFlowGraph } from './control-flow-graph';
 import { type CfgSimplificationPassName , simplifyControlFlowInformation } from './cfg-simplification';
 import { guard } from '../util/assert';
-import type { FlowrConfigOptions } from '../config';
+import type { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 
 const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
@@ -71,25 +72,30 @@ function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInf
  * This view is different from the computation of the dataflow graph and may differ,
  * especially because it focuses on intra-procedural analysis.
  * @param ast             - the normalized AST
- * @param config          - the flowR config
+ * @param ctx             - the flowR context
  * @param graph           - additional dataflow facts to consider by the control flow extraction
  * @param simplifications - a list of simplification passes to apply to the control flow graph
  * @see {@link extractCfgQuick} - for a simplified version of this function
  */
 export function extractCfg<Info = ParentInformation>(
 	ast:    NormalizedAst<Info & ParentInformation>,
-	config: FlowrConfigOptions,
+	ctx:    ReadOnlyFlowrAnalyzerContext,
 	graph?: DataflowGraph,
 	simplifications?: readonly CfgSimplificationPassName[]
 ): ControlFlowInformation {
-	return simplifyControlFlowInformation(foldAst(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds), { ast, dfg: graph, config }, simplifications);
+	return simplifyControlFlowInformation(cfgFoldProject(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds), { ast, dfg: graph, ctx }, simplifications);
 }
 
 /**
  * A version of {@link extractCfg} that is much quicker and does not apply any simplifications or dataflow information.
  */
 export function extractCfgQuick<Info = ParentInformation>(ast: NormalizedAst<Info>) {
-	return foldAst(ast.ast, cfgFolds);
+	return cfgFoldProject(ast.ast, cfgFolds);
+}
+
+function cfgFoldProject(proj: RProject<ParentInformation>, folds: FoldFunctions<ParentInformation, ControlFlowInformation>): ControlFlowInformation {
+	// TODO: support multifile
+	return foldAst(proj.files[0].root, folds);
 }
 
 function cfgLeaf(type: CfgVertexType.Expression | CfgVertexType.Statement): (leaf: RNodeWithParent) => ControlFlowInformation {

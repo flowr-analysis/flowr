@@ -9,7 +9,7 @@ const voidRange = rangeFrom(-1, -1, -1, -1);
 
 
 /**
- *
+ * Converts a normalized node into an unnamed argument (wraps it with an argument node).
  */
 export function toUnnamedArgument<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation> | undefined,

@@ -69,7 +69,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 	const definitionStack: RNodeWithParent[] = [];
 	const allDefinitions: SingleFunctionDefinitionInformation[] = [];
 
-	visitAst(input.normalizedRAst.ast,
+	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
 		node => {
 			if(node.type !== RType.FunctionDefinition) {
 				return;

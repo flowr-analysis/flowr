@@ -33,6 +33,7 @@ class DefaultFlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerProjectDis
 		const requests: (RParseRequest | FlowrFile<string>)[] = [];
 		/* the dummy approach of collecting all files, group R and Rmd files, and be done with it */
 		for(const file of getAllFilesSync(args.content)) {
+			// TODO: defer this to the plugins!!!
 			if(file.endsWith('.R') || file.endsWith('.r') || file.endsWith('.Rmd') || file.endsWith('.rmd')) {
 				requests.push({ content: file, request: 'file' });
 			} else {

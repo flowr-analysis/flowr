@@ -1,5 +1,4 @@
 import type { RShell } from '../../r-bridge/shell';
-import { requestFromInput } from '../../r-bridge/retriever';
 import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock } from './doc-code';
 import { printAsMs } from '../../util/text/time';
@@ -19,9 +18,10 @@ export interface ShowSearchOptions {
  */
 export async function showSearch(shell: RShell, code: string, search: FlowrSearchLike, { collapseResult = true }: ShowSearchOptions = {}): Promise<string> {
 	const now = performance.now();
-	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
+	const analyzer = await new FlowrAnalyzerBuilder()
 		.setParser(shell)
 		.build();
+	analyzer.addRequest(code);
 	const result = await analyzer.runSearch(search);
 	const duration = performance.now() - now;
 

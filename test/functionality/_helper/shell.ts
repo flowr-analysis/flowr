@@ -6,13 +6,14 @@ import { type TestLabel, type TestLabelContext , decorateLabelContext, dropTestL
 import { printAsBuilder } from './dataflow/dataflow-builder-printer';
 import { RShell } from '../../../src/r-bridge/shell';
 import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
-import { type fileProtocol, type RParseRequests , requestFromInput } from '../../../src/r-bridge/retriever';
-import {
+import { type fileProtocol, type RParseRequests  } from '../../../src/r-bridge/retriever';
+import { type ParentInformation,
 	type AstIdMap,
 	type IdGenerator,
 	type NormalizedAst,
 	type RNodeWithParent
-	, deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+	, deterministicCountingIdGenerator
+} from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
 	type DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
 	type TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE
@@ -47,6 +48,10 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 import type { ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
+import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
+import type { RProject } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
+import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -104,7 +109,7 @@ export function withTreeSitter(fn: (shell: TreeSitterExecutor) => void): () => v
 	};
 }
 
-function removeInformation<T extends Record<string, unknown>>(obj: T, includeTokens: boolean, ignoreColumns: boolean, ignoreMisc: boolean): T {
+function removeInformation<T extends RProject<unknown> | Record<string, unknown>>(obj: T, includeTokens: boolean, ignoreColumns: boolean, ignoreMisc: boolean): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
 		if(key === 'fullRange' || ignoreMisc && (key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nesting')) {
 			return undefined;
@@ -122,8 +127,21 @@ function removeInformation<T extends Record<string, unknown>>(obj: T, includeTok
 }
 
 
-function assertAstEqual<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string, ignoreMiscSourceInfo = true): void {
+function assertAstEqual<Info>(ast: RProject<Info> | RNode<Info>, expected: RProject<Info> | RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string, ignoreMiscSourceInfo = true): void {
 	ast = removeInformation(ast, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
+	if(expected.type === RType.ExpressionList) {
+		expected = {
+			type: RType.Project,
+			info: {
+				/* we do not care for the id here */
+				id: 'expected-root'
+			},
+			files: [{
+				filePath: undefined,
+				root:     expected
+			}]
+		};
+	}
 	expected = removeInformation(expected, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
 	try {
 		assert.deepStrictEqual(ast, expected);
@@ -135,12 +153,16 @@ function assertAstEqual<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTo
 	}
 }
 
+/**
+ * this is an old, and nowadays outdated method to retrieve the normalized AST for a given input
+ * Please prefer using the {@link FlowrAnalyzer} for new code!
+ */
 export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileProtocol}${string}` | string): Promise<NormalizedAst> => {
-	const request = requestFromInput(input);
+	const context = contextFromInput(input);
 	return (await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 		parser: shell,
-		request
-	}, defaultConfigOptions).allRemainingSteps()).normalize;
+		context
+	}).allRemainingSteps()).normalize;
 };
 
 export interface TestConfiguration extends MergeableRecord {
@@ -196,10 +218,8 @@ function skipTestBecauseXmlParseDataIsMissing(): boolean {
 }
 
 
-
-
 /**
- *
+ * Automatically skip a test if the given configuration is not met
  */
 export function skipTestBecauseConfigNotMet(userConfig?: Partial<TestConfiguration>): boolean {
 	const config = deepMergeObject(defaultTestConfiguration, userConfig);
@@ -233,8 +253,8 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
 	return describe.skipIf(skip)(`${decorateLabelContext(name, labelContext)} (input: ${input})`, () => {
 		const ts = !skipTreeSitter ? new TreeSitterExecutor() : undefined;
-		let shellAst: RNode | undefined;
-		let tsAst: RNode | undefined;
+		let shellAst: RProject | undefined;
+		let tsAst: RProject | undefined;
 		beforeAll(async() => {
 			shellAst = await makeShellAst();
 			if(!skipTreeSitter) {
@@ -243,33 +263,33 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 		});
 		afterAll(() => ts?.close());
 		test('shell', function() {
-			assertAstEqual(shellAst as RNode, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
+			assertAstEqual(shellAst as RProject, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(shellAst)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
 		test.skipIf(skipTreeSitter)('tree-sitter', function() {
-			assertAstEqual(tsAst as RNode, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
+			assertAstEqual(tsAst as RProject, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(tsAst)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
 		test.skipIf(skipTreeSitter)('compare', function() {
 			// we still ignore columns because we know those to be different (tree-sitter crushes tabs at the start of lines)
-			assertAstEqual(tsAst as RNode, shellAst as RNode, true, userConfig?.ignoreColumns === true,
+			assertAstEqual(tsAst as RProject, shellAst as RProject, true, userConfig?.ignoreColumns === true,
 				() => `tree-sitter ast: ${JSON.stringify(tsAst)}, vs. shell ast: ${JSON.stringify(shellAst)}`, false);
 		});
 
-		async function makeShellAst(): Promise<RNode> {
+		async function makeShellAst(): Promise<RProject> {
 			const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 				parser:  shell,
-				request: requestFromInput(input)
-			}, defaultConfigOptions);
+				context: contextFromInput(input)
+			});
 			const result = await pipeline.allRemainingSteps();
 			return result.normalize.ast;
 		}
 
-		async function makeTsAst(): Promise<RNode> {
+		async function makeTsAst(): Promise<RProject> {
 			const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
 				parser:  ts as TreeSitterExecutor,
-				request: requestFromInput(input)
-			}, defaultConfigOptions);
+				context: contextFromInput(input)
+			});
 			const result = await pipeline.allRemainingSteps();
 			return result.normalize.ast;
 		}
@@ -282,8 +302,8 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds),
 			parser:  shell,
-			request: requestFromInput(input),
-		}, defaultConfigOptions).allRemainingSteps();
+			context: contextFromInput(input),
+		}).allRemainingSteps();
 
 		const ast = result.normalize.ast;
 
@@ -336,6 +356,10 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	 * Please be aware that this is currently a work in progress.
 	 */
 	resolveIdsAsCriterion: boolean
+	/**
+	 * Which files to add to the project context
+	 */
+	addFiles:              FlowrFileProvider[]
 }
 
 function cropIfTooLong(str: string): string {
@@ -360,13 +384,17 @@ export function assertDataflow(
 ): void {
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
-		const analyzer = await new FlowrAnalyzerBuilder(typeof input === 'string' ? requestFromInput(input) : input)
+		const analyzer = await new FlowrAnalyzerBuilder()
 			.setInput({
 				getId: deterministicCountingIdGenerator(startIndexForDeterministicIds)
 			})
 			.setConfig(config)
 			.setParser(shell)
 			.build();
+		analyzer.addRequest(input);
+		if(userConfig?.addFiles) {
+			analyzer.addFile(...userConfig.addFiles);
+		}
 
 		if(typeof expected === 'function') {
 			expected = await expected(analyzer);
@@ -424,9 +452,9 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(decorateLabelContext(name, ['slice']), async function(this: unknown) {
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			getId:   getId,
-			request: requestFromInput(input),
+			context: contextFromInput(input),
 			parser:  shell
-		}, defaultConfigOptions).allRemainingSteps();
+		}).allRemainingSteps();
 		const reconstructed = NAIVE_RECONSTRUCT.processor({
 			normalize: result.normalize,
 			slice:     {
@@ -498,7 +526,7 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string | SingleSlicingCriterion[],
-	testConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams>,
+	testConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams> & { addFiles?: FlowrFileProvider[] },
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const skip = skipTestBecauseConfigNotMet(testConfig);
@@ -538,9 +566,13 @@ export function assertSliced(
 			false,
 			'compare ASTs',
 			function() {
-				const tsAst = tsResult?.normalize.ast as RNodeWithParent;
-				const shellAst = shellResult?.normalize.ast as RNodeWithParent;
-				assertAstEqual(tsAst, shellAst, true, true, () => `tree-sitter ast: ${JSON.stringify(tsAst)} (${normalizedAstToMermaidUrl(tsAst)}), vs. shell ast: ${JSON.stringify(shellAst)} (${normalizedAstToMermaidUrl(shellAst)})`, false);
+				const tsAst = tsResult?.normalize.ast as RProject<ParentInformation>;
+				const shellAst = shellResult?.normalize.ast as RProject<ParentInformation>;
+				assertAstEqual(
+					tsAst, shellAst, true, true,
+					() => `tree-sitter ast: ${JSON.stringify(tsAst)} (${normalizedAstToMermaidUrl(tsAst)}), vs. shell ast: ${JSON.stringify(shellAst)} (${normalizedAstToMermaidUrl(shellAst)})`,
+					false
+				);
 			},
 		);
 
@@ -550,7 +582,7 @@ export function assertSliced(
 			'cfg SAT properties',
 			function() {
 				const res = tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>;
-				const cfg = extractCfg(res.normalize, defaultConfigOptions, res.dataflow.graph);
+				const cfg = extractCfg(res.normalize, contextFromInput(''), res.dataflow.graph);
 				const check = assertCfgSatisfiesProperties(cfg, testConfig?.cfgExcludeProperties);
 				try {
 					assert.isTrue(check, 'cfg fails properties: ' + check + ' is not satisfied');
@@ -564,13 +596,17 @@ export function assertSliced(
 		handleAssertOutput(name, shell, input, testConfig);
 
 		async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
+			const context =  contextFromInput(input, cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions));
+			if(testConfig?.addFiles) {
+				context.addFiles(testConfig.addFiles);
+			}
 			return await createSlicePipeline(parser, {
 				getId:        getId(),
-				request:      requestFromInput(input),
+				context:      context,
 				criterion:    criteria,
 				autoSelectIf: testConfig?.autoSelectIf,
 				direction:    testConfig?.sliceDirection
-			}, cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions)).allRemainingSteps();
+			}).allRemainingSteps();
 		}
 		function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {
 			try {
@@ -642,10 +678,11 @@ export function assertContainerIndicesDefinition(
 ) {
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
-		const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(input))
+		const analyzer = await new FlowrAnalyzerBuilder()
 			.setConfig(config)
 			.setParser(shell)
 			.build();
+		analyzer.addRequest(input);
 		const dataflow = await analyzer.dataflow();
 		const normalize = await analyzer.normalize();
 		const result = (await analyzer.runSearch(search)).getElements();

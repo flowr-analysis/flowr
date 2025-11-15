@@ -6,13 +6,14 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import { builtInId } from '../../../../../src/dataflow/environments/built-in';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
-import { setSourceProvider } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
-import { requestProviderFromFile, requestProviderFromText } from '../../../../../src/r-bridge/retriever';
-import { afterAll, beforeAll, describe } from 'vitest';
+import { describe } from 'vitest';
 import { type FlowrLaxSourcingOptions , amendConfig, defaultConfigOptions } from '../../../../../src/config';
 import { deepMergeObject } from '../../../../../src/util/objects';
+import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
 
 describe.sequential('source', withShell(shell => {
+	// TODO. drop source prvide, change test reporter to default iuf dot doesnt tell you which fail and why
+	// TODO: swtich to project analyzers with file, remove source provider globally!!
 	const sources = {
 		simple:     'N <- 9',
 		recursive1: 'x <- 1\nsource("recursive2")',
@@ -21,12 +22,7 @@ describe.sequential('source', withShell(shell => {
 		closure2:   'f <- function() { x <<- 3 }'
 	};
 
-	beforeAll(() => {
-		setSourceProvider(requestProviderFromText(sources));
-	});
-	afterAll(() => {
-		setSourceProvider(requestProviderFromFile());
-	});
+	const addFiles = Object.entries(sources).map(([name, content]) => new FlowrInlineTextFile(name, content));
 
 	const config = amendConfig(defaultConfigOptions, c => {
 		c.solver.resolveSource = deepMergeObject(
@@ -52,7 +48,7 @@ describe.sequential('source', withShell(shell => {
 		.defineVariable('simple-1:1-1:6-0', 'N', { definedBy: ['simple-1:1-1:6-1', 'simple-1:1-1:6-2'] })
 		.addControlDependency('simple-1:1-1:6-0', '3', true)
 		.markIdForUnknownSideEffects('7'),
-	undefined, undefined, config
+	{ addFiles }, undefined, config
 	);
 
 	assertDataflow(label('multiple source', ['sourcing-external-files', 'strings', 'unnamed-arguments', 'normal-definition', 'newlines']), shell, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)',  emptyGraph()
@@ -84,7 +80,7 @@ describe.sequential('source', withShell(shell => {
 		.defineVariable('simple-3:1-3:6-0', 'N', { definedBy: ['simple-3:1-3:6-1', 'simple-3:1-3:6-2'] })
 		.addControlDependency('simple-3:1-3:6-0', '10', true)
 		.markIdForUnknownSideEffects('14'),
-	undefined, undefined, config
+	{ addFiles }, undefined, config
 	);
 
 	assertDataflow(label('conditional', ['if', 'name-normal', 'sourcing-external-files', 'unnamed-arguments', 'strings']), shell, 'if (x) { source("simple") }\ncat(N)',  emptyGraph()
@@ -110,8 +106,7 @@ describe.sequential('source', withShell(shell => {
 		.addControlDependency('simple-1:10-1:15-0', '6', true)
 		.addControlDependency('simple-1:10-1:15-0', '8', true)
 		.markIdForUnknownSideEffects('12'),
-
-	undefined, undefined, config
+	{ addFiles }, undefined, config
 	);
 
 	// missing sources should just be ignored
@@ -120,10 +115,10 @@ describe.sequential('source', withShell(shell => {
 		.calls('3', builtInId('source'))
 		.constant('1')
 		.markIdForUnknownSideEffects('3'),
-	undefined, undefined, config
+	{ addFiles }, undefined, config
 	);
 
-	assertDataflow(label('recursive source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), shell, sources.recursive1,  emptyGraph()
+	assertDataflow(label('recursive source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), shell, { request: 'file', content: 'recursive1' },  emptyGraph()
 		.use('recursive2-2:1-2:6-1', 'x')
 		.reads('recursive2-2:1-2:6-1', '0')
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
@@ -143,15 +138,16 @@ describe.sequential('source', withShell(shell => {
 		/* indicate recursion */
 		.markIdForUnknownSideEffects('recursive2-2:1-2:6-7')
 		.markIdForUnknownSideEffects('recursive2-2:1-2:6-3'),
-	undefined, undefined, config
+	{ addFiles }, undefined, config
 	);
 
 	describe('Increase source limit', () => {
-		assertDataflow(label('recursive source (higher limit)', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), shell, sources.recursive1,  emptyGraph()
+		assertDataflow(label('recursive source (higher limit)', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), shell, { request: 'file', content: 'recursive1' },  emptyGraph()
 			.use('recursive2-2:1-2:6-1', 'x')
 			.use('1::recursive2-2:1-2:6-1', 'x')
 			.use('2::recursive2-2:1-2:6-1', 'x'), {
-			expectIsSubgraph: true
+			expectIsSubgraph: true,
+			addFiles
 		},
 		undefined, amendConfig(defaultConfigOptions, c => {
 			c.solver.resolveSource = deepMergeObject(
@@ -178,7 +174,7 @@ describe.sequential('source', withShell(shell => {
 		.constant('simple-2:1-2:6-1')
 		.constant('1')
 		.defineVariable('0', 'x', { definedBy: ['1', '2'] }),
-	undefined, undefined, config
+	{ addFiles }, undefined, config
 	);
 
 	assertDataflow(label('sourcing a closure', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers']),
@@ -224,7 +220,7 @@ describe.sequential('source', withShell(shell => {
 			.addControlDependency('closure1-1:1-1:6-0', '3', true)
 			.defineVariable('4', 'g', { definedBy: ['6', '7'] })
 			.markIdForUnknownSideEffects('12'),
-		undefined, undefined, config
+		{ addFiles }, undefined, config
 	);
 	assertDataflow(label('sourcing a closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers', ...OperatorDatabase['<<-'].capabilities]),
 		shell, 'x <- 2\nsource("closure2")\nf()\nprint(x)', emptyGraph()
@@ -268,6 +264,6 @@ describe.sequential('source', withShell(shell => {
 			.defineVariable('closure2-2:1-2:6-0', 'f', { definedBy: ['closure2-2:1-2:6-7', 'closure2-2:1-2:6-8'] })
 			.addControlDependency('closure2-2:1-2:6-0', '6', true)
 			.markIdForUnknownSideEffects('12'),
-		undefined, undefined, config
+		{ addFiles }, undefined, config
 	);
 }));

@@ -49,7 +49,7 @@ async function getSlice() {
 
 	await slicer.init(
 		options['input-is-text']
-			? { request: 'text', content: options.input }
+			? { request: 'text', content: options.input.replaceAll('\\n', '\n') }
 			: { request: 'file', content: options.input },
 		config,
 		options['no-magic-comments'] ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)

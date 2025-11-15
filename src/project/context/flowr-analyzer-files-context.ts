@@ -17,6 +17,7 @@ import { type FilePath, FlowrFile, type FlowrFileProvider, FlowrTextFile, FileRo
 import type { FlowrDescriptionFile } from '../plugins/file-plugins/flowr-description-file';
 import { log } from '../../util/log';
 import fs from 'fs';
+import path from 'path';
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
@@ -31,8 +32,6 @@ export interface RProjectAnalysisRequest {
     readonly content: string;
 }
 
-// TODO: also support a quick add-flowr-file which directly accests the FlowrFileProvider interface and adsigns the role based on plugins
-// TODO: option to toggle that the files context auto loads from disk
 export type RAnalysisRequest = RParseRequest | RProjectAnalysisRequest
 
 export type RoleBasedFiles = {
@@ -76,6 +75,29 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * ```
 	 */
 	getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role];
+	/**
+	 * Check if the context has a file with the given path.
+	 * Please note, that this may also check the file system, depending on the configuration
+	 * (see {@link FlowrConfigOptions.project.resolveUnknownPathsOnDisk}).
+	 * @param path - The path to the file.
+	 *
+	 * If you do not know the exact path or, e.g., casing of the file, use {@link exists} instead.
+	 */
+	hasFile(path: string): boolean;
+	/**
+	 * Check if a file exists at the given path, optionally ignoring case.
+	 * @param path - The path to the file.
+	 * @param ignoreCase - Whether to ignore case when checking for the file.
+	 *
+	 * Please note that this method checks the file system based on the configuration (see {@link FlowrConfigOptions.project.resolveUnknownPathsOnDisk}).
+	 * @returns The actual path of the file if it exists, otherwise `undefined`.
+	 */
+	exists(path: string, ignoreCase: boolean): string | undefined;
+	/**
+	 * Until parsers support multiple request types from the virtual context system,
+	 * we resolve their contents.
+	 */
+	resolveRequest(r: RParseRequest): { r: RParseRequestFromText, path?: string };
 }
 
 /**
@@ -173,7 +195,37 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	}
 
 	public hasFile(path: string): boolean {
-		return this.files.has(path);
+		return this.files.has(path)
+			|| (
+				this.ctx.config.project.resolveUnknownPathsOnDisk && fs.existsSync(path)
+			);
+	}
+
+	public exists(p: string, ignoreCase: boolean): string | undefined {
+		try {
+			if(!ignoreCase) {
+				return this.hasFile(p) ? p : undefined;
+			}
+			// walk the directory and find the first match
+			const dir = path.dirname(p);
+			const file = path.basename(p);
+			// try to find in local known files first
+			const localFound = Array.from(this.files.keys()).find(f => {
+				return path.dirname(f) === dir && path.basename(f).toLowerCase() === file.toLowerCase();
+
+			});
+			if(localFound) {
+				return localFound;
+			}
+			if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
+				const files = fs.readdirSync(dir);
+				const found = files.find(f => f.toLowerCase() === file.toLowerCase());
+				return found ? path.join(dir, found) : undefined;
+			}
+			return undefined;
+		} catch{
+			return undefined;
+		}
 	}
 
 	private fileLoadPlugins(f: FlowrFileProvider) {
@@ -188,17 +240,12 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return fFinal;
 	}
 
-	/**
-	 * Until parsers support multiple request types from the virtual context system,
-	 * we resolve their contents.
-	 */
 	public resolveRequest(r: RParseRequest): { r: RParseRequestFromText, path?: string } {
 		if(r.request === 'text') {
 			return { r };
 		}
 
 		const file = this.files.get(r.content);
-		// TODO: load from disk fallback (flowR context)
 		if(file === undefined && this.ctx.config.project.resolveUnknownPathsOnDisk) {
 			fileLog.debug(`File ${r.content} not found in context, trying to load from disk.`);
 			if(fs.existsSync(r.content)) {
@@ -209,6 +256,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 						request: 'text',
 						content: loadedFile.content(),
 					},
+					path: loadedFile.path()
 				};
 			}
 		}

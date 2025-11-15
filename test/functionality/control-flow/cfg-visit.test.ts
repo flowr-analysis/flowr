@@ -28,12 +28,13 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					}
 				}
 
+				const context = contextFromInput(code, config);
 				const result = await createDataflowPipeline(parser, {
-					context: contextFromInput(code, config)
+					context
 				}).allRemainingSteps();
-				let cfg = extractCfg(result.normalize, config, result.dataflow?.graph);
+				let cfg = extractCfg(result.normalize, context, result.dataflow?.graph);
 				if(useBasicBlocks) {
-					cfg = simplifyControlFlowInformation(cfg, { ast: result.normalize, dfg: result.dataflow.graph, config }, ['to-basic-blocks', 'remove-dead-code']);
+					cfg = simplifyControlFlowInformation(cfg, { ast: result.normalize, dfg: result.dataflow.graph, ctx: context }, ['to-basic-blocks', 'remove-dead-code']);
 				}
 
 				const configuration: BasicCfgGuidedVisitorConfiguration = {

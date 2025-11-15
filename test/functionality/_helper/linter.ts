@@ -34,10 +34,6 @@ export function assertLinter<Name extends LintingRuleNames>(
 ) {
 	test(decorateLabelContext(name, ['linter']), async() => {
 		const analyzer = await new FlowrAnalyzerBuilder()
-			.add(lintingRuleConfig?.useAsFilePath ?
-				requestFromInput(fileProtocol + lintingRuleConfig.useAsFilePath) :
-				requestFromInput(code)
-			)
 			.setInput({
 				getId: deterministicCountingIdGenerator(0)
 			})
@@ -50,8 +46,12 @@ export function assertLinter<Name extends LintingRuleNames>(
 			})
 			.build();
 		if(lintingRuleConfig?.useAsFilePath) {
-			analyzer.context().addFile(new FlowrInlineTextFile(lintingRuleConfig.useAsFilePath, code));
+			analyzer.addFile(new FlowrInlineTextFile(lintingRuleConfig.useAsFilePath, code));
 		}
+		analyzer.addRequest(lintingRuleConfig?.useAsFilePath ?
+			requestFromInput(fileProtocol + lintingRuleConfig.useAsFilePath) :
+			requestFromInput(code)
+		);
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
 		const results = await executeLintingRule(ruleName, analyzer, lintingRuleConfig);

@@ -1,9 +1,7 @@
 import { assertSliced, withShell } from '../../../_helper/shell';
-import { setSourceProvider } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
-import { requestProviderFromFile, requestProviderFromText } from '../../../../../src/r-bridge/retriever';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import { describe, beforeAll, afterAll } from 'vitest';
+import { describe } from 'vitest';
 
 describe.sequential('source', withShell(shell => {
 	const sources = {
@@ -11,8 +9,10 @@ describe.sequential('source', withShell(shell => {
 		closure1: 'f <- function() { function() 3 }',
 		closure2: 'f <- function() { x <<- 3 }'
 	};
+	/* TODO
 	beforeAll(() => setSourceProvider(requestProviderFromText(sources)));
 	afterAll(() => setSourceProvider(requestProviderFromFile()));
+	 */
 
 	assertSliced(label('simple source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']),
 		shell, 'source("simple")\ncat(N)', ['2@N'], 'source("simple")\nN');

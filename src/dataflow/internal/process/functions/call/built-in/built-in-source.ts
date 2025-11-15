@@ -5,9 +5,7 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import {
 	type RParseRequestFromText,
 	type RParseRequest,
-	type RParseRequestProvider,
-	removeRQuotes,
-	requestProviderFromFile
+	removeRQuotes
 } from '../../../../../../r-bridge/retriever';
 import {
 	type IdGenerator,
@@ -33,22 +31,9 @@ import { isValue } from '../../../../../eval/values/r-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import type { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-
-let sourceProvider = requestProviderFromFile();
-
-/**
- * Returns the current (global) source provider
- */
-export function getSourceProvider(): RParseRequestProvider {
-	return sourceProvider;
-}
-
-/**
- * Sets the current (global) source provider
- */
-export function setSourceProvider(provider: RParseRequestProvider): void {
-	sourceProvider = provider;
-}
+import type {
+	ReadOnlyFlowrAnalyzerContext
+} from '../../../../../../project/context/flowr-analyzer-context';
 
 /**
  * Infers working directories based on the given option and reference chain
@@ -99,7 +84,11 @@ function applyReplacements(path: string, replacements: readonly Record<string, s
  * @param seed          - the path originally requested in the `source` call
  * @param data          - more information on the loading context
  */
-export function findSource(resolveSource: FlowrLaxSourcingOptions | undefined, seed: string, data: { referenceChain: readonly (string | undefined)[] }): string[] | undefined {
+export function findSource(
+	resolveSource: FlowrLaxSourcingOptions | undefined,
+	seed: string,
+	data: { referenceChain: readonly (string | undefined)[], ctx: ReadOnlyFlowrAnalyzerContext },
+): string[] | undefined {
 	const capitalization = resolveSource?.ignoreCapitalization ?? false;
 
 	const explorePaths = (resolveSource?.searchPath ?? []).concat(
@@ -139,8 +128,8 @@ export function findSource(resolveSource: FlowrLaxSourcingOptions | undefined, s
 	for(const explore of [undefined, ...explorePaths]) {
 		for(const tryPath of tryPaths) {
 			const effectivePath = explore ? path.join(explore, tryPath) : tryPath;
-
-			const get = sourceProvider.exists(effectivePath, capitalization) ?? sourceProvider.exists(returnPlatformPath(effectivePath), capitalization);
+			const context = data.ctx.files;
+			const get = context.exists(effectivePath, capitalization) ?? context.exists(returnPlatformPath(effectivePath), capitalization);
 
 			if(get && !found.includes(effectivePath)) {
 				found.push(returnPlatformPath(effectivePath));
@@ -201,18 +190,16 @@ export function processSourceCall<OtherInfo>(
 			filepath = filepath?.[0];
 		}
 		if(filepath !== undefined) {
-			const request = sourceProvider.createRequest(filepath);
-
 			// check if the sourced file has already been dataflow analyzed, and if so, skip it
 			const limit = data.ctx.config.solver.resolveSource?.repeatedSourceLimit ?? 0;
-			const findCount = data.referenceChain.filter(e => e !== undefined && request.content).length;
+			const findCount = data.referenceChain.filter(e => e !== undefined && filepath === e).length;
 			if(findCount > limit) {
-				dataflowLogger.warn(`Found cycle (>=${limit + 1}) in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
+				dataflowLogger.warn(`Found cycle (>=${limit + 1}) in dataflow analysis for ${JSON.stringify(filepath)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
 				handleUnknownSideEffect(information.graph, information.environment, rootId);
 				return information;
 			}
 
-			return sourceRequest(rootId, request, data, information, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + path, name.location));
+			return sourceRequest(rootId, { request: 'file', content: filepath }, data, information, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + path, name.location));
 		}
 	}
 

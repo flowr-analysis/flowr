@@ -25,6 +25,7 @@ import { requestFromInput } from '../../r-bridge/retriever';
 import type { FlowrConfigOptions } from '../../config';
 import { defaultConfigOptions } from '../../config';
 import type { FlowrFileProvider } from './flowr-file';
+import { FlowrInlineTextFile } from './flowr-file';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -113,6 +114,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
  * Please use this only for a "quick" setup, or to have compatibility with the pre-project flowR era.
  * Otherwise, refer to a {@link FlowrAnalyzerBuilder} to create a fully customized {@link FlowrAnalyzer} instance.
  * @see {@link requestFromInput} - for details on how inputs are processed into requests.
+ * @see {@link contextFromSources} - to create a context from source code strings directly.
  */
 export function contextFromInput(
 	input: `${typeof fileProtocol}${string}` | string | readonly string[] | RParseRequests,
@@ -130,5 +132,30 @@ export function contextFromInput(
 		const requests: RParseRequests = Array.isArray(input) ? input : [input];
 		context.addRequests(requests);
 	}
+	return context;
+}
+
+/**
+ * Create a {@link FlowrAnalyzerContext} from a set of source code strings.
+ * @param sources - A record mapping file paths to their source code content.
+ * @param config  - Configuration options for the analyzer.
+ * @param plugins - Optional plugins to extend the analyzer's functionality.
+ * @see {@link contextFromInput}    - to create a context from input requests.
+ * @see {@link FlowrInlineTextFile} - to create inline text files for the sources.
+ */
+export function contextFromSources(
+	sources: Record<string, string>,
+	config = defaultConfigOptions,
+	plugins?: FlowrAnalyzerPlugin[],
+): FlowrAnalyzerContext {
+	const context = new FlowrAnalyzerContext(
+		config,
+		arraysGroupBy(plugins ?? [], (p) => p.type)
+	);
+
+	for(const [p, c] of Object.entries(sources)) {
+		context.addFile(new FlowrInlineTextFile(p, c));
+	}
+
 	return context;
 }

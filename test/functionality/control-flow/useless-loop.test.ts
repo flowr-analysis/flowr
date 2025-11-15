@@ -1,7 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
-import { defaultConfigOptions } from '../../../src/config';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { onlyLoopsOnce } from '../../../src/control-flow/useless-loop';
 import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../src/slicing/criterion/parse';
@@ -11,12 +10,18 @@ import { contextFromInput } from '../../../src/project/context/flowr-analyzer-co
 describe('One Iteration Loop Detection', withTreeSitter(shell => {
 	function checkLoop(name: string, code: string, node: SingleSlicingCriterion, expectedLoopsOnlyOnce: boolean) {
 		test(name, async() => {
+			const context = contextFromInput(code.trim());
 			const result = await createDataflowPipeline(shell, {
-				context: contextFromInput(code.trim())
+				context
 			}).allRemainingSteps();
-			const cfg = extractCfg(result.normalize, defaultConfigOptions, result.dataflow.graph);
+			const cfg = extractCfg(result.normalize, contextFromInput(''), result.dataflow.graph);
 
-			const actual = onlyLoopsOnce(slicingCriterionToId(node, result.normalize.idMap), result.dataflow.graph, cfg, result.normalize, defaultConfigOptions);
+			const actual = onlyLoopsOnce(
+				slicingCriterionToId(node, result.normalize.idMap),
+				result.dataflow.graph, cfg,
+				result.normalize,
+				context
+			);
 			assert(actual === expectedLoopsOnlyOnce, `Expected to ${expectedLoopsOnlyOnce ? 'loop only once' : 'loop multiple times'}`);
 		});
 	}

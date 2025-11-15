@@ -7,7 +7,6 @@ import { createNormalizePipeline } from '../../../../src/core/steps/pipeline/def
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
 import { happensBefore } from '../../../../src/control-flow/happens-before';
 import { cfgToMermaidUrl } from '../../../../src/util/mermaid/cfg';
-import { defaultConfigOptions } from '../../../../src/config';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 /**
@@ -22,10 +21,11 @@ export function assertHappensBefore(shell: RShell, code: string, a: SingleSlicin
 	// shallow copy is important to avoid killing the CFG :c
 	return describe(code, () => {
 		test.each([shell, new TreeSitterExecutor()])('%s', async parser => {
+			const context = contextFromInput(code);
 			const result = await createNormalizePipeline(parser, {
-				context: contextFromInput(code)
+				context
 			}).allRemainingSteps();
-			const cfg = extractCfg(result.normalize, defaultConfigOptions);
+			const cfg = extractCfg(result.normalize, context);
 			const aResolved = slicingCriterionToId(a, result.normalize.idMap);
 			const bResolved = slicingCriterionToId(b, result.normalize.idMap);
 			try {

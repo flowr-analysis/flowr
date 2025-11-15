@@ -176,10 +176,10 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		let result: ControlFlowInformation;
 		switch(kind) {
 			case CfgKind.WithDataflow:
-				result = extractCfg(normalized, this.args.context.config, (await this.dataflow()).graph, simplifications);
+				result = extractCfg(normalized, this.args.context, (await this.dataflow()).graph, simplifications);
 				break;
 			case CfgKind.NoDataflow:
-				result = extractCfg(normalized, this.args.context.config, undefined, simplifications);
+				result = extractCfg(normalized, this.args.context, undefined, simplifications);
 				break;
 			case CfgKind.Quick:
 				result = this.peekDataflow()?.cfgQuick ?? extractCfgQuick(normalized);

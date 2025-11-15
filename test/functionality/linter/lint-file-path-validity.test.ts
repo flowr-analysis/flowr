@@ -1,6 +1,4 @@
-import { beforeAll, describe } from 'vitest';
-import { setSourceProvider } from '../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
-import { requestProviderFromText } from '../../../src/r-bridge/retriever';
+import { describe } from 'vitest';
 import { assertLinter } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { Unknown } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
@@ -9,9 +7,11 @@ import { withTreeSitter } from '../_helper/shell';
 describe('flowR linter', withTreeSitter(parser => {
 	describe('file path validity', () => {
 		const files = ['file.csv', 'path/to/deep-file.csv', 'deep-file.csv'];
+		/* TODO
 		beforeAll(() => {
 			setSourceProvider(requestProviderFromText(Object.fromEntries(files.map(f => [f, '']))));
 		});
+		 */
 
 		/* As the script contains no file paths, we expect no issues */
 		assertLinter('none', parser, 'cat("hello")', 'file-path-validity', [], { totalReads: 0, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 });

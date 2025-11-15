@@ -6,7 +6,7 @@ import { type TestLabel, type TestLabelContext , decorateLabelContext, dropTestL
 import { printAsBuilder } from './dataflow/dataflow-builder-printer';
 import { RShell } from '../../../src/r-bridge/shell';
 import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
-import { type fileProtocol, type RParseRequests , requestFromInput } from '../../../src/r-bridge/retriever';
+import { type fileProtocol, type RParseRequests  } from '../../../src/r-bridge/retriever';
 import { type ParentInformation,
 	type AstIdMap,
 	type IdGenerator,
@@ -379,13 +379,14 @@ export function assertDataflow(
 ): void {
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
-		const analyzer = await new FlowrAnalyzerBuilder(typeof input === 'string' ? requestFromInput(input) : input)
+		const analyzer = await new FlowrAnalyzerBuilder()
 			.setInput({
 				getId: deterministicCountingIdGenerator(startIndexForDeterministicIds)
 			})
 			.setConfig(config)
 			.setParser(shell)
 			.build();
+		analyzer.addRequest(input);
 
 		if(typeof expected === 'function') {
 			expected = await expected(analyzer);
@@ -573,7 +574,7 @@ export function assertSliced(
 			'cfg SAT properties',
 			function() {
 				const res = tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>;
-				const cfg = extractCfg(res.normalize, defaultConfigOptions, res.dataflow.graph);
+				const cfg = extractCfg(res.normalize, contextFromInput(''), res.dataflow.graph);
 				const check = assertCfgSatisfiesProperties(cfg, testConfig?.cfgExcludeProperties);
 				try {
 					assert.isTrue(check, 'cfg fails properties: ' + check + ' is not satisfied');
@@ -665,10 +666,11 @@ export function assertContainerIndicesDefinition(
 ) {
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
-		const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(input))
+		const analyzer = await new FlowrAnalyzerBuilder()
 			.setConfig(config)
 			.setParser(shell)
 			.build();
+		analyzer.addRequest(input);
 		const dataflow = await analyzer.dataflow();
 		const normalize = await analyzer.normalize();
 		const result = (await analyzer.runSearch(search)).getElements();

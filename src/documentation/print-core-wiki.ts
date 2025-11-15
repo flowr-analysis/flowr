@@ -48,12 +48,12 @@ import { contextFromInput } from '../project/context/flowr-analyzer-context';
 
 async function makeAnalyzerExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
-		.addRequestFromInput('x <- 1; y <- x; print(y);')
 		.amendConfig(c => {
 			c.ignoreSourceCalls = true;
 		})
 		.setEngine('tree-sitter')
 		.build();
+	analyzer.addRequest('x <- 1; y <- x; print(y);');
 	return analyzer;
 }
 

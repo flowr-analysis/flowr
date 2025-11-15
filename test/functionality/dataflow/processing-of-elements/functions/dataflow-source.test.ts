@@ -6,13 +6,13 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import { builtInId } from '../../../../../src/dataflow/environments/built-in';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
-import { setSourceProvider } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
-import { requestProviderFromFile, requestProviderFromText } from '../../../../../src/r-bridge/retriever';
-import { afterAll, beforeAll, describe } from 'vitest';
+import { describe } from 'vitest';
 import { type FlowrLaxSourcingOptions , amendConfig, defaultConfigOptions } from '../../../../../src/config';
 import { deepMergeObject } from '../../../../../src/util/objects';
 
 describe.sequential('source', withShell(shell => {
+	// TODO. drop source prvide, change test reporter to default iuf dot doesnt tell you which fail and why
+	// TODO: swtich to project analyzers with file, remove source provider globally!!
 	const sources = {
 		simple:     'N <- 9',
 		recursive1: 'x <- 1\nsource("recursive2")',
@@ -20,13 +20,6 @@ describe.sequential('source', withShell(shell => {
 		closure1:   'f <- function() { function() 3 }',
 		closure2:   'f <- function() { x <<- 3 }'
 	};
-
-	beforeAll(() => {
-		setSourceProvider(requestProviderFromText(sources));
-	});
-	afterAll(() => {
-		setSourceProvider(requestProviderFromFile());
-	});
 
 	const config = amendConfig(defaultConfigOptions, c => {
 		c.solver.resolveSource = deepMergeObject(

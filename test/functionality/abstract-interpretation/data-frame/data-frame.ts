@@ -20,7 +20,10 @@ import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/a
 import { getRangeEnd } from '../../../../src/util/range';
 import { decorateLabelContext, type TestLabel } from '../../_helper/label';
 import { type TestConfiguration , skipTestBecauseConfigNotMet } from '../../_helper/shell';
-import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import {
+	type FlowrAnalyzerContext,
+	type ReadOnlyFlowrAnalyzerContext
+	, contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 /**
  * The default flowR configuration options for performing abstract interpretation.
@@ -174,16 +177,18 @@ export function assertDataFrameDomain(
 ) {
 	const { name = code } = config ?? {};
 	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
+	let context: FlowrAnalyzerContext | undefined;
 
 	beforeAll(async() => {
 		if(!skipTestBecauseConfigNotMet(config)) {
-			result = await createDataflowPipeline(parser, { context: contextFromInput(code, flowRConfig) }).allRemainingSteps();
+			context = contextFromInput(code, flowRConfig);
+			result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
 		}
 	});
 
 	test.skipIf(skipTestBecauseConfigNotMet(config)).each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
-		const [inferred] = getInferredDomainForCriterion(result, criterion, flowRConfig);
+		const [inferred] = getInferredDomainForCriterion(result, criterion, context as ReadOnlyFlowrAnalyzerContext);
 		assertDomainMatches(inferred, expect, DataFrameShapeExact);
 	});
 }
@@ -205,16 +210,18 @@ export function assertDataFrameOperation(
 ) {
 	const { name = code } = config ?? {};
 	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
+	let context: FlowrAnalyzerContext | undefined;
 
 	beforeAll(async() => {
 		if(!skipTestBecauseConfigNotMet(config)) {
-			result = await createDataflowPipeline(parser, { context: contextFromInput(code, flowRConfig) }).allRemainingSteps();
+			context = contextFromInput(code, flowRConfig);
+			result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
 		}
 	});
 
 	test.skipIf(skipTestBecauseConfigNotMet(config)).each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
-		const operations = getInferredOperationsForCriterion(result, criterion, flowRConfig);
+		const operations = getInferredOperationsForCriterion(result, criterion, context as ReadOnlyFlowrAnalyzerContext);
 		assert.containSubset(operations, expect, `expected ${JSON.stringify(operations)} to equal ${JSON.stringify(expect)}`);
 	});
 }
@@ -246,13 +253,14 @@ export function testDataFrameDomainAgainstReal(
 		if(typeof skipRun === 'boolean' ? skipRun : skipRun()) {
 			skip();
 		}
-		const result = await createDataflowPipeline(parser, { context: contextFromInput(code, flowRConfig) }).allRemainingSteps();
+		const context = contextFromInput(code, flowRConfig);
+		const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
 		const testEntries: CriterionTestEntry[] = [];
 
 		for(const entry of criteria) {
 			const criterion = Array.isArray(entry) ? entry[0] : entry;
 			const matching = { ...DataFrameShapeExact, ...(Array.isArray(entry) ? entry[1] : {}) };
-			const [inferred, node] = getInferredDomainForCriterion(result, criterion, flowRConfig);
+			const [inferred, node] = getInferredDomainForCriterion(result, criterion, context);
 
 			if(node.type !== RType.Symbol) {
 				throw new Error(`slicing criterion ${criterion} does not refer to an R symbol`);
@@ -351,7 +359,7 @@ function getDefaultMatchingType(expected: ExpectedDataFrameShape | undefined, ma
 function getInferredDomainForCriterion(
 	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
 	criterion: SingleSlicingCriterion,
-	config: FlowrConfigOptions
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): [DataFrameDomain | undefined, RNode<ParentInformation>] {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
 	const nodeId = slicingCriterionToId(criterion, idMap);
@@ -360,8 +368,8 @@ function getInferredDomainForCriterion(
 	if(node === undefined) {
 		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
 	}
-	const cfg = extractCfg(result.normalize, config, result.dataflow.graph);
-	inferDataFrameShapes(cfg, result.dataflow.graph, result.normalize, config);
+	const cfg = extractCfg(result.normalize, ctx, result.dataflow.graph);
+	inferDataFrameShapes(cfg, result.dataflow.graph, result.normalize, ctx);
 	const value = resolveIdToDataFrameShape(node, result.dataflow.graph);
 
 	return [value, node];
@@ -370,7 +378,7 @@ function getInferredDomainForCriterion(
 function getInferredOperationsForCriterion(
 	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
 	criterion: SingleSlicingCriterion,
-	config: FlowrConfigOptions
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameOperation[] {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
 	const nodeId = slicingCriterionToId(criterion, idMap);
@@ -379,8 +387,8 @@ function getInferredOperationsForCriterion(
 	if(node === undefined) {
 		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
 	}
-	const cfg = extractCfg(result.normalize, config, result.dataflow.graph);
-	inferDataFrameShapes(cfg, result.dataflow.graph, result.normalize, config);
+	const cfg = extractCfg(result.normalize, ctx, result.dataflow.graph);
+	inferDataFrameShapes(cfg, result.dataflow.graph, result.normalize, ctx);
 
 	return hasDataFrameExpressionInfo(node) ? node.info.dataFrame.operations : [];
 }

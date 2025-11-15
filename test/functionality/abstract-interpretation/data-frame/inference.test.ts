@@ -1,9 +1,7 @@
 import { afterAll, beforeAll, describe } from 'vitest';
 import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import { PosIntervalTop } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
-import { setSourceProvider } from '../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
 import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
-import { requestProviderFromFile, requestProviderFromText } from '../../../../src/r-bridge/retriever';
 import { withShell } from '../../_helper/shell';
 import { assertDataFrameDomain, assertDataFrameOperation, ColNamesOverapproximation, DataFrameShapeOverapproximation, testDataFrameDomain, testDataFrameDomainAgainstReal, testDataFrameDomainWithSource } from './data-frame';
 
@@ -30,13 +28,17 @@ describe.sequential('Data Frame Shape Inference', withShell(shell => {
 	}
 
 	beforeAll(async() => {
+		/* TODO
 		setSourceProvider(requestProviderFromText(sources));
+		 */
 		librariesInstalled = await shell.isPackageInstalled('dplyr') && await shell.isPackageInstalled('readr');
 		shell.clearEnvironment();
 	});
 
 	afterAll(() => {
+		/* TODO
 		setSourceProvider(requestProviderFromFile());
+		 */
 	});
 
 	describe('Control Flow', () => {

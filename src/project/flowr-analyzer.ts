@@ -13,7 +13,7 @@ import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './conte
 import { CfgKind } from './cfg-kind';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
 import type { RParseRequestFromFile } from '../r-bridge/retriever';
-import { fileProtocol, isParseRequest, requestFromInput } from '../r-bridge/retriever';
+import { fileProtocol, requestFromInput } from '../r-bridge/retriever';
 import { isFilePath } from '../util/files';
 import type { FlowrFileProvider } from './context/flowr-file';
 
@@ -29,13 +29,15 @@ export interface FlowrAnalysisProvider<Parser extends KnownParser = KnownParser>
 	context():  FlowrAnalyzerContext
 	/**
 	 * Add one or multiple requests to analyze.
-	 * @param request - One or multiple requests or a file path (with the `file://` protocol). If you just enter a string, it will be interpreted as R code.
+	 * @param request - One or multiple requests or a file path (with the `file://` protocol). If you just enter a string without the {@link fileProtocol}, it will be interpreted as R code.
+	 * @see {@link FlowrAnalysisProvider.addFile|addFile} - for adding files to the analyzer's context.
 	 */
-	addRequest(request: RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string): void
+	addRequest(...request: (RAnalysisRequest | `${typeof fileProtocol}${string}` | string)[]): void
 	/**
 	 * Add one or multiple files to the analyzer's context.
 	 * @param f - One or multiple file paths, file providers, or parse requests from file.
 	 * @see {@link FlowrFileProvider} - for creating custom file providers.
+	 * @see {@link FlowrAnalysisProvider.addRequest|addRequest} - for adding analysis requests to the analyzer.
 	 */
 	addFile(...f: (string | FlowrFileProvider<string> | RParseRequestFromFile)[]): void
 	/**
@@ -172,18 +174,18 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.cache.reset();
 	}
 
-	public addRequest(request:  RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string): this {
-		if(Array.isArray(request) || isParseRequest(request)) {
-			this.addAnalysisRequest(request);
-		} else if(typeof request === 'string') {
-			const trimmed = request.substring(fileProtocol.length);
-			if(request.startsWith(fileProtocol) && !isFilePath(trimmed)) {
-				this.addAnalysisRequest({ request: 'project', content: trimmed });
+	public addRequest(...request: (RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string)[]): this {
+		for(const r of request) {
+			if(typeof r === 'string') {
+				const trimmed = r.substring(fileProtocol.length);
+				if(r.startsWith(fileProtocol) && !isFilePath(trimmed)) {
+					this.addAnalysisRequest({ request: 'project', content: trimmed });
+				} else {
+					this.addRequestFromInput(r);
+				}
 			} else {
-				this.addRequestFromInput(request);
+				this.addAnalysisRequest(r);
 			}
-		} else {
-			this.addAnalysisRequest(request);
 		}
 		return this;
 	}

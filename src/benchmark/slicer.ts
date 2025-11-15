@@ -53,6 +53,7 @@ import type { DataFrameDomain } from '../abstract-interpretation/data-frame/data
 import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
 import { inferDataFrameShapes } from '../abstract-interpretation/data-frame/shape-inference';
 import fs from 'fs';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
 
 /**
@@ -112,6 +113,7 @@ export class BenchmarkSlicer {
 	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>();
 	private readonly parserName: KnownParserName;
 	private config:              FlowrConfigOptions | undefined;
+	private context:             FlowrAnalyzerContext | undefined;
 	private stats:               SlicerStats | undefined;
 	private loadedXml:           KnownParserType[] | undefined;
 	private dataflow:            DataflowInformation | undefined;
@@ -148,8 +150,9 @@ export class BenchmarkSlicer {
 				}
 			}
 		);
+		this.context = contextFromInput({ ...request }, config);
 		this.executor = createSlicePipeline(this.parser, {
-			context:   contextFromInput({ ...request }, config),
+			context:   this.context,
 			criterion: [],
 			autoSelectIf,
 			threshold,
@@ -381,9 +384,8 @@ export class BenchmarkSlicer {
 
 		const ast = this.normalizedAst;
 		const dfg = this.dataflow.graph;
-		const config = this.config;
 
-		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, config, dfg));
+		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, this.context as FlowrAnalyzerContext, dfg));
 	}
 
 	/**
@@ -402,7 +404,6 @@ export class BenchmarkSlicer {
 		const ast = this.normalizedAst;
 		const dfg = this.dataflow.graph;
 		const cfinfo = this.controlFlow;
-		const config = this.config;
 
 		const stats: SlicerStatsDfShape = {
 			numberOfDataFrameFiles:    0,
@@ -418,7 +419,7 @@ export class BenchmarkSlicer {
 			perNodeStats:              new Map()
 		};
 
-		const result = this.measureSimpleStep('infer data frame shapes', () => inferDataFrameShapes(cfinfo, dfg, ast, config));
+		const result = this.measureSimpleStep('infer data frame shapes', () => inferDataFrameShapes(cfinfo, dfg, ast, this.context as FlowrAnalyzerContext));
 		stats.numberOfResultConstraints = result.value.size;
 
 		for(const value of result.value.values()) {

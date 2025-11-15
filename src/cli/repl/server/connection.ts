@@ -208,10 +208,11 @@ export class FlowRServerConnection {
 			throw new Error('Either content or filepath must be defined.');
 		}
 
-		const analyzer = await new FlowrAnalyzerBuilder(request)
+		const analyzer = await new FlowrAnalyzerBuilder()
 			.setConfig(this.config)
 			.setParser(this.parser)
 			.build();
+		analyzer.addRequest(request);
 
 		if(message.filetoken) {
 			this.logger.info(`Storing file token ${message.filetoken}`);

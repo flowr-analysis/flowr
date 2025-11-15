@@ -42,7 +42,7 @@ export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeW
 	if(ast.type === RType.Project) {
 		for(const f of ast.files) {
 			// add a subgraph for each file
-			output += `    subgraph File: ${escapeMarkdown(f.filePath ?? FlowrFile.INLINE_PATH)}\n`;
+			output += `    subgraph "File: ${escapeMarkdown(f.filePath ?? FlowrFile.INLINE_PATH)}"\n`;
 			showAst(f.root);
 			output += '    end\n';
 		}

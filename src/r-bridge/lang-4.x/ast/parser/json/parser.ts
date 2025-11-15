@@ -5,7 +5,7 @@ import type { NoInfo } from '../../model/model';
 import { normalizeRootObjToAst } from '../main/internal/structure/normalize-root';
 import type { NormalizerData } from '../main/normalizer-data';
 import { normalizeTreeSitterTreeToAst } from '../../../tree-sitter/tree-sitter-normalize';
-import type { ParseStepOutput } from '../../../../parser';
+import type { ParseStepOutput, ParseStepOutputSingleFile } from '../../../../parser';
 import { type FlowrConfigOptions , getEngineConfig } from '../../../../../config';
 import type { Tree } from 'web-tree-sitter';
 import type { RProject } from '../../model/nodes/r-project';
@@ -19,10 +19,10 @@ export const parseLog = log.getSubLogger({ name: 'ast-parser' });
  * @see {@link normalizeTreeSitter}      - for a version that normalizes the AST from the TreeSitter parser
  */
 export function normalize(
-	parsed: ParseStepOutput<string>[],
+	parsed: ParseStepOutput<string>,
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)
 ): NormalizedAst {
-	return decorateAst(mergeProjects(parsed.map(normalizeButNotDecorated)), { getId });
+	return decorateAst(mergeProjects(parsed.files.map(normalizeButNotDecorated)), { getId });
 }
 
 /**
@@ -30,7 +30,7 @@ export function normalize(
  * For additional decoration with {@link decorateAst} use {@link normalize}.
  */
 export function normalizeButNotDecorated(
-	{ parsed, filePath }: ParseStepOutput<string>
+	{ parsed, filePath }: ParseStepOutputSingleFile<string>
 ): RProject {
 	const data: NormalizerData = { currentRange: undefined, currentLexeme: undefined };
 	const object = convertPreparedParsedData(prepareParsedData(parsed));
@@ -42,12 +42,12 @@ export function normalizeButNotDecorated(
  * Tree-Sitter pendant to {@link normalize}.
  */
 export function normalizeTreeSitter(
-	parsed: ParseStepOutput<Tree>[],
+	parsed: ParseStepOutput<Tree>,
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),
 	config: FlowrConfigOptions
 ): NormalizedAst {
 	const lax = getEngineConfig(config, 'tree-sitter')?.lax;
-	const result = decorateAst(normalizeTreeSitterTreeToAst(parsed, lax), { getId });
-	result.hasError = parsed.some(p => p.parsed.rootNode.hasError);
+	const result = decorateAst(normalizeTreeSitterTreeToAst(parsed.files, lax), { getId });
+	result.hasError = parsed.files.some(p => p.parsed.rootNode.hasError);
 	return result;
 }

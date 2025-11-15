@@ -242,8 +242,8 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 	try {
 		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r);
 		normalized = (typeof parsed !== 'string' ?
-			normalizeTreeSitter([{ parsed, filePath: textRequest.path }], getId, data.ctx.config)
-			: normalize([{ parsed, filePath: textRequest.path }], getId)) as NormalizedAst<OtherInfo & ParentInformation>;
+			normalizeTreeSitter({ files: [{ parsed, filePath: textRequest.path }] }, getId, data.ctx.config)
+			: normalize({ files: [{ parsed, filePath: textRequest.path }] }, getId)) as NormalizedAst<OtherInfo & ParentInformation>;
 		const fst = normalized.ast.files[0];
 		dataflow = processDataflowFor(fst.root, {
 			...data,

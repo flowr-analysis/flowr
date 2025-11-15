@@ -6,7 +6,7 @@ import {
 	, LintingRules } from '../../../src/linter/linter-rules';
 import { type TestLabel , decorateLabelContext } from './label';
 import { assert, test } from 'vitest';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
+import { fileProtocol, requestFromInput } from '../../../src/r-bridge/retriever';
 import { type NormalizedAst , deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { executeLintingRule } from '../../../src/linter/linter-executor';
 import { type LintingRule , isLintingResultsError, LintingPrettyPrintContext } from '../../../src/linter/linter-format';
@@ -17,6 +17,7 @@ import { type FlowrLaxSourcingOptions , DropPathsOption } from '../../../src/con
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 
 
 /**
@@ -29,10 +30,14 @@ export function assertLinter<Name extends LintingRuleNames>(
 	ruleName: Name,
 	expected: LintingRuleResult<Name>[] | ((df: DataflowInformation, ast: NormalizedAst) => LintingRuleResult<Name>[]),
 	expectedMetadata?: LintingRuleMetadata<Name>,
-	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>>
+	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string }
 ) {
 	test(decorateLabelContext(name, ['linter']), async() => {
-		const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
+		const analyzer = await new FlowrAnalyzerBuilder()
+			.add(lintingRuleConfig?.useAsFilePath ?
+				requestFromInput(fileProtocol + lintingRuleConfig.useAsFilePath) :
+				requestFromInput(code)
+			)
 			.setInput({
 				getId: deterministicCountingIdGenerator(0)
 			})
@@ -44,6 +49,9 @@ export function assertLinter<Name extends LintingRuleNames>(
 				};
 			})
 			.build();
+		if(lintingRuleConfig?.useAsFilePath) {
+			analyzer.context().addFile(new FlowrInlineTextFile(lintingRuleConfig.useAsFilePath, code));
+		}
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
 		const results = await executeLintingRule(ruleName, analyzer, lintingRuleConfig);

@@ -191,7 +191,9 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
  */
 export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell): Promise<NormalizedAst> {
 	const data = await retrieveParseDataFromRCode(request, shell);
-	return normalize([{ parsed: data, filePath: request.request === 'file' ? request.content : undefined }], deterministicCountingIdGenerator(0));
+	return normalize({
+		files: [{ parsed: data, filePath: request.request === 'file' ? request.content : undefined }]
+	}, deterministicCountingIdGenerator(0));
 }
 
 /**

@@ -62,7 +62,7 @@ export interface ParseRequiredInput<T> {
 	readonly context: FlowrAnalyzerContext
 }
 
-export interface ParseStepOutput<T> {
+export interface ParseStepOutputSingleFile<T> {
 	/** The parsed AST of the R code as given by the R parse side */
 	readonly parsed:         T
 	readonly filePath:       string | undefined
@@ -71,6 +71,10 @@ export interface ParseStepOutput<T> {
 		/** The number of tokens in the AST */
 		readonly tokenCount: number
 	}
+}
+
+export interface ParseStepOutput<T> {
+	readonly files: ParseStepOutputSingleFile<T>[]
 }
 
 function countChildren(node: SyntaxNode): number {
@@ -88,13 +92,13 @@ function countChildren(node: SyntaxNode): number {
  * @returns The parsed AST per request in the loading order obtained from the {@link FlowrAnalyzerFilesContext|files context} of the given {@link FlowrAnalyzerContext}.
  */
 export async function parseRequests<T extends KnownParserType>(_results: unknown, input: Partial<ParseRequiredInput<T>>):
-		Promise<ParseStepOutput<T>[]> {
+		Promise<ParseStepOutput<T>> {
 	const loadingOrder = (input.context as FlowrAnalyzerContext).files.loadingOrder.getLoadingOrder();
 	/* in the future, we want to expose all cases */
 	const translatedRequests = loadingOrder.map(r => (input.context as FlowrAnalyzerContext).files.resolveRequest(r));
 
 	if(input.parser?.async){
-		return Promise.all(
+		const files = await Promise.all(
 			translatedRequests.map(async req => {
 				const parsed = await (input.parser as AsyncParser<T>).parse(req.r);
 				return {
@@ -106,17 +110,20 @@ export async function parseRequests<T extends KnownParserType>(_results: unknown
 				};
 			})
 		);
+		return { files };
 	} else {
 		const p = input.parser as SyncParser<T>;
-		return translatedRequests.map(r => {
-			const parsed = p.parse(r.r);
-			return {
-				parsed,
-				filePath:      r.path,
-				'.parse-meta': typeof parsed === 'object' && 'rootNode' in parsed ? {
-					tokenCount: countChildren(parsed.rootNode),
-				} : undefined
-			};
-		});
+		return {
+			files: translatedRequests.map(r => {
+				const parsed = p.parse(r.r);
+				return {
+					parsed,
+					filePath:      r.path,
+					'.parse-meta': typeof parsed === 'object' && 'rootNode' in parsed ? {
+						tokenCount: countChildren(parsed.rootNode),
+					} : undefined
+				};
+			})
+		};
 	}
 }

@@ -24,6 +24,7 @@ import { type ControlFlowInformation , CfgEdgeType, CfgVertexType, ControlFlowGr
 import { type CfgSimplificationPassName , simplifyControlFlowInformation } from './cfg-simplification';
 import { guard } from '../util/assert';
 import type { FlowrConfigOptions } from '../config';
+import type { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 
 const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
@@ -82,16 +83,20 @@ export function extractCfg<Info = ParentInformation>(
 	graph?: DataflowGraph,
 	simplifications?: readonly CfgSimplificationPassName[]
 ): ControlFlowInformation {
-	// TODO: support multifile
-	return simplifyControlFlowInformation(foldAst(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds), { ast, dfg: graph, config }, simplifications);
+	return simplifyControlFlowInformation(cfgFoldProject(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds), { ast, dfg: graph, config }, simplifications);
 }
 
 /**
  * A version of {@link extractCfg} that is much quicker and does not apply any simplifications or dataflow information.
  */
 export function extractCfgQuick<Info = ParentInformation>(ast: NormalizedAst<Info>) {
+	return cfgFoldProject(ast.ast, cfgFolds);
+}
+
+function cfgFoldProject(proj: RProject<ParentInformation>, folds: FoldFunctions<ParentInformation, ControlFlowInformation>): ControlFlowInformation {
 	// TODO: support multifile
-	return foldAst(ast.ast, cfgFolds);
+
+	return foldAst(proj.files[0].root, folds);
 }
 
 function cfgLeaf(type: CfgVertexType.Expression | CfgVertexType.Statement): (leaf: RNodeWithParent) => ControlFlowInformation {

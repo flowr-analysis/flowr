@@ -12,9 +12,10 @@ import { type GetSearchElements, runSearch } from '../search/flowr-search-execut
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { CfgKind } from './cfg-kind';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
-import type { RParseRequest } from '../r-bridge/retriever';
+import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import { fileProtocol, isParseRequest, requestFromInput } from '../r-bridge/retriever';
 import { isFilePath } from '../util/files';
+import type { FlowrFileProvider } from './context/flowr-file';
 
 /**
  * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
@@ -31,6 +32,12 @@ export interface FlowrAnalysisProvider<Parser extends KnownParser = KnownParser>
 	 * @param request - One or multiple requests or a file path (with the `file://` protocol). If you just enter a string, it will be interpreted as R code.
 	 */
 	addRequest(request: RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string): void
+	/**
+	 * Add one or multiple files to the analyzer's context.
+	 * @param f - One or multiple file paths, file providers, or parse requests from file.
+	 * @see {@link FlowrFileProvider} - for creating custom file providers.
+	 */
+	addFile(...f: (string | FlowrFileProvider<string> | RParseRequestFromFile)[]): void
 	/**
 	 * Reset the analyzer state, including the context and the cache.
 	 */
@@ -165,7 +172,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.cache.reset();
 	}
 
-	public addRequest(request: RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string): this {
+	public addRequest(request:  RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string): this {
 		if(Array.isArray(request) || isParseRequest(request)) {
 			this.addAnalysisRequest(request);
 		} else if(typeof request === 'string') {
@@ -178,6 +185,11 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		} else {
 			this.addAnalysisRequest(request);
 		}
+		return this;
+	}
+
+	public addFile(...f: (string | FlowrFileProvider | RParseRequestFromFile)[]): this {
+		this.ctx.addFiles(f);
 		return this;
 	}
 
@@ -194,8 +206,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	 * Add one or multiple requests to analyze the builder.
 	 */
 	private addAnalysisRequest(request: RAnalysisRequest | readonly RAnalysisRequest[]): this {
-		const r = Array.isArray(request) ? request : [request] as RParseRequest[];
-		this.ctx.addRequests(r);
+		this.ctx.addRequests((Array.isArray(request) ? request : [request]) as RAnalysisRequest[]);
 		return this;
 	}
 

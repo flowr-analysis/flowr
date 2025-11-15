@@ -44,7 +44,7 @@ export type RoleBasedFiles = {
     [FileRole.Other]:       FlowrFileProvider[];
 }
 
-function obtainFileAndPath(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: FileRole): FlowrFileProvider<string> {
+function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, role?: FileRole): FlowrFileProvider {
 	if(typeof file === 'string') {
 		return new FlowrTextFile(file, role);
 	} else if('request' in file) {
@@ -130,9 +130,6 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private addRequest(request: RAnalysisRequest): void {
 		if(request.request !== 'project') {
 			this.loadingOrder.addRequest(request);
-			if(request.request === 'file') {
-				this.files.set(request.content, new FlowrTextFile(request.content));
-			}
 			return;
 		}
 
@@ -149,7 +146,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	/**
 	 * Add multiple files to the context. This is just a convenience method that calls {@link addFile} for each file.
 	 */
-	public addFiles(...files: (string | FlowrFileProvider<string> | RParseRequestFromFile)[]): void {
+	public addFiles(files: (string | FlowrFileProvider | RParseRequestFromFile)[]): void {
 		for(const file of files) {
 			this.addFile(file);
 		}
@@ -159,8 +156,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 * Add a file to the context. If the file has a special role, it will be added to the corresponding list of special files.
 	 * This method also applies any registered {@link FlowrAnalyzerFilePlugin}s to the file before adding it to the context.
 	 */
-	public addFile(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: FileRole): void {
-		const f = this.fileLoadPlugins(obtainFileAndPath(file, role));
+	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile, role?: FileRole): void {
+		const f = this.fileLoadPlugins(wrapFile(file, role));
 
 		if(f.path() === FlowrFile.INLINE_PATH) {
 			this.inlineFiles.push(f);
@@ -175,7 +172,11 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		}
 	}
 
-	private fileLoadPlugins(f: FlowrFileProvider<string>) {
+	public hasFile(path: string): boolean {
+		return this.files.has(path);
+	}
+
+	private fileLoadPlugins(f: FlowrFileProvider) {
 		let fFinal: FlowrFileProvider = f;
 		for(const loader of this.fileLoaders) {
 			if(loader.applies(f.path())) {
@@ -198,7 +199,6 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 		const file = this.files.get(r.content);
 		// TODO: load from disk fallback (flowR context)
-		console.trace(r,  this.ctx.config.project.resolveUnknownPathsOnDisk);
 		if(file === undefined && this.ctx.config.project.resolveUnknownPathsOnDisk) {
 			fileLog.debug(`File ${r.content} not found in context, trying to load from disk.`);
 			if(fs.existsSync(r.content)) {
@@ -215,7 +215,6 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		guard(file !== undefined && file !== null, `File ${r.content} not found in context.`);
 
 		// TODO: check R source
-
 		const content = file.content();
 		return {
 			r: {

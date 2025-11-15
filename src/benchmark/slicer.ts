@@ -155,7 +155,7 @@ export class BenchmarkSlicer {
 			threshold,
 		});
 
-		this.loadedXml = (await this.measureCommonStep('parse', 'retrieve AST from R code')).map(p => p.parsed);
+		this.loadedXml = (await this.measureCommonStep('parse', 'retrieve AST from R code')).files.map(p => p.parsed);
 		this.normalizedAst = await this.measureCommonStep('normalize', 'normalize R AST');
 		this.dataflow = await this.measureCommonStep('dataflow', 'produce dataflow information');
 

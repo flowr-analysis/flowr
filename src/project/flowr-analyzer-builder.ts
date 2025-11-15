@@ -11,6 +11,7 @@ import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
 import { isFilePath } from '../util/files';
 import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
+import type { FlowrFileProvider } from './context/flowr-file';
 
 /**
  * Builder for the {@link FlowrAnalyzer}, use it to configure all analysis aspects before creating the analyzer instance
@@ -36,7 +37,8 @@ import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 export class FlowrAnalyzerBuilder {
 	private flowrConfig: DeepWritable<FlowrConfigOptions> = cloneConfig(defaultConfigOptions);
 	private parser?:     KnownParser;
-	private request:     RAnalysisRequest[] | undefined;
+	private requests:    RAnalysisRequest[] | undefined;
+	private files:       FlowrFileProvider[] | undefined;
 	private input?:      Omit<NormalizeRequiredInput, 'context'>;
 	private plugins:     Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
 
@@ -50,11 +52,11 @@ export class FlowrAnalyzerBuilder {
 	}
 
 	/**
-	 * Add one or multiple requests to analyze.
+	 * Add one or multiple requests / files to analyze.
 	 * This is a convenience method that uses {@link addRequest} and {@link addRequestFromInput} internally.
 	 * @param request - One or multiple requests or a file path (with the `file://` protocol). If you just enter a string, it will be interpreted as R code.
 	 */
-	public add(request: RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string): this {
+	public add(request: FlowrFileProvider | RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string): this {
 		if(Array.isArray(request) || isParseRequest(request)) {
 			this.addRequest(request);
 		} else if(typeof request === 'string') {
@@ -73,12 +75,21 @@ export class FlowrAnalyzerBuilder {
 	/**
 	 * Add one or multiple requests to analyze the builder.
 	 */
-	public addRequest(request: RAnalysisRequest | readonly RAnalysisRequest[]): this {
+	public addRequest(request: RAnalysisRequest | readonly RAnalysisRequest[] | FlowrFileProvider | FlowrFileProvider[]): this {
 		const r = Array.isArray(request) ? request : [request] as RParseRequest[];
-		if(this.request) {
-			this.request = this.request.concat(request);
+		if(r.every(r => isParseRequest(r))) {
+			if(this.requests) {
+				this.requests = this.requests.concat(r);
+			} else {
+				this.requests = r;
+			}
 		} else {
-			this.request = r;
+			const f = r;
+			if(this.files) {
+				this.files = this.files.concat(f);
+			} else {
+				this.files = f;
+			}
 		}
 		return this;
 	}
@@ -203,7 +214,10 @@ export class FlowrAnalyzerBuilder {
 			cache
 		);
 
-		analyzer.addRequest(this.request ?? []);
+		if(this.files) {
+			analyzer.addFile(...this.files);
+		}
+		analyzer.addRequest(this.requests ?? []);
 
 		// we do it here to save time later if the analyzer is to be duplicated
 		context.resolvePreAnalysis();

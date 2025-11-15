@@ -16,7 +16,7 @@ import { startAndEndsWith } from '../../../util/text/strings';
 import type { RParameter } from '../ast/model/nodes/r-parameter';
 import { log } from '../../../util/log';
 import type { RProject } from '../ast/model/nodes/r-project';
-import type { ParseStepOutput } from '../../parser';
+import type { ParseStepOutputSingleFile } from '../../parser';
 
 export interface TreeSitterInfo {
 	treeSitterId: number
@@ -27,7 +27,7 @@ type SyntaxAndRNode = [SyntaxNode, RNode<TreeSitterInfo>];
  * @param tree - The tree to normalize
  * @param lax - Whether to use lax parsing (i.e., ignore errors) or strict parsing (i.e., fail on errors)
  */
-export function normalizeTreeSitterTreeToAst(tree: ParseStepOutput<Tree>[], lax?: boolean): RProject<TreeSitterInfo> {
+export function normalizeTreeSitterTreeToAst(tree: ParseStepOutputSingleFile<Tree>[], lax?: boolean): RProject<TreeSitterInfo> {
 	if(lax) {
 		makeTreeSitterLax();
 	} else {

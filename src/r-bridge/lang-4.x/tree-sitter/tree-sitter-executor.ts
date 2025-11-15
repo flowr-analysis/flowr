@@ -60,7 +60,7 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 			name:            'tree-sitter',
 			grammarVersion:  this.treeSitterVersion(),
 			treeSitterQuery: async(source: Query | string, force?: boolean) => {
-				return this.query(source, ...(await analyzer.parse(force)).map(p => p.parsed) as Parser.Tree[]);
+				return this.query(source, ...(await analyzer.parse(force)).files.map(p => p.parsed) as Parser.Tree[]);
 			}
 		};
 	}

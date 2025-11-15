@@ -50,6 +50,7 @@ import type { KnownParser } from '../../../src/r-bridge/parser';
 import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import type { RProject } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -127,6 +128,19 @@ function removeInformation<T extends RProject<unknown> | Record<string, unknown>
 
 function assertAstEqual<Info>(ast: RProject<Info> | RNode<Info>, expected: RProject<Info> | RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string, ignoreMiscSourceInfo = true): void {
 	ast = removeInformation(ast, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
+	if(expected.type === RType.ExpressionList) {
+		expected = {
+			type: RType.Project,
+			info: {
+				/* we do not care for the id here */
+				id: 'expected-root'
+			},
+			files: [{
+				filePath: undefined,
+				root:     expected
+			}]
+		};
+	}
 	expected = removeInformation(expected, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
 	try {
 		assert.deepStrictEqual(ast, expected);

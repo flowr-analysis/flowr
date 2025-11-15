@@ -20,10 +20,11 @@ import type {
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import type { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
 import { arraysGroupBy } from '../../util/collections/arrays';
-import type { fileProtocol, RParseRequests } from '../../r-bridge/retriever';
+import type { fileProtocol, RParseRequestFromFile, RParseRequests } from '../../r-bridge/retriever';
 import { requestFromInput } from '../../r-bridge/retriever';
 import type { FlowrConfigOptions } from '../../config';
 import { defaultConfigOptions } from '../../config';
+import type { FlowrFileProvider } from './flowr-file';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -73,6 +74,14 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	/** delegate request addition */
 	public addRequests(requests: readonly RAnalysisRequest[]): void {
 		this.files.addRequests(requests);
+	}
+
+	public addFile(f: string | FlowrFileProvider | RParseRequestFromFile): void {
+		this.files.addFile(f);
+	}
+
+	public addFiles(f: (string | FlowrFileProvider | RParseRequestFromFile)[]): void {
+		this.files.addFiles(f);
 	}
 
 	/** this conducts all the step that can be done before the main analysis run */

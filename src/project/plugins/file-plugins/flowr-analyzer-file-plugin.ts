@@ -15,7 +15,7 @@ import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context'
  *
  * See {@link DefaultFlowrAnalyzerFilePlugin} for the no-op default implementation.
  */
-export abstract class FlowrAnalyzerFilePlugin extends FlowrAnalyzerPlugin<FlowrFileProvider<string>, FlowrFileProvider> {
+export abstract class FlowrAnalyzerFilePlugin extends FlowrAnalyzerPlugin<FlowrFileProvider, FlowrFileProvider> {
 	public readonly type = PluginType.FileLoad;
 
 	/**

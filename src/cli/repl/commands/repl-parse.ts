@@ -4,7 +4,7 @@ import { type JsonEntry , convertPreparedParsedData, prepareParsedData } from '.
 import { extractLocation, getTokenType, } from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta';
 import { fileProtocol, removeRQuotes } from '../../../r-bridge/retriever';
 import type Parser from 'web-tree-sitter';
-import type { ParseStepOutput } from '../../../r-bridge/parser';
+import type { ParseStepOutputSingleFile } from '../../../r-bridge/parser';
 import { FlowrFile } from '../../../project/context/flowr-file';
 
 type DepthList =  { depth: number, node: JsonEntry, leaf: boolean }[]
@@ -166,11 +166,11 @@ export const parseCommand: ReplCodeCommand = {
 		};
 	},
 	fn: async({ output, analyzer }) => {
-		const result = await analyzer.parse();
+		const result = (await analyzer.parse()).files;
 		const parserInfo = analyzer.parserInformation();
 
 		if(parserInfo.name === 'r-shell') {
-			for(const { parsed, filePath } of result as ParseStepOutput<string>[]) {
+			for(const { parsed, filePath } of result as ParseStepOutputSingleFile<string>[]) {
 				if(filePath && filePath !== FlowrFile.INLINE_PATH) {
 					output.stdout(output.formatter.format(`File: ${filePath}\n`, { style: FontStyles.Underline }) );
 				}
@@ -179,7 +179,7 @@ export const parseCommand: ReplCodeCommand = {
 			}
 		} else {
 			// print the tree-sitter ast
-			for(const { parsed, filePath } of result as ParseStepOutput<Parser.Tree>[]) {
+			for(const { parsed, filePath } of result as ParseStepOutputSingleFile<Parser.Tree>[]) {
 				if(filePath && filePath !== FlowrFile.INLINE_PATH) {
 					output.stdout(output.formatter.format(`File: ${filePath}\n`, { style: FontStyles.Underline }));
 				}

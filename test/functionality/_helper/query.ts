@@ -97,7 +97,7 @@ export function assertQuery<
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			const expectedNormalized = normalizeResults(typeof expected === 'function' ? await expected(
 				{
-					parse:     await analyzer.parse() as ParseStepOutput<Tree>[] & PipelinePerStepMetaInformation,
+					parse:     await analyzer.parse() as ParseStepOutput<Tree> & PipelinePerStepMetaInformation,
 					normalize: await analyzer.normalize(),
 					dataflow:  await analyzer.dataflow()
 				}

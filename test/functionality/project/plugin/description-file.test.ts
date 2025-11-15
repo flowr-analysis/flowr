@@ -24,7 +24,7 @@ describe('DESCRIPTION-file', function() {
 		], p => p.type)
 	);
 
-	ctx.files.addFiles(new FlowrInlineTextFile('DESCRIPTION', `Package: mypackage
+	ctx.addFile(new FlowrInlineTextFile('DESCRIPTION', `Package: mypackage
 Title: What the Package Does (One Line, Title Case)
 Version: 0.0.0.9000
 Authors@R:
@@ -61,8 +61,8 @@ Collate:
     'aaa.R'
     'main.R'
     'zzz.R'`));
-	ctx.files.addFiles(new FlowrInlineTextFile('pete.R', 'x <- 2'));
-	ctx.files.addRequests([{ request: 'file', content: 'pete.R' }]);
+	ctx.addFile(new FlowrInlineTextFile('pete.R', 'x <- 2'));
+	ctx.addRequests([{ request: 'file', content: 'pete.R' }]);
 	ctx.resolvePreAnalysis();
 
 	describe.sequential('Parsing', function() {

@@ -32,6 +32,8 @@ export enum FileRole {
 	Other       = 'other'
 }
 
+export type StringableContent = { toString(): string };
+
 /**
  * This is the basic interface for all files known to the FlowrAnalyzer.
  * You can implement this interface to provide custom file loading mechanisms.
@@ -43,7 +45,7 @@ export enum FileRole {
  * If you want to pass in inline text files, see {@link FlowrInlineTextFile}.
  * @typeParam Content - The type of the content returned by the `content()` method.
  */
-export interface FlowrFileProvider<Content = unknown> {
+export interface FlowrFileProvider<Content extends { toString(): string } = { toString(): string }> {
 	/**
 	 * The role of this file, if any, in general your file should _not_ decide for itself what role it has in the project context,
 	 * this is for the loaders plugins to decide (cf. {@link PluginType}) as they can, e.g., respect ignore files, updated mappings, etc.
@@ -77,7 +79,7 @@ export interface FlowrFileProvider<Content = unknown> {
  *
  * See {@link FlowrTextFile} for a text-file specific implementation and {@link FlowrInlineTextFile} for inline text files.
  */
-export abstract class FlowrFile<Content = unknown> implements FlowrFileProvider<Content> {
+export abstract class FlowrFile<Content extends StringableContent = StringableContent> implements FlowrFileProvider<Content> {
 	private contentCache:  Content | undefined;
 	protected filePath:    PathLike;
 	public readonly role?: FileRole;

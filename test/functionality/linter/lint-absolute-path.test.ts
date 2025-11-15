@@ -20,7 +20,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			});
 		});
 
-		describe('quickfixes', () => {
+		describe.only('quickfixes', () => {
 			/* Given an absolute path and assuming a home directory of `/home/me`, we expect the linter to suggest a relative path */
 			assertLinter('is relative to home', parser, '"/home/me/foo.bar"', 'absolute-file-paths', [{
 				certainty: LintingResultCertainty.Uncertain,

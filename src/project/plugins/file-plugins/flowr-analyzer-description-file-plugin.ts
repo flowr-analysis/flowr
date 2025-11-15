@@ -33,7 +33,7 @@ export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin 
 		return this.pattern.test(file.toString().split(/[/\\]/).pop() ?? '');
 	}
 
-	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider<string>): FlowrDescriptionFile {
+	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider): FlowrDescriptionFile {
 		return FlowrDescriptionFile.from(file, FileRole.Description);
 	}
 }

@@ -24,6 +24,7 @@ import {
 	type FlowrAnalyzerContext,
 	type ReadOnlyFlowrAnalyzerContext
 	, contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import type { FlowrFileProvider } from '../../../../src/project/context/flowr-file';
 
 /**
  * The default flowR configuration options for performing abstract interpretation.
@@ -95,11 +96,13 @@ interface CriterionTestEntry {
 
 export interface DataFrameTestOptions extends Partial<TestConfiguration> {
 	/** The parser to use for the data flow graph creation (defaults to the R shell) */
-	readonly parser?:  KnownParser
+	readonly parser?:   KnownParser
 	/** An optional name or test label for the test (defaults to the code) */
-	readonly name?:    string | TestLabel
+	readonly name?:     string | TestLabel
 	/** Whether the real test with the execution of the R code should be skipped (defaults to `false`) */
-	readonly skipRun?: boolean | (() => boolean)
+	readonly skipRun?:  boolean | (() => boolean)
+	/** Additional files to add to the flowR project context for the test */
+	readonly addFiles?: FlowrFileProvider[]
 }
 
 /**
@@ -182,6 +185,9 @@ export function assertDataFrameDomain(
 	beforeAll(async() => {
 		if(!skipTestBecauseConfigNotMet(config)) {
 			context = contextFromInput(code, flowRConfig);
+			if(config?.addFiles) {
+				context.addFiles(config.addFiles);
+			}
 			result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
 		}
 	});

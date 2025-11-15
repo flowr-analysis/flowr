@@ -51,6 +51,7 @@ import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-sl
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import type { RProject } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
+import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -355,6 +356,10 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	 * Please be aware that this is currently a work in progress.
 	 */
 	resolveIdsAsCriterion: boolean
+	/**
+	 * Which files to add to the project context
+	 */
+	addFiles:              FlowrFileProvider[]
 }
 
 function cropIfTooLong(str: string): string {
@@ -387,6 +392,9 @@ export function assertDataflow(
 			.setParser(shell)
 			.build();
 		analyzer.addRequest(input);
+		if(userConfig?.addFiles) {
+			analyzer.addFile(...userConfig.addFiles);
+		}
 
 		if(typeof expected === 'function') {
 			expected = await expected(analyzer);
@@ -518,7 +526,7 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string | SingleSlicingCriterion[],
-	testConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams>,
+	testConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams> & { addFiles?: FlowrFileProvider[] },
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const skip = skipTestBecauseConfigNotMet(testConfig);
@@ -588,9 +596,13 @@ export function assertSliced(
 		handleAssertOutput(name, shell, input, testConfig);
 
 		async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
+			const context =  contextFromInput(input, cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions));
+			if(testConfig?.addFiles) {
+				context.addFiles(testConfig.addFiles);
+			}
 			return await createSlicePipeline(parser, {
 				getId:        getId(),
-				context:      contextFromInput(input, cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions)),
+				context:      context,
 				criterion:    criteria,
 				autoSelectIf: testConfig?.autoSelectIf,
 				direction:    testConfig?.sliceDirection

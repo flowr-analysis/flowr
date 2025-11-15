@@ -17,6 +17,7 @@ import { type FlowrLaxSourcingOptions , DropPathsOption } from '../../../src/con
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 
 
@@ -30,7 +31,7 @@ export function assertLinter<Name extends LintingRuleNames>(
 	ruleName: Name,
 	expected: LintingRuleResult<Name>[] | ((df: DataflowInformation, ast: NormalizedAst) => LintingRuleResult<Name>[]),
 	expectedMetadata?: LintingRuleMetadata<Name>,
-	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string }
+	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string, addFiles?: FlowrFileProvider[] }
 ) {
 	test(decorateLabelContext(name, ['linter']), async() => {
 		const analyzer = await new FlowrAnalyzerBuilder()

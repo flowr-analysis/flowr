@@ -1,13 +1,15 @@
 import { convertPreparedParsedData, prepareParsedData } from './format';
 import { log } from '../../../../../util/log';
 import { type IdGenerator, type NormalizedAst , decorateAst, deterministicCountingIdGenerator } from '../../model/processing/decorate';
-import type { NoInfo, RNode } from '../../model/model';
+import type { NoInfo } from '../../model/model';
 import { normalizeRootObjToAst } from '../main/internal/structure/normalize-root';
 import type { NormalizerData } from '../main/normalizer-data';
 import { normalizeTreeSitterTreeToAst } from '../../../tree-sitter/tree-sitter-normalize';
 import type { ParseStepOutput } from '../../../../parser';
 import { type FlowrConfigOptions , getEngineConfig } from '../../../../../config';
 import type { Tree } from 'web-tree-sitter';
+import type { RProject } from '../../model/nodes/r-project';
+import { mergeProjects } from '../../model/nodes/r-project';
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' });
 
@@ -17,10 +19,10 @@ export const parseLog = log.getSubLogger({ name: 'ast-parser' });
  * @see {@link normalizeTreeSitter}      - for a version that normalizes the AST from the TreeSitter parser
  */
 export function normalize(
-	parsed: ParseStepOutput<string>,
+	parsed: ParseStepOutput<string>[],
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)
 ): NormalizedAst {
-	return decorateAst(normalizeButNotDecorated(parsed), { getId, file: parsed.filePath });
+	return decorateAst(mergeProjects(parsed.map(normalizeButNotDecorated)), { getId });
 }
 
 /**
@@ -28,24 +30,24 @@ export function normalize(
  * For additional decoration with {@link decorateAst} use {@link normalize}.
  */
 export function normalizeButNotDecorated(
-	{ parsed }: ParseStepOutput<string>
-): RNode {
+	{ parsed, filePath }: ParseStepOutput<string>
+): RProject {
 	const data: NormalizerData = { currentRange: undefined, currentLexeme: undefined };
 	const object = convertPreparedParsedData(prepareParsedData(parsed));
 
-	return normalizeRootObjToAst(data, object);
+	return normalizeRootObjToAst(data, object, filePath);
 }
 
 /**
  * Tree-Sitter pendant to {@link normalize}.
  */
 export function normalizeTreeSitter(
-	{ parsed, filePath }: ParseStepOutput<Tree>,
+	parsed: ParseStepOutput<Tree>[],
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),
 	config: FlowrConfigOptions
 ): NormalizedAst {
 	const lax = getEngineConfig(config, 'tree-sitter')?.lax;
-	const result = decorateAst(normalizeTreeSitterTreeToAst(parsed, lax), { getId, file: filePath });
-	result.hasError = parsed.rootNode.hasError;
+	const result = decorateAst(normalizeTreeSitterTreeToAst(parsed, lax), { getId });
+	result.hasError = parsed.some(p => p.parsed.rootNode.hasError);
 	return result;
 }

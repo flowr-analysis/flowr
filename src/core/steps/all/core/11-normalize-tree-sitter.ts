@@ -13,8 +13,8 @@ import type { ParseStepOutput } from '../../../../r-bridge/parser';
 import type { Tree } from 'web-tree-sitter';
 import type { FlowrAnalyzerContext } from '../../../../project/context/flowr-analyzer-context';
 
-function processor(results: { parse?: ParseStepOutput<Tree> }, input: Partial<NormalizeRequiredInput>) {
-	return normalizeTreeSitter(results.parse as ParseStepOutput<Tree>, input.getId, (input.context as FlowrAnalyzerContext).config);
+function processor(results: { parse?: ParseStepOutput<Tree>[] }, input: Partial<NormalizeRequiredInput>) {
+	return normalizeTreeSitter(results.parse as ParseStepOutput<Tree>[], input.getId, (input.context as FlowrAnalyzerContext).config);
 }
 
 export const NORMALIZE_TREE_SITTER = {

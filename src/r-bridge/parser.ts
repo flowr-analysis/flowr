@@ -1,4 +1,4 @@
-import type { RParseRequest, RParseRequestFromText } from './retriever';
+import type { RParseRequestFromText } from './retriever';
 import type { OutputCollectorConfiguration, RShell } from './shell';
 import type { RShellExecutor } from './shell-executor';
 import type { TreeSitterExecutor } from './lang-4.x/tree-sitter/tree-sitter-executor';
@@ -54,7 +54,6 @@ export type KnownParserName = KnownParser['name']
 export interface ParseRequiredInput<T> {
 	/** This is the {@link RShell}, {@link RShellExecutor} or {@link TreeSitterExecutor} connection to be used to obtain the original parses AST of the R code */
 	readonly parser:  Parser<T>
-	// TODO: move environments also in context!! (especially built-in)
 	/**
 	 * The context from which to derive the requests from,
 	 * please either relay on the {@link FlowrAnalyzer}
@@ -86,31 +85,37 @@ function countChildren(node: SyntaxNode): number {
  * Takes an input program and parses it using the given parser.
  * @param _results - just a proxy for the pipeline, signifies that this function does not need prior knowledge of the pipeline
  * @param input    - the input to the parse step
+ * @returns The parsed AST per request in the loading order obtained from the {@link FlowrAnalyzerFilesContext|files context} of the given {@link FlowrAnalyzerContext}.
  */
-export async function parseRequests<T extends KnownParserType>(_results: unknown, input: Partial<ParseRequiredInput<T>>): Promise<ParseStepOutput<T>> {
+export async function parseRequests<T extends KnownParserType>(_results: unknown, input: Partial<ParseRequiredInput<T>>): Promise<ParseStepOutput<T>[]> {
+	const loadingOrder = (input.context as FlowrAnalyzerContext).files.loadingOrder.getLoadingOrder();
 	/* in the future, we want to expose all cases */
-	// TODO: get parse request!!!!!
-	const request = (Array.isArray(input.context) ? input.context[0] : input.context) as RParseRequest;
-
-	const translatedRequest = (input.context as FlowrAnalyzerContext).files.resolveRequest(request);
+	const translatedRequests = loadingOrder.map(r => (input.context as FlowrAnalyzerContext).files.resolveRequest(r));
 
 	if(input.parser?.async){
-		const parsed = await input.parser.parse(translatedRequest.r);
-		return {
-			parsed,
-			filePath:      translatedRequest.path,
-			'.parse-meta': typeof parsed === 'object' && 'rootNode' in parsed ? {
-				tokenCount: countChildren(parsed.rootNode),
-			} : undefined
-		};
+		return Promise.all(
+			translatedRequests.map(async req => {
+				const parsed = await (input.parser as AsyncParser<T>).parse(req.r);
+				return {
+					parsed,
+					filePath:      req.path,
+					'.parse-meta': typeof parsed === 'object' && 'rootNode' in parsed ? {
+						tokenCount: countChildren(parsed.rootNode),
+					} : undefined
+				};
+			})
+		);
 	} else {
-		const parsed = (input.parser as SyncParser<T>).parse(translatedRequest.r);
-		return {
-			parsed,
-			filePath:      translatedRequest.path,
-			'.parse-meta': typeof parsed === 'object' && 'rootNode' in parsed ? {
-				tokenCount: countChildren(parsed.rootNode),
-			} : undefined
-		};
+		const p = input.parser as SyncParser<T>;
+		return translatedRequests.map(r => {
+			const parsed = p.parse(r.r);
+			return {
+				parsed,
+				filePath:      r.path,
+				'.parse-meta': typeof parsed === 'object' && 'rootNode' in parsed ? {
+					tokenCount: countChildren(parsed.rootNode),
+				} : undefined
+			};
+		});
 	}
 }

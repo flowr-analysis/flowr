@@ -83,10 +83,11 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		return this.parser.getLanguage().query(source);
 	}
 
-	public query(source: Query | string, tree: Parser.Tree): QueryCapture[] {
+	public query(source: Query | string, ...tree: Parser.Tree[]): QueryCapture[] {
 		const query = typeof source === 'string' ? this.createQuery(source) : source;
-		const matches = query.matches(tree.rootNode);
-		return matches.flatMap(m => m.captures);
+		return tree
+			.flatMap(t => query.matches(t.rootNode))
+			.flatMap(m => m.captures);
 	}
 
 	public close(): void {

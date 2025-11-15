@@ -59,7 +59,7 @@ export interface ReadonlyFlowrAnalysisProvider {
 	 * @param force - Do not use the cache, instead force a new parse.
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekParse} - to get the parse output if already available without triggering a new computation.
 	 */
-    parse(force?: boolean): Promise<ParseStepOutput<Awaited<ReturnType<KnownParser['parse']>>> & PipelinePerStepMetaInformation>
+    parse(force?: boolean): Promise<ParseStepOutput<Awaited<ReturnType<KnownParser['parse']>>[]> & PipelinePerStepMetaInformation>
 	/**
 	 * Peek at the parse output for the request, if it was already computed.
 	 */

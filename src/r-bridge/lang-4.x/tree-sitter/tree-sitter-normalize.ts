@@ -1,4 +1,3 @@
-import type { RExpressionList } from '../ast/model/nodes/r-expression-list';
 import type { SyntaxNode, Tree } from 'web-tree-sitter';
 import type { RNode } from '../ast/model/model';
 import { ParseError } from '../ast/parser/main/normalizer-data';
@@ -16,6 +15,8 @@ import type { RString } from '../ast/model/nodes/r-string';
 import { startAndEndsWith } from '../../../util/text/strings';
 import type { RParameter } from '../ast/model/nodes/r-parameter';
 import { log } from '../../../util/log';
+import type { RProject } from '../ast/model/nodes/r-project';
+import type { ParseStepOutput } from '../../parser';
 
 export interface TreeSitterInfo {
 	treeSitterId: number
@@ -26,17 +27,28 @@ type SyntaxAndRNode = [SyntaxNode, RNode<TreeSitterInfo>];
  * @param tree - The tree to normalize
  * @param lax - Whether to use lax parsing (i.e., ignore errors) or strict parsing (i.e., fail on errors)
  */
-export function normalizeTreeSitterTreeToAst(tree: Tree, lax?: boolean): RExpressionList<TreeSitterInfo> {
+export function normalizeTreeSitterTreeToAst(tree: ParseStepOutput<Tree>[], lax?: boolean): RProject<TreeSitterInfo> {
 	if(lax) {
 		makeTreeSitterLax();
 	} else {
 		makeTreeSitterStrict();
 	}
-	const root = convertTreeNode(tree.rootNode);
-	if(root.type !== RType.ExpressionList) {
-		throw new ParseError(`expected root to resolve to an expression list, got a ${root.type}`);
-	}
-	return root;
+
+	const files = tree.map(t => {
+		const root = convertTreeNode(t.parsed.rootNode);
+		if(root.type !== RType.ExpressionList) {
+			throw new ParseError(`expected root to resolve to an expression list, got a ${root.type}`);
+		}
+		return {
+			filePath: t.filePath,
+			root:     root
+		};
+	});
+
+	return {
+		type: RType.Project,
+		files
+	};
 }
 
 function nonErrorChildrenStrict(node: SyntaxNode): SyntaxNode[] {

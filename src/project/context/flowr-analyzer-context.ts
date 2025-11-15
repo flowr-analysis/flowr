@@ -101,6 +101,9 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 
 /**
  * Lifting {@link requestFromInput} to create a full {@link FlowrAnalyzerContext} from input requests.
+ * Please use this only for a "quick" setup, or to have compatibility with the pre-project flowR era.
+ * Otherwise, refer to a {@link FlowrAnalyzerBuilder} to create a fully customized {@link FlowrAnalyzer} instance.
+ * @see {@link requestFromInput} - for details on how inputs are processed into requests.
  */
 export function contextFromInput(
 	input: `${typeof fileProtocol}${string}` | string | readonly string[] | RParseRequests,

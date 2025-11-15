@@ -19,8 +19,8 @@ export interface NormalizeRequiredInput {
 	readonly context: FlowrAnalyzerContext
 }
 
-function processor(results: { parse?: ParseStepOutput<string> }, input: Partial<NormalizeRequiredInput>) {
-	return normalize(results.parse as ParseStepOutput<string>, input.getId);
+function processor(results: { parse?: ParseStepOutput<string>[] }, input: Partial<NormalizeRequiredInput>) {
+	return normalize(results.parse as ParseStepOutput<string>[], input.getId);
 }
 
 export const NORMALIZE = {

@@ -12,7 +12,6 @@ import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument
 import { rangeFrom } from '../util/range';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import type { RParseRequest, RParseRequests } from '../r-bridge/retriever';
 import { initializeCleanEnvironments } from './environments/environment';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
@@ -26,6 +25,7 @@ import { updateNestedFunctionCalls } from './internal/process/functions/call/bui
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { getBuiltInDefinitions } from './environments/built-in-config';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import { FlowrFile } from '../project/context/flowr-file';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -94,49 +94,40 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
  */
 export function produceDataFlowGraph<OtherInfo>(
 	parser:      Parser<KnownParserType>,
-	request:     RParseRequests,
 	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
 	ctx:         FlowrAnalyzerContext
 ): DataflowInformation & { cfgQuick: ControlFlowInformation | undefined } {
-	let firstRequest: RParseRequest;
-
-	const multifile = Array.isArray(request);
-	if(multifile) {
-		firstRequest = request[0] as RParseRequest;
-	} else {
-		firstRequest = request as RParseRequest;
-	}
-
 	const builtInsConfig = ctx.config.semantics.environment.overwriteBuiltIns;
 	const builtIns = getBuiltInDefinitions(builtInsConfig.definitions, builtInsConfig.loadDefaults);
+	// TODO: provide this in the context
 	const env = initializeCleanEnvironments(builtIns.builtInMemory);
+
+	const files = completeAst.ast.files;
 
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
+		// TODO: move these to the context
 		environment:         env,
 		builtInEnvironment:  env.current.parent,
 		processors,
-		currentRequest:      firstRequest,
 		controlDependencies: undefined,
-		referenceChain:      [firstRequest],
+		referenceChain:      [files[0].filePath],
 		ctx
 	};
-	let df = processDataflowFor<OtherInfo>(completeAst.ast, dfData);
+	let df = processDataflowFor<OtherInfo>(files[0].root, dfData);
 
+	// TODO: move this into the context!
+	df.graph.sourced.unshift(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
 
-	df.graph.sourced.unshift(firstRequest.request === 'file' ? firstRequest.content : '<inline>');
-
-	if(multifile) {
-		for(let i = 1; i < request.length; i++) {
-			/* source requests register automatically */
-			df = standaloneSourceFile(request[i] as RParseRequest, dfData, `root-${i}`, df);
-		}
+	// TODO: here we can also check wether we had those already
+	for(let i = 1; i < files.length; i++) {
+		/* source requests register automatically */
+		df = standaloneSourceFile(files[i], dfData, df);
 	}
 
 	// finally, resolve linkages
 	updateNestedFunctionCalls(df.graph, df.environment);
-
 
 	const cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
 

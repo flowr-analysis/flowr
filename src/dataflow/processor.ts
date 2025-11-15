@@ -8,7 +8,6 @@ import type {
 	RNodeWithParent
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { IEnvironment, REnvironmentInformation } from './environments/environment';
-import type { RParseRequest } from '../r-bridge/retriever';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
@@ -29,14 +28,10 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 */
 	readonly processors:          DataflowProcessors<OtherInfo>
 	/**
-	 * The {@link RParseRequests} that is currently being parsed
+	 * The chain of file paths that lead to this inclusion.
+	 * The most recent (last) entry is expected to always be the current one.
 	 */
-	readonly currentRequest:      RParseRequest
-	/**
-	 * The chain of {@link RParseRequests} that lead to the {@link currentRequest}.
-	 * The most recent (last) entry is expected to always be the {@link currentRequest}.
-	 */
-	readonly referenceChain:      RParseRequest[]
+	readonly referenceChain:      (string | undefined)[]
 	/**
 	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
 	 */

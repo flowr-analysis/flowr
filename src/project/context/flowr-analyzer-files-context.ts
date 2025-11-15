@@ -198,6 +198,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 		const file = this.files.get(r.content);
 		// TODO: load from disk fallback (flowR context)
+		console.trace(r,  this.ctx.config.project.resolveUnknownPathsOnDisk);
 		if(file === undefined && this.ctx.config.project.resolveUnknownPathsOnDisk) {
 			fileLog.debug(`File ${r.content} not found in context, trying to load from disk.`);
 			if(fs.existsSync(r.content)) {

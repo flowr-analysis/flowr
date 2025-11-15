@@ -14,7 +14,6 @@ import {
 	type NormalizedAst,
 	type ParentInformation
 	,
-	deterministicPrefixIdGenerator,
 	sourcedDeterministicCountingIdGenerator
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -33,6 +32,7 @@ import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import type { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 let sourceProvider = requestProviderFromFile();
 
@@ -153,6 +153,7 @@ export function findSource(resolveSource: FlowrLaxSourcingOptions | undefined, s
 	return found;
 }
 
+// TODO: adapt to file handling
 /**
  * Processes a named function call (i.e., not an anonymous function)
  */
@@ -246,7 +247,6 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 			: normalize({ parsed, filePath: textRequest.path }, getId)) as NormalizedAst<OtherInfo & ParentInformation>;
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
-			currentRequest: request,
 			environment:    information.environment,
 			referenceChain: [...data.referenceChain, request]
 		});
@@ -288,26 +288,20 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
  * Processes a standalone source file (i.e., not from a source function call)
  */
 export function standaloneSourceFile<OtherInfo>(
-	inputRequest: RParseRequest,
+	file: { filePath?: string, root: RExpressionList<OtherInfo & ParentInformation> },
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	uniqueSourceId: string,
 	information: DataflowInformation
 ): DataflowInformation {
-	const path = inputRequest.request === 'file' ? inputRequest.content : '-inline-';
-	/* this way we can still pass content */
-	const request = inputRequest.request === 'file' ? sourceProvider.createRequest(inputRequest.content) : inputRequest;
-
 	// check if the sourced file has already been dataflow analyzed, and if so, skip it
-	if(data.referenceChain.find(e => e.request === request.request && e.content === request.content)) {
-		dataflowLogger.info(`Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
-		handleUnknownSideEffect(information.graph, information.environment, uniqueSourceId);
+	if(data.referenceChain.find(e => e !== undefined && e === file.filePath)) {
+		dataflowLogger.info(`Found loop in dataflow analysis for ${JSON.stringify(file.filePath)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
+		handleUnknownSideEffect(information.graph, information.environment, file.root.info.id);
 		return information;
 	}
 
-	return sourceRequest(uniqueSourceId, request, {
+	return  processDataflowFor<OtherInfo>(file.root, {
 		...data,
-		currentRequest: request,
 		environment:    information.environment,
-		referenceChain: [...data.referenceChain, inputRequest]
-	}, information, deterministicPrefixIdGenerator(path + '::' + uniqueSourceId));
+		referenceChain: [...data.referenceChain, file.filePath]
+	});
 }

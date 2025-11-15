@@ -192,15 +192,16 @@ Dataframe shape inference:
   Number of total top:            ${pad(stats.dataFrameShape.numberOfTotalTop)}
   Inferred column names per node: ${pad(stats.dataFrameShape.inferredColNames.mean)}
   Number of column names values:  ${pad(stats.dataFrameShape.numberOfColNamesValues)}
-  Number of column names Top:     ${pad(stats.dataFrameShape.numberOfColNamesTop)}
+  Number of column names infinite:${pad(stats.dataFrameShape.numberOfColNamesInfinite)}
+  Number of column names top:     ${pad(stats.dataFrameShape.numberOfColNamesTop)}
   Inferred column count per node: ${pad(stats.dataFrameShape.inferredColCount.mean)}
   Number of column count values:  ${pad(stats.dataFrameShape.numberOfColCountValues)}
-  Number of column count Top:     ${pad(stats.dataFrameShape.numberOfColCountTop)}
   Number of column count infinite:${pad(stats.dataFrameShape.numberOfColCountInfinite)}
+  Number of column count top:     ${pad(stats.dataFrameShape.numberOfColCountTop)}
   Inferred row count per node:    ${pad(stats.dataFrameShape.inferredRowCount.mean)}
   Number of row count values:     ${pad(stats.dataFrameShape.numberOfRowCountValues)}
-  Number of row count Top:        ${pad(stats.dataFrameShape.numberOfRowCountTop)}
   Number of row count infinite:   ${pad(stats.dataFrameShape.numberOfRowCountInfinite)}
+  Number of row count top:        ${pad(stats.dataFrameShape.numberOfRowCountTop)}
   Size of data frame shape info:  ${convertNumberToNiceBytes(stats.dataFrameShape.sizeOfInfo)}`;
 	}
 
@@ -294,18 +295,20 @@ Dataframe shape inference:
   Number of total values:         ${formatSummarizedMeasure(stats.dataFrameShape.numberOfTotalValues)}
   Number of total top:            ${formatSummarizedMeasure(stats.dataFrameShape.numberOfTotalTop)}
   Inferred column names per node: ${formatSummarizedMeasure(stats.dataFrameShape.inferredColNames)}
+  Number of column names exact:   ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColNamesExact)}
   Number of column names values:  ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColNamesValues)}
+  Number of column names infinite:${formatSummarizedMeasure(stats.dataFrameShape.numberOfColNamesInfinite)}
   Number of column names top:     ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColNamesTop)}
   Inferred column count per node: ${formatSummarizedMeasure(stats.dataFrameShape.inferredColCount)}
   Number of column count exact:   ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColCountExact)}
   Number of column count values:  ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColCountValues)}
-  Number of column count top:     ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColCountTop)}
   Number of column count infinite:${formatSummarizedMeasure(stats.dataFrameShape.numberOfColCountInfinite)}
+  Number of column count top:     ${formatSummarizedMeasure(stats.dataFrameShape.numberOfColCountTop)}
   Inferred row count per node:    ${formatSummarizedMeasure(stats.dataFrameShape.inferredRowCount)}
   Number of row count exact:      ${formatSummarizedMeasure(stats.dataFrameShape.numberOfRowCountExact)}
   Number of row count values:     ${formatSummarizedMeasure(stats.dataFrameShape.numberOfRowCountValues)}
-  Number of row count top:        ${formatSummarizedMeasure(stats.dataFrameShape.numberOfRowCountTop)}
   Number of row count infinite:   ${formatSummarizedMeasure(stats.dataFrameShape.numberOfRowCountInfinite)}
+  Number of row count top:        ${formatSummarizedMeasure(stats.dataFrameShape.numberOfRowCountTop)}
   Size of data frame shape info:  ${formatSummarizedMeasure(stats.dataFrameShape.sizeOfInfo, convertNumberToNiceBytes)}`;
 	}
 

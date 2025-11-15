@@ -56,8 +56,10 @@ import {
 	hasDataFrameExpressionInfo
 } from '../abstract-interpretation/data-frame/absint-info';
 import type { DataFrameDomain } from '../abstract-interpretation/data-frame/dataframe-domain';
-import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
 import { inferDataFrameShapes } from '../abstract-interpretation/data-frame/shape-inference';
+import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
+import { Top } from '../abstract-interpretation/domains/lattice';
+import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-domain';
 import fs from 'fs';
 
 /**
@@ -417,8 +419,8 @@ export class BenchmarkSlicer {
 			numberOfNonDataFrameFiles: 0,
 			numberOfResultConstraints: 0,
 			numberOfResultingValues:   0,
-			numberOfResultingTop:      0,
 			numberOfResultingBottom:   0,
+			numberOfResultingTop:      0,
 			numberOfEmptyNodes:        0,
 			numberOfOperationNodes:    0,
 			numberOfValueNodes:        0,
@@ -461,9 +463,10 @@ export class BenchmarkSlicer {
 				stats.numberOfOperationNodes++;
 
 				if(value !== undefined) {
-					nodeStats.inferredColNames = value.colnames.isValue() ? value.colnames.value.size : value.colnames.isTop() ? 'top' : 'bottom';
-					nodeStats.inferredColCount = this.getInferredSize(value.cols);
-					nodeStats.inferredRowCount = this.getInferredSize(value.rows);
+					nodeStats.inferredColNames = this.getInferredNumber(value.colnames);
+					nodeStats.inferredColCount = this.getInferredNumber(value.cols);
+					nodeStats.inferredRowCount = this.getInferredNumber(value.rows);
+					nodeStats.approxRangeColNames = value.colnames.isValue() ? (value.colnames.max === Top ? Infinity : value.colnames.max.size) - value.colnames.min.size : 0;
 					nodeStats.approxRangeColCount = value.cols.isValue() ? value.cols.value[1] - value.cols.value[0] : 0;
 					nodeStats.approxRangeRowCount = value.rows.isValue() ? value.rows.value[1] - value.rows.value[0] : 0;
 				}
@@ -483,13 +486,23 @@ export class BenchmarkSlicer {
 		return stats;
 	}
 
-	private getInferredSize(value: PosIntervalDomain): number | 'bottom' | 'infinite' | 'top' {
+	private getInferredNumber<T>(value: SetRangeDomain<T> | PosIntervalDomain): number | 'bottom' | 'infinite' | 'top' {
 		if(value.isTop()) {
 			return 'top';
-		} else if(value.isValue() && !isFinite(value.value[1])) {
-			return 'infinite';
 		} else if(value.isValue()) {
-			return Math.floor((value.value[0] + value.value[1]) / 2);
+			if(value instanceof SetRangeDomain) {
+				if(value.max === Top) {
+					return 'infinite';
+				} else {
+					return Math.floor((value.min.size + value.max.size) / 2);
+				}
+			} else {
+				if(!isFinite(value.value[1])) {
+					return 'infinite';
+				} else {
+					return Math.floor((value.value[0] + value.value[1]) / 2);
+				}
+			}
 		}
 		return 'bottom';
 	}

@@ -43,7 +43,7 @@ describe.sequential('Simple Defs in Multiple Files', withShell(shell => {
 			.markIdForUnknownSideEffects('-inline-::root-2-5')
 	);
 
-	test.only('Correct File-Info for Multiple Files', async() => {
+	test('Correct File-Info for Multiple Files', async() => {
 		const requests = [{
 			request: 'file',
 			content: 'test/testfiles/parse-multiple/a.R'

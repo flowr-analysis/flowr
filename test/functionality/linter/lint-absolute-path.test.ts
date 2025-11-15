@@ -20,41 +20,39 @@ describe('flowR linter', withTreeSitter(parser => {
 			});
 		});
 
-		describe.only('quickfixes', () => {
-			/* Given an absolute path and assuming a home directory of `/home/me`, we expect the linter to suggest a relative path */
-			assertLinter('is relative to home', parser, '"/home/me/foo.bar"', 'absolute-file-paths', [{
-				certainty: LintingResultCertainty.Uncertain,
-				filePath:  '/home/me/foo.bar',
-				range:     [1, 1, 1, 18],
-				quickFix:  [{
-					type:          'replace',
-					'description': 'Replace with a relative path to `/home/me/foo.bar`',
-					range:         [1, 1, 1, 18],
-					replacement:   `".${path.sep}foo.bar"`
-				}]
-			}], { totalConsidered: 1, totalUnknown: 0 }, {
-				useAsFilePath: '/home/me',
-				include:       {
-					allStrings: true
-				}
-			});
-			/* Replacing absolute paths with relative paths should work within function calls as well */
-			assertLinter('is relative to home', parser, 'read.csv("/home/me/foo.bar")', 'absolute-file-paths', [{
-				certainty: LintingResultCertainty.Uncertain,
-				filePath:  '/home/me/foo.bar',
-				range:     [1, 10, 1, 27],
-				quickFix:  [{
-					type:          'replace',
-					'description': 'Replace with a relative path to `/home/me/foo.bar`',
-					range:         [1, 10, 1, 27],
-					replacement:   `".${path.sep}foo.bar"`
-				}]
-			}], { totalConsidered: 1, totalUnknown: 0 }, {
-				useAsFilePath: '/home/me',
-				include:       {
-					allStrings: true
-				}
-			});
+		/* Given an absolute path and assuming a home directory of `/home/me`, we expect the linter to suggest a relative path */
+		assertLinter('is relative to home', parser, '"/home/me/foo.bar"', 'absolute-file-paths', [{
+			certainty: LintingResultCertainty.Uncertain,
+			filePath:  '/home/me/foo.bar',
+			range:     [1, 1, 1, 18],
+			quickFix:  [{
+				type:          'replace',
+				'description': 'Replace with a relative path to `/home/me/foo.bar`',
+				range:         [1, 1, 1, 18],
+				replacement:   `".${path.sep}foo.bar"`
+			}]
+		}], { totalConsidered: 1, totalUnknown: 0 }, {
+			useAsFilePath: '/home/me',
+			include:       {
+				allStrings: true
+			}
+		});
+		/* Replacing absolute paths with relative paths should work within function calls as well */
+		assertLinter('is relative to home', parser, 'read.csv("/home/me/foo.bar")', 'absolute-file-paths', [{
+			certainty: LintingResultCertainty.Uncertain,
+			filePath:  '/home/me/foo.bar',
+			range:     [1, 10, 1, 27],
+			quickFix:  [{
+				type:          'replace',
+				'description': 'Replace with a relative path to `/home/me/foo.bar`',
+				range:         [1, 10, 1, 27],
+				replacement:   `".${path.sep}foo.bar"`
+			}]
+		}], { totalConsidered: 1, totalUnknown: 0 }, {
+			useAsFilePath: '/home/me',
+			include:       {
+				allStrings: true
+			}
 		});
 
 		/* If the script contains no function that reads a file path, we expect no issues */

@@ -49,6 +49,9 @@ export function assertLinter<Name extends LintingRuleNames>(
 		if(lintingRuleConfig?.useAsFilePath) {
 			analyzer.addFile(new FlowrInlineTextFile(lintingRuleConfig.useAsFilePath, code));
 		}
+		if(lintingRuleConfig?.addFiles) {
+			analyzer.addFile(...lintingRuleConfig.addFiles);
+		}
 		analyzer.addRequest(lintingRuleConfig?.useAsFilePath ?
 			requestFromInput(fileProtocol + lintingRuleConfig.useAsFilePath) :
 			requestFromInput(code)

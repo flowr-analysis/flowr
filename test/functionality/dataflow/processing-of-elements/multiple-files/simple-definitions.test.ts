@@ -55,9 +55,7 @@ describe.sequential('Simple Defs in Multiple Files', withShell(shell => {
 		}] as const;
 		const df = produceDataFlowGraph(
 			new RShellExecutor(),
-			requests,
 			await retrieveNormalizedAst(shell, 'file://' + requests[0].content),
-			// TODO: check for reqeusts wrapper
 			contextFromInput(requests)
 		);
 		const idMap = df.graph.idMap;

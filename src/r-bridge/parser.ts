@@ -87,7 +87,8 @@ function countChildren(node: SyntaxNode): number {
  * @param input    - the input to the parse step
  * @returns The parsed AST per request in the loading order obtained from the {@link FlowrAnalyzerFilesContext|files context} of the given {@link FlowrAnalyzerContext}.
  */
-export async function parseRequests<T extends KnownParserType>(_results: unknown, input: Partial<ParseRequiredInput<T>>): Promise<ParseStepOutput<T>[]> {
+export async function parseRequests<T extends KnownParserType>(_results: unknown, input: Partial<ParseRequiredInput<T>>):
+		Promise<ParseStepOutput<T>[]> {
 	const loadingOrder = (input.context as FlowrAnalyzerContext).files.loadingOrder.getLoadingOrder();
 	/* in the future, we want to expose all cases */
 	const translatedRequests = loadingOrder.map(r => (input.context as FlowrAnalyzerContext).files.resolveRequest(r));

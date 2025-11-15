@@ -65,7 +65,8 @@ async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { lin
 	);
 
 	if(line && line < 0) {
-		const maxLines = normalize.ast.info.fullRange?.[2] ??
+		// TODO: support get for multiple files
+		const maxLines = normalize.ast.files[0].root.info.fullRange?.[2] ??
 			(id ? (await getAllNodes(input)) : potentials).reduce(
 				(maxLine, { location }) => location && location[2] > maxLine ? location[2] : maxLine,
 				0
@@ -150,7 +151,7 @@ async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { sour
 	}
 
 	const nodesByTreeSitterId = new Map<number, RNode<ParentInformation>>();
-	visitAst((await input.normalize()).ast, node => {
+	visitAst((await input.normalize()).ast.files.map(f => f.root), node => {
 		const treeSitterInfo = node.info as unknown as TreeSitterInfo;
 		if(treeSitterInfo.treeSitterId) {
 			nodesByTreeSitterId.set(treeSitterInfo.treeSitterId, node);

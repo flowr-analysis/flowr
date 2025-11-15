@@ -1355,7 +1355,7 @@ function getRequestFromRead(
 
 		if(typeof fileName === 'string') {
 			source = fileName;
-			const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
+			const referenceChain = fileNameArg.info.file ? [fileNameArg.info.file] : [];
 			const sources = findSource(config.solver.resolveSource, fileName, { referenceChain });
 
 			if(sources?.length === 1) {

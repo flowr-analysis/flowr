@@ -25,7 +25,7 @@ import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
 import { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
 import { ansiFormatter, voidFormatter } from '../../../util/text/ansi';
 import { type TREE_SITTER_DATAFLOW_PIPELINE , DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
-import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
+import type { PipelineOutput, PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import type { DeepPartial } from 'ts-essentials';
 import { DataflowGraph } from '../../../dataflow/graph/graph';
 import * as tmp from 'tmp';
@@ -168,7 +168,7 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, await analyzer.parse() as ParseStepOutput<string>, StepOutputFormat.RdfQuads, config()),
+					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, await analyzer.parse() as ParseStepOutput<string>[], StepOutputFormat.RdfQuads, config()),
 					normalize: await printStepResult(NORMALIZE, await analyzer.normalize(), StepOutputFormat.RdfQuads, config()),
 					dataflow:  await printStepResult(STATIC_DATAFLOW, await analyzer.dataflow(), StepOutputFormat.RdfQuads, config())
 				}
@@ -352,9 +352,9 @@ export class FlowRServerConnection {
 /**
  * Sanitizes analysis results by removing any potentially sensitive information like id maps.
  */
-export function sanitizeAnalysisResults(parse: ParseStepOutput<string | Tree>, normalize: NormalizedAst, dataflow: DataflowInformation): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>> {
+export function sanitizeAnalysisResults(parse: ParseStepOutput<string | Tree>[], normalize: NormalizedAst, dataflow: DataflowInformation): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>> {
 	return {
-		parse:     parse as ParseStepOutput<string>,
+		parse:     parse as ParseStepOutput<string>[] & PipelinePerStepMetaInformation,
 		normalize: {
 			...normalize,
 			idMap: undefined

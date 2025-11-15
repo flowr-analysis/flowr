@@ -113,7 +113,7 @@ export class BenchmarkSlicer {
 	private readonly parserName: KnownParserName;
 	private config:              FlowrConfigOptions | undefined;
 	private stats:               SlicerStats | undefined;
-	private loadedXml:           KnownParserType | undefined;
+	private loadedXml:           KnownParserType[] | undefined;
 	private dataflow:            DataflowInformation | undefined;
 	private normalizedAst:       NormalizedAst | undefined;
 	private controlFlow:         ControlFlowInformation | undefined;
@@ -155,7 +155,7 @@ export class BenchmarkSlicer {
 			threshold,
 		});
 
-		this.loadedXml = (await this.measureCommonStep('parse', 'retrieve AST from R code')).parsed;
+		this.loadedXml = (await this.measureCommonStep('parse', 'retrieve AST from R code')).map(p => p.parsed);
 		this.normalizedAst = await this.measureCommonStep('normalize', 'normalize R AST');
 		this.dataflow = await this.measureCommonStep('dataflow', 'produce dataflow information');
 
@@ -180,9 +180,9 @@ export class BenchmarkSlicer {
 				}
 				return ret;
 			};
-			const root = (this.loadedXml as Tree).rootNode;
-			numberOfRTokens = countChildren(root);
-			numberOfRTokensNoComments = countChildren(root, true);
+			const root = (this.loadedXml as Tree[]).map(t => t.rootNode);
+			numberOfRTokens = root.map(r => countChildren(r)).reduce((a, b) => a + b, 0);
+			numberOfRTokensNoComments = root.map(r => countChildren(r, true)).reduce((a, b) => a + b, 0);
 		}
 
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined after initialization');
@@ -208,7 +208,7 @@ export class BenchmarkSlicer {
 		let nodesNoComments = 0;
 		let commentChars = 0;
 		let commentCharsNoWhitespace = 0;
-		visitAst(this.normalizedAst.ast, t => {
+		visitAst(this.normalizedAst.ast.files.map(f => f.root), t => {
 			nodes++;
 			const comments = t.info.additionalTokens?.filter(t => t.type === RType.Comment);
 			if(comments && comments.length > 0) {
@@ -431,7 +431,7 @@ export class BenchmarkSlicer {
 			}
 		}
 
-		visitAst(this.normalizedAst.ast, (node: RNode<ParentInformation & AbstractInterpretationInfo>) => {
+		visitAst(this.normalizedAst.ast.files.map(f => f.root), (node: RNode<ParentInformation & AbstractInterpretationInfo>) => {
 			if(node.info.dataFrame === undefined) {
 				return;
 			}

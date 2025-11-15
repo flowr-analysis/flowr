@@ -353,7 +353,7 @@ For single nodes, we use ${shortLink(normalizeSingleNode.name, info)} which cont
 The output of just this pass is listed below (using the ${shortLink(normalizeButNotDecorated.name, info)} function):
 
 ${details('Ast for <code>x <- 1; print(x)</code> after the first normalization', codeBlock('json',
-	JSON.stringify(normalizeButNotDecorated((await createParsePipeline(shell, { context: contextFromInput(sampleCode) }).allRemainingSteps()).parse), jsonReplacer, 4)
+	JSON.stringify(normalizeButNotDecorated((await createParsePipeline(shell, { context: contextFromInput(sampleCode) }).allRemainingSteps()).parse[0]), jsonReplacer, 4)
 ))}
 
 

@@ -7,12 +7,13 @@ import { printAsBuilder } from './dataflow/dataflow-builder-printer';
 import { RShell } from '../../../src/r-bridge/shell';
 import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
 import { type fileProtocol, type RParseRequests , requestFromInput } from '../../../src/r-bridge/retriever';
-import {
+import { type ParentInformation,
 	type AstIdMap,
 	type IdGenerator,
 	type NormalizedAst,
 	type RNodeWithParent
-	, deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+	, deterministicCountingIdGenerator
+} from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
 	type DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
 	type TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE
@@ -48,6 +49,7 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-a
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
+import type { RProject } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -105,7 +107,7 @@ export function withTreeSitter(fn: (shell: TreeSitterExecutor) => void): () => v
 	};
 }
 
-function removeInformation<T extends Record<string, unknown>>(obj: T, includeTokens: boolean, ignoreColumns: boolean, ignoreMisc: boolean): T {
+function removeInformation<T extends RProject<unknown> | Record<string, unknown>>(obj: T, includeTokens: boolean, ignoreColumns: boolean, ignoreMisc: boolean): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
 		if(key === 'fullRange' || ignoreMisc && (key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nesting')) {
 			return undefined;
@@ -123,7 +125,7 @@ function removeInformation<T extends Record<string, unknown>>(obj: T, includeTok
 }
 
 
-function assertAstEqual<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string, ignoreMiscSourceInfo = true): void {
+function assertAstEqual<Info>(ast: RProject<Info> | RNode<Info>, expected: RProject<Info> | RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string, ignoreMiscSourceInfo = true): void {
 	ast = removeInformation(ast, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
 	expected = removeInformation(expected, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
 	try {
@@ -236,8 +238,8 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
 	return describe.skipIf(skip)(`${decorateLabelContext(name, labelContext)} (input: ${input})`, () => {
 		const ts = !skipTreeSitter ? new TreeSitterExecutor() : undefined;
-		let shellAst: RNode | undefined;
-		let tsAst: RNode | undefined;
+		let shellAst: RProject | undefined;
+		let tsAst: RProject | undefined;
 		beforeAll(async() => {
 			shellAst = await makeShellAst();
 			if(!skipTreeSitter) {
@@ -246,20 +248,20 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 		});
 		afterAll(() => ts?.close());
 		test('shell', function() {
-			assertAstEqual(shellAst as RNode, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
+			assertAstEqual(shellAst as RProject, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(shellAst)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
 		test.skipIf(skipTreeSitter)('tree-sitter', function() {
-			assertAstEqual(tsAst as RNode, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
+			assertAstEqual(tsAst as RProject, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(tsAst)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
 		test.skipIf(skipTreeSitter)('compare', function() {
 			// we still ignore columns because we know those to be different (tree-sitter crushes tabs at the start of lines)
-			assertAstEqual(tsAst as RNode, shellAst as RNode, true, userConfig?.ignoreColumns === true,
+			assertAstEqual(tsAst as RProject, shellAst as RProject, true, userConfig?.ignoreColumns === true,
 				() => `tree-sitter ast: ${JSON.stringify(tsAst)}, vs. shell ast: ${JSON.stringify(shellAst)}`, false);
 		});
 
-		async function makeShellAst(): Promise<RNode> {
+		async function makeShellAst(): Promise<RProject> {
 			const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 				parser:  shell,
 				context: contextFromInput(input)
@@ -268,7 +270,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 			return result.normalize.ast;
 		}
 
-		async function makeTsAst(): Promise<RNode> {
+		async function makeTsAst(): Promise<RProject> {
 			const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
 				parser:  ts as TreeSitterExecutor,
 				context: contextFromInput(input)
@@ -541,9 +543,13 @@ export function assertSliced(
 			false,
 			'compare ASTs',
 			function() {
-				const tsAst = tsResult?.normalize.ast as RNodeWithParent;
-				const shellAst = shellResult?.normalize.ast as RNodeWithParent;
-				assertAstEqual(tsAst, shellAst, true, true, () => `tree-sitter ast: ${JSON.stringify(tsAst)} (${normalizedAstToMermaidUrl(tsAst)}), vs. shell ast: ${JSON.stringify(shellAst)} (${normalizedAstToMermaidUrl(shellAst)})`, false);
+				const tsAst = tsResult?.normalize.ast as RProject<ParentInformation>;
+				const shellAst = shellResult?.normalize.ast as RProject<ParentInformation>;
+				assertAstEqual(
+					tsAst, shellAst, true, true,
+					() => `tree-sitter ast: ${JSON.stringify(tsAst)} (${normalizedAstToMermaidUrl(tsAst)}), vs. shell ast: ${JSON.stringify(shellAst)} (${normalizedAstToMermaidUrl(shellAst)})`,
+					false
+				);
 			},
 		);
 

@@ -82,6 +82,7 @@ export function extractCfg<Info = ParentInformation>(
 	graph?: DataflowGraph,
 	simplifications?: readonly CfgSimplificationPassName[]
 ): ControlFlowInformation {
+	// TODO: support multifile
 	return simplifyControlFlowInformation(foldAst(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds), { ast, dfg: graph, config }, simplifications);
 }
 
@@ -89,6 +90,7 @@ export function extractCfg<Info = ParentInformation>(
  * A version of {@link extractCfg} that is much quicker and does not apply any simplifications or dataflow information.
  */
 export function extractCfgQuick<Info = ParentInformation>(ast: NormalizedAst<Info>) {
+	// TODO: support multifile
 	return foldAst(ast.ast, cfgFolds);
 }
 

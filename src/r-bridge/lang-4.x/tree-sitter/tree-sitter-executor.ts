@@ -1,11 +1,11 @@
 import Parser from 'web-tree-sitter';
-import type { Query, QueryCapture, Tree } from 'web-tree-sitter';
+import type { Query, QueryCapture } from 'web-tree-sitter';
 import type { RParseRequest } from '../../retriever';
 import type { SyncParser, TreeSitterInformation } from '../../parser';
 import type { TreeSitterEngineConfig } from '../../../config';
 import { log } from '../../../util/log';
 import fs from 'fs';
-import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 export const DEFAULT_TREE_SITTER_R_WASM_PATH = './node_modules/@eagleoutice/tree-sitter-r/tree-sitter-r.wasm';
 export const DEFAULT_TREE_SITTER_WASM_PATH = './node_modules/web-tree-sitter/tree-sitter.wasm';
@@ -55,12 +55,12 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		return Promise.resolve('none');
 	}
 
-	public information(analyzer: FlowrAnalysisProvider): TreeSitterInformation {
+	public information(analyzer: ReadonlyFlowrAnalysisProvider): TreeSitterInformation {
 		return {
 			name:            'tree-sitter',
 			grammarVersion:  this.treeSitterVersion(),
 			treeSitterQuery: async(source: Query | string, force?: boolean) => {
-				return this.query(source, (await analyzer.parse(force)).parsed as Tree);
+				return this.query(source, ...(await analyzer.parse(force)).map(p => p.parsed) as Parser.Tree[]);
 			}
 		};
 	}

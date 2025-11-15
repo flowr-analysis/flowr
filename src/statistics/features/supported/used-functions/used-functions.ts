@@ -78,7 +78,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 	const calls: RNodeWithParent[] = [];
 	const allCalls: FunctionCallInformation[] = [];
 
-	visitAst(input.normalizedRAst.ast,
+	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
 		node => {
 			if(node.type !== RType.FunctionCall) {
 				return;

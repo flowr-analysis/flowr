@@ -53,14 +53,15 @@ export function setSourceProvider(provider: RParseRequestProvider): void {
 /**
  * Infers working directories based on the given option and reference chain
  */
-export function inferWdFromScript(option: InferWorkingDirectory, referenceChain: readonly RParseRequest[]): string[] {
+export function inferWdFromScript(option: InferWorkingDirectory, referenceChain: readonly (string | undefined)[]): string[] {
 	switch(option) {
 		case InferWorkingDirectory.MainScript:
-			return referenceChain[0]?.request === 'file' ? [platformDirname(referenceChain[0].content)] : [];
-		case InferWorkingDirectory.ActiveScript:
-			return referenceChain[referenceChain.length - 1] ? [platformDirname(referenceChain[referenceChain.length - 1].content)] : [];
-		case InferWorkingDirectory.AnyScript:
-			return referenceChain.filter(e => e.request === 'file').map(e => platformDirname(e.content));
+			return referenceChain[0] ? [platformDirname(referenceChain[0])] : [];
+		case InferWorkingDirectory.ActiveScript: {
+			const secondToLast = referenceChain[referenceChain.length - 1];
+			return secondToLast ? [platformDirname(secondToLast)] : [];
+		} case InferWorkingDirectory.AnyScript:
+			return referenceChain.filter(isNotUndefined).map(e => platformDirname(e));
 		case InferWorkingDirectory.No:
 		default:
 			return [];
@@ -98,13 +99,12 @@ function applyReplacements(path: string, replacements: readonly Record<string, s
  * @param seed          - the path originally requested in the `source` call
  * @param data          - more information on the loading context
  */
-export function findSource(resolveSource: FlowrLaxSourcingOptions | undefined, seed: string, data: { referenceChain: readonly RParseRequest[] }): string[] | undefined {
+export function findSource(resolveSource: FlowrLaxSourcingOptions | undefined, seed: string, data: { referenceChain: readonly (string | undefined)[] }): string[] | undefined {
 	const capitalization = resolveSource?.ignoreCapitalization ?? false;
 
-	const explorePaths = [
-		...(resolveSource?.searchPath ?? []),
-		...(inferWdFromScript(resolveSource?.inferWorkingDirectory ?? InferWorkingDirectory.No, data.referenceChain))
-	];
+	const explorePaths = (resolveSource?.searchPath ?? []).concat(
+		inferWdFromScript(resolveSource?.inferWorkingDirectory ?? InferWorkingDirectory.No, data.referenceChain)
+	);
 
 	let tryPaths = [seed];
 	switch(resolveSource?.dropPaths ?? DropPathsOption.No) {
@@ -153,7 +153,6 @@ export function findSource(resolveSource: FlowrLaxSourcingOptions | undefined, s
 	return found;
 }
 
-// TODO: adapt to file handling
 /**
  * Processes a named function call (i.e., not an anonymous function)
  */
@@ -206,7 +205,7 @@ export function processSourceCall<OtherInfo>(
 
 			// check if the sourced file has already been dataflow analyzed, and if so, skip it
 			const limit = data.ctx.config.solver.resolveSource?.repeatedSourceLimit ?? 0;
-			const findCount = data.referenceChain.filter(e => e.request === request.request && e.content === request.content).length;
+			const findCount = data.referenceChain.filter(e => e !== undefined && request.content).length;
 			if(findCount > limit) {
 				dataflowLogger.warn(`Found cycle (>=${limit + 1}) in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
 				handleUnknownSideEffect(information.graph, information.environment, rootId);
@@ -243,12 +242,13 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 	try {
 		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r);
 		normalized = (typeof parsed !== 'string' ?
-			normalizeTreeSitter({ parsed, filePath: textRequest.path }, getId, data.ctx.config)
-			: normalize({ parsed, filePath: textRequest.path }, getId)) as NormalizedAst<OtherInfo & ParentInformation>;
-		dataflow = processDataflowFor(normalized.ast, {
+			normalizeTreeSitter([{ parsed, filePath: textRequest.path }], getId, data.ctx.config)
+			: normalize([{ parsed, filePath: textRequest.path }], getId)) as NormalizedAst<OtherInfo & ParentInformation>;
+		const fst = normalized.ast.files[0];
+		dataflow = processDataflowFor(fst.root, {
 			...data,
 			environment:    information.environment,
-			referenceChain: [...data.referenceChain, request]
+			referenceChain: [...data.referenceChain, fst.filePath]
 		});
 	} catch(e) {
 		dataflowLogger.error(`Failed to analyze sourced file ${JSON.stringify(request)}, skipping: ${(e as Error).message}`);

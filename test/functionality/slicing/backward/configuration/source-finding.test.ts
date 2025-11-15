@@ -3,7 +3,7 @@ import {
 	findSource,
 	setSourceProvider
 } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
-import { type RParseRequest , requestProviderFromFile, requestProviderFromText } from '../../../../../src/r-bridge/retriever';
+import {  requestProviderFromFile, requestProviderFromText } from '../../../../../src/r-bridge/retriever';
 import { type FlowrLaxSourcingOptions , DropPathsOption, InferWorkingDirectory, } from '../../../../../src/config';
 import path from 'path';
 
@@ -23,7 +23,7 @@ describe('source finding', () => {
 		setSourceProvider(requestProviderFromFile());
 	});
 
-	function assertSourceFound(path: string, shouldBe: string[], referenceChain: readonly RParseRequest[] = []) {
+	function assertSourceFound(path: string, shouldBe: string[], referenceChain: readonly (string | undefined)[] = []) {
 		test(`finds source for ${path}`, () => {
 			const resolveSource: FlowrLaxSourcingOptions = {
 				dropPaths:             DropPathsOption.All,
@@ -42,8 +42,8 @@ describe('source finding', () => {
 
 	assertSourceFound('a.txt', ['a.txt']);
 	assertSourceFound('c.txt', ['c.txt']);
-	assertSourceFound('b.txt', [`a${path.sep}b.txt`], [{ request: 'file', content: `a${path.sep}x.txt` }]);
-	assertSourceFound('b.txt', [`x${path.sep}y${path.sep}z${path.sep}b.txt`], [{ request: 'file', content: `x${path.sep}y${path.sep}z${path.sep}g.txt` }]);
-	assertSourceFound(`..${path.sep}b.txt`, [`x${path.sep}y${path.sep}b.txt`, `x${path.sep}y${path.sep}z${path.sep}b.txt`], [{ request: 'file', content: `x${path.sep}y${path.sep}z${path.sep}g.txt` }]);
+	assertSourceFound('b.txt', [`a${path.sep}b.txt`], [`a${path.sep}x.txt`]);
+	assertSourceFound('b.txt', [`x${path.sep}y${path.sep}z${path.sep}b.txt`], [`x${path.sep}y${path.sep}z${path.sep}g.txt`]);
+	assertSourceFound(`..${path.sep}b.txt`, [`x${path.sep}y${path.sep}b.txt`, `x${path.sep}y${path.sep}z${path.sep}b.txt`], [`x${path.sep}y${path.sep}z${path.sep}g.txt`]);
 	assertSourceFound('with spaces.txt', ['with-spaces.txt']); // space replacements
 });

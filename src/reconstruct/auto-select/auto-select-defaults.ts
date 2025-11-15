@@ -7,7 +7,6 @@ import type { ParentInformation, NormalizedAst } from '../../r-bridge/lang-4.x/a
  * independent of if it is selected by the slice or not.
  * @see reconstructToCode
  * @see doNotAutoSelect
- * @see autoSelectLibrary
  */
 export type AutoSelectPredicate = (node: RNode<ParentInformation>, fullAst: NormalizedAst) => boolean
 

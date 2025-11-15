@@ -187,10 +187,11 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
 /**
  * Uses {@link retrieveParseDataFromRCode} and returns the nicely formatted object-AST.
  * If successful, allows further querying the last result with {@link retrieveNumberOfRTokensOfLastParse}.
+ * This function is outdated and should only be used for legacy reasons. Please use the {@link FlowrAnalyzer} instead.
  */
 export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell): Promise<NormalizedAst> {
 	const data = await retrieveParseDataFromRCode(request, shell);
-	return normalize({ parsed: data, filePath: request.request === 'file' ? request.content : undefined }, deterministicCountingIdGenerator(0));
+	return normalize([{ parsed: data, filePath: request.request === 'file' ? request.content : undefined }], deterministicCountingIdGenerator(0));
 }
 
 /**

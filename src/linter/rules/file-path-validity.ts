@@ -6,7 +6,6 @@ import { formatRange } from '../../util/mermaid/dfg';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { Ternary } from '../../util/logic';
-import { requestFromInput } from '../../r-bridge/retriever';
 import { happensBefore } from '../../control-flow/happens-before';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { LintingRuleTag } from '../linter-tags';
@@ -90,7 +89,7 @@ export const FILE_PATH_VALIDITY = {
 
 				// check if the file exists!
 				const paths = findSource(data.config.solver.resolveSource, matchingRead.value as string, {
-					referenceChain: element.node.info.file ? [requestFromInput(`file://${element.node.info.file}`)] : []
+					referenceChain: element.node.info.file ? [element.node.info.file] : []
 				});
 				if(paths && paths.length) {
 					metadata.totalValid++;

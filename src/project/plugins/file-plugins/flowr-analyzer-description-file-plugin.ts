@@ -19,12 +19,17 @@ export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin 
 	public readonly version = new SemVer('0.1.0');
 	private readonly pattern: RegExp;
 
+	/**
+	 * Creates a new instance of the DESCRIPTION file plugin.
+	 * @param filePattern - The pattern to identify DESCRIPTION files, see {@link DescriptionFilePattern} for the default pattern.
+	 */
 	constructor(filePattern: RegExp = DescriptionFilePattern) {
 		super();
 		this.pattern = filePattern;
 	}
 
 	public applies(file: PathLike): boolean {
+		// TODO: use platformBasename for all others as well!!
 		return this.pattern.test(file.toString().split(/[/\\]/).pop() ?? '');
 	}
 

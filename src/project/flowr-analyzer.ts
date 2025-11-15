@@ -1,5 +1,5 @@
 import type { FlowrConfigOptions } from '../config';
-import type { KnownParser, KnownParserInformation, ParseStepOutput } from '../r-bridge/parser';
+import type { KnownParser, KnownParserInformation } from '../r-bridge/parser';
 import { executeQueries, type Queries, type QueryResults, type SupportedQueryTypes } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -19,7 +19,7 @@ import { isFilePath } from '../util/files';
 /**
  * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
  */
-export interface FlowrAnalysisProvider extends ReadonlyFlowrAnalysisProvider {
+export interface FlowrAnalysisProvider<Parser extends KnownParser = KnownParser> extends ReadonlyFlowrAnalysisProvider<Parser> {
 	/**
 	 * Returns project context information.
 	 * If you are a user that wants to inspect the context, prefer {@link inspectContext} instead.
@@ -41,7 +41,7 @@ export interface FlowrAnalysisProvider extends ReadonlyFlowrAnalysisProvider {
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
  * This allows us to exchange the underlying implementation of the analyzer without affecting the APIs.
  */
-export interface ReadonlyFlowrAnalysisProvider {
+export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = KnownParser> {
     /**
      * Returns a set of additional data and helper functions exposed by the underlying {@link KnownParser},
      * including the parser's {@link BaseParserInformation.name} and corresponding version information.
@@ -59,11 +59,11 @@ export interface ReadonlyFlowrAnalysisProvider {
 	 * @param force - Do not use the cache, instead force a new parse.
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekParse} - to get the parse output if already available without triggering a new computation.
 	 */
-    parse(force?: boolean): Promise<ParseStepOutput<Awaited<ReturnType<KnownParser['parse']>>[]> & PipelinePerStepMetaInformation>
+    parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>>
 	/**
 	 * Peek at the parse output for the request, if it was already computed.
 	 */
-	peekParse(): ParseStepOutput<Awaited<ReturnType<KnownParser['parse']>>> & PipelinePerStepMetaInformation | undefined;
+	peekParse(): NonNullable<AnalyzerCacheType<Parser>['parse']> | undefined;
 	/**
 	 * Get the normalized abstract syntax tree for the request.
 	 * @param force - Do not use the cache, instead force new analyses.
@@ -122,7 +122,7 @@ export interface ReadonlyFlowrAnalysisProvider {
  *
  * To inspect the context of the analyzer, use {@link FlowrAnalyzer#inspectContext} (if you are a plugin and need to modify it, use {@link FlowrAnalyzer#context} instead).
  */
-export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements ReadonlyFlowrAnalysisProvider {
+export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements ReadonlyFlowrAnalysisProvider<Parser> {
 	/** The parser and engine backend */
 	private readonly parser: Parser;
 	/** The cache used for storing analysis results */

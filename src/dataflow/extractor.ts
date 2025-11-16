@@ -99,19 +99,16 @@ export function produceDataFlowGraph<OtherInfo>(
 ): DataflowInformation & { cfgQuick: ControlFlowInformation | undefined } {
 	const builtInsConfig = ctx.config.semantics.environment.overwriteBuiltIns;
 	const builtIns = getBuiltInDefinitions(builtInsConfig.definitions, builtInsConfig.loadDefaults);
-	// TODO: provide this in the context
 	const env = initializeCleanEnvironments(builtIns.builtInMemory);
 
 	// we freeze the files here to avoid endless modifications during processing
 	const files = [...completeAst.ast.files];
 
-	// TODO: move this into the context!
 	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
 
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
-		// TODO: move these to the context
 		environment:         env,
 		builtInEnvironment:  env.current.parent,
 		processors,
@@ -121,7 +118,6 @@ export function produceDataFlowGraph<OtherInfo>(
 	};
 	let df = processDataflowFor<OtherInfo>(files[0].root, dfData);
 
-	// TODO: here we can also check wether we had those already
 	for(let i = 1; i < files.length; i++) {
 		/* source requests register automatically */
 		df = standaloneSourceFile(i, files[i], dfData, df);

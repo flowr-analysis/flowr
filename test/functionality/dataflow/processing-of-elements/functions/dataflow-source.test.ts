@@ -213,9 +213,13 @@ describe.sequential('source', withShell(shell => {
 				in:                [],
 				unknownReferences: [],
 				entryPoint:        'closure1-1:1-1:6-5',
-				graph:             new Set(['closure1-1:1-1:6-5']),
+				graph:             new Set(['closure1-1:1-1:6-5', 'closure1-1:1-1:6-6']),
 				environment:       defaultEnv().pushEnv(),
 			})
+			.call('closure1-1:1-1:6-6', '{', [
+				argumentInCall('closure1-1:1-1:6-5')
+			], { returns: ['closure1-1:1-1:6-5'], reads: [builtInId('{')], environment: defaultEnv().pushEnv().pushEnv() }, false)
+			.calls('closure1-1:1-1:6-6', builtInId('{'))
 			.defineVariable('closure1-1:1-1:6-0', 'f', { definedBy: ['closure1-1:1-1:6-7', 'closure1-1:1-1:6-8'] })
 			.addControlDependency('closure1-1:1-1:6-0', '3', true)
 			.defineVariable('4', 'g', { definedBy: ['6', '7'] })
@@ -256,11 +260,15 @@ describe.sequential('source', withShell(shell => {
 				in:                [],
 				unknownReferences: [],
 				entryPoint:        'closure2-2:1-2:6-5',
-				graph:             new Set(['closure2-2:1-2:6-4', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5']),
+				graph:             new Set(['closure2-2:1-2:6-4', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5', 'closure2-2:1-2:6-6']),
 				environment:       defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5').pushEnv(),
 			}, {
 				environment: defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5'),
 			})
+			.call('closure2-2:1-2:6-6', '{', [
+				argumentInCall('closure2-2:1-2:6-5')
+			], { returns: ['closure2-2:1-2:6-5'], reads: [builtInId('{')], environment: defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5').pushEnv() }, false)
+			.calls('closure2-2:1-2:6-6', builtInId('{'))
 			.defineVariable('closure2-2:1-2:6-0', 'f', { definedBy: ['closure2-2:1-2:6-7', 'closure2-2:1-2:6-8'] })
 			.addControlDependency('closure2-2:1-2:6-0', '6', true)
 			.markIdForUnknownSideEffects('12'),

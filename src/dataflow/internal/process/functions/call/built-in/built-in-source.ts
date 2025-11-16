@@ -30,10 +30,10 @@ import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import type { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type {
 	ReadOnlyFlowrAnalyzerContext
 } from '../../../../../../project/context/flowr-analyzer-context';
+import type { RProjectFile } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 /**
  * Infers working directories based on the given option and reference chain
@@ -210,28 +210,41 @@ export function processSourceCall<OtherInfo>(
 
 /**
  * Processes a source request with the given dataflow processor information and existing dataflow information
+ * Otherwise, this can be an {@link RProjectFile} representing a standalone source file
  */
-export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, getId: IdGenerator<NoInfo>): DataflowInformation {
-	const textRequest: { r: RParseRequestFromText, path?: string } | undefined = data.ctx.files.resolveRequest(request);
-
-	if(textRequest === undefined && request.request === 'file') {
-		// if translation failed there is nothing we can do!!
-		dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}: file does not exist`);
-		handleUnknownSideEffect(information.graph, information.environment, rootId);
-		return information;
-	} else {
-		guard(textRequest !== undefined, `Expected text request to be defined for sourced file ${JSON.stringify(request)}`);
-	}
-
+export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest | RProjectFile<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, getId?: IdGenerator<NoInfo>): DataflowInformation {
 	// parse, normalize and dataflow the sourced file
-	let normalized: NormalizedAst<OtherInfo & ParentInformation>;
 	let dataflow: DataflowInformation;
-	try {
+	let fst: RProjectFile<OtherInfo & ParentInformation>;
+	let filePath: string | undefined;
+
+	if('root' in request) {
+		fst = request;
+		filePath = request.filePath;
+	} else {
+		const textRequest: { r: RParseRequestFromText, path?: string } | undefined = data.ctx.files.resolveRequest(request);
+
+		if(textRequest === undefined && request.request === 'file') {
+			// if translation failed there is nothing we can do!!
+			dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}: file does not exist`);
+			handleUnknownSideEffect(information.graph, information.environment, rootId);
+			return information;
+		} else {
+			guard(textRequest !== undefined, `Expected text request to be defined for sourced file ${JSON.stringify(request)}`);
+		}
 		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r);
-		normalized = (typeof parsed !== 'string' ?
+		const normalized = (typeof parsed !== 'string' ?
 			normalizeTreeSitter({ files: [{ parsed, filePath: textRequest.path }] }, getId, data.ctx.config)
 			: normalize({ files: [{ parsed, filePath: textRequest.path }] }, getId)) as NormalizedAst<OtherInfo & ParentInformation>;
-		const fst = normalized.ast.files[0];
+		fst = normalized.ast.files[0];
+		// this can be improved, see issue #628
+		for(const [k, v] of normalized.idMap) {
+			data.completeAst.idMap.set(k, v);
+		}
+		filePath = textRequest.path;
+	}
+
+	try {
 		dataflow = processDataflowFor(fst.root, {
 			...data,
 			environment:    information.environment,
@@ -245,23 +258,21 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 	}
 
 	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
-	if(dataflow.graph.hasVertex(dataflow.entryPoint)) {
-		dataflow.graph.addControlDependency(dataflow.entryPoint, rootId, true);
-	}
-	for(const out of dataflow.out) {
-		dataflow.graph.addControlDependency(out.nodeId, rootId, true);
+	if(!String(rootId).startsWith('file-')) {
+		if(dataflow.graph.hasVertex(dataflow.entryPoint)) {
+			dataflow.graph.addControlDependency(dataflow.entryPoint, rootId, true);
+		}
+		for(const out of dataflow.out) {
+			dataflow.graph.addControlDependency(out.nodeId, rootId, true);
+		}
 	}
 
-	dataflow.graph.addFile(request.request === 'file' ? request.content : '<inline>');
+	dataflow.graph.addFile(filePath ?? '<inline>');
 
 	// update our graph with the sourced file's information
 	const newInformation = { ...information };
 	newInformation.environment = overwriteEnvironment(information.environment, dataflow.environment);
 	newInformation.graph.mergeWith(dataflow.graph);
-	// this can be improved, see issue #628
-	for(const [k, v] of normalized.idMap) {
-		data.completeAst.idMap.set(k, v);
-	}
 	return {
 		...newInformation,
 		in:                newInformation.in.concat(dataflow.in),
@@ -275,7 +286,8 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
  * Processes a standalone source file (i.e., not from a source function call)
  */
 export function standaloneSourceFile<OtherInfo>(
-	file: { filePath?: string, root: RExpressionList<OtherInfo & ParentInformation> },
+	idx: number,
+	file: RProjectFile<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	information: DataflowInformation
 ): DataflowInformation {
@@ -286,9 +298,9 @@ export function standaloneSourceFile<OtherInfo>(
 		return information;
 	}
 
-	return  processDataflowFor<OtherInfo>(file.root, {
+	return sourceRequest('file-' + idx, file, {
 		...data,
 		environment:    information.environment,
 		referenceChain: [...data.referenceChain, file.filePath]
-	});
+	}, information);
 }

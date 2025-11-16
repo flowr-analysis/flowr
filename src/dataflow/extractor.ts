@@ -123,7 +123,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	// TODO: here we can also check wether we had those already
 	for(let i = 1; i < files.length; i++) {
 		/* source requests register automatically */
-		df = standaloneSourceFile(files[i], dfData, df);
+		df = standaloneSourceFile(i, files[i], dfData, df);
 	}
 
 	// finally, resolve linkages

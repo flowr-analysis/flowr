@@ -225,6 +225,7 @@ export class DataflowGraph<
 		return this._sourced;
 	}
 
+	// TODO: remove sourced again this is tracked in the context!!
 	/** Mark this file as being part of the dfg */
 	public addFile(source: string | '<inline>'): void {
 		this._sourced.push(source);

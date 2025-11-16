@@ -98,18 +98,18 @@ export async function parseRequests<T extends KnownParserType>(_results: unknown
 	const translatedRequests = loadingOrder.map(r => (input.context as FlowrAnalyzerContext).files.resolveRequest(r));
 
 	if(input.parser?.async){
-		const files = await Promise.all(
-			translatedRequests.map(async req => {
-				const parsed = await (input.parser as AsyncParser<T>).parse(req.r);
-				return {
-					parsed,
-					filePath:      req.path,
-					'.parse-meta': typeof parsed === 'object' && 'rootNode' in parsed ? {
-						tokenCount: countChildren(parsed.rootNode),
-					} : undefined
-				};
-			})
-		);
+		/* sadly we cannot Promise.all with the Rshell as it has to process commands in order and is not thread safe */
+		const files: ParseStepOutputSingleFile<T>[] = [];
+		for(const req of translatedRequests) {
+			const parsed = await (input.parser).parse(req.r);
+			files.push({
+				parsed,
+				filePath:      req.path,
+				'.parse-meta': typeof parsed === 'object' && 'rootNode' in parsed ? {
+					tokenCount: countChildren(parsed.rootNode),
+				} : undefined
+			});
+		}
 		return { files };
 	} else {
 		const p = input.parser as SyncParser<T>;

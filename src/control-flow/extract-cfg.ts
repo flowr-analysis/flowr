@@ -20,7 +20,13 @@ import type { DataflowGraph } from '../dataflow/graph/graph';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import { isFunctionDefinitionVertex } from '../dataflow/graph/vertex';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import { type ControlFlowInformation , CfgEdgeType, CfgVertexType, ControlFlowGraph } from './control-flow-graph';
+import {
+	type ControlFlowInformation,
+	CfgEdgeType,
+	CfgVertexType,
+	ControlFlowGraph,
+	emptyControlFlowInformation
+} from './control-flow-graph';
 import { type CfgSimplificationPassName , simplifyControlFlowInformation } from './cfg-simplification';
 import { guard } from '../util/assert';
 import type { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
@@ -94,8 +100,29 @@ export function extractCfgQuick<Info = ParentInformation>(ast: NormalizedAst<Inf
 }
 
 function cfgFoldProject(proj: RProject<ParentInformation>, folds: FoldFunctions<ParentInformation, ControlFlowInformation>): ControlFlowInformation {
-	// TODO: support multifile
-	return foldAst(proj.files[0].root, folds);
+	if(proj.files.length === 0) {
+		return emptyControlFlowInformation();
+	} else if(proj.files.length === 1) {
+		return foldAst(proj.files[0].root, folds);
+	}
+	const perProject = proj.files.map(file => foldAst(file.root, folds));
+	const finalGraph = perProject[0].graph;
+	for(let i = 1; i < perProject.length; i++) {
+		finalGraph.mergeWith(perProject[i].graph);
+		for(const exitPoint of perProject[i - 1].exitPoints) {
+			for(const entryPoint of perProject[i].entryPoints) {
+				finalGraph.addEdge(entryPoint, exitPoint, { label: CfgEdgeType.Fd });
+			}
+		}
+	}
+	return {
+		breaks:      perProject.flatMap(e => e.breaks),
+		nexts:       perProject.flatMap(e => e.nexts),
+		returns:     perProject.flatMap(e => e.returns),
+		exitPoints:  perProject[perProject.length - 1].exitPoints,
+		entryPoints: perProject[0].entryPoints,
+		graph:       finalGraph
+	};
 }
 
 function cfgLeaf(type: CfgVertexType.Expression | CfgVertexType.Statement): (leaf: RNodeWithParent) => ControlFlowInformation {

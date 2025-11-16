@@ -283,7 +283,6 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		}
 		guard(file !== undefined && file !== null, `File ${r.content} not found in context.`);
 
-		// TODO: check R source
 		const content = file.content();
 		return {
 			r: {

@@ -1,6 +1,6 @@
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
-import { assertDataflow, withShell } from '../../../_helper/shell';
+import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { builtInId } from '../../../../../src/dataflow/environments/built-in';
@@ -11,7 +11,7 @@ import { type FlowrLaxSourcingOptions , amendConfig, defaultConfigOptions } from
 import { deepMergeObject } from '../../../../../src/util/objects';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
 
-describe.sequential('source', withShell(shell => {
+describe('source', withTreeSitter(parser => {
 	const sources = {
 		simple:     'N <- 9',
 		recursive1: 'x <- 1\nsource("recursive2")',
@@ -30,7 +30,7 @@ describe.sequential('source', withShell(shell => {
 		return c;
 	});
 
-	assertDataflow(label('simple source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']), shell, 'source("simple")\ncat(N)', emptyGraph()
+	assertDataflow(label('simple source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']), parser, 'source("simple")\ncat(N)', emptyGraph()
 		.use('5', 'N')
 		.reads('5', 'simple-1:1-1:6-0')
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [builtInId('source')] })
@@ -49,7 +49,7 @@ describe.sequential('source', withShell(shell => {
 	{ addFiles }, undefined, config
 	);
 
-	assertDataflow(label('multiple source', ['sourcing-external-files', 'strings', 'unnamed-arguments', 'normal-definition', 'newlines']), shell, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)',  emptyGraph()
+	assertDataflow(label('multiple source', ['sourcing-external-files', 'strings', 'unnamed-arguments', 'normal-definition', 'newlines']), parser, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)',  emptyGraph()
 		.use('12', 'N')
 		.reads('12', 'simple-3:1-3:6-0')
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [builtInId('source')] })
@@ -81,7 +81,7 @@ describe.sequential('source', withShell(shell => {
 	{ addFiles }, undefined, config
 	);
 
-	assertDataflow(label('conditional', ['if', 'name-normal', 'sourcing-external-files', 'unnamed-arguments', 'strings']), shell, 'if (x) { source("simple") }\ncat(N)',  emptyGraph()
+	assertDataflow(label('conditional', ['if', 'name-normal', 'sourcing-external-files', 'unnamed-arguments', 'strings']), parser, 'if (x) { source("simple") }\ncat(N)',  emptyGraph()
 		.use('0', 'x')
 		.use('10', 'N')
 		.reads('10', 'simple-1:10-1:15-0')
@@ -108,7 +108,7 @@ describe.sequential('source', withShell(shell => {
 	);
 
 	// missing sources should just be ignored
-	assertDataflow(label('missing source', ['unnamed-arguments', 'strings', 'sourcing-external-files']), shell, 'source("missing")', emptyGraph()
+	assertDataflow(label('missing source', ['unnamed-arguments', 'strings', 'sourcing-external-files']), parser, 'source("missing")', emptyGraph()
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [builtInId('source')] })
 		.calls('3', builtInId('source'))
 		.constant('1')
@@ -116,7 +116,7 @@ describe.sequential('source', withShell(shell => {
 	{ addFiles }, undefined, config
 	);
 
-	assertDataflow(label('recursive source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), shell, {
+	assertDataflow(label('recursive source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), parser, {
 		request: 'file',
 		content: 'recursive1'
 	}, emptyGraph()
@@ -155,7 +155,7 @@ describe.sequential('source', withShell(shell => {
 	);
 
 	describe('Increase source limit', () => {
-		assertDataflow(label('recursive source (higher limit)', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), shell, { request: 'file', content: 'recursive1' },  emptyGraph()
+		assertDataflow(label('recursive source (higher limit)', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), parser, { request: 'file', content: 'recursive1' },  emptyGraph()
 			.use('recursive2-2:1-2:6-1', 'x')
 			.use('1::recursive2-2:1-2:6-1', 'x')
 			.use('2::recursive2-2:1-2:6-1', 'x'), {
@@ -173,7 +173,7 @@ describe.sequential('source', withShell(shell => {
 	});
 
 
-	assertDataflow(label('non-constant source (but constant alias)', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'strings', 'newlines', 'unnamed-arguments']), shell, 'x <- "simple"\nsource(x)', emptyGraph()
+	assertDataflow(label('non-constant source (but constant alias)', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'strings', 'newlines', 'unnamed-arguments']), parser, 'x <- "simple"\nsource(x)', emptyGraph()
 		.use('4', 'x')
 		.reads('4', '0')
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
@@ -199,7 +199,7 @@ describe.sequential('source', withShell(shell => {
 	);
 
 	assertDataflow(label('sourcing a closure', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers']),
-		shell, 'source("closure1")\ng <- f()\nprint(g())', emptyGraph()
+		parser, 'source("closure1")\ng <- f()\nprint(g())', emptyGraph()
 			.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [builtInId('source')] })
 			.calls('3', builtInId('source'))
 			.argument('3', '1')
@@ -277,7 +277,7 @@ describe.sequential('source', withShell(shell => {
 	);
 
 	assertDataflow(label('sourcing a closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers', ...OperatorDatabase['<<-'].capabilities]),
-		shell, 'x <- 2\nsource("closure2")\nf()\nprint(x)', emptyGraph()
+		parser, 'x <- 2\nsource("closure2")\nf()\nprint(x)', emptyGraph()
 			.use('10', 'x')
 			.reads('10', 'closure2-2:1-2:6-3')
 			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })

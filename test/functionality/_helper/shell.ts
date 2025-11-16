@@ -319,15 +319,18 @@ function mapProblematicNodesToIds(problematic: readonly ProblematicDiffInfo[] | 
 /**
  * Assert that the given input code produces the expected output in R. Trims by default.
  */
-export function assertOutput(name: string | TestLabel, shell: RShell, input: string | RParseRequests, expected: string | RegExp, userConfig?: Partial<TestConfigurationWithOutput>): void {
+export function assertOutput(name: string | TestLabel, parser: KnownParser, input: string | RParseRequests, expected: string | RegExp, userConfig?: Partial<TestConfigurationWithOutput>): void {
 	if(typeof input !== 'string') {
 		throw new Error('Currently, we have no support for expecting the output of arbitrary requests');
 	}
 	const effectiveName = decorateLabelContext(name, ['output']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${input})`, async function() {
-		const lines = await shell.sendCommandWithOutput(input, { automaticallyTrimOutput: userConfig?.trimOutput ?? true });
+		if(!(parser instanceof RShell)) {
+			throw new Error(`Parser for output test must be an RShell, got ${parser.constructor.name}`);
+		}
+		const lines = await parser.sendCommandWithOutput(input, { automaticallyTrimOutput: userConfig?.trimOutput ?? true });
 		/* we have to reset in between such tests! */
-		shell.clearEnvironment();
+		parser.clearEnvironment();
 		if(typeof expected === 'string') {
 			assert.strictEqual(lines.join('\n'), expected, `for input ${input}`);
 		} else {
@@ -336,10 +339,10 @@ export function assertOutput(name: string | TestLabel, shell: RShell, input: str
 	});
 }
 
-function handleAssertOutput(name: string | TestLabel, shell: RShell, input: string | RParseRequests, userConfig?: Partial<TestConfigurationWithOutput>): void {
+function handleAssertOutput(name: string | TestLabel, parser: KnownParser, input: string | RParseRequests, userConfig?: Partial<TestConfigurationWithOutput>): void {
 	const e = userConfig?.expectedOutput;
 	if(e) {
-		assertOutput(modifyLabelName(name, n => `[output] ${n}`), shell, input, e, userConfig);
+		assertOutput(modifyLabelName(name, n => `[output] ${n}`), parser, input, e, userConfig);
 	}
 }
 
@@ -375,7 +378,7 @@ function cropIfTooLong(str: string): string {
  */
 export function assertDataflow(
 	name: string | TestLabel,
-	shell: RShell,
+	parser: KnownParser,
 	input: string | RParseRequests,
 	expected: DataflowGraph | ((input: ReadonlyFlowrAnalysisProvider) => Promise<DataflowGraph>),
 	userConfig?: Partial<DataflowTestConfiguration>,
@@ -389,7 +392,7 @@ export function assertDataflow(
 				getId: deterministicCountingIdGenerator(startIndexForDeterministicIds)
 			})
 			.setConfig(config)
-			.setParser(shell)
+			.setParser(parser)
 			.build();
 		analyzer.addRequest(input);
 		if(userConfig?.addFiles) {
@@ -435,7 +438,7 @@ export function assertDataflow(
 			throw e;
 		} /* v8 ignore stop */
 	});
-	handleAssertOutput(name, shell, input, userConfig);
+	handleAssertOutput(name, parser, input, userConfig);
 }
 
 
@@ -464,7 +467,7 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 			}
 		}, {});
 		assert.strictEqual(reconstructed.code, expected,
-			`got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids ${JSON.stringify(ids)}:\n${[...result.normalize.idMap].map(i => `${i[0]}: '${i[1].lexeme}'`).join('\n')})`);
+			`got: ${reconstructed.code as string}, vs. expected: ${expected}, for input ${input} (ids ${JSON.stringify(ids)}:\n${[...result.normalize.idMap].map(i => `${i[0]}: '${i[1].lexeme}'`).join('\n')})`);
 	});
 	handleAssertOutput(name, shell, input, userConfig);
 }
@@ -622,12 +625,12 @@ export function assertSliced(
 				} else {
 					assert.strictEqual(
 						result.reconstruct.code, expected,
-						`got: ${result.reconstruct.code}, vs. expected: ${JSON.stringify(expected)}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
+						`got: ${result.reconstruct.code as string}, vs. expected: ${JSON.stringify(expected)}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
 					);
 				}
 			} /* v8 ignore start */ catch(e) {
 				if(printError) {
-					console.error(`got:\n${result.reconstruct.code}\nvs. expected:\n${JSON.stringify(expected)}`);
+					console.error(`got:\n${result.reconstruct.code as string}\nvs. expected:\n${JSON.stringify(expected)}`);
 					console.error(normalizedAstToMermaidUrl(result.normalize.ast));
 				}
 				throw e;

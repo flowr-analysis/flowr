@@ -5,6 +5,7 @@ import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../..
 import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
 import type { AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
+import type { ArrayRangeValue } from '../../../../src/abstract-interpretation/domains/set-range-domain';
 import type { FlowrConfigOptions } from '../../../../src/config';
 import { defaultConfigOptions } from '../../../../src/config';
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
@@ -64,17 +65,10 @@ export const DataFrameShapeOverapproximation: DataFrameShapeMatching = {
 };
 
 /**
- * Data frame shape matching options defining that the inferred columns names should be an over-approximation of the actual value.
- */
-export const ColNamesOverapproximation: Partial<DataFrameShapeMatching> = {
-	colnames: DomainMatchingType.Overapproximation
-};
-
-/**
  * The expected data frame shape for data frame shape assertion tests.
  */
 export interface ExpectedDataFrameShape {
-	colnames: Exclude<DataFrameShapeProperty<'colnames'>, ReadonlySet<string>> | string[],
+	colnames: ArrayRangeValue<string> | typeof Bottom,
 	cols:     DataFrameShapeProperty<'cols'>,
 	rows:     DataFrameShapeProperty<'rows'>
 }
@@ -336,8 +330,12 @@ function getDefaultMatchingType(expected: ExpectedDataFrameShape | undefined, ma
 	const matchingType: Partial<DataFrameShapeMatching> = { ...matching };
 
 	if(expected !== undefined) {
-		if(matching?.colnames === undefined && expected.colnames === Top) {
-			matchingType.colnames = DomainMatchingType.Overapproximation;
+		if(matching?.colnames === undefined) {
+			if(expected.colnames === Bottom || (expected.colnames[1] !== Top && expected.colnames[1].length === 0)) {
+				matchingType.colnames = DomainMatchingType.Exact;
+			} else {
+				matchingType.colnames = DomainMatchingType.Overapproximation;
+			}
 		}
 		if(matching?.cols === undefined) {
 			if(expected.cols === Bottom || expected.cols[0] === expected.cols[1]) {
@@ -413,7 +411,7 @@ function getRealDomainFromOutput(
 		const cols = Number.parseInt(result[3]);
 		const rows = Number.parseInt(result[4]);
 
-		return dataFrame ? { colnames: colnames, cols: [cols, cols], rows: [rows, rows] } : undefined;
+		return dataFrame ? { colnames: [colnames, []], cols: [cols, cols], rows: [rows, rows] } : undefined;
 	}
 	return undefined;
 }
@@ -427,8 +425,10 @@ function guardValidCriteria(
 ): void {
 	for(const [criterion, domain, matching] of criteria) {
 		if(domain !== undefined) {
-			if(domain.colnames === Top) {
-				guard(matching?.colnames === DomainMatchingType.Overapproximation, `Domain matching type for column names of "${criterion}" must be \`Overapproximation\` if expected column names are ${domain.colnames.toString()}`);
+			if(domain.colnames === Bottom || (domain.colnames[1] !== Top && domain.colnames[1].length === 0)) {
+				guard(matching?.colnames === DomainMatchingType.Overapproximation, `Domain matching type for column names of "${criterion}" must be \`Overapproximation\` if expected column names have a non-empty range set ${domain.colnames.toString()}`);
+			} else {
+				guard((matching?.cols ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for column names of "${criterion}" must be \`Exact\` if expected column names have an empty range set ${domain.colnames.toString()}`);
 			}
 			if(domain.cols !== Bottom && domain.cols[0] !== domain.cols[1]) {
 				guard(matching?.cols === DomainMatchingType.Overapproximation, `Domain matching type for number of columns of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element ${domain.cols.toString()}`);

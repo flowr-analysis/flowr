@@ -1,6 +1,8 @@
 import { assert, test } from 'vitest';
-import { DEFAULT_INFERENCE_LIMIT, type AnyAbstractDomain, type ConcreteDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
+import { type AnyAbstractDomain, type ConcreteDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
+
+const ConcretizationLimit = 20;
 
 export interface DomainTestExpectation<AbstractValue, ConcreteValue>{
     readonly equal:     boolean,
@@ -61,18 +63,20 @@ export function assertAbstractDomain<AbstractValue, Domain extends AnyAbstractDo
 		assert.isTrue(domain2.narrow(domain2).leq(domain2), `expected narrowing ${domain1.narrow(domain2).toString()} to be less than or equal to ${domain2.toString()}`);
 	});
 	test(`γ(${domain1.toString()})`, () => {
-		assert.deepStrictEqual(domain1.concretize(DEFAULT_INFERENCE_LIMIT), concrete, `expected ${toString(concrete)} but was ${toString(domain1.concretize(DEFAULT_INFERENCE_LIMIT))}`);
+		assert.deepStrictEqual(domain1.concretize(ConcretizationLimit), concrete, `expected ${toString(concrete)} but was ${toString(domain1.concretize(ConcretizationLimit))}`);
 	});
 	test(`α(γ(${domain1.toString()}))`, () => {
-		assert.isTrue(domain1.abstract(domain1.concretize(DEFAULT_INFERENCE_LIMIT)).equals(abstract), `expected ${abstract.toString()} but was ${domain1.abstract(domain1.concretize(DEFAULT_INFERENCE_LIMIT)).toString()}`);
+		assert.isTrue(domain1.abstract(domain1.concretize(ConcretizationLimit)).equals(abstract), `expected ${abstract.toString()} but was ${domain1.abstract(domain1.concretize(ConcretizationLimit)).toString()}`);
 	});
 }
 
-function toString(set: ReadonlySet<unknown> | typeof Top | unknown): string {
-	if(set instanceof Set) {
-		return `{${set.values().map(value => toString(value)).toArray().join(', ')}}`;
-	} else if(set === Top) {
+function toString(value: ReadonlySet<unknown> | typeof Top | unknown): string {
+	if(value instanceof Map) {
+		return `{${value.entries().map(([key, value]) => `${toString(key)} -> ${toString(value)}`).toArray().join(', ')}}`;
+	} else if(value instanceof Set) {
+		return `{${value.values().map(value => toString(value)).toArray().join(', ')}}`;
+	} else if(value === Top) {
 		return '⊤';
 	}
-	return JSON.stringify(set);
+	return JSON.stringify(value);
 }

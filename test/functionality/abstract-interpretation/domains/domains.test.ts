@@ -4,6 +4,7 @@ import { BoundedSetDomain } from '../../../../src/abstract-interpretation/domain
 import { IntervalDomain, IntervalTop } from '../../../../src/abstract-interpretation/domains/interval-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import { PosIntervalDomain, PosIntervalTop } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
+import type { ArrayRangeValue } from '../../../../src/abstract-interpretation/domains/set-range-domain';
 import { SetRangeDomain } from '../../../../src/abstract-interpretation/domains/set-range-domain';
 import { SetUpperBoundDomain } from '../../../../src/abstract-interpretation/domains/set-upper-bound-domain';
 import { SingletonDomain } from '../../../../src/abstract-interpretation/domains/singleton-domain';
@@ -103,8 +104,7 @@ describe('Abstract Domains', () => {
 	}
 
 	describe('Set Range Domain', () => {
-		const create = (value: [min: string[], range: string[] | typeof Top] | typeof Bottom) =>
-			new SetRangeDomain(value === Bottom ? value : { min: new Set(value[0]), range: value[1] === Top ? value[1] : new Set(value[1]) });
+		const create = (value: ArrayRangeValue<string> | typeof Bottom) => new SetRangeDomain(value);
 
 		const concrete = (...lists: string[][]) => lists.map(list => new Set(list));
 

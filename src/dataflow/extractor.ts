@@ -105,6 +105,9 @@ export function produceDataFlowGraph<OtherInfo>(
 	// we freeze the files here to avoid endless modifications during processing
 	const files = [...completeAst.ast.files];
 
+	// TODO: move this into the context!
+	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
+
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
@@ -117,9 +120,6 @@ export function produceDataFlowGraph<OtherInfo>(
 		ctx
 	};
 	let df = processDataflowFor<OtherInfo>(files[0].root, dfData);
-
-	// TODO: move this into the context!
-	df.graph.sourced.unshift(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
 
 	// TODO: here we can also check wether we had those already
 	for(let i = 1; i < files.length; i++) {

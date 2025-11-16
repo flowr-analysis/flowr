@@ -9,11 +9,13 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 	if(queries.length !== 1) {
 		log.warn('Project query expects only up to one query, but got', queries.length);
 	}
+	// we need to know what is considered by the analyzer
+	await analyzer.dataflow();
 	return {
 		'.meta': {
 			/* there is no sense in measuring a get */
 			timing: 0
 		},
-		files: (await analyzer.dataflow()).graph.sourced
+		files: [...analyzer.inspectContext().files.consideredFilesList()]
 	};
 }

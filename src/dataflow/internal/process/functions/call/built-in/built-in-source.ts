@@ -271,18 +271,17 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 		}
 	}
 
-	dataflow.graph.addFile(filePath ?? '<inline>');
+	data.ctx.files.addConsideredFile(filePath ?? '<inline>');
 
 	// update our graph with the sourced file's information
-	const newInformation = { ...information };
-	newInformation.environment = overwriteEnvironment(information.environment, dataflow.environment);
-	newInformation.graph.mergeWith(dataflow.graph);
 
 	return {
-		...newInformation,
-		in:                newInformation.in.concat(dataflow.in),
-		out:               newInformation.out.concat(dataflow.out),
-		unknownReferences: newInformation.unknownReferences.concat(dataflow.unknownReferences),
+		...information,
+		environment:       overwriteEnvironment(information.environment, dataflow.environment),
+		graph:             information.graph.mergeWith(dataflow.graph),
+		in:                information.in.concat(dataflow.in),
+		out:               information.out.concat(dataflow.out),
+		unknownReferences: information.unknownReferences.concat(dataflow.unknownReferences),
 		exitPoints:        dataflow.exitPoints
 	};
 }

@@ -98,6 +98,10 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * we resolve their contents.
 	 */
 	resolveRequest(r: RParseRequest): { r: RParseRequestFromText, path?: string };
+	/**
+	 * Get all files that have been considered during dataflow analysis.
+	 */
+	consideredFilesList(): readonly string[];
 }
 
 /**
@@ -108,11 +112,14 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RProjectAnalysisRequest, (RParseRequest | FlowrFile<string>)[], FlowrAnalyzerProjectDiscoveryPlugin> implements ReadOnlyFlowrAnalyzerFilesContext {
 	public readonly name = 'flowr-analyzer-files-context';
 
-	public readonly loadingOrder: FlowrAnalyzerLoadingOrderContext;
+	public readonly loadingOrder:     FlowrAnalyzerLoadingOrderContext;
 	/* all project files etc., this contains *all* (non-inline) files, loading orders etc. are to be handled by plugins */
-	private files:                Map<FilePath, FlowrFileProvider> = new Map<FilePath, FlowrFileProvider>();
-	private inlineFiles:          FlowrFileProvider[] = [];
-	private readonly fileLoaders: readonly FlowrAnalyzerFilePlugin[];
+	private files:                    Map<FilePath, FlowrFileProvider> = new Map<FilePath, FlowrFileProvider>();
+	private inlineFiles:              FlowrFileProvider[] = [];
+	private readonly fileLoaders:     readonly FlowrAnalyzerFilePlugin[];
+	/** these are all the paths of files that have been considered by the dataflow graph (even if not added) */
+	private readonly consideredFiles: string[] = [];
+
 	/* files that are part of the analysis, e.g. source files */
 	private byRole:        RoleBasedFiles = {
 		[FileRole.Description]: [],
@@ -135,6 +142,20 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	public reset(): void {
 		this.loadingOrder.reset();
 		this.files = new Map<FilePath, FlowrFileProvider>();
+	}
+
+	/**
+	 * Record that a file has been considered during dataflow analysis.
+	 */
+	public addConsideredFile(path: string): void {
+		this.consideredFiles.push(path);
+	}
+
+	/**
+	 * Get all files that have been considered during dataflow analysis.
+	 */
+	public consideredFilesList(): readonly string[] {
+		return this.consideredFiles;
 	}
 
 	/**

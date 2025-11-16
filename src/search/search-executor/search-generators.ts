@@ -57,15 +57,19 @@ async function getAllNodes(data: ReadonlyFlowrAnalysisProvider): Promise<RNodeWi
 }
 
 
-async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { line, column, id, name, nameIsRegex } }: { filter: FlowrSearchGetFilter }): Promise<FlowrSearchElements<ParentInformation>> {
+async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { line, column, id, name, nameIsRegex, filePathRegex } }: { filter: FlowrSearchGetFilter }): Promise<FlowrSearchElements<ParentInformation>> {
 	const normalize = await input.normalize();
 	let potentials = (id ?
 		[normalize.idMap.get(id)].filter(isNotUndefined) :
 		await getAllNodes(input)
 	);
+	if(filePathRegex) {
+		const filePathFilter = new RegExp(filePathRegex);
+		potentials = potentials.filter(({ info }: RNodeWithParent) => info.file && filePathFilter.test(info.file));
+	}
 
 	if(line && line < 0) {
-		// TODO: support get for multiple files
+		guard(normalize.ast.files.length === 1, 'Currently, negative line numbers are only supported for single-file inputs');
 		const maxLines = normalize.ast.files[0].root.info.fullRange?.[2] ??
 			(id ? (await getAllNodes(input)) : potentials).reduce(
 				(maxLine, { location }) => location && location[2] > maxLine ? location[2] : maxLine,

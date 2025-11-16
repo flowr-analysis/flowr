@@ -35,24 +35,36 @@ export interface FlowrSearchGetFilter extends Record<string, unknown> {
 	/**
 	 * The node must be in the given line.
 	 */
-    readonly line?:     number;
+	readonly line?:          number;
 	/**
 	 * The node must be in the given column.
 	 */
-    readonly column?:   number;
+	readonly column?:        number;
 	/**
 	 * The node must have the given name.
 	 * To treat this name as a regular expression, set {@link FlowrSearchGetFilter#nameIsRegex} to true.
 	 */
-    readonly name?:     string;
+	readonly name?:          string;
 	/**
 	 * Only useful in combination with `name`. If true, the name is treated as a regular expression.
 	 */
-	readonly nameIsRegex?: boolean;
+	readonly nameIsRegex?:   boolean;
 	/**
 	 * The node must have the given id.
 	 */
-    readonly id?:       NodeId;
+	readonly id?:            NodeId;
+	/**
+	 * The node must stem form a file with the given path matching the regex
+	 * Please note that you can address the full path!
+	 * @example
+	 * ```ts
+	 * // matches all files in any 'tests' folder
+	 * filePath: '.*\\tests\\.*'
+	 * // matches all files named 'myfile.R' in any folder
+	 * filePath: '.*\\/myfile\\.R$'
+	 * ```
+	 */
+	readonly filePathRegex?: string;
 }
 
 /** Intentionally, we abstract away from an array to avoid the use of conventional typescript operations */

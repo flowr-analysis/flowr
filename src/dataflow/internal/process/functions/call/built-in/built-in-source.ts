@@ -241,6 +241,10 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 		for(const [k, v] of normalized.idMap) {
 			data.completeAst.idMap.set(k, v);
 		}
+		// add to the main ast
+		if(!data.completeAst.ast.files.find(f => f.filePath === fst.filePath)) {
+			data.completeAst.ast.files.push(fst);
+		}
 		filePath = textRequest.path;
 	}
 
@@ -273,6 +277,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 	const newInformation = { ...information };
 	newInformation.environment = overwriteEnvironment(information.environment, dataflow.environment);
 	newInformation.graph.mergeWith(dataflow.graph);
+
 	return {
 		...newInformation,
 		in:                newInformation.in.concat(dataflow.in),

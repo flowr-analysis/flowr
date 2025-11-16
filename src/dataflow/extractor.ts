@@ -102,7 +102,8 @@ export function produceDataFlowGraph<OtherInfo>(
 	// TODO: provide this in the context
 	const env = initializeCleanEnvironments(builtIns.builtInMemory);
 
-	const files = completeAst.ast.files;
+	// we freeze the files here to avoid endless modifications during processing
+	const files = [...completeAst.ast.files];
 
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,

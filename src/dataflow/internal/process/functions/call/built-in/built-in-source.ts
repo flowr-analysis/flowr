@@ -55,11 +55,19 @@ export function inferWdFromScript(option: InferWorkingDirectory, referenceChain:
 
 const AnyPathSeparator = /[/\\]/g;
 
-function platformBasename(p: string): string {
+/**
+ * Return the basename of a path in a platform-agnostic way
+ * @see {@link platformDirname} - for the dirname counterpart
+ */
+export function platformBasename(p: string): string {
 	const normalized = p.replaceAll(path.win32.sep, path.posix.sep);
 	return path.posix.basename(normalized);
 }
-function platformDirname(p: string): string {
+
+/**
+ * Return the dirname of a path in a platform-agnostic way
+ */
+export function platformDirname(p: string): string {
 	const normalized = p.replaceAll(path.win32.sep, path.posix.sep);
 	return path.posix.dirname(normalized);
 }

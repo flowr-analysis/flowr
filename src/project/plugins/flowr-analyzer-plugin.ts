@@ -2,6 +2,15 @@ import type { SemVer } from 'semver';
 import type { AsyncOrSync } from 'ts-essentials';
 import { expensiveTrace, log } from '../../util/log';
 import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
+import { FlowrAnalyzerDescriptionFilePlugin } from './file-plugins/flowr-analyzer-description-file-plugin';
+import {
+	FlowrAnalyzerPackageVersionsDescriptionFilePlugin
+} from './package-version-plugins/flowr-analyzer-package-versions-description-file-plugin';
+import {
+	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
+} from './loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
+import { FlowrAnalyzerRmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
+import { FlowrAnalyzerQmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
 
 
 /**
@@ -81,6 +90,8 @@ const generalPluginLog = log.getSubLogger({ name: 'plugins' });
  * **Please do not create plugins directly based on this class, but use the classes referenced alongside the {@link PluginType} values!**
  * For example, if you want to create a plugin that determines the loading order of files, extend {@link FlowrAnalyzerLoadingOrderPlugin} instead.
  * These classes also provide sensible overrides of {@link FlowrAnalyzerPlugin.defaultPlugin} to be used when no plugin of this type is registered or triggered.
+ *
+ * For a collection of default plugins, see {@link FlowrAnalyzerPlugin.defaultPlugins}.
  */
 export abstract class FlowrAnalyzerPlugin<In = unknown, Out extends AsyncOrSync<unknown> = In> implements FlowrAnalyzerPluginInterface<In, Out> {
 	public abstract readonly name:        string;
@@ -112,5 +123,18 @@ export abstract class FlowrAnalyzerPlugin<In = unknown, Out extends AsyncOrSync<
 		}
 	}
 
-    protected abstract process(analyzer: FlowrAnalyzerContext, args: In): Out;
+	protected abstract process(analyzer: FlowrAnalyzerContext, args: In): Out;
+
+	/**
+	 * Provides the default set of Flowr Analyzer plugins.
+	 */
+	public static defaultPlugins(): FlowrAnalyzerPlugin[] {
+		return [
+			new FlowrAnalyzerDescriptionFilePlugin(),
+			new FlowrAnalyzerPackageVersionsDescriptionFilePlugin(),
+			new FlowrAnalyzerLoadingOrderDescriptionFilePlugin(),
+			new FlowrAnalyzerRmdFilePlugin(),
+			new FlowrAnalyzerQmdFilePlugin()
+		];
+	}
 }

@@ -5,6 +5,7 @@ import { log } from '../../../util/log';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { FlowrDescriptionFile } from './flowr-description-file';
 import { type FlowrFileProvider , FileRole } from '../../context/flowr-file';
+import { platformBasename } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 
 export const descriptionFileLog = log.getSubLogger({ name: 'flowr-analyzer-loading-order-description-file-plugin' });
 
@@ -29,8 +30,7 @@ export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin 
 	}
 
 	public applies(file: PathLike): boolean {
-		// TODO: use platformBasename for all others as well!!
-		return this.pattern.test(file.toString().split(/[/\\]/).pop() ?? '');
+		return this.pattern.test(platformBasename(file.toString()));
 	}
 
 	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider): FlowrDescriptionFile {

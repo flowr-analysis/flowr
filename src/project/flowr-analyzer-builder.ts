@@ -3,7 +3,7 @@ import type { DeepWritable } from 'ts-essentials';
 import { FlowrAnalyzer } from './flowr-analyzer';
 import { retrieveEngineInstances } from '../engines';
 import type { KnownParser } from '../r-bridge/parser';
-import type { FlowrAnalyzerPlugin, PluginType } from './plugins/flowr-analyzer-plugin';
+import { FlowrAnalyzerPlugin, type PluginType } from './plugins/flowr-analyzer-plugin';
 import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize';
 import { guard } from '../util/assert';
 import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
@@ -36,6 +36,20 @@ export class FlowrAnalyzerBuilder {
 	private parser?:     KnownParser;
 	private input?:      Omit<NormalizeRequiredInput, 'context'>;
 	private plugins:     Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
+
+	/**
+	 * Creates a new builder for the {@link FlowrAnalyzer}.
+	 * By default, the standard set of plugins as returned by {@link FlowrAnalyzerPlugin#defaultPlugins} are registered.
+	 * @param withDefaultPlugins - Whether to register the default plugins upon creation. Default is `true`.
+	 * @see {@link FlowrAnalyzerPlugin#defaultPlugins} - for the default plugin set.
+	 * @see {@link FlowrAnalyzerBuilder#registerPlugins} - to add more plugins.
+	 * @see {@link FlowrAnalyzerBuilder#unregisterPlugins} - to remove plugins.
+	 */
+	constructor(withDefaultPlugins: boolean = true) {
+		if(withDefaultPlugins) {
+			this.registerPlugins(...FlowrAnalyzerPlugin.defaultPlugins());
+		}
+	}
 
 	/**
 	 * Apply an amendment to the configuration the builder currently holds.
@@ -87,6 +101,9 @@ export class FlowrAnalyzerBuilder {
 
 	/**
 	 * Register one or multiple additional plugins.
+	 * For the default plugin set, please refer to {@link FlowrAnalyzerPlugin#defaultPlugins}, they can be registered
+	 * by passing `true` to the {@link FlowrAnalyzerBuilder} constructor.
+	 * @param plugin - One or multiple plugins to register.
 	 * @see {@link FlowrAnalyzerBuilder#unregisterPlugins} to remove plugins.
 	 */
 	public registerPlugins(...plugin: readonly FlowrAnalyzerPlugin[]): this {

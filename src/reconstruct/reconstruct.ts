@@ -30,7 +30,17 @@ import { type StatefulFoldFunctions , foldAstStateful } from '../r-bridge/lang-4
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type AutoSelectPredicate , doNotAutoSelect } from './auto-select/auto-select-defaults';
 
-type Selection = ReadonlySet<NodeId>
+interface Selection {
+	/**
+	 * The set of node ids to be reconstructed.
+	 */
+	nodes:             ReadonlySet<NodeId>
+	/**
+	 * @see {@link ReconstructRequiredInput#reconstructFiles}
+	 */
+	reconstructFiles?: 'all' | number[]
+}
+
 interface PrettyPrintLine {
 	line:   string
 	indent: number
@@ -412,7 +422,7 @@ function reconstructFunctionCall(
  * Options to use with {@link reconstructToCode}.
  */
 interface ReconstructionConfiguration<Info = ParentInformation> extends MergeableRecord {
-	selection:    Selection
+	selection:    ReadonlySet<NodeId>
 	fullAst:      NormalizedAst<Info>
 	/** if true, this will force the ast part to be reconstructed, this can be used, for example, to force include `library` statements */
 	autoSelectIf: AutoSelectPredicate
@@ -465,20 +475,24 @@ function prettyPrintCodeToString(code: Code, lf ='\n'): string {
 }
 
 export interface ReconstructionResult {
-	code:                  string
+	/** Returns the reconstructed code as string or array of code reconstructions (corresponding to the desired file indices in the {@link Selection}) */
+	code:                  string | string[]
 	/** number of lines that contain nodes that triggered the `autoSelectIf` predicate {@link reconstructToCode} */
 	linesWithAutoSelected: number
 }
 
-function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], linesWithAutoSelected: number): ReconstructionResult  {
+function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[]): string  {
 	if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
 		// remove outer block
-		return { code: prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1)), linesWithAutoSelected };
+		return prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1));
 	} else {
-		return { code: prettyPrintCodeToString(result), linesWithAutoSelected };
+		return prettyPrintCodeToString(result);
 	}
 }
 
+
+export function reconstructToCode(ast: NormalizedAst, selection: Selection & { reconstructFiles?: [number] | undefined }, autoSelectIf?: AutoSelectPredicate): ReconstructionResult & { code: string }
+export function reconstructToCode(ast: NormalizedAst, selection: Selection, autoSelectIf?: AutoSelectPredicate): ReconstructionResult
 /**
  * Reconstructs parts of a normalized R ast into R code on an expression basis.
  * @param ast          - The {@link NormalizedAst|normalized ast} to be used as a basis for reconstruction
@@ -488,7 +502,7 @@ function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], linesW
  */
 export function reconstructToCode(ast: NormalizedAst, selection: Selection, autoSelectIf: AutoSelectPredicate = doNotAutoSelect): ReconstructionResult {
 	if(reconstructLogger.settings.minLevel <= LogLevel.Trace) {
-		reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`);
+		reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection.nodes])} for files: ${JSON.stringify(selection.reconstructFiles)}`);
 	}
 
 	// we use a wrapper to count the number of lines for which the autoSelectIf predicate triggered
@@ -503,15 +517,32 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 		return result;
 	};
 
-	// fold of the normalized ast
-	// TODO: support project wide reconstruct!!!
-	const result = foldAstStateful(
-		ast.ast.files[0].root,
-		{ selection, autoSelectIf: autoSelectIfWrapper, fullAst: ast },
-		reconstructAstFolds
+	const indices = selection.reconstructFiles === 'all' ? ast.ast.files.map((_, i) => i) : (selection.reconstructFiles ?? [0]);
+	guard(
+		indices.every(i => i >= 0 && i < ast.ast.files.length),
+		`reconstructToCode: reconstructFiles contains invalid file indices: ${JSON.stringify(indices)} for ast with ${ast.ast.files.length} files`
 	);
 
-	expensiveTrace(reconstructLogger, () => `reconstructed ast before string conversion: ${JSON.stringify(result)}`);
+	const results: string[] = [];
+	// fold of the normalized ast
+	for(const i of indices) {
+		if(reconstructLogger.settings.minLevel <= LogLevel.Trace) {
+			reconstructLogger.trace(`reconstructing file index ${i} with root id ${ast.ast.files[i].root.info.id}`);
+		}
 
-	return removeOuterExpressionListIfApplicable(result, linesWithAutoSelected.size);
+		results.push(
+			removeOuterExpressionListIfApplicable(foldAstStateful(
+				ast.ast.files[i].root,
+				{ selection: selection.nodes, autoSelectIf: autoSelectIfWrapper, fullAst: ast },
+				reconstructAstFolds
+			))
+		);
+	}
+
+	expensiveTrace(reconstructLogger, () => `reconstructed ast before string conversion: ${JSON.stringify(results)}`);
+
+	return {
+		code:                  indices.length === 1 ? results[0] : results,
+		linesWithAutoSelected: linesWithAutoSelected.size
+	};
 }

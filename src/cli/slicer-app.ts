@@ -72,7 +72,7 @@ async function getSlice() {
 			if(options.output) {
 				console.log('Written reconstructed code to', options.output);
 				console.log(`Automatically selected ${reconstructedCode.linesWithAutoSelected} lines`);
-				fs.writeFileSync(options.output, reconstructedCode.code);
+				fs.writeFileSync(options.output, reconstructedCode.code as string);
 			} else if(!options.api && !options.diff) {
 				console.log(reconstructedCode.code);
 			}

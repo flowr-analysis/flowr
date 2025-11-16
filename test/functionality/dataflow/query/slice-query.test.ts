@@ -11,11 +11,10 @@ import {
 	DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE,
 	DEFAULT_SLICING_PIPELINE
 } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { doNotAutoSelect } from '../../../../src/reconstruct/auto-select/auto-select-defaults';
 import { makeMagicCommentHandler } from '../../../../src/reconstruct/auto-select/magic-comments';
 import { describe } from 'vitest';
-import { defaultConfigOptions } from '../../../../src/config';
+import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 describe.sequential('Static Slice Query', withShell(shell => {
 	function testQuery(name: string, code: string, queries: readonly StaticSliceQuery[]) {
@@ -24,10 +23,10 @@ describe.sequential('Static Slice Query', withShell(shell => {
 			for(const query of queries) {
 				const out = await new PipelineExecutor(query.noReconstruction ?  DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE : DEFAULT_SLICING_PIPELINE, {
 					parser:       shell,
-					request:      requestFromInput(code),
+					context:      contextFromInput(code),
 					criterion:    query.criteria,
 					autoSelectIf: query.noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
-				}, defaultConfigOptions).allRemainingSteps();
+				}).allRemainingSteps();
 				const key = fingerPrintOfQuery(query);
 				results[key] = query.noReconstruction ? { slice: out.slice } : { slice: out.slice, reconstruct: out.reconstruct };
 			}

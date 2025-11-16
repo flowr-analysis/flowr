@@ -36,7 +36,7 @@ export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, quer
 			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };
 		} else {
 			const reconstructStart = Date.now();
-			const reconstruct = reconstructToCode(await analyzer.normalize(), slice.result, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect));
+			const reconstruct = reconstructToCode(await analyzer.normalize(), { nodes: slice.result }, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect));
 			const reconstructEnd = Date.now();
 			results[key] = {
 				slice:       { ...slice, '.meta': { timing: sliceEnd - sliceStart } },

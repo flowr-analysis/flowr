@@ -3,7 +3,6 @@ import type { RShell } from '../../r-bridge/shell';
 import { type MermaidMarkdownMark , graphToMermaid } from '../../util/mermaid/dfg';
 import { PipelineExecutor } from '../../core/pipeline-executor';
 import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../r-bridge/retriever';
 import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
 import { diffOfDataflowGraphs } from '../../dataflow/graph/diff-dataflow-graph';
@@ -14,11 +13,12 @@ import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrWikiBaseRef } from './doc-files';
 import { codeBlock } from './doc-code';
 import type { GraphDifferenceReport } from '../../util/diff-graph';
-import { defaultConfigOptions } from '../../config';
+import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 
 
 /**
- *
+ * Visualizes the dataflow graph as a mermaid graph inside a markdown code block.
+ * Please use this only for documentation purposes, for programmatic usage use {@link graphToMermaid} directly.
  */
 export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>, simplified = false) {
 	return `
@@ -42,7 +42,7 @@ export interface PrintDataflowGraphOptions {
 
 
 /**
- *
+ * Visualizes a side effect for documentation purposes.
  */
 export function formatSideEffect(ef: UnknownSidEffect): string {
 	if(typeof ef === 'object') {
@@ -56,13 +56,15 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, opt
 export async function printDfGraphForCode(parser: KnownParser, code: string, options?: PrintDataflowGraphOptions & { exposeResult?: false | undefined }): Promise<string>;
 
 /**
- *
+ * Visualizes the dataflow graph of the given R code using the given parser.
+ * This function returns a markdown string containing the dataflow graph as a mermaid code block,
+ * along with the R code itself in a collapsible section.
  */
 export async function printDfGraphForCode(parser: KnownParser, code: string, { simplified = false, mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();
 	const result = await createDataflowPipeline(parser, {
-		request: requestFromInput(code)
-	}, defaultConfigOptions).allRemainingSteps();
+		context: contextFromInput(code)
+	}).allRemainingSteps();
 	const duration = performance.now() - now;
 
 	if(switchCodeAndGraph) {
@@ -103,9 +105,9 @@ export async function verifyExpectedSubgraph(shell: RShell, code: string, expect
 	/* we verify that we get what we want first! */
 	const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
-		request: requestFromInput(code),
+		context: contextFromInput(code),
 		getId:   deterministicCountingIdGenerator(0)
-	}, defaultConfigOptions).allRemainingSteps();
+	}).allRemainingSteps();
 
 	expectedSubgraph.setIdMap(info.normalize.idMap);
 	expectedSubgraph = resolveDataflowGraph(expectedSubgraph);

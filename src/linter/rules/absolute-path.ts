@@ -171,7 +171,7 @@ export const ABSOLUTE_PATH = {
 					const dfNode = data.dataflow.graph.getVertex(node.info.id);
 					if(isFunctionCallVertex(dfNode)) {
 						const handler = PathFunctions[dfNode.name ?? ''];
-						const strings = handler ? handler(data.dataflow.graph, dfNode, data.config) : [];
+						const strings = handler ? handler(data.dataflow.graph, dfNode, data.analyzer.flowrConfig) : [];
 						if(strings) {
 							return strings.filter(s => isAbsolutePath(s, regex)).map(str => ({
 								certainty: LintingResultCertainty.Uncertain,

@@ -78,7 +78,8 @@ export const StaticSliceQueryDefinition = {
 			}
 			result.push(`   ╰ Slice for {${criteria.join(', ')}} ${addons.join(', ')}`);
 			if('reconstruct' in obj) {
-				result.push('     ╰ Code (newline as <code>&#92;n</code>): <code>' + obj.reconstruct.code.split('\n').join('\\n') + '</code>');
+				const code = Array.isArray(obj.reconstruct.code) ? obj.reconstruct.code : [obj.reconstruct.code];
+				result.push('     ╰ Code (newline as <code>&#92;n</code>): <code>' + code.flatMap(c => c.split('\n')).join('\\n') + '</code>');
 			} else {
 				result.push(`     ╰ Id List: {${summarizeIdsIfTooLong(formatter, [...obj.slice.result])}}`);
 			}

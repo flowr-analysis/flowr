@@ -59,7 +59,7 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 	const accessChain: RNodeWithParent[] = [];
 	const parentRoleCache = new Map<NodeId, { acc: boolean, idxAcc: boolean }>();
 
-	visitAst(input.normalizedRAst.ast,
+	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
 		node => {
 			if(node.type !== RType.Access) {
 				return;

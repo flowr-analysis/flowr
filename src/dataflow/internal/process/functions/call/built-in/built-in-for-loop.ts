@@ -56,7 +56,7 @@ export function processForLoop<OtherInfo>(
 
 	const writtenVariable = variable.unknownReferences.concat(variable.in);
 	for(const write of writtenVariable) {
-		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable }, false, headEnvironments, data.flowrConfig);
+		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable }, false, headEnvironments, data.ctx.config);
 	}
 	data = { ...data, controlDependencies: [...data.controlDependencies ?? [], { id: name.info.id, when: true }], environment: headEnvironments };
 

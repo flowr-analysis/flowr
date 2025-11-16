@@ -1,5 +1,4 @@
 import { assert, test } from 'vitest';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { cfgToMermaidUrl } from '../../../../src/util/mermaid/cfg';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
 import { type NodeId , normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -34,10 +33,12 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 	const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected };
 	return test(code, async()=> {
 		const config = cloneConfig(defaultConfigOptions);
-		const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
+		const analyzer = await new FlowrAnalyzerBuilder()
 			.setConfig(config)
 			.setParser(parser)
 			.build();
+		analyzer.addRequest(code);
+
 		let cfg: ControlFlowInformation;
 
 		if(options?.withBasicBlocks) {

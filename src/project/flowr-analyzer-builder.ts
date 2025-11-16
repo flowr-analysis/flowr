@@ -3,11 +3,12 @@ import type { DeepWritable } from 'ts-essentials';
 import { FlowrAnalyzer } from './flowr-analyzer';
 import { retrieveEngineInstances } from '../engines';
 import type { KnownParser } from '../r-bridge/parser';
-import { FlowrAnalyzerPlugin, type PluginType } from './plugins/flowr-analyzer-plugin';
+import type { FlowrAnalyzerPlugin , PluginType } from './plugins/flowr-analyzer-plugin';
 import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize';
 import { guard } from '../util/assert';
 import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
+import { FlowrAnalyzerPluginDefaults } from './plugins/flowr-analyzer-plugin-defaults';
 
 /**
  * Builder for the {@link FlowrAnalyzer}, use it to configure all analysis aspects before creating the analyzer instance
@@ -39,15 +40,15 @@ export class FlowrAnalyzerBuilder {
 
 	/**
 	 * Creates a new builder for the {@link FlowrAnalyzer}.
-	 * By default, the standard set of plugins as returned by {@link FlowrAnalyzerPlugin#defaultPlugins} are registered.
+	 * By default, the standard set of plugins as returned by {@link FlowrAnalyzerPluginDefaults} are registered.
 	 * @param withDefaultPlugins - Whether to register the default plugins upon creation. Default is `true`.
-	 * @see {@link FlowrAnalyzerPlugin#defaultPlugins} - for the default plugin set.
+	 * @see {@link FlowrAnalyzerPluginDefaults} - for the default plugin set.
 	 * @see {@link FlowrAnalyzerBuilder#registerPlugins} - to add more plugins.
 	 * @see {@link FlowrAnalyzerBuilder#unregisterPlugins} - to remove plugins.
 	 */
 	constructor(withDefaultPlugins: boolean = true) {
 		if(withDefaultPlugins) {
-			this.registerPlugins(...FlowrAnalyzerPlugin.defaultPlugins());
+			this.registerPlugins(...FlowrAnalyzerPluginDefaults());
 		}
 	}
 
@@ -101,7 +102,7 @@ export class FlowrAnalyzerBuilder {
 
 	/**
 	 * Register one or multiple additional plugins.
-	 * For the default plugin set, please refer to {@link FlowrAnalyzerPlugin#defaultPlugins}, they can be registered
+	 * For the default plugin set, please refer to {@link FlowrAnalyzerPluginDefaults}, they can be registered
 	 * by passing `true` to the {@link FlowrAnalyzerBuilder} constructor.
 	 * @param plugin - One or multiple plugins to register.
 	 * @see {@link FlowrAnalyzerBuilder#unregisterPlugins} to remove plugins.

@@ -2,15 +2,6 @@ import type { SemVer } from 'semver';
 import type { AsyncOrSync } from 'ts-essentials';
 import { expensiveTrace, log } from '../../util/log';
 import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
-import { FlowrAnalyzerDescriptionFilePlugin } from './file-plugins/flowr-analyzer-description-file-plugin';
-import {
-	FlowrAnalyzerPackageVersionsDescriptionFilePlugin
-} from './package-version-plugins/flowr-analyzer-package-versions-description-file-plugin';
-import {
-	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
-} from './loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
-import { FlowrAnalyzerRmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
-import { FlowrAnalyzerQmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
 
 
 /**
@@ -124,17 +115,4 @@ export abstract class FlowrAnalyzerPlugin<In = unknown, Out extends AsyncOrSync<
 	}
 
 	protected abstract process(analyzer: FlowrAnalyzerContext, args: In): Out;
-
-	/**
-	 * Provides the default set of Flowr Analyzer plugins.
-	 */
-	public static defaultPlugins(): FlowrAnalyzerPlugin[] {
-		return [
-			new FlowrAnalyzerDescriptionFilePlugin(),
-			new FlowrAnalyzerPackageVersionsDescriptionFilePlugin(),
-			new FlowrAnalyzerLoadingOrderDescriptionFilePlugin(),
-			new FlowrAnalyzerRmdFilePlugin(),
-			new FlowrAnalyzerQmdFilePlugin()
-		];
-	}
 }

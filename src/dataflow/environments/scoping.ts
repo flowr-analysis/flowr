@@ -1,7 +1,10 @@
 import { type REnvironmentInformation , Environment } from './environment';
 import { guard } from '../../util/assert';
 
-/** Add a new local environment scope to the stack, returns the modified variant - sharing the original environments in the stack (no deep-clone) */
+/**
+ * Add a new local environment scope to the stack, returns the modified variant - sharing the original environments in the stack (no deep-clone)
+ * @see {@link popLocalEnvironment} - to remove the local scope again
+ */
 export function pushLocalEnvironment(base: REnvironmentInformation): REnvironmentInformation {
 	return {
 		current: new Environment(base.current),
@@ -9,9 +12,9 @@ export function pushLocalEnvironment(base: REnvironmentInformation): REnvironmen
 	};
 }
 
-
 /**
- *
+ * Remove the top local environment scope from the stack, returns the modified variant - sharing the original environments in the stack (no deep-clone)
+ * @see {@link pushLocalEnvironment} - to add a local scope
  */
 export function popLocalEnvironment(base: REnvironmentInformation): REnvironmentInformation {
 	guard(base.level > 0, 'cannot remove the global/root environment');

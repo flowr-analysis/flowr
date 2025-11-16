@@ -190,7 +190,7 @@ export async function summarizeSlicerStats(
 			});
 		} catch{
 			console.error(`    ! Failed to re-parse the output of the slicer for ${JSON.stringify(criteria)}`); //, e
-			console.error(`      Code: ${output}\n`);
+			console.error(`      Code: ${output as string}\n`);
 			failedOutputs++;
 		}
 

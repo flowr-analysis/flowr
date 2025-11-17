@@ -114,7 +114,7 @@ export interface DataflowGraphJson {
 
 /**
  * An unknown side effect describes something that we cannot handle correctly (in all cases).
- * For example, `cat` will be marked as an unknown side effect as we have no idea of how it will affect the program.
+ * For example, `load` will be marked as an unknown side effect as we have no idea of how it will affect the program.
  * Linked side effects are used whenever we know that a call may be affected by another one in a way that we cannot
  * grasp from the dataflow perspective (e.g., an indirect dependency based on the currently active graphic device).
  */

@@ -23,8 +23,8 @@ export interface CollectorTimeout extends MergeableRecord {
 	 */
 	ms:             number
 	/*
-   * if true, the timeout will reset whenever we receive new data
-   */
+	 * if true, the timeout will reset whenever we receive new data
+	 */
 	resetOnNewData: boolean
 	/**
 	 * invoked when the timeout is reached. If not set, the promise will be rejected with an error.
@@ -111,7 +111,7 @@ let DEFAULT_R_SHELL_OPTIONS: RShellOptions | undefined = undefined;
 
 
 /**
- *
+ * Get the default RShell options, possibly using the given config to override some values
  */
 export function getDefaultRShellOptions(config?: RShellEngineConfig): RShellOptions {
 	if(!DEFAULT_R_SHELL_OPTIONS) {

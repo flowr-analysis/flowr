@@ -181,14 +181,14 @@ export function getParentDirectory(directory: string): string{
  * @param file - The file to parse
  * @returns Map containing the keys and values of the provided file.
  */
-export function parseDCF(file: FlowrFileProvider<string>): Map<string, string[]> {
+export function parseDCF(file: FlowrFileProvider): Map<string, string[]> {
 	const result = new Map<string, string[]>();
 	let currentKey = '';
 	let currentValue = '';
 	const indentRegex = new RegExp(/^\s/);
 	const firstColonRegex = new RegExp(/:(.*)/s);
 
-	const fileContent = file.content().split(/\r?\n/);
+	const fileContent = file.content().toString().split(/\r?\n/);
 
 	for(const line of fileContent) {
 		if(indentRegex.test(line)) {

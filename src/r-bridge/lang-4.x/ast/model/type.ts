@@ -199,6 +199,8 @@ export enum RType {
 	/** {@link RSymbol} */
 	Symbol = 'RSymbol',
 	/* ------ special types ------ */
+	/** {@link RProject} */
+	Project = 'RProject',
 	/**
 	 * {@link RDelimiter}.
 	 * Is not part of the normalized AST but can be found in

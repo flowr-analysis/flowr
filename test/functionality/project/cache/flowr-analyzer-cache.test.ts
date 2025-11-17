@@ -3,39 +3,48 @@ import { FlowrAnalyzerCache } from '../../../../src/project/cache/flowr-analyzer
 import { CfgKind } from '../../../../src/project/cfg-kind';
 import { defaultConfigOptions } from '../../../../src/config';
 import { withTreeSitter } from '../../_helper/shell';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { extractCfg, extractCfgQuick } from '../../../../src/control-flow/extract-cfg';
+import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
+import { requestFromInput } from '../../../../src/r-bridge/retriever';
 
 describe('Analyzer Cache', withTreeSitter( (shell) => {
-	const data = {
-		parser:  shell,
-		config:  defaultConfigOptions,
-		request: [requestFromInput('x <- 1')]
-	};
+
+	function createCache(request: string) {
+		const data = {
+			parser:  shell,
+			context: new FlowrAnalyzerContext(defaultConfigOptions, new Map()),
+		};
+		data.context.addRequests([requestFromInput(request)]);
+		return data;
+	}
 
 	describe('Control Flow', () => {
 		test('CFG without dataflow', async() => {
-			const cache = FlowrAnalyzerCache.create({ parser: shell, config: defaultConfigOptions, request: requestFromInput('f <- function(x) x\nf()') });
+			const data = createCache('f <- function(x) x\nf()');
+			const cache = FlowrAnalyzerCache.create(data);
 			const actual = await cache.controlflow(false, CfgKind.NoDataflow, []);
-			const expected = extractCfg(await cache.normalize(), data.config);
+			const expected = extractCfg(await cache.normalize(), data.context);
 			expect(expected).toEqual(actual);
 		});
 
 		test('CFG with dataflow', async() => {
-			const cache = FlowrAnalyzerCache.create({ parser: shell, config: defaultConfigOptions, request: requestFromInput('f <- function(x) x\nf()') });
+			const data = createCache('f <- function(x) x\nf()');
+			const cache = FlowrAnalyzerCache.create(data);
 			const actual = await cache.controlflow(false, CfgKind.WithDataflow, []);
-			const expected = extractCfg(await cache.normalize(), data.config, (await cache.dataflow()).graph);
+			const expected = extractCfg(await cache.normalize(), data.context, (await cache.dataflow()).graph);
 			expect(expected).toEqual(actual);
 		});
 
 		test('CFG Quick', async() => {
-			const cache = FlowrAnalyzerCache.create({ parser: shell, config: defaultConfigOptions, request: requestFromInput('f <- function(x) x\nf()') });
+			const data = createCache('f <- function(x) x\nf()');
+			const cache = FlowrAnalyzerCache.create(data);
 			const quick = await cache.controlflow(false, CfgKind.Quick);
 			const regular = extractCfgQuick(await cache.normalize());
 			expect(regular).toEqual(quick);
 		});
 
 		test('Disallow simplifications', async() => {
+			const data = createCache('x <- 1');
 			const cache = FlowrAnalyzerCache.create(data);
 			const fail = () =>
 				cache.controlflow(false, CfgKind.Quick, ['analyze-dead-code']);
@@ -44,6 +53,7 @@ describe('Analyzer Cache', withTreeSitter( (shell) => {
 
 		describe('Caching', () => {
 			test('Force', async() => {
+				const data = createCache('x <- 1');
 				const cache = FlowrAnalyzerCache.create(data);
 				const original = await cache.controlflow(false, CfgKind.NoDataflow, []);
 				const cached = await cache.controlflow(true, CfgKind.NoDataflow, []);
@@ -51,6 +61,7 @@ describe('Analyzer Cache', withTreeSitter( (shell) => {
 			});
 
 			test('Should differentiate', async() => {
+				const data = createCache('x <- 1');
 				const cache = FlowrAnalyzerCache.create(data);
 				const original = await cache.controlflow(false, CfgKind.NoDataflow, []);
 				const cached = await cache.controlflow(false, CfgKind.WithDataflow, []);
@@ -58,6 +69,7 @@ describe('Analyzer Cache', withTreeSitter( (shell) => {
 			});
 
 			test('Should cache', async() => {
+				const data = createCache('x <- 1');
 				const cache = FlowrAnalyzerCache.create(data);
 				const original = await cache.controlflow(false, CfgKind.NoDataflow, []);
 				const cached = await cache.controlflow(false, CfgKind.NoDataflow, []);
@@ -65,6 +77,7 @@ describe('Analyzer Cache', withTreeSitter( (shell) => {
 			});
 
 			test('Re-use base CFG', async() => {
+				const data = createCache('x <- 1');
 				const cache = FlowrAnalyzerCache.create(data);
 				const original = await cache.controlflow(false, CfgKind.WithDataflow, []);
 				const cached = await cache.controlflow(false, CfgKind.WithDataflow, ['unique-cf-sets']);
@@ -72,6 +85,7 @@ describe('Analyzer Cache', withTreeSitter( (shell) => {
 			});
 
 			test('Keep cache unmodified', async() => {
+				const data = createCache('x <- 1');
 				const cache = FlowrAnalyzerCache.create(data);
 				const original = await cache.controlflow(false, CfgKind.WithDataflow, []);
 				await cache.controlflow(false, CfgKind.WithDataflow, ['unique-cf-sets']);
@@ -81,7 +95,8 @@ describe('Analyzer Cache', withTreeSitter( (shell) => {
 
 			test('Re-use CFG Quick from dataflow', async() => {
 				// The request needs to have an unknown side effect for CFG Quick to be computed during dataflow
-				const cache = FlowrAnalyzerCache.create({ ...data, request: requestFromInput('x<-1\ncat(x)') });
+				const data = createCache('x <- 1\ncat(x)');
+				const cache = FlowrAnalyzerCache.create(data);
 				const original = (await cache.dataflow()).cfgQuick;
 				const cached = await cache.controlflow(false, CfgKind.Quick, undefined);
 				expect(original).toBe(cached);

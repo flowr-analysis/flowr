@@ -1,4 +1,3 @@
-import type { FlowrConfigOptions } from '../config';
 import type { BuiltInMappingName } from '../dataflow/environments/built-in';
 import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
 import { valueSetGuard } from '../dataflow/eval/values/general';
@@ -12,6 +11,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard } from '../util/assert';
 import type { ControlFlowInformation } from './control-flow-graph';
 import { type SemanticCfgGuidedVisitorConfiguration , SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
+import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 
 export const loopyFunctions = new Set<BuiltInMappingName>(['builtin:for-loop', 'builtin:while-loop', 'builtin:repeat-loop']);
@@ -22,10 +22,10 @@ export const loopyFunctions = new Set<BuiltInMappingName>(['builtin:for-loop', '
  * @param dataflow    - dataflow graph
  * @param controlflow - control flow graph
  * @param ast         - normalized ast
- * @param config      - current flowr config
+ * @param ctx      - current flowr analyzer context
  * @returns true if the given loop only iterates once
  */
-export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow: ControlFlowInformation, ast: NormalizedAst, config: FlowrConfigOptions): boolean | undefined {
+export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow: ControlFlowInformation, ast: NormalizedAst, ctx: ReadOnlyFlowrAnalyzerContext): boolean | undefined {
 	const vertex = dataflow.getVertex(loop);
 	if(!vertex) {
 		return undefined;
@@ -45,7 +45,11 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 			return undefined;
 		}
 
-		const values = valueSetGuard(resolveIdToValue(vectorOfLoop.nodeId, { graph: dataflow, idMap: dataflow.idMap, resolve: config.solver.variables }));
+		const values = valueSetGuard(resolveIdToValue(vectorOfLoop.nodeId, {
+			graph:   dataflow,
+			idMap:   dataflow.idMap,
+			resolve: ctx.config.solver.variables
+		}));
 		if(values === undefined || values.elements.length !== 1 || values.elements[0].type !== 'vector' || !isValue(values.elements[0].elements)) {
 			return undefined;
 		}
@@ -60,7 +64,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 		controlFlow:          controlflow,
 		normalizedAst:        ast,
 		dfg:                  dataflow,
-		flowrConfig:          config,
+		ctx:                  ctx,
 		defaultVisitingOrder: 'forward'
 	});
 
@@ -85,7 +89,12 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 			return undefined;
 		}
 
-		const values = valueSetGuard(resolveIdToValue(data.call.args[0].nodeId, { graph: this.config.dfg, full: true, idMap: this.config.normalizedAst.idMap, resolve: this.config.flowrConfig.solver.variables  }));
+		const values = valueSetGuard(resolveIdToValue(data.call.args[0].nodeId, {
+			graph:   this.config.dfg,
+			full:    true,
+			idMap:   this.config.normalizedAst.idMap,
+			resolve: this.config.ctx.config.solver.variables
+		}));
 		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
 			return undefined;
 		}

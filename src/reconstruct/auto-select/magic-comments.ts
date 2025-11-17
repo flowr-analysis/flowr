@@ -60,7 +60,7 @@ export function makeMagicCommentHandler(and?: AutoSelectPredicate): AutoSelectPr
 		if(!lines) {
 			lines = new Set<number>();
 			const startLineStack: number[] = [];
-			visitAst(normalizedAst.ast, n => {
+			visitAst(normalizedAst.ast.files.map(f => f.root), n => {
 				const comments = n.info.additionalTokens;
 				if(!comments) {
 					return;

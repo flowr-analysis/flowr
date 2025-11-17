@@ -24,7 +24,7 @@ export interface UselessLoopMetadata extends MergeableRecord {
 
 export const USELESS_LOOP = {
 	createSearch:        () => Q.all().filter(VertexType.FunctionCall),
-	processSearchResult: (elements, useLessLoopConfig, { config, dataflow, normalize, cfg }) => {
+	processSearchResult: (elements, useLessLoopConfig, { analyzer, dataflow, normalize, cfg }) => {
 		const results = elements.getElements().filter(e => {
 			const vertex = dataflow.graph.getVertex(e.node.info.id);
 			return vertex
@@ -32,7 +32,7 @@ export const USELESS_LOOP = {
 				&& vertex.origin !== 'unnamed'
 				&& useLessLoopConfig.loopyFunctions.has(vertex.origin[0] as BuiltInMappingName);
 		}).filter(loop =>
-			onlyLoopsOnce(loop.node.info.id, dataflow.graph, cfg, normalize, config)
+			onlyLoopsOnce(loop.node.info.id, dataflow.graph, cfg, normalize, analyzer.inspectContext())
 		).map(res => ({
 			certainty: LintingResultCertainty.Certain,
 			name:      res.node.lexeme as string,

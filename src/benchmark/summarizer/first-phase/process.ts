@@ -115,18 +115,18 @@ export async function summarizeSlicerStats(
 		timesHitThreshold += perSliceStat.timesHitThreshold > 0 ? 1 : 0;
 		const { code: output, linesWithAutoSelected } = perSliceStat.reconstructedCode;
 		sliceSize.linesWithAutoSelected.push(linesWithAutoSelected);
-		const split = output.split('\n');
+		const split = (output as string).split('\n');
 		const lines = split.length;
 		const nonEmptyLines = split.filter(l => l.trim().length > 0).length;
 		sliceSize.lines.push(lines);
 		sliceSize.nonEmptyLines.push(nonEmptyLines);
 		sliceSize.characters.push(output.length);
-		const nonWhitespace = withoutWhitespace(output).length;
+		const nonWhitespace = withoutWhitespace(output as string).length;
 		sliceSize.nonWhitespaceCharacters.push(nonWhitespace);
 		// reparse the output to get the number of tokens
 		try {
 			// there seem to be encoding issues, therefore, we dump to a temp file
-			fs.writeFileSync(tempfile().name, output);
+			fs.writeFileSync(tempfile().name, output as string);
 			const reParsed = await retrieveNormalizedAstFromRCode(
 				{ request: 'file', content: tempfile().name },
 				reParseShellSession
@@ -135,7 +135,7 @@ export async function summarizeSlicerStats(
 			let numberOfNormalizedTokensNoComments = 0;
 			let commentChars = 0;
 			let commentCharsNoWhitespace = 0;
-			visitAst(reParsed.ast, t => {
+			visitAst(reParsed.ast.files.map(f => f.root), t => {
 				numberOfNormalizedTokens++;
 				const comments = t.info.additionalTokens?.filter(t => t.type === RType.Comment);
 				if(comments && comments.length > 0) {
@@ -190,7 +190,7 @@ export async function summarizeSlicerStats(
 			});
 		} catch{
 			console.error(`    ! Failed to re-parse the output of the slicer for ${JSON.stringify(criteria)}`); //, e
-			console.error(`      Code: ${output}\n`);
+			console.error(`      Code: ${output as string}\n`);
 			failedOutputs++;
 		}
 

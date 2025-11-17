@@ -14,7 +14,7 @@ export const PARSE_WITH_R_SHELL_STEP = {
 	printer:           {
 		[StepOutputFormat.Internal]: internalPrinter,
 		[StepOutputFormat.Json]:     JSON.stringify,
-		[StepOutputFormat.RdfQuads]: ({ parsed }, config: QuadSerializationConfiguration) => parseToQuads(parsed, config)
+		[StepOutputFormat.RdfQuads]: (p, config: QuadSerializationConfiguration) => parseToQuads(p.files[0].parsed, config)
 	},
 	dependencies:  [],
 	requiredInput: undefined as unknown as ParseRequiredInput<string>

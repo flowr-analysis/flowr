@@ -23,9 +23,8 @@ export interface TypeElementInSource {
 	readonly properties?: string[];
 }
 
-
 /**
- *
+ * Retrieve TypeScript source files from the given file names.
  */
 export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[], program: ts.Program } {
 	try {

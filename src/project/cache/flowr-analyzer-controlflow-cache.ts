@@ -6,13 +6,13 @@ import type { ControlFlowInformation } from '../../control-flow/control-flow-gra
 import { guard } from '../../util/assert';
 import { extractCfg, extractCfgQuick } from '../../control-flow/extract-cfg';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { FlowrConfigOptions } from '../../config';
 import type { DataflowInformation } from '../../dataflow/info';
+import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 
 type ControlFlowCache = ObjectMap<[passes: readonly CfgSimplificationPassName[], kind: CfgKind], ControlFlowInformation>;
 
 interface CfgInfo {
-	config:   FlowrConfigOptions,
+	ctx:      FlowrAnalyzerContext,
 	cfgQuick: ControlFlowInformation | undefined
 	dfg:      () => Promise<DataflowInformation>,
 	ast:      () => Promise<NormalizedAst>,
@@ -45,7 +45,7 @@ export class FlowrAnalyzerControlFlowCache {
 		}
 
 		if(cached.missingSimplifications.length > 0) {
-			const cfgPassInfo = { dfg: (await cfgCacheInfo.dfg()).graph, config: cfgCacheInfo.config, ast: await cfgCacheInfo.ast() };
+			const cfgPassInfo = { dfg: (await cfgCacheInfo.dfg()).graph, ctx: cfgCacheInfo.ctx, ast: await cfgCacheInfo.ast() };
 			cfg = simplifyControlFlowInformation(cfg, cfgPassInfo, cached.missingSimplifications);
 		}
 
@@ -56,14 +56,14 @@ export class FlowrAnalyzerControlFlowCache {
 	/**
 	 * Create and cache the base CFG without simplifications.
 	 */
-	private async createAndCacheBaseCfg(kind: CfgKind, { cfgQuick, dfg, config, ast }: CfgInfo): Promise<ControlFlowInformation> {
+	private async createAndCacheBaseCfg(kind: CfgKind, { cfgQuick, dfg, ctx, ast }: CfgInfo): Promise<ControlFlowInformation> {
 		let result: ControlFlowInformation;
 		switch(kind) {
 			case CfgKind.WithDataflow:
-				result = extractCfg(await ast(), config, (await dfg()).graph);
+				result = extractCfg(await ast(), ctx, (await dfg()).graph);
 				break;
 			case CfgKind.NoDataflow:
-				result = extractCfg(await ast(), config);
+				result = extractCfg(await ast(), ctx);
 				break;
 			case CfgKind.Quick:
 				result = cfgQuick ?? extractCfgQuick(await ast());

@@ -213,6 +213,9 @@ ${codeBlock('json', JSON.stringify(
 					}
 				}
 			},
+			project: {
+				resolveUnknownPathsOnDisk: true
+			},
 			engines: [{ type: 'r-shell' }],
 			solver:  {
 				variables:       VariableResolve.Alias,

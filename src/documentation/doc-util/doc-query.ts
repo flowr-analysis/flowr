@@ -1,6 +1,5 @@
 import type { RShell } from '../../r-bridge/shell';
 import type { Queries, SupportedQueryTypes } from '../../queries/query';
-import { requestFromInput } from '../../r-bridge/retriever';
 import { jsonReplacer } from '../../util/json';
 import { markdownFormatter } from '../../util/text/ansi';
 import { FlowrWikiBaseRef, getFilePathMd } from './doc-files';
@@ -33,7 +32,8 @@ export async function showQuery<
 	{ showCode, collapseResult, collapseQuery, shorthand }: ShowQueryOptions = {}
 ): Promise<string> {
 	const now = performance.now();
-	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code)).setParser(shell).build();
+	const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).build();
+	analyzer.addRequest(code);
 	const results = await analyzer.query(queries);
 	const duration = performance.now() - now;
 
@@ -105,7 +105,7 @@ export const RegisteredQueries = {
 
 
 /**
- *
+ * Registers a new documentation for a query.
  */
 export function registerQueryDocumentation(query: SupportedQueryTypes | SupportedVirtualQueryTypes, doc: QueryDocumentation) {
 	const map = RegisteredQueries[doc.type];

@@ -109,7 +109,6 @@ export interface DataflowGraphJson {
 	readonly rootVertices:      NodeId[],
 	readonly vertexInformation: [NodeId, DataflowGraphVertexInfo][],
 	readonly edgeInformation:   [NodeId, [NodeId, DataflowGraphEdge][]][]
-	readonly sourced?:          (string | '<inline>')[]
 }
 
 /**
@@ -141,8 +140,7 @@ export class DataflowGraph<
 > {
 	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined;
 	private _idMap:                     AstIdMap | undefined;
-	/** all file paths included in this dfg */
-	private _sourced:                   (string | '<inline>')[] = [];
+
 	/*
 	 * Set of vertices which have sideEffects that we do not know anything about.
 	 * As a (temporary) solution until we have FD edges, a side effect may also store known target links
@@ -224,15 +222,6 @@ export class DataflowGraph<
 	/** Retrieves the id-map to the normalized AST attached to the dataflow graph */
 	public get idMap(): AstIdMap | undefined {
 		return this._idMap;
-	}
-
-	public get sourced(): (string | '<inline>')[] {
-		return this._sourced;
-	}
-
-	/** Mark this file as being part of the dfg */
-	public addFile(source: string | '<inline>'): void {
-		this._sourced.push(source);
 	}
 
 	/**
@@ -371,8 +360,6 @@ export class DataflowGraph<
 			}
 		}
 
-		this._sourced = this._sourced.concat(otherGraph.sourced);
-
 		for(const unknown of otherGraph.unknownSideEffects) {
 			this._unknownSideEffects.add(unknown);
 		}
@@ -477,9 +464,6 @@ export class DataflowGraph<
 			}
 		}
 		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DataflowGraphEdge>(edges)]));
-		if(data.sourced) {
-			graph._sourced = data.sourced;
-		}
 		return graph;
 	}
 }

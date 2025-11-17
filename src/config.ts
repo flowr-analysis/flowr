@@ -107,6 +107,10 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			}
 		}
 	}
+	readonly project: {
+		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
+		resolveUnknownPathsOnDisk: boolean
+	}
 	/**
 	 * The engines to use for interacting with R code. Currently, supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
 	 * An empty array means all available engines will be used.
@@ -228,6 +232,9 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 			}
 		}
 	},
+	project: {
+		resolveUnknownPathsOnDisk: true
+	},
 	engines:       [],
 	defaultEngine: 'tree-sitter',
 	solver:        {
@@ -267,6 +274,9 @@ export const flowrConfigFileSchema = Joi.object({
 			}).optional().description('Do you want to overwrite (parts) of the builtin definition?')
 		}).optional().description('Semantics regarding how to handle the R environment.')
 	}).description('Configure language semantics and how flowR handles them.'),
+	project: Joi.object({
+		resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.')
+	}).description('Project specific configuration options.'),
 	engines: Joi.array().items(Joi.alternatives(
 		Joi.object({
 			type:               Joi.string().required().valid('tree-sitter').description('Use the tree sitter engine.'),

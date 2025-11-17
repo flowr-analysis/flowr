@@ -9,8 +9,8 @@ import type { AsyncOrSync, DeepPartial, DeepReadonly } from 'ts-essentials';
 import type { LintingRuleTag } from './linter-tags';
 import type { SourceRange } from '../util/range';
 import type { DataflowInformation } from '../dataflow/info';
-import type { FlowrConfigOptions } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
+import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 export interface LinterRuleInformation<Config extends MergeableRecord = never> {
 	/** Human-Readable name of the linting rule. */
@@ -49,7 +49,7 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 	 * Processes the search results of the search created through {@link createSearch}.
 	 * This function is expected to return the linting results from this rule for the given search, ie usually the given script file.
 	 */
-	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation, cfg: ControlFlowInformation, config: FlowrConfigOptions }) => AsyncOrSync<{
+	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation, cfg: ControlFlowInformation, analyzer: ReadonlyFlowrAnalysisProvider }) => AsyncOrSync<{
 		results: Result[],
 		'.meta': Metadata
 	}>

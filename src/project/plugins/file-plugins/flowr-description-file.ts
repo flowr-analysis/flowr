@@ -1,4 +1,4 @@
-import { type FlowrFileProvider, type SpecialFileRole , FlowrFile } from '../../context/flowr-file';
+import { type FlowrFileProvider, type FileRole , FlowrFile } from '../../context/flowr-file';
 import { parseDCF } from '../../../util/files';
 
 export type DCF = Map<string, string[]>;
@@ -7,13 +7,13 @@ export type DCF = Map<string, string[]>;
  * This decorates a text file and provides access to its content as a DCF (Debian Control File)-like structure.
  */
 export class FlowrDescriptionFile extends FlowrFile<DCF> {
-	private readonly wrapped: FlowrFileProvider<string>;
+	private readonly wrapped: FlowrFileProvider;
 
 	/**
 	 * Prefer the static {@link FlowrDescriptionFile.from} method to create instances of this class as it will not re-create if already a description file
 	 * and handle role assignments.
 	 */
-	constructor(file: FlowrFileProvider<string>) {
+	constructor(file: FlowrFileProvider) {
 		super(file.path(), file.role);
 		this.wrapped = file;
 	}
@@ -30,7 +30,7 @@ export class FlowrDescriptionFile extends FlowrFile<DCF> {
 	/**
 	 * Description file lifter, this does not re-create if already a description file
 	 */
-	public static from(file: FlowrFileProvider<string> | FlowrDescriptionFile, role?: SpecialFileRole): FlowrDescriptionFile {
+	public static from(file: FlowrFileProvider | FlowrDescriptionFile, role?: FileRole): FlowrDescriptionFile {
 		if(role) {
 			file.assignRole(role);
 		}

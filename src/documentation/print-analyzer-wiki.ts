@@ -17,9 +17,9 @@ import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef } from './do
 
 async function analyzerQuickExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
-		.addRequestFromInput('x <- 1; print(x)')
 		.setEngine('tree-sitter')
 		.build();
+	analyzer.addRequest('x <- 1; print(x)');
 	// get the dataflow
 	const df = await analyzer.dataflow();
 	// obtain the identified loading order

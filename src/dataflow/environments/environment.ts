@@ -100,11 +100,6 @@ export class Environment implements IEnvironment {
 	}
 }
 
-export interface WorkingDirectoryReference {
-	readonly path:                string
-	readonly controlDependencies: ControlDependency[] | undefined
-}
-
 /**
  * An environment describes a ({@link IEnvironment#parent|scoped}) mapping of names to their definitions ({@link BuiltIns}).
  *

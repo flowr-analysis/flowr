@@ -130,7 +130,7 @@ function applyAccessColsSemantics(
 ): DataFrameDomain {
 	if(columns?.every(col => typeof col === 'string')) {
 		return new DataFrameDomain({
-			colnames: value.colnames.add([columns, []]),
+			colnames: value.colnames.union([columns, []]),
 			cols:     value.cols,
 			rows:     value.rows
 		});
@@ -166,7 +166,7 @@ function applyAssignColsSemantics(
 		const cols = columns.length;
 
 		return new DataFrameDomain({
-			colnames: value.colnames.add([columns, []]),
+			colnames: value.colnames.union([columns, []]),
 			cols:     value.cols.add([0, cols]).max([cols, cols]),
 			rows:     value.rows
 		});
@@ -209,7 +209,7 @@ function applySetColNamesSemantics(
 ): DataFrameDomain {
 	if(options?.partial) {
 		return new DataFrameDomain({
-			colnames: value.colnames.extendDown().add([colnames?.filter(isNotUndefined) ?? [], colnames?.every(isNotUndefined) ? [] : Top]),
+			colnames: value.colnames.extendDown().union([colnames?.filter(isNotUndefined) ?? [], colnames?.every(isNotUndefined) ? [] : Top]),
 			cols:     value.cols,
 			rows:     value.rows
 		});
@@ -217,7 +217,7 @@ function applySetColNamesSemantics(
 	const allColNames = colnames?.every(isNotUndefined) && value.cols.value !== Bottom && colnames.length >= value.cols.value[1];
 
 	return new DataFrameDomain({
-		colnames: allColNames ? value.colnames.create([colnames, []]) : value.colnames.extendDown().add([colnames?.filter(isNotUndefined) ?? [], colnames?.every(isNotUndefined) ? [] : Top]),
+		colnames: allColNames ? value.colnames.create([colnames, []]) : value.colnames.extendDown().union([colnames?.filter(isNotUndefined) ?? [], Top]),
 		cols:     value.cols,
 		rows:     value.rows
 	});
@@ -228,7 +228,7 @@ function applyAddColsSemantics(
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
 	return new DataFrameDomain({
-		colnames: colnames !== undefined ? value.colnames.add([colnames.filter(isNotUndefined), colnames.every(isNotUndefined) ? [] : Top]) : value.colnames.extendUp(),
+		colnames: colnames !== undefined ? value.colnames.union([colnames.filter(isNotUndefined), colnames.every(isNotUndefined) ? [] : Top]) : value.colnames.extendUp(),
 		cols:     colnames !== undefined ? value.cols.add([colnames.length, colnames.length]) : value.cols.extendUp(),
 		rows:     value.rows
 	});
@@ -288,7 +288,7 @@ function applyConcatColsSemantics(
 	{ other }: { other: DataFrameDomain }
 ): DataFrameDomain {
 	return new DataFrameDomain({
-		colnames: value.colnames.add(other.colnames),
+		colnames: value.colnames.union(other.colnames),
 		cols:     value.cols.add(other.cols),
 		rows:     value.rows
 	});
@@ -332,7 +332,7 @@ function applySubsetColsSemantics(
 		});
 	}
 	return new DataFrameDomain({
-		colnames: colnames !== undefined ? value.colnames.meet([colnames.filter(isNotUndefined), colnames.every(isNotUndefined) ? [] : Top]) : value.colnames.extendDown(),
+		colnames: colnames !== undefined ? value.colnames.intersect([colnames.filter(isNotUndefined), colnames.every(isNotUndefined) ? [] : Top]) : value.colnames.extendDown(),
 		cols:     colnames !== undefined ? value.cols.min([colnames.length, colnames.length]) : value.cols.extendDown(),
 		rows:     value.rows
 	});
@@ -373,7 +373,7 @@ function applyMutateColsSemantics(
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
 	return new DataFrameDomain({
-		colnames: colnames !== undefined ? value.colnames.add([colnames.filter(isNotUndefined), colnames.every(isNotUndefined) ? [] : Top]) : value.colnames.extendUp(),
+		colnames: colnames !== undefined ? value.colnames.union([colnames.filter(isNotUndefined), colnames.every(isNotUndefined) ? [] : Top]) : value.colnames.extendUp(),
 		cols:     colnames !== undefined ? value.cols.add([0, colnames.length]).max([colnames.length, colnames.length]) : value.cols.extendUp(),
 		rows:     value.rows
 	});
@@ -386,7 +386,7 @@ function applyGroupBySemantics(
 ): DataFrameDomain {
 	if(options?.mutatedCols) {
 		return new DataFrameDomain({
-			colnames: value.colnames.add([by.filter(isNotUndefined), by.every(isNotUndefined) ? [] : Top]),
+			colnames: value.colnames.union([by.filter(isNotUndefined), by.every(isNotUndefined) ? [] : Top]),
 			cols:     value.cols.add([0, by.length]),
 			rows:     value.rows
 		});
@@ -400,7 +400,7 @@ function applySummarizeSemantics(
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
 	return new DataFrameDomain({
-		colnames: colnames !== undefined ? value.colnames.add([colnames.filter(isNotUndefined), colnames.every(isNotUndefined) ? [] : Top]) : value.colnames.extendUp(),
+		colnames: colnames !== undefined ? value.colnames.join([[], []]).union([colnames.filter(isNotUndefined), colnames.every(isNotUndefined) ? [] : Top]) : value.colnames.extendUp(),
 		cols:     colnames !== undefined ? value.cols.add([0, colnames.length]).min([colnames.length, +Infinity]) : value.cols.extendUp(),
 		rows:     value.rows.min([1, +Infinity]).max([0, 1])
 	});
@@ -427,25 +427,25 @@ function applyJoinSemantics(
 			return new PosIntervalDomain([lower.value[0], interval1.value[1] * interval2.value[1]]);
 		}
 	};
-	const commonCols = value.colnames.meet(other.colnames);
-	let duplicateCols: boolean;  // whether columns may be renamed due to occurrence in both data frames
+	const commonCols = value.colnames.intersect(other.colnames);
+	let duplicateCols: string[] | undefined;  // columns that may be renamed due to occurring in both data frames
 	let productRows: boolean;  // whether the resulting rows may be a Cartesian product of the rows of the data frames
 
 	if(options?.natural) {
-		duplicateCols = false;
+		duplicateCols = [];
 		productRows = commonCols.isValue() && commonCols.max !== Top && commonCols.max.size === 0;
 	} else if(by === undefined) {
-		duplicateCols = true;
+		duplicateCols = undefined;
 		productRows = true;
 	} else if(by.length === 0) {
-		duplicateCols = commonCols.isValue() && (commonCols.max === Top || commonCols.max.size > 0);
+		duplicateCols = commonCols.isValue() ? commonCols.max !== Top ? [...commonCols.max] : undefined : [];
 		productRows = true;
 	} else if(by.every(isNotUndefined)) {
 		const remainingCols = commonCols.subtract([by, []]);
-		duplicateCols = remainingCols.isValue() && (remainingCols.max === Top || remainingCols.max.size > 0);
+		duplicateCols = remainingCols.isValue() ? remainingCols.max !== Top ? [...remainingCols.max] : undefined : [];
 		productRows = false;
 	} else {
-		duplicateCols = true;
+		duplicateCols = undefined;
 		productRows = false;
 	}
 	const joinType = options?.join ?? 'inner';
@@ -469,7 +469,7 @@ function applyJoinSemantics(
 	}
 	return new DataFrameDomain({
 		...value,
-		colnames: duplicateCols ? value.colnames.top() : value.colnames.add(other.colnames),
+		colnames: duplicateCols === undefined ? value.colnames.top() : duplicateCols.length > 0 ? value.colnames.union(other.colnames).subtract([duplicateCols, []]).extendUp() : value.colnames.union(other.colnames),
 		cols:     by !== undefined ? value.cols.add(other.cols).subtract([by.length, by.length]) : mergeInterval(value.cols, other.cols),
 		rows:     productRows ? productInterval(rows, value.rows, other.rows) : rows
 	});

@@ -425,20 +425,20 @@ function guardValidCriteria(
 ): void {
 	for(const [criterion, domain, matching] of criteria) {
 		if(domain !== undefined) {
-			if(domain.colnames === Bottom || (domain.colnames[1] !== Top && domain.colnames[1].length === 0)) {
-				guard(matching?.colnames === DomainMatchingType.Overapproximation, `Domain matching type for column names of "${criterion}" must be \`Overapproximation\` if expected column names have a non-empty range set ${domain.colnames.toString()}`);
+			if(domain.colnames !== Bottom && (domain.colnames[1] === Top || domain.colnames[1].length > 0)) {
+				guard(matching?.colnames === DomainMatchingType.Overapproximation, `Domain matching type for column names of "${criterion}" must be \`Overapproximation\` if expected column names have a non-empty range set ${JSON.stringify(domain.colnames)}`);
 			} else {
-				guard((matching?.cols ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for column names of "${criterion}" must be \`Exact\` if expected column names have an empty range set ${domain.colnames.toString()}`);
+				guard((matching?.colnames ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for column names of "${criterion}" must be \`Exact\` if expected column names have an empty range set ${JSON.stringify(domain.colnames)}`);
 			}
 			if(domain.cols !== Bottom && domain.cols[0] !== domain.cols[1]) {
-				guard(matching?.cols === DomainMatchingType.Overapproximation, `Domain matching type for number of columns of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element ${domain.cols.toString()}`);
+				guard(matching?.cols === DomainMatchingType.Overapproximation, `Domain matching type for number of columns of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element ${JSON.stringify(domain.cols)}`);
 			} else {
-				guard((matching?.cols ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for number of columns of "${criterion}" must be \`Exact\` if expected interval has only 1 element ${domain.cols.toString()}`);
+				guard((matching?.cols ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for number of columns of "${criterion}" must be \`Exact\` if expected interval has only 1 element ${JSON.stringify(domain.cols)}`);
 			}
 			if(domain.rows !== Bottom && domain.rows[0] !== domain.rows[1]) {
-				guard(matching?.rows === DomainMatchingType.Overapproximation, `Domain matching type for number of rows of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element ${domain.rows.toString()}`);
+				guard(matching?.rows === DomainMatchingType.Overapproximation, `Domain matching type for number of rows of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element ${JSON.stringify(domain.rows)}`);
 			} else {
-				guard((matching?.rows ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for number of rows of "${criterion}" must be \`Exact\` if expected interval has only 1 element ${domain.rows.toString()}`);
+				guard((matching?.rows ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for number of rows of "${criterion}" must be \`Exact\` if expected interval has only 1 element ${JSON.stringify(domain.rows)}`);
 			}
 		}
 	}

@@ -181,9 +181,9 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	}
 
 	/**
-	 * Subtracts another abstract value to the current abstract value by creating the union of the minimum and maximum set, respectively.
+	 * Creates the union of this abstract value and another abstract value by creating the union of the minimum and maximum set, respectively.
 	 */
-	public add(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
+	public union(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
 		other = other instanceof SetRangeDomain ? other : this.create(other);
 
 		if(this.min === Bottom || this.max === Bottom) {
@@ -200,6 +200,28 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 			maxAdd = this.max.union(other.max);
 		}
 		return this.create([minAdd, maxAdd === Top ? Top : maxAdd.difference(minAdd)]);
+	}
+
+	/**
+	 * Creates the intersection of this abstract value and another abstract value by creating the intersection of the minimum and maximum set, respectively.
+	 */
+	public intersect(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
+		other = other instanceof SetRangeDomain ? other : this.create(other);
+
+		if(this.min === Bottom || this.max === Bottom || other.min === Bottom || other.max === Bottom) {
+			return this.bottom();
+		}
+		const minIntersect = this.min.intersection(other.min);
+		let maxIntersect;
+
+		if(this.max === Top) {
+			maxIntersect = other.max;
+		} else if(other.max === Top) {
+			maxIntersect = this.max;
+		} else {
+			maxIntersect = this.max.intersection(other.max);
+		}
+		return this.create([minIntersect, maxIntersect === Top ? Top : maxIntersect.difference(minIntersect)]);
 	}
 
 	/**

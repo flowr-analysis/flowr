@@ -1131,20 +1131,20 @@ function mapDataFrameMutate(
 		});
 	}
 
+	if(mutatedCols === undefined || mutatedCols.length > 0 || deletedCols?.length === 0) {
+		result.push({
+			operation: 'mutateCols',
+			operand:   operand?.info.id,
+			colnames:  mutatedCols
+		});
+		operand = undefined;
+	}
 	if(deletedCols === undefined || deletedCols.length > 0) {
 		result.push({
 			operation: 'removeCols',
 			operand:   operand?.info.id,
 			colnames:  deletedCols,
 			options:   { maybe: true }
-		});
-		operand = undefined;
-	}
-	if(mutatedCols === undefined || mutatedCols.length > 0 || deletedCols?.length === 0) {
-		result.push({
-			operation: 'mutateCols',
-			operand:   operand?.info.id,
-			colnames:  mutatedCols
 		});
 		operand = undefined;
 	}

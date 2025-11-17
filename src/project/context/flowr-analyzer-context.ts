@@ -26,6 +26,7 @@ import type { FlowrConfigOptions } from '../../config';
 import { defaultConfigOptions } from '../../config';
 import type { FlowrFileProvider } from './flowr-file';
 import { FlowrInlineTextFile } from './flowr-file';
+import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -41,6 +42,10 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	 * The dependencies context provides access to the identified dependencies and their versions.
 	 */
 	readonly deps:   ReadOnlyFlowrAnalyzerDependenciesContext;
+	/**
+	 * The environment context provides access to the R environment information used during analysis.
+	 */
+	readonly env:    FlowrAnalyzerEnvironmentContext;
 	/**
 	 * The configuration options used by the analyzer.
 	 */
@@ -60,8 +65,10 @@ export interface ReadOnlyFlowrAnalyzerContext {
  * If you are just interested in inspecting the context, you can use {@link ReadOnlyFlowrAnalyzerContext} instead (e.g., via {@link inspect}).
  */
 export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
-	public readonly files:  FlowrAnalyzerFilesContext;
-	public readonly deps:   FlowrAnalyzerDependenciesContext;
+	public readonly files: FlowrAnalyzerFilesContext;
+	public readonly deps:  FlowrAnalyzerDependenciesContext;
+	public readonly env:   FlowrAnalyzerEnvironmentContext;
+
 	public readonly config: FlowrConfigOptions;
 
 	constructor(config: FlowrConfigOptions, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>) {
@@ -70,6 +77,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		this.files = new FlowrAnalyzerFilesContext(loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
             (plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.deps  = new FlowrAnalyzerDependenciesContext(this, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
+		this.env   = new FlowrAnalyzerEnvironmentContext(this);
 	}
 
 	/** delegate request addition */

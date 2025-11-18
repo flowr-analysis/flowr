@@ -113,7 +113,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		return SetRangeDomain.bottom(this.limit, this.setType);
 	}
 
-	public equals(other: SetRangeDomain<T>): boolean {
+	public equals(other: this): boolean {
 		if(this.value === other.value) {
 			return true;
 		} else if(this.value === Bottom || other.value === Bottom || !setEquals(this.value[0], other.value[0])) {
@@ -124,7 +124,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		return this.value[1] !== Top && other.value[1] !== Top && setEquals(this.value[1], other.value[1]);
 	}
 
-	public leq(other: SetRangeDomain<T>): boolean {
+	public leq(other: this): boolean {
 		if(this.min === Bottom || this.max === Bottom) {
 			return true;
 		} else if(other.min === Bottom || other.max === Bottom || !other.min.isSubsetOf(this.min)) {
@@ -368,7 +368,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		if(this.min === Bottom || this.max === Bottom) {
 			return this.bottom();
 		} else {
-			return this.create([new Set(), this.max]);
+			return this.create([new this.setType(), this.max]);
 		}
 	}
 

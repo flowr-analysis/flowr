@@ -7,7 +7,7 @@ import type {
 	ParentInformation,
 	RNodeWithParent
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { IEnvironment, REnvironmentInformation } from './environments/environment';
+import type { REnvironmentInformation } from './environments/environment';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
@@ -36,10 +36,6 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
 	 */
 	readonly controlDependencies: ControlDependency[] | undefined
-	/**
-	 * The built-in environment
-	 */
-	readonly builtInEnvironment:  IEnvironment;
 	/**
 	 * The flowr context used for environment seeding, files, and precision control, ...
 	 */

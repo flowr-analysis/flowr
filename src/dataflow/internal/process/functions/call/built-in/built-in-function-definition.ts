@@ -1,5 +1,5 @@
-import { type DataflowProcessorInformation , processDataflowFor } from '../../../../../processor';
-import { type DataflowInformation , ExitPointType } from '../../../../../info';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
+import { type DataflowInformation, ExitPointType } from '../../../../../info';
 import {
 	getAllFunctionCallTargets,
 	linkCircularRedefinitionsWithinALoop,
@@ -12,14 +12,17 @@ import { guard } from '../../../../../../util/assert';
 import { dataflowLogger } from '../../../../../logger';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	EmptyArgument,
+	type RFunctionArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type DataflowFunctionFlowInformation , DataflowGraph } from '../../../../../graph/graph';
-import { type IdentifierReference , isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { type DataflowFunctionFlowInformation, DataflowGraph } from '../../../../../graph/graph';
+import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
-import { type REnvironmentInformation , initializeCleanEnvironments } from '../../../../../environments/environment';
+import { initializeCleanEnvironments, type REnvironmentInformation } from '../../../../../environments/environment';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
@@ -264,7 +267,7 @@ export function updateNestedFunctionCalls(
 }
 
 function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
-	let env = initializeCleanEnvironments(data.builtInEnvironment.memory);
+	let env = initializeCleanEnvironments(data.ctx.env.builtInEnvironment.memory);
 	for(let i = 0; i < data.environment.level + 1 /* add another env */; i++) {
 		env = pushLocalEnvironment(env);
 	}

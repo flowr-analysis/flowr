@@ -24,6 +24,7 @@ import { updateNestedFunctionCalls } from './internal/process/functions/call/bui
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
+import { initializeCleanEnvFromBuiltIn } from './environments/environment';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -104,8 +105,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
-		environment:         ctx.env.envInformation,
-		builtInEnvironment:  ctx.env.envInformation.current.parent,
+		environment:         initializeCleanEnvFromBuiltIn(ctx.env.builtInEnvironment),
 		processors,
 		controlDependencies: undefined,
 		referenceChain:      [files[0].filePath],

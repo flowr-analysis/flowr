@@ -54,12 +54,12 @@ export async function executeDependenciesQuery({
 	const queryResults = functions.values().toArray().flat().length === 0 ? { kinds: {}, '.meta': { timing: 0 } } :
 		await executeQueriesOfSameType<CallContextQuery>(data, functions.entries().map(([c, f]) => makeCallContextQuery(f, c)).toArray().flat());
 
-	const results = Object.fromEntries(functions.entries().map(([c, f]) => {
+	const results = Object.fromEntries(await Promise.all(functions.entries().map(async([c, f]) => {
 		const results = getResults(queries, { dataflow, config, normalize }, queryResults, c, f, data);
 		// only default categories allow additional analyses, so we null-coalesce here!
-		(DefaultDependencyCategories as Record<string, DependencyCategorySettings>)[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
+		await (DefaultDependencyCategories as Record<string, DependencyCategorySettings>)[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
 		return [c, results];
-	})) as {[C in DependencyCategoryName]?: DependencyInfo[]};
+	}))) as {[C in DependencyCategoryName]?: DependencyInfo[]};
 
 	return {
 		'.meta': {
@@ -134,7 +134,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 		const results: DependencyInfo[] = [];
 		for(const [arg, values] of foundValues.entries()) {
 			for(const value of values) {
-				const dep = value ? data?.analyzer.context().deps.getDependency(value) ?? undefined : undefined;
+				const dep = value ? data?.analyzer.inspectContext().deps.getDependency(value) ?? undefined : undefined;
 				const result = compactRecord({
 					nodeId:             id,
 					functionName:       vertex.name,

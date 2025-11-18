@@ -1,8 +1,6 @@
 import type { OutputFormatter } from '../../../util/text/ansi';
 import { formatter } from '../../../util/text/ansi';
-import type { KnownParser } from '../../../r-bridge/parser';
-import type { FlowrConfigOptions } from '../../../config';
-import type { FlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 /**
  * Defines the main interface for output of the repl.
@@ -35,9 +33,8 @@ export const standardReplOutput: ReplOutput = {
 export interface ReplCommandInformation {
 	output:              ReplOutput,
 	allowRSessionAccess: boolean,
-	parser:              KnownParser,
+	analyzer:            ReadonlyFlowrAnalysisProvider,
 	remainingLine:       string,
-	config:              FlowrConfigOptions
 }
 
 
@@ -67,27 +64,36 @@ export interface ReplBaseCommand {
 }
 
 export interface ReplCommand extends ReplBaseCommand {
-	usesAnalyzer: false;
+	isCodeCommand: false;
 	/**
 	 * Function to execute when the command is invoked, it must not write to the command line but instead use the output handler.
 	 * Furthermore, it has to obey the formatter defined in the {@link ReplOutput}.
 	 */
-	fn:           (info: ReplCommandInformation) => Promise<void> | void
+	fn:            (info: ReplCommandInformation) => Promise<void> | void
 }
 
+/**
+ * Result of parsing a REPL code command line.
+ * `rCode` may be undefined, in which case the R code of a previous REPL command will be re-used.
+ */
+interface ParsedReplLine {
+	rCode:     string | undefined;
+	remaining: string[];
+}
 
 /**
  * Repl command that uses the {@link FlowrAnalyzer}
  */
 export interface ReplCodeCommand extends ReplBaseCommand {
-	usesAnalyzer: true;
+	isCodeCommand: true;
 	/**
 	 * Function to execute when the command is invoked, it must not write to the command line but instead use the output handler.
 	 * Furthermore, it has to obey the formatter defined in the {@link ReplOutput}.
 	 */
-	fn:           (info: ReplCodeCommandInformation) => Promise<void> | void
+	fn:            (info: ReplCodeCommandInformation) => Promise<void> | void
 	/**
-	 * Argument parser function which handles the input given after the repl command
+	 * Argument parser function which handles the input given after the repl command.
+	 * If no R code is returned, the input R code of a previous REPL command will be re-used for processing the current REPL command.
 	 */
-	argsParser:   (remainingLine: string) => { input: string, remaining: string[]}
+	argsParser:    (remainingLine: string) => ParsedReplLine
 }

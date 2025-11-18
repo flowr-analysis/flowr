@@ -153,22 +153,23 @@ function depthListToTextTree(list: Readonly<DepthList>, f: OutputFormatter): str
 }
 
 export const parseCommand: ReplCodeCommand = {
-	description:  `Prints ASCII Art of the parsed, unmodified AST, start with '${fileProtocol}' to indicate a file`,
-	usesAnalyzer: true,
-	usageExample: ':parse',
-	aliases:      [ 'p' ],
-	script:       false,
-	argsParser:   (line: string) => {
+	description:   `Prints ASCII Art of the parsed, unmodified AST, start with '${fileProtocol}' to indicate a file`,
+	isCodeCommand: true,
+	usageExample:  ':parse',
+	aliases:       [ 'p' ],
+	script:        false,
+	argsParser:    (line: string) => {
 		return {
 			// Threat the whole input line as R code
-			input:     removeRQuotes(line.trim()),
+			rCode:     removeRQuotes(line.trim()),
 			remaining: []
 		};
 	},
 	fn: async({ output, analyzer }) => {
 		const result = await analyzer.parse();
+		const parserInfo = await analyzer.parserInformation();
 
-		if(analyzer.parserName() === 'r-shell') {
+		if(parserInfo.name === 'r-shell') {
 			const object = convertPreparedParsedData(prepareParsedData(result.parsed as unknown as string));
 			output.stdout(depthListToTextTree(toDepthMap(object), output.formatter));
 		} else {

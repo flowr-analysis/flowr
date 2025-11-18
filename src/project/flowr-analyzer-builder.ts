@@ -2,7 +2,7 @@ import type { EngineConfig, FlowrConfigOptions } from '../config';
 import { amendConfig, cloneConfig, defaultConfigOptions } from '../config';
 import type { DeepWritable } from 'ts-essentials';
 import type { RParseRequest } from '../r-bridge/retriever';
-import { fileProtocol , isParseRequest , requestFromInput } from '../r-bridge/retriever';
+import { fileProtocol, isParseRequest, requestFromInput } from '../r-bridge/retriever';
 import { FlowrAnalyzer } from './flowr-analyzer';
 import { retrieveEngineInstances } from '../engines';
 import type { KnownParser } from '../r-bridge/parser';
@@ -196,10 +196,6 @@ export class FlowrAnalyzerBuilder {
 		guard(this.request !== undefined, 'Currently we require at least one request to build an analyzer, please provide one using the constructor or the addRequest method');
 
 		const context = new FlowrAnalyzerContext(this.plugins);
-		context.addRequests(this.request);
-		// we do it here to save time later if the analyzer is to be duplicated
-		context.resolvePreAnalysis();
-
 		const cache = FlowrAnalyzerCache.create({
 			parser:  this.parser,
 			config:  this.flowrConfig,
@@ -207,11 +203,18 @@ export class FlowrAnalyzerBuilder {
 			...(this.input ?? {})
 		});
 
-		return new FlowrAnalyzer(
+		const analyzer = new FlowrAnalyzer(
 			this.flowrConfig,
 			this.parser,
 			context,
 			cache
 		);
+
+		analyzer.addRequests(this.request);
+
+		// we do it here to save time later if the analyzer is to be duplicated
+		context.resolvePreAnalysis();
+
+		return analyzer;
 	}
 }

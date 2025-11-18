@@ -401,10 +401,10 @@ export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: r
 		for(const cd of exitCds) {
 			if(ref.controlDependencies) {
 				if(!ref.controlDependencies?.find(c => c.id === cd.id && c.when === cd.when)) {
-					ref.controlDependencies.push(cd);
+					ref.controlDependencies.push({ ...cd, byIteration: true });
 				}
 			} else {
-				ref.controlDependencies = [cd];
+				ref.controlDependencies = [{ ...cd, byIteration: true }];
 			}
 		}
 	}

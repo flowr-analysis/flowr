@@ -3,8 +3,10 @@ import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
 	CallContextQueryResult,
-	CallContextQuerySubKindResult, CallNameTypes,
-	FileFilter, LinkTo,
+	CallContextQuerySubKindResult,
+	CallNameTypes,
+	FileFilter,
+	LinkTo,
 	SubCallContextQueryFormat
 } from './call-context-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -18,6 +20,7 @@ import type { BasicQueryData } from '../../base-query-format';
 import { identifyLinkToLastCallRelation, satisfiesCallTargets } from './identify-link-to-last-call-relation';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
+import { CfgKind } from '../../../project/cfg-kind';
 
 /* if the node is effected by nse, we have an ingoing nse edge */
 function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
@@ -227,7 +230,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 
 	let cfg = undefined;
 	if(requiresCfg) {
-		cfg = await analyzer.controlflow([], true);
+		cfg = await analyzer.controlflow([], CfgKind.WithDataflow);
 	}
 
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);

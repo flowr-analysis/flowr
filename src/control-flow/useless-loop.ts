@@ -122,10 +122,10 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 				}
 			}
 
-			this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds);
+			this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds?.filter(c => !c.byIteration));
 		}
 
-		this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds);
+		this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds?.filter(c => !c.byIteration));
 	}
 
 	private app(cds: ControlDependency[] | undefined): void {

@@ -16,15 +16,13 @@ import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
 import { fileProtocol, requestFromInput } from '../../r-bridge/retriever';
 import type { ReplOutput } from './commands/repl-main';
 import { standardReplOutput } from './commands/repl-main';
-import { RShell, RShellReviveOptions } from '../../r-bridge/shell';
 import type { MergeableRecord } from '../../util/objects';
-import type { KnownParser } from '../../r-bridge/parser';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfigOptions } from '../../config';
-import { getEngineConfig } from '../../config';
 import type { SupportedQuery } from '../../queries/query';
 import { SupportedQueries } from '../../queries/query';
-import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
+import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
+import { startAndEndsWith } from '../../util/text/strings';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -56,7 +54,7 @@ export function replCompleter(line: string, config: FlowrConfigOptions): [string
 				const options = scripts[commandName as keyof typeof scripts].options;
 				completions.push(...getValidOptionsForCompletion(options, splitLine).map(o => `${o} `));
 			} else if(commandName.startsWith('query')) {
-				completions.push(...replQueryCompleter(splitLine, config));
+				completions.push(...replQueryCompleter(splitLine, startingNewArg, config));
 			} else {
 				// autocomplete command arguments (specifically, autocomplete the file:// protocol)
 				completions.push(fileProtocol);
@@ -71,11 +69,11 @@ export function replCompleter(line: string, config: FlowrConfigOptions): [string
 	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line];
 }
 
-function replQueryCompleter(splitLine: readonly string[], config: FlowrConfigOptions): string[] {
+function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions): string[] {
 	const nonEmpty = splitLine.slice(1).map(s => s.trim()).filter(s => s.length > 0);
 	const queryShorts = Object.keys(SupportedQueries).map(q => `@${q}`).concat(['help']);
 	let candidates: string[] = [];
-	if(nonEmpty.length == 0 || (nonEmpty.length == 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q))) {
+	if(nonEmpty.length == 0 || (nonEmpty.length == 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q && !startingNewArg))) {
 		candidates = candidates.concat(queryShorts.map(q => `${q} `));
 	} else {
 		const q = nonEmpty[0].slice(1);
@@ -102,12 +100,12 @@ export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.Re
 
 export function handleString(code: string) {
 	return {
-		input:     code.startsWith('"') ? JSON.parse(code) as string : code,
+		rCode:     code.length == 0 ? undefined : startAndEndsWith(code, '"') ? JSON.parse(code) as string : code,
 		remaining: []
 	};
 }
 
-async function replProcessStatement(output: ReplOutput, statement: string, parser: KnownParser, allowRSessionAccess: boolean, config: FlowrConfigOptions): Promise<void> {
+async function replProcessStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean): Promise<void> {
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase();
 		const processor = getCommand(command);
@@ -115,16 +113,15 @@ async function replProcessStatement(output: ReplOutput, statement: string, parse
 		if(processor) {
 			try {
 				const remainingLine = statement.slice(command.length + 2).trim();
-				if(processor.usesAnalyzer) {
+				if(processor.isCodeCommand) {
 					const args = processor.argsParser(remainingLine);
-					const request = requestFromInput(args.input);
-					const analyzer = await new FlowrAnalyzerBuilder(request)
-						.setConfig(config)
-						.setParser(parser)
-						.build();
+					if(args.rCode) {
+						analyzer.reset();
+						analyzer.addRequest(requestFromInput(args.rCode));
+					}
 					await processor.fn({ output, analyzer, remainingArgs: args.remaining });
 				} else {
-					await processor.fn({ output, parser, remainingLine, allowRSessionAccess, config });
+					await processor.fn({ output, analyzer, remainingLine, allowRSessionAccess });
 				}
 			} catch(e){
 				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
@@ -136,25 +133,24 @@ async function replProcessStatement(output: ReplOutput, statement: string, parse
 			output.stdout(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
 		}
 	} else {
-		await tryExecuteRShellCommand({ output, parser, remainingLine: statement, allowRSessionAccess, config });
+		await tryExecuteRShellCommand({ output, analyzer, remainingLine: statement, allowRSessionAccess });
 	}
 }
 
 /**
  * This function interprets the given `expr` as a REPL command (see {@link repl} for more on the semantics).
  *
- * @param config              - flowr Config
+ * @param analyzer            - The flowR analyzer to use.
  * @param output              - Defines two methods that every function in the repl uses to output its data.
  * @param expr                - The expression to process.
- * @param parser               - The {@link RShell} or {@link TreeSitterExecutor} to use (see {@link repl}).
  * @param allowRSessionAccess - If true, allows the execution of arbitrary R code.
  */
-export async function replProcessAnswer(config: FlowrConfigOptions, output: ReplOutput, expr: string, parser: KnownParser, allowRSessionAccess: boolean): Promise<void> {
+export async function replProcessAnswer(analyzer: FlowrAnalyzer, output: ReplOutput, expr: string, allowRSessionAccess: boolean): Promise<void> {
 
 	const statements = splitAtEscapeSensitive(expr, false, ';');
 
 	for(const statement of statements) {
-		await replProcessStatement(output, statement, parser, allowRSessionAccess, config);
+		await replProcessStatement(output, statement, analyzer, allowRSessionAccess);
 	}
 }
 
@@ -162,8 +158,10 @@ export async function replProcessAnswer(config: FlowrConfigOptions, output: Repl
  * Options for the {@link repl} function.
  */
 export interface FlowrReplOptions extends MergeableRecord {
-	/** The shell to use, if you do not pass one it will automatically create a new one with the `revive` option set to 'always'. */
-	readonly parser?:              KnownParser
+	/**
+	 * The flowR analyzer to use.
+	 */
+	readonly analyzer:             FlowrAnalyzer
 	/**
 	 * A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
     * If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
@@ -185,16 +183,14 @@ export interface FlowrReplOptions extends MergeableRecord {
  * - Starting with anything else, indicating default R code to be directly executed. If you kill the underlying shell, that is on you! </li>
  *
  * @param options - The options for the repl. See {@link FlowrReplOptions} for more information.
- * @param config  - The flowr config
  *
  * For the execution, this function makes use of {@link replProcessAnswer}.
  *
  */
 export async function repl(
-	config: FlowrConfigOptions,
 	{
-		parser = new RShell(getEngineConfig(config, 'r-shell'), { revive: RShellReviveOptions.Always }),
-		rl = readline.createInterface(makeDefaultReplReadline(config)),
+		analyzer,
+		rl = readline.createInterface(makeDefaultReplReadline(analyzer.flowrConfig)),
 		output = standardReplOutput,
 		historyFile = defaultHistoryFile,
 		allowRSessionAccess = false
@@ -209,7 +205,7 @@ export async function repl(
 		await new Promise<void>((resolve, reject) => {
 			rl.question(prompt(), answer => {
 				rl.pause();
-				replProcessAnswer(config, output, answer, parser, allowRSessionAccess).then(() => {
+				replProcessAnswer(analyzer, output, answer, allowRSessionAccess).then(() => {
 					rl.resume();
 					resolve();
 				}).catch(reject);

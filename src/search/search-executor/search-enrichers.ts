@@ -22,9 +22,10 @@ import type { Query, QueryResult } from '../../queries/query';
 import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
 import { cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
 import type { AsyncOrSync, AsyncOrSyncType } from 'ts-essentials';
-import type { FlowrAnalysisProvider } from '../../project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { DataflowInformation } from '../../dataflow/info';
 import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
+import { CfgKind } from '../../project/cfg-kind';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
@@ -32,7 +33,7 @@ export interface EnrichmentData<ElementContent extends MergeableRecord, ElementA
 	 * A function that is applied to each element of the search to enrich it with additional data.
 	 */
 	readonly enrichElement?: (element: FlowrSearchElement<ParentInformation>, search: FlowrSearchElements<ParentInformation>, data: {dataflow: DataflowInformation, normalize: NormalizedAst, cfg: ControlFlowInformation}, args: ElementArguments | undefined, previousValue: ElementContent | undefined) => AsyncOrSync<ElementContent>
-	readonly enrichSearch?:  (search: FlowrSearchElements<ParentInformation>, data: FlowrAnalysisProvider, args: SearchArguments | undefined, previousValue: SearchContent | undefined) => AsyncOrSync<SearchContent>
+	readonly enrichSearch?:  (search: FlowrSearchElements<ParentInformation>, data: ReadonlyFlowrAnalysisProvider, args: SearchArguments | undefined, previousValue: SearchContent | undefined) => AsyncOrSync<SearchContent>
 	/**
 	 * The mapping function used by the {@link Mapper.Enrichment} mapper.
 	 */
@@ -201,7 +202,7 @@ export const Enrichments = {
 
 			const content: CfgInformationSearchContent = {
 				...prev,
-				cfg: await data.controlflow(args.simplificationPasses, true),
+				cfg: await data.controlflow(args.simplificationPasses, CfgKind.WithDataflow),
 			};
 			if(args.checkReachable) {
 				content.reachableNodes = cfgFindAllReachable(content.cfg);

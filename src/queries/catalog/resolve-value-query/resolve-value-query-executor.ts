@@ -21,7 +21,7 @@ export async function executeResolveValueQuery({ analyzer }: BasicQueryData, que
 		if(results[key]) {
 			log.warn(`Duplicate Key for resolve-value-query: ${key}, skipping...`);
 		}
-
+		
 		const values = query.criteria
 			.map(criteria => slicingCriterionToId(criteria, ast.idMap))
 			.flatMap(ident => resolveIdToValue(ident, { graph, full: true, idMap: ast.idMap, resolve: analyzer.flowrConfig.solver.variables }));

@@ -6,10 +6,12 @@ import type {
 	FlowrAnalyzerLoadingOrderContext,
 	ReadOnlyFlowrAnalyzerLoadingOrderContext
 } from './flowr-analyzer-loading-order-context';
-import { FlowrAnalyzerProjectDiscoveryPlugin } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
+import {
+	FlowrAnalyzerProjectDiscoveryPlugin
+} from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
 import type { FilePath, FlowrFile, FlowrFileProvider } from './flowr-file';
-import {  FlowrTextFile , SpecialFileRole } from './flowr-file';
+import { FlowrTextFile, SpecialFileRole } from './flowr-file';
 import type { FlowrDescriptionFile } from '../plugins/file-plugins/flowr-description-file';
 import { log } from '../../util/log';
 
@@ -105,6 +107,11 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		super(loadingOrder.getAttachedContext(), FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin(), plugins);
 		this.fileLoaders = [...fileLoaders, FlowrAnalyzerFilePlugin.defaultPlugin()];
 		this.loadingOrder = loadingOrder;
+	}
+
+	public reset(): void {
+		this.loadingOrder.reset();
+		this.files = new Map<FilePath, FlowrFileProvider | RParseRequestFromFile>();
 	}
 
 	/**

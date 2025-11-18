@@ -1,5 +1,7 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
-import { FlowrAnalyzerPackageVersionsPlugin } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
+import {
+	FlowrAnalyzerPackageVersionsPlugin
+} from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 
@@ -34,6 +36,11 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 
 	private dependencies: Map<string, Package> = new Map();
 	private staticsLoaded = false;
+
+	public reset(): void {
+		this.dependencies = new Map();
+		this.staticsLoaded = false;
+	}
 
 	public constructor(ctx: FlowrAnalyzerContext, plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]) {
 		super(ctx, FlowrAnalyzerPackageVersionsPlugin.defaultPlugin(), plugins);

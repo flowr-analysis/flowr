@@ -15,7 +15,7 @@ export class FlowrAnalyzerNamespaceFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly version = new SemVer('0.1.0');
 
 	public applies(file: PathLike): boolean {
-		return /^(NAMESPACE|NAMESPACE\.txt)$/i.test(file.toString().split(/[/\\]/).pop() ?? '');
+		return /^(NAMESPACE(\.txt)?)$/i.test(file.toString().split(/[/\\]/).pop() ?? '');
 	}
 
 	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider<string>): FlowrNamespaceFile {

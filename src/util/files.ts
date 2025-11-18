@@ -5,7 +5,7 @@ import { log } from './log';
 import LineByLine from 'n-readlines';
 import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import type { FlowrFileProvider } from '../project/context/flowr-file';
-import type { NAMESPACEFormat } from '../project/plugins/file-plugins/flowr-namespace-file';
+import type { NamespaceFormat } from '../project/plugins/file-plugins/flowr-namespace-file';
 
 /**
  * Represents a table, identified by a header and a list of rows.
@@ -223,15 +223,15 @@ export function parseDCF(file: FlowrFileProvider<string>): Map<string, string[]>
  * @param file - The file to parse
  * @returns
  */
-export function parseNAMESPACE(file: FlowrFileProvider<string>): NAMESPACEFormat {
+export function parseNamespace(file: FlowrFileProvider<string>): NamespaceFormat {
 	const result = {
-		this: {
+		main: {
 			exportedSymbols:      [] as string[],
 			exportedFunctions:    [] as string[],
 			exportS3Generics:     new Map<string, string[]>(),
 			loadsWithSideEffects: false,
 		},
-	} as NAMESPACEFormat;
+	} as NamespaceFormat;
 	const fileContent = file.content().replaceAll(cleanLineCommentRegex, '').trim()
 		.split(/\r?\n/).filter(Boolean);
 
@@ -245,7 +245,7 @@ export function parseNAMESPACE(file: FlowrFileProvider<string>): NAMESPACEFormat
 		switch(type) {
 			case 'exportClasses':
 			case 'exportMethods':
-				result.this.exportedFunctions.push(args);
+				result.main.exportedFunctions.push(args);
 				break;
 			case 'S3method':
 			{
@@ -254,16 +254,16 @@ export function parseNAMESPACE(file: FlowrFileProvider<string>): NAMESPACEFormat
 					continue;
 				}
 				const [pkg, func] = parts;
-				let arr = result.this.exportS3Generics.get(pkg);
+				let arr = result.main.exportS3Generics.get(pkg);
 				if(!arr) {
 					arr = [];
-					result.this.exportS3Generics.set(pkg, arr);
+					result.main.exportS3Generics.set(pkg, arr);
 				}
 				arr.push(func);
 				break; 
 			}
 			case 'export':
-				result.this.exportedSymbols.push(args);
+				result.main.exportedSymbols.push(args);
 				break;
 			case 'useDynLib':
 			{
@@ -271,7 +271,7 @@ export function parseNAMESPACE(file: FlowrFileProvider<string>): NAMESPACEFormat
 				if(parts.length !== 2) {
 					continue;
 				}
-				const [pkg, _func] = parts;
+				const [pkg] = parts;
 				if(!result[pkg]) {
 					result[pkg] = {
 						exportedSymbols:      [],

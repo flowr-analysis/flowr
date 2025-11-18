@@ -17,6 +17,30 @@ export class Package {
 		this.addInfo(type, dependencies, namespaceInfo, ...(versionConstraints ?? []).filter(isNotUndefined));
 	}
 
+	has(name: string, className?: string): boolean {
+		if(!this.namespaceInfo) {
+			return false;
+		}
+
+		if(name.includes('.')) {
+			const [genericSplit, classSplit] = name.split('.');
+			const classes = this.namespaceInfo.exportS3Generics.get(genericSplit);
+			return classes ? classes.includes(classSplit) : false;
+		}
+
+		if(className) {
+			const classes = this.namespaceInfo.exportS3Generics.get(name);
+			return classes ? classes.includes(className) : false;
+		}
+
+		return this.namespaceInfo.exportedFunctions.includes(name) || this.namespaceInfo.exportedSymbols.includes(name);
+	}
+
+	s3For(generic: string): string[] {
+		return this.namespaceInfo?.exportS3Generics.get(generic) ?? [];
+	}
+
+
 	public mergeInPlace(other: Package): void {
 		guard(this.name === other.name, 'Can only merge packages with the same name');
 		this.addInfo(

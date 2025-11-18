@@ -1,6 +1,6 @@
 import type { FlowrFileProvider, SpecialFileRole } from '../../context/flowr-file';
 import { FlowrFile } from '../../context/flowr-file';
-import { parseNAMESPACE } from '../../../util/files';
+import { parseNamespace } from '../../../util/files';
 
 export interface NamespaceInfo {
 	exportedSymbols:      string[];
@@ -9,15 +9,15 @@ export interface NamespaceInfo {
 	loadsWithSideEffects: boolean;
 }
 
-export interface NAMESPACEFormat {
-	this:                  NamespaceInfo;
+export interface NamespaceFormat {
+	main:                  NamespaceInfo;
 	[packageName: string]: NamespaceInfo;
 }
 
 /**
  *
  */
-export class FlowrNamespaceFile extends FlowrFile<NAMESPACEFormat> {
+export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	private readonly wrapped: FlowrFileProvider<string>;
 
 	/**
@@ -29,12 +29,10 @@ export class FlowrNamespaceFile extends FlowrFile<NAMESPACEFormat> {
 	}
 
 	/**
-	 *
-	 *
-	 * @see {@link parseNAMESPACE} for details on the parsing logic.
+	 * @see {@link parseNamespace} for details on the parsing logic.
 	 */
-	protected loadContent(): NAMESPACEFormat {
-		return parseNAMESPACE(this.wrapped);
+	protected loadContent(): NamespaceFormat {
+		return parseNamespace(this.wrapped);
 	}
 
 

@@ -17,6 +17,8 @@ import type {
 	FlowrAnalyzerProjectDiscoveryPlugin
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import type { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
+import type { ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
+import { FlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -32,6 +34,8 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	 * The dependencies context provides access to the identified dependencies and their versions.
 	 */
 	readonly deps:  ReadOnlyFlowrAnalyzerDependenciesContext;
+
+	readonly functions: ReadOnlyFlowrAnalyzerFunctionsContext;
 }
 
 /**
@@ -47,14 +51,16 @@ export interface ReadOnlyFlowrAnalyzerContext {
  * If you are just interested in inspecting the context, you can use {@link ReadOnlyFlowrAnalyzerContext} instead (e.g., via {@link inspect}).
  */
 export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext{
-	public readonly files: FlowrAnalyzerFilesContext;
-	public readonly deps:  FlowrAnalyzerDependenciesContext;
+	public readonly files:     FlowrAnalyzerFilesContext;
+	public readonly deps:      FlowrAnalyzerDependenciesContext;
+	public readonly functions: FlowrAnalyzerFunctionsContext;
 
 	constructor(plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>) {
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		this.files = new FlowrAnalyzerFilesContext(loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
             (plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.deps  = new FlowrAnalyzerDependenciesContext(this, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
+		this.functions = new FlowrAnalyzerFunctionsContext(this, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 	}
 
 	/** delegate request addition */

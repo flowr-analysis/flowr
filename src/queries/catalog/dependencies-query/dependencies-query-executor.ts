@@ -143,7 +143,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 					value:              value ?? defaultValue,
 					versionConstraints:	dep?.versionConstraints,
 					derivedVersion:	    dep?.derivedVersion,
-					namespaceInfo:	     dep?.namespaceInfo,
+					namespaceInfo:	    dep?.namespaceInfo,
 				} as DependencyInfo);
 				if(result) {
 					results.push(result);

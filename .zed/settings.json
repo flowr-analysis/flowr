@@ -1,0 +1,14 @@
+{
+	"languages": {
+		"TypeScript": {
+			"formatter": [],
+			"prettier": {
+				"allowed": false
+			},
+			"code_actions_on_format": {
+				"source.fixAll.eslint": true
+			}
+		}
+	},
+	"hard_tabs": true
+}

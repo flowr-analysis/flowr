@@ -33,11 +33,12 @@ export const DfShapeQueryDefinition = {
 		return true;
 	},
 	jsonFormatter: (queryResults: BaseQueryResult) => {
-		const out = queryResults as QueryResults<'df-shape'>['df-shape'];
-		const domains = out.domains instanceof DataFrameStateDomain ? out.domains.value : out.domains;
-		const json = Object.fromEntries(domains.entries().map(([key, domain]) => [key, domain?.toJson()])) as object;
+		const { domains, ...out } = queryResults as QueryResults<'df-shape'>['df-shape'];
+		const state = domains instanceof DataFrameStateDomain ? domains.value : domains;
+		const json = Object.fromEntries(state.entries().map(([key, domain]) => [key, domain?.toJson() ?? null]));
+		const result = { domains: json, ...out } as object;
 
-		return json;
+		return result;
 	},
 	schema: Joi.object({
 		type:      Joi.string().valid('df-shape').required().description('The type of the query.'),

@@ -11,12 +11,12 @@ export function registerFaqs(): FaqStore {
 
 	wikiFaq.withTopic('flowr.development')
 		.addFaq('What are *test labels*?', `
-Tests are labeled based on the *flowR* capabilities that they test for. 
-The list of supported capabilities can be found on the [Capabilities](${FlowrWikiBaseRef}/Capabilities) wiki page. 
+Tests are labeled based on the *flowR* capabilities that they test for.
+The list of supported capabilities can be found on the [Capabilities](${FlowrWikiBaseRef}/Capabilities) wiki page.
 For more extensive information on test labels, see the [test labels wiki section](${FlowrWikiBaseRef}/Linting-and-Testing#test-labels).
 `)
 		.addFaq('How to get a REPL with debug-info/*hot-reload*?', `
-	To enter the development repl, execute \`npm run main-dev\` in contrast to \`npm run flowr\` 
+	To enter the development repl, execute \`npm run main-dev\` in contrast to \`npm run flowr\`
 	this will use an unminified build (keeping debug info) and also watches the source files for changes.
 	In case of a change, this mode automatically recompiles.
 	Please note, that this may have negative performance implications (so do not use this for e.g., benchmarking).
@@ -50,33 +50,75 @@ Check out the [Logging Section in the Linting and Testing wiki page](${FlowrWiki
 	wikiFaq.withTopic('flowr.use')
 		.addFaq('How to *query* an R project?', `
 For this you can use flowR's [Query API](${FlowrWikiBaseRef}/Query-API).
-If you want to create your own project using flowR as a library, check out the 
+If you want to create your own project using flowR as a library, check out the
 [${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) repository for an example project setup.
 		`);
 
 	wikiFaq.withTopic('r.packages')
 		.addFaq('What is the R *prelude* and R *base* package?', `
-The base package contains lots of base functions like \`source\` for example. 
+The base package contains lots of base functions like \`source\` for example.
 The R prelude includes the base package along with several other packages.
-Packages that were loaded by the prelude can be called without prefixing the 
-function call with the package name and the \`::\` operator. 
+Packages that were loaded by the prelude can be called without prefixing the
+function call with the package name and the \`::\` operator.
 
-The packages loaded by the R prelude can be seen in the \`attached base packages\` 
+The packages loaded by the R prelude can be seen in the \`attached base packages\`
 sections in the output of \`sessionInfo()\`.
 `)
 		.addFaq('How to get *documentation* for a function or package?', `
-There are a couple of ways to get documentation for a function or package. 
+There are a couple of ways to get documentation for a function or package.
 
-🖥️ Firstly, if you have already installed the package the function originated from you can simply run \`?<package name>::<function name>\` in an R session to print the 
-relevant documentation. If you don't know the origin of the package, you can use 
-\`??<function name>\` in an R shell to fuzzy find all documentations containing 
-\`<function name>\` or something similar. 
+🖥️ Firstly, if you have already installed the package the function originated from you can simply run \`?<package name>::<function name>\` in an R session to print the
+relevant documentation. If you don't know the origin of the package, you can use
+\`??<function name>\` in an R shell to fuzzy find all documentations containing
+\`<function name>\` or something similar.
 
 🌐 Secondly, if you don't have or don't want to install the package you can simply google the fully qualified name of the function. Good sources include [rdrr.io](https://rdrr.io/)
 or [rdocumentation.org](https://rdocumentation.org/). Additionally, the package documentation PDF can also
 be downloaded directly from [cran](https://cran.r-project.org/).
 `)
 	;
+
+	wikiFaq.withTopic('editor.configs')
+		.addFaq('How can I make eslint and ZED work together?', `Use this project to disable all formatters except eslint:
+			${codeBlock('json', `{
+				"languages": {
+					"TypeScript": {
+						"formatter": [],
+						"prettier": {
+							"allowed": false
+						},
+						"code_actions_on_format": {
+							"source.fixAll.eslint": true
+						}
+					}
+				},
+				"hard_tabs": true
+}`)}`);
+
+	wikiFaq.withTopic('editor.configs')
+		.addFaq('How can I launch the flowr repl form vs code?', `You can use the following launch task:
+			${codeBlock('json', `{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Program",
+            "skipFiles": [
+                "node_modules/**"
+            ],
+            "program": "\${workspaceFolder}/src/cli/flowr.ts",
+            "preLaunchTask": "npm: build-dev",
+            "console": "integratedTerminal",
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Attach to Process",
+            "port": 9229
+        }
+    ]
+}`)}`);
 
 	return wikiFaq;
 }

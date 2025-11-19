@@ -3,7 +3,7 @@ import type { IEnvironment } from '../../dataflow/environments/environment';
 import { createBuiltInEnvFromConfig } from '../../dataflow/environments/environment';
 
 /**
- * This context is responsible for managing the R environment information used during analysis.
+ * This context is responsible for providing the built-in environment.
  */
 export class FlowrAnalyzerEnvironmentContext {
 	public readonly name = 'flowr-analyzer-environment-context';

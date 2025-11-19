@@ -130,6 +130,8 @@ export interface REnvironmentInformation {
 
 /**
  * Create a new built-in {@link IEnvironment|environment}.
+ * @param memory - Optional built-in memory to use.
+ * @param fullBuiltIns - Whether to use the full built-in definitions or an empty built-in environment.
  */
 export function createBuiltInEnv(memory?: BuiltInMemory, fullBuiltIns = true): IEnvironment {
 	const builtInEnv = new Environment(undefined as unknown as IEnvironment, true);
@@ -138,7 +140,7 @@ export function createBuiltInEnv(memory?: BuiltInMemory, fullBuiltIns = true): I
 }
 
 /**
- * Create a new built-in {@link IEnvironment|environment} from the given configuration.
+ * Create a new built-in {@link IEnvironment|environment} according to the given configuration options.
  */
 export function createBuiltInEnvFromConfig(config: FlowrConfigOptions): IEnvironment {
 	const builtInsConfig = config.semantics.environment.overwriteBuiltIns;
@@ -147,7 +149,7 @@ export function createBuiltInEnvFromConfig(config: FlowrConfigOptions): IEnviron
 }
 
 /**
- * Initialize a new {@link REnvironmentInformation|environment} with the built-ins.
+ * Initialize a new {@link REnvironmentInformation|environment} on top of the built-ins.
  */
 export function initializeCleanEnvironments(memory?: BuiltInMemory, fullBuiltIns = true): REnvironmentInformation {
 	return {
@@ -157,7 +159,7 @@ export function initializeCleanEnvironments(memory?: BuiltInMemory, fullBuiltIns
 }
 
 /**
- * Initialize a new {@link REnvironmentInformation|environment} with the given built-ins.
+ * Initialize a new {@link REnvironmentInformation|environment} on top of the given built-ins.
  */
 export function initializeCleanEnvFromBuiltIn(builtInEnv: IEnvironment): REnvironmentInformation {
 	return {

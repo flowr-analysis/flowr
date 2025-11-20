@@ -12,7 +12,7 @@ export interface SatisfiableDomain<T> {
 }
 
 /**
- * Represents the different types of numerical comparators for satifiability checks for an abstract domain.
+ * Represents the different types of numerical comparators for satisfiability checks for an abstract domain.
  */
 export enum NumericalComparator {
 	Equal,
@@ -23,7 +23,7 @@ export enum NumericalComparator {
 }
 
 /**
- * Represents the different types of set comparators for satifiability checks for an abstract domain.
+ * Represents the different types of set comparators for satisfiability checks for an abstract domain.
  */
 export enum SetComparator {
 	Equal,

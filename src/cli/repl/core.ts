@@ -17,7 +17,7 @@ import { type ReplOutput, standardReplOutput } from './commands/repl-main';
 import type { MergeableRecord } from '../../util/objects';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfigOptions } from '../../config';
-import { SupportedQueries, type SupportedQuery } from '../../queries/query';
+import { genericWrapReplFailIfNoRequest, SupportedQueries, type SupportedQuery } from '../../queries/query';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
 import { startAndEndsWith } from '../../util/text/strings';
 
@@ -133,17 +133,19 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
 		if(processor) {
 			try {
-				const remainingLine = statement.slice(command.length + 2).trim();
-				if(processor.isCodeCommand) {
-					const args = processor.argsParser(remainingLine);
-					if(args.rCode) {
-						analyzer.reset();
-						analyzer.addRequest(args.rCode);
+				await genericWrapReplFailIfNoRequest(async() => {
+					const remainingLine = statement.slice(command.length + 2).trim();
+					if(processor.isCodeCommand) {
+						const args = processor.argsParser(remainingLine);
+						if(args.rCode) {
+							analyzer.reset();
+							analyzer.addRequest(args.rCode);
+						}
+						await processor.fn({ output, analyzer, remainingArgs: args.remaining });
+					} else {
+						await processor.fn({ output, analyzer, remainingLine, allowRSessionAccess });
 					}
-					await processor.fn({ output, analyzer, remainingArgs: args.remaining });
-				} else {
-					await processor.fn({ output, analyzer, remainingLine, allowRSessionAccess });
-				}
+				}, output, analyzer);
 			} catch(e){
 				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
 				if(log.settings.minLevel < LogLevel.Fatal) {

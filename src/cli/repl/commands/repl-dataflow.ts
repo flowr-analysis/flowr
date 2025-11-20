@@ -25,7 +25,8 @@ export const dataflowCommand: ReplCodeCommand = {
 			const clipboard = await import('clipboardy');
 			clipboard.default.writeSync(mermaid);
 			output.stdout(formatInfo(output, 'mermaid code', result));
-		} catch{ /* do nothing this is a service thing */ }
+		} catch{ /* do nothing this is a service thing */
+		}
 	}
 };
 

@@ -85,6 +85,8 @@ jobs:
           # $2: file ending
           # $3: command to run  
           function update_page {
+            # store current time in ms
+            START_TIME=$(date +%s%3N)
             # test if the file exists
             if [ -f "$1.$2" ]; then
                 cp "$1.$2" "$1-Old.$2"
@@ -109,6 +111,9 @@ jobs:
             fi
             # delete the old file again
             rm "$1-Old.$2"
+            END_TIME=$(date +%s%3N)
+            # report the time of update
+            echo " :: Updated $1.$2 in $((END_TIME - START_TIME)) ms"
           }
 
           echo "====== Updating Wiki Pages ======"

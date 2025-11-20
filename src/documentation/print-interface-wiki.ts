@@ -122,7 +122,7 @@ Besides, you can leave the REPL either with the command ${getReplCommand('quit')
 When writing a *command*, you may press <kbd>Tab</kbd> to get a list of completions, if available.
 Multiple commands can be entered in a single line by separating them with a semicolon (\`;\`), e.g. \`:parse "x<-2"; :df*\`.
 If a command is given without R code, the REPL will re-use R code given in a previous command. 
-The prior example will hence return the dataflow graph for \`"x <- 2"\`.
+The prior example will hence return first the parsed AST of the program and then the dataflow graph for \`"x <- 2"\`.
 
 > [!NOTE]
 > If you develop flowR, you may want to launch the repl using the \`npm run main-dev\` command, this way, you get a non-minified version of flowR with debug information and hot-reloading of source files.
@@ -136,6 +136,19 @@ ${printReplHelpAsMarkdownTable()}
 
 </details>
 
+${
+	block({
+		type:    'TIP',
+		content: `
+As indicated by the examples before, all REPL commands that operate on code keep track of the state.
+Hence, if you run a command like ${getReplCommand('dataflow*')} without providing R code,
+the REPL will re-use the R code provided in a previous command.
+Likewise, doing this will benefit from incrementality!
+If you request the dataflow graph with \`:df* x <- 2 * y\` and then want to see the parsed AST with \`:parse\`,
+the REPL will re-use previously obtained information and not re-parse the code again.
+		`
+	})
+}
 
 ### Example: Retrieving the Dataflow Graph
 

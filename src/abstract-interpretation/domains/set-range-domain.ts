@@ -10,7 +10,7 @@ import { SetComparator } from './satisfiable-domain';
 /** The Top element of the set range domain with an empty set as minimum set and {@link Top} as range set */
 export const SetRangeTop = [new Set<never>(), Top] as const satisfies SetRangeValue<unknown>;
 
-/** The type of the actual values of the set range domain as tuple with a minimum set and range set of additional possible values */
+/** The type of the actual values of the set range domain as tuple with a minimum set and range set of additional possible values (i.e. `[{"id","name"}, ∅]`, or `[{"id"}, {"score"}]`) */
 type SetRangeValue<T> = readonly [min: ReadonlySet<T>, range: ReadonlySet<T> | typeof Top];
 /** The type of the Top element of the set range domain as tuple with the empty set as minimum set and {@link Top} as range set (i.e. `[∅, Top]`) */
 type SetRangeTop = typeof SetRangeTop;
@@ -19,8 +19,10 @@ type SetRangeBottom = typeof Bottom;
 /** The type of the abstract values of the set range domain that are Top, Bottom, or actual values */
 type SetRangeLift<T> = SetRangeValue<T> | SetRangeTop | SetRangeBottom;
 
+/** The type of the actual values of the set range domain as array tuple with a minimum array and range array for better readability (e.g. `[["id","name"], []]`, or `[["id"], ["score"]]`) */
 export type ArrayRangeValue<T> = readonly [min: T[], range: T[] | typeof Top];
 
+/** The type for the maximum number of elements in the minimum set and maximum set of the set range domain before over-approximation */
 export type SetRangeLimit = readonly [min: number, range: number];
 const DefaultLimit = [DEFAULT_INFERENCE_LIMIT, DEFAULT_INFERENCE_LIMIT] as const satisfies SetRangeLimit;
 
@@ -39,17 +41,20 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	private readonly setType: typeof Set<T>;
 
 	/**
-	 * @param limit -  A limit for the maximum number of elements to store in the set
+	 * @param limit -  A limit for the maximum number of elements to store in the minimum set and maximum set before over-approximation
 	 * @param newSet - An optional set constructor for the domain elements if the type `T` is not storable in a HashSet
 	 */
 	constructor(value: Value | ArrayRangeValue<T>, limit: SetRangeLimit | number = DefaultLimit, setType: typeof Set<T> = Set) {
 		limit = typeof limit === 'number' ? [limit, limit] : limit;
 
 		if(value !== Bottom) {
-			const sizeMin = Array.isArray(value[0]) ? value[0].length : value[0].size;
-			const sizeRange = value[1] === Top ? Infinity : Array.isArray(value[1]) ? value[1].length : value[1].size;
-			const min = sizeMin > limit[0] ? new setType([...value[0]].slice(0, limit[0])) : new setType(value[0]);
-			const range = (value[1] === Top || sizeRange > limit[1] || sizeMin + sizeRange > limit[0] + limit[1]) ? Top : new setType([...value[0], ...value[1]]).difference(min);
+			const minSet = new setType(value[0]);
+			const rangeSet = value[1] === Top ? Top : new setType(value[1]);
+			const minExceeds = minSet.size > limit[0];
+			const rangeExceeds = rangeSet === Top || rangeSet.size > limit[1] || minSet.size + rangeSet.size > limit[0] + limit[1];
+
+			const min = minExceeds ? new setType(minSet.values().take(limit[0])) : minSet;
+			const range = rangeExceeds ? Top : minSet.union(rangeSet).difference(min);
 			super([min, range] as SetRangeValue<T> as Value);
 		} else {
 			super(value);

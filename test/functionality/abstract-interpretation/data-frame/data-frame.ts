@@ -14,6 +14,7 @@ import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipelin
 import type { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RoleInParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/role';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
@@ -383,8 +384,11 @@ function getInferredOperationsForCriterion(
 ): DataFrameOperation[] {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
 	const nodeId = slicingCriterionToId(criterion, idMap);
-	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = idMap.get(nodeId);
+	let node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = idMap.get(nodeId);
 
+	if(node?.info.role === RoleInParent.FunctionCallName) {
+		node = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
+	}
 	if(node === undefined) {
 		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
 	}

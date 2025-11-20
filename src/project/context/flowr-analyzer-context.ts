@@ -26,6 +26,7 @@ import type { FlowrConfigOptions } from '../../config';
 import { defaultConfigOptions } from '../../config';
 import type { FlowrFileProvider } from './flowr-file';
 import { FlowrInlineTextFile } from './flowr-file';
+import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
 import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
 
 /**
@@ -43,9 +44,9 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	 */
 	readonly deps:   ReadOnlyFlowrAnalyzerDependenciesContext;
 	/**
-	 * The environment context provides access to the R environment information used during analysis.
+	 * The environment context provides access to the environment information used during analysis.
 	 */
-	readonly env:    FlowrAnalyzerEnvironmentContext;
+	readonly env:    ReadOnlyFlowrAnalyzerEnvironmentContext;
 	/**
 	 * The configuration options used by the analyzer.
 	 */

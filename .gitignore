@@ -1,3 +1,6 @@
+.vscode
+.zed
+
 *.heapsnapshot
 # docs can be generated from the sources and should not be commited
 doc/

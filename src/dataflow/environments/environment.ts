@@ -159,16 +159,6 @@ export function initializeCleanEnvironments(memory?: BuiltInMemory, fullBuiltIns
 }
 
 /**
- * Initialize a new {@link REnvironmentInformation|environment} on top of the given built-ins.
- */
-export function initializeCleanEnvFromBuiltIn(builtInEnv: IEnvironment): REnvironmentInformation {
-	return {
-		current: new Environment(builtInEnv),
-		level:   0
-	};
-}
-
-/**
  * Helps to serialize an environment, but replaces the built-in environment with a placeholder.
  */
 export function builtInEnvJsonReplacer(k: unknown, v: unknown): unknown {

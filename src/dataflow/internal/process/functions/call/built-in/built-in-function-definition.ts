@@ -267,7 +267,7 @@ export function updateNestedFunctionCalls(
 }
 
 function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
-	let env = initializeCleanEnvironments(data.ctx.env.builtInEnvironment.memory);
+	let env = data.ctx.env.getCleanEnv();
 	for(let i = 0; i < data.environment.level + 1 /* add another env */; i++) {
 		env = pushLocalEnvironment(env);
 	}

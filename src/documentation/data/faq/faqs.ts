@@ -1,6 +1,7 @@
 import { FaqStore } from './wiki-faq-store';
 import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef, getFilePathMd } from '../../doc-util/doc-files';
 import { codeBlock } from '../../doc-util/doc-code';
+import { recommendedVsCodeTask, recommendedZedConfig } from './recommended-configs';
 
 
 /**
@@ -79,46 +80,12 @@ be downloaded directly from [cran](https://cran.r-project.org/).
 	;
 
 	wikiFaq.withTopic('editor.configs')
-		.addFaq('How can I make eslint and ZED work together?', `Use this project to disable all formatters except eslint:
-			${codeBlock('json', `{
-				"languages": {
-					"TypeScript": {
-						"formatter": [],
-						"prettier": {
-							"allowed": false
-						},
-						"code_actions_on_format": {
-							"source.fixAll.eslint": true
-						}
-					}
-				},
-				"hard_tabs": true
-}`)}`);
+		.addFaq('How can I make eslint and ZED work together?', `Use this project config (\`.zed/settings.json\`) to disable all formatters except eslint:
+			${codeBlock('json', JSON.stringify(recommendedZedConfig, null, 2))}`);
 
 	wikiFaq.withTopic('editor.configs')
-		.addFaq('How can I launch the flowr repl form vs code?', `You can use the following launch task:
-			${codeBlock('json', `{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "Launch Program",
-            "skipFiles": [
-                "node_modules/**"
-            ],
-            "program": "\${workspaceFolder}/src/cli/flowr.ts",
-            "preLaunchTask": "npm: build-dev",
-            "console": "integratedTerminal",
-        },
-        {
-            "type": "node",
-            "request": "attach",
-            "name": "Attach to Process",
-            "port": 9229
-        }
-    ]
-}`)}`);
+		.addFaq('How can I launch the flowr repl form vs code?', `You can use the following launch task (\`.vscode/launch.json\`):
+			${codeBlock('json', JSON.stringify(recommendedVsCodeTask, null, 2))}`);
 
 	return wikiFaq;
 }

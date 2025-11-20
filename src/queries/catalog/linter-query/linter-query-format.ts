@@ -114,7 +114,7 @@ export const LinterQueryDefinition = {
 		const allDidFail = Object.values(out.results).every(r => isLintingResultsError(r));
 		if(allDidFail) {
 			result.push('All linting rules failed to execute.');
-			if(analyzer.inspectContext().files.loadingOrder.getLoadingOrder().length === 0) {
+			if(analyzer.inspectContext().files.loadingOrder.getUnorderedRequests().length === 0) {
 				result.push(
 					formatter.format('No requests to lint for were found in the analysis.', { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold })
 				);

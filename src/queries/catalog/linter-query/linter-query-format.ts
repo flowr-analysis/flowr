@@ -24,6 +24,7 @@ import type { FlowrConfigOptions } from '../../../config';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
+import { getGuardIssueUrl } from '../../../util/assert';
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:   'linter';
@@ -116,6 +117,9 @@ export const LinterQueryDefinition = {
 			if(analyzer.inspectContext().files.loadingOrder.getLoadingOrder().length === 0) {
 				result.push(
 					formatter.format('No requests to lint for were found in the analysis.', { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold })
+				);
+				result.push(
+					'If you consider this an error, please report a bug: ' + getGuardIssueUrl('analyzer found no requests to lint for')
 				);
 			}
 			return true;

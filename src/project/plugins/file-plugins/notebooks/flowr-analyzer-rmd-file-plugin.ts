@@ -10,7 +10,7 @@ import { platformBasename } from '../../../../dataflow/internal/process/function
 const RmdPattern = /\.rmd$/i;
 
 /**
- * The Plugin provides support for R Markdown (.rmd) files
+ * The plugin provides support for R Markdown (`.rmd`) files
  */
 export class FlowrAnalyzerRmdFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name =    'rmd-file-plugin';
@@ -18,6 +18,10 @@ export class FlowrAnalyzerRmdFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly version = new SemVer('0.1.0');
 	private readonly pattern: RegExp;
 
+	/**
+	 * Creates a new instance of the R Markdown file plugin.
+	 * @param filePattern - The pattern to identify R Markdown files, see {@link RmdPattern} for the default pattern.
+	 */
 	constructor(filePattern: RegExp = RmdPattern) {
 		super();
 		this.pattern = filePattern;

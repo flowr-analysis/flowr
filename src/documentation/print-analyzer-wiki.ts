@@ -15,7 +15,20 @@ import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { block, collapsibleToc, section } from './doc-util/doc-structure';
 import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef } from './doc-util/doc-files';
 import { FlowrAnalyzerQmdFilePlugin } from '../project/plugins/file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
-import { makePlugin, registerPluginMaker } from '../project/plugins/plugin-registry';
+import { BuiltInPlugins, makePlugin, registerPluginMaker } from '../project/plugins/plugin-registry';
+import { codeInline } from './doc-util/doc-code';
+import {
+	FlowrAnalyzerProjectDiscoveryPlugin
+} from '../project/plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
+import {
+	FlowrAnalyzerDescriptionFilePlugin
+} from '../project/plugins/file-plugins/flowr-analyzer-description-file-plugin';
+import {
+	FlowrAnalyzerPackageVersionsDescriptionFilePlugin
+} from '../project/plugins/package-version-plugins/flowr-analyzer-package-versions-description-file-plugin';
+import {
+	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
+} from '../project/plugins/loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
 
 async function analyzerQuickExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -214,6 +227,24 @@ ${
 
 ${section('Plugins', 2)}
 
+Plugins allow you to extend the capabilities of the analyzer in many different ways.
+For example, they can be used to support other file formats, or to provide new algorithms to determine the loading order of files in a project.
+All plugins have to extend the ${shortLink('FlowrAnalyzerPlugin', types.info)} base class and specify their ${shortLink('PluginType', types.info)}.
+During the analysis, the analyzer will apply all registered plugins of the different types at the appropriate stages of the analysis.
+If you just want to _use_ these plugins, you can usually ignore their [type](#plugin-types) and just register them with the builder as described in the [Builder Configuration](#builder-configuration) section above.
+However, if you want to _create_ new plugins, you should be aware of the different plugin types and when they are applied during the analysis.
+
+Currently, flowR supports the following plugin types built-in:
+
+| Name | Class | Type | Description |
+|------|-------|------|-------------|
+${
+	BuiltInPlugins.sort(([a,], [b]) => a.localeCompare(b)).map(
+		([key, value]) => `| ${codeInline(key)} | ${shortLink( `${value.name}`, types.info, false)} |  ${new value().type} | ${getDocumentationForType(`${value.name}`, types.info).replaceAll('|', '&#124;').replaceAll('\n', ' ')} |`
+	).join('\n')
+}
+
+
 ${section('Plugin Types', 3)}
 
 During the construction of a new ${shortLink(FlowrAnalyzer.name, types.info)}, plugins of different types are applied at different stages of the analysis.
@@ -229,18 +260,41 @@ ${(() => {
 	return start >= 0 && end > start ? '```text\n' + lines.slice(start + 1, end).join('\n').replaceAll('▶', '>') + '\n```' : doc;
 })()}
 
+Please note, that every plugin type has a default implementation (e.g., see ${shortLink(FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin.name, types.info)})
+that is always active.
 We describe the different plugin types in more detail below.
-
 
 ${section('Project Discovery', 4)}
 
+These plugins trigger when confronted with a project analysis request (see, ${shortLink('RProjectAnalysisRequest', types.info)}).
+Their job is to identify the files that belong to the project and add them to the analysis.
+flowR provides the ${shortLink(FlowrAnalyzerProjectDiscoveryPlugin.name, types.info)} with a 
+${shortLink(FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin.name, types.info)} as the default implementation that simply collects all R source files in the given folder.
+
 ${section('File Loading', 4)}
+
+These plugins register for every file encountered by the [files context](#Files_Context) and determine whether and _how_ they can process the file.
+They are responsible for transforming the raw file content into a representation that flowR can work with during the analysis.
+For example, the ${shortLink(FlowrAnalyzerDescriptionFilePlugin.name, types.info)} adds support for R \`DESCRIPTION\` files by parsing their content into key-value pairs.
+These can then be used by other plugins, e.g. the ${shortLink(FlowrAnalyzerPackageVersionsDescriptionFilePlugin.name, types.info)} that extracts package version information from these files.
 
 ${section('Dependency Identification', 4)}
 
+These plugins should identify which R packages are required with which versions for the analysis.
+This information is then used to setup the R environment for the analysis correctly.
+For example, the ${shortLink(FlowrAnalyzerPackageVersionsDescriptionFilePlugin.name, types.info)} extracts package version information from \`DESCRIPTION\` files
+to identify the required packages and their versions.
+
 ${section('Loading Order', 4)}
 
+These plugins determine the order in which files are loaded and analyzed.
+This is crucial for correctly understanding the dependencies between files and improved analyses, especially in larger projects.
+For example, the ${shortLink(FlowrAnalyzerLoadingOrderDescriptionFilePlugin.name, types.info)} provides a basic implementation that orders files based on
+the specification in a \`DESCRIPTION\` file, if present.
+
 ${section('How to add a new plugin', 3)}
+
+TODO: register
 
 ${section('How to add a new plugin type', 3)}
 

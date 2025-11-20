@@ -33,6 +33,7 @@ import { makePlugin } from './plugins/plugin-registry';
  * const dfInfo = await analyzer.dataflow();
  * console.log(dfInfo);
  * ```
+ * @see https://github.com/flowr-analysis/flowr/wiki/Analyzer
  */
 export class FlowrAnalyzerBuilder {
 	private flowrConfig: DeepWritable<FlowrConfigOptions> = cloneConfig(defaultConfigOptions);

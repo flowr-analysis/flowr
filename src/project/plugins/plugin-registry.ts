@@ -10,7 +10,10 @@ import { FlowrAnalyzerRmdFilePlugin } from './file-plugins/notebooks/flowr-analy
 import { FlowrAnalyzerQmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
 import { guard } from '../../util/assert';
 
-const BuiltInPlugins = [
+/**
+ * The built-in Flowr Analyzer plugins that are always available.
+ */
+export const BuiltInPlugins = [
 	['file:description', FlowrAnalyzerDescriptionFilePlugin],
 	['versions:description', FlowrAnalyzerPackageVersionsDescriptionFilePlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],

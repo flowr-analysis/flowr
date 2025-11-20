@@ -82,6 +82,10 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
 	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions) => CommandCompletions;
     /** optional query construction from an, e.g., repl line */
 	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine<QueryType>
+	/**
+	 * Generates an ASCII summary of the query result to be printed in, e.g., the REPL.
+	 * @returns whether a summary was produced (`true` if so, `false` if not, in this case a default/generic summary will be created)
+	 */
 	asciiSummarizer:      (formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>
 	jsonFormatter?:       (queryResults: BaseQueryResult) => object
 	schema:               Joi.ObjectSchema
@@ -197,7 +201,7 @@ export async function executeQueries<
 			const result = await Promise.resolve(executeQueriesOfSameType(data, group));
 			results.push([type, result] as [Base, Awaited<QueryResult<Base>>]);
 		} catch(e) {
-			log.error(e);
+			log.warn(e);
 			results.push([type, undefined]);
 		}
 	}

@@ -17,7 +17,7 @@ import {
 	type LintingResults,
 	type LintingRule
 } from '../../../linter/linter-format';
-import { bold } from '../../../util/text/ansi';
+import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import { codeInline } from '../../../documentation/doc-util/doc-code';
 import type { FlowrConfigOptions } from '../../../config';
@@ -107,9 +107,19 @@ function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, 
 
 export const LinterQueryDefinition = {
 	executor:        executeLinterQuery,
-	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
+	asciiSummarizer: (formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'linter'>['linter'];
 		result.push(`Query: ${bold('linter', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		const allDidFail = Object.values(out.results).every(r => isLintingResultsError(r));
+		if(allDidFail) {
+			result.push('All linting rules failed to execute.');
+			if(analyzer.inspectContext().files.loadingOrder.getLoadingOrder().length === 0) {
+				result.push(
+					formatter.format('No requests to lint for were found in the analysis.', { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold })
+				);
+			}
+			return true;
+		}
 		for(const [ruleName, results] of Object.entries(out.results)) {
 			addLintingRuleResult(ruleName as LintingRuleNames, results as LintingResults<LintingRuleNames>, result);
 		}
@@ -135,7 +145,8 @@ function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, res
 	result.push(`   ╰ **${rule.info.name}** (${ruleName}):`);
 
 	if(isLintingResultsError(results)) {
-		result.push(`       ╰ Error during execution of rule: ${results.error}`);
+		const error = results.error.includes('At least one request must be set') ? 'No requests to lint for were found in the analysis.' : 'Error during execution of rule: ' + results.error;
+		result.push(`       ╰ ${error}`);
 		return;
 	}
 

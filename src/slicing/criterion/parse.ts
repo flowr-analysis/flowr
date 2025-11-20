@@ -30,12 +30,12 @@ export function slicingCriterionToId(criterion: SingleSlicingCriterion, idMap: A
 	let resolved: NodeId | undefined;
 	if(criterion.startsWith('$')) {
 		resolved = normalizeIdToNumberIfPossible(criterion.substring(1)) as NodeId;
-	} else if(criterion.includes(':')) {
-		const [line, column] = criterion.split(':').map(c => parseInt(c));
-		resolved = locationToId([line, column], idMap);
 	} else if(criterion.includes('@')) {
 		const [line, name] = criterion.split(/@(.*)/s); // only split at first occurrence
 		resolved = conventionalCriteriaToId(parseInt(line), name, idMap);
+	} else if(criterion.includes(':')) {
+		const [line, column] = criterion.split(':').map(c => parseInt(c));
+		resolved = locationToId([line, column], idMap);
 	}
 
 	if(resolved === undefined) {

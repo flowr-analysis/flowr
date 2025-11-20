@@ -9,6 +9,8 @@ import { guard } from '../util/assert';
 import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 import { FlowrAnalyzerPluginDefaults } from './plugins/flowr-analyzer-plugin-defaults';
+import type { BuiltInFlowrPluginName, PluginToRegister } from './plugins/plugin-registry';
+import { makePlugin } from './plugins/plugin-registry';
 
 /**
  * Builder for the {@link FlowrAnalyzer}, use it to configure all analysis aspects before creating the analyzer instance
@@ -107,26 +109,25 @@ export class FlowrAnalyzerBuilder {
 	 * @param plugin - One or multiple plugins to register.
 	 * @see {@link FlowrAnalyzerBuilder#unregisterPlugins} to remove plugins.
 	 */
-	public registerPlugins(...plugin: readonly FlowrAnalyzerPlugin[]): this {
+	public registerPlugins<T extends BuiltInFlowrPluginName | string>(...plugin: readonly PluginToRegister<T>[]): this {
 		for(const p of plugin) {
-			const g = this.plugins.get(p.type);
-			if(g === undefined) {
-				this.plugins.set(p.type, [p]);
-			} else {
-				g.push(p);
-			}
+			const s = makePlugin(p);
+			const g = this.plugins.get(s.type) ?? [];
+			g.push(s);
+			this.plugins.set(s.type, g);
 		}
 		return this;
 	}
 
 	/**
 	 * Remove one or multiple plugins.
+	 * @see {@link FlowrAnalyzerBuilder#registerPlugins} to add plugins.
 	 */
-	public unregisterPlugins(...plugin: readonly FlowrAnalyzerPlugin[]): this {
+	public unregisterPlugins(...plugin: readonly (FlowrAnalyzerPlugin | string | BuiltInFlowrPluginName)[]): this {
 		for(const p of plugin) {
-			const g = this.plugins.get(p.type);
-			if(g !== undefined) {
-				this.plugins.set(p.type, g.filter(x => x !== p));
+			const name = typeof p === 'string' ? p : p.name;
+			for(const [type, plugins] of this.plugins) {
+				this.plugins.set(type, plugins.filter((pl) => pl.name !== name));
 			}
 		}
 		return this;

@@ -305,7 +305,7 @@ Their job is to identify the files that belong to the project and add them to th
 flowR provides the ${shortLink(FlowrAnalyzerProjectDiscoveryPlugin.name, types.info)} with a 
 ${shortLink(FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin.name, types.info)} as the default implementation that simply collects all R source files in the given folder.
 
-Please not that all project discovery plugins should conform to the ${shortLink(FlowrAnalyzerProjectDiscoveryPlugin.name, types.info)} base class.
+Please note that all project discovery plugins should conform to the ${shortLink(FlowrAnalyzerProjectDiscoveryPlugin.name, types.info)} base class.
 
 ${section('File Loading', 4)}
 
@@ -342,7 +342,7 @@ ${section('How to add a new plugin', 3)}
 
 If you want to make a new plugin you first have to decide which type of plugin you want to create (see [Plugin Types](#plugin-types) above).
 Then, you must create a new class that extends the corresponding base class (e.g., ${shortLink(FlowrAnalyzerFilePlugin.name, types.info)} for file loading plugins).
-In general, most plugins operator on the [context information](#Context_Information) provided by the analyzer.
+In general, most plugins operate on the [context information](#Context_Information) provided by the analyzer.
 Usually it is a good idea to have a look at the existing plugins of the same type to get an idea of how to implement your own plugin.
 
 Once you have your plugin you should register it with a sensible name using the ${shortLink(registerPluginMaker.name, types.info)} function.

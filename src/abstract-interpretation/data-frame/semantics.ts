@@ -1,6 +1,7 @@
 import { assertUnreachable, isNotUndefined } from '../../util/assert';
 import { Bottom, Top } from '../domains/lattice';
 import { PosIntervalDomain, PosIntervalTop } from '../domains/positive-interval-domain';
+import type { ArrayRangeValue } from '../domains/set-range-domain';
 import { DataFrameDomain } from './dataframe-domain';
 
 /**
@@ -106,7 +107,7 @@ function applyCreateSemantics(
 	value: DataFrameDomain,
 	{ colnames, rows }: { colnames: (string | undefined)[] | undefined, rows: number | [number, number] | undefined }
 ): DataFrameDomain {
-	const colnamesValue = [colnames?.filter(isNotUndefined) ?? [], colnames?.every(isNotUndefined) ? [] : Top] as const;
+	const colnamesValue = setRange(colnames);
 	const colsValue = colnames !== undefined ? [colnames.length, colnames.length] as const : PosIntervalTop;
 	const rowsValue = Array.isArray(rows) ? rows : typeof rows === 'number' ? [rows, rows] as const : PosIntervalTop;
 
@@ -209,7 +210,7 @@ function applySetColNamesSemantics(
 ): DataFrameDomain {
 	if(options?.partial) {
 		return new DataFrameDomain({
-			colnames: value.colnames.extendDown().union([colnames?.filter(isNotUndefined) ?? [], colnames?.every(isNotUndefined) ? [] : Top]),
+			colnames: value.colnames.extendDown().union(setRange(colnames)),
 			cols:     value.cols,
 			rows:     value.rows
 		});
@@ -217,7 +218,7 @@ function applySetColNamesSemantics(
 	const allColNames = colnames?.every(isNotUndefined) && value.cols.value !== Bottom && colnames.length >= value.cols.value[1];
 
 	return new DataFrameDomain({
-		colnames: allColNames ? value.colnames.create([colnames, []]) : value.colnames.extendDown().union([colnames?.filter(isNotUndefined) ?? [], Top]),
+		colnames: allColNames ? value.colnames.create([colnames, []]) : value.colnames.extendDown().union(setRange(colnames)).extendUp(),
 		cols:     value.cols,
 		rows:     value.rows
 	});
@@ -228,7 +229,7 @@ function applyAddColsSemantics(
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
 	return new DataFrameDomain({
-		colnames: colnames !== undefined ? value.colnames.union([colnames.filter(isNotUndefined), colnames.every(isNotUndefined) ? [] : Top]) : value.colnames.extendUp(),
+		colnames: colnames !== undefined ? value.colnames.union(setRange(colnames)) : value.colnames.extendUp(),
 		cols:     colnames !== undefined ? value.cols.add([colnames.length, colnames.length]) : value.cols.extendUp(),
 		rows:     value.rows
 	});
@@ -252,13 +253,13 @@ function applyRemoveColsSemantics(
 ): DataFrameDomain {
 	if(options?.maybe) {
 		return new DataFrameDomain({
-			colnames: colnames !== undefined ? value.colnames.subtract([colnames.filter(isNotUndefined) ?? [], colnames.every(isNotUndefined) ? [] : Top]) : value.colnames.extendDown(),
+			colnames: colnames !== undefined ? value.colnames.subtract(setRange(colnames)) : value.colnames.extendDown(),
 			cols:     colnames !== undefined ? value.cols.subtract([colnames.length, 0]) : value.cols.extendDown(),
 			rows:     value.rows
 		});
 	}
 	return new DataFrameDomain({
-		colnames: colnames !== undefined ? value.colnames.subtract([colnames.filter(isNotUndefined) ?? [], colnames.every(isNotUndefined) ? [] : Top]) : value.colnames.extendDown(),
+		colnames: colnames !== undefined ? value.colnames.subtract(setRange(colnames)) : value.colnames.extendDown(),
 		cols:     colnames !== undefined ? value.cols.subtract([colnames.length, colnames.length]) : value.cols.extendDown(),
 		rows:     value.rows
 	});
@@ -332,7 +333,7 @@ function applySubsetColsSemantics(
 		});
 	}
 	return new DataFrameDomain({
-		colnames: colnames !== undefined ? value.colnames.intersect([colnames.filter(isNotUndefined), colnames.every(isNotUndefined) ? [] : Top]) : value.colnames.extendDown(),
+		colnames: colnames !== undefined ? value.colnames.intersect(setRange(colnames)) : value.colnames.extendDown(),
 		cols:     colnames !== undefined ? value.cols.min([colnames.length, colnames.length]) : value.cols.extendDown(),
 		rows:     value.rows
 	});
@@ -373,7 +374,7 @@ function applyMutateColsSemantics(
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
 	return new DataFrameDomain({
-		colnames: colnames !== undefined ? value.colnames.union([colnames.filter(isNotUndefined), colnames.every(isNotUndefined) ? [] : Top]) : value.colnames.extendUp(),
+		colnames: colnames !== undefined ? value.colnames.union(setRange(colnames)) : value.colnames.extendUp(),
 		cols:     colnames !== undefined ? value.cols.add([0, colnames.length]).max([colnames.length, colnames.length]) : value.cols.extendUp(),
 		rows:     value.rows
 	});
@@ -386,7 +387,7 @@ function applyGroupBySemantics(
 ): DataFrameDomain {
 	if(options?.mutatedCols) {
 		return new DataFrameDomain({
-			colnames: value.colnames.union([by.filter(isNotUndefined), by.every(isNotUndefined) ? [] : Top]),
+			colnames: value.colnames.union(setRange(by)),
 			cols:     value.cols.add([0, by.length]),
 			rows:     value.rows
 		});
@@ -400,7 +401,7 @@ function applySummarizeSemantics(
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
 	return new DataFrameDomain({
-		colnames: colnames !== undefined ? value.colnames.join([[], []]).union([colnames.filter(isNotUndefined), colnames.every(isNotUndefined) ? [] : Top]) : value.colnames.extendUp(),
+		colnames: colnames !== undefined ? value.colnames.join([[], []]).union(setRange(colnames)) : value.colnames.extendUp(),
 		cols:     colnames !== undefined ? value.cols.add([0, colnames.length]).min([colnames.length, +Infinity]) : value.cols.extendUp(),
 		rows:     value.rows.min([1, +Infinity]).max([0, 1])
 	});
@@ -489,4 +490,10 @@ function applyUnknownSemantics(
 	_args: {}
 ): DataFrameDomain {
 	return value.top();
+}
+
+function setRange(colnames: (string | undefined)[] | undefined): ArrayRangeValue<string> {
+	const names = colnames?.filter(isNotUndefined) ?? [];
+
+	return [names, names.length === colnames?.length ? [] : Top];
 }

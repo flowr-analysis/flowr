@@ -8,7 +8,7 @@ import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context'
 /**
  * This is the base class for all plugins that load and possibly transform files when they are loaded.
  * Different from other plugins, these plugins trigger for each file that is loaded (if they {@link applies} to the file).
- * See the {@link FlowrAnalyzerFilesContext.addFile} for more information on how files are loaded and managed.
+ * See the {@link FlowrAnalyzer.addFile} for more information on how files are loaded and managed.
  *
  * It is up to the construction to ensure that no two file plugins {@link applies} to the same file, otherwise, the loading order
  * of these plugins will determine which plugin gets to process the file.

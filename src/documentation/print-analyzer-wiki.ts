@@ -29,6 +29,13 @@ import {
 import {
 	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
 } from '../project/plugins/loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
+import { FlowrAnalyzerFilePlugin } from '../project/plugins/file-plugins/flowr-analyzer-file-plugin';
+import {
+	FlowrAnalyzerPackageVersionsPlugin
+} from '../project/plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
+import {
+	FlowrAnalyzerLoadingOrderPlugin
+} from '../project/plugins/loading-order-plugins/flowr-analyzer-loading-order-plugin';
 
 async function analyzerQuickExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -92,8 +99,7 @@ ${
 				'File Loading':              undefined,
 				'Loading Order':             undefined
 			},
-			'How to add a new plugin':      undefined,
-			'How to add a new plugin type': undefined
+			'How to add a new plugin': undefined,
 		},
 		'Caching':             undefined,
 		'Context Information': {
@@ -213,7 +219,7 @@ The builder provides a plethora of methods to configure the resulting analyzer i
 
 ${
 	Object.getOwnPropertyNames(FlowrAnalyzerBuilder.prototype).filter(c => c !== 'constructor' && !c.startsWith('build')).sort().map(
-		key => `- ${shortLink( `${FlowrAnalyzerBuilder.name}::${key}`, types.info)}\\\n${getDocumentationForType(`${FlowrAnalyzerBuilder.name}::${key}`, types.info)}`
+		key => `- ${shortLink( `${FlowrAnalyzerBuilder.name}::${key}`, types.info, false)}\\\n${getDocumentationForType(`${FlowrAnalyzerBuilder.name}::${key}`, types.info)}`
 	).join('\n')
 }
 
@@ -221,7 +227,7 @@ To build the analyzer after you have configured the builder, you can use one of 
 
 ${
 	Object.getOwnPropertyNames(FlowrAnalyzerBuilder.prototype).filter(c => c.startsWith('build')).sort().map(
-		key => `- ${shortLink( `${FlowrAnalyzerBuilder.name}::${key}`, types.info)}\\\n${getDocumentationForType(`${FlowrAnalyzerBuilder.name}::${key}`, types.info)}`
+		key => `- ${shortLink( `${FlowrAnalyzerBuilder.name}::${key}`, types.info, false)}\\\n${getDocumentationForType(`${FlowrAnalyzerBuilder.name}::${key}`, types.info)}`
 	).join('\n')
 }
 
@@ -271,12 +277,20 @@ Their job is to identify the files that belong to the project and add them to th
 flowR provides the ${shortLink(FlowrAnalyzerProjectDiscoveryPlugin.name, types.info)} with a 
 ${shortLink(FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin.name, types.info)} as the default implementation that simply collects all R source files in the given folder.
 
+Please not that all project discovery plugins should conform to the ${shortLink(FlowrAnalyzerProjectDiscoveryPlugin.name, types.info)} base class.
+
 ${section('File Loading', 4)}
 
 These plugins register for every file encountered by the [files context](#Files_Context) and determine whether and _how_ they can process the file.
 They are responsible for transforming the raw file content into a representation that flowR can work with during the analysis.
 For example, the ${shortLink(FlowrAnalyzerDescriptionFilePlugin.name, types.info)} adds support for R \`DESCRIPTION\` files by parsing their content into key-value pairs.
 These can then be used by other plugins, e.g. the ${shortLink(FlowrAnalyzerPackageVersionsDescriptionFilePlugin.name, types.info)} that extracts package version information from these files.
+
+If multiple file plugins could ${shortLink(FlowrAnalyzerFilePlugin.defaultPlugin().applies.name, types.info)} to the same file,
+the loading order of these plugins determines which plugin gets to process the file.
+Please ensure that no two file plugins _apply_ to the same file,
+as this could lead to unexpected behavior.
+Also, make sure that all file plugins conform to the ${shortLink(FlowrAnalyzerFilePlugin.name, types.info)} base class.
 
 ${section('Dependency Identification', 4)}
 
@@ -285,6 +299,8 @@ This information is then used to setup the R environment for the analysis correc
 For example, the ${shortLink(FlowrAnalyzerPackageVersionsDescriptionFilePlugin.name, types.info)} extracts package version information from \`DESCRIPTION\` files
 to identify the required packages and their versions.
 
+All dependency identification plugins should conform to the ${shortLink(FlowrAnalyzerPackageVersionsPlugin.name, types.info)} base class.
+
 ${section('Loading Order', 4)}
 
 These plugins determine the order in which files are loaded and analyzed.
@@ -292,11 +308,18 @@ This is crucial for correctly understanding the dependencies between files and i
 For example, the ${shortLink(FlowrAnalyzerLoadingOrderDescriptionFilePlugin.name, types.info)} provides a basic implementation that orders files based on
 the specification in a \`DESCRIPTION\` file, if present.
 
+All loading order plugins should conform to the ${shortLink(FlowrAnalyzerLoadingOrderPlugin.name, types.info)} base class.
+
 ${section('How to add a new plugin', 3)}
 
-TODO: register
+If you want to make a new plugin you first have to decide which type of plugin you want to create (see [Plugin Types](#plugin-types) above).
+Then, you must create a new class that extends the corresponding base class (e.g., ${shortLink(FlowrAnalyzerFilePlugin.name, types.info)} for file loading plugins).
+In general, most plugins operator on the [context information](#Context_Information) provided by the analyzer.
+Usually it is a good idea to have a look at the existing plugins of the same type to get an idea of how to implement your own plugin.
 
-${section('How to add a new plugin type', 3)}
+Once you have your plugin you should register it with a sensible name using the ${shortLink(registerPluginMaker.name, types.info)} function.
+This will allow users to register your plugin easily by name using the builder's ${shortLink(FlowrAnalyzerBuilder.name + '::' + FlowrAnalyzerBuilder.prototype.registerPlugins.name, types.info)} method.
+Otherwise, users will have to provide an instance of your plugin class directly.
 
 ${section('Context Information', 2)}
 

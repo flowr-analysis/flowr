@@ -114,11 +114,11 @@ ${
 ${section('Overview', 2)}
 
 No matter whether you want to analyze a single R script, a couple of R notebooks, a complete project, or an R package,
-your journey starts with the ${shortLink(FlowrAnalyzerBuilder.name, types.info, false)} (further described in [Builder Configuration](#builder-configuration) below).
+your journey starts with the ${shortLink(FlowrAnalyzerBuilder.name, types.info)} (further described in [Builder Configuration](#builder-configuration) below).
 This builder allows you to configure the analysis in many different ways, for example, by specifying which [plugins](#Plugins) to use or
 what [engine](${FlowrWikiBaseRef}/Engines) to use for the analysis.
 
-When building the ${shortLink(FlowrAnalyzer.name, types.info, false)} instance, the builder will take care to
+When building the ${shortLink(FlowrAnalyzer.name, types.info)} instance, the builder will take care to
 
 * load the [requested plugins](#Plugins)
 * setup an initial [context](#Context_Information) 
@@ -162,17 +162,17 @@ Please make sure to add all of the files, folder, and projects you want to analy
 ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.addRequest.name, types.info)} method (or ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.addFile.name, types.info)} for virtual files).
 Afterwards, you can request different kinds of analysis results, such as:
 
-* ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.parse.name, types.info, false)} to get the parsed information by the respective [engine](${FlowrWikiBaseRef}/Engines)\\
-  You can also use ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.peekParse.name, types.info, false, 'i')} to inspect the parse information if it was already computed (but without triggering a computation).
-  With ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.parserInformation.name, types.info, false, 'i')}, you get additional information on the parser used for the analysis.
-* ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.normalize.name, types.info, false)} to compute the [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)\\
-  Likewise, ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.peekNormalize.name, types.info, false, 'i')} returns the normalized AST if it was already computed but without triggering a computation.
-* ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.dataflow.name, types.info, false)} to compute the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph)\\
-  Again, ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.peekDataflow.name, types.info, false, 'i')} allows you to inspect the dataflow graph if it was already computed (but without triggering a computation).
-* ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.controlflow.name, types.info, false)} to compute the [Control Flow Graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph)\\
-  Also, ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.peekControlflow.name, types.info, false, 'i')} returns the control flow graph if it was already computed but without triggering a computation.
-* ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.query.name, types.info, false)} to run [queries](${FlowrWikiBaseRef}/Query-API) on the analyzed code.
-* ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.runSearch.name, types.info, false)} to run a search query on the analyzed code using the [search API](${FlowrWikiBaseRef}/Search%20API)
+* ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.parse.name, types.info)} to get the parsed information by the respective [engine](${FlowrWikiBaseRef}/Engines)\\
+  You can also use ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.peekParse.name, types.info, true, 'i')} to inspect the parse information if it was already computed (but without triggering a computation).
+  With ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.parserInformation.name, types.info, true, 'i')}, you get additional information on the parser used for the analysis.
+* ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.normalize.name, types.info)} to compute the [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)\\
+  Likewise, ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.peekNormalize.name, types.info, true, 'i')} returns the normalized AST if it was already computed but without triggering a computation.
+* ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.dataflow.name, types.info)} to compute the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph)\\
+  Again, ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.peekDataflow.name, types.info, true, 'i')} allows you to inspect the dataflow graph if it was already computed (but without triggering a computation).
+* ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.controlflow.name, types.info)} to compute the [Control Flow Graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph)\\
+  Also, ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.peekControlflow.name, types.info, true, 'i')} returns the control flow graph if it was already computed but without triggering a computation.
+* ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.query.name, types.info)} to run [queries](${FlowrWikiBaseRef}/Query-API) on the analyzed code.
+* ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.runSearch.name, types.info)} to run a search query on the analyzed code using the [search API](${FlowrWikiBaseRef}/Search%20API)
   
 We work on providing a set of example repositories that demonstrate how to use the analyzer in different scenarios:
 
@@ -200,8 +200,8 @@ By default, the builder uses flowR's standard configuration obtained with ${shor
 
 ${block({
 	type:    'NOTE',
-	content: `During the analysis with the ${shortLink(FlowrAnalyzer.name, types.info, false)}, you can also access the configuration with
-				 the ${shortLink(FlowrAnalyzerContext.name, types.info, false)}.
+	content: `During the analysis with the ${shortLink(FlowrAnalyzer.name, types.info)}, you can also access the configuration with
+				 the ${shortLink(FlowrAnalyzerContext.name, types.info)}.
 				 `
 })}
 
@@ -247,7 +247,7 @@ The builder provides a plethora of methods to configure the resulting analyzer i
 
 ${
 	Object.getOwnPropertyNames(FlowrAnalyzerBuilder.prototype).filter(c => c !== 'constructor' && !c.startsWith('build')).sort().map(
-		key => `- ${shortLink( `${FlowrAnalyzerBuilder.name}::${key}`, types.info, false)}\\\n${getDocumentationForType(`${FlowrAnalyzerBuilder.name}::${key}`, types.info)}`
+		key => `- ${shortLink( `${FlowrAnalyzerBuilder.name}::${key}`, types.info)}\\\n${getDocumentationForType(`${FlowrAnalyzerBuilder.name}::${key}`, types.info)}`
 	).join('\n')
 }
 
@@ -255,7 +255,7 @@ To build the analyzer after you have configured the builder, you can use one of 
 
 ${
 	Object.getOwnPropertyNames(FlowrAnalyzerBuilder.prototype).filter(c => c.startsWith('build')).sort().map(
-		key => `- ${shortLink( `${FlowrAnalyzerBuilder.name}::${key}`, types.info, false)}\\\n${getDocumentationForType(`${FlowrAnalyzerBuilder.name}::${key}`, types.info)}`
+		key => `- ${shortLink( `${FlowrAnalyzerBuilder.name}::${key}`, types.info)}\\\n${getDocumentationForType(`${FlowrAnalyzerBuilder.name}::${key}`, types.info)}`
 	).join('\n')
 }
 
@@ -274,7 +274,7 @@ Currently, flowR supports the following plugin types built-in:
 |------|-------|------|-------------|
 ${
 	BuiltInPlugins.sort(([a,], [b]) => a.localeCompare(b)).map(
-		([key, value]) => `| ${codeInline(key)} | ${shortLink( `${value.name}`, types.info, false)} |  ${new value().type} | ${getDocumentationForType(`${value.name}`, types.info).replaceAll('|', '&#124;').replaceAll('\n', ' ')} |`
+		([key, value]) => `| ${codeInline(key)} | ${shortLink( `${value.name}`, types.info)} |  ${new value().type} | ${getDocumentationForType(`${value.name}`, types.info).replaceAll('|', '&#124;').replaceAll('\n', ' ')} |`
 	).join('\n')
 }
 
@@ -351,7 +351,7 @@ Otherwise, users will have to provide an instance of your plugin class directly.
 
 ${section('Context Information', 2)}
 
-The ${shortLink(FlowrAnalyzer.name, types.info, false)} provides various context information during the analysis.
+The ${shortLink(FlowrAnalyzer.name, types.info)} provides various context information during the analysis.
 You can access the context with ${shortLink(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.inspectContext.name, types.info)}
 to receive a read-only view of the current analysis context.
 Likewise, you can use ${shortLink(FlowrAnalyzerContext.name + '::' + FlowrAnalyzerContext.prototype.inspect.name, types.info)} to get a read-only view of a given context.
@@ -360,7 +360,7 @@ wrapping methods or by [plugins](#Plugins)).
 The context is divided into multiple sub-contexts, each responsible for a specific aspect of the analysis.
 These sub-contexts are described in more detail below.
 
-For the general structure from an implementation perspective, please have a look at ${shortLink(FlowrAnalyzerContext.name, types.info, false)}.
+For the general structure from an implementation perspective, please have a look at ${shortLink(FlowrAnalyzerContext.name, types.info)}.
 ${
 	block({
 		type:    'TIP',
@@ -389,14 +389,14 @@ ${printHierarchy({
 })}
 
 Using the available [plugins](#Plugins),
-the files context categorizes files by their ${shortLink('FileRole', types.info, false)} (e.g., source files or DESCRIPTION files)
-and makes them accessible by these roles (e.g., via ${shortLink(FlowrAnalyzerFilesContext.name + '::' + FlowrAnalyzerFilesContext.prototype.getFilesByRole.name, types.info, false, 'i')}).
-It also provides methods to check for whether a file exists (e.g., ${shortLink(FlowrAnalyzerFilesContext.name + '::' + FlowrAnalyzerFilesContext.prototype.hasFile.name, types.info, false, 'i')},
-${shortLink(FlowrAnalyzerFilesContext.name + '::' + FlowrAnalyzerFilesContext.prototype.exists.name, types.info, false, 'i')})
-and to translate requests so they respect the context (e.g., ${shortLink(FlowrAnalyzerFilesContext.name + '::' + FlowrAnalyzerFilesContext.prototype.resolveRequest.name, types.info, false, 'i')}).
+the files context categorizes files by their ${shortLink('FileRole', types.info)} (e.g., source files or DESCRIPTION files)
+and makes them accessible by these roles (e.g., via ${shortLink(FlowrAnalyzerFilesContext.name + '::' + FlowrAnalyzerFilesContext.prototype.getFilesByRole.name, types.info, true, 'i')}).
+It also provides methods to check for whether a file exists (e.g., ${shortLink(FlowrAnalyzerFilesContext.name + '::' + FlowrAnalyzerFilesContext.prototype.hasFile.name, types.info, true, 'i')},
+${shortLink(FlowrAnalyzerFilesContext.name + '::' + FlowrAnalyzerFilesContext.prototype.exists.name, types.info, true, 'i')})
+and to translate requests so they respect the context (e.g., ${shortLink(FlowrAnalyzerFilesContext.name + '::' + FlowrAnalyzerFilesContext.prototype.resolveRequest.name, types.info, true, 'i')}).
 
 For legacy reasons it also provides the list of files considered by the dataflow analysis via
-${shortLink(FlowrAnalyzerFilesContext.name + '::' + FlowrAnalyzerFilesContext.prototype.consideredFilesList.name, types.info, false, 'i')}.
+${shortLink(FlowrAnalyzerFilesContext.name + '::' + FlowrAnalyzerFilesContext.prototype.consideredFilesList.name, types.info, true, 'i')}.
 
 ${section('Loading Order Context', 3)}
 
@@ -421,9 +421,9 @@ ${printHierarchy({
 
 Using the available [plugins](#Plugins), the loading order context determines the order in which files are loaded and analyzed by flowR's analyzer.
 You can inspect the identified loading order using
-${shortLink(FlowrAnalyzerLoadingOrderContext.name + '::' + FlowrAnalyzerLoadingOrderContext.prototype.getLoadingOrder.name, types.info, false, 'i')}.
+${shortLink(FlowrAnalyzerLoadingOrderContext.name + '::' + FlowrAnalyzerLoadingOrderContext.prototype.getLoadingOrder.name, types.info, true, 'i')}.
 If there are multiple possible loading orders (e.g., due to circular dependencies),
-you can use ${shortLink(FlowrAnalyzerLoadingOrderContext.name + '::' + FlowrAnalyzerLoadingOrderContext.prototype.currentGuesses.name, types.info, false, 'i')}.
+you can use ${shortLink(FlowrAnalyzerLoadingOrderContext.name + '::' + FlowrAnalyzerLoadingOrderContext.prototype.currentGuesses.name, types.info, true, 'i')}.
 
 ${section('Dependencies Context', 3)}
 
@@ -438,7 +438,7 @@ ${printHierarchy({
 })}
 
 Probably the most important method is
-${shortLink(FlowrAnalyzerDependenciesContext.name + '::' + FlowrAnalyzerDependenciesContext.prototype.getDependency.name, types.info, false, 'i')}
+${shortLink(FlowrAnalyzerDependenciesContext.name + '::' + FlowrAnalyzerDependenciesContext.prototype.getDependency.name, types.info, true, 'i')}
 that allows you to query for a specific dependency by name.
 
 ${section('Caching', 2)}

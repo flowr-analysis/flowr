@@ -113,7 +113,7 @@ export interface DataflowInformation extends DataflowCfgInformation {
  * This is to be used as a "starting point" when processing leaf nodes during the dataflow extraction.
  * @see {@link DataflowInformation}
  */
-export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'builtInEnvironment' | 'completeAst'>): DataflowInformation {
+export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'completeAst'>): DataflowInformation {
 	return {
 		unknownReferences: [],
 		in:                [],

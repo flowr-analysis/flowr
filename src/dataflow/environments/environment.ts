@@ -9,8 +9,9 @@ import type { DataflowGraph } from '../graph/graph';
 import { resolveByName } from './resolve-by-name';
 import type { ControlDependency } from '../info';
 import { jsonReplacer } from '../../util/json';
-import { getDefaultBuiltInDefinitions } from './built-in-config';
+import { getBuiltInDefinitions, getDefaultBuiltInDefinitions } from './built-in-config';
 import type { BuiltInMemory } from './built-in';
+import type { FlowrConfigOptions } from '../../config';
 
 /**
  * Marks the reference as maybe (i.e., as controlled by a set of {@link IdentifierReference#controlDependencies|control dependencies}).
@@ -100,11 +101,6 @@ export class Environment implements IEnvironment {
 	}
 }
 
-export interface WorkingDirectoryReference {
-	readonly path:                string
-	readonly controlDependencies: ControlDependency[] | undefined
-}
-
 /**
  * An environment describes a ({@link IEnvironment#parent|scoped}) mapping of names to their definitions ({@link BuiltIns}).
  *
@@ -133,14 +129,31 @@ export interface REnvironmentInformation {
 }
 
 /**
- * Initialize a new {@link REnvironmentInformation|environment} with the built-ins.
+ * Create a new built-in {@link IEnvironment|environment}.
+ * @param memory - Optional built-in memory to use.
+ * @param fullBuiltIns - Whether to use the full built-in definitions or an empty built-in environment.
  */
-export function initializeCleanEnvironments(memory?: BuiltInMemory, fullBuiltIns = true): REnvironmentInformation {
+export function createBuiltInEnv(memory?: BuiltInMemory, fullBuiltIns = true): IEnvironment {
 	const builtInEnv = new Environment(undefined as unknown as IEnvironment, true);
 	builtInEnv.memory = memory ?? (fullBuiltIns ? getDefaultBuiltInDefinitions().builtInMemory : getDefaultBuiltInDefinitions().emptyBuiltInMemory);
+	return builtInEnv;
+}
 
+/**
+ * Create a new built-in {@link IEnvironment|environment} according to the given configuration options.
+ */
+export function createBuiltInEnvFromConfig(config: FlowrConfigOptions): IEnvironment {
+	const builtInsConfig = config.semantics.environment.overwriteBuiltIns;
+	const builtIns = getBuiltInDefinitions(builtInsConfig.definitions, builtInsConfig.loadDefaults);
+	return createBuiltInEnv(builtIns.builtInMemory);
+}
+
+/**
+ * Initialize a new {@link REnvironmentInformation|environment} on top of the built-ins.
+ */
+export function initializeCleanEnvironments(memory?: BuiltInMemory, fullBuiltIns = true): REnvironmentInformation {
 	return {
-		current: new Environment(builtInEnv),
+		current: new Environment(createBuiltInEnv(memory, fullBuiltIns)),
 		level:   0
 	};
 }

@@ -39,10 +39,11 @@ export interface SeededRandomnessConfig extends MergeableRecord {
 }
 
 export interface SeededRandomnessMeta extends MergeableRecord {
-	consumerCalls:                 number
-	callsWithFunctionProducers:    number
-	callsWithAssignmentProducers:  number
-	callsWithNonConstantProducers: number
+	consumerCalls:                    number
+	callsWithFunctionProducers:       number
+	callsWithAssignmentProducers:     number
+	callsWithNonConstantProducers:    number
+    callsWithOtherBranchProducers: number
 }
 
 export const SEEDED_RANDOMNESS = {
@@ -66,7 +67,8 @@ export const SEEDED_RANDOMNESS = {
 			consumerCalls:                 0,
 			callsWithFunctionProducers:    0,
 			callsWithAssignmentProducers:  0,
-			callsWithNonConstantProducers: 0
+			callsWithNonConstantProducers: 0,
+			callsWithOtherBranchProducers: 0
 		};
 		return {
 			results: elements.getElements()
@@ -82,16 +84,23 @@ export const SEEDED_RANDOMNESS = {
 				// filter by calls that aren't preceded by a randomness producer
 				.filter(element => {
 					const dfgElement = dataflow.graph.getVertex(element.searchElement.node.info.id);
+					const cds = dfgElement ? new Set(dfgElement.cds) : new Set();
 					const producers = enrichmentContent(element.searchElement, Enrichment.LastCall).linkedIds
 						.map(e => dataflow.graph.getVertex(e.node.info.id) as DataflowGraphVertexFunctionCall);
 					const { assignment, func } = Object.groupBy(producers, f => assignmentArgIndexes.has(f.name) ? 'assignment' : 'func');
 					let nonConstant = false;
+					let otherBranch = false;
 
 					// function calls are already taken care of through the LastCall enrichment itself
 					for(const f of func ?? []) {
-						if(isConstantArgument(dataflow.graph, f, 0) && (!dfgElement || dfgElement.cds === f.cds || happensInEveryBranch(f.cds))) {
-							metadata.callsWithFunctionProducers++;
-							return false;
+						if(isConstantArgument(dataflow.graph, f, 0)) {
+							const fCds = new Set(f.cds).difference(cds);
+							if(fCds.size <= 0 || happensInEveryBranch([...fCds])){
+								metadata.callsWithFunctionProducers++;
+								return false;
+							} else {
+								otherBranch = true;
+							}
 						} else {
 							nonConstant = true;
 						}
@@ -102,9 +111,14 @@ export const SEEDED_RANDOMNESS = {
 						const argIdx = assignmentArgIndexes.get(a.name) as number;
 						const dest = getReferenceOfArgument(a.args[argIdx]);
 						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)){
-							if(isConstantArgument(dataflow.graph, a, 1-argIdx) && (!dfgElement || dfgElement.cds === a.cds || happensInEveryBranch(a.cds))) {
-								metadata.callsWithAssignmentProducers++;
-								return false;
+							if(isConstantArgument(dataflow.graph, a, 1-argIdx)) {
+								const aCds = new Set(a.cds).difference(cds);
+								if(aCds.size <= 0 || happensInEveryBranch([...aCds])) {
+									metadata.callsWithAssignmentProducers++;
+									return false;
+								} else {
+									otherBranch = true;
+								}
 							} else {
 								nonConstant = true;
 							}
@@ -113,6 +127,9 @@ export const SEEDED_RANDOMNESS = {
 
 					if(nonConstant) {
 						metadata.callsWithNonConstantProducers++;
+					}
+					if(otherBranch) {
+						metadata.callsWithOtherBranchProducers++;
 					}
 					return true;
 				})

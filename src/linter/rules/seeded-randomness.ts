@@ -82,7 +82,7 @@ export const SEEDED_RANDOMNESS = {
 					};
 				}))
 				// filter by calls that aren't preceded by a randomness producer
-				.filter(element => {
+				.flatMap(element => {
 					const dfgElement = dataflow.graph.getVertex(element.searchElement.node.info.id);
 					const cds = dfgElement ? new Set(dfgElement.cds) : new Set();
 					const producers = enrichmentContent(element.searchElement, Enrichment.LastCall).linkedIds
@@ -97,7 +97,7 @@ export const SEEDED_RANDOMNESS = {
 							const fCds = new Set(f.cds).difference(cds);
 							if(fCds.size <= 0 || happensInEveryBranch([...fCds])){
 								metadata.callsWithFunctionProducers++;
-								return false;
+								return [];
 							} else {
 								otherBranch = true;
 							}
@@ -115,7 +115,7 @@ export const SEEDED_RANDOMNESS = {
 								const aCds = new Set(a.cds).difference(cds);
 								if(aCds.size <= 0 || happensInEveryBranch([...aCds])) {
 									metadata.callsWithAssignmentProducers++;
-									return false;
+									return [];
 								} else {
 									otherBranch = true;
 								}
@@ -131,14 +131,12 @@ export const SEEDED_RANDOMNESS = {
 					if(otherBranch) {
 						metadata.callsWithOtherBranchProducers++;
 					}
-					return true;
-				})
-
-				.map(element => ({
-					certainty: LintingResultCertainty.Certain,
-					function:  element.target,
-					range:     element.range
-				})),
+					return [{
+						certainty: otherBranch ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
+						function:  element.target,
+						range:     element.range
+					}];
+				}),
 			'.meta': metadata
 		};
 	},

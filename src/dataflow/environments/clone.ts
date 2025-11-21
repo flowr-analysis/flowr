@@ -1,8 +1,8 @@
-import { type IEnvironment, type REnvironmentInformation ,  Environment } from './environment';
+import { type REnvironmentInformation, Environment } from './environment';
 import type { Identifier, IdentifierDefinition } from './identifier';
 
-function cloneEnvironment(environment: IEnvironment, recurseParents: boolean): IEnvironment
-function cloneEnvironment(environment: IEnvironment | undefined, recurseParents: boolean): IEnvironment | undefined {
+function cloneEnvironment(environment: Environment, recurseParents: boolean): Environment
+function cloneEnvironment(environment: Environment | undefined, recurseParents: boolean): Environment | undefined {
 	if(environment === undefined) {
 		return undefined;
 	} else if(environment.builtInEnv) {
@@ -16,9 +16,8 @@ function cloneEnvironment(environment: IEnvironment | undefined, recurseParents:
 
 /**
  * Produce a clone of the given environment information.
- * @param environment        - The environment information to clone.
- * @param builtInEnvironment - The built-in environment
- * @param recurseParents     - Whether to clone the parent environments as well.
+ * @param environment    - The environment information to clone.
+ * @param recurseParents - Whether to clone the parent environments as well.
  */
 export function cloneEnvironmentInformation(environment: REnvironmentInformation, recurseParents = true): REnvironmentInformation {
 	return {

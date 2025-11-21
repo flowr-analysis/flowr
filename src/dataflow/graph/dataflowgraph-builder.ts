@@ -2,7 +2,7 @@ import { deepMergeObject } from '../../util/objects';
 import { type NodeId , normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type DataflowFunctionFlowInformation, type FunctionArgument , DataflowGraph, isPositionalArgument } from './graph';
-import { type IEnvironment, type REnvironmentInformation , initializeCleanEnvironments } from '../environments/environment';
+import type { Environment , type REnvironmentInformation , initializeCleanEnvironments } from '../environments/environment';
 import { type DataflowGraphVertexAstLink, type DataflowGraphVertexUse, type FunctionOriginInformation , VertexType } from './vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isBuiltIn } from '../environments/built-in';
@@ -42,7 +42,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public defineFunction(id: NodeId,
 		exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation,
-		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, controlDependencies?: ControlDependency[] },
+		info?: { environment?: REnvironmentInformation, builtInEnvironment?: Environment, controlDependencies?: ControlDependency[] },
 		asRoot: boolean = true) {
 		return this.addVertex({
 			tag:     VertexType.FunctionDefinition,
@@ -76,7 +76,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			reads?:               readonly NodeId[],
 			onlyBuiltIn?:         boolean,
 			environment?:         REnvironmentInformation,
-			builtInEnvironment?:  IEnvironment,
+			builtInEnvironment?:  Environment,
 			controlDependencies?: ControlDependency[],
 			origin?:              FunctionOriginInformation[]
 			link?:                DataflowGraphVertexAstLink

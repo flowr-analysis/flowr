@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert';
-import { type IEnvironment, type REnvironmentInformation ,  Environment } from './environment';
+import { type REnvironmentInformation ,  Environment } from './environment';
 import type { IdentifierDefinition } from './identifier';
 
 function uniqueMergeValues(old: IdentifierDefinition[], value: readonly IdentifierDefinition[]): IdentifierDefinition[] {
@@ -13,7 +13,7 @@ function uniqueMergeValues(old: IdentifierDefinition[], value: readonly Identifi
 	return result;
 }
 
-function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined): IEnvironment {
+function appendIEnvironmentWith(base: Environment | undefined, next: Environment | undefined): Environment {
 	guard(base !== undefined && next !== undefined, 'can not append environments with undefined');
 	const map = new Map(base.memory);
 	for(const [key, value] of next.memory) {

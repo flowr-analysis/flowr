@@ -16,11 +16,7 @@ function anyIsMaybeOrEmpty(values: readonly IdentifierDefinition[]): boolean {
 	return false;
 }
 
-
-/**
- *
- */
-export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined, includeParent = true, applyCds?: readonly ControlDependency[]): IEnvironment {
+function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined, includeParent = true, applyCds?: readonly ControlDependency[]): IEnvironment {
 	guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined');
 	const map = new Map(base.memory);
 	for(const [key, values] of next.memory) {

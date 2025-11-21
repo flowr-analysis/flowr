@@ -1,11 +1,11 @@
 import { guard, isNotUndefined } from '../../util/assert';
-import type { IEnvironment, REnvironmentInformation } from './environment';
+import type { Environment, REnvironmentInformation } from './environment';
 import { cloneEnvironmentInformation } from './clone';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
 import { type ContainerIndex, type ContainerIndices , isParentContainerIndex, isSameIndex } from '../graph/vertex';
 import type { FlowrConfigOptions } from '../../config';
 
-function defInEnv(newEnvironments: IEnvironment, name: string, definition: IdentifierDefinition, config: FlowrConfigOptions) {
+function defInEnv(newEnvironments: Environment, name: string, definition: IdentifierDefinition, config: FlowrConfigOptions) {
 	const existing = newEnvironments.memory.get(name);
 
 	// When there are defined indices, merge the definitions

@@ -7,8 +7,8 @@ import { envFingerprint } from '../../../slicing/static/fingerprint';
 import { VisitingQueue } from '../../../slicing/static/visiting-queue';
 import { guard } from '../../../util/assert';
 import type { BuiltInIdentifierConstant } from '../../environments/built-in';
-import { type IEnvironment, type REnvironmentInformation , initializeCleanEnvironments } from '../../environments/environment';
-import { type Identifier , ReferenceType } from '../../environments/identifier';
+import { type Environment, type REnvironmentInformation, initializeCleanEnvironments } from '../../environments/environment';
+import { type Identifier, ReferenceType } from '../../environments/identifier';
 import { resolveByName } from '../../environments/resolve-by-name';
 import { EdgeType } from '../../graph/edge';
 import type { DataflowGraph } from '../../graph/graph';
@@ -22,7 +22,7 @@ import { resolveNode } from './resolve';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
-type AliasHandler = (s: NodeId, d: DataflowGraph, e: REnvironmentInformation, def: IEnvironment) => NodeId[] | undefined;
+type AliasHandler = (s: NodeId, d: DataflowGraph, e: REnvironmentInformation, def: Environment) => NodeId[] | undefined;
 const AliasHandler = {
 	[VertexType.Value]:              (sourceId: NodeId) => [sourceId],
 	[VertexType.Use]:                getUseAlias,

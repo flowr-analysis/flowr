@@ -58,20 +58,6 @@ export function makeAllMaybe(references: readonly IdentifierReference[] | undefi
 	return references?.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, defaultCd)) ?? [];
 }
 
-/** A single entry/scope within an {@link REnvironmentInformation} */
-export interface IEnvironment {
-	/** Unique and internally generated identifier -- will not be used for comparison but helps with debugging for tracking identities */
-	readonly id: number
-	/** Lexical parent of the environment, if any (can be manipulated by R code) */
-	parent:      IEnvironment
-	/** Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions */
-	memory:      BuiltInMemory
-	/**
-	 * Is this a built-in environment that is not allowed to change? Please use this carefully and only for the top-most envs!
-	 */
-	builtInEnv?: true | undefined
-}
-
 /**
  * Please use this function only if you do not know the object type.
  * Otherwise, rely on {@link IEnvironment#builtInEnv}
@@ -82,14 +68,18 @@ export function isDefaultBuiltInEnvironment(obj: unknown) {
 
 let environmentIdCounter = 1; // Zero is reserved for built-in environment
 
-/** @see REnvironmentInformation */
-export class Environment implements IEnvironment {
-	readonly id;
-	parent:      IEnvironment;
+/** A single entry/scope within an {@link REnvironmentInformation} */
+export class Environment {
+	/** Unique and internally generated identifier -- will not be used for comparison but helps with debugging for tracking identities */
+	readonly id: number;
+	/** Lexical parent of the environment, if any (can be manipulated by R code) */
+	parent:      Environment;
+	/** Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions */
 	memory:      BuiltInMemory;
+	/** Is this a built-in environment that is not allowed to change? Please use this carefully and only for the top-most envs! */
 	builtInEnv?: true;
 
-	constructor(parent: IEnvironment, isBuiltInDefault: true | undefined = undefined) {
+	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined) {
 		this.id = isBuiltInDefault ? 0 : environmentIdCounter++;
 		this.parent = parent;
 		this.memory = new Map();
@@ -126,8 +116,8 @@ export interface WorkingDirectoryReference {
  * @see {@link overwriteEnvironment} - to overwrite the definitions in the current environment with those of another one
  */
 export interface REnvironmentInformation {
-	/**  The currently active environment (the stack is represented by the currently active {@link IEnvironment#parent}). Environments are maintained within the dataflow graph. */
-	readonly current: IEnvironment
+	/**  The currently active environment (the stack is represented by the currently active {@link Environment#parent}). Environments are maintained within the dataflow graph. */
+	readonly current: Environment
 	/** nesting level of the environment, will be `0` for the global/root environment */
 	readonly level:   number
 }
@@ -136,7 +126,7 @@ export interface REnvironmentInformation {
  * Initialize a new {@link REnvironmentInformation|environment} with the built-ins.
  */
 export function initializeCleanEnvironments(memory?: BuiltInMemory, fullBuiltIns = true): REnvironmentInformation {
-	const builtInEnv = new Environment(undefined as unknown as IEnvironment, true);
+	const builtInEnv = new Environment(undefined as unknown as Environment, true);
 	builtInEnv.memory = memory ?? (fullBuiltIns ? getDefaultBuiltInDefinitions().builtInMemory : getDefaultBuiltInDefinitions().emptyBuiltInMemory);
 
 	return {

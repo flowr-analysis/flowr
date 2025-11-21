@@ -3,8 +3,8 @@ import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
-import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
-import { getTypesFromFolder, mermaidHide, printHierarchy, shortLink } from './doc-util/doc-types';
+import { printNormalizedAst, printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
+import { getTypesFromFolder, mermaidHide, printCodeOfElement, printHierarchy, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
@@ -17,6 +17,24 @@ import { collectAllIds } from '../r-bridge/lang-4.x/ast/model/collect';
 import { DefaultNormalizedAstFold } from '../abstract-interpretation/normalized-ast-fold';
 import { createNormalizePipeline } from '../core/steps/pipeline/default-pipelines';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
+import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+import { FlowrInlineTextFile } from '../project/context/flowr-file';
+
+async function quickNormalizedAstMultipleFiles() {
+	const analyzer = await new FlowrAnalyzerBuilder()
+		.setEngine('tree-sitter')
+		.build();
+	analyzer.addFile(new FlowrInlineTextFile('foo.R', 'x <- 12; source("a.R")'));
+	analyzer.addFile(new FlowrInlineTextFile('a.R', 'y <- x + 3'));
+	analyzer.addFile(new FlowrInlineTextFile('b.R', 'print(x, y)'));
+	analyzer.addRequest(
+		{ request: 'file', content: 'a.R' },
+		{ request: 'file', content: 'b.R' },
+		{ request: 'file', content: 'foo.R' }
+	);
+	const n = await analyzer.normalize();
+	return n;
+}
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -54,7 +72,8 @@ ${await printNormalizedAstForCode(shell, 'x <- 2 * 3 + 1', { showCode: false, pr
 > you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('normalize*')} 
 > command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information).
 
-Indicative of the normalization is the root expression list node, which is present in every normalized AST.
+Indicative of the normalization is the root ${shortLink('RProject', types.info)} node, which is present in every normalized AST
+and provides the ${shortLink('RExpressionList', types.info)} nodes for each file in the project.
 In general, we provide node types for:
 
 1. literals (e.g., numbers and strings)
@@ -105,9 +124,29 @@ async function getAst(code: string): Promise<RNode> {
 
 From the REPL, you can use the ${getReplCommand('normalize')} command.
 
+### Multi-File Projects
+
+With the ${shortLink(FlowrAnalyzer.name, types.info)}, you can analyze multiple files at once:
+
+${printCodeOfElement({ program: types.program, info: types.info, dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true }, quickNormalizedAstMultipleFiles.name)}
+
+Visualizing the resulting AST yields the following.
+
+<details>
+
+<summary style="color:gray">Mermaid Diagram</summary>
+
+${printNormalizedAst((await quickNormalizedAstMultipleFiles()).ast, 'flowchart LR\n')}
+
+</details>
+
+
 ## Traversing the Normalized AST
 
 We provide two ways to traverse the normalized AST: [Visitors](#visitors) and [Folds](#folds).
+Please note, that they usually operate on the ${shortLink('RExpressionList', types.info)} level, and it is up to
+you to decide how you want to traverse multiple files with a ${shortLink('RProject', types.info)} in the AST (you can, for example, simplify flat-map over the files).
+The ${shortLink('RProject', types.info)} node cannot appear nested within other nodes, so you can safely assume that any child of a node is not an ${shortLink('RProject', types.info)}.
 
 ### Visitors
 

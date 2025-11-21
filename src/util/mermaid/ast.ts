@@ -7,6 +7,14 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import type { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { FlowrFile } from '../../project/context/flowr-file';
 
+function identifyMermaidDirection(prefix: string): string {
+	const directionMatch = prefix.match(/flowchart (TD|LR|RL|BT)/);
+	if(directionMatch) {
+		return directionMatch[1];
+	}
+	return 'TD';
+}
+
 /**
  * Serialize the normalized AST to mermaid format
  */
@@ -42,9 +50,15 @@ export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeW
 	if(ast.type === RType.Project) {
 		for(const f of ast.files) {
 			// add a subgraph for each file
-			output += `    subgraph "File: ${escapeMarkdown(f.filePath ?? FlowrFile.INLINE_PATH)}"\n`;
-			showAst(f.root);
-			output += '    end\n';
+			if(ast.files.length !== 1 || (f.filePath && f.filePath !== FlowrFile.INLINE_PATH)) {
+				output += `    subgraph "File: ${escapeMarkdown(f.filePath ?? FlowrFile.INLINE_PATH)}"\n`;
+				const direction = identifyMermaidDirection(prefix);
+				output += `        direction ${direction}\n`;
+				showAst(f.root);
+				output += '    end\n';
+			} else {
+				showAst(f.root);
+			}
 		}
 	} else {
 		showAst(ast);

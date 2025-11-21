@@ -45,6 +45,6 @@ export async function testFileLoadPlugin<F extends ConstructTo<FlowrFile>, P ext
 		const files = analyzer.inspectContext().files.getFilesByRole(FileRole.Source);
 		assert(files.length === 1);
 		assert(files[0] instanceof pluginFileType);
-		assert(files[0].content() === expectedContent);
+		assert.equal(files[0].content(), expectedContent);
 	});
 }

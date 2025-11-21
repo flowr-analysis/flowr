@@ -3,7 +3,7 @@
 * [💻 Setup](https://github.com/flowr-analysis/flowr/wiki/Setup)
 * [👓 Overview](https://github.com/flowr-analysis/flowr/wiki/Overview)
 * [🪟 Interfacing with _flowR_](https://github.com/flowr-analysis/flowr/wiki/Interface)
-  * [Analyzer](https://github.com/flowr-analysis/flowr/wiki/Analyzer)
+  * [Analyzer (FlowrAnalyzer, Projects, ...)](https://github.com/flowr-analysis/flowr/wiki/Analyzer)
   * [Engines](https://github.com/flowr-analysis/flowr/wiki/Engines)
   * [Linting R](https://github.com/flowr-analysis/flowr/wiki/Linter)
   * [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)

@@ -9,8 +9,7 @@ import { processPipe } from '../internal/process/functions/call/built-in/built-i
 import { processForLoop } from '../internal/process/functions/call/built-in/built-in-for-loop';
 import { processRepeatLoop } from '../internal/process/functions/call/built-in/built-in-repeat-loop';
 import { processWhileLoop } from '../internal/process/functions/call/built-in/built-in-while-loop';
-import type { Identifier, IdentifierDefinition, IdentifierReference } from './identifier';
-import { ReferenceType } from './identifier';
+import { type Identifier, type IdentifierDefinition, type IdentifierReference , ReferenceType } from './identifier';
 import { guard } from '../../util/assert';
 import { processReplacementFunction } from '../internal/process/functions/call/built-in/built-in-replacement';
 import { processQuote } from '../internal/process/functions/call/built-in/built-in-quote';
@@ -18,8 +17,7 @@ import { processFunctionDefinition } from '../internal/process/functions/call/bu
 import { processExpressionList } from '../internal/process/functions/call/built-in/built-in-expression-list';
 import { processGet } from '../internal/process/functions/call/built-in/built-in-get';
 import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument , EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EdgeType } from '../graph/edge';
@@ -49,9 +47,16 @@ import type {
 
 export type BuiltIn = `built-in:${string}`;
 
+/**
+ * Generate a built-in id for the given name
+ */
 export function builtInId(name: string): BuiltIn {
 	return `built-in:${name}`;
 }
+
+/**
+ * Checks whether the given name is a built-in identifier
+ */
 export function isBuiltIn(name: NodeId | string): name is BuiltIn {
 	return String(name).startsWith('built-in:');
 }
@@ -93,7 +98,8 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
 	/** record mapping the actual function name called to the arguments that should be treated as function calls */
 	readonly treatAsFnCall?:         Record<string, readonly string[]>,
-	/** Name that should be used for the origin (useful when needing to differentiate between
+	/**
+	 * Name that should be used for the origin (useful when needing to differentiate between
 	 * functions like 'return' that use the default builtin processor)
 	 */
 	readonly useAsProcessor?:        UseAsProcessors
@@ -288,21 +294,20 @@ export class BuiltIns {
 				return this.registerReplacementFunctions(definition);
 		}
 	}
-	
+
 	/**
-     * The built-in {@link REnvironmentInformation|environment} is the root of all environments.
-     *
-     * For its default content (when not overwritten by a flowR config),
-     * see the {@link DefaultBuiltinConfig}.
-     */
+	 * The built-in {@link REnvironmentInformation|environment} is the root of all environments.
+	 *
+	 * For its default content (when not overwritten by a flowR config),
+	 * see the {@link DefaultBuiltinConfig}.
+	 */
 	builtInMemory:      BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
 	/**
-     * The twin of the {@link builtInMemory} but with less built ins defined for
-     * cases in which we want some commonly overwritten variables to remain open.
-     * If you do not know if you need the empty environment, you do not need the empty environment (right now).
-     *
-     * @see {@link builtInMemory}
-     */
+	 * The twin of the {@link builtInMemory} but with less built ins defined for
+	 * cases in which we want some commonly overwritten variables to remain open.
+	 * If you do not know if you need the empty environment, you do not need the empty environment (right now).
+	 * @see {@link builtInMemory}
+	 */
 	emptyBuiltInMemory: BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
 
 	set(identifier: Identifier, definition: IdentifierDefinition[], includeInEmptyMemory: boolean | undefined): void {

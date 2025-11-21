@@ -4,6 +4,9 @@ import type { BasicQueryData } from '../../base-query-format';
 import { isNotUndefined } from '../../../util/assert';
 import { deepMergeObjectInPlace } from '../../../util/objects';
 
+/**
+ * Executes the given configuration queries using the provided analyzer.
+ */
 export function executeConfigQuery({ analyzer }: BasicQueryData, queries: readonly ConfigQuery[]): Promise<ConfigQueryResult> {
 	if(queries.length !== 1) {
 		log.warn('Config query usually expects only up to one query, but got', queries.length);

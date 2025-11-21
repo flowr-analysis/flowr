@@ -43,10 +43,16 @@ export const RTrue = 'TRUE';
 /** The R literal for the logical false */
 export const RFalse = 'FALSE';
 
+/**
+ * Checks whether the given string is an R boolean (logical) literal.
+ */
 export function isBoolean(value: string): boolean {
 	return value === RTrue || value === RFalse;
 }
 
+/**
+ * Converts an R boolean (logical) literal to a TypeScript boolean.
+ */
 export function boolean2ts(value: string): boolean {
 	if(value === RTrue) {
 		return true;
@@ -74,6 +80,9 @@ export interface RNumberValue {
 	complexNumber: boolean
 }
 
+/**
+ * Convert a valid R number into a {@link RNumberValue}.
+ */
 export function number2ts(value: string): RNumberValue {
 	// check for hexadecimal number with floating point addon which is supported by R but not by JS :/
 	let lcValue = value.toLowerCase();
@@ -136,7 +145,6 @@ export interface RStringValue {
 
 /**
  * Convert a valid R string into a {@link RStringValue}.
- *
  * @throws {@link ValueConversionError} if the string has an unknown starting quote
  */
 export function string2ts(value: string): RStringValue {
@@ -168,6 +176,10 @@ export function string2ts(value: string): RStringValue {
 export const RNa = 'NA';
 export const RNull = 'NULL';
 
+
+/**
+ * Checks whether the given string is the R NA literal (untyped).
+ */
 export function isNA(value: string): value is (typeof RNa) {
 	return value === RNa;
 }

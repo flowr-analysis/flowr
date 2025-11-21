@@ -24,19 +24,18 @@ export class CriteriaParseError extends Error {
 
 /**
  * Takes a criterion in the form of `line:column` or `line@variable-name` and returns the corresponding node id
- *
  * @see {@link tryResolveSliceCriterionToId} for a version that does not throw an error
  */
 export function slicingCriterionToId(criterion: SingleSlicingCriterion, idMap: AstIdMap): NodeId {
 	let resolved: NodeId | undefined;
 	if(criterion.startsWith('$')) {
 		resolved = normalizeIdToNumberIfPossible(criterion.substring(1)) as NodeId;
-	} else if(criterion.includes(':')) {
-		const [line, column] = criterion.split(':').map(c => parseInt(c));
-		resolved = locationToId([line, column], idMap);
 	} else if(criterion.includes('@')) {
 		const [line, name] = criterion.split(/@(.*)/s); // only split at first occurrence
 		resolved = conventionalCriteriaToId(parseInt(line), name, idMap);
+	} else if(criterion.includes(':')) {
+		const [line, column] = criterion.split(':').map(c => parseInt(c));
+		resolved = locationToId([line, column], idMap);
 	}
 
 	if(resolved === undefined) {
@@ -47,7 +46,6 @@ export function slicingCriterionToId(criterion: SingleSlicingCriterion, idMap: A
 
 /**
  * Tries to resolve a slicing criterion to an id, but does not throw an error if it fails.
- *
  * @see {@link slicingCriterionToId} for the version that throws an error
  */
 export function tryResolveSliceCriterionToId(criterion: string | NodeId, idMap: AstIdMap): NodeId | undefined {
@@ -114,6 +112,10 @@ export interface DecodedCriterion {
 
 export type DecodedCriteria = ReadonlyArray<DecodedCriterion>
 
+/**
+ * Converts all slicing criteria to their corresponding node ids
+ * @throws CriteriaParseError if any of the criteria can not be resolved
+ */
 export function convertAllSlicingCriteriaToIds(criteria: SlicingCriteria, decorated: AstIdMap): DecodedCriteria {
 	return criteria.map(l => ({ criterion: l, id: slicingCriterionToId(l, decorated) }));
 }

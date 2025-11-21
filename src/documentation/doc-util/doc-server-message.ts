@@ -3,8 +3,7 @@ import { getFilePathMd } from './doc-files';
 import { describeSchema } from '../../util/schema';
 import { markdownFormatter } from '../../util/text/ansi';
 import type { FlowrMessage, IdMessageBase, MessageDefinition } from '../../cli/repl/server/messages/all-messages';
-import type { FakeServer, FakeSocket } from '../../../test/functionality/_helper/net';
-import { withSocket } from '../../../test/functionality/_helper/net';
+import { type FakeServer, type FakeSocket , withSocket } from '../../../test/functionality/_helper/net';
 import { jsonWithLimit } from './doc-code';
 import { guard } from '../../util/assert';
 import { printAsMs } from '../../util/text/time';
@@ -23,10 +22,16 @@ export interface ServerMessageDescription {
 
 const messages: ServerMessageDescription[] = [];
 
+/**
+ * Documents a server message for later printing.
+ */
 export function documentServerMessage(description: ServerMessageDescription): void {
 	messages.push(description);
 }
 
+/**
+ * Visualizes all documented server messages in markdown format.
+ */
 export async function printServerMessages(shell: RShell): Promise<string> {
 	let text = '<ul>';
 	for(const message of messages) {
@@ -35,6 +40,9 @@ export async function printServerMessages(shell: RShell): Promise<string> {
 	return text + '</ul>';
 }
 
+/**
+ * Executes the given function within a server context.
+ */
 export async function inServerContext<T>(shell: RShell, fn: (socket: FakeSocket, server: FakeServer) => Promise<T> | T): Promise<T> {
 	return withSocket(shell, async(socket, server) => {
 		return fn(socket, server);
@@ -108,6 +116,9 @@ function explainPingPong(
 	return result + '</ol>';
 }
 
+/**
+ * Documents a ping-pong message exchange with the server.
+ */
 export async function documentServerMessageResponse({
 	shell, title, messageType, messages
 }: MessagePingPongDocumentationArguments): Promise<string> {
@@ -191,6 +202,6 @@ ${additionalDefs?.map(def => getSchema(definitionPath, def)).join('\n') ?? ''}
 
 <hr>
 
-</details>	
+</details>
 	`;
 }

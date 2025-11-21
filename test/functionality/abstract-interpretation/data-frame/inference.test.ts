@@ -1,12 +1,11 @@
-import { afterAll, beforeAll, describe } from 'vitest';
+import { beforeAll, describe } from 'vitest';
 import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import { PosIntervalTop } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
 import type { ArrayRangeValue } from '../../../../src/abstract-interpretation/domains/set-range-domain';
-import { setSourceProvider } from '../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
 import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
-import { requestProviderFromFile, requestProviderFromText } from '../../../../src/r-bridge/retriever';
 import { withShell } from '../../_helper/shell';
 import { assertDataFrameDomain, assertDataFrameOperation, DataFrameShapeOverapproximation, testDataFrameDomain, testDataFrameDomainAgainstReal, testDataFrameDomainWithSource } from './data-frame';
+import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 
 /** The minimum version required for calling `head` and `tail` with a vector argument, e.g. `head(df, c(1, 2))` */
 export const MIN_VERSION_HEAD_TAIL_VECTOR = '4.0.0';
@@ -26,18 +25,15 @@ describe.sequential('Data Frame Shape Inference', withShell(shell => {
 		'f.csv': 'name\tname\tstate\tphone\nJohn\tSmith\tWA\t418-Y11-4111\nMary\tHartford\tCA\t319-Z19-4341\nEvan\tNolan\tIL\t219-532-c301'
 	} as const satisfies Readonly<{ [path: string]: string }>;
 
+	const addFiles = Object.entries(sources).map(([path, content]) => new FlowrInlineTextFile(path, content));
+
 	function getFileContent(source: keyof typeof sources) {
 		return sources[source].replaceAll('\n', '\\n').replaceAll('\t', ' \\t').replaceAll('"', '\\"');
 	}
 
 	beforeAll(async() => {
-		setSourceProvider(requestProviderFromText(sources));
 		librariesInstalled = await shell.isPackageInstalled('dplyr') && await shell.isPackageInstalled('readr');
 		shell.clearEnvironment();
-	});
-
-	afterAll(() => {
-		setSourceProvider(requestProviderFromFile());
 	});
 
 	describe('Control Flow', () => {
@@ -450,91 +446,104 @@ df2 <- as.data.frame(df1)
 			shell,
 			'"a.csv"', `text = "${getFileContent('a.csv')}"`,
 			source => `df <- read.csv(${source})`,
-			[['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] }]]
+			[['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] }]],
+			{ addFiles }
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"a.csv"', `text = "${getFileContent('a.csv')}"`,
 			source => `df <- read.csv(${source}, nrows = 1)`,
-			[['1@df', DataFrameTop]]
+			[['1@df', DataFrameTop]],
+			{ addFiles }
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"a.csv"', `text = "${getFileContent('a.csv')}"`,
 			source => `df <- read.csv(${source}, nrows = -1)`,
-			[['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] }]]
+			[['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] }]],
+			{ addFiles }
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"a.csv"', `text = "${getFileContent('a.csv')}"`,
 			source => `df <- read.table(${source}, header = TRUE, sep = ",")`,
-			[['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] }]]
+			[['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] }]],
+			{ addFiles }
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"b.csv"', `text = "${getFileContent('b.csv')}"`,
 			source => `df <- read.csv(${source}, quote = "'")`,
-			[['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] }]]
+			[['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] }]],
+			{ addFiles }
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"b.csv"', `text = "${getFileContent('b.csv')}"`,
 			source => `df <- read.table(${source}, header = TRUE, sep = ",")`,
-			[['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] }]]
+			[['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] }]],
+			{ addFiles }
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"c.csv"', `text = "${getFileContent('c.csv')}"`,
 			source => `df <- read.csv(${source}, comment.char = "#", check.names = FALSE)`,
-			[['1@df', { colnames: [['', 'id,number', '"unique" name'], []], cols: [3, 3], rows: [5, 5] }]]
+			[['1@df', { colnames: [['', 'id,number', '"unique" name'], []], cols: [3, 3], rows: [5, 5] }]],
+			{ addFiles }
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"c.csv"', `text = "${getFileContent('c.csv')}"`,
 			source => `df <- read.csv(${source}, header = FALSE, skip = 4)`,
-			[['1@df', { colnames: [[], Top], cols: [3, 3], rows: [5, 5] }]]
+			[['1@df', { colnames: [[], Top], cols: [3, 3], rows: [5, 5] }]],
+			{ addFiles }
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"d.csv"', `text = "${getFileContent('d.csv')}"`,
 			source => `df <- read.csv2(${source}, header = FALSE)`,
-			[['1@df', { colnames: [[], Top], cols: [3, 3], rows: [4, 4] }]]
+			[['1@df', { colnames: [[], Top], cols: [3, 3], rows: [4, 4] }]],
+			{ addFiles }
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"d.csv"', `text = "${getFileContent('d.csv')}"`,
 			source => `df <- read.delim(${source}, header = FALSE, sep = ",")`,
-			[['1@df', { colnames: [[], Top], cols: [2, 2], rows: [4, 4] }]]
+			[['1@df', { colnames: [[], Top], cols: [2, 2], rows: [4, 4] }]],
+			{ addFiles }
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"d.csv"', `text = "${getFileContent('d.csv')}"`,
 			source => `df <- read.delim2(${source}, header = FALSE, sep = ";")`,
-			[['1@df', { colnames: [[], Top], cols: [3, 3], rows: [4, 4] }]]
+			[['1@df', { colnames: [[], Top], cols: [3, 3], rows: [4, 4] }]],
+			{ addFiles }
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"e.csv"', `text = "${getFileContent('e.csv')}"`,
 			source => `df <- read.table(${source}, header = TRUE)`,
-			[['1@df', { colnames: [['first', 'last', 'state', 'phone'], []], cols: [4, 4], rows: [3, 3] }]]
+			[['1@df', { colnames: [['first', 'last', 'state', 'phone'], []], cols: [4, 4], rows: [3, 3] }]],
+			{ addFiles }
 		);
 
 		testDataFrameDomainWithSource(
 			shell,
 			'"f.csv"', `text = "${getFileContent('f.csv')}"`,
 			source => `df <- read.delim(${source})`,
-			[['1@df', { colnames: [['state', 'phone'], Top], cols: [4, 4], rows: [3, 3] }]]
+			[['1@df', { colnames: [['state', 'phone'], Top], cols: [4, 4], rows: [3, 3] }]],
+			{ addFiles }
 		);
 
 		testDataFrameDomainWithSource(
@@ -542,7 +551,7 @@ df2 <- as.data.frame(df1)
 			'"a.csv"', `"${getFileContent('a.csv')}"`,
 			source => `df <- readr::read_csv(${source})`,
 			[['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] }]],
-			{ skipRun: skipLibraries }
+			{ skipRun: skipLibraries, addFiles }
 		);
 
 		testDataFrameDomainWithSource(
@@ -550,7 +559,7 @@ df2 <- as.data.frame(df1)
 			'"b.csv"', `"${getFileContent('b.csv')}"`,
 			source => `df <- readr::read_csv(${source}, quote = "'")`,
 			[['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] }]],
-			{ skipRun: skipLibraries }
+			{ skipRun: skipLibraries, addFiles }
 		);
 
 		testDataFrameDomainWithSource(
@@ -558,7 +567,7 @@ df2 <- as.data.frame(df1)
 			'"c.csv"', `"${getFileContent('c.csv')}"`,
 			source => `df <- readr::read_csv(${source}, comment = "#")`,
 			[['1@df', { colnames: [['id,number','"unique" name'], Top], cols: [3, 3], rows: [5, 5] }]],
-			{ skipRun: skipLibraries }
+			{ skipRun: skipLibraries, addFiles }
 		);
 
 		testDataFrameDomainWithSource(
@@ -566,7 +575,7 @@ df2 <- as.data.frame(df1)
 			'"c.csv"', `"${getFileContent('c.csv')}"`,
 			source => `df <- readr::read_csv(${source}, col_names = FALSE, skip = 4)`,
 			[['1@df', { colnames: [[], Top], cols: [3, 3], rows: [5, 5] }]],
-			{ skipRun: skipLibraries }
+			{ skipRun: skipLibraries, addFiles }
 		);
 
 		testDataFrameDomainWithSource(
@@ -574,7 +583,7 @@ df2 <- as.data.frame(df1)
 			'"d.csv"', `"${getFileContent('d.csv')}"`,
 			source => `df <- readr::read_csv2(${source}, col_names = FALSE)`,
 			[['1@df', { colnames: [[], Top], cols: [3, 3], rows: [4, 4] }]],
-			{ skipRun: skipLibraries }
+			{ skipRun: skipLibraries, addFiles }
 		);
 
 		testDataFrameDomainWithSource(
@@ -582,7 +591,7 @@ df2 <- as.data.frame(df1)
 			'"d.csv"', `"${getFileContent('d.csv')}"`,
 			source => `df <- readr::read_delim(${source}, delim = ",", col_names = FALSE)`,
 			[['1@df', { colnames: [[], Top], cols: [2, 2], rows: [4, 4] }]],
-			{ skipRun: skipLibraries }
+			{ skipRun: skipLibraries, addFiles }
 		);
 
 		testDataFrameDomainWithSource(
@@ -590,7 +599,7 @@ df2 <- as.data.frame(df1)
 			'"d.csv"', `"${getFileContent('d.csv')}"`,
 			source => `df <- readr::read_delim(${source}, delim = ";", col_names = FALSE)`,
 			[['1@df', { colnames: [[], Top], cols: [3, 3], rows: [4, 4] }]],
-			{ skipRun: skipLibraries }
+			{ skipRun: skipLibraries, addFiles }
 		);
 
 		testDataFrameDomainWithSource(
@@ -598,7 +607,7 @@ df2 <- as.data.frame(df1)
 			'"e.csv"', `"${getFileContent('e.csv')}"`,
 			source => `df <- readr::read_table(${source})`,
 			[['1@df', { colnames: [['first', 'last', 'state', 'phone'], []], cols: [4, 4], rows: [3, 3] }]],
-			{ skipRun: skipLibraries }
+			{ skipRun: skipLibraries, addFiles }
 		);
 
 		testDataFrameDomainWithSource(
@@ -606,7 +615,7 @@ df2 <- as.data.frame(df1)
 			'"f.csv"', `"${getFileContent('f.csv')}"`,
 			source => `df <- readr::read_tsv(${source})`,
 			[['1@df', { colnames: [['state', 'phone'], Top], cols: [4, 4], rows: [3, 3] }]],
-			{ skipRun: skipLibraries }
+			{ skipRun: skipLibraries, addFiles }
 		);
 	});
 
@@ -2104,6 +2113,18 @@ df <- rbind(df, data.frame(score = 1:5, age = "A"))
 
 		testDataFrameDomain(
 			shell,
+			`
+df <- data.frame()
+df <- rbind(df, 12)
+			`.trim(),
+			[
+				['1@df', { colnames: [[], []], cols: [0, 0], rows: [0, 0] }],
+				['2@df', { colnames: [[], Top], cols: [1, 1], rows: [1, 1] }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
 			'df <- rbind(1:3, 4:6)',
 			[['1@df', undefined, DataFrameShapeOverapproximation]]
 		);
@@ -2671,6 +2692,60 @@ df <- subset(df, select = c(id, name), drop = TRUE)
 			]
 		);
 
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- subset(df, id > 1, c("name", "label"))
+			`.trim(),
+			[['2@subset', [{ operation: 'accessCols', columns: ['id', 'name', 'label'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- subset(df, label != "A", -id)
+			`.trim(),
+			[['2@subset', [{ operation: 'accessCols', columns: ['id', 'label'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- subset(df, select = 1:2)
+			`.trim(),
+			[['2@subset', [{ operation: 'accessCols', columns: [1, 2] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- subset(df, id > 1, c("name", "label"))
+			`.trim(),
+			[['2@subset', [{ operation: 'accessCols', columns: ['id', 'name', 'label'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- subset(df, label != "A", -id)
+			`.trim(),
+			[['2@subset', [{ operation: 'accessCols', columns: ['id', 'label'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- subset(df, select = 1:2)
+			`.trim(),
+			[['2@subset', [{ operation: 'accessCols', columns: [1, 2] }]]]
+		);
+
 		describe('Unsupported', { fails: true }, () => {
 			testDataFrameDomainAgainstReal(
 				shell,
@@ -2782,6 +2857,15 @@ df <- dplyr::filter(df, FALSE, .preserve = TRUE)
 				['2@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [0, 0] }]
 			],
 			{ skipRun: skipLibraries }
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- dplyr::filter(df, id != 2, is.numeric(name))
+			`.trim(),
+			[['2@filter', [{ operation: 'accessCols', columns: ['id', 'name'] }]]]
 		);
 	});
 
@@ -3084,6 +3168,33 @@ df <- dplyr::select(df, contains("a"))
 			],
 			{ skipRun: skipLibraries }
 		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- dplyr::select(df, c("id", "name"))
+			`.trim(),
+			[['2@select', [{ operation: 'accessCols', columns: ['id', 'name'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- dplyr::select(df, id, -label)
+			`.trim(),
+			[['2@select', [{ operation: 'accessCols', columns: ['id', 'label'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- dplyr::select(df, 1:2)
+			`.trim(),
+			[['2@select', [{ operation: 'accessCols', columns: [1, 2] }]]]
+		);
 	});
 
 	describe('Transform', () => {
@@ -3181,6 +3292,42 @@ df <- transform(df, "A")
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] }],
 				['2@df', { colnames: [['id', 'name'], Top], cols: [2, 3], rows: [5, 5] }]
 			]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:5, score = 31:35)
+df <- transform(df, name = letters[id], level = score^2)
+			`.trim(),
+			[['2@transform', [{ operation: 'accessCols', columns: ['id', 'score'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:5, name = 6:10)
+df <- transform(df, score = id, level = score / max(score))
+			`.trim(),
+			[['2@transform', [{ operation: 'accessCols', columns: ['id'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:5, score = 31:35)
+df <- transform(df, name = letters[id], level = score^2)
+			`.trim(),
+			[['2@transform', [{ operation: 'accessCols', columns: ['id', 'score'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:5, name = 6:10)
+df <- transform(df, score = id, level = score / max(score))
+			`.trim(),
+			[['2@transform', [{ operation: 'accessCols', columns: ['id'] }]]]
 		);
 	});
 
@@ -3327,6 +3474,24 @@ df <- dplyr::mutate(df, label = "A", .before = NULL)
 			],
 			{ skipRun: skipLibraries }
 		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:5, score = 31:35)
+df <- dplyr::mutate(df, name = letters[id], level = score^2)
+			`.trim(),
+			[['2@mutate', [{ operation: 'accessCols', columns: ['id', 'score'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:5, name = 6:10)
+df <- dplyr::mutate(df, score = id, level = score / max(score))
+			`.trim(),
+			[['2@mutate', [{ operation: 'accessCols', columns: ['id'] }]]]
+		);
 	});
 
 	describe('Group By', () => {
@@ -3425,11 +3590,11 @@ df <- dplyr::group_by(df, id, .add = TRUE)
 			shell,
 			`
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
-df <- dplyr::summarize(df, score = mean(score), sum = sum(score))
+df <- dplyr::summarize(df, mean = mean(score), sum = sum(score))
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 6] }],
-				['2@df', { colnames: [['score', 'sum'], ['id', 'category']], cols: [2, 5], rows: [1, 6] }]
+				['2@df', { colnames: [['mean', 'sum'], ['id', 'category', 'score']], cols: [2, 5], rows: [1, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3439,11 +3604,11 @@ df <- dplyr::summarize(df, score = mean(score), sum = sum(score))
 			`
 library(dplyr)
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
-df <- group_by(df, category) |> summarize(score = mean(score), sum = sum(score))
+df <- group_by(df, category) |> summarize(mean = mean(score), sum = sum(score))
 			`.trim(),
 			[
 				['2@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['score', 'sum'], ['id', 'category']], cols: [2, 5], rows: [1, 6] }]
+				['3@df', { colnames: [['mean', 'sum'], ['id', 'category', 'score']], cols: [2, 5], rows: [1, 6] }]
 			],
 			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
 		);
@@ -3453,11 +3618,11 @@ df <- group_by(df, category) |> summarize(score = mean(score), sum = sum(score))
 			`
 library(dplyr)
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
-df <- group_by(df, id, category) |> summarize(score = mean(score), sum = sum(score))
+df <- group_by(df, id, category) |> summarize(mean = mean(score), sum = sum(score))
 			`.trim(),
 			[
 				['2@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['score', 'sum'], ['id', 'category']], cols: [2, 5], rows: [1, 6] }]
+				['3@df', { colnames: [['mean', 'sum'], ['id', 'category', 'score']], cols: [2, 5], rows: [1, 6] }]
 			],
 			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
 		);
@@ -3506,11 +3671,11 @@ df <- group_by(df, category) |> summarize()
 			shell,
 			`
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
-df <- dplyr::summarize(df, score = mean(score), sum = sum(score), .groups = "drop")
+df <- dplyr::summarize(df, mean = mean(score), sum = sum(score), .groups = "drop")
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 6] }],
-				['2@df', { colnames: [['score', 'sum'], ['id', 'category']], cols: [2, 5], rows: [1, 6] }]
+				['2@df', { colnames: [['mean', 'sum'], ['id', 'category', 'score']], cols: [2, 5], rows: [1, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3541,6 +3706,35 @@ df <- filter(df, FALSE) |> summarize(score = mean(score))
 				['3@df', { colnames: [['score'], ['id', 'category']], cols: [1, 4], rows: [0, 1] }]
 			],
 			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:5, name = c("A", "A", "B", "A", "B"), score = c(80, 75, 90, 70, 85))
+df <- dplyr::group_by(df, id, name)
+			`.trim(),
+			[
+				['2@group_by', [{ operation: 'accessCols', columns: ['id', 'name'] }]]
+			]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
+df <- dplyr::summarize(df, name = literals[id], level = score / max(score))
+			`.trim(),
+			[['2@summarize', [{ operation: 'accessCols', columns: ['id', 'score'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
+df <- dplyr::summarize(df, level = score / max(score), sum = sum(level))
+			`.trim(),
+			[['2@summarize', [{ operation: 'accessCols', columns: ['score'] }]]]
 		);
 	});
 
@@ -4384,6 +4578,46 @@ df <- dplyr::full_join(df1, df2, by = sample(colnames(df1)[1:3], 2))
 			],
 			{ skipRun: skipLibraries }
 		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::inner_join(df1, df2, by = "id")
+			`.trim(),
+			[['3@inner_join', [{ operation: 'accessCols', columns: ['id'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::left_join(df1, df2, by = "id")
+			`.trim(),
+			[['3@left_join', [{ operation: 'accessCols', columns: ['id'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::right_join(df1, df2, by = "id")
+			`.trim(),
+			[['3@right_join', [{ operation: 'accessCols', columns: ['id'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::full_join(df1, df2, by = "id")
+			`.trim(),
+			[['3@full_join', [{ operation: 'accessCols', columns: ['id'] }]]]
+		);
 	});
 
 	describe('Merge', () => {
@@ -4733,6 +4967,26 @@ df <- merge(df1, df2, "id", no.dups = FALSE)
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
 				['3@df', { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [0, 4] }]
 			]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
+df <- merge(df1, df2, by = c("id", "name"))
+			`.trim(),
+			[['3@merge', [{ operation: 'accessCols', columns: ['id', 'name'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
+df <- merge(df1, df2, by = c("id", "name"))
+			`.trim(),
+			[['3@merge', [{ operation: 'accessCols', columns: ['id', 'name'] }]]]
 		);
 	});
 

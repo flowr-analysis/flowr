@@ -8,10 +8,9 @@ import type {
 	RNodeWithParent
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { IEnvironment, REnvironmentInformation } from './environments/environment';
-import type { RParseRequest } from '../r-bridge/retriever';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
-import type { FlowrConfigOptions } from '../config';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 export interface DataflowProcessorInformation<OtherInfo> {
 	readonly parser:              Parser<KnownParserType>
@@ -20,23 +19,19 @@ export interface DataflowProcessorInformation<OtherInfo> {
      */
 	readonly completeAst:         NormalizedAst<OtherInfo>
 	/**
-     * Correctly contains pushed local scopes introduced by `function` scopes.
-     * Will by default *not* contain any symbol-bindings introduced along the way; they have to be decorated when moving up the tree.
-     */
+	 * Correctly contains pushed local scopes introduced by `function` scopes.
+	 * Will by default *not* contain any symbol-bindings introduced along the way; they have to be decorated when moving up the tree.
+	 */
 	readonly environment:         REnvironmentInformation
 	/**
-     * Other processors to be called by the given functions
-     */
+	 * Other processors to be called by the given functions
+	 */
 	readonly processors:          DataflowProcessors<OtherInfo>
 	/**
-	 * The {@link RParseRequests} that is currently being parsed
+	 * The chain of file paths that lead to this inclusion.
+	 * The most recent (last) entry is expected to always be the current one.
 	 */
-	readonly currentRequest:      RParseRequest
-	/**
-	 * The chain of {@link RParseRequests} that lead to the {@link currentRequest}.
-	 * The most recent (last) entry is expected to always be the {@link currentRequest}.
-	 */
-	readonly referenceChain:      RParseRequest[]
+	readonly referenceChain:      (string | undefined)[]
 	/**
 	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
 	 */
@@ -46,9 +41,9 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 */
 	readonly builtInEnvironment:  IEnvironment;
 	/**
-	 * The flowr configuration used for environment seeding, and precision control
+	 * The flowr context used for environment seeding, files, and precision control, ...
 	 */
-	readonly flowrConfig:			      FlowrConfigOptions
+	readonly ctx:                 FlowrAnalyzerContext
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation
@@ -71,7 +66,6 @@ export type DataflowProcessors<OtherInfo> = {
  * <p>
  * Now this method can be called recursively within the other processors to parse the dataflow for nodes that you cannot narrow down
  * in type or context.
- *
  * @param current - The current node to start processing from
  * @param data    - The initial (/current) information to be passed down
  */

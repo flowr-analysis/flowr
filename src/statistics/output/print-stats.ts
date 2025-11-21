@@ -1,12 +1,14 @@
 import type { MetaStatistics } from '../meta-statistics';
 import { ColorEffect, Colors, formatter } from '../../util/text/ansi';
 import { jsonReplacer } from '../../util/json';
-import type { FeatureKey, FeatureStatistics } from '../features/feature';
-import { ALL_FEATURES } from '../features/feature';
+import { type FeatureKey, type FeatureStatistics , ALL_FEATURES } from '../features/feature';
 import { arraySum } from '../../util/collections/arrays';
 
 interface MinMaxAvgMedian { sum: number, min: number, max: number, avg: number, median: number}
 
+/**
+ * Calculates the min, max, average and median of the given data set.
+ */
 export function minMaxAvgAndMedian(data: number[]): MinMaxAvgMedian {
 	data  = data.sort((a, b) => a - b);
 	const sum = arraySum(data);
@@ -23,12 +25,16 @@ function formatStatNumber(num: number | undefined): string {
 	return num === undefined ? '<?>' : Number(num.toFixed(3)).toLocaleString();
 }
 
+/**
+ * Formats the given statistics as a string.
+ */
 export function statsString(data: MinMaxAvgMedian, suffix = ''): string {
 	return `[${formatStatNumber(data.min)}${suffix} .. ${formatStatNumber(data.max)}${suffix}] (avg: ${formatStatNumber(data.avg)}${suffix}, median: ${formatStatNumber(data.median)}${suffix})`;
 }
 
-
-
+/**
+ * Prints the given feature statistics to the console.
+ */
 export function printFeatureStatistics(statistics: {features: FeatureStatistics, meta: MetaStatistics}, features: 'all' | Set<FeatureKey> = 'all'): void {
 	for(const feature of Object.keys(statistics.features) as FeatureKey[]) {
 		if(features !== 'all' && !features.has(feature)) {
@@ -56,6 +62,9 @@ export function printFeatureStatistics(statistics: {features: FeatureStatistics,
 
 const pad = 3;
 
+/**
+ * Prints a single feature statistics entry to the console.
+ */
 export function printFeatureStatisticsEntry(info: Record<string, unknown>): void {
 	let longestKey = 0;
 	let longestValue = 0;

@@ -1,5 +1,4 @@
-import type { BuiltInMappingName, ConfigOfBuiltInMappingName } from './built-in';
-import { BuiltIns } from './built-in';
+import { type BuiltInMappingName, type ConfigOfBuiltInMappingName , BuiltIns } from './built-in';
 import type { Identifier } from './identifier';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 
@@ -14,7 +13,6 @@ export interface BaseBuiltInDefinition {
 
 /**
  * Define a built-in constant (like `NULL` or `TRUE`) and the TS value it should have
- *
  * @template Value - The type of the constant value
  */
 export interface BuiltInConstantDefinition<Value> extends BaseBuiltInDefinition {
@@ -25,7 +23,6 @@ export interface BuiltInConstantDefinition<Value> extends BaseBuiltInDefinition 
 
 /**
  * Define a built-in function (like `print` or `c`) and the processor to use.
- *
  * @template BuiltInProcessor - The processor to use for this function
  */
 export interface BuiltInFunctionDefinition<BuiltInProcessor extends BuiltInMappingName> extends BaseBuiltInDefinition {
@@ -66,7 +63,6 @@ export function getDefaultBuiltInDefinitions(): BuiltIns {
 
 /**
  * Get the {@link BuiltIns#builtInMemory} and {@link BuiltIns#emptyBuiltInMemory} for the given list of built-in definitions.
- *
  * @param definitions - the list of built-in definitions
  * @param loadDefaults - whether to first add the {@link DefaultBuiltinConfig} before the given {@link definitions}
  */

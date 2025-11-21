@@ -1,8 +1,7 @@
 import type { NodeToSlice } from './slicer-types';
 import type { VisitingQueue } from './visiting-queue';
 import { guard } from '../../util/assert';
-import type { Fingerprint } from './fingerprint';
-import { envFingerprint } from './fingerprint';
+import { type Fingerprint , envFingerprint } from './fingerprint';
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker';
 import type {
 	DataflowGraphVertexFunctionCall,
@@ -10,8 +9,7 @@ import type {
 	DataflowGraphVertexInfo
 } from '../../dataflow/graph/vertex';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
-import type { DataflowGraph, FunctionArgument, OutgoingEdges } from '../../dataflow/graph/graph';
-import { getReferenceOfArgument } from '../../dataflow/graph/graph';
+import { type DataflowGraph, type FunctionArgument, type OutgoingEdges , getReferenceOfArgument } from '../../dataflow/graph/graph';
 import { isBuiltIn } from '../../dataflow/environments/built-in';
 import { resolveByName } from '../../dataflow/environments/resolve-by-name';
 import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';

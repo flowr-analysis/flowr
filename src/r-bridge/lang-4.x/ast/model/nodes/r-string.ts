@@ -10,6 +10,10 @@ export interface RString<Info = NoInfo> extends Leaf<Info>, Location {
 	content:       RStringValue;
 }
 
+
+/**
+ *
+ */
 export function isRString(node: RNode | undefined): node is RString {
 	return node?.type === RType.String;
 }

@@ -16,11 +16,11 @@ import { date2string } from '../../util/text/time';
 import type { StatsHelperCliOptions } from '../statistics-helper-app';
 import { create } from 'tar';
 import { setFormatter, voidFormatter } from '../../util/text/ansi';
-import type { FlowrConfigOptions } from '../../config';
-import { getEngineConfig } from '../../config';
+import { type FlowrConfigOptions , getEngineConfig } from '../../config';
+import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 
 function compressFolder(folder: string, target: string) {
-	 
+
 	return create({
 		gzip:          true,
 		file:          target,
@@ -36,7 +36,9 @@ function compressFolder(folder: string, target: string) {
 	});
 }
 
-
+/**
+ * Get statistics for a single file
+ */
 export async function getStatsForSingleFile(options: StatsHelperCliOptions, config: FlowrConfigOptions) {
 	if(options['no-ansi']) {
 		log.info('disabling ansi colors');
@@ -72,7 +74,7 @@ export async function getStatsForSingleFile(options: StatsHelperCliOptions, conf
 	if(stats.outputs.size === 1) {
 		if(options['dump-json']) {
 			const [, output] = [...stats.outputs.entries()][0];
-			const cfg = extractCfg(output.normalize, config, output.dataflow.graph);
+			const cfg = extractCfg(output.normalize, contextFromInput('', config), output.dataflow.graph);
 			statisticsFileProvider.append('output-json', 'parse', await printStepResult(PARSE_WITH_R_SHELL_STEP, output.parse, StepOutputFormat.Json));
 			statisticsFileProvider.append('output-json', 'normalize', await printStepResult(NORMALIZE, output.normalize, StepOutputFormat.Json));
 			statisticsFileProvider.append('output-json', 'dataflow', await printStepResult(STATIC_DATAFLOW, output.dataflow, StepOutputFormat.Json));

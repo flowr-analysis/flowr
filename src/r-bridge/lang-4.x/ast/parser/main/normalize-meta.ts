@@ -1,10 +1,7 @@
 import type { JsonEntry, NamedJsonEntry } from '../json/format';
 import { ParseError } from './normalizer-data';
-import type { SourceRange } from '../../../../../util/range';
-import { rangeStartsCompletelyBefore , rangeFrom } from '../../../../../util/range';
-
-import type { RawRType } from '../../model/type';
-import { RType } from '../../model/type';
+import { type SourceRange , rangeStartsCompletelyBefore , rangeFrom } from '../../../../../util/range';
+import { type RawRType , RType } from '../../model/type';
 import type { RNode } from '../../model/model';
 import type { RExpressionList } from '../../model/nodes/r-expression-list';
 
@@ -18,7 +15,6 @@ export function extractLocation(ast: JsonEntry): SourceRange {
 /**
  * The JSON object that represents the input contains various meta-information.
  * This function extracts the meta-information and returns it.
- *
  * @param entry - The JSON object to extract the meta-information from
  * @returns An object containing the passed entry, the location of the corresponding R-ast element, and the content of the passed entry
  */
@@ -32,6 +28,9 @@ export function retrieveMetaStructure(entry: JsonEntry): {
 	};
 }
 
+/**
+ * Ensure that the given token is of the expected type.
+ */
 export function assureTokenType(token: string, expectedName: RawRType): void {
 	if(token !== expectedName) {
 		throw new ParseError(`expected name to be ${expectedName}, yet received ${token}`);
@@ -41,13 +40,15 @@ export function assureTokenType(token: string, expectedName: RawRType): void {
 /**
  * Extract the token-type of the given object. This is based on the knowledge, that all JSON objects created
  * from the R XML have a name attached.
- *
  * @param content  - the JSON object to extract the token-type from
  */
 export function getTokenType(content: JsonEntry): RawRType {
 	return content.token as RawRType;
 }
 
+/**
+ * Given a list of JSON objects, extract their token-types and return them alongside the original objects.
+ */
 export function getWithTokenType(obj: JsonEntry[]) {
 	return obj.map((content) => ({
 		name: getTokenType(content),
@@ -55,16 +56,16 @@ export function getWithTokenType(obj: JsonEntry[]) {
 	}));
 }
 
+/**
+ * Extract the operation name from the given operator node.
+ */
 export function retrieveOpName(operator: NamedJsonEntry): string {
-	/*
-   * only real arithmetic ops have their operation as their own name, the others identify via content/text
-   */
+	/* only real arithmetic ops have their operation as their own name, the others identify via content/text */
 	return operator.content.text;
 }
 
 /**
  * Ensure that the first child is completely before the second child.
- *
  * @param first  - the first child which should be the lhs
  * @param second - the second child which should be the rhs
  */
@@ -76,6 +77,9 @@ export function ensureChildrenAreLhsAndRhsOrdered(first: JsonEntry, second: Json
 	}
 }
 
+/**
+ * Ensure that the given node is an expression list. If it is not, wrap it in an expression list.
+ */
 export function ensureExpressionList<Info>(node: RNode<Info>): RExpressionList<Info> {
 	if(node.type !== RType.ExpressionList) {
 		return {

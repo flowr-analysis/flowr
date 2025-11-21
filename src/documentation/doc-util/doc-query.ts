@@ -1,6 +1,5 @@
 import type { RShell } from '../../r-bridge/shell';
 import type { Queries, SupportedQueryTypes } from '../../queries/query';
-import { requestFromInput } from '../../r-bridge/retriever';
 import { jsonReplacer } from '../../util/json';
 import { markdownFormatter } from '../../util/text/ansi';
 import { FlowrWikiBaseRef, getFilePathMd } from './doc-files';
@@ -12,19 +11,29 @@ import { printAsMs } from '../../util/text/time';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import { getReplCommand } from './doc-cli-option';
+import type { SlicingCriteria } from '../../slicing/criterion/parse';
 
 export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
 	readonly collapseResult?: boolean;
 	readonly collapseQuery?:  boolean;
+	readonly shorthand?:      string;
 }
 
+/**
+ * Visualizes a query and its results in markdown format.
+ */
 export async function showQuery<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult, collapseQuery }: ShowQueryOptions = {}): Promise<string> {
+>(
+	shell: RShell, code: string,
+	queries: Queries<Base, VirtualArguments>,
+	{ showCode, collapseResult, collapseQuery, shorthand }: ShowQueryOptions = {}
+): Promise<string> {
 	const now = performance.now();
-	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code)).setParser(shell).build();
+	const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).build();
+	analyzer.addRequest(code);
 	const results = await analyzer.query(queries);
 	const duration = performance.now() - now;
 
@@ -38,8 +47,8 @@ The analysis required _${printAsMs(duration)}_ (including parsing and normalizat
 ${codeBlock('json', collapseQuery ? str.split('\n').join(' ').replace(/([{[])\s{2,}/g,'$1 ').replace(/\s{2,}([\]}])/g,' $1') : str)}
 
 ${(function() {
-	if(queries.length === 1 && Object.keys(queries[0]).length === 1) {
-		return `(This query can be shortened to \`@${queries[0].type}\` when used within the REPL command ${getReplCommand('query')}).`;
+	if((queries.length === 1 && Object.keys(queries[0]).length === 1) || shorthand) {
+		return `(This query can be shortened to \`@${queries[0].type}${shorthand ? ' ' + shorthand : ''}\` when used within the REPL command ${getReplCommand('query')}).`;
 	} else {
 		return '';
 	}
@@ -55,7 +64,7 @@ ${
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-${metaInfo}	
+${metaInfo}
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to get those.
@@ -94,6 +103,10 @@ export const RegisteredQueries = {
 	'virtual': new Map<string, QueryDocumentation>()
 };
 
+
+/**
+ * Registers a new documentation for a query.
+ */
 export function registerQueryDocumentation(query: SupportedQueryTypes | SupportedVirtualQueryTypes, doc: QueryDocumentation) {
 	const map = RegisteredQueries[doc.type];
 	if(map.has(query)) {
@@ -102,10 +115,21 @@ export function registerQueryDocumentation(query: SupportedQueryTypes | Supporte
 	map.set(query, doc);
 }
 
+/**
+ * Creates a REPL shorthand for the given slicing criteria and R code.
+ */
+export function sliceQueryShorthand(criteria: SlicingCriteria, code: string, forward?: boolean) {
+	return `(${(criteria.join(';'))})${forward ? 'f' : ''} "${code}"`;
+}
+
 function linkify(name: string) {
 	return name.toLowerCase().replace(/ /g, '-');
 }
 
+
+/**
+ *
+ */
 export function linkToQueryOfName(id: SupportedQueryTypes | SupportedVirtualQueryTypes) {
 	const query = RegisteredQueries.active.get(id) ?? RegisteredQueries.virtual.get(id);
 	if(!query) {
@@ -114,6 +138,10 @@ export function linkToQueryOfName(id: SupportedQueryTypes | SupportedVirtualQuer
 	return `[${query.name}](#${linkify(query.name)})`;
 }
 
+
+/**
+ *
+ */
 export function tocForQueryType(type: 'active' | 'virtual') {
 	const queries = [...RegisteredQueries[type].entries()].sort(([,{ name: a }], [, { name: b }]) => a.localeCompare(b));
 	const result: string[] = [];
@@ -135,11 +163,15 @@ ${await buildExplanation(shell)}
 
 Responsible for the execution of the ${name} query is \`${functionName}\` in ${getFilePathMd(functionFile)}.
 
-</details>	
+</details>
 
 `;
 }
 
+
+/**
+ *
+ */
 export async function explainQueries(shell: RShell, type: 'active' | 'virtual'): Promise<string> {
 	const queries = [...RegisteredQueries[type].entries()].sort(([,{ name: a }], [, { name: b }]) => a.localeCompare(b));
 	const result: string[] = [];

@@ -1,14 +1,11 @@
 import { getVertexRootId, type CfgBasicBlockVertex, type CfgEndMarkerVertex, type CfgExpressionVertex, type CfgSimpleVertex, type CfgStatementVertex, type ControlFlowInformation } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-
-import type {
-	DataflowGraphVertexArgument, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition,
-	DataflowGraphVertexUse,
-	DataflowGraphVertexValue, DataflowGraphVertexVariableDefinition } from '../dataflow/graph/vertex';
-import { VertexType
+import {
+	type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition,
+	type DataflowGraphVertexUse,
+	type DataflowGraphVertexValue, type DataflowGraphVertexVariableDefinition , VertexType
 } from '../dataflow/graph/vertex';
-import type { BasicCfgGuidedVisitorConfiguration } from './basic-cfg-guided-visitor';
-import { BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
+import { type BasicCfgGuidedVisitorConfiguration , BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
 import { assertUnreachable } from '../util/assert';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 

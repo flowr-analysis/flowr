@@ -2,7 +2,6 @@
  * Token types as they are produced by the R parser.
  * Not all of them are directly handled by the normalize step.
  * Some of them are also listed as part of the {@link OperatorDatabase}.
- *
  * @see RType
  */
 export enum RawRType {
@@ -132,7 +131,8 @@ export enum RawRType {
 	BraceRight = '}',
 	/** T63 */
 	Expression = 'expr',
-	/** T64
+	/**
+	 * T64
 	 *
 	 * https://github.com/REditorSupport/languageserver/issues/327
 	 * https://github.com/REditorSupport/languageserver/pull/328
@@ -153,7 +153,6 @@ export enum RawRType {
  * See {@link RNode} for a union type of all normalized AST nodes in-use.
  * For each enum member, the respective normalized AST node should be referenced
  * in the corresponding comment.
- *
  * @see RawRType
  */
 export enum RType {
@@ -200,7 +199,10 @@ export enum RType {
 	/** {@link RSymbol} */
 	Symbol = 'RSymbol',
 	/* ------ special types ------ */
-	/** {@link RDelimiter}.
+	/** {@link RProject} */
+	Project = 'RProject',
+	/**
+	 * {@link RDelimiter}.
 	 * Is not part of the normalized AST but can be found in
 	 * {@link Source#additionalTokens}.
 	 */
@@ -225,7 +227,6 @@ const validSymbolTypes = new Set([
 ]);
 /**
  * Validates, whether the given type can be used as a symbol in R
- *
  * @see RawRType
  */
 export function isSymbol(type: string): boolean {

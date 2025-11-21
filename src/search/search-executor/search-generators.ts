@@ -1,15 +1,12 @@
-import type { FlowrSearchElement, FlowrSearchGeneratorNodeBase, FlowrSearchGetFilter } from '../flowr-search';
-import { FlowrSearchElements } from '../flowr-search';
+import { type FlowrSearchElement, type FlowrSearchGeneratorNodeBase, type FlowrSearchGetFilter , FlowrSearchElements } from '../flowr-search';
 import type { TailTypesOrUndefined } from '../../util/collections/arrays';
 import type {
 	ParentInformation,
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { SlicingCriteria } from '../../slicing/criterion/parse';
-import { slicingCriterionToId } from '../../slicing/criterion/parse';
+import { type SlicingCriteria , slicingCriterionToId } from '../../slicing/criterion/parse';
 import { guard, isNotUndefined } from '../../util/assert';
-import type { Query, SupportedQuery } from '../../queries/query';
-import { executeQueries, SupportedQueries } from '../../queries/query';
+import { type Query, type SupportedQuery , executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { enrichElement, Enrichment } from './search-enrichers';
@@ -60,15 +57,20 @@ async function getAllNodes(data: ReadonlyFlowrAnalysisProvider): Promise<RNodeWi
 }
 
 
-async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { line, column, id, name, nameIsRegex } }: { filter: FlowrSearchGetFilter }): Promise<FlowrSearchElements<ParentInformation>> {
+async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { line, column, id, name, nameIsRegex, filePathRegex } }: { filter: FlowrSearchGetFilter }): Promise<FlowrSearchElements<ParentInformation>> {
 	const normalize = await input.normalize();
 	let potentials = (id ?
 		[normalize.idMap.get(id)].filter(isNotUndefined) :
 		await getAllNodes(input)
 	);
+	if(filePathRegex) {
+		const filePathFilter = new RegExp(filePathRegex);
+		potentials = potentials.filter(({ info }: RNodeWithParent) => info.file && filePathFilter.test(info.file));
+	}
 
 	if(line && line < 0) {
-		const maxLines = normalize.ast.info.fullRange?.[2] ??
+		guard(normalize.ast.files.length === 1, 'Currently, negative line numbers are only supported for single-file inputs');
+		const maxLines = normalize.ast.files[0].root.info.fullRange?.[2] ??
 			(id ? (await getAllNodes(input)) : potentials).reduce(
 				(maxLine, { location }) => location && location[2] > maxLine ? location[2] : maxLine,
 				0
@@ -153,7 +155,7 @@ async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { sour
 	}
 
 	const nodesByTreeSitterId = new Map<number, RNode<ParentInformation>>();
-	visitAst((await input.normalize()).ast, node => {
+	visitAst((await input.normalize()).ast.files.map(f => f.root), node => {
 		const treeSitterInfo = node.info as unknown as TreeSitterInfo;
 		if(treeSitterInfo.treeSitterId) {
 			nodesByTreeSitterId.set(treeSitterInfo.treeSitterId, node);
@@ -181,6 +183,9 @@ async function generateCriterion(input: ReadonlyFlowrAnalysisProvider, args: { c
 	);
 }
 
+/**
+ * Gets the search generator function for the given name
+ */
 export function getGenerator<Name extends GeneratorNames>(name: Name): typeof generators[Name] {
 	if(!generators[name]) {
 		throw new Error(`Unknown generator: ${name}`);

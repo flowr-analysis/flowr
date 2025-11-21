@@ -1,6 +1,5 @@
 import { guard } from '../../util/assert';
-import type { IEnvironment, REnvironmentInformation } from './environment';
-import {  Environment } from './environment';
+import { type IEnvironment, type REnvironmentInformation ,  Environment } from './environment';
 import type { IdentifierDefinition } from './identifier';
 import type { ControlDependency } from '../info';
 import { log } from '../../util/log';
@@ -17,6 +16,10 @@ function anyIsMaybeOrEmpty(values: readonly IdentifierDefinition[]): boolean {
 	return false;
 }
 
+
+/**
+ *
+ */
 export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined, includeParent = true, applyCds?: readonly ControlDependency[]): IEnvironment {
 	guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined');
 	const map = new Map(base.memory);

@@ -4,17 +4,25 @@ import type { REnvironmentInformation } from '../environments/environment';
 export type ReplacementOperatorHandlerArgs = {
     operator: string,
     target:   string | undefined,
-    env:      REnvironmentInformation, 
+    env:      REnvironmentInformation,
     id:       NodeId
 }
 export type ReplacementOperatorHandler = (args: ReplacementOperatorHandlerArgs) => void;
 
 const handlers: ReplacementOperatorHandler[] = [];
 
+/**
+ * Register a new (global) handler for replacement operators.
+ * @see {@link handleReplacementOperator}
+ */
 export function onReplacementOperator(handler: ReplacementOperatorHandler) {
 	handlers.push(handler);
 }
 
+/**
+ * Handle a replacement operator by calling all registered handlers.
+ * @see {@link onReplacementOperator}
+ */
 export function handleReplacementOperator(args: ReplacementOperatorHandlerArgs) {
 	handlers.forEach(handler => handler(args));
 }

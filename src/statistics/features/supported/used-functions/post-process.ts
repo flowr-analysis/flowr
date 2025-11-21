@@ -1,18 +1,15 @@
 
-import type {
-	CommonSyntaxTypeCounts } from '../../common-syntax-probability';
 import {
+	type CommonSyntaxTypeCounts ,
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts,
 } from '../../common-syntax-probability';
 import type { FeatureStatisticsWithMeta } from '../../feature';
 import path from 'path';
 import fs from 'fs';
-import type { FunctionCallInformation, FunctionUsageInfo } from './used-functions';
-import { AllCallsFileBase } from './used-functions';
+import { type FunctionCallInformation, type FunctionUsageInfo , AllCallsFileBase } from './used-functions';
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer';
-import type { SummarizedMeasurement } from '../../../../util/summarizer';
-import { summarizedMeasurement2Csv , summarizeMeasurement , summarizedMeasurement2CsvHeader } from '../../../../util/summarizer';
+import { type SummarizedMeasurement , summarizedMeasurement2Csv , summarizeMeasurement , summarizedMeasurement2CsvHeader } from '../../../../util/summarizer';
 import type { MergeableRecord } from '../../../../util/objects';
 import { readLineByLineSync } from '../../../../util/files';
 import { date2string } from '../../../../util/text/time';
@@ -28,7 +25,7 @@ interface UsedFunctionMetaPostProcessing<Measurement=SummarizedMeasurement> exte
 	deepestNesting: Measurement
 	unnamedCalls:   Measurement
 	// the first entry is for 1 argument, the second for the two arguments (the second,....)
-	args:	          CommonSyntaxTypeCounts<Measurement>[]
+	args:           CommonSyntaxTypeCounts<Measurement>[]
 }
 
 function retrieveFunctionCallInformation(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, config: StatisticsSummarizerConfiguration, outputPath: string) {
@@ -127,7 +124,7 @@ function retrieveFunctionCallMetaInformation(info: Map<string, FeatureStatistics
 	writeFunctionCallsMetaInformationToCsv(outputPath, data);
 
 	for(const [index, arg] of data.args.entries()) {
-		 
+
 		if(!arg) {
 			// we treat the first/0-argument entry separate for legacy reasons
 			continue;

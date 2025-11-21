@@ -5,7 +5,6 @@
  * 2. transforming the AST into a doubly linked tree using the ids (so it stays serializable)
  *
  * The main entry point is {@link decorateAst}.
- *
  * @module
  */
 
@@ -21,19 +20,18 @@ import type { NodeId } from './node-id';
 import type { RDelimiter } from '../nodes/info/r-delimiter';
 import type { RBinaryOp } from '../nodes/r-binary-op';
 import type { RPipe } from '../nodes/r-pipe';
-import type { RFunctionCall, RNamedFunctionCall, RUnnamedFunctionCall } from '../nodes/r-function-call';
-import { EmptyArgument } from '../nodes/r-function-call';
+import { type RFunctionCall, type RNamedFunctionCall, type RUnnamedFunctionCall , EmptyArgument } from '../nodes/r-function-call';
 import type { RExpressionList } from '../nodes/r-expression-list';
 import type { RParameter } from '../nodes/r-parameter';
 import type { RArgument } from '../nodes/r-argument';
+import type { RProject } from '../nodes/r-project';
 
 /**
  * A function that given an RNode returns a (guaranteed) unique id for it
  * @param data - the node to generate an id for
- *
  * @returns a unique id for the given node
  */
-export type IdGenerator<OtherInfo> = (data: RNode<OtherInfo>) => NodeId
+export type IdGenerator<OtherInfo> = (data: RProject<OtherInfo> | RNode<OtherInfo>) => NodeId
 
 /**
  * The simplest id generator which just increments a number on each call.
@@ -42,10 +40,16 @@ export function deterministicCountingIdGenerator(id = 0): () => NodeId {
 	return () => id++;
 }
 
+/**
+ * Generates ids with a fixed prefix and an incrementing counter.
+ */
 export function deterministicPrefixIdGenerator(prefix: string, id = 0): () => NodeId {
 	return () => `${prefix}-${id++}`;
 }
 
+/**
+ *  Generates ids with a fixed source path and location information as prefix and an incrementing counter.
+ */
 export function sourcedDeterministicCountingIdGenerator(path: string, location: SourceRange, start = 0): () => NodeId {
 	let id = start;
 	return () => `${path}-${loc2Id(location)}-${id++}`;
@@ -57,7 +61,6 @@ function loc2Id([sl,sc,el,ec]: SourceRange): string {
 
 /**
  * Generates the location id, used by {@link deterministicLocationIdGenerator}.
- *
  * @param data - the node to generate an id for, must have location information
  */
 export function nodeToLocationId<OtherInfo>(data: RNode<OtherInfo> | RDelimiter): NodeId {
@@ -69,12 +72,12 @@ export function nodeToLocationId<OtherInfo>(data: RNode<OtherInfo> | RDelimiter)
 /**
  * Generates unique ids based on the locations of the node (see {@link nodeToLocationId}).
  * If a node has no location information, it will be assigned a unique counter-value.
- *
  * @param start - the start value for the counter, in case nodes do not have location information
  */
 export function deterministicLocationIdGenerator<OtherInfo>(start = 0): IdGenerator<OtherInfo> {
 	let id = start;
-	return (data: RNode<OtherInfo>) => data.location !== undefined ? nodeToLocationId(data) : `${id++}`;
+	return (data:  RProject<OtherInfo> | RNode<OtherInfo>) =>
+		'location' in data && data.location !== undefined ? nodeToLocationId(data) : `${id++}`;
 }
 
 export interface ParentContextInfo extends MergeableRecord {
@@ -116,7 +119,7 @@ interface FoldInfo<OtherInfo> { idMap: AstIdMap<OtherInfo>, getId: IdGenerator<O
  * Contains the normalized AST as a doubly linked tree
  * and a map from ids to nodes so that parent links can be chased easily.
  */
-export interface NormalizedAst<OtherInfo = ParentInformation, Node = RNode<OtherInfo & ParentInformation>> {
+export interface NormalizedAst<OtherInfo = ParentInformation, Node = RProject<OtherInfo & ParentInformation>> {
 	/** Bidirectional mapping of ids to the corresponding nodes and the other way */
 	idMap:     AstIdMap<OtherInfo>
 	/** The root of the AST with parent information */
@@ -132,33 +135,29 @@ const nestForElement: ReadonlySet<RType> = new Set([
 export interface NormalizedAstDecorationConfiguration<OtherInfo> {
 	/** The id generator: must generate a unique id für each passed node */
 	getId?: IdGenerator<OtherInfo>
-	/** the path to the file this AST was extracted from will be added to the nodes */
-	file?:  string
 }
 
 /**
  * Covert the given AST into a doubly linked tree while assigning ids (so it stays serializable).
- *
- * @param ast   - The root of the AST to convert
+ * @param project - The AST to decorate
  * @param getId - The id generator: must generate a unique id für each passed node
- * @param file  - the path to the file this AST was extracted from will be added to the nodes
- *
  * @typeParam OtherInfo - The original decoration of the ast nodes (probably is nothing as the id decoration is most likely the first step to be performed after extraction)
- *
  * @returns A decorated AST based on the input and the id provider.
  */
-export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, { getId = deterministicCountingIdGenerator(0), file }: NormalizedAstDecorationConfiguration<OtherInfo>): NormalizedAst<OtherInfo & ParentInformation> {
+export function decorateAst<OtherInfo = NoInfo>(
+	project: RProject<OtherInfo>,
+	{ getId = deterministicCountingIdGenerator(0) }: NormalizedAstDecorationConfiguration<OtherInfo>
+): NormalizedAst<OtherInfo & ParentInformation> {
 	const idMap: AstIdMap<OtherInfo> = new BiMap<NodeId, RNodeWithParent<OtherInfo>>();
-	const info: FoldInfo<OtherInfo> = { idMap, getId, file };
+	const info: FoldInfo<OtherInfo> = { idMap, getId, file: undefined };
 
 	/* Please note, that all fold processors do not re-create copies in higher-folding steps so that the idMap stays intact. */
 	const foldLeaf = createFoldForLeaf(info);
 	const foldBinaryOp = createFoldForBinaryOp(info);
 	const unaryOp = createFoldForUnaryOp(info);
 
-	/* we pass down the nesting depth */
-	const decoratedAst: RNodeWithParent<OtherInfo> = foldAstStateful(ast, 0,{
-		down: (n: RNode<OtherInfo>, nesting: number): number => {
+	const folds = {
+		down: (n: RProject<OtherInfo> | RNode<OtherInfo>, nesting: number): number => {
 			if(nestForElement.has(n.type)) {
 				return nesting + 1;
 			} else {
@@ -192,13 +191,28 @@ export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, { getId =
 			foldArgument:           createFoldForFunctionArgument(info),
 			foldParameter:          createFoldForFunctionParameter(info)
 		}
-	});
+	};
 
-	decoratedAst.info.role = RoleInParent.Root;
-	decoratedAst.info.index = 0;
+	// we return the project by mapping over the files
+	const decoratedProject: RProject<OtherInfo & ParentInformation> = {
+		...project,
+		files: project.files.map(file => {
+			info.file = file.filePath;
+			const decoratedAst = foldAstStateful(file.root, 0, folds);
+			decoratedAst.info.role = RoleInParent.Root;
+			decoratedAst.info.index = 0;
+			return {
+				root:     decoratedAst as RExpressionList<OtherInfo & ParentInformation>,
+				filePath: file.filePath
+			};
+		}),
+		info: {
+			id: getId(project)
+		}
+	};
 
 	return {
-		ast: decoratedAst,
+		ast: decoratedProject,
 		idMap
 	};
 }

@@ -1,18 +1,14 @@
 import { assert, beforeAll, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
-import type { Origin } from '../../../../src/dataflow/origin/dfg-get-origin';
-import { getOriginInDfg, OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
-import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
+import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { type Origin , getOriginInDfg, OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
+import { type TREE_SITTER_DATAFLOW_PIPELINE , createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
 import { guard } from '../../../../src/util/assert';
 import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import { builtInId } from '../../../../src/dataflow/environments/built-in';
-import { defaultConfigOptions } from '../../../../src/config';
+import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 describe('Dataflow', withTreeSitter(ts => {
 	describe('getOriginInDfg', () => {
@@ -21,8 +17,8 @@ describe('Dataflow', withTreeSitter(ts => {
 				let analysis: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
 				beforeAll(async() => {
 					analysis = await createDataflowPipeline(ts, {
-						request: requestFromInput(code)
-					}, defaultConfigOptions).allRemainingSteps();
+						context: contextFromInput(code)
+					}).allRemainingSteps();
 				});
 				test.each(Object.keys(expected) as SingleSlicingCriterion[])('%s', (interest: SingleSlicingCriterion) => {
 					guard(analysis !== undefined);
@@ -75,8 +71,8 @@ describe('Dataflow', withTreeSitter(ts => {
 			chk(`h <- function(x=2) {\nprint(x)\n}\nh(3)${suffix}`, {
 				'1@function': [co('1@function')],
 				'1@x':        [wo('1@x')],
-				'2@x': 	      [ro('1@x')],
-				'4@h': 	      [fo('1@function'), ro('1@h')],
+				'2@x':        [ro('1@x')],
+				'4@h':        [fo('1@function'), ro('1@h')],
 			});
 			chk(`if(u) { x <- \nfunction(x)\nx \n }else {x <- \nfunction(x)\nx}\nx(3)${suffix}`, {
 				'1@u': undefined,

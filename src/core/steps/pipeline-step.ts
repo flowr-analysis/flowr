@@ -1,6 +1,5 @@
 /**
  * Defines the {@link IPipelineStep} interface which specifies all data available for a single step.
- *
  * @module
  */
 

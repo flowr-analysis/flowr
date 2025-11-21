@@ -29,13 +29,13 @@ describe('Arguments', () => {
 		const positiveStatements = (input: string, expected: string[]) => positive(input, expected, false, /^;\s*:/);
 		positiveStatements(':help', [':help']);
 		positiveStatements(':help;:slicer', [':help', ':slicer']);
-		positiveStatements(':help; 	  	 :slicer', [':help', ' 	  	 :slicer']);
+		positiveStatements(':help; \t  \t :slicer', [':help', ' \t  \t :slicer']);
 		//// Try out slicer examples
 		positiveStatements(':slicer -c "2@x" -r "x <- 3 * 4\n y <- x * 2"', [':slicer -c "2@x" -r "x <- 3 * 4\n y <- x * 2"']);
 		positiveStatements(':slicer -c "12@product" test/testfiles/example.R', [':slicer -c "12@product" test/testfiles/example.R']);
 		positiveStatements(':slicer --help; :slicer -i example.R --stats --criterion "8:3;3:1;12@product"',
 			[':slicer --help', ' :slicer -i example.R --stats --criterion "8:3;3:1;12@product"']);
-		positiveStatements(':slicer --help; 	  	   :slicer -i example.R --stats --criterion "8:3;3:1;12@product"',
-			[':slicer --help', ' 	  	   :slicer -i example.R --stats --criterion "8:3;3:1;12@product"']);
+		positiveStatements(':slicer --help; \t  \t   :slicer -i example.R --stats --criterion "8:3;3:1;12@product"',
+			[':slicer --help', ' \t  \t   :slicer -i example.R --stats --criterion "8:3;3:1;12@product"']);
 	});
 });

@@ -3,6 +3,9 @@ import { scripts } from './common/scripts-info';
 
 let _scriptsText: string | undefined;
 
+/**
+ * Returns a comma-separated list of all available master scripts.
+ */
 export function getScriptsText() {
 	if(_scriptsText === undefined) {
 		_scriptsText = Array.from(Object.entries(scripts).filter(([, { type }]) => type === 'master script'), ([k]) => k).join(', ');

@@ -2,8 +2,7 @@ import { assertUnreachable } from '../../util/assert';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain } from './abstract-domain';
 import { Bottom, BottomSymbol, Top } from './lattice';
-import type { SatisfiableDomain } from './satisfiable-domain';
-import { NumericalComparator } from './satisfiable-domain';
+import { type SatisfiableDomain, NumericalComparator } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The Top element of the interval domain as interval [-∞, +∞] */

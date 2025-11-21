@@ -1,10 +1,8 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
-import { initializeCleanDataflowInformation } from '../../../../../info';
+import { type DataflowInformation , initializeCleanDataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
-import type { ForceArguments } from '../common';
-import { patchFunctionCall, processAllArguments } from '../common';
+import { type ForceArguments , patchFunctionCall, processAllArguments } from '../common';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import {
@@ -13,13 +11,12 @@ import {
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import type {
-	ContainerIndices,
-	ContainerIndicesCollection,
-	ContainerLeafIndex,
-	IndexIdentifier
-} from '../../../../../graph/vertex';
-import { VertexType } from '../../../../../graph/vertex';
+import {
+	type ContainerIndices,
+	type ContainerIndicesCollection,
+	type ContainerLeafIndex,
+	type IndexIdentifier
+	, VertexType } from '../../../../../graph/vertex';
 import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -28,12 +25,15 @@ import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/no
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { unpackArgument } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
-import type { BuiltInMappingName } from '../../../../../environments/built-in';
-import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
+import { type BuiltInMappingName , BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { handleReplacementOperator } from '../../../../../graph/unknown-replacement';
 
 
+
+/**
+ *
+ */
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	/** The last one has to be the value */
@@ -49,9 +49,9 @@ export function processReplacementFunction<OtherInfo>(
 
 	/* we only get here if <-, <<-, ... or whatever is part of the replacement is not overwritten */
 	expensiveTrace(dataflowLogger, () => `Replacement ${name.content} with ${JSON.stringify(args)}, processing`);
-	
+
 	let indices: ContainerIndicesCollection = config.activeIndices;
-	if(data.flowrConfig.solver.pointerTracking) {
+	if(data.ctx.config.solver.pointerTracking) {
 		indices ??= constructAccessedIndices<OtherInfo>(name.content, args);
 	}
 
@@ -98,9 +98,9 @@ export function processReplacementFunction<OtherInfo>(
 	});
 
 	const firstArg = unpackArgument(args[0]);
-	
+
 	handleReplacementOperator({
-		operator: name.content, 
+		operator: name.content,
 		target:   firstArg?.lexeme,
 		env:      res.environment,
 		id:       rootId
@@ -124,7 +124,7 @@ export function processReplacementFunction<OtherInfo>(
 
 
 	const fa = unpackArgument(args[0]);
-	if(!data.flowrConfig.solver.pointerTracking && fa) {
+	if(!data.ctx.config.solver.pointerTracking && fa) {
 		res = {
 			...res,
 			in: [...res.in, { name: fa.lexeme, type: ReferenceType.Variable, nodeId: fa.info.id, controlDependencies: data.controlDependencies }]
@@ -136,17 +136,16 @@ export function processReplacementFunction<OtherInfo>(
 
 /**
  * Constructs accessed indices of replacement function recursively.
- * 
+ *
  * Example:
  * ```r
  * a$b <- 1
  * # results in index with lexeme b as identifier
- * 
+ *
  * a[[1]]$b
  * # results in index with index 1 as identifier with a sub-index with lexeme b as identifier
  * ```
- * 
- * @param operation - Operation of replacement function e.g. '$\<-', '[\<-', '[[\<-' 
+ * @param operation - Operation of replacement function e.g. '$\<-', '[\<-', '[[\<-'
  * @param args      - Arguments of the replacement function
  * @returns Accessed indices construct
  */

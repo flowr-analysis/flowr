@@ -8,8 +8,7 @@
 
 import { DefaultMap } from '../../../src/util/collections/defaultmap';
 import type { MergeableRecord } from '../../../src/util/objects';
-import type { FlowrCapabilityWithPath, SupportedFlowrCapabilityId } from '../../../src/r-bridge/data/get';
-import { getAllCapabilities } from '../../../src/r-bridge/data/get';
+import { type FlowrCapabilityWithPath, type SupportedFlowrCapabilityId , getAllCapabilities } from '../../../src/r-bridge/data/get';
 import { randomString } from '../../../src/util/random';
 
 // map flowr ids to the capabilities
@@ -20,7 +19,7 @@ function uniqueTestId(): string {
 }
 
 
-const _TestLabelContexts = ['parse', 'desugar-shell', 'desugar-tree-sitter', 'dataflow', 'other', 'slice', 'output', 'lineage', 'query', 'search', 'linter', 'resolve', 'absint'] as const;
+const _TestLabelContexts = ['parse', 'desugar-shell', 'desugar-tree-sitter', 'dataflow', 'other', 'slice', 'output', 'query', 'search', 'linter', 'resolve', 'absint'] as const;
 export type TestLabelContext = typeof _TestLabelContexts[number]
 
 export interface TestLabel extends MergeableRecord {
@@ -74,6 +73,10 @@ export function label(testname: string, ids?: readonly SupportedFlowrCapabilityI
 	}
 }
 
+
+/**
+ *
+ */
 export function dropTestLabel(l: TestLabel): void {
 	const names = l.capabilities.size === 0 ? ['.'] : [...l.capabilities];
 	for(const c of names) {
@@ -97,6 +100,10 @@ function getFullNameOfLabel(label: TestLabel): string {
 export function modifyLabelName(label: TestLabel, nameModification: (name: string) => string): TestLabel
 export function modifyLabelName(label: string, nameModification: (name: string) => string): string
 export function modifyLabelName(label: TestLabel | string, nameModification: (name: string) => string): TestLabel | string
+
+/**
+ *
+ */
 export function modifyLabelName(label: TestLabel | string, nameModification: (name: string) => string): TestLabel | string {
 	if(typeof label === 'string') {
 		return nameModification(label);
@@ -134,6 +141,10 @@ function printMissingCapability(label: FlowrCapabilityWithPath, testNames: reado
 	}
 }
 
+
+/**
+ *
+ */
 export function printMissingLabelSummary(map: Map<string, readonly TestLabel[]> | DefaultMap<string, readonly TestLabel[]> = TheGlobalLabelMap): void {
 	console.log('== Test Capability Coverage (missing only)' + '='.repeat(80));
 	// only list those for which we have a support claim

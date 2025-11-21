@@ -1,14 +1,19 @@
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../slicing/criterion/parse';
+import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../slicing/criterion/parse';
 import type { OriginQuery, OriginQueryResult } from './origin-query-format';
 import { getOriginInDfg } from '../../../dataflow/origin/dfg-get-origin';
 
+/**
+ * Produce a fingerprint string for an origin query
+ */
 export function fingerPrintOfQuery(query: OriginQuery): SingleSlicingCriterion {
 	return query.criterion;
 }
 
+/**
+ * Execute origin queries, catching duplicates with the same fingerprint
+ */
 export async function executeResolveValueQuery({ analyzer }: BasicQueryData, queries: readonly OriginQuery[]): Promise<OriginQueryResult> {
 	const start = Date.now();
 	const results: OriginQueryResult['results'] = {};

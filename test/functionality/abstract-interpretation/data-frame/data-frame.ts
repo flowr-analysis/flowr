@@ -1,31 +1,29 @@
 import { assert, beforeAll, test } from 'vitest';
-import { hasDataFrameExpressionInfo, type AbstractInterpretationInfo, type DataFrameOperation } from '../../../../src/abstract-interpretation/data-frame/absint-info';
+import { type AbstractInterpretationInfo, type DataFrameOperation, hasDataFrameExpressionInfo } from '../../../../src/abstract-interpretation/data-frame/absint-info';
 import type { AbstractDataFrameShape, DataFrameDomain, DataFrameShapeProperty } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
 import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../../src/abstract-interpretation/data-frame/semantics';
 import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
 import type { AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import type { ArrayRangeValue } from '../../../../src/abstract-interpretation/domains/set-range-domain';
-import type { FlowrConfigOptions } from '../../../../src/config';
-import { defaultConfigOptions } from '../../../../src/config';
+import { type FlowrConfigOptions, defaultConfigOptions } from '../../../../src/config';
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
-import type { DEFAULT_DATAFLOW_PIPELINE, TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
+import { type DEFAULT_DATAFLOW_PIPELINE, type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
+import { type FlowrAnalyzerContext, type ReadOnlyFlowrAnalyzerContext, contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import type { FlowrFileProvider } from '../../../../src/project/context/flowr-file';
 import type { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RoleInParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/role';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { RShell } from '../../../../src/r-bridge/shell';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
 import { getRangeEnd } from '../../../../src/util/range';
-import { decorateLabelContext, type TestLabel } from '../../_helper/label';
-import type { TestConfiguration } from '../../_helper/shell';
-import { skipTestBecauseConfigNotMet } from '../../_helper/shell';
+import { type TestLabel, decorateLabelContext } from '../../_helper/label';
+import { type TestConfiguration, skipTestBecauseConfigNotMet } from '../../_helper/shell';
 
 /**
  * The default flowR configuration options for performing abstract interpretation.
@@ -90,11 +88,13 @@ interface CriterionTestEntry {
 
 export interface DataFrameTestOptions extends Partial<TestConfiguration> {
 	/** The parser to use for the data flow graph creation (defaults to the R shell) */
-	readonly parser?:  KnownParser
+	readonly parser?:   KnownParser
 	/** An optional name or test label for the test (defaults to the code) */
-	readonly name?:    string | TestLabel
+	readonly name?:     string | TestLabel
 	/** Whether the real test with the execution of the R code should be skipped (defaults to `false`) */
-	readonly skipRun?: boolean | (() => boolean)
+	readonly skipRun?:  boolean | (() => boolean)
+	/** Additional files to add to the flowR project context for the test */
+	readonly addFiles?: FlowrFileProvider[]
 }
 
 /**
@@ -104,7 +104,6 @@ export interface DataFrameTestOptions extends Partial<TestConfiguration> {
  *
  * Note that this functions inserts print statements for the shape properties in the line after each slicing criterion.
  * Make sure that this does not break the provided code.
- *
  * @param shell       - The R shell to use to run the code
  * @param code        - The R code to test
  * @param criteria    - The slicing criteria to test including the expected shape constraints and a {@link DataFrameShapeMatching} option for each criterion (defaults to {@link DataFrameShapeExact})
@@ -133,7 +132,6 @@ export function testDataFrameDomain(
  *
  * Note that this functions inserts print statements for the shape properties in the line after each slicing criterion.
  * Make sure that this does not break the provided code.
- *
  * @param shell       - The R shell to use to run the code
  * @param fileArg     - The argument for the assert run
  * @param textArg     - The argument for the full test run where the code is executed
@@ -159,7 +157,6 @@ export function testDataFrameDomainWithSource(
 
 /**
  * Asserts inferred data frame shape constraints for given slicing criteria.
- *
  * @param parser      - The parser to use for the data flow graph creation
  * @param code        - The R code to test
  * @param expected    - The expected data frame shape constraints for each slicing criterion
@@ -175,23 +172,27 @@ export function assertDataFrameDomain(
 ) {
 	const { name = code } = config ?? {};
 	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
+	let context: FlowrAnalyzerContext | undefined;
 
 	beforeAll(async() => {
 		if(!skipTestBecauseConfigNotMet(config)) {
-			result = await createDataflowPipeline(parser, { request: requestFromInput(code) }, flowRConfig).allRemainingSteps();
+			context = contextFromInput(code, flowRConfig);
+			if(config?.addFiles) {
+				context.addFiles(config.addFiles);
+			}
+			result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
 		}
 	});
 
 	test.skipIf(skipTestBecauseConfigNotMet(config)).each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
-		const [inferred] = getInferredDomainForCriterion(result, criterion, flowRConfig);
+		const [inferred] = getInferredDomainForCriterion(result, criterion, context as ReadOnlyFlowrAnalyzerContext);
 		assertDomainMatches(inferred, expect, DataFrameShapeExact);
 	});
 }
 
 /**
  * Asserts an inferred abstract data frame operation for given slicing criteria.
- *
  * @param parser      - The parser to use for the data flow graph creation
  * @param code        - The R code to test
  * @param expected    - The expected abstract data frame operation for each slicing criterion
@@ -207,16 +208,18 @@ export function assertDataFrameOperation(
 ) {
 	const { name = code } = config ?? {};
 	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
+	let context: FlowrAnalyzerContext | undefined;
 
 	beforeAll(async() => {
 		if(!skipTestBecauseConfigNotMet(config)) {
-			result = await createDataflowPipeline(parser, { request: requestFromInput(code) }, flowRConfig).allRemainingSteps();
+			context = contextFromInput(code, flowRConfig);
+			result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
 		}
 	});
 
 	test.skipIf(skipTestBecauseConfigNotMet(config)).each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
-		const operations = getInferredOperationsForCriterion(result, criterion, flowRConfig);
+		const operations = getInferredOperationsForCriterion(result, criterion, context as ReadOnlyFlowrAnalyzerContext);
 		assert.containSubset(operations, expect, `expected ${JSON.stringify(operations)} to equal ${JSON.stringify(expect)}`);
 	});
 }
@@ -228,7 +231,6 @@ export function assertDataFrameOperation(
  *
  * Note that this functions inserts print statements for the shape properties in the line after each slicing criterion.
  * Make sure that this does not break the provided code.
- *
  * @param shell       - The R shell to use to run the instrumented code
  * @param code        - The R code to test
  * @param criteria    - The slicing criteria to test including a {@link DataFrameShapeMatching} option for each criterion (defaults to {@link DataFrameShapeExact})
@@ -249,13 +251,14 @@ export function testDataFrameDomainAgainstReal(
 		if(typeof skipRun === 'boolean' ? skipRun : skipRun()) {
 			skip();
 		}
-		const result = await createDataflowPipeline(parser, { request: requestFromInput(code) }, flowRConfig).allRemainingSteps();
+		const context = contextFromInput(code, flowRConfig);
+		const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
 		const testEntries: CriterionTestEntry[] = [];
 
 		for(const entry of criteria) {
 			const criterion = Array.isArray(entry) ? entry[0] : entry;
 			const matching = { ...DataFrameShapeExact, ...(Array.isArray(entry) ? entry[1] : {}) };
-			const [inferred, node] = getInferredDomainForCriterion(result, criterion, flowRConfig);
+			const [inferred, node] = getInferredDomainForCriterion(result, criterion, context);
 
 			if(node.type !== RType.Symbol) {
 				throw new Error(`slicing criterion ${criterion} does not refer to an R symbol`);
@@ -358,7 +361,7 @@ function getDefaultMatchingType(expected: ExpectedDataFrameShape | undefined, ma
 function getInferredDomainForCriterion(
 	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
 	criterion: SingleSlicingCriterion,
-	config: FlowrConfigOptions
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): [DataFrameDomain | undefined, RNode<ParentInformation>] {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
 	const nodeId = slicingCriterionToId(criterion, idMap);
@@ -367,8 +370,8 @@ function getInferredDomainForCriterion(
 	if(node === undefined) {
 		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
 	}
-	const cfg = extractCfg(result.normalize, config, result.dataflow.graph);
-	inferDataFrameShapes(cfg, result.dataflow.graph, result.normalize, config);
+	const cfg = extractCfg(result.normalize, ctx, result.dataflow.graph);
+	inferDataFrameShapes(cfg, result.dataflow.graph, result.normalize, ctx);
 	const value = resolveIdToDataFrameShape(node, result.dataflow.graph);
 
 	return [value, node];
@@ -377,17 +380,20 @@ function getInferredDomainForCriterion(
 function getInferredOperationsForCriterion(
 	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
 	criterion: SingleSlicingCriterion,
-	config: FlowrConfigOptions
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameOperation[] {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
 	const nodeId = slicingCriterionToId(criterion, idMap);
-	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = idMap.get(nodeId);
+	let node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = idMap.get(nodeId);
 
+	if(node?.info.role === RoleInParent.FunctionCallName) {
+		node = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
+	}
 	if(node === undefined) {
 		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
 	}
-	const cfg = extractCfg(result.normalize, config, result.dataflow.graph);
-	inferDataFrameShapes(cfg, result.dataflow.graph, result.normalize, config);
+	const cfg = extractCfg(result.normalize, ctx, result.dataflow.graph);
+	inferDataFrameShapes(cfg, result.dataflow.graph, result.normalize, ctx);
 
 	return hasDataFrameExpressionInfo(node) ? node.info.dataFrame.operations : [];
 }

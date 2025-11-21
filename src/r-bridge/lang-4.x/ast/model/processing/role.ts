@@ -3,7 +3,6 @@ import type { AstIdMap, RNodeWithParent } from './decorate';
 /**
  * Describes the role of the node in its parent. For example,
  * if we have `if(TRUE) { ... }`, the role of the `TRUE` node is `IfCondition`.
- *
  * @see ParentContextInfo
  * @see ParentInformation
  */

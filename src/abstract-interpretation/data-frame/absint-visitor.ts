@@ -1,14 +1,12 @@
-import type { CfgBasicBlockVertex, CfgSimpleVertex, ControlFlowInformation } from '../../control-flow/control-flow-graph';
-import { CfgVertexType, getVertexRootId, isMarkerVertex } from '../../control-flow/control-flow-graph';
-import type { SemanticCfgGuidedVisitorConfiguration } from '../../control-flow/semantic-cfg-guided-visitor';
-import { SemanticCfgGuidedVisitor } from '../../control-flow/semantic-cfg-guided-visitor';
+import { type CfgBasicBlockVertex, type CfgSimpleVertex, type ControlFlowInformation, CfgVertexType, getVertexRootId, isMarkerVertex } from '../../control-flow/control-flow-graph';
+import { type SemanticCfgGuidedVisitorConfiguration, SemanticCfgGuidedVisitor } from '../../control-flow/semantic-cfg-guided-visitor';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexVariableDefinition } from '../../dataflow/graph/vertex';
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isNotUndefined } from '../../util/assert';
-import { DataFrameInfoMarker, hasDataFrameAssignmentInfo, hasDataFrameExpressionInfo, hasDataFrameInfoMarker, type AbstractInterpretationInfo } from './absint-info';
+import { type AbstractInterpretationInfo, DataFrameInfoMarker, hasDataFrameAssignmentInfo, hasDataFrameExpressionInfo, hasDataFrameInfoMarker } from './absint-info';
 import { DataFrameDomain, DataFrameStateDomain } from './dataframe-domain';
 import { mapDataFrameAccess } from './mappers/access-mapper';
 import { isAssignmentTarget, mapDataFrameVariableAssignment } from './mappers/assignment-mapper';
@@ -121,7 +119,7 @@ export class DataFrameShapeInferenceVisitor<
 		const node = this.getNormalizedAst(call.id);
 
 		if(node !== undefined) {
-			node.info.dataFrame = mapDataFrameFunctionCall(node, this.config.dfg, this.config.flowrConfig);
+			node.info.dataFrame = mapDataFrameFunctionCall(node, this.config.dfg, this.config.ctx);
 			this.applyDataFrameExpression(node);
 		}
 	}
@@ -159,7 +157,7 @@ export class DataFrameShapeInferenceVisitor<
 		if(!hasDataFrameExpressionInfo(node)) {
 			return;
 		}
-		const maxColNames = this.config.flowrConfig.abstractInterpretation.dataFrame.maxColNames;
+		const maxColNames = this.config.ctx.config.abstractInterpretation.dataFrame.maxColNames;
 		let value = DataFrameDomain.top(maxColNames);
 
 		for(const { operation, operand, type, options, ...args } of node.info.dataFrame.operations) {
@@ -202,7 +200,7 @@ export class DataFrameShapeInferenceVisitor<
 	}
 
 	private shouldWiden(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): boolean {
-		return (this.visited.get(vertex.id) ?? 0) >= this.config.flowrConfig.abstractInterpretation.dataFrame.wideningThreshold;
+		return (this.visited.get(vertex.id) ?? 0) >= this.config.ctx.config.abstractInterpretation.dataFrame.wideningThreshold;
 	}
 
 	private clearUnassignedInfo(node: RNode<ParentInformation & AbstractInterpretationInfo>) {

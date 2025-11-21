@@ -1,15 +1,14 @@
-import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
-import { DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
+import Joi from 'joi';
+import { type DataFrameDomain, DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
+import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
+import { sliceCriterionParser } from '../../../cli/repl/parser/slice-query-parser';
+import type { FlowrConfigOptions } from '../../../config';
+import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeDfShapeQuery } from './df-shape-query-executor';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
-import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfigOptions } from '../../../config';
-import { sliceCriterionParser } from '../../../cli/repl/parser/slice-query-parser';
-import Joi from 'joi';
 
 /** Infer the shape of data frames using abstract interpretation. */
 export interface DfShapeQuery extends BaseQueryFormat {
@@ -21,7 +20,7 @@ export interface DfShapeQueryResult extends BaseQueryResult {
 	domains: DataFrameStateDomain | Map<SingleSlicingCriterion, DataFrameDomain | undefined>
 }
 
-function dfShapeQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'df-shape'> {
+function dfShapeQueryLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'df-shape'> {
 	const criterion = sliceCriterionParser(line[0]);
 
 	return {
@@ -48,11 +47,12 @@ export const DfShapeQueryDefinition = {
 		return true;
 	},
 	jsonFormatter: (queryResults: BaseQueryResult) => {
-		const out = queryResults as QueryResults<'df-shape'>['df-shape'];
-		const domains = out.domains instanceof DataFrameStateDomain ? out.domains.value : out.domains;
-		const json = Object.fromEntries(domains.entries().map(([key, domain]) => [key, domain?.toJson()])) as object;
+		const { domains, ...out } = queryResults as QueryResults<'df-shape'>['df-shape'];
+		const state = domains instanceof DataFrameStateDomain ? domains.value : domains;
+		const json = Object.fromEntries(state.entries().map(([key, domain]) => [key, domain?.toJson() ?? null]));
+		const result = { domains: json, ...out } as object;
 
-		return json;
+		return result;
 	},
 	fromLine: dfShapeQueryLineParser,
 	schema:   Joi.object({

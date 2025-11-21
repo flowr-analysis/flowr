@@ -1,5 +1,4 @@
-import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
-import { resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
+import { type ResolveInfo, resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
 import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';

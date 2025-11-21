@@ -77,7 +77,6 @@ export type DataFrameOperationOptions<N extends DataFrameOperationName> = Parame
 /**
  * Applies the abstract semantics of an abstract data frame operation with respect to the data frame shape domain.
  * This expects that all arguments have already been sanitized according to the original concrete data frame function (e.g. by replacing duplicate/invalid column names).
- *
  * @param operation - The name of the abstract operation to apply the semantics of
  * @param value     - The abstract data frame shape of the operand of the abstract operation
  * @param args      - The arguments for applying the abstract semantics of the abstract operation
@@ -239,6 +238,14 @@ function applyAddRowsSemantics(
 	value: DataFrameDomain,
 	{ rows }: { rows: number | undefined }
 ): DataFrameDomain {
+	if(value.cols.value !== Bottom && value.cols.value[0] === 0) {
+		return new DataFrameDomain({
+			...value,
+			colnames: value.colnames.top(),
+			cols:     rows !== undefined ? value.cols.add([1, 1]) : value.cols.top(),
+			rows:     rows !== undefined ? value.rows.add([rows, rows]) : value.rows.widenUp()
+		});
+	}
 	return new DataFrameDomain({
 		colnames: value.colnames,
 		cols:     value.cols,

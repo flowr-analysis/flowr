@@ -1,5 +1,4 @@
-import type { MergeableRecord } from './util/objects';
-import { deepMergeObject } from './util/objects';
+import { type MergeableRecord , deepMergeObject } from './util/objects';
 import path from 'path';
 import fs from 'fs';
 import { log } from './util/log';
@@ -68,10 +67,9 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 	 */
 	readonly repeatedSourceLimit?:  number
 	/**
-	 * sometimes files may have a different name in the source call	(e.g., due to later replacements),
+	 * sometimes files may have a different name in the source call (e.g., due to later replacements),
 	 * with this setting you can provide a list of replacements to apply for each sourced file.
 	 * Every replacement consists of a record that maps a regex to a replacement string.
-	 *
 	 * @example
 	 * ```ts
 	 * [
@@ -108,6 +106,10 @@ export interface FlowrConfigOptions extends MergeableRecord {
 				readonly definitions:   BuiltInDefinitions
 			}
 		}
+	}
+	readonly project: {
+		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
+		resolveUnknownPathsOnDisk: boolean
 	}
 	/**
 	 * The engines to use for interacting with R code. Currently, supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
@@ -230,6 +232,9 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 			}
 		}
 	},
+	project: {
+		resolveUnknownPathsOnDisk: true
+	},
 	engines:       [],
 	defaultEngine: 'tree-sitter',
 	solver:        {
@@ -269,6 +274,9 @@ export const flowrConfigFileSchema = Joi.object({
 			}).optional().description('Do you want to overwrite (parts) of the builtin definition?')
 		}).optional().description('Semantics regarding how to handle the R environment.')
 	}).description('Configure language semantics and how flowR handles them.'),
+	project: Joi.object({
+		resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.')
+	}).description('Project specific configuration options.'),
 	engines: Joi.array().items(Joi.alternatives(
 		Joi.object({
 			type:               Joi.string().required().valid('tree-sitter').description('Use the tree sitter engine.'),
@@ -315,6 +323,9 @@ export const flowrConfigFileSchema = Joi.object({
 	}).description('The configuration options for abstract interpretation.')
 }).description('The configuration file format for flowR.');
 
+/**
+ * Parses the given JSON string as a flowR config file.
+ */
 export function parseConfig(jsonString: string): FlowrConfigOptions | undefined {
 	try {
 		const parsed   = JSON.parse(jsonString) as FlowrConfigOptions;
@@ -341,10 +352,16 @@ export function amendConfig(config: FlowrConfigOptions, amendmentFunc: (config: 
 	return newConfig;
 }
 
+/**
+ * Clones the given flowr config object.
+ */
 export function cloneConfig(config: FlowrConfigOptions): FlowrConfigOptions {
 	return JSON.parse(JSON.stringify(config)) as FlowrConfigOptions;
 }
 
+/**
+ * Loads the flowr config from the given file or the default locations.
+ */
 export function getConfig(configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfigOptions {
 	try {
 		return loadConfigFromFile(configFile, configWorkingDirectory);
@@ -354,6 +371,9 @@ export function getConfig(configFile?: string, configWorkingDirectory = process.
 	}
 }
 
+/**
+ * Gets the configuration for the given engine type from the config.
+ */
 export function getEngineConfig<T extends EngineConfig['type']>(config: FlowrConfigOptions, engine: T): EngineConfig & { type: T } | undefined {
 	const engines = config.engines;
 	if(!engines.length) {
@@ -372,11 +392,13 @@ function getPointerAnalysisThreshold(config: FlowrConfigOptions): number | 'unli
 	}
 }
 
+/**
+ * Checks whether the given count is over the pointer analysis threshold configured in the config.
+ */
 export function isOverPointerAnalysisThreshold(config: FlowrConfigOptions, count: number): boolean {
 	const threshold = getPointerAnalysisThreshold(config);
 	return threshold !== 'unlimited' && (threshold === 'disabled' || count > threshold);
 }
-
 
 
 function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfigOptions {

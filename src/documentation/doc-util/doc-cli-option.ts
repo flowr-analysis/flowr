@@ -11,6 +11,10 @@ type ScriptOptions<Type extends keyof typeof scripts | 'flowr'> =
 	Type extends keyof typeof scripts ? typeof scripts[Type]['options'][number]['name'] :
 		Type extends 'flowr' ? typeof flowrMainOptionDefinitions[number]['name'] : never;
 
+
+/**
+ *
+ */
 export function getCliLongOptionOf<
 	ScriptName extends keyof typeof scripts | 'flowr',
 	OptionName extends ScriptOptions<ScriptName>
@@ -27,6 +31,10 @@ export function getCliLongOptionOf<
 	return textWithTooltip(`${char}-${ligatureBreaker}-${optionName}${char}`, 'Description (Command Line Argument): ' + description) + alias;
 }
 
+
+/**
+ *
+ */
 export function multipleCliOptions<
 	ScriptName extends keyof typeof scripts | 'flowr',
 	OptionName extends ScriptOptions<ScriptName>
@@ -34,6 +42,10 @@ export function multipleCliOptions<
 	return options.map(o => getCliLongOptionOf(scriptName, o, false, true)).join(' ');
 }
 
+
+/**
+ *
+ */
 export function getReplCommand(commandName: string, quote = true, showStar = false): string {
 	const availableNames = getReplCommands();
 	const commands = availableNames[commandName];

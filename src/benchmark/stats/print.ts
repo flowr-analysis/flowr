@@ -13,6 +13,9 @@ function pad<T>(string: T) {
 	return String(string).padStart(padSize, ' ');
 }
 
+/**
+ * Formats the given nanoseconds into a human-readable string.
+ */
 export function formatNanoseconds(nanoseconds: bigint | number): string {
 	if(nanoseconds < 0) {
 		return '??';
@@ -208,6 +211,10 @@ Dataframe shape inference:
 	return result;
 }
 
+
+/**
+ * Converts reduction stats to a human-readable string.
+ */
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
 	let result = `
 Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices

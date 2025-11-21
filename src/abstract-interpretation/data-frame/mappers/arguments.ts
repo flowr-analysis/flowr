@@ -4,16 +4,15 @@ import { isUseVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import type { RFunctionArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument, type RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import type { AbstractInterpretationInfo } from '../absint-info';
-import { resolveIdToDataFrameShape } from '../shape-inference';
 import { resolveIdToArgName, resolveIdToArgValue, unquoteArgument } from '../resolve-args';
-import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
+import { resolveIdToDataFrameShape } from '../shape-inference';
 
 /** Regular expression representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
@@ -32,7 +31,6 @@ export interface FunctionParameterLocation<T = never> {
 
 /**
  * Escapes a regular expression given as string by escaping all special regular expression characters.
- *
  * @param text        - The text to escape
  * @param allowTokens - Whether to allow and keep unescaped tokens like `\s`, `\t`, or `\n`
  * @returns The escaped text
@@ -47,7 +45,6 @@ export function escapeRegExp(text: string, allowTokens: boolean = false): string
 
 /**
  * Maps all invalid, duplicate, or empty column names to top depending on the provided arguments.
- *
  * @param colnames     - The columns names to filter
  * @param checkNames   - Whether to map all invalid column names to top (`undefined`)
  * @param noDupNames   - Whether to map all duplicate column names to top (`undefined`)
@@ -74,7 +71,6 @@ export function filterValidNames(
 
 /**
  * Gets the value of an argument that specified as {@link FunctionParameterLocation}.
- *
  * @param args     - The arguments to get the requested argument from
  * @param argument - The specification of the argument to get the value for
  * @param info     - Argument resolve information
@@ -93,7 +89,6 @@ export function getArgumentValue<T>(
 
 /**
  * Gets all effective argument from a list of arguments by removing all arguments whose names should be excluded.
- *
  * @param args     - The list of arguments to filter
  * @param excluded - The names of the arguments to exclude
  * @returns The filtered list of arguments
@@ -107,7 +102,6 @@ export function getEffectiveArgs(
 
 /**
  * Gets an argument specified as {@link FunctionParameterLocation} from a list of arguments.
- *
  * @param args     - The arguments to get the requested argument from
  * @param argument - The specification of the argument to get
  * @param info     - Argument resolve information
@@ -135,7 +129,6 @@ export function getFunctionArgument(
 
 /**
  * Get all function arguments of a function call node in the data flow graph.
- *
  * @param node - The function call node to get the arguments for
  * @param dfg  - The data flow graph for retrieving the arguments
  * @returns The arguments of the function call in the data flow graph
@@ -185,7 +178,6 @@ export function getUnresolvedSymbolsInExpression(
 
 /**
  * Checks whether a list of arguments contains any critical argument.
- *
  * @param args     - The list of arguments to check
  * @param critical - The critical arguments to search for (as string or {@link FunctionParameterLocation}s)
  * @param info     - Argument resolve information
@@ -215,7 +207,6 @@ export function hasCriticalArgument(
 
 /**
  * Checks if a given argument has any data frame shape information and therefore may represent a data frame.
- *
  * @param arg  - The argument to check
  * @param info - Argument resolve information
  * @returns Whether the argument has any data frame shape information and may represent a data frame

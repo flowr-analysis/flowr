@@ -23,6 +23,10 @@ function fuzzyFindFile(node: RNodeWithParent | undefined, idMap: AstIdMap): stri
 	return '<inline>';
 }
 
+/**
+ * Executes a location map query
+ * @see {@link LocationMapQuery}
+ */
 export async function executeLocationMapQuery({ analyzer }: BasicQueryData, queries: readonly LocationMapQuery[]): Promise<LocationMapQueryResult> {
 	const ast = await analyzer.normalize();
 	const start = Date.now();
@@ -37,7 +41,8 @@ export async function executeLocationMapQuery({ analyzer }: BasicQueryData, quer
 	};
 	let count = 0;
 	const inverseMap = new Map<string, number>();
-	for(const file of (await analyzer.dataflow()).graph.sourced) {
+	await analyzer.dataflow(); // ensure all files are considered
+	for(const file of analyzer.inspectContext().files.consideredFilesList()) {
 		locationMap.files[count] = file;
 		inverseMap.set(file, count);
 		count++;

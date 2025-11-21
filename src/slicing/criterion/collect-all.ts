@@ -4,13 +4,13 @@
  * @module
  */
 import type { MergeableRecord } from '../../util/objects';
-
 import type { SingleSlicingCriterion, SlicingCriteria } from './parse';
 import { guard } from '../../util/assert';
 import { getUniqueCombinationsOfSize } from '../../util/collections/arrays';
-import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 /**
  * Defines the filter for collecting all possible slicing criteria.
@@ -18,20 +18,20 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
  */
 export interface SlicingCriteriaFilter extends MergeableRecord {
 	/**
-   * Inclusive minimum size of the slicing criteria (number of included slice points).
-   * Should be at least `1` to make sense (and of course at most {@link SlicingCriteriaFilter#maximumSize|maximum size}).
-   */
+	 * Inclusive minimum size of the slicing criteria (number of included slice points).
+	 * Should be at least `1` to make sense (and of course at most {@link SlicingCriteriaFilter#maximumSize|maximum size}).
+	 */
 	minimumSize: number
 	/**
-   * Inclusive maximum size of the slicing criteria (number of included slice points).
-   * Should be at least `1` to make sense (and of course at least {@link SlicingCriteriaFilter#minimumSize|minimum size}).
-   * <p>
-   * Be really careful with this one, as the number of possible slicing criteria can grow exponentially with the maximum size.
-   */
+	 * Inclusive maximum size of the slicing criteria (number of included slice points).
+	 * Should be at least `1` to make sense (and of course at least {@link SlicingCriteriaFilter#minimumSize|minimum size}).
+	 * <p>
+	 * Be really careful with this one, as the number of possible slicing criteria can grow exponentially with the maximum size.
+	 */
 	maximumSize: number
 	/**
-   * Function that determines the ids of all nodes that can be used as slicing criteria.
-   */
+	 * Function that determines the ids of all nodes that can be used as slicing criteria.
+	 */
 	collectAll:  (root: RNodeWithParent) => NodeId[]
 }
 
@@ -40,10 +40,10 @@ export interface SlicingCriteriaFilter extends MergeableRecord {
  * The slicing criteria will be *ordered* (i.e., it will not return `[1:2,3:4]` and `[3:4,1:2]` if `maximumSize` \> 1).
  * If there are not enough matching nodes within the ast, this will return *no* slicing criteria!
  */
-export function* collectAllSlicingCriteria<OtherInfo>(ast: RNodeWithParent<OtherInfo>, filter: Readonly<SlicingCriteriaFilter>): Generator<SlicingCriteria, void, void> {
+export function* collectAllSlicingCriteria<OtherInfo>(ast: RProject<OtherInfo & ParentInformation>, filter: Readonly<SlicingCriteriaFilter>): Generator<SlicingCriteria, void, void> {
 	guard(filter.minimumSize >= 1, `Minimum size must be at least 1, but was ${filter.minimumSize}`);
 	guard(filter.maximumSize >= filter.minimumSize, `Maximum size must be at least minimum size, but was ${filter.maximumSize} < ${filter.minimumSize}`);
-	const potentialSlicingNodes = filter.collectAll(ast);
+	const potentialSlicingNodes = ast.files.flatMap(f => filter.collectAll(f.root));
 
 	if(potentialSlicingNodes.length < filter.minimumSize) {
 		return;

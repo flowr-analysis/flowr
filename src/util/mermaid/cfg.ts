@@ -1,11 +1,10 @@
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import type { NormalizedAst, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import type {
-	CfgSimpleVertex,
-	ControlFlowInformation
-} from '../../control-flow/control-flow-graph';
 import {
+	type CfgSimpleVertex,
+	type ControlFlowInformation
+	,
 	CfgEdgeType,
 	CfgVertexType,
 	edgeTypeToString
@@ -56,7 +55,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 		if(vertex.type === CfgVertexType.Block) {
 			if(simplify) {
 				const ids = vertex.elems?.map(e => e.id) ?? [];
-				const reconstruct = reconstructToCode(normalizedAst, new Set(ids), doNotAutoSelect).code;
+				const reconstruct = reconstructToCode(normalizedAst, { nodes: new Set(ids) }, doNotAutoSelect).code;
 				const name = `"\`Basic Block (${id})\n${escapeMarkdown(reconstruct)}\`"`;
 				output += `    n${id}[[${name}]]\n`;
 			} else {

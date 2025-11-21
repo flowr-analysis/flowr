@@ -22,7 +22,6 @@ export type ProblematicDiffInfo = ProblematicVertex | ProblematicEdge
 
 /**
  * To be produced by a function differencing two graphs (e.g., {@link DataflowGraph|DFGs} or {@link ControlFlowGraph|CFGs}).
- *
  * @see {@link GraphDifferenceReport#isEqual|isEqual} - to check whether the graphs are equal
  * @see {@link GraphDifferenceReport#addComment|addComment} - to add comments to the report
  * @see {@link GraphDifferenceReport#comments|comments} - to get the attached comments

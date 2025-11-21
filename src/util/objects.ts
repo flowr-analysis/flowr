@@ -16,7 +16,6 @@ type OrReadonly<T> = T | Readonly<T> | DeepReadonly<T>;
 /**
  * Given two objects deeply merges them, if an object is an array it will merge the array values!
  * Guarantees some type safety by requiring objects to merge to be from the same type (allows undefined)
- *
  * @see {@link deepMergeObjectInPlace} to merge into an existing object
  */
 export function deepMergeObject<T extends Mergeable>(base: Required<OrReadonly<T>>, addon?: T | DeepPartial<T> | Partial<T>): Required<T>
@@ -76,7 +75,6 @@ function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord
  * Given two objects deeply merges them, if an object is an array it will merge the array values!
  * Modifies the `base` object in place and also returns it.
  * Guarantees some type safety by requiring objects to merge to be from the same type (allows undefined)
- *
  * @see {@link deepMergeObject} to create a new merged object
  */
 export function deepMergeObjectInPlace<T extends Mergeable>(base: T, addon?: DeepPartial<T> | Partial<T>): T

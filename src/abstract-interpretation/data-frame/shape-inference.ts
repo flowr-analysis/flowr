@@ -1,8 +1,8 @@
-import type { FlowrConfigOptions } from '../../config';
 import { type ControlFlowInformation, getVertexRootId } from '../../control-flow/control-flow-graph';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -17,11 +17,10 @@ import { type DataFrameDomain, DataFrameStateDomain } from './dataframe-domain';
 /**
  * Infers the shape of data frames by performing abstract interpretation using the control flow graph of a program.
  * This directly attaches the inferred data frames shapes to the AST (see {@link AbstractInterpretationInfo}).
- *
  * @param cfinfo - The control flow information containing the control flow graph
  * @param dfg    - The data flow graph to resolve variable origins and function arguments
  * @param ast    - The abstract syntax tree to resolve node IDs to AST nodes
- * @param config - The flowR configuration to use for the shape inference
+ * @param ctx    - The current flowr analyzer context
  * @returns The abstract data frame state at the exit node of the control flow graph (see {@link DataFrameStateDomain}).
  * The abstract data frame states for all other nodes are attached to the AST.
  */
@@ -29,9 +28,9 @@ export function inferDataFrameShapes(
 	cfinfo: ControlFlowInformation,
 	dfg: DataflowGraph,
 	ast: NormalizedAst<ParentInformation & AbstractInterpretationInfo>,
-	config: FlowrConfigOptions
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameStateDomain {
-	const visitor = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, flowrConfig: config });
+	const visitor = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, ctx });
 	visitor.start();
 	const exitPoints = cfinfo.exitPoints.map(id => cfinfo.graph.getVertex(id)).filter(isNotUndefined);
 	const exitNodes = exitPoints.map(vertex => ast.idMap.get(getVertexRootId(vertex))).filter(isNotUndefined);
@@ -43,7 +42,6 @@ export function inferDataFrameShapes(
 /**
  * Resolves the abstract data frame shape of a node in the AST.
  * This requires that the data frame shape inference has been executed before using {@link inferDataFrameShapes}.
- *
  * @param id     - The node or node ID to get the data frame shape for
  * @param dfg    - The data flow graph used to resolve the data frame shape
  * @param domain - An optional abstract data frame state domain used to resolve the data frame shape (defaults to the state at the requested node)
@@ -105,7 +103,6 @@ export function resolveIdToDataFrameShape(
 
 /**
  * Gets all origins of a variable in the data flow graph that have already been visited.
- *
  * @param node - The node to get the origins for
  * @param dfg  - The data flow graph for resolving the origins
  * @returns The origins nodes of the variable

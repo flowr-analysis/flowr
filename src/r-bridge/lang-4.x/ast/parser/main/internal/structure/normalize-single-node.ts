@@ -1,6 +1,5 @@
 import { getWithTokenType } from '../../normalize-meta';
-import type { NormalizerData } from '../../normalizer-data';
-import { ParseError } from '../../normalizer-data';
+import { type NormalizerData , ParseError } from '../../normalizer-data';
 import { normalizeLineDirective } from '../other/normalize-line-directive';
 import { guard } from '../../../../../../../util/assert';
 import { normalizeDelimiter } from './normalize-delimiter';
@@ -18,10 +17,8 @@ import type { NamedJsonEntry } from '../../../json/format';
 
 /**
  * Parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)
- *
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param elem - The element to parse
- *
  * @returns The parsed element as an `RNode` or an `RDelimiter` if it is such.
  */
 export function normalizeSingleNode(data: NormalizerData, elem: NamedJsonEntry): RNode | RDelimiter {

@@ -1,7 +1,6 @@
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import type { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionCall , EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import type { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
@@ -27,7 +26,7 @@ import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 type FoldOfType<T extends RType, Returns = void, Info = NoInfo> = (node: Extract<RNode<Info>, { type: T }>) => Returns;
 
 /** explicitly excludes types that are not visitable */
-export type FoldableRType = Exclude<RType, RType.Delimiter>;
+export type FoldableRType = Exclude<RType, RType.Delimiter | RType.Project>;
 
 /**
  * Describes the fold functions for each node type.
@@ -54,10 +53,8 @@ export type EntryExitVisitor<Info> = ((node: RNode<Info>) => void) | undefined;
  * You can control the value passing (`Returns` generic)
  * by providing sensible Monoid behavior overwriting the {@link DefaultNormalizedAstFold#concat|concat} method
  * and supplying the empty value in the constructor.
- *
  * @note By providing `entry` and `exit` you can use this as an extension to the simpler {@link visitAst} function but without
  *       the early termination within the visitors (for this, you can overwrite the respective `fold*` methods).
- *
  * @example First you want to create your own fold:
  *
  * ```ts
@@ -96,8 +93,6 @@ export class DefaultNormalizedAstFold<Returns = void, Info = NoInfo> implements 
 
 	/**
 	 * Monoid::concat
-	 *
-	 *
 	 * @see {@link https://en.wikipedia.org/wiki/Monoid}
 	 * @see {@link DefaultNormalizedAstFold#concatAll|concatAll}
 	 */
@@ -107,7 +102,6 @@ export class DefaultNormalizedAstFold<Returns = void, Info = NoInfo> implements 
 
 	/**
 	 * overwrite this method, if you have a faster way to concat multiple nodes
-	 *
 	 * @see {@link DefaultNormalizedAstFold#concatAll|concatAll}
 	 */
 	protected concatAll(nodes: readonly Returns[]): Returns {

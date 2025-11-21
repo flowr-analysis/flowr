@@ -1,18 +1,16 @@
 import { assert, describe, test } from 'vitest';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { withShell } from '../../_helper/shell';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { defaultConfigOptions } from '../../../../src/config';
+import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 describe.sequential('dataflow graph links', withShell(shell => {
 	function assertLink(name: string, code: string, criterion: SingleSlicingCriterion, expect: NodeId[] | undefined) {
 		test(name, async() => {
 			const info = await createDataflowPipeline(shell, {
-				request: requestFromInput(code),
-			}, defaultConfigOptions).allRemainingSteps();
+				context: contextFromInput(code),
+			}).allRemainingSteps();
 
 			const graph = info.dataflow.graph;
 			const id = slicingCriterionToId(criterion, graph.idMap ?? info.normalize.idMap);

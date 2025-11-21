@@ -23,6 +23,9 @@ export interface TypeElementInSource {
 	readonly properties?: string[];
 }
 
+/**
+ * Retrieve TypeScript source files from the given file names.
+ */
 export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[], program: ts.Program } {
 	try {
 		const program = ts.createProgram(fileNames, {
@@ -43,6 +46,10 @@ export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files:
 	}
 }
 
+
+/**
+ *
+ */
 export function dropGenericsFromTypeName(type: string): string {
 	let previous;
 	do{
@@ -52,6 +59,10 @@ export function dropGenericsFromTypeName(type: string): string {
 	return type;
 }
 
+
+/**
+ *
+ */
 export function removeCommentSymbolsFromTypeScriptComment(comment: string): string {
 	return comment
 	// remove '/** \n * \n */...
@@ -61,6 +72,10 @@ export function removeCommentSymbolsFromTypeScriptComment(comment: string): stri
 		.trim();
 }
 
+
+/**
+ *
+ */
 export function getTextualCommentsFromTypeScript(node: ts.Node): string[] {
 	const comments = ts.getJSDocCommentsAndTags(node);
 	const out: string[] = [];
@@ -76,11 +91,19 @@ export function getTextualCommentsFromTypeScript(node: ts.Node): string[] {
 	return out;
 }
 
+
+/**
+ *
+ */
 export function getStartLineOfTypeScriptNode(node: ts.Node, sourceFile: ts.SourceFile): number {
 	const lineStart = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line;
 	return lineStart + 1;
 }
 
+
+/**
+ *
+ */
 export function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
 	const tryDirect = typeChecker.getTypeAtLocation(node);
 	return tryDirect ? typeChecker.typeToString(tryDirect) : 'unknown';
@@ -88,6 +111,10 @@ export function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
 
 const defaultSkip = ['Pick', 'Partial', 'Required', 'Readonly', 'Omit', 'DeepPartial', 'DeepReadonly', 'DeepWritable', 'StrictOmit'];
 
+
+/**
+ *
+ */
 export function followTypeReference(type: ts.TypeReferenceNode, sourceFile: ts.SourceFile): string[] {
 	const node = type.typeName;
 	if(ts.isQualifiedName(node)) {
@@ -266,10 +293,18 @@ interface MermaidCompact {
 	edgeLines: string[]
 }
 
+
+/**
+ *
+ */
 export function getTypePathForTypeScript({ filePath }: Pick<TypeElementInSource, 'filePath' >) {
 	return filePath.replace(/^.*\/src\//, 'src/').replace(/^.*\/test\//, 'test/');
 }
 
+
+/**
+ *
+ */
 export function getTypePathLink(elem: Pick<TypeElementInSource, 'filePath' | 'lineNumber' >, prefix = RemoteFlowrFilePathBaseRef): string {
 	const fromSource = getTypePathForTypeScript(elem);
 	return `${prefix}/${fromSource}#L${elem.lineNumber}`;
@@ -392,7 +427,11 @@ export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport
 	return getTypesFromFileAsMermaid(files, options);
 }
 
-export function implSnippet(node: TypeElementInSource | undefined, program: ts.Program, showName = true, nesting = 0, open = false): string {
+
+/**
+ * Generate an implementation snippet for the given type element
+ */
+export function implSnippet(node: TypeElementInSource | undefined, program: ts.Program, showName = true, nesting = 0, open = false, showImplSnippet = true): string {
 	guard(node !== undefined, 'Node must be defined => invalid change of type name?');
 	const indent = ' '.repeat(nesting * 2);
 	const bold = node.kind === 'interface' || node.kind === 'enum' ? '**' : '';
@@ -402,8 +441,12 @@ export function implSnippet(node: TypeElementInSource | undefined, program: ts.P
 	if(text.trim() !== '') {
 		text = '  ' + text;
 	}
-	const code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName));
-	text += `\n<details${open ? ' open' : ''}><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
+	if(showImplSnippet) {
+		const code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName));
+		text += `\n<details${open ? ' open' : ''}><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
+	} else {
+		text += `\n<br/><i>(Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a>)</i>\n`;
+	}
 	const init = showName ? `* ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}` : '';
 	return ` ${indent}${showName ? init : ''} ${text.replaceAll('\t','    ').split(/\n/g).join(`\n${indent}   `)}`;
 }
@@ -416,10 +459,15 @@ export interface PrintHierarchyArguments {
 	readonly initialNesting?:      number
 	readonly maxDepth?:            number
 	readonly openTop?:             boolean
+	readonly showImplSnippet?:     boolean
 }
 
 export const mermaidHide = ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial', 'RAccessBase'];
-export function printHierarchy({ program, info, root, collapseFromNesting = 1, initialNesting = 0, maxDepth = 20, openTop }: PrintHierarchyArguments): string {
+
+/**
+ * Print the hierarchy of types starting from the given root
+ */
+export function printHierarchy({ program, info, root, collapseFromNesting = 1, initialNesting = 0, maxDepth = 20, openTop, showImplSnippet = true }: PrintHierarchyArguments): string {
 	if(initialNesting > maxDepth) {
 		return '';
 	}
@@ -428,14 +476,14 @@ export function printHierarchy({ program, info, root, collapseFromNesting = 1, i
 		return '';
 	}
 
-	const thisLine = implSnippet(node, program, true, initialNesting, initialNesting === 0 && openTop);
+	const thisLine = implSnippet(node, program, true, initialNesting, initialNesting === 0 && openTop, showImplSnippet);
 	const result = [];
 
 	for(const baseType of node.extends) {
 		if(mermaidHide.includes(baseType)) {
 			continue;
 		}
-		const res = printHierarchy({ program, info: info, root: baseType, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth });
+		const res = printHierarchy({ program, info: info, root: baseType, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth, showImplSnippet });
 		result.push(res);
 	}
 
@@ -456,6 +504,10 @@ interface FnInfo {
 	hideDefinedAt?:   boolean
 }
 
+/**
+ * Print an element from the info as code block
+ * This is great to show examples that are directly taken from the source code
+ */
 export function printCodeOfElement({ program, info, dropLinesEnd = 0, dropLinesStart = 0, doNotAutoGobble, hideDefinedAt }: FnInfo, name: string): string {
 	const node = info.find(e => e.name === name);
 	if(!node) {
@@ -542,10 +594,18 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 	const comments = node.comments?.join('\n').replace(/\\?\n|```[a-zA-Z]*|\s\s*/g, ' ').replace(/<\/?code>|`/g, '').replace(/<\/?p\/?>/g, ' ').replace(/"/g, '\'') ?? '';
 	return `<a href="${getTypePathLink(node)}">${codeStyle ? '<code>' : ''}${
 		(node.comments?.length ?? 0) > 0 ?
-			textWithTooltip(pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) : node.name
+			textWithTooltip(pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) :
+			pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName
 	}${codeStyle ? '</code>' : ''}</a>`;
 }
 
+
+/**
+ * Create a short link to a type in the documentation
+ * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
+ *                    Use `:::` if you want to access a scoped function, but the name should be displayed without the scope
+ * @param hierarchy - The hierarchy of types to search in
+ */
 export function shortLinkFile(name: string, hierarchy: readonly TypeElementInSource[]): string {
 	const res = retrieveNode(name, hierarchy);
 	if(!res) {
@@ -561,6 +621,15 @@ export interface GetDocumentationForTypeFilters {
     type?:  TypeElementKind;
 }
 
+
+/**
+ * Retrieve documentation comments for a type
+ * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
+ *                    Use `:::` if you want to access a scoped function, but the name should be displayed without the scope
+ * @param hierarchy - The hierarchy of types to search in
+ * @param prefix    - A prefix to add to each line of the documentation
+ * @param filter    - Optional filters for retrieving the documentation
+ */
 export function getDocumentationForType(name: string, hierarchy: TypeElementInSource[], prefix = '', filter?: GetDocumentationForTypeFilters): string {
 	const res = retrieveNode(name, hierarchy, filter?.fuzzy, filter?.type);
 	if(!res) {

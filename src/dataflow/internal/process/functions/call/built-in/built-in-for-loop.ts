@@ -1,7 +1,5 @@
-import type { DataflowProcessorInformation } from '../../../../../processor';
-import { processDataflowFor } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
-import { alwaysExits, filterOutLoopExitPoints } from '../../../../../info';
+import { type DataflowProcessorInformation , processDataflowFor } from '../../../../../processor';
+import { type DataflowInformation , alwaysExits, filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
@@ -24,6 +22,10 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { ReferenceType } from '../../../../../environments/identifier';
 
+
+/**
+ *
+ */
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
@@ -54,7 +56,7 @@ export function processForLoop<OtherInfo>(
 
 	const writtenVariable = variable.unknownReferences.concat(variable.in);
 	for(const write of writtenVariable) {
-		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable }, false, headEnvironments, data.flowrConfig);
+		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable }, false, headEnvironments, data.ctx.config);
 	}
 	data = { ...data, controlDependencies: [...data.controlDependencies ?? [], { id: name.info.id, when: true }], environment: headEnvironments };
 

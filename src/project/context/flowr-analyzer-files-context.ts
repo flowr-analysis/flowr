@@ -1,5 +1,8 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
-import type { RParseRequest, RParseRequestFromFile } from '../../r-bridge/retriever';
+import type {
+	RParseRequestFromText,
+	RParseRequest,
+	RParseRequestFromFile } from '../../r-bridge/retriever';
 import { isParseRequest } from '../../r-bridge/retriever';
 import { guard } from '../../util/assert';
 import type {
@@ -10,10 +13,11 @@ import {
 	FlowrAnalyzerProjectDiscoveryPlugin
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
-import type { FilePath, FlowrFile, FlowrFileProvider } from './flowr-file';
-import { FlowrTextFile, SpecialFileRole } from './flowr-file';
+import { type FilePath, FlowrFile, type FlowrFileProvider, FlowrTextFile, FileRole } from './flowr-file';
 import type { FlowrDescriptionFile } from '../plugins/file-plugins/flowr-description-file';
 import { log } from '../../util/log';
+import fs from 'fs';
+import path from 'path';
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
@@ -30,28 +34,23 @@ export interface RProjectAnalysisRequest {
 
 export type RAnalysisRequest = RParseRequest | RProjectAnalysisRequest
 
-export type SpecialFiles = {
-    [SpecialFileRole.Description]: FlowrDescriptionFile[];
+export type RoleBasedFiles = {
+    [FileRole.Description]: FlowrDescriptionFile[];
     /* currently no special support */
-    [SpecialFileRole.Namespace]:   FlowrFileProvider[];
-    [SpecialFileRole.Data]:        FlowrFileProvider[];
-    [SpecialFileRole.Other]:       FlowrFileProvider[];
+    [FileRole.Namespace]:   FlowrFileProvider[];
+    [FileRole.Source]:      FlowrFileProvider[];
+    [FileRole.Data]:        FlowrFileProvider[];
+    [FileRole.Other]:       FlowrFileProvider[];
 }
 
-function obtainFileAndPath(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: SpecialFileRole): { f: FlowrFileProvider<string> | RParseRequestFromFile, p: string } {
-	let f: FlowrFileProvider<string> | RParseRequestFromFile;
-	let p: FilePath;
+function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, role?: FileRole): FlowrFileProvider {
 	if(typeof file === 'string') {
-		f = new FlowrTextFile(file, role);
-		p = file;
+		return new FlowrTextFile(file, role);
 	} else if('request' in file) {
-		f = file;
-		p = file.content;
+		return FlowrFile.fromRequest(file);
 	} else {
-		f = file;
-		p = file.path().toString();
+		return file;
 	}
-	return { f, p };
 }
 
 /**
@@ -70,13 +69,39 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	readonly loadingOrder: ReadOnlyFlowrAnalyzerLoadingOrderContext;
 	/**
 	 * Get all requests that have been added to this context.
-	 *
 	 * @example If you want to obtain all description files, use
 	 * ```ts
 	 * getFilesByRole(SpecialFileRole.Description)
 	 * ```
 	 */
-	getFilesByRole<Role extends SpecialFileRole>(role: Role): SpecialFiles[Role];
+	getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role];
+	/**
+	 * Check if the context has a file with the given path.
+	 * Please note, that this may also check the file system, depending on the configuration
+	 * (see {@link FlowrConfigOptions.project.resolveUnknownPathsOnDisk}).
+	 * @param path - The path to the file.
+	 *
+	 * If you do not know the exact path or, e.g., casing of the file, use {@link exists} instead.
+	 */
+	hasFile(path: string): boolean;
+	/**
+	 * Check if a file exists at the given path, optionally ignoring case.
+	 * @param path - The path to the file.
+	 * @param ignoreCase - Whether to ignore case when checking for the file.
+	 *
+	 * Please note that this method checks the file system based on the configuration (see {@link FlowrConfigOptions.project.resolveUnknownPathsOnDisk}).
+	 * @returns The actual path of the file if it exists, otherwise `undefined`.
+	 */
+	exists(path: string, ignoreCase: boolean): string | undefined;
+	/**
+	 * Until parsers support multiple request types from the virtual context system,
+	 * we resolve their contents.
+	 */
+	resolveRequest(r: RParseRequest): { r: RParseRequestFromText, path?: string };
+	/**
+	 * Get all files that have been considered during dataflow analysis.
+	 */
+	consideredFilesList(): readonly string[];
 }
 
 /**
@@ -87,17 +112,22 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RProjectAnalysisRequest, (RParseRequest | FlowrFile<string>)[], FlowrAnalyzerProjectDiscoveryPlugin> implements ReadOnlyFlowrAnalyzerFilesContext {
 	public readonly name = 'flowr-analyzer-files-context';
 
-	public readonly loadingOrder: FlowrAnalyzerLoadingOrderContext;
-	/* all project files etc., this contains *all* files, loading orders etc. are to be handled by plugins */
-	private files:                Map<FilePath, FlowrFileProvider | RParseRequestFromFile> = new Map<FilePath, FlowrFileProvider | RParseRequestFromFile>();
-	private readonly fileLoaders: readonly FlowrAnalyzerFilePlugin[];
+	public readonly loadingOrder:     FlowrAnalyzerLoadingOrderContext;
+	/* all project files etc., this contains *all* (non-inline) files, loading orders etc. are to be handled by plugins */
+	private files:                    Map<FilePath, FlowrFileProvider> = new Map<FilePath, FlowrFileProvider>();
+	private inlineFiles:              FlowrFileProvider[] = [];
+	private readonly fileLoaders:     readonly FlowrAnalyzerFilePlugin[];
+	/** these are all the paths of files that have been considered by the dataflow graph (even if not added) */
+	private readonly consideredFiles: string[] = [];
+
 	/* files that are part of the analysis, e.g. source files */
-	private specialFiles:        SpecialFiles = {
-		[SpecialFileRole.Description]: [],
-		[SpecialFileRole.Namespace]:   [],
-		[SpecialFileRole.Data]:        [],
-		[SpecialFileRole.Other]:       []
-	} satisfies Record<SpecialFileRole, FlowrFileProvider[]>;
+	private byRole:        RoleBasedFiles = {
+		[FileRole.Description]: [],
+		[FileRole.Namespace]:   [],
+		[FileRole.Source]:      [],
+		[FileRole.Data]:        [],
+		[FileRole.Other]:       []
+	} satisfies Record<FileRole, FlowrFileProvider[]>;
 
 	constructor(
 		loadingOrder: FlowrAnalyzerLoadingOrderContext,
@@ -111,7 +141,21 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public reset(): void {
 		this.loadingOrder.reset();
-		this.files = new Map<FilePath, FlowrFileProvider | RParseRequestFromFile>();
+		this.files = new Map<FilePath, FlowrFileProvider>();
+	}
+
+	/**
+	 * Record that a file has been considered during dataflow analysis.
+	 */
+	public addConsideredFile(path: string): void {
+		this.consideredFiles.push(path);
+	}
+
+	/**
+	 * Get all files that have been considered during dataflow analysis.
+	 */
+	public consideredFilesList(): readonly string[] {
+		return this.consideredFiles;
 	}
 
 	/**
@@ -126,12 +170,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	/**
 	 * Add a request to the context. If the request is of type `project`, it will be expanded using the registered {@link FlowrAnalyzerProjectDiscoveryPlugin}s.
 	 */
-	public addRequest(request: RAnalysisRequest): void {
+	private addRequest(request: RAnalysisRequest): void {
 		if(request.request !== 'project') {
 			this.loadingOrder.addRequest(request);
-			if(request.request === 'file') {
-				this.files.set(request.content, request);
-			}
 			return;
 		}
 
@@ -148,7 +189,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	/**
 	 * Add multiple files to the context. This is just a convenience method that calls {@link addFile} for each file.
 	 */
-	public addFiles(...files: (string | FlowrFileProvider<string> | RParseRequestFromFile)[]): void {
+	public addFiles(files: (string | FlowrFileProvider | RParseRequestFromFile)[]): void {
 		for(const file of files) {
 			this.addFile(file);
 		}
@@ -158,34 +199,101 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 * Add a file to the context. If the file has a special role, it will be added to the corresponding list of special files.
 	 * This method also applies any registered {@link FlowrAnalyzerFilePlugin}s to the file before adding it to the context.
 	 */
-	public addFile(file: string | FlowrFileProvider<string> | RParseRequestFromFile, role?: SpecialFileRole): void {
-		const { f, p } = obtainFileAndPath(file, role);
-		const { f: fA, p: pA } = this.fileLoadPlugins(f, p);
+	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile, role?: FileRole) {
+		const f = this.fileLoadPlugins(wrapFile(file, role));
 
-		const exist = this.files.get(pA);
-		guard(exist === undefined || exist === fA, `File ${pA} already added to the context.`);
-		this.files.set(pA, fA);
+		if(f.path() === FlowrFile.INLINE_PATH) {
+			this.inlineFiles.push(f);
+		} else {
+			const exist = this.files.get(f.path());
+			guard(exist === undefined || exist === f, `File ${f.path()} already added to the context.`);
+			this.files.set(f.path(), f);
+		}
 
-		if(!isParseRequest(fA) && fA.role) {
-			this.specialFiles[fA.role].push(fA as typeof this.specialFiles[SpecialFileRole.Description][number]);
+		if(f.role) {
+			this.byRole[f.role].push(f as typeof this.byRole[FileRole.Description][number]);
+		}
+
+		return f;
+	}
+
+	public hasFile(path: string): boolean {
+		return this.files.has(path)
+			|| (
+				this.ctx.config.project.resolveUnknownPathsOnDisk && fs.existsSync(path)
+			);
+	}
+
+	public exists(p: string, ignoreCase: boolean): string | undefined {
+		try {
+			if(!ignoreCase) {
+				return this.hasFile(p) ? p : undefined;
+			}
+			// walk the directory and find the first match
+			const dir = path.dirname(p);
+			const file = path.basename(p);
+			// try to find in local known files first
+			const localFound = Array.from(this.files.keys()).find(f => {
+				return path.dirname(f) === dir && path.basename(f).toLowerCase() === file.toLowerCase();
+
+			});
+			if(localFound) {
+				return localFound;
+			}
+			if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
+				const files = fs.readdirSync(dir);
+				const found = files.find(f => f.toLowerCase() === file.toLowerCase());
+				return found ? path.join(dir, found) : undefined;
+			}
+			return undefined;
+		} catch{
+			return undefined;
 		}
 	}
 
-
-	private fileLoadPlugins(f: FlowrFileProvider<string> | RParseRequestFromFile, p: string) {
-		let fFinal: FlowrFileProvider | RParseRequestFromFile = f;
-		let pFinal: string = p;
-		if(!isParseRequest(f)) { // we have to change the types when we integrate the adapters
-			for(const loader of this.fileLoaders) {
-				if(loader.applies(p)) {
-					fileLog.debug(`Applying file loader ${loader.name} to file ${p}`);
-					fFinal = loader.processor(this.ctx, f);
-					pFinal = f.path().toString();
-					break;
-				}
+	private fileLoadPlugins(f: FlowrFileProvider) {
+		let fFinal: FlowrFileProvider = f;
+		for(const loader of this.fileLoaders) {
+			if(loader.applies(f.path())) {
+				fileLog.debug(`Applying file loader ${loader.name} to file ${f.path()}`);
+				fFinal = loader.processor(this.ctx, f);
+				break;
 			}
 		}
-		return { f: fFinal, p: pFinal };
+		return fFinal;
+	}
+
+	public resolveRequest(r: RParseRequest): { r: RParseRequestFromText, path?: string } {
+		if(r.request === 'text') {
+			return { r };
+		}
+
+		const file = this.files.get(r.content);
+		if(file === undefined && this.ctx.config.project.resolveUnknownPathsOnDisk) {
+			fileLog.debug(`File ${r.content} not found in context, trying to load from disk.`);
+			if(fs.existsSync(r.content)) {
+
+				const loadedFile = this.addFile(new FlowrTextFile(r.content));
+
+				return {
+					r: {
+						request: 'text',
+						content: loadedFile.content().toString(),
+					},
+					path: loadedFile.path()
+				};
+			}
+		}
+		guard(file !== undefined && file !== null, `File ${r.content} not found in context.`);
+
+		const content = file.content();
+		return {
+			r: {
+				request: 'text',
+				content: typeof content === 'string' ? content : '',
+			},
+			path: file.path()
+		};
 	}
 
 	/**
@@ -196,7 +304,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return this.loadingOrder.getLoadingOrder();
 	}
 
-	public getFilesByRole<Role extends SpecialFileRole>(role: Role): SpecialFiles[Role] {
-		return this.specialFiles[role];
+	public getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role] {
+		return this.byRole[role];
 	}
 }

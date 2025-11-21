@@ -5,7 +5,11 @@ import { processUnnamedFunctionCall } from './unnamed-call-handling';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
-
+/**
+ * Processes a function call, either named or unnamed.
+ * @see {@link processNamedCall}
+ * @see {@link processUnnamedFunctionCall}
+ */
 export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	if(functionCall.named) {
 		return processNamedCall(functionCall.functionName, functionCall.arguments, functionCall.info.id, data);

@@ -2,8 +2,7 @@ import type { Feature, FeatureProcessorInput } from '../../feature';
 import type { Writable } from 'ts-essentials';
 import { postProcess } from './post-process';
 import type { MergeableRecord } from '../../../../util/objects';
-import type { SourcePosition } from '../../../../util/range';
-import { getRangeStart } from '../../../../util/range';
+import { type SourcePosition , getRangeStart } from '../../../../util/range';
 import { guard, isNotUndefined } from '../../../../util/assert';
 import type { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { ParentInformation, RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -70,7 +69,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 	const definitionStack: RNodeWithParent[] = [];
 	const allDefinitions: SingleFunctionDefinitionInformation[] = [];
 
-	visitAst(input.normalizedRAst.ast,
+	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
 		node => {
 			if(node.type !== RType.FunctionDefinition) {
 				return;

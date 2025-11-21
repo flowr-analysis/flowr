@@ -42,18 +42,18 @@ import { NewIssueUrl } from './doc-util/doc-issue';
 import { PipelineExecutor } from '../core/pipeline-executor';
 import { createPipeline } from '../core/steps/pipeline/pipeline';
 import { staticSlice } from '../slicing/static/static-slicer';
-import { defaultConfigOptions } from '../config';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
+import { contextFromInput } from '../project/context/flowr-analyzer-context';
 
 async function makeAnalyzerExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
-		.addRequestFromInput('x <- 1; y <- x; print(y);')
 		.amendConfig(c => {
 			c.ignoreSourceCalls = true;
 		})
 		.setEngine('tree-sitter')
 		.build();
+	analyzer.addRequest('x <- 1; y <- x; print(y);');
 	return analyzer;
 }
 
@@ -64,6 +64,9 @@ async function extractStepsExample(analyzer: FlowrAnalyzer) {
 	return { normalizedAst, dataflow, cfg };
 }
 
+/**
+ * Shows how to use the query API to perform a static slice (please do not simplify).
+ */
 async function sliceQueryExample(analyzer: FlowrAnalyzer) {
 	const result = await analyzer.query([{
 		type:     'static-slice',
@@ -72,6 +75,10 @@ async function sliceQueryExample(analyzer: FlowrAnalyzer) {
 	return result;
 }
 
+
+/**
+ * Shows how to inspect the context of an analyzer instance.
+ */
 export function inspectContextExample(analyzer: FlowrAnalyzer) {
 	const ctx = analyzer.inspectContext();
 	console.log('dplyr version', ctx.deps.getDependency('dplyr'));
@@ -172,13 +179,14 @@ Using the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines) you can request 
 ${codeBlock('typescript', `
 const executor = new PipelineExecutor(TREE_SITTER_DATAFLOW_PIPELINE, {
 	parser:  new TreeSitterExecutor(),
-	request: requestFromInput('x <- 1; y <- x; print(y);')
+	context: contextFromInput('x <- 1; y <- x; print(y);')
 });
 const result = await executor.allRemainingSteps();
 `)}
 
 This is, roughly, what the ${shortLink('dataflow', info)} function does when using the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines).
-We create a new ${shortLink(PipelineExecutor.name, info)} with the ${shortLink('TREE_SITTER_DATAFLOW_PIPELINE', info)} and then use ${shortLink(`${PipelineExecutor.name}::${new PipelineExecutor(TREE_SITTER_PARSE_PIPELINE, { parser: new TreeSitterExecutor(), request: requestFromInput('') }, defaultConfigOptions).allRemainingSteps.name}`, info)} 
+We create a new ${shortLink(PipelineExecutor.name, info)} with the ${shortLink('TREE_SITTER_DATAFLOW_PIPELINE', info)} and then use 
+${shortLink(`${PipelineExecutor.name}::${new PipelineExecutor(TREE_SITTER_PARSE_PIPELINE, { parser: new TreeSitterExecutor(), context: contextFromInput('') }).allRemainingSteps.name}`, info)} 
 to cause the execution of all contained steps (in general, pipelines can be executed step-by-step, but this is usually not required if you just want the result).
 
 In general, however, most flowR-internal functions which are tasked with generating dataflow prefer the use of ${shortLink(createDataflowPipeline.name, info)} as this function
@@ -240,7 +248,7 @@ ${await documentReplSession(shell, [{
 	description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${shortLink(RShell.name,info)}. See the ${shortLink(initCommand.name, info)} function for more information on how we request a parse.`
 },
 {
-	command:     `:normalize* "${sampleCode}"`,	
+	command:     `:normalize* "${sampleCode}"`,
 	description: `Following the link output should show the following:\n${await printNormalizedAstForCode(shell, sampleCode, { showCode: false })}`
 },
 {
@@ -254,19 +262,19 @@ ${block({
 	content: `
 	All of these commands accept file paths as well, so you can write longer R code within a file, and then pass 
 	the file path prefixed with \`${fileProtocol}\` (e.g., \`${fileProtocol}test/testfiles/example.R\`) to the commands.`
-})}	
+})}
 
 Especially when you are just starting with flowR, we recommend using the REPL to explore the output of the different steps.
 
-${block({ 
-	type:    'NOTE', 
+${block({
+	type:    'NOTE',
 	content: 'Maybe you are left with the question: What is tree-sitter doing differently? Expand the following to get more information!\n\n' + details('And what changes with tree-sitter?', `
 
 Essentially not much (from a user perspective, it does essentially everything and all differently under the hood)! Have a look at the [Engines](${FlowrWikiBaseRef}/Engines) wiki page for more information on the differences between the engines.
 Below you can see the Repl commands for the tree-sitter engine (using ${getCliLongOptionOf('flowr', 'default-engine')} to set the engine to tree-sitter):
 
 ${await (async() => {
-	const exec = new TreeSitterExecutor(); 
+	const exec = new TreeSitterExecutor();
 	return await documentReplSession(exec, [{
 		command:     `:parse "${sampleCode}"`,
 		description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${shortLink(TreeSitterExecutor.name, info)}. See the [Engines](${FlowrWikiBaseRef}/Engines) wiki page for more information on the differences between the engines.`
@@ -321,8 +329,8 @@ While looking at the mermaid visualization of such an AST is nice and usually su
 
 Let's have a look at the normalized AST for the sample code \`${sampleCode}\` (please refer to the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) wiki page for more information):
 
-${details('Normalized AST for <code>x <- 1; print(x)</code>', codeBlock('json', 
-	JSON.stringify((await createNormalizePipeline(shell, { request: requestFromInput(sampleCode) }, defaultConfigOptions).allRemainingSteps()).normalize.ast, jsonReplacer, 4)
+${details('Normalized AST for <code>x <- 1; print(x)</code>', codeBlock('json',
+	JSON.stringify((await createNormalizePipeline(shell, { context: contextFromInput(sampleCode) }).allRemainingSteps()).normalize.ast, jsonReplacer, 4)
 ))}
 
 This is… a lot! We get the type from the ${shortLink('RType', info)} enum, the lexeme, location information, an id, the children of the node, and their parents.
@@ -345,7 +353,7 @@ For single nodes, we use ${shortLink(normalizeSingleNode.name, info)} which cont
 The output of just this pass is listed below (using the ${shortLink(normalizeButNotDecorated.name, info)} function):
 
 ${details('Ast for <code>x <- 1; print(x)</code> after the first normalization', codeBlock('json',
-	JSON.stringify(normalizeButNotDecorated((await createParsePipeline(shell, { request: requestFromInput(sampleCode) }, defaultConfigOptions).allRemainingSteps()).parse), jsonReplacer, 4)
+	JSON.stringify(normalizeButNotDecorated((await createParsePipeline(shell, { context: contextFromInput(sampleCode) }).allRemainingSteps()).parse.files[0]), jsonReplacer, 4)
 ))}
 
 
@@ -366,7 +374,7 @@ All ids conform to the ${shortLink('NodeId', info)} type.
 
 The core of the dataflow graph generation works as a "stateful [fold](https://en.wikipedia.org/wiki/Fold_(higher-order_function))", 
 which uses the tree-like structure of the AST to combine the dataflow information of the children, while tracking the currently active variables and control flow 
-information as a “backpack” (state).	
+information as a “backpack” (state).
 We use the ${shortLink(produceDataFlowGraph.name, info)} function as an entry point to the dataflow generation (the actual fold entry is in ${shortLink(processDataflowFor.name, info)}).
 The function is mainly backed by its ${shortLink('processors', info)} object which maps each type in the normalized AST to an appropriate handler ("fold-function").
 

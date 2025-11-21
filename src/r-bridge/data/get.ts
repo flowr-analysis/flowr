@@ -42,6 +42,9 @@ function search(id: FlowrCapabilityId, capabilities: readonly FlowrCapability[],
 
 const capabilityCache = new Map<FlowrCapabilityId, FlowrCapabilityWithPath>();
 
+/**
+ * Find a flowR capability by its id.
+ */
 export function getCapabilityById(id: FlowrCapabilityId): FlowrCapabilityWithPath {
 	const cached = capabilityCache.get(id);
 	if(cached) {
@@ -53,6 +56,9 @@ export function getCapabilityById(id: FlowrCapabilityId): FlowrCapabilityWithPat
 	return value;
 }
 
+/**
+ * Get all capabilities with their paths.
+ */
 export function getAllCapabilities(): readonly FlowrCapabilityWithPath[] {
 	const result: FlowrCapabilityWithPath[] = [];
 	function traverse(capabilities: readonly FlowrCapability[], currentPath: PathToCapability = []) {

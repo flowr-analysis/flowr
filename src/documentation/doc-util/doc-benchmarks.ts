@@ -25,6 +25,11 @@ interface BenchmarkElementBench {
 }
 
 let benchmarkData = null as BenchmarkData | null;
+
+/**
+ * Loads the benchmark data from the predefined path.
+ * This is the location which is used by the CI to store benchmark results.
+ */
 export async function loadBenchmarkData(): Promise<BenchmarkData> {
 	if(benchmarkData === null) {
 		// provide a window object to attach to in the import
@@ -36,6 +41,10 @@ export async function loadBenchmarkData(): Promise<BenchmarkData> {
 	return benchmarkData;
 }
 
+
+/**
+ * Returns the latest benchmark for the given suite.
+ */
 export async function getLatestBenchmark(suite: string): Promise<BenchmarkElement> {
 	// provide a window object to attach to in the import
 	const suiteData = (await loadBenchmarkData()).entries[suite];
@@ -43,6 +52,10 @@ export async function getLatestBenchmark(suite: string): Promise<BenchmarkElemen
 	return suiteData.sort((a, b) => b.date - a.date)[0];
 }
 
+/**
+ * Returns the timestamp of the last benchmark update.
+ * We can use this to find out when the last (recorded) benchmark run was.
+ */
 export async function getLastBenchmarkUpdate(): Promise<number> {
 	return (await loadBenchmarkData()).lastUpdate;
 }
@@ -53,6 +66,9 @@ function getBenchmarkElement(bench: BenchmarkElement, name: string): BenchmarkEl
 	return element;
 }
 
+/**
+ * Get the total time taken for dataflow analysis in the given suite.
+ */
 export async function getLatestDfAnalysisTime(suite: string): Promise<number> {
 	const elem = await getLatestBenchmark(suite);
 	const [parse, normalize, analyze] = ['Retrieve AST from R code', 'Normalize R AST', 'Produce dataflow information'].map(name => getBenchmarkElement(elem, name));

@@ -15,10 +15,8 @@ import { startAndEndsWith } from '../../../../../../../util/text/strings';
 /**
  * Either parses `[expr]` or `[SYMBOL_SUB, EQ_SUB, expr]` as an argument of a function call in R.
  * Probably directly called by the function call parser as otherwise, we do not expect to find arguments.
- *
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param objs - Either `[expr]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
- *
  * @returns The parsed argument or `undefined` if the given object is not an argument.
  */
 export function tryToNormalizeArgument(data: NormalizerData, objs: readonly NamedJsonEntry[]): RArgument | undefined {

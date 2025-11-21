@@ -12,8 +12,7 @@ import { fileProtocol, removeRQuotes, requestFromInput } from '../r-bridge/retri
 import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
-import type { FlowrConfigOptions } from '../config';
-import { DropPathsOption, flowrConfigFileSchema, InferWorkingDirectory, VariableResolve } from '../config';
+import { type FlowrConfigOptions , DropPathsOption, flowrConfigFileSchema, InferWorkingDirectory, VariableResolve } from '../config';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/text/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
@@ -116,10 +115,14 @@ for communication (although you can access the REPL using the server as well,
 with the [REPL Request](#message-request-repl-execution) message).
 
 The read-eval-print loop&nbsp;(REPL) works relatively simple.
-You can submit an expression (using enter),
+You can submit an expression (using <kbd>Enter</kbd>),
 which is interpreted as an R&nbsp;expression by default but interpreted as a *command* if it starts with a colon (\`:\`).
 The best command to get started with the REPL is ${getReplCommand('help')}.
-Besides, you can leave the REPL either with the command ${getReplCommand('quit')} or by pressing <kbd>CTRL</kbd>+<kbd>C</kbd> twice.
+Besides, you can leave the REPL either with the command ${getReplCommand('quit')} or by pressing <kbd>Ctrl</kbd>+<kbd>C</kbd> twice.
+When writing a *command*, you may press <kbd>Tab</kbd> to get a list of completions, if available.
+Multiple commands can be entered in a single line by separating them with a semicolon (\`;\`), e.g. \`:parse "x<-2"; :df*\`.
+If a command is given without R code, the REPL will re-use R code given in a previous command. 
+The prior example will hence return first the parsed AST of the program and then the dataflow graph for \`"x <- 2"\`.
 
 > [!NOTE]
 > If you develop flowR, you may want to launch the repl using the \`npm run main-dev\` command, this way, you get a non-minified version of flowR with debug information and hot-reloading of source files.
@@ -133,6 +136,19 @@ ${printReplHelpAsMarkdownTable()}
 
 </details>
 
+${
+	block({
+		type:    'TIP',
+		content: `
+As indicated by the examples before, all REPL commands that operate on code keep track of the state.
+Hence, if you run a command like ${getReplCommand('dataflow*')} without providing R code,
+the REPL will re-use the R code provided in a previous command.
+Likewise, doing this will benefit from incrementality!
+If you request the dataflow graph with \`:df* x <- 2 * y\` and then want to see the parsed AST with \`:parse\`,
+the REPL will re-use previously obtained information and not re-parse the code again.
+		`
+	})
+}
 
 ### Example: Retrieving the Dataflow Graph
 
@@ -158,7 +174,7 @@ ${await documentReplSession(shell, [{
 
 <details>
 
-<summary>File Content</summary>	
+<summary>File Content</summary>
 
 ${codeBlock('r', getFileContentFromRoot('test/testfiles/example.R'))}
 
@@ -209,6 +225,9 @@ ${codeBlock('json', JSON.stringify(
 						]
 					}
 				}
+			},
+			project: {
+				resolveUnknownPathsOnDisk: true
 			},
 			engines: [{ type: 'r-shell' }],
 			solver:  {

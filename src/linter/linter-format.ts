@@ -9,8 +9,8 @@ import type { AsyncOrSync, DeepPartial, DeepReadonly } from 'ts-essentials';
 import type { LintingRuleTag } from './linter-tags';
 import type { SourceRange } from '../util/range';
 import type { DataflowInformation } from '../dataflow/info';
-import type { FlowrConfigOptions } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
+import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 export interface LinterRuleInformation<Config extends MergeableRecord = never> {
 	/** Human-Readable name of the linting rule. */
@@ -49,7 +49,7 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 	 * Processes the search results of the search created through {@link createSearch}.
 	 * This function is expected to return the linting results from this rule for the given search, ie usually the given script file.
 	 */
-	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation, cfg: ControlFlowInformation, config: FlowrConfigOptions }) => AsyncOrSync<{
+	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation, cfg: ControlFlowInformation, analyzer: ReadonlyFlowrAnalysisProvider }) => AsyncOrSync<{
 		results: Result[],
 		'.meta': Metadata
 	}>
@@ -112,7 +112,7 @@ export interface ConfiguredLintingRule<Name extends LintingRuleNames = LintingRu
  */
 export interface LintingResultsError {
 	readonly error: string
-} 
+}
 
 
 export interface LintingResultsSuccess<Name extends LintingRuleNames> {
@@ -120,10 +120,18 @@ export interface LintingResultsSuccess<Name extends LintingRuleNames> {
 	'.meta': LintingRuleMetadata<Name> & { readonly searchTimeMs: number; readonly processTimeMs: number; };
 }
 
+/**
+ * Checks whether the given linting results represent an error.
+ * @see {@link isLintingResultsSuccess}
+ */
 export function isLintingResultsError<Name extends LintingRuleNames>(o: LintingResults<Name>): o is LintingResultsError {
 	return 'error' in o;
 }
 
+/**
+ * Checks whether the given linting results represent a successful linting result.
+ * @see {@link isLintingResultsError}
+ */
 export function isLintingResultsSuccess<Name extends LintingRuleNames>(o: LintingResults<Name>): o is LintingResultsSuccess<Name> {
 	return 'results' in o;
 }
@@ -163,5 +171,5 @@ export enum LintingRuleCertainty {
 
 export enum LintingPrettyPrintContext {
 	Query = 'query',
-	Full = 'full'
+	Full  = 'full'
 }

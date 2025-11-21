@@ -2,23 +2,29 @@ import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
 import { executeLinterQuery } from './linter-query-executor';
-import type {
-	LintingRuleConfig,
-	LintingRuleMetadata,
-	LintingRuleNames,
-	LintingRuleResult
+import {
+	type LintingRuleConfig,
+	type LintingRuleMetadata,
+	type LintingRuleNames,
+	type LintingRuleResult,
+	LintingRules
 } from '../../../linter/linter-rules';
-import { LintingRules } from '../../../linter/linter-rules';
-import type { ConfiguredLintingRule, LintingResults, LintingRule } from '../../../linter/linter-format';
-import { isLintingResultsError, LintingPrettyPrintContext, LintingResultCertainty } from '../../../linter/linter-format';
-
-import { bold } from '../../../util/text/ansi';
+import {
+	type ConfiguredLintingRule,
+	isLintingResultsError,
+	LintingPrettyPrintContext,
+	LintingResultCertainty,
+	type LintingResults,
+	type LintingRule
+} from '../../../linter/linter-format';
+import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import { codeInline } from '../../../documentation/doc-util/doc-code';
 import type { FlowrConfigOptions } from '../../../config';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
+import { getGuardIssueUrl } from '../../../util/assert';
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:   'linter';
@@ -102,9 +108,22 @@ function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, 
 
 export const LinterQueryDefinition = {
 	executor:        executeLinterQuery,
-	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
+	asciiSummarizer: (formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'linter'>['linter'];
 		result.push(`Query: ${bold('linter', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		const allDidFail = Object.values(out.results).every(r => isLintingResultsError(r));
+		if(allDidFail) {
+			result.push('All linting rules failed to execute.');
+			if(analyzer.inspectContext().files.loadingOrder.getUnorderedRequests().length === 0) {
+				result.push(
+					formatter.format('No requests to lint for were found in the analysis.', { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold })
+				);
+				result.push(
+					'If you consider this an error, please report a bug: ' + getGuardIssueUrl('analyzer found no requests to lint for')
+				);
+			}
+			return true;
+		}
 		for(const [ruleName, results] of Object.entries(out.results)) {
 			addLintingRuleResult(ruleName as LintingRuleNames, results as LintingResults<LintingRuleNames>, result);
 		}
@@ -130,7 +149,8 @@ function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, res
 	result.push(`   ╰ **${rule.info.name}** (${ruleName}):`);
 
 	if(isLintingResultsError(results)) {
-		result.push(`       ╰ Error during execution of Rule: ${results.error}`);
+		const error = results.error.includes('At least one request must be set') ? 'No requests to lint for were found in the analysis.' : 'Error during execution of rule: ' + results.error;
+		result.push(`       ╰ ${error}`);
 		return;
 	}
 

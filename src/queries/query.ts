@@ -1,53 +1,60 @@
-import type { CallContextQuery } from './catalog/call-context-query/call-context-query-format';
-import { CallContextQueryDefinition } from './catalog/call-context-query/call-context-query-format';
+import {
+	type CallContextQuery,
+	CallContextQueryDefinition
+} from './catalog/call-context-query/call-context-query-format';
 import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from './base-query-format';
-import { guard } from '../util/assert';
-import type { VirtualQueryArgumentsWithType } from './virtual-query/virtual-queries';
-import { SupportedVirtualQueries } from './virtual-query/virtual-queries';
+import { getGuardIssueUrl, guard } from '../util/assert';
+import { SupportedVirtualQueries, type VirtualQueryArgumentsWithType } from './virtual-query/virtual-queries';
 import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
-import type { DataflowQuery } from './catalog/dataflow-query/dataflow-query-format';
-import { DataflowQueryDefinition } from './catalog/dataflow-query/dataflow-query-format';
-import type { IdMapQuery } from './catalog/id-map-query/id-map-query-format';
-import { IdMapQueryDefinition } from './catalog/id-map-query/id-map-query-format';
-import type { NormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-format';
-import { NormalizedAstQueryDefinition } from './catalog/normalized-ast-query/normalized-ast-query-format';
-import type { LineageQuery } from './catalog/lineage-query/lineage-query-format';
-import { LineageQueryDefinition } from './catalog/lineage-query/lineage-query-format';
-import type { StaticSliceQuery } from './catalog/static-slice-query/static-slice-query-format';
-import { StaticSliceQueryDefinition } from './catalog/static-slice-query/static-slice-query-format';
-import type { DataflowClusterQuery } from './catalog/cluster-query/cluster-query-format';
-import { ClusterQueryDefinition } from './catalog/cluster-query/cluster-query-format';
-import type { DependenciesQuery } from './catalog/dependencies-query/dependencies-query-format';
-import { DependenciesQueryDefinition } from './catalog/dependencies-query/dependencies-query-format';
+import { type DataflowQuery, DataflowQueryDefinition } from './catalog/dataflow-query/dataflow-query-format';
+import { type IdMapQuery, IdMapQueryDefinition } from './catalog/id-map-query/id-map-query-format';
+import {
+	type NormalizedAstQuery,
+	NormalizedAstQueryDefinition
+} from './catalog/normalized-ast-query/normalized-ast-query-format';
+import {
+	type StaticSliceQuery,
+	StaticSliceQueryDefinition
+} from './catalog/static-slice-query/static-slice-query-format';
+import { ClusterQueryDefinition, type DataflowClusterQuery } from './catalog/cluster-query/cluster-query-format';
+import {
+	type DependenciesQuery,
+	DependenciesQueryDefinition
+} from './catalog/dependencies-query/dependencies-query-format';
 import type { OutputFormatter } from '../util/text/ansi';
+import { ColorEffect, Colors, FontStyles } from '../util/text/ansi';
 import Joi from 'joi';
-import type { LocationMapQuery } from './catalog/location-map-query/location-map-query-format';
-import { LocationMapQueryDefinition } from './catalog/location-map-query/location-map-query-format';
-import type { ConfigQuery } from './catalog/config-query/config-query-format';
-import { ConfigQueryDefinition } from './catalog/config-query/config-query-format';
-import type { SearchQuery } from './catalog/search-query/search-query-format';
-import { SearchQueryDefinition } from './catalog/search-query/search-query-format';
-import type { HappensBeforeQuery } from './catalog/happens-before-query/happens-before-query-format';
-import { HappensBeforeQueryDefinition } from './catalog/happens-before-query/happens-before-query-format';
-import type { ResolveValueQuery } from './catalog/resolve-value-query/resolve-value-query-format';
-import { ResolveValueQueryDefinition } from './catalog/resolve-value-query/resolve-value-query-format';
-import type { DataflowLensQuery } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
-import { DataflowLensQueryDefinition } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
-import type { ProjectQuery } from './catalog/project-query/project-query-format';
-import { ProjectQueryDefinition } from './catalog/project-query/project-query-format';
-import type { OriginQuery } from './catalog/origin-query/origin-query-format';
-import { OriginQueryDefinition } from './catalog/origin-query/origin-query-format';
-import type { LinterQuery } from './catalog/linter-query/linter-query-format';
-import { LinterQueryDefinition } from './catalog/linter-query/linter-query-format';
+import {
+	type LocationMapQuery,
+	LocationMapQueryDefinition
+} from './catalog/location-map-query/location-map-query-format';
+import { type ConfigQuery, ConfigQueryDefinition } from './catalog/config-query/config-query-format';
+import { type SearchQuery, SearchQueryDefinition } from './catalog/search-query/search-query-format';
+import {
+	type HappensBeforeQuery,
+	HappensBeforeQueryDefinition
+} from './catalog/happens-before-query/happens-before-query-format';
+import {
+	type ResolveValueQuery,
+	ResolveValueQueryDefinition
+} from './catalog/resolve-value-query/resolve-value-query-format';
+import {
+	type DataflowLensQuery,
+	DataflowLensQueryDefinition
+} from './catalog/dataflow-lens-query/dataflow-lens-query-format';
+import { type ProjectQuery, ProjectQueryDefinition } from './catalog/project-query/project-query-format';
+import { type OriginQuery, OriginQueryDefinition } from './catalog/origin-query/origin-query-format';
+import { type LinterQuery, LinterQueryDefinition } from './catalog/linter-query/linter-query-format';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ControlFlowQuery } from './catalog/control-flow-query/control-flow-query-format';
-import { ControlFlowQueryDefinition } from './catalog/control-flow-query/control-flow-query-format';
-import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-format';
-import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
+import {
+	type ControlFlowQuery,
+	ControlFlowQueryDefinition
+} from './catalog/control-flow-query/control-flow-query-format';
+import { type DfShapeQuery, DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 import type { AsyncOrSync, Writable } from 'ts-essentials';
 import type { FlowrConfigOptions } from '../config';
-import type { InspectHigherOrderQuery } from './catalog/inspect-higher-order-query/inspect-higher-order-query-format';
 import {
+	type InspectHigherOrderQuery,
 	InspectHigherOrderQueryDefinition
 } from './catalog/inspect-higher-order-query/inspect-higher-order-query-format';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
@@ -69,7 +76,6 @@ export type Query = CallContextQuery
 	| IdMapQuery
 	| DataflowClusterQuery
 	| StaticSliceQuery
-	| LineageQuery
 	| DependenciesQuery
 	| LocationMapQuery
 	| HappensBeforeQuery
@@ -105,6 +111,10 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
 	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions) => CommandCompletions;
     /** optional query construction from an, e.g., repl line */
 	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine<QueryType>
+	/**
+	 * Generates an ASCII summary of the query result to be printed in, e.g., the REPL.
+	 * @returns whether a summary was produced (`true` if so, `false` if not, in this case a default/generic summary will be created)
+	 */
 	asciiSummarizer:      (formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, resultStrings: string[], query: readonly Query[]) => AsyncOrSync<boolean>
 	jsonFormatter?:       (queryResults: BaseQueryResult) => object
 	schema:               Joi.ObjectSchema
@@ -126,7 +136,6 @@ export const SupportedQueries = {
 	'normalized-ast':       NormalizedAstQueryDefinition,
 	'dataflow-cluster':     ClusterQueryDefinition,
 	'static-slice':         StaticSliceQueryDefinition,
-	'lineage':              LineageQueryDefinition,
 	'dependencies':         DependenciesQueryDefinition,
 	'location-map':         LocationMapQueryDefinition,
 	'search':               SearchQueryDefinition,
@@ -141,6 +150,11 @@ export const SupportedQueries = {
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
 export type QueryResult<Type extends Query['type']> = Promise<ReturnType<typeof SupportedQueries[Type]['executor']>>;
 
+/**
+ * Executes a set of queries that are all of the same type.
+ * Only use this function if you are sure all queries are of the same type.
+ * Otherwise, use {@link executeQueries}.
+ */
 export async function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']> {
 	guard(queries.length > 0, 'At least one query must be provided');
 	/* every query must have the same type */
@@ -199,6 +213,7 @@ export type Queries<
 
 /**
  * This is the main query execution function that takes a set of queries and executes them on the given data.
+ * @see {@link executeQueriesOfSameType}
  */
 export async function executeQueries<
 	Base extends SupportedQueryTypes,
@@ -215,7 +230,7 @@ export async function executeQueries<
 			const result = await Promise.resolve(executeQueriesOfSameType(data, group));
 			results.push([type, result] as [Base, Awaited<QueryResult<Base>>]);
 		} catch(e) {
-			log.error(e);
+			log.warn(e);
 			results.push([type, undefined]);
 		}
 	}
@@ -227,6 +242,9 @@ export async function executeQueries<
 	return r as QueryResults<Base>;
 }
 
+/**
+ * Produces a Joi schema representing all supported queries.
+ */
 export function SupportedQueriesSchema() {
 	return Joi.alternatives(
 		Object.values(SupportedQueries).map(q => q.schema)
@@ -239,17 +257,53 @@ export const CompoundQuerySchema = Joi.object({
 	commonArguments: Joi.object().required().description('Common arguments for all queries.'),
 	arguments:       Joi.array().items(Joi.object()).required().description('Arguments for each query.')
 }).description('Compound query used to combine queries of the same type');
+
+/**
+ * Produces a Joi schema representing all virtual queries.
+ */
 export function VirtualQuerySchema() {
 	return Joi.alternatives(
 		CompoundQuerySchema
 	).description('Virtual queries (used for structure)');
 }
+
+/**
+ * Produces a Joi schema representing any supported query (including virtual queries).
+ */
 export function AnyQuerySchema() {
 	return Joi.alternatives(
 		SupportedQueriesSchema(),
 		VirtualQuerySchema()
 	).description('Any query');
 }
+
+/**
+ * Produces a Joi schema representing an array of supported queries.
+ */
 export function QueriesSchema() {
 	return Joi.array().items(AnyQuerySchema()).description('Queries to run on the file analysis information (in the form of an array)');
+}
+
+
+/**
+ * Wraps a function that executes a REPL query and, if it fails, checks whether there were any requests to analyze.
+ */
+export async function genericWrapReplFailIfNoRequest<T>(
+	fn: () => Promise<T>,
+	output: ReplOutput,
+	analyzer: ReadonlyFlowrAnalysisProvider
+): Promise<T | undefined> {
+	try {
+		return await fn();
+	} catch(e) {
+		if(analyzer.inspectContext().files.loadingOrder.getUnorderedRequests().length === 0) {
+			output.stderr(
+				output.formatter.format('No requests to analyze were found.', { color: Colors.Red, style: FontStyles.Bold, effect: ColorEffect.Foreground  })
+		        + '\nIf you consider this an error, please report a bug: '
+				+ getGuardIssueUrl('analyzer found no requests to analyze')
+			);
+		} else {
+			throw e;
+		}
+	}
 }

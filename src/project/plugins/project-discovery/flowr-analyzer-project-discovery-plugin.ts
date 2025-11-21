@@ -2,8 +2,7 @@ import { FlowrAnalyzerPlugin, PluginType } from '../flowr-analyzer-plugin';
 import type { RParseRequest } from '../../../r-bridge/retriever';
 import type { RProjectAnalysisRequest } from '../../context/flowr-analyzer-files-context';
 import { SemVer } from 'semver';
-import type { FlowrFile } from '../../context/flowr-file';
-import { FlowrTextFile } from '../../context/flowr-file';
+import { type FlowrFile , FlowrTextFile } from '../../context/flowr-file';
 import { getAllFilesSync } from '../../../util/files';
 
 /**
@@ -21,6 +20,8 @@ export abstract class FlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerP
 	}
 }
 
+const discoverRSourcesRegex = /\.(r|rmd|ipynb|qmd)$/i;
+
 /**
  * This is the default dummy implementation of the {@link FlowrAnalyzerProjectDiscoveryPlugin}.
  * It simply collects all files in the given folder and returns them as either {@link RParseRequest} (for R and Rmd files) or {@link FlowrTextFile} (for all other files).
@@ -29,12 +30,18 @@ class DefaultFlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerProjectDis
 	public readonly name = 'default-project-discovery-plugin';
 	public readonly description = 'This is the default project discovery plugin that does nothing.';
 	public readonly version = new SemVer('0.0.0');
+	private readonly supportedExtensions: RegExp;
+
+	constructor(triggerOnExtensions: RegExp = discoverRSourcesRegex) {
+		super();
+		this.supportedExtensions = triggerOnExtensions;
+	}
 
 	public process(_context: unknown, args: RProjectAnalysisRequest): (RParseRequest | FlowrFile<string>)[] {
 		const requests: (RParseRequest | FlowrFile<string>)[] = [];
 		/* the dummy approach of collecting all files, group R and Rmd files, and be done with it */
 		for(const file of getAllFilesSync(args.content)) {
-			if(file.endsWith('.R') || file.endsWith('.r') || file.endsWith('.Rmd') || file.endsWith('.rmd')) {
+			if(this.supportedExtensions.test(file)) {
 				requests.push({ content: file, request: 'file' });
 			} else {
 				requests.push(new FlowrTextFile(file));

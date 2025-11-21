@@ -1,7 +1,7 @@
 import { assertUnreachable } from '../../util/assert';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain } from './abstract-domain';
-import { Bottom, Top } from './lattice';
+import { Bottom, BottomSymbol, Top } from './lattice';
 import type { SatisfiableDomain } from './satisfiable-domain';
 import { NumericalComparator } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
@@ -275,7 +275,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 
 	public toString(): string {
 		if(this.value === Bottom) {
-			return '⊥';
+			return BottomSymbol;
 		}
 		return `[${isFinite(this.value[0]) ? this.value[0] : '-∞'}, ${isFinite(this.value[1]) ? this.value[1] : '+∞'}]`;
 	}

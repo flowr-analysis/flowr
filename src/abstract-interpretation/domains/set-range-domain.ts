@@ -2,7 +2,7 @@ import { assertUnreachable } from '../../util/assert';
 import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain, DEFAULT_INFERENCE_LIMIT, domainElementToString } from './abstract-domain';
-import { Bottom, Top } from './lattice';
+import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 import type { SatisfiableDomain } from './satisfiable-domain';
 import { SetComparator } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
@@ -400,11 +400,11 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 
 	public toString(): string {
 		if(this.value === Bottom) {
-			return '⊥';
+			return BottomSymbol;
 		} else if(this.value[1] === Top) {
 			const minString = this.value[0].values().map(domainElementToString).toArray().join(', ');
 
-			return `[{${minString}}, ⊤]`;
+			return `[{${minString}}, ${TopSymbol}]`;
 		}
 		const minString = this.value[0].values().map(domainElementToString).toArray().join(', ');
 		const rangeString = this.value[1].values().map(domainElementToString).toArray().join(', ');

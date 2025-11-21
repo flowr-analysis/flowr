@@ -1,6 +1,6 @@
 import { guard } from '../../util/assert';
 import type { Lattice } from './lattice';
-import { Bottom, Top } from './lattice';
+import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 
 /**
  * The default limit of inferred constraints in {@link AbstractDomain|AbstractDomains}.
@@ -157,9 +157,9 @@ export function domainElementToString(value: AnyAbstractDomain | unknown): strin
 		// eslint-disable-next-line @typescript-eslint/no-base-to-string
 		return value.toString();
 	} else if(value === Top) {
-		return '⊤';
+		return TopSymbol;
 	} else if(value === Bottom) {
-		return '⊥';
+		return BottomSymbol;
 	}
 	return JSON.stringify(value);
 }

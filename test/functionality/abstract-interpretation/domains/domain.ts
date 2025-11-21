@@ -1,6 +1,6 @@
 import { assert, test } from 'vitest';
 import { type AnyAbstractDomain, type ConcreteDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
-import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
+import { Top, TopSymbol } from '../../../../src/abstract-interpretation/domains/lattice';
 
 const ConcretizationLimit = 20;
 
@@ -76,7 +76,7 @@ function toString(value: ReadonlySet<unknown> | typeof Top | unknown): string {
 	} else if(value instanceof Set) {
 		return `{${value.values().map(value => toString(value)).toArray().join(', ')}}`;
 	} else if(value === Top) {
-		return '⊤';
+		return TopSymbol;
 	}
 	return JSON.stringify(value);
 }

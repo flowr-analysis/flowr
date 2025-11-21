@@ -369,7 +369,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	/**
 	 * Extends the minimum set of the current abstract value down to the empty set.
 	 */
-	public extendDown(): this {
+	public widenDown(): this {
 		if(this.min === Bottom || this.max === Bottom) {
 			return this.bottom();
 		} else {
@@ -380,7 +380,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	/**
 	 * Extends the maximum set of the current abstract value up to {@link Top}.
 	 */
-	public extendUp(): this {
+	public widenUp(): this {
 		if(this.min === Bottom || this.max === Bottom) {
 			return this.bottom();
 		} else {

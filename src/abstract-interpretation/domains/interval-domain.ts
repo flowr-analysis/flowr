@@ -247,7 +247,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	/**
 	 * Extends the lower bound of the current abstract value down to -∞.
 	 */
-	public extendDown(): this {
+	public widenDown(): this {
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {
@@ -258,7 +258,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	/**
 	 * Extends the upper bound of the current abstract value up to +∞.
 	 */
-	public extendUp(): this {
+	public widenUp(): this {
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {

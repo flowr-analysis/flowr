@@ -173,14 +173,14 @@ function applyAssignColsSemantics(
 		});
 	} else if(columns?.every(col => typeof col === 'number')) {
 		return new DataFrameDomain({
-			colnames: value.colnames.extendUp(),
+			colnames: value.colnames.widenUp(),
 			cols:     columns.reduce((current, col) => current.max([col, col]), value.cols),
 			rows:     value.rows
 		});
 	}
 	return new DataFrameDomain({
-		colnames: value.colnames.extendUp(),
-		cols:     value.cols.extendUp(),
+		colnames: value.colnames.widenUp(),
+		cols:     value.cols.widenUp(),
 		rows:     value.rows
 	});
 }
@@ -199,7 +199,7 @@ function applyAssignRowsSemantics(
 	return new DataFrameDomain({
 		colnames: value.colnames,
 		cols:     value.cols,
-		rows:     value.rows.extendUp()
+		rows:     value.rows.widenUp()
 	});
 }
 
@@ -210,7 +210,7 @@ function applySetColNamesSemantics(
 ): DataFrameDomain {
 	if(options?.partial) {
 		return new DataFrameDomain({
-			colnames: value.colnames.extendDown().union(setRange(colnames)),
+			colnames: value.colnames.widenDown().union(setRange(colnames)),
 			cols:     value.cols,
 			rows:     value.rows
 		});
@@ -218,7 +218,7 @@ function applySetColNamesSemantics(
 	const allColNames = colnames?.every(isNotUndefined) && value.cols.value !== Bottom && colnames.length >= value.cols.value[1];
 
 	return new DataFrameDomain({
-		colnames: allColNames ? value.colnames.create([colnames, []]) : value.colnames.extendDown().union(setRange(colnames)).extendUp(),
+		colnames: allColNames ? value.colnames.create([colnames, []]) : value.colnames.widenDown().union(setRange(colnames)).widenUp(),
 		cols:     value.cols,
 		rows:     value.rows
 	});
@@ -229,8 +229,8 @@ function applyAddColsSemantics(
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
 	return new DataFrameDomain({
-		colnames: colnames !== undefined ? value.colnames.union(setRange(colnames)) : value.colnames.extendUp(),
-		cols:     colnames !== undefined ? value.cols.add([colnames.length, colnames.length]) : value.cols.extendUp(),
+		colnames: colnames !== undefined ? value.colnames.union(setRange(colnames)) : value.colnames.widenUp(),
+		cols:     colnames !== undefined ? value.cols.add([colnames.length, colnames.length]) : value.cols.widenUp(),
 		rows:     value.rows
 	});
 }
@@ -242,7 +242,7 @@ function applyAddRowsSemantics(
 	return new DataFrameDomain({
 		colnames: value.colnames,
 		cols:     value.cols,
-		rows:     rows !== undefined ? value.rows.add([rows, rows]) : value.rows.extendUp()
+		rows:     rows !== undefined ? value.rows.add([rows, rows]) : value.rows.widenUp()
 	});
 }
 
@@ -253,14 +253,14 @@ function applyRemoveColsSemantics(
 ): DataFrameDomain {
 	if(options?.maybe) {
 		return new DataFrameDomain({
-			colnames: colnames !== undefined ? value.colnames.subtract(setRange(colnames)) : value.colnames.extendDown(),
-			cols:     colnames !== undefined ? value.cols.subtract([colnames.length, 0]) : value.cols.extendDown(),
+			colnames: colnames !== undefined ? value.colnames.subtract(setRange(colnames)) : value.colnames.widenDown(),
+			cols:     colnames !== undefined ? value.cols.subtract([colnames.length, 0]) : value.cols.widenDown(),
 			rows:     value.rows
 		});
 	}
 	return new DataFrameDomain({
-		colnames: colnames !== undefined ? value.colnames.subtract(setRange(colnames)) : value.colnames.extendDown(),
-		cols:     colnames !== undefined ? value.cols.subtract([colnames.length, colnames.length]) : value.cols.extendDown(),
+		colnames: colnames !== undefined ? value.colnames.subtract(setRange(colnames)) : value.colnames.widenDown(),
+		cols:     colnames !== undefined ? value.cols.subtract([colnames.length, colnames.length]) : value.cols.widenDown(),
 		rows:     value.rows
 	});
 }
@@ -274,13 +274,13 @@ function applyRemoveRowsSemantics(
 		return new DataFrameDomain({
 			colnames: value.colnames,
 			cols:     value.cols,
-			rows:     rows !== undefined ? value.rows.subtract([rows, 0]) : value.rows.extendDown()
+			rows:     rows !== undefined ? value.rows.subtract([rows, 0]) : value.rows.widenDown()
 		});
 	}
 	return new DataFrameDomain({
 		colnames: value.colnames,
 		cols:     value.cols,
-		rows:     rows !== undefined ? value.rows.subtract([rows, rows]) : value.rows.extendDown()
+		rows:     rows !== undefined ? value.rows.subtract([rows, rows]) : value.rows.widenDown()
 	});
 }
 
@@ -328,13 +328,13 @@ function applySubsetColsSemantics(
 	} else if(options?.renamedCols) {
 		return new DataFrameDomain({
 			colnames: value.colnames.top(),
-			cols:     colnames !== undefined ? value.cols.min([colnames.length, colnames.length]) : value.cols.extendDown(),
+			cols:     colnames !== undefined ? value.cols.min([colnames.length, colnames.length]) : value.cols.widenDown(),
 			rows:     value.rows
 		});
 	}
 	return new DataFrameDomain({
-		colnames: colnames !== undefined ? value.colnames.intersect(setRange(colnames)) : value.colnames.extendDown(),
-		cols:     colnames !== undefined ? value.cols.min([colnames.length, colnames.length]) : value.cols.extendDown(),
+		colnames: colnames !== undefined ? value.colnames.intersect(setRange(colnames)) : value.colnames.widenDown(),
+		cols:     colnames !== undefined ? value.cols.min([colnames.length, colnames.length]) : value.cols.widenDown(),
 		rows:     value.rows
 	});
 }
@@ -354,7 +354,7 @@ function applySubsetRowsSemantics(
 	return new DataFrameDomain({
 		colnames: value.colnames,
 		cols:     value.cols,
-		rows:     rows !== undefined ? value.rows.min([rows, rows]) : value.rows.extendDown()
+		rows:     rows !== undefined ? value.rows.min([rows, rows]) : value.rows.widenDown()
 	});
 }
 
@@ -365,7 +365,7 @@ function applyFilterRowsSemantics(
 	return new DataFrameDomain({
 		colnames: value.colnames,
 		cols:     value.cols,
-		rows:     condition ? value.rows : condition === false ? value.rows.create([0, 0]) : value.rows.extendDown()
+		rows:     condition ? value.rows : condition === false ? value.rows.create([0, 0]) : value.rows.widenDown()
 	});
 }
 
@@ -374,8 +374,8 @@ function applyMutateColsSemantics(
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
 	return new DataFrameDomain({
-		colnames: colnames !== undefined ? value.colnames.union(setRange(colnames)) : value.colnames.extendUp(),
-		cols:     colnames !== undefined ? value.cols.add([0, colnames.length]).max([colnames.length, colnames.length]) : value.cols.extendUp(),
+		colnames: colnames !== undefined ? value.colnames.union(setRange(colnames)) : value.colnames.widenUp(),
+		cols:     colnames !== undefined ? value.cols.add([0, colnames.length]).max([colnames.length, colnames.length]) : value.cols.widenUp(),
 		rows:     value.rows
 	});
 }
@@ -401,8 +401,8 @@ function applySummarizeSemantics(
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
 	return new DataFrameDomain({
-		colnames: colnames !== undefined ? value.colnames.join([[], []]).union(setRange(colnames)) : value.colnames.extendUp(),
-		cols:     colnames !== undefined ? value.cols.add([0, colnames.length]).min([colnames.length, +Infinity]) : value.cols.extendUp(),
+		colnames: colnames !== undefined ? value.colnames.join([[], []]).union(setRange(colnames)) : value.colnames.widenUp(),
+		cols:     colnames !== undefined ? value.cols.add([0, colnames.length]).min([colnames.length, +Infinity]) : value.cols.widenUp(),
 		rows:     value.rows.min([1, +Infinity]).max([0, 1])
 	});
 }
@@ -454,7 +454,7 @@ function applyJoinSemantics(
 
 	switch(joinType) {
 		case 'inner':
-			rows = value.rows.min(other.rows).extendDown();
+			rows = value.rows.min(other.rows).widenDown();
 			break;
 		case 'left':
 			rows = value.rows;
@@ -470,7 +470,7 @@ function applyJoinSemantics(
 	}
 	return new DataFrameDomain({
 		...value,
-		colnames: duplicateCols === undefined ? value.colnames.top() : duplicateCols.length > 0 ? value.colnames.union(other.colnames).subtract([duplicateCols, []]).extendUp() : value.colnames.union(other.colnames),
+		colnames: duplicateCols === undefined ? value.colnames.top() : duplicateCols.length > 0 ? value.colnames.union(other.colnames).subtract([duplicateCols, []]).widenUp() : value.colnames.union(other.colnames),
 		cols:     by !== undefined ? value.cols.add(other.cols).subtract([by.length, by.length]) : mergeInterval(value.cols, other.cols),
 		rows:     productRows ? productInterval(rows, value.rows, other.rows) : rows
 	});

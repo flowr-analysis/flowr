@@ -1,14 +1,14 @@
-import { type DataFrameDomain , DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
+import Joi from 'joi';
+import { type DataFrameDomain, DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
+import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
+import { sliceCriterionParser } from '../../../cli/repl/parser/slice-query-parser';
+import type { FlowrConfigOptions } from '../../../config';
+import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeDfShapeQuery } from './df-shape-query-executor';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
-import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfigOptions } from '../../../config';
-import { sliceCriterionParser } from '../../../cli/repl/parser/slice-query-parser';
-import Joi from 'joi';
 
 /** Infer the shape of data frames using abstract interpretation. */
 export interface DfShapeQuery extends BaseQueryFormat {

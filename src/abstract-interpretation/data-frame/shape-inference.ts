@@ -2,6 +2,7 @@ import { type ControlFlowInformation, getVertexRootId } from '../../control-flow
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -12,7 +13,6 @@ import { AbstractDomain } from '../domains/abstract-domain';
 import { type AbstractInterpretationInfo, DataFrameInfoMarker, hasDataFrameInfoMarker } from './absint-info';
 import { DataFrameShapeInferenceVisitor } from './absint-visitor';
 import { type DataFrameDomain, DataFrameStateDomain } from './dataframe-domain';
-import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 /**
  * Infers the shape of data frames by performing abstract interpretation using the control flow graph of a program.

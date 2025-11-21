@@ -4,15 +4,15 @@ import { isUseVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { type RFunctionArgument, type RFunctionCall , EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument, type RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import type { AbstractInterpretationInfo } from '../absint-info';
-import { resolveIdToDataFrameShape } from '../shape-inference';
 import { resolveIdToArgName, resolveIdToArgValue, unquoteArgument } from '../resolve-args';
-import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
+import { resolveIdToDataFrameShape } from '../shape-inference';
 
 /** Regular expression representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;

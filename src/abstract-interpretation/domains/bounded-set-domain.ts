@@ -1,7 +1,7 @@
 import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain, DEFAULT_INFERENCE_LIMIT, domainElementToString } from './abstract-domain';
-import { Top } from './lattice';
+import { Top, TopSymbol } from './lattice';
 import type { SatisfiableDomain } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
@@ -159,7 +159,7 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 
 	public toString(): string {
 		if(this.value === Top) {
-			return '⊤';
+			return TopSymbol;
 		}
 		const string = this.value.values().map(domainElementToString).toArray().join(', ');
 

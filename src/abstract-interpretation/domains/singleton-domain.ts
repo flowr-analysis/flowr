@@ -1,6 +1,6 @@
 import { Ternary } from '../../util/logic';
 import { AbstractDomain, domainElementToString } from './abstract-domain';
-import { Bottom, Top } from './lattice';
+import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 import type { SatisfiableDomain } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
@@ -137,9 +137,9 @@ export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T
 
 	public toString(): string {
 		if(this.value === Top) {
-			return '⊤';
+			return TopSymbol;
 		} else if(this.value === Bottom) {
-			return '⊥';
+			return BottomSymbol;
 		}
 		return domainElementToString(this.value);
 	}

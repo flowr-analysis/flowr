@@ -2,11 +2,13 @@
  * The Top symbol to represent the Top element of complete lattices (e.g. of abstract domains).
  */
 export const Top = Symbol('top');
+export const TopSymbol = '⊤';
 
 /**
  * The Bottom symbol to represent the Bottom element of complete lattices (e.g. of abstract domains).
  */
 export const Bottom = Symbol('bottom');
+export const BottomSymbol = '⊥';
 
 /**
  * A complete lattice with a partially ordered set, join operator (LUB), meet operator (GLB), top element, and bottom element (e.g. for abstract domains).

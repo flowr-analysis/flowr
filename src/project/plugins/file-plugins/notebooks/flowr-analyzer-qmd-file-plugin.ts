@@ -31,6 +31,6 @@ export class FlowrAnalyzerQmdFilePlugin extends FlowrAnalyzerFilePlugin {
 	}
 
 	protected process(_ctx: FlowrAnalyzerContext, arg: FlowrFileProvider<string>): FlowrRMarkdownFile {
-		return new FlowrRMarkdownFile(arg);
+		return FlowrRMarkdownFile.from(arg);
 	}
 }

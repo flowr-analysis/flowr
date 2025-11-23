@@ -6,8 +6,6 @@ import type { AsyncOrSync } from 'ts-essentials';
 
 
 // TODO: write output file for git
-// TODO: allow to filter update types by CLI
-
 export interface WikiMakerArgs {
 	/** Overwrite existing wiki files, even if nothing changes */
 	readonly force?:     boolean;
@@ -30,6 +28,7 @@ export enum WikiChangeType {
 export interface WikiMakerLike {
 	make(args: WikiMakerArgs & WikiMakerOutputArgs): Promise<boolean>;
 	getTarget(): string;
+	getProducer(): string;
 }
 
 
@@ -41,15 +40,30 @@ const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	[/"format":"compact".+/g, '']
 ];
 
+/**
+ * Abstract base class for generating wiki files.
+ * **Please make sure to register your WikiMaker implementation in the CLI wiki tool to have it executed:
+ * `src/cli/wiki.ts`.**
+ */
 export abstract class WikiMaker implements WikiMakerLike {
-	private readonly target:   PathLike;
-	private readonly filename: string;
-	private readonly purpose:  string;
+	private readonly target:      PathLike;
+	private readonly filename:    string;
+	private readonly purpose:     string;
+	private readonly printHeader: boolean;
 
-	protected constructor(target: PathLike, filename: string, purpose: string) {
+	/**
+	 * Creates a new WikiMaker instance.
+	 * @param target      - The target path where the wiki file will be generated.
+	 * @param filename    - The name of the file being generated. Probably use `module.filename`.
+	 * @param purpose     - The purpose of the file, e.g., 'wiki context for types'.
+	 * @param printHeader - Whether to print the auto-generation header. Default is `true`. Only mark this `false` if you plan to add it yourself.
+	 * @protected
+	 */
+	protected constructor(target: PathLike, filename: string, purpose: string, printHeader = true) {
 		this.filename = filename;
 		this.purpose = purpose;
 		this.target = target;
+		this.printHeader = printHeader;
 	}
 
 	/**
@@ -60,13 +74,20 @@ export abstract class WikiMaker implements WikiMakerLike {
 	}
 
 	/**
+	 * Gets the name of the producer of this wiki file.
+	 */
+	public getProducer(): string {
+		return this.filename;
+	}
+
+	/**
 	 * Generates or updates the wiki file at the given target location.
 	 * @returns `true` if the file was created or updated, `false` if it was identical and not changed.
 	 */
 	public async make(
 		args: WikiMakerArgs & WikiMakerOutputArgs
 	): Promise<boolean> {
-		const newText = (await args.ctx.header(this.filename, this.purpose)) + '\n' + await this.text(args);
+		const newText = (this.printHeader ? (await args.ctx.header(this.filename, this.purpose)) + '\n': '') + await this.text(args);
 		if(args.force || this.didUpdate(newText, args.readFileSync(this.target)?.toString()) === WikiChangeType.Changed) {
 			args.writeFileSync(this.target, newText);
 			return true;

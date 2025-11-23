@@ -12,6 +12,7 @@ import { asciiSummaryOfQueryResult } from '../../queries/query-print';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import { getReplCommand } from './doc-cli-option';
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
+import type { GeneralWikiContext } from '../wiki-mk/wiki-context';
 
 export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
@@ -95,7 +96,7 @@ export interface QueryDocumentation {
 	readonly shortDescription: string;
 	readonly functionName:     string;
 	readonly functionFile:     string;
-	readonly buildExplanation: (shell: RShell) => Promise<string>;
+	readonly buildExplanation: (shell: RShell, ctx: GeneralWikiContext) => Promise<string>;
 }
 
 export const RegisteredQueries = {
@@ -151,11 +152,11 @@ export function tocForQueryType(type: 'active' | 'virtual') {
 	return result.join('\n');
 }
 
-async function explainQuery(shell: RShell, { name, functionName, functionFile, buildExplanation }: QueryDocumentation) {
+async function explainQuery(shell: RShell, ctx: GeneralWikiContext, { name, functionName, functionFile, buildExplanation }: QueryDocumentation) {
 	return `
 ### ${name}
 
-${await buildExplanation(shell)}
+${await buildExplanation(shell, ctx)}
 
 <details> 
 
@@ -172,11 +173,11 @@ Responsible for the execution of the ${name} query is \`${functionName}\` in ${g
 /**
  *
  */
-export async function explainQueries(shell: RShell, type: 'active' | 'virtual'): Promise<string> {
+export async function explainQueries(shell: RShell, ctx: GeneralWikiContext, type: 'active' | 'virtual'): Promise<string> {
 	const queries = [...RegisteredQueries[type].entries()].sort(([,{ name: a }], [, { name: b }]) => a.localeCompare(b));
 	const result: string[] = [];
 	for(const [,doc] of queries) {
-		result.push(await explainQuery(shell, doc));
+		result.push(await explainQuery(shell, ctx, doc));
 	}
 	return result.join(`\n${'-'.repeat(5)}\n\n`);
 }

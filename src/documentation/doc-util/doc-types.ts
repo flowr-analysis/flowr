@@ -30,22 +30,30 @@ export interface TypeElementInSource {
 	readonly properties?: string[];
 }
 
+const options: ts.CompilerOptions = {
+	target:                       ts.ScriptTarget.ESNext,
+	skipLibCheck:                 true,
+	skipDefaultLibCheck:          true,
+	allowJs:                      true,
+	checkJs:                      false,
+	strictNullChecks:             false,
+	noUncheckedIndexedAccess:     false,
+	noUncheckedSideEffectImports: false,
+	noCheck:                      true,
+	noEmit:                       true,
+	noResolve:                    true,
+	types:                        [],
+	lib:                          [],
+	noLib:                        true,
+	moduleResolution:             ts.ModuleResolutionKind.Classic,
+} as const;
+
 /**
  * Retrieve TypeScript source files from the given file names.
  */
 export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[], program: ts.Program } {
 	try {
-		const program = ts.createProgram(fileNames, {
-			target:                       ts.ScriptTarget.ESNext,
-			skipLibCheck:                 true,
-			skipDefaultLibCheck:          true,
-			allowJs:                      true,
-			checkJs:                      false,
-			strictNullChecks:             false,
-			noUncheckedIndexedAccess:     false,
-			noUncheckedSideEffectImports: false,
-			noCheck:                      true
-		});
+		const program = ts.createProgram(fileNames, options);
 		return { program, files: fileNames.map(fileName => program.getSourceFile(fileName)).filter(file => !!file) };
 	} catch(err) {
 		console.error('Failed to get source files', err);
@@ -184,7 +192,7 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 					.flatMap(typeName => followTypeReference(typeName, sourceFile))
 					.map(dropGenericsFromTypeName);
 			} else if(ts.isTypeReferenceNode(node.type)) {
-				baseTypes = [...followTypeReference(node.type, sourceFile)].map(dropGenericsFromTypeName);
+				baseTypes = followTypeReference(node.type, sourceFile).map(dropGenericsFromTypeName);
 			}
 
 			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
@@ -312,7 +320,6 @@ function getTypePathForTypeScript({ filePath }: Pick<TypeElementInSource, 'fileP
 	return filePath.replace(/^.*\/src\//, 'src/').replace(/^.*\/test\//, 'test/');
 }
 
-
 /**
  * Return the link to the type in the source code.
  * If you create a wiki, please refer to the functions provided by the {@link GeneralWikiContext}.
@@ -427,16 +434,14 @@ export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport
  */
 export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport {
 	guard(options.rootFolder !== undefined || options.files !== undefined, 'Either rootFolder or files must be provided');
-	const files = [...options.files ?? []];
+	let files = [...options.files ?? []];
 	if(options.rootFolder) {
 		const folders = Array.isArray(options.rootFolder) ? options.rootFolder : [options.rootFolder];
 		for(const folder of folders) {
-			for(const fileBuff of fs.readdirSync(folder, { recursive: true })) {
-				const file = fileBuff.toString();
-				if(file.endsWith('.ts')) {
-					files.push(path.join(folder, file));
-				}
-			}
+			files = files.concat(
+				fs.readdirSync(folder, { recursive: true }).filter(f => f.toString().endsWith('.ts'))
+					.map(f => path.join(folder, f.toString()))
+			);
 		}
 	}
 	return getTypesFromFileAsMermaid(files, options);

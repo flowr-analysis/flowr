@@ -1,7 +1,5 @@
-import { RShell } from '../r-bridge/shell';
+import type { RShell } from '../r-bridge/shell';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
-import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
-import { LogLevel } from '../util/log';
 import { executeQueries, QueriesSchema } from '../queries/query';
 import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import {
@@ -16,7 +14,6 @@ import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/text/ansi';
 import { executeCallContextQueries } from '../queries/catalog/call-context-query/call-context-query-executor';
 import { executeCompoundQueries } from '../queries/virtual-query/compound-query';
-import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { exampleQueryCode } from './data/query/example-query-code';
 import { block, details } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
@@ -34,8 +31,6 @@ import { executeConfigQuery } from '../queries/catalog/config-query/config-query
 import { executeSearch } from '../queries/catalog/search-query/search-query-executor';
 import { Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
-import { getTypesFromFolder, shortLink } from './doc-util/doc-types';
-import path from 'path';
 import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
 import { printCfgCode } from './doc-util/doc-cfg';
 import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
@@ -46,6 +41,9 @@ import {
 } from '../queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor';
 import type { SingleSlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse';
 import { escapeNewline } from './doc-util/doc-escape';
+import type { WikiMakerArgs } from './wiki-mk/wiki-maker';
+import { WikiMaker } from './wiki-mk/wiki-maker';
+import type { GeneralWikiContext } from './wiki-mk/wiki-context';
 
 
 registerQueryDocumentation('call-context', {
@@ -705,11 +703,7 @@ registerQueryDocumentation('location-map', {
 	shortDescription: 'Returns a simple mapping of ids to their location in the source file',
 	functionName:     executeLocationMapQuery.name,
 	functionFile:     '../queries/catalog/location-map-query/location-map-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
-
-		const types = getTypesFromFolder({
-			files: [path.resolve('./src/util/range.ts')],
-		});
+	buildExplanation: async(shell: RShell, ctx: GeneralWikiContext) => {
 		const exampleCode = 'x + 1\nx * 2';
 		const criteria = ['1@x','2@x'] as SlicingCriteria;
 		return `
@@ -737,18 +731,22 @@ ${
 	}], { showCode: false, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)) })
 }
 
-All locations are given as a ${shortLink('SourceRange', types.info)} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.
+All locations are given as a ${ctx.link('SourceRange')} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.
 
 		`;
 	}
 });
 
+/**
+ * https://github.com/flowr-analysis/flowr/wiki/Query-API
+ */
+export class WikiQuery extends WikiMaker {
+	constructor() {
+		super('wiki/Query API.md', module.filename, 'query API');
+	}
 
-
-async function getText(shell: RShell) {
-	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
-	return `${autoGenHeader({ filename: module.filename, purpose: 'query API', rVersion: rversion })}
-
+	protected async text({ ctx, shell }: WikiMakerArgs): Promise<string> {
+		return `
 This page briefly summarizes flowR's query API, represented by the ${executeQueries.name} function in ${getFilePathMd('../queries/query.ts')}.
 Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API.
 
@@ -824,21 +822,9 @@ Just as an example, the following ${linkToQueryOfName('call-context')} finds all
 
 ${await showQuery(shell, exampleQueryCode, [{ type: 'call-context', callName: '^read_csv$', callTargets: CallTargets.OnlyGlobal, kind: 'input', subkind: 'csv-file' }], { showCode: false })}
 
-${await explainQueries(shell, 'active')}
+${await explainQueries(shell, ctx,'active')}
 
-${await explainQueries(shell, 'virtual')}
-
+${await explainQueries(shell, ctx,'virtual')}
 `;
-}
-
-/** if we run this script, we want a Markdown representation of the capabilities */
-if(require.main === module) {
-	setMinLevelOfAllLogs(LogLevel.Fatal);
-
-	const shell = new RShell();
-	void getText(shell).then(str => {
-		console.log(str);
-	}).finally(() => {
-		shell.close();
-	});
+	}
 }

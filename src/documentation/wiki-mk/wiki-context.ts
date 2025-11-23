@@ -159,6 +159,7 @@ export interface GeneralWikiContext {
 	 */
 	header(filename: string, purpose: string): Promise<string>;
 	// TODO: add repl functions getReplCommand etc.
+	// TODO: add constants for where what is (like FlowrWikiBaseRef)
 }
 
 /**

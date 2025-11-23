@@ -1,5 +1,5 @@
 export * from './print-core-wiki';
-export * from './print-query-wiki';
+export * from './wiki-query';
 export * from './wiki-search';
 export * from './print-engines-wiki';
 export * from './print-interface-wiki';

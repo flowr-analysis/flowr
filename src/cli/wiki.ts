@@ -11,14 +11,29 @@ import commandLineArgs from 'command-line-args';
 import { flowrVersion } from '../util/version';
 import { WikiFaq } from '../documentation/wiki-faq';
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../util/text/ansi';
-import { WikiSearch } from '../documentation';
+import { WikiQuery, WikiSearch } from '../documentation';
 import { WikiCfg } from '../documentation/wiki-cfg';
+import { WikiOnboarding } from '../documentation/wiki-onboarding';
+import { WikiAnalyzer } from '../documentation/wiki-analyzer';
 
 const Wikis: WikiMakerLike[] = [
 	new WikiFaq(),
 	new WikiSearch(),
-	new WikiCfg()
+	new WikiCfg(),
+	new WikiQuery(),
+	new WikiOnboarding(),
+	new WikiAnalyzer()
 ];
+
+function sortWikisByLeastRecentChanged(wikis: WikiMakerLike[]): WikiMakerLike[] {
+	return wikis.slice().sort((a, b) => {
+		const aStat = fs.existsSync(a.getProducer()) ? fs.statSync(a.getProducer()) : undefined;
+		const bStat = fs.existsSync(b.getProducer()) ? fs.statSync(b.getProducer()) : undefined;
+		const aMTime = aStat ? aStat.mtime.getTime() : 0;
+		const bMTime = bStat ? bStat.mtime.getTime() : 0;
+		return bMTime - aMTime;
+	});
+}
 
 /**
  * Updates and optionally re-creates all flowR wikis.
@@ -33,6 +48,9 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 	console.log('  * Tree-sitter parser initialized');
 	const ctx = makeContextForTypes(shell);
 	console.log('  * Wiki context prepared');
+	if(force) {
+		console.log(ansiFormatter.format('Forcing wiki regeneration (existing files will be overwritten)', { style: FontStyles.Bold, color: Colors.Yellow, effect: ColorEffect.Foreground }));
+	}
 	const info: WikiMakerArgs & WikiMakerOutputArgs = {
 		ctx,
 		shell, treeSitter,
@@ -49,7 +67,9 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 
 	console.log(`Setup for wiki generation took ${(new Date().getTime() - setupStart.getTime())}ms`);
 	try {
-		for(const wiki of Wikis) {
+		const sortedWikis = sortWikisByLeastRecentChanged(Wikis);
+		console.log(`Generating ${sortedWikis.length} wikis, sorted by most recently updated...`);
+		for(const wiki of sortedWikis) {
 			if(filter && !filter.some(f => wiki.getTarget().includes(f))) {
 				console.log(`  * Skipping wiki (filtered out): ${wiki.getTarget()}`);
 				continue;
@@ -103,8 +123,7 @@ if(require.main === module) {
 		}
 	];
 
-
-	// TODO: provide wiki:watch with reload
+	// TODO: document wiki:watch
 	setMinLevelOfAllLogs(LogLevel.Fatal);
 	// parse args
 	const options = commandLineArgs(wikiOptions) as WikiCliOptions;
@@ -115,12 +134,12 @@ if(require.main === module) {
 	void makeAllWikis(options.force, options.filter).catch(err => {
 		console.error('Error while generating wikis:', err);
 		process.exit(1);
+	}).then(() => {
+		if(options['keep-alive']) {
+			console.log('Wiki generator running in keep-alive mode...');
+			setInterval(() => {
+				// do nothing, just keep alive
+			}, 100);
+		}
 	});
-	if(options['keep-alive']) {
-		console.log('Wiki generator running in keep-alive mode...');
-		// keep alive
-		setInterval(() => {
-			// do nothing, just keep alive
-		}, 100);
-	}
 }

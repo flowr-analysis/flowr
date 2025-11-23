@@ -21,7 +21,7 @@ export class WikiSearch extends WikiMaker {
 This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow-Graph) and the 
 [Normalized AST](${FlowrWikiBaseRef}/Normalized-AST) of a given R code (the search will always consider both, with respect to your search query).
 Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API.
-Within code, you can execute a search using the ${ctx.link(runSearch.name)} function.
+Within code, you can execute a search using the ${ctx.link(runSearch)} function.
 
 For an initial motivation, let's have a look at the following example:
 
@@ -57,11 +57,11 @@ ${
 		).join('\n')
 }
 
-Every search (and consequently the search pipeline) works with an array of ${ctx.link('FlowrSearchElement')} (neatly wrapped in ${ctx.link(FlowrSearchElements.name)}).
+Every search (and consequently the search pipeline) works with an array of ${ctx.link('FlowrSearchElement')} (neatly wrapped in ${ctx.link(FlowrSearchElements)}).
 Hence, even operations such as \`.first\` or \`.last\` return an array of elements (albeit with a single or no element).
 The search API does its best to stay typesafe wrt. to the return type and the transformers in use. 
 In addition, it offers optimizer passes to optimize the search pipeline before execution.
-They are executed with \`.build\` which may happen automatically, whenever you want to run a search using ${ctx.link(runSearch.name)}.
+They are executed with \`.build\` which may happen automatically, whenever you want to run a search using ${ctx.link(runSearch)}.
 `;
 	}
 }

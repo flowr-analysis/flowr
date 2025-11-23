@@ -12,10 +12,12 @@ import { flowrVersion } from '../util/version';
 import { WikiFaq } from '../documentation/wiki-faq';
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../util/text/ansi';
 import { WikiSearch } from '../documentation';
+import { WikiCfg } from '../documentation/wiki-cfg';
 
 const Wikis: WikiMakerLike[] = [
 	new WikiFaq(),
-	new WikiSearch()
+	new WikiSearch(),
+	new WikiCfg()
 ];
 
 /**
@@ -71,13 +73,15 @@ if(require.main === module) {
 	const wikiOptions: OptionDefinition[] = [
 		{ name: 'force', alias: 'F', type: Boolean, description: 'Overwrite existing wiki files, even if nothing changes' },
 		{ name: 'filter', alias: 'f', type: String, multiple: true, description: 'Only generate wikis whose target path contains the given string' },
-		{ name: 'help', alias: 'h', type: Boolean, description: 'Print this usage guide for the wiki generator' }
+		{ name: 'help', alias: 'h', type: Boolean, description: 'Print this usage guide for the wiki generator' },
+		{ name: 'keep-alive', type: Boolean, description: 'Keep-alive wiki generator (only sensible with a reloading script like ts-node-dev)' },
 	];
 
 	interface WikiCliOptions {
-		force:   boolean;
-		filter?: string[];
-		help:    boolean;
+		force:        boolean;
+		filter?:      string[];
+		help:         boolean;
+		'keep-alive': boolean;
 	}
 
 	const optionHelp = [
@@ -112,4 +116,11 @@ if(require.main === module) {
 		console.error('Error while generating wikis:', err);
 		process.exit(1);
 	});
+	if(options['keep-alive']) {
+		console.log('Wiki generator running in keep-alive mode...');
+		// keep alive
+		setInterval(() => {
+			// do nothing, just keep alive
+		}, 100);
+	}
 }

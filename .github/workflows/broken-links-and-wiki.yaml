@@ -124,7 +124,6 @@ jobs:
           update_page wiki/"Analyzer" md wiki:analyzer
           update_page wiki/"Interface" md wiki:interface
           update_page wiki/"Normalized AST" md wiki:normalized-ast
-          update_page wiki/"Control Flow Graph" md wiki:cfg
           update_page wiki/"Linting and Testing" md wiki:linting-and-testing
           update_page wiki/"Core" md wiki:core
           update_page wiki/"Onboarding" md wiki:onboarding

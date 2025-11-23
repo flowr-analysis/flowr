@@ -33,6 +33,18 @@ export interface LinkFormat {
 
 export type ElementId = string;
 
+export type ElementIdOrRef = ElementId | { name: string } | (new () => unknown);
+
+function getNameFromElementIdOrRef(element: ElementIdOrRef): string {
+	if(typeof element === 'function') {
+		return element.name;
+	} else if(typeof element === 'object' && 'name' in element) {
+		return element.name;
+	} else {
+		return element;
+	}
+}
+
 /**
  * Provides methods to generate links, code snippets, and documentation for code elements.
  * These wrap around a collection of useful helpers originating from the doc utils.
@@ -43,7 +55,8 @@ export interface GeneralWikiContext {
 	 * Generate a hyperlink to a code element in the wiki
 	 * @param element - The element to create a link for, the name can be qualified with `::` to specify the class.
 	 *                  This causes the link to be usually printed as `ClassName::ElementName`. If you want to avoid showing
-	 *                  the class name, use `:::` as separator.
+	 *                  the class name, use `:::` as separator. Please note that for elements with a sensible (`.name`),
+	 *                  you can also pass the function/constructor reference directly (e.g., `link(MyClass)`).
 	 * @param fmt     - Formatting options for the link (see {@link LinkFormat})
 	 * @param filter  - An optional filter to further specify the element to link to, in case multiple elements with the same name exist.
 	 * @example
@@ -58,7 +71,7 @@ export interface GeneralWikiContext {
 	 * @see {@link shortLink} - for the underlying impl.
 	 * @see {@link dropGenericsFromTypeName} - to clean up type names for display.
 	 */
-	link(element: ElementId | { name: string } | (new () => unknown), fmt?: LinkFormat, filter?: ElementFilter): string;
+	link(element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string;
 
 	/**
 	 * Generate a hyperlink to a type/element definition in the code base which is displayed using the file path as name
@@ -72,7 +85,7 @@ export interface GeneralWikiContext {
 	 * @see {@link GeneralWikiContext#link|link} - to create a link with a custom name/using the type name by default.
 	 * @see {@link linkFile}  - for the underlying impl.
 	 */
-	linkFile(element: ElementId): string;
+	linkFile(element: ElementIdOrRef): string;
 
 	/**
 	 * Returns the documentation for a code element as markdown string.
@@ -89,7 +102,7 @@ export interface GeneralWikiContext {
 	 * @see {@link getDocumentationForType} - for the underlying impl.
 	 * @see {@link removeCommentSymbolsFromTypeScriptComment} - to clean up TS doc comments.
 	 */
-	doc(element: ElementId, filter?: Omit<ElementFilter, 'file'>): string;
+	doc(element: ElementIdOrRef, filter?: Omit<ElementFilter, 'file'>): string;
 
 	/**
 	 * Returns the code snippet for a code element as markdown string.
@@ -121,7 +134,7 @@ export interface GeneralWikiContext {
 	 * ```
 	 * @see {@link printCodeOfElement} - for the underlying impl.
 	 */
-	code(element: ElementId, fmt?: Omit<FnElementInfo, 'info' | 'program'>, filter?: ElementFilter): string;
+	code(element: ElementIdOrRef, fmt?: Omit<FnElementInfo, 'info' | 'program'>, filter?: ElementFilter): string;
 
 	/**
 	 * Returns the hierarchy (e.g., class inheritance) for a code element as markdown string,
@@ -138,13 +151,14 @@ export interface GeneralWikiContext {
 	 * including up to two levels of inheritance.
 	 * @see {@link printHierarchy} - for the underlying impl.
 	 */
-	hierarchy(element: ElementId, fmt?: Omit<PrintHierarchyArguments, 'info' | 'program' | 'root'>, filter?: ElementFilter): string;
+	hierarchy(element: ElementIdOrRef, fmt?: Omit<PrintHierarchyArguments, 'info' | 'program' | 'root'>, filter?: ElementFilter): string;
 	/**
 	 * Generates an auto-generation header for the wiki page.
 	 * @param filename - The name of the file being generated. Probably use `module.filename`.
 	 * @param purpose - The purpose of the file, e.g., 'wiki context for types'.
 	 */
 	header(filename: string, purpose: string): Promise<string>;
+	// TODO: add repl functions getReplCommand etc.
 }
 
 /**
@@ -169,30 +183,30 @@ export function makeContextForTypes(
 	}
 	const { info, program } = getTypesFromFolder({ rootFolder: rootFolders, typeNameForMermaid: undefined });
 	return {
-		doc(element: ElementId, filter?: Omit<ElementFilter, 'file'>): string {
-			return getDocumentationForType(element, info, '', filter);
+		doc(element: ElementIdOrRef, filter?: Omit<ElementFilter, 'file'>): string {
+			return getDocumentationForType(getNameFromElementIdOrRef(element), info, '', filter);
 		},
-		link(element: ElementId, fmt?: LinkFormat, filter?: ElementFilter): string {
+		link(element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string {
 			guard(filter === undefined, 'ElementFilter is not yet supported for link');
-			return shortLink(element, info, fmt?.codeFont, fmt?.realNameWrapper);
+			return shortLink(getNameFromElementIdOrRef(element), info, fmt?.codeFont, fmt?.realNameWrapper);
 		},
-		linkFile(element: ElementId): string {
-			return shortLinkFile(element, info);
+		linkFile(element: ElementIdOrRef): string {
+			return shortLinkFile(getNameFromElementIdOrRef(element), info);
 		},
-		hierarchy(element: ElementId, fmt?: Omit<PrintHierarchyArguments, 'info' | 'program' | 'root'>, filter?: ElementFilter): string {
+		hierarchy(element: ElementIdOrRef, fmt?: Omit<PrintHierarchyArguments, 'info' | 'program' | 'root'>, filter?: ElementFilter): string {
 			guard(filter === undefined, 'ElementFilter is not yet supported for hierarchy');
 			return printHierarchy({
 				program, info,
-				root: element,
+				root: getNameFromElementIdOrRef(element),
 				...fmt
 			});
 		},
-		code(element: ElementId, fmt?: Omit<FnElementInfo, 'info' | 'program'>, filter?: ElementFilter): string {
+		code(element: ElementIdOrRef, fmt?: Omit<FnElementInfo, 'info' | 'program'>, filter?: ElementFilter): string {
 			guard(filter === undefined, 'ElementFilter is not yet supported for code');
 			return printCodeOfElement({
 				program, info,
 				...fmt,
-			}, element);
+			}, getNameFromElementIdOrRef(element));
 		},
 		async header(filename: string, purpose: string): Promise<string> {
 			const rVersion = (await shell?.usedRVersion())?.format();

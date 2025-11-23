@@ -13,8 +13,12 @@ import {
 } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { doNotAutoSelect } from '../../../../src/reconstruct/auto-select/auto-select-defaults';
 import { makeMagicCommentHandler } from '../../../../src/reconstruct/auto-select/magic-comments';
-import { describe } from 'vitest';
+import { describe, it } from 'vitest';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
+import { FlowrInlineTextFile, FlowrTextFile } from '../../../../src/project/context/flowr-file';
+
+
 
 describe.sequential('Static Slice Query', withShell(shell => {
 	function testQuery(name: string, code: string, queries: readonly StaticSliceQuery[]) {
@@ -49,4 +53,26 @@ describe.sequential('Static Slice Query', withShell(shell => {
 		testQuery('Single Expression (No Reconstruct)', 'x + 1', [noReconstructQuery]);
 		testQuery('Multiple Queries (No Reconstruct)', 'x + 1', [noReconstructQuery, noReconstructQuery, noReconstructQuery]);
 	});
+
+	describe.only('foo', () => {
+		it('hihi', async() => {
+			const analyzer = await new FlowrAnalyzerBuilder()
+				.setEngine('tree-sitter')
+				.build();
+			const f = new FlowrInlineTextFile('a/b/c.r', 'foo');
+			analyzer
+				.addFile(
+					f,
+					new FlowrInlineTextFile('a/b/DESCRIPTION', 'lol'),
+					new FlowrTextFile('test/foo')
+				)
+				.addRequest(
+					'file://test',
+					{ request: 'project', content: '' }
+				);
+
+			await analyzer.dataflow();
+		});
+	});
+
 }));

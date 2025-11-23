@@ -43,6 +43,7 @@ import { FlowrAnalyzerLoadingOrderContext } from '../project/context/flowr-analy
 import { FlowrAnalyzerDependenciesContext } from '../project/context/flowr-analyzer-dependencies-context';
 import { FlowrAnalyzerCache } from '../project/cache/flowr-analyzer-cache';
 import { PipelineExecutor } from '../core/pipeline-executor';
+import { FlowrAnalyzerPluginDefaults } from '../project/plugins/flowr-analyzer-plugin-defaults';
 
 async function analyzerQuickExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -236,8 +237,21 @@ This indicates three ways to add a new plugin:
 3. By providing a tuple of the plugin name and its constructor arguments (e.g., \`['file:rmd', [/.*.rmd/i]]\` for the ${shortLink('FlowrAnalyzerRmdFilePlugin', types.info)}).\\
    This will also use the ${shortLink(makePlugin.name, types.info)} function under the hood to create the plugin instance.
 
-Please note, that by passing \`false\` to the builder constructor, no default plugins are registered (otherwise, all of the plugins in the example above would be registered by default).
+Please note, that by passing \`false\` to the builder constructor, no default plugins (see ${shortLink(FlowrAnalyzerPluginDefaults.name, types.info)}) are registered (otherwise, all of the plugins in the example above would be registered by default).
 If you want to unregister specific plugins, you can use the ${shortLink(FlowrAnalyzerBuilder.name + '::' + FlowrAnalyzerBuilder.prototype.unregisterPlugins.name, types.info)} method.
+
+${
+	block({
+		type:    'NOTE',
+		content: `
+If you directly access the API, please prefer creating the objects yourself by instantiating the respective classes instead of relying on the plugin registry.
+This avoids the indirection *and* potential issues with naming collisions in the registry.
+Moreover, this allows you to directly provide custom configuration to the plugin constructors in a readable fashion,
+*and* to re-use plugin instances.
+Instantiation by text is mostly for serialized communications (e.g., via a CLI or config format).
+		`.trim()
+	})
+}
 
 For more information on the different plugin types and how to create new plugins, please refer to the [Plugins](#Plugins) section below.
 
@@ -314,7 +328,7 @@ They are responsible for transforming the raw file content into a representation
 For example, the ${shortLink(FlowrAnalyzerDescriptionFilePlugin.name, types.info)} adds support for R \`DESCRIPTION\` files by parsing their content into key-value pairs.
 These can then be used by other plugins, e.g. the ${shortLink(FlowrAnalyzerPackageVersionsDescriptionFilePlugin.name, types.info)} that extracts package version information from these files.
 
-If multiple file plugins could ${shortLink(FlowrAnalyzerFilePlugin.defaultPlugin().applies.name, types.info)} to the same file,
+If multiple file plugins could apply (${shortLink('DefaultFlowrAnalyzerFilePlugin::' + FlowrAnalyzerFilePlugin.defaultPlugin().applies.name, types.info)}) to the same file,
 the loading order of these plugins determines which plugin gets to process the file.
 Please ensure that no two file plugins _apply_ to the same file,
 as this could lead to unexpected behavior.

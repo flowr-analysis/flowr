@@ -1,7 +1,7 @@
 import { makeContextForTypes } from '../documentation/wiki-mk/wiki-context';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import type { WikiMakerArgs, WikiMakerLike, WikiMakerOutputArgs } from '../documentation/wiki-mk/wiki-maker';
+import type { DocMakerArgs, DocMakerLike, DocMakerOutputArgs } from '../documentation/wiki-mk/doc-maker';
 import fs from 'fs';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
@@ -11,21 +11,26 @@ import commandLineArgs from 'command-line-args';
 import { flowrVersion } from '../util/version';
 import { WikiFaq } from '../documentation/wiki-faq';
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../util/text/ansi';
-import { WikiQuery, WikiSearch } from '../documentation';
+import { WikiEngine, WikiQuery, WikiSearch } from '../documentation';
 import { WikiCfg } from '../documentation/wiki-cfg';
 import { WikiOnboarding } from '../documentation/wiki-onboarding';
 import { WikiAnalyzer } from '../documentation/wiki-analyzer';
+import { IssueLintingRule } from '../documentation/issue-linting-rule';
+import { DocReadme } from '../documentation/doc-readme';
 
-const Wikis: WikiMakerLike[] = [
+const Documents: DocMakerLike[] = [
 	new WikiFaq(),
 	new WikiSearch(),
 	new WikiCfg(),
 	new WikiQuery(),
 	new WikiOnboarding(),
-	new WikiAnalyzer()
+	new WikiAnalyzer(),
+	new WikiEngine(),
+	new IssueLintingRule(),
+	new DocReadme()
 ];
 
-function sortWikisByLeastRecentChanged(wikis: WikiMakerLike[]): WikiMakerLike[] {
+function sortByLeastRecentChanged(wikis: DocMakerLike[]): DocMakerLike[] {
 	return wikis.slice().sort((a, b) => {
 		const aStat = fs.existsSync(a.getProducer()) ? fs.statSync(a.getProducer()) : undefined;
 		const bStat = fs.existsSync(b.getProducer()) ? fs.statSync(b.getProducer()) : undefined;
@@ -51,7 +56,7 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 	if(force) {
 		console.log(ansiFormatter.format('Forcing wiki regeneration (existing files will be overwritten)', { style: FontStyles.Bold, color: Colors.Yellow, effect: ColorEffect.Foreground }));
 	}
-	const info: WikiMakerArgs & WikiMakerOutputArgs = {
+	const info: DocMakerArgs & DocMakerOutputArgs = {
 		ctx,
 		shell, treeSitter,
 		force,
@@ -67,22 +72,23 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 
 	console.log(`Setup for wiki generation took ${(new Date().getTime() - setupStart.getTime())}ms`);
 	try {
-		const sortedWikis = sortWikisByLeastRecentChanged(Wikis);
-		console.log(`Generating ${sortedWikis.length} wikis, sorted by most recently updated...`);
-		for(const wiki of sortedWikis) {
-			if(filter && !filter.some(f => wiki.getTarget().includes(f))) {
-				console.log(`  * Skipping wiki (filtered out): ${wiki.getTarget()}`);
+		const sortedDocs = sortByLeastRecentChanged(Documents);
+		console.log(`Generating ${sortedDocs.length} wikis/docs, sorted by most recently updated...`);
+		for(const doc of sortedDocs) {
+			const type = doc.getTarget().toLowerCase().includes('wiki') ? 'Wiki' : 'Doc';
+			if(filter && !filter.some(f => doc.getTarget().includes(f))) {
+				console.log(`  * Skipping ${type} (filtered out): ${doc.getTarget()}`);
 				continue;
 			}
 			const now = new Date();
-			console.log(ansiFormatter.format(`  [${wiki.getTarget()}] Updating wiki...`, { style: FontStyles.Bold, color: Colors.Cyan, effect: ColorEffect.Foreground }));
-			const changed = await wiki.make(info);
-			const text = changed ? 'Wiki updated' : 'Wiki identical, no changes made';
+			console.log(ansiFormatter.format(`  [${doc.getTarget()}] Updating ${type}...`, { style: FontStyles.Bold, color: Colors.Cyan, effect: ColorEffect.Foreground }));
+			const changed = await doc.make(info);
+			const text = changed ? `${type} updated` : `${type} identical, no changes made`;
 			const color = changed ? Colors.Green : Colors.White;
-			console.log(ansiFormatter.format(`  [${wiki.getTarget()}] ${text}: ${wiki.getTarget()} (took ${new Date().getTime() - now.getTime()}ms)`, { color, effect: ColorEffect.Foreground }));
+			console.log(ansiFormatter.format(`  [${doc.getTarget()}] ${text}: ${doc.getTarget()} (took ${new Date().getTime() - now.getTime()}ms)`, { color, effect: ColorEffect.Foreground }));
 		}
 	} catch(error) {
-		console.error('Error while generating wikis:', error);
+		console.error('Error while generating documetns:', error);
 	} finally {
 		shell.close();
 	}
@@ -107,7 +113,7 @@ if(require.main === module) {
 	const optionHelp = [
 		{
 			header:  `flowR (version ${flowrVersion().toString()})`,
-			content: 'Wiki generator for flowR'
+			content: 'Documentation (wiki, issue, ...) generator for flowR'
 		},
 		{
 			header:  'Synopsis',

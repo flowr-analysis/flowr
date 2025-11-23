@@ -1,10 +1,10 @@
 import { registerFaqs } from './data/faq/faqs';
-import { WikiMaker } from './wiki-mk/wiki-maker';
+import { DocMaker } from './wiki-mk/doc-maker';
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/FAQ
  */
-export class WikiFaq extends WikiMaker {
+export class WikiFaq extends DocMaker {
 	constructor() {
 		super('wiki/FAQ.md', module.filename, 'frequently asked questions');
 	}

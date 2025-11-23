@@ -13,6 +13,7 @@ import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import { getReplCommand } from './doc-cli-option';
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import type { GeneralWikiContext } from '../wiki-mk/wiki-context';
+import type { KnownParser } from '../../r-bridge/parser';
 
 export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
@@ -28,12 +29,12 @@ export async function showQuery<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
 >(
-	shell: RShell, code: string,
+	parser: KnownParser, code: string,
 	queries: Queries<Base, VirtualArguments>,
 	{ showCode, collapseResult, collapseQuery, shorthand }: ShowQueryOptions = {}
 ): Promise<string> {
 	const now = performance.now();
-	const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).build();
+	const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 	analyzer.addRequest(code);
 	const results = await analyzer.query(queries);
 	const duration = performance.now() - now;
@@ -78,7 +79,7 @@ ${
 	showCode ? `
 <details> <summary style="color:gray">Original Code</summary>
 
-${await printDfGraphForCode(shell, code, { switchCodeAndGraph: true })}
+${await printDfGraphForCode(parser, code, { switchCodeAndGraph: true })}
 
 </details>
 	` : ''

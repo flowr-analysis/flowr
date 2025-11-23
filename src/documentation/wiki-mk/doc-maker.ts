@@ -6,7 +6,7 @@ import type { AsyncOrSync } from 'ts-essentials';
 
 
 // TODO: write output file for git
-export interface WikiMakerArgs {
+export interface DocMakerArgs {
 	/** Overwrite existing wiki files, even if nothing changes */
 	readonly force?:     boolean;
 	readonly ctx:        GeneralWikiContext;
@@ -14,7 +14,7 @@ export interface WikiMakerArgs {
 	readonly treeSitter: TreeSitterExecutor
 }
 
-export interface WikiMakerOutputArgs {
+export interface DocMakerOutputArgs {
 	writeFileSync(path: PathLike, data: string): void;
 	readFileSync(path: PathLike): string | Buffer<ArrayBufferLike> | undefined;
 }
@@ -25,8 +25,8 @@ export enum WikiChangeType {
 	Identical
 }
 
-export interface WikiMakerLike {
-	make(args: WikiMakerArgs & WikiMakerOutputArgs): Promise<boolean>;
+export interface DocMakerLike {
+	make(args: DocMakerArgs & DocMakerOutputArgs): Promise<boolean>;
 	getTarget(): string;
 	getProducer(): string;
 }
@@ -45,7 +45,7 @@ const DefaultReplacementPatterns: Array<[RegExp, string]> = [
  * **Please make sure to register your WikiMaker implementation in the CLI wiki tool to have it executed:
  * `src/cli/wiki.ts`.**
  */
-export abstract class WikiMaker implements WikiMakerLike {
+export abstract class DocMaker implements DocMakerLike {
 	private readonly target:      PathLike;
 	private readonly filename:    string;
 	private readonly purpose:     string;
@@ -85,7 +85,7 @@ export abstract class WikiMaker implements WikiMakerLike {
 	 * @returns `true` if the file was created or updated, `false` if it was identical and not changed.
 	 */
 	public async make(
-		args: WikiMakerArgs & WikiMakerOutputArgs
+		args: DocMakerArgs & DocMakerOutputArgs
 	): Promise<boolean> {
 		const newText = (this.printHeader ? (await args.ctx.header(this.filename, this.purpose)) + '\n': '') + await this.text(args);
 		if(args.force || this.didUpdate(newText, args.readFileSync(this.target)?.toString()) === WikiChangeType.Changed) {
@@ -123,5 +123,5 @@ export abstract class WikiMaker implements WikiMakerLike {
 	 * Generates the wiki text for the given arguments.
 	 * The text will be automatically prefixed with metadata including filename and purpose.
 	 */
-	protected abstract text(args: WikiMakerArgs): AsyncOrSync<string>;
+	protected abstract text(args: DocMakerArgs): AsyncOrSync<string>;
 }

@@ -41,8 +41,8 @@ import {
 } from '../queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor';
 import type { SingleSlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse';
 import { escapeNewline } from './doc-util/doc-escape';
-import type { WikiMakerArgs } from './wiki-mk/wiki-maker';
-import { WikiMaker } from './wiki-mk/wiki-maker';
+import type { DocMakerArgs } from './wiki-mk/doc-maker';
+import { DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralWikiContext } from './wiki-mk/wiki-context';
 
 
@@ -740,12 +740,12 @@ All locations are given as a ${ctx.link('SourceRange')} paired with the file id 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Query-API
  */
-export class WikiQuery extends WikiMaker {
+export class WikiQuery extends DocMaker {
 	constructor() {
 		super('wiki/Query API.md', module.filename, 'query API');
 	}
 
-	protected async text({ ctx, shell }: WikiMakerArgs): Promise<string> {
+	protected async text({ ctx, shell }: DocMakerArgs): Promise<string> {
 		return `
 This page briefly summarizes flowR's query API, represented by the ${executeQueries.name} function in ${getFilePathMd('../queries/query.ts')}.
 Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API.

@@ -147,13 +147,13 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 					}
 				}, output, analyzer);
 			} catch(e){
-				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
+				output.stderr(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
 				if(log.settings.minLevel < LogLevel.Fatal) {
 					console.error(e);
 				}
 			}
 		} else {
-			output.stdout(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
+			output.stderr(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
 		}
 	} else {
 		await tryExecuteRShellCommand({ output, analyzer, remainingLine: statement, allowRSessionAccess });

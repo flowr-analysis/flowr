@@ -27,8 +27,8 @@ import { guard } from '../util/assert';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
-import type { WikiMakerArgs } from './wiki-mk/wiki-maker';
-import { WikiMaker } from './wiki-mk/wiki-maker';
+import type { DocMakerArgs } from './wiki-mk/doc-maker';
+import { DocMaker } from './wiki-mk/doc-maker';
 import { prefixLines } from './doc-util/doc-general';
 import { codeBlock } from './doc-util/doc-code';
 
@@ -134,12 +134,12 @@ class CollectSourcesSemanticVisitor extends SemanticCfgGuidedVisitor {
 	}
 }
 
-export class WikiCfg extends WikiMaker {
+export class WikiCfg extends DocMaker {
 	constructor() {
 		super('wiki/Control Flow Graph.md', module.filename, 'control flow graph');
 	}
 
-	public async text({ ctx, shell }: WikiMakerArgs): Promise<string> {
+	public async text({ ctx, shell }: DocMakerArgs): Promise<string> {
 		return `
 _flowR_ produces three main perspectives of the program: 1) a [normalized version of the AST](${FlowrWikiBaseRef}/Normalized-AST)
 and 2) a [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph), and 3) a control flow graph (CFG).

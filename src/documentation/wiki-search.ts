@@ -4,19 +4,19 @@ import { FlowrSearchBuilder, Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
 import type { FlowrSearchGeneratorNode } from '../search/search-executor/search-generators';
 import { runSearch } from '../search/flowr-search-executor';
-import type { WikiMakerArgs } from './wiki-mk/wiki-maker';
-import { WikiMaker } from './wiki-mk/wiki-maker';
+import type { DocMakerArgs } from './wiki-mk/doc-maker';
+import { DocMaker } from './wiki-mk/doc-maker';
 import { FlowrSearchElements } from '../search/flowr-search';
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Search-API
  */
-export class WikiSearch extends WikiMaker {
+export class WikiSearch extends DocMaker {
 	constructor() {
 		super('wiki/Search API.md', module.filename, 'search API');
 	}
 
-	public async text({ ctx, shell }: WikiMakerArgs): Promise<string> {
+	public async text({ ctx, shell }: DocMakerArgs): Promise<string> {
 		return `
 This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow-Graph) and the 
 [Normalized AST](${FlowrWikiBaseRef}/Normalized-AST) of a given R code (the search will always consider both, with respect to your search query).

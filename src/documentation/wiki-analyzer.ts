@@ -32,8 +32,8 @@ import { FlowrAnalyzerDependenciesContext } from '../project/context/flowr-analy
 import { FlowrAnalyzerCache } from '../project/cache/flowr-analyzer-cache';
 import { PipelineExecutor } from '../core/pipeline-executor';
 import { FlowrAnalyzerPluginDefaults } from '../project/plugins/flowr-analyzer-plugin-defaults';
-import type { WikiMakerArgs } from './wiki-mk/wiki-maker';
-import { WikiMaker } from './wiki-mk/wiki-maker';
+import type { DocMakerArgs } from './wiki-mk/doc-maker';
+import { DocMaker } from './wiki-mk/doc-maker';
 import { FlowrAnalyzerRmdFilePlugin } from '../project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
 import { FlowrAnalyzerPlugin } from '../project/plugins/flowr-analyzer-plugin';
 
@@ -66,12 +66,12 @@ async function analyzerQuickExampleToRegisterPlugins() {
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Analyzer
  */
-export class WikiAnalyzer extends WikiMaker {
+export class WikiAnalyzer extends DocMaker {
 	constructor() {
 		super('wiki/Analyzer.md', module.filename, 'analyzer');
 	}
 
-	public text({ ctx }: WikiMakerArgs): string {
+	public text({ ctx }: DocMakerArgs): string {
 		return `
 ${
 	collapsibleToc({

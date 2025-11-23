@@ -80,7 +80,7 @@ jobs:
 
       - name: "🛠️ Update the Generated Pages"
         run: |
-          npm ci
+          # npm ci is done by the full test run before
           CHANGED_ANY=false
           CHANGED_FILES=()
           

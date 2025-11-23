@@ -1,10 +1,7 @@
-import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
-import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { FlowrWikiBaseRef, linkFlowRSourceFile } from './doc-util/doc-files';
 import { type LintingRuleNames , LintingRules } from '../linter/linter-rules';
 import { codeBlock } from './doc-util/doc-code';
-import { RShell } from '../r-bridge/shell';
 import { showQuery } from './doc-util/doc-query';
 import { type TypeElementInSource, type TypeReport , getDocumentationForType, getTypePathLink, getTypesFromFolder, mermaidHide, shortLink, shortLinkFile } from './doc-util/doc-types';
 import path from 'path';
@@ -14,9 +11,11 @@ import { LintingRuleTag } from '../linter/linter-tags';
 import { textWithTooltip } from '../util/html-hover-over';
 import { joinWithLast } from '../util/text/strings';
 import { guard } from '../util/assert';
-import { writeWikiTo } from './doc-util/doc-print';
 import { getFunctionsFromFolder } from './doc-util/doc-functions';
 import { LintingResultCertainty, LintingRuleCertainty } from '../linter/linter-format';
+import type { DocMakerArgs } from './wiki-mk/doc-maker';
+import { DocMaker } from './wiki-mk/doc-maker';
+import type { KnownParser } from '../r-bridge/parser';
 
 const SpecialTagColors: Record<string, string> = {
 	[LintingRuleTag.Bug]:      'red',
@@ -29,7 +28,6 @@ function makeTagBadge(name: LintingRuleTag, info: TypeElementInSource[]): string
 	const doc = getDocumentationForType('LintingRuleTag::' + name, info, '', { fuzzy: true }).replaceAll('\n', ' ');
 	return textWithTooltip(`<a href='#${name}'>![` + name + '](https://img.shields.io/badge/' + name.toLowerCase() + `-${SpecialTagColors[name] ?? 'teal'}) </a>`, doc);
 }
-
 
 function prettyPrintExpectedOutput(expected: string): string {
 	if(expected.trim() === '[]') {
@@ -52,7 +50,7 @@ function prettyPrintExpectedOutput(expected: string): string {
 	}).join('\n');
 }
 
-function buildSamplesFromLinterTestCases(shell: RShell, testFile: string): string {
+function buildSamplesFromLinterTestCases(_parser: KnownParser, testFile: string): string {
 	const reports = getFunctionsFromFolder({ files: [path.resolve('test/functionality/linter/' + testFile)], fname: /assertLinter/ });
 	if(reports.info.length === 0) {
 		return '';
@@ -90,10 +88,10 @@ See [here](${getTypePathLink({ filePath: report.source.fileName, lineNumber: rep
 	return result;
 }
 
-function registerRules(rVersion: string, shell: RShell, tagTypes: TypeElementInSource[], format: 'short' | 'long' = 'short') {
+function registerRules(knownParser: KnownParser, tagTypes: TypeElementInSource[], format: 'short' | 'long' = 'short') {
 	const ruleExplanations = new Map<LintingRuleNames, () => Promise<string>>();
 
-	rule(shell,
+	rule(knownParser,
 		'deprecated-functions', 'FunctionsToDetectConfig', 'DEPRECATED_FUNCTIONS', 'lint-deprecated-functions',
 		`
 first <- data.frame(x = c(1, 2, 3), y = c(1, 2, 3))
@@ -101,60 +99,60 @@ second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))
 dplyr::all_equal(first, second)
 `, tagTypes);
 
-	rule(shell,
+	rule(knownParser,
 		'network-functions', 'NetworkFunctionsConfig', 'NETWORK_FUNCTIONS', 'lint-network-functions',
 		`
 read.csv("https://example.com/data.csv")
 download.file("https://foo.bar")
 `, tagTypes);
 
-	rule(shell,
+	rule(knownParser,
 		'file-path-validity', 'FilePathValidityConfig', 'FILE_PATH_VALIDITY', 'lint-file-path-validity',
 		`
 my_data <- read.csv("C:/Users/me/Documents/My R Scripts/Reproducible.csv")
 `, tagTypes);
 
-	rule(shell,
+	rule(knownParser,
 		'absolute-file-paths', 'AbsoluteFilePathConfig', 'ABSOLUTE_PATH', 'lint-absolute-path',
 		`
 read.csv("C:/Users/me/Documents/My R Scripts/Reproducible.csv")
 `, tagTypes);
 
-	rule(shell,
+	rule(knownParser,
 		'unused-definitions', 'UnusedDefinitionConfig', 'UNUSED_DEFINITION', 'lint-unused-definition',
 		`
 x <- 42
 y <- 3
 print(x)
 `, tagTypes);
-	rule(shell,
+	rule(knownParser,
 		'seeded-randomness', 'SeededRandomnessConfig', 'SEEDED_RANDOMNESS', 'lint-seeded-randomness',
 		'runif(1)',
 		tagTypes);
 
-	rule(shell,
+	rule(knownParser,
 		'naming-convention', 'NamingConventionConfig', 'NAMING_CONVENTION', 'lint-naming-convention',
 		`
 myVar <- 42
 print(myVar)
 `, tagTypes);
 
-	rule(shell,
+	rule(knownParser,
 		'dataframe-access-validation', 'DataFrameAccessValidationConfig', 'DATA_FRAME_ACCESS_VALIDATION', 'lint-dataframe-access-validation',
 		`
 df <- data.frame(id = 1:5, name = 6:10)
 df[6, "value"]
 `, tagTypes);
 
-	rule(shell,
+	rule(knownParser,
 		'dead-code', 'DeadCodeConfig', 'DEAD_CODE', 'lint-dead-code',
 		'if(TRUE) 1 else 2', tagTypes);
 
-	rule(shell,
+	rule(knownParser,
 		'useless-loop', 'UselessLoopConfig', 'USELESS_LOOP', 'lint-useless-loop',
 		'for(i in c(1)) { print(i) }', tagTypes);
 
-	function rule(shell: RShell, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
+	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 
 		const tags = rule.info.tags.toSorted((a, b) => {
@@ -183,7 +181,7 @@ df[6, "value"]
 		} else {
 			ruleExplanations.set(name, async() => `
 
-${autoGenHeader({ filename: module.filename, purpose: 'linter', rVersion })}
+${autoGenHeader({ filename: module.filename, purpose: 'linter' })}
 ${section(rule.info.name + `&emsp;<sup>[<a href="${FlowrWikiBaseRef}/Linter">overview</a>]</sup>`, 2, name)}
 
 ${tags}
@@ -212,9 +210,9 @@ ${codeBlock('r', example)}
 
 The linting query can be used to run this rule on the above example:
 
-${await showQuery(shell, example, [{ type: 'linter', rules: [{ name, config: {} as never }] }], { collapseQuery: true })}
+${await showQuery(parser, example, [{ type: 'linter', rules: [{ name, config: {} as never }] }], { collapseQuery: true })}
 
-${buildSamplesFromLinterTestCases(shell, `${testfile}.test.ts`)}
+${buildSamplesFromLinterTestCases(parser, `${testfile}.test.ts`)}
 
 		`.trim());
 		}
@@ -235,19 +233,17 @@ function linkToRule(name: LintingRuleNames): string {
 	return `[${name}](${FlowrWikiBaseRef}/lint-${name})`;
 }
 
+async function getTextMainPage(knownParser: KnownParser, tagTypes: TypeReport): Promise<string> {
+	const rules = registerRules(knownParser, tagTypes.info);
 
-async function getTextMainPage(shell: RShell, tagTypes: TypeReport, rVersion: string): Promise<string> {
-	const rules = registerRules(rVersion, shell, tagTypes.info);
-
-	return `${autoGenHeader({ filename: module.filename, purpose: 'linter', rVersion })}
-
+	return `
 This page describes the flowR linter, which is a tool that utilizes flowR's dataflow analysis to find common issues in R scripts. The linter can currently be used through the linter [query](${FlowrWikiBaseRef}/Query%20API).
 For example:
 
 ${await(async() => {
 	const code = 'read.csv("/root/x.txt")';
-	const res = await showQuery(shell, code, [{ type: 'linter' }], { showCode: false, collapseQuery: true, collapseResult: false });
-	return await documentReplSession(shell, [{
+	const res = await showQuery(knownParser, code, [{ type: 'linter' }], { showCode: false, collapseQuery: true, collapseResult: false });
+	return await documentReplSession(knownParser, [{
 		command:     `:query @linter ${JSON.stringify(code)}`,
 		description: `
 The linter will analyze the code and return any issues found.
@@ -310,8 +306,8 @@ ${Object.entries(LintingResultCertainty).map(([name, certainty]) =>
 `.trim();
 }
 
-async function getRulesPages(shell: RShell, tagTypes: TypeReport, rVersion: string): Promise<Record<string, string>> {
-	const rules = registerRules(rVersion, shell, tagTypes.info, 'long');
+async function getRulesPages(knownParser: KnownParser, tagTypes: TypeReport): Promise<Record<string, string>> {
+	const rules = registerRules(knownParser, tagTypes.info, 'long');
 	const result: Record<string, string> = {} as Record<string, string>;
 
 	for(const [name, rule] of rules) {
@@ -323,33 +319,35 @@ async function getRulesPages(shell: RShell, tagTypes: TypeReport, rVersion: stri
 }
 
 /** Maps file-names to their content, the 'main' file is named 'main' */
-async function getTexts(shell: RShell): Promise<Record<string, string> & { main: string }> {
-	const rVersion = (await shell.usedRVersion())?.format() ?? 'unknown';
+async function getTexts(parser: KnownParser): Promise<Record<string, string> & { main: string }> {
 	const tagTypes = getTypesFromFolder({
 		rootFolder:  path.resolve('./src/linter/'),
 		inlineTypes: mermaidHide
 	});
 
 	return {
-		'main': await getTextMainPage(shell, tagTypes, rVersion),
-		...await getRulesPages(shell, tagTypes, rVersion)
+		'main': await getTextMainPage(parser, tagTypes),
+		...await getRulesPages(parser, tagTypes)
 	};
 }
 
-/* As an intermediary solution to changing the wiki system, we make this script generate separate files for each linter rule using fixed paths */
-if(require.main === module) {
-	setMinLevelOfAllLogs(LogLevel.Fatal);
-	const shell = new RShell();
-	void (getTexts(shell).then(data => {
-		console.log(data['main']);
-		for(const [file, content] of Object.entries(data)) {
+/**
+ * https://github.com/flowr-analysis/flowr/wiki/Linter
+ */
+export class WikiLinter extends DocMaker {
+	constructor() {
+		super('wiki/Linter.md', module.filename, 'linter');
+	}
+
+	protected async text({ treeSitter }: DocMakerArgs): Promise<string> {
+		const texts = await getTexts(treeSitter);
+		for(const [file, content] of Object.entries(texts)) {
 			if(file === 'main') {
-				continue; // main is printed above
+				continue; // main is printed below
 			}
 			const filepath = path.resolve('./wiki', file);
-			writeWikiTo(content, filepath);
+			this.writeSubFile(filepath, content);
 		}
-	}).finally(() => {
-		shell.close();
-	}));
+		return texts['main'];
+	}
 }

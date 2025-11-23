@@ -1,8 +1,7 @@
 import type { DataflowGraph, UnknownSideEffect } from '../../dataflow/graph/graph';
-import type { RShell } from '../../r-bridge/shell';
 import { graphToMermaid, type MermaidMarkdownMark } from '../../util/mermaid/dfg';
-import { PipelineExecutor } from '../../core/pipeline-executor';
-import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
+import type { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
 import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
 import { diffOfDataflowGraphs } from '../../dataflow/graph/diff-dataflow-graph';
@@ -101,10 +100,9 @@ ${switchCodeAndGraph ? dfGraph : codeText}
 
 
 /** returns resolved expected df graph */
-export async function verifyExpectedSubgraph(shell: RShell, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
+export async function verifyExpectedSubgraph(parser: KnownParser, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
 	/* we verify that we get what we want first! */
-	const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		parser:  shell,
+	const info = await createDataflowPipeline(parser, {
 		context: contextFromInput(code),
 		getId:   deterministicCountingIdGenerator(0)
 	}).allRemainingSteps();

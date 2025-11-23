@@ -12,6 +12,8 @@ import { asciiSummaryOfQueryResult } from '../../queries/query-print';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import { getReplCommand } from './doc-cli-option';
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
+import type { GeneralDocContext } from '../wiki-mk/doc-context';
+import type { KnownParser } from '../../r-bridge/parser';
 
 export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
@@ -27,12 +29,12 @@ export async function showQuery<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
 >(
-	shell: RShell, code: string,
+	parser: KnownParser, code: string,
 	queries: Queries<Base, VirtualArguments>,
 	{ showCode, collapseResult, collapseQuery, shorthand }: ShowQueryOptions = {}
 ): Promise<string> {
 	const now = performance.now();
-	const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).build();
+	const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 	analyzer.addRequest(code);
 	const results = await analyzer.query(queries);
 	const duration = performance.now() - now;
@@ -77,7 +79,7 @@ ${
 	showCode ? `
 <details> <summary style="color:gray">Original Code</summary>
 
-${await printDfGraphForCode(shell, code, { switchCodeAndGraph: true })}
+${await printDfGraphForCode(parser, code, { switchCodeAndGraph: true })}
 
 </details>
 	` : ''
@@ -95,7 +97,7 @@ export interface QueryDocumentation {
 	readonly shortDescription: string;
 	readonly functionName:     string;
 	readonly functionFile:     string;
-	readonly buildExplanation: (shell: RShell) => Promise<string>;
+	readonly buildExplanation: (shell: RShell, ctx: GeneralDocContext) => Promise<string>;
 }
 
 export const RegisteredQueries = {
@@ -151,11 +153,11 @@ export function tocForQueryType(type: 'active' | 'virtual') {
 	return result.join('\n');
 }
 
-async function explainQuery(shell: RShell, { name, functionName, functionFile, buildExplanation }: QueryDocumentation) {
+async function explainQuery(shell: RShell, ctx: GeneralDocContext, { name, functionName, functionFile, buildExplanation }: QueryDocumentation) {
 	return `
 ### ${name}
 
-${await buildExplanation(shell)}
+${await buildExplanation(shell, ctx)}
 
 <details> 
 
@@ -172,11 +174,11 @@ Responsible for the execution of the ${name} query is \`${functionName}\` in ${g
 /**
  *
  */
-export async function explainQueries(shell: RShell, type: 'active' | 'virtual'): Promise<string> {
+export async function explainQueries(shell: RShell, ctx: GeneralDocContext, type: 'active' | 'virtual'): Promise<string> {
 	const queries = [...RegisteredQueries[type].entries()].sort(([,{ name: a }], [, { name: b }]) => a.localeCompare(b));
 	const result: string[] = [];
 	for(const [,doc] of queries) {
-		result.push(await explainQuery(shell, doc));
+		result.push(await explainQuery(shell, ctx, doc));
 	}
 	return result.join(`\n${'-'.repeat(5)}\n\n`);
 }

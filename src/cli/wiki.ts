@@ -11,9 +11,11 @@ import commandLineArgs from 'command-line-args';
 import { flowrVersion } from '../util/version';
 import { WikiFaq } from '../documentation/wiki-faq';
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../util/text/ansi';
+import { WikiSearch } from '../documentation';
 
 const Wikis: WikiMakerLike[] = [
-	new WikiFaq()
+	new WikiFaq(),
+	new WikiSearch()
 ];
 
 /**
@@ -22,13 +24,13 @@ const Wikis: WikiMakerLike[] = [
 export async function makeAllWikis(force: boolean, filter: string[] | undefined) {
 	const setupStart = new Date();
 	console.log('Setting up wiki generation...');
-	const ctx = makeContextForTypes();
-	console.log('  * Wiki context prepared');
 	const shell = new RShell();
 	console.log('  * R shell initialized');
 	await TreeSitterExecutor.initTreeSitter();
 	const treeSitter = new TreeSitterExecutor();
 	console.log('  * Tree-sitter parser initialized');
+	const ctx = makeContextForTypes(shell);
+	console.log('  * Wiki context prepared');
 	const info: WikiMakerArgs & WikiMakerOutputArgs = {
 		ctx,
 		shell, treeSitter,
@@ -52,7 +54,7 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 			}
 			const now = new Date();
 			console.log(ansiFormatter.format(`  [${wiki.getTarget()}] Updating wiki...`, { style: FontStyles.Bold, color: Colors.Cyan, effect: ColorEffect.Foreground }));
-			const changed = wiki.make(info);
+			const changed = await wiki.make(info);
 			const text = changed ? 'Wiki updated' : 'Wiki identical, no changes made';
 			const color = changed ? Colors.Green : Colors.White;
 			console.log(ansiFormatter.format(`  [${wiki.getTarget()}] ${text}: ${wiki.getTarget()} (took ${new Date().getTime() - now.getTime()}ms)`, { color, effect: ColorEffect.Foreground }));
@@ -98,6 +100,7 @@ if(require.main === module) {
 	];
 
 
+	// TODO: provide wiki:watch with reload
 	setMinLevelOfAllLogs(LogLevel.Fatal);
 	// parse args
 	const options = commandLineArgs(wikiOptions) as WikiCliOptions;

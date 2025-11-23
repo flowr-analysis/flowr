@@ -120,7 +120,6 @@ jobs:
           update_page wiki/"Capabilities" md capabilities-markdown
           update_page wiki/"Dataflow Graph" md wiki:df-graph
           update_page wiki/"Query API" md wiki:query-api
-          update_page wiki/"Search API" md wiki:search-api
           update_page wiki/"Engines" md wiki:engines
           update_page wiki/"Analyzer" md wiki:analyzer
           update_page wiki/"Interface" md wiki:interface

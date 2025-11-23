@@ -33,7 +33,6 @@
     "wiki:core": "ts-node src/documentation/print-core-wiki.ts",
     "wiki:analyzer": "ts-node src/documentation/print-analyzer-wiki.ts",
     "wiki:engines": "ts-node src/documentation/print-engines-wiki.ts",
-    "wiki:search-api": "ts-node src/documentation/print-search-wiki.ts",
     "wiki:linting-and-testing": "ts-node src/documentation/print-linting-and-testing-wiki.ts",
     "wiki:interface": "ts-node src/documentation/print-interface-wiki.ts",
     "wiki:onboarding": "ts-node src/documentation/print-onboarding-wiki.ts",

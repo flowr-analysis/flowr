@@ -2,6 +2,7 @@ import type { PathLike } from 'fs';
 import type { GeneralWikiContext } from './wiki-context';
 import type { RShell } from '../../r-bridge/shell';
 import type { TreeSitterExecutor } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import type { AsyncOrSync } from 'ts-essentials';
 
 
 // TODO: write output file for git
@@ -27,7 +28,7 @@ export enum WikiChangeType {
 }
 
 export interface WikiMakerLike {
-	make(args: WikiMakerArgs & WikiMakerOutputArgs): boolean;
+	make(args: WikiMakerArgs & WikiMakerOutputArgs): Promise<boolean>;
 	getTarget(): string;
 }
 
@@ -41,9 +42,13 @@ const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 ];
 
 export abstract class WikiMaker implements WikiMakerLike {
-	private readonly target: PathLike;
+	private readonly target:   PathLike;
+	private readonly filename: string;
+	private readonly purpose:  string;
 
-	protected constructor(target: PathLike) {
+	protected constructor(target: PathLike, filename: string, purpose: string) {
+		this.filename = filename;
+		this.purpose = purpose;
 		this.target = target;
 	}
 
@@ -58,10 +63,10 @@ export abstract class WikiMaker implements WikiMakerLike {
 	 * Generates or updates the wiki file at the given target location.
 	 * @returns `true` if the file was created or updated, `false` if it was identical and not changed.
 	 */
-	public make(
+	public async make(
 		args: WikiMakerArgs & WikiMakerOutputArgs
-	): boolean {
-		const newText = this.text(args);
+	): Promise<boolean> {
+		const newText = (await args.ctx.header(this.filename, this.purpose)) + '\n' + await this.text(args);
 		if(args.force || this.didUpdate(newText, args.readFileSync(this.target)?.toString()) === WikiChangeType.Changed) {
 			args.writeFileSync(this.target, newText);
 			return true;
@@ -95,7 +100,7 @@ export abstract class WikiMaker implements WikiMakerLike {
 
 	/**
 	 * Generates the wiki text for the given arguments.
-	 * Please make sure to add a proper auto-generation header with {@link autoGenHeader}.
+	 * The text will be automatically prefixed with metadata including filename and purpose.
 	 */
-	protected abstract text(args: WikiMakerArgs): string;
+	protected abstract text(args: WikiMakerArgs): AsyncOrSync<string>;
 }

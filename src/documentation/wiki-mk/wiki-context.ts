@@ -2,6 +2,8 @@ import type { FnElementInfo, PrintHierarchyArguments, TypeElementKind } from '..
 import { printCodeOfElement , printHierarchy , shortLinkFile , shortLink , getDocumentationForType , getTypesFromFolder } from '../doc-util/doc-types';
 import path from 'path';
 import { guard } from '../../util/assert';
+import { autoGenHeader } from '../doc-util/doc-auto-gen';
+import type { RShell } from '../../r-bridge/shell';
 
 /**
  * Context available when generating documentation for a wiki in markdown format
@@ -56,7 +58,7 @@ export interface GeneralWikiContext {
 	 * @see {@link shortLink} - for the underlying impl.
 	 * @see {@link dropGenericsFromTypeName} - to clean up type names for display.
 	 */
-	link(element: ElementId, fmt:  LinkFormat, filter?: ElementFilter): string;
+	link(element: ElementId | { name: string } | (new () => unknown), fmt?: LinkFormat, filter?: ElementFilter): string;
 
 	/**
 	 * Generate a hyperlink to a type/element definition in the code base which is displayed using the file path as name
@@ -137,11 +139,18 @@ export interface GeneralWikiContext {
 	 * @see {@link printHierarchy} - for the underlying impl.
 	 */
 	hierarchy(element: ElementId, fmt?: Omit<PrintHierarchyArguments, 'info' | 'program' | 'root'>, filter?: ElementFilter): string;
+	/**
+	 * Generates an auto-generation header for the wiki page.
+	 * @param filename - The name of the file being generated. Probably use `module.filename`.
+	 * @param purpose - The purpose of the file, e.g., 'wiki context for types'.
+	 */
+	header(filename: string, purpose: string): Promise<string>;
 }
 
 /**
  * Creates a wiki context for generating documentation for code elements.
  * This context provides methods to create links, code snippets, and documentation for code elements.
+ * @param shell       - An optional RShell instance to retrieve the R version for the auto-generation header.
  * @param rootFolders - The root folder(s) of the code base to analyze. Defaults to flower's `src/` **and** `test/` folder.
  * @example
  * ```ts
@@ -151,6 +160,7 @@ export interface GeneralWikiContext {
  * ```
  */
 export function makeContextForTypes(
+	shell?: RShell,
 	...rootFolders: string[]
 ): GeneralWikiContext {
 	if(rootFolders.length === 0) {
@@ -183,6 +193,10 @@ export function makeContextForTypes(
 				program, info,
 				...fmt,
 			}, element);
+		},
+		async header(filename: string, purpose: string): Promise<string> {
+			const rVersion = (await shell?.usedRVersion())?.format();
+			return autoGenHeader({ filename, purpose, rVersion });
 		}
 	};
 }

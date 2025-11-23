@@ -120,8 +120,9 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 	console.log('All wikis processed in ' + (new Date().getTime() - setupStart.getTime()) + 'ms');
 	console.log(`    * Changed ${changedWikis.size} wiki/doc files.`);
 	// write a temp file in the os temp dir with the changed wikis
-	fs.writeFileSync(`${os.tmpdir()}/flowr-wiki-changed-wikis.txt`, Array.from(changedWikis).join('\n'));
-	console.log(`    * List of changed wikis/docs written to ${os.tmpdir()}/flowr-wiki-changed-wikis.txt`);
+	const filename=`${os.tmpdir()}/flowr-wiki-changed-files.txt`;
+	fs.writeFileSync(`${filename}`, Array.from(changedWikis).join('\n'));
+	console.log(`    * List of changed wikis/docs written to ${filename}`);
 }
 
 if(require.main === module) {

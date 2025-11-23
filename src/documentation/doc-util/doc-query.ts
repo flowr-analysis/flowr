@@ -12,7 +12,7 @@ import { asciiSummaryOfQueryResult } from '../../queries/query-print';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import { getReplCommand } from './doc-cli-option';
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
-import type { GeneralWikiContext } from '../wiki-mk/wiki-context';
+import type { GeneralDocContext } from '../wiki-mk/wiki-context';
 import type { KnownParser } from '../../r-bridge/parser';
 
 export interface ShowQueryOptions {
@@ -97,7 +97,7 @@ export interface QueryDocumentation {
 	readonly shortDescription: string;
 	readonly functionName:     string;
 	readonly functionFile:     string;
-	readonly buildExplanation: (shell: RShell, ctx: GeneralWikiContext) => Promise<string>;
+	readonly buildExplanation: (shell: RShell, ctx: GeneralDocContext) => Promise<string>;
 }
 
 export const RegisteredQueries = {
@@ -153,7 +153,7 @@ export function tocForQueryType(type: 'active' | 'virtual') {
 	return result.join('\n');
 }
 
-async function explainQuery(shell: RShell, ctx: GeneralWikiContext, { name, functionName, functionFile, buildExplanation }: QueryDocumentation) {
+async function explainQuery(shell: RShell, ctx: GeneralDocContext, { name, functionName, functionFile, buildExplanation }: QueryDocumentation) {
 	return `
 ### ${name}
 
@@ -174,7 +174,7 @@ Responsible for the execution of the ${name} query is \`${functionName}\` in ${g
 /**
  *
  */
-export async function explainQueries(shell: RShell, ctx: GeneralWikiContext, type: 'active' | 'virtual'): Promise<string> {
+export async function explainQueries(shell: RShell, ctx: GeneralDocContext, type: 'active' | 'virtual'): Promise<string> {
 	const queries = [...RegisteredQueries[type].entries()].sort(([,{ name: a }], [, { name: b }]) => a.localeCompare(b));
 	const result: string[] = [];
 	for(const [,doc] of queries) {

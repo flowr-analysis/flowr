@@ -43,7 +43,7 @@ import type { SingleSlicingCriterion, SlicingCriteria } from '../slicing/criteri
 import { escapeNewline } from './doc-util/doc-escape';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
-import type { GeneralWikiContext } from './wiki-mk/wiki-context';
+import type { GeneralDocContext } from './wiki-mk/wiki-context';
 
 
 registerQueryDocumentation('call-context', {
@@ -703,7 +703,7 @@ registerQueryDocumentation('location-map', {
 	shortDescription: 'Returns a simple mapping of ids to their location in the source file',
 	functionName:     executeLocationMapQuery.name,
 	functionFile:     '../queries/catalog/location-map-query/location-map-query-executor.ts',
-	buildExplanation: async(shell: RShell, ctx: GeneralWikiContext) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1\nx * 2';
 		const criteria = ['1@x','2@x'] as SlicingCriteria;
 		return `

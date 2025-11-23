@@ -1,16 +1,23 @@
 import type { PathLike } from 'fs';
-import type { GeneralWikiContext } from './wiki-context';
+import type { GeneralDocContext } from './wiki-context';
 import type { RShell } from '../../r-bridge/shell';
 import type { TreeSitterExecutor } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { AsyncOrSync } from 'ts-essentials';
 
-
-// TODO: write output file for git
 export interface DocMakerArgs {
 	/** Overwrite existing wiki files, even if nothing changes */
 	readonly force?:     boolean;
-	readonly ctx:        GeneralWikiContext;
+	/**
+	 * The general documentation context to use for generating links and headers
+	 */
+	readonly ctx:        GeneralDocContext;
+	/**
+	 * The RShell engine to use for R code execution and retrieval
+	 */
 	readonly shell:      RShell,
+	/**
+	 * The TreeSitter engine to use for R code parsing
+	 */
 	readonly treeSitter: TreeSitterExecutor
 }
 
@@ -29,6 +36,7 @@ export interface DocMakerLike {
 	make(args: DocMakerArgs & DocMakerOutputArgs): Promise<boolean>;
 	getTarget(): string;
 	getProducer(): string;
+	getWrittenSubfiles(): Set<string>;
 }
 
 
@@ -37,19 +45,24 @@ const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	[/[0-9]+(\.[0-9]+)?( |\s*)?ms/g, ''],
 	[/tmp[%A-Za-z0-9-]+/g, ''],
 	[/"(timing|searchTimeMs|processTimeMs)":\s*[0-9]+(\.[0-9])?,?/g, ''],
-	[/"format":"compact".+/g, '']
+	[/"format":"compact".+```/gmius, '']
 ];
 
 /**
  * Abstract base class for generating wiki files.
  * **Please make sure to register your WikiMaker implementation in the CLI wiki tool to have it executed:
  * `src/cli/wiki.ts`.**
+ *
+ * If this wiki page produces multiple pages ("sub files"), you can use `writeSubFile` inside the `text` method
+ * to write those additional files.
  */
 export abstract class DocMaker implements DocMakerLike {
 	private readonly target:      PathLike;
 	private readonly filename:    string;
 	private readonly purpose:     string;
 	private readonly printHeader: boolean;
+	private currentArgs?:         DocMakerArgs & DocMakerOutputArgs;
+	private writtenSubfiles:      Set<string> = new Set();
 
 	/**
 	 * Creates a new WikiMaker instance.
@@ -81,15 +94,39 @@ export abstract class DocMaker implements DocMakerLike {
 	}
 
 	/**
+	 * Gets the set of subfiles written during the last `make` call.
+	 */
+	public getWrittenSubfiles(): Set<string> {
+		return this.writtenSubfiles;
+	}
+
+	/**
 	 * Generates or updates the wiki file at the given target location.
 	 * @returns `true` if the file was created or updated, `false` if it was identical and not changed.
 	 */
 	public async make(
 		args: DocMakerArgs & DocMakerOutputArgs
 	): Promise<boolean> {
+		this.currentArgs = args;
+		this.writtenSubfiles = new Set();
 		const newText = (this.printHeader ? (await args.ctx.header(this.filename, this.purpose)) + '\n': '') + await this.text(args);
-		if(args.force || this.didUpdate(newText, args.readFileSync(this.target)?.toString()) === WikiChangeType.Changed) {
+		if(args.force || this.didUpdate(this.target, newText, args.readFileSync(this.target)?.toString()) === WikiChangeType.Changed) {
 			args.writeFileSync(this.target, newText);
+			return true;
+		}
+		return this.writtenSubfiles.size > 0;
+	}
+
+	/**
+	 * Please note that for subfiles you have to always add your own header
+	 */
+	protected writeSubFile(path: PathLike, data: string): boolean {
+		if(!this.currentArgs) {
+			throw new Error('DocMaker: writeSubFile called outside of make()');
+		}
+		if(this.currentArgs.force || this.didUpdate(path, data, this.currentArgs.readFileSync(path)?.toString()) === WikiChangeType.Changed) {
+			this.currentArgs.writeFileSync(this.target, data);
+			this.writtenSubfiles.add(path.toString());
 			return true;
 		}
 		return false;
@@ -110,7 +147,7 @@ export abstract class DocMaker implements DocMakerLike {
 	/**
 	 * Determines the type of change between the old and new text.
 	 */
-	protected didUpdate(newText: string, oldText: string | undefined): WikiChangeType {
+	protected didUpdate(_path: PathLike, newText: string, oldText: string | undefined): WikiChangeType {
 		if(oldText === newText) {
 			return WikiChangeType.Identical;
 		}

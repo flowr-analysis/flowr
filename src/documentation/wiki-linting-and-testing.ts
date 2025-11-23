@@ -1,5 +1,4 @@
-import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
-import { FlowrLogger, LogLevel } from '../util/log';
+import { FlowrLogger } from '../util/log';
 import { codeBlock } from './doc-util/doc-code';
 import {
 	FlowrCodecovRef,
@@ -11,20 +10,17 @@ import {
 	RemoteFlowrFilePathBaseRef
 } from './doc-util/doc-files';
 import { block } from './doc-util/doc-structure';
-import { getTypesFromFolder, mermaidHide, shortLink } from './doc-util/doc-types';
-import path from 'path';
-import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { getCliLongOptionOf } from './doc-util/doc-cli-option';
+import type { DocMakerArgs } from './wiki-mk/doc-maker';
+import { DocMaker } from './wiki-mk/doc-maker';
 
-function getText() {
-	const { info } = getTypesFromFolder({
-		rootFolder:         path.resolve('./test'),
-		files:              [path.resolve('./src/dataflow/graph/dataflowgraph-builder.ts'), path.resolve('./src/util/log.ts'), path.resolve('./src/slicing/static/static-slicer.ts')],
-		typeNameForMermaid: 'parameter',
-		inlineTypes:        mermaidHide
-	});
-	return `${autoGenHeader({ filename: module.filename, purpose: 'linting and testing definitions' })}
+export class WikiLintingAndTesting extends DocMaker {
+	constructor() {
+		super('wiki/Linting and Testing.md', module.filename,'linting and testing definitions');
+	}
 
+	protected text({ ctx }: DocMakerArgs): string {
+		return `
 For the latest code coverage information, see [codecov.io](${FlowrCodecovRef}), 
 for the latest benchmark results, see the [benchmark results](${FlowrSiteBaseRef}/wiki/stats/benchmark) wiki page.
 
@@ -99,7 +95,7 @@ ${block({
 	type:    'WARNING',
 	content: `
 We name all test files using the \`.test.ts\` suffix and try to run them in parallel.
-Whenever this is impossible (e.g., when using ${shortLink('withShell', info)}), please use _\`describe.sequential\`_
+Whenever this is impossible (e.g., when using ${ctx.link('withShell')}), please use _\`describe.sequential\`_
 to disable parallel execution for the respective test (otherwise, such tests are flaky).
 `
 })}
@@ -132,13 +128,13 @@ assertDataflow(label('simple variable', ['name-normal']), shell,
 	'x', emptyGraph().use('0', 'x')
 );
 `)}
-Have a look at ${shortLink('assertDataflow', info)}, ${shortLink('label', info)}, and ${shortLink('emptyGraph', info)} for more information.
+Have a look at ${ctx.link('assertDataflow')}, ${ctx.link('label')}, and ${ctx.link('emptyGraph')} for more information.
 
 When writing dataflow tests, additional settings can be used to reduce the amount of graph data that needs to be pre-written. Notably:
 
-- ${shortLink('expectIsSubgraph', info)} indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. 
+- ${ctx.link('expectIsSubgraph')} indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. 
   The test will then only check if the supplied graph is contained in the result graph, rather than an exact match.
-- ${shortLink('resolveIdsAsCriterion', info)} indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](${FlowrWikiBaseRef}/Terminology#slicing-criterion) rather than actual ids. 
+- ${ctx.link('resolveIdsAsCriterion')} indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](${FlowrWikiBaseRef}/Terminology#slicing-criterion) rather than actual ids. 
   For example, passing \`12@a\` as an id in the expected (sub)graph will cause it to be resolved as the corresponding id.
 
 The following example shows both in use:
@@ -269,15 +265,11 @@ You can also set the \`Auto Attach Filter\` setting to automatically attach the 
 ### Logging
 
 *flowR* uses a wrapper around [tslog](https://www.npmjs.com/package/tslog) using a class named
-${shortLink(FlowrLogger.name, info)}. They obey to, for example, the ${getCliLongOptionOf('flowr', 'verbose')}
+${ctx.link(FlowrLogger)}. They obey to, for example, the ${getCliLongOptionOf('flowr', 'verbose')}
 option. Throughout *flowR*, we use the \`log\` object (or subloggers of it) for logging.
-To create your own logger, you can use ${shortLink(FlowrLogger.name + '::' + (new FlowrLogger().getSubLogger.name), info, true, 'i')}.
-For example, check out the ${shortLink('slicerLogger', info)} for the static slicer.
+To create your own logger, you can use ${ctx.link(FlowrLogger.name + '::' + (new FlowrLogger().getSubLogger.name), { codeFont: true, realNameWrapper: 'i' })}.
+For example, check out the ${ctx.link('slicerLogger')} for the static slicer.
 
 `;
-}
-
-if(require.main === module) {
-	setMinLevelOfAllLogs(LogLevel.Fatal);
-	console.log(getText());
+	}
 }

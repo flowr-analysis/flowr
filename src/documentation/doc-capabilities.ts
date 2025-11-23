@@ -178,7 +178,7 @@ Please prefer using a statement like "flowR has only partial support for feature
 
 export class DocCapabilities extends DocMaker {
 	constructor() {
-		super('wiki/Capabilities.md', 'Capabilities', 'flowR capabilities overview');
+		super('wiki/Capabilities.md', module.filename, 'flowR capabilities overview');
 	}
 
 	protected async text({ treeSitter }: DocMakerArgs): Promise<string> {

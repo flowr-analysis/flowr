@@ -57,7 +57,7 @@ function getNameFromElementIdOrRef(element: ElementIdOrRef): string {
  * These wrap around a collection of useful helpers originating from the doc utils.
  * To create an instance, use {@link makeContextForTypes} (although if you are writing a wiki, you get such an instance).
  */
-export interface GeneralWikiContext {
+export interface GeneralDocContext {
 	/**
 	 * Generate a hyperlink to a code element in the wiki
 	 * @param element - The element to create a link for, the name can be qualified with `::` to specify the class.
@@ -191,7 +191,7 @@ export interface GeneralWikiContext {
 export function makeContextForTypes(
 	shell?: RShell,
 	...rootFolders: string[]
-): GeneralWikiContext {
+): GeneralDocContext {
 	if(rootFolders.length === 0) {
 		rootFolders.push(path.resolve(__dirname, '../../../src'));
 		rootFolders.push(path.resolve(__dirname, '../../../test'));

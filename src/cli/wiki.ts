@@ -11,12 +11,22 @@ import commandLineArgs from 'command-line-args';
 import { flowrVersion } from '../util/version';
 import { WikiFaq } from '../documentation/wiki-faq';
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../util/text/ansi';
-import { DocCapabilities, WikiEngine, WikiNormalizedAst, WikiQuery, WikiSearch } from '../documentation';
+import {
+	DocCapabilities,
+	WikiCore, WikiDataflowGraph,
+	WikiEngine,
+	WikiInterface, WikiLintingAndTesting,
+	WikiNormalizedAst,
+	WikiQuery,
+	WikiSearch
+} from '../documentation';
 import { WikiCfg } from '../documentation/wiki-cfg';
 import { WikiOnboarding } from '../documentation/wiki-onboarding';
 import { WikiAnalyzer } from '../documentation/wiki-analyzer';
 import { IssueLintingRule } from '../documentation/issue-linting-rule';
 import { DocReadme } from '../documentation/doc-readme';
+import { WikiLinter } from '../documentation/wiki-linter';
+import os from 'os';
 
 const Documents: DocMakerLike[] = [
 	new WikiFaq(),
@@ -27,6 +37,11 @@ const Documents: DocMakerLike[] = [
 	new WikiAnalyzer(),
 	new WikiEngine(),
 	new WikiNormalizedAst(),
+	new WikiCore(),
+	new WikiInterface(),
+	new WikiDataflowGraph(),
+	new WikiLintingAndTesting(),
+	new WikiLinter(),
 	new IssueLintingRule(),
 	new DocReadme(),
 	new DocCapabilities()
@@ -73,6 +88,7 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 	};
 
 	console.log(`Setup for wiki generation took ${(new Date().getTime() - setupStart.getTime())}ms`);
+	const changedWikis = new Set<string>();
 	try {
 		const sortedDocs = sortByLeastRecentChanged(Documents);
 		console.log(`Generating ${sortedDocs.length} wikis/docs, sorted by most recently updated...`);
@@ -86,15 +102,26 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 			console.log(ansiFormatter.format(`  [${doc.getTarget()}] Updating ${type}...`, { style: FontStyles.Bold, color: Colors.Cyan, effect: ColorEffect.Foreground }));
 			const changed = await doc.make(info);
 			const text = changed ? `${type} updated` : `${type} identical, no changes made`;
+			if(changed) {
+				changedWikis.add(doc.getTarget());
+			}
 			const color = changed ? Colors.Green : Colors.White;
 			console.log(ansiFormatter.format(`  [${doc.getTarget()}] ${text}: ${doc.getTarget()} (took ${new Date().getTime() - now.getTime()}ms)`, { color, effect: ColorEffect.Foreground }));
+			for(const out of doc.getWrittenSubfiles()) {
+				changedWikis.add(out);
+				console.log(`    - Also updated: ${out}`);
+			}
 		}
 	} catch(error) {
-		console.error('Error while generating documetns:', error);
+		console.error('Error while generating documents:', error);
 	} finally {
 		shell.close();
 	}
 	console.log('All wikis processed in ' + (new Date().getTime() - setupStart.getTime()) + 'ms');
+	console.log(`    * Changed ${changedWikis.size} wiki/doc files.`);
+	// write a temp file in the os temp dir with the changed wikis
+	fs.writeFileSync(`${os.tmpdir()}/flowr-wiki-changed-wikis.txt`, Array.from(changedWikis).join('\n'));
+	console.log(`    * List of changed wikis/docs written to ${os.tmpdir()}/flowr-wiki-changed-wikis.txt`);
 }
 
 if(require.main === module) {

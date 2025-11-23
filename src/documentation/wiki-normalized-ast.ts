@@ -34,7 +34,7 @@ async function quickNormalizedAstMultipleFiles() {
 
 export class WikiNormalizedAst extends DocMaker {
 	constructor() {
-		super('wiki/Normalized AST.md', 'Normalized AST', 'normalized ast');
+		super('wiki/Normalized AST.md', module.filename,'normalized ast');
 	}
 
 	protected async text({ ctx, treeSitter }: DocMakerArgs): Promise<string> {

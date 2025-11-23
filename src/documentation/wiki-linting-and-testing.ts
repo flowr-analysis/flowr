@@ -14,6 +14,9 @@ import { getCliLongOptionOf } from './doc-util/doc-cli-option';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 
+/**
+ * https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing
+ */
 export class WikiLintingAndTesting extends DocMaker {
 	constructor() {
 		super('wiki/Linting and Testing.md', module.filename,'linting and testing definitions');

@@ -85,6 +85,9 @@ export function inspectContextExample(analyzer: FlowrAnalyzer) {
 	console.log('loading order', ctx.files.loadingOrder.getLoadingOrder());
 }
 
+/**
+ * https://github.com/flowr-analysis/flowr/wiki/Core
+ */
 export class WikiCore extends DocMaker {
 	constructor() {
 		super('wiki/Core.md', module.filename, 'core');

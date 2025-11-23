@@ -96,6 +96,7 @@ jobs:
               echo "The following Wiki pages were changed:"
               for file in "${CHANGED_FILES[@]}"; do
                   echo "- $file"
+                  git add -f "$file"
               done
               CHANGED_ANY=true
           else

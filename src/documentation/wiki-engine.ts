@@ -7,6 +7,9 @@ import { block } from './doc-util/doc-structure';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 
+/**
+ * https://github.com/flowr-analysis/flowr/wiki/Engines
+ */
 export class WikiEngine extends DocMaker {
 	constructor() {
 		super('wiki/Engines.md', module.filename, 'engines');

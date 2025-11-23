@@ -850,6 +850,9 @@ async function dummyDataflow(): Promise<DataflowInformation> {
 	return result;
 }
 
+/**
+ * https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph
+ */
 export class WikiDataflowGraph extends DocMaker {
 	constructor() {
 		super('wiki/Dataflow Graph.md', module.filename, 'dataflow graph');

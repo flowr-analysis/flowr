@@ -14,6 +14,9 @@ function summarizeIfTooLong(text: string, maxLength = 52): string {
 	return text.slice(0, maxLength - 1) + '…';
 }
 
+/**
+ * https://github.com/flowr-analysis/flowr/blob/main/.github/ISSUE_TEMPLATE/linting-rule.yaml
+ */
 export class IssueLintingRule extends DocMaker {
 	constructor() {
 		super('.github/ISSUE_TEMPLATE/linting-rule.yaml', module.filename, '', false);

@@ -134,6 +134,9 @@ class CollectSourcesSemanticVisitor extends SemanticCfgGuidedVisitor {
 	}
 }
 
+/**
+ * https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph
+ */
 export class WikiCfg extends DocMaker {
 	constructor() {
 		super('wiki/Control Flow Graph.md', module.filename, 'control flow graph');

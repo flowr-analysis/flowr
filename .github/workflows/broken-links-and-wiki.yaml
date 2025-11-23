@@ -129,7 +129,6 @@ jobs:
           update_page wiki/"Linting and Testing" md wiki:linting-and-testing
           update_page wiki/"Core" md wiki:core
           update_page wiki/"Onboarding" md wiki:onboarding
-          update_page wiki/"FAQ" md wiki:faq
           update_page wiki/"Linter" md wiki:linter
           
           git add wiki/lint-*.md

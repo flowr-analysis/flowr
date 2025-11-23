@@ -4,6 +4,6 @@ export * from './wiki-search';
 export * from './wiki-engine';
 export * from './print-interface-wiki';
 export * from './print-dataflow-graph-wiki';
-export * from './print-normalized-ast-wiki';
-export * from './print-capabilities-markdown';
+export * from './wiki-normalized-ast';
+export * from './doc-capabilities';
 export * from './print-linting-and-testing-wiki';

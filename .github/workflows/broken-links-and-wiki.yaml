@@ -120,15 +120,11 @@ jobs:
           update_page wiki/"Capabilities" md capabilities-markdown
           update_page wiki/"Dataflow Graph" md wiki:df-graph
           update_page wiki/"Interface" md wiki:interface
-          update_page wiki/"Normalized AST" md wiki:normalized-ast
           update_page wiki/"Linting and Testing" md wiki:linting-and-testing
           update_page wiki/"Core" md wiki:core
           update_page wiki/"Linter" md wiki:linter
           
           git add wiki/lint-*.md
-          echo "====== Updating Main Readme ======"
-          update_page README md gen:readme
-          
           echo "====== Producing Update (if necessary) ======"
           # check for an update in the versions! (including the updated name information)
           LIMIT_TO_LAST=8

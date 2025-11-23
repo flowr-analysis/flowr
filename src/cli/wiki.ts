@@ -11,7 +11,7 @@ import commandLineArgs from 'command-line-args';
 import { flowrVersion } from '../util/version';
 import { WikiFaq } from '../documentation/wiki-faq';
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../util/text/ansi';
-import { WikiEngine, WikiQuery, WikiSearch } from '../documentation';
+import { DocCapabilities, WikiEngine, WikiNormalizedAst, WikiQuery, WikiSearch } from '../documentation';
 import { WikiCfg } from '../documentation/wiki-cfg';
 import { WikiOnboarding } from '../documentation/wiki-onboarding';
 import { WikiAnalyzer } from '../documentation/wiki-analyzer';
@@ -26,8 +26,10 @@ const Documents: DocMakerLike[] = [
 	new WikiOnboarding(),
 	new WikiAnalyzer(),
 	new WikiEngine(),
+	new WikiNormalizedAst(),
 	new IssueLintingRule(),
-	new DocReadme()
+	new DocReadme(),
+	new DocCapabilities()
 ];
 
 function sortByLeastRecentChanged(wikis: DocMakerLike[]): DocMakerLike[] {
@@ -129,6 +131,7 @@ if(require.main === module) {
 		}
 	];
 
+	// TODO: speed up broken link check by parallelize readme check with rest
 	// TODO: document wiki:watch
 	setMinLevelOfAllLogs(LogLevel.Fatal);
 	// parse args

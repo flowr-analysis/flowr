@@ -1,14 +1,8 @@
 import { RShell } from '../r-bridge/shell';
-import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
-import { LogLevel } from '../util/log';
-import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
 import { printNormalizedAst, printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
-import { getTypesFromFolder, mermaidHide, printCodeOfElement, printHierarchy, shortLink } from './doc-util/doc-types';
-import path from 'path';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
-import { printAsMs } from '../util/text/time';
 import { block, details } from './doc-util/doc-structure';
 import { PipelineExecutor } from '../core/pipeline-executor';
 import { requestFromInput } from '../r-bridge/retriever';
@@ -19,6 +13,8 @@ import { createNormalizePipeline } from '../core/steps/pipeline/default-pipeline
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrInlineTextFile } from '../project/context/flowr-file';
+import type { DocMakerArgs } from './wiki-mk/doc-maker';
+import { DocMaker } from './wiki-mk/doc-maker';
 
 async function quickNormalizedAstMultipleFiles() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -36,19 +32,13 @@ async function quickNormalizedAstMultipleFiles() {
 	return n;
 }
 
-async function getText(shell: RShell) {
-	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
+export class WikiNormalizedAst extends DocMaker {
+	constructor() {
+		super('wiki/Normalized AST.md', 'Normalized AST', 'normalized ast');
+	}
 
-	const now = performance.now();
-	const types = getTypesFromFolder({
-		rootFolder:         path.resolve('./src'),
-		typeNameForMermaid: 'RNode',
-		inlineTypes:        mermaidHide
-	});
-	const elapsed = performance.now() - now;
-
-	return `${autoGenHeader({ filename: module.filename, purpose: 'normalized ast', rVersion: rversion })}
-
+	protected async text({ ctx, treeSitter }: DocMakerArgs): Promise<string> {
+		return `
 _flowR_ produces a normalized version of R's abstract syntax tree (AST),
 offering the following benefits:
 
@@ -65,15 +55,15 @@ ${codeBlock('r', 'x <- 2 * 3 + 1')}
 Each node in the AST contains the type, the id, and the lexeme (if applicable).
 Each edge is labeled with the type of the parent-child relationship (the "role").
 
-${await printNormalizedAstForCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart LR\n' })}
+${await printNormalizedAstForCode(treeSitter, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart LR\n' })}
 
 > [!TIP]
 > If you want to investigate the normalized AST, 
 > you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('normalize*')} 
 > command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information).
 
-Indicative of the normalization is the root ${shortLink('RProject', types.info)} node, which is present in every normalized AST
-and provides the ${shortLink('RExpressionList', types.info)} nodes for each file in the project.
+Indicative of the normalization is the root ${ctx.link('RProject')} node, which is present in every normalized AST
+and provides the ${ctx.link('RExpressionList')} nodes for each file in the project.
 In general, we provide node types for:
 
 1. literals (e.g., numbers and strings)
@@ -89,12 +79,11 @@ In general, we provide node types for:
 Every node is a link, which directly refers to the implementation in the source code.
 Grayed-out parts are used for structuring the AST, grouping together related nodes.
 
-${codeBlock('mermaid', types.mermaid)}
+${codeBlock('mermaid', ctx.mermaid('RNode'))}
 
-_The generation of the class diagram required ${printAsMs(elapsed)}._
 </details>
 
-Node types are controlled by the ${shortLink('RType', types.info)} enum (see ${getFilePathMd('../r-bridge/lang-4.x/ast/model/type.ts')}), 
+Node types are controlled by the ${ctx.link('RType')} enum (see ${getFilePathMd('../r-bridge/lang-4.x/ast/model/type.ts')}), 
 which is used to distinguish between different types of nodes.
 Additionally, every AST node is generic with respect to the \`Info\` type which allows for arbitrary decorations (e.g., parent inforamtion or dataflow constraints).
 Most notably, the \`info\` field holds the \`id\` of the node, which is used to reference the node in the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph).
@@ -102,7 +91,7 @@ Most notably, the \`info\` field holds the \`id\` of the node, which is used to 
 In summary, we have the following types:
 
 ${details('Normalized AST Node Types',
-	printHierarchy({ program: types.program, info: types.info, root: 'RNode', collapseFromNesting: Number.MAX_VALUE })
+	ctx.hierarchy('RNode', { collapseFromNesting: Number.MAX_VALUE })
 )}
 
 The following segments intend to give you an overview of how to work with the normalized AST:
@@ -113,7 +102,7 @@ The following segments intend to give you an overview of how to work with the no
 ## How to Get a Normalized AST
 
 As explained alongside the [Interface](${FlowrWikiBaseRef}/Interface#creating-flowr-analyses) wiki page, you can use an instance of
-${shortLink(FlowrAnalyzer.name, types.info)} to get the ${shortLink('NormalizedAst', types.info)}:
+${ctx.link(FlowrAnalyzer)} to get the ${ctx.link('NormalizedAst')}:
 
 ${codeBlock('ts', `
 async function getAst(code: string): Promise<RNode> {
@@ -126,9 +115,9 @@ From the REPL, you can use the ${getReplCommand('normalize')} command.
 
 ### Multi-File Projects
 
-With the ${shortLink(FlowrAnalyzer.name, types.info)}, you can analyze multiple files at once:
+With the ${ctx.link(FlowrAnalyzer)}, you can analyze multiple files at once:
 
-${printCodeOfElement({ program: types.program, info: types.info, dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true }, quickNormalizedAstMultipleFiles.name)}
+${ctx.code(quickNormalizedAstMultipleFiles, { dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true })}
 
 Visualizing the resulting AST yields the following.
 
@@ -144,17 +133,17 @@ ${printNormalizedAst((await quickNormalizedAstMultipleFiles()).ast, 'flowchart L
 ## Traversing the Normalized AST
 
 We provide two ways to traverse the normalized AST: [Visitors](#visitors) and [Folds](#folds).
-Please note, that they usually operate on the ${shortLink('RExpressionList', types.info)} level, and it is up to
-you to decide how you want to traverse multiple files with a ${shortLink('RProject', types.info)} in the AST (you can, for example, simplify flat-map over the files).
-The ${shortLink('RProject', types.info)} node cannot appear nested within other nodes, so you can safely assume that any child of a node is not an ${shortLink('RProject', types.info)}.
+Please note, that they usually operate on the ${ctx.link('RExpressionList')} level, and it is up to
+you to decide how you want to traverse multiple files with a ${ctx.link('RProject')} in the AST (you can, for example, simplify flat-map over the files).
+The ${ctx.link('RProject')} node cannot appear nested within other nodes, so you can safely assume that any child of a node is not an ${ctx.link('RProject')}.
 
 ### Visitors
 
-If you want a simple visitor which traverses the AST, the ${shortLink(visitAst.name, types.info)} function is a good starting point.
+If you want a simple visitor which traverses the AST, the ${ctx.link(visitAst)} function is a good starting point.
 You may specify functions to be called whenever you enter and exit a node during the traversal, and any
 computation is to be done by side effects.
 For example, if you want to collect all the \`id\`s present within a normalized (sub-)AST,
-as it is done by the ${shortLink(collectAllIds.name, types.info)} function, you can use the following visitor:
+as it is done by the ${ctx.link(collectAllIds)} function, you can use the following visitor:
 
 ${codeBlock('ts', `
 const ids = new Set<NodeId>();
@@ -166,12 +155,12 @@ return ids;
 
 ### Folds
 
-We formulate a fold with the base class ${shortLink(DefaultNormalizedAstFold.name, types.info)} in ${getFilePathMd('../abstract-interpretation/normalized-ast-fold.ts')}.
+We formulate a fold with the base class ${ctx.link(DefaultNormalizedAstFold)} in ${getFilePathMd('../abstract-interpretation/normalized-ast-fold.ts')}.
 Using this class, you can create your own fold behavior by overwriting the default methods.
 By default, the class provides a monoid abstraction using the _empty_ from the constructor and the _concat_ method.
 
  
-${printHierarchy({ program: types.program, info: types.info, root: 'DefaultNormalizedAstFold' })}
+${ctx.hierarchy(DefaultNormalizedAstFold)}
 
 Now, of course, we could provide hundreds of examples here, but we use tests to verify that the fold behaves as expected
 and happily point to them at ${getFilePathMd('../../test/functionality/r-bridge/normalize-ast-fold.test.ts')}.
@@ -208,7 +197,7 @@ class MyMathFold<Info> extends ${DefaultNormalizedAstFold.name}<number, Info> {
 }
 `)}
 
-Now, we can use the ${shortLink(PipelineExecutor.name, types.info)} to get the normalized AST and apply the fold:
+Now, we can use the ${ctx.link(PipelineExecutor)} to get the normalized AST and apply the fold:
  
 ${codeBlock('ts', `
 const shell = new ${RShell.name}();
@@ -224,21 +213,10 @@ ${block({
 	type:    'NOTE',
 	content: `
 If you want to retrieve the normalized AST with the [Tree-Sitter Engine](${FlowrWikiBaseRef}/Engines),
-you may use the ${shortLink('TREE_SITTER_NORMALIZE_PIPELINE', types.info)} or directly rely on one of the
-helper functions like ${shortLink(createNormalizePipeline.name, types.info)}.
+you may use the ${ctx.link('TREE_SITTER_NORMALIZE_PIPELINE')} or directly rely on one of the
+helper functions like ${ctx.link(createNormalizePipeline)}.
 		`
 })}
 `;
-}
-
-/** if we run this script, we want a Markdown representation of the capabilities */
-if(require.main === module) {
-	setMinLevelOfAllLogs(LogLevel.Fatal);
-
-	const shell = new RShell();
-	void getText(shell).then(str => {
-		console.log(str);
-	}).finally(() => {
-		shell.close();
-	});
+	}
 }

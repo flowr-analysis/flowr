@@ -1,5 +1,12 @@
-import type { FnElementInfo, PrintHierarchyArguments, TypeElementKind } from '../doc-util/doc-types';
-import { printCodeOfElement , printHierarchy , shortLinkFile , shortLink , getDocumentationForType , getTypesFromFolder } from '../doc-util/doc-types';
+import type {
+	FnElementInfo,
+	PrintHierarchyArguments,
+	TypeElementKind
+} from '../doc-util/doc-types';
+import { mermaidHide
+	,
+	visualizeMermaidClassDiagram
+	, printCodeOfElement , printHierarchy , shortLinkFile , shortLink , getDocumentationForType , getTypesFromFolder } from '../doc-util/doc-types';
 import path from 'path';
 import { guard } from '../../util/assert';
 import { autoGenHeader } from '../doc-util/doc-auto-gen';
@@ -158,6 +165,13 @@ export interface GeneralWikiContext {
 	 * @param purpose - The purpose of the file, e.g., 'wiki context for types'.
 	 */
 	header(filename: string, purpose: string): Promise<string>;
+
+	/**
+	 * Generates a mermaid diagram for the given code element, returned as markdown string.
+	 * @param element - The element to create a mermaid diagram for, the name can be qualified with `::` to specify the class.
+	 * @param inlineTypes - Optional list of type names to inline in the mermaid diagram (instead of linking them out).
+	 */
+	mermaid(element: ElementIdOrRef, inlineTypes?: string[]): string;
 	// TODO: add repl functions getReplCommand etc.
 	// TODO: add constants for where what is (like FlowrWikiBaseRef)
 }
@@ -212,6 +226,12 @@ export function makeContextForTypes(
 		async header(filename: string, purpose: string): Promise<string> {
 			const rVersion = (await shell?.usedRVersion())?.format();
 			return autoGenHeader({ filename, purpose, rVersion });
+		},
+		mermaid(element: ElementIdOrRef, inlineTypes: string[] = mermaidHide): string {
+			return visualizeMermaidClassDiagram(info, {
+				typeNameForMermaid: getNameFromElementIdOrRef(element),
+				inlineTypes
+			}) as string;
 		}
 	};
 }

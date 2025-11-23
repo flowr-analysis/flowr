@@ -83,7 +83,7 @@ export function dropGenericsFromTypeName(type: string): string {
 
 /**
  * Remove comment symbols from a TypeScript comment string.
- * This also takes care of special JSDoc tags like {@link ...} and {@see ...}.
+ * This also takes care of special JSDoc tags like `{@link ...}` and `{@see ...}`.
  * @example
  * ```ts
  * const comment = '/**\n* This is a comment.\n* It has multiple lines.\n *\/'; // closing comment sadly escaped for ts doc
@@ -329,7 +329,7 @@ export function getTypePathLink(elem: Pick<TypeElementInSource, 'filePath' | 'li
 	return `${prefix}/${fromSource}#L${elem.lineNumber}`;
 }
 
-function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], rootName: string, options: GetTypesWithProgramOption, visited: Set<string> = new Set()): MermaidCompact {
+function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], rootName: string, options: { inlineTypes?: readonly string[] }, visited: Set<string> = new Set()): MermaidCompact {
 	const collect: MermaidCompact = { nodeLines: [], edgeLines: [] };
 	if(visited.has(rootName)) {
 		return collect;
@@ -382,7 +382,10 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 	return collect;
 }
 
-function visualizeMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], options: GetTypesWithProgramOption): string | undefined {
+/**
+ * Visualize the type hierarchy as a mermaid class diagram.
+ */
+export function visualizeMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], options: { typeNameForMermaid?: string, inlineTypes?: readonly string[] }): string | undefined {
 	if(!options.typeNameForMermaid) {
 		return undefined;
 	}

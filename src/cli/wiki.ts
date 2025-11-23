@@ -159,8 +159,6 @@ if(require.main === module) {
 		}
 	];
 
-	// TODO: speed up broken link check by parallelize readme check with rest
-	// TODO: document wiki:watch
 	setMinLevelOfAllLogs(LogLevel.Fatal);
 	// parse args
 	const options = commandLineArgs(wikiOptions) as WikiCliOptions;

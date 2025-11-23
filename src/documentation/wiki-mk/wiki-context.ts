@@ -172,8 +172,6 @@ export interface GeneralDocContext {
 	 * @param inlineTypes - Optional list of type names to inline in the mermaid diagram (instead of linking them out).
 	 */
 	mermaid(element: ElementIdOrRef, inlineTypes?: string[]): string;
-	// TODO: add repl functions getReplCommand etc.
-	// TODO: add constants for where what is (like FlowrWikiBaseRef)
 }
 
 /**

@@ -21,7 +21,7 @@ import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import type { KnownParser } from '../r-bridge/parser';
-import type { GeneralDocContext } from './wiki-mk/wiki-context';
+import type { GeneralDocContext } from './wiki-mk/doc-context';
 
 async function explainServer(parser: KnownParser): Promise<string> {
 	documentAllServerMessages();

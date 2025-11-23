@@ -38,7 +38,7 @@ import type { DataflowInformation } from '../dataflow/info';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
-import type { GeneralDocContext } from './wiki-mk/wiki-context';
+import type { GeneralDocContext } from './wiki-mk/doc-context';
 import type { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { KnownParser } from '../r-bridge/parser';
 

@@ -43,7 +43,7 @@ import type { SingleSlicingCriterion, SlicingCriteria } from '../slicing/criteri
 import { escapeNewline } from './doc-util/doc-escape';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
-import type { GeneralDocContext } from './wiki-mk/wiki-context';
+import type { GeneralDocContext } from './wiki-mk/doc-context';
 
 
 registerQueryDocumentation('call-context', {

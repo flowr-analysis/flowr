@@ -1,4 +1,4 @@
-import { makeContextForTypes } from '../documentation/wiki-mk/wiki-context';
+import { makeContextForTypes } from '../documentation/wiki-mk/doc-context';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { DocMakerArgs, DocMakerLike, DocMakerOutputArgs } from '../documentation/wiki-mk/doc-maker';

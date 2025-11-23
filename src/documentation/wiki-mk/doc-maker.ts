@@ -1,5 +1,5 @@
 import type { PathLike } from 'fs';
-import type { GeneralDocContext } from './wiki-context';
+import type { GeneralDocContext } from './doc-context';
 import type { RShell } from '../../r-bridge/shell';
 import type { TreeSitterExecutor } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { AsyncOrSync } from 'ts-essentials';

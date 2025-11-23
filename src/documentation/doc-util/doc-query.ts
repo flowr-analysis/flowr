@@ -12,7 +12,7 @@ import { asciiSummaryOfQueryResult } from '../../queries/query-print';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import { getReplCommand } from './doc-cli-option';
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
-import type { GeneralDocContext } from '../wiki-mk/wiki-context';
+import type { GeneralDocContext } from '../wiki-mk/doc-context';
 import type { KnownParser } from '../../r-bridge/parser';
 
 export interface ShowQueryOptions {

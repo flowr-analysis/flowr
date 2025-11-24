@@ -345,7 +345,7 @@ export class WikiLinter extends DocMaker {
 			if(file === 'main') {
 				continue; // main is printed below
 			}
-			const filepath = path.resolve('./wiki', file);
+			const filepath = path.join('wiki', file);
 			this.writeSubFile(filepath, content);
 		}
 		return texts['main'];

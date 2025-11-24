@@ -1,15 +1,13 @@
 import type { FlowrCapability } from '../r-bridge/data/types';
 import { flowrCapabilities } from '../r-bridge/data/data';
-import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
-import { LogLevel } from '../util/log';
-import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { joinWithLast } from '../util/text/strings';
 import { prefixLines } from './doc-util/doc-general';
-import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { KnownParser } from '../r-bridge/parser';
 import fs from 'fs';
 import type { SerializedTestLabel, TestLabel } from '../../test/functionality/_helper/label';
 import { block } from './doc-util/doc-structure';
+import type { DocMakerArgs } from './wiki-mk/doc-maker';
+import { DocMaker } from './wiki-mk/doc-maker';
 
 const detailedInfoFile = 'coverage/flowr-test-details.json';
 
@@ -17,7 +15,6 @@ interface CapabilityInformation {
 	readonly parser: KnownParser;
 	readonly info:   Map<string, TestLabel[]> | undefined
 }
-
 
 function obtainDetailedInfos(): Map<string, TestLabel[]> | undefined {
 	if(!fs.existsSync(detailedInfoFile)) {
@@ -155,8 +152,7 @@ async function printAsMarkdown(info: CapabilityInformation, capabilities: readon
 }
 
 function getPreamble(): string {
-	return `${autoGenHeader({ filename: module.filename, purpose: 'current capabilities' })}
-
+	return `
 Each capability has an id that can be used to link to it (use the link symbol to get a direct link to the capability).
 The internal id is also mentioned in the capability description. This id can be used to reference the capability in a labeled test within flowR.
 Besides, we use colored bullets like this:
@@ -180,21 +176,19 @@ Please prefer using a statement like "flowR has only partial support for feature
 `;
 }
 
-async function print(parser: KnownParser) {
-	/* check if the detailed test data is available */
-	if(!fs.existsSync(detailedInfoFile)) {
-		console.warn('\x1b[31mNo detailed test data available. Run the full tests (npm run test-full) to generate it.\x1b[m');
+/**
+ * https://github.com/flowr-analysis/flowr/wiki/Capabilities
+ */
+export class DocCapabilities extends DocMaker {
+	constructor() {
+		super('wiki/Capabilities.md', module.filename, 'flowR capabilities overview');
 	}
-	return getPreamble() + await printAsMarkdown({ parser, info: obtainDetailedInfos() }, flowrCapabilities.capabilities);
-}
 
-/** if we run this script, we want a Markdown representation of the capabilities */
-if(require.main === module) {
-	setMinLevelOfAllLogs(LogLevel.Fatal);
-	void TreeSitterExecutor.initTreeSitter().then(() => {
-		const parser = new TreeSitterExecutor();
-		void print(parser).then(str => {
-			console.log(str);
-		});
-	});
+	protected async text({ treeSitter }: DocMakerArgs): Promise<string> {
+		/* check if the detailed test data is available */
+		if(!fs.existsSync(detailedInfoFile)) {
+			console.warn('\x1b[31mNo detailed test data available. Run the full tests (npm run test-full) to generate it.\x1b[m');
+		}
+		return getPreamble() + await printAsMarkdown({ parser: treeSitter, info: obtainDetailedInfos() }, flowrCapabilities.capabilities);
+	}
 }

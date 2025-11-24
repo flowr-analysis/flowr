@@ -2209,6 +2209,18 @@ df <- rbind(df, data.frame(id = 1:5, name = "A"))
 
 		testDataFrameDomain(
 			shell,
+			`
+df <- data.frame()
+df <- rbind(df, 12)
+			`.trim(),
+			[
+				['1@df', { colnames: [], cols: [0, 0], rows: [0, 0] }],
+				['2@df', { colnames: Top, cols: [1, 1], rows: [1, 1] }]
+			]
+		);
+
+		testDataFrameDomain(
+			shell,
 			'df <- rbind(1:3, 4:6)',
 			[['1@df', undefined, DataFrameShapeOverapproximation]]
 		);
@@ -2776,6 +2788,33 @@ df <- subset(df, select = c(id, name), drop = TRUE)
 			]
 		);
 
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- subset(df, id > 1, c("name", "label"))
+			`.trim(),
+			[['2@subset', [{ operation: 'accessCols', columns: ['id', 'name', 'label'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- subset(df, label != "A", -id)
+			`.trim(),
+			[['2@subset', [{ operation: 'accessCols', columns: ['id', 'label'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- subset(df, select = 1:2)
+			`.trim(),
+			[['2@subset', [{ operation: 'accessCols', columns: [1, 2] }]]]
+		);
+
 		describe('Unsupported', { fails: true }, () => {
 			testDataFrameDomainAgainstReal(
 				shell,
@@ -2887,6 +2926,15 @@ df <- dplyr::filter(df, FALSE, .preserve = TRUE)
 				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 0] }]
 			],
 			{ skipRun: skipLibraries }
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- dplyr::filter(df, id != 2, is.numeric(name))
+			`.trim(),
+			[['2@filter', [{ operation: 'accessCols', columns: ['id', 'name'] }]]]
 		);
 	});
 
@@ -3189,6 +3237,33 @@ df <- dplyr::select(df, contains("a"))
 			],
 			{ skipRun: skipLibraries }
 		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- dplyr::select(df, c("id", "name"))
+			`.trim(),
+			[['2@select', [{ operation: 'accessCols', columns: ['id', 'name'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- dplyr::select(df, id, -label)
+			`.trim(),
+			[['2@select', [{ operation: 'accessCols', columns: ['id', 'label'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- dplyr::select(df, 1:2)
+			`.trim(),
+			[['2@select', [{ operation: 'accessCols', columns: [1, 2] }]]]
+		);
 	});
 
 	describe('Transform', () => {
@@ -3286,6 +3361,24 @@ df <- transform(df, "A")
 				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }],
 				['2@df', { colnames: Top, cols: [2, 3], rows: [5, 5] }]
 			]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:5, score = 31:35)
+df <- transform(df, name = letters[id], level = score^2)
+			`.trim(),
+			[['2@transform', [{ operation: 'accessCols', columns: ['id', 'score'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:5, name = 6:10)
+df <- transform(df, score = id, level = score / max(score))
+			`.trim(),
+			[['2@transform', [{ operation: 'accessCols', columns: ['id'] }]]]
 		);
 	});
 
@@ -3432,6 +3525,24 @@ df <- dplyr::mutate(df, label = "A", .before = NULL)
 			],
 			{ skipRun: skipLibraries }
 		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:5, score = 31:35)
+df <- dplyr::mutate(df, name = letters[id], level = score^2)
+			`.trim(),
+			[['2@mutate', [{ operation: 'accessCols', columns: ['id', 'score'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:5, name = 6:10)
+df <- dplyr::mutate(df, score = id, level = score / max(score))
+			`.trim(),
+			[['2@mutate', [{ operation: 'accessCols', columns: ['id'] }]]]
+		);
 	});
 
 	describe('Group By', () => {
@@ -3530,11 +3641,11 @@ df <- dplyr::group_by(df, id, .add = TRUE)
 			shell,
 			`
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
-df <- dplyr::summarize(df, score = mean(score), sum = sum(score))
+df <- dplyr::summarize(df, mean = mean(score), sum = sum(score))
 			`.trim(),
 			[
 				['1@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
-				['2@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 6] }, ColNamesOverapproximation]
+				['2@df', { colnames: ['id', 'category', 'score', 'mean', 'sum'], cols: [2, 5], rows: [1, 6] }, ColNamesOverapproximation]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3544,11 +3655,11 @@ df <- dplyr::summarize(df, score = mean(score), sum = sum(score))
 			`
 library(dplyr)
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
-df <- group_by(df, category) |> summarize(score = mean(score), sum = sum(score))
+df <- group_by(df, category) |> summarize(mean = mean(score), sum = sum(score))
 			`.trim(),
 			[
 				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 6] }, ColNamesOverapproximation]
+				['3@df', { colnames: ['id', 'category', 'score', 'mean', 'sum'], cols: [2, 5], rows: [1, 6] }, ColNamesOverapproximation]
 			],
 			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
 		);
@@ -3558,11 +3669,11 @@ df <- group_by(df, category) |> summarize(score = mean(score), sum = sum(score))
 			`
 library(dplyr)
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
-df <- group_by(df, id, category) |> summarize(score = mean(score), sum = sum(score))
+df <- group_by(df, id, category) |> summarize(mean = mean(score), sum = sum(score))
 			`.trim(),
 			[
 				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 6] }]
+				['3@df', { colnames: ['id', 'category', 'score', 'mean', 'sum'], cols: [2, 5], rows: [1, 6] }, ColNamesOverapproximation]
 			],
 			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
 		);
@@ -3611,11 +3722,11 @@ df <- group_by(df, category) |> summarize()
 			shell,
 			`
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
-df <- dplyr::summarize(df, score = mean(score), sum = sum(score), .groups = "drop")
+df <- dplyr::summarize(df, mean = mean(score), sum = sum(score), .groups = "drop")
 			`.trim(),
 			[
 				['1@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
-				['2@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 6] }, ColNamesOverapproximation]
+				['2@df', { colnames: ['id', 'category', 'score', 'mean', 'sum'], cols: [2, 5], rows: [1, 6] }, ColNamesOverapproximation]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3646,6 +3757,35 @@ df <- filter(df, FALSE) |> summarize(score = mean(score))
 				['3@df', { colnames: ['id', 'category', 'score'], cols: [1, 4], rows: [0, 1] }, ColNamesOverapproximation]
 			],
 			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:5, name = c("A", "A", "B", "A", "B"), score = c(80, 75, 90, 70, 85))
+df <- dplyr::group_by(df, id, name)
+			`.trim(),
+			[
+				['2@group_by', [{ operation: 'accessCols', columns: ['id', 'name'] }]]
+			]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
+df <- dplyr::summarize(df, name = literals[id], level = score / max(score))
+			`.trim(),
+			[['2@summarize', [{ operation: 'accessCols', columns: ['id', 'score'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
+df <- dplyr::summarize(df, level = score / max(score), sum = sum(level))
+			`.trim(),
+			[['2@summarize', [{ operation: 'accessCols', columns: ['score'] }]]]
 		);
 	});
 
@@ -4489,6 +4629,46 @@ df <- dplyr::full_join(df1, df2, by = sample(colnames(df1)[1:3], 2))
 			],
 			{ skipRun: skipLibraries }
 		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::inner_join(df1, df2, by = "id")
+			`.trim(),
+			[['3@inner_join', [{ operation: 'accessCols', columns: ['id'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::left_join(df1, df2, by = "id")
+			`.trim(),
+			[['3@left_join', [{ operation: 'accessCols', columns: ['id'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::right_join(df1, df2, by = "id")
+			`.trim(),
+			[['3@right_join', [{ operation: 'accessCols', columns: ['id'] }]]]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
+df <- dplyr::full_join(df1, df2, by = "id")
+			`.trim(),
+			[['3@full_join', [{ operation: 'accessCols', columns: ['id'] }]]]
+		);
 	});
 
 	describe('Merge', () => {
@@ -4838,6 +5018,16 @@ df <- merge(df1, df2, "id", no.dups = FALSE)
 				['2@df2', { colnames: ['id', 'name', 'category'], cols: [3, 3], rows: [6, 6] }],
 				['3@df', { colnames: Top, cols: [5, 5], rows: [0, 4] }]
 			]
+		);
+
+		assertDataFrameOperation(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
+df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
+df <- merge(df1, df2, by = c("id", "name"))
+			`.trim(),
+			[['3@merge', [{ operation: 'accessCols', columns: ['id', 'name'] }]]]
 		);
 	});
 

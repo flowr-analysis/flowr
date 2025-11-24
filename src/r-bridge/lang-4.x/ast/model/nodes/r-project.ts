@@ -14,7 +14,7 @@ export interface RProjectFile<Info = NoInfo> {
 /**
  * Holds a collection of files (started with the expression list)
  * @see {@link RExpressionList} - for the root of each file
- * @see {@link mergeProjects}  - to merge multiple projects into a single one
+ * @see {@link mergeProjects} - to merge multiple projects into a single one
  * @see {@link RProjectFile} - for each file in the project
  */
 export interface RProject<Info = NoInfo> {

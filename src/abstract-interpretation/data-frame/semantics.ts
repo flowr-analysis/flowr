@@ -237,6 +237,14 @@ function applyAddRowsSemantics(
 	value: DataFrameDomain,
 	{ rows }: { rows: number | undefined }
 ): DataFrameDomain {
+	if(value.cols.value !== Bottom && value.cols.value[0] === 0) {
+		return new DataFrameDomain({
+			...value,
+			colnames: value.colnames.top(),
+			cols:     rows !== undefined ? value.cols.add([1, 1]) : value.cols.top(),
+			rows:     rows !== undefined ? value.rows.add([rows, rows]) : value.rows.extendUp()
+		});
+	}
 	return new DataFrameDomain({
 		colnames: value.colnames,
 		cols:     value.cols,

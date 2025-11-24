@@ -18,6 +18,7 @@ import { type ExecuteIntermediateResponseMessage ,
 import { requestQueryMessage, responseQueryMessage } from '../../../cli/repl/server/messages/message-query';
 import { exampleQueryCode } from '../query/example-query-code';
 import { CallTargets } from '../../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import type { KnownParser } from '../../../r-bridge/parser';
 
 
 /**
@@ -35,7 +36,7 @@ export function documentAllServerMessages() {
     Server->>Client: hello
 	`,
 		shortDescription: 'The server informs the client about the successful connection and provides Meta-Information.',
-		text:             async(shell: RShell) => {
+		text:             async(shell: KnownParser) => {
 			return `
 	
 After launching _flowR_, for example, with <code>docker run -it --rm ${DockerName} ${getCliLongOptionOf('flowr', 'server', false, false)}</code>&nbsp;(🐳️), simply connecting should present you with a \`${helloMessageDefinition.type}\` message, that amongst others should reveal the versions of&nbsp;_flowR_ and&nbsp;R, using the [semver 2.0](https://semver.org/spec/v2.0.0.html) versioning scheme.
@@ -73,7 +74,7 @@ Requests for the [REPL](#message-request-repl) are independent of that.
     deactivate  Server
 	`,
 		shortDescription: 'The server builds the dataflow graph for a given input file (or a set of files).',
-		text:             async(shell: RShell) => {
+		text:             async(shell: KnownParser) => {
 			return `
 	
 The request allows the server to analyze a file and prepare it for slicing.
@@ -274,7 +275,7 @@ Please note, that the base message format is still JSON. Only the individual res
     deactivate  Server
 	`,
 		shortDescription: `${deprecatedByQuery} The server slices a file based on the given criteria.`,
-		text:             async(shell: RShell) => {
+		text:             async(shell: KnownParser) => {
 			return `
 **We deprecated the slice request in favor of the \`static-slice\` [Query](${FlowrWikiBaseRef}/Query%20API).**
 
@@ -370,7 +371,7 @@ Within a document that is to be sliced, you can use magic comments to influence 
     deactivate  Server
 	`,
 		shortDescription: 'Access the read evaluate print loop of flowR.',
-		text:             async(shell: RShell) => {
+		text:             async(shell: KnownParser) => {
 			return `
 > [!WARNING]
 > To execute arbitrary R commands with a request, the server has to be started explicitly with ${getCliLongOptionOf('flowr', 'r-session-access')}.
@@ -448,7 +449,7 @@ ${codeBlock('text', (msg as ExecuteIntermediateResponseMessage).result)}
     deactivate  Server
 	`,
 		shortDescription: 'Query an analysis result for specific information.',
-		text:             async(shell: RShell) => {
+		text:             async(shell: KnownParser) => {
 			return `
 To send queries, you have to send an [analysis request](#message-request-file-analysis) first. The \`filetoken\` you assign is of use here as you can re-use it to repeatedly query the same file.
 This message provides direct access to _flowR_'s Query API. Please consult the [Query API documentation](${FlowrWikiBaseRef}/Query%20API) for more information.

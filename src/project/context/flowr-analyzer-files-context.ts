@@ -199,7 +199,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 * Add a file to the context. If the file has a special role, it will be added to the corresponding list of special files.
 	 * This method also applies any registered {@link FlowrAnalyzerFilePlugin}s to the file before adding it to the context.
 	 */
-	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile, role?: FileRole): void {
+	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile, role?: FileRole) {
 		const f = this.fileLoadPlugins(wrapFile(file, role));
 
 		if(f.path() === FlowrFile.INLINE_PATH) {
@@ -213,6 +213,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		if(f.role) {
 			this.byRole[f.role].push(f as typeof this.byRole[FileRole.Description][number]);
 		}
+
+		return f;
 	}
 
 	public hasFile(path: string): boolean {
@@ -270,12 +272,13 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		if(file === undefined && this.ctx.config.project.resolveUnknownPathsOnDisk) {
 			fileLog.debug(`File ${r.content} not found in context, trying to load from disk.`);
 			if(fs.existsSync(r.content)) {
-				const loadedFile = new FlowrTextFile(r.content);
-				this.addFile(loadedFile);
+
+				const loadedFile = this.addFile(new FlowrTextFile(r.content));
+
 				return {
 					r: {
 						request: 'text',
-						content: loadedFile.content(),
+						content: loadedFile.content().toString(),
 					},
 					path: loadedFile.path()
 				};

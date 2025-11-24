@@ -130,6 +130,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
  * If you want the original pattern of creating a pipeline and running all steps, you can still do this with {@link FlowrAnalyzer#runFull}.
  *
  * To inspect the context of the analyzer, use {@link FlowrAnalyzer#inspectContext} (if you are a plugin and need to modify it, use {@link FlowrAnalyzer#context} instead).
+ * @see https://github.com/flowr-analysis/flowr/wiki/Analyzer
  */
 export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements ReadonlyFlowrAnalysisProvider<Parser> {
 	/** The parser and engine backend */

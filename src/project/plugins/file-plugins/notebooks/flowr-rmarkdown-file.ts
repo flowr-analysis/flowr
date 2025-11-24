@@ -1,5 +1,5 @@
 import type { FlowrFileProvider } from '../../../context/flowr-file';
-import { FlowrFile } from '../../../context/flowr-file';
+import { FileRole, FlowrFile } from '../../../context/flowr-file';
 import { guard } from '../../../../util/assert';
 import { type Node , Parser } from 'commonmark';
 import matter from 'gray-matter';
@@ -17,7 +17,7 @@ export class FlowrRMarkdownFile extends FlowrFile<string> {
 	 * @param file - the file to load as R Markdown
 	 */
 	constructor(file: FlowrFileProvider<string>) {
-		super(file.path(), file.role);
+		super(file.path(), FileRole.Source);
 		this.wrapped = file;
 	}
 

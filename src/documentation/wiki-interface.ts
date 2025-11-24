@@ -1,8 +1,5 @@
 import { RShell } from '../r-bridge/shell';
-import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
-import { LogLevel } from '../util/log';
 import { FlowrGithubBaseRef, FlowrNpmRef, FlowrWikiBaseRef, getFileContentFromRoot } from './doc-util/doc-files';
-import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { getCliLongOptionOf, getReplCommand, multipleCliOptions } from './doc-util/doc-cli-option';
 import { printServerMessages } from './doc-util/doc-server-message';
 import { documentAllServerMessages } from './data/server/doc-data-server-messages';
@@ -19,12 +16,14 @@ import { defaultConfigFile } from '../cli/flowr-main-options';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { PipelineExecutor } from '../core/pipeline-executor';
 import { block, details } from './doc-util/doc-structure';
-import { getTypesFromFolder, mermaidHide, shortLink } from './doc-util/doc-types';
-import path from 'path';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
+import type { DocMakerArgs } from './wiki-mk/doc-maker';
+import { DocMaker } from './wiki-mk/doc-maker';
+import type { KnownParser } from '../r-bridge/parser';
+import type { GeneralDocContext } from './wiki-mk/doc-context';
 
-async function explainServer(shell: RShell): Promise<string> {
+async function explainServer(parser: KnownParser): Promise<string> {
 	documentAllServerMessages();
 
 	return `
@@ -44,7 +43,7 @@ connection. If you want _flowR_ to expose a [WebSocket](https://de.wikipedia.org
 	})
 }
 
-${await printServerMessages(shell)}
+${await printServerMessages(parser)}
 
 ### 📡 Ways of Connecting
 
@@ -102,12 +101,11 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 }
 
 
-async function explainRepl(shell: RShell): Promise<string> {
+async function explainRepl(parser: KnownParser): Promise<string> {
 	return `
 > [!NOTE]
 > To execute arbitrary R commands with a repl request, _flowR_ has to be started explicitly with ${getCliLongOptionOf('flowr', 'r-session-access')}.
 > Please be aware that this introduces a security risk and note that this relies on the [\`r-shell\` engine](${FlowrWikiBaseRef}/Engines).
-
 
 Although primarily meant for users to explore, 
 there is nothing which forbids simply calling _flowR_ as a subprocess to use standard-in, -output, and -error 
@@ -155,9 +153,9 @@ the REPL will re-use previously obtained information and not re-parse the code a
 To retrieve a URL to the [mermaid](https://mermaid.js.org/) diagram of the dataflow of a given expression, 
 use ${getReplCommand('dataflow*')} (or ${getReplCommand('dataflow')} to get the mermaid code in the cli):
 
-${await documentReplSession(shell, [{
+${await documentReplSession(parser, [{
 	command:     ':dataflow* y <- 1 + x',
-	description: `Retrieve the dataflow graph of the expression \`y <- 1 + x\`. It looks like this:\n${await printDfGraphForCode(shell, 'y <- 1 + x')}`
+	description: `Retrieve the dataflow graph of the expression \`y <- 1 + x\`. It looks like this:\n${await printDfGraphForCode(parser, 'y <- 1 + x')}`
 }])}
 
 For the slicing with ${getReplCommand('slicer')}, you have access to the same [magic comments](#slice-magic-comments) as with the [slice request](#message-request-slice).
@@ -168,7 +166,7 @@ Many commands that allow for an R-expression (like ${getReplCommand('dataflow*')
 if the argument starts with \`${fileProtocol}\`. 
 If you are working from the root directory of the _flowR_ repository, the following gives you the parsed AST of the example file using the ${getReplCommand('parse')} command:
 
-${await documentReplSession(shell, [{
+${await documentReplSession(parser, [{
 	command:     `:parse ${fileProtocol}test/testfiles/example.R`,
 	description: `Retrieve the parsed AST of the example file.
 
@@ -290,46 +288,40 @@ ${describeSchema(flowrConfigFileSchema, markdownFormatter)}
 	`;
 }
 
-function explainWritingCode(shell: RShell): string {
-	const types = getTypesFromFolder({
-		rootFolder:  path.resolve('./src/'),
-		files:       [path.resolve('./src/core/pipeline-executor.ts'), path.resolve('./src/core/steps/pipeline/default-pipelines.ts')],
-		inlineTypes: mermaidHide
-	});
-
+function explainWritingCode(shell: RShell, ctx: GeneralDocContext): string {
 	return `
 _flowR_ can be used as a [module](${FlowrNpmRef}) and offers several main classes and interfaces that are interesting for extension writers 
 (see the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the [core](${FlowrWikiBaseRef}/Core) wiki page for more information).
 
-### Using the ${shortLink(RShell.name, types.info)} to Interact with R
+### Using the ${ctx.link(RShell)} to Interact with R
 
-The ${shortLink(RShell.name, types.info)} class allows interfacing with the \`R\`&nbsp;ecosystem installed on the host system.
-Please have a look at [flowR's engines](${FlowrWikiBaseRef}/Engines) for more information on alterantives (for example, the ${shortLink(TreeSitterExecutor.name, types.info)}).
+The ${ctx.link(RShell.name)} class allows interfacing with the \`R\`&nbsp;ecosystem installed on the host system.
+Please have a look at [flowR's engines](${FlowrWikiBaseRef}/Engines) for more information on alterantives (for example, the ${ctx.link(TreeSitterExecutor)}).
 
 ${
 	block({
 		type:    'IMPORTANT',
 		content: `
-Each ${shortLink(RShell.name, types.info)} controls a new instance of the R&nbsp;interpreter, 
-make sure to call ${codeInline(shortLink(RShell.name + '::' + shell.close.name, types.info, false, 'i') + '()')} when you are done.`
+Each ${ctx.link(RShell.name)} controls a new instance of the R&nbsp;interpreter, 
+make sure to call ${codeInline(ctx.link(RShell.name + '::' + shell.close.name, { codeFont: false, realNameWrapper: 'i' }) + '()')} when you are done.`
 	})
 }
 
-You can start a new "session" simply by constructing a new object with ${codeInline('new ' + shortLink(RShell.name, types.info, false) + '()')}.
+You can start a new "session" simply by constructing a new object with ${codeInline('new ' + ctx.link(RShell, { codeFont: false }) + '()')}.
 
 However, there are several options that may be of interest 
 (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system).
 
-With a shell object (let's call it \`shell\`), you can execute R code by using ${shortLink(RShell.name + '::' + shell.sendCommand.name, types.info, true, 'i')}, 
-for example ${codeInline('shell.' + shortLink(RShell.name + ':::' + shell.sendCommand.name, types.info, false) + '("1 + 1")')}. 
+With a shell object (let's call it \`shell\`), you can execute R code by using ${ctx.link(RShell.name + '::' + shell.sendCommand.name, { realNameWrapper: 'i' })}, 
+for example ${codeInline('shell.' + ctx.link(RShell.name + ':::' + shell.sendCommand.name, { codeFont: false }) + '("1 + 1")')}. 
 However, this does not return anything, so if you want to collect the output of your command, use
-${shortLink(RShell.name + '::' + shell.sendCommandWithOutput.name, types.info, true, 'i')} instead.
+${ctx.link(RShell.name + '::' + shell.sendCommandWithOutput.name, { realNameWrapper: 'i' })} instead.
 
-Besides that, the command ${shortLink(RShell.name + '::' + shell.tryToInjectHomeLibPath.name, types.info)} may be of interest, as it enables all libraries available on the host system.
+Besides that, the command ${ctx.link(RShell.name + '::' + shell.tryToInjectHomeLibPath.name)} may be of interest, as it enables all libraries available on the host system.
 
 ### Creating _flowR_ analyses
 
-Nowadays, instances of ${shortLink(FlowrAnalyzer.name, types.info)} should be used as central frontend to get analysis results from _flowR_.
+Nowadays, instances of ${ctx.link(FlowrAnalyzer)} should be used as central frontend to get analysis results from _flowR_.
 For example, a program slice can be created like this:
 
 ${
@@ -348,10 +340,10 @@ const result = await analyzer.query([
 ### The Pipeline Executor
 
 Once, in the beginning, _flowR_ was meant to produce a dataflow graph merely to provide *program slices*. 
-However, with continuous updates, the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph) repeatedly proves to be the more interesting part.
+However, with continuous updates, the [dataflow graph](${FlowrWikiBaseRef}/Dataflow-Graph) repeatedly proves to be the more interesting part.
 With this, we restructured _flowR_'s originally *hardcoded* pipeline to be far more flexible. 
 Now, it can be theoretically extended or replaced with arbitrary steps, optional steps, and what we call 'decorations' of these steps. 
-In short, a slicing pipeline using the ${shortLink(PipelineExecutor.name, types.info)} looks like this:
+In short, a slicing pipeline using the ${ctx.link(PipelineExecutor)} looks like this:
 
 ${
 	codeBlock('ts', `
@@ -369,9 +361,9 @@ ${
 	details('More Information', `
 
 If you compare this, with what you would have done with the old (and removed) \`SteppingSlicer\`, 
-this essentially just requires you to replace the \`SteppingSlicer\` with the ${shortLink(PipelineExecutor.name, types.info)}
-and to pass the ${shortLink('DEFAULT_SLICING_PIPELINE', types.info)} as the first argument.
-The ${shortLink(PipelineExecutor.name, types.info)}...
+this essentially just requires you to replace the \`SteppingSlicer\` with the ${ctx.link(PipelineExecutor)}
+and to pass the ${ctx.link('DEFAULT_SLICING_PIPELINE')} as the first argument.
+The ${ctx.link(PipelineExecutor)}...
 
 1. Provides structures to investigate the results of all intermediate steps
 2. Can be executed step-by-step
@@ -458,11 +450,16 @@ We use \`example.name\` to avoid duplication with the name that we’ve assigned
 	`;
 }
 
+/**
+ * https://github.com/flowr-analysis/flowr/wiki/Interface
+ */
+export class WikiInterface extends DocMaker {
+	constructor() {
+		super('wiki/Interface.md', module.filename, 'interface');
+	}
 
-async function getText(shell: RShell) {
-	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
-	return `${autoGenHeader({ filename: module.filename, purpose: 'interfaces', rVersion: rversion })}
-
+	protected async text({ shell, ctx, treeSitter }: DocMakerArgs): Promise<string> {
+		return `
 Although far from being as detailed as the in-depth explanation of
 [_flowR_](${FlowrWikiBaseRef}/Core),
 this wiki page explains how to interface with _flowR_ in more detail.
@@ -481,7 +478,7 @@ ${await explainServer(shell)}
 <a id='using-the-repl'></a>
 ## 💻 Using the REPL
 
-${await explainRepl(shell)}
+${await explainRepl(treeSitter)}
 
 <a id='configuring-flowr'></a>
 ## ⚙️ Configuring FlowR
@@ -491,19 +488,9 @@ ${explainConfigFile()}
 <a id='writing-code'></a>
 ## ⚒️ Writing Code
 
-${explainWritingCode(shell)}
-
+${explainWritingCode(shell, ctx)}
 `;
+	}
 }
 
-/** if we run this script, we want a Markdown representation of the capabilities */
-if(require.main === module) {
-	setMinLevelOfAllLogs(LogLevel.Fatal);
 
-	const shell = new RShell();
-	void getText(shell).then(str => {
-		console.log(str);
-	}).finally(() => {
-		shell.close();
-	});
-}

@@ -9,7 +9,7 @@ import { platformBasename } from '../../../../dataflow/internal/process/function
 const QmdPattern = /\.qmd$/i;
 
 /**
- * The Plugin provides support for Quarto R Markdown (.qmd) files
+ * The plugin provides support for Quarto R Markdown (`.qmd`) files
  */
 export class FlowrAnalyzerQmdFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name =    'qmd-file-plugin';
@@ -17,6 +17,10 @@ export class FlowrAnalyzerQmdFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly version = new SemVer('0.1.0');
 	private readonly pattern: RegExp;
 
+	/**
+	 * Creates a new instance of the Quarto R Markdown file plugin.
+	 * @param filePattern - The pattern to identify Quarto R Markdown files, see {@link QmdPattern} for the default pattern.
+	 */
 	constructor(filePattern: RegExp = QmdPattern) {
 		super();
 		this.pattern = filePattern;

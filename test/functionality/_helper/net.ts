@@ -4,8 +4,8 @@ import { jsonReplacer } from '../../../src/util/json';
 import { guard } from '../../../src/util/assert';
 import { FlowRServer } from '../../../src/cli/repl/server/server';
 import type { IdMessageBase } from '../../../src/cli/repl/server/messages/all-messages';
-import type { RShell } from '../../../src/r-bridge/shell';
 import { defaultConfigOptions } from '../../../src/config';
+import type { KnownParser } from '../../../src/r-bridge/parser';
 
 export class FakeServer implements Server {
 	private connectHandler: OnConnect | undefined;
@@ -128,12 +128,12 @@ export class FakeSocket implements Socket {
 
 
 /**
- *
+ * Runs the given function in a fake server/socket environment.
  */
-export function withSocket<T = void>(shell: RShell, fn: (socket: FakeSocket, server: FakeServer) => Promise<T>): () => Promise<T>  {
+export function withSocket<T = void>(shell: KnownParser, fn: (socket: FakeSocket, server: FakeServer) => Promise<T>): () => Promise<T>  {
 	return async function() {
 		const net = new FakeServer();
-		const server = new FlowRServer({ 'r-shell': shell }, 'r-shell', true, defaultConfigOptions, net);
+		const server = new FlowRServer({ [shell.name]: shell }, shell.name, true, defaultConfigOptions, net);
 		await server.start(42);
 		const socket = new FakeSocket();
 		net.connectClient(socket);

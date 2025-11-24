@@ -19,7 +19,7 @@ export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries:
 	const cfg = await analyzer.controlflow();
 
 	const start = Date.now();
-	const domains = inferDataFrameShapes(cfg, dfg, ast, analyzer.flowrConfig);
+	const domains = inferDataFrameShapes(cfg, dfg, ast, analyzer.inspectContext());
 
 	if(queries.length === 1 && queries[0].criterion === undefined) {
 		return {

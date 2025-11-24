@@ -53,6 +53,8 @@ import type { DataFrameDomain } from '../abstract-interpretation/data-frame/data
 import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
 import { inferDataFrameShapes } from '../abstract-interpretation/data-frame/shape-inference';
 import fs from 'fs';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import { contextFromInput } from '../project/context/flowr-analyzer-context';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -111,8 +113,9 @@ export class BenchmarkSlicer {
 	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>();
 	private readonly parserName: KnownParserName;
 	private config:              FlowrConfigOptions | undefined;
+	private context:             FlowrAnalyzerContext | undefined;
 	private stats:               SlicerStats | undefined;
-	private loadedXml:           KnownParserType | undefined;
+	private loadedXml:           KnownParserType[] | undefined;
 	private dataflow:            DataflowInformation | undefined;
 	private normalizedAst:       NormalizedAst | undefined;
 	private controlFlow:         ControlFlowInformation | undefined;
@@ -147,14 +150,15 @@ export class BenchmarkSlicer {
 				}
 			}
 		);
+		this.context = contextFromInput({ ...request }, config);
 		this.executor = createSlicePipeline(this.parser, {
-			request:   { ...request },
+			context:   this.context,
 			criterion: [],
 			autoSelectIf,
 			threshold,
-		}, config);
+		});
 
-		this.loadedXml = (await this.measureCommonStep('parse', 'retrieve AST from R code')).parsed;
+		this.loadedXml = (await this.measureCommonStep('parse', 'retrieve AST from R code')).files.map(p => p.parsed);
 		this.normalizedAst = await this.measureCommonStep('normalize', 'normalize R AST');
 		this.dataflow = await this.measureCommonStep('dataflow', 'produce dataflow information');
 
@@ -179,9 +183,9 @@ export class BenchmarkSlicer {
 				}
 				return ret;
 			};
-			const root = (this.loadedXml as Tree).rootNode;
-			numberOfRTokens = countChildren(root);
-			numberOfRTokensNoComments = countChildren(root, true);
+			const root = (this.loadedXml as Tree[]).map(t => t.rootNode);
+			numberOfRTokens = root.map(r => countChildren(r)).reduce((a, b) => a + b, 0);
+			numberOfRTokensNoComments = root.map(r => countChildren(r, true)).reduce((a, b) => a + b, 0);
 		}
 
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined after initialization');
@@ -207,7 +211,7 @@ export class BenchmarkSlicer {
 		let nodesNoComments = 0;
 		let commentChars = 0;
 		let commentCharsNoWhitespace = 0;
-		visitAst(this.normalizedAst.ast, t => {
+		visitAst(this.normalizedAst.ast.files.map(f => f.root), t => {
 			nodes++;
 			const comments = t.info.additionalTokens?.filter(t => t.type === RType.Comment);
 			if(comments && comments.length > 0) {
@@ -345,7 +349,7 @@ export class BenchmarkSlicer {
 
 		totalStopwatch.stop();
 
-		benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode.code}`);
+		benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode.code as string}`);
 		const results = this.executor.getResults(false);
 
 		if(benchmarkLogger.settings.minLevel >= LogLevel.Info) {
@@ -380,9 +384,8 @@ export class BenchmarkSlicer {
 
 		const ast = this.normalizedAst;
 		const dfg = this.dataflow.graph;
-		const config = this.config;
 
-		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, config, dfg));
+		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, this.context as FlowrAnalyzerContext, dfg));
 	}
 
 	/**
@@ -401,7 +404,6 @@ export class BenchmarkSlicer {
 		const ast = this.normalizedAst;
 		const dfg = this.dataflow.graph;
 		const cfinfo = this.controlFlow;
-		const config = this.config;
 
 		const stats: SlicerStatsDfShape = {
 			numberOfDataFrameFiles:    0,
@@ -417,7 +419,7 @@ export class BenchmarkSlicer {
 			perNodeStats:              new Map()
 		};
 
-		const result = this.measureSimpleStep('infer data frame shapes', () => inferDataFrameShapes(cfinfo, dfg, ast, config));
+		const result = this.measureSimpleStep('infer data frame shapes', () => inferDataFrameShapes(cfinfo, dfg, ast, this.context as FlowrAnalyzerContext));
 		stats.numberOfResultConstraints = result.value.size;
 
 		for(const value of result.value.values()) {
@@ -430,7 +432,7 @@ export class BenchmarkSlicer {
 			}
 		}
 
-		visitAst(this.normalizedAst.ast, (node: RNode<ParentInformation & AbstractInterpretationInfo>) => {
+		visitAst(this.normalizedAst.ast.files.map(f => f.root), (node: RNode<ParentInformation & AbstractInterpretationInfo>) => {
 			if(node.info.dataFrame === undefined) {
 				return;
 			}

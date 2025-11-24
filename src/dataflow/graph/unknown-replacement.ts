@@ -11,17 +11,17 @@ export type ReplacementOperatorHandler = (args: ReplacementOperatorHandlerArgs) 
 
 const handlers: ReplacementOperatorHandler[] = [];
 
-
 /**
- *
+ * Register a new (global) handler for replacement operators.
+ * @see {@link handleReplacementOperator}
  */
 export function onReplacementOperator(handler: ReplacementOperatorHandler) {
 	handlers.push(handler);
 }
 
-
 /**
- *
+ * Handle a replacement operator by calling all registered handlers.
+ * @see {@link onReplacementOperator}
  */
 export function handleReplacementOperator(args: ReplacementOperatorHandlerArgs) {
 	handlers.forEach(handler => handler(args));

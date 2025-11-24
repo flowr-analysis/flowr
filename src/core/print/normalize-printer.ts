@@ -16,7 +16,7 @@ export function normalizedAstToJson(ast: NormalizedAst): string {
 }
 
 /**
- * Normalized AST to quads serialization
+ * Normalized AST to quads serialization this does not have multi-file support
  * @see {@link serialize2quads}
  * @see {@link QuadSerializationConfiguration}
  * @see {@link normalizedAstToMermaid}
@@ -24,7 +24,7 @@ export function normalizedAstToJson(ast: NormalizedAst): string {
  * @see {@link printNormalizedAstToMermaidUrl}
  */
 export function normalizedAstToQuads(ast: NormalizedAst, config: QuadSerializationConfiguration): string {
-	return serialize2quads(ast.ast, config);
+	return serialize2quads(ast.ast.files[0].root, config);
 }
 
 /**

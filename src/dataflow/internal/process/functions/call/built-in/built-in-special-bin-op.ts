@@ -9,10 +9,10 @@ import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 
-
-
 /**
- *
+ * Process a special built-in binary operator, possibly lazily.
+ * For example, the logical AND `&&` and OR `||` operators only evaluate their right-hand side if necessary.
+ * Please note that this is not (directly) related to R's special binary operators like `%in%`.
  */
 export function processSpecialBinOp<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

@@ -18,7 +18,7 @@ export const NETWORK_FUNCTIONS = {
 			es.filter(e => functionFinderUtil.requireArgumentValue(
 				e,
 				ReadFunctions,
-				d,
+				{ config: d.analyzer.flowrConfig, dataflow: d.dataflow, normalize: d.normalize },
 				c.onlyTriggerWithArgument
 			))
 	),

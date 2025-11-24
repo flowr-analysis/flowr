@@ -60,14 +60,18 @@ export interface DataFrameAccessValidationMetadata extends MergeableRecord {
 export const DATA_FRAME_ACCESS_VALIDATION = {
 	createSearch:        () => Q.all().with(Enrichment.CallTargets, { onlyBuiltin: true }),
 	processSearchResult: (elements, config, data) => {
-		const flowrConfig = amendConfig(data.config, flowrConfig => {
-			if(config.readLoadedData !== undefined) {
-				flowrConfig.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles = config.readLoadedData;
-			}
-			return flowrConfig;
-		});
-		const cfg = extractCfg(data.normalize, flowrConfig, data.dataflow.graph);
-		inferDataFrameShapes(cfg, data.dataflow.graph, data.normalize, flowrConfig);
+		let ctx = data.analyzer.inspectContext();
+		ctx = {
+			...ctx,
+			config: amendConfig(data.analyzer.flowrConfig, flowrConfig => {
+				if(config.readLoadedData !== undefined) {
+					flowrConfig.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles = config.readLoadedData;
+				}
+				return flowrConfig;
+			})
+		};
+		const cfg = extractCfg(data.normalize, ctx, data.dataflow.graph);
+		inferDataFrameShapes(cfg, data.dataflow.graph, data.normalize, ctx);
 
 		const accessOperations = getAccessOperations(elements);
 		const accesses: DataFrameAccessOperation[] = [];
@@ -161,14 +165,14 @@ function findInvalidDataFrameAccesses(
 	if(operandShape !== undefined) {
 		for(const row of accessedRows ?? []) {
 			if(operandShape.rows.satisfies(row, NumericalComparator.LessOrEqual) === Ternary.Never) {
-				invalidAccesses.push({ type: 'row',accessed: row });
+				invalidAccesses.push({ type: 'row', accessed: row });
 			}
 		}
 		for(const col of accessedCols ?? []) {
 			if(typeof col === 'string' && operandShape.colnames.satisfies([col], SetComparator.SubsetOrEqual) === Ternary.Never) {
-				invalidAccesses.push({ type: 'column',accessed: col });
+				invalidAccesses.push({ type: 'column', accessed: col });
 			} else if(typeof col === 'number' && operandShape.cols.satisfies(col, NumericalComparator.LessOrEqual) === Ternary.Never) {
-				invalidAccesses.push({ type: 'column',accessed: col });
+				invalidAccesses.push({ type: 'column', accessed: col });
 			}
 		}
 	}

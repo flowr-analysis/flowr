@@ -7,13 +7,18 @@ import {
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexInfo,
-	type DataflowGraphVertices
-	, VertexType } from './vertex';
+	type DataflowGraphVertices,
+	VertexType
+} from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
-import { type NodeId , normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type IEnvironment, type REnvironmentInformation , initializeCleanEnvironments } from '../environments/environment';
+import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import {
+	type IEnvironment,
+	initializeCleanEnvironments,
+	type REnvironmentInformation
+} from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
 import { jsonReplacer } from '../../util/json';
@@ -104,16 +109,15 @@ export interface DataflowGraphJson {
 	readonly rootVertices:      NodeId[],
 	readonly vertexInformation: [NodeId, DataflowGraphVertexInfo][],
 	readonly edgeInformation:   [NodeId, [NodeId, DataflowGraphEdge][]][]
-	readonly sourced?:          (string | '<inline>')[]
 }
 
 /**
  * An unknown side effect describes something that we cannot handle correctly (in all cases).
- * For example, `eval` will be marked as an unknown side effect as we have no idea of how it will affect the program.
+ * For example, `load` will be marked as an unknown side effect as we have no idea of how it will affect the program.
  * Linked side effects are used whenever we know that a call may be affected by another one in a way that we cannot
  * grasp from the dataflow perspective (e.g., an indirect dependency based on the currently active graphic device).
  */
-export type UnknownSidEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> }
+export type UnknownSideEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> }
 
 /**
  * The dataflow graph holds the dataflow information found within the given AST.
@@ -136,14 +140,13 @@ export class DataflowGraph<
 > {
 	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined;
 	private _idMap:                     AstIdMap | undefined;
-	/** all file paths included in this dfg */
-	private _sourced:                   (string | '<inline>')[] = [];
+
 	/*
 	 * Set of vertices which have sideEffects that we do not know anything about.
 	 * As a (temporary) solution until we have FD edges, a side effect may also store known target links
 	 * that have to be/should be resolved (as globals) as a separate pass before the df analysis ends.
 	 */
-	private readonly _unknownSideEffects = new Set<UnknownSidEffect>();
+	private readonly _unknownSideEffects = new Set<UnknownSideEffect>();
 
 	constructor(idMap: AstIdMap | undefined) {
 		DataflowGraph.DEFAULT_ENVIRONMENT ??= initializeCleanEnvironments();
@@ -221,19 +224,10 @@ export class DataflowGraph<
 		return this._idMap;
 	}
 
-	public get sourced(): (string | '<inline>')[] {
-		return this._sourced;
-	}
-
-	/** Mark this file as being part of the dfg */
-	public addFile(source: string | '<inline>'): void {
-		this._sourced.push(source);
-	}
-
 	/**
 	 * Retrieves the set of vertices which have side effects that we do not know anything about.
 	 */
-	public get unknownSideEffects(): Set<UnknownSidEffect> {
+	public get unknownSideEffects(): Set<UnknownSideEffect> {
 		return this._unknownSideEffects;
 	}
 
@@ -366,8 +360,6 @@ export class DataflowGraph<
 			}
 		}
 
-		this._sourced = this._sourced.concat(otherGraph.sourced);
-
 		for(const unknown of otherGraph.unknownSideEffects) {
 			this._unknownSideEffects.add(unknown);
 		}
@@ -472,9 +464,6 @@ export class DataflowGraph<
 			}
 		}
 		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DataflowGraphEdge>(edges)]));
-		if(data.sourced) {
-			graph._sourced = data.sourced;
-		}
 		return graph;
 	}
 }

@@ -1,21 +1,25 @@
-import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
-import { LogLevel } from '../util/log';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef } from './doc-util/doc-files';
 import { codeBlock } from './doc-util/doc-code';
-import { autoGenHeader } from './doc-util/doc-auto-gen';
+import { DocMaker } from './wiki-mk/doc-maker';
 
-function print(): string {
-	return `${autoGenHeader({ filename: module.filename, purpose: 'developer onboarding process' })}
-	
-To get started developing on *flowR*, we recommend carefully reading the following pages:
-- 💻 [Setting up the *flowR* development environment](${FlowrWikiBaseRef}/Setup#%EF%B8%8F-building-from-scratch).\
+/**
+ * https://github.com/flowr-analysis/flowr/wiki/Onboarding
+ */
+export class WikiOnboarding extends DocMaker {
+	constructor() {
+		super('wiki/Onboarding.md', module.filename, 'developer onboarding process');
+	}
+
+	public text(): string {
+		return `To get started developing on *flowR*, we recommend carefully reading the following pages:
+- 💻 [Setting up the *flowR* development environment](${FlowrWikiBaseRef}/Setup#%EF%B8%8F-building-from-scratch).\\
   This page explains how to install **R** and **Node.js**.  
-- 💖 [Contributing guidelines](${FlowrGithubBaseRef}/flowr/tree/main/.github/CONTRIBUTING.md).\
+- 💖 [Contributing guidelines](${FlowrGithubBaseRef}/flowr/tree/main/.github/CONTRIBUTING.md).\\
   This page also includes information about how to set up **git-lfs** and several **git hooks**.
 
 If you have any questions, please check out the [FAQ](${FlowrWikiBaseRef}/FAQ) first, but if the question
-is not answered there (or in the wiki in general), feel free to ask a question.  
-	
+is not answered there (or in the wiki in general), feel free to ask a question.
+The [FAQ](${FlowrWikiBaseRef}/FAQ) also includes information about how you can configure your editor.
 
 ## ⌛ TL;DR
 
@@ -38,9 +42,5 @@ git config --local core.hooksPath .githooks/
 git push --dry-run
 `)}
     `.trim();
-}
-
-if(require.main === module) {
-	setMinLevelOfAllLogs(LogLevel.Fatal);
-	console.log(print());
+	}
 }

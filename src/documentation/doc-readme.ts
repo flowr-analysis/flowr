@@ -1,7 +1,3 @@
-import { RShell } from '../r-bridge/shell';
-import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
-import { LogLevel } from '../util/log';
-import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import {
 	FlowrDockerRef,
 	FlowrGithubBaseRef,
@@ -23,6 +19,8 @@ import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { showQuery } from './doc-util/doc-query';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { joinWithLast } from '../util/text/strings';
+import type { DocMakerArgs } from './wiki-mk/doc-maker';
+import { DocMaker } from './wiki-mk/doc-maker';
 
 const PublicationsMain: { header: string, description: string, doi: string, bibtex: string }[] = [
 	{
@@ -123,10 +121,18 @@ ${prefixLines(codeBlock('bibtex', pub.bibtex), '   ')}
 		joinWithLast(OtherWorksUsingFlowr.map(pub => `[${pub.name}](${pub.doi})`)) + '.\n';
 }
 
-async function getText(shell: RShell) {
-	const dateOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+/**
+ * https://github.com/flowr-analysis/flowr/blob/main/README.md
+ */
+export class DocReadme extends DocMaker {
+	constructor() {
+		super('README.md', module.filename, 'flowR README', false);
+	}
 
-	return `
+	public async text({ treeSitter }: DocMakerArgs): Promise<string> {
+		const dateOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+
+		return `
 [![flowR logo](https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowR.png)](${FlowrGithubBaseRef}/flowr/wiki)\\
 [![QA (and potentially deploy)](${FlowrGithubBaseRef}/flowr/actions/workflows/qa.yaml/badge.svg)](${FlowrGithubBaseRef}/flowr/actions/workflows/qa.yaml)
 [![codecov](https://codecov.io/gh/flowr-analysis/flowr/graph/badge.svg)](https://codecov.io/gh/flowr-analysis/flowr)
@@ -148,8 +154,8 @@ It offers a wide variety of features, for example:
 	
 ${await(async() => {
 	const code = 'read.csv("/root/x.txt")';
-	const res = await showQuery(shell, code, [{ type: 'linter' }], { showCode: false, collapseQuery: true, collapseResult: false });
-	return await documentReplSession(shell, [{
+	const res = await showQuery(treeSitter, code, [{ type: 'linter' }], { showCode: false, collapseQuery: true, collapseResult: false });
+	return await documentReplSession(treeSitter, [{
 		command:     `:query @linter ${JSON.stringify(code)}`,
 		description: `
 The linter will analyze the code and return any issues found.
@@ -157,8 +163,7 @@ Formatted more nicely, this returns:
 
 ${res}
 		`
-	}]
-	);
+	}]);
 })()}
 	   
 	   `), '    ')}
@@ -181,7 +186,7 @@ ${codeBlock('r', getFileContentFromRoot('test/testfiles/example.R'))}
 Let's suppose we are interested only in the \`sum\` which is printed in line 11.
 To get a slice for this, you can use the following command:
 
-${await documentReplSession(shell, [{
+${await documentReplSession(treeSitter, [{
 	command:     ':slicer test/testfiles/example.R --criterion "11@sum"',
 	description: ''
 }])}
@@ -215,11 +220,11 @@ ${codeBlock('r', getFileContentFromRoot('test/testfiles/example.R'))}
 
 To get the dataflow graph for this script, you can use the following command:
 
-${await documentReplSession(shell, [{
+${await documentReplSession(treeSitter, [{
 	command:     ':dataflow* test/testfiles/example.R',
 	description: `
 Following the link output should show the following:
-${await printDfGraphForCode(shell, getFileContentFromRoot('test/testfiles/example.R'), { showCode: false })}`
+${await printDfGraphForCode(treeSitter, getFileContentFromRoot('test/testfiles/example.R'), { showCode: false })}`
 }])}
    
    `), '    ')}
@@ -297,19 +302,5 @@ If you want to make changes please edit the source file (the CI will take care o
 In fact, many files in the [wiki](${FlowrWikiBaseRef}) are generated, so make sure to check for the source file if you want to make changes.
 
 `.trim();
-}
-
-
-/** if we run this script, we want a Markdown representation of the capabilities */
-if(require.main === module) {
-	void TreeSitterExecutor.initTreeSitter().then(() => {
-		setMinLevelOfAllLogs(LogLevel.Fatal);
-
-		const shell = new RShell();
-		void getText(shell).then(str => {
-			console.log(str);
-		}).finally(() => {
-			shell.close();
-		});
-	});
+	}
 }

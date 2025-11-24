@@ -138,7 +138,8 @@ export class FlowrAnalyzerBuilder {
 	 * Create the {@link FlowrAnalyzer} instance using the given information.
 	 * Please note that the only reason this is `async` is that if no parser is set,
 	 * we need to retrieve the default engine instance which is an async operation.
-	 * If you set the parser using {@link FlowrAnalyzerBuilder#setParser},
+	 * If you have already initialized the engine (e.g., with {@link TreeSitterExecutor#initTreeSitter}),
+	 * you can use the synchronous version {@link FlowrAnalyzerBuilder#buildSync} instead.
 	 */
 	public async build(): Promise<FlowrAnalyzer> {
 		if(!this.parser) {

@@ -1,11 +1,9 @@
-import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
-import { LogLevel } from '../util/log';
-import { getDocumentationForType, getTypesFromFolder } from './doc-util/doc-types';
-import path from 'path';
 import { LintingRuleTag } from '../linter/linter-tags';
 import { prefixLines } from './doc-util/doc-general';
 import { FlowrWikiBaseRef } from './doc-util/doc-files';
 import { type LintingRuleNames , LintingRules } from '../linter/linter-rules';
+import type { DocMakerArgs } from './wiki-mk/doc-maker';
+import { DocMaker } from './wiki-mk/doc-maker';
 
 /* this prints the yaml configuration for the GitHub issue template to request a new linter rule / an update */
 
@@ -16,13 +14,16 @@ function summarizeIfTooLong(text: string, maxLength = 52): string {
 	return text.slice(0, maxLength - 1) + '…';
 }
 
+/**
+ * https://github.com/flowr-analysis/flowr/blob/main/.github/ISSUE_TEMPLATE/linting-rule.yaml
+ */
+export class IssueLintingRule extends DocMaker {
+	constructor() {
+		super('.github/ISSUE_TEMPLATE/linting-rule.yaml', module.filename, '', false);
+	}
 
-function getText() {
-	const types = getTypesFromFolder({
-		rootFolder: path.resolve('./src/linter/')
-	});
-
-	return `
+	public text({ ctx }: DocMakerArgs): string {
+		return `
 name: Linting Rule
 description: Suggest either a new linting rule or an improvement to an existing one. 
 title: "[Linter]: "
@@ -60,13 +61,8 @@ ${prefixLines(Object.keys(LintingRules).sort().map(name => {
       description: Select any tags that you think apply to the linting rule you are suggesting. If you try to suggest a new linting rule, please only select those that you think apply after your suggestions.
       options:
 ${prefixLines(Object.entries(LintingRuleTag).map(([name]) => {
-	return `- label: '**${name}**: ${summarizeIfTooLong(getDocumentationForType('LintingRuleTag::' + name, types.info).replaceAll(/\n/g, ' ').replaceAll('\'', '\\\'').trim())}'\n  required: false`;
+	return `- label: '**${name}**: ${summarizeIfTooLong(ctx.doc('LintingRuleTag::' + name).replaceAll(/\n/g, ' ').replaceAll('\'', '\\\'').trim())}'\n  required: false`;
 }).join('\n'), '        ')}
-`.trim();
-}
-
-/** if we run this script, we want a Markdown representation of the capabilities */
-if(require.main === module) {
-	setMinLevelOfAllLogs(LogLevel.Fatal);
-	console.log(getText());
+	`.trim();
+	}
 }

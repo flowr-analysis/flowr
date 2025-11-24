@@ -75,7 +75,6 @@ export interface DocumentReplCommand {
 export async function documentReplSession(parser: KnownParser, commands: readonly DocumentReplCommand[], options?: DocumentReplSessionOptions): Promise<string> {
 	const collect: Collect[] = [];
 
-
 	for(const command of commands) {
 		const entry: Collect = { command, lines: [] };
 		const collectingOutput: ReplOutput = {
@@ -119,6 +118,5 @@ ${command.description}
 `;
 		cache = '';
 	}
-
 	return result;
 }

@@ -435,22 +435,23 @@ function applyJoinSemantics(
 			return new PosIntervalDomain([lower.value[0], interval1.value[1] * interval2.value[1]]);
 		}
 	};
-	const commonCols = value.colnames.intersect(other.colnames);
 	let duplicateCols: string[] | undefined;  // columns that may be renamed due to occurring in both data frames
 	let productRows: boolean;  // whether the resulting rows may be a Cartesian product of the rows of the data frames
 
 	if(options?.natural) {
+		const commonCols = value.colnames.intersect(other.colnames).upper();
 		duplicateCols = [];
-		productRows = commonCols.isValue() && commonCols.max !== Top && commonCols.max.size === 0;
+		productRows = commonCols !== Bottom && commonCols !== Top && commonCols.size === 0;
 	} else if(by === undefined) {
 		duplicateCols = undefined;
 		productRows = true;
 	} else if(by.length === 0) {
-		duplicateCols = commonCols.isValue() ? commonCols.max !== Top ? [...commonCols.max] : undefined : [];
+		const commonCols = value.colnames.intersect(other.colnames).upper();
+		duplicateCols = commonCols !== Bottom ? commonCols !== Top ? [...commonCols] : undefined : [];
 		productRows = true;
 	} else if(by.every(isNotUndefined)) {
-		const remainingCols = commonCols.subtract([by, []]);
-		duplicateCols = remainingCols.isValue() ? remainingCols.max !== Top ? [...remainingCols.max] : undefined : [];
+		const remainingCols = value.colnames.intersect(other.colnames).subtract([by, []]).upper();
+		duplicateCols = remainingCols !== Bottom ? remainingCols !== Top ? [...remainingCols] : undefined : [];
 		productRows = false;
 	} else {
 		duplicateCols = undefined;

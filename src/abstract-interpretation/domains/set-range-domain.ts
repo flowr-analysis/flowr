@@ -69,9 +69,9 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	}
 
 	/**
-	 * The minimum set of the set range representing all values that must exist (subset of {@link max}).
+	 * The minimum set (lower bound) of the set range representing all values that must exist (subset of {@link upper}).
 	 */
-	public get min(): Value extends SetRangeBottom ? SetRangeValue<T>[0] | typeof Bottom : SetRangeValue<T>[0] {
+	public lower(): SetRangeValue<T>[0] | typeof Bottom {
 		if(this.value === Bottom) {
 			return Bottom as Value extends SetRangeBottom ? SetRangeValue<T>[0] | typeof Bottom : SetRangeValue<T>[0];
 		}
@@ -79,9 +79,9 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	}
 
 	/**
-	 * The maximum set of the set range representing all values that can possibly exist (union of {@link min} and range).
+	 * The maximum set (upper bound) of the set range representing all values that can possibly exist (union of {@link lower} and range).
 	 */
-	public get max(): Value extends SetRangeBottom ? SetRangeValue<T>[1] | typeof Bottom : SetRangeValue<T>[1] {
+	public upper(): SetRangeValue<T>[1] | typeof Bottom {
 		if(this.value === Bottom) {
 			return Bottom as Value extends SetRangeBottom ? SetRangeValue<T>[1] | typeof Bottom : SetRangeValue<T>[1];
 		}
@@ -130,59 +130,66 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	}
 
 	public leq(other: this): boolean {
-		if(this.min === Bottom || this.max === Bottom) {
+		const thisLower = this.lower(), thisUpper = this.upper();
+		const otherLower = other.lower(), otherUpper = other.upper();
+
+		if(thisLower === Bottom || thisUpper === Bottom) {
 			return true;
-		} else if(other.min === Bottom || other.max === Bottom || !other.min.isSubsetOf(this.min)) {
+		} else if(otherLower === Bottom || otherUpper === Bottom || !otherLower.isSubsetOf(thisLower)) {
 			return false;
-		} else if(other.max === Top) {
+		} else if(otherUpper === Top) {
 			return true;
 		}
-		return this.max !== Top && this.max.isSubsetOf(other.max);
+		return thisUpper !== Top && thisUpper.isSubsetOf(otherUpper);
 	}
 
 	public join(other: this): this;
 	public join(other: SetRangeLift<T> | ArrayRangeValue<T>): this;
 	public join(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
 		other = other instanceof SetRangeDomain ? other : this.create(other);
+		const thisLower = this.lower(), thisUpper = this.upper();
+		const otherLower = other.lower(), otherUpper = other.upper();
 
-		if(this.min === Bottom || this.max === Bottom) {
+		if(thisLower === Bottom || thisUpper === Bottom) {
 			return this.create(other.value);
-		} else if(other.min === Bottom || other.max === Bottom) {
+		} else if(otherLower === Bottom || otherUpper === Bottom) {
 			return this.create(this.value);
 		}
-		const minJoin = this.min.intersection(other.min);
-		let maxJoin;
+		const joinLower = thisLower.intersection(otherLower);
+		let joinUpper;
 
-		if(this.max === Top || other.max === Top) {
-			maxJoin = Top;
+		if(thisUpper === Top || otherUpper === Top) {
+			joinUpper = Top;
 		} else {
-			maxJoin = this.max.union(other.max);
+			joinUpper = thisUpper.union(otherUpper);
 		}
-		return this.create([minJoin, maxJoin === Top ? Top : maxJoin.difference(minJoin)]);
+		return this.create([joinLower, joinUpper === Top ? Top : joinUpper.difference(joinLower)]);
 	}
 
 	public meet(other: this): this;
 	public meet(other: SetRangeLift<T> | ArrayRangeValue<T>): this;
 	public meet(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
 		other = other instanceof SetRangeDomain ? other : this.create(other);
+		const thisLower = this.lower(), thisUpper = this.upper();
+		const otherLower = other.lower(), otherUpper = other.upper();
 
-		if(this.min === Bottom || this.max === Bottom || other.min === Bottom || other.max === Bottom) {
+		if(thisLower === Bottom || thisUpper === Bottom || otherLower === Bottom || otherUpper === Bottom) {
 			return this.bottom();
 		}
-		const minMeet = this.min.union(other.min);
-		let maxMeet;
+		const meetLower = thisLower.union(otherLower);
+		let meetUpper;
 
-		if(this.max === Top) {
-			maxMeet = other.max;
-		} else if(other.max === Top) {
-			maxMeet = this.max;
+		if(thisUpper === Top) {
+			meetUpper = otherUpper;
+		} else if(otherUpper === Top) {
+			meetUpper = thisUpper;
 		} else {
-			maxMeet = this.max.intersection(other.max);
+			meetUpper = thisUpper.intersection(otherUpper);
 		}
-		if(maxMeet !== Top && !minMeet.isSubsetOf(maxMeet)) {
+		if(meetUpper !== Top && !meetLower.isSubsetOf(meetUpper)) {
 			return this.bottom();
 		}
-		return this.create([minMeet, maxMeet === Top ? Top : maxMeet.difference(minMeet)]);
+		return this.create([meetLower, meetUpper === Top ? Top : meetUpper.difference(meetLower)]);
 	}
 
 	/**
@@ -190,21 +197,23 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	 */
 	public union(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
 		other = other instanceof SetRangeDomain ? other : this.create(other);
+		const thisLower = this.lower(), thisUpper = this.upper();
+		const otherLower = other.lower(), otherUpper = other.upper();
 
-		if(this.min === Bottom || this.max === Bottom) {
+		if(thisLower === Bottom || thisUpper === Bottom) {
 			return this.create(other.value);
-		} else if(other.min === Bottom || other.max === Bottom) {
+		} else if(otherLower === Bottom || otherUpper === Bottom) {
 			return this.create(this.value);
 		}
-		const minAdd = this.min.union(other.min);
-		let maxAdd;
+		const unionLower = thisLower.union(otherLower);
+		let unionUpper;
 
-		if(this.max === Top || other.max === Top) {
-			maxAdd = Top;
+		if(thisUpper === Top || otherUpper === Top) {
+			unionUpper = Top;
 		} else {
-			maxAdd = this.max.union(other.max);
+			unionUpper = thisUpper.union(otherUpper);
 		}
-		return this.create([minAdd, maxAdd === Top ? Top : maxAdd.difference(minAdd)]);
+		return this.create([unionLower, unionUpper === Top ? Top : unionUpper.difference(unionLower)]);
 	}
 
 	/**
@@ -212,21 +221,23 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	 */
 	public intersect(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
 		other = other instanceof SetRangeDomain ? other : this.create(other);
+		const thisLower = this.lower(), thisUpper = this.upper();
+		const otherLower = other.lower(), otherUpper = other.upper();
 
-		if(this.min === Bottom || this.max === Bottom || other.min === Bottom || other.max === Bottom) {
+		if(thisLower === Bottom || thisUpper === Bottom || otherLower === Bottom || otherUpper === Bottom) {
 			return this.bottom();
 		}
-		const minIntersect = this.min.intersection(other.min);
-		let maxIntersect;
+		const intersectLower = thisLower.intersection(otherLower);
+		let intersectUpper;
 
-		if(this.max === Top) {
-			maxIntersect = other.max;
-		} else if(other.max === Top) {
-			maxIntersect = this.max;
+		if(thisUpper === Top) {
+			intersectUpper = otherUpper;
+		} else if(otherUpper === Top) {
+			intersectUpper = thisUpper;
 		} else {
-			maxIntersect = this.max.intersection(other.max);
+			intersectUpper = thisUpper.intersection(otherUpper);
 		}
-		return this.create([minIntersect, maxIntersect === Top ? Top : maxIntersect.difference(minIntersect)]);
+		return this.create([intersectLower, intersectUpper === Top ? Top : intersectUpper.difference(intersectLower)]);
 	}
 
 	/**
@@ -234,85 +245,93 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	 */
 	public subtract(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
 		other = other instanceof SetRangeDomain ? other : this.create(other);
+		const thisLower = this.lower(), thisUpper = this.upper();
+		const otherLower = other.lower(), otherUpper = other.upper();
 
-		if(this.min === Bottom || this.max === Bottom) {
+		if(thisLower === Bottom || thisUpper === Bottom) {
 			return this.bottom();
-		} else if(other.min === Bottom || other.max === Bottom) {
+		} else if(otherLower === Bottom || otherUpper === Bottom) {
 			return this.create(this.value);
 		}
-		let minSub;
+		let subLower;
 
-		if(other.max === Top) {
-			minSub = new Set<never>();
+		if(otherUpper === Top) {
+			subLower = new Set<never>();
 		} else {
-			minSub = this.min.difference(other.max);
+			subLower = thisLower.difference(otherUpper);
 		}
-		let maxSub;
+		let subUpper;
 
-		if(this.max === Top) {
-			maxSub = Top;
-		} else if(other.max === Top) {
-			maxSub = this.max.difference(other.min);
+		if(thisUpper === Top) {
+			subUpper = Top;
+		} else if(otherUpper === Top) {
+			subUpper = thisUpper.difference(otherLower);
 		} else {
-			maxSub = this.max.difference(other.max);
+			subUpper = thisUpper.difference(otherUpper);
 		}
-		return this.create([minSub, maxSub === Top ? Top : maxSub.difference(minSub)]);
+		return this.create([subLower, subUpper === Top ? Top : subUpper.difference(subLower)]);
 	}
 
 	public widen(other: this): this {
-		if(this.min === Bottom || this.max === Bottom) {
+		const thisLower = this.lower(), thisUpper = this.upper();
+		const otherLower = other.lower(), otherUpper = other.upper();
+
+		if(thisLower === Bottom || thisUpper === Bottom) {
 			return this.create(other.value);
-		} else if(other.min === Bottom || other.max === Bottom) {
+		} else if(otherLower === Bottom || otherUpper === Bottom) {
 			return this.create(this.value);
 		}
-		let minWiden;
+		let widenLower;
 
-		if(!this.min.isSubsetOf(other.min)) {
-			minWiden = new Set<never>();
+		if(!thisLower.isSubsetOf(otherLower)) {
+			widenLower = new Set<never>();
 		} else {
-			minWiden = this.min;
+			widenLower = thisLower;
 		}
-		let maxWiden;
+		let widenUpper;
 
-		if(this.max === Top || other.max === Top || !other.max.isSubsetOf(this.max)) {
-			maxWiden = Top;
+		if(thisUpper === Top || otherUpper === Top || !otherUpper.isSubsetOf(thisUpper)) {
+			widenUpper = Top;
 		} else {
-			maxWiden = this.max;
+			widenUpper = thisUpper;
 		}
-		return this.create([minWiden, maxWiden === Top ? Top : maxWiden.difference(minWiden)]);
+		return this.create([widenLower, widenUpper === Top ? Top : widenUpper.difference(widenLower)]);
 	}
 
 	public narrow(other: this): this {
-		if(this.min === Bottom || this.max === Bottom || other.min === Bottom || other.max === Bottom) {
+		const thisLower = this.lower(), thisUpper = this.upper();
+		const otherLower = other.lower(), otherUpper = other.upper();
+
+		if(thisLower === Bottom || thisUpper === Bottom || otherLower === Bottom || otherUpper === Bottom) {
 			return this.bottom();
 		}
-		let maxMeet;
+		let meetUpper;
 
-		if(this.max === Top) {
-			maxMeet = other.max;
-		} else if(other.max === Top) {
-			maxMeet = this.max;
+		if(thisUpper === Top) {
+			meetUpper = otherUpper;
+		} else if(otherUpper === Top) {
+			meetUpper = thisUpper;
 		} else {
-			maxMeet = this.max.intersection(other.max);
+			meetUpper = thisUpper.intersection(otherUpper);
 		}
-		if(maxMeet !== Top && !this.min.union(other.min).isSubsetOf(maxMeet)) {
+		if(meetUpper !== Top && !thisLower.union(otherLower).isSubsetOf(meetUpper)) {
 			return this.bottom();
 		}
-		let minNarrow;
+		let narrowLower;
 
-		if(this.min.size === 0) {
-			minNarrow = other.min;
+		if(thisLower.size === 0) {
+			narrowLower = otherLower;
 		} else {
-			minNarrow = this.min;
+			narrowLower = thisLower;
 		}
-		let maxNarrow;
+		let narrowUpper;
 
-		if(this.max === Top) {
-			maxNarrow = other.max;
+		if(thisUpper === Top) {
+			narrowUpper = otherUpper;
 		} else {
-			maxNarrow = this.max;
+			narrowUpper = thisUpper;
 		}
-		return this.create([minNarrow, maxNarrow === Top ? Top : maxNarrow.difference(minNarrow)]);
+		return this.create([narrowLower, narrowUpper === Top ? Top : narrowUpper.difference(narrowLower)]);
 	}
 
 	public concretize(limit: number): ReadonlySet<ReadonlySet<T>> |  typeof Top {
@@ -330,7 +349,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 				subsets.push(subset);
 			}
 		}
-		return new Set(subsets.map(subset => this.min === Bottom ? subset : this.min.union(subset)));
+		return new Set(subsets.map(subset => this.value === Bottom ? subset : this.value[0].union(subset)));
 	}
 
 	public abstract(concrete: ReadonlySet<ReadonlySet<T>> | typeof Top): this;
@@ -340,23 +359,27 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 
 	public satisfies(set: ReadonlySet<T> | T[], comparator: SetComparator = SetComparator.Equal): Ternary {
 		const value = new this.setType(set);
+		const lower = this.lower(), upper = this.upper();
 
+		if(lower === Bottom || upper === Bottom) {
+			return Ternary.Never;
+		}
 		switch(comparator) {
 			case SetComparator.Equal: {
-				if(this.isValue() && this.min.isSubsetOf(value) && (this.max === Top || value.isSubsetOf(this.max))) {
-					return this.value[1] !== Top && this.value[1].size === 0 ? Ternary.Always : Ternary.Maybe;
+				if(lower.isSubsetOf(value) && (upper === Top || value.isSubsetOf(upper))) {
+					return upper !== Top && lower.size === upper.size ? Ternary.Always : Ternary.Maybe;
 				}
 				return Ternary.Never;
 			}
 			case SetComparator.SubsetOrEqual: {
-				if(this.isValue() && (this.max === Top || value.isSubsetOf(this.max))) {
-					return value.isSubsetOf(this.min) ? Ternary.Always : Ternary.Maybe;
+				if(upper === Top || value.isSubsetOf(upper)) {
+					return value.isSubsetOf(lower) ? Ternary.Always : Ternary.Maybe;
 				}
 				return Ternary.Never;
 			}
 			case SetComparator.Subset: {
-				if(this.isValue() && (this.max === Top || (value.isSubsetOf(this.max) && !setEquals(value, this.max)))) {
-					return value.isSubsetOf(this.min) && !setEquals(value, this.min) ? Ternary.Always : Ternary.Maybe;
+				if(upper === Top || (value.isSubsetOf(upper) && !setEquals(value, upper))) {
+					return value.isSubsetOf(lower) && !setEquals(value, lower) ? Ternary.Always : Ternary.Maybe;
 				}
 				return Ternary.Never;
 			}
@@ -370,10 +393,12 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	 * Extends the minimum set of the current abstract value down to the empty set.
 	 */
 	public widenDown(): this {
-		if(this.min === Bottom || this.max === Bottom) {
+		const upper = this.upper();
+
+		if(upper === Bottom) {
 			return this.bottom();
 		} else {
-			return this.create([new this.setType(), this.max]);
+			return this.create([new this.setType(), upper]);
 		}
 	}
 
@@ -381,10 +406,12 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	 * Extends the maximum set of the current abstract value up to {@link Top}.
 	 */
 	public widenUp(): this {
-		if(this.min === Bottom || this.max === Bottom) {
+		const lower = this.lower();
+
+		if(lower === Bottom) {
 			return this.bottom();
 		} else {
-			return this.create([this.min, Top]);
+			return this.create([lower, Top]);
 		}
 	}
 

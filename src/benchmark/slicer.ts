@@ -459,9 +459,9 @@ export class BenchmarkSlicer {
 					nodeStats.inferredColNames = this.getInferredNumber(value.colnames);
 					nodeStats.inferredColCount = this.getInferredNumber(value.cols);
 					nodeStats.inferredRowCount = this.getInferredNumber(value.rows);
-					nodeStats.approxRangeColNames = value.colnames.isValue() ? (value.colnames.max === Top ? Infinity : value.colnames.max.size) - value.colnames.min.size : 0;
-					nodeStats.approxRangeColCount = value.cols.isValue() ? value.cols.value[1] - value.cols.value[0] : 0;
-					nodeStats.approxRangeRowCount = value.rows.isValue() ? value.rows.value[1] - value.rows.value[0] : 0;
+					nodeStats.approxRangeColNames = this.getInferredRange(value.colnames);
+					nodeStats.approxRangeColCount = this.getInferredRange(value.cols);
+					nodeStats.approxRangeRowCount = this.getInferredRange(value.rows);
 				}
 			}
 			if(value !== undefined) {
@@ -479,22 +479,31 @@ export class BenchmarkSlicer {
 		return stats;
 	}
 
+	private getInferredRange<T>(value: SetRangeDomain<T> | PosIntervalDomain): number {
+		if(value.isValue()) {
+			if(value instanceof SetRangeDomain) {
+				return value.value[1] === Top ? Infinity : value.value[1].size;
+			} else {
+				return value.value[1] - value.value[0];
+			}
+		}
+		return 0;
+	}
+
 	private getInferredNumber<T>(value: SetRangeDomain<T> | PosIntervalDomain): number | 'bottom' | 'infinite' | 'top' {
 		if(value.isTop()) {
 			return 'top';
 		} else if(value.isValue()) {
 			if(value instanceof SetRangeDomain) {
-				if(value.max === Top) {
+				if(value.value[1] === Top) {
 					return 'infinite';
-				} else {
-					return Math.floor((value.min.size + value.max.size) / 2);
 				}
+				return Math.floor(value.value[0].size + (value.value[1].size / 2));
 			} else {
 				if(!isFinite(value.value[1])) {
 					return 'infinite';
-				} else {
-					return Math.floor((value.value[0] + value.value[1]) / 2);
 				}
+				return Math.floor((value.value[0] + value.value[1]) / 2);
 			}
 		}
 		return 'bottom';

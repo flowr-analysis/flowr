@@ -8,6 +8,7 @@ import {
 } from './loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
 import { FlowrAnalyzerRmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
 import { FlowrAnalyzerQmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
+import { FlowrAnalyzerJupyterFilePlugin } from './file-plugins/notebooks/flowr-analyzer-jupyter-file-plugin';
 
 /**
  * Provides the default set of Flowr Analyzer plugins.
@@ -18,6 +19,7 @@ export function FlowrAnalyzerPluginDefaults(): FlowrAnalyzerPlugin[] {
 		new FlowrAnalyzerPackageVersionsDescriptionFilePlugin(),
 		new FlowrAnalyzerLoadingOrderDescriptionFilePlugin(),
 		new FlowrAnalyzerRmdFilePlugin(),
-		new FlowrAnalyzerQmdFilePlugin()
+		new FlowrAnalyzerQmdFilePlugin(),
+		new FlowrAnalyzerJupyterFilePlugin(),
 	];
 }

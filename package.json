@@ -198,6 +198,7 @@
   },
   "dependencies": {
     "@eagleoutice/tree-sitter-r": "^1.1.2",
+    "@jupyterlab/nbformat": "^4.5.0",
     "@xmldom/xmldom": "^0.9.7",
     "clipboardy": "^4.0.0",
     "command-line-args": "^6.0.1",

@@ -13,7 +13,7 @@
   * [Control Flow Graph (CFG)](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph)
   * [Dataflow Graph (DFG)](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)
   * [Supported Features/Capabilities](https://github.com/flowr-analysis/flowr/wiki/Capabilities)
-* [🧹 Linting & Testing](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing) ([Benchmark Page](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark))
+* [🧹 Testing & Linting](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing) ([Benchmark Page](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark))
 * [⁉️ FAQ](https://github.com/flowr-analysis/flowr/wiki/FAQ)
 * ℹ️ Extra Information
   * [Terminology](https://github.com/flowr-analysis/flowr/wiki/Terminology)

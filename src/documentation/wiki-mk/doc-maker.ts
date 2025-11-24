@@ -45,7 +45,8 @@ const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	[/[0-9]+(\.[0-9]+)?( |\s*)?ms/g, ''],
 	[/tmp[%A-Za-z0-9-]+/g, ''],
 	[/"(timing|searchTimeMs|processTimeMs)":\s*[0-9]+(\.[0-9])?,?/g, ''],
-	[/"format":"compact".+```/gmius, '']
+	[/"format":"compact".+/gmius, ''],
+	[/%%\s*\d*-+/g, '']
 ];
 
 /**

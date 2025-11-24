@@ -15,6 +15,12 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	get builtInEnvironment(): DeepReadonly<IEnvironment>;
 
 	/**
+	 * Get the empty built-in environment used during analysis.
+	 * The empty built-in environment only contains primitive definitions.
+	 */
+	get emptyBuiltInEnvironment(): DeepReadonly<IEnvironment>;
+
+	/**
 	 * Create a new {@link REnvironmentInformation|environment} with the configured built-in environment as base.
 	 */
 	getCleanEnv(): REnvironmentInformation;
@@ -47,6 +53,10 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 
 	public get builtInEnvironment(): IEnvironment {
 		return this.builtInEnv;
+	}
+
+	public get emptyBuiltInEnvironment(): IEnvironment {
+		return this.emptyBuiltInEnv;
 	}
 
 	public getCleanEnv(): REnvironmentInformation {

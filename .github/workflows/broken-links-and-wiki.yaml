@@ -99,6 +99,7 @@ jobs:
                   git add -f "$file"
               done
               CHANGED_ANY=true
+              echo "CHANGED=true" >> $GITHUB_ENV
           else
               echo "No Wiki pages were changed!"
           fi

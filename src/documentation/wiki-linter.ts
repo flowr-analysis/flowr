@@ -311,7 +311,7 @@ async function getRulesPages(knownParser: KnownParser, tagTypes: TypeReport): Pr
 	const result: Record<string, string> = {} as Record<string, string>;
 
 	for(const [name, rule] of rules) {
-		const filepath = path.resolve('./wiki', `lint-${name}.md`);
+		const filepath = path.join('wiki', `lint-${name}.md`);
 		result[filepath] = await rule();
 	}
 
@@ -345,8 +345,7 @@ export class WikiLinter extends DocMaker {
 			if(file === 'main') {
 				continue; // main is printed below
 			}
-			const filepath = path.resolve('./wiki', file);
-			this.writeSubFile(filepath, content);
+			this.writeSubFile(file, content);
 		}
 		return texts['main'];
 	}

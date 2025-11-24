@@ -303,7 +303,7 @@ ${
 		type:    'IMPORTANT',
 		content: `
 Each ${ctx.link(RShell.name)} controls a new instance of the R&nbsp;interpreter, 
-make sure to call ${codeInline(ctx.link(RShell.name + '::' + shell.close.name, { codeFont: false, realNameWrapper: 'i' }) + '()')} when you are done.`
+make sure to call ${codeInline(ctx.linkM(RShell, 'close', { codeFont: false, realNameWrapper: 'i' }) + '()')} when you are done.`
 	})
 }
 
@@ -312,12 +312,12 @@ You can start a new "session" simply by constructing a new object with ${codeInl
 However, there are several options that may be of interest 
 (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system).
 
-With a shell object (let's call it \`shell\`), you can execute R code by using ${ctx.link(RShell.name + '::' + shell.sendCommand.name, { realNameWrapper: 'i' })}, 
-for example ${codeInline('shell.' + ctx.link(RShell.name + ':::' + shell.sendCommand.name, { codeFont: false }) + '("1 + 1")')}. 
+With a shell object (let's call it \`shell\`), you can execute R code by using ${ctx.linkM(RShell, 'sendCommand', { realNameWrapper: 'i' })}, 
+for example ${codeInline('shell.' + ctx.linkM(RShell, 'sendCommand', { codeFont: false, hideClass: true }) + '("1 + 1")')}. 
 However, this does not return anything, so if you want to collect the output of your command, use
-${ctx.link(RShell.name + '::' + shell.sendCommandWithOutput.name, { realNameWrapper: 'i' })} instead.
+${ctx.linkM(RShell, 'sendCommandWithOutput', { realNameWrapper: 'i' })} instead.
 
-Besides that, the command ${ctx.link(RShell.name + '::' + shell.tryToInjectHomeLibPath.name)} may be of interest, as it enables all libraries available on the host system.
+Besides that, the command ${ctx.linkM(RShell, 'tryToInjectHomeLibPath')} may be of interest, as it enables all libraries available on the host system.
 
 ### Creating _flowR_ analyses
 

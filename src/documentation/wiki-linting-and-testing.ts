@@ -270,7 +270,7 @@ You can also set the \`Auto Attach Filter\` setting to automatically attach the 
 *flowR* uses a wrapper around [tslog](https://www.npmjs.com/package/tslog) using a class named
 ${ctx.link(FlowrLogger)}. They obey to, for example, the ${getCliLongOptionOf('flowr', 'verbose')}
 option. Throughout *flowR*, we use the \`log\` object (or subloggers of it) for logging.
-To create your own logger, you can use ${ctx.link(FlowrLogger.name + '::' + (new FlowrLogger().getSubLogger.name), { codeFont: true, realNameWrapper: 'i' })}.
+To create your own logger, you can use ${ctx.linkM(FlowrLogger, 'getSubLogger', { codeFont: true, realNameWrapper: 'i' })}.
 For example, check out the ${ctx.link('slicerLogger')} for the static slicer.
 
 `;

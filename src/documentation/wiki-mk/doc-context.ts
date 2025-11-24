@@ -52,6 +52,9 @@ function getNameFromElementIdOrRef(element: ElementIdOrRef): string {
 	}
 }
 
+type NamedPrototype = { prototype: { constructor: { name: string } } };
+type ProtoKeys<T> = T extends { prototype: infer P } ? keyof P : never;
+
 /**
  * Provides methods to generate links, code snippets, and documentation for code elements.
  * These wrap around a collection of useful helpers originating from the doc utils.
@@ -59,7 +62,9 @@ function getNameFromElementIdOrRef(element: ElementIdOrRef): string {
  */
 export interface GeneralDocContext {
 	/**
-	 * Generate a hyperlink to a code element in the wiki
+	 * Generate a hyperlink to a code element in the wiki.
+	 * If you want to reference the member of a class, use `ClassName::MemberName` as element name.
+	 * For ease of use, you can also call {@link GeneralDocContext#linkM|linkM} to create a link to a member.
 	 * @param element - The element to create a link for, the name can be qualified with `::` to specify the class.
 	 *                  This causes the link to be usually printed as `ClassName::ElementName`. If you want to avoid showing
 	 *                  the class name, use `:::` as separator. Please note that for elements with a sensible (`.name`),
@@ -79,6 +84,19 @@ export interface GeneralDocContext {
 	 * @see {@link dropGenericsFromTypeName} - to clean up type names for display.
 	 */
 	link(element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string;
+
+	/**
+	 * Generate a hyperlink to a member of a class in the wiki.
+	 * This is a convenience method around {@link GeneralDocContext#link|link}.
+	 * @example
+	 * ```ts
+	 * linkM(MyClass, 'myMethod')
+	 * ```
+	 *
+	 * Creates a (markdown) link to the `myMethod` member of the `MyClass` class in the code base.
+	 * @see {@link GeneralWikiContext#link|link} - for the underlying impl.
+	 */
+	linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string;
 
 	/**
 	 * Generate a hyperlink to a type/element definition in the code base which is displayed using the file path as name
@@ -202,6 +220,12 @@ export function makeContextForTypes(
 		link(element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string {
 			guard(filter === undefined, 'ElementFilter is not yet supported for link');
 			return shortLink(getNameFromElementIdOrRef(element), info, fmt?.codeFont, fmt?.realNameWrapper);
+		},
+		linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string {
+			const className = cls.prototype.constructor.name;
+			const sep = (fmt?.hideClass) ? ':::' : '::';
+			const fullName = `${className}${sep}${String(element)}`;
+			return this.link(fullName, fmt, filter);
 		},
 		linkFile(element: ElementIdOrRef): string {
 			return shortLinkFile(getNameFromElementIdOrRef(element), info);

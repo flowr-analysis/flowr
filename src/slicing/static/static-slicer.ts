@@ -21,7 +21,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  * This returns the ids to include in the static slice of the given type, when slicing with the given seed id's (must be at least one).
  * <p>
  * The returned ids can be used to {@link reconstructToCode|reconstruct the slice to R code}.
- * @param context  - The analyzer context used for slicing.
+ * @param ctx  - The analyzer context used for slicing.
  * @param info      - The dataflow information used for slicing.
  * @param idMap     - The mapping from node ids to their information in the AST.
  * @param criteria  - The criteria to slice on.
@@ -30,7 +30,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  * @param cache     - A cache to store the results of the slice. If provided, the slice may use this cache to speed up the slicing process.
  */
 export function staticSlice(
-	context: ReadOnlyFlowrAnalyzerContext,
+	ctx: ReadOnlyFlowrAnalyzerContext,
 	info: DataflowInformation,
 	{ idMap }: NormalizedAst,
 	criteria: SlicingCriteria,
@@ -56,7 +56,7 @@ export function staticSlice(
 	const sliceSeedIds = new Set<NodeId>();
 	// every node ships the call environment which registers the calling environment
 	{
-		const emptyEnv = context.env.getCleanEnv();
+		const emptyEnv = ctx.env.getCleanEnv();
 		const basePrint = envFingerprint(emptyEnv);
 		for(const { id: startId } of decodedCriteria) {
 			queue.add(startId, emptyEnv, basePrint, false);
@@ -101,7 +101,7 @@ export function staticSlice(
 
 		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
-				sliceForCall(current, currentVertex, info, queue);
+				sliceForCall(current, currentVertex, info, queue, ctx);
 			}
 
 			const ret = handleReturns(id, queue, currentEdges, baseEnvFingerprint, baseEnvironment);

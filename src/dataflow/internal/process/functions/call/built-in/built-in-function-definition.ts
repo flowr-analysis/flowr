@@ -22,11 +22,12 @@ import { type IdentifierReference, isReferenceType, ReferenceType } from '../../
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
-import { initializeCleanEnvironments, type REnvironmentInformation } from '../../../../../environments/environment';
+import { type REnvironmentInformation } from '../../../../../environments/environment';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
 import { isBuiltIn } from '../../../../../environments/built-in';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
@@ -144,8 +145,8 @@ export function processFunctionDefinition<OtherInfo>(
 /**
  *
  */
-export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
-	callerEnvironment ??= initializeCleanEnvironments(undefined, true);
+export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext): REnvironmentInformation {
+	callerEnvironment ??= ctx.env.getCleanEnv();
 	let level = callerEnvironment.level ?? 0;
 
 	if(baseEnvironment.level !== level) {

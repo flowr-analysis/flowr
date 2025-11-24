@@ -1,18 +1,19 @@
 import { assertUnreachable, guard } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
 import type { SliceResult } from './slicer-types';
-import { type Fingerprint , envFingerprint } from './fingerprint';
+import { envFingerprint, type Fingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
 import { handleReturns, sliceForCall } from './slice-call';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type SlicingCriteria , convertAllSlicingCriteriaToIds } from '../criterion/parse';
-import { type REnvironmentInformation , initializeCleanEnvironments } from '../../dataflow/environments/environment';
+import { convertAllSlicingCriteriaToIds, type SlicingCriteria } from '../criterion/parse';
+import { type REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import { SliceDirection } from '../../core/steps/all/static-slicing/00-slice';
 import { invertDfg } from '../../dataflow/graph/invert-dfg';
 import type { DataflowInformation } from '../../dataflow/info';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -20,6 +21,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  * This returns the ids to include in the static slice of the given type, when slicing with the given seed id's (must be at least one).
  * <p>
  * The returned ids can be used to {@link reconstructToCode|reconstruct the slice to R code}.
+ * @param context  - The analyzer context used for slicing.
  * @param info      - The dataflow information used for slicing.
  * @param idMap     - The mapping from node ids to their information in the AST.
  * @param criteria  - The criteria to slice on.
@@ -28,12 +30,13 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  * @param cache     - A cache to store the results of the slice. If provided, the slice may use this cache to speed up the slicing process.
  */
 export function staticSlice(
+	context: ReadOnlyFlowrAnalyzerContext,
 	info: DataflowInformation,
 	{ idMap }: NormalizedAst,
 	criteria: SlicingCriteria,
 	direction: SliceDirection,
 	threshold = 75,
-	cache?: Map<Fingerprint, Set<NodeId>>
+	cache?: Map<Fingerprint, Set<NodeId>>,
 ): Readonly<SliceResult> {
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice');
 	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, idMap);
@@ -53,7 +56,7 @@ export function staticSlice(
 	const sliceSeedIds = new Set<NodeId>();
 	// every node ships the call environment which registers the calling environment
 	{
-		const emptyEnv = initializeCleanEnvironments();
+		const emptyEnv = context.env.getCleanEnv();
 		const basePrint = envFingerprint(emptyEnv);
 		for(const { id: startId } of decodedCriteria) {
 			queue.add(startId, emptyEnv, basePrint, false);

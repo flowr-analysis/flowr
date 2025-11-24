@@ -3,7 +3,7 @@
  * @module
  */
 
-import { type IStoppableStopwatch , Measurements } from './stopwatch';
+import { type IStoppableStopwatch, Measurements } from './stopwatch';
 import seedrandom from 'seedrandom';
 import { log, LogLevel } from '../util/log';
 import type { MergeableRecord } from '../util/objects';
@@ -25,10 +25,18 @@ import type {
 } from './stats/stats';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
-import { type DEFAULT_SLICING_PIPELINE, type TREE_SITTER_SLICING_PIPELINE , createSlicePipeline } from '../core/steps/pipeline/default-pipelines';
-import { type RParseRequestFromFile, type RParseRequestFromText , retrieveNumberOfRTokensOfLastParse } from '../r-bridge/retriever';
+import {
+	createSlicePipeline,
+	type DEFAULT_SLICING_PIPELINE,
+	type TREE_SITTER_SLICING_PIPELINE
+} from '../core/steps/pipeline/default-pipelines';
+import {
+	retrieveNumberOfRTokensOfLastParse,
+	type RParseRequestFromFile,
+	type RParseRequestFromText
+} from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
-import { type SlicingCriteriaFilter , collectAllSlicingCriteria } from '../slicing/criterion/collect-all';
+import { collectAllSlicingCriteria, type SlicingCriteriaFilter } from '../slicing/criterion/collect-all';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
@@ -39,9 +47,9 @@ import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
-import { type ContainerIndicesCollection , isParentContainerIndex } from '../dataflow/graph/vertex';
+import { type ContainerIndicesCollection, isParentContainerIndex } from '../dataflow/graph/vertex';
 import { equidistantSampling } from '../util/collections/arrays';
-import { type FlowrConfigOptions , getEngineConfig } from '../config';
+import { type FlowrConfigOptions, getEngineConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
@@ -53,7 +61,7 @@ import type { DataFrameDomain } from '../abstract-interpretation/data-frame/data
 import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
 import { inferDataFrameShapes } from '../abstract-interpretation/data-frame/shape-inference';
 import fs from 'fs';
-import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
 
 /**
@@ -337,7 +345,7 @@ export class BenchmarkSlicer {
 		};
 		this.perSliceMeasurements.set(slicingCriteria, stats);
 
-		this.executor.updateRequest({ criterion: slicingCriteria });
+		this.executor.updateRequest({ criterion: slicingCriteria, context: this.context as ReadOnlyFlowrAnalyzerContext });
 
 		const totalStopwatch = measurements.start('total');
 

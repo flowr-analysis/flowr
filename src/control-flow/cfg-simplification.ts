@@ -5,15 +5,18 @@ import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { visitCfgInOrder } from './simple-visitor';
 import { cfgAnalyzeDeadCode } from './cfg-dead-code';
-import type { FlowrConfigOptions } from '../config';
+import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 export interface CfgPassInfo {
-	ast?:   NormalizedAst,
-	dfg?:   DataflowGraph,
-	config: FlowrConfigOptions
+	ast?: NormalizedAst,
+	dfg?: DataflowGraph,
+	ctx:  ReadOnlyFlowrAnalyzerContext
 }
 export type CfgSimplificationPass = (cfg: ControlFlowInformation, info: CfgPassInfo) => ControlFlowInformation;
 
+/**
+ * All available control flow graph simplification passes.
+ */
 export const CfgSimplificationPasses = {
 	'unique-cf-sets':    uniqueControlFlowSets,
 	'analyze-dead-code': cfgAnalyzeDeadCode,

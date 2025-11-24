@@ -12,12 +12,12 @@ import { splitAtEscapeSensitive } from '../../util/text/args';
 import { FontStyles } from '../../util/text/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
-import { fileProtocol, requestFromInput } from '../../r-bridge/retriever';
-import { type ReplOutput , standardReplOutput } from './commands/repl-main';
+import { fileProtocol } from '../../r-bridge/retriever';
+import { type ReplOutput, standardReplOutput } from './commands/repl-main';
 import type { MergeableRecord } from '../../util/objects';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfigOptions } from '../../config';
-import { type SupportedQuery , SupportedQueries } from '../../queries/query';
+import { genericWrapReplFailIfNoRequest, SupportedQueries, type SupportedQuery } from '../../queries/query';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
 import { startAndEndsWith } from '../../util/text/strings';
 
@@ -133,25 +133,27 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
 		if(processor) {
 			try {
-				const remainingLine = statement.slice(command.length + 2).trim();
-				if(processor.isCodeCommand) {
-					const args = processor.argsParser(remainingLine);
-					if(args.rCode) {
-						analyzer.reset();
-						analyzer.addRequest(requestFromInput(args.rCode));
+				await genericWrapReplFailIfNoRequest(async() => {
+					const remainingLine = statement.slice(command.length + 2).trim();
+					if(processor.isCodeCommand) {
+						const args = processor.argsParser(remainingLine);
+						if(args.rCode) {
+							analyzer.reset();
+							analyzer.addRequest(args.rCode);
+						}
+						await processor.fn({ output, analyzer, remainingArgs: args.remaining });
+					} else {
+						await processor.fn({ output, analyzer, remainingLine, allowRSessionAccess });
 					}
-					await processor.fn({ output, analyzer, remainingArgs: args.remaining });
-				} else {
-					await processor.fn({ output, analyzer, remainingLine, allowRSessionAccess });
-				}
+				}, output, analyzer);
 			} catch(e){
-				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
+				output.stderr(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
 				if(log.settings.minLevel < LogLevel.Fatal) {
 					console.error(e);
 				}
 			}
 		} else {
-			output.stdout(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
+			output.stderr(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
 		}
 	} else {
 		await tryExecuteRShellCommand({ output, analyzer, remainingLine: statement, allowRSessionAccess });
@@ -219,6 +221,7 @@ export async function repl(
 
 	// the incredible repl :D, we kill it with ':quit'
 
+	// noinspection InfiniteLoopJS
 	while(true) {
 		await new Promise<void>((resolve, reject) => {
 			rl.question(prompt(), answer => {

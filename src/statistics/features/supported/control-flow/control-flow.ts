@@ -26,7 +26,7 @@ export type ControlflowInfo = Writable<typeof initialControlflowInfo>
 function visitIfThenElse(info: ControlflowInfo, input: FeatureProcessorInput): void {
 	const ifThenElseStack: RNodeWithParent[] = [];
 
-	visitAst(input.normalizedRAst.ast,
+	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
 		node => {
 			if(node.type !== RType.IfThenElse) {
 				if(node.type === RType.FunctionCall && node.named && node.functionName.content === 'switch') {

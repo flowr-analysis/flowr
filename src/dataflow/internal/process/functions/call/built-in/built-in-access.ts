@@ -151,7 +151,7 @@ function processNumberBasedAccess<OtherInfo>(
 		);
 	}
 
-	if(data.flowrConfig.solver.pointerTracking) {
+	if(data.ctx.config.solver.pointerTracking) {
 		referenceAccessedIndices(args, data, fnCall, rootId, true);
 	}
 
@@ -208,7 +208,7 @@ function processStringBasedAccess<OtherInfo>(
 		origin:    'builtin:access' satisfies BuiltInMappingName
 	});
 
-	if(data.flowrConfig.solver.pointerTracking) {
+	if(data.ctx.config.solver.pointerTracking) {
 		referenceAccessedIndices(newArgs, data, fnCall, rootId, false);
 	}
 

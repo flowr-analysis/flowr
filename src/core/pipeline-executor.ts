@@ -8,7 +8,6 @@ import type {
 	PipelineStepNames,
 	PipelineStepOutputWithName
 } from './steps/pipeline/pipeline';
-import type { FlowrConfigOptions } from '../config';
 
 /**
  * **Please note:** The {@link PipelineExecutor} is now considered to be a rather low-level API for flowR. While it still works
@@ -104,23 +103,19 @@ export class PipelineExecutor<P extends Pipeline> {
 	private currentExecutionStage = PipelineStepStage.OncePerFile;
 	private stepCounter = 0;
 
-	private readonly flowrConfig: FlowrConfigOptions;
-
 	/**
 	 * Construct a new pipeline executor.
 	 * The required additional input is specified by the {@link IPipelineStep#requiredInput|required input configuration} of each step in the `pipeline`.
 	 *
 	 * Please see {@link createDataflowPipeline} and friends for engine agnostic shortcuts to create a pipeline executor.
 	 * And in general, please prefer using the {@link FlowrAnalyzer} and its {@link FlowrAnalyzerBuilder|builder} to create and use an analyzer instance.
-	 * @param pipeline - The {@link Pipeline} to execute, probably created with {@link createPipeline}.
-	 * @param input    - External {@link PipelineInput|configuration and input} required to execute the given pipeline.
-	 * @param flowrConfig   - The flowr config containing the built-in definitions
+	 * @param pipeline    - The {@link Pipeline} to execute, probably created with {@link createPipeline}.
+	 * @param input       - External {@link PipelineInput|configuration and input} required to execute the given pipeline.
 	 */
-	constructor(pipeline: P, input: PipelineInput<P>, flowrConfig: FlowrConfigOptions) {
+	constructor(pipeline: P, input: PipelineInput<P>) {
 		this.pipeline = pipeline;
 		this.length = pipeline.order.length;
 		this.input = input;
-		this.flowrConfig = flowrConfig;
 	}
 
 	/**
@@ -213,7 +208,7 @@ export class PipelineExecutor<P extends Pipeline> {
 			guard(step.name === expectedStepName, () => `Cannot execute next step, expected step ${JSON.stringify(expectedStepName)} but got ${step.name}.`);
 		}
 
-		return [step.name, step.processor(this.output, this.input, this.flowrConfig) as PipelineStepOutputWithName<P, PipelineStepName>];
+		return [step.name, step.processor(this.output, this.input) as PipelineStepOutputWithName<P, PipelineStepName>];
 	}
 
 	/**

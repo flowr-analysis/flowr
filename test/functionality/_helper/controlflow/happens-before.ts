@@ -4,24 +4,28 @@ import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitte
 import { Ternary } from '../../../../src/util/logic';
 import type { RShell } from '../../../../src/r-bridge/shell';
 import { createNormalizePipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
 import { happensBefore } from '../../../../src/control-flow/happens-before';
 import { cfgToMermaidUrl } from '../../../../src/util/mermaid/cfg';
-import { defaultConfigOptions } from '../../../../src/config';
-
+import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 /**
- *
+ * Asserts that in the given code, criterion `a` happens before criterion `b` according to the expected Ternary value.
+ * @param shell    - The RShell instance to use for parsing and analysis.
+ * @param code     - The R code to analyze.
+ * @param a        - The first slicing criterion.
+ * @param b        - The second slicing criterion that is compared against the first.
+ * @param expected - The expected Ternary result indicating the happens-before relationship.
  */
 export function assertHappensBefore(shell: RShell, code: string, a: SingleSlicingCriterion, b: SingleSlicingCriterion, expected: Ternary) {
 	// shallow copy is important to avoid killing the CFG :c
 	return describe(code, () => {
 		test.each([shell, new TreeSitterExecutor()])('%s', async parser => {
+			const context = contextFromInput(code);
 			const result = await createNormalizePipeline(parser, {
-				request: requestFromInput(code)
-			}, defaultConfigOptions).allRemainingSteps();
-			const cfg = extractCfg(result.normalize, defaultConfigOptions);
+				context
+			}).allRemainingSteps();
+			const cfg = extractCfg(result.normalize, context);
 			const aResolved = slicingCriterionToId(a, result.normalize.idMap);
 			const bResolved = slicingCriterionToId(b, result.normalize.idMap);
 			try {

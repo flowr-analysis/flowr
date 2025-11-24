@@ -13,15 +13,15 @@ import type {
 } from '../../../src/cli/repl/server/messages/message-analysis';
 import { jsonReplacer } from '../../../src/util/json';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { sanitizeAnalysisResults } from '../../../src/cli/repl/server/connection';
 import type { QueryRequestMessage, QueryResponseMessage } from '../../../src/cli/repl/server/messages/message-query';
 import { assert, describe, test } from 'vitest';
 import { uncompact } from '../../../src/cli/repl/server/compact';
 import { getPlatform } from '../../../src/util/os';
-import { defaultConfigOptions } from '../../../src/config';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { retrieveVersionInformation } from '../../../src/util/version';
+import { FlowrFile } from '../../../src/project/context/flowr-file';
+import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 
 describe('flowr', () => {
 	const skip = getPlatform() !== 'linux';
@@ -85,9 +85,10 @@ describe('flowr', () => {
 			const response = messages[1] as FileAnalysisResponseMessageJson;
 
 			// we are testing the server and not the slicer here!
-			const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('1 + 1'))
+			const analyzer = await new FlowrAnalyzerBuilder()
 				.setParser(shell)
 				.build();
+			analyzer.addRequest('1 + 1');
 			const results = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalize(), await analyzer.dataflow());
 
 			// cfg should not be set as we did not request it
@@ -97,9 +98,11 @@ describe('flowr', () => {
 
 			// this is hideous and only to unify the ids
 			const expected = JSON.stringify(results, jsonReplacer)
-				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '');
+				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
+				.replaceAll(FlowrFile.INLINE_PATH, '');
 			const got = JSON.stringify(response.results, jsonReplacer)
-				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '');
+				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
+				.replaceAll(FlowrFile.INLINE_PATH, '');
 
 			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer');
 		}));
@@ -119,9 +122,10 @@ describe('flowr', () => {
 			const response = messages[1] as FileAnalysisResponseMessageCompact;
 
 			// we are testing the server and not the slicer here!
-			const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('1 + 1'))
+			const analyzer = await new FlowrAnalyzerBuilder()
 				.setParser(shell)
 				.build();
+			analyzer.addRequest('1 + 1');
 			const results = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalize(), await analyzer.dataflow());
 
 			// cfg should not be set as we did not request it
@@ -133,9 +137,11 @@ describe('flowr', () => {
 
 			// this is hideous and only to unify the ids
 			const expected = JSON.stringify(results, jsonReplacer)
-				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '');
+				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
+				.replaceAll(FlowrFile.INLINE_PATH, '');
 			const got = JSON.stringify(unpacked, jsonReplacer)
-				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '');
+				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
+				.replaceAll(FlowrFile.INLINE_PATH, '');
 
 			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer');
 		}));
@@ -157,7 +163,7 @@ describe('flowr', () => {
 
 			const gotCfg = response.cfg;
 			assert.isDefined(gotCfg, 'Expected the cfg to be defined as we requested it');
-			const expectedCfg = extractCfg(response.results.normalize, defaultConfigOptions);
+			const expectedCfg = extractCfg(response.results.normalize, contextFromInput(''));
 			assert.equal(JSON.stringify(gotCfg?.graph, jsonReplacer), JSON.stringify(expectedCfg.graph, jsonReplacer), 'Expected the cfg to be the same as the one extracted from the results');
 		}));
 

@@ -51,7 +51,7 @@ export function processReplacementFunction<OtherInfo>(
 	expensiveTrace(dataflowLogger, () => `Replacement ${name.content} with ${JSON.stringify(args)}, processing`);
 
 	let indices: ContainerIndicesCollection = config.activeIndices;
-	if(data.flowrConfig.solver.pointerTracking) {
+	if(data.ctx.config.solver.pointerTracking) {
 		indices ??= constructAccessedIndices<OtherInfo>(name.content, args);
 	}
 
@@ -124,7 +124,7 @@ export function processReplacementFunction<OtherInfo>(
 
 
 	const fa = unpackArgument(args[0]);
-	if(!data.flowrConfig.solver.pointerTracking && fa) {
+	if(!data.ctx.config.solver.pointerTracking && fa) {
 		res = {
 			...res,
 			in: [...res.in, { name: fa.lexeme, type: ReferenceType.Variable, nodeId: fa.info.id, controlDependencies: data.controlDependencies }]

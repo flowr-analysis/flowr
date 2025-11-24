@@ -1,6 +1,7 @@
 import type { PathLike } from 'fs';
 import fs from 'fs';
 import { guard } from '../../util/assert';
+import type { RParseRequest } from '../../r-bridge/retriever';
 
 /**
  * Just a readable alias for file paths, mostly for documentation purposes.
@@ -13,16 +14,25 @@ export type FilePath = string;
  * This list may be extended in the future and reflects files that the {@link FlowrAnalyzer} can do something interesting with.
  * If you add an interesting file that is only part of your plugin infrastructure, please use the `other` role.
  */
-export enum SpecialFileRole {
+export enum FileRole {
 	/** The `DESCRIPTION` file in R packages, this is the only currently supported special file. */
 	Description = 'description',
 	/** The `NAMESPACE` file in R packages, currently not specially supported. */
 	Namespace   = 'namespace',
 	/** Data files, e.g., `R/sysdata.rda`, currently not specially supported. */
 	Data        = 'data',
+	/**
+	 * Catch-all for any file that provides usable R source code to incorporate into the analysis.
+	 * Please note, that the loading order/inclusion and even potential relevance of these source files
+	 * is determined by the loading order plugins (cf. {@link PluginType.LoadingOrder})
+	 * in the {@link FlowrAnalyzerLoadingOrderContext}.
+	 */
+	Source      = 'source',
 	/** Other special files that are not specifically supported by flowR but may be interesting for some analyses. */
 	Other       = 'other'
 }
+
+export type StringableContent = { toString(): string };
 
 /**
  * This is the basic interface for all files known to the FlowrAnalyzer.
@@ -35,20 +45,20 @@ export enum SpecialFileRole {
  * If you want to pass in inline text files, see {@link FlowrInlineTextFile}.
  * @typeParam Content - The type of the content returned by the `content()` method.
  */
-export interface FlowrFileProvider<Content = unknown> {
+export interface FlowrFileProvider<Content extends { toString(): string } = { toString(): string }> {
 	/**
 	 * The role of this file, if any, in general your file should _not_ decide for itself what role it has in the project context,
 	 * this is for the loaders plugins to decide (cf. {@link PluginType}) as they can, e.g., respect ignore files, updated mappings, etc.
 	 * However, they will 1) set this role as soon as they decide on it (using {@link assignRole}) and 2) try to respect an already assigned role (however, user configurations may override this).
 	 */
-    role?: SpecialFileRole;
+    role?: FileRole;
 
 	/**
 	 * The path to the file, this is used for identification and logging purposes.
 	 * If the file does not exist on disk, this can be a virtual path (e.g. for inline files).
 	 * Even though this is a getter, please make sure that the operation is cheap and deterministic (some decorators may overwrite the path, e.g., because they support other protocols).
 	 */
-    path(): PathLike;
+    path(): string;
 
 	/**
 	 * The content of the file, this may be cached by the implementation and does not have to be expensive.
@@ -61,7 +71,7 @@ export interface FlowrFileProvider<Content = unknown> {
 	 * Assign a role to this file, this should be done by the loader plugins (cf. {@link PluginType}).
 	 * **Do not call this method yourself unless you are a file-loader plugin and/or really know what you are doing, this may break plugin assumptions!**
 	 */
-    assignRole(role: SpecialFileRole): void;
+    assignRole(role: FileRole): void;
 }
 
 /**
@@ -69,18 +79,19 @@ export interface FlowrFileProvider<Content = unknown> {
  *
  * See {@link FlowrTextFile} for a text-file specific implementation and {@link FlowrInlineTextFile} for inline text files.
  */
-export abstract class FlowrFile<Content = unknown> implements FlowrFileProvider<Content> {
+export abstract class FlowrFile<Content extends StringableContent = StringableContent> implements FlowrFileProvider<Content> {
 	private contentCache:  Content | undefined;
 	protected filePath:    PathLike;
-	public readonly role?: SpecialFileRole;
+	public readonly role?: FileRole;
+	public static readonly INLINE_PATH = '@inline';
 
-	public constructor(filePath: PathLike, role?: SpecialFileRole) {
+	public constructor(filePath: PathLike, role?: FileRole) {
 		this.filePath = filePath;
 		this.role     = role;
 	}
 
-	public path(): PathLike {
-		return this.filePath;
+	public path(): string {
+		return this.filePath.toString();
 	}
 
 	public content(): Content {
@@ -92,9 +103,22 @@ export abstract class FlowrFile<Content = unknown> implements FlowrFileProvider<
 
 	protected abstract loadContent(): Content;
 
-	public assignRole(role: SpecialFileRole): void {
+	public assignRole(role: FileRole): void {
 		guard(this.role === undefined || this.role === role, `File ${this.filePath.toString()} already has a role assigned: ${this.role}`);
-		(this as { role?: SpecialFileRole }).role = role;
+		(this as { role?: FileRole }).role = role;
+	}
+
+	/**
+	 * Creates a {@link FlowrFile} from a given {@link RParseRequest}.
+	 * @see {@link FlowrTextFile}
+	 * @see {@link FlowrInlineTextFile}
+	 */
+	public static fromRequest(request: RParseRequest): FlowrFile<string> {
+		if(request.request === 'file') {
+			return new FlowrTextFile(request.content);
+		} else {
+			return new FlowrInlineTextFile(FlowrFile.INLINE_PATH, request.content);
+		}
 	}
 }
 

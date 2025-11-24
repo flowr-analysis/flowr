@@ -45,7 +45,7 @@ export function stdioCaptureProcessor(stdio: Stdio, onStdOutLine: (msg: string) 
 export async function waitOnScript(module: string, args: readonly string[], io?: StdioProcessor, exitOnError = false): Promise<void> {
 	log.info(`starting script ${module} with args ${JSON.stringify(args)}`);
 	const child = cp.fork(module, args, {
-		silent: io !== undefined
+		silent: false,
 	});
 	if(io !== undefined) {
 		io(child.stdio);
@@ -64,6 +64,7 @@ export async function waitOnScript(module: string, args: readonly string[], io?:
 			process.exit(1);
 		}
 	});
+
 	await new Promise<void>((resolve, reject) => child.on('exit', code => {
 		if(exitOnError && code) {
 			reject(new Error(`Script ${module} exited with code ${String(code)}`));

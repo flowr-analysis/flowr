@@ -9,7 +9,6 @@ import type { DataflowGraph } from '../graph/graph';
 import { resolveByName } from './resolve-by-name';
 import type { ControlDependency } from '../info';
 import { jsonReplacer } from '../../util/json';
-import { getDefaultBuiltInDefinitions } from './built-in-config';
 import type { BuiltInMemory } from './built-in';
 
 /**
@@ -110,7 +109,7 @@ export class Environment implements IEnvironment {
  * but statically determining all attached environments is theoretically impossible --- consider attachments by user input).
  *
  * One important environment is the {@link BuiltIns|BuiltInEnvironment} which contains the default definitions for R's built-in functions and constants.
- * Please use {@link initializeCleanEnvironments} to initialize the environments (which includes the built-ins).
+ * These can be obtained from the {@link FlowrAnalyzerEnvironmentContext}.
  * During serialization, you may want to rely on the {@link builtInEnvJsonReplacer} to avoid the huge built-in environment.
  * @see {@link define} - to define a new {@link IdentifierDefinition|identifier definition} within an environment
  * @see {@link resolveByName} - to resolve an {@link Identifier|identifier/name} to its {@link IdentifierDefinition|definitions} within an environment
@@ -125,27 +124,6 @@ export interface REnvironmentInformation {
 	readonly current: IEnvironment
 	/** nesting level of the environment, will be `0` for the global/root environment */
 	readonly level:   number
-}
-
-/**
- * Create a new built-in {@link IEnvironment|environment}.
- * @param memory - Optional built-in memory to use.
- * @param fullBuiltIns - Whether to use the full built-in definitions or an empty built-in environment.
- */
-export function createBuiltInEnv(memory?: BuiltInMemory, fullBuiltIns = true): IEnvironment {
-	const builtInEnv = new Environment(undefined as unknown as IEnvironment, true);
-	builtInEnv.memory = memory ?? (fullBuiltIns ? getDefaultBuiltInDefinitions().builtInMemory : getDefaultBuiltInDefinitions().emptyBuiltInMemory);
-	return builtInEnv;
-}
-
-/**
- * Initialize a new {@link REnvironmentInformation|environment} on top of the built-ins.
- */
-export function initializeCleanEnvironments(memory?: BuiltInMemory, fullBuiltIns = true): REnvironmentInformation {
-	return {
-		current: new Environment(createBuiltInEnv(memory, fullBuiltIns)),
-		level:   0
-	};
 }
 
 /**

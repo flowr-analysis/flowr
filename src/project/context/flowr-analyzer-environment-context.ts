@@ -1,7 +1,8 @@
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import type { IEnvironment, REnvironmentInformation } from '../../dataflow/environments/environment';
-import { createBuiltInEnv, createBuiltInEnvFromConfig, Environment } from '../../dataflow/environments/environment';
+import { Environment } from '../../dataflow/environments/environment';
 import type { DeepReadonly } from 'ts-essentials';
+import { getBuiltInDefinitions } from '../../dataflow/environments/built-in-config';
 
 /**
  * This is the read-only interface to the {@link FlowrAnalyzerEnvironmentContext},
@@ -16,7 +17,7 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	/**
 	 * Create a new {@link REnvironmentInformation|environment} with the configured built-in environment as base.
 	 */
-	getCleanEnv(builtInEnv: IEnvironment): REnvironmentInformation;
+	getCleanEnv(): REnvironmentInformation;
 
 	/**
 	 * Create a new {@link REnvironmentInformation|environment} with an empty built-in environment as base.
@@ -30,10 +31,18 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
  */
 export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnvironmentContext {
 	public readonly name = 'flowr-analyzer-environment-context';
-	private readonly builtInEnv: IEnvironment;
+	private readonly builtInEnv:      IEnvironment;
+	private readonly emptyBuiltInEnv: IEnvironment;
 
 	constructor(ctx: FlowrAnalyzerContext) {
-		this.builtInEnv = createBuiltInEnvFromConfig(ctx.config);
+		const builtInsConfig = ctx.config.semantics.environment.overwriteBuiltIns;
+		const builtIns = getBuiltInDefinitions(builtInsConfig.definitions, builtInsConfig.loadDefaults);
+
+		this.builtInEnv = new Environment(undefined as unknown as IEnvironment, true);
+		this.builtInEnv.memory = builtIns.builtInMemory;
+
+		this.emptyBuiltInEnv = new Environment(undefined as unknown as IEnvironment, true);
+		this.emptyBuiltInEnv.memory = builtIns.emptyBuiltInMemory;
 	}
 
 	public get builtInEnvironment(): IEnvironment {
@@ -49,7 +58,7 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 
 	public getCleanEnvWithEmptyBuiltIns(): REnvironmentInformation {
 		return {
-			current: new Environment(createBuiltInEnv(undefined, false)),
+			current: new Environment(this.emptyBuiltInEnv),
 			level:   0
 		};
 	}

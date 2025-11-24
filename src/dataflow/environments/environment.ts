@@ -9,9 +9,8 @@ import type { DataflowGraph } from '../graph/graph';
 import { resolveByName } from './resolve-by-name';
 import type { ControlDependency } from '../info';
 import { jsonReplacer } from '../../util/json';
-import { getBuiltInDefinitions, getDefaultBuiltInDefinitions } from './built-in-config';
+import { getDefaultBuiltInDefinitions } from './built-in-config';
 import type { BuiltInMemory } from './built-in';
-import type { FlowrConfigOptions } from '../../config';
 
 /**
  * Marks the reference as maybe (i.e., as controlled by a set of {@link IdentifierReference#controlDependencies|control dependencies}).
@@ -137,15 +136,6 @@ export function createBuiltInEnv(memory?: BuiltInMemory, fullBuiltIns = true): I
 	const builtInEnv = new Environment(undefined as unknown as IEnvironment, true);
 	builtInEnv.memory = memory ?? (fullBuiltIns ? getDefaultBuiltInDefinitions().builtInMemory : getDefaultBuiltInDefinitions().emptyBuiltInMemory);
 	return builtInEnv;
-}
-
-/**
- * Create a new built-in {@link IEnvironment|environment} according to the given configuration options.
- */
-export function createBuiltInEnvFromConfig(config: FlowrConfigOptions): IEnvironment {
-	const builtInsConfig = config.semantics.environment.overwriteBuiltIns;
-	const builtIns = getBuiltInDefinitions(builtInsConfig.definitions, builtInsConfig.loadDefaults);
-	return createBuiltInEnv(builtIns.builtInMemory);
 }
 
 /**

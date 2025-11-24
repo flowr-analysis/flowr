@@ -39,11 +39,11 @@ export interface SeededRandomnessConfig extends MergeableRecord {
 }
 
 export interface SeededRandomnessMeta extends MergeableRecord {
-	consumerCalls:                    number
-	callsWithFunctionProducers:       number
-	callsWithAssignmentProducers:     number
-	callsWithNonConstantProducers:    number
-    callsWithOtherBranchProducers: number
+	consumerCalls:                 number
+	callsWithFunctionProducers:    number
+	callsWithAssignmentProducers:  number
+	callsWithNonConstantProducers: number
+	callsWithOtherBranchProducers: number
 }
 
 export const SEEDED_RANDOMNESS = {
@@ -111,6 +111,7 @@ export const SEEDED_RANDOMNESS = {
 						const argIdx = assignmentArgIndexes.get(a.name) as number;
 						const dest = getReferenceOfArgument(a.args[argIdx]);
 						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)){
+							// we either have arg index 0 or 1 for the assignmentProducers destination, so we select the assignment value as 1-argIdx here
 							if(isConstantArgument(dataflow.graph, a, 1-argIdx)) {
 								const aCds = new Set(a.cds).difference(cds);
 								if(aCds.size <= 0 || happensInEveryBranch([...aCds])) {

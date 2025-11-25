@@ -3,7 +3,6 @@ import type { LinkTo } from '../../../queries/catalog/call-context-query/call-co
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type NodeId, recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import { envFingerprint } from '../../../slicing/static/fingerprint';
 import { VisitingQueue } from '../../../slicing/static/visiting-queue';
 import { guard } from '../../../util/assert';
 import type { BuiltInIdentifierConstant } from '../../environments/built-in';
@@ -20,6 +19,7 @@ import { Bottom, isTop, type Lift, Top, type Value, type ValueSet } from '../val
 import { setFrom } from '../values/sets/set-constants';
 import { resolveNode } from './resolve';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
+import { envFingerprint } from '../../../slicing/static/fingerprint';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -94,37 +94,6 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 }
 
 /**
- * Gets the definitions / aliases of a node
- *
- * This function is called by the built-in-assignment processor so that we can
- * track assignments inside the environment. The returned ids are stored in
- * the sourceIds value field of their InGraphIdentifierDefinition. This enables
- * us later, in the {@link trackAliasInEnvironments} function, to get all the
- * aliases of an identifier.
- * @param sourceIds          - node ids to get the definitions for
- * @param dataflow           - dataflow graph
- * @param environment        - environment
- * @returns node id of alias
- */
-export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
-	const definitions: Set<NodeId> = new Set<NodeId>();
-
-	for(const sourceId of sourceIds) {
-		const info = dataflow.getVertex(sourceId);
-		if(info === undefined) {
-			return undefined;
-		}
-
-		const defs = AliasHandler[info.tag](sourceId, dataflow, environment);
-		for(const def of defs ?? []) {
-			definitions.add(def);
-		}
-	}
-
-	return [...definitions];
-}
-
-/**
  * Please use {@link resolveIdToValue}
  *
  * Uses the aliases that were tracked in the environments (by the
@@ -180,6 +149,37 @@ export function trackAliasInEnvironments(resolve: VariableResolve, identifier: I
 }
 
 /**
+ * Gets the definitions / aliases of a node
+ *
+ * This function is called by the built-in-assignment processor so that we can
+ * track assignments inside the environment. The returned ids are stored in
+ * the sourceIds value field of their InGraphIdentifierDefinition. This enables
+ * us later, in the {@link trackAliasInEnvironments} function, to get all the
+ * aliases of an identifier.
+ * @param sourceIds          - node ids to get the definitions for
+ * @param dataflow           - dataflow graph
+ * @param environment        - environment
+ * @returns node id of alias
+ */
+export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
+	const definitions: Set<NodeId> = new Set<NodeId>();
+
+	for(const sourceId of sourceIds) {
+		const info = dataflow.getVertex(sourceId);
+		if(info === undefined) {
+			return undefined;
+		}
+
+		const defs = AliasHandler[info.tag](sourceId, dataflow, environment);
+		for(const def of defs ?? []) {
+			definitions.add(def);
+		}
+	}
+
+	return [...definitions];
+}
+
+/**
  * Evaluates the value of a node in the set domain.
  *
  * resolveIdToValue tries to resolve the value using the data it has been given.
@@ -216,7 +216,7 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 			if(environment) {
 				return full ? trackAliasInEnvironments(resolve, node.lexeme, environment, ctx, graph, idMap) : Top;
 			} else if(graph && resolve === VariableResolve.Alias) {
-				return full ? trackAliasesInGraph(node.info.id, graph, ctx.env.getCleanEnv(), idMap) : Top;
+				return full ? trackAliasesInGraph(node.info.id, graph, ctx, idMap) : Top;
 			} else {
 				return Top;
 			}
@@ -299,12 +299,12 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
  *
  * Tries to resolve the value of a node by traversing the dataflow graph
  * @param id    - node to resolve
- * @param cleanEnv - clean environment to use as base
+ * @param ctx - analysis context
  * @param graph - dataflow graph
  * @param idMap - idmap of dataflow graph
  * @returns Value of node or Top/Bottom
  */
-export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, cleanEnv: REnvironmentInformation, idMap?: AstIdMap): ResolveResult {
+export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, idMap?: AstIdMap): ResolveResult {
 	if(!graph.get(id)) {
 		return Bottom;
 	}
@@ -313,8 +313,9 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, cleanEnv: 
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
 
 	const queue = new VisitingQueue(25);
-	const cleanFingerprint = envFingerprint(cleanEnv);
-	queue.add(id, cleanEnv, cleanFingerprint, false);
+	const clean = ctx.env.getCleanEnv();
+	const cleanFingerprint = envFingerprint(clean);
+	queue.add(id, clean, cleanFingerprint, false);
 
 	let forceTop = false;
 

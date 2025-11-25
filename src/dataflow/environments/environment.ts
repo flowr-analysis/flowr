@@ -109,7 +109,7 @@ export class Environment implements IEnvironment {
  * but statically determining all attached environments is theoretically impossible --- consider attachments by user input).
  *
  * One important environment is the {@link BuiltIns|BuiltInEnvironment} which contains the default definitions for R's built-in functions and constants.
- * These can be obtained from the {@link FlowrAnalyzerEnvironmentContext}.
+ * This environment is created and provided by the {@link FlowrAnalyzerEnvironmentContext}.
  * During serialization, you may want to rely on the {@link builtInEnvJsonReplacer} to avoid the huge built-in environment.
  * @see {@link define} - to define a new {@link IdentifierDefinition|identifier definition} within an environment
  * @see {@link resolveByName} - to resolve an {@link Identifier|identifier/name} to its {@link IdentifierDefinition|definitions} within an environment

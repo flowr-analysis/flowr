@@ -8,7 +8,6 @@ export type Fingerprint = string
  * Calculate a fingerprint for the given R environment information
  * @see {@link fingerprint}
  */
-// TODO Calculate this once for built-in environments and cache the result
 export function envFingerprint(env: REnvironmentInformation): Fingerprint {
 	return objectHash(env, {
 		algorithm:                 'md5',

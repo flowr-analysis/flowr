@@ -1,6 +1,6 @@
-import { type DataflowProcessorInformation , processDataflowFor } from '../../../../processor';
-import { type DataflowInformation , ExitPointType } from '../../../../info';
-import { type ForceArguments , processAllArguments } from './common';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
+import { type DataflowInformation, ExitPointType } from '../../../../info';
+import { type ForceArguments, processAllArguments } from './common';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -70,7 +70,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	const functionCallName = name.content;
 	expensiveTrace(dataflowLogger, () => `Processing known function call ${functionCallName} with ${args.length} arguments`);
 
-	const processArgs = reverseOrder ? [...args].reverse() : args;
+	const processArgs = reverseOrder ? args.toReversed() : args;
 
 	const {
 		finalEnv,
@@ -90,7 +90,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		/* will be overwritten accordingly */
 		onlyBuiltin:       false,
 		cds:               data.controlDependencies,
-		args:              reverseOrder ? [...callArgs].reverse() : callArgs,
+		args:              reverseOrder ? callArgs.reverse() : callArgs,
 		indicesCollection: indicesCollection,
 		origin:            origin === 'default' ? ['function'] : [origin]
 	});
@@ -114,7 +114,7 @@ export function processKnownFunctionCall<OtherInfo>(
 			entryPoint:        rootId,
 			exitPoints:        [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
 		},
-		processedArguments: reverseOrder ? [...processedArguments].reverse() : processedArguments,
+		processedArguments: reverseOrder ? processedArguments.reverse() : processedArguments,
 		fnRef
 	};
 }

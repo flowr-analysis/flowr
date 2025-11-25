@@ -15,7 +15,7 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { initializeCleanEnvironments } from './environments/environment';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
-import { extractCfgQuick } from '../control-flow/extract-cfg';
+import { extractCfgQuick, getCallsInCfg } from '../control-flow/extract-cfg';
 import { EdgeType } from './graph/edge';
 import {
 	identifyLinkToLastCallRelation
@@ -26,6 +26,8 @@ import type { ControlFlowInformation } from '../control-flow/control-flow-graph'
 import { getBuiltInDefinitions } from './environments/built-in-config';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -68,13 +70,23 @@ export const processors: DataflowProcessors<ParentInformation> = {
 
 function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 	let cf: ControlFlowInformation | undefined = undefined;
+	let knownCalls: Map<NodeId, Required<DataflowGraphVertexFunctionCall>> | undefined;
+	const handled = new Set<NodeId>();
 	for(const s of graph.unknownSideEffects) {
 		if(typeof s !== 'object') {
 			continue;
 		}
-		cf ??= extractCfgQuick(ast);
+		if(cf === undefined) {
+			cf = extractCfgQuick(ast);
+			if(graph.unknownSideEffects.size > 20) {
+				knownCalls = getCallsInCfg(cf, graph);
+			}
+		} else if(handled.has(s.id)) {
+			continue;
+		}
+		handled.add(s.id);
 		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */
-		const potentials = identifyLinkToLastCallRelation(s.id, cf?.graph, graph, s.linkTo);
+		const potentials = identifyLinkToLastCallRelation(s.id, cf.graph, graph, s.linkTo, knownCalls);
 		for(const pot of potentials) {
 			graph.addEdge(s.id, pot, EdgeType.Reads);
 		}
@@ -102,7 +114,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	const env = initializeCleanEnvironments(builtIns.builtInMemory);
 
 	// we freeze the files here to avoid endless modifications during processing
-	const files = [...completeAst.ast.files];
+	const files = completeAst.ast.files.slice();
 
 	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
 

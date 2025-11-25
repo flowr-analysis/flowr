@@ -55,7 +55,7 @@ export function processFunctionDefinition<OtherInfo>(
 		guard(param !== EmptyArgument, () => `Empty argument in function definition ${name.content}, ${JSON.stringify(args)}`);
 		const processed = processDataflowFor(param, data);
 		subgraph.mergeWith(processed.graph);
-		const read = [...processed.in, ...processed.unknownReferences];
+		const read = processed.in.concat(processed.unknownReferences);
 		linkInputs(read, data.environment, readInParameters, subgraph, false);
 		data = { ...data, environment: overwriteEnvironment(data.environment, processed.environment) };
 	}

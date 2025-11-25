@@ -18,13 +18,13 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 	}
 
 	return {
-		unknownReferences: [...info.unknownReferences, ...newInfo.unknownReferences],
-		in:                [...info.in, ...newInfo.in],
-		out:               [...info.out, ...newInfo.out],
+		unknownReferences: info.unknownReferences.concat(newInfo.unknownReferences),
+		in:                info.in.concat(newInfo.in),
+		out:               info.out.concat(newInfo.out),
 		graph:             info.graph.mergeWith(newInfo.graph),
 		environment:       appendEnvironment(info.environment, newInfo.environment),
 		entryPoint:        newInfo.entryPoint,
-		exitPoints:        [...info.exitPoints, ...newInfo.exitPoints],
+		exitPoints:        info.exitPoints.concat(newInfo.exitPoints),
 	};
 }
 

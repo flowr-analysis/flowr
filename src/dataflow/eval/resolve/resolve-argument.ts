@@ -81,8 +81,8 @@ function hasCharacterOnly(variableResolve: VariableResolve, graph: DataflowGraph
 	if(!treatAsChar) {
 		return false;
 	}
-	const hasTrue = [...treatAsChar.values()].some(set => set?.has('TRUE'));
-	const hasFalse = hasTrue ? [...treatAsChar.values()].some(set => set === undefined || set.has('FALSE')) : false;
+	const hasTrue = treatAsChar.values().some(set => set?.has('TRUE'));
+	const hasFalse = hasTrue ? treatAsChar.values().some(set => set === undefined || set.has('FALSE')) : false;
 	if(hasTrue && hasFalse) {
 		return 'maybe';
 	} else {

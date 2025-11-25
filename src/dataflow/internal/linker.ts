@@ -291,7 +291,7 @@ export function getAllLinkedFunctionDefinitions(
 	functionDefinitionReadIds: ReadonlySet<NodeId>,
 	dataflowGraph: DataflowGraph
 ): [Set<DataflowGraphVertexInfo>, Set<BuiltIn>] {
-	let potential: NodeId[] = [...functionDefinitionReadIds];
+	let potential: NodeId[] = functionDefinitionReadIds.values().toArray();
 	const visited = new Set<NodeId>();
 	const result = new Set<DataflowGraphVertexInfo>();
 	const builtIns = new Set<BuiltIn>();
@@ -311,9 +311,10 @@ export function getAllLinkedFunctionDefinitions(
 		}
 		visited.add(currentId);
 
-		const outgoingEdges = [...currentInfo[1]];
+		const outgoingEdges = currentInfo[1].entries().toArray();
 
-		const returnEdges = outgoingEdges.filter(([_, e]) => edgeIncludesType(e.types, EdgeType.Returns));
+		const returnEdges = outgoingEdges
+			.filter(([_, e]) => edgeIncludesType(e.types, EdgeType.Returns));
 		if(returnEdges.length > 0) {
 			// only traverse return edges and do not follow `calls` etc. as this indicates that we have a function call which returns a result, and not the function calls itself
 			potential = potential.concat(returnEdges.map(([target]) => target).filter(id => !visited.has(id)));
@@ -328,7 +329,11 @@ export function getAllLinkedFunctionDefinitions(
 		}
 
 		// trace all joined reads
-		potential = potential.concat(followEdges.map(([target]) => target).filter(id => !visited.has(id)));
+		potential = potential.concat(
+			followEdges
+				.map(([target]) => target)
+				.filter(id => !visited.has(id))
+		);
 	}
 	return [result, builtIns];
 }

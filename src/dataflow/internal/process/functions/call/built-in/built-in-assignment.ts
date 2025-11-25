@@ -455,6 +455,6 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		unknownReferences: [],
 		entryPoint:        rootId,
 		in:                readTargets,
-		out:               [...writeNodes, ...readFromSourceWritten]
+		out:               writeNodes.concat(readFromSourceWritten as typeof writeNodes),
 	};
 }

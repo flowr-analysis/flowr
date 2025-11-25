@@ -19,6 +19,7 @@ import { identifyLinkToLastCallRelation, satisfiesCallTargets } from './identify
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { CfgKind } from '../../../project/cfg-kind';
+import { getCallsInCfg } from '../../../control-flow/extract-cfg';
 
 /* if the node is effected by nse, we have an ingoing nse edge */
 function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
@@ -257,6 +258,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 				}
 			}
 		}
+		const calls = cfg ? getCallsInCfg(cfg, dataflow.graph) : undefined;
 
 		for(const query of promotedQueries.filter(q => !q.includeAliases && (q.callName instanceof RegExp ? q.callName.test(info.name) : q.callName.has(info.name)))) {
 			const file = ast.idMap.get(nodeId)?.info.file;
@@ -266,7 +268,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 
 			let targets: NodeId[] | 'no' | undefined = undefined;
 			if(query.callTargets) {
-				targets = satisfiesCallTargets(nodeId, dataflow.graph, query.callTargets);
+				targets = satisfiesCallTargets(info, dataflow.graph, query.callTargets);
 				if(targets === 'no') {
 					continue;
 				}
@@ -282,7 +284,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 				const linked = Array.isArray(query.linkTo) ? query.linkTo : [query.linkTo];
 				for(const link of linked) {
 					/* if we have a linkTo query, we have to find the last call */
-					const lastCall = identifyLinkToLastCallRelation(nodeId, cfg.graph, dataflow.graph, link);
+					const lastCall = identifyLinkToLastCallRelation(nodeId, cfg.graph, dataflow.graph, link, calls);
 					if(lastCall) {
 						linkedIds ??= new Set();
 						for(const l of lastCall) {

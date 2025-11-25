@@ -18,7 +18,7 @@ import { VariableResolve } from '../../config';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { asValue } from '../../dataflow/eval/values/r-value';
-import { happensInEveryBranch } from '../../dataflow/info';
+import { happensInEveryBranchSet } from '../../dataflow/info';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -95,7 +95,7 @@ export const SEEDED_RANDOMNESS = {
 					for(const f of func ?? []) {
 						if(isConstantArgument(dataflow.graph, f, 0)) {
 							const fCds = new Set(f.cds).difference(cds);
-							if(fCds.size <= 0 || happensInEveryBranch([...fCds])){
+							if(fCds.size <= 0 || happensInEveryBranchSet(fCds)){
 								metadata.callsWithFunctionProducers++;
 								return [];
 							} else {
@@ -114,7 +114,7 @@ export const SEEDED_RANDOMNESS = {
 							// we either have arg index 0 or 1 for the assignmentProducers destination, so we select the assignment value as 1-argIdx here
 							if(isConstantArgument(dataflow.graph, a, 1-argIdx)) {
 								const aCds = new Set(a.cds).difference(cds);
-								if(aCds.size <= 0 || happensInEveryBranch([...aCds])) {
+								if(aCds.size <= 0 || happensInEveryBranchSet(aCds)) {
 									metadata.callsWithAssignmentProducers++;
 									return [];
 								} else {

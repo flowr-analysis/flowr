@@ -29,6 +29,12 @@ function makeTagBadge(name: LintingRuleTag, info: TypeElementInSource[]): string
 	return textWithTooltip(`<a href='#${name}'>![` + name + '](https://img.shields.io/badge/' + name.toLowerCase() + `-${SpecialTagColors[name] ?? 'teal'}) </a>`, doc);
 }
 
+function getPageNameForLintingRule(name: LintingRuleNames): string {
+	// convert file-path-validity to 'Linting Rule: File Path Validity'
+	const words = name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1));
+	return '[Linting Rule] ' + words.join(' ');
+}
+
 function prettyPrintExpectedOutput(expected: string): string {
 	if(expected.trim() === '[]') {
 		return '* no lints';
@@ -174,7 +180,7 @@ df[6, "value"]
 		const certaintyText = `\`${textWithTooltip(rule.info.certainty, certaintyDoc)}\``;
 		if(format === 'short') {
 			ruleExplanations.set(name, () => Promise.resolve(`
-	**[${rule.info.name}](${FlowrWikiBaseRef}/lint-${name}):** ${rule.info.description} [see ${shortLinkFile(ruleType, types)}]\\
+	**[${rule.info.name}](${FlowrWikiBaseRef}/${getPageNameForLintingRule(name)}):** ${rule.info.description} [see ${shortLinkFile(ruleType, types)}]\\
 	${tags}
 
 		`.trim()));
@@ -230,7 +236,7 @@ function getAllLintingRulesWitCertainty(certainty: LintingRuleCertainty): Lintin
 }
 
 function linkToRule(name: LintingRuleNames): string {
-	return `[${name}](${FlowrWikiBaseRef}/lint-${name})`;
+	return `[${name}](${FlowrWikiBaseRef}/${getPageNameForLintingRule(name).replaceAll(' ', '-')})`;
 }
 
 async function getTextMainPage(knownParser: KnownParser, tagTypes: TypeReport): Promise<string> {
@@ -311,7 +317,7 @@ async function getRulesPages(knownParser: KnownParser, tagTypes: TypeReport): Pr
 	const result: Record<string, string> = {} as Record<string, string>;
 
 	for(const [name, rule] of rules) {
-		const filepath = path.join('wiki', `lint-${name}.md`);
+		const filepath = path.join('wiki', `${getPageNameForLintingRule(name)}.md`);
 		result[filepath] = await rule();
 	}
 

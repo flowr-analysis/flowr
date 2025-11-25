@@ -455,7 +455,7 @@ or the [original master's thesis (Chapter 4)](https://doi.org/10.18725/OPARU-501
 You can explore the slicing using the REPL with the ${getReplCommand('slicer')} command:
 
 ${await documentReplSession(treeSitter, [{
-	command:     ':slicer test/testfiles/example.R --criterion "12@product"',
+	command:     ':query @static-slice (12@product) file://test/testfiles/example.R',
 	description: 'Slice for the example file for the variable "prod" in line 12.'
 }], { openOutput: true })}
 

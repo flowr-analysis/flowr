@@ -45,7 +45,7 @@ export function stdioCaptureProcessor(stdio: Stdio, onStdOutLine: (msg: string) 
 export async function waitOnScript(module: string, args: readonly string[], io?: StdioProcessor, exitOnError = false): Promise<void> {
 	log.info(`starting script ${module} with args ${JSON.stringify(args)}`);
 	const child = cp.fork(module, args, {
-		silent: false,
+		silent: io !== undefined
 	});
 	if(io !== undefined) {
 		io(child.stdio);

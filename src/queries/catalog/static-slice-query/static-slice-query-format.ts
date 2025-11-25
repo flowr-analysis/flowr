@@ -66,6 +66,19 @@ export const StaticSliceQueryDefinition = {
 	executor:        executeStaticSliceQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'static-slice'>['static-slice'];
+		if(Object.keys(out.results).length === 1) {
+			// just print the single result without fingerprint
+			const [, obj] = Object.entries(out.results)[0];
+			if('reconstruct' in obj) {
+				const code = Array.isArray(obj.reconstruct.code) ? obj.reconstruct.code : [obj.reconstruct.code];
+				if(code.length === 1) {
+					result.push(
+						code[0]
+					);
+					return true;
+				}
+			}
+		}
 		result.push(`Query: ${bold('static-slice', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [fingerprint, obj] of Object.entries(out.results)) {
 			const { criteria, noMagicComments, noReconstruction } = JSON.parse(fingerprint) as StaticSliceQuery;

@@ -44,9 +44,13 @@ const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	// eslint-disable-next-line no-irregular-whitespace -- we may produce it in output
 	[/[0-9]+(\.[0-9]+)?( |\s*)?ms/g, ''],
 	[/tmp[%A-Za-z0-9-]+/g, ''],
-	[/"(timing|searchTimeMs|processTimeMs)":\s*[0-9]+(\.[0-9])?,?/g, ''],
+	[/"(timing|searchTimeMs|processTimeMs|id|treeSitterId)":\s*[0-9]+(\.[0-9])?,?/g, ''],
 	[/"format":"compact".+/gmius, ''],
-	[/%%\s*\d*-+/g, '']
+	[/%%\s*\d*-+/g, ''],
+	[/"[rR]": "\d+\.\d+\.\d+.*?"/g, ''],
+	[/R\s*\d+\.\d+\.\d+/g, ''],
+	// async wrapper depends on whether the promise got forfilled already
+	[/%20async%20/g, ' ']
 ];
 
 /**
@@ -126,7 +130,7 @@ export abstract class DocMaker implements DocMakerLike {
 			throw new Error('DocMaker: writeSubFile called outside of make()');
 		}
 		if(this.currentArgs.force || this.didUpdate(path, data, this.currentArgs.readFileSync(path)?.toString()) === WikiChangeType.Changed) {
-			this.currentArgs.writeFileSync(this.target, data);
+			this.currentArgs.writeFileSync(path.toString(), data);
 			this.writtenSubfiles.add(path.toString());
 			return true;
 		}
@@ -148,13 +152,25 @@ export abstract class DocMaker implements DocMakerLike {
 	/**
 	 * Determines the type of change between the old and new text.
 	 */
-	protected didUpdate(_path: PathLike, newText: string, oldText: string | undefined): WikiChangeType {
+	protected didUpdate(path: PathLike, newText: string, oldText: string | undefined): WikiChangeType {
 		if(oldText === newText) {
 			return WikiChangeType.Identical;
 		}
 		const normOld = this.normalizeText(oldText ?? '');
 		const normNew = this.normalizeText(newText);
-		return normOld === normNew ? WikiChangeType.UnimportantChange : WikiChangeType.Changed;
+		const same = normOld === normNew;
+		if(!same) {
+			// find first diff
+			for(let i = 0; i < Math.min(normOld.length, normNew.length); i++) {
+				if(normOld[i] !== normNew[i]) {
+					const contextOld = normOld.slice(Math.max(0, i - 20), Math.min(normOld.length, i + 20));
+					const contextNew = normNew.slice(Math.max(0, i - 20), Math.min(normNew.length, i + 20));
+					console.log(`      [${path.toString()}] First diff at pos ${i}:\n      - Old: ...${contextOld}...\n      + New: ...${contextNew}...`);
+					break;
+				}
+			}
+		}
+		return same ? WikiChangeType.UnimportantChange : WikiChangeType.Changed;
 	}
 
 	/**

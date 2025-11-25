@@ -58,7 +58,7 @@ type ProtoKeys<T> = T extends { prototype: infer P } ? keyof P : never;
 /**
  * Provides methods to generate links, code snippets, and documentation for code elements.
  * These wrap around a collection of useful helpers originating from the doc utils.
- * To create an instance, use {@link makeContextForTypes} (although if you are writing a wiki, you get such an instance).
+ * To create an instance, use {@link makeDocContextForTypes} (although if you are writing a wiki, you get such an instance).
  */
 export interface GeneralDocContext {
 	/**
@@ -204,13 +204,13 @@ export interface GeneralDocContext {
  * const fnDoc = ctx.doc('myFunction');
  * ```
  */
-export function makeContextForTypes(
+export function makeDocContextForTypes(
 	shell?: RShell,
 	...rootFolders: string[]
 ): GeneralDocContext {
 	if(rootFolders.length === 0) {
 		rootFolders.push(path.resolve(__dirname, '../../../src'));
-		rootFolders.push(path.resolve(__dirname, '../../../test'));
+		rootFolders.push(path.resolve(__dirname, '../../../test/functionality'));
 	}
 	const { info, program } = getTypesFromFolder({ rootFolder: rootFolders, typeNameForMermaid: undefined });
 	return {

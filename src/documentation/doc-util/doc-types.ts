@@ -35,6 +35,7 @@ const options: ts.CompilerOptions = {
 	skipLibCheck:                 true,
 	skipDefaultLibCheck:          true,
 	allowJs:                      true,
+	strict:                       false,
 	checkJs:                      false,
 	strictNullChecks:             false,
 	noUncheckedIndexedAccess:     false,
@@ -42,10 +43,17 @@ const options: ts.CompilerOptions = {
 	noCheck:                      true,
 	noEmit:                       true,
 	noResolve:                    true,
+	noUnusedLocals:               false,
+	alwaysStrict:                 true,
+	incremental:                  false,
 	types:                        [],
 	lib:                          [],
 	noLib:                        true,
 	moduleResolution:             ts.ModuleResolutionKind.Classic,
+	allowUnreachableCode:         true,
+	allowUnusedLabels:            true,
+	disableSolutionSearching:     true,
+
 } as const;
 
 /**
@@ -62,6 +70,7 @@ export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files:
 }
 
 
+const DropGenericsPattern = /<.*>/g;
 /**
  * Drop generics from a TypeScript type name.
  * @example
@@ -75,12 +84,13 @@ export function dropGenericsFromTypeName(type: string): string {
 	let previous;
 	do{
 		previous = type;
-		type = type.replace(/<.*>/g, '');
+		type = type.replace(DropGenericsPattern, '');
 	} while(type !== previous);
 	return type;
 }
 
-
+const PruneDocCommentPattern =  /^\/\*\*?|\*\/$|^\s*\*\s?|\s*\*$/gm;
+const PrunedocLinkPattern = /\{@[a-zA-Z]+ ([^}]+\|)?(?<name>[^}]+)}/gm;
 /**
  * Remove comment symbols from a TypeScript comment string.
  * This also takes care of special JSDoc tags like `{@link ...}` and `{@see ...}`.
@@ -99,9 +109,9 @@ export function dropGenericsFromTypeName(type: string): string {
 export function removeCommentSymbolsFromTypeScriptComment(comment: string): string {
 	return comment
 	// remove '/** \n * \n */...
-		.replace(/^\/\*\*?/gm, '').replace(/^\s*\*\s*/gm, '').replace(/\*\/$/gm, '').replace(/^\s*\*/gm, '')
-	/* replace {@key foo|bar} with `bar` and {@key foo} with `foo` */
-		.replace(/\{@[a-zA-Z]+ ([^}]+\|)?(?<name>[^}]+)}/gm, '<code>$<name></code>')
+		.replace(PruneDocCommentPattern, '')
+	// replace {@key foo|bar} with `bar` and {@key foo} with `foo`
+		.replace(PrunedocLinkPattern, '<code>$<name></code>')
 		.trim();
 }
 
@@ -167,7 +177,7 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 					.map(type => type.getText(sourceFile) ?? '')
 					.map(dropGenericsFromTypeName)
 			) ?? [];
-			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') || [];
+			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
 
 			hierarchyList.push({
 				name:       dropGenericsFromTypeName(interfaceName),
@@ -303,9 +313,9 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 		ts.forEachChild(node, child => visit(child, sourceFile));
 	};
 
-	sourceFiles.forEach(sourceFile => {
-		visit(sourceFile, sourceFile);
-	});
+	for(const sf of sourceFiles) {
+		visit(sf, sf);
+	}
 
 	return hierarchyList;
 }
@@ -442,7 +452,15 @@ export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport
 		const folders = Array.isArray(options.rootFolder) ? options.rootFolder : [options.rootFolder];
 		for(const folder of folders) {
 			files = files.concat(
-				fs.readdirSync(folder, { recursive: true }).filter(f => f.toString().endsWith('.ts'))
+				fs.readdirSync(folder, { recursive: true })
+					.filter(f => {
+						const p = f.toString();
+						return p.endsWith('.ts')
+							&& !p.endsWith('.test.ts')
+							&& !p.endsWith('-app.ts')
+							&& !p.endsWith('.d.ts');
+					}
+					)
 					.map(f => path.join(folder, f.toString()))
 			);
 		}

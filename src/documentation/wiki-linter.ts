@@ -180,7 +180,7 @@ df[6, "value"]
 		const certaintyText = `\`${textWithTooltip(rule.info.certainty, certaintyDoc)}\``;
 		if(format === 'short') {
 			ruleExplanations.set(name, () => Promise.resolve(`
-	**[${rule.info.name}](${FlowrWikiBaseRef}/${getPageNameForLintingRule(name)}):** ${rule.info.description} [see ${shortLinkFile(ruleType, types)}]\\
+	**[${rule.info.name}](${FlowrWikiBaseRef}/${encodeURIComponent(getPageNameForLintingRule(name))}):** ${rule.info.description} [see ${shortLinkFile(ruleType, types)}]\\
 	${tags}
 
 		`.trim()));

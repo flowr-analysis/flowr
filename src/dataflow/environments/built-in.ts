@@ -9,7 +9,7 @@ import { processPipe } from '../internal/process/functions/call/built-in/built-i
 import { processForLoop } from '../internal/process/functions/call/built-in/built-in-for-loop';
 import { processRepeatLoop } from '../internal/process/functions/call/built-in/built-in-repeat-loop';
 import { processWhileLoop } from '../internal/process/functions/call/built-in/built-in-while-loop';
-import { type Identifier, type IdentifierDefinition, type IdentifierReference , ReferenceType } from './identifier';
+import { type Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from './identifier';
 import { guard } from '../../util/assert';
 import { processReplacementFunction } from '../internal/process/functions/call/built-in/built-in-replacement';
 import { processQuote } from '../internal/process/functions/call/built-in/built-in-quote';
@@ -17,7 +17,7 @@ import { processFunctionDefinition } from '../internal/process/functions/call/bu
 import { processExpressionList } from '../internal/process/functions/call/built-in/built-in-expression-list';
 import { processGet } from '../internal/process/functions/call/built-in/built-in-get';
 import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type RFunctionArgument , EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EdgeType } from '../graph/edge';
@@ -44,6 +44,7 @@ import type {
 	BuiltInFunctionDefinition,
 	BuiltInReplacementDefinition
 } from './built-in-config';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -106,7 +107,7 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 }
 
 
-export type BuiltInEvalHandler = (resolve: VariableResolve, a: RNodeWithParent, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap) => Value;
+export type BuiltInEvalHandler = (resolve: VariableResolve, a: RNodeWithParent, ctx: ReadOnlyFlowrAnalyzerContext, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap) => Value;
 
 function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

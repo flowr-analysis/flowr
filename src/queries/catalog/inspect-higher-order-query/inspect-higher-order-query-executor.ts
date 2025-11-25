@@ -1,8 +1,6 @@
-import type {
-	InspectHigherOrderQuery, InspectHigherOrderQueryResult
-} from './inspect-higher-order-query-format';
+import type { InspectHigherOrderQuery, InspectHigherOrderQueryResult } from './inspect-higher-order-query-format';
 import type { BasicQueryData } from '../../base-query-format';
-import { type SingleSlicingCriterion , tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
+import { type SingleSlicingCriterion, tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
 import { isFunctionDefinitionVertex } from '../../../dataflow/graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isHigherOrder } from '../../../dataflow/fn/higher-order-function';
@@ -42,7 +40,7 @@ export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, quer
 		.filter(([,v]) => isFunctionDefinitionVertex(v) && (filterFor.size === 0 || filterFor.has(v.id)));
 	const result: Record<NodeId, boolean> = {};
 	for(const [id,] of fns) {
-		result[id] = isHigherOrder(id, graph);
+		result[id] = isHigherOrder(id, graph, analyzer.inspectContext());
 	}
 
 	return {

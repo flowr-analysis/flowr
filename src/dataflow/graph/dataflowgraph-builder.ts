@@ -1,9 +1,19 @@
 import { deepMergeObject } from '../../util/objects';
-import { type NodeId , normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type DataflowFunctionFlowInformation, type FunctionArgument , DataflowGraph, isPositionalArgument } from './graph';
-import { type IEnvironment, type REnvironmentInformation , initializeCleanEnvironments } from '../environments/environment';
-import { type DataflowGraphVertexAstLink, type DataflowGraphVertexUse, type FunctionOriginInformation , VertexType } from './vertex';
+import {
+	type DataflowFunctionFlowInformation,
+	DataflowGraph,
+	type FunctionArgument,
+	isPositionalArgument
+} from './graph';
+import { type IEnvironment, type REnvironmentInformation } from '../environments/environment';
+import {
+	type DataflowGraphVertexAstLink,
+	type DataflowGraphVertexUse,
+	type FunctionOriginInformation,
+	VertexType
+} from './vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isBuiltIn } from '../environments/built-in';
 import { EdgeType } from './edge';
@@ -14,13 +24,17 @@ import type { FlowrSearchLike } from '../../search/flowr-search-builder';
 import { runSearch } from '../../search/flowr-search-executor';
 import { guard } from '../../util/assert';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
-
+import { FlowrAnalyzerEnvironmentContext } from '../../project/context/flowr-analyzer-environment-context';
+import { defaultConfigOptions } from '../../config';
+import type { FlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 /**
- *
+ * Creates an empty dataflow graph.
  */
 export function emptyGraph(idMap?: AstIdMap) {
-	return new DataflowGraphBuilder(idMap);
+	// TODO Fix this
+	const ctx = new FlowrAnalyzerEnvironmentContext({ config: defaultConfigOptions } as FlowrAnalyzerContext);
+	return new DataflowGraphBuilder(ctx.getCleanEnv(), idMap);
 }
 
 export type DataflowGraphEdgeTarget = NodeId | (readonly NodeId[]);
@@ -31,6 +45,13 @@ export type DataflowGraphEdgeTarget = NodeId | (readonly NodeId[]);
  * simplifies writing tests for dataflow graphs.
  */
 export class DataflowGraphBuilder extends DataflowGraph {
+	private defaultEnvironment: REnvironmentInformation;
+
+	constructor(cleanEnv: REnvironmentInformation, idMap?: AstIdMap) {
+		super(idMap);
+		this.defaultEnvironment = cleanEnv;
+	}
+
 	/**
 	 * Adds a **vertex** for a **function definition** (V1).
 	 * @param id - AST node ID
@@ -57,8 +78,8 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			} as DataflowFunctionFlowInformation,
 			exitPoints:  exitPoints.map(normalizeIdToNumberIfPossible),
 			cds:         info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
-			environment: info?.environment
-		}, asRoot);
+			environment: info?.environment,
+		}, this.defaultEnvironment, asRoot);
 	}
 
 	/**
@@ -88,12 +109,12 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			id:          normalizeIdToNumberIfPossible(id),
 			name,
 			args:        args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: normalizeIdToNumberIfPossible(a.nodeId), controlDependencies: undefined }),
-			environment: (info?.onlyBuiltIn || onlyBuiltInAuto) ? undefined : info?.environment ?? initializeCleanEnvironments(),
+			environment: (info?.onlyBuiltIn || onlyBuiltInAuto) ? undefined : info?.environment ?? this.defaultEnvironment,
 			cds:         info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
 			onlyBuiltin: info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false,
 			origin:      info?.origin ?? [ getDefaultProcessor(name) ?? 'function' ],
 			link:        info?.link
-		}, asRoot);
+		}, this.defaultEnvironment, asRoot);
 		this.addArgumentLinks(id, args);
 		if(info?.returns) {
 			for(const ret of info.returns) {
@@ -142,7 +163,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			id:  normalizeIdToNumberIfPossible(id),
 			name,
 			cds: info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
-		}, asRoot);
+		}, this.defaultEnvironment, asRoot);
 		if(info?.definedBy) {
 			for(const def of info.definedBy) {
 				this.definedBy(id, def);
@@ -169,7 +190,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		}, {
 			...info,
 			cds: info?.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) }))
-		} as Partial<DataflowGraphVertexUse>), asRoot);
+		} as Partial<DataflowGraphVertexUse>), this.defaultEnvironment, asRoot);
 	}
 
 
@@ -186,7 +207,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			id:          normalizeIdToNumberIfPossible(id),
 			cds:         options?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
 			environment: undefined
-		}, asRoot);
+		}, this.defaultEnvironment, asRoot);
 	}
 
 	private edgeHelper(from: NodeId, to: DataflowGraphEdgeTarget, type: EdgeType) {

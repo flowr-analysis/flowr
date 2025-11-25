@@ -73,7 +73,8 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			graph:   this.config.dfg,
 			full:    true,
 			idMap:   this.config.normalizedAst.idMap,
-			resolve: this.config.ctx.config.solver.variables
+			resolve: this.config.ctx.config.solver.variables,
+			ctx:     this.config.ctx,
 		}));
 		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
 			this.unableToCalculateValue(id);
@@ -101,7 +102,8 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			graph:   this.config.dfg,
 			full:    true,
 			idMap:   this.config.normalizedAst.idMap,
-			resolve: this.config.ctx.config.solver.variables
+			resolve: this.config.ctx.config.solver.variables,
+			ctx:     this.config.ctx,
 		}));
 		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
 			return undefined;

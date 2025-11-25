@@ -1,4 +1,10 @@
-import { type LintingResult, type LintingRule , LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import {
+	LintingPrettyPrintContext,
+	type LintingResult,
+	LintingResultCertainty,
+	type LintingRule,
+	LintingRuleCertainty
+} from '../linter-format';
 import type { SourceRange } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -7,7 +13,7 @@ import { Enrichment, enrichmentContent } from '../../search/search-executor/sear
 import type { Identifier } from '../../dataflow/environments/identifier';
 import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
-import { type DataflowGraph , getReferenceOfArgument } from '../../dataflow/graph/graph';
+import { type DataflowGraph, getReferenceOfArgument } from '../../dataflow/graph/graph';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { LintingRuleTag } from '../linter-tags';
@@ -18,6 +24,7 @@ import { VariableResolve } from '../../config';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { asValue } from '../../dataflow/eval/values/r-value';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -58,7 +65,7 @@ export const SEEDED_RANDOMNESS = {
 			{ callName: config.randomnessProducers.filter(p => p.type === 'function').map(p => p.name) },
 			{ callName: getDefaultAssignments().flatMap(b => b.names), cascadeIf: () => CascadeAction.Continue }
 		]),
-	processSearchResult: (elements, config, { dataflow }) => {
+	processSearchResult: (elements, config, { dataflow, analyzer }) => {
 		const assignmentProducers = new Set<string>(config.randomnessProducers.filter(p => p.type == 'assignment').map(p => p.name));
 		const assignmentArgIndexes = new Map<string, number>(getDefaultAssignments().flatMap(a => a.names.map(n => ([n, a.config?.swapSourceAndTarget ? 1 : 0]))));
 		const metadata: SeededRandomnessMeta = {
@@ -87,7 +94,7 @@ export const SEEDED_RANDOMNESS = {
 
 					// function calls are already taken care of through the LastCall enrichment itself
 					for(const f of func ?? []) {
-						if(isConstantArgument(dataflow.graph, f, 0)) {
+						if(isConstantArgument(dataflow.graph, f, 0, analyzer.inspectContext())) {
 							metadata.callsWithFunctionProducers++;
 							return false;
 						} else {
@@ -100,7 +107,7 @@ export const SEEDED_RANDOMNESS = {
 						const argIdx = assignmentArgIndexes.get(a.name) as number;
 						const dest = getReferenceOfArgument(a.args[argIdx]);
 						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)){
-							if(isConstantArgument(dataflow.graph, a, 1-argIdx)) {
+							if(isConstantArgument(dataflow.graph, a, 1-argIdx, analyzer.inspectContext())) {
 								metadata.callsWithAssignmentProducers++;
 								return false;
 							} else {
@@ -144,9 +151,9 @@ function getDefaultAssignments(): BuiltInFunctionDefinition<'builtin:assignment'
 	return DefaultBuiltinConfig.filter(b => b.type === 'function' && b.processor == 'builtin:assignment') as BuiltInFunctionDefinition<'builtin:assignment'>[];
 }
 
-function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, argIndex: number): boolean {
+function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, argIndex: number, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const args = call.args.filter(arg => arg !== EmptyArgument && !arg.name).map(getReferenceOfArgument);
-	const values = valueSetGuard(resolveIdToValue(args[argIndex], { graph: graph, resolve: VariableResolve.Alias }));
+	const values = valueSetGuard(resolveIdToValue(args[argIndex], { graph: graph, resolve: VariableResolve.Alias, ctx }));
 	return values?.elements.every(v =>
 		v.type === 'number' ||
 		v.type === 'logical' ||

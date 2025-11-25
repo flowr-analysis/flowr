@@ -1,24 +1,25 @@
 import { VariableResolve } from '../../../config';
 import type { LinkTo } from '../../../queries/catalog/call-context-query/call-context-query-format';
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type NodeId , recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId, recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { envFingerprint } from '../../../slicing/static/fingerprint';
 import { VisitingQueue } from '../../../slicing/static/visiting-queue';
 import { guard } from '../../../util/assert';
 import type { BuiltInIdentifierConstant } from '../../environments/built-in';
-import { type IEnvironment, type REnvironmentInformation , initializeCleanEnvironments } from '../../environments/environment';
-import { type Identifier , ReferenceType } from '../../environments/identifier';
+import { type IEnvironment, type REnvironmentInformation } from '../../environments/environment';
+import { type Identifier, ReferenceType } from '../../environments/identifier';
 import { resolveByName } from '../../environments/resolve-by-name';
 import { EdgeType } from '../../graph/edge';
 import type { DataflowGraph } from '../../graph/graph';
-import { type ReplacementOperatorHandlerArgs , onReplacementOperator } from '../../graph/unknown-replacement';
+import { onReplacementOperator, type ReplacementOperatorHandlerArgs } from '../../graph/unknown-replacement';
 import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
 import { VertexType } from '../../graph/vertex';
 import { valueFromRNodeConstant, valueFromTsValue } from '../values/general';
-import { type Lift, type Value, type ValueSet , Bottom, isTop, Top } from '../values/r-value';
+import { Bottom, isTop, type Lift, Top, type Value, type ValueSet } from '../values/r-value';
 import { setFrom } from '../values/sets/set-constants';
 import { resolveNode } from './resolve';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -42,6 +43,8 @@ export interface ResolveInfo {
 	full?:        boolean;
 	/** Variable resolve mode */
 	resolve:      VariableResolve;
+	/** Context used for resolving */
+	ctx:          ReadOnlyFlowrAnalyzerContext;
 }
 
 function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
@@ -122,61 +125,6 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 }
 
 /**
- * Evaluates the value of a node in the set domain.
- *
- * resolveIdToValue tries to resolve the value using the data it has been given.
- * If the environment is provided the approximation is more precise, as we can
- * track aliases in the environment.
- * Otherwise, the graph is used to try and resolve the nodes value.
- * If neither is provided the value cannot be resolved.
- *
- * This function is also used by the Resolve Value Query and the Dependency Query
- * to resolve values. For e.g. in the Dependency Query it is used to resolve calls
- * like `lapply(c("a", "b", "c"), library, character.only = TRUE)`
- * @param id                 - The node id or node to resolve
- * @param environment        - The current environment used for name resolution
- * @param graph              - The graph to resolve in
- * @param idMap              - The id map to resolve the node if given as an id
- * @param full               - Whether to track aliases on resolve
- * @param resolve            - Variable resolve mode
- */
-export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, resolve }: ResolveInfo): ResolveResult {
-	if(id === undefined) {
-		return Top;
-	}
-
-	idMap ??= graph?.idMap;
-	const node = typeof id === 'object' ? id : idMap?.get(id);
-	if(node === undefined) {
-		return Top;
-	}
-
-	switch(node.type) {
-		case RType.Argument:
-		case RType.Symbol:
-			if(environment) {
-				return full ? trackAliasInEnvironments(resolve, node.lexeme, environment, graph, idMap) : Top;
-			} else if(graph && resolve === VariableResolve.Alias) {
-				return full ? trackAliasesInGraph(node.info.id, graph, idMap) : Top;
-			} else {
-				return Top;
-			}
-		case RType.FunctionDefinition:
-			return setFrom({ type: 'function-definition' });
-		case RType.FunctionCall:
-		case RType.BinaryOp:
-		case RType.UnaryOp:
-			return setFrom(resolveNode(resolve, node, environment, graph, idMap));
-		case RType.String:
-		case RType.Number:
-		case RType.Logical:
-			return setFrom(valueFromRNodeConstant(node));
-		default:
-			return Top;
-	}
-}
-
-/**
  * Please use {@link resolveIdToValue}
  *
  * Uses the aliases that were tracked in the environments (by the
@@ -188,7 +136,7 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
  * @param idMap      - id map of Dataflow graph
  * @returns Value of Identifier or Top
  */
-export function trackAliasInEnvironments(resolve: VariableResolve, identifier: Identifier | undefined, use: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ResolveResult {
+export function trackAliasInEnvironments(resolve: VariableResolve, identifier: Identifier | undefined, use: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext, graph?: DataflowGraph, idMap?: AstIdMap): ResolveResult {
 	if(identifier === undefined) {
 		return Top;
 	}
@@ -213,7 +161,7 @@ export function trackAliasInEnvironments(resolve: VariableResolve, identifier: I
 			for(const alias of def.value) {
 				const definitionOfAlias = idMap?.get(alias);
 				if(definitionOfAlias !== undefined) {
-					const value = resolveNode(resolve, definitionOfAlias, use, graph, idMap);
+					const value = resolveNode(resolve, definitionOfAlias, ctx, use, graph, idMap);
 					if(isTop(value)) {
 						return Top;
 					}
@@ -229,6 +177,62 @@ export function trackAliasInEnvironments(resolve: VariableResolve, identifier: I
 	}
 
 	return setFrom(...values);
+}
+
+/**
+ * Evaluates the value of a node in the set domain.
+ *
+ * resolveIdToValue tries to resolve the value using the data it has been given.
+ * If the environment is provided the approximation is more precise, as we can
+ * track aliases in the environment.
+ * Otherwise, the graph is used to try and resolve the nodes value.
+ * If neither is provided the value cannot be resolved.
+ *
+ * This function is also used by the Resolve Value Query and the Dependency Query
+ * to resolve values. For e.g. in the Dependency Query it is used to resolve calls
+ * like `lapply(c("a", "b", "c"), library, character.only = TRUE)`
+ * @param id                 - The node id or node to resolve
+ * @param environment        - The current environment used for name resolution
+ * @param graph              - The graph to resolve in
+ * @param idMap              - The id map to resolve the node if given as an id
+ * @param full               - Whether to track aliases on resolve
+ * @param resolve            - Variable resolve mode
+ * @param ctx                - Context used for clean environment
+ */
+export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, resolve, ctx }: ResolveInfo): ResolveResult {
+	if(id === undefined) {
+		return Top;
+	}
+
+	idMap ??= graph?.idMap;
+	const node = typeof id === 'object' ? id : idMap?.get(id);
+	if(node === undefined) {
+		return Top;
+	}
+
+	switch(node.type) {
+		case RType.Argument:
+		case RType.Symbol:
+			if(environment) {
+				return full ? trackAliasInEnvironments(resolve, node.lexeme, environment, ctx, graph, idMap) : Top;
+			} else if(graph && resolve === VariableResolve.Alias) {
+				return full ? trackAliasesInGraph(node.info.id, graph, ctx.env.getCleanEnv(), idMap) : Top;
+			} else {
+				return Top;
+			}
+		case RType.FunctionDefinition:
+			return setFrom({ type: 'function-definition' });
+		case RType.FunctionCall:
+		case RType.BinaryOp:
+		case RType.UnaryOp:
+			return setFrom(resolveNode(resolve, node, ctx, environment, graph, idMap));
+		case RType.String:
+		case RType.Number:
+		case RType.Logical:
+			return setFrom(valueFromRNodeConstant(node));
+		default:
+			return Top;
+	}
 }
 
 
@@ -295,11 +299,12 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
  *
  * Tries to resolve the value of a node by traversing the dataflow graph
  * @param id    - node to resolve
+ * @param cleanEnv - clean environment to use as base
  * @param graph - dataflow graph
  * @param idMap - idmap of dataflow graph
  * @returns Value of node or Top/Bottom
  */
-export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: AstIdMap): ResolveResult {
+export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, cleanEnv: REnvironmentInformation, idMap?: AstIdMap): ResolveResult {
 	if(!graph.get(id)) {
 		return Bottom;
 	}
@@ -308,9 +313,8 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
 
 	const queue = new VisitingQueue(25);
-	const clean = initializeCleanEnvironments();
-	const cleanFingerprint = envFingerprint(clean);
-	queue.add(id, clean, cleanFingerprint, false);
+	const cleanFingerprint = envFingerprint(cleanEnv);
+	queue.add(id, cleanEnv, cleanFingerprint, false);
 
 	let forceTop = false;
 

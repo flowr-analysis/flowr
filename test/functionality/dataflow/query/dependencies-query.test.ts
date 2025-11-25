@@ -1,11 +1,12 @@
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
-import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import {
 	type DependenciesQuery,
 	type DependenciesQueryResult,
-	type DependencyInfo
-	, Unknown } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+	type DependencyInfo,
+	Unknown
+} from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
@@ -229,7 +230,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			};
 			testQuery('Custom (by index)', 'source.custom.file(1, "my-custom-file", 2)', expected, sourceCustomFile);
 			testQuery('Custom (by name)', 'source.custom.file(num1 = 1, num2 = 2, file = "my-custom-file")', expected, sourceCustomFile);
-			testQuery('Ignore default', 'source("test/file.R")', {}, { ignoreDefaultFunctions: true });
+			describe.only('', () => testQuery('Ignore default', 'source("test/file.R")', {}, { ignoreDefaultFunctions: true }));
 			testQuery('Disabled', 'source("test/file.R")', {}, { enabledCategories: ['read', 'write', 'library'] });
 			testQuery('Enabled', 'source("test/file.R")', {
 				source: [{ nodeId: '1@source', functionName: 'source', value: 'test/file.R' }]

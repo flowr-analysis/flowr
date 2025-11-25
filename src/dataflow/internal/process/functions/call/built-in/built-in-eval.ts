@@ -1,11 +1,16 @@
 import { type DataflowProcessorInformation } from '../../../../../processor';
-import { type DataflowInformation , initializeCleanDataflowInformation } from '../../../../../info';
+import { type DataflowInformation, initializeCleanDataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { requestFromInput } from '../../../../../../r-bridge/retriever';
-import { type AstIdMap, type ParentInformation ,
+import {
+	type AstIdMap,
+	type ParentInformation,
 	sourcedDeterministicCountingIdGenerator
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	EmptyArgument,
+	type RFunctionArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -24,6 +29,7 @@ import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effec
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { cartesianProduct } from '../../../../../../util/collections/arrays';
 import type { FlowrConfigOptions } from '../../../../../../config';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 
 
 /**
@@ -63,7 +69,7 @@ export function processEvalCall<OtherInfo>(
 		return information;
 	}
 
-	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, data.environment, data.completeAst.idMap, data.ctx.config);
+	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, data.environment, data.completeAst.idMap, data.ctx);
 
 	if(code) {
 		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId, name.location);
@@ -100,7 +106,7 @@ export function processEvalCall<OtherInfo>(
 	return information;
 }
 
-function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, env: REnvironmentInformation, idMap: AstIdMap, config: FlowrConfigOptions): string[] | undefined {
+function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, env: REnvironmentInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
 	const val = evalArgument;
 
 	if(
@@ -114,12 +120,12 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 		if(arg.value?.type === RType.String) {
 			return [arg.value.content.str];
 		} else if(arg.value?.type === RType.Symbol) {
-			const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, idMap: idMap, resolve: config.solver.variables }));
+			const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, idMap: idMap, resolve: ctx.config.solver.variables, ctx }));
 			if(resolved) {
 				return collectStrings(resolved.elements);
 			}
 		} else if(arg.value?.type === RType.FunctionCall && arg.value.named && ['paste', 'paste0'].includes(arg.value.functionName.content)) {
-			return handlePaste(config, arg.value.arguments, env, idMap, arg.value.functionName.content === 'paste' ? [' '] : ['']);
+			return handlePaste(ctx.config, arg.value.arguments, env, idMap, arg.value.functionName.content === 'paste' ? [' '] : [''], ctx);
 		}
 		return undefined;
 	} else if(val.type === RType.Symbol) {
@@ -131,14 +137,14 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 	}
 }
 
-function getAsString(config: FlowrConfigOptions, val: RNode<ParentInformation> | undefined, env: REnvironmentInformation, idMap: AstIdMap): string[] | undefined {
+function getAsString(config: FlowrConfigOptions, val: RNode<ParentInformation> | undefined, env: REnvironmentInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
 	if(!val) {
 		return undefined;
 	}
 	if(val.type === RType.String) {
 		return [val.content.str];
 	} else if(val.type === RType.Symbol) {
-		const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: env, idMap: idMap, resolve: config.solver.variables }));
+		const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: env, idMap: idMap, resolve: config.solver.variables, ctx }));
 		if(resolved) {
 			return collectStrings(resolved.elements);
 		}
@@ -146,10 +152,10 @@ function getAsString(config: FlowrConfigOptions, val: RNode<ParentInformation> |
 	return undefined;
 }
 
-function handlePaste(config: FlowrConfigOptions, args: readonly RFunctionArgument<ParentInformation>[], env: REnvironmentInformation, idMap: AstIdMap, sepDefault: string[]): string[] | undefined {
+function handlePaste(config: FlowrConfigOptions, args: readonly RFunctionArgument<ParentInformation>[], env: REnvironmentInformation, idMap: AstIdMap, sepDefault: string[], ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
 	const sepArg = args.find(v => v !== EmptyArgument && v.name?.content === 'sep');
 	if(sepArg) {
-		const res = sepArg !== EmptyArgument && sepArg.value ? getAsString(config, sepArg.value, env, idMap) : undefined;
+		const res = sepArg !== EmptyArgument && sepArg.value ? getAsString(config, sepArg.value, env, idMap, ctx) : undefined;
 		if(!res) {
 			// sep not resolvable clearly / unknown
 			return undefined;
@@ -159,7 +165,7 @@ function handlePaste(config: FlowrConfigOptions, args: readonly RFunctionArgumen
 
 	const allArgs = args
 		.filter(v => v !== EmptyArgument && v.name?.content !== 'sep' && v.value)
-		.map(v => getAsString(config, (v as RArgument<ParentInformation>).value, env, idMap));
+		.map(v => getAsString(config, (v as RArgument<ParentInformation>).value, env, idMap, ctx));
 	if(allArgs.some(isUndefined)) {
 		return undefined;
 	}

@@ -3,12 +3,13 @@ import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking'
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RAccess, RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
-import { type RFunctionArgument , EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { DataFrameExpressionInfo, DataFrameOperation } from '../absint-info';
 import { resolveIdToArgValue, resolveIdToArgValueSymbolName, unquoteArgument } from '../resolve-args';
 import { getArgumentValue, isDataFrameArgument } from './arguments';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 
 /**
  * Special named arguments of index-based access operators
@@ -22,16 +23,18 @@ const SpecialAccessArgumentsMapper: Record<RIndexAccess['operator'], string[]> =
  * Maps a concrete data frame access to abstract data frame operations.
  * @param node - The R node of the access
  * @param dfg  - The data flow graph for resolving the arguments
+ * @param ctx  - The read-only Flowr analyzer context
  * @returns Data frame expression info containing the mapped abstract data frame operations, or `undefined` if the node does not represent a data frame access
  */
 export function mapDataFrameAccess(
 	node: RNode<ParentInformation>,
-	dfg: DataflowGraph
+	dfg: DataflowGraph,
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameExpressionInfo | undefined {
 	if(node.type !== RType.Access) {
 		return;
 	}
-	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
+	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
 	let operations: DataFrameOperation[] | undefined;
 
 	if(isStringBasedAccess(node)) {

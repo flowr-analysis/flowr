@@ -1,16 +1,20 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { type DataflowInformation , alwaysExits, filterOutLoopExitPoints } from '../../../../../info';
+import { alwaysExits, type DataflowInformation, filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
 	linkInputs,
-	produceNameSharedIdMap, reapplyLoopExitPoints
+	produceNameSharedIdMap,
+	reapplyLoopExitPoints
 } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard, isUndefined } from '../../../../../../util/assert';
 import { unpackArgument } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	EmptyArgument,
+	type RFunctionArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -44,7 +48,7 @@ export function processWhileLoop<OtherInfo>(
 	}
 
 	// we should defer this to the abstract interpretation
-	const values = resolveIdToValue(unpackedArgs[0]?.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables });
+	const values = resolveIdToValue(unpackedArgs[0]?.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx });
 	const conditionIsAlwaysFalse = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
 
 	//We don't care about the body if it never executes

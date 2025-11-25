@@ -21,13 +21,14 @@ import { dataflowLogger } from '../../../../../logger';
 import {
 	type IdentifierReference,
 	type InGraphIdentifierDefinition,
-	type InGraphReferenceType
-	, ReferenceType } from '../../../../../environments/identifier';
+	type InGraphReferenceType,
+	ReferenceType
+} from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { type ContainerIndicesCollection , VertexType } from '../../../../../graph/vertex';
+import { type ContainerIndicesCollection, VertexType } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
@@ -173,7 +174,7 @@ export function processAssignment<OtherInfo>(
 			});
 		}  else {
 			// try to resolve the variable first
-			const n = resolveIdToValue(target.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true });
+			const n = resolveIdToValue(target.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true, ctx: data.ctx });
 			if(n.type === 'set' && n.elements.length === 1 && n.elements[0].type === 'string') {
 				const val = n.elements[0].value;
 				if(isValue(val)) {

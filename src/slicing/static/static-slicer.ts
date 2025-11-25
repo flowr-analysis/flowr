@@ -1,7 +1,7 @@
 import { assertUnreachable, guard } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
 import type { SliceResult } from './slicer-types';
-import { envFingerprint, type Fingerprint } from './fingerprint';
+import { type Fingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
 import { handleReturns, sliceForCall } from './slice-call';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -57,7 +57,7 @@ export function staticSlice(
 	// every node ships the call environment which registers the calling environment
 	{
 		const emptyEnv = ctx.env.getCleanEnv();
-		const basePrint = envFingerprint(emptyEnv);
+		const basePrint = ctx.env.getCleanEnvFingerprint();
 		for(const { id: startId } of decodedCriteria) {
 			queue.add(startId, emptyEnv, basePrint, false);
 			// retrieve the minimum nesting of all nodes to only add control dependencies if they are "part" of the current execution

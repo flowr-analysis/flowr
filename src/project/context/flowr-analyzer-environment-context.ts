@@ -3,6 +3,8 @@ import type { IEnvironment, REnvironmentInformation } from '../../dataflow/envir
 import { Environment } from '../../dataflow/environments/environment';
 import type { DeepReadonly } from 'ts-essentials';
 import { getBuiltInDefinitions } from '../../dataflow/environments/built-in-config';
+import type { Fingerprint } from '../../slicing/static/fingerprint';
+import { envFingerprint } from '../../slicing/static/fingerprint';
 
 /**
  * This is the read-only interface to the {@link FlowrAnalyzerEnvironmentContext},
@@ -26,6 +28,11 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	getCleanEnv(): REnvironmentInformation;
 
 	/**
+	 * Get the fingerprint of the clean environment with the configured built-in environment as base.
+	 */
+	getCleanEnvFingerprint(): Fingerprint;
+
+	/**
 	 * Create a new {@link REnvironmentInformation|environment} with an empty built-in environment as base.
 	 */
 	getCleanEnvWithEmptyBuiltIns(): REnvironmentInformation;
@@ -39,6 +46,8 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 	public readonly name = 'flowr-analyzer-environment-context';
 	private readonly builtInEnv:      IEnvironment;
 	private readonly emptyBuiltInEnv: IEnvironment;
+
+	private builtInEnvFingerprint: Fingerprint | undefined;
 
 	constructor(ctx: FlowrAnalyzerContext) {
 		const builtInsConfig = ctx.config.semantics.environment.overwriteBuiltIns;
@@ -64,6 +73,13 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 			current: new Environment(this.builtInEnv),
 			level:   0
 		};
+	}
+
+	public getCleanEnvFingerprint(): Fingerprint {
+		if(!this.builtInEnvFingerprint) {
+			this.builtInEnvFingerprint = envFingerprint(this.getCleanEnv());
+		}
+		return this.builtInEnvFingerprint;
 	}
 
 	public getCleanEnvWithEmptyBuiltIns(): REnvironmentInformation {

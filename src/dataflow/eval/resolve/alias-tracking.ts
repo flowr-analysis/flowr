@@ -19,7 +19,6 @@ import { Bottom, isTop, type Lift, Top, type Value, type ValueSet } from '../val
 import { setFrom } from '../values/sets/set-constants';
 import { resolveNode } from './resolve';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
-import { envFingerprint } from '../../../slicing/static/fingerprint';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -188,6 +187,7 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
  * @param resolve    - Variable resolve mode
  * @param identifier - Identifier to resolve
  * @param use        - Environment to use
+ * @param ctx        - analysis context
  * @param graph      - dataflow graph
  * @param idMap      - id map of Dataflow graph
  * @returns Value of Identifier or Top
@@ -314,7 +314,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 
 	const queue = new VisitingQueue(25);
 	const clean = ctx.env.getCleanEnv();
-	const cleanFingerprint = envFingerprint(clean);
+	const cleanFingerprint = ctx.env.getCleanEnvFingerprint();
 	queue.add(id, clean, cleanFingerprint, false);
 
 	let forceTop = false;

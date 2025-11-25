@@ -20,7 +20,7 @@ export function visitCfgInReverseOrder(
 	visitor: (node: NodeId) => boolean | void
 ): void {
 	const visited = new Set<NodeId>();
-	let queue = [...startNodes];
+	let queue = startNodes.slice();
 	const hasBb = graph.mayHaveBasicBlocks();
 	while(queue.length > 0) {
 		const current = queue.pop() as NodeId;
@@ -38,7 +38,7 @@ export function visitCfgInReverseOrder(
 		}
 		const incoming = graph.outgoingEdges(current);
 		if(incoming) {
-			queue.push(...incoming.keys());
+			queue = queue.concat(incoming.keys().toArray());
 		}
 	}
 }

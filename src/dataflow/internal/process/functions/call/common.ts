@@ -83,13 +83,11 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 	}
 }
 
-
-
 /**
- *
+ * Processes all arguments for a function call, updating the given final graph and environment.
  */
 export function processAllArguments<OtherInfo>(
-	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData = d => d }: ProcessAllArgumentInput<OtherInfo>,
+	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
 	// arg env contains the environments with other args defined
@@ -100,7 +98,7 @@ export function processAllArguments<OtherInfo>(
 	let i = -1;
 	for(const arg of args) {
 		i++;
-		data = patchData(data, i);
+		data = patchData?.(data, i) ?? data;
 		if(arg === EmptyArgument) {
 			callArgs.push(EmptyArgument);
 			processedArguments.push(undefined);
@@ -117,7 +115,7 @@ export function processAllArguments<OtherInfo>(
 		finalGraph.mergeWith(processed.graph);
 
 		// resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies
-		for(const ingoing of [...processed.in, ...processed.unknownReferences]) {
+		for(const ingoing of processed.in.concat(processed.unknownReferences)) {
 			// check if it is called directly
 			const vtx = finalGraph.getVertex(ingoing.nodeId);
 

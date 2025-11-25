@@ -12,7 +12,6 @@ import {
 	identifyLinkToLastCallRelation
 } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { guard, isNotUndefined } from '../../util/assert';
-import { extractCfgQuick } from '../../control-flow/extract-cfg';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
@@ -23,13 +22,14 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer
 import type { DataflowInformation } from '../../dataflow/info';
 import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
 import { CfgKind } from '../../project/cfg-kind';
+import type { FlowrConfigOptions } from '../../config';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
 	/**
 	 * A function that is applied to each element of the search to enrich it with additional data.
 	 */
-	readonly enrichElement?: (element: FlowrSearchElement<ParentInformation>, search: FlowrSearchElements<ParentInformation>, data: {dataflow: DataflowInformation, normalize: NormalizedAst, cfg: ControlFlowInformation}, args: ElementArguments | undefined, previousValue: ElementContent | undefined) => AsyncOrSync<ElementContent>
+	readonly enrichElement?: (element: FlowrSearchElement<ParentInformation>, search: FlowrSearchElements<ParentInformation>, data: {dataflow: DataflowInformation, normalize: NormalizedAst, cfg: ControlFlowInformation, config: FlowrConfigOptions}, args: ElementArguments | undefined, previousValue: ElementContent | undefined) => AsyncOrSync<ElementContent>
 	readonly enrichSearch?:  (search: FlowrSearchElements<ParentInformation>, data: ReadonlyFlowrAnalysisProvider, args: SearchArguments | undefined, previousValue: SearchContent | undefined) => AsyncOrSync<SearchContent>
 	/**
 	 * The mapping function used by the {@link Mapper.Enrichment} mapper.
@@ -159,9 +159,8 @@ export const Enrichments = {
 			const content = prev ?? { linkedIds: [] };
 			const vertex = data.dataflow.graph.get(e.node.info.id);
 			if(vertex !== undefined && vertex[0].tag === VertexType.FunctionCall) {
-				const cfg = extractCfgQuick(data.normalize);
 				for(const arg of args) {
-					const lastCalls = identifyLinkToLastCallRelation(vertex[0].id, cfg.graph, data.dataflow.graph, {
+					const lastCalls = identifyLinkToLastCallRelation(vertex[0].id, data.cfg.graph, data.dataflow.graph, {
 						...arg,
 						callName: promoteCallName(arg.callName),
 						type:     'link-to-last-call',
@@ -231,7 +230,8 @@ export async function enrichElement<Element extends FlowrSearchElement<ParentInf
 	e: Element, s: FlowrSearchElements<ParentInformation>, data: {
 		dataflow:  DataflowInformation,
 		normalize: NormalizedAst,
-		cfg:       ControlFlowInformation
+		cfg:       ControlFlowInformation,
+		config:    FlowrConfigOptions
 	}, enrichment: E, args?: EnrichmentElementArguments<E>): Promise<Element> {
 	const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>>;
 	const prev = e?.enrichments;

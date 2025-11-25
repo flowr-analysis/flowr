@@ -160,10 +160,10 @@ function processNumberBasedAccess<OtherInfo>(
 
 
 /**
- *
+ * Converts symbol arguments to string arguments within the specified range.
  */
 export function symbolArgumentsToStrings<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], firstIndexInclusive = 1, lastIndexInclusive = args.length - 1) {
-	const newArgs = [...args];
+	const newArgs = args.slice();
 	// if the argument is a symbol, we convert it to a string for this perspective
 	for(let i = firstIndexInclusive; i <= lastIndexInclusive; i++) {
 		const arg = newArgs[i];

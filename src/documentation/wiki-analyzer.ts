@@ -122,9 +122,9 @@ When building the ${ctx.link(FlowrAnalyzer)} instance, the builder will take car
 
 The builder provides two methods for building the analyzer:
 
-* ${ctx.link(FlowrAnalyzerBuilder.name + '::' + FlowrAnalyzerBuilder.prototype.build.name)}\\
+* ${ctx.linkM(FlowrAnalyzerBuilder, 'build')}\\
 	for an asynchronous build process that also initializes the engine if needed
-* ${ctx.link(FlowrAnalyzerBuilder.name + '::' + FlowrAnalyzerBuilder.prototype.buildSync.name)}\\
+* ${ctx.linkM(FlowrAnalyzerBuilder, 'buildSync')}\\
 	for a synchronous build process,
 	which requires that the engine (e.g., TreeSitter) has already been initialized before calling this method.
 	Yet, as Engines only have to be initialized once per process, this method is often more convenient to use.
@@ -134,12 +134,12 @@ The builder provides two methods for building the analyzer:
 	${section('Overview of the Analyzer', 3)}
 
 Once you have created an analyzer instance, you can add R files, folders, or even entire projects for analysis using the
-${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.addRequest.name)} method.
+${ctx.linkM(FlowrAnalyzer, 'addRequest')} method.
 All loaded [plugins](#Plugins) will be applied fully automatically during the analysis.
 Please note that adding new files _after_ you already requested analysis results may cause bigger invalidations and cause re-analysis of previously analyzed files.
 With the [files context](#Files_Context), you can also add virtual files to the analysis to consider, or *overwrite* existing files with modified content.
 For this, have a look at the
-${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.addFile.name)} method.
+${ctx.linkM(FlowrAnalyzer, 'addFile')} method.
 
 	${block({
 		type:    'NOTE',
@@ -149,26 +149,26 @@ ${ctx.code(analyzerQuickExample, { dropLinesStart: 1, dropLinesEnd: 2, hideDefin
 `
 	})}
 
-To reset the analysis (e.g., to provide new requests) you can use ${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.reset.name)}.
-If you need to pre-compute analysis results (e.g., to speed up future queries), you can use ${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.runFull.name)}.
+To reset the analysis (e.g., to provide new requests) you can use ${ctx.linkM(FlowrAnalyzer, 'reset')}.
+If you need to pre-compute analysis results (e.g., to speed up future queries), you can use ${ctx.linkM(FlowrAnalyzer, 'runFull')}.
 
 ${section('Conducting Analyses', 3)}
 
 Please make sure to add all of the files, folder, and projects you want to analyze using the
-${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.addRequest.name)} method (or ${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.addFile.name)} for virtual files).
+${ctx.linkM(FlowrAnalyzer, 'addRequest')} method (or ${ctx.linkM(FlowrAnalyzer, 'addFile')} for virtual files).
 Afterwards, you can request different kinds of analysis results, such as:
 
-* ${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.parse.name)} to get the parsed information by the respective [engine](${FlowrWikiBaseRef}/Engines)\\
-You can also use ${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.peekParse.name, { codeFont: true, realNameWrapper: 'i' })} to inspect the parse information if it was already computed (but without triggering a computation).
-With ${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.parserInformation.name, { codeFont: true, realNameWrapper: 'i' })}, you get additional information on the parser used for the analysis.
-* ${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.normalize.name)} to compute the [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)\\
-Likewise, ${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.peekNormalize.name, { codeFont: true, realNameWrapper: 'i' })} returns the normalized AST if it was already computed but without triggering a computation.
-* ${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.dataflow.name)} to compute the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph)\\
-Again, ${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.peekDataflow.name, { codeFont: true, realNameWrapper: 'i' })} allows you to inspect the dataflow graph if it was already computed (but without triggering a computation).
-* ${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.controlflow.name)} to compute the [Control Flow Graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph)\\
-Also, ${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.peekControlflow.name, { codeFont: true, realNameWrapper: 'i' })} returns the control flow graph if it was already computed but without triggering a computation.
-* ${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.query.name)} to run [queries](${FlowrWikiBaseRef}/Query-API) on the analyzed code.
-* ${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.runSearch.name)} to run a search query on the analyzed code using the [search API](${FlowrWikiBaseRef}/Search%20API)
+* ${ctx.linkM(FlowrAnalyzer, 'parse')} to get the parsed information by the respective [engine](${FlowrWikiBaseRef}/Engines)\\
+You can also use ${ctx.linkM(FlowrAnalyzer, 'peekParse', { codeFont: true, realNameWrapper: 'i' })} to inspect the parse information if it was already computed (but without triggering a computation).
+With ${ctx.linkM(FlowrAnalyzer, 'parserInformation', { codeFont: true, realNameWrapper: 'i' })}, you get additional information on the parser used for the analysis.
+* ${ctx.linkM(FlowrAnalyzer, 'normalize')} to compute the [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)\\
+Likewise, ${ctx.linkM(FlowrAnalyzer, 'peekNormalize', { codeFont: true, realNameWrapper: 'i' })} returns the normalized AST if it was already computed but without triggering a computation.
+* ${ctx.linkM(FlowrAnalyzer, 'dataflow')} to compute the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph)\\
+Again, ${ctx.linkM(FlowrAnalyzer, 'peekDataflow', { codeFont: true, realNameWrapper: 'i' })} allows you to inspect the dataflow graph if it was already computed (but without triggering a computation).
+* ${ctx.linkM(FlowrAnalyzer, 'controlflow')} to compute the [Control Flow Graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph)\\
+Also, ${ctx.linkM(FlowrAnalyzer, 'peekControlflow', { codeFont: true, realNameWrapper: 'i' })} returns the control flow graph if it was already computed but without triggering a computation.
+* ${ctx.linkM(FlowrAnalyzer, 'query')} to run [queries](${FlowrWikiBaseRef}/Query-API) on the analyzed code.
+* ${ctx.linkM(FlowrAnalyzer, 'runSearch')} to run a search query on the analyzed code using the [search API](${FlowrWikiBaseRef}/Search%20API)
 
 We work on providing a set of example repositories that demonstrate how to use the analyzer in different scenarios:
 
@@ -190,8 +190,8 @@ You can fundamentally change the behavior of flowR using the [config file](${Flo
 embedded in the interface ${ctx.link('FlowrConfigOptions')}.
 With the builder you can either provide a complete configuration or amend the default configuration using:
 
-* ${ctx.link(FlowrAnalyzerBuilder.name + '::' + FlowrAnalyzerBuilder.prototype.setConfig.name)} to set a complete configuration
-* ${ctx.link(FlowrAnalyzerBuilder.name + '::' + FlowrAnalyzerBuilder.prototype.amendConfig.name)} to amend the default configuration
+* ${ctx.linkM(FlowrAnalyzerBuilder, 'setConfig')} to set a complete configuration
+* ${ctx.linkM(FlowrAnalyzerBuilder, 'amendConfig')} to amend the default configuration
 
 By default, the builder uses flowR's standard configuration obtained with ${ctx.link('defaultConfigOptions')}.
 
@@ -206,19 +206,19 @@ ${section('Configuring the Engine', 3)}
 FlowR supports multiple [engines](${FlowrWikiBaseRef}/Engines) for parsing and analyzing R code.
 With the builder, you can select the engine to use with:
 
-* ${ctx.link(FlowrAnalyzerBuilder.name + '::' + FlowrAnalyzerBuilder.prototype.setEngine.name)} to set the desired engine.
-* ${ctx.link(FlowrAnalyzerBuilder.name + '::' + FlowrAnalyzerBuilder.prototype.setParser.name)} to set a specific parser implementation.
+* ${ctx.linkM(FlowrAnalyzerBuilder, 'setEngine')} to set the desired engine.
+* ${ctx.linkM(FlowrAnalyzerBuilder, 'setParser')} to set a specific parser implementation.
 
 By default, the builder uses the TreeSitter engine with the TreeSitter parser.
 The builder also takes care to initialize the engine if needed during the asynchronous build process
-with ${ctx.link(FlowrAnalyzerBuilder.name + '::' + FlowrAnalyzerBuilder.prototype.build.name)}.
-If you want to use the synchronous build process with ${ctx.link(FlowrAnalyzerBuilder.name + '::' + FlowrAnalyzerBuilder.prototype.buildSync.name)},
+with ${ctx.linkM(FlowrAnalyzerBuilder, 'build')}.
+If you want to use the synchronous build process with ${ctx.linkM(FlowrAnalyzerBuilder, 'buildSync')},
 please ensure that the engine has already been initialized before calling this method.
 
 ${section('Configuring Plugins', 3)}
 
 There are various ways for you to register plugins with the builder, exemplified by the following snippet
-relying on the ${ctx.link(FlowrAnalyzerBuilder.name + '::' + FlowrAnalyzerBuilder.prototype.registerPlugins.name)} method:
+relying on the ${ctx.linkM(FlowrAnalyzerBuilder, 'registerPlugins')} method:
 
 ${ctx.code(analyzerQuickExampleToRegisterPlugins, { dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true })}
 
@@ -233,7 +233,7 @@ This indicates three ways to add a new plugin:
    This will also use the ${ctx.link(makePlugin)} function under the hood to create the plugin instance.
 
 Please note, that by passing \`false\` to the builder constructor, no default plugins (see ${ctx.link(FlowrAnalyzerPluginDefaults)}) are registered (otherwise, all of the plugins in the example above would be registered by default).
-If you want to unregister specific plugins, you can use the ${ctx.link(FlowrAnalyzerBuilder.name + '::' + FlowrAnalyzerBuilder.prototype.unregisterPlugins.name)} method.
+If you want to unregister specific plugins, you can use the ${ctx.linkM(FlowrAnalyzerBuilder, 'unregisterPlugins')} method.
 
 ${
 	block({
@@ -356,15 +356,15 @@ In general, most plugins operate on the [context information](#Context_Informati
 Usually it is a good idea to have a look at the existing plugins of the same type to get an idea of how to implement your own plugin.
 
 Once you have your plugin you should register it with a sensible name using the ${ctx.link(registerPluginMaker)} function.
-This will allow users to register your plugin easily by name using the builder's ${ctx.link(FlowrAnalyzerBuilder.name + '::' + FlowrAnalyzerBuilder.prototype.registerPlugins.name)} method.
+This will allow users to register your plugin easily by name using the builder's ${ctx.linkM(FlowrAnalyzerBuilder, 'registerPlugins')} method.
 Otherwise, users will have to provide an instance of your plugin class directly.
 
 ${section('Context Information', 2)}
 
-The ${ctx.link(FlowrAnalyzer.name)} provides various context information during the analysis.
-You can access the context with ${ctx.link(FlowrAnalyzer.name + '::' + FlowrAnalyzer.prototype.inspectContext.name)}
+The ${ctx.link(FlowrAnalyzer)} provides various context information during the analysis.
+You can access the context with ${ctx.linkM(FlowrAnalyzer, 'inspectContext')}
 to receive a read-only view of the current analysis context.
-Likewise, you can use ${ctx.link(FlowrAnalyzerContext.name + '::' + FlowrAnalyzerContext.prototype.inspect.name)} to get a read-only view of a given context.
+Likewise, you can use ${ctx.linkM(FlowrAnalyzerContext, 'inspect')} to get a read-only view of a given context.
 These read-only views prevent you from accidentally modifying the context during the analysis which may cause inconsistencies (this should be done either by
 wrapping methods or by [plugins](#Plugins)).
 The context is divided into multiple sub-contexts, each responsible for a specific aspect of the analysis.
@@ -383,9 +383,9 @@ ${ctx.link(contextFromSources)} to create a context from source files (e.g., if 
 }
 
 If for whatever reason you need to reset the context during an analysis, you can use
-${ctx.link(FlowrAnalyzerContext.name + '::' + FlowrAnalyzerContext.prototype.reset.name)}.
+${ctx.linkM(FlowrAnalyzerContext, 'reset')}.
 To pre-compute all possible information in the context before starting the main analysis, you can use
-${ctx.link(FlowrAnalyzerContext.name + '::' + FlowrAnalyzerContext.prototype.resolvePreAnalysis.name)}.
+${ctx.linkM(FlowrAnalyzerContext, 'resolvePreAnalysis')}.
 
 ${section('Files Context', 3)}
 
@@ -395,13 +395,13 @@ ${ctx.hierarchy(FlowrAnalyzerFilesContext, { showImplSnippet: false })}
 
 Using the available [plugins](#Plugins),
 the files context categorizes files by their ${ctx.link('FileRole')} (e.g., source files or DESCRIPTION files)
-and makes them accessible by these roles (e.g., via ${ctx.link(FlowrAnalyzerFilesContext.name + '::' + FlowrAnalyzerFilesContext.prototype.getFilesByRole.name, { codeFont: true, realNameWrapper: 'i' })}).
-It also provides methods to check for whether a file exists (e.g., ${ctx.link(FlowrAnalyzerFilesContext.name + '::' + FlowrAnalyzerFilesContext.prototype.hasFile.name, { codeFont: true, realNameWrapper: 'i' })},
-${ctx.link(FlowrAnalyzerFilesContext.name + '::' + FlowrAnalyzerFilesContext.prototype.exists.name, { codeFont: true, realNameWrapper: 'i' })})
-and to translate requests so they respect the context (e.g., ${ctx.link(FlowrAnalyzerFilesContext.name + '::' + FlowrAnalyzerFilesContext.prototype.resolveRequest.name, { codeFont: true, realNameWrapper: 'i' })}).
+and makes them accessible by these roles (e.g., via ${ctx.linkM(FlowrAnalyzerFilesContext, 'getFilesByRole', { codeFont: true, realNameWrapper: 'i' })}).
+It also provides methods to check for whether a file exists (e.g., ${ctx.linkM(FlowrAnalyzerFilesContext, 'hasFile', { codeFont: true, realNameWrapper: 'i' })},
+${ctx.linkM(FlowrAnalyzerFilesContext, 'exists', { codeFont: true, realNameWrapper: 'i' })})
+and to translate requests so they respect the context (e.g., ${ctx.linkM(FlowrAnalyzerFilesContext, 'resolveRequest', { codeFont: true, realNameWrapper: 'i' })}).
 
 For legacy reasons it also provides the list of files considered by the dataflow analysis via
-${ctx.link(FlowrAnalyzerFilesContext.name + '::' + FlowrAnalyzerFilesContext.prototype.consideredFilesList.name, { codeFont: true, realNameWrapper: 'i' })}.
+${ctx.linkM(FlowrAnalyzerFilesContext, 'consideredFilesList', { codeFont: true, realNameWrapper: 'i' })}.
 
 ${section('Loading Order Context', 3)}
 
@@ -421,9 +421,9 @@ ${ctx.hierarchy(FlowrAnalyzerLoadingOrderContext, { showImplSnippet: false })}
 
 Using the available [plugins](#Plugins), the loading order context determines the order in which files are loaded and analyzed by flowR's analyzer.
 You can inspect the identified loading order using
-${ctx.link(FlowrAnalyzerLoadingOrderContext.name + '::' + FlowrAnalyzerLoadingOrderContext.prototype.getLoadingOrder.name, { codeFont: true, realNameWrapper: 'i' })}.
+${ctx.linkM(FlowrAnalyzerLoadingOrderContext, 'getLoadingOrder', { codeFont: true, realNameWrapper: 'i' })}.
 If there are multiple possible loading orders (e.g., due to circular dependencies),
-you can use ${ctx.link(FlowrAnalyzerLoadingOrderContext.name + '::' + FlowrAnalyzerLoadingOrderContext.prototype.currentGuesses.name, { codeFont: true, realNameWrapper: 'i' })}.
+you can use ${ctx.linkM(FlowrAnalyzerLoadingOrderContext, 'currentGuesses', { codeFont: true, realNameWrapper: 'i' })}.
 
 ${section('Dependencies Context', 3)}
 
@@ -433,7 +433,7 @@ including the version of R:
 ${ctx.hierarchy(FlowrAnalyzerDependenciesContext, { showImplSnippet: false })}
 
 Probably the most important method is
-${ctx.link(FlowrAnalyzerDependenciesContext.name + '::' + FlowrAnalyzerDependenciesContext.prototype.getDependency.name, { codeFont: true, realNameWrapper: 'i' })}
+${ctx.linkM(FlowrAnalyzerDependenciesContext, 'getDependency', { codeFont: true, realNameWrapper: 'i' })}
 that allows you to query for a specific dependency by name.
 
 ${section('Environment Context', 3)}

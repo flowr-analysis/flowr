@@ -33,7 +33,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 			if(parameter.defaultValue?.type === RType.FunctionDefinition) {
 				graph.addEdge(writtenNode, parameter.defaultValue.info.id, EdgeType.DefinedBy);
 			} else {
-				const definedBy = [...defaultValue.in, ...defaultValue.unknownReferences];
+				const definedBy = defaultValue.in.concat(defaultValue.unknownReferences);
 				for(const node of definedBy) {
 					graph.addEdge(writtenNode, node, EdgeType.DefinedBy);
 				}
@@ -43,8 +43,8 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 
 	return {
 		unknownReferences: [],
-		in:                defaultValue === undefined ? [] : [...defaultValue.in, ...defaultValue.unknownReferences, ...name.in],
-		out:               [...(defaultValue?.out ?? []), ...name.out, ...name.unknownReferences],
+		in:                defaultValue === undefined ? [] : defaultValue.in.concat(defaultValue.unknownReferences, name.in),
+		out:               (defaultValue?.out ?? []).concat(name.out, name.unknownReferences),
 		graph:             graph,
 		environment:       environment,
 		entryPoint:        parameter.info.id,

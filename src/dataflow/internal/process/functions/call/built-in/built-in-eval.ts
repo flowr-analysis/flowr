@@ -94,10 +94,10 @@ export function processEvalCall<OtherInfo>(
 			graph:             result.reduce((acc, r) => acc.mergeWith(r.graph), information.graph),
 			environment:       result.reduce((acc, r) => appendEnvironment(acc, r.environment), information.environment),
 			entryPoint:        rootId,
-			out:               [...information.out, ...result.flatMap(r => r.out)],
-			in:                [...information.in, ...result.flatMap(r => r.in)],
-			unknownReferences: [...information.unknownReferences, ...result.flatMap(r => r.unknownReferences)],
-			exitPoints:        [...information.exitPoints, ...result.flatMap(r => r.exitPoints)],
+			out:               information.out.concat(result.flatMap(r => r.out)),
+			in:                information.in.concat(result.flatMap(r => r.in)),
+			unknownReferences: information.unknownReferences.concat(result.flatMap(r => r.unknownReferences)),
+			exitPoints:        information.exitPoints.concat(result.flatMap(r => r.exitPoints)),
 		};
 	}
 

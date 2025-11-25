@@ -18,7 +18,12 @@ import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
-import { isFunctionDefinitionVertex } from '../dataflow/graph/vertex';
+import type {
+	DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
+import {
+	isFunctionCallVertex,
+	isFunctionDefinitionVertex
+} from '../dataflow/graph/vertex';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import {
 	type ControlFlowInformation,
@@ -97,6 +102,20 @@ export function extractCfg<Info = ParentInformation>(
  */
 export function extractCfgQuick<Info = ParentInformation>(ast: NormalizedAst<Info>) {
 	return cfgFoldProject(ast.ast, cfgFolds);
+}
+
+/**
+ * Extracts all function call vertices from the given control flow information and dataflow graph.
+ */
+export function getCallsInCfg(cfg: ControlFlowInformation, graph: DataflowGraph): Map<NodeId, Required<DataflowGraphVertexFunctionCall>> {
+	const calls = new Map<NodeId, Required<DataflowGraphVertexFunctionCall>>();
+	for(const vertexId of cfg.graph.vertices().keys()) {
+		const vertex = graph.getVertex(vertexId, true);
+		if(isFunctionCallVertex(vertex)) {
+			calls.set(vertexId, vertex);
+		}
+	}
+	return calls;
 }
 
 function cfgFoldProject(proj: RProject<ParentInformation>, folds: FoldFunctions<ParentInformation, ControlFlowInformation>): ControlFlowInformation {

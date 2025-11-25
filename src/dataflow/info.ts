@@ -128,6 +128,7 @@ export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: 
 /**
  * Checks whether the given control dependencies are exhaustive (i.e. if for every control dependency on a boolean,
  * the list contains a dependency on the `true` and on the `false` case).
+ * @see {@link happensInEveryBranchSet} - for the set-based version
  */
 export function happensInEveryBranch(controlDependencies: readonly ControlDependency[] | undefined): boolean {
 	if(controlDependencies === undefined) {
@@ -138,6 +139,10 @@ export function happensInEveryBranch(controlDependencies: readonly ControlDepend
 		return false;
 	}
 
+	return coversSet(controlDependencies);
+}
+
+function coversSet(controlDependencies: ReadonlySet<ControlDependency> | readonly ControlDependency[]) {
 	const trues = [];
 	const falseSet = new Set();
 
@@ -150,6 +155,23 @@ export function happensInEveryBranch(controlDependencies: readonly ControlDepend
 	}
 
 	return trues.every(id => falseSet.has(id));
+}
+
+/**
+ * Checks whether the given control dependencies are exhaustive (i.e. if for every control dependency on a boolean,
+ * the list contains a dependency on the `true` and on the `false` case).
+ * @see {@link happensInEveryBranch} - for the array-based version
+ */
+export function happensInEveryBranchSet(controlDependencies: ReadonlySet<ControlDependency> | undefined): boolean {
+	if(controlDependencies === undefined) {
+		/* the cds are unconstrained */
+		return true;
+	} else if(controlDependencies.size === 0) {
+		/* this happens only when we have no idea and require more analysis */
+		return false;
+	}
+
+	return coversSet(controlDependencies);
 }
 
 /**

@@ -32,8 +32,8 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 		}
 
 		// we sort both value arrays by their id so that we have no problems with differently ordered arrays (which have no impact)
-		const sorted = [...value].sort((a, b) => String(a.nodeId).localeCompare(String(b.nodeId)));
-		const sorted2 = [...value2].sort((a, b) => String(a.nodeId).localeCompare(String(b.nodeId)));
+		const sorted = value.slice().sort((a, b) => String(a.nodeId).localeCompare(String(b.nodeId)));
+		const sorted2 = value2.slice().sort((a, b) => String(a.nodeId).localeCompare(String(b.nodeId)));
 
 		for(let i = 0; i < value.length; ++i) {
 			const aVal = sorted[i];

@@ -207,7 +207,7 @@ export function processExpressionList<OtherInfo>(
 		});
 	}
 
-	const ingoing = [...remainingRead.values()].flat();
+	const ingoing = remainingRead.values().toArray().flat();
 
 	const rootNode = data.completeAst.idMap.get(rootId);
 	const withGroup = rootNode?.grouping;

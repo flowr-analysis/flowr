@@ -70,7 +70,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	const functionCallName = name.content;
 	expensiveTrace(dataflowLogger, () => `Processing known function call ${functionCallName} with ${args.length} arguments`);
 
-	const processArgs = reverseOrder ? [...args].reverse() : args;
+	const processArgs = reverseOrder ? args.toReversed() : args;
 
 	const {
 		finalEnv,
@@ -90,7 +90,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		/* will be overwritten accordingly */
 		onlyBuiltin:       false,
 		cds:               data.controlDependencies,
-		args:              reverseOrder ? [...callArgs].reverse() : callArgs,
+		args:              reverseOrder ? callArgs.reverse() : callArgs,
 		indicesCollection: indicesCollection,
 		origin:            origin === 'default' ? ['function'] : [origin]
 	}, data.ctx.env.getCleanEnv());
@@ -114,7 +114,7 @@ export function processKnownFunctionCall<OtherInfo>(
 			entryPoint:        rootId,
 			exitPoints:        [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
 		},
-		processedArguments: reverseOrder ? [...processedArguments].reverse() : processedArguments,
+		processedArguments: reverseOrder ? processedArguments.reverse() : processedArguments,
 		fnRef
 	};
 }

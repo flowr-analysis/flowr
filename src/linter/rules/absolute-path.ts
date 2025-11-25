@@ -98,7 +98,7 @@ const PathFunctions: Record<string, PathFunction> = {
 			df, vtx, undefined, 'fsep', true, ctx
 		);
 		// in the future we can access `.Platform$file.sep` here
-		const sepValues: string[] = new Array(...fsep?.values()?.flatMap(s => [...s].filter(isNotUndefined)) ?? [path.sep]);
+		const sepValues: string[] = fsep?.values()?.flatMap(s => s.values().filter(isNotUndefined)).toArray() ?? [path.sep];
 		if(sepValues.some(s => s === Unknown || isUndefined(s))) {
 			// if we have no fsep, we cannot construct a path
 			return undefined;

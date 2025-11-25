@@ -21,7 +21,6 @@ export function toUnnamedArgument<OtherInfo>(
 	const arg: RUnnamedArgument<OtherInfo & ParentInformation> = {
 		type:     RType.Argument,
 		lexeme:   node.lexeme ?? '',
-		// is this correct?
 		location: node.location ?? voidRange,
 		info:     {
 			...node.info,
@@ -36,7 +35,7 @@ export function toUnnamedArgument<OtherInfo>(
 
 
 /**
- *
+ * Wraps the given nodes as unnamed arguments where necessary.
  */
 export function wrapArgumentsUnnamed<OtherInfo>(
 	nodes: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[],

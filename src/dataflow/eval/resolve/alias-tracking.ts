@@ -94,61 +94,6 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 }
 
 /**
- * Please use {@link resolveIdToValue}
- *
- * Uses the aliases that were tracked in the environments (by the
- * {@link getAliases} function) to resolve a node to a value.
- * @param resolve    - Variable resolve mode
- * @param identifier - Identifier to resolve
- * @param use        - Environment to use
- * @param graph      - dataflow graph
- * @param idMap      - id map of Dataflow graph
- * @returns Value of Identifier or Top
- */
-export function trackAliasInEnvironments(resolve: VariableResolve, identifier: Identifier | undefined, use: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext, graph?: DataflowGraph, idMap?: AstIdMap): ResolveResult {
-	if(identifier === undefined) {
-		return Top;
-	}
-
-	const defs = resolveByName(identifier, use);
-	if(defs === undefined) {
-		return Top;
-	}
-
-	const values: Set<Value> = new Set<Value>();
-	for(const def of defs) {
-		if(def.type === ReferenceType.BuiltInConstant) {
-			values.add(valueFromTsValue(def.value));
-		} else if(def.type === ReferenceType.BuiltInFunction) {
-			// Tracked in #1207
-		} else if(def.value !== undefined) {
-			/* if there is at least one location for which we have no idea, we have to give up for now! */
-			if(def.value.length === 0) {
-				return Top;
-			}
-
-			for(const alias of def.value) {
-				const definitionOfAlias = idMap?.get(alias);
-				if(definitionOfAlias !== undefined) {
-					const value = resolveNode(resolve, definitionOfAlias, ctx, use, graph, idMap);
-					if(isTop(value)) {
-						return Top;
-					}
-
-					values.add(value);
-				}
-			}
-		}
-	}
-
-	if(values.size == 0) {
-		return Top;
-	}
-
-	return setFrom(...values);
-}
-
-/**
  * Gets the definitions / aliases of a node
  *
  * This function is called by the built-in-assignment processor so that we can
@@ -233,6 +178,61 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 		default:
 			return Top;
 	}
+}
+
+/**
+ * Please use {@link resolveIdToValue}
+ *
+ * Uses the aliases that were tracked in the environments (by the
+ * {@link getAliases} function) to resolve a node to a value.
+ * @param resolve    - Variable resolve mode
+ * @param identifier - Identifier to resolve
+ * @param use        - Environment to use
+ * @param graph      - dataflow graph
+ * @param idMap      - id map of Dataflow graph
+ * @returns Value of Identifier or Top
+ */
+export function trackAliasInEnvironments(resolve: VariableResolve, identifier: Identifier | undefined, use: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext, graph?: DataflowGraph, idMap?: AstIdMap): ResolveResult {
+	if(identifier === undefined) {
+		return Top;
+	}
+
+	const defs = resolveByName(identifier, use);
+	if(defs === undefined) {
+		return Top;
+	}
+
+	const values: Set<Value> = new Set<Value>();
+	for(const def of defs) {
+		if(def.type === ReferenceType.BuiltInConstant) {
+			values.add(valueFromTsValue(def.value));
+		} else if(def.type === ReferenceType.BuiltInFunction) {
+			// Tracked in #1207
+		} else if(def.value !== undefined) {
+			/* if there is at least one location for which we have no idea, we have to give up for now! */
+			if(def.value.length === 0) {
+				return Top;
+			}
+
+			for(const alias of def.value) {
+				const definitionOfAlias = idMap?.get(alias);
+				if(definitionOfAlias !== undefined) {
+					const value = resolveNode(resolve, definitionOfAlias, ctx, use, graph, idMap);
+					if(isTop(value)) {
+						return Top;
+					}
+
+					values.add(value);
+				}
+			}
+		}
+	}
+
+	if(values.size == 0) {
+		return Top;
+	}
+
+	return setFrom(...values);
 }
 
 

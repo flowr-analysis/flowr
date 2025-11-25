@@ -187,7 +187,7 @@ Let's suppose we are interested only in the \`sum\` which is printed in line 11.
 To get a slice for this, you can use the following command:
 
 ${await documentReplSession(treeSitter, [{
-	command:     ':slicer test/testfiles/example.R --criterion "11@sum"',
+	command:     ':query @static-slice (11@sum) file://test/testfiles/example.R',
 	description: ''
 }])}
    

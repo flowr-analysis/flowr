@@ -1,4 +1,4 @@
-import { makeContextForTypes } from '../documentation/wiki-mk/doc-context';
+import { makeDocContextForTypes } from '../documentation/wiki-mk/doc-context';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { DocMakerArgs, DocMakerLike, DocMakerOutputArgs } from '../documentation/wiki-mk/doc-maker';
@@ -68,7 +68,7 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 	await TreeSitterExecutor.initTreeSitter();
 	const treeSitter = new TreeSitterExecutor();
 	console.log('  * Tree-sitter parser initialized');
-	const ctx = makeContextForTypes(shell);
+	const ctx = makeDocContextForTypes(shell);
 	console.log('  * Wiki context prepared');
 	if(force) {
 		console.log(ansiFormatter.format('Forcing wiki regeneration (existing files will be overwritten)', { style: FontStyles.Bold, color: Colors.Yellow, effect: ColorEffect.Foreground }));

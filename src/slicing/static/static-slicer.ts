@@ -47,7 +47,7 @@ export function staticSlice(
 	let { graph } = info;
 
 	if(direction === SliceDirection.Forward){
-		graph = invertDfg(graph);
+		graph = invertDfg(graph, ctx.env.getCleanEnv());
 	}
 
 	const queue = new VisitingQueue(threshold, cache);

@@ -1,12 +1,17 @@
-import { type DataflowInformation , happensInEveryBranch } from '../../../../info';
-import { type DataflowProcessorInformation , processDataflowFor } from '../../../../processor';
+import { type DataflowInformation, happensInEveryBranch } from '../../../../info';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type RFunctionArgument , EmptyArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
-import { type IdentifierReference, type InGraphIdentifierDefinition , isReferenceType, ReferenceType } from '../../../../environments/identifier';
+import {
+	type IdentifierReference,
+	type InGraphIdentifierDefinition,
+	isReferenceType,
+	ReferenceType
+} from '../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -14,8 +19,10 @@ import {
 	type ContainerIndicesCollection,
 	type DataflowGraphVertexAstLink,
 	type DataflowGraphVertexFunctionDefinition,
-	type FunctionOriginInformation
-	, isFunctionDefinitionVertex, VertexType } from '../../../../graph/vertex';
+	type FunctionOriginInformation,
+	isFunctionDefinitionVertex,
+	VertexType
+} from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
 
@@ -178,7 +185,7 @@ export function patchFunctionCall<OtherInfo>(
 		args:        argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined, type: ReferenceType.Argument }),
 		origin:      [origin],
 		link
-	}, !nextGraph.hasVertex(rootId) || nextGraph.isRoot(rootId), true);
+	}, data.ctx.env.getCleanEnv(), !nextGraph.hasVertex(rootId) || nextGraph.isRoot(rootId), true);
 	for(const arg of argumentProcessResult) {
 		if(arg) {
 			nextGraph.addEdge(rootId, arg.entryPoint, EdgeType.Argument);

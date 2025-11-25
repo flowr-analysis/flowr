@@ -102,7 +102,7 @@ export function processFunctionDefinition<OtherInfo>(
 				id:          read.nodeId,
 				environment: undefined,
 				cds:         undefined
-			});
+			}, data.ctx.env.getCleanEnv());
 		}
 	}
 
@@ -126,7 +126,7 @@ export function processFunctionDefinition<OtherInfo>(
 		cds:         data.controlDependencies,
 		subflow:     flow,
 		exitPoints:  exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default).map(e => e.nodeId) ?? []
-	});
+	}, data.ctx.env.getCleanEnv());
 	return {
 		/* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */
 		unknownReferences: [],

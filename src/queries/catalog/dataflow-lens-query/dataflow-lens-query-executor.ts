@@ -21,7 +21,7 @@ export async function executeDataflowLensQuery({ analyzer }: BasicQueryData, que
 			nameRegex:         '<-|<<-|->|->>|=|+|-|*|/|\\|>|function|repeat|if|next|break',
 			blacklistWithName: true
 		}
-	});
+	}, analyzer.inspectContext().env.getCleanEnv());
 
 	const timing = Date.now() - now;
 	return {

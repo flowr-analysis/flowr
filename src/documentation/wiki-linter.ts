@@ -236,7 +236,7 @@ function getAllLintingRulesWitCertainty(certainty: LintingRuleCertainty): Lintin
 }
 
 function linkToRule(name: LintingRuleNames): string {
-	return `[${name}](${FlowrWikiBaseRef}/${getPageNameForLintingRule(name).replaceAll(' ', '-')})`;
+	return `[${name}](${FlowrWikiBaseRef}/${encodeURIComponent(getPageNameForLintingRule(name).replaceAll(' ', '-'))})`;
 }
 
 async function getTextMainPage(knownParser: KnownParser, tagTypes: TypeReport): Promise<string> {

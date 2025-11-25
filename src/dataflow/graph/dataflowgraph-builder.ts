@@ -30,9 +30,9 @@ import type { FlowrAnalyzerContext } from '../../project/context/flowr-analyzer-
 
 /**
  * Creates an empty dataflow graph.
+ * Should only be used in tests and documentation.
  */
 export function emptyGraph(idMap?: AstIdMap) {
-	// TODO Fix this
 	const ctx = new FlowrAnalyzerEnvironmentContext({ config: defaultConfigOptions } as FlowrAnalyzerContext);
 	return new DataflowGraphBuilder(ctx.getCleanEnv(), idMap);
 }

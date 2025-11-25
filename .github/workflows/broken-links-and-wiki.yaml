@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: "🛒 Checkout Repository (Release Perm. with lfs)"
         if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
             submodules: true
             lfs:        true
@@ -32,7 +32,7 @@ jobs:
 
       - name: "🛒 Checkout Repository (Read Perm.)"
         if: ${{ !((github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))) || failure() }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
             submodules: true
             lfs:        false
@@ -45,7 +45,7 @@ jobs:
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"

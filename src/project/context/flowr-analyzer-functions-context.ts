@@ -28,7 +28,7 @@ export interface ReadOnlyFlowrAnalyzerFunctionsContext {
 export class FlowrAnalyzerFunctionsContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerFunctionsContext {
 	public readonly name = 'flowr-analyzer-functions-context';
 
-	private readonly functionInfo: Map<string, FunctionInfo> = new Map();
+	private functionInfo: Map<string, FunctionInfo> = new Map<string, FunctionInfo>();
 
 	public constructor(ctx: FlowrAnalyzerContext, plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]) {
 		super(ctx, FlowrAnalyzerPackageVersionsPlugin.defaultPlugin(), plugins);
@@ -56,5 +56,9 @@ export class FlowrAnalyzerFunctionsContext extends AbstractFlowrAnalyzerContext<
 			}
 		}
 		return this.functionInfo.get(name);
+	}
+
+	public reset(): void {
+		this.functionInfo = new Map<string, FunctionInfo>();
 	}
 }

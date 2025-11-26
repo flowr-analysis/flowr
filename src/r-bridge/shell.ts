@@ -11,21 +11,20 @@ import type { AsyncOrSync, DeepReadonly } from 'ts-essentials';
 import { initCommand } from './init';
 import type { RShellEngineConfig } from '../config';
 import { ts2r } from './lang-4.x/convert-values';
-import type { AsyncParser } from './parser';
-import type { RParseRequest } from './retriever';
-import { retrieveParseDataFromRCode } from './retriever';
+import type { AsyncParser, RShellInformation } from './parser';
+import { type RParseRequest , retrieveParseDataFromRCode } from './retriever';
 
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
 export interface CollectorTimeout extends MergeableRecord {
 	/**
-   * number of milliseconds to wait for the collection to finish
-   */
+	 * number of milliseconds to wait for the collection to finish
+	 */
 	ms:             number
 	/*
-   * if true, the timeout will reset whenever we receive new data
-   */
+	 * if true, the timeout will reset whenever we receive new data
+	 */
 	resetOnNewData: boolean
 	/**
 	 * invoked when the timeout is reached. If not set, the promise will be rejected with an error.
@@ -46,9 +45,9 @@ export interface OutputCollectorConfiguration extends MergeableRecord {
 	/** the streams to use to collect the output from */
 	from:                    OutputStreamSelector
 	/**
-   * a string marker to signal that the command was executed successfully.
-   * must not appear as a standalone line in the output. this is our hacky way of ensuring that we are done.
-   */
+	 * a string marker to signal that the command was executed successfully.
+	 * must not appear as a standalone line in the output. this is our hacky way of ensuring that we are done.
+	 */
 	postamble:               string
 	/** internal timeout configuration to use (see {@link CollectorTimeout}) */
 	timeout:                 CollectorTimeout
@@ -110,6 +109,10 @@ export const DEFAULT_R_PATH = getPlatform() === 'windows' ? 'R.exe' : 'R';
 
 let DEFAULT_R_SHELL_OPTIONS: RShellOptions | undefined = undefined;
 
+
+/**
+ * Get the default RShell options, possibly using the given config to override some values
+ */
 export function getDefaultRShellOptions(config?: RShellEngineConfig): RShellOptions {
 	if(!DEFAULT_R_SHELL_OPTIONS) {
 		DEFAULT_R_SHELL_OPTIONS = {
@@ -158,6 +161,16 @@ export class RShell implements AsyncParser<string> {
 
 	public parse(request: RParseRequest): Promise<string> {
 		return retrieveParseDataFromRCode(request, this);
+	}
+
+	public information(): RShellInformation {
+		return {
+			name:                  'r-shell',
+			rVersion:              async() => await this.rVersion(),
+			sendCommandWithOutput: (command: string, addonConfig?: Partial<OutputCollectorConfiguration>) => {
+				return this.sendCommandWithOutput(command, addonConfig);
+			}
+		};
 	}
 
 	private revive() {
@@ -240,12 +253,11 @@ export class RShell implements AsyncParser<string> {
 
 
 	/**
-   * Send a command and collect the output
-   *
-   * @param command     - The R command to execute (similar to {@link sendCommand})
-   * @param addonConfig - Further configuration on how and what to collect: see {@link OutputCollectorConfiguration},
-   *                      defaults are set in {@link DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION}
-   */
+	 * Send a command and collect the output
+	 * @param command     - The R command to execute (similar to {@link sendCommand})
+	 * @param addonConfig - Further configuration on how and what to collect: see {@link OutputCollectorConfiguration},
+	 *                      defaults are set in {@link DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION}
+	 */
 	public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
 		const config = deepMergeObject(DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION, addonConfig);
 		expensiveTrace(this.log, () => `> ${JSON.stringify(command)}`);
@@ -269,10 +281,9 @@ export class RShell implements AsyncParser<string> {
 	}
 
 	/**
-   * execute multiple commands in order
-   *
-   * @see sendCommand
-   */
+	 * execute multiple commands in order
+	 * @see sendCommand
+	 */
 	public sendCommands(...commands: readonly string[]): void {
 		for(const element of commands) {
 			this.sendCommand(element);
@@ -280,8 +291,8 @@ export class RShell implements AsyncParser<string> {
 	}
 
 	/**
-   * clears the R environment using the `rm` command.
-   */
+	 * clears the R environment using the `rm` command.
+	 */
 	public clearEnvironment(): void {
 		this.log.debug('clearing environment');
 		// run rm(list=ls()) but ignore 'flowr_get_ast', which is the compile command installed
@@ -300,10 +311,9 @@ export class RShell implements AsyncParser<string> {
 	}
 
 	/**
-   * Close the current R session, makes the object effectively invalid (can no longer be reopened etc.)
-   *
-   * @returns true if the operation succeeds, false otherwise
-   */
+	 * Close the current R session, makes the object effectively invalid (can no longer be reopened etc.)
+	 * @returns true if the operation succeeds, false otherwise
+	 */
 	public close(): boolean {
 		return this.session.end([...this.tempDirs]);
 	}
@@ -367,15 +377,14 @@ class RShellSession {
 	}
 
 	/**
-   * Collect lines from the selected streams until the given condition is met or the timeout is reached
-   *
-   * This method does allow other listeners to consume the same input
-   *
-   * @param from        - The stream(s) to collect the information from
-   * @param until       - If the predicate returns true, this will stop the collection and resolve the promise
-   * @param timeout     - Configuration for how and when to timeout
-   * @param action      - Event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
-   */
+	 * Collect lines from the selected streams until the given condition is met or the timeout is reached
+	 *
+	 * This method does allow other listeners to consume the same input
+	 * @param from        - The stream(s) to collect the information from
+	 * @param until       - If the predicate returns true, this will stop the collection and resolve the promise
+	 * @param timeout     - Configuration for how and when to timeout
+	 * @param action      - Event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
+	 */
 	public async collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
 		const result: string[] = [];
 		let handler: (data: string) => void;
@@ -419,13 +428,11 @@ class RShellSession {
 	}
 
 	/**
-   * close the current R session, makes the object effectively invalid (can no longer be reopened etc.)
-   *
+	 * close the current R session, makes the object effectively invalid (can no longer be reopened etc.)
 	 * @param filesToUnlink - If set, these files will be unlinked before closing the session (e.g., to clean up tempfiles)
-	 *
-   * @returns true if the kill succeeds, false otherwise
-   * @see RShell#close
-   */
+	 * @returns true if the kill succeeds, false otherwise
+	 * @see RShell#close
+	 */
 	end(filesToUnlink?: readonly string[]): boolean {
 		if(filesToUnlink !== undefined) {
 			log.info(`unlinking ${filesToUnlink.length} files (${JSON.stringify(filesToUnlink)})`);

@@ -1,41 +1,42 @@
 import { describe } from 'vitest';
-import type { AbstractDataFrameShape } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
-import { DataFrameDomain, DateFrameStateDomain } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
+import { type AbstractDataFrameShape , DataFrameDomain, DataFrameStateDomain } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
+import { DEFAULT_INFERENCE_LIMIT } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
-import { PosIntervalDomain } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
+import { PosIntervalDomain, PosIntervalTop } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
 import type { ConcreteProduct } from '../../../../src/abstract-interpretation/domains/product-domain';
+import { SetUpperBoundDomain } from '../../../../src/abstract-interpretation/domains/set-upper-bound-domain';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assertAbstractDomain } from '../domains/domain';
-import { SetBoundedSetDomain } from '../../../../src/abstract-interpretation/domains/set-bounded-set-domain';
+import type { ExpectedDataFrameShape } from './data-frame';
 
 describe('Data Frame Domains', () => {
-	type DataFrameValue = { colnames: string[] | typeof Bottom | typeof Top, cols: [number, number] | typeof Bottom, rows: [number, number] | typeof Bottom }
-	type DataFrameState = [NodeId, DataFrameValue][];
-
-	const createValue = ({ colnames, cols, rows }: DataFrameValue) => new DataFrameDomain({
-		colnames: new SetBoundedSetDomain(colnames === Top || colnames === Bottom ? colnames : new Set(colnames)),
+	const createDomain = ({ colnames, cols, rows }: ExpectedDataFrameShape) => new DataFrameDomain({
+		colnames: new SetUpperBoundDomain(colnames),
 		cols:     new PosIntervalDomain(cols),
 		rows:     new PosIntervalDomain(rows)
 	});
 
-	const DataFrameBottom = { colnames: Bottom, cols: Bottom, rows: Bottom } satisfies DataFrameValue;
-	const DataFrameTop = { colnames: Top, cols: [0, +Infinity], rows: [0, +Infinity] } satisfies DataFrameValue;
-	const DataFrameEmpty = { colnames: [], cols: [0, 0], rows: [0,0] } satisfies DataFrameValue;
+	const createState = (state: [NodeId, ExpectedDataFrameShape][]) =>
+		new DataFrameStateDomain(new Map(state.map(([id, value]) => [id, createDomain(value)])));
 
-	const domain1 = { colnames: ['id', 'name', 'age'], cols: [3, 5], rows: [5, 5] } satisfies DataFrameValue;
-	const domain2 = { colnames: ['id', 'category'], cols: [2, 2], rows: [0, 6] } satisfies DataFrameValue;
+	const DataFrameBottom = { colnames: Bottom, cols: Bottom, rows: Bottom } satisfies ExpectedDataFrameShape;
+	const DataFrameTop = { colnames: Top, cols: PosIntervalTop, rows: PosIntervalTop } satisfies ExpectedDataFrameShape;
+	const DataFrameEmpty = { colnames: [], cols: [0, 0], rows: [0,0] } satisfies ExpectedDataFrameShape;
 
-	const join = { colnames: ['id', 'name', 'age', 'category'], cols: [2, 5], rows: [0, 6] } satisfies DataFrameValue;
-	const meet = { colnames: ['id'], cols: Bottom, rows: [5, 5] } satisfies DataFrameValue;
-	const widen1 = { colnames: Top, cols: [0, 5], rows: [0, +Infinity] } satisfies DataFrameValue;
-	const narrow1 = { colnames: ['id', 'name', 'age'], cols: [3, 5], rows: [5, 5] } satisfies DataFrameValue;
-	const widen2 = { colnames: Top, cols: [2, +Infinity], rows: [0, 6] } satisfies DataFrameValue;
-	const narrow2 = { colnames: ['id', 'category'], cols: [2, 2], rows: [5, 6] } satisfies DataFrameValue;
-	const concrete1 = [...createValue(domain1).concretize() as ReadonlySet<ConcreteProduct<AbstractDataFrameShape>>];
-	const concrete2 = [...createValue(domain2).concretize() as ReadonlySet<ConcreteProduct<AbstractDataFrameShape>>];
+	const domain1 = { colnames: ['id', 'name', 'age'], cols: [3, 5], rows: [5, 5] } satisfies ExpectedDataFrameShape;
+	const domain2 = { colnames: ['id', 'category'], cols: [2, 2], rows: [0, 6] } satisfies ExpectedDataFrameShape;
+
+	const join = { colnames: ['id', 'name', 'age', 'category'], cols: [2, 5], rows: [0, 6] } satisfies ExpectedDataFrameShape;
+	const meet = { colnames: ['id'], cols: Bottom, rows: [5, 5] } satisfies ExpectedDataFrameShape;
+	const widen1 = { colnames: Top, cols: [0, 5], rows: PosIntervalTop } satisfies ExpectedDataFrameShape;
+	const narrow1 = { colnames: ['id', 'name', 'age'], cols: Bottom, rows: [5, 5] } satisfies ExpectedDataFrameShape;
+	const widen2 = { colnames: Top, cols: [2, +Infinity], rows: [0, 6] } satisfies ExpectedDataFrameShape;
+	const narrow2 = { colnames: ['id', 'category'], cols: Bottom, rows: [5, 6] } satisfies ExpectedDataFrameShape;
+	const concrete1 = [...createDomain(domain1).concretize(DEFAULT_INFERENCE_LIMIT) as ReadonlySet<ConcreteProduct<AbstractDataFrameShape>>];
+	const concrete2 = [...createDomain(domain2).concretize(DEFAULT_INFERENCE_LIMIT) as ReadonlySet<ConcreteProduct<AbstractDataFrameShape>>];
 
 	describe('Data Frame Shape Domain', () => {
-		const create = createValue;
+		const create = createDomain;
 
 		assertAbstractDomain(create, DataFrameBottom, DataFrameBottom, {
 			equal: true, leq: true, join: DataFrameBottom, meet: DataFrameBottom, widen: DataFrameBottom, narrow: DataFrameBottom, concrete: []
@@ -70,17 +71,17 @@ describe('Data Frame Domains', () => {
 		assertAbstractDomain(create, { ...domain1, colnames: Top }, domain1, {
 			equal: false, leq: false, join: { ...domain1, colnames: Top }, meet: domain1, widen: { ...domain1, colnames: Top }, narrow: domain1, concrete: Top, abstract: DataFrameTop
 		});
-		assertAbstractDomain(create, domain1, { ...domain1, cols: [0, +Infinity] }, {
-			equal: false, leq: true, join: { ...domain1, cols: [0, +Infinity] }, meet: domain1, widen: { ...domain1, cols: [0, +Infinity] }, narrow: domain1, concrete: concrete1
+		assertAbstractDomain(create, domain1, { ...domain1, cols: PosIntervalTop }, {
+			equal: false, leq: true, join: { ...domain1, cols: PosIntervalTop }, meet: domain1, widen: { ...domain1, cols: PosIntervalTop }, narrow: domain1, concrete: concrete1
 		});
-		assertAbstractDomain(create, { ...domain1, cols: [0, +Infinity] }, domain1, {
-			equal: false, leq: false, join: { ...domain1, cols: [0, +Infinity] }, meet: domain1, widen: { ...domain1, cols: [0, +Infinity] }, narrow: domain1, concrete: Top, abstract: DataFrameTop
+		assertAbstractDomain(create, { ...domain1, cols: PosIntervalTop }, domain1, {
+			equal: false, leq: false, join: { ...domain1, cols: PosIntervalTop }, meet: domain1, widen: { ...domain1, cols: PosIntervalTop }, narrow: domain1, concrete: Top, abstract: DataFrameTop
 		});
-		assertAbstractDomain(create, domain1, { ...domain1, rows: [0, +Infinity] }, {
-			equal: false, leq: true, join: { ...domain1, rows: [0, +Infinity] }, meet: domain1, widen: { ...domain1, rows: [0, +Infinity] }, narrow: domain1, concrete: concrete1
+		assertAbstractDomain(create, domain1, { ...domain1, rows: PosIntervalTop }, {
+			equal: false, leq: true, join: { ...domain1, rows: PosIntervalTop }, meet: domain1, widen: { ...domain1, rows: PosIntervalTop }, narrow: domain1, concrete: concrete1
 		});
-		assertAbstractDomain(create, { ...domain1, rows: [0, +Infinity] }, domain1, {
-			equal: false, leq: false, join: { ...domain1, rows: [0, +Infinity] }, meet: domain1, widen: { ...domain1, rows: [0, +Infinity] }, narrow: domain1, concrete: Top, abstract: DataFrameTop
+		assertAbstractDomain(create, { ...domain1, rows: PosIntervalTop }, domain1, {
+			equal: false, leq: false, join: { ...domain1, rows: PosIntervalTop }, meet: domain1, widen: { ...domain1, rows: PosIntervalTop }, narrow: domain1, concrete: Top, abstract: DataFrameTop
 		});
 		assertAbstractDomain(create, domain1, { ...domain1, colnames: Bottom }, {
 			equal: false, leq: false, join: domain1, meet: { ...domain1, colnames: Bottom }, widen: domain1, narrow: { ...domain1, colnames: Bottom }, concrete: concrete1
@@ -115,8 +116,7 @@ describe('Data Frame Domains', () => {
 	});
 
 	describe('Data Frame State Domain', () => {
-		const create = (state: DataFrameState) =>
-			new DateFrameStateDomain(new Map(state.map(([id, value]) => [id, createValue(value)])));
+		const create = createState;
 
 		const concreteState1 = concrete1.map(concrete => new Map([[0, concrete]]));
 		const concreteState2 = concrete2.map(concrete => new Map([[0, concrete]]));

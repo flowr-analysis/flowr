@@ -1,11 +1,24 @@
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
-import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { FlowrFile } from '../../project/context/flowr-file';
 
-export function normalizedAstToMermaid(ast: RNodeWithParent, prefix = 'flowchart TD\n'): string {
+function identifyMermaidDirection(prefix: string): string {
+	const directionMatch = prefix.match(/flowchart (TD|LR|RL|BT)/);
+	if(directionMatch) {
+		return directionMatch[1];
+	}
+	return 'TD';
+}
+
+/**
+ * Serialize the normalized AST to mermaid format
+ */
+export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeWithParent, prefix = 'flowchart TD\n'): string {
 	let output = prefix;
 	function showNode(n: RNodeWithParent): void {
 		const name = `${n.type} (${n.info.id})\\n${n.lexeme ?? ' '}`;
@@ -20,23 +33,43 @@ export function normalizedAstToMermaid(ast: RNodeWithParent, prefix = 'flowchart
 			output += `    n${n.info.id} -.-|"group-close"| n${n.grouping[1].info.id}\n`;
 		}
 	}
-	visitAst(ast, n => {
-		showNode(n);
-		if(n.type === 'RAccess' && (n.operator !== '[' && n.operator !== '[[')) {
-			for(const k of n.access) {
-				if(k !== EmptyArgument) {
-					showNode(k);
+	function showAst(ast: RNodeWithParent): void {
+		visitAst(ast, n => {
+			showNode(n);
+			if(n.type === 'RAccess' && (n.operator !== '[' && n.operator !== '[[')) {
+				for(const k of n.access) {
+					if(k !== EmptyArgument) {
+						showNode(k);
+					}
 				}
 			}
+			return false;
+		});
+	}
+
+	if(ast.type === RType.Project) {
+		for(const f of ast.files) {
+			// add a subgraph for each file
+			if(ast.files.length !== 1 || (f.filePath && f.filePath !== FlowrFile.INLINE_PATH)) {
+				output += `    subgraph "File: ${escapeMarkdown(f.filePath ?? FlowrFile.INLINE_PATH)}"\n`;
+				const direction = identifyMermaidDirection(prefix);
+				output += `        direction ${direction}\n`;
+				showAst(f.root);
+				output += '    end\n';
+			} else {
+				showAst(f.root);
+			}
 		}
-		return false;
-	});
+	} else {
+		showAst(ast);
+	}
+
 	return output;
 }
 
 /**
  * Use mermaid to visualize the normalized AST.
  */
-export function normalizedAstToMermaidUrl(ast: RNodeWithParent, prefix = 'flowchart TD\n'): string {
+export function normalizedAstToMermaidUrl(ast: RProject<ParentInformation> | RNodeWithParent, prefix = 'flowchart TD\n'): string {
 	return mermaidCodeToUrl(normalizedAstToMermaid(ast, prefix));
 }

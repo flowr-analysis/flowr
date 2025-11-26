@@ -1,11 +1,7 @@
-import type { LintingResult, LintingRule, LintQuickFixReplacement } from '../linter-format';
-import { LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
-
-import type { MergeableRecord } from '../../util/objects';
-import { compactRecord } from '../../util/objects';
+import { type LintingResult, type LintingRule, type LintQuickFixReplacement , LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { type MergeableRecord , compactRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
-import type { SourceRange } from '../../util/range';
-import { rangeFrom } from '../../util/range';
+import { type SourceRange , rangeFrom } from '../../util/range';
 import { formatRange } from '../../util/mermaid/dfg';
 import { LintingRuleTag } from '../linter-tags';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -17,8 +13,7 @@ import { WriteFunctions } from '../../queries/catalog/dependencies-query/functio
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall , isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { QueryResults } from '../../queries/query';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -93,7 +88,7 @@ const PathFunctions: Record<string, (df: DataflowGraph, vtx: DataflowGraphVertex
 			df, vtx, undefined, 'fsep', true
 		);
 		// in the future we can access `.Platform$file.sep` here
-		const sepValues: string[] = new Array(...fsep?.values()?.flatMap(s => [...s].filter(isNotUndefined)) ?? [path.sep]);
+		const sepValues: string[] = fsep?.values()?.flatMap(s => s.values().filter(isNotUndefined)).toArray() ?? [path.sep];
 		if(sepValues.some(s => s === Unknown || isUndefined(s))) {
 			// if we have no fsep, we cannot construct a path
 			return undefined;
@@ -176,7 +171,7 @@ export const ABSOLUTE_PATH = {
 					const dfNode = data.dataflow.graph.getVertex(node.info.id);
 					if(isFunctionCallVertex(dfNode)) {
 						const handler = PathFunctions[dfNode.name ?? ''];
-						const strings = handler ? handler(data.dataflow.graph, dfNode, data.config) : [];
+						const strings = handler ? handler(data.dataflow.graph, dfNode, data.analyzer.flowrConfig) : [];
 						if(strings) {
 							return strings.filter(s => isAbsolutePath(s, regex)).map(str => ({
 								certainty: LintingResultCertainty.Uncertain,

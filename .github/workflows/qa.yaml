@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: "🌍 Load Versions to Use"
         id: doc-global-versions
@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
             submodules: true
 
@@ -77,7 +77,7 @@ jobs:
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
@@ -92,7 +92,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -101,7 +101,7 @@ jobs:
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
@@ -116,7 +116,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
             submodules: true
 
@@ -125,7 +125,7 @@ jobs:
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
@@ -171,7 +171,7 @@ jobs:
         }}
     steps:
       - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
           fetch-depth: 2
@@ -204,7 +204,7 @@ jobs:
 
       - name: "⬇️ Use Node.js"
         if: steps.get-version.outputs.makeRelease == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
@@ -261,7 +261,7 @@ jobs:
         parser: ["tree-sitter", "r-shell"]
     steps:
       - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
             submodules: true
 
@@ -270,7 +270,7 @@ jobs:
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
@@ -301,7 +301,7 @@ jobs:
     needs: [ performance-test ]
     steps:
       - name: "Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
           token:      ${{ secrets.RELEASE_TOKEN }}
@@ -429,7 +429,7 @@ jobs:
 
     steps:
       - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
             token:      ${{ secrets.DOCUMENTATION_TOKEN }}
             submodules: true
@@ -440,7 +440,7 @@ jobs:
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"

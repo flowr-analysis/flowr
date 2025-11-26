@@ -24,7 +24,7 @@ describe.sequential('normalize-visitor', withShell(shell => {
 			}
 		}
 		const astFold = new MyNumberFold();
-		astFold.fold(normalized?.ast);
+		astFold.fold(normalized?.ast.files[0].root);
 		expect(marker).toBe(true);
 	});
 	test('find the number of strings within my program (monoid)', () => {
@@ -42,7 +42,7 @@ describe.sequential('normalize-visitor', withShell(shell => {
 			}
 		}
 		const astFold = new MyStringFold();
-		const result = astFold.fold(normalized?.ast);
+		const result = astFold.fold(normalized?.ast.files[0].root);
 		expect(result).toBe(2);
 	});
 	test('do basic math (monoid)', () => {
@@ -70,7 +70,7 @@ describe.sequential('normalize-visitor', withShell(shell => {
 			}
 		}
 		const astFold = new MyMathFold();
-		const result = astFold.fold(mathAst?.ast);
+		const result = astFold.fold(mathAst?.ast.files[0].root);
 		expect(result).toBe(7);
 	});
 	test('fold should stop if overwritten and no continue', () => {
@@ -85,7 +85,7 @@ describe.sequential('normalize-visitor', withShell(shell => {
 			}
 		}
 		const astFold = new MyMathFold();
-		astFold.fold(mathAst?.ast);
+		astFold.fold(mathAst?.ast.files[0].root);
 		expect(foundNumber).toBe(false);
 	});
 }));

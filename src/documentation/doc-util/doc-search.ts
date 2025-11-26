@@ -1,8 +1,4 @@
 import type { RShell } from '../../r-bridge/shell';
-import type { SupportedQueryTypes } from '../../queries/query';
-import { requestFromInput } from '../../r-bridge/retriever';
-import { getFilePathMd } from './doc-files';
-import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
 import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock } from './doc-code';
 import { printAsMs } from '../../util/text/time';
@@ -17,11 +13,15 @@ export interface ShowSearchOptions {
 	readonly collapseResult?: boolean;
 }
 
+/**
+ * Visualizes a search and its results in markdown format.
+ */
 export async function showSearch(shell: RShell, code: string, search: FlowrSearchLike, { collapseResult = true }: ShowSearchOptions = {}): Promise<string> {
 	const now = performance.now();
-	const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
+	const analyzer = await new FlowrAnalyzerBuilder()
 		.setParser(shell)
 		.build();
+	analyzer.addRequest(code);
 	const result = await analyzer.runSearch(search);
 	const duration = performance.now() - now;
 
@@ -59,7 +59,7 @@ ${
 	result.getElements().map(({ node }) => `<b>${node.info.id} ('${recoverContent(node.info.id, dataflow.graph)}')</b> at L${formatRange(node.location)}`).join(', ')
 }
 
-${metaInfo}	
+${metaInfo}
 
 The returned results are highlighted thick and blue within the dataflow graph:
 
@@ -69,74 +69,4 @@ ${await printDfGraphForCode(shell, code, { showCode: false, switchCodeAndGraph: 
 ${collapseResult ? '</details>' : ''}
 
 	`;
-
-}
-
-export interface QueryDocumentation {
-	readonly name:             string;
-	readonly type:             'virtual' | 'active';
-	readonly shortDescription: string;
-	readonly functionName:     string;
-	readonly functionFile:     string;
-	readonly buildExplanation: (shell: RShell) => Promise<string>;
-}
-
-export const RegisteredQueries = {
-	'active':  new Map<string, QueryDocumentation>(),
-	'virtual': new Map<string, QueryDocumentation>()
-};
-
-export function registerQueryDocumentation(query: SupportedQueryTypes | SupportedVirtualQueryTypes, doc: QueryDocumentation) {
-	const map = RegisteredQueries[doc.type];
-	if(map.has(query)) {
-		throw new Error(`Query ${query} already registered`);
-	}
-	map.set(query, doc);
-}
-
-function linkify(name: string) {
-	return name.toLowerCase().replace(/ /g, '-');
-}
-
-export function linkToQueryOfName(id: SupportedQueryTypes | SupportedVirtualQueryTypes) {
-	const query = RegisteredQueries.active.get(id) ?? RegisteredQueries.virtual.get(id);
-	if(!query) {
-		throw new Error(`Query ${id} not found`);
-	}
-	return `[${query.name}](#${linkify(query.name)})`;
-}
-
-export function tocForQueryType(type: 'active' | 'virtual') {
-	const queries = [...RegisteredQueries[type].entries()].sort(([,{ name: a }], [, { name: b }]) => a.localeCompare(b));
-	const result: string[] = [];
-	for(const [id, { name, shortDescription }] of queries) {
-		result.push(`1. [${name}](#${linkify(name)}) (\`${id}\`):\\\n    ${shortDescription}`);
-	}
-	return result.join('\n');
-}
-
-async function explainQuery(shell: RShell, { name, functionName, functionFile, buildExplanation }: QueryDocumentation) {
-	return `
-### ${name}
-
-${await buildExplanation(shell)}
-
-<details> 
-
-<summary style="color:gray">Implementation Details</summary>
-
-Responsible for the execution of the ${name} query is \`${functionName}\` in ${getFilePathMd(functionFile)}.
-
-</details>	
-
-`;
-}
-
-export async function explainQueries(shell: RShell, type: 'active' | 'virtual'): Promise<string> {
-	const queries = [...RegisteredQueries[type].entries()].sort(([,{ name: a }], [, { name: b }]) => a.localeCompare(b));
-	const result: string[] = [];
-	for(const [,doc] of queries) {
-		result.push(await explainQuery(shell, doc));
-	}
-	return result.join(`\n${'-'.repeat(5)}\n\n`);
 }

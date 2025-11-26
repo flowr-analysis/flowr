@@ -16,7 +16,6 @@ import { isValue } from '../dataflow/eval/values/r-value';
 type CachedValues<Val> = Map<NodeId, Val>;
 
 class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
-	
 
 	private readonly cachedConditions: CachedValues<Ternary> = new Map();
 
@@ -70,7 +69,12 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private handleValuesFor(id: NodeId, valueId: NodeId): void {
-		const values = valueSetGuard(resolveIdToValue(valueId, { graph: this.config.dfg, full: true, idMap: this.config.normalizedAst.idMap, resolve: this.config.flowrConfig.solver.variables }));
+		const values = valueSetGuard(resolveIdToValue(valueId, {
+			graph:   this.config.dfg,
+			full:    true,
+			idMap:   this.config.normalizedAst.idMap,
+			resolve: this.config.ctx.config.solver.variables
+		}));
 		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
 			this.unableToCalculateValue(id);
 			return;
@@ -93,7 +97,12 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			return undefined;
 		}
 
-		const values = valueSetGuard(resolveIdToValue(data.call.args[0].nodeId, { graph: this.config.dfg, full: true, idMap: this.config.normalizedAst.idMap, resolve: this.config.flowrConfig.solver.variables  }));
+		const values = valueSetGuard(resolveIdToValue(data.call.args[0].nodeId, {
+			graph:   this.config.dfg,
+			full:    true,
+			idMap:   this.config.normalizedAst.idMap,
+			resolve: this.config.ctx.config.solver.variables
+		}));
 		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
 			return undefined;
 		}
@@ -126,7 +135,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	protected onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
-		this.handleFunctionCall(data);	
+		this.handleFunctionCall(data);
 	}
 }
 
@@ -141,7 +150,7 @@ export function cfgAnalyzeDeadCode(cfg: ControlFlowInformation, info: CfgPassInf
 		controlFlow:          cfg,
 		normalizedAst:        info.ast,
 		dfg:                  info.dfg,
-		flowrConfig:			       info.config,
+		ctx:                  info.ctx,
 		defaultVisitingOrder: 'forward',
 	});
 	visitor.start();

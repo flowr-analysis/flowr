@@ -9,7 +9,6 @@ export type RFunctionArgument<Info = NoInfo> = RArgument<Info> | typeof EmptyArg
 
 /**
  * Calls of functions like `a()` and `foo(42, "hello")`.
- *
  * @see RUnnamedFunctionCall
  */
 export interface RNamedFunctionCall<Info = NoInfo> extends Base<Info>, Location {
@@ -23,7 +22,6 @@ export interface RNamedFunctionCall<Info = NoInfo> extends Base<Info>, Location 
 
 /**
  * Direct calls of functions like `(function(x) { x })(3)`.
- *
  * @see RNamedFunctionCall
  */
 export interface RUnnamedFunctionCall<Info = NoInfo> extends Base<Info>, Location {

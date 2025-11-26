@@ -1,28 +1,29 @@
-import type {
-	LintingRuleConfig,
-	LintingRuleMetadata,
-	LintingRuleNames,
-	LintingRuleResult
-} from '../../../src/linter/linter-rules';
-import { LintingRules } from '../../../src/linter/linter-rules';
-import type { TestLabel } from './label';
-import { decorateLabelContext } from './label';
+import {
+	type LintingRuleConfig,
+	type LintingRuleMetadata,
+	type LintingRuleNames,
+	type LintingRuleResult
+	, LintingRules } from '../../../src/linter/linter-rules';
+import { type TestLabel , decorateLabelContext } from './label';
 import { assert, test } from 'vitest';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
-import type { NormalizedAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { fileProtocol, requestFromInput } from '../../../src/r-bridge/retriever';
+import { type NormalizedAst , deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { executeLintingRule } from '../../../src/linter/linter-executor';
-import type { LintingRule } from '../../../src/linter/linter-format';
-import { isLintingResultsError, LintingPrettyPrintContext } from '../../../src/linter/linter-format';
+import { type LintingRule , isLintingResultsError, LintingPrettyPrintContext } from '../../../src/linter/linter-format';
 import { log } from '../../../src/util/log';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser } from '../../../src/r-bridge/parser';
-import type { FlowrLaxSourcingOptions } from '../../../src/config';
-import { DropPathsOption } from '../../../src/config';
+import { type FlowrLaxSourcingOptions , DropPathsOption } from '../../../src/config';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
+import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 
+
+/**
+ *
+ */
 export function assertLinter<Name extends LintingRuleNames>(
 	name: string | TestLabel,
 	parser: KnownParser,
@@ -30,13 +31,12 @@ export function assertLinter<Name extends LintingRuleNames>(
 	ruleName: Name,
 	expected: LintingRuleResult<Name>[] | ((df: DataflowInformation, ast: NormalizedAst) => LintingRuleResult<Name>[]),
 	expectedMetadata?: LintingRuleMetadata<Name>,
-	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string }
+	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string, addFiles?: FlowrFileProvider[] }
 ) {
 	test(decorateLabelContext(name, ['linter']), async() => {
-		const analyzer = await new FlowrAnalyzerBuilder(requestFromInput(code))
+		const analyzer = await new FlowrAnalyzerBuilder()
 			.setInput({
-				getId:             deterministicCountingIdGenerator(0),
-				overwriteFilePath: lintingRuleConfig?.useAsFilePath
+				getId: deterministicCountingIdGenerator(0)
 			})
 			.setParser(parser)
 			.amendConfig(c => {
@@ -46,6 +46,16 @@ export function assertLinter<Name extends LintingRuleNames>(
 				};
 			})
 			.build();
+		if(lintingRuleConfig?.useAsFilePath) {
+			analyzer.addFile(new FlowrInlineTextFile(lintingRuleConfig.useAsFilePath, code));
+		}
+		if(lintingRuleConfig?.addFiles) {
+			analyzer.addFile(...lintingRuleConfig.addFiles);
+		}
+		analyzer.addRequest(lintingRuleConfig?.useAsFilePath ?
+			requestFromInput(fileProtocol + lintingRuleConfig.useAsFilePath) :
+			requestFromInput(code)
+		);
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
 		const results = await executeLintingRule(ruleName, analyzer, lintingRuleConfig);

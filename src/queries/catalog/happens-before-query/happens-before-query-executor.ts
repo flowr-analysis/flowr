@@ -6,6 +6,10 @@ import { extractCfgQuick } from '../../../control-flow/extract-cfg';
 import { happensBefore } from '../../../control-flow/happens-before';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 
+/**
+ * Execute happens-before queries on the given analyzer.
+ * This checks, whether for two given slicing criteria `a` and `b`, `a` happens before `b` in the control flow graph.
+ */
 export async function executeHappensBefore({ analyzer }: BasicQueryData, queries: readonly HappensBeforeQuery[]): Promise<HappensBeforeQueryResult> {
 	const start = Date.now();
 	const results: Record<string, Ternary> = {};

@@ -51,14 +51,33 @@ export function dataflowGraphToJson(df: DataflowInformation): string {
 	return objectJson(df);
 }
 
+/**
+ * Convert the dataflow graph to a mermaid string.
+ * @see {@link graphToMermaid}
+ * @see {@link dataflowGraphToMermaidUrl}
+ * @see {@link dataflowGraphToJson}
+ */
 export function dataflowGraphToMermaid(df: DataflowInformation): string {
 	return graphToMermaid({ graph: df.graph }).string;
 }
 
+/**
+ * Convert the dataflow graph to a mermaid URL.
+ * @see {@link graphToMermaidUrl}
+ * @see {@link dataflowGraphToMermaid}
+ * @see {@link dataflowGraphToJson}
+ */
 export function dataflowGraphToMermaidUrl(df: DataflowInformation): string {
 	return graphToMermaidUrl(df.graph);
 }
 
+/**
+ * Transforms the dataflow graph into a quad serialization.
+ * @see {@link df2quads}
+ * @see {@link dataflowGraphToMermaidUrl}
+ * @see {@link dataflowGraphToMermaid}
+ * @see {@link dataflowGraphToJson}
+ */
 export function dataflowGraphToQuads(df: DataflowInformation, config: QuadSerializationConfiguration): string {
 	return df2quads(df.graph, config);
 }

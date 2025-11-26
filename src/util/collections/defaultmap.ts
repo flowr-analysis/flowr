@@ -9,27 +9,27 @@ export class DefaultMap<K, V = K> {
 	private readonly generator: (k: K) => V;
 
 	/**
-   * @param generator - the generator to produce a default value for a given key
-   * @param map       - the initial map to start with
-   */
+	 * @param generator - the generator to produce a default value for a given key
+	 * @param map       - the initial map to start with
+	 */
 	public constructor(generator: (k: K) => V, map = new Map<K, V>()) {
 		this.generator = generator;
 		this.internal = map;
 	}
 
 	/**
-   * Sets a value for a given key.
-   * As you provide value, this does not invoke the generator!
-   */
+	 * Sets a value for a given key.
+	 * As you provide value, this does not invoke the generator!
+	 */
 	public set(k: K, v: V): this {
 		this.internal.set(k, v);
 		return this;
 	}
 
 	/**
-   * Return a value for the given key, if the key does not exist within the default map,
-   * this will invoke the generator and assign the produced value.
-   */
+	 * Return a value for the given key, if the key does not exist within the default map,
+	 * this will invoke the generator and assign the produced value.
+	 */
 	public get(k: K): V {
 		const potential = this.internal.get(k);
 		if(potential !== undefined) {
@@ -42,8 +42,8 @@ export class DefaultMap<K, V = K> {
 	}
 
 	/**
-   * Iterates over all entries that have been set (explicitly or by the generator)
-   */
+	 * Iterates over all entries that have been set (explicitly or by the generator)
+	 */
 	public entries(): IterableIterator<[K, V]> {
 		return this.internal.entries();
 	}

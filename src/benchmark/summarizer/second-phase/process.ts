@@ -1,22 +1,22 @@
 import type { Reduction, SummarizedDfShapeStats, SummarizedSlicerStats, TimePerToken, UltimateSlicerStats } from '../data';
 import { summarizeSummarizedReductions, summarizeSummarizedMeasurement, summarizeSummarizedTimePerToken, summarizeTimePerToken } from '../first-phase/process';
 import { DefaultMap } from '../../../util/collections/defaultmap';
-import type { SummarizedMeasurement } from '../../../util/summarizer';
-import { summarizeMeasurement } from '../../../util/summarizer';
+import { type SummarizedMeasurement , summarizeMeasurement } from '../../../util/summarizer';
 import { guard, isNotUndefined } from '../../../util/assert';
-import type {
-	BenchmarkMemoryMeasurement,
-	SlicerStatsDataflow,
-	SlicerStatsInput
-} from '../../stats/stats';
 import {
+	type BenchmarkMemoryMeasurement,
+	type SlicerStatsDataflow,
+	type SlicerStatsInput
+	,
 	CommonSlicerMeasurements,
 	PerSliceMeasurements
 } from '../../stats/stats';
-import type { DataFrameOperationName } from '../../../abstract-interpretation/data-frame/semantics';
-import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
+import { type DataFrameOperationName , DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
 import { arraySum } from '../../../util/collections/arrays';
 
+/**
+ * This big function summarizes multiple summarized stats into one ultimate stat.
+ */
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => []);
 	const perSliceMeasurements = new DefaultMap<PerSliceMeasurements, SummarizedMeasurement[]>(() => []);
@@ -159,6 +159,9 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 	};
 }
 
+/**
+ * This big function summarizes multiple ultimate stats into one.
+ */
 export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): UltimateSlicerStats {
 	return {
 		// these should be deterministic, so we don't technically need to use max, but we do just in case something unexpected happens :)
@@ -241,6 +244,9 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 	};
 }
 
+/**
+ * Processes the next summary line.
+ */
 export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicerStats[]): void {
 	let got = JSON.parse(line.toString()) as { summarize: SummarizedSlicerStats };
 	got = {
@@ -272,6 +278,9 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 	allSummarized.push(got.summarize);
 }
 
+/**
+ * Processes the next ultimate summary line.
+ */
 export function processNextUltimateSummary(line: Buffer, allSummarized: UltimateSlicerStats[]): void {
 	let got = JSON.parse(line.toString()) as UltimateSlicerStats;
 	got = {

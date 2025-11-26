@@ -1,6 +1,5 @@
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
-import type { DataflowGraphJson } from '../../../../src/dataflow/graph/graph';
-import { DataflowGraph } from '../../../../src/dataflow/graph/graph';
+import { type DataflowGraphJson , DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import type { GenericDiffConfiguration } from '../../../../src/util/diff';
 import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff-dataflow-graph';

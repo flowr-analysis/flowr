@@ -4,7 +4,6 @@ import type { SupportedFlowrCapabilityId } from '../../../data/get';
 
 /**
  * Just a type-alias so that type declarations become more readable.
- *
  * @see OperatorDatabase
  */
 type StringUsedInRCode = string;

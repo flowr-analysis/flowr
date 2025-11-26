@@ -100,7 +100,7 @@ function toRegex(n: readonly string[]): RegExp {
  * Contains the built-in definitions recognized by flowR
  */
 export const DefaultBuiltinConfig: BuiltInDefinitions = [
-	{ type: 'constant', names: ['NULL', 'NA'],  value: null,  assumePrimitive: true },
+	{ type: 'constant', names: ['NULL', 'NA', 'NaN', 'NA_integer_', 'NA_real_', 'NA_complex_', 'NA_character_'],  value: null,  assumePrimitive: true },
 	{ type: 'constant', names: ['TRUE', 'T'],   value: true,  assumePrimitive: true },
 	{ type: 'constant', names: ['FALSE', 'F'],  value: false, assumePrimitive: true },
 	{
@@ -308,6 +308,10 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	}
 ];
 
+
+/**
+ *
+ */
 export function getDefaultProcessor(name: string): BuiltInMappingName | 'unnamed' | undefined {
 	if(name.startsWith(UnnamedFunctionCallPrefix)) {
 		return 'unnamed';

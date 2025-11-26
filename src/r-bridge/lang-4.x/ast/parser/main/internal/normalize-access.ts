@@ -40,10 +40,8 @@ function normalizeAbstractArgument(x: readonly NamedJsonEntry[], data: Normalize
 
 /**
  * Tries to normalize the given data as access (e.g., indexing).
- *
  * @param data           - The data used by the parser (see {@link NormalizerData})
  * @param mappedWithName - The JSON object to extract the meta-information from
- *
  * @returns The parsed {@link RAccess} or `undefined` if the given construct is not accessing a value
  */
 export function tryNormalizeAccess(data: NormalizerData, mappedWithName: NamedJsonEntry[]): RAccess | undefined {

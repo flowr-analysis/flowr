@@ -7,6 +7,10 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 
 const voidRange = rangeFrom(-1, -1, -1, -1);
 
+
+/**
+ * Converts a normalized node into an unnamed argument (wraps it with an argument node).
+ */
 export function toUnnamedArgument<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation> | undefined,
 	idMap: AstIdMap<OtherInfo>
@@ -17,7 +21,6 @@ export function toUnnamedArgument<OtherInfo>(
 	const arg: RUnnamedArgument<OtherInfo & ParentInformation> = {
 		type:     RType.Argument,
 		lexeme:   node.lexeme ?? '',
-		// is this correct?
 		location: node.location ?? voidRange,
 		info:     {
 			...node.info,
@@ -30,6 +33,10 @@ export function toUnnamedArgument<OtherInfo>(
 	return arg;
 }
 
+
+/**
+ * Wraps the given nodes as unnamed arguments where necessary.
+ */
 export function wrapArgumentsUnnamed<OtherInfo>(
 	nodes: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[],
 	idMap: AstIdMap<OtherInfo>

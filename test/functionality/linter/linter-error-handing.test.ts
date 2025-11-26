@@ -1,9 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import type { LintingRuleNames } from '../../../src/linter/linter-rules';
-import { LintingRules } from '../../../src/linter/linter-rules';
-import type { LintingResult, LintingRule } from '../../../src/linter/linter-format';
-import {
+import { type LintingRuleNames , LintingRules } from '../../../src/linter/linter-rules';
+import { type LintingResult, type LintingRule ,
 	isLintingResultsError,
 	LintingPrettyPrintContext,
 	LintingRuleCertainty
@@ -12,7 +10,6 @@ import type { MergeableRecord } from '../../../src/util/objects';
 import { Q } from '../../../src/search/flowr-search-builder';
 import { LintingRuleTag } from '../../../src/linter/linter-tags';
 import { executeLintingRule } from '../../../src/linter/linter-executor';
-import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 
 describe('flowR linter', withTreeSitter(parser => {
@@ -22,7 +19,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		(LintingRules as any)['dummy'] = {
 			createSearch:        () => Q.all(),
 			processSearchResult: () => {
-				throw new Error('Hello World'); 
+				throw new Error('Hello World');
 			},
 			prettyPrint: {
 				[LintingPrettyPrintContext.Query]: _ => 'Dummy Rule',
@@ -37,9 +34,10 @@ describe('flowR linter', withTreeSitter(parser => {
 			}
 		} as const satisfies LintingRule<LintingResult, MergeableRecord, MergeableRecord>;
 
-		const analyzer = await new FlowrAnalyzerBuilder(requestFromInput('x <- "hi"'))
+		const analyzer = await new FlowrAnalyzerBuilder()
 			.setParser(parser)
 			.build();
+		analyzer.addRequest('x <- "hi"');
 
 		const result = await executeLintingRule('dummy' as unknown as LintingRuleNames, analyzer, undefined);
 

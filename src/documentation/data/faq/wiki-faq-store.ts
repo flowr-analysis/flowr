@@ -5,7 +5,8 @@ import { guard } from '../../../util/assert';
 const FlowrFaqTopics = {
 	'flowr.use':         '✨ Using <i>flowR</i>',
 	'flowr.development': '🧑‍💻 <i>flowR</i> Development',
-	'r.packages':        '📦 R Packages'
+	'r.packages':        '📦 R Packages',
+	'editor.configs':    '⚙️ Recommended Editor Configs'
 } as const;
 
 type Topic = keyof typeof FlowrFaqTopics;
@@ -59,11 +60,14 @@ ${collapsibleToc({
 	['💮 *flowR* FAQ']: {
 		[FlowrFaqTopics['flowr.development']]: {},
 		[FlowrFaqTopics['flowr.use']]:         {}
-	},                         
+	},
 	['🇷 R FAQ']: {
 		[FlowrFaqTopics['r.packages']]: {}
+	},
+	['💻 Editor FAQ']: {
+		[FlowrFaqTopics['editor.configs']]: {}
 	}
-})}		
+})}
 
 ${section('💮 <i>flowR</i> FAQ', 2)}
 
@@ -71,7 +75,11 @@ ${this.printAllTopics(/^flowr.*$/)}
 
 ${section('🇷 R FAQ', 2)}
 
-${this.printAllTopics(/^r.*$/)}  
+${this.printAllTopics(/^r.*$/)}
+
+${section('💻 Editor FAQ', 2)}
+
+${this.printAllTopics(/^editor.*$/)}
 		`;
 	}
 

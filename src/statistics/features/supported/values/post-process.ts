@@ -2,11 +2,10 @@ import type { FeatureStatisticsWithMeta } from '../../feature';
 import type { ValueInfo } from './values';
 import fs from 'fs';
 import path from 'path';
-import type {
-	ReplaceKeysForSummary,
-	SummarizedWithProject
-} from '../../post-processing';
 import {
+	type ReplaceKeysForSummary,
+	type SummarizedWithProject
+	,
 	emptySummarizedWithProject,
 	recordFilePath
 } from '../../post-processing';
@@ -25,6 +24,10 @@ import type { StatisticsOutputFormat } from '../../../output/statistics-file';
 
 type ValuesPostProcessing = ReplaceKeysForSummary<ValueInfo, SummarizedWithProject>
 
+
+/**
+ *
+ */
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	const collected = {} as unknown as ValuesPostProcessing;
 	for(const [filepath, data] of info.entries()) {

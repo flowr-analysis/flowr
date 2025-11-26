@@ -2,21 +2,29 @@ import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
 import { executeLinterQuery } from './linter-query-executor';
-import type {
-	LintingRuleConfig,
-	LintingRuleMetadata,
-	LintingRuleNames,
-	LintingRuleResult
+import {
+	type LintingRuleConfig,
+	type LintingRuleMetadata,
+	type LintingRuleNames,
+	type LintingRuleResult,
+	LintingRules
 } from '../../../linter/linter-rules';
-import { LintingRules } from '../../../linter/linter-rules';
-import type { ConfiguredLintingRule, LintingResults, LintingRule } from '../../../linter/linter-format';
-import { isLintingResultsError, LintingPrettyPrintContext, LintingResultCertainty } from '../../../linter/linter-format';
-
-import { bold } from '../../../util/text/ansi';
+import {
+	type ConfiguredLintingRule,
+	isLintingResultsError,
+	LintingPrettyPrintContext,
+	LintingResultCertainty,
+	type LintingResults,
+	type LintingRule
+} from '../../../linter/linter-format';
+import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import { codeInline } from '../../../documentation/doc-util/doc-code';
 import type { FlowrConfigOptions } from '../../../config';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
+import type { CommandCompletions } from '../../../cli/repl/core';
+import { fileProtocol } from '../../../r-bridge/retriever';
+import { getGuardIssueUrl } from '../../../util/assert';
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:   'linter';
@@ -47,8 +55,9 @@ function rulesFromInput(output: ReplOutput, rulesPart: readonly string[]): {vali
 		}, { valid: [] as (LintingRuleNames | ConfiguredLintingRule)[], invalid: [] as string[] });
 }
 
-function linterQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine {
-	const rulesPrefix = 'rules:';
+const rulesPrefix = 'rules:';
+
+function linterQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'linter'> {
 	let rules: (LintingRuleNames | ConfiguredLintingRule)[] | undefined = undefined;
 	let input: string | undefined = undefined;
 	if(line.length > 0 && line[0].startsWith(rulesPrefix)) {
@@ -66,18 +75,63 @@ function linterQueryLineParser(output: ReplOutput, line: readonly string[], _con
 	return { query: [{ type: 'linter', rules: rules }], rCode: input } ;
 }
 
+function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfigOptions): CommandCompletions {
+	const rulesPrefixNotPresent = line.length == 0 || (line.length == 1 && line[0].length < rulesPrefix.length);
+	const rulesNotFinished = line.length == 1 && line[0].startsWith(rulesPrefix) && !startingNewArg;
+	const endOfRules = line.length == 1 && startingNewArg || line.length == 2;
+
+	if(rulesPrefixNotPresent) {
+		return { completions: [`${rulesPrefix}`] };
+	} else if(endOfRules) {
+		return { completions: [fileProtocol] };
+	} else if(rulesNotFinished) {
+		const rulesWithoutPrefix = line[0].slice(rulesPrefix.length);
+		const usedRules = rulesWithoutPrefix.split(',').map(r => r.trim());
+		const allRules = Object.keys(LintingRules);
+		const unusedRules = allRules.filter(r => !usedRules.includes(r));
+		const lastRule = usedRules[usedRules.length - 1];
+		const lastRuleIsUnfinished = !allRules.includes(lastRule);
+
+		if(lastRuleIsUnfinished) {
+			// Return all rules that have not been added yet
+			return { completions: unusedRules, argumentPart: lastRule };
+		} else if(unusedRules.length > 0) {
+			// Add a comma, if the current last rule is complete
+			return { completions: [','], argumentPart: '' };
+		} else {
+			// All rules are used, complete with a space
+			return { completions: [' '], argumentPart: '' };
+		}
+	}
+	return { completions: [] };
+}
+
 export const LinterQueryDefinition = {
 	executor:        executeLinterQuery,
-	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
+	asciiSummarizer: (formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'linter'>['linter'];
 		result.push(`Query: ${bold('linter', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		const allDidFail = Object.values(out.results).every(r => isLintingResultsError(r));
+		if(allDidFail) {
+			result.push('All linting rules failed to execute.');
+			if(analyzer.inspectContext().files.loadingOrder.getUnorderedRequests().length === 0) {
+				result.push(
+					formatter.format('No requests to lint for were found in the analysis.', { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold })
+				);
+				result.push(
+					'If you consider this an error, please report a bug: ' + getGuardIssueUrl('analyzer found no requests to lint for')
+				);
+			}
+			return true;
+		}
 		for(const [ruleName, results] of Object.entries(out.results)) {
 			addLintingRuleResult(ruleName as LintingRuleNames, results as LintingResults<LintingRuleNames>, result);
 		}
 		return true;
 	},
-	fromLine: linterQueryLineParser,
-	schema:   Joi.object({
+	completer: linterQueryCompleter,
+	fromLine:  linterQueryLineParser,
+	schema:    Joi.object({
 		type:  Joi.string().valid('linter').required().description('The type of the query.'),
 		rules: Joi.array().items(
 			Joi.string().valid(...Object.keys(LintingRules)),
@@ -95,7 +149,8 @@ function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, res
 	result.push(`   ╰ **${rule.info.name}** (${ruleName}):`);
 
 	if(isLintingResultsError(results)) {
-		result.push(`       ╰ Error during execution of Rule: ${results.error}`);
+		const error = results.error.includes('At least one request must be set') ? 'No requests to lint for were found in the analysis.' : 'Error during execution of rule: ' + results.error;
+		result.push(`       ╰ ${error}`);
 		return;
 	}
 

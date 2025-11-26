@@ -35,7 +35,7 @@ export const DefaultDependencyCategories = {
 		/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
 		additionalAnalysis: async(data, ignoreDefault, _functions, _queryResults, result) => {
 			if(!ignoreDefault) {
-				visitAst((await data.analyzer.normalize()).ast, n => {
+				visitAst((await data.analyzer.normalize()).ast.files.map(f => f.root), n => {
 					if(n.type === RType.Symbol && n.namespace) {
 						const dep = data.analyzer.inspectContext().deps.getDependency(n.namespace);
 						/* we should improve the identification of ':::' */
@@ -45,7 +45,7 @@ export const DefaultDependencyCategories = {
 							value:              n.namespace,
 							versionConstraints:	dep?.versionConstraints,
 							derivedVersion:	    dep?.derivedVersion,
-							namespaceInfo:	     dep?.namespaceInfo
+							namespaceInfo:	    dep?.namespaceInfo
 						});
 					}
 				});
@@ -118,6 +118,9 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	}
 }
 
+/**
+ * Gets all dependency categories, including user-defined additional categories.
+ */
 export function getAllCategories(queries: readonly DependenciesQuery[]): Record<DependencyCategoryName, DependencyCategorySettings> {
 	let categories = DefaultDependencyCategories;
 	for(const query of queries) {

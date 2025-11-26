@@ -1,25 +1,22 @@
-import type { FlowrConfigOptions } from '../../../config';
-import { VariableResolve } from '../../../config';
+import {  VariableResolve } from '../../../config';
 import { type ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
-import { findSource, getSourceProvider } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import { findSource } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument , EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { RParseRequest } from '../../../r-bridge/retriever';
-import { requestFromInput } from '../../../r-bridge/retriever';
+import { type RParseRequest , requestFromInput } from '../../../r-bridge/retriever';
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../util/assert';
 import { readLineByLineSync } from '../../../util/files';
 import type { DataFrameExpressionInfo, DataFrameOperation } from '../absint-info';
-import { DataFrameTop } from '../domain';
+import { DataFrameDomain } from '../dataframe-domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from '../resolve-args';
 import type { ConstraintType } from '../semantics';
 import { resolveIdToDataFrameShape } from '../shape-inference';
-import type { FunctionParameterLocation } from './arguments';
-import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isNamedArgument, isRNull } from './arguments';
+import { type FunctionParameterLocation , escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isNamedArgument, isRNull } from './arguments';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 
 /**
  * Represents the different types of data frames in R
@@ -567,13 +564,13 @@ type OtherDataFrameFunctionMapping = OtherDataFrameEntryPoint | OtherDataFrameTr
  * - `args` contains the function call arguments
  * - `params` contains the expected argument location for each parameter of the function
  * - `info` contains the resolve information
- * - `config` contains the flowR configuration
+ * - `ctx` access to the current flowR analyzer context
  */
 type DataFrameFunctionMapping<Params extends object> = (
     args: readonly RFunctionArgument<ParentInformation>[],
 	params: Params,
     info: ResolveInfo,
-	config: FlowrConfigOptions
+	ctx: ReadOnlyFlowrAnalyzerContext
 ) => DataFrameOperation[] | undefined;
 
 /** All currently supported data frame functions */
@@ -592,16 +589,15 @@ type DataFrameFunctionParamsMapping = {
 
 /**
  * Maps a concrete data frame function call to abstract data frame operations.
- *
- * @param node   - The R node of the function call
- * @param dfg    - The data flow graph for resolving the arguments
- * @param config - The flowR configuration to use
+ * @param node - The R node of the function call
+ * @param dfg  - The data flow graph for resolving the arguments
+ * @param ctx  - The current flowR analyzer context
  * @returns Data frame expression info containing the mapped abstract data frame operations, or `undefined` if the node does not represent a data frame function call
  */
 export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 	node: RNode<ParentInformation>,
 	dfg: DataflowGraph,
-	config: FlowrConfigOptions
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameExpressionInfo | undefined {
 	if(node.type !== RType.FunctionCall || !node.named) {
 		return;
@@ -618,7 +614,7 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 		if(hasCriticalArgument(args, params.critical, resolveInfo)) {
 			operations = [{ operation: 'unknown', operand: undefined }];
 		} else {
-			operations = mapper(args, params, resolveInfo, config);
+			operations = mapper(args, params, resolveInfo, ctx);
 		}
 	} else {
 		const mapping = getOtherDataFrameFunction(node.functionName.content);
@@ -714,11 +710,11 @@ function mapDataFrameRead(
 		noEmptyNames?: boolean
 	},
 	info: ResolveInfo,
-	config: FlowrConfigOptions
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameOperation[] {
 	const fileNameArg = getFunctionArgument(args, params.fileName, info);
 	const textArg = params.text ? getFunctionArgument(args, params.text, info) : undefined;
-	const { source, request } = getRequestFromRead(fileNameArg, textArg, params, info, config);
+	const { source, request } = getRequestFromRead(fileNameArg, textArg, params, info, ctx);
 
 	const header = getArgumentValue(args, params.header, info);
 	const separator = getArgumentValue(args, params.separator, info);
@@ -731,7 +727,7 @@ function mapDataFrameRead(
 	const validArguments = typeof header === 'boolean' && typeof separator === 'string' && typeof quote === 'string' && typeof comment === 'string' &&
 		typeof skipLines === 'number' && typeof checkNames === 'boolean' && typeof noDupNames === 'boolean';
 
-	if(request === undefined || !config.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles || !validArguments) {
+	if(request === undefined || !ctx.config.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles || !validArguments) {
 		return [{
 			operation: 'read',
 			operand:   undefined,
@@ -758,7 +754,7 @@ function mapDataFrameRead(
 			}
 		}
 	};
-	const allLines = parseRequestContent(request, parseLine, config.abstractInterpretation.dataFrame.readLoadedData.maxReadLines);
+	const allLines = parseRequestContent(request, parseLine, ctx.config.abstractInterpretation.dataFrame.readLoadedData.maxReadLines);
 	let colnames: (string | undefined)[] | undefined;
 
 	if(header) {
@@ -1207,8 +1203,12 @@ function mapDataFrameSummarize(
 	const result: DataFrameOperation[] = [];
 	const summarizeArgs = args.filter(arg => arg !== dataFrame);
 
-	const accessedNames = summarizeArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph));
 	const summarizedCols = summarizeArgs.map(arg => resolveIdToArgName(arg, info));
+
+	// only column names that are not created by summarize are preconditions on the operand
+	const accessedNames = summarizeArgs
+		.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph))
+		.filter(arg => !summarizedCols.includes(arg));
 
 	if(accessedNames.length > 0) {
 		result.push({
@@ -1236,7 +1236,8 @@ function mapDataFrameJoin(
 		joinLeft:       FunctionParameterLocation<boolean>,
 		joinRight:      FunctionParameterLocation<boolean>
 	},
-	info: ResolveInfo
+	info: ResolveInfo,
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameOperation[] | undefined {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 	const joinAll = getArgumentValue(args, params.joinAll, info);
@@ -1255,7 +1256,7 @@ function mapDataFrameJoin(
 	const otherArg = getFunctionArgument(args, params.otherDataFrame, info);
 	const byArg = getFunctionArgument(args, params.by, info);
 
-	const otherDataFrame = resolveIdToDataFrameShape(otherArg, info.graph) ?? DataFrameTop;
+	const otherDataFrame = resolveIdToDataFrameShape(otherArg, info.graph) ?? DataFrameDomain.top(ctx.config.abstractInterpretation.dataFrame.maxColNames);
 	let byCols: (string | number | undefined)[] | undefined;
 
 	const joinType = getJoinType(joinAll, joinLeft, joinRight);
@@ -1349,7 +1350,7 @@ function getRequestFromRead(
 	textArg: RFunctionArgument<ParentInformation> | undefined,
 	params: DataFrameFunctionParams<'read.table'>,
 	info: ResolveInfo,
-	config: FlowrConfigOptions
+	ctx: ReadOnlyFlowrAnalyzerContext
 ) {
 	let source: string | undefined;
 	let request: RParseRequest | undefined;
@@ -1359,13 +1360,13 @@ function getRequestFromRead(
 
 		if(typeof fileName === 'string') {
 			source = fileName;
-			const referenceChain = fileNameArg.info.file ? [requestFromInput(`file://${fileNameArg.info.file}`)] : [];
-			const sources = findSource(config.solver.resolveSource, fileName, { referenceChain });
+			const referenceChain = fileNameArg.info.file ? [fileNameArg.info.file] : [];
+			const sources = findSource(ctx.config.solver.resolveSource, fileName, { referenceChain, ctx });
 
 			if(sources?.length === 1) {
 				source = sources[0];
 				// create request from resolved source file path
-				request = getSourceProvider().createRequest(source);
+				request = { request: 'file', content: sources[0] };
 			} else if(params.text === undefined && unescapeSpecialChars(fileName).includes('\n')) {
 				// create request from string if file name argument contains newline
 				request = requestFromInput(unescapeSpecialChars(fileName));
@@ -1379,6 +1380,7 @@ function getRequestFromRead(
 			request = requestFromInput(unescapeSpecialChars(text));
 		}
 	}
+	request = request ? ctx.files.resolveRequest(request).r : undefined;
 	return { source, request };
 }
 

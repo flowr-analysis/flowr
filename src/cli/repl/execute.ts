@@ -9,7 +9,6 @@ export type StdioProcessor = (stdio: Stdio) => void
 
 /**
  * Simply captures the output of the script executed by {@link waitOnScript}.
- *
  * @param stdio        - The standard io tuple provided by {@link waitOnScript}
  * @param onStdOutLine - The callback is executed each time we receive a new line from the standard output channel.
  * @param onStdErrLine - The callback is executed each time we receive a new line from the standard error channel.
@@ -32,7 +31,6 @@ export function stdioCaptureProcessor(stdio: Stdio, onStdOutLine: (msg: string) 
 
 /**
  * Run the given module with the presented arguments, and wait for it to exit.
- *
  * @param module      - The (flowR) module that you want to use for the fork.
  *                      It is probably best to use {@link __dirname} so you can specify the module relative to your
  *                      current one.
@@ -66,6 +64,7 @@ export async function waitOnScript(module: string, args: readonly string[], io?:
 			process.exit(1);
 		}
 	});
+
 	await new Promise<void>((resolve, reject) => child.on('exit', code => {
 		if(exitOnError && code) {
 			reject(new Error(`Script ${module} exited with code ${String(code)}`));

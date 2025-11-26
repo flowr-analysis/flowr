@@ -21,7 +21,6 @@ export interface Pipeline<T extends IPipelineStep = IPipelineStep> {
 
 /**
  * Returns the types of all step names in the given pipeline.
- *
  * @see Pipeline for details
  */
 export type PipelineStepNames<P extends Pipeline> = PipelineStep<P>['name']
@@ -52,7 +51,6 @@ export interface PipelinePerStepMetaInformation {
 
 /**
  * Returns the step with the given name from the given pipeline.
- *
  * @example
  * ```ts
  * type Foo = PipelineStepWithName<typeof DEFAULT_DATAFLOW_PIPELINE, 'parse'>
@@ -72,7 +70,6 @@ export type PipelineStepProcessorWithName<P extends Pipeline, Name extends Pipel
 export type PipelineStepPrintersWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['printer']
 /**
  * Returns the output type of the step with the given name from the given pipeline.
- *
  * @example
  * ```ts
  * type Foo = PipelineStepOutputWithName<typeof DEFAULT_DATAFLOW_PIPELINE, 'parse'>
@@ -83,16 +80,14 @@ export type PipelineStepPrintersWithName<P extends Pipeline, Name extends Pipeli
 export type PipelineStepOutputWithName<P extends Pipeline, Name extends PipelineStepName> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>> & PipelinePerStepMetaInformation
 /**
  * Returns a union type that represents the required inputs to be passed to the given pipeline.
- *
  * @example
  * ```ts
  * type Foo = PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>
  * // Foo contains ParseRequiredInput & NormalizeRequiredInput
  * ```
- * 
+ *
  * In short, this can be useful whenever you want to describe _all_ inputs a complete
  * pipeline needs to run through (i.e., the union of all inputs required by the individual steps).
- *
  * @see {@link PipelineOutput}
  */
 export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep<P>['requiredInput']>
@@ -134,11 +129,9 @@ export type PipelineOutput<P extends Pipeline> = {
  * 4) the target of a {@link IPipelineStepOrder#decorates|step's decoration} exists
  * 5) if a {@link IPipelineStepOrder#decorates|decoration} applies, all of its {@link IPipelineStepOrder#dependencies|dependencies} are already in the pipeline
  * 6) in the resulting {@link Pipeline|pipeline}, there is a strict cut between {@link IPipelineStep|steps} that are executed
- * 		{@link PipelineStepStage#OncePerFile|once per file} and {@link PipelineStepStage#OncePerRequest|once per request}.
- *
+ * {@link PipelineStepStage#OncePerFile|once per file} and {@link PipelineStepStage#OncePerRequest|once per request}.
  * @returns The function will try to order your collection steps so that all the constraints hold.
  * If it succeeds it will return the resulting {@link Pipeline|pipeline}, otherwise it will throw an {@link InvalidPipelineError}.
- *
  * @throws InvalidPipelineError If any of the constraints listed above are not satisfied.
  */
 export function createPipeline<T extends readonly IPipelineStep[]>(...steps: T): Pipeline<T[number]> {

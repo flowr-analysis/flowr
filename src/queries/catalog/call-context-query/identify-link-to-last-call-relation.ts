@@ -1,9 +1,7 @@
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { getReferenceOfArgument } from '../../../dataflow/graph/graph';
+import { type DataflowGraph , getReferenceOfArgument } from '../../../dataflow/graph/graph';
 import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
-import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
-import { VertexType } from '../../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, isFunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
 import { ReferenceType } from '../../../dataflow/environments/identifier';
@@ -30,28 +28,28 @@ export enum CallTargets {
     Any = 'any'
 }
 
-export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | 'no' {
-	const callVertex = graph.getVertex(id, true);
-	if(callVertex === undefined || callVertex.tag !== VertexType.FunctionCall) {
-		return 'no';
-	}
-	const outgoing = graph.outgoingEdges(id);
+/**
+ * Determines whether the given function call node satisfies the specified call target condition.
+ */
+export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | 'no' {
+	const outgoing = graph.outgoingEdges(info.id);
 	if(outgoing === undefined) {
 		return 'no';
 	}
-	const callTargets = [...outgoing]
+	const callTargets = outgoing.entries()
 		.filter(([, { types }]) => edgeIncludesType(types, EdgeType.Calls))
 		.map(([t]) => t)
+		.toArray()
     ;
 
 	let builtIn = false;
 
-	if(callVertex.environment !== undefined) {
+	if(info.environment !== undefined) {
 		/*
          * for performance and scoping reasons, flowR will not identify the global linkage,
          * including any potential built-in mapping.
          */
-		const reResolved = resolveByName(callVertex.name, callVertex.environment, ReferenceType.Unknown);
+		const reResolved = resolveByName(info.name, info.environment, ReferenceType.Unknown);
 		if(reResolved?.some(t => isBuiltIn(t.definedAt))) {
 			builtIn = true;
 		}
@@ -86,8 +84,9 @@ export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarge
 	}
 }
 
-
-
+/**
+ * Gets the value node of the specified argument in the given function call, if it exists and matches the allowed types.
+ */
 export function getValueOfArgument<Types extends readonly RType[] = readonly RType[]>(
 	graph: DataflowGraph, call: DataflowGraphVertexFunctionCall | undefined, argument: { name?: string, index: number }, additionalAllowedTypes?: Types
 ): (RNodeWithParent & { type: Types[number] } ) | undefined {
@@ -115,40 +114,55 @@ export function getValueOfArgument<Types extends readonly RType[] = readonly RTy
 	}
 }
 
-
+/**
+ * Identifies nodes that link to the last call of a specified function from a given starting node in the control flow graph.
+ * If you pass on `knownCalls` (e.g., produced by {@link getCallsInCfg}), this will only respect the functions
+ * listed there and ignore any other calls. This can be also used to speed up the process if you already have
+ * the known calls available.
+ */
 export function identifyLinkToLastCallRelation(
 	from: NodeId,
 	cfg: ControlFlowGraph,
 	graph: DataflowGraph,
-	{ callName, ignoreIf, cascadeIf }: LinkTo<RegExp> | PromotedLinkTo
+	{ callName, ignoreIf, cascadeIf }: LinkTo<RegExp> | PromotedLinkTo,
+	knownCalls?: Map<NodeId, Required<DataflowGraphVertexFunctionCall>>
 ): NodeId[] {
 	if(ignoreIf?.(from, graph)) {
 		return [];
 	}
 
 	const found: NodeId[] = [];
+	const cNameCheck = callName instanceof RegExp ? ({ name }: DataflowGraphVertexFunctionCall) => callName.test(name)
+		: ({ name }: DataflowGraphVertexFunctionCall) => callName.has(name);
+
+	const getVertex = knownCalls ?
+		(node: NodeId) => knownCalls.get(node) :
+		(node: NodeId) => {
+			const v = graph.getVertex(node, true);
+			return isFunctionCallVertex(v) ? v : undefined;
+		};
 
 	visitCfgInReverseOrder(cfg, [from], node => {
 		/* we ignore the start id as it cannot be the last call */
 		if(node === from) {
 			return;
 		}
-		const vertex = graph.getVertex(node, true);
-		if(vertex === undefined || vertex.tag !== VertexType.FunctionCall) {
+		const vertex = getVertex(node);
+		if(vertex === undefined) {
 			return;
 		}
-		if(callName instanceof RegExp ? callName.test(vertex.name) : callName.has(vertex.name)) {
+		if(cNameCheck(vertex)) {
 			const act = cascadeIf ? cascadeIf(vertex, from, graph) : CascadeAction.Stop;
 			if(act === CascadeAction.Skip) {
 				return;
 			}
-			const tar = satisfiesCallTargets(vertex.id, graph, CallTargets.MustIncludeGlobal);
-			if(tar === 'no') {
-				return act === CascadeAction.Stop;
+			const tar = satisfiesCallTargets(vertex, graph, CallTargets.MustIncludeGlobal);
+			if(tar !== 'no') {
+				found.push(node);
 			}
-			found.push(node);
 			return act === CascadeAction.Stop;
 		}
 	});
+
 	return found;
 }

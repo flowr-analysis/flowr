@@ -1,12 +1,10 @@
-
-
 import {
 	descriptionFileLog
 } from '../file-plugins/flowr-analyzer-description-file-plugin';
 import { SemVer } from 'semver';
 import { FlowrAnalyzerLoadingOrderPlugin } from './flowr-analyzer-loading-order-plugin';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
-import { SpecialFileRole } from '../../context/flowr-file';
+import { FileRole } from '../../context/flowr-file';
 
 /**
  * This plugin extracts loading order information from R `DESCRIPTION` files.
@@ -19,7 +17,7 @@ export class FlowrAnalyzerLoadingOrderDescriptionFilePlugin extends FlowrAnalyze
 	public readonly version = new SemVer('0.1.0');
 
 	process(ctx: FlowrAnalyzerContext): void {
-		const descFiles = ctx.files.getFilesByRole(SpecialFileRole.Description);
+		const descFiles = ctx.files.getFilesByRole(FileRole.Description);
 		if(descFiles.length !== 1) {
 			descriptionFileLog.warn(`Supporting only exactly one DESCRIPTION file, found ${descFiles.length}`);
 			return;

@@ -1,7 +1,6 @@
 import type { Feature, FeatureProcessorInput } from '../../feature';
 import type { Writable } from 'ts-essentials';
-import type { CommonSyntaxTypeCounts } from '../../common-syntax-probability';
-import {
+import { type CommonSyntaxTypeCounts ,
 	emptyCommonSyntaxTypeCounts,
 	updateCommonSyntaxTypeCounts
 } from '../../common-syntax-probability';
@@ -60,7 +59,7 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 	const accessChain: RNodeWithParent[] = [];
 	const parentRoleCache = new Map<NodeId, { acc: boolean, idxAcc: boolean }>();
 
-	visitAst(input.normalizedRAst.ast,
+	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
 		node => {
 			if(node.type !== RType.Access) {
 				return;

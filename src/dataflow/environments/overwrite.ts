@@ -1,41 +1,28 @@
 import { guard } from '../../util/assert';
-import type { IEnvironment, REnvironmentInformation } from './environment';
-import {  Environment } from './environment';
+import { type IEnvironment, type REnvironmentInformation ,  Environment } from './environment';
 import type { IdentifierDefinition } from './identifier';
 import type { ControlDependency } from '../info';
-import { log } from '../../util/log';
 
 function anyIsMaybeOrEmpty(values: readonly IdentifierDefinition[]): boolean {
-	if(values.length === 0) {
-		return true;
-	}
-	for(const val of values) {
-		if(val.controlDependencies !== undefined) {
-			return true;
-		}
-	}
-	return false;
+	return values.length === 0 || values.some(v => v.controlDependencies !== undefined);
 }
 
-export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined, includeParent = true, applyCds?: readonly ControlDependency[]): IEnvironment {
+function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined, includeParent = true, applyCds?: readonly ControlDependency[]): IEnvironment {
 	guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined');
 	const map = new Map(base.memory);
 	for(const [key, values] of next.memory) {
-		if(values.length > 1_000_000) {
-			log.warn(`Overwriting environment with ${values.length} definitions for ${key}`);
-		}
 		const hasMaybe = applyCds !== undefined ? true : anyIsMaybeOrEmpty(values);
 		if(hasMaybe) {
 			const old = map.get(key);
 			// we need to make a copy to avoid side effects for old reference in other environments
-			const updatedOld: IdentifierDefinition[] = [...old ?? []];
+			const updatedOld: IdentifierDefinition[] = old?.slice() ?? [];
 			for(const v of values) {
 				const index = updatedOld.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt);
 				if(index < 0) {
 					if(applyCds !== undefined) {
 						updatedOld.push({
 							...v,
-							controlDependencies: applyCds.concat(v.controlDependencies ?? [])
+							controlDependencies: v.controlDependencies ? applyCds.concat(v.controlDependencies) : applyCds.slice()
 						});
 					} else {
 						updatedOld.push(v);

@@ -1,5 +1,4 @@
-import type { Lift, Value, ValueVector } from '../r-value';
-import { isBottom, isTop , isValue, Top } from '../r-value';
+import { type Lift, type Value, type ValueVector , isBottom, isTop , isValue, Top } from '../r-value';
 import { guard } from '../../../../util/assert';
 import { bottomTopGuard } from '../general';
 
@@ -18,7 +17,7 @@ export function vectorFrom<V extends Lift<Value[]>>(elements: V): ValueVector<V>
 }
 
 /**
- * Flattens all elements inside of a vector 
+ * Flattens all elements inside of a vector
  * A set containing only one element is also replaced by its only element
  * @param s - vector to flatten
  * @returns flattened vactor, if all elements are not bottom / top

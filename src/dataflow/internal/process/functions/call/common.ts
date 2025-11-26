@@ -1,26 +1,21 @@
-import type { DataflowInformation } from '../../../../info';
-import { happensInEveryBranch } from '../../../../info';
-import type { DataflowProcessorInformation } from '../../../../processor';
-import { processDataflowFor } from '../../../../processor';
+import { type DataflowInformation , happensInEveryBranch } from '../../../../info';
+import { type DataflowProcessorInformation , processDataflowFor } from '../../../../processor';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument , EmptyArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
-import type { IdentifierReference, InGraphIdentifierDefinition } from '../../../../environments/identifier';
-import { isReferenceType, ReferenceType } from '../../../../environments/identifier';
+import { type IdentifierReference, type InGraphIdentifierDefinition , isReferenceType, ReferenceType } from '../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
-import type {
-	ContainerIndicesCollection,
-	DataflowGraphVertexAstLink,
-	DataflowGraphVertexFunctionDefinition,
-	FunctionOriginInformation
-} from '../../../../graph/vertex';
-import { isFunctionDefinitionVertex, VertexType } from '../../../../graph/vertex';
+import {
+	type ContainerIndicesCollection,
+	type DataflowGraphVertexAstLink,
+	type DataflowGraphVertexFunctionDefinition,
+	type FunctionOriginInformation
+	, isFunctionDefinitionVertex, VertexType } from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
 
@@ -81,9 +76,11 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 	}
 }
 
-
+/**
+ * Processes all arguments for a function call, updating the given final graph and environment.
+ */
 export function processAllArguments<OtherInfo>(
-	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData = d => d }: ProcessAllArgumentInput<OtherInfo>,
+	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
 	// arg env contains the environments with other args defined
@@ -94,7 +91,7 @@ export function processAllArguments<OtherInfo>(
 	let i = -1;
 	for(const arg of args) {
 		i++;
-		data = patchData(data, i);
+		data = patchData?.(data, i) ?? data;
 		if(arg === EmptyArgument) {
 			callArgs.push(EmptyArgument);
 			processedArguments.push(undefined);
@@ -111,7 +108,7 @@ export function processAllArguments<OtherInfo>(
 		finalGraph.mergeWith(processed.graph);
 
 		// resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies
-		for(const ingoing of [...processed.in, ...processed.unknownReferences]) {
+		for(const ingoing of processed.in.concat(processed.unknownReferences)) {
 			// check if it is called directly
 			const vtx = finalGraph.getVertex(ingoing.nodeId);
 
@@ -161,6 +158,10 @@ export interface PatchFunctionCallInput<OtherInfo> {
 	readonly link?:                 DataflowGraphVertexAstLink
 }
 
+
+/**
+ *
+ */
 export function patchFunctionCall<OtherInfo>(
 	{ nextGraph, rootId, name, data, argumentProcessResult, origin, link }: PatchFunctionCallInput<OtherInfo>
 ): void {

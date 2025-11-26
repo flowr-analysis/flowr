@@ -12,10 +12,8 @@ import type { NamedJsonEntry } from '../../../json/format';
 
 /**
  * Tries to parse the given data as a function definition.
- *
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param mappedWithName - The JSON object to extract the meta-information from
- *
  * @returns The parsed {@link RFunctionDefinition} or `undefined` if the given construct is not a function definition
  */
 export function tryNormalizeFunctionDefinition(data: NormalizerData, mappedWithName: readonly NamedJsonEntry[]): RFunctionDefinition | undefined {

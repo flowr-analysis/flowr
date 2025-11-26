@@ -1,10 +1,11 @@
 import Parser from 'web-tree-sitter';
-
+import type { Query, QueryCapture } from 'web-tree-sitter';
 import type { RParseRequest } from '../../retriever';
-import type { SyncParser } from '../../parser';
+import type { SyncParser, TreeSitterInformation } from '../../parser';
 import type { TreeSitterEngineConfig } from '../../../config';
 import { log } from '../../../util/log';
 import fs from 'fs';
+import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 export const DEFAULT_TREE_SITTER_R_WASM_PATH = './node_modules/@eagleoutice/tree-sitter-r/tree-sitter-r.wasm';
 export const DEFAULT_TREE_SITTER_WASM_PATH = './node_modules/web-tree-sitter/tree-sitter.wasm';
@@ -17,7 +18,7 @@ const wasmLog = log.getSubLogger({ name: 'tree-sitter-wasm' });
 export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 
 	public readonly name = 'tree-sitter';
-	public readonly parser:  Parser;
+	private readonly parser: Parser;
 	private static language: Parser.Language;
 
 	/**
@@ -54,6 +55,16 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		return Promise.resolve('none');
 	}
 
+	public information(analyzer: ReadonlyFlowrAnalysisProvider): TreeSitterInformation {
+		return {
+			name:            'tree-sitter',
+			grammarVersion:  this.treeSitterVersion(),
+			treeSitterQuery: async(source: Query | string, force?: boolean) => {
+				return this.query(source, ...(await analyzer.parse(force)).files.map(p => p.parsed) as Parser.Tree[]);
+			}
+		};
+	}
+
 	public treeSitterVersion(): number {
 		return this.parser.getLanguage().version;
 	}
@@ -66,6 +77,17 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 			sourceCode = request.content;
 		}
 		return this.parser.parse(sourceCode);
+	}
+
+	public createQuery(source: string): Query {
+		return this.parser.getLanguage().query(source);
+	}
+
+	public query(source: Query | string, ...tree: Parser.Tree[]): QueryCapture[] {
+		const query = typeof source === 'string' ? this.createQuery(source) : source;
+		return tree
+			.flatMap(t => query.matches(t.rootNode))
+			.flatMap(m => m.captures);
 	}
 
 	public close(): void {

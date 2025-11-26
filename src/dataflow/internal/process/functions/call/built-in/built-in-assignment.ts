@@ -18,18 +18,16 @@ import type {
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { type NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import type {
-	IdentifierReference,
-	InGraphIdentifierDefinition,
-	InGraphReferenceType
-} from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
+import {
+	type IdentifierReference,
+	type InGraphIdentifierDefinition,
+	type InGraphReferenceType
+	, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import type { ContainerIndicesCollection } from '../../../../../graph/vertex';
-import { VertexType } from '../../../../../graph/vertex';
+import { type ContainerIndicesCollection , VertexType } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
@@ -175,7 +173,7 @@ export function processAssignment<OtherInfo>(
 			});
 		}  else {
 			// try to resolve the variable first
-			const n = resolveIdToValue(target.info.id, { environment: data.environment, resolve: data.flowrConfig.solver.variables, idMap: data.completeAst.idMap, full: true });
+			const n = resolveIdToValue(target.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true });
 			if(n.type === 'set' && n.elements.length === 1 && n.elements[0].type === 'string') {
 				const val = n.elements[0].value;
 				if(isValue(val)) {
@@ -216,7 +214,7 @@ export function processAssignment<OtherInfo>(
 		if(rootArg) {
 			const res = processKnownFunctionCall({
 				name,
-				args: 			     [rootArg, source],
+				args:         [rootArg, source],
 				rootId,
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
@@ -358,7 +356,7 @@ export function markAsAssignment<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo>,
 	assignmentConfig?: AssignmentConfiguration
 ) {
-	if(data.flowrConfig.solver.pointerTracking) {
+	if(data.ctx.config.solver.pointerTracking) {
 		let indicesCollection: ContainerIndicesCollection = undefined;
 		if(sourceIds.length === 1) {
 			// support for tracking indices.
@@ -388,7 +386,7 @@ export function markAsAssignment<OtherInfo>(
 		nodeToDefine.indicesCollection ??= indicesCollection;
 	}
 
-	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, data.flowrConfig);
+	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, data.ctx.config);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
 	if(!assignmentConfig?.quoteSource) {
 		for(const sourceId of sourceIds) {
@@ -415,8 +413,8 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 
 	const aliases = getAliases([source.info.id], information.graph, information.environment);
 	const writeNodes = targetName ? [{
-		nodeId:   		         targetId,
-		name: 				           targetName,
+		nodeId:              targetId,
+		name:                targetName,
 		type:                referenceType,
 		definedAt:           rootId,
 		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
@@ -457,6 +455,6 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		unknownReferences: [],
 		entryPoint:        rootId,
 		in:                readTargets,
-		out:               [...writeNodes, ...readFromSourceWritten]
+		out:               writeNodes.concat(readFromSourceWritten as typeof writeNodes),
 	};
 }

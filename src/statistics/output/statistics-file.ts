@@ -1,7 +1,6 @@
-import type {
-	DummyAppendMemoryMap,
-	StatisticAppendProvider } from './file-provider';
 import {
+	type DummyAppendMemoryMap,
+	type StatisticAppendProvider ,
 	DummyAppendProvider,
 	StatisticFileProvider
 } from './file-provider';
@@ -41,7 +40,6 @@ export function initFileProvider(outputDirectory: string): void {
 
 /**
  * Either ignore the statistics or write them to a given map (e.g., for testing).
- *
  * @param map - The map to write to, will not persist calls if no map is given
  */
 export function initDummyFileProvider(map?: DummyAppendMemoryMap): void {

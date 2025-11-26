@@ -1,6 +1,5 @@
 import { jsonReplacer } from '../../util/json';
-import type { QuadSerializationConfiguration } from '../../util/quads';
-import { serialize2quads } from '../../util/quads';
+import { type QuadSerializationConfiguration , serialize2quads } from '../../util/quads';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../util/mermaid/ast';
 
@@ -11,19 +10,39 @@ export function normalizedAstToJson(ast: NormalizedAst): string {
 		if(k === 'fullLexeme') {
 			return undefined;
 		}
-		 
+
 		return jsonReplacer(k, v);
 	});
 }
 
+/**
+ * Normalized AST to quads serialization this does not have multi-file support
+ * @see {@link serialize2quads}
+ * @see {@link QuadSerializationConfiguration}
+ * @see {@link normalizedAstToMermaid}
+ * @see {@link normalizedAstToMermaidUrl}
+ * @see {@link printNormalizedAstToMermaidUrl}
+ */
 export function normalizedAstToQuads(ast: NormalizedAst, config: QuadSerializationConfiguration): string {
-	return serialize2quads(ast.ast, config);
+	return serialize2quads(ast.ast.files[0].root, config);
 }
 
+/**
+ * Serialize the normalized AST to mermaid format
+ * @see {@link normalizedAstToMermaid}
+ * @see {@link normalizedAstToMermaidUrl}
+ * @see {@link printNormalizedAstToMermaidUrl}
+ */
 export function printNormalizedAstToMermaid(ast: NormalizedAst): string {
 	return normalizedAstToMermaid(ast.ast);
 }
 
+/**
+ * Serialize the normalized AST to a mermaid URL
+ * @see {@link normalizedAstToMermaid}
+ * @see {@link normalizedAstToMermaidUrl}
+ * @see {@link printNormalizedAstToMermaid}
+ */
 export function printNormalizedAstToMermaidUrl(ast: NormalizedAst): string {
 	return normalizedAstToMermaidUrl(ast.ast);
 }

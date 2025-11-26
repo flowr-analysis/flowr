@@ -2,13 +2,14 @@ import type {
 	InspectHigherOrderQuery, InspectHigherOrderQueryResult
 } from './inspect-higher-order-query-format';
 import type { BasicQueryData } from '../../base-query-format';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
-import { tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
+import { type SingleSlicingCriterion , tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
 import { isFunctionDefinitionVertex } from '../../../dataflow/graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isHigherOrder } from '../../../dataflow/fn/higher-order-function';
 
-
+/**
+ * Execute higher-order function inspection queries on the given analyzer.
+ */
 export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, queries: readonly InspectHigherOrderQuery[]): Promise<InspectHigherOrderQueryResult> {
 	const start = Date.now();
 	let filters: SingleSlicingCriterion[] | undefined = undefined;

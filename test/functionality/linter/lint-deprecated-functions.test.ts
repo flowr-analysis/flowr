@@ -33,7 +33,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			'deprecated-functions', [
 				{ certainty: LintingResultCertainty.Certain, function: 'all_equal', range: [1, 1, 1, 14] }
 			],
-			{ totalCalls: 1, totalFunctionDefinitions: 1 } 
+			{ totalCalls: 1, totalFunctionDefinitions: 1 }
 		);
 		/* We should find deprecated functions even if they are nested in other function calls */
 		assertLinter('with defaults nested', parser, 'foo(all_equal(foo))',

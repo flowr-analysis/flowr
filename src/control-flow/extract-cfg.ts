@@ -1,8 +1,6 @@
-import type { QuadSerializationConfiguration } from '../util/quads';
-import { graph2quads } from '../util/quads';
+import { type QuadSerializationConfiguration , graph2quads } from '../util/quads';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { FoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/fold';
-import { foldAst } from '../r-bridge/lang-4.x/ast/model/processing/fold';
+import { type FoldFunctions , foldAst } from '../r-bridge/lang-4.x/ast/model/processing/fold';
 import type {
 	NormalizedAst,
 	ParentInformation,
@@ -14,21 +12,30 @@ import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-
 import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import type { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import type { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionCall , EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
-import { isFunctionDefinitionVertex } from '../dataflow/graph/vertex';
+import type {
+	DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
+import {
+	isFunctionCallVertex,
+	isFunctionDefinitionVertex
+} from '../dataflow/graph/vertex';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import type { ControlFlowInformation } from './control-flow-graph';
-import { CfgEdgeType, CfgVertexType, ControlFlowGraph } from './control-flow-graph';
-import type { CfgSimplificationPassName } from './cfg-simplification';
-import { simplifyControlFlowInformation } from './cfg-simplification';
+import {
+	type ControlFlowInformation,
+	CfgEdgeType,
+	CfgVertexType,
+	ControlFlowGraph,
+	emptyControlFlowInformation
+} from './control-flow-graph';
+import { type CfgSimplificationPassName , simplifyControlFlowInformation } from './cfg-simplification';
 import { guard } from '../util/assert';
-import type { FlowrConfigOptions } from '../config';
+import type { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 
 const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
@@ -75,28 +82,66 @@ function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInf
  * Given a normalized AST, this approximates the control flow graph of the program.
  * This view is different from the computation of the dataflow graph and may differ,
  * especially because it focuses on intra-procedural analysis.
- *
  * @param ast             - the normalized AST
- * @param config          - the flowR config
+ * @param ctx             - the flowR context
  * @param graph           - additional dataflow facts to consider by the control flow extraction
  * @param simplifications - a list of simplification passes to apply to the control flow graph
- *
  * @see {@link extractCfgQuick} - for a simplified version of this function
  */
 export function extractCfg<Info = ParentInformation>(
 	ast:    NormalizedAst<Info & ParentInformation>,
-	config: FlowrConfigOptions,
+	ctx:    ReadOnlyFlowrAnalyzerContext,
 	graph?: DataflowGraph,
 	simplifications?: readonly CfgSimplificationPassName[]
 ): ControlFlowInformation {
-	return simplifyControlFlowInformation(foldAst(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds), { ast, dfg: graph, config }, simplifications);
+	return simplifyControlFlowInformation(cfgFoldProject(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds), { ast, dfg: graph, ctx }, simplifications);
 }
 
 /**
  * A version of {@link extractCfg} that is much quicker and does not apply any simplifications or dataflow information.
  */
 export function extractCfgQuick<Info = ParentInformation>(ast: NormalizedAst<Info>) {
-	return foldAst(ast.ast, cfgFolds);
+	return cfgFoldProject(ast.ast, cfgFolds);
+}
+
+/**
+ * Extracts all function call vertices from the given control flow information and dataflow graph.
+ */
+export function getCallsInCfg(cfg: ControlFlowInformation, graph: DataflowGraph): Map<NodeId, Required<DataflowGraphVertexFunctionCall>> {
+	const calls = new Map<NodeId, Required<DataflowGraphVertexFunctionCall>>();
+	for(const vertexId of cfg.graph.vertices().keys()) {
+		const vertex = graph.getVertex(vertexId, true);
+		if(isFunctionCallVertex(vertex)) {
+			calls.set(vertexId, vertex);
+		}
+	}
+	return calls;
+}
+
+function cfgFoldProject(proj: RProject<ParentInformation>, folds: FoldFunctions<ParentInformation, ControlFlowInformation>): ControlFlowInformation {
+	if(proj.files.length === 0) {
+		return emptyControlFlowInformation();
+	} else if(proj.files.length === 1) {
+		return foldAst(proj.files[0].root, folds);
+	}
+	const perProject = proj.files.map(file => foldAst(file.root, folds));
+	const finalGraph = perProject[0].graph;
+	for(let i = 1; i < perProject.length; i++) {
+		finalGraph.mergeWith(perProject[i].graph);
+		for(const exitPoint of perProject[i - 1].exitPoints) {
+			for(const entryPoint of perProject[i].entryPoints) {
+				finalGraph.addEdge(entryPoint, exitPoint, { label: CfgEdgeType.Fd });
+			}
+		}
+	}
+	return {
+		breaks:      perProject.flatMap(e => e.breaks),
+		nexts:       perProject.flatMap(e => e.nexts),
+		returns:     perProject.flatMap(e => e.returns),
+		exitPoints:  perProject[perProject.length - 1].exitPoints,
+		entryPoints: perProject[0].entryPoints,
+		graph:       finalGraph
+	};
 }
 
 function cfgLeaf(type: CfgVertexType.Expression | CfgVertexType.Statement): (leaf: RNodeWithParent) => ControlFlowInformation {
@@ -545,7 +590,6 @@ function cfgExprList(node: RExpressionList<ParentInformation>, _grouping: unknow
 
 /**
  * Convert a cfg to RDF quads.
- *
  * @see {@link df2quads}
  * @see {@link serialize2quads}
  * @see {@link graph2quads}

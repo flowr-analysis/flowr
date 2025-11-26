@@ -1,11 +1,9 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print';
-import type { IPipelineStep } from '../../pipeline-step';
-import { PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep , PipelineStepStage } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import type { DataflowInformation } from '../../../../dataflow/info';
 import type { SlicingCriteria } from '../../../../slicing/criterion/parse';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { FlowrConfigOptions } from '../../../../config';
 import { staticSlice } from '../../../../slicing/static/static-slicer';
 
 export interface SliceRequiredInput {
@@ -22,7 +20,7 @@ export enum SliceDirection {
 	Forward = 'forward'
 }
 
-function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>, _config: FlowrConfigOptions) {
+function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>) {
 	const direction = input.direction ?? SliceDirection.Backward;
 	return staticSlice((results.dataflow as DataflowInformation), results.normalize as NormalizedAst, input.criterion as SlicingCriteria, direction, input.threshold);
 }

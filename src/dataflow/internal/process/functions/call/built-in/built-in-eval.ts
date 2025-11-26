@@ -1,14 +1,11 @@
 import { type DataflowProcessorInformation } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
-import { initializeCleanDataflowInformation } from '../../../../../info';
+import { type DataflowInformation , initializeCleanDataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { requestFromInput } from '../../../../../../r-bridge/retriever';
-import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
+import { type AstIdMap, type ParentInformation ,
 	sourcedDeterministicCountingIdGenerator
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -28,6 +25,10 @@ import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { cartesianProduct } from '../../../../../../util/collections/arrays';
 import type { FlowrConfigOptions } from '../../../../../../config';
 
+
+/**
+ *
+ */
 export function processEvalCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
@@ -56,13 +57,13 @@ export function processEvalCall<OtherInfo>(
 		);
 	}
 
-	if(!data.flowrConfig.solver.evalStrings) {
+	if(!data.ctx.config.solver.evalStrings) {
 		expensiveTrace(dataflowLogger, () => `Skipping eval call ${JSON.stringify(evalArgument)} (disabled in config file)`);
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
 
-	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, data.environment, data.completeAst.idMap, data.flowrConfig);
+	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, data.environment, data.completeAst.idMap, data.ctx.config);
 
 	if(code) {
 		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId, name.location);
@@ -87,10 +88,10 @@ export function processEvalCall<OtherInfo>(
 			graph:             result.reduce((acc, r) => acc.mergeWith(r.graph), information.graph),
 			environment:       result.reduce((acc, r) => appendEnvironment(acc, r.environment), information.environment),
 			entryPoint:        rootId,
-			out:               [...information.out, ...result.flatMap(r => r.out)],
-			in:                [...information.in, ...result.flatMap(r => r.in)],
-			unknownReferences: [...information.unknownReferences, ...result.flatMap(r => r.unknownReferences)],
-			exitPoints:        [...information.exitPoints, ...result.flatMap(r => r.exitPoints)],
+			out:               information.out.concat(result.flatMap(r => r.out)),
+			in:                information.in.concat(result.flatMap(r => r.in)),
+			unknownReferences: information.unknownReferences.concat(result.flatMap(r => r.unknownReferences)),
+			exitPoints:        information.exitPoints.concat(result.flatMap(r => r.exitPoints)),
 		};
 	}
 

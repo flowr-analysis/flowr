@@ -1,5 +1,4 @@
-import type { DataflowGraph } from '../../graph/graph';
-import { getReferenceOfArgument } from '../../graph/graph';
+import { type DataflowGraph , getReferenceOfArgument } from '../../graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -82,8 +81,8 @@ function hasCharacterOnly(variableResolve: VariableResolve, graph: DataflowGraph
 	if(!treatAsChar) {
 		return false;
 	}
-	const hasTrue = [...treatAsChar.values()].some(set => set?.has('TRUE'));
-	const hasFalse = hasTrue ? [...treatAsChar.values()].some(set => set === undefined || set.has('FALSE')) : false;
+	const hasTrue = treatAsChar.values().some(set => set?.has('TRUE'));
+	const hasFalse = hasTrue ? treatAsChar.values().some(set => set === undefined || set.has('FALSE')) : false;
 	if(hasTrue && hasFalse) {
 		return 'maybe';
 	} else {

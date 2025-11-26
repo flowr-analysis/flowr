@@ -8,8 +8,7 @@ import type {
 	NormalizedAst,
 	ParentInformation
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { BasicCfgGuidedVisitorConfiguration } from './basic-cfg-guided-visitor';
-import { BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
+import { type BasicCfgGuidedVisitorConfiguration , BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { assertUnreachable } from '../util/assert';

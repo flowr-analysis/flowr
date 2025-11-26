@@ -11,7 +11,6 @@ import { isDataFrameArgument } from './arguments';
 /**
  * Maps a concrete data frame assignment to data frame assignment info containing the ids of the identifier and assigned expression.
  * We currently do not support function assignments dealing with data frames.
- *
  * @param identifier - The R node of the variable identifier
  * @param expression - The R node of the assigned expression
  * @param dfg  - The data flow graph for resolving the arguments

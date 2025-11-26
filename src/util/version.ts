@@ -5,8 +5,11 @@ import type { ReplOutput } from '../cli/repl/commands/repl-main';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 // this is automatically replaced with the current version by release-it
-const version = '2.6.1';
+const version = '2.6.3';
 
+/**
+ * Retrieves the current flowR version as a new {@link SemVer} object.
+ */
 export function flowrVersion(): SemVer {
 	return new SemVer(version);
 }
@@ -26,6 +29,10 @@ export interface VersionInformation {
 
 const versionRegex = /^\d+\.\d+\.\d+/m;
 
+
+/**
+ * Retrieves the version information for flowR and the given parser or analysis provider.
+ */
 export async function retrieveVersionInformation(input: KnownParser | ReadonlyFlowrAnalysisProvider): Promise<VersionInformation> {
 	const flowr = flowrVersion().toString();
 
@@ -35,8 +42,8 @@ export async function retrieveVersionInformation(input: KnownParser | ReadonlyFl
 		r = await input.rVersion();
 		name = input.name;
 	} else {
-		const parserInformation = await input.parserInformation();
-		r = parserInformation.name === 'r-shell' ? parserInformation.rVersion : 'unknown';
+		const parserInformation = input.parserInformation();
+		r = parserInformation.name === 'r-shell' ? (await parserInformation.rVersion()) : 'unknown';
 		name = parserInformation.name;
 	}
 
@@ -46,6 +53,10 @@ export async function retrieveVersionInformation(input: KnownParser | ReadonlyFl
 	return { flowr: flowr as Version, r: r as Version, engine: name };
 }
 
+
+/**
+ * Displays the version information to the given output.
+ */
 export async function printVersionInformation(output: ReplOutput, input: KnownParser | ReadonlyFlowrAnalysisProvider) {
 	const { flowr, r, engine } = await retrieveVersionInformation(input);
 	output.stdout(`Engine: ${engine}`);

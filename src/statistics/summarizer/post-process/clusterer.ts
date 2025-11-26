@@ -1,7 +1,6 @@
 /**
  * Reading the given file line by line and expecting constructs of {@link StatisticsOutputFormat},
  * this module is responsible for identifying interesting groups of same data.
- *
  * @module
  */
 import LineByLine from 'n-readlines';
@@ -22,15 +21,14 @@ export interface ClusterReport extends MergeableRecord {
 	/** Maps each context encountered (i.e., every file that contains something associated with the feature) to a unique id, used in the {@link ClusterReport#valueInfoMap|valueInfoMap}. */
 	contextIdMap:      ClusterContextIdMap
 	/**
-   * Counts which contexts contained which values of a feature.
-   * For example, that `<-` occurred in files with ids `[12, 42, 19, 19]` (i.e., the context with the id 19 contained it twice).
-   */
+	 * Counts which contexts contained which values of a feature.
+	 * For example, that `<-` occurred in files with ids `[12, 42, 19, 19]` (i.e., the context with the id 19 contained it twice).
+	 */
 	valueInfoMap:      ClusterValueInfoMap
 }
 
 /**
  * Takes a statistics file like `statistics-out/top-2023-01-01-00-00-00/Assignments/assignmentOperator.txt` and clusters the values by context
- *
  * @param filepath     - Filepath of the statistics file
  * @param contextIdMap - The id map to use, can use an existing one to reuse ids for same contexts spreading over multiple input files.
  *  `undefined` is used for unknown contexts. This map allows us to reference contexts with a way shorter identifier (vs. the full file path).

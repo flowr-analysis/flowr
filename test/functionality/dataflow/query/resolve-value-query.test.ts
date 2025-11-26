@@ -11,7 +11,6 @@ import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants
 import { intervalFrom } from '../../../../src/dataflow/eval/values/intervals/interval-constants';
 import { Top } from '../../../../src/dataflow/eval/values/r-value';
 import type { ResolveResult } from '../../../../src/dataflow/eval/resolve/alias-tracking';
-
 import { withTreeSitter } from '../../_helper/shell';
 
 describe('Resolve Value Query', withTreeSitter( parser => {
@@ -19,10 +18,10 @@ describe('Resolve Value Query', withTreeSitter( parser => {
 		const queries: ResolveValueQuery[] = [{ type: 'resolve-value' as const, criteria }];
 		assertQuery(label(name), parser, code, queries, ({ dataflow }) => {
 			const results: ResolveValueQueryResult['results'] = {};
-			
+
 			const idMap = dataflow.graph.idMap;
 			assert(idMap !== undefined);
-			
+
 			queries.forEach((query, idx) => {
 				const key = fingerPrintOfQuery(query);
 				results[key] = {

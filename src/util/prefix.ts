@@ -2,7 +2,6 @@
 /**
  * given a potentially partial prefix like `hell`, this finds the matching name in the map, but only
  * if it is unique!
- *
  * @example
  * ```typescript
  * findByPrefixIfUnique('hell', { 'hello', 'bar' }) // => 'hello'

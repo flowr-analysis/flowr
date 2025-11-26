@@ -37,9 +37,10 @@ for(i in 1:5) {
 			`.trim().repeat(200) + '\nprint(x + f(1, function(i) x[[i]] + 2, 3))');
 				await TreeSitterExecutor.initTreeSitter();
 				const exec = new TreeSitterExecutor();
-				const analyzer = await new FlowrAnalyzerBuilder(request)
+				const analyzer = await new FlowrAnalyzerBuilder()
 					.setParser(exec)
 					.build();
+				analyzer.addRequest(request);
 				result = { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalize() };
 				ids = (await analyzer.runSearch(Q.var('print').first())).getElements().map(n => n.node.info.id);
 			}

@@ -3,8 +3,7 @@ import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { executeHigherOrderQuery } from './inspect-higher-order-query-executor';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { normalizeIdToNumberIfPossible } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId , normalizeIdToNumberIfPossible } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { formatRange } from '../../../util/mermaid/dfg';
 

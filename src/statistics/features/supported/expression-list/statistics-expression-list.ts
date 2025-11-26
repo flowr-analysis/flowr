@@ -14,7 +14,7 @@ function visitLists(info: ExpressionListInfo, input: FeatureProcessorInput): voi
 	let nest = -1; // we start with nesting 0
 	let total = 0;
 
-	visitAst(input.normalizedRAst.ast,
+	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
 		node => {
 			if(node.type === RType.ExpressionList) {
 				nest++;

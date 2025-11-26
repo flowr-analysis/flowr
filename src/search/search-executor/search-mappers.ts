@@ -1,8 +1,6 @@
 import type { FlowrSearchElement } from '../flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { Enrichment, EnrichmentData, EnrichmentElementContent } from './search-enrichers';
-import { enrichmentContent, Enrichments } from './search-enrichers';
-
+import { type Enrichment, type EnrichmentData, type EnrichmentElementContent , enrichmentContent, Enrichments } from './search-enrichers';
 import type { MergeableRecord } from '../../util/objects';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
@@ -25,6 +23,9 @@ const Mappers = {
 	} satisfies MapperData<Enrichment>
 } as const;
 
+/**
+ * Maps the given search element using the specified mapper and arguments.
+ */
 export function map<Element extends FlowrSearchElement<ParentInformation>, MapperType extends Mapper>(
 	e: Element, data: ReadonlyFlowrAnalysisProvider, mapper: MapperType, args: MapperArguments<MapperType>): Element[] {
 	return (Mappers[mapper] as MapperData<MapperArguments<MapperType>>).mapper(e, data, args) as Element[];

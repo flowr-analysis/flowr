@@ -1,11 +1,12 @@
-import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../../util/diff';
-import { setDifference } from '../../util/diff';
-import type { IEnvironment, REnvironmentInformation } from './environment';
-import { builtInEnvJsonReplacer } from './environment';
+import { type GenericDifferenceInformation, type WriteableDifferenceReport , setDifference } from '../../util/diff';
+import { type IEnvironment, type REnvironmentInformation , builtInEnvJsonReplacer } from './environment';
 import { jsonReplacer } from '../../util/json';
 import type { IdentifierReference } from './identifier';
 import { diffControlDependencies } from '../info';
 
+/**
+ * Compares two identifier references and reports differences.
+ */
 export function diffIdentifierReferences<Report extends WriteableDifferenceReport>(a: IdentifierReference | undefined, b: IdentifierReference | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
@@ -31,8 +32,8 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 		}
 
 		// we sort both value arrays by their id so that we have no problems with differently ordered arrays (which have no impact)
-		const sorted = [...value].sort((a, b) => String(a.nodeId).localeCompare(String(b.nodeId)));
-		const sorted2 = [...value2].sort((a, b) => String(a.nodeId).localeCompare(String(b.nodeId)));
+		const sorted = value.slice().sort((a, b) => String(a.nodeId).localeCompare(String(b.nodeId)));
+		const sorted2 = value2.slice().sort((a, b) => String(a.nodeId).localeCompare(String(b.nodeId)));
 
 		for(let i = 0; i < value.length; ++i) {
 			const aVal = sorted[i];
@@ -54,6 +55,9 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 	}
 }
 
+/**
+ * Compares two environments and reports differences.
+ */
 export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEnvironment | undefined, b: IEnvironment | undefined, info: GenericDifferenceInformation<Report>, depth: number): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
@@ -75,6 +79,9 @@ export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEn
 	diffEnvironment(a.parent, b.parent, { ...info, position: `${info.position}Parents of ${a.id} & ${b.id}. ` }, depth--);
 }
 
+/**
+ * Compares two REnvironmentInformation objects and reports differences.
+ */
 export function diffEnvironmentInformation<Report extends WriteableDifferenceReport>(a: REnvironmentInformation | undefined, b: REnvironmentInformation | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {

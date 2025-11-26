@@ -5,8 +5,7 @@ import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-se
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { SourceRange } from '../../util/range';
 import type { Identifier } from '../../dataflow/environments/identifier';
-import type { LintingResult } from '../linter-format';
-import { LintingResultCertainty, LintingPrettyPrintContext } from '../linter-format';
+import { type LintingResult , LintingResultCertainty, LintingPrettyPrintContext } from '../linter-format';
 import type { FlowrSearchElement, FlowrSearchElements } from '../../search/flowr-search';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { MergeableRecord } from '../../util/objects';
@@ -56,8 +55,8 @@ export const functionFinderUtil = {
 	},
 	processSearchResult: <T extends FlowrSearchElement<ParentInformation>[]>(
 		elements: FlowrSearchElements<ParentInformation, T>,
-		_config: FunctionsToDetectConfig,
-		_data: { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions},
+		_config: unknown,
+		_data: unknown,
 		refineSearch: (elements: T) => T = e => e,
 	) => {
 		const metadata: FunctionsMetadata = {
@@ -79,7 +78,7 @@ export const functionFinderUtil = {
 			});
 
 		return {
-			results: 
+			results:
 				results.map(element => ({
 					certainty: LintingResultCertainty.Certain,
 					function:  element.target,

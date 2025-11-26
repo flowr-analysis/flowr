@@ -1,13 +1,12 @@
-import type { RShell } from '../../r-bridge/shell';
 import { getFilePathMd } from './doc-files';
 import { describeSchema } from '../../util/schema';
 import { markdownFormatter } from '../../util/text/ansi';
 import type { FlowrMessage, IdMessageBase, MessageDefinition } from '../../cli/repl/server/messages/all-messages';
-import type { FakeServer, FakeSocket } from '../../../test/functionality/_helper/net';
-import { withSocket } from '../../../test/functionality/_helper/net';
+import { type FakeServer, type FakeSocket , withSocket } from '../../../test/functionality/_helper/net';
 import { jsonWithLimit } from './doc-code';
 import { guard } from '../../util/assert';
 import { printAsMs } from '../../util/text/time';
+import type { KnownParser } from '../../r-bridge/parser';
 
 export interface ServerMessageDescription {
 	readonly title:                  string
@@ -18,24 +17,33 @@ export interface ServerMessageDescription {
 	readonly defRequest?:            MessageDefinition<IdMessageBase>
 	readonly defResponse?:           MessageDefinition<IdMessageBase>
 	readonly additionalDefs?:        MessageDefinition<IdMessageBase>[]
-	readonly text:                   (shell: RShell) => Promise<string>
+	readonly text:                   (shell: KnownParser) => Promise<string>
 }
 
 const messages: ServerMessageDescription[] = [];
 
+/**
+ * Documents a server message for later printing.
+ */
 export function documentServerMessage(description: ServerMessageDescription): void {
 	messages.push(description);
 }
 
-export async function printServerMessages(shell: RShell): Promise<string> {
+/**
+ * Visualizes all documented server messages in markdown format.
+ */
+export async function printServerMessages(treeSitter: KnownParser): Promise<string> {
 	let text = '<ul>';
 	for(const message of messages) {
-		text += '<li>' + await printServerMessage(message, shell) + '</li>\n\n';
+		text += '<li>' + await printServerMessage(message, treeSitter) + '</li>\n\n';
 	}
 	return text + '</ul>';
 }
 
-export async function inServerContext<T>(shell: RShell, fn: (socket: FakeSocket, server: FakeServer) => Promise<T> | T): Promise<T> {
+/**
+ * Executes the given function within a server context.
+ */
+export async function inServerContext<T>(shell: KnownParser, fn: (socket: FakeSocket, server: FakeServer) => Promise<T> | T): Promise<T> {
 	return withSocket(shell, async(socket, server) => {
 		return fn(socket, server);
 	})();
@@ -56,7 +64,7 @@ interface RequestMessageInPingPong {
 }
 
 export interface MessagePingPongDocumentationArguments {
-	readonly shell:        RShell,
+	readonly shell:        KnownParser,
 	readonly title?:       string,
 	readonly messageType?: FlowrMessage['type'],
 	readonly messages:     readonly (ResponseMessageInPingPong | RequestMessageInPingPong)[],
@@ -108,6 +116,9 @@ function explainPingPong(
 	return result + '</ol>';
 }
 
+/**
+ * Documents a ping-pong message exchange with the server.
+ */
 export async function documentServerMessageResponse({
 	shell, title, messageType, messages
 }: MessagePingPongDocumentationArguments): Promise<string> {
@@ -162,7 +173,7 @@ ${describeSchema(def.schema, markdownFormatter)}
 
 async function printServerMessage({
 	mermaidSequenceDiagram, text, title, shortDescription, definitionPath, defRequest, defResponse, additionalDefs
-}: ServerMessageDescription, shell: RShell): Promise<string> {
+}: ServerMessageDescription, treeSitter: KnownParser): Promise<string> {
 	const base = defRequest ?? defResponse;
 	guard(base !== undefined, 'At least one of the definitions must be given');
 	return `
@@ -181,7 +192,7 @@ sequenceDiagram
     ${mermaidSequenceDiagram}
 \`\`\`
 
-${await text(shell)}
+${await text(treeSitter)}
 
 <hr>
 
@@ -191,6 +202,6 @@ ${additionalDefs?.map(def => getSchema(definitionPath, def)).join('\n') ?? ''}
 
 <hr>
 
-</details>	
+</details>
 	`;
 }

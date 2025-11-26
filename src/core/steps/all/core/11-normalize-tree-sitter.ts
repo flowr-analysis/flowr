@@ -5,17 +5,16 @@ import {
 	printNormalizedAstToMermaid,
 	printNormalizedAstToMermaidUrl
 } from '../../../print/normalize-printer';
-import type { IPipelineStep } from '../../pipeline-step';
-import { PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep , PipelineStepStage } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import { normalizeTreeSitter } from '../../../../r-bridge/lang-4.x/ast/parser/json/parser';
-import type { NormalizeRequiredInput } from './10-normalize';
-import { getCurrentRequestFile } from './10-normalize';
-import type { ParseStepOutputTS } from './01-parse-tree-sitter';
-import type { FlowrConfigOptions } from '../../../../config';
+import { type NormalizeRequiredInput  } from './10-normalize';
+import type { ParseStepOutput } from '../../../../r-bridge/parser';
+import type { Tree } from 'web-tree-sitter';
+import type { FlowrAnalyzerContext } from '../../../../project/context/flowr-analyzer-context';
 
-function processor(results: { 'parse'?: ParseStepOutputTS }, input: Partial<NormalizeRequiredInput>, config: FlowrConfigOptions) {
-	return normalizeTreeSitter(results['parse'] as ParseStepOutputTS, input.getId, config, input.overwriteFilePath ?? getCurrentRequestFile(input.request));
+function processor(results: { parse?: ParseStepOutput<Tree> }, input: Partial<NormalizeRequiredInput>) {
+	return normalizeTreeSitter(results.parse as ParseStepOutput<Tree>, input.getId, (input.context as FlowrAnalyzerContext).config);
 }
 
 export const NORMALIZE_TREE_SITTER = {

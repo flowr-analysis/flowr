@@ -1,5 +1,4 @@
-import type { PathLike } from 'fs';
-import fs, { promises as fsPromise } from 'fs';
+import fs, { type PathLike , promises as fsPromise } from 'fs';
 import path from 'path';
 import { log } from './log';
 import LineByLine from 'n-readlines';
@@ -20,7 +19,6 @@ export interface Table {
  * @param dir    - Directory path to start the search from
  * @param suffix - Suffix of the files to be retrieved
  * Based on {@link https://stackoverflow.com/a/45130990}
- *
  * @see {@link getAllFilesSync} for a synchronous version.
  */
 export async function* getAllFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
@@ -37,7 +35,6 @@ export async function* getAllFiles(dir: string, suffix = /.*/): AsyncGenerator<s
 
 /**
  * Retrieves all files in the given directory recursively (synchronously)
- *
  * @see {@link getAllFiles} - for an asynchronous version.
  */
 export function* getAllFilesSync(dir: string, suffix = /.*/): Generator<string> {
@@ -56,14 +53,10 @@ const rFileRegex = /\.[rR]$/;
 
 /**
  * Retrieves all R files in a given directory (asynchronously)
- *
- *
  * @param input - directory-path to start the search from, can be a file as well. Will just return the file then.
  * @param limit - limit the number of files to be retrieved
- *
  * @returns Number of files processed (normally &le; `limit`, is &ge; `limit` if limit was reached).
  *          Will be `1`, if `input` is an R file (and `0` if it isn't).
- *
  * @see getAllFiles
  */
 export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFile, number> {
@@ -88,11 +81,9 @@ export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE
 
 /**
  * Retrieves all R files in a given set of directories and files (asynchronously)
- *
  * @param inputs - Files or directories to validate for R-files
  * @param limit  - Limit the number of files to be retrieved
  * @returns Number of files processed (&le; limit)
- *
  * @see allRFiles
  */
 export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGenerator<RParseRequestFromFile, number> {
@@ -108,6 +99,13 @@ export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGen
 	return count;
 }
 
+/**
+ * Writes the given table as a CSV file.
+ * @param table   - The table to write
+ * @param file    - The file path to write the CSV to
+ * @param sep     - The separator to use (default: `,`)
+ * @param newline - The newline character to use (default: `\n`)
+ */
 export function writeTableAsCsv(table: Table, file: string, sep = ',', newline = '\n') {
 	const csv = [table.header.join(sep), ...table.rows.map(row => row.join(sep))].join(newline);
 	fs.writeFileSync(file, csv);
@@ -117,7 +115,6 @@ export function writeTableAsCsv(table: Table, file: string, sep = ',', newline =
  * Reads a file line by line and calls the given function for each line.
  * The `lineNumber` starts at `0`.
  * The `maxLines` option limits the maximum number of read lines and is `Infinity` by default.
- *
  * @returns Whether all lines have been successfully read (`false` if `maxLines` was reached)
  *
  * See {@link readLineByLineSync} for a synchronous version.
@@ -146,7 +143,6 @@ export async function readLineByLine(filePath: string, onLine: (line: Buffer, li
  * Reads a file line by line and calls the given function for each line.
  * The `lineNumber` starts at `0`.
  * The `maxLines` option limits the maximum number of read lines and is `Infinity` by default.
- *
  * @returns Whether the file exists and all lines have been successfully read (`false` if `maxLines` was reached)
  *
  * See {@link readLineByLine} for an asynchronous version.
@@ -186,14 +182,14 @@ export function getParentDirectory(directory: string): string{
  * @param file - The file to parse
  * @returns Map containing the keys and values of the provided file.
  */
-export function parseDCF(file: FlowrFileProvider<string>): Map<string, string[]> {
+export function parseDCF(file: FlowrFileProvider): Map<string, string[]> {
 	const result = new Map<string, string[]>();
 	let currentKey = '';
 	let currentValue = '';
 	const indentRegex = new RegExp(/^\s/);
 	const firstColonRegex = new RegExp(/:(.*)/s);
 
-	const fileContent = file.content().split(/\r?\n/);
+	const fileContent = file.content().toString().split(/\r?\n/);
 
 	for(const line of fileContent) {
 		if(indentRegex.test(line)) {
@@ -300,7 +296,9 @@ function cleanValues(values: string): string[] {
 		.filter(s => s.length > 0);
 }
 
-
+/**
+ * Checks whether the given path-like object is a file that exists on the local filesystem.
+ */
 export function isFilePath(p: PathLike) {
 	return fs.existsSync(p) && fs.statSync(p).isFile();
 }

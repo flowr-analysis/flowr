@@ -1,12 +1,21 @@
-import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
+import { fileProtocol } from '../../../r-bridge/retriever';
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { ansiFormatter, italic } from '../../../util/text/ansi';
 import { describeSchema } from '../../../util/schema';
-import type { Query, QueryResults, SupportedQuery, SupportedQueryTypes } from '../../../queries/query';
-import { AnyQuerySchema, executeQueries, QueriesSchema, SupportedQueries } from '../../../queries/query';
+import {
+	AnyQuerySchema,
+	executeQueries,
+	QueriesSchema,
+	type Query,
+	type QueryResults,
+	SupportedQueries,
+	type SupportedQuery,
+	type SupportedQueryTypes
+} from '../../../queries/query';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
+import type { BaseQueryResult } from '../../../queries/base-query-format';
 import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 
@@ -68,7 +77,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 
 	if(input) {
 		analyzer.reset();
-		analyzer.addRequest(requestFromInput(input));
+		analyzer.addRequest(input);
 	}
 
 	return {
@@ -83,8 +92,8 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 
 /**
  * Function for splitting the input line.
- * The first token is the query command.
- * The rest of the line is treated as input code.
+ * All input is treated as arguments, no R code is separated so that the individual queries can handle it.
+ * @param line - The input line
  */
 function parseArgs(line: string) {
 	const args = splitAtEscapeSensitive(line);
@@ -121,7 +130,9 @@ export const queryStarCommand: ReplCodeCommand = {
 	fn:            async({ output, analyzer, remainingArgs }) => {
 		const results = await processQueryArgs(output, analyzer, remainingArgs);
 		if(results) {
-			output.stdout(JSON.stringify(results.query, jsonReplacer));
+			const json = Object.fromEntries(Object.entries(results.query)
+				.map(([query, queryResults]) => [query, (SupportedQueries[query as SupportedQueryTypes] as SupportedQuery)?.jsonFormatter?.(queryResults as BaseQueryResult) ?? queryResults]));
+			output.stdout(JSON.stringify(json, jsonReplacer));
 		}
 	}
 };

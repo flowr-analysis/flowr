@@ -3,6 +3,9 @@ import { statisticsFileNameRegex } from './summarizer';
 import { SummarizerType } from '../../util/summarizer';
 import { log } from '../../util/log';
 
+/**
+ * Auto-detects the summarization type based on the input path.
+ */
 export async function detectSummarizationType(inputPath: string): Promise<SummarizerType> {
 	if(fs.statSync(inputPath).isFile()) {
 		log.info(`Detected benchmark summarization with single file ${inputPath}`);

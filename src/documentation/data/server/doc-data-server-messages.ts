@@ -1,8 +1,4 @@
-import {
-	documentServerMessage,
-	documentServerMessageResponse,
-	inServerContext
-} from '../../doc-util/doc-server-message';
+import { documentServerMessage, documentServerMessageResponse, inServerContext } from '../../doc-util/doc-server-message';
 import { helloMessageDefinition } from '../../../cli/repl/server/messages/message-hello';
 import { RShell } from '../../../r-bridge/shell';
 import { DockerName } from '../../doc-util/doc-docker';
@@ -14,21 +10,20 @@ import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import { getCfg } from '../../doc-util/doc-cfg';
 import { NewIssueUrl } from '../../doc-util/doc-issue';
 import { requestSliceMessage, responseSliceMessage } from '../../../cli/repl/server/messages/message-slice';
-import type { ExecuteIntermediateResponseMessage } from '../../../cli/repl/server/messages/message-repl';
-import {
+import { type ExecuteIntermediateResponseMessage ,
 	requestExecuteReplExpressionMessage,
 	responseExecuteReplEndMessage,
 	responseExecuteReplIntermediateMessage
 } from '../../../cli/repl/server/messages/message-repl';
-
-import {
-	requestQueryMessage,
-	responseQueryMessage
-} from '../../../cli/repl/server/messages/message-query';
+import { requestQueryMessage, responseQueryMessage } from '../../../cli/repl/server/messages/message-query';
 import { exampleQueryCode } from '../query/example-query-code';
-import { requestLineageMessage, responseLineageMessage } from '../../../cli/repl/server/messages/message-lineage';
 import { CallTargets } from '../../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import type { KnownParser } from '../../../r-bridge/parser';
 
+
+/**
+ *
+ */
 export function documentAllServerMessages() {
 
 	documentServerMessage({
@@ -41,7 +36,7 @@ export function documentAllServerMessages() {
     Server->>Client: hello
 	`,
 		shortDescription: 'The server informs the client about the successful connection and provides Meta-Information.',
-		text:             async(shell: RShell) => {
+		text:             async(shell: KnownParser) => {
 			return `
 	
 After launching _flowR_, for example, with <code>docker run -it --rm ${DockerName} ${getCliLongOptionOf('flowr', 'server', false, false)}</code>&nbsp;(🐳️), simply connecting should present you with a \`${helloMessageDefinition.type}\` message, that amongst others should reveal the versions of&nbsp;_flowR_ and&nbsp;R, using the [semver 2.0](https://semver.org/spec/v2.0.0.html) versioning scheme.
@@ -79,11 +74,11 @@ Requests for the [REPL](#message-request-repl) are independent of that.
     deactivate  Server
 	`,
 		shortDescription: 'The server builds the dataflow graph for a given input file (or a set of files).',
-		text:             async(shell: RShell) => {
+		text:             async(shell: KnownParser) => {
 			return `
 	
 The request allows the server to analyze a file and prepare it for slicing.
-The message can contain a \`filetoken\`, which is used to identify the file in later slice or lineage requests (if you do not add one, the request will not be stored and therefore, it is not available for subsequent requests).
+The message can contain a \`filetoken\`, which is used to identify the file in later slice or query requests (if you do not add one, the request will not be stored and therefore, it is not available for subsequent requests).
 
 > **Please note!**\\
 > If you want to send and process a lot of analysis requests, but do not want to slice them, please do not pass the \`filetoken\` field. This will save the server a lot of memory allocation.
@@ -99,7 +94,7 @@ ${
 		messages:    [
 			{
 				type:        'request',
-				description: `Let' suppose you simply want to analyze the following script:\n ${codeBlock('r', 'x <- 1\nx + 1')}\n For this, you can send the following request:`,
+				description: `Let's suppose you simply want to analyze the following script:\n ${codeBlock('r', 'x <- 1\nx + 1')}\n For this, you can send the following request:`,
 				message:     {
 					type:      'request-file-analysis',
 					id:        '1',
@@ -280,7 +275,7 @@ Please note, that the base message format is still JSON. Only the individual res
     deactivate  Server
 	`,
 		shortDescription: `${deprecatedByQuery} The server slices a file based on the given criteria.`,
-		text:             async(shell: RShell) => {
+		text:             async(shell: KnownParser) => {
 			return `
 **We deprecated the slice request in favor of the \`static-slice\` [Query](${FlowrWikiBaseRef}/Query%20API).**
 
@@ -376,7 +371,7 @@ Within a document that is to be sliced, you can use magic comments to influence 
     deactivate  Server
 	`,
 		shortDescription: 'Access the read evaluate print loop of flowR.',
-		text:             async(shell: RShell) => {
+		text:             async(shell: KnownParser) => {
 			return `
 > [!WARNING]
 > To execute arbitrary R commands with a request, the server has to be started explicitly with ${getCliLongOptionOf('flowr', 'r-session-access')}.
@@ -454,7 +449,7 @@ ${codeBlock('text', (msg as ExecuteIntermediateResponseMessage).result)}
     deactivate  Server
 	`,
 		shortDescription: 'Query an analysis result for specific information.',
-		text:             async(shell: RShell) => {
+		text:             async(shell: KnownParser) => {
 			return `
 To send queries, you have to send an [analysis request](#message-request-file-analysis) first. The \`filetoken\` you assign is of use here as you can re-use it to repeatedly query the same file.
 This message provides direct access to _flowR_'s Query API. Please consult the [Query API documentation](${FlowrWikiBaseRef}/Query%20API) for more information.
@@ -488,7 +483,7 @@ See [above](#message-request-file-analysis) for the general structure of the res
 					{
 						type:  'compound',
 						query: 'call-context',
-						 
+
 						commonArguments: {
 							kind:        'visualize',
 							subkind:     'text',
@@ -510,70 +505,6 @@ See [above](#message-request-file-analysis) for the general structure of the res
 		}, {
 			type:         'response',
 			expectedType: 'response-query'
-		}]
-	})
-}
-
-	`;
-		}
-	});
-
-	documentServerMessage({
-		title:                  'Lineage',
-		type:                   'request',
-		definitionPath:         '../cli/repl/server/messages/message-lineage.ts',
-		defRequest:             requestLineageMessage,
-		defResponse:            responseLineageMessage,
-		mermaidSequenceDiagram: `
-    Client->>+Server: request-lineage
-
-    alt
-        Server-->>Client: response-lineage
-    else
-        Server-->>Client: error
-    end
-    deactivate  Server
-	`,
-		shortDescription: `${deprecatedByQuery} Obtain the lineage of a given slicing criterion.`,
-		text:             async(shell: RShell) => {
-			return `
-
-**We deprecated the lineage request in favor of the \`lineage\` [Query](${FlowrWikiBaseRef}/Query%20API).**
-
-In order to retrieve the lineage of an object, you have to send a file analysis request first. The \`filetoken\` you assign is of use here as you can re-use it to repeatedly retrieve the lineage of the same file.
-Besides that, you will need to add a [criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion) that specifies the object whose lineage you're interested in.
-
-${
-	await documentServerMessageResponse({
-		shell,
-		messageType: 'request-query',
-		messages:    [{
-			type:    'request',
-			message: {
-				type:      'request-file-analysis',
-				id:        '1',
-				filetoken: 'x',
-				content:   'x <- 1\nx + 1'
-			}
-		}, {
-			type:         'response',
-			expectedType: 'response-file-analysis',
-			description:  `
-See [above](#message-request-file-analysis) for the general structure of the response.
-			`
-		}, {
-			type:    'request',
-			message: {
-				type:      'request-lineage',
-				id:        '2',
-				filetoken: 'x',
-				criterion: '2@x'
-			},
-			mark: true
-		}, {
-			type:         'response',
-			expectedType: 'response-lineage',
-			description:  'The response contains the lineage of the desired object in form of an array of IDs (as the representation of a set).'
 		}]
 	})
 }

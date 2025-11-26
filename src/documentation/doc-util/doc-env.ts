@@ -1,6 +1,10 @@
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { printIdentifier } from '../../util/mermaid/dfg';
 
+
+/**
+ *
+ */
 export function printEnvironmentToMarkdown(env: IEnvironment | undefined): string {
 	if(env === undefined) {
 		return '?? (error)';

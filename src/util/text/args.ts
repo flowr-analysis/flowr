@@ -1,6 +1,5 @@
 /**
  * Just to avoid another library for splitting arguments, we use this module to provide what we need.
- *
  * @module
  */
 
@@ -11,18 +10,20 @@
  * this splits the arguments similar to common shell interpreters (i.e., `a`, `b c`, and `d`).
  *
  * When escapeQuote is set to false instead, we keep quotation marks in the result (i.e., `a`, `"b c"`, and `d`.).
- *
  * @param inputString - The string to split
  * @param escapeQuote - Keep quotes in args
- * @param split       - The **single** character to split on (can not be backslash or quote)
+ * @param split       - The character or character sequence to split on (can not be backslash or quote!)
  */
-export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, split = ' '): string[] {
+export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, split: RegExp | string = ' '): string[] {
 	const args = [];
 	let current = '';
 	let inQuotes = false;
 	let escaped = false;
 
-	for(const c of inputString) {
+	for(let i = 0; i < inputString.length;  i++) {
+		const c = inputString[i];
+		const sub = inputString.slice(i);
+
 		if(escaped) {
 			escaped = false;
 			switch(c) {
@@ -34,7 +35,10 @@ export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, 
 				case 'b': current += '\b'; break;
 				default: current += c;
 			}
-		} else if(c === split && !inQuotes && current !== '') {
+		} else if(!inQuotes
+				&& current !== ''
+				&& (split instanceof RegExp ? split.test(sub) : inputString.slice(i, i + split.length) === split)
+		) {
 			args.push(current);
 			current = '';
 		} else if(c === '"' || c === "'") {

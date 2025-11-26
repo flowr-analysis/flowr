@@ -6,18 +6,15 @@
  */
 import type { DeepReadonly } from 'ts-essentials';
 import { FlowRServer } from './repl/server/server';
-import type { Server } from './repl/server/net';
-import { NetServer, WebSocketServerWrapper } from './repl/server/net';
+import { type Server , NetServer, WebSocketServerWrapper } from './repl/server/net';
 import { flowrVersion, printVersionInformation } from '../util/version';
 import commandLineUsage from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
 import { FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/text/ansi';
 import commandLineArgs from 'command-line-args';
-import type { EngineConfig, FlowrConfigOptions, KnownEngines } from '../config';
-import { amendConfig, getConfig, parseConfig } from '../config';
+import { type EngineConfig, type FlowrConfigOptions, type KnownEngines , amendConfig, getConfig, parseConfig } from '../config';
 import { guard } from '../util/assert';
-import type { ScriptInformation } from './common/scripts-info';
-import { scripts } from './common/scripts-info';
+import { type ScriptInformation , scripts } from './common/scripts-info';
 import { waitOnScript } from './repl/execute';
 import { standardReplOutput } from './repl/commands/repl-main';
 import { repl, replProcessAnswer } from './repl/core';
@@ -49,7 +46,7 @@ export interface FlowrCliOptions {
 
 	'engine.r-shell.disabled': boolean
 	'engine.r-shell.r-path':   string | undefined
-	
+
 	'engine.tree-sitter.disabled':              boolean
 	'engine.tree-sitter.wasm-path':             string | undefined
 	'engine.tree-sitter.tree-sitter-wasm-path': string | undefined

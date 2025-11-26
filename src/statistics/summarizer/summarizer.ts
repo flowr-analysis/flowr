@@ -3,8 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { FileMigrator } from './first-phase/process';
 import { postProcessFeatureFolder } from './second-phase/process';
-import type { CommonSummarizerConfiguration } from '../../util/summarizer';
-import { Summarizer } from '../../util/summarizer';
+import { type CommonSummarizerConfiguration , Summarizer } from '../../util/summarizer';
 import { longestCommonPrefix } from '../../util/text/strings';
 import { getAllFiles } from '../../util/files';
 import { date2string } from '../../util/text/time';
@@ -157,7 +156,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 		return Promise.resolve();
 	}
 
-	 
+
 	public async summarizePhase(): Promise<unknown> {
 		// detect all subfolders in the current folder (default, test...) for each: concat.
 		this.removeIfExists(this.config.outputPath);

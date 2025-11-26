@@ -1,7 +1,5 @@
-import type { CfgBasicBlockVertex, CfgSimpleVertex, ControlFlowInformation } from '../../control-flow/control-flow-graph';
-import { CfgVertexType, getVertexRootId, isMarkerVertex } from '../../control-flow/control-flow-graph';
-import type { SemanticCfgGuidedVisitorConfiguration } from '../../control-flow/semantic-cfg-guided-visitor';
-import { SemanticCfgGuidedVisitor } from '../../control-flow/semantic-cfg-guided-visitor';
+import { type CfgBasicBlockVertex, type CfgSimpleVertex, type ControlFlowInformation , CfgVertexType, getVertexRootId, isMarkerVertex } from '../../control-flow/control-flow-graph';
+import { type SemanticCfgGuidedVisitorConfiguration , SemanticCfgGuidedVisitor } from '../../control-flow/semantic-cfg-guided-visitor';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexVariableDefinition } from '../../dataflow/graph/vertex';
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -9,8 +7,7 @@ import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/a
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isNotUndefined } from '../../util/assert';
 import { DataFrameInfoMarker, hasDataFrameAssignmentInfo, hasDataFrameExpressionInfo, hasDataFrameInfoMarker, type AbstractInterpretationInfo } from './absint-info';
-import type { DataFrameDomain, DataFrameStateDomain } from './domain';
-import { DataFrameTop, equalDataFrameState, joinDataFrameStates, wideningDataFrameStates } from './domain';
+import { DataFrameDomain, DataFrameStateDomain } from './dataframe-domain';
 import { mapDataFrameAccess } from './mappers/access-mapper';
 import { isAssignmentTarget, mapDataFrameVariableAssignment } from './mappers/assignment-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
@@ -39,12 +36,12 @@ export class DataFrameShapeInferenceVisitor<
 	 * The old domain of an AST node before processing the node retrieved from the attached {@link AbstractInterpretationInfo}.
 	 * This is used to check whether the state has changed and successors should be visited again, and is also required for widening.
 	 */
-	private oldDomain: DataFrameStateDomain = new Map();
+	private oldDomain = DataFrameStateDomain.bottom();
 	/**
 	 * The new domain of an AST node during and after processing the node.
 	 * This information is stored in the {@link AbstractInterpretationInfo} afterward.
 	 */
-	private newDomain: DataFrameStateDomain = new Map();
+	private newDomain = DataFrameStateDomain.bottom();
 
 	constructor(config: Config) {
 		super({ ...config, defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' });
@@ -58,14 +55,15 @@ export class DataFrameShapeInferenceVisitor<
 			return true;
 		}
 		const predecessors = this.getPredecessorNodes(vertex.id);
-		this.newDomain = joinDataFrameStates(...predecessors.map(node => node.info.dataFrame?.domain ?? new Map<NodeId, DataFrameDomain>()));
+		const predecessorDomains = predecessors.map(node => node.info.dataFrame?.domain).filter(isNotUndefined);
+		this.newDomain = DataFrameStateDomain.bottom().joinAll(predecessorDomains);
 		this.onVisitNode(nodeId);
 
 		const visitedCount = this.visited.get(vertex.id) ?? 0;
 		this.visited.set(vertex.id, visitedCount + 1);
 
 		// only continue visiting if the node has not been visited before or the data frame value of the node changed
-		return visitedCount === 0 || !equalDataFrameState(this.oldDomain, this.newDomain);
+		return visitedCount === 0 || !this.oldDomain.equals(this.newDomain);
 	}
 
 	protected override visitDataflowNode(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): void {
@@ -74,11 +72,14 @@ export class DataFrameShapeInferenceVisitor<
 		if(node === undefined) {
 			return;
 		}
-		this.oldDomain = node.info.dataFrame?.domain ?? new Map<NodeId, DataFrameDomain>();
+		this.oldDomain = node.info.dataFrame?.domain ?? DataFrameStateDomain.bottom();
 		super.visitDataflowNode(vertex);
 
+		if(this.config.dfg.unknownSideEffects.has(getVertexRootId(vertex))) {
+			this.newDomain = this.newDomain.bottom();
+		}
 		if(this.shouldWiden(vertex)) {
-			this.newDomain = wideningDataFrameStates(this.oldDomain, this.newDomain);
+			this.newDomain = this.oldDomain.widen(this.newDomain);
 		}
 		node.info.dataFrame ??= {};
 		node.info.dataFrame.domain = this.newDomain;
@@ -118,7 +119,7 @@ export class DataFrameShapeInferenceVisitor<
 		const node = this.getNormalizedAst(call.id);
 
 		if(node !== undefined) {
-			node.info.dataFrame = mapDataFrameFunctionCall(node, this.config.dfg, this.config.flowrConfig);
+			node.info.dataFrame = mapDataFrameFunctionCall(node, this.config.dfg, this.config.ctx);
 			this.applyDataFrameExpression(node);
 		}
 	}
@@ -147,7 +148,7 @@ export class DataFrameShapeInferenceVisitor<
 
 			if(identifier !== undefined) {
 				identifier.info.dataFrame ??= {};
-				identifier.info.dataFrame.domain = new Map(this.newDomain);
+				identifier.info.dataFrame.domain = this.newDomain.create(this.newDomain.value);
 			}
 		}
 	}
@@ -156,11 +157,12 @@ export class DataFrameShapeInferenceVisitor<
 		if(!hasDataFrameExpressionInfo(node)) {
 			return;
 		}
-		let value: DataFrameDomain = DataFrameTop;
+		const maxColNames = this.config.ctx.config.abstractInterpretation.dataFrame.maxColNames;
+		let value = DataFrameDomain.top(maxColNames);
 
 		for(const { operation, operand, type, options, ...args } of node.info.dataFrame.operations) {
 			const operandValue = operand !== undefined ? resolveIdToDataFrameShape(operand, this.config.dfg, this.newDomain) : value;
-			value = applyDataFrameSemantics(operation, operandValue ?? DataFrameTop, args, options);
+			value = applyDataFrameSemantics(operation, operandValue ?? DataFrameDomain.top(maxColNames), args, options);
 			const constraintType = type ?? getConstraintType(operation);
 
 			if(operand !== undefined && constraintType === ConstraintType.OperandModification) {
@@ -198,7 +200,7 @@ export class DataFrameShapeInferenceVisitor<
 	}
 
 	private shouldWiden(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): boolean {
-		return (this.visited.get(vertex.id) ?? 0) >= this.config.flowrConfig.abstractInterpretation.dataFrame.wideningThreshold;
+		return (this.visited.get(vertex.id) ?? 0) >= this.config.ctx.config.abstractInterpretation.dataFrame.wideningThreshold;
 	}
 
 	private clearUnassignedInfo(node: RNode<ParentInformation & AbstractInterpretationInfo>) {

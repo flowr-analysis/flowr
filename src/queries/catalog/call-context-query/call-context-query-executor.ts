@@ -9,18 +9,17 @@ import type {
 	LinkTo,
 	SubCallContextQueryFormat
 } from './call-context-query-format';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId , recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
-
 import type { BasicQueryData } from '../../base-query-format';
 import { identifyLinkToLastCallRelation, satisfiesCallTargets } from './identify-link-to-last-call-relation';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { CfgKind } from '../../../project/cfg-kind';
+import { getCallsInCfg } from '../../../control-flow/extract-cfg';
 
 /* if the node is effected by nse, we have an ingoing nse edge */
 function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
@@ -60,6 +59,10 @@ function exactCallNameRegex(name: RegExp | string): RegExp {
 	return new RegExp(`^(${name})$`);
 }
 
+
+/**
+ *
+ */
 export function promoteCallName(callName: CallNameTypes, exact = false): RegExp | Set<string> {
 	return Array.isArray(callName) ? new Set<string>(callName) : exact ? exactCallNameRegex(callName) : new RegExp(callName);
 }
@@ -255,6 +258,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 				}
 			}
 		}
+		const calls = cfg ? getCallsInCfg(cfg, dataflow.graph) : undefined;
 
 		for(const query of promotedQueries.filter(q => !q.includeAliases && (q.callName instanceof RegExp ? q.callName.test(info.name) : q.callName.has(info.name)))) {
 			const file = ast.idMap.get(nodeId)?.info.file;
@@ -264,7 +268,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 
 			let targets: NodeId[] | 'no' | undefined = undefined;
 			if(query.callTargets) {
-				targets = satisfiesCallTargets(nodeId, dataflow.graph, query.callTargets);
+				targets = satisfiesCallTargets(info, dataflow.graph, query.callTargets);
 				if(targets === 'no') {
 					continue;
 				}
@@ -280,7 +284,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 				const linked = Array.isArray(query.linkTo) ? query.linkTo : [query.linkTo];
 				for(const link of linked) {
 					/* if we have a linkTo query, we have to find the last call */
-					const lastCall = identifyLinkToLastCallRelation(nodeId, cfg.graph, dataflow.graph, link);
+					const lastCall = identifyLinkToLastCallRelation(nodeId, cfg.graph, dataflow.graph, link, calls);
 					if(lastCall) {
 						linkedIds ??= new Set();
 						for(const l of lastCall) {

@@ -1,17 +1,12 @@
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
-import type {
-	DependenciesQuery,
-	DependenciesQueryResult,
-	DependencyInfo
-} from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
-import { Unknown } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
-
-
+import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import {
+	type DependenciesQuery,
+	type DependenciesQueryResult,
+	type DependencyInfo
+	, Unknown } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 
@@ -130,7 +125,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '2@library', functionName: 'library', value: 'b' },
 			{ nodeId: '2@library', functionName: 'library', value: 'c' }
 		] });
-		
+
 		testQuery('Intermix another library call', 'library(foo)\nv <- c("a", "b", "c")\nlapply(v, library, character.only = TRUE)', {
 			library: [
 				{ nodeId: '1@library', functionName: 'library', value: 'foo' },
@@ -260,7 +255,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		] as const) {
 			testQuery(`${readFn}`, `${readFn}(obj, "a")` , { read: [{ nodeId: `1@${readFn}`, functionName: readFn, value: 'a' }] });
 		}
-		
+
 		testQuery('read.table', "read.table('test.csv')", { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] });
 		testQuery('gzfile', 'gzfile("this is my gzip file :)", "test.gz")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
 		testQuery('With Argument', 'gzfile(open="test.gz",description="this is my gzip file :)")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
@@ -305,7 +300,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('visSave', 'visSave(obj, "a")' , { write: [{ nodeId: '1@visSave', functionName: 'visSave', value: 'a' }] });
 		testQuery('save_graph', 'save_graph(obj, "a")' , { write: [{ nodeId: '1@save_graph', functionName: 'save_graph', value: 'a' }] });
 		testQuery('export_graph', 'export_graph(file_name = "a")' , { write: [{ nodeId: '1@export_graph', functionName: 'export_graph', value: 'a' }] });
-	
+
 		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt' }] });
 		testQuery('dump (argument)', 'dump(file="foo.txt", "foo")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'foo.txt' }] });
 		testQuery('cat', 'cat("Hello!")', { write: [{ nodeId: '1@cat', functionName: 'cat', value: 'stdout' }] });
@@ -380,7 +375,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	});
 
 	describe('Overwritten Function', () => {
-		testQuery('read.csv (overwritten by user)', "read.csv <- function(a) print(a); read.csv('test.csv')", { 
+		testQuery('read.csv (overwritten by user)', "read.csv <- function(a) print(a); read.csv('test.csv')", {
 			read:  [],
 			write: [{
 				value:        'stdout',

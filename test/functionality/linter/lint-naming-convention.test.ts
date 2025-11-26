@@ -18,7 +18,7 @@ function genName(convention: CasingConvention): string {
 	const firstUp = (s: string) => `${s[0].toUpperCase()}${s.substring(1)}`;
 
 	const tokens = [randToken(), randToken(), randToken()];
-	
+
 	switch(convention) {
 		case CasingConvention.CamelCase: // camelCase
 			return `${tokens[0]}${tokens.slice(1).map(firstUp).join('')}`;
@@ -47,7 +47,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				const name = genName(convention);
 				const detected = detectCasing(name);
 				assert.equal(detected, convention, `Expected to detect ${name} as ${convention}, but detected ${detected}`);
-			});	
+			});
 		});
 
 		describe('detect casing (static string)', () => {
@@ -61,7 +61,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			])('detect casing $name as $convention', ({ name, convention }) => {
 				const detected = detectCasing(name);
 				assert.equal(detected, convention, `Expected to detect ${name} as ${convention}, but detected ${detected}`);
-			});	
+			});
 		});
 
 		test.each([
@@ -80,10 +80,10 @@ describe('flowR linter', withTreeSitter(parser => {
 		])('fix casing $convention', ({ name, convention, expected }) => {
 			const fixed = fixCasing(name, convention);
 			assert.equal(fixed, expected, `Expected to convert '${name}' to '${expected}', but converted to '${fixed}'`);
-		});	
+		});
 	});
 
-	describe('rule', () => { 
+	describe('rule', () => {
 		/** Given a symbol definition `testVar <- 5` the linter checks if it matches the configured casing rule (here we check for PascalCase) and provides a quick fix `TestVar <- 5` */
 		assertLinter('simple', parser, 'testVar <- 5', 'naming-convention', [{
 			name:           'testVar',

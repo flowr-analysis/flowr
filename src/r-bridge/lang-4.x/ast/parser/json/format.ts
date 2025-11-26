@@ -105,7 +105,7 @@ export function convertPreparedParsedData(roots: readonly CsvEntry[]): JsonEntry
 	}
 
 	// Locate start, end of a source file (order children in advance).
-	const rootEntries = [...roots].sort(orderOf);
+	const rootEntries = roots.slice().sort(orderOf);
 	const start = rootEntries[0];
 	const end = rootEntries[rootEntries.length - 1];
 

@@ -1,6 +1,5 @@
 /**
  * Basically a helper file to allow the main 'flowr' script (located in the source root) to provide its repl
- *
  * @module
  */
 import { prompt } from './prompt';
@@ -13,14 +12,12 @@ import { splitAtEscapeSensitive } from '../../util/text/args';
 import { FontStyles } from '../../util/text/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
-import { fileProtocol, requestFromInput } from '../../r-bridge/retriever';
-import type { ReplOutput } from './commands/repl-main';
-import { standardReplOutput } from './commands/repl-main';
+import { fileProtocol } from '../../r-bridge/retriever';
+import { type ReplOutput, standardReplOutput } from './commands/repl-main';
 import type { MergeableRecord } from '../../util/objects';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfigOptions } from '../../config';
-import type { SupportedQuery } from '../../queries/query';
-import { SupportedQueries } from '../../queries/query';
+import { genericWrapReplFailIfNoRequest, SupportedQueries, type SupportedQuery } from '../../queries/query';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
 import { startAndEndsWith } from '../../util/text/strings';
 
@@ -34,6 +31,19 @@ function replCompleterKeywords() {
 const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory');
 
 /**
+ * Completion suggestions for a specific REPL command
+ */
+export interface CommandCompletions {
+	/** The possible completions for the current argument */
+	readonly completions:   string[];
+	/**
+	 * The current argument fragment being completed, if any.
+	 * This is relevant if an argument is composed of multiple parts (e.g. comma-separated lists).
+	 */
+	readonly argumentPart?: string;
+}
+
+/**
  * Used by the repl to provide automatic completions for a given (partial) input line
  */
 export function replCompleter(line: string, config: FlowrConfigOptions): [string[], string] {
@@ -45,22 +55,26 @@ export function replCompleter(line: string, config: FlowrConfigOptions): [string
 	if(splitLine.length > 1 || startingNewArg){
 		const commandNameColon = replCompleterKeywords().find(k => splitLine[0] === k);
 		if(commandNameColon) {
-			const completions: string[] = [];
+			let completions: string[] = [];
+			let currentArg = startingNewArg ? '' : splitLine[splitLine.length - 1];
 
 			const commandName = commandNameColon.slice(1);
 			const cmd = getCommand(commandName);
 			if(cmd?.script === true){
 				// autocomplete script arguments
 				const options = scripts[commandName as keyof typeof scripts].options;
-				completions.push(...getValidOptionsForCompletion(options, splitLine).map(o => `${o} `));
+				completions = completions.concat(getValidOptionsForCompletion(options, splitLine).map(o => `${o} `));
 			} else if(commandName.startsWith('query')) {
-				completions.push(...replQueryCompleter(splitLine, startingNewArg, config));
+				const { completions: queryCompletions, argumentPart: splitArg } = replQueryCompleter(splitLine, startingNewArg, config);
+				if(splitArg !== undefined) {
+					currentArg = splitArg;
+				}
+				completions = completions.concat(queryCompletions);
 			} else {
 				// autocomplete command arguments (specifically, autocomplete the file:// protocol)
 				completions.push(fileProtocol);
 			}
 
-			const currentArg = startingNewArg ? '' : splitLine[splitLine.length - 1];
 			return [completions.filter(a => a.startsWith(currentArg)), currentArg];
 		}
 	}
@@ -69,23 +83,26 @@ export function replCompleter(line: string, config: FlowrConfigOptions): [string
 	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line];
 }
 
-function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions): string[] {
+function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions): CommandCompletions {
 	const nonEmpty = splitLine.slice(1).map(s => s.trim()).filter(s => s.length > 0);
 	const queryShorts = Object.keys(SupportedQueries).map(q => `@${q}`).concat(['help']);
-	let candidates: string[] = [];
 	if(nonEmpty.length == 0 || (nonEmpty.length == 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q && !startingNewArg))) {
-		candidates = candidates.concat(queryShorts.map(q => `${q} `));
+		return { completions: queryShorts.map(q => `${q} `) };
 	} else {
 		const q = nonEmpty[0].slice(1);
 		const queryElement = SupportedQueries[q as keyof typeof SupportedQueries] as SupportedQuery;
 		if(queryElement?.completer) {
-			candidates = candidates.concat(queryElement.completer(nonEmpty.slice(1), config));
+			return queryElement.completer(nonEmpty.slice(1), startingNewArg, config);
 		}
 	}
 
-	return candidates;
+	return { completions: [] };
 }
 
+
+/**
+ * Produces default readline options for the flowR REPL
+ */
 export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.ReadLineOptions {
 	return {
 		input:                   process.stdin,
@@ -98,6 +115,10 @@ export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.Re
 	};
 }
 
+
+/**
+ * Handles a string input for the REPL, returning the parsed string and any remaining input.
+ */
 export function handleString(code: string) {
 	return {
 		rCode:     code.length == 0 ? undefined : startAndEndsWith(code, '"') ? JSON.parse(code) as string : code,
@@ -112,25 +133,27 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
 		if(processor) {
 			try {
-				const remainingLine = statement.slice(command.length + 2).trim();
-				if(processor.isCodeCommand) {
-					const args = processor.argsParser(remainingLine);
-					if(args.rCode) {
-						analyzer.reset();
-						analyzer.addRequest(requestFromInput(args.rCode));
+				await genericWrapReplFailIfNoRequest(async() => {
+					const remainingLine = statement.slice(command.length + 2).trim();
+					if(processor.isCodeCommand) {
+						const args = processor.argsParser(remainingLine);
+						if(args.rCode) {
+							analyzer.reset();
+							analyzer.addRequest(args.rCode);
+						}
+						await processor.fn({ output, analyzer, remainingArgs: args.remaining });
+					} else {
+						await processor.fn({ output, analyzer, remainingLine, allowRSessionAccess });
 					}
-					await processor.fn({ output, analyzer, remainingArgs: args.remaining });
-				} else {
-					await processor.fn({ output, analyzer, remainingLine, allowRSessionAccess });
-				}
+				}, output, analyzer);
 			} catch(e){
-				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
+				output.stderr(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
 				if(log.settings.minLevel < LogLevel.Fatal) {
 					console.error(e);
 				}
 			}
 		} else {
-			output.stdout(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
+			output.stderr(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
 		}
 	} else {
 		await tryExecuteRShellCommand({ output, analyzer, remainingLine: statement, allowRSessionAccess });
@@ -139,7 +162,6 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 
 /**
  * This function interprets the given `expr` as a REPL command (see {@link repl} for more on the semantics).
- *
  * @param analyzer            - The flowR analyzer to use.
  * @param output              - Defines two methods that every function in the repl uses to output its data.
  * @param expr                - The expression to process.
@@ -147,10 +169,10 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
  */
 export async function replProcessAnswer(analyzer: FlowrAnalyzer, output: ReplOutput, expr: string, allowRSessionAccess: boolean): Promise<void> {
 
-	const statements = splitAtEscapeSensitive(expr, false, ';');
+	const statements = splitAtEscapeSensitive(expr, false, /^;\s*:/);
 
 	for(const statement of statements) {
-		await replProcessStatement(output, statement, analyzer, allowRSessionAccess);
+		await replProcessStatement(output, statement.trim(), analyzer, allowRSessionAccess);
 	}
 }
 
@@ -164,7 +186,7 @@ export interface FlowrReplOptions extends MergeableRecord {
 	readonly analyzer:             FlowrAnalyzer
 	/**
 	 * A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
-    * If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
+	 * If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
 	 */
 	readonly rl?:                  readline.Interface
 	/** Defines two methods that every function in the repl uses to output its data. */
@@ -181,11 +203,9 @@ export interface FlowrReplOptions extends MergeableRecord {
  * The repl allows for two kinds of inputs:
  * - Starting with a colon `:`, indicating a command (probe `:help`, and refer to {@link commands}) </li>
  * - Starting with anything else, indicating default R code to be directly executed. If you kill the underlying shell, that is on you! </li>
- *
  * @param options - The options for the repl. See {@link FlowrReplOptions} for more information.
  *
  * For the execution, this function makes use of {@link replProcessAnswer}.
- *
  */
 export async function repl(
 	{
@@ -200,7 +220,8 @@ export async function repl(
 	}
 
 	// the incredible repl :D, we kill it with ':quit'
-	 
+
+	// noinspection InfiniteLoopJS
 	while(true) {
 		await new Promise<void>((resolve, reject) => {
 			rl.question(prompt(), answer => {
@@ -214,6 +235,10 @@ export async function repl(
 	}
 }
 
+
+/**
+ * Loads the REPL history from the given file.
+ */
 export function loadReplHistory(historyFile: string): string[] | undefined {
 	try {
 		if(!fs.existsSync(historyFile)) {

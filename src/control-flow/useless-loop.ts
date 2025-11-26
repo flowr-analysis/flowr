@@ -1,37 +1,31 @@
-import type { FlowrConfigOptions } from '../config';
 import type { BuiltInMappingName } from '../dataflow/environments/built-in';
 import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
 import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
-import { VertexType } from '../dataflow/graph/vertex';
-import type { ControlDependency } from '../dataflow/info';
-import { happensInEveryBranch } from '../dataflow/info';
+import { type DataflowGraphVertexFunctionCall , VertexType } from '../dataflow/graph/vertex';
+import { type ControlDependency , happensInEveryBranch } from '../dataflow/info';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard } from '../util/assert';
 import type { ControlFlowInformation } from './control-flow-graph';
-import type { SemanticCfgGuidedVisitorConfiguration } from './semantic-cfg-guided-visitor';
-import { SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
+import { type SemanticCfgGuidedVisitorConfiguration , SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
+import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 
 export const loopyFunctions = new Set<BuiltInMappingName>(['builtin:for-loop', 'builtin:while-loop', 'builtin:repeat-loop']);
 
 /**
  * Checks whether a loop only loops once
- * 
- * 
- * 
  * @param loop        - nodeid of the loop to analyse
  * @param dataflow    - dataflow graph
  * @param controlflow - control flow graph
  * @param ast         - normalized ast
- * @param config      - current flowr config
+ * @param ctx      - current flowr analyzer context
  * @returns true if the given loop only iterates once
  */
-export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow: ControlFlowInformation, ast: NormalizedAst, config: FlowrConfigOptions): boolean | undefined {
+export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow: ControlFlowInformation, ast: NormalizedAst, ctx: ReadOnlyFlowrAnalyzerContext): boolean | undefined {
 	const vertex = dataflow.getVertex(loop);
 	if(!vertex) {
 		return undefined;
@@ -44,14 +38,18 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 	if(vertex.origin[0] === 'builtin:for-loop') {
 		if(vertex.args.length < 2) {
 			return undefined;
-		}	
+		}
 
 		const vectorOfLoop = vertex.args[1];
 		if(vectorOfLoop === EmptyArgument) {
 			return undefined;
 		}
 
-		const values = valueSetGuard(resolveIdToValue(vectorOfLoop.nodeId, { graph: dataflow, idMap: dataflow.idMap, resolve: config.solver.variables }));
+		const values = valueSetGuard(resolveIdToValue(vectorOfLoop.nodeId, {
+			graph:   dataflow,
+			idMap:   dataflow.idMap,
+			resolve: ctx.config.solver.variables
+		}));
 		if(values === undefined || values.elements.length !== 1 || values.elements[0].type !== 'vector' || !isValue(values.elements[0].elements)) {
 			return undefined;
 		}
@@ -66,7 +64,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 		controlFlow:          controlflow,
 		normalizedAst:        ast,
 		dfg:                  dataflow,
-		flowrConfig:          config,
+		ctx:                  ctx,
 		defaultVisitingOrder: 'forward'
 	});
 
@@ -74,7 +72,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 }
 
 class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
-	
+
 	private loopCds: ControlDependency[] | undefined = undefined;
 	private encounteredLoopBreaker = false;
 	private onlyLoopyOnce = false;
@@ -91,7 +89,12 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 			return undefined;
 		}
 
-		const values = valueSetGuard(resolveIdToValue(data.call.args[0].nodeId, { graph: this.config.dfg, full: true, idMap: this.config.normalizedAst.idMap, resolve: this.config.flowrConfig.solver.variables  }));
+		const values = valueSetGuard(resolveIdToValue(data.call.args[0].nodeId, {
+			graph:   this.config.dfg,
+			full:    true,
+			idMap:   this.config.normalizedAst.idMap,
+			resolve: this.config.ctx.config.solver.variables
+		}));
 		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
 			return undefined;
 		}

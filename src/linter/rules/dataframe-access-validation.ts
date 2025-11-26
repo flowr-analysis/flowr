@@ -1,30 +1,20 @@
-import {
-	type AbstractInterpretationInfo,
-	type DataFrameOperationType,
-	hasDataFrameExpressionInfo
-} from '../../abstract-interpretation/data-frame/absint-info';
-import {
-	type DataFrameDomain,
-	satisfiesColsNames,
-	satisfiesLeqInterval
-} from '../../abstract-interpretation/data-frame/domain';
-import {
-	inferDataFrameShapes,
-	resolveIdToDataFrameShape
-} from '../../abstract-interpretation/data-frame/shape-inference';
+import { type AbstractInterpretationInfo, type DataFrameOperationType, hasDataFrameExpressionInfo } from '../../abstract-interpretation/data-frame/absint-info';
+import type { DataFrameDomain } from '../../abstract-interpretation/data-frame/dataframe-domain';
+import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../abstract-interpretation/data-frame/shape-inference';
+import { SetComparator , NumericalComparator } from '../../abstract-interpretation/domains/satisfiable-domain';
 import { amendConfig } from '../../config';
 import { extractCfg } from '../../control-flow/extract-cfg';
-import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { FlowrSearchElements } from '../../search/flowr-search';
 import { Q } from '../../search/flowr-search-builder';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
+import { Ternary } from '../../util/logic';
 import { formatRange } from '../../util/mermaid/dfg';
 import { type MergeableRecord } from '../../util/objects';
 import { rangeFrom, type SourceRange } from '../../util/range';
-import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule , LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
 interface DataFrameAccessOperation {
@@ -70,16 +60,20 @@ export interface DataFrameAccessValidationMetadata extends MergeableRecord {
 export const DATA_FRAME_ACCESS_VALIDATION = {
 	createSearch:        () => Q.all().with(Enrichment.CallTargets, { onlyBuiltin: true }),
 	processSearchResult: (elements, config, data) => {
-		const flowrConfig = amendConfig(data.config, flowrConfig => {
-			if(config.readLoadedData !== undefined) {
-				flowrConfig.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles = config.readLoadedData;
-			}
-			return flowrConfig;
-		});
-		const cfg = extractCfg(data.normalize, flowrConfig, data.dataflow.graph);
-		inferDataFrameShapes(cfg, data.dataflow.graph, data.normalize, flowrConfig);
+		let ctx = data.analyzer.inspectContext();
+		ctx = {
+			...ctx,
+			config: amendConfig(data.analyzer.flowrConfig, flowrConfig => {
+				if(config.readLoadedData !== undefined) {
+					flowrConfig.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles = config.readLoadedData;
+				}
+				return flowrConfig;
+			})
+		};
+		const cfg = extractCfg(data.normalize, ctx, data.dataflow.graph);
+		inferDataFrameShapes(cfg, data.dataflow.graph, data.normalize, ctx);
 
-		const accessOperations = getAccessOperations(elements, data.normalize);
+		const accessOperations = getAccessOperations(elements);
 		const accesses: DataFrameAccessOperation[] = [];
 
 		for(const [nodeId, operations] of accessOperations) {
@@ -148,17 +142,10 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 } as const satisfies LintingRule<DataFrameAccessValidationResult, DataFrameAccessValidationMetadata, DataFrameAccessValidationConfig>;
 
 function getAccessOperations(
-	elements: FlowrSearchElements<ParentInformation & AbstractInterpretationInfo>,
-	normalize: NormalizedAst
+	elements: FlowrSearchElements<ParentInformation & AbstractInterpretationInfo>
 ): Map<NodeId, DataFrameOperationType<'accessCols' | 'accessRows'>[]> {
-	const nodes = elements.getElements().map(
-		element => {
-			const id = element.node.info.id;
-			return normalize.idMap.get(id);
-		}
-	).filter(n => n !== undefined);
-
-	return new Map(nodes
+	return new Map(elements.getElements()
+		.map(element => element.node)
 		.filter(hasDataFrameExpressionInfo)
 		.map<[NodeId, DataFrameOperationType<'accessCols' | 'accessRows'>[]]>(node =>
 			[node.info.id, node.info.dataFrame.operations
@@ -177,15 +164,15 @@ function findInvalidDataFrameAccesses(
 
 	if(operandShape !== undefined) {
 		for(const row of accessedRows ?? []) {
-			if(!satisfiesLeqInterval(operandShape.rows, row)) {
-				invalidAccesses.push({ type: 'row',accessed: row });
+			if(operandShape.rows.satisfies(row, NumericalComparator.LessOrEqual) === Ternary.Never) {
+				invalidAccesses.push({ type: 'row', accessed: row });
 			}
 		}
 		for(const col of accessedCols ?? []) {
-			if(typeof col === 'string' && !satisfiesColsNames(operandShape.colnames, col)) {
-				invalidAccesses.push({ type: 'column',accessed: col });
-			} else if(typeof col === 'number' && !satisfiesLeqInterval(operandShape.cols, col)) {
-				invalidAccesses.push({ type: 'column',accessed: col });
+			if(typeof col === 'string' && operandShape.colnames.satisfies([col], SetComparator.SubsetOrEqual) === Ternary.Never) {
+				invalidAccesses.push({ type: 'column', accessed: col });
+			} else if(typeof col === 'number' && operandShape.cols.satisfies(col, NumericalComparator.LessOrEqual) === Ternary.Never) {
+				invalidAccesses.push({ type: 'column', accessed: col });
 			}
 		}
 	}

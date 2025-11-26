@@ -1,7 +1,6 @@
 import { LintingRuleCertainty, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
-import type { FunctionsMetadata, FunctionsResult, FunctionsToDetectConfig } from './function-finder-util';
-import { functionFinderUtil } from './function-finder-util';
+import { type FunctionsMetadata, type FunctionsResult, type FunctionsToDetectConfig , functionFinderUtil } from './function-finder-util';
 
 export const DEPRECATED_FUNCTIONS = {
 	createSearch:        (config) => functionFinderUtil.createSearch(config.fns),

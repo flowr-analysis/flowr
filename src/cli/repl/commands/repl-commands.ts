@@ -13,12 +13,10 @@ import {
 	dataflowStarCommand
 } from './repl-dataflow';
 import { controlflowBbCommand, controlflowBbStarCommand, controlflowCommand, controlflowStarCommand } from './repl-cfg';
-import type { OutputFormatter } from '../../../util/text/ansi';
-import { bold, italic } from '../../../util/text/ansi';
+import { type OutputFormatter , bold, italic } from '../../../util/text/ansi';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { guard } from '../../../util/assert';
 import { scripts } from '../../common/scripts-info';
-import { lineageCommand } from './repl-lineage';
 import { queryCommand, queryStarCommand } from './repl-query';
 
 function printHelpForScript(script: [string, ReplBaseCommand], f: OutputFormatter, starredVersion?: ReplBaseCommand): string {
@@ -96,7 +94,6 @@ const _commands: Record<string, ReplCommand | ReplCodeCommand> = {
 	'controlflow*':    controlflowStarCommand,
 	'controlflowbb':   controlflowBbCommand,
 	'controlflowbb*':  controlflowBbStarCommand,
-	'lineage':         lineageCommand,
 	'query':           queryCommand,
 	'query*':          queryStarCommand
 };
@@ -111,6 +108,10 @@ function hasModule(path: string): boolean {
 	}
 }
 
+
+/**
+ * Retrieve all REPL commands (including those generated from master scripts)
+ */
 export function getReplCommands() {
 	if(commandsInitialized) {
 		return _commands;
@@ -186,6 +187,9 @@ export function getCommand(command: string): ReplCodeCommand | ReplCommand | und
 	return getReplCommands()[(commandMapping as Record<string, string>)[command]];
 }
 
+/**
+ * Formats the given argument name as a command line option (with single or double dashes).
+ */
 export function asOptionName(argument: string): string{
 	if(argument.length == 1) {
 		return `-${argument}`;
@@ -196,12 +200,21 @@ export function asOptionName(argument: string): string{
 
 
 let _longestCommandName: number | undefined = undefined;
+
+/**
+ * Retrieve the length of the longest command name (including star and brackets if applicable)
+ */
 export function longestCommandName(): number {
 	if(_longestCommandName === undefined) {
 		_longestCommandName = Array.from(Object.keys(getReplCommands()), k => k.endsWith('*') ? k.length + 3 : k.length).reduce((p, n) => Math.max(p, n), 0);
 	}
 	return _longestCommandName;
 }
+
+/**
+ * Pad the given command string to the length of the longest command name plus two spaces.
+ * @see {@link longestCommandName}
+ */
 export function padCmd<T>(string: T) {
 	return String(string).padEnd(longestCommandName() + 2, ' ');
 }

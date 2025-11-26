@@ -1,5 +1,4 @@
-import type { FlowrConfigOptions, KnownEngines } from './config';
-import { getEngineConfig } from './config';
+import { type FlowrConfigOptions, type KnownEngines , getEngineConfig } from './config';
 import { RShell, RShellReviveOptions } from './r-bridge/shell';
 import { bold, ColorEffect, Colors, formatter, italic } from './util/text/ansi';
 import { TreeSitterExecutor } from './r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';

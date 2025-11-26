@@ -2,8 +2,7 @@ import { DataflowGraph } from './graph';
 import { type AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard } from '../../util/assert';
-import type { SingleSlicingCriterion } from '../../slicing/criterion/parse';
-import { slicingCriterionToId } from '../../slicing/criterion/parse';
+import { type SingleSlicingCriterion , slicingCriterionToId } from '../../slicing/criterion/parse';
 import { splitEdgeTypes } from './edge';
 
 /**

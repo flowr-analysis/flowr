@@ -1,6 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../processor';
-import type { DataflowInformation } from '../../../../info';
-import { initializeCleanDataflowInformation } from '../../../../info';
+import { type DataflowInformation , initializeCleanDataflowInformation } from '../../../../info';
 import { processKnownFunctionCall } from './known-call-handling';
 import { appendEnvironment } from '../../../../environments/append';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -19,13 +18,13 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 	}
 
 	return {
-		unknownReferences: [...info.unknownReferences, ...newInfo.unknownReferences],
-		in:                [...info.in, ...newInfo.in],
-		out:               [...info.out, ...newInfo.out],
+		unknownReferences: info.unknownReferences.concat(newInfo.unknownReferences),
+		in:                info.in.concat(newInfo.in),
+		out:               info.out.concat(newInfo.out),
 		graph:             info.graph.mergeWith(newInfo.graph),
 		environment:       appendEnvironment(info.environment, newInfo.environment),
 		entryPoint:        newInfo.entryPoint,
-		exitPoints:        [...info.exitPoints, ...newInfo.exitPoints],
+		exitPoints:        info.exitPoints.concat(newInfo.exitPoints),
 	};
 }
 
@@ -42,6 +41,9 @@ function processDefaultFunctionProcessor<OtherInfo>(
 	return mergeInformation(information, call.information);
 }
 
+/**
+ * Marks the given function call node as only calling built-in functions.
+ */
 export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId) {
 	const v = graph.getVertex(rootId);
 	if(v?.tag === VertexType.FunctionCall) {
@@ -50,6 +52,9 @@ export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId) {
 	}
 }
 
+/**
+ * Processes a named function call within the dataflow analysis.
+ */
 export function processNamedCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],

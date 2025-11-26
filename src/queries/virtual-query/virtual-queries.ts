@@ -1,6 +1,5 @@
 import type { QueryArgumentsWithType, SupportedQueryTypes } from '../query';
-import type { CompoundQueryFormat, VirtualCompoundConstraint } from './compound-query';
-import { executeCompoundQueries } from './compound-query';
+import { type CompoundQueryFormat, type VirtualCompoundConstraint , executeCompoundQueries } from './compound-query';
 import type { BaseQueryFormat } from '../base-query-format';
 
 /** A query that does not perform a search but may perform (e.g., convenience) modifications of other queries */

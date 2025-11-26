@@ -1,8 +1,16 @@
 import { Range } from 'semver';
-import { guard, isNotUndefined } from '../../../util/assert';
+import { guard } from '../../../util/assert';
 import type { NamespaceInfo } from '../file-plugins/flowr-namespace-file';
 
 export type PackageType = 'package' | 'system' | 'r';
+
+export type PackageOptions = {
+	derivedVersion?:     Range;
+	type?:               PackageType;
+	dependencies?:       Package[];
+	namespaceInfo?:      NamespaceInfo;
+	versionConstraints?: Range[];
+}
 
 export class Package {
 	public name:               string;
@@ -12,9 +20,9 @@ export class Package {
 	public namespaceInfo?:     NamespaceInfo;
 	public versionConstraints: Range[] = [];
 
-	constructor(name: string, type?: PackageType, dependencies?: Package[], namespaceInfo?: NamespaceInfo, ...versionConstraints: readonly (Range | undefined)[]) {
-		this.name = name;
-		this.addInfo(type, dependencies, namespaceInfo, ...(versionConstraints ?? []).filter(isNotUndefined));
+	constructor(info: { name: string } & PackageOptions) {
+		this.name = info.name;
+		this.addInfo(info);
 	}
 
 	has(name: string, className?: string): boolean {
@@ -40,18 +48,26 @@ export class Package {
 		return this.namespaceInfo?.exportS3Generics.get(generic) ?? [];
 	}
 
-
 	public mergeInPlace(other: Package): void {
 		guard(this.name === other.name, 'Can only merge packages with the same name');
 		this.addInfo(
-			other.type,
-			other.dependencies,
-			other.namespaceInfo,
-			...other.versionConstraints
+			{
+				type:               other.type,
+				dependencies:       other.dependencies,
+				namespaceInfo:      other.namespaceInfo,
+				versionConstraints: other.versionConstraints
+			}
 		);
 	}
 
-	public addInfo(type?: PackageType, dependencies?: Package[], namespaceInfo?: NamespaceInfo, ...versionConstraints: readonly Range[]): void {
+	public addInfo(info: PackageOptions): void {
+		const {
+			type,
+			dependencies,
+			namespaceInfo,
+			versionConstraints
+		} = info;
+
 		if(type !== undefined) {
 			this.type = type;
 		}

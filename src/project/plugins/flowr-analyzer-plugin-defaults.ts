@@ -9,6 +9,7 @@ import {
 import { FlowrAnalyzerRmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
 import { FlowrAnalyzerQmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
 import { FlowrAnalyzerJupyterFilePlugin } from './file-plugins/notebooks/flowr-analyzer-jupyter-file-plugin';
+import { FlowrAnalyzerNamespaceFilePlugin } from './file-plugins/flowr-analyzer-namespace-file-plugin';
 
 /**
  * Provides the default set of Flowr Analyzer plugins.
@@ -21,5 +22,6 @@ export function FlowrAnalyzerPluginDefaults(): FlowrAnalyzerPlugin[] {
 		new FlowrAnalyzerRmdFilePlugin(),
 		new FlowrAnalyzerQmdFilePlugin(),
 		new FlowrAnalyzerJupyterFilePlugin(),
+		new FlowrAnalyzerNamespaceFilePlugin()
 	];
 }

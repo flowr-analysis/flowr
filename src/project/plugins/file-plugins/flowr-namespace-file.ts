@@ -1,4 +1,4 @@
-import type { FlowrFileProvider, SpecialFileRole } from '../../context/flowr-file';
+import type { FileRole, FlowrFileProvider } from '../../context/flowr-file';
 import { FlowrFile } from '../../context/flowr-file';
 import { parseNamespace } from '../../../util/files';
 
@@ -10,7 +10,7 @@ export interface NamespaceInfo {
 }
 
 export interface NamespaceFormat {
-	main:                  NamespaceInfo;
+	current:               NamespaceInfo;
 	[packageName: string]: NamespaceInfo;
 }
 
@@ -18,12 +18,12 @@ export interface NamespaceFormat {
  *
  */
 export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
-	private readonly wrapped: FlowrFileProvider<string>;
+	private readonly wrapped: FlowrFileProvider;
 
 	/**
 	 *
 	 */
-	constructor(file: FlowrFileProvider<string>) {
+	constructor(file: FlowrFileProvider) {
 		super(file.path(), file.role);
 		this.wrapped = file;
 	}
@@ -39,7 +39,7 @@ export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	/**
 	 * Namespace file lifter, this does not re-create if already a namespace file
 	 */
-	public static from(file: FlowrFileProvider<string> | FlowrNamespaceFile, role?: SpecialFileRole): FlowrNamespaceFile {
+	public static from(file: FlowrFileProvider | FlowrNamespaceFile, role?: FileRole): FlowrNamespaceFile {
 		if(role) {
 			file.assignRole(role);
 		}

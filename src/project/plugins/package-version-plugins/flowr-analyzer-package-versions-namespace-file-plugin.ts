@@ -5,7 +5,7 @@ import {
 import { SemVer } from 'semver';
 import { Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
-import { SpecialFileRole } from '../../context/flowr-file';
+import { FileRole } from '../../context/flowr-file';
 import type { NamespaceFormat } from '../file-plugins/flowr-namespace-file';
 
 export class FlowrAnalyzerPackageVersionsNamespaceFilePlugin extends FlowrAnalyzerPackageVersionsPlugin {
@@ -14,7 +14,7 @@ export class FlowrAnalyzerPackageVersionsNamespaceFilePlugin extends FlowrAnalyz
 	public readonly version = new SemVer('0.1.0');
 
 	process(ctx: FlowrAnalyzerContext): void {
-		const nmspcFiles = ctx.files.getFilesByRole(SpecialFileRole.Namespace);
+		const nmspcFiles = ctx.files.getFilesByRole(FileRole.Namespace);
 		if(nmspcFiles.length !== 1) {
 			descriptionFileLog.warn(`Supporting only exactly one NAMESPACE file, found ${nmspcFiles.length}`);
 			return;
@@ -25,7 +25,12 @@ export class FlowrAnalyzerPackageVersionsNamespaceFilePlugin extends FlowrAnalyz
 
 		for(const pkg in deps) {
 			const info = deps[pkg];
-			ctx.deps.addDependency(new Package(pkg, undefined, undefined, info));
+			ctx.deps.addDependency(new Package(
+				{
+					name:          pkg,
+					namespaceInfo: info
+				}
+			));
 			for(const exportedSymbol of info.exportedSymbols) {
 				ctx.functions.addFunctionInfo({
 					name:          exportedSymbol,

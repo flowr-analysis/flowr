@@ -219,16 +219,16 @@ export function parseDCF(file: FlowrFileProvider): Map<string, string[]> {
  * @param file - The file to parse
  * @returns
  */
-export function parseNamespace(file: FlowrFileProvider<string>): NamespaceFormat {
+export function parseNamespace(file: FlowrFileProvider): NamespaceFormat {
 	const result = {
-		main: {
+		current: {
 			exportedSymbols:      [] as string[],
 			exportedFunctions:    [] as string[],
 			exportS3Generics:     new Map<string, string[]>(),
 			loadsWithSideEffects: false,
 		},
 	} as NamespaceFormat;
-	const fileContent = file.content().replaceAll(cleanLineCommentRegex, '').trim()
+	const fileContent = file.content().toString().replaceAll(cleanLineCommentRegex, '').trim()
 		.split(/\r?\n/).filter(Boolean);
 
 	for(const line of fileContent) {
@@ -241,7 +241,7 @@ export function parseNamespace(file: FlowrFileProvider<string>): NamespaceFormat
 		switch(type) {
 			case 'exportClasses':
 			case 'exportMethods':
-				result.main.exportedFunctions.push(args);
+				result.current.exportedFunctions.push(args);
 				break;
 			case 'S3method':
 			{
@@ -250,16 +250,16 @@ export function parseNamespace(file: FlowrFileProvider<string>): NamespaceFormat
 					continue;
 				}
 				const [pkg, func] = parts;
-				let arr = result.main.exportS3Generics.get(pkg);
+				let arr = result.current.exportS3Generics.get(pkg);
 				if(!arr) {
 					arr = [];
-					result.main.exportS3Generics.set(pkg, arr);
+					result.current.exportS3Generics.set(pkg, arr);
 				}
 				arr.push(func);
 				break; 
 			}
 			case 'export':
-				result.main.exportedSymbols.push(args);
+				result.current.exportedSymbols.push(args);
 				break;
 			case 'useDynLib':
 			{

@@ -482,7 +482,7 @@ export class BenchmarkSlicer {
 	private getInferredRange<T>(value: SetRangeDomain<T> | PosIntervalDomain): number {
 		if(value.isValue()) {
 			if(value instanceof SetRangeDomain) {
-				return value.value[1] === Top ? Infinity : value.value[1].size;
+				return value.value.range === Top ? Infinity : value.value.range.size;
 			} else {
 				return value.value[1] - value.value[0];
 			}
@@ -495,10 +495,10 @@ export class BenchmarkSlicer {
 			return 'top';
 		} else if(value.isValue()) {
 			if(value instanceof SetRangeDomain) {
-				if(value.value[1] === Top) {
+				if(value.value.range === Top) {
 					return 'infinite';
 				}
-				return Math.floor(value.value[0].size + (value.value[1].size / 2));
+				return Math.floor(value.value.min.size + (value.value.range.size / 2));
 			} else {
 				if(!isFinite(value.value[1])) {
 					return 'infinite';

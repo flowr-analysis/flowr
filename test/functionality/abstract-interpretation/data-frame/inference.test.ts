@@ -1,7 +1,6 @@
 import { beforeAll, describe } from 'vitest';
 import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import { PosIntervalTop } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
-import type { ArrayRangeValue } from '../../../../src/abstract-interpretation/domains/set-range-domain';
 import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { withShell } from '../../_helper/shell';
 import { assertDataFrameDomain, assertDataFrameOperation, DataFrameShapeOverapproximation, testDataFrameDomain, testDataFrameDomainAgainstReal, testDataFrameDomainWithSource } from './data-frame';
@@ -10,7 +9,7 @@ import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file'
 /** The minimum version required for calling `head` and `tail` with a vector argument, e.g. `head(df, c(1, 2))` */
 export const MIN_VERSION_HEAD_TAIL_VECTOR = '4.0.0';
 
-const DataFrameTop = { colnames: [[], Top] as ArrayRangeValue<string>, cols: PosIntervalTop, rows: PosIntervalTop } as const;
+const DataFrameTop = { colnames: [[], Top] as [[], typeof Top], cols: PosIntervalTop, rows: PosIntervalTop } as const;
 
 describe.sequential('Data Frame Shape Inference', withShell(shell => {
 	let librariesInstalled = false;

@@ -66,7 +66,7 @@ export const DataFrameShapeOverapproximation: DataFrameShapeMatching = {
  * The expected data frame shape for data frame shape assertion tests.
  */
 export interface ExpectedDataFrameShape {
-	colnames: ArrayRangeValue<string> | typeof Bottom,
+	colnames: [min: string[], range: string[] | typeof Top] | typeof Bottom,
 	cols:     DataFrameShapeProperty<'cols'>,
 	rows:     DataFrameShapeProperty<'rows'>
 }
@@ -299,7 +299,7 @@ function assertDomainMatches(
 		assert.ok(inferred === undefined || expected !== undefined, `result is no over-approximation: expected ${inferred?.toString()} to be an over-approximation of ${JSON.stringify(expected)}`);
 	}
 	if(inferred !== undefined && expected !== undefined) {
-		assertPropertyMatches('colnames', inferred.colnames, inferred.colnames.create(expected.colnames), matching.colnames);
+		assertPropertyMatches('colnames', inferred.colnames, inferred.colnames.create(createSetRange(expected.colnames)), matching.colnames);
 		assertPropertyMatches('cols', inferred.cols, inferred.cols.create(expected.cols), matching.cols);
 		assertPropertyMatches('rows', inferred.rows, inferred.rows.create(expected.rows), matching.rows);
 	}
@@ -327,6 +327,10 @@ function createCodeForOutput(
 ): string {
 	const marker = getOutputMarker(criterion);
 	return `cat(sprintf("${marker} %s,%s,%s,%s\\n", is.data.frame(${symbol}), paste(names(${symbol}), collapse = ";"), paste(ncol(${symbol}), collapse = ""), paste(nrow(${symbol}), collapse = "")))`;
+}
+
+function createSetRange(value: [string[], string[] | typeof Top] | typeof Bottom): ArrayRangeValue<string> | typeof Bottom {
+	return value === Bottom ? value : { min: value[0], range: value[1] === Top ? Top : value[1] };
 }
 
 function getDefaultMatchingType(expected: ExpectedDataFrameShape | undefined, matching?: Partial<DataFrameShapeMatching>): Partial<DataFrameShapeMatching> {

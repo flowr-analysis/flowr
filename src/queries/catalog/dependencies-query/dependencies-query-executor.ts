@@ -142,8 +142,8 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 					lexemeOfArgument:   getLexeme(value, arg),
 					linkedIds:          linked?.length ? linked : undefined,
 					value:              value ?? defaultValue,
-					versionConstraints:	dep?.versionConstraints,
-					derivedVersion:	    dep?.derivedVersion,
+					versionConstraints: dep?.versionConstraints,
+					derivedVersion:     dep?.derivedVersion,
 					namespaceInfo:      dep?.namespaceInfo
 				} as DependencyInfo);
 				if(result) {

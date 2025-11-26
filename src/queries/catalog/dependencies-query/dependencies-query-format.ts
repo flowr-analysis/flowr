@@ -43,9 +43,9 @@ export const DefaultDependencyCategories = {
 							nodeId:             n.info.id,
 							functionName:       (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
 							value:              n.namespace,
-							versionConstraints:	dep?.versionConstraints,
-							derivedVersion:	    dep?.derivedVersion,
-							namespaceInfo:	    dep?.namespaceInfo
+							versionConstraints: dep?.versionConstraints,
+							derivedVersion:     dep?.derivedVersion,
+							namespaceInfo:      dep?.namespaceInfo
 						});
 					}
 				});

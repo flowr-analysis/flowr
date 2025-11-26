@@ -95,7 +95,7 @@ export interface DependencyInfo extends Record<string, unknown>{
     value?:           string
 	versionConstraints?: Range[],
 	derivedVersion?:     Range,
-	namespaceInfo?:	     NamespaceInfo,
+	namespaceInfo?:      NamespaceInfo,
 }
 
 function printResultSection(title: string, infos: DependencyInfo[], result: string[]): void {

@@ -217,7 +217,7 @@ export function parseDCF(file: FlowrFileProvider): Map<string, string[]> {
 /**
  * Parses the given NAMESPACE file
  * @param file - The file to parse
- * @returns
+ * @returns NamespaceFormat
  */
 export function parseNamespace(file: FlowrFileProvider): NamespaceFormat {
 	const result = {
@@ -256,7 +256,7 @@ export function parseNamespace(file: FlowrFileProvider): NamespaceFormat {
 					result.current.exportS3Generics.set(pkg, arr);
 				}
 				arr.push(func);
-				break; 
+				break;
 			}
 			case 'export':
 				result.current.exportedSymbols.push(args);

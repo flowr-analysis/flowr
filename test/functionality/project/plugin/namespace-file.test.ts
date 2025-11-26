@@ -1,5 +1,4 @@
 import { assert, describe, test } from 'vitest';
-import path from 'path';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
@@ -9,7 +8,7 @@ import {
 import {
 	FlowrAnalyzerPackageVersionsNamespaceFilePlugin
 } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
-import {defaultConfigOptions} from "../../../../src/config";
+import { defaultConfigOptions } from '../../../../src/config';
 
 describe('NAMESPACE-file', function() {
 	const ctx = new FlowrAnalyzerContext(

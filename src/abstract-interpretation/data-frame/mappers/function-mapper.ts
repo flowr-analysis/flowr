@@ -3,6 +3,7 @@ import { type ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking'
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { findSource } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument, type RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -35,7 +36,6 @@ import {
 	isNamedArgument,
 	isRNull
 } from './arguments';
-import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 
 /**
  * Represents the different types of data frames in R
@@ -583,7 +583,7 @@ type OtherDataFrameFunctionMapping = OtherDataFrameEntryPoint | OtherDataFrameTr
  * - `args` contains the function call arguments
  * - `params` contains the expected argument location for each parameter of the function
  * - `info` contains the resolve information
- * - `ctx` access to the current flowR analyzer context
+ * - `ctx` contains the current flowR analyzer context
  */
 type DataFrameFunctionMapping<Params extends object> = (
     args: readonly RFunctionArgument<ParentInformation>[],
@@ -1146,20 +1146,20 @@ function mapDataFrameMutate(
 		});
 	}
 
+	if(mutatedCols === undefined || mutatedCols.length > 0 || deletedCols?.length === 0) {
+		result.push({
+			operation: 'mutateCols',
+			operand:   operand?.info.id,
+			colnames:  mutatedCols
+		});
+		operand = undefined;
+	}
 	if(deletedCols === undefined || deletedCols.length > 0) {
 		result.push({
 			operation: 'removeCols',
 			operand:   operand?.info.id,
 			colnames:  deletedCols,
 			options:   { maybe: true }
-		});
-		operand = undefined;
-	}
-	if(mutatedCols === undefined || mutatedCols.length > 0 || deletedCols?.length === 0) {
-		result.push({
-			operation: 'mutateCols',
-			operand:   operand?.info.id,
-			colnames:  mutatedCols
 		});
 		operand = undefined;
 	}
@@ -1400,6 +1400,7 @@ function getRequestFromRead(
 		}
 	}
 	request = request ? ctx.files.resolveRequest(request).r : undefined;
+
 	return { source, request };
 }
 

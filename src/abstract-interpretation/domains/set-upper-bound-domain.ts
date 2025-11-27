@@ -2,7 +2,7 @@ import { assertUnreachable } from '../../util/assert';
 import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain, DEFAULT_INFERENCE_LIMIT, domainElementToString } from './abstract-domain';
-import { Bottom, Top } from './lattice';
+import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 import { type SatisfiableDomain , SetComparator } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
@@ -204,9 +204,9 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 
 	public toString(): string {
 		if(this.value === Top) {
-			return '⊤';
+			return TopSymbol;
 		} else if(this.value === Bottom) {
-			return '⊥';
+			return BottomSymbol;
 		}
 		const string = this.value.values().map(domainElementToString).toArray().join(', ');
 

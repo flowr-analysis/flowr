@@ -104,7 +104,7 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift>
 	/**
 	 * Extends the lower bound of the current abstract value down to 0.
 	 */
-	public extendDown(): this {
+	public widenDown(): this {
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {

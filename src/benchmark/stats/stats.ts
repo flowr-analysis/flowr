@@ -55,8 +55,8 @@ export interface SlicerStatsDfShape<T = number> {
 	numberOfNonDataFrameFiles: T extends number ? 0 | 1 : number,
 	numberOfResultConstraints: T,
 	numberOfResultingValues:   T,
-	numberOfResultingTop:      T,
 	numberOfResultingBottom:   T,
+	numberOfResultingTop:      T,
 	numberOfEmptyNodes:        T,
 	numberOfOperationNodes:    T,
 	numberOfValueNodes:        T,
@@ -67,10 +67,11 @@ export interface SlicerStatsDfShape<T = number> {
 export interface PerNodeStatsDfShape<T = number> {
 	numberOfEntries:      T,
 	mappedOperations?:    DataFrameOperationName[]
-	inferredColNames?:    T | 'bottom' | 'top',
+	inferredColNames?:    T | 'bottom' | 'infinite' | 'top',
 	inferredColCount?:    T | 'bottom' | 'infinite' | 'top',
 	inferredRowCount?:    T | 'bottom' | 'infinite' | 'top',
 	/** difference between upper and lower bound of interval domain (to estimate approximation) */
+	approxRangeColNames?: T,
 	approxRangeColCount?: T,
 	approxRangeRowCount?: T
 }

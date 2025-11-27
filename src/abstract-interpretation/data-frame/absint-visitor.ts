@@ -18,10 +18,10 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { isNotUndefined } from '../../util/assert';
 import {
 	type AbstractInterpretationInfo,
-DataFrameInfoMarker,
-hasDataFrameAssignmentInfo,
-hasDataFrameExpressionInfo,
-hasDataFrameInfoMarker
+	DataFrameInfoMarker,
+	hasDataFrameAssignmentInfo,
+	hasDataFrameExpressionInfo,
+	hasDataFrameInfoMarker
 } from './absint-info';
 import { DataFrameDomain, DataFrameStateDomain } from './dataframe-domain';
 import { mapDataFrameAccess } from './mappers/access-mapper';

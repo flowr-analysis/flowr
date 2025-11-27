@@ -14,11 +14,7 @@ import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import {
-	type IEnvironment,
-	initializeCleanEnvironments,
-	type REnvironmentInformation
-} from '../environments/environment';
+import { type IEnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
 import { jsonReplacer } from '../../util/json';
@@ -138,8 +134,7 @@ export class DataflowGraph<
 	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
 	Edge   extends DataflowGraphEdge       = DataflowGraphEdge
 > {
-	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined;
-	private _idMap:                     AstIdMap | undefined;
+	private _idMap: AstIdMap | undefined;
 
 	/*
 	 * Set of vertices which have sideEffects that we do not know anything about.
@@ -149,7 +144,6 @@ export class DataflowGraph<
 	private readonly _unknownSideEffects = new Set<UnknownSideEffect>();
 
 	constructor(idMap: AstIdMap | undefined) {
-		DataflowGraph.DEFAULT_ENVIRONMENT ??= initializeCleanEnvironments();
 		this._idMap = idMap;
 	}
 
@@ -283,19 +277,20 @@ export class DataflowGraph<
 	/**
 	 * Adds a new vertex to the graph, for ease of use, some arguments are optional and filled automatically.
 	 * @param vertex - The vertex to add
+	 * @param fallbackEnv - A clean environment to use if no environment is given in the vertex
 	 * @param asRoot - If false, this will only add the vertex but do not add it to the {@link rootIds|root vertices} of the graph.
 	 *                 This is probably only of use, when you construct dataflow graphs for tests.
 	 * @param overwrite - If true, this will overwrite the vertex if it already exists in the graph (based on the id).
 	 * @see DataflowGraphVertexInfo
 	 * @see DataflowGraphVertexArgument
 	 */
-	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, asRoot = true, overwrite = false): this {
+	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, fallbackEnv: REnvironmentInformation, asRoot = true, overwrite = false): this {
 		const oldVertex = this.vertexInformation.get(vertex.id);
 		if(oldVertex !== undefined && !overwrite) {
 			return this;
 		}
 
-		const fallback = vertex.tag === VertexType.VariableDefinition || vertex.tag === VertexType.Use || vertex.tag === VertexType.Value || (vertex.tag === VertexType.FunctionCall && vertex.onlyBuiltin) ? undefined : DataflowGraph.DEFAULT_ENVIRONMENT;
+		const fallback = vertex.tag === VertexType.VariableDefinition || vertex.tag === VertexType.Use || vertex.tag === VertexType.Value || (vertex.tag === VertexType.FunctionCall && vertex.onlyBuiltin) ? undefined : fallbackEnv;
 		// keep a clone of the original environment
 		const environment = vertex.environment ? cloneEnvironmentInformation(vertex.environment) : fallback;
 

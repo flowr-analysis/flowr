@@ -101,14 +101,15 @@ ${switchCodeAndGraph ? dfGraph : codeText}
 
 /** returns resolved expected df graph */
 export async function verifyExpectedSubgraph(parser: KnownParser, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
+	const context = contextFromInput(code);
 	/* we verify that we get what we want first! */
 	const info = await createDataflowPipeline(parser, {
-		context: contextFromInput(code),
+		context: context,
 		getId:   deterministicCountingIdGenerator(0)
 	}).allRemainingSteps();
 
 	expectedSubgraph.setIdMap(info.normalize.idMap);
-	expectedSubgraph = resolveDataflowGraph(expectedSubgraph);
+	expectedSubgraph = resolveDataflowGraph(expectedSubgraph, context);
 	const report: GraphDifferenceReport = diffOfDataflowGraphs(
 		{ name: 'expected', graph: expectedSubgraph },
 		{ name: 'got',      graph: info.dataflow.graph },

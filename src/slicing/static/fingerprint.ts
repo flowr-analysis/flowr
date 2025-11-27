@@ -1,5 +1,5 @@
 import objectHash from 'object-hash';
-import { type REnvironmentInformation , isDefaultBuiltInEnvironment } from '../../dataflow/environments/environment';
+import { isDefaultBuiltInEnvironment, type REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export type Fingerprint = string

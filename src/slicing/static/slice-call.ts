@@ -1,7 +1,7 @@
 import type { NodeToSlice } from './slicer-types';
 import type { VisitingQueue } from './visiting-queue';
 import { guard } from '../../util/assert';
-import { type Fingerprint , envFingerprint } from './fingerprint';
+import { envFingerprint, type Fingerprint } from './fingerprint';
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker';
 import type {
 	DataflowGraphVertexFunctionCall,
@@ -9,7 +9,12 @@ import type {
 	DataflowGraphVertexInfo
 } from '../../dataflow/graph/vertex';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
-import { type DataflowGraph, type FunctionArgument, type OutgoingEdges , getReferenceOfArgument } from '../../dataflow/graph/graph';
+import {
+	type DataflowGraph,
+	type FunctionArgument,
+	getReferenceOfArgument,
+	type OutgoingEdges
+} from '../../dataflow/graph/graph';
 import { isBuiltIn } from '../../dataflow/environments/built-in';
 import { resolveByName } from '../../dataflow/environments/resolve-by-name';
 import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
@@ -20,18 +25,19 @@ import {
 } from '../../dataflow/internal/process/functions/call/built-in/built-in-function-definition';
 import { updatePotentialAddition } from './static-slicer';
 import type { DataflowInformation } from '../../dataflow/info';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 /**
  * Returns the function call targets (definitions) by the given caller
  */
-export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, queue: VisitingQueue): [Set<DataflowGraphVertexInfo>, REnvironmentInformation] {
+export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): [Set<DataflowGraphVertexInfo>, REnvironmentInformation] {
 	// bind with call-local environments during slicing
 	const outgoingEdges = dataflowGraph.get(callerInfo.id, true);
 	guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`);
 
 	// lift baseEnv on the same level
 
-	const activeEnvironment = retrieveActiveEnvironment(callerInfo.environment, baseEnvironment);
+	const activeEnvironment = retrieveActiveEnvironment(callerInfo.environment, baseEnvironment, ctx);
 
 	const name = callerInfo.name;
 	guard(name !== undefined, () => `name of id: ${callerInfo.id} can not be found in id map`);
@@ -87,9 +93,9 @@ function linkCallTargets(
 }
 
 /** returns the new threshold hit count */
-export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, dataflowInformation: DataflowInformation, queue: VisitingQueue): void {
+export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, dataflowInformation: DataflowInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): void {
 	const baseEnvironment = current.baseEnvironment;
-	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargets(dataflowInformation.graph, callerInfo, current.baseEnvironment, queue);
+	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargets(dataflowInformation.graph, callerInfo, current.baseEnvironment, queue, ctx);
 	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment);
 
 	if(functionCallTargets.size === 0) {

@@ -1,4 +1,4 @@
-import { type DataflowGraph , getReferenceOfArgument } from '../../graph/graph';
+import { type DataflowGraph, getReferenceOfArgument } from '../../graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -14,6 +14,7 @@ import { isValue } from '../values/r-value';
 import { RFalse, RTrue } from '../../../r-bridge/lang-4.x/convert-values';
 import { collectStrings } from '../values/string/string-constants';
 import type { VariableResolve } from '../../../config';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 
 /**
  * Get the values of all arguments matching the criteria.
@@ -24,7 +25,8 @@ export function getArgumentStringValue(
 	vertex: DataflowGraphVertexFunctionCall,
 	argumentIndex: number | 'unnamed' | undefined,
 	argumentName: string | undefined,
-	resolveValue: boolean | 'library' | undefined
+	resolveValue: boolean | 'library' | undefined,
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): Map<NodeId, Set<string|undefined>> | undefined {
 	if(argumentName) {
 		const arg = vertex?.args.findIndex(arg => arg !== EmptyArgument && arg.name === argumentName);
@@ -48,7 +50,7 @@ export function getArgumentStringValue(
 			}
 			if(valueNode) {
 				// this should be evaluated in the callee-context
-				const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue) ?? [Unknown];
+				const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue, ctx) ?? [Unknown];
 				map.set(ref, new Set(values));
 			}
 		}
@@ -65,7 +67,7 @@ export function getArgumentStringValue(
 		}
 
 		if(valueNode) {
-			const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue) ?? [Unknown];
+			const values = resolveBasedOnConfig(variableResolve, graph, vertex, valueNode, vertex.environment, graph.idMap, resolveValue, ctx) ?? [Unknown];
 			return new Map([[arg, new Set(values)]]);
 		}
 	}
@@ -73,11 +75,11 @@ export function getArgumentStringValue(
 }
 
 
-function hasCharacterOnly(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, idMap: Map<NodeId, RNode> | undefined): boolean | 'maybe' {
+function hasCharacterOnly(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, idMap: Map<NodeId, RNode> | undefined, ctx: ReadOnlyFlowrAnalyzerContext): boolean | 'maybe' {
 	if(!vertex.args || vertex.args.length === 0 || !idMap) {
 		return false;
 	}
-	const treatAsChar = getArgumentStringValue(variableResolve, graph, vertex, 5, 'character.only', true);
+	const treatAsChar = getArgumentStringValue(variableResolve, graph, vertex, 5, 'character.only', true, ctx);
 	if(!treatAsChar) {
 		return false;
 	}
@@ -90,14 +92,14 @@ function hasCharacterOnly(variableResolve: VariableResolve, graph: DataflowGraph
 	}
 }
 
-function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, environment: REnvironmentInformation | undefined, idMap: Map<NodeId, RNode> | undefined, resolveValue: boolean | 'library' | undefined): string[] | undefined {
+function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowGraph, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, environment: REnvironmentInformation | undefined, idMap: Map<NodeId, RNode> | undefined, resolveValue: boolean | 'library' | undefined, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
 	let full = true;
 	if(!resolveValue) {
 		full = false;
 	}
 
 	if(resolveValue === 'library') {
-		const hasChar = hasCharacterOnly(variableResolve, graph, vertex, idMap);
+		const hasChar = hasCharacterOnly(variableResolve, graph, vertex, idMap, ctx);
 		if(hasChar === false) {
 			if(argument.type === RType.Symbol) {
 				return [argument.lexeme];
@@ -106,7 +108,7 @@ function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowG
 		}
 	}
 
-	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph, full, resolve: variableResolve }));
+	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph, full, resolve: variableResolve, ctx }));
 	if(resolved) {
 		const values: string[] = [];
 		for(const value of resolved.elements) {

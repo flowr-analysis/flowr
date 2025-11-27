@@ -1,4 +1,4 @@
-import { type DataflowProcessorInformation , processDataflowFor } from '../../../../processor';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
 import type { DataflowInformation } from '../../../../info';
 import { processAllArguments } from './common';
 import { linkArgumentsOnCall } from '../../../linker';
@@ -54,7 +54,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		cds:         data.controlDependencies,
 		args:        callArgs, // same reference
 		origin:      [UnnamedFunctionCallOrigin]
-	});
+	}, data.ctx.env.getCleanEnv());
 
 	let inIds = remainingReadInArgs;
 	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependencies: data.controlDependencies, type: ReferenceType.Function });

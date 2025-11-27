@@ -1,20 +1,18 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { type DataflowInformation , initializeCleanDataflowInformation } from '../../../../../info';
-import { type FlowrLaxSourcingOptions , DropPathsOption, InferWorkingDirectory } from '../../../../../../config';
+import { type DataflowInformation, initializeCleanDataflowInformation } from '../../../../../info';
+import { DropPathsOption, type FlowrLaxSourcingOptions, InferWorkingDirectory } from '../../../../../../config';
 import { processKnownFunctionCall } from '../known-call-handling';
-import {
-	type RParseRequestFromText,
-	type RParseRequest,
-	removeRQuotes
-} from '../../../../../../r-bridge/retriever';
+import { removeRQuotes, type RParseRequest, type RParseRequestFromText } from '../../../../../../r-bridge/retriever';
 import {
 	type IdGenerator,
 	type NormalizedAst,
-	type ParentInformation
-	,
+	type ParentInformation,
 	sourcedDeterministicCountingIdGenerator
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	EmptyArgument,
+	type RFunctionArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -30,9 +28,7 @@ import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import type {
-	ReadOnlyFlowrAnalyzerContext
-} from '../../../../../../project/context/flowr-analyzer-context';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import type { RProjectFile } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 /**
@@ -186,7 +182,7 @@ export function processSourceCall<OtherInfo>(
 	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
 		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
 	} else if(sourceFileArgument !== EmptyArgument) {
-		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables }));
+		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 

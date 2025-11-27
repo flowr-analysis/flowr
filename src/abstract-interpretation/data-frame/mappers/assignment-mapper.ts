@@ -7,6 +7,7 @@ import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/pro
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { DataFrameAssignmentInfo } from '../absint-info';
 import { isDataFrameArgument } from './arguments';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 
 /**
  * Maps a concrete data frame assignment to data frame assignment info containing the ids of the identifier and assigned expression.
@@ -14,14 +15,16 @@ import { isDataFrameArgument } from './arguments';
  * @param identifier - The R node of the variable identifier
  * @param expression - The R node of the assigned expression
  * @param dfg  - The data flow graph for resolving the arguments
+ * @param ctx - The analysis context
  * @returns Data frame assignment info containing the IDs of the identifier and expression, or `undefined` if the node does not represent a data frame assignment
  */
 export function mapDataFrameVariableAssignment(
 	identifier: RSymbol<ParentInformation> | RString<ParentInformation>,
 	expression: RNode<ParentInformation>,
-	dfg: DataflowGraph
+	dfg: DataflowGraph,
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameAssignmentInfo | undefined {
-	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
+	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
 
 	if(!isDataFrameArgument(expression, resolveInfo)) {
 		return;

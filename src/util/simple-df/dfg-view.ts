@@ -1,9 +1,10 @@
 import { DataflowGraph } from '../../dataflow/graph/graph';
-import { type DataflowGraphVertexArgument , VertexType } from '../../dataflow/graph/vertex';
-import { type MergeableRecord , deepMergeObject } from '../objects';
+import { type DataflowGraphVertexArgument, VertexType } from '../../dataflow/graph/vertex';
+import { deepMergeObject, type MergeableRecord } from '../objects';
 import type { DeepPartial } from 'ts-essentials';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { isNotUndefined } from '../assert';
+import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 
 export interface ReduceVertexOptions extends MergeableRecord {
 	tags:              VertexType[]
@@ -52,7 +53,7 @@ function makeFilter(options: ReduceVertexOptions, idMap?: AstIdMap): <T extends 
 /**
  * Produces a reduced version of the given dataflow graph according to the given options.
  */
-export function reduceDfg(dfg: DataflowGraph, options: DeepPartial<ReduceOptions>): DataflowGraph {
+export function reduceDfg(dfg: DataflowGraph, options: DeepPartial<ReduceOptions>, cleanEnv: REnvironmentInformation): DataflowGraph {
 	const newDfg = new DataflowGraph(dfg.idMap);
 	const applyOptions = deepMergeObject(defaultReduceOptions, options) as Required<ReduceOptions>;
 	// overwrite the tag set if possible
@@ -66,7 +67,7 @@ export function reduceDfg(dfg: DataflowGraph, options: DeepPartial<ReduceOptions
 	for(const [id, info] of dfg.vertices(!applyOptions)) {
 		const result = applyFilter(info);
 		if(result) {
-			newDfg.addVertex(result, dfg.isRoot(id));
+			newDfg.addVertex(result, cleanEnv, dfg.isRoot(id));
 		}
 	}
 

@@ -1,12 +1,18 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../graph/graph';
-import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionDefinition , isFunctionCallVertex, isFunctionDefinitionVertex } from '../graph/vertex';
+import {
+	type DataflowGraphVertexArgument,
+	type DataflowGraphVertexFunctionDefinition,
+	isFunctionCallVertex,
+	isFunctionDefinitionVertex
+} from '../graph/vertex';
 import { isNotUndefined } from '../../util/assert';
 import { edgeIncludesType, EdgeType } from '../graph/edge';
 import { resolveIdToValue } from '../eval/resolve/alias-tracking';
 import { VariableResolve } from '../../config';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { valueSetGuard } from '../eval/values/general';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
 	const workingQueue: DataflowGraphVertexArgument[] = def.exitPoints.map(d => graph.getVertex(d, true)).filter(isNotUndefined);
@@ -33,7 +39,7 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 	return false;
 }
 
-function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
+function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const callSites = graph.ingoingEdges(def.id);
 
 	for(const [callerId, { types }] of callSites ?? []) {
@@ -48,7 +54,7 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
 			if(arg === EmptyArgument) {
 				continue;
 			}
-			const value = valueSetGuard(resolveIdToValue(arg.nodeId, { graph, idMap: graph.idMap, resolve: VariableResolve.Alias, full: true }));
+			const value = valueSetGuard(resolveIdToValue(arg.nodeId, { graph, idMap: graph.idMap, resolve: VariableResolve.Alias, full: true, ctx }));
 			if(value?.elements.some(e => e.type === 'function-definition')) {
 				return true;
 			}
@@ -63,7 +69,7 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
  * If the return is an identity, e.g., `function(x) x`, this is not considered higher-order,
  * if no function is passed as an argument.
  */
-export function isHigherOrder(id: NodeId, graph: DataflowGraph): boolean {
+export function isHigherOrder(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const vert = graph.getVertex(id);
 	if(!vert || !isFunctionDefinitionVertex(vert)) {
 		return false;
@@ -75,5 +81,5 @@ export function isHigherOrder(id: NodeId, graph: DataflowGraph): boolean {
 	}
 
 	// 2. check whether any of the callsites passes a function
-	return inspectCallSitesArgumentsFns(vert, graph);
+	return inspectCallSitesArgumentsFns(vert, graph, ctx);
 }

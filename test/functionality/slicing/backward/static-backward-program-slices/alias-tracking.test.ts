@@ -9,12 +9,13 @@ import { setFrom } from '../../../../../src/dataflow/eval/values/sets/set-consta
 import { valueFromTsValue } from '../../../../../src/dataflow/eval/values/general';
 import { Top } from '../../../../../src/dataflow/eval/values/r-value';
 import { trackAliasInEnvironments } from '../../../../../src/dataflow/eval/resolve/alias-tracking';
+import type { FlowrAnalyzerContext } from '../../../../../src/project/context/flowr-analyzer-context';
 import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 
-async function runPipeline(code: string, shell: RShell) {
+async function runPipeline(code: string, shell: RShell, ctx: FlowrAnalyzerContext) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
-		context: contextFromInput(code)
+		context: ctx
 	}).allRemainingSteps();
 }
 
@@ -30,11 +31,13 @@ describe.sequential('Alias Tracking', withShell(shell => {
 		['f <- function(a = u) { if(k) { u <- 1; } else { u <- 2; }; print(a); }; f();', 'a', Top], // Note: This should result in a in [1,2] in the future
 		['x <- 1; while(x < 10) { if(runif(1)) x <- x + 1 }', 'x', Top]
 	])('%s should resolve %s to %o', async(code, identifier, expectedValues) => {
-		const result = await runPipeline(code, shell);
+		const ctx = contextFromInput(code);
+		const result = await runPipeline(code, shell, ctx);
 		const values = trackAliasInEnvironments(
 			defaultConfigOptions.solver.variables,
 			identifier as Identifier,
 			result.dataflow.environment,
+			ctx,
 			result.dataflow.graph,
 			result.dataflow.graph.idMap
 		);

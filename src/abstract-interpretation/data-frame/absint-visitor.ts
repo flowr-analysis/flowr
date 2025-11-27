@@ -1,12 +1,28 @@
-import { type CfgBasicBlockVertex, type CfgSimpleVertex, type ControlFlowInformation, CfgVertexType, getVertexRootId, isMarkerVertex } from '../../control-flow/control-flow-graph';
-import { type SemanticCfgGuidedVisitorConfiguration, SemanticCfgGuidedVisitor } from '../../control-flow/semantic-cfg-guided-visitor';
+import {
+	type CfgBasicBlockVertex,
+	type CfgSimpleVertex,
+	CfgVertexType,
+	type ControlFlowInformation,
+	getVertexRootId,
+	isMarkerVertex
+} from '../../control-flow/control-flow-graph';
+import {
+	SemanticCfgGuidedVisitor,
+	type SemanticCfgGuidedVisitorConfiguration
+} from '../../control-flow/semantic-cfg-guided-visitor';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexVariableDefinition } from '../../dataflow/graph/vertex';
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isNotUndefined } from '../../util/assert';
-import { type AbstractInterpretationInfo, DataFrameInfoMarker, hasDataFrameAssignmentInfo, hasDataFrameExpressionInfo, hasDataFrameInfoMarker } from './absint-info';
+import {
+	type AbstractInterpretationInfo,
+	DataFrameInfoMarker,
+	hasDataFrameAssignmentInfo,
+	hasDataFrameExpressionInfo,
+	hasDataFrameInfoMarker
+} from './absint-info';
 import { DataFrameDomain, DataFrameStateDomain } from './dataframe-domain';
 import { mapDataFrameAccess } from './mappers/access-mapper';
 import { isAssignmentTarget, mapDataFrameVariableAssignment } from './mappers/assignment-mapper';
@@ -100,7 +116,7 @@ export class DataFrameShapeInferenceVisitor<
 		const sourceNode = this.getNormalizedAst(source);
 
 		if(node !== undefined && isAssignmentTarget(targetNode) && sourceNode !== undefined) {
-			node.info.dataFrame = mapDataFrameVariableAssignment(targetNode, sourceNode, this.config.dfg);
+			node.info.dataFrame = mapDataFrameVariableAssignment(targetNode, sourceNode, this.config.dfg, this.config.ctx);
 			this.applyDataFrameAssignment(node);
 			this.clearUnassignedInfo(targetNode);
 		}
@@ -110,7 +126,7 @@ export class DataFrameShapeInferenceVisitor<
 		const node = this.getNormalizedAst(call.id);
 
 		if(node !== undefined) {
-			node.info.dataFrame = mapDataFrameAccess(node, this.config.dfg);
+			node.info.dataFrame = mapDataFrameAccess(node, this.config.dfg, this.config.ctx);
 			this.applyDataFrameExpression(node);
 		}
 	}
@@ -130,7 +146,7 @@ export class DataFrameShapeInferenceVisitor<
 		const sourceNode = this.getNormalizedAst(source);
 
 		if(node !== undefined && targetNode !== undefined && sourceNode !== undefined) {
-			node.info.dataFrame = mapDataFrameReplacementFunction(node, sourceNode, this.config.dfg);
+			node.info.dataFrame = mapDataFrameReplacementFunction(node, sourceNode, this.config.dfg, this.config.ctx);
 			this.applyDataFrameExpression(node);
 			this.clearUnassignedInfo(targetNode);
 		}

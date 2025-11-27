@@ -26,6 +26,8 @@ import type { ControlFlowInformation } from '../control-flow/control-flow-graph'
 import { getBuiltInDefinitions } from './environments/built-in-config';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
+import { Threadpool } from './parallel/threadpool';
+import { SourceFilePayload } from './parallel/task-registry';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -117,6 +119,20 @@ export function produceDataFlowGraph<OtherInfo>(
 		ctx
 	};
 	let df = processDataflowFor<OtherInfo>(files[0].root, dfData);
+
+	// first call with threadpool
+	const pool = new Threadpool();
+
+	// submit all files
+	const result = pool.submitTasks<SourceFilePayload<OtherInfo>, void>(
+		"testPool",
+		files.map((file, i) => ({
+			index: i,
+			file,
+			data: dfData,
+			dataflowInfo: df,
+		}))
+	)
 
 	for(let i = 1; i < files.length; i++) {
 		/* source requests register automatically */

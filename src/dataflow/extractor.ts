@@ -129,8 +129,8 @@ export function produceDataFlowGraph<OtherInfo>(
 		files.map((file, i) => ({
 			index:        i,
 			file,
-			data:         dfData,
-			dataflowInfo: df,
+			data:         undefined as unknown as DataflowProcessorInformation<OtherInfo & ParentInformation>,
+			dataflowInfo: undefined as unknown as DataflowInformation
 		}))
 	);
 

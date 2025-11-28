@@ -243,10 +243,10 @@ ${codeBlock('json', JSON.stringify(
 				}
 			},
 			abstractInterpretation: {
-				dataFrame: {
-					maxColNames:       20,
-					wideningThreshold: 4,
-					readLoadedData:    {
+				wideningThreshold: 4,
+				dataFrame:         {
+					maxColNames:    20,
+					readLoadedData: {
 						readExternalFiles: true,
 						maxReadLines:      1_000_000
 					}

@@ -12,7 +12,8 @@ import { isNotUndefined } from '../../util/assert';
 import { AbstractDomain } from '../domains/abstract-domain';
 import { type AbstractInterpretationInfo, DataFrameInfoMarker, hasDataFrameInfoMarker } from './absint-info';
 import { DataFrameShapeInferenceVisitor } from './absint-visitor';
-import { type DataFrameDomain, DataFrameStateDomain } from './dataframe-domain';
+import type { DataFrameDomain } from './dataframe-domain';
+import { DataFrameStateDomain } from './dataframe-domain';
 
 /**
  * Infers the shape of data frames by performing abstract interpretation using the control flow graph of a program.
@@ -30,7 +31,7 @@ export function inferDataFrameShapes(
 	ast: NormalizedAst<ParentInformation & AbstractInterpretationInfo>,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameStateDomain {
-	const visitor = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, ctx });
+	const visitor = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg, normalizedAst: ast, ctx, domain: DataFrameStateDomain.bottom() });
 	visitor.start();
 	const exitPoints = cfinfo.exitPoints.map(id => cfinfo.graph.getVertex(id)).filter(isNotUndefined);
 	const exitNodes = exitPoints.map(vertex => ast.idMap.get(getVertexRootId(vertex))).filter(isNotUndefined);

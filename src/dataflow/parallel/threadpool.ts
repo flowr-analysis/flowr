@@ -1,11 +1,5 @@
 import Tinypool from 'tinypool';
-import { fileURLToPath } from 'url';
-import path from 'path';
 import os from 'os';
-
-const _dirname = typeof __dirname !== 'undefined' ? __dirname
-	: path.dirname(fileURLToPath(import.meta.url));
-
 
 /**
  * Simple warpper for tinypool used for dataflow parallelization
@@ -14,14 +8,13 @@ export class Threadpool {
 	readonly pool: Tinypool;
 
 
-	constructor(numThreads = 0, workerPath = './worker.ts') {
+	constructor(numThreads = 0, workerPath = 'worker') {
 		if(numThreads <= 0){
 			// use avalaible core
 			numThreads = Math.max(1, os.cpus().length); // may be problematic, as this returns SMT threads as cores
 		}
 
-		const workerFile = path.resolve(_dirname, workerPath);
-
+		const workerFile = `${__dirname}/${workerPath}.js`;
 		// create tiny pool instance
 		this.pool = new Tinypool({
 			minThreads: 1,

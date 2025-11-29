@@ -11,7 +11,7 @@ import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-func
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { DataFrameExpressionInfo, DataFrameOperation } from '../absint-info';
+import type { DataFrameOperation } from '../absint-info';
 import { resolveIdToArgStringVector, resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
 import { ConstraintType } from '../semantics';
 import { isStringBasedAccess } from './access-mapper';
@@ -43,40 +43,36 @@ type DataFrameReplacementFunctionMapping = (
 type DataFrameReplacementFunction = keyof typeof DataFrameReplacementFunctionMapper;
 
 /**
- * Maps a concrete data frame replacement function to abstract data frame operations.
- * @param node - The R node of the replacement function
+ * Maps a concrete data frame replacement function call to abstract data frame operations.
+ * @param node - The R node of the replacement function call
  * @param dfg  - The data flow graph for resolving the arguments
- * @returns Data frame expression info containing the mapped abstract data frame operations, or `undefined` if the node does not represent a data frame replacement function
+ * @returns The mapped abstract data frame operations for the replacement function call, or `undefined` if the node does not represent a data frame replacement function call
  */
 export function mapDataFrameReplacementFunction(
 	node: RNode<ParentInformation>,
 	expression: RNode<ParentInformation>,
 	dfg: DataflowGraph
-): DataFrameExpressionInfo | undefined {
+): DataFrameOperation[] | undefined {
 	const parent = hasParentReplacement(node, dfg) ? dfg.idMap?.get(node.info.parent) : undefined;
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
-	let operations: DataFrameOperation[] | undefined;
 
 	if(node.type === RType.Access) {
 		if(node.access.every(arg => arg === EmptyArgument)) {
-			operations = mapDataFrameContentAssignment(node, expression, resolveInfo);
+			return mapDataFrameContentAssignment(node, expression, resolveInfo);
 		} else if(isStringBasedAccess(node)) {
-			operations = mapDataFrameNamedColumnAssignment(node, expression, resolveInfo);
+			return mapDataFrameNamedColumnAssignment(node, expression, resolveInfo);
 		} else {
-			operations = mapDataFrameIndexColRowAssignment(node, expression, resolveInfo);
+			return mapDataFrameIndexColRowAssignment(node, expression, resolveInfo);
 		}
 	} else if(node.type === RType.FunctionCall && node.named && node.arguments.length === 1 && node.arguments[0] !== EmptyArgument) {
 		if(isDataFrameReplacement(node.functionName.content)) {
 			const functionName = node.functionName.content;
 			const functionMapping = DataFrameReplacementFunctionMapper[functionName];
 
-			operations = functionMapping(node.arguments[0], expression, resolveInfo, parent);
+			return functionMapping(node.arguments[0], expression, resolveInfo, parent);
 		} else {
-			operations = mapDataFrameUnknownAssignment(node.arguments[0], expression, resolveInfo);
+			return mapDataFrameUnknownAssignment(node.arguments[0], expression, resolveInfo);
 		}
-	}
-	if(operations !== undefined) {
-		return { type: 'expression', operations: operations };
 	}
 }
 

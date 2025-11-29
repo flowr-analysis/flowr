@@ -10,7 +10,7 @@ import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-c
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { isNotUndefined } from '../util/assert';
+import { guard, isNotUndefined } from '../util/assert';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
 import type { StateAbstractDomain } from './domains/state-abstract-domain';
 
@@ -22,30 +22,30 @@ extends Omit<SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlowInforma
 /**
  * A control flow graph visitor to perform abstract interpretation.
  */
-export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDomain, OtherInfo = NoInfo>
-	extends SemanticCfgGuidedVisitor<OtherInfo, ControlFlowInformation, NormalizedAst<OtherInfo>, DataflowGraph, AbsintVisitorConfiguration<Domain, OtherInfo> & { defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' }> {
+export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDomain, OtherInfo = NoInfo, Config extends AbsintVisitorConfiguration<Domain, OtherInfo> = AbsintVisitorConfiguration<Domain, OtherInfo>>
+	extends SemanticCfgGuidedVisitor<OtherInfo, ControlFlowInformation, NormalizedAst<OtherInfo>, DataflowGraph, Config & { defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' }> {
 	/**
 	 * The state of the abstract interpretation visitor mapping node IDs to the abstract state at the respective node.
 	 */
-	protected state: Map<NodeId, StateAbstractDomain<Domain>> = new Map();
+	protected readonly state: Map<NodeId, StateAbstractDomain<Domain>> = new Map();
 
 	/**
 	 * A set of nodes representing variable definitions that have already been visited but whose assignment has not yet been processed.
 	 */
-	protected unassigned: Set<NodeId> = new Set();
+	private readonly unassigned: Set<NodeId> = new Set();
 
 	/**
 	 * The old domain of an AST node before processing the node retrieved from the current {@link state}.
 	 * This is used to check whether the state has changed and successors should be visited again, and is also required for widening.
 	 */
-	protected oldDomain: StateAbstractDomain<Domain>;
+	private oldDomain: StateAbstractDomain<Domain>;
 	/**
 	 * The new domain of an AST node during and after processing the node.
 	 * This information is stored in the current {@link state} afterward.
 	 */
-	protected newDomain: StateAbstractDomain<Domain>;
+	private newDomain: StateAbstractDomain<Domain>;
 
-	constructor(config: AbsintVisitorConfiguration<Domain, OtherInfo>) {
+	constructor(config: Config) {
 		super({ ...config, defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' });
 
 		this.oldDomain = config.domain.bottom();
@@ -54,9 +54,9 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 
 	/**
 	 * Resolves the inferred abstract value of an AST node.
-	 * This requires that the abstract interpretation visitor has been completed.
+	 * This requires that the abstract interpretation visitor has been completed, or at least started.
 	 *
-	 * @param id     - The Id of the node to get the inferred value for
+	 * @param id     - The ID of the node to get the inferred value for
 	 * @param domain - An optional state abstract domain used to resolve the inferred abstract value (defaults to the state at the requested node)
 	 * @returns The inferred abstract value of the node, or `undefined` if no value was inferred for the node
 	 */
@@ -110,6 +110,11 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		}
 	}
 
+	public override start(): void {
+		guard(this.state.size === 0, 'Abstract interpretation visitor has already been started');
+		super.start();
+	}
+
 	protected override visitNode(nodeId: NodeId): boolean {
 		const vertex = this.getCfgVertex(nodeId);
 
@@ -154,92 +159,99 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			return;
 		}
 		const value = this.getValue(target);
+		this.unassigned.delete(target);
 
 		if(value !== undefined) {
 			this.newDomain.set(source, value);
 			this.state.set(source, this.newDomain.create(this.newDomain.value));
 		}
+	}
+
+	protected override onReplacementCall({ call, target, source }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
+		if(source === undefined || target === undefined) {
+			return;
+		}
+		this.evalReplacementCall(call, target, source, this.newDomain);
 		this.unassigned.delete(target);
 	}
 
-	protected override onReplacementCall({ call, source, target }: { call: DataflowGraphVertexFunctionCall, source?: NodeId, target?: NodeId }): void {
-		if(source !== undefined && target !== undefined) {
-			this.onReplacement({ call, source, target });
-			this.unassigned.delete(target);
-		}
-	}
-
 	protected override onAccessCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.onAccess({ call });
+		this.evalAccessCall(call, this.newDomain);
 	}
 
 	protected override onUnnamedCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.onFunctionCall({ call });
+		this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onEvalFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.onFunctionCall({ call });
+		this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onApplyFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.onFunctionCall({ call });
+		this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onSourceCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.onFunctionCall({ call });
+		this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onGetCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.onFunctionCall({ call });
+		this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onRmCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.onFunctionCall({ call });
+		this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onListCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.onFunctionCall({ call });
+		this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onVectorCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.onFunctionCall({ call });
+		this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onSpecialBinaryOpCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.onFunctionCall({ call });
+		this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onQuoteCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.onFunctionCall({ call });
+		this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onLibraryCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.onFunctionCall({ call });
+		this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onDefaultFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.onFunctionCall({ call });
+		this.evalFunctionCall(call, this.newDomain);
 	}
 
 	/**
-	 * Called when any function call is visited by the abstract interpretation visitor.
-	 * The current abstract domain can be updated via {@link newDomain}.
+	 * Evaluates any function call visited by the abstract interpretation visitor by applying the abstract semantics of the function call to the current abstract state.
+	 * @param call   - The data flow vertex of the function call to evaluate
+	 * @param domain - The current abstract state before the evaluation of the function call
+	 * @returns The abstract state after applying the abstract semantics of the function call
 	 */
-	protected abstract onFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void;
-
+	protected abstract evalFunctionCall(call: DataflowGraphVertexFunctionCall, domain: StateAbstractDomain<Domain>): StateAbstractDomain<Domain>;
 
 	/**
-	 * Called when a replacement function call is visited by the abstract interpretation visitor (e.g. `$<-`, `[<-`, `names<-`, ...).
-	 * The current abstract domain can be updated via {@link newDomain}.
+	 * Evaluates any replacement function call visited by the abstract interpretation visitor by applying the abstract semantics of the replacement call to the current abstract state (e.g. for `$<-`, `[<-`, `names<-`, ...).
+	 * @param call   - The data flow vertex of the replacement call to evaluate
+	 * @param source - The node ID of the assignment target of the replacement call
+	 * @param target - The node ID of the assigned expression of the replacement call
+	 * @param domain - The current abstract state before the evaluation of the replacement call
+	 * @returns The abstract state after applying the abstract semantics of the replacement call
 	 */
-	protected abstract onReplacement({ call, source, target }: { call: DataflowGraphVertexFunctionCall, source: NodeId, target: NodeId }): void;
-
+	protected abstract evalReplacementCall(call: DataflowGraphVertexFunctionCall, target: NodeId, source: NodeId, domain: StateAbstractDomain<Domain>): StateAbstractDomain<Domain>;
 
 	/**
-	 * Called when a access operation is visited by the abstract interpretation visitor (e.g. `$`, `[`, `[[`, ...).
-	 * The current abstract domain can be updated via {@link newDomain}.
+	 * Evaluates any access operation call visited by the abstract interpretation visitor by applying the abstract semantics of the access operation to the current abstract stat (e.g. for `$`, `[`, `[[`, ...).
+	 * @param call   - The data flow vertex of the access operation to evaluate
+	 * @param domain - The current abstract state before the evaluation of the access operation
+	 * @returns The abstract state after applying the abstract semantics of the access operation
 	 */
-	protected abstract onAccess({ call }: { call: DataflowGraphVertexFunctionCall }): void;
+	protected abstract evalAccessCall(call: DataflowGraphVertexFunctionCall, domain: StateAbstractDomain<Domain>): StateAbstractDomain<Domain>;
 
 	/** Gets all AST nodes for the predecessor vertices that are leaf nodes and exit vertices */
 	protected getPredecessorNodes(vertexId: NodeId): NodeId[] {

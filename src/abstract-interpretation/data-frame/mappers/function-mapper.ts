@@ -11,7 +11,7 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { type RParseRequest, requestFromInput } from '../../../r-bridge/retriever';
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../util/assert';
 import { readLineByLineSync } from '../../../util/files';
-import type { DataFrameExpressionInfo, DataFrameOperation } from '../absint-info';
+import type { DataFrameOperation } from '../absint-info';
 import { DataFrameDomain } from '../dataframe-domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from '../resolve-args';
 import type { ConstraintType } from '../semantics';
@@ -592,18 +592,17 @@ type DataFrameFunctionParamsMapping = {
  * @param node - The R node of the function call
  * @param dfg  - The data flow graph for resolving the arguments
  * @param ctx  - The current flowR analyzer context
- * @returns Data frame expression info containing the mapped abstract data frame operations, or `undefined` if the node does not represent a data frame function call
+ * @returns The mapped abstract data frame operations for the function call, or `undefined` if the node does not represent a data frame function call
  */
 export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 	node: RNode<ParentInformation>,
 	dfg: DataflowGraph,
 	ctx: ReadOnlyFlowrAnalyzerContext
-): DataFrameExpressionInfo | undefined {
+): DataFrameOperation[] | undefined {
 	if(node.type !== RType.FunctionCall || !node.named) {
 		return;
 	}
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
-	let operations: DataFrameOperation[] | undefined;
 
 	if(isDataFrameFunction(node.functionName.content)) {
 		const functionName = node.functionName.content as Name;
@@ -612,9 +611,9 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 		const args = getFunctionArguments(node, dfg);
 
 		if(hasCriticalArgument(args, params.critical, resolveInfo)) {
-			operations = [{ operation: 'unknown', operand: undefined }];
+			return [{ operation: 'unknown', operand: undefined }];
 		} else {
-			operations = mapper(args, params, resolveInfo, ctx);
+			return mapper(args, params, resolveInfo, ctx);
 		}
 	} else {
 		const mapping = getOtherDataFrameFunction(node.functionName.content);
@@ -622,16 +621,13 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 		if(mapping === undefined) {
 			return;
 		} else if(mapping.type === 'entry_point') {
-			operations = [{ operation: 'unknown', operand: undefined }];
+			return [{ operation: 'unknown', operand: undefined }];
 		} else if(mapping.type === 'transformation' || mapping.type === 'modification') {
 			const args = getFunctionArguments(node, dfg);
-			operations = mapDataFrameUnknown(args, mapping, resolveInfo);
+			return mapDataFrameUnknown(args, mapping, resolveInfo);
 		} else {
 			assertUnreachable(mapping);
 		}
-	}
-	if(operations !== undefined) {
-		return { type: 'expression', operations };
 	}
 }
 

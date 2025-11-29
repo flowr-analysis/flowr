@@ -6,7 +6,7 @@ import type { RAccess, RIndexAccess, RNamedAccess } from '../../../r-bridge/lang
 import { type RFunctionArgument, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { DataFrameExpressionInfo, DataFrameOperation } from '../absint-info';
+import type { DataFrameOperation } from '../absint-info';
 import { resolveIdToArgValue, resolveIdToArgValueSymbolName, unquoteArgument } from '../resolve-args';
 import { getArgumentValue, isDataFrameArgument } from './arguments';
 
@@ -19,28 +19,24 @@ const SpecialAccessArgumentsMapper: Record<RIndexAccess['operator'], string[]> =
 };
 
 /**
- * Maps a concrete data frame access to abstract data frame operations.
+ * Maps a concrete data frame access operation to abstract data frame operations.
  * @param node - The R node of the access
  * @param dfg  - The data flow graph for resolving the arguments
- * @returns Data frame expression info containing the mapped abstract data frame operations, or `undefined` if the node does not represent a data frame access
+ * @returns The mapped abstract data frame operations for the access operation, or `undefined` if the node does not represent a data frame access operation
  */
 export function mapDataFrameAccess(
 	node: RNode<ParentInformation>,
 	dfg: DataflowGraph
-): DataFrameExpressionInfo | undefined {
+): DataFrameOperation[] | undefined {
 	if(node.type !== RType.Access) {
 		return;
 	}
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
-	let operations: DataFrameOperation[] | undefined;
 
 	if(isStringBasedAccess(node)) {
-		operations = mapDataFrameNamedColumnAccess(node, resolveInfo);
+		return mapDataFrameNamedColumnAccess(node, resolveInfo);
 	} else {
-		operations = mapDataFrameIndexColRowAccess(node, resolveInfo);
-	}
-	if(operations !== undefined) {
-		return { type: 'expression', operations: operations };
+		return mapDataFrameIndexColRowAccess(node, resolveInfo);
 	}
 }
 

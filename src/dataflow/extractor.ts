@@ -124,7 +124,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	const pool = new Threadpool();
 
 	// submit all files
-	const _result = pool.submitTasks<SourceFilePayload<OtherInfo>, undefined>(
+	const _result = pool.submitTasks(
 		'testPool',
 		files.map((file, i) => ({
 			index:        i,

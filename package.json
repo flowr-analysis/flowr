@@ -210,6 +210,7 @@
     "n3": "^1.23.1",
     "object-hash": "^3.0.0",
     "object-sizeof": "^2.6.5",
+    "piscina": "^5.1.4",
     "rotating-file-stream": "^3.2.6",
     "seedrandom": "^3.0.5",
     "semver": "^7.7.1",

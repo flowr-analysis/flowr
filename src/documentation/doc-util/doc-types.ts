@@ -577,7 +577,7 @@ export function printCodeOfElement({ program, info, dropLinesEnd = 0, dropLinesS
 		const lines = code.replaceAll('\t', '    ').split(/\n/g);
 		let gobble = Number.POSITIVE_INFINITY;
 		for(const line of lines) {
-			const match = line.match(/^(\s+)\S+/);
+			const match = line.match(/^(\s*)\S+/);
 			if(match) {
 				gobble = Math.min(gobble, match[1].length);
 			}
@@ -624,7 +624,7 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], f
 
 /**
  * Create a short link to a type in the documentation.
- * If you create a wiki, please refer to the functions provided by the {@link GeneralWikiContext}.
+ * If you create a wiki, please refer to the functions provided by the {@link GeneralDocContext}.
  * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
  *                    Use `:::` if you want to access a scoped function, but the name should be displayed without the scope
  * @param hierarchy - The hierarchy of types to search in

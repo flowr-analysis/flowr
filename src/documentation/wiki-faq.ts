@@ -13,7 +13,6 @@ export class WikiFaq extends DocMaker {
 		const faqs = registerFaqs();
 		return `
 	${faqs.toMarkdown()}
-
     `.trim();
 	}
 }

@@ -19,6 +19,8 @@ import type {
 	FlowrAnalyzerProjectDiscoveryPlugin
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import type { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
+import type { ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
+import { FlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
 import { arraysGroupBy } from '../../util/collections/arrays';
 import type { fileProtocol, RParseRequestFromFile, RParseRequests } from '../../r-bridge/retriever';
 import { requestFromInput } from '../../r-bridge/retriever';
@@ -45,6 +47,8 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	 * The configuration options used by the analyzer.
 	 */
 	readonly config: FlowrConfigOptions;
+
+	readonly functions: ReadOnlyFlowrAnalyzerFunctionsContext;
 }
 
 /**
@@ -60,9 +64,11 @@ export interface ReadOnlyFlowrAnalyzerContext {
  * If you are just interested in inspecting the context, you can use {@link ReadOnlyFlowrAnalyzerContext} instead (e.g., via {@link inspect}).
  */
 export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
-	public readonly files:  FlowrAnalyzerFilesContext;
-	public readonly deps:   FlowrAnalyzerDependenciesContext;
-	public readonly config: FlowrConfigOptions;
+	public readonly files:     FlowrAnalyzerFilesContext;
+	public readonly deps:      FlowrAnalyzerDependenciesContext;
+	public readonly config:    FlowrConfigOptions;
+	public readonly functions: FlowrAnalyzerFunctionsContext;
+
 
 	constructor(config: FlowrConfigOptions, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>) {
 		this.config = config;
@@ -70,6 +76,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		this.files = new FlowrAnalyzerFilesContext(loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
             (plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.deps  = new FlowrAnalyzerDependenciesContext(this, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
+		this.functions = new FlowrAnalyzerFunctionsContext(this, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 	}
 
 	/** delegate request addition */

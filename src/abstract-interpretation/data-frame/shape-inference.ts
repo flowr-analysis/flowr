@@ -1,119 +1,138 @@
-import { type ControlFlowInformation, getVertexRootId } from '../../control-flow/control-flow-graph';
-import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { VertexType } from '../../dataflow/graph/vertex';
-import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
-import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
-import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
+import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { isNotUndefined } from '../../util/assert';
-import { AbstractDomain } from '../domains/abstract-domain';
-import { type AbstractInterpretationInfo, DataFrameInfoMarker, hasDataFrameInfoMarker } from './absint-info';
-import { DataFrameShapeInferenceVisitor } from './absint-visitor';
-import type { DataFrameDomain } from './dataframe-domain';
-import { DataFrameStateDomain } from './dataframe-domain';
+import { AbstractInterpretationVisitor, type AbsintVisitorConfiguration } from '../absint-visitor';
+import { DataFrameDomain, DataFrameStateDomain } from './dataframe-domain';
+import { mapDataFrameAccess } from './mappers/access-mapper';
+import { mapDataFrameFunctionCall } from './mappers/function-mapper';
+import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
+import { applyDataFrameSemantics, ConstraintType, getConstraintType, type DataFrameOperationArgs, type DataFrameOperationName, type DataFrameOperationOptions } from './semantics';
 
 /**
- * Infers the shape of data frames by performing abstract interpretation using the control flow graph of a program.
- * This directly attaches the inferred data frames shapes to the AST (see {@link AbstractInterpretationInfo}).
- * @param cfinfo - The control flow information containing the control flow graph
- * @param dfg    - The data flow graph to resolve variable origins and function arguments
- * @param ast    - The abstract syntax tree to resolve node IDs to AST nodes
- * @param ctx    - The current flowr analyzer context
- * @returns The abstract data frame state at the exit node of the control flow graph (see {@link DataFrameStateDomain}).
- * The abstract data frame states for all other nodes are attached to the AST.
+ * An abstract data frame operation.
+ * - `operation` contains the type of the abstract operation (see {@link DataFrameOperationName})
+ * - `operand` contains the ID of the data frame operand of the operation (may be `undefined`)
+ * - `type` optionally contains the constraint type to overwrite the default type of the operation (see {@link ConstraintType})
+ * - `options` optionally contains additional options for the abstract operation (see {@link DataFrameOperationOptions})
+ * - `...args` contains the arguments of the abstract operation (see {@link DataFrameOperationArgs})
  */
-export function inferDataFrameShapes(
-	cfinfo: ControlFlowInformation,
-	dfg: DataflowGraph,
-	ast: NormalizedAst<ParentInformation & AbstractInterpretationInfo>,
-	ctx: ReadOnlyFlowrAnalyzerContext
-): DataFrameStateDomain {
-	const visitor = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg, normalizedAst: ast, ctx, domain: DataFrameStateDomain.bottom() });
-	visitor.start();
-	const exitPoints = cfinfo.exitPoints.map(id => cfinfo.graph.getVertex(id)).filter(isNotUndefined);
-	const exitNodes = exitPoints.map(vertex => ast.idMap.get(getVertexRootId(vertex))).filter(isNotUndefined);
-	const domains = exitNodes.map(node => node.info.dataFrame?.domain).filter(isNotUndefined);
+export type DataFrameOperation<OperationName extends DataFrameOperationName = DataFrameOperationName> = {
+	[Name in OperationName]: {
+		operation: Name;
+		operand:   NodeId | undefined;
+		type?:     ConstraintType;
+		options?:  DataFrameOperationOptions<Name>;
+	} & DataFrameOperationArgs<Name>;
+}[OperationName];
 
-	return DataFrameStateDomain.bottom().joinAll(domains);
+/**
+ * An abstract data frame operation without additional options.
+ * - `operation` contains the type of the abstract operation (see {@link DataFrameOperationName})
+ * - `operand` contains the ID of the data frame operand of the operation (may be `undefined`)
+ * - `...args` contains the arguments of the abstract operation (see {@link DataFrameOperationArgs})
+ */
+export type DataFrameOperationType<OperationName extends DataFrameOperationName = DataFrameOperationName> = {
+	[Name in OperationName]: {
+		operation: Name;
+		operand:   NodeId | undefined;
+	} & DataFrameOperationArgs<Name>;
+}[OperationName];
+
+interface DataFrameShapeInferenceConfiguration extends Omit<AbsintVisitorConfiguration<DataFrameDomain>, 'domain'> {
+	readonly trackOperations?: boolean;
 }
 
 /**
- * Resolves the abstract data frame shape of a node in the AST.
- * This requires that the data frame shape inference has been executed before using {@link inferDataFrameShapes}.
- * @param id     - The node or node ID to get the data frame shape for
- * @param dfg    - The data flow graph used to resolve the data frame shape
- * @param domain - An optional abstract data frame state domain used to resolve the data frame shape (defaults to the state at the requested node)
- * @returns The abstract data frame shape of the node, or `undefined` if no data frame shape was inferred for the node
+ * The control flow graph visitor to infer the shape of data frames using abstract interpretation
  */
-export function resolveIdToDataFrameShape(
-	id: RNode<ParentInformation & AbstractInterpretationInfo> | NodeId | undefined,
-	dfg: DataflowGraph | undefined,
-	domain?: DataFrameStateDomain
-): DataFrameDomain | undefined {
-	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = id === undefined || typeof id === 'object' ? id : dfg?.idMap?.get(id);
-	domain ??= node?.info.dataFrame?.domain;
+export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisitor<DataFrameDomain, NoInfo, DataFrameShapeInferenceConfiguration & { domain: DataFrameStateDomain }> {
+	/**
+	 * The abstract data frame operations the function call nodes are mapped to.
+	 */
+	private readonly operations?: Map<NodeId, DataFrameOperation[]>;
 
-	if(dfg === undefined || node === undefined || domain === undefined) {
-		return;
-	} else if(domain.has(node.info.id)) {
-		return domain.get(node.info.id);
-	}
-	const vertex = dfg.getVertex(node.info.id);
-	const call = vertex?.tag === VertexType.FunctionCall ? vertex : undefined;
-	const origins = Array.isArray(call?.origin) ? call.origin : [];
+	constructor({ trackOperations = true, ...config }: DataFrameShapeInferenceConfiguration) {
+		super({ ...config, domain: DataFrameStateDomain.bottom() });
 
-	if(node.type === RType.Symbol) {
-		const values = getVariableOrigins(node.info.id, dfg).map(origin => domain.get(origin.info.id));
-
-		if(values.length > 0 && values.every(isNotUndefined)) {
-			return AbstractDomain.joinAll(values);
-		}
-	} else if(node.type === RType.Argument && node.value !== undefined) {
-		return resolveIdToDataFrameShape(node.value, dfg, domain);
-	} else if(node.type === RType.ExpressionList && node.children.length > 0) {
-		return resolveIdToDataFrameShape(node.children[node.children.length - 1], dfg, domain);
-	} else if(node.type === RType.Pipe) {
-		return resolveIdToDataFrameShape(node.rhs, dfg, domain);
-	} else if(origins.includes('builtin:pipe')) {
-		if(node.type === RType.BinaryOp) {
-			return resolveIdToDataFrameShape(node.rhs, dfg, domain);
-		} else if(call?.args.length === 2 && call?.args[1] !== EmptyArgument) {
-			return resolveIdToDataFrameShape(call.args[1].nodeId, dfg, domain);
-		}
-	} else if(node.type === RType.IfThenElse) {
-		if(node.otherwise !== undefined) {
-			const values = [node.then, node.otherwise].map(entry => resolveIdToDataFrameShape(entry, dfg, domain));
-
-			if(values.length > 0 && values.every(isNotUndefined)) {
-				return AbstractDomain.joinAll(values);
-			}
-		}
-	} else if(origins.includes('builtin:if-then-else') && call?.args.every(arg => arg !== EmptyArgument)) {
-		if(call.args.length === 3) {
-			const values = call.args.slice(1, 3).map(entry => resolveIdToDataFrameShape(entry.nodeId, dfg, domain));
-
-			if(values.length > 0 && values.every(isNotUndefined)) {
-				return AbstractDomain.joinAll(values);
-			}
+		if(trackOperations) {
+			this.operations = new Map();
 		}
 	}
-}
 
-/**
- * Gets all origins of a variable in the data flow graph that have already been visited.
- * @param node - The node to get the origins for
- * @param dfg  - The data flow graph for resolving the origins
- * @returns The origins nodes of the variable
- */
-export function getVariableOrigins(node: NodeId, dfg: DataflowGraph): RNode<ParentInformation & AbstractInterpretationInfo>[] {
-	// get each variable origin that has already been visited and whose assignment has already been processed
-	return getOriginInDfg(dfg, node)
-		?.filter(origin => origin.type === OriginType.ReadVariableOrigin)
-		.map<RNode<ParentInformation & AbstractInterpretationInfo> | undefined>(entry => dfg.idMap?.get(entry.id))
-		.filter(isNotUndefined)
-		.filter(origin => origin.info.dataFrame?.domain !== undefined)
-		.filter(origin => !hasDataFrameInfoMarker(origin, DataFrameInfoMarker.Unassigned)) ?? [];
+	public getGlobalState(): ReadonlyMap<NodeId, DataFrameStateDomain> {
+		return this.state;
+	}
+
+	/**
+	 * Gets the mapped abstract data frame operations for an AST node.
+	 * This requires that the abstract interpretation visitor has been completed, or at least started..
+	 * @param id - The ID of the node to get the mapped abstract operations for
+	 * @returns The mapped abstract data frame operations for the node, or `undefined` if no abstract operation was mapped for the node or storing mapped abstract operations is disabled via the visitor config.
+	 */
+	public getOperations(id: NodeId | undefined): readonly DataFrameOperation[] | undefined {
+		return id !== undefined ? this.operations?.get(id) : undefined;
+	}
+
+	protected override evalFunctionCall(call: DataflowGraphVertexFunctionCall, domain: DataFrameStateDomain): DataFrameStateDomain {
+		const node = this.getNormalizedAst(call.id);
+
+		if(node === undefined) {
+			return domain;
+		}
+		const operations = mapDataFrameFunctionCall(node, this, this.config.dfg, this.config.ctx);
+
+		return this.applyDataFrameExpression(node, operations, domain);
+	}
+
+	protected override evalReplacementCall(call: DataflowGraphVertexFunctionCall, target: NodeId, source: NodeId, domain: DataFrameStateDomain): DataFrameStateDomain {
+		const node = this.getNormalizedAst(call.id);
+		const targetNode = this.getNormalizedAst(target);
+		const sourceNode = this.getNormalizedAst(source);
+
+		if(node === undefined || targetNode === undefined || sourceNode === undefined) {
+			return domain;
+		}
+		const operations = mapDataFrameReplacementFunction(node, sourceNode, this, this.config.dfg);
+
+		return this.applyDataFrameExpression(node, operations, domain);
+	}
+
+	protected override evalAccessCall(call: DataflowGraphVertexFunctionCall, domain: DataFrameStateDomain): DataFrameStateDomain {
+		const node = this.getNormalizedAst(call.id);
+
+		if(node === undefined) {
+			return domain;
+		}
+		const operations = mapDataFrameAccess(node, this, this.config.dfg);
+
+		return this.applyDataFrameExpression(node, operations, domain);
+	}
+
+	private applyDataFrameExpression(node: RNode<ParentInformation>, operations: DataFrameOperation[] | undefined, domain: DataFrameStateDomain): DataFrameStateDomain {
+		if(operations === undefined) {
+			return domain;
+		} else if(this.operations !== undefined) {
+			this.operations.set(node.info.id, operations);
+		}
+		const maxColNames = this.config.ctx.config.abstractInterpretation.dataFrame.maxColNames;
+		let value = DataFrameDomain.top(maxColNames);
+
+		for(const { operation, operand, type, options, ...args } of operations) {
+			const operandValue = operand !== undefined ? this.getValue(operand, domain) : value;
+			value = applyDataFrameSemantics(operation, operandValue ?? DataFrameDomain.top(maxColNames), args, options);
+			const constraintType = type ?? getConstraintType(operation);
+
+			if(operand !== undefined && constraintType === ConstraintType.OperandModification) {
+				domain.set(operand, value);
+
+				for(const origin of this.getVariableOrigins(operand)) {
+					domain.set(origin, value);
+				}
+			} else if(constraintType === ConstraintType.ResultPostcondition) {
+				domain.set(node.info.id, value);
+			}
+		}
+		return domain;
+	}
 }

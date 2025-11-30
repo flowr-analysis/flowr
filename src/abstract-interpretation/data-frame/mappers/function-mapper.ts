@@ -11,11 +11,10 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { type RParseRequest, requestFromInput } from '../../../r-bridge/retriever';
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../util/assert';
 import { readLineByLineSync } from '../../../util/files';
-import type { DataFrameOperation } from '../absint-info';
 import { DataFrameDomain } from '../dataframe-domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from '../resolve-args';
 import type { ConstraintType } from '../semantics';
-import { resolveIdToDataFrameShape } from '../shape-inference';
+import type { DataFrameOperation, DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { type FunctionParameterLocation, escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isNamedArgument, isRNull } from './arguments';
 
 /**
@@ -569,6 +568,7 @@ type OtherDataFrameFunctionMapping = OtherDataFrameEntryPoint | OtherDataFrameTr
 type DataFrameFunctionMapping<Params extends object> = (
     args: readonly RFunctionArgument<ParentInformation>[],
 	params: Params,
+	inference: DataFrameShapeInferenceVisitor,
     info: ResolveInfo,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ) => DataFrameOperation[] | undefined;
@@ -596,6 +596,7 @@ type DataFrameFunctionParamsMapping = {
  */
 export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 	node: RNode<ParentInformation>,
+	inference: DataFrameShapeInferenceVisitor,
 	dfg: DataflowGraph,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameOperation[] | undefined {
@@ -613,7 +614,7 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 		if(hasCriticalArgument(args, params.critical, resolveInfo)) {
 			return [{ operation: 'unknown', operand: undefined }];
 		} else {
-			return mapper(args, params, resolveInfo, ctx);
+			return mapper(args, params, inference, resolveInfo, ctx);
 		}
 	} else {
 		const mapping = getOtherDataFrameFunction(node.functionName.content);
@@ -624,7 +625,7 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 			return [{ operation: 'unknown', operand: undefined }];
 		} else if(mapping.type === 'transformation' || mapping.type === 'modification') {
 			const args = getFunctionArguments(node, dfg);
-			return mapDataFrameUnknown(args, mapping, resolveInfo);
+			return mapDataFrameUnknown(args, mapping, inference, resolveInfo);
 		} else {
 			assertUnreachable(mapping);
 		}
@@ -647,6 +648,7 @@ function mapDataFrameCreate(
 		noDupNames: FunctionParameterLocation<boolean>,
 		special:    string[]
 	},
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperation[] {
 	const checkNames = getArgumentValue(args, params.checkNames, info);
@@ -678,6 +680,7 @@ function mapDataFrameCreate(
 function mapDataFrameConvert(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation },
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
@@ -705,6 +708,7 @@ function mapDataFrameRead(
 		noDupNames:    FunctionParameterLocation<boolean>,
 		noEmptyNames?: boolean
 	},
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameOperation[] {
@@ -770,10 +774,11 @@ function mapDataFrameRead(
 function mapDataFrameColBind(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	params: { special: string[] },
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	args = getEffectiveArgs(args, params.special);
-	const dataFrame = args.find(arg => isDataFrameArgument(arg, info));
+	const dataFrame = args.find(arg => isDataFrameArgument(arg, inference));
 
 	if(dataFrame === undefined) {
 		return;
@@ -786,7 +791,7 @@ function mapDataFrameColBind(
 
 	for(const arg of args) {
 		if(arg !== dataFrame && arg !== EmptyArgument) {
-			const otherDataFrame = resolveIdToDataFrameShape(arg.value, info.graph);
+			const otherDataFrame = inference.getValue(arg.value);
 
 			if(otherDataFrame !== undefined) {
 				result.push({
@@ -817,10 +822,11 @@ function mapDataFrameColBind(
 function mapDataFrameRowBind(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	params: { special: string[] },
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	args = getEffectiveArgs(args, params.special);
-	const dataFrame = args.find(arg => isDataFrameArgument(arg, info));
+	const dataFrame = args.find(arg => isDataFrameArgument(arg, inference));
 
 	if(dataFrame === undefined) {
 		return;
@@ -833,7 +839,7 @@ function mapDataFrameRowBind(
 
 	for(const arg of args) {
 		if(arg !== dataFrame && arg !== EmptyArgument) {
-			const otherDataFrame = resolveIdToDataFrameShape(arg.value, info.graph);
+			const otherDataFrame = inference.getValue(arg.value);
 
 			if(otherDataFrame !== undefined) {
 				result.push({
@@ -863,11 +869,12 @@ function mapDataFrameRowBind(
 function mapDataFrameHeadTail(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, amount: FunctionParameterLocation<number> },
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	}
 	const result: DataFrameOperation[] = [];
@@ -905,11 +912,12 @@ function mapDataFrameSubset(
 		select:    FunctionParameterLocation,
 		drop:      FunctionParameterLocation<boolean>
 	},
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	} else if(args.length === 1) {
 		return [{ operation: 'identity', operand: dataFrame.value.info.id }];
@@ -979,12 +987,13 @@ function mapDataFrameSubset(
 function mapDataFrameFilter(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	args = getEffectiveArgs(args, params.special);
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	} else if(args.length === 1) {
 		return [{ operation: 'identity', operand: dataFrame.value.info.id }];
@@ -1016,12 +1025,13 @@ function mapDataFrameFilter(
 function mapDataFrameSelect(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	args = getEffectiveArgs(args, params.special);
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	}
 	const result: DataFrameOperation[] = [];
@@ -1085,12 +1095,13 @@ function mapDataFrameMutate(
 		checkNames?: boolean,
 		noDupNames?: boolean
 	},
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	args = getEffectiveArgs(args, params.special);
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	} else if(args.length === 1) {
 		return [{ operation: 'identity', operand: dataFrame.value.info.id }];
@@ -1150,12 +1161,13 @@ function mapDataFrameGroupBy(
 		by:        FunctionParameterLocation,
 		special:   string[]
 	},
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	args = getEffectiveArgs(args, params.special);
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	} else if(args.length === 1) {
 		return [{ operation: 'identity', operand: dataFrame.value.info.id }];
@@ -1188,12 +1200,13 @@ function mapDataFrameGroupBy(
 function mapDataFrameSummarize(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	args = getEffectiveArgs(args, params.special);
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	}
 	const result: DataFrameOperation[] = [];
@@ -1232,6 +1245,7 @@ function mapDataFrameJoin(
 		joinLeft:       FunctionParameterLocation<boolean>,
 		joinRight:      FunctionParameterLocation<boolean>
 	},
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameOperation[] | undefined {
@@ -1240,7 +1254,7 @@ function mapDataFrameJoin(
 	const joinLeft = getArgumentValue(args, params.joinLeft, info);
 	const joinRight = getArgumentValue(args, params.joinRight, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	} else if(args.length === 1) {
 		return [{ operation: 'identity', operand: dataFrame.value.info.id }];
@@ -1252,7 +1266,7 @@ function mapDataFrameJoin(
 	const otherArg = getFunctionArgument(args, params.otherDataFrame, info);
 	const byArg = getFunctionArgument(args, params.by, info);
 
-	const otherDataFrame = resolveIdToDataFrameShape(otherArg, info.graph) ?? DataFrameDomain.top(ctx.config.abstractInterpretation.dataFrame.maxColNames);
+	const otherDataFrame = inference.getValue(otherArg) ?? DataFrameDomain.top(ctx.config.abstractInterpretation.dataFrame.maxColNames);
 	let byCols: (string | number | undefined)[] | undefined;
 
 	const joinType = getJoinType(joinAll, joinLeft, joinRight);
@@ -1299,12 +1313,13 @@ function mapDataFrameIdentity(
 		special:            string[],
 		disallowNamedArgs?: boolean
 	},
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	args = getEffectiveArgs(args, params.special);
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	} else if(params.disallowNamedArgs && args.some(isNamedArgument)) {
 		return [{ operation: 'unknown', operand: dataFrame.value.info.id }];
@@ -1321,6 +1336,7 @@ function mapDataFrameUnknown(
 		dataFrame?:      FunctionParameterLocation,
 		constraintType?: Exclude<ConstraintType, ConstraintType.OperandPrecondition>
 	},
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	let dataFrame;
@@ -1328,10 +1344,10 @@ function mapDataFrameUnknown(
 	if(params.dataFrame !== undefined) {
 		dataFrame = getFunctionArgument(args, params.dataFrame, info);
 	} else {
-		dataFrame = args.find(arg => isDataFrameArgument(arg ,info));
+		dataFrame = args.find(arg => isDataFrameArgument(arg, inference));
 	}
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	}
 	return [{

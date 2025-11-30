@@ -1,10 +1,10 @@
 import { beforeAll, describe } from 'vitest';
 import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import { PosIntervalTop } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
+import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { withShell } from '../../_helper/shell';
 import { assertDataFrameDomain, assertDataFrameOperation, DataFrameShapeOverapproximation, testDataFrameDomain, testDataFrameDomainAgainstReal, testDataFrameDomainWithSource } from './data-frame';
-import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 
 /** The minimum version required for calling `head` and `tail` with a vector argument, e.g. `head(df, c(1, 2))` */
 export const MIN_VERSION_HEAD_TAIL_VECTOR = '4.0.0';
@@ -181,6 +181,20 @@ print(df)
 			`.trim(),
 			[['6@df', { colnames: [['id'], Top], cols: [1, 2], rows: [10, 10] }]]
 		);
+
+		describe('Unsupported', { fails: true }, () => {
+			testDataFrameDomain(
+				shell,
+				`
+df <- data.frame(id = 1:5)
+while (nrow(df) < 10) {
+	df <- rbind(df, 10)
+}
+print(df)
+				`.trim(),
+				[['5@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, Infinity] }]]
+			);
+		});
 
 		testDataFrameDomain(
 			shell,

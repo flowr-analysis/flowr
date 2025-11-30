@@ -6,8 +6,8 @@ import type { RAccess, RIndexAccess, RNamedAccess } from '../../../r-bridge/lang
 import { type RFunctionArgument, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { DataFrameOperation } from '../absint-info';
 import { resolveIdToArgValue, resolveIdToArgValueSymbolName, unquoteArgument } from '../resolve-args';
+import type { DataFrameOperation, DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { getArgumentValue, isDataFrameArgument } from './arguments';
 
 /**
@@ -26,6 +26,7 @@ const SpecialAccessArgumentsMapper: Record<RIndexAccess['operator'], string[]> =
  */
 export function mapDataFrameAccess(
 	node: RNode<ParentInformation>,
+	inference: DataFrameShapeInferenceVisitor,
 	dfg: DataflowGraph
 ): DataFrameOperation[] | undefined {
 	if(node.type !== RType.Access) {
@@ -34,19 +35,20 @@ export function mapDataFrameAccess(
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
 
 	if(isStringBasedAccess(node)) {
-		return mapDataFrameNamedColumnAccess(node, resolveInfo);
+		return mapDataFrameNamedColumnAccess(node, inference, resolveInfo);
 	} else {
-		return mapDataFrameIndexColRowAccess(node, resolveInfo);
+		return mapDataFrameIndexColRowAccess(node, inference, resolveInfo);
 	}
 }
 
 function mapDataFrameNamedColumnAccess(
 	access: RNamedAccess<ParentInformation>,
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	const dataFrame = access.accessed;
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	}
 	const colname = resolveIdToArgValueSymbolName(access.access[0], info);
@@ -60,6 +62,7 @@ function mapDataFrameNamedColumnAccess(
 
 function mapDataFrameIndexColRowAccess(
 	access: RIndexAccess<ParentInformation>,
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperation[] | undefined {
 	const dataFrame = access.accessed;
@@ -67,7 +70,7 @@ function mapDataFrameIndexColRowAccess(
 	const exact = getArgumentValue(access.access, 'exact', info);
 	const args = getAccessArgs(access.operator, access.access);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	} else if(args.every(arg => arg === EmptyArgument)) {
 		return [{ operation: 'identity', operand: dataFrame.info.id }];

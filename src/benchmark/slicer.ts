@@ -23,7 +23,7 @@ import type {
 	SlicerStats,
 	SlicerStatsDfShape
 } from './stats/stats';
-import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
 import { type DEFAULT_SLICING_PIPELINE, type TREE_SITTER_SLICING_PIPELINE , createSlicePipeline } from '../core/steps/pipeline/default-pipelines';
 import { type RParseRequestFromFile, type RParseRequestFromText , retrieveNumberOfRTokensOfLastParse } from '../r-bridge/retriever';
@@ -44,13 +44,8 @@ import { equidistantSampling } from '../util/collections/arrays';
 import { type FlowrConfigOptions , getEngineConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
-import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
-import {
-	type AbstractInterpretationInfo,
-	hasDataFrameExpressionInfo
-} from '../abstract-interpretation/data-frame/absint-info';
 import type { DataFrameDomain } from '../abstract-interpretation/data-frame/dataframe-domain';
-import { inferDataFrameShapes } from '../abstract-interpretation/data-frame/shape-inference';
+import { DataFrameShapeInferenceVisitor } from '../abstract-interpretation/data-frame/shape-inference';
 import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
 import { Top } from '../abstract-interpretation/domains/lattice';
 import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-domain';
@@ -401,7 +396,7 @@ export class BenchmarkSlicer {
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined for data frame shape inference');
 		guard(this.dataflow !== undefined, 'dataflow should be defined for data frame shape inference');
 		guard(this.controlFlow !== undefined, 'controlFlow should be defined for data frame shape inference');
-		guard(this.config !== undefined, 'config should be defined for data frame shape inference');
+		guard(this.context !== undefined, 'context should be defined for data frame shape inference');
 
 		const ast = this.normalizedAst;
 		const dfg = this.dataflow.graph;
@@ -421,7 +416,9 @@ export class BenchmarkSlicer {
 			perNodeStats:              new Map()
 		};
 
-		const result = this.measureSimpleStep('infer data frame shapes', () => inferDataFrameShapes(cfinfo, dfg, ast, this.context as FlowrAnalyzerContext));
+		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg, normalizedAst: ast, ctx: this.context });
+		this.measureSimpleStep('infer data frame shapes', () => inference.start());
+		const result = inference.getResult();
 		stats.numberOfResultConstraints = result.value.size;
 
 		for(const value of result.value.values()) {
@@ -434,25 +431,24 @@ export class BenchmarkSlicer {
 			}
 		}
 
-		visitAst(this.normalizedAst.ast.files.map(f => f.root), (node: RNode<ParentInformation & AbstractInterpretationInfo>) => {
-			if(node.info.dataFrame === undefined) {
-				return;
-			}
-			stats.sizeOfInfo += safeSizeOf([node.info.dataFrame]);
-
-			const expression = hasDataFrameExpressionInfo(node) ? node.info.dataFrame : undefined;
-			const value = node.info.dataFrame.domain?.get(node.info.id);
+		visitAst(this.normalizedAst.ast.files.map(file => file.root), node => {
+			const operations = inference.getOperations(node.info.id);
+			const value = inference.getValue(node.info.id);
 
 			// Only store per-node information for nodes representing expressions or nodes with abstract values
-			if(expression === undefined && value === undefined) {
+			if(operations === undefined && value === undefined) {
 				stats.numberOfEmptyNodes++;
 				return;
 			}
+			const state = inference.getState(node.info.id);
+			stats.sizeOfInfo += safeSizeOf([state]);
+
 			const nodeStats: PerNodeStatsDfShape = {
-				numberOfEntries: node.info.dataFrame?.domain?.value.size ?? 0
+				numberOfEntries: state?.value.size ?? 0
 			};
-			if(expression !== undefined) {
-				nodeStats.mappedOperations = expression.operations.map(op => op.operation);
+
+			if(operations !== undefined) {
+				nodeStats.mappedOperations = operations.map(op => op.operation);
 				stats.numberOfOperationNodes++;
 
 				if(value !== undefined) {

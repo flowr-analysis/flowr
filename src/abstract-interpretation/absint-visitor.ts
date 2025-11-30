@@ -1,9 +1,9 @@
-import type { ControlFlowInformation, CfgSimpleVertex, CfgBasicBlockVertex } from '../control-flow/control-flow-graph';
-import { getVertexRootId, isMarkerVertex, CfgVertexType } from '../control-flow/control-flow-graph';
+import type { CfgBasicBlockVertex, CfgSimpleVertex, ControlFlowInformation } from '../control-flow/control-flow-graph';
+import { CfgVertexType, getVertexRootId, isMarkerVertex } from '../control-flow/control-flow-graph';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexVariableDefinition, type DataflowGraphVertexFunctionCall, VertexType } from '../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, VertexType } from '../dataflow/graph/vertex';
 import { getOriginInDfg, OriginType } from '../dataflow/origin/dfg-get-origin';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -55,7 +55,6 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	/**
 	 * Resolves the inferred abstract value of an AST node.
 	 * This requires that the abstract interpretation visitor has been completed, or at least started.
-	 *
 	 * @param id     - The ID of the node to get the inferred value for
 	 * @param domain - An optional state abstract domain used to resolve the inferred abstract value (defaults to the state at the requested node)
 	 * @returns The inferred abstract value of the node, or `undefined` if no value was inferred for the node
@@ -64,9 +63,9 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		const node = (id === undefined || typeof id === 'object') ? id : this.getNormalizedAst(id);
 		domain ??= node !== undefined ? this.state.get(node.info.id) : undefined;
 
-		if(node === undefined || domain === undefined) {
+		if(node === undefined) {
 			return;
-		} else if(domain.has(node.info.id)) {
+		} else if(domain?.has(node.info.id)) {
 			return domain.get(node.info.id);
 		}
 		const vertex = this.getDataflowGraph(node.info.id);
@@ -74,7 +73,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 		if(node.type === RType.Symbol) {
-			const values = this.getVariableOrigins(node.info.id).map(origin => domain.get(origin));
+			const values = this.getVariableOrigins(node.info.id).map(origin => domain?.get(origin));
 
 			if(values.length > 0 && values.every(isNotUndefined)) {
 				return AbstractDomain.joinAll(values);
@@ -110,9 +109,33 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		}
 	}
 
+	/**
+	 * Gets the inferred abstract state at the location of a specific AST node.
+	 * This requires that the abstract interpretation visitor has been completed, or at least started.
+	 * @param id - The ID of the node to get the abstract state at
+	 * @returns The abstract state at the node, or `undefined` if the node has no abstract state (i.e. the node has not been visited or is unreachable).
+	 */
+	public getState(id: NodeId | undefined): StateAbstractDomain<Domain> | undefined {
+		return id !== undefined ? this.state.get(id) : undefined;
+	}
+
+	/**
+	 * Gets the inferred abstract state at the end of the program (exit nodes of the control flow graph).
+	 * This requires that the abstract interpretation visitor has been completed, or at least started.
+	 * @returns The inferred abstract state at the end of the program
+	 */
+	public getResult(): StateAbstractDomain<Domain> {
+		const exitPoints = this.config.controlFlow.exitPoints.map(id => this.getCfgVertex(id)).filter(isNotUndefined);
+		const exitNodes = exitPoints.map(vertex => getVertexRootId(vertex)).filter(isNotUndefined);
+		const domains = exitNodes.map(node => this.state.get(node)).filter(isNotUndefined);
+
+		return this.config.domain.bottom().joinAll(domains);
+	}
+
 	public override start(): void {
 		guard(this.state.size === 0, 'Abstract interpretation visitor has already been started');
 		super.start();
+		this.unassigned.clear();
 	}
 
 	protected override visitNode(nodeId: NodeId): boolean {
@@ -151,19 +174,21 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	}
 
 	protected override onVariableDefinition({ vertex }: { vertex: DataflowGraphVertexVariableDefinition; }): void {
-		this.unassigned.add(vertex.id);
+		if(this.getState(vertex.id) === undefined) {
+			this.unassigned.add(vertex.id);
+		}
 	}
 
 	protected override onAssignmentCall({ target, source }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
 		if(target === undefined || source === undefined) {
 			return;
 		}
-		const value = this.getValue(target);
+		const value = this.getValue(source);
 		this.unassigned.delete(target);
 
 		if(value !== undefined) {
-			this.newDomain.set(source, value);
-			this.state.set(source, this.newDomain.create(this.newDomain.value));
+			this.newDomain.set(target, value);
+			this.state.set(target, this.newDomain.create(this.newDomain.value));
 		}
 	}
 
@@ -171,60 +196,60 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		if(source === undefined || target === undefined) {
 			return;
 		}
-		this.evalReplacementCall(call, target, source, this.newDomain);
+		this.newDomain = this.evalReplacementCall(call, target, source, this.newDomain);
 		this.unassigned.delete(target);
 	}
 
 	protected override onAccessCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.evalAccessCall(call, this.newDomain);
+		this.newDomain = this.evalAccessCall(call, this.newDomain);
 	}
 
 	protected override onUnnamedCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.evalFunctionCall(call, this.newDomain);
+		this.newDomain = this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onEvalFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.evalFunctionCall(call, this.newDomain);
+		this.newDomain = this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onApplyFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.evalFunctionCall(call, this.newDomain);
+		this.newDomain = this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onSourceCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.evalFunctionCall(call, this.newDomain);
+		this.newDomain = this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onGetCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.evalFunctionCall(call, this.newDomain);
+		this.newDomain = this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onRmCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.evalFunctionCall(call, this.newDomain);
+		this.newDomain = this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onListCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.evalFunctionCall(call, this.newDomain);
+		this.newDomain = this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onVectorCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.evalFunctionCall(call, this.newDomain);
+		this.newDomain = this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onSpecialBinaryOpCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.evalFunctionCall(call, this.newDomain);
+		this.newDomain = this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onQuoteCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.evalFunctionCall(call, this.newDomain);
+		this.newDomain = this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onLibraryCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.evalFunctionCall(call, this.newDomain);
+		this.newDomain = this.evalFunctionCall(call, this.newDomain);
 	}
 
 	protected override onDefaultFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.evalFunctionCall(call, this.newDomain);
+		this.newDomain = this.evalFunctionCall(call, this.newDomain);
 	}
 
 	/**

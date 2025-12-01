@@ -54,7 +54,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		cds:         data.controlDependencies,
 		args:        callArgs, // same reference
 		origin:      [UnnamedFunctionCallOrigin]
-	}, data.ctx.env.getCleanEnv());
+	}, data.ctx.env.makeCleanEnv());
 
 	let inIds = remainingReadInArgs;
 	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependencies: data.controlDependencies, type: ReferenceType.Function });

@@ -41,7 +41,7 @@ export function resolveDataflowGraph(graph: DataflowGraph, ctx: ReadOnlyFlowrAna
 		resultGraph.addVertex({
 			...vertex,
 			id: resolve(id as string)
-		}, ctx.env.getCleanEnv(), roots.has(id));
+		}, ctx.env.makeCleanEnv(), roots.has(id));
 	}
 	/* recreate edges */
 	for(const [from, targets] of graph.edges()) {

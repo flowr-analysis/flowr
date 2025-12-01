@@ -19,7 +19,7 @@ export function processValue<OtherInfo>({ info: { id } }: RNodeWithParent, data:
 			tag: VertexType.Value,
 			id:  id,
 			cds: data.controlDependencies
-		}, data.ctx.env.getCleanEnv()),
+		}, data.ctx.env.makeCleanEnv()),
 		exitPoints: [{ nodeId: id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }],
 		entryPoint: id
 	};

@@ -116,7 +116,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
-		environment:         ctx.env.getCleanEnv(),
+		environment:         ctx.env.makeCleanEnv(),
 		processors,
 		controlDependencies: undefined,
 		referenceChain:      [files[0].filePath],

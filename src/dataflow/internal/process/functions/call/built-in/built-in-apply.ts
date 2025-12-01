@@ -139,7 +139,7 @@ export function processApply<OtherInfo>(
 			cds:         data.controlDependencies,
 			args:        allOtherArguments, // same reference
 			origin:      ['function']
-		}, data.ctx.env.getCleanEnv());
+		}, data.ctx.env.makeCleanEnv());
 		information.graph.addEdge(rootId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
 		information = {

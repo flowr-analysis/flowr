@@ -42,7 +42,7 @@ export function processFunctionArgument<OtherInfo>(
 			tag: VertexType.Use,
 			id:  argument.info.id,
 			cds: data.controlDependencies
-		}, data.ctx.env.getCleanEnv());
+		}, data.ctx.env.makeCleanEnv());
 		entryPoint = argument.info.id;
 	}
 

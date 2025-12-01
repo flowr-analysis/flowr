@@ -25,7 +25,7 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	/**
 	 * Create a new {@link REnvironmentInformation|environment} with the configured built-in environment as base.
 	 */
-	getCleanEnv(): REnvironmentInformation;
+	makeCleanEnv(): REnvironmentInformation;
 
 	/**
 	 * Get the fingerprint of the clean environment with the configured built-in environment as base.
@@ -35,7 +35,7 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	/**
 	 * Create a new {@link REnvironmentInformation|environment} with an empty built-in environment as base.
 	 */
-	getCleanEnvWithEmptyBuiltIns(): REnvironmentInformation;
+	makeCleanEnvWithEmptyBuiltIns(): REnvironmentInformation;
 }
 
 /**
@@ -68,7 +68,7 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 		return this.emptyBuiltInEnv;
 	}
 
-	public getCleanEnv(): REnvironmentInformation {
+	public makeCleanEnv(): REnvironmentInformation {
 		return {
 			current: new Environment(this.builtInEnv),
 			level:   0
@@ -77,12 +77,12 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 
 	public getCleanEnvFingerprint(): Fingerprint {
 		if(!this.builtInEnvFingerprint) {
-			this.builtInEnvFingerprint = envFingerprint(this.getCleanEnv());
+			this.builtInEnvFingerprint = envFingerprint(this.makeCleanEnv());
 		}
 		return this.builtInEnvFingerprint;
 	}
 
-	public getCleanEnvWithEmptyBuiltIns(): REnvironmentInformation {
+	public makeCleanEnvWithEmptyBuiltIns(): REnvironmentInformation {
 		return {
 			current: new Environment(this.emptyBuiltInEnv),
 			level:   0

@@ -93,7 +93,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		args:              reverseOrder ? callArgs.reverse() : callArgs,
 		indicesCollection: indicesCollection,
 		origin:            origin === 'default' ? ['function'] : [origin]
-	}, data.ctx.env.getCleanEnv());
+	}, data.ctx.env.makeCleanEnv());
 
 	if(hasUnknownSideEffect) {
 		handleUnknownSideEffect(finalGraph, data.environment, rootId);

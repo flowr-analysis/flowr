@@ -102,7 +102,7 @@ export function processFunctionDefinition<OtherInfo>(
 				id:          read.nodeId,
 				environment: undefined,
 				cds:         undefined
-			}, data.ctx.env.getCleanEnv());
+			}, data.ctx.env.makeCleanEnv());
 		}
 	}
 
@@ -126,7 +126,7 @@ export function processFunctionDefinition<OtherInfo>(
 		cds:         data.controlDependencies,
 		subflow:     flow,
 		exitPoints:  exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default).map(e => e.nodeId) ?? []
-	}, data.ctx.env.getCleanEnv());
+	}, data.ctx.env.makeCleanEnv());
 	return {
 		/* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */
 		unknownReferences: [],
@@ -146,7 +146,7 @@ export function processFunctionDefinition<OtherInfo>(
  *
  */
 export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext): REnvironmentInformation {
-	callerEnvironment ??= ctx.env.getCleanEnv();
+	callerEnvironment ??= ctx.env.makeCleanEnv();
 	let level = callerEnvironment.level ?? 0;
 
 	if(baseEnvironment.level !== level) {
@@ -268,7 +268,7 @@ export function updateNestedFunctionCalls(
 }
 
 function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
-	let env = data.ctx.env.getCleanEnv();
+	let env = data.ctx.env.makeCleanEnv();
 	for(let i = 0; i < data.environment.level + 1 /* add another env */; i++) {
 		env = pushLocalEnvironment(env);
 	}

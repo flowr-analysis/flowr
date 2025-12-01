@@ -46,7 +46,7 @@ export function argumentInCall(nodeId: NodeId, options?: { name?: string, contro
  */
 export const defaultEnv = () => {
 	const ctx = new FlowrAnalyzerEnvironmentContext({ config: defaultConfigOptions } as FlowrAnalyzerContext);
-	const global = ctx.getCleanEnv();
+	const global = ctx.makeCleanEnv();
 	return new EnvironmentBuilder(global.current, global.current.parent, 0);
 };
 

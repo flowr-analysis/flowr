@@ -47,7 +47,7 @@ export function staticSlice(
 	let { graph } = info;
 
 	if(direction === SliceDirection.Forward){
-		graph = invertDfg(graph, ctx.env.getCleanEnv());
+		graph = invertDfg(graph, ctx.env.makeCleanEnv());
 	}
 
 	const queue = new VisitingQueue(threshold, cache);
@@ -56,7 +56,7 @@ export function staticSlice(
 	const sliceSeedIds = new Set<NodeId>();
 	// every node ships the call environment which registers the calling environment
 	{
-		const emptyEnv = ctx.env.getCleanEnv();
+		const emptyEnv = ctx.env.makeCleanEnv();
 		const basePrint = ctx.env.getCleanEnvFingerprint();
 		for(const { id: startId } of decodedCriteria) {
 			queue.add(startId, emptyEnv, basePrint, false);

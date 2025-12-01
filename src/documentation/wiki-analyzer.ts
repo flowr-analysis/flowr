@@ -443,9 +443,9 @@ Here is the structure of the ${ctx.link(FlowrAnalyzerEnvironmentContext)} that p
 ${ctx.hierarchy(FlowrAnalyzerEnvironmentContext, { showImplSnippet: false })}
 
 The environment context provides access to the built-in environment via
-${ctx.linkM(FlowrAnalyzerEnvironmentContext, 'getCleanEnv', { codeFont: true, realNameWrapper: 'i' })}.
+${ctx.linkM(FlowrAnalyzerEnvironmentContext, 'makeCleanEnv', { codeFont: true, realNameWrapper: 'i' })}.
 It also provides the empty built-in environment, which only contains primitives, via
-${ctx.linkM(FlowrAnalyzerEnvironmentContext, 'getCleanEnvWithEmptyBuiltIns', { codeFont: true, realNameWrapper: 'i' })}.
+${ctx.linkM(FlowrAnalyzerEnvironmentContext, 'makeCleanEnvWithEmptyBuiltIns', { codeFont: true, realNameWrapper: 'i' })}.
 
 ${section('Caching', 2)}
 

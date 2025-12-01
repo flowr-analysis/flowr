@@ -49,7 +49,7 @@ export class DataflowGraphBuilder<
 
 	constructor(cleanEnv?: REnvironmentInformation, idMap?: AstIdMap) {
 		super(idMap);
-		this.defaultEnvironment = cleanEnv ?? contextFromInput('').env.getCleanEnv();
+		this.defaultEnvironment = cleanEnv ?? contextFromInput('').env.makeCleanEnv();
 	}
 
 	public addVertexWithDefaultEnv(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, asRoot = true, overwrite = false): this {

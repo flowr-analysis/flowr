@@ -315,7 +315,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
 
 	const queue = new VisitingQueue(25);
-	const clean = ctx.env.getCleanEnv();
+	const clean = ctx.env.makeCleanEnv();
 	const cleanFingerprint = ctx.env.getCleanEnvFingerprint();
 	queue.add(id, clean, cleanFingerprint, false);
 

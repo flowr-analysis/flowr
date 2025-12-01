@@ -13,7 +13,7 @@ import { rangeFrom } from '../util/range';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { initializeCleanEnvironments } from './environments/environment';
-import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
+import { mergeDataflowInformation, standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
 import { extractCfgQuick } from '../control-flow/extract-cfg';
 import { EdgeType } from './graph/edge';
@@ -26,7 +26,6 @@ import type { ControlFlowInformation } from '../control-flow/control-flow-graph'
 import { getBuiltInDefinitions } from './environments/built-in-config';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
-import { Threadpool } from './parallel/threadpool';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -119,24 +118,35 @@ export function produceDataFlowGraph<OtherInfo>(
 	};
 	let df = processDataflowFor<OtherInfo>(files[0].root, dfData);
 
+	/*
 	// first call with threadpool
 	const pool = new Threadpool();
 
 	// submit all files
 	const _result = pool.submitTasks(
-		'testPool',
-		files.map((file, i) => ({
-			index:        i,
-			file,
-			data:         undefined as unknown as DataflowProcessorInformation<OtherInfo & ParentInformation>,
-			dataflowInfo: undefined as unknown as DataflowInformation
-		}))
-	);
+			'testPool',
+			files.map((file, i) => ({
+				index:        i,
+				file,
+				data:         undefined as unknown as DataflowProcessorInformation<OtherInfo & ParentInformation>,
+				dataflowInfo: undefined as unknown as DataflowInformation
+			}))
+	);*/
+
+	const dataflow: DataflowInformation[] = [];
 
 	for(let i = 1; i < files.length; i++) {
 		/* source requests register automatically */
-		df = standaloneSourceFile(i, files[i], dfData, df);
+		dataflow.push(standaloneSourceFile(i, files[i], dfData, df));
+
 	}
+
+	for(let i = 0; i < dataflow.length; i++){
+		// merge dataflow back together via reduction with the helper function
+		df = mergeDataflowInformation(i + '-file', dfData, files[i].filePath, df, dataflow[i]);
+	}
+
+
 
 	// finally, resolve linkages
 	updateNestedFunctionCalls(df.graph, df.environment);

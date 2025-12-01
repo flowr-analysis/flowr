@@ -9,7 +9,8 @@ import {
 } from './graph';
 import { type IEnvironment, type REnvironmentInformation } from '../environments/environment';
 import {
-	type DataflowGraphVertexAstLink,
+	type DataflowGraphVertexArgument,
+	type DataflowGraphVertexAstLink, type DataflowGraphVertexInfo,
 	type DataflowGraphVertexUse,
 	type FunctionOriginInformation,
 	VertexType
@@ -41,12 +42,19 @@ export type DataflowGraphEdgeTarget = NodeId | (readonly NodeId[]);
  * easily and compactly add vertices and edges to a dataflow graph. Its usage thus
  * simplifies writing tests for dataflow graphs.
  */
-export class DataflowGraphBuilder extends DataflowGraph {
+export class DataflowGraphBuilder<
+	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
+> extends DataflowGraph {
 	private readonly defaultEnvironment: REnvironmentInformation;
 
 	constructor(cleanEnv?: REnvironmentInformation, idMap?: AstIdMap) {
 		super(idMap);
 		this.defaultEnvironment = cleanEnv ?? contextFromInput('').env.getCleanEnv();
+	}
+
+	public addVertexWithDefaultEnv(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, asRoot = true, overwrite = false): this {
+		super.addVertex(vertex, this.defaultEnvironment, asRoot, overwrite);
+		return this;
 	}
 
 	/**
@@ -62,7 +70,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation,
 		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, controlDependencies?: ControlDependency[] },
 		asRoot: boolean = true) {
-		return this.addVertex({
+		return this.addVertexWithDefaultEnv({
 			tag:     VertexType.FunctionDefinition,
 			id:      normalizeIdToNumberIfPossible(id),
 			subflow: {
@@ -76,7 +84,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			exitPoints:  exitPoints.map(normalizeIdToNumberIfPossible),
 			cds:         info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
 			environment: info?.environment,
-		}, this.defaultEnvironment, asRoot);
+		}, asRoot);
 	}
 
 	/**
@@ -101,7 +109,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		},
 		asRoot: boolean = true) {
 		const onlyBuiltInAuto = info?.reads?.length === 1 && isBuiltIn(info?.reads[0]);
-		this.addVertex({
+		this.addVertexWithDefaultEnv({
 			tag:         VertexType.FunctionCall,
 			id:          normalizeIdToNumberIfPossible(id),
 			name,
@@ -111,7 +119,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			onlyBuiltin: info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false,
 			origin:      info?.origin ?? [ getDefaultProcessor(name) ?? 'function' ],
 			link:        info?.link
-		}, this.defaultEnvironment, asRoot);
+		}, asRoot);
 		this.addArgumentLinks(id, args);
 		if(info?.returns) {
 			for(const ret of info.returns) {
@@ -155,12 +163,12 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public defineVariable(id: NodeId, name?: string,
 		info?: { controlDependencies?: ControlDependency[], definedBy?: NodeId[]}, asRoot: boolean = true) {
-		this.addVertex({
+		this.addVertexWithDefaultEnv({
 			tag: VertexType.VariableDefinition,
 			id:  normalizeIdToNumberIfPossible(id),
 			name,
 			cds: info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
-		}, this.defaultEnvironment, asRoot);
+		}, asRoot);
 		if(info?.definedBy) {
 			for(const def of info.definedBy) {
 				this.definedBy(id, def);
@@ -178,7 +186,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point) or is it nested (e.g., as part of a function definition)
 	 */
 	public use(id: NodeId, name?: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({
+		return this.addVertexWithDefaultEnv(deepMergeObject({
 			tag:         VertexType.Use,
 			id:          normalizeIdToNumberIfPossible(id),
 			name,
@@ -187,7 +195,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		}, {
 			...info,
 			cds: info?.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) }))
-		} as Partial<DataflowGraphVertexUse>), this.defaultEnvironment, asRoot);
+		} as Partial<DataflowGraphVertexUse>), asRoot);
 	}
 
 
@@ -199,12 +207,12 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public constant(id: NodeId, options?: { controlDependencies?: ControlDependency[] }, asRoot: boolean = true) {
-		return this.addVertex({
+		return this.addVertexWithDefaultEnv({
 			tag:         VertexType.Value,
 			id:          normalizeIdToNumberIfPossible(id),
 			cds:         options?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
 			environment: undefined
-		}, this.defaultEnvironment, asRoot);
+		}, asRoot);
 	}
 
 	private edgeHelper(from: NodeId, to: DataflowGraphEdgeTarget, type: EdgeType) {

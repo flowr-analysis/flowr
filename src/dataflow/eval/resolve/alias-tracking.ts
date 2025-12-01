@@ -41,7 +41,7 @@ export interface ResolveInfo {
 	/** Whether to track variables */
 	full?:        boolean;
 	/** Variable resolve mode */
-	resolve:      VariableResolve;
+	resolve?:     VariableResolve;
 	/** Context used for resolving */
 	ctx:          ReadOnlyFlowrAnalyzerContext;
 }
@@ -144,6 +144,8 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
  * @param ctx                - Context used for clean environment
  */
 export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, resolve, ctx }: ResolveInfo): ResolveResult {
+	const variableResolve = resolve ?? ctx.config.solver.variables;
+
 	if(id === undefined) {
 		return Top;
 	}
@@ -158,7 +160,7 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 		case RType.Argument:
 		case RType.Symbol:
 			if(environment) {
-				return full ? trackAliasInEnvironments(resolve, node.lexeme, environment, ctx, graph, idMap) : Top;
+				return full ? trackAliasInEnvironments(variableResolve, node.lexeme, environment, ctx, graph, idMap) : Top;
 			} else if(graph && resolve === VariableResolve.Alias) {
 				return full ? trackAliasesInGraph(node.info.id, graph, ctx, idMap) : Top;
 			} else {
@@ -169,7 +171,7 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 		case RType.FunctionCall:
 		case RType.BinaryOp:
 		case RType.UnaryOp:
-			return setFrom(resolveNode(resolve, node, ctx, environment, graph, idMap));
+			return setFrom(resolveNode(variableResolve, node, ctx, environment, graph, idMap));
 		case RType.String:
 		case RType.Number:
 		case RType.Logical:

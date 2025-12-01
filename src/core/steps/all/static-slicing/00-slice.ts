@@ -25,7 +25,8 @@ export enum SliceDirection {
 
 function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>) {
 	const direction = input.direction ?? SliceDirection.Backward;
-	return staticSlice(input.context as ReadOnlyFlowrAnalyzerContext, (results.dataflow as DataflowInformation), results.normalize as NormalizedAst, input.criterion as SlicingCriteria, direction, input.threshold);
+	const threshold = input.threshold ?? input.context?.config.solver.slicer?.threshold;
+	return staticSlice(input.context as ReadOnlyFlowrAnalyzerContext, (results.dataflow as DataflowInformation), results.normalize as NormalizedAst, input.criterion as SlicingCriteria, direction, threshold);
 }
 
 export const STATIC_SLICE = {

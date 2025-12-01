@@ -99,11 +99,10 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		}
 
 		const values = valueSetGuard(resolveIdToValue(data.call.args[0].nodeId, {
-			graph:   this.config.dfg,
-			full:    true,
-			idMap:   this.config.normalizedAst.idMap,
-			resolve: this.config.ctx.config.solver.variables,
-			ctx:     this.config.ctx,
+			graph: this.config.dfg,
+			full:  true,
+			idMap: this.config.normalizedAst.idMap,
+			ctx:   this.config.ctx,
 		}));
 		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
 			return undefined;

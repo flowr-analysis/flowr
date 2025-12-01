@@ -438,14 +438,14 @@ that allows you to query for a specific dependency by name.
 
 ${section('Environment Context', 3)}
 
-Here is the structure of the ${ctx.link(FlowrAnalyzerEnvironmentContext.name)} that provides access to the built-in environment:
+Here is the structure of the ${ctx.link(FlowrAnalyzerEnvironmentContext)} that provides access to the built-in environment:
 
 ${ctx.hierarchy(FlowrAnalyzerEnvironmentContext, { showImplSnippet: false })}
 
 The environment context provides access to the built-in environment via
-${ctx.link(FlowrAnalyzerEnvironmentContext.name + '::' + FlowrAnalyzerEnvironmentContext.prototype.getCleanEnv.name, { codeFont: true, realNameWrapper: 'i' })}.
+${ctx.linkM(FlowrAnalyzerEnvironmentContext, 'getCleanEnv', { codeFont: true, realNameWrapper: 'i' })}.
 It also provides the empty built-in environment, which only contains primitives, via
-${ctx.link(FlowrAnalyzerEnvironmentContext.name + '::' + FlowrAnalyzerEnvironmentContext.prototype.getCleanEnvWithEmptyBuiltIns.name, { codeFont: true, realNameWrapper: 'i' })}.
+${ctx.linkM(FlowrAnalyzerEnvironmentContext, 'getCleanEnvWithEmptyBuiltIns', { codeFont: true, realNameWrapper: 'i' })}.
 
 ${section('Caching', 2)}
 

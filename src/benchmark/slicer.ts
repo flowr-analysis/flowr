@@ -63,7 +63,7 @@ import type { PosIntervalDomain } from '../abstract-interpretation/domains/posit
 import { Top } from '../abstract-interpretation/domains/lattice';
 import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-domain';
 import fs from 'fs';
-import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
 
 /**
@@ -347,7 +347,7 @@ export class BenchmarkSlicer {
 		};
 		this.perSliceMeasurements.set(slicingCriteria, stats);
 
-		this.executor.updateRequest({ criterion: slicingCriteria, context: this.context as ReadOnlyFlowrAnalyzerContext });
+		this.executor.updateRequest({ criterion: slicingCriteria });
 
 		const totalStopwatch = measurements.start('total');
 

@@ -15,7 +15,7 @@ export interface SliceRequiredInput {
 	/** The direction to slice in. Defaults to backward slicing if unset. */
 	readonly direction?: SliceDirection
 	/** The context of the analysis */
-	readonly context:    ReadOnlyFlowrAnalyzerContext
+	readonly context?:   ReadOnlyFlowrAnalyzerContext
 }
 
 export enum SliceDirection {

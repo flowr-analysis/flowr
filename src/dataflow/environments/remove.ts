@@ -3,11 +3,12 @@ import type { Identifier } from './identifier';
 import { happensInEveryBranch } from '../info';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { cloneEnvironmentInformation } from './clone';
+import type { DeepReadonly } from 'ts-essentials';
 
 /**
  * Removes all definitions of a given name from the environment.
  */
-export function remove(name: Identifier, environment: REnvironmentInformation, defaultEnvironment: IEnvironment): REnvironmentInformation {
+export function remove(name: Identifier, environment: REnvironmentInformation, defaultEnvironment: DeepReadonly<IEnvironment>): REnvironmentInformation {
 	let current: IEnvironment = environment.current;
 	do{
 		const definition = current.memory.get(name);

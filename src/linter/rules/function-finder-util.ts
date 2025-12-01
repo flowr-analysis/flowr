@@ -1,11 +1,9 @@
-
-
 import { Q } from '../../search/flowr-search-builder';
 import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { SourceRange } from '../../util/range';
 import type { Identifier } from '../../dataflow/environments/identifier';
-import { type LintingResult , LintingResultCertainty, LintingPrettyPrintContext } from '../linter-format';
+import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty } from '../linter-format';
 import type { FlowrSearchElement, FlowrSearchElements } from '../../search/flowr-search';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { MergeableRecord } from '../../util/objects';
@@ -13,10 +11,10 @@ import { formatRange } from '../../util/mermaid/dfg';
 import { isNotUndefined } from '../../util/assert';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowInformation } from '../../dataflow/info';
-import type { FlowrConfigOptions } from '../../config';
 import { isFunctionCallVertex } from '../../dataflow/graph/vertex';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
 export interface FunctionsResult extends LintingResult {
     function: string
@@ -96,7 +94,7 @@ export const functionFinderUtil = {
 	requireArgumentValue(
 		element: FlowrSearchElement<ParentInformation>,
 		pool: readonly FunctionInfo[],
-		data: { normalize: NormalizedAst, dataflow: DataflowInformation, config: FlowrConfigOptions},
+		data: { normalize: NormalizedAst, dataflow: DataflowInformation, analyzer: ReadonlyFlowrAnalysisProvider},
 		requireValue: RegExp | string | undefined
 	): boolean {
 		const info = pool.find(f => f.name === element.node.lexeme);
@@ -107,12 +105,13 @@ export const functionFinderUtil = {
 		const vert = data.dataflow.graph.getVertex(element.node.info.id);
 		if(isFunctionCallVertex(vert)){
 			const args = getArgumentStringValue(
-				data.config.solver.variables,
+				data.analyzer.flowrConfig.solver.variables,
 				data.dataflow.graph,
 				vert,
 				info.argIdx,
 				info.argName,
-				info.resolveValue);
+				info.resolveValue,
+				data.analyzer.inspectContext());
 			// we obtain all values, at least one of them has to trigger for the request
 			const argValues: string[] = args ? args.values().flatMap(v => [...v]).filter(isNotUndefined).toArray() : [];
 

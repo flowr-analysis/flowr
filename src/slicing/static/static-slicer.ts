@@ -1,18 +1,19 @@
 import { assertUnreachable, guard } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
 import type { SliceResult } from './slicer-types';
-import { type Fingerprint , envFingerprint } from './fingerprint';
+import { type Fingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
 import { handleReturns, sliceForCall } from './slice-call';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type SlicingCriteria , convertAllSlicingCriteriaToIds } from '../criterion/parse';
-import { type REnvironmentInformation , initializeCleanEnvironments } from '../../dataflow/environments/environment';
+import { convertAllSlicingCriteriaToIds, type SlicingCriteria } from '../criterion/parse';
+import { type REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import { SliceDirection } from '../../core/steps/all/static-slicing/00-slice';
 import { invertDfg } from '../../dataflow/graph/invert-dfg';
 import type { DataflowInformation } from '../../dataflow/info';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -20,6 +21,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  * This returns the ids to include in the static slice of the given type, when slicing with the given seed id's (must be at least one).
  * <p>
  * The returned ids can be used to {@link reconstructToCode|reconstruct the slice to R code}.
+ * @param ctx  - The analyzer context used for slicing.
  * @param info      - The dataflow information used for slicing.
  * @param idMap     - The mapping from node ids to their information in the AST.
  * @param criteria  - The criteria to slice on.
@@ -28,6 +30,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  * @param cache     - A cache to store the results of the slice. If provided, the slice may use this cache to speed up the slicing process.
  */
 export function staticSlice(
+	ctx: ReadOnlyFlowrAnalyzerContext,
 	info: DataflowInformation,
 	{ idMap }: NormalizedAst,
 	criteria: SlicingCriteria,
@@ -44,7 +47,7 @@ export function staticSlice(
 	let { graph } = info;
 
 	if(direction === SliceDirection.Forward){
-		graph = invertDfg(graph);
+		graph = invertDfg(graph, ctx.env.makeCleanEnv());
 	}
 
 	const queue = new VisitingQueue(threshold, cache);
@@ -53,8 +56,8 @@ export function staticSlice(
 	const sliceSeedIds = new Set<NodeId>();
 	// every node ships the call environment which registers the calling environment
 	{
-		const emptyEnv = initializeCleanEnvironments();
-		const basePrint = envFingerprint(emptyEnv);
+		const emptyEnv = ctx.env.makeCleanEnv();
+		const basePrint = ctx.env.getCleanEnvFingerprint();
 		for(const { id: startId } of decodedCriteria) {
 			queue.add(startId, emptyEnv, basePrint, false);
 			// retrieve the minimum nesting of all nodes to only add control dependencies if they are "part" of the current execution
@@ -98,7 +101,7 @@ export function staticSlice(
 
 		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
-				sliceForCall(current, currentVertex, info, queue);
+				sliceForCall(current, currentVertex, info, queue, ctx);
 			}
 
 			const ret = handleReturns(id, queue, currentEdges, baseEnvFingerprint, baseEnvironment);

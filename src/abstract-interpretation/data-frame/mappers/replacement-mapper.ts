@@ -16,6 +16,7 @@ import { resolveIdToArgStringVector, resolveIdToArgValue, resolveIdToArgValueSym
 import { ConstraintType } from '../semantics';
 import { isStringBasedAccess } from './access-mapper';
 import { isDataFrameArgument, isRNull } from './arguments';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 
 /** Mapper for mapping the supported data frame replacement functions to mapper functions */
 const DataFrameReplacementFunctionMapper = {
@@ -46,15 +47,17 @@ type DataFrameReplacementFunction = keyof typeof DataFrameReplacementFunctionMap
  * Maps a concrete data frame replacement function to abstract data frame operations.
  * @param node - The R node of the replacement function
  * @param dfg  - The data flow graph for resolving the arguments
+ * @param ctx - The read-only Flowr analysis context
  * @returns Data frame expression info containing the mapped abstract data frame operations, or `undefined` if the node does not represent a data frame replacement function
  */
 export function mapDataFrameReplacementFunction(
 	node: RNode<ParentInformation>,
 	expression: RNode<ParentInformation>,
-	dfg: DataflowGraph
+	dfg: DataflowGraph,
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameExpressionInfo | undefined {
 	const parent = hasParentReplacement(node, dfg) ? dfg.idMap?.get(node.info.parent) : undefined;
-	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
+	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
 	let operations: DataFrameOperation[] | undefined;
 
 	if(node.type === RType.Access) {

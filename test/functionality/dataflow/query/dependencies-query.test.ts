@@ -1,11 +1,12 @@
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
-import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import {
 	type DependenciesQuery,
 	type DependenciesQueryResult,
-	type DependencyInfo
-	, Unknown } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+	type DependencyInfo,
+	Unknown
+} from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';

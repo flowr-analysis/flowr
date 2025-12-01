@@ -9,12 +9,13 @@ import type { DataflowGraph } from '../../graph/graph';
 import { getOriginInDfg, OriginType } from '../../origin/dfg-get-origin';
 import { intervalFrom } from '../values/intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
-import { type Lift, type Value, type ValueNumber, type ValueVector , Top } from '../values/r-value';
+import { type Lift, Top, type Value, type ValueNumber, type ValueVector } from '../values/r-value';
 import { stringFrom } from '../values/string/string-constants';
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
 import { resolveIdToValue } from './alias-tracking';
 import type { VariableResolve } from '../../../config';
 import { liftScalar } from '../values/scalar/scalar-consatnts';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 
 /**
  * Helper function used by {@link resolveIdToValue}, please use that instead, if
@@ -29,7 +30,7 @@ import { liftScalar } from '../values/scalar/scalar-consatnts';
  * @param map     - Idmap of Dataflow Graph
  * @returns resolved value or top/bottom
  */
-export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap): Value {
+export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, ctx: ReadOnlyFlowrAnalyzerContext, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap): Value {
 	if(a.type === RType.String) {
 		return stringFrom(a.content.str);
 	} else if(a.type === RType.Number) {
@@ -56,7 +57,7 @@ export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, env?: 
 		}
 		if(Object.hasOwn(BuiltInEvalHandlerMapper, builtInName)) {
 			const handler = BuiltInEvalHandlerMapper[builtInName as keyof typeof BuiltInEvalHandlerMapper];
-			return handler(resolve, a, env, graph, map);
+			return handler(resolve, a, ctx, env, graph, map);
 		}
 	}
 	return Top;
@@ -68,18 +69,19 @@ export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, env?: 
  *
  * This function resolves a vector function call `c` to a {@link ValueVector}
  * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
- * @param resolve - Variable resolve mode
- * @param node    - Node of the vector function to resolve
- * @param env     - Environment to use
- * @param graph   - Dataflow graph
- * @param map     - Id map of the dataflow graph
+ * @param resolve     - Variable resolve mode
+ * @param node        - Node of the vector function to resolve
+ * @param environment - Environment to use
+ * @param ctx         - Analyzer context
+ * @param graph       - Dataflow graph
+ * @param idMap       - ID map of the dataflow graph
  * @returns ValueVector or Top
  */
-export function resolveAsVector(resolve: VariableResolve, node: RNodeWithParent, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueVector<Lift<Value[]>> | typeof Top {
+export function resolveAsVector(resolve: VariableResolve, node: RNodeWithParent, ctx: ReadOnlyFlowrAnalyzerContext, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueVector<Lift<Value[]>> | typeof Top {
 	if(node.type !== RType.FunctionCall) {
 		return Top;
 	}
-	const resolveInfo = { environment, graph, idMap, full: true, resolve };
+	const resolveInfo = { environment, graph, idMap, full: true, resolve, ctx };
 	const values = node.arguments.map(arg => arg !== EmptyArgument ? resolveIdToValue(arg.value, resolveInfo) : Top);
 
 	return vectorFrom(flattenVectorElements(values));
@@ -98,11 +100,11 @@ export function resolveAsVector(resolve: VariableResolve, node: RNodeWithParent,
  * @param map      - Id map of the dataflow graph
  * @returns ValueVector of ValueNumbers or Top
  */
-export function resolveAsSeq(resolve: VariableResolve, operator: RNodeWithParent, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueVector<Lift<ValueNumber[]>> | typeof Top {
+export function resolveAsSeq(resolve: VariableResolve, operator: RNodeWithParent, ctx: ReadOnlyFlowrAnalyzerContext, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueVector<Lift<ValueNumber[]>> | typeof Top {
 	if(operator.type !== RType.BinaryOp) {
 		return Top;
 	}
-	const resolveInfo = { environment, graph, idMap, full: true, resolve };
+	const resolveInfo = { environment, graph, idMap, full: true, resolve, ctx };
 	const leftArg = resolveIdToValue(operator.lhs, resolveInfo);
 	const rightArg = resolveIdToValue(operator.rhs, resolveInfo);
 	const leftValue = unliftRValue(leftArg);
@@ -127,11 +129,11 @@ export function resolveAsSeq(resolve: VariableResolve, operator: RNodeWithParent
  * @param map      - Id map of the dataflow graph
  * @returns ValueNumber, ValueVector of ValueNumbers, or Top
  */
-export function resolveAsPlus(resolve: VariableResolve, operator: RNodeWithParent, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueNumber | ValueVector<Lift<ValueNumber[]>> | typeof Top {
+export function resolveAsPlus(resolve: VariableResolve, operator: RNodeWithParent, ctx: ReadOnlyFlowrAnalyzerContext, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueNumber | ValueVector<Lift<ValueNumber[]>> | typeof Top {
 	if(operator.type !== RType.UnaryOp) {
 		return Top;
 	}
-	const resolveInfo = { environment, graph, idMap, full: true, resolve };
+	const resolveInfo = { environment, graph, idMap, full: true, resolve, ctx };
 	const arg = resolveIdToValue(operator.operand, resolveInfo);
 	const argValue = unliftRValue(arg);
 
@@ -156,11 +158,11 @@ export function resolveAsPlus(resolve: VariableResolve, operator: RNodeWithParen
  * @param map      - Id map of the dataflow graph
  * @returns ValueNumber, ValueVector of ValueNumbers, or Top
  */
-export function resolveAsMinus(resolve: VariableResolve, operator: RNodeWithParent, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueNumber | ValueVector<Lift<ValueNumber[]>> | typeof Top {
+export function resolveAsMinus(resolve: VariableResolve, operator: RNodeWithParent, ctx: ReadOnlyFlowrAnalyzerContext, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueNumber | ValueVector<Lift<ValueNumber[]>> | typeof Top {
 	if(operator.type !== RType.UnaryOp) {
 		return Top;
 	}
-	const resolveInfo = { environment, graph, idMap, full: true, resolve };
+	const resolveInfo = { environment, graph, idMap, full: true, resolve, ctx };
 	const arg = resolveIdToValue(operator.operand, resolveInfo);
 	const argValue = unliftRValue(arg);
 

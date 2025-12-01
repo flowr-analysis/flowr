@@ -30,7 +30,7 @@ export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, quer
 		}
 		const { criteria, noReconstruction, noMagicComments } = query;
 		const sliceStart = Date.now();
-		const slice = staticSlice(await analyzer.dataflow(), await analyzer.normalize(), criteria, query.direction ?? SliceDirection.Backward, analyzer.flowrConfig.solver.slicer?.threshold);
+		const slice = staticSlice(analyzer.inspectContext(), await analyzer.dataflow(), await analyzer.normalize(), criteria, query.direction ?? SliceDirection.Backward, analyzer.flowrConfig.solver.slicer?.threshold);
 		const sliceEnd = Date.now();
 		if(noReconstruction) {
 			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };

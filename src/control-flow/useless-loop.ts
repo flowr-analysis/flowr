@@ -3,14 +3,14 @@ import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
 import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexFunctionCall , VertexType } from '../dataflow/graph/vertex';
-import { type ControlDependency , happensInEveryBranch } from '../dataflow/info';
+import { type DataflowGraphVertexFunctionCall, VertexType } from '../dataflow/graph/vertex';
+import { type ControlDependency, happensInEveryBranch } from '../dataflow/info';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard } from '../util/assert';
 import type { ControlFlowInformation } from './control-flow-graph';
-import { type SemanticCfgGuidedVisitorConfiguration , SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
+import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } from './semantic-cfg-guided-visitor';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 
@@ -48,7 +48,8 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 		const values = valueSetGuard(resolveIdToValue(vectorOfLoop.nodeId, {
 			graph:   dataflow,
 			idMap:   dataflow.idMap,
-			resolve: ctx.config.solver.variables
+			resolve: ctx.config.solver.variables,
+			ctx:     ctx
 		}));
 		if(values === undefined || values.elements.length !== 1 || values.elements[0].type !== 'vector' || !isValue(values.elements[0].elements)) {
 			return undefined;
@@ -93,7 +94,8 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 			graph:   this.config.dfg,
 			full:    true,
 			idMap:   this.config.normalizedAst.idMap,
-			resolve: this.config.ctx.config.solver.variables
+			resolve: this.config.ctx.config.solver.variables,
+			ctx:     this.config.ctx
 		}));
 		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
 			return undefined;

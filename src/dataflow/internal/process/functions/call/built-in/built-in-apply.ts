@@ -1,7 +1,10 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	EmptyArgument,
+	type RFunctionArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -11,7 +14,7 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { VertexType } from '../../../../../graph/vertex';
 import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
-import { type IdentifierReference , isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { valueSetGuard } from '../../../../../eval/values/general';
@@ -91,7 +94,7 @@ export function processApply<OtherInfo>(
 	} else if(val.type === RType.Symbol) {
 		functionId = val.info.id;
 		if(resolveValue) {
-			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: data.environment, idMap: data.completeAst.idMap , resolve: data.ctx.config.solver.variables }));
+			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: data.environment, idMap: data.completeAst.idMap , resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
 			if(resolved?.elements.length === 1 && resolved.elements[0].type === 'string') {
 				functionName = isValue(resolved.elements[0].value) ? resolved.elements[0].value.str : undefined;
 			}
@@ -136,7 +139,7 @@ export function processApply<OtherInfo>(
 			cds:         data.controlDependencies,
 			args:        allOtherArguments, // same reference
 			origin:      ['function']
-		});
+		}, data.ctx.env.makeCleanEnv());
 		information.graph.addEdge(rootId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
 		information = {

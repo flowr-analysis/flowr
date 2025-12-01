@@ -5,18 +5,37 @@ import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/
 import { findSource } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import { type RFunctionArgument, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import { type RParseRequest, requestFromInput } from '../../../r-bridge/retriever';
+import { requestFromInput, type RParseRequest } from '../../../r-bridge/retriever';
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../util/assert';
 import { readLineByLineSync } from '../../../util/files';
 import type { DataFrameExpressionInfo, DataFrameOperation } from '../absint-info';
 import { DataFrameDomain } from '../dataframe-domain';
-import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from '../resolve-args';
+import {
+	resolveIdToArgName,
+	resolveIdToArgValue,
+	resolveIdToArgValueSymbolName,
+	resolveIdToArgVectorLength,
+	unescapeSpecialChars
+} from '../resolve-args';
 import type { ConstraintType } from '../semantics';
 import { resolveIdToDataFrameShape } from '../shape-inference';
-import { type FunctionParameterLocation, escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isNamedArgument, isRNull } from './arguments';
+import {
+	escapeRegExp,
+	filterValidNames,
+	type FunctionParameterLocation,
+	getArgumentValue,
+	getEffectiveArgs,
+	getFunctionArgument,
+	getFunctionArguments,
+	getUnresolvedSymbolsInExpression,
+	hasCriticalArgument,
+	isDataFrameArgument,
+	isNamedArgument,
+	isRNull
+} from './arguments';
 
 /**
  * Represents the different types of data frames in R
@@ -602,7 +621,7 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 	if(node.type !== RType.FunctionCall || !node.named) {
 		return;
 	}
-	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
+	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
 	let operations: DataFrameOperation[] | undefined;
 
 	if(isDataFrameFunction(node.functionName.content)) {

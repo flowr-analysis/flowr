@@ -1,5 +1,5 @@
-import { type DataflowProcessorInformation , processDataflowFor } from '../../../../../processor';
-import { type DataflowInformation , ExitPointType } from '../../../../../info';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
+import { type DataflowInformation, ExitPointType } from '../../../../../info';
 import {
 	getAllFunctionCallTargets,
 	linkCircularRedefinitionsWithinALoop,
@@ -12,18 +12,22 @@ import { guard } from '../../../../../../util/assert';
 import { dataflowLogger } from '../../../../../logger';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	EmptyArgument,
+	type RFunctionArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type DataflowFunctionFlowInformation , DataflowGraph } from '../../../../../graph/graph';
-import { type IdentifierReference , isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { type DataflowFunctionFlowInformation, DataflowGraph } from '../../../../../graph/graph';
+import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
-import { type REnvironmentInformation , initializeCleanEnvironments } from '../../../../../environments/environment';
+import { type REnvironmentInformation } from '../../../../../environments/environment';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
 import { isBuiltIn } from '../../../../../environments/built-in';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
@@ -98,7 +102,7 @@ export function processFunctionDefinition<OtherInfo>(
 				id:          read.nodeId,
 				environment: undefined,
 				cds:         undefined
-			});
+			}, data.ctx.env.makeCleanEnv());
 		}
 	}
 
@@ -122,7 +126,7 @@ export function processFunctionDefinition<OtherInfo>(
 		cds:         data.controlDependencies,
 		subflow:     flow,
 		exitPoints:  exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default).map(e => e.nodeId) ?? []
-	});
+	}, data.ctx.env.makeCleanEnv());
 	return {
 		/* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */
 		unknownReferences: [],
@@ -141,8 +145,8 @@ export function processFunctionDefinition<OtherInfo>(
 /**
  *
  */
-export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
-	callerEnvironment ??= initializeCleanEnvironments(undefined, true);
+export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext): REnvironmentInformation {
+	callerEnvironment ??= ctx.env.makeCleanEnv();
 	let level = callerEnvironment.level ?? 0;
 
 	if(baseEnvironment.level !== level) {
@@ -264,7 +268,7 @@ export function updateNestedFunctionCalls(
 }
 
 function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
-	let env = initializeCleanEnvironments(data.builtInEnvironment.memory);
+	let env = data.ctx.env.makeCleanEnv();
 	for(let i = 0; i < data.environment.level + 1 /* add another env */; i++) {
 		env = pushLocalEnvironment(env);
 	}

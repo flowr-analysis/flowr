@@ -7,16 +7,18 @@ import { guard } from '../../../src/util/assert';
 import { staticSlice } from '../../../src/slicing/static/static-slicer';
 import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
+import type { DataflowInformation } from '../../../src/dataflow/info';
+import type { NormalizedAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
 
 
 describe('slicing', () => {
-	let analyzer: FlowrAnalyzer | undefined = undefined;
+	let result: { dataflow: DataflowInformation; normalize: NormalizedAst, ctx: ReadOnlyFlowrAnalyzerContext } | undefined = undefined;
 	let ids: NodeId[] | undefined = undefined;
 
 	for(const threshold of [1, 10, 100, 200]) {
 		bench(`slice (threshold: ${threshold})`, async() => {
-			if(!analyzer) {
+			if(!result) {
 				/* make it hurt! */
 				const request = requestFromInput(`
 for(i in 1:5) {
@@ -36,14 +38,15 @@ for(i in 1:5) {
 			`.trim().repeat(200) + '\nprint(x + f(1, function(i) x[[i]] + 2, 3))');
 				await TreeSitterExecutor.initTreeSitter();
 				const exec = new TreeSitterExecutor();
-				analyzer = await new FlowrAnalyzerBuilder()
+				const analyzer = await new FlowrAnalyzerBuilder()
 					.setParser(exec)
 					.build();
 				analyzer.addRequest(request);
+				result = { dataflow: await analyzer.dataflow(), normalize: await analyzer.normalize(), ctx: analyzer.inspectContext() };
 				ids = (await analyzer.runSearch(Q.var('print').first())).getElements().map(n => n.node.info.id);
 			}
 			guard(ids !== undefined, () => 'no result');
-			staticSlice(analyzer.inspectContext(), await analyzer.dataflow(), await analyzer.normalize(), [`$${ids[0]}`], SliceDirection.Backward, threshold);
+			staticSlice(result.ctx, result.dataflow, result.normalize, [`$${ids[0]}`], SliceDirection.Backward, threshold);
 		});
 	}
 });

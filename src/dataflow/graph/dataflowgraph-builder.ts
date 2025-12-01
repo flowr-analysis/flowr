@@ -24,17 +24,15 @@ import type { FlowrSearchLike } from '../../search/flowr-search-builder';
 import { runSearch } from '../../search/flowr-search-executor';
 import { guard } from '../../util/assert';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
-import { FlowrAnalyzerEnvironmentContext } from '../../project/context/flowr-analyzer-environment-context';
-import { defaultConfigOptions } from '../../config';
-import type { FlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 
 /**
  * Creates an empty dataflow graph.
  * Should only be used in tests and documentation.
  */
 export function emptyGraph(idMap?: AstIdMap) {
-	const ctx = new FlowrAnalyzerEnvironmentContext({ config: defaultConfigOptions } as FlowrAnalyzerContext);
-	return new DataflowGraphBuilder(ctx.getCleanEnv(), idMap);
+	const ctx = contextFromInput('');
+	return new DataflowGraphBuilder(ctx.env.getCleanEnv(), idMap);
 }
 
 export type DataflowGraphEdgeTarget = NodeId | (readonly NodeId[]);

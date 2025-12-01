@@ -30,9 +30,8 @@ import { contextFromInput } from '../../project/context/flowr-analyzer-context';
  * Creates an empty dataflow graph.
  * Should only be used in tests and documentation.
  */
-export function emptyGraph(idMap?: AstIdMap) {
-	const ctx = contextFromInput('');
-	return new DataflowGraphBuilder(ctx.env.getCleanEnv(), idMap);
+export function emptyGraph(cleanEnv?: REnvironmentInformation, idMap?: AstIdMap) {
+	return new DataflowGraphBuilder(cleanEnv, idMap);
 }
 
 export type DataflowGraphEdgeTarget = NodeId | (readonly NodeId[]);
@@ -43,11 +42,11 @@ export type DataflowGraphEdgeTarget = NodeId | (readonly NodeId[]);
  * simplifies writing tests for dataflow graphs.
  */
 export class DataflowGraphBuilder extends DataflowGraph {
-	private defaultEnvironment: REnvironmentInformation;
+	private readonly defaultEnvironment: REnvironmentInformation;
 
-	constructor(cleanEnv: REnvironmentInformation, idMap?: AstIdMap) {
+	constructor(cleanEnv?: REnvironmentInformation, idMap?: AstIdMap) {
 		super(idMap);
-		this.defaultEnvironment = cleanEnv;
+		this.defaultEnvironment = cleanEnv ?? contextFromInput('').env.getCleanEnv();
 	}
 
 	/**

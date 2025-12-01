@@ -12,8 +12,7 @@ import { patchFunctionCall } from '../common';
 import {
 	type IEnvironment,
 	type REnvironmentInformation
-	,
-	makeAllMaybe } from '../../../../../environments/environment';
+} from '../../../../../environments/environment';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
 import { type IdentifierReference , ReferenceType } from '../../../../../environments/identifier';
@@ -30,6 +29,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { expensiveTrace } from '../../../../../../util/log';
 import { removeAll } from '../../../../../environments/remove';
 import type { Writable } from 'ts-essentials';
+import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 
 
 const dotDotDotAccess = /^\.\.\d+$/;

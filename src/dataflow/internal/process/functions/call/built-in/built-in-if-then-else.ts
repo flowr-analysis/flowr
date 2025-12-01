@@ -11,9 +11,10 @@ import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
 import { appendEnvironment } from '../../../../../environments/append';
 import { type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
-import { makeAllMaybe, type REnvironmentInformation } from '../../../../../environments/environment';
+import { type REnvironmentInformation } from '../../../../../environments/environment';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 
 
 /**

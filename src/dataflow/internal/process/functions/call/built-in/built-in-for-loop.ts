@@ -17,10 +17,10 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { define } from '../../../../../environments/define';
 import { appendEnvironment } from '../../../../../environments/append';
-import { makeAllMaybe } from '../../../../../environments/environment';
 import { EdgeType } from '../../../../../graph/edge';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { ReferenceType } from '../../../../../environments/identifier';
+import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 
 
 /**

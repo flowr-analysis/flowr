@@ -3,59 +3,10 @@
  * This allows the dataflow to hold current definition locations for variables, based on the current scope.
  * @module
  */
-import type { IdentifierReference } from './identifier';
-import { ReferenceType } from './identifier';
-import type { DataflowGraph } from '../graph/graph';
-import { resolveByName } from './resolve-by-name';
-import type { ControlDependency } from '../info';
 import { jsonReplacer } from '../../util/json';
 import type { BuiltInMemory } from './built-in';
-
-/**
- * Marks the reference as maybe (i.e., as controlled by a set of {@link IdentifierReference#controlDependencies|control dependencies}).
- */
-export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference {
-	if(includeDefs) {
-		const definitions = ref.name ? resolveByName(ref.name, environments, ref.type) : undefined;
-		for(const definition of definitions ?? []) {
-			if(definition.type !== ReferenceType.BuiltInFunction && definition.type !== ReferenceType.BuiltInConstant) {
-				if(definition.controlDependencies) {
-					if(defaultCd && !definition.controlDependencies.find(c => c.id === defaultCd.id && c.when === defaultCd.when)) {
-						definition.controlDependencies.push(defaultCd);
-					}
-				} else {
-					definition.controlDependencies = defaultCd ? [defaultCd] : [];
-				}
-			}
-		}
-	}
-	const node = graph.getVertex(ref.nodeId, true);
-	if(node) {
-		if(node.cds) {
-			if(defaultCd && !node.cds.find(c => c.id === defaultCd.id && c.when === defaultCd.when)) {
-				node.cds.push(defaultCd);
-			}
-		} else {
-			node.cds = defaultCd ? [defaultCd] : [];
-		}
-	}
-	if(ref.controlDependencies) {
-		if(defaultCd && !ref.controlDependencies.find(c => c.id === defaultCd.id && c.when === defaultCd.when)) {
-			return { ...ref, controlDependencies: (ref.controlDependencies ?? []).concat(defaultCd ? [defaultCd] : []) };
-		}
-	} else {
-		return { ...ref, controlDependencies: ref.controlDependencies ?? (defaultCd ? [defaultCd] : []) };
-	}
-	return ref;
-}
-
-
-/**
- *
- */
-export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference[] {
-	return references?.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, defaultCd)) ?? [];
-}
+import type { Identifier, IdentifierDefinition } from './identifier';
+import { guard } from '../../util/assert';
 
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
@@ -84,11 +35,12 @@ let environmentIdCounter = 1; // Zero is reserved for built-in environment
 /** @see REnvironmentInformation */
 export class Environment implements IEnvironment {
 	readonly id;
-	parent:      IEnvironment;
+	parent:      Environment;
 	memory:      BuiltInMemory;
+	cache?:      BuiltInMemory;
 	builtInEnv?: true;
 
-	constructor(parent: IEnvironment, isBuiltInDefault: true | undefined = undefined) {
+	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined) {
 		this.id = isBuiltInDefault ? 0 : environmentIdCounter++;
 		this.parent = parent;
 		this.memory = new Map();
@@ -96,6 +48,73 @@ export class Environment implements IEnvironment {
 		if(isBuiltInDefault) {
 			this.builtInEnv = isBuiltInDefault;
 		}
+	}
+
+	public clone(recurseParents: boolean): Environment {
+		if(this.builtInEnv) {
+			return this; // do not clone the built-in environment
+		}
+
+		const parent = recurseParents ? this.parent.clone(recurseParents) : this.parent;
+		const clone = new Environment(parent, this.builtInEnv);
+		clone.memory = new Map(
+			this.memory.entries()
+				.map(([k, v]) => [k,
+					v.map(s => ({
+						...s,
+						controlDependencies: s.controlDependencies?.slice()
+					} satisfies IdentifierDefinition))
+				])
+		);
+		return clone;
+	}
+
+	private shallowClone(recurseParents: boolean): Environment {
+		if(this.builtInEnv) {
+			return this; // do not clone the built-in environment
+		}
+
+		const parent = recurseParents ? this.parent.shallowClone(recurseParents) : this.parent;
+		const clone = new Environment(parent, this.builtInEnv);
+		clone.memory = new Map(this.memory);
+		return clone;
+	}
+
+	public define(definition: IdentifierDefinition & { name: Identifier }, superAssign?: boolean): REnvironmentInformation {
+		const { name } = definition;
+		let newEnvironment;
+		if(superAssign) {
+			newEnvironment = this.shallowClone(true);
+			let current = newEnvironment;
+			let last = undefined;
+			let found = false;
+			do{
+				if(current.memory.has(name)) {
+					current.memory.set(name, [definition]);
+					found = true;
+					break;
+				}
+				last = current;
+				current = current.parent;
+			} while(!current.builtInEnv);
+			if(!found) {
+				guard(last !== undefined, () => `Could not find global scope for ${name}`);
+				last.memory.set(name, [definition]);
+			}
+		} else {
+			newEnvironment = this.shallowClone(false);
+			defInEnv(newEnvironment.current, name, definition, config);
+		}
+		return newEnvironment;
+	}
+
+	toJSON() {
+		return {
+			id:         this.id,
+			parent:     this.parent.id,
+			memory:     this.memory,
+			builtInEnv: this.builtInEnv
+		};
 	}
 }
 
@@ -121,7 +140,7 @@ export class Environment implements IEnvironment {
  */
 export interface REnvironmentInformation {
 	/**  The currently active environment (the stack is represented by the currently active {@link IEnvironment#parent}). Environments are maintained within the dataflow graph. */
-	readonly current: IEnvironment
+	readonly current: Environment
 	/** nesting level of the environment, will be `0` for the global/root environment */
 	readonly level:   number
 }

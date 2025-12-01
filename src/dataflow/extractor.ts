@@ -27,7 +27,6 @@ import { getBuiltInDefinitions } from './environments/built-in-config';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
 import { Threadpool } from './parallel/threadpool';
-import type { SourceFilePayload } from './parallel/task-registry';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.

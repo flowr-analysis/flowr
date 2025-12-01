@@ -12,32 +12,32 @@ export interface SourceFilePayload<OtherInfo>{
     dataflowInfo: DataflowInformation;
 }
 
-export type TaskType = "task" | "subtask" | "init";
+export type TaskType = 'task' | 'subtask' | 'init';
 
-export interface TaskMessage {
-    type: TaskType;
-    id: number;
-    taskName: TaskName;
-    payload: any;
-}
+// export interface TaskMessage<OtherInfo> {
+//     type:     TaskType;
+//     id:       number;
+//     taskName: TaskName;
+//     payload:  SourceFilePayload<OtherInfo>;
+// }
 
 export type RunSubtask = <TInput, TOutput>(
     taskName: TaskName,
     taskPayload: TInput
 ) => Promise<TOutput>;
 
-export type WorkerTask<TInput = any, TOutput = any> = (
-    payload: TInput,
-    runSubtask: RunSubtask
-) => Promise<TOutput> | TOutput;
+// export type WorkerTask<TInput, TOutput> = (
+//     payload: TInput,
+//     runSubtask: RunSubtask
+// ) => Promise<TOutput> | TOutput;
 
 
 
 export const workerTasks = {
 	parallelFiles: <OtherInfo>(
-        payload: SourceFilePayload<OtherInfo>, 
-        runSubtask: RunSubtask
-    ): DataflowInformation => {
+		payload: SourceFilePayload<OtherInfo>,
+		_runSubtask: RunSubtask
+	): DataflowInformation => {
 		return standaloneSourceFile<OtherInfo>(
 			payload.index, payload.file,
 			payload.data, payload.dataflowInfo
@@ -45,20 +45,20 @@ export const workerTasks = {
 	},
 
 	testPool: async <OtherInfo>(
-        payload: SourceFilePayload<OtherInfo>, 
-        runSubtask: RunSubtask
-    ): Promise<undefined> => {
-		console.log(`Processing ${payload.file} @ index ${payload.index}`);
-        const result = await runSubtask("otherFunction", {}) as number;
-        const result2 = await runSubtask("otherFunction", {}) as number;
-        console.log(`Got ${result} and ${result2} as value from subtask`);
-        return undefined;
+		payload: SourceFilePayload<OtherInfo>,
+		runSubtask: RunSubtask
+	): Promise<undefined> => {
+		console.log(`Processing ${JSON.stringify(payload.file)} @ index ${payload.index}`);
+		const result = await runSubtask<Record<string, never>, number>('otherFunction', {});
+		const result2 = await runSubtask<Record<string, never>, number>('otherFunction', {});
+		console.log(`Got ${result} and ${result2} as value from subtask`);
+		return undefined;
 	},
 
-    otherFunction: <OtherInfo>(): number => {
-        console.log('Another function as a subtask');
-        return Math.random();
-    }
+	otherFunction: (): number => {
+		console.log('Another function as a subtask');
+		return Math.random();
+	}
 };
 
 export type TaskRegistry = typeof workerTasks;

@@ -27,7 +27,6 @@ import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 import { Threadpool } from './parallel/threadpool';
-import type { SourceFilePayload } from './parallel/task-registry';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.

@@ -49,8 +49,9 @@ const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	[/%%\s*\d*-+/g, ''],
 	[/"[rR]": "\d+\.\d+\.\d+.*?"/g, ''],
 	[/R\s*\d+\.\d+\.\d+/g, ''],
+	[/v\d+\.\d+\.\d+/g, ''],
 	// async wrapper depends on whether the promise got forfilled already
-	[/%20async%20/g, ' ']
+	[/async|%20/g, '']
 ];
 
 /**

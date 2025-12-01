@@ -60,11 +60,11 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 		this.emptyBuiltInEnv.memory = builtIns.emptyBuiltInMemory;
 	}
 
-	public get builtInEnvironment(): IEnvironment {
+	public get builtInEnvironment(): DeepReadonly<IEnvironment> {
 		return this.builtInEnv;
 	}
 
-	public get emptyBuiltInEnvironment(): IEnvironment {
+	public get emptyBuiltInEnvironment(): DeepReadonly<IEnvironment> {
 		return this.emptyBuiltInEnv;
 	}
 

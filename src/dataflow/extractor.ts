@@ -125,24 +125,35 @@ export function produceDataFlowGraph<OtherInfo>(
 	};
 	let df = processDataflowFor<OtherInfo>(files[0].root, dfData);
 
+	/*
 	// first call with threadpool
 	const pool = new Threadpool();
 
 	// submit all files
 	const _result = pool.submitTasks(
-		'testPool',
-		files.map((file, i) => ({
-			index:        i,
-			file,
-			data:         undefined as unknown as DataflowProcessorInformation<OtherInfo & ParentInformation>,
-			dataflowInfo: undefined as unknown as DataflowInformation
-		}))
-	);
+			'testPool',
+			files.map((file, i) => ({
+				index:        i,
+				file,
+				data:         undefined as unknown as DataflowProcessorInformation<OtherInfo & ParentInformation>,
+				dataflowInfo: undefined as unknown as DataflowInformation
+			}))
+	);*/
+
+	const dataflow: DataflowInformation[] = [];
 
 	for(let i = 1; i < files.length; i++) {
 		/* source requests register automatically */
-		df = standaloneSourceFile(i, files[i], dfData, df);
+		dataflow.push(standaloneSourceFile(i, files[i], dfData, df));
+
 	}
+
+	for(let i = 0; i < dataflow.length; i++){
+		// merge dataflow back together via reduction with the helper function
+		df = mergeDataflowInformation(i + '-file', dfData, files[i].filePath, df, dataflow[i]);
+	}
+
+
 
 	// finally, resolve linkages
 	updateNestedFunctionCalls(df.graph, df.environment);

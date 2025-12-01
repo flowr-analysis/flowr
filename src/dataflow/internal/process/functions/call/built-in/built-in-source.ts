@@ -265,6 +265,40 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 		return information;
 	}
 
+	return dataflow;
+
+	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
+	if(!String(rootId).startsWith('file-')) {
+		if(dataflow.graph.hasVertex(dataflow.entryPoint)) {
+			dataflow.graph.addControlDependency(dataflow.entryPoint, rootId, true);
+		}
+		for(const out of dataflow.out) {
+			dataflow.graph.addControlDependency(out.nodeId, rootId, true);
+		}
+	}
+
+	data.ctx.files.addConsideredFile(filePath ?? '<inline>');
+
+	// update our graph with the sourced file's information
+
+	return {
+		...information,
+		environment:       overwriteEnvironment(information.environment, dataflow.environment),
+		graph:             information.graph.mergeWith(dataflow.graph),
+		in:                information.in.concat(dataflow.in),
+		out:               information.out.concat(dataflow.out),
+		unknownReferences: information.unknownReferences.concat(dataflow.unknownReferences),
+		exitPoints:        dataflow.exitPoints
+	};
+}
+
+/**
+ *
+ */
+export function mergeDataflowInformation<OtherInfo>(rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+																																																				filePath: string | undefined, information: DataflowInformation, dataflow: DataflowInformation
+): DataflowInformation{
+
 	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
 	if(!String(rootId).startsWith('file-')) {
 		if(dataflow.graph.hasVertex(dataflow.entryPoint)) {

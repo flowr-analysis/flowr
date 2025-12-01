@@ -71,8 +71,8 @@ describe.sequential('Resolve', withShell(shell => {
 		test(effectiveName, async() => {
 			const context = contextFromInput(code.trim());
 			const dataflow = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-				parser:  shell,
-				context: context,
+				parser: shell,
+				context
 			}).allRemainingSteps();
 
 			const resolved = resolveIdToValue(slicingCriterionToId(identifier, dataflow.normalize.idMap), {

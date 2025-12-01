@@ -36,7 +36,7 @@ export function staticSlice(
 	criteria: SlicingCriteria,
 	direction: SliceDirection,
 	threshold = 75,
-	cache?: Map<Fingerprint, Set<NodeId>>,
+	cache?: Map<Fingerprint, Set<NodeId>>
 ): Readonly<SliceResult> {
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice');
 	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, idMap);

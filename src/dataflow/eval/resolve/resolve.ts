@@ -69,12 +69,12 @@ export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, ctx: R
  *
  * This function resolves a vector function call `c` to a {@link ValueVector}
  * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
- * @param resolve - Variable resolve mode
- * @param node    - Node of the vector function to resolve
- * @param environment     - Environment to use
- * @param ctx - Analyzer context
- * @param graph   - Dataflow graph
- * @param idMap     - ID map of the dataflow graph
+ * @param resolve     - Variable resolve mode
+ * @param node        - Node of the vector function to resolve
+ * @param environment - Environment to use
+ * @param ctx         - Analyzer context
+ * @param graph       - Dataflow graph
+ * @param idMap       - ID map of the dataflow graph
  * @returns ValueVector or Top
  */
 export function resolveAsVector(resolve: VariableResolve, node: RNodeWithParent, ctx: ReadOnlyFlowrAnalyzerContext, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueVector<Lift<Value[]>> | typeof Top {

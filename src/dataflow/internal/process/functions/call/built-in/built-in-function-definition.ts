@@ -7,7 +7,7 @@ import {
 	produceNameSharedIdMap
 } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { unpackArgument } from '../argument/unpack-argument';
+import { unpackNonameArg } from '../argument/unpack-argument';
 import { guard } from '../../../../../../util/assert';
 import { dataflowLogger } from '../../../../../logger';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -45,7 +45,7 @@ export function processFunctionDefinition<OtherInfo>(
 
 	/* we remove the last argument, as it is the body */
 	const parameters = args.slice(0, -1);
-	const bodyArg = unpackArgument(args[args.length - 1]);
+	const bodyArg = unpackNonameArg(args[args.length - 1]);
 	guard(bodyArg !== undefined, () => `Function Definition ${JSON.stringify(args)} has missing body! This is bad!`);
 
 	const originalEnvironment = data.environment;
@@ -175,11 +175,7 @@ export function updateNestedFunctionClosures(
 ) {
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-	for(const [id, { subflow, tag }] of graph.vertices(true)) {
-		if(tag !== VertexType.FunctionDefinition) {
-			continue;
-		}
-
+	for(const [id, { subflow, tag }] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 		const ingoingRefs = subflow.in;
 		const remainingIn: IdentifierReference[] = [];
 		for(const ingoing of ingoingRefs) {
@@ -217,8 +213,8 @@ export function updateNestedFunctionCalls(
 ) {
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-	for(const [id, { onlyBuiltin, tag, environment, name }] of graph.vertices(true)) {
-		if(tag !== VertexType.FunctionCall || !name || onlyBuiltin) {
+	for(const [id, { onlyBuiltin, environment, name }] of graph.verticesOfType(VertexType.FunctionCall)) {
+		if(!name || onlyBuiltin) {
 			continue;
 		}
 

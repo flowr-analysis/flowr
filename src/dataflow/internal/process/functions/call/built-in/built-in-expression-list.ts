@@ -7,7 +7,7 @@ import { addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBran
 import { type DataflowProcessorInformation , processDataflowFor } from '../../../../../processor';
 import { linkFunctionCalls } from '../../../../linker';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
-import { unpackArgument } from '../argument/unpack-argument';
+import { unpackNonameArg } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
 import type {
 	Environment ,
@@ -136,7 +136,7 @@ export function processExpressionList<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const expressions = args.map(e => unpackArgument(e));
+	const expressions = args.map(unpackNonameArg);
 
 	expensiveTrace(dataflowLogger, () => `[expr list] with ${expressions.length} expressions`);
 

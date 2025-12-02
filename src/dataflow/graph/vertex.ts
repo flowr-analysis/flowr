@@ -9,9 +9,9 @@ import type { BuiltInMappingName } from '../environments/built-in';
 export enum VertexType {
 	Value              = 'value',
 	Use                = 'use',
-	FunctionCall       = 'function-call',
-	VariableDefinition = 'variable-definition',
-	FunctionDefinition = 'function-definition'
+	FunctionCall       = 'fcall',
+	VariableDefinition = 'vdef',
+	FunctionDefinition = 'fdef'
 }
 
 export const ValidVertexTypes: Set<string> = new Set(Object.values(VertexType));

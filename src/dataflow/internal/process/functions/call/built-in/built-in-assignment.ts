@@ -2,7 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { log, LogLevel } from '../../../../../../util/log';
-import { unpackArgument } from '../argument/unpack-argument';
+import { unpackArg } from '../argument/unpack-argument';
 import { processAsNamedCall } from '../../../process-named-call';
 import { toUnnamedArgument, wrapArgumentsUnnamed } from '../argument/make-argument';
 import type {
@@ -249,8 +249,8 @@ export function processAssignment<OtherInfo>(
 }
 
 function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]) {
-	const source = unpackArgument(args[1], false);
-	const target = unpackArgument(args[0], false);
+	const source = unpackArg(args[1]);
+	const target = unpackArg(args[0]);
 	return { source, target };
 }
 

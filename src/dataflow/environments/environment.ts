@@ -61,7 +61,6 @@ export class Environment implements IEnvironment {
 	/**
 	 * Create a deep clone of this environment.
 	 * @param recurseParents     - Whether to also clone parent environments
-	 * @see {@link shallowClone} - to create a shallow clone of this environment
 	 */
 	public clone(recurseParents: boolean): Environment {
 		if(this.builtInEnv) {
@@ -70,7 +69,6 @@ export class Environment implements IEnvironment {
 
 		const parent = recurseParents ? this.parent.clone(recurseParents) : this.parent;
 		const clone = new Environment(parent, this.builtInEnv);
-		clone.cache = this.cache ? new Map(this.cache) : undefined;
 		clone.memory = new Map(
 			this.memory.entries()
 				.map(([k, v]) => [k,
@@ -84,75 +82,58 @@ export class Environment implements IEnvironment {
 	}
 
 	/**
-	 * Create a shallow clone of this environment.
-	 * @param recurseParents - Whether to also clone parent environments
-	 * @see {@link clone}    - to create a deep clone of this environment
-	 */
-	public shallowClone(recurseParents: boolean): Environment {
-		if(this.builtInEnv) {
-			return this; // do not clone the built-in environment
-		}
-
-		const parent = recurseParents ? this.parent.shallowClone(recurseParents) : this.parent;
-		const clone = new Environment(parent, this.builtInEnv);
-		clone.memory = new Map(this.memory);
-		clone.cache = this.cache ? new Map(this.cache) : undefined;
-		return clone;
-	}
-
-	/**
 	 * Define a new identifier definition within this environment.
 	 * @param definition  - The definition to add.
-	 * @param superAssign - Whether to perform a super assignment (i.e., update an existing definition in a parent environment).
 	 * @param config      - The flowr configuration options.
 	 */
-	public define(definition: IdentifierDefinition & { name: Identifier }, superAssign: boolean | undefined, config: FlowrConfigOptions): Environment {
+	public define(definition: IdentifierDefinition & { name: Identifier }, { solver: { pointerTracking } }: FlowrConfigOptions): Environment {
 		const { name } = definition;
-		let newEnvironment;
-		if(superAssign) {
-			newEnvironment = this.clone(true);
-			let current = newEnvironment;
-			let last = undefined;
-			let found = false;
-			do{
-				if(current.memory.has(name)) {
-					current.memory.set(name, [definition]);
-					found = true;
-					break;
-				}
-				last = current;
-				current = current.parent;
-			} while(!current.builtInEnv);
-			if(!found) {
-				guard(last !== undefined, () => `Could not find global scope for ${name}`);
-				last.memory.set(name, [definition]);
-			}
+		const newEnvironment = this.clone(false);
+		// When there are defined indices, merge the definitions
+		if(definition.controlDependencies === undefined && !pointerTracking) {
+			newEnvironment.memory.set(name, [definition]);
 		} else {
-			newEnvironment = this.clone(false);
-			// When there are defined indices, merge the definitions
-			if(definition.controlDependencies === undefined && !config.solver.pointerTracking) {
-				newEnvironment.memory.set(name, [definition]);
-			} else {
-				const existing = newEnvironment.memory.get(name);
-				const inGraphDefinition = definition as InGraphIdentifierDefinition;
-				if(
-					config.solver.pointerTracking &&
-                    existing !== undefined &&
-                    inGraphDefinition.controlDependencies === undefined
-				) {
-					if(inGraphDefinition.indicesCollection !== undefined) {
-						const defs = mergeDefinitionsForPointer(existing, inGraphDefinition);
-						newEnvironment.memory.set(name, defs);
-					} else if((existing as InGraphIdentifierDefinition[])?.flatMap(i => i.indicesCollection ?? []).length > 0) {
-						// When indices couldn't be resolved, but indices where defined before, just add the definition
-						existing.push(definition);
-					}
-				} else if(existing === undefined || definition.controlDependencies === undefined) {
-					newEnvironment.memory.set(name, [definition]);
-				} else {
+			const existing = newEnvironment.memory.get(name);
+			const inGraphDefinition = definition as InGraphIdentifierDefinition;
+			if(
+				pointerTracking &&
+                existing !== undefined &&
+                inGraphDefinition.controlDependencies === undefined
+			) {
+				if(inGraphDefinition.indicesCollection !== undefined) {
+					const defs = mergeDefinitionsForPointer(existing, inGraphDefinition);
+					newEnvironment.memory.set(name, defs);
+				} else if((existing as InGraphIdentifierDefinition[])?.flatMap(i => i.indicesCollection ?? []).length > 0) {
+					// When indices couldn't be resolved, but indices where defined before, just add the definition
 					existing.push(definition);
 				}
+			} else if(existing === undefined || definition.controlDependencies === undefined) {
+				newEnvironment.memory.set(name, [definition]);
+			} else {
+				existing.push(definition);
 			}
+		}
+		return newEnvironment;
+	}
+
+	public defineSuper(definition: IdentifierDefinition & { name: Identifier }): Environment {
+		const { name } = definition;
+		const newEnvironment = this.clone(true);
+		let current = newEnvironment;
+		let last = undefined;
+		let found = false;
+		do{
+			if(current.memory.has(name)) {
+				current.memory.set(name, [definition]);
+				found = true;
+				break;
+			}
+			last = current;
+			current = current.parent;
+		} while(!current.builtInEnv);
+		if(!found) {
+			guard(last !== undefined, () => `Could not find global scope for ${name}`);
+			last.memory.set(name, [definition]);
 		}
 		return newEnvironment;
 	}

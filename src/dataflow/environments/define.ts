@@ -104,11 +104,12 @@ function overwriteContainerIndices(
 /**
  * Insert the given `definition` --- defined within the given scope --- into the passed along `environments` will take care of propagation.
  * Does not modify the passed along `environments` in-place! It returns the new reference.
- * @see {@link Environment#define} - for details on how definitions are handled.
+ * @see {@link Environment#define}      - for details on how (local) definitions are handled.
+ * @see {@link Environment#defineSuper} - for details on how (super) definitions are handled.
  */
-export function define(definition: IdentifierDefinition & { name: Identifier }, superAssign: boolean | undefined, environment: REnvironmentInformation, config: FlowrConfigOptions): REnvironmentInformation {
+export function define(definition: IdentifierDefinition & { name: Identifier }, superAssign: boolean | undefined, { level, current }: REnvironmentInformation, config: FlowrConfigOptions): REnvironmentInformation {
 	return {
-		level:   environment.level,
-		current: environment.current.define(definition, superAssign, config)
+		level,
+		current: superAssign ? current.defineSuper(definition) : current.define(definition, config),
 	};
 }

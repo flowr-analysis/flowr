@@ -62,7 +62,6 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 	}
 }
 
-// TODO: this should write to the cache!
 /**
  * The more performant version of {@link resolveByName} when the target type is unknown.
  */

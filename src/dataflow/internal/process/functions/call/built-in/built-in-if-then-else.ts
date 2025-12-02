@@ -2,7 +2,7 @@ import { type DataflowProcessorInformation, processDataflowFor } from '../../../
 import { alwaysExits, type DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { patchFunctionCall } from '../common';
-import { unpackArgument } from '../argument/unpack-argument';
+import { unpackNonameArg } from '../argument/unpack-argument';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -18,7 +18,9 @@ import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 
 
 /**
- *
+ * Processes an if-then-else built-in function call.
+ * For example, `if(cond) thenExpr else elseExpr` and `if(cond) thenExpr`.
+ * The arguments will be either `[cond, thenExpr]` or `[cond, thenExpr, elseExpr]`.
  */
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -31,7 +33,7 @@ export function processIfThenElse<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
-	const [condArg, thenArg, otherwiseArg] = args.map(e => unpackArgument(e));
+	const [condArg, thenArg, otherwiseArg] = args.map(e => unpackNonameArg(e));
 
 	if(condArg === undefined || thenArg === undefined) {
 		dataflowLogger.warn(`If-then-else ${name.content} has empty condition or then case in ${JSON.stringify(args)}, skipping`);

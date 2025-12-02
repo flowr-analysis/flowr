@@ -1,11 +1,21 @@
 import type { SourceRange } from '../range';
 import { escapeId, escapeMarkdown, mermaidCodeToUrl } from './mermaid';
-import { type DataflowFunctionFlowInformation, type DataflowGraph, type FunctionArgument , isNamedArgument, isPositionalArgument } from '../../dataflow/graph/graph';
-import { type NodeId , normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type IdentifierDefinition, type IdentifierReference , ReferenceTypeReverseMapping } from '../../dataflow/environments/identifier';
+import {
+	type DataflowFunctionFlowInformation,
+	type DataflowGraph,
+	type FunctionArgument,
+	isNamedArgument,
+	isPositionalArgument
+} from '../../dataflow/graph/graph';
+import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import {
+	type IdentifierDefinition,
+	type IdentifierReference,
+	ReferenceTypeReverseMapping
+} from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { type EdgeType , edgeTypeToName, splitEdgeTypes } from '../../dataflow/graph/edge';
-import { type DataflowGraphVertexInfo , VertexType } from '../../dataflow/graph/vertex';
+import { type EdgeType, edgeTypeToName, splitEdgeTypes } from '../../dataflow/graph/edge';
+import { type DataflowGraphVertexInfo, VertexType } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isBuiltIn } from '../../dataflow/environments/built-in';
@@ -128,7 +138,7 @@ function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD-True' | 
 function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: string, close: string } {
 	let open: string;
 	let close: string;
-	if(tag === 'function-definition' || tag === 'variable-definition') {
+	if(tag === VertexType.FunctionDefinition || tag === VertexType.VariableDefinition) {
 		open = '[';
 		close = ']';
 	} else if(tag === VertexType.FunctionCall) {
@@ -235,7 +245,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 			}
 		}
 	}
-	if(info.tag === 'function-definition') {
+	if(info.tag === VertexType.FunctionDefinition) {
 		subflowToMermaid(id, info.exitPoints, info.subflow, mermaid, idPrefix);
 	}
 }

@@ -18,7 +18,11 @@ import { lastJoin, prefixLines } from './doc-util/doc-general';
 import { type NodeId , recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { resolveByName, resolvesToBuiltInConstant, } from '../dataflow/environments/resolve-by-name';
+import {
+	resolveByName,
+	resolveByNameAnyType,
+	resolvesToBuiltInConstant,
+} from '../dataflow/environments/resolve-by-name';
 import { createDataflowPipeline } from '../core/steps/pipeline/default-pipelines';
 import { nth } from '../util/text/text';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
@@ -400,7 +404,7 @@ Hence, trying to re-resolve the call using ${ctx.link(getAllFunctionCallTargets)
 the following target ids: { \`${[...getAllFunctionCallTargets(id, info.dataflow.graph)].join('`, `')}\` }.
 This way we know that the call may refer to the built-in assignment operator or to the multiplication.
 Similarly, trying to resolve the name with ${ctx.link(resolveByName)}\` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
-{ \`${resolveByName(name, env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
+{ \`${resolveByNameAnyType(name, env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
 
 	`;
 })()}

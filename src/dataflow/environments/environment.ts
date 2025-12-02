@@ -119,7 +119,8 @@ export class Environment implements IEnvironment {
 			do{
 				if(current.memory.has(name)) {
 					current.memory.set(name, [definition]);
-					this.cache?.set(name, [definition]);
+					current.cache ??= new Map();
+					current.cache.set(name, [definition]);
 					found = true;
 					break;
 				}
@@ -129,13 +130,16 @@ export class Environment implements IEnvironment {
 			if(!found) {
 				guard(last !== undefined, () => `Could not find global scope for ${name}`);
 				last.memory.set(name, [definition]);
-				this.cache?.set(name, [definition]);
+				last.cache ??= new Map();
+				last.cache.set(name, [definition]);
 			}
 		} else {
 			newEnvironment = this.clone(false);
 			// When there are defined indices, merge the definitions
 			if(definition.controlDependencies === undefined && !config.solver.pointerTracking) {
 				newEnvironment.memory.set(name, [definition]);
+				newEnvironment.cache ??= new Map();
+				newEnvironment.cache.set(name, [definition]);
 			} else {
 				const existing = newEnvironment.memory.get(name);
 				const inGraphDefinition = definition as InGraphIdentifierDefinition;
@@ -145,17 +149,24 @@ export class Environment implements IEnvironment {
                     inGraphDefinition.controlDependencies === undefined
 				) {
 					if(inGraphDefinition.indicesCollection !== undefined) {
-						newEnvironment.memory.set(name, mergeDefinitionsForPointer(existing, inGraphDefinition));
+						const defs = mergeDefinitionsForPointer(existing, inGraphDefinition);
+						newEnvironment.memory.set(name, defs);
+						newEnvironment.cache ??= new Map();
+						newEnvironment.cache.set(name, defs.slice());
 					} else if((existing as InGraphIdentifierDefinition[])?.flatMap(i => i.indicesCollection ?? []).length > 0) {
 						// When indices couldn't be resolved, but indices where defined before, just add the definition
 						existing.push(definition);
+						newEnvironment.cache ??= new Map();
+						newEnvironment.cache.set(name, existing.slice());
 					}
 				} else if(existing === undefined || definition.controlDependencies === undefined) {
 					newEnvironment.memory.set(name, [definition]);
-					this.cache?.set(name, [definition]);
+					newEnvironment.cache ??= new Map();
+					newEnvironment.cache.set(name, [definition]);
 				} else {
 					existing.push(definition);
-					this.cache?.set(name, existing.slice());
+					newEnvironment.cache ??= new Map();
+					newEnvironment.cache.set(name, existing.slice());
 				}
 			}
 		}
@@ -200,15 +211,6 @@ export class Environment implements IEnvironment {
 
 		const out = new Environment(this.parent.overwrite(other.parent, applyCds));
 		out.memory = map;
-		let newCache = this.cache ? new Map(this.cache) : undefined;
-		if(newCache && other.cache) {
-			for(const [key, values] of other.cache) {
-				newCache.set(key, values);
-			}
-		} else if(!newCache && other.cache) {
-			newCache = other.cache;
-		}
-		out.cache = newCache;
 		return out;
 	}
 
@@ -232,12 +234,6 @@ export class Environment implements IEnvironment {
 
 		const out = new Environment(this.parent.append(other.parent));
 		out.memory = map;
-		const newCache = this.cache ? new Map(this.cache) : undefined;
-		if(newCache && other.cache) {
-			for(const [key, values] of other.cache) {
-				newCache.set(key, uniqueMergeValuesInDefinitions(newCache.get(key) ?? [], values));
-			}
-		}
 		return out;
 	}
 

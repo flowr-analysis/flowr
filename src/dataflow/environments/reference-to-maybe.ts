@@ -2,8 +2,8 @@ import type { IdentifierReference } from './identifier';
 import { ReferenceType } from './identifier';
 import type { DataflowGraph } from '../graph/graph';
 import type { ControlDependency } from '../info';
-import { resolveByName } from './resolve-by-name';
 import type { REnvironmentInformation } from './environment';
+import { resolveByName } from './resolve-by-name';
 
 /**
  * Marks the reference as maybe (i.e., as controlled by a set of {@link IdentifierReference#controlDependencies|control dependencies}).

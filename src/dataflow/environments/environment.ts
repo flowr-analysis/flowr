@@ -45,9 +45,7 @@ export class Environment implements IEnvironment {
 	readonly id;
 	parent:      Environment;
 	memory:      BuiltInMemory;
-	// TODO: mae cache filer sensitive
 	cache?:      BuiltInMemory;
-	// TODO: maybe also cache all known names in general as a count map/bag/ref counter to allow for remove etc. to work with cache invalidation
 	builtInEnv?: true;
 
 	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined) {

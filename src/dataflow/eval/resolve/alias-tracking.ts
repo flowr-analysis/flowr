@@ -8,7 +8,7 @@ import { guard } from '../../../util/assert';
 import type { BuiltInIdentifierConstant } from '../../environments/built-in';
 import { type IEnvironment, type REnvironmentInformation } from '../../environments/environment';
 import { type Identifier, ReferenceType } from '../../environments/identifier';
-import { resolveByName } from '../../environments/resolve-by-name';
+import { resolveByName, resolveByNameAnyType } from '../../environments/resolve-by-name';
 import { EdgeType } from '../../graph/edge';
 import type { DataflowGraph } from '../../graph/graph';
 import { onReplacementOperator, type ReplacementOperatorHandlerArgs } from '../../graph/unknown-replacement';
@@ -69,7 +69,7 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 		return undefined;
 	}
 
-	const defs = resolveByName(identifier, environment);
+	const defs = resolveByNameAnyType(identifier, environment);
 	if(defs === undefined) {
 		return undefined;
 	}
@@ -199,7 +199,7 @@ export function trackAliasInEnvironments(resolve: VariableResolve, identifier: I
 		return Top;
 	}
 
-	const defs = resolveByName(identifier, use);
+	const defs = resolveByNameAnyType(identifier, use);
 	if(defs === undefined) {
 		return Top;
 	}

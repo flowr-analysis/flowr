@@ -44,8 +44,9 @@ export const ControlFlowQueryDefinition = {
 	}).description('The control flow query provides the control flow graph of the analysis, optionally simplified.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as QueryResults<'control-flow'>['control-flow'];
-		return [...out.controlFlow.graph.vertices(true)]
+		return out.controlFlow.graph.vertices(true).entries()
 			.filter(([,v]) => v.type !== CfgVertexType.Block)
-			.map(v => v[0]);
+			.map(v => v[0])
+			.toArray();
 	}
 } as const satisfies SupportedQuery<'control-flow'>;

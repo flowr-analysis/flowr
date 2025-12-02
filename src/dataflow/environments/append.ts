@@ -1,8 +1,11 @@
 import { guard } from '../../util/assert';
-import { type IEnvironment, type REnvironmentInformation ,  Environment } from './environment';
+import { type REnvironmentInformation  } from './environment';
 import type { IdentifierDefinition } from './identifier';
 
-function uniqueMergeValues(old: IdentifierDefinition[], value: readonly IdentifierDefinition[]): IdentifierDefinition[] {
+/**
+ * Merges two arrays of identifier definitions, ensuring uniqueness based on `nodeId` and `definedAt`.
+ */
+export function uniqueMergeValuesInDefinitions(old: IdentifierDefinition[], value: readonly IdentifierDefinition[]): IdentifierDefinition[] {
 	const result = old;
 	for(const v of value) {
 		const find = result.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt);
@@ -11,25 +14,6 @@ function uniqueMergeValues(old: IdentifierDefinition[], value: readonly Identifi
 		}
 	}
 	return result;
-}
-
-function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined): IEnvironment {
-	guard(base !== undefined && next !== undefined, 'can not append environments with undefined');
-	const map = new Map(base.memory);
-	for(const [key, value] of next.memory) {
-		const old = map.get(key);
-		if(old) {
-			map.set(key, uniqueMergeValues(old, value));
-		} else {
-			map.set(key, value);
-		}
-	}
-
-	const parent = base.parent.builtInEnv ? base.parent : appendIEnvironmentWith(base.parent, next.parent);
-
-	const out = new Environment(parent);
-	out.memory = map;
-	return out;
 }
 
 /**
@@ -48,7 +32,7 @@ export function appendEnvironment(base: REnvironmentInformation | undefined, nex
 	guard(base.level === next.level, 'environments must have the same level to be handled, it is up to the caller to ensure that');
 
 	return {
-		current: appendIEnvironmentWith(base.current, next.current),
+		current: base.current.append(next.current),
 		level:   base.level,
 	};
 }

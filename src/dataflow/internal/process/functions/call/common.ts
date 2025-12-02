@@ -20,7 +20,6 @@ import {
 	type DataflowGraphVertexAstLink,
 	type DataflowGraphVertexFunctionDefinition,
 	type FunctionOriginInformation,
-	isFunctionDefinitionVertex,
 	VertexType
 } from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -67,8 +66,7 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 			}
 		}
 	}
-	const containedSubflowIn: IdentifierReference[] = graph.vertices(true)
-		.filter(([, info]) => isFunctionDefinitionVertex(info))
+	const containedSubflowIn: IdentifierReference[] = graph.verticesOfType(VertexType.FunctionDefinition)
 		.flatMap(([, info]) => (info as DataflowGraphVertexFunctionDefinition).subflow.in)
 		.toArray();
 

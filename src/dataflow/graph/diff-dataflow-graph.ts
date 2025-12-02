@@ -222,8 +222,8 @@ export function diffVertices(ctx: GraphDiffContext): void {
 			}
 		}
 
-		if(lInfo.tag === 'function-definition') {
-			if(rInfo.tag !== 'function-definition') {
+		if(lInfo.tag === VertexType.FunctionDefinition) {
+			if(rInfo.tag !== VertexType.FunctionDefinition) {
 				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`, { tag: 'vertex', id });
 			} else {
 				if(!arrayEqual(lInfo.exitPoints, rInfo.exitPoints)) {

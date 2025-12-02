@@ -6,6 +6,7 @@ import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/vis
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { isSpecialSymbol } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { appendStatisticsFile } from '../../../output/statistics-file';
+import { VertexType } from '../../../../dataflow/graph/vertex';
 
 
 const initialVariableInfo = {
@@ -44,7 +45,7 @@ function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void 
 			}
 
 			const [dfNode] = mayNode;
-			if(dfNode.tag === 'variable-definition') {
+			if(dfNode.tag === VertexType.VariableDefinition) {
 				info.numberOfDefinitions++;
 				const lexeme = node.info.fullLexeme ?? node.lexeme;
 				appendStatisticsFile(variables.name, 'definedVariables', [[

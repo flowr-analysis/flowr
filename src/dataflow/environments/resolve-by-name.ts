@@ -1,6 +1,6 @@
-import type { IEnvironment, REnvironmentInformation } from './environment';
+import type { Environment, REnvironmentInformation } from './environment';
 import { Ternary } from '../../util/logic';
-import { type Identifier, type IdentifierDefinition , isReferenceType, ReferenceType } from './identifier';
+import { type Identifier, type IdentifierDefinition, isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 
 
@@ -23,25 +23,32 @@ const TargetTypePredicate = {
 
 /**
  * Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.
+ * If the type you want to reference is unknown, please use {@link resolveByNameAnyType} instead.
  * @param name               - The name of the identifier to resolve
  * @param environment        - The current environment used for name resolution
  * @param target             - The target (meta) type of the identifier to resolve
  * @returns A list of possible identifier definitions (one if the definition location is exactly and always known), or `undefined`
  *          if the identifier is undefined in the current scope/with the current environment information.
  */
-export function resolveByName(name: Identifier, environment: REnvironmentInformation, target: ReferenceType = ReferenceType.Unknown): IdentifierDefinition[] | undefined {
-	let current: IEnvironment = environment.current;
+export function resolveByName(name: Identifier, environment: REnvironmentInformation, target: ReferenceType): IdentifierDefinition[] | undefined {
+	if(target === ReferenceType.Unknown) {
+		return resolveByNameAnyType(name, environment);
+	}
+	let current: Environment = environment.current;
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	const wantedType = TargetTypePredicate[target];
 	do{
 		const definition = current.memory.get(name);
 		if(definition !== undefined) {
-			const filtered = target === ReferenceType.Unknown ? definition : definition.filter(wantedType);
+			const filtered = definition.filter(wantedType);
 			if(filtered.length === definition.length && definition.every(d => happensInEveryBranch(d.controlDependencies))) {
 				return definition;
 			} else if(filtered.length > 0) {
-				definitions ??= [];
-				definitions = definitions.concat(filtered);
+				if(definitions) {
+					definitions = definitions.concat(filtered);
+				} else {
+					definitions = filtered;
+				}
 			}
 		}
 		current = current.parent;
@@ -53,6 +60,48 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 	} else {
 		return builtIns;
 	}
+}
+
+/**
+ * The more performant version of {@link resolveByName} when the target type is unknown.
+ */
+export function resolveByNameAnyType(name: Identifier, environment: REnvironmentInformation): IdentifierDefinition[] | undefined {
+	let current: Environment = environment.current;
+	const g = current.cache?.get(name);
+	if(g !== undefined) {
+		return g;
+	}
+	let definitions: IdentifierDefinition[] | undefined = undefined;
+	do{
+		const definition = current.memory.get(name);
+		if(definition) {
+			if(definition.every(d => happensInEveryBranch(d.controlDependencies))) {
+				environment.current.cache ??= new Map();
+				environment.current.cache?.set(name, definition);
+				return definition;
+			} else if(definition.length > 0) {
+				if(definitions) {
+					definitions = definitions.concat(definition);
+				} else {
+					definitions = definition;
+				}
+			}
+		}
+		current = current.parent;
+	} while(!current.builtInEnv);
+
+	const builtIns = current.memory.get(name);
+	let ret: IdentifierDefinition[] | undefined;
+	if(definitions) {
+		ret = builtIns === undefined ? definitions : definitions.concat(builtIns);
+	} else {
+		ret = builtIns;
+	}
+	if(ret) {
+		environment.current.cache ??= new Map();
+		environment.current.cache?.set(name, ret);
+	}
+	return ret;
 }
 
 

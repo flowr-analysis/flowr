@@ -18,7 +18,11 @@ import { lastJoin, prefixLines } from './doc-util/doc-general';
 import { type NodeId , recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { resolveByName, resolvesToBuiltInConstant, } from '../dataflow/environments/resolve-by-name';
+import {
+	resolveByName,
+	resolveByNameAnyType,
+	resolvesToBuiltInConstant,
+} from '../dataflow/environments/resolve-by-name';
 import { createDataflowPipeline } from '../core/steps/pipeline/default-pipelines';
 import { nth } from '../util/text/text';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
@@ -250,7 +254,7 @@ ${
 		await (async() => {
 			const code = 'foo(x,3,y=3,)';
 			const [text, info] = await printDfGraphForCode(parser, code, { mark: new Set([8]), exposeResult: true });
-			const callInfo = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name === 'foo');
+			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name === 'foo');
 			guard(callInfo !== undefined, () => `Could not find call vertex for ${code}`);
 			const [callId, callVert] = callInfo as [NodeId, DataflowGraphVertexFunctionCall];
 			const inverseMapReferenceTypes = Object.fromEntries(Object.entries(ReferenceType).map(([k, v]) => [v, k]));
@@ -375,7 +379,7 @@ Consider a case in which you have a built-in function (like the assignment opera
 ${await (async() => {
 	const [text, info] = await printDfGraphForCode(parser, 'x <- 2\nif(u) `<-` <- `*`\nx <- 3', { switchCodeAndGraph: true, mark: new Set([9, '9->0', '9->10']), exposeResult: true });
 
-	const interestingUseOfAssignment = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.id === 11);
+	const interestingUseOfAssignment = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.id === 11);
 	guard(interestingUseOfAssignment !== undefined, () => 'Could not find interesting assignment vertex for the code');
 	const [id, interestingVertex] = interestingUseOfAssignment;
 	const env = interestingVertex.environment;
@@ -400,7 +404,7 @@ Hence, trying to re-resolve the call using ${ctx.link(getAllFunctionCallTargets)
 the following target ids: { \`${[...getAllFunctionCallTargets(id, info.dataflow.graph)].join('`, `')}\` }.
 This way we know that the call may refer to the built-in assignment operator or to the multiplication.
 Similarly, trying to resolve the name with ${ctx.link(resolveByName)}\` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
-{ \`${resolveByName(name, env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
+{ \`${resolveByNameAnyType(name, env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
 
 	`;
 })()}
@@ -536,8 +540,7 @@ ${details('Example: Nested Function Definitions',
 	await (async() => {
 		const [text, info] = await printDfGraphForCode(parser, 'f <- function() { g <- function() 3 }', { mark: new Set([9, 6]), exposeResult: true });
 
-		const definitions = info.dataflow.graph.vertices(true)
-			.filter(([, vertex]) => vertex.tag === VertexType.FunctionDefinition)
+		const definitions = info.dataflow.graph.verticesOfType(VertexType.FunctionDefinition)
 			.map(([id, vertex]) => `| \`${id}\` | { \`${[...(vertex as DataflowGraphVertexFunctionDefinition).subflow.graph].join('`, `')}\` } |`)
 			.toArray();
 

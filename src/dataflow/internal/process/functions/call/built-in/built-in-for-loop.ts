@@ -9,7 +9,7 @@ import {
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
 import { patchFunctionCall } from '../common';
-import { unpackArgument } from '../argument/unpack-argument';
+import { unpackNonameArg } from '../argument/unpack-argument';
 import { dataflowLogger } from '../../../../../logger';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -17,10 +17,11 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { define } from '../../../../../environments/define';
 import { appendEnvironment } from '../../../../../environments/append';
-import { makeAllMaybe } from '../../../../../environments/environment';
 import { EdgeType } from '../../../../../graph/edge';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { IdentifierDefinition } from '../../../../../environments/identifier';
 import { ReferenceType } from '../../../../../environments/identifier';
+import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 
 
 /**
@@ -37,7 +38,7 @@ export function processForLoop<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
-	const [variableArg, vectorArg, bodyArg] = args.map(e => unpackArgument(e));
+	const [variableArg, vectorArg, bodyArg] = args.map(e => unpackNonameArg(e));
 
 	guard(variableArg !== undefined && vectorArg !== undefined && bodyArg !== undefined, () => `For-Loop ${JSON.stringify(args)} has missing arguments! Bad!`);
 	const vector = processDataflowFor(vectorArg, data);
@@ -56,7 +57,7 @@ export function processForLoop<OtherInfo>(
 
 	const writtenVariable = variable.unknownReferences.concat(variable.in);
 	for(const write of writtenVariable) {
-		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable }, false, headEnvironments, data.ctx.config);
+		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable } as (IdentifierDefinition & { name: string }), false, headEnvironments, data.ctx.config);
 	}
 	data = { ...data, controlDependencies: [...data.controlDependencies ?? [], { id: name.info.id, when: true }], environment: headEnvironments };
 

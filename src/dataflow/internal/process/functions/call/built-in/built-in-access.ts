@@ -8,7 +8,6 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
-import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/environment';
 import type { ForceArguments } from '../common';
 import { type BuiltInMappingName , builtInId } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
@@ -16,6 +15,7 @@ import { ReferenceType } from '../../../../../environments/identifier';
 import { type ContainerIndicesCollection, type ContainerParentIndex , isParentContainerIndex } from '../../../../../graph/vertex';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { filterIndices, getAccessOperands, resolveSingleIndex } from '../../../../../../util/containers';
+import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/reference-to-maybe';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]

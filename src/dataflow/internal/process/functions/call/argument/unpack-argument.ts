@@ -3,7 +3,16 @@ import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 
 /**
  * Retrieve the value from an argument, if it is not empty.
+ * @see {@link unpackArg} - to specifically retrieve non-named arguments
  */
-export function unpackArgument<OtherInfo>(arg: RFunctionArgument<OtherInfo> | undefined, noNameOnly = true): RNode<OtherInfo> | undefined {
-	return arg === undefined || arg === EmptyArgument || (noNameOnly && arg.name) ? undefined : arg.value;
+export function unpackNonameArg<OtherInfo>(arg: RFunctionArgument<OtherInfo> | undefined): RNode<OtherInfo> | undefined {
+	return arg === EmptyArgument || arg?.name !== undefined ? undefined : arg?.value;
+}
+
+/**
+ * Retrieve the value from a non-named argument, if it is not empty.
+ * @see {@link unpackNonameArg} - to specifically retrieve non-named arguments
+ */
+export function unpackArg<OtherInfo>(arg: RFunctionArgument<OtherInfo> | undefined): RNode<OtherInfo> | undefined {
+	return arg === EmptyArgument ? undefined : arg?.value;
 }

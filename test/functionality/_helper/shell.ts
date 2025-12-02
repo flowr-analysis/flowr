@@ -42,7 +42,7 @@ import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
 import type { ContainerIndex } from '../../../src/dataflow/graph/vertex';
 import type { REnvironmentInformation } from '../../../src/dataflow/environments/environment';
-import { resolveByName } from '../../../src/dataflow/environments/resolve-by-name';
+import { resolveByNameAnyType } from '../../../src/dataflow/environments/resolve-by-name';
 import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/util/diff-graph';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
@@ -656,7 +656,7 @@ function findInEnv(id: NodeId, ast: NormalizedAst, dfg: DataflowGraph, env: REnv
 	}
 	const mayVertex = dfg.getVertex(id);
 	const useEnv = mayVertex?.environment ?? env;
-	const result = resolveByName(name, useEnv)?.flatMap(f => {
+	const result = resolveByNameAnyType(name, useEnv)?.flatMap(f => {
 		if('indicesCollection' in f) {
 			return f.indicesCollection?.flatMap(collection => collection.indices);
 		} else {

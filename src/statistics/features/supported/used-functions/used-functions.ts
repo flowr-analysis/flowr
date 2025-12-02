@@ -7,7 +7,7 @@ import {
 } from '../../common-syntax-probability';
 import { postProcess } from './post-process';
 import { getRangeStart } from '../../../../util/range';
-import { unpackArgument } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument';
+import { unpackNonameArg } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument';
 import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
@@ -116,7 +116,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 				]);
 			}
 
-			classifyArguments(node.arguments.map(e => unpackArgument(e)), info.args);
+			classifyArguments(node.arguments.map(e => unpackNonameArg(e)), info.args);
 
 			calls.push(node);
 		}, node => {

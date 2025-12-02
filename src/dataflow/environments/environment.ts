@@ -3,59 +3,16 @@
  * This allows the dataflow to hold current definition locations for variables, based on the current scope.
  * @module
  */
-import type { IdentifierReference } from './identifier';
-import { ReferenceType } from './identifier';
-import type { DataflowGraph } from '../graph/graph';
-import { resolveByName } from './resolve-by-name';
-import type { ControlDependency } from '../info';
 import { jsonReplacer } from '../../util/json';
 import type { BuiltInMemory } from './built-in';
-
-/**
- * Marks the reference as maybe (i.e., as controlled by a set of {@link IdentifierReference#controlDependencies|control dependencies}).
- */
-export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference {
-	if(includeDefs) {
-		const definitions = ref.name ? resolveByName(ref.name, environments, ref.type) : undefined;
-		for(const definition of definitions ?? []) {
-			if(definition.type !== ReferenceType.BuiltInFunction && definition.type !== ReferenceType.BuiltInConstant) {
-				if(definition.controlDependencies) {
-					if(defaultCd && !definition.controlDependencies.find(c => c.id === defaultCd.id && c.when === defaultCd.when)) {
-						definition.controlDependencies.push(defaultCd);
-					}
-				} else {
-					definition.controlDependencies = defaultCd ? [defaultCd] : [];
-				}
-			}
-		}
-	}
-	const node = graph.getVertex(ref.nodeId, true);
-	if(node) {
-		if(node.cds) {
-			if(defaultCd && !node.cds.find(c => c.id === defaultCd.id && c.when === defaultCd.when)) {
-				node.cds.push(defaultCd);
-			}
-		} else {
-			node.cds = defaultCd ? [defaultCd] : [];
-		}
-	}
-	if(ref.controlDependencies) {
-		if(defaultCd && !ref.controlDependencies.find(c => c.id === defaultCd.id && c.when === defaultCd.when)) {
-			return { ...ref, controlDependencies: (ref.controlDependencies ?? []).concat(defaultCd ? [defaultCd] : []) };
-		}
-	} else {
-		return { ...ref, controlDependencies: ref.controlDependencies ?? (defaultCd ? [defaultCd] : []) };
-	}
-	return ref;
-}
-
-
-/**
- *
- */
-export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference[] {
-	return references?.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, defaultCd)) ?? [];
-}
+import type { Identifier, IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
+import { guard } from '../../util/assert';
+import type { ControlDependency } from '../info';
+import { happensInEveryBranch } from '../info';
+import type { FlowrConfigOptions } from '../../config';
+import { mergeDefinitionsForPointer } from './define';
+import { uniqueMergeValuesInDefinitions } from './append';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
@@ -71,6 +28,8 @@ export interface IEnvironment {
 	builtInEnv?: true | undefined
 }
 
+type Jsonified = { id: NodeId, parent: Jsonified | undefined, builtInEnv?: true, memory: BuiltInMemory };
+
 /**
  * Please use this function only if you do not know the object type.
  * Otherwise, rely on {@link IEnvironment#builtInEnv}
@@ -84,11 +43,12 @@ let environmentIdCounter = 1; // Zero is reserved for built-in environment
 /** @see REnvironmentInformation */
 export class Environment implements IEnvironment {
 	readonly id;
-	parent:      IEnvironment;
+	parent:      Environment;
 	memory:      BuiltInMemory;
+	cache?:      BuiltInMemory;
 	builtInEnv?: true;
 
-	constructor(parent: IEnvironment, isBuiltInDefault: true | undefined = undefined) {
+	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined) {
 		this.id = isBuiltInDefault ? 0 : environmentIdCounter++;
 		this.parent = parent;
 		this.memory = new Map();
@@ -96,6 +56,193 @@ export class Environment implements IEnvironment {
 		if(isBuiltInDefault) {
 			this.builtInEnv = isBuiltInDefault;
 		}
+	}
+
+	/**
+	 * Create a deep clone of this environment.
+	 * @param recurseParents     - Whether to also clone parent environments
+	 */
+	public clone(recurseParents: boolean): Environment {
+		if(this.builtInEnv) {
+			return this; // do not clone the built-in environment
+		}
+
+		const parent = recurseParents ? this.parent.clone(recurseParents) : this.parent;
+		const clone = new Environment(parent, this.builtInEnv);
+		clone.memory = new Map(
+			this.memory.entries()
+				.map(([k, v]) => [k,
+					v.map(s => ({
+						...s,
+						controlDependencies: s.controlDependencies?.slice()
+					} satisfies IdentifierDefinition))
+				])
+		);
+		return clone;
+	}
+
+	/**
+	 * Define a new identifier definition within this environment.
+	 * @param definition  - The definition to add.
+	 * @param config      - The flowr configuration options.
+	 */
+	public define(definition: IdentifierDefinition & { name: Identifier }, { solver: { pointerTracking } }: FlowrConfigOptions): Environment {
+		const { name } = definition;
+		const newEnvironment = this.clone(false);
+		// When there are defined indices, merge the definitions
+		if(definition.controlDependencies === undefined && !pointerTracking) {
+			newEnvironment.memory.set(name, [definition]);
+		} else {
+			const existing = newEnvironment.memory.get(name);
+			const inGraphDefinition = definition as InGraphIdentifierDefinition;
+			if(
+				pointerTracking &&
+                existing !== undefined &&
+                inGraphDefinition.controlDependencies === undefined
+			) {
+				if(inGraphDefinition.indicesCollection !== undefined) {
+					const defs = mergeDefinitionsForPointer(existing, inGraphDefinition);
+					newEnvironment.memory.set(name, defs);
+				} else if((existing as InGraphIdentifierDefinition[])?.flatMap(i => i.indicesCollection ?? []).length > 0) {
+					// When indices couldn't be resolved, but indices where defined before, just add the definition
+					existing.push(definition);
+				}
+			} else if(existing === undefined || definition.controlDependencies === undefined) {
+				newEnvironment.memory.set(name, [definition]);
+			} else {
+				existing.push(definition);
+			}
+		}
+		return newEnvironment;
+	}
+
+	public defineSuper(definition: IdentifierDefinition & { name: Identifier }): Environment {
+		const { name } = definition;
+		const newEnvironment = this.clone(true);
+		let current = newEnvironment;
+		let last = undefined;
+		let found = false;
+		do{
+			if(current.memory.has(name)) {
+				current.memory.set(name, [definition]);
+				found = true;
+				break;
+			}
+			last = current;
+			current = current.parent;
+		} while(!current.builtInEnv);
+		if(!found) {
+			guard(last !== undefined, () => `Could not find global scope for ${name}`);
+			last.memory.set(name, [definition]);
+		}
+		return newEnvironment;
+	}
+
+	/**
+	 * Assumes, that all definitions within other replace those within this environment (given the same name).
+	 * <b>But</b> if all definitions within other are maybe, then they are appended to the current definitions (updating them to be `maybe` from now on as well), similar to {@link appendEnvironment}.
+	 * This always recurses parents.
+	 */
+	public overwrite(other: Environment | undefined, applyCds?: readonly ControlDependency[]): Environment {
+		if(!other || this.builtInEnv) {
+			return this;
+		}
+		const map = new Map(this.memory);
+		for(const [key, values] of other.memory) {
+			const hasMaybe = applyCds === undefined ? values.length === 0 || values.some(v => v.controlDependencies !== undefined) : true;
+			if(hasMaybe) {
+				const old = map.get(key);
+				// we need to make a copy to avoid side effects for old reference in other environments
+				const updatedOld: IdentifierDefinition[] = old?.slice() ?? [];
+				for(const v of values) {
+					const index = updatedOld.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt);
+					if(index >= 0) {
+						continue;
+					}
+					if(applyCds === undefined) {
+						updatedOld.push(v);
+					} else {
+						updatedOld.push({
+							...v,
+							controlDependencies: v.controlDependencies ? applyCds.concat(v.controlDependencies) : applyCds.slice()
+						});
+					}
+				}
+				map.set(key, updatedOld);
+			} else {
+				map.set(key, values);
+			}
+		}
+
+		const out = new Environment(this.parent.overwrite(other.parent, applyCds));
+		out.memory = map;
+		return out;
+	}
+
+	/**
+	 * Adds all writes of `other` to this environment (i.e., the operations of `other` *might* happen).
+	 * This always recurses parents.
+	 */
+	public append(other: Environment | undefined): Environment {
+		if(!other || this.builtInEnv) {
+			return this;
+		}
+		const map = new Map(this.memory);
+		for(const [key, value] of other.memory) {
+			const old = map.get(key);
+			if(old) {
+				map.set(key, uniqueMergeValuesInDefinitions(old, value));
+			} else {
+				map.set(key, value);
+			}
+		}
+
+		const out = new Environment(this.parent.append(other.parent));
+		out.memory = map;
+		return out;
+	}
+
+	public remove(name: Identifier) {
+		if(this.builtInEnv) {
+			return this;
+		}
+		const definition = this.memory.get(name);
+		let cont = true;
+		if(definition !== undefined) {
+			this.memory.delete(name);
+			this.cache?.delete(name);
+			cont = !definition.every(d => happensInEveryBranch(d.controlDependencies));
+		}
+		if(cont) {
+			this.parent.remove(name);
+		}
+
+		return this;
+	}
+
+	public removeAll(names: readonly { name: Identifier }[]) {
+		if(this.builtInEnv || names.length === 0) {
+			return this;
+		}
+		const newEnv = this.clone(true);
+		// we should optimize this later
+		for(const { name } of names) {
+			newEnv.remove(name);
+		}
+		return newEnv;
+	}
+
+	toJSON(): Jsonified {
+		return this.builtInEnv ? {
+			id:         this.id,
+			parent:     this.parent,
+			builtInEnv: this.builtInEnv,
+			memory:     this.memory,
+		} : {
+			id:     this.id,
+			parent: this.parent,
+			memory: this.memory,
+		};
 	}
 }
 
@@ -121,7 +268,7 @@ export class Environment implements IEnvironment {
  */
 export interface REnvironmentInformation {
 	/**  The currently active environment (the stack is represented by the currently active {@link IEnvironment#parent}). Environments are maintained within the dataflow graph. */
-	readonly current: IEnvironment
+	readonly current: Environment
 	/** nesting level of the environment, will be `0` for the global/root environment */
 	readonly level:   number
 }

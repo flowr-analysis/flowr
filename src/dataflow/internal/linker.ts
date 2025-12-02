@@ -1,9 +1,9 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { guard, isNotUndefined } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
-import { type NodeId , recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type IdentifierReference , isReferenceType, ReferenceType } from '../environments/identifier';
-import { type DataflowGraph, type FunctionArgument , isNamedArgument } from '../graph/graph';
+import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type IdentifierReference, isReferenceType, ReferenceType } from '../environments/identifier';
+import { type DataflowGraph, type FunctionArgument, isNamedArgument } from '../graph/graph';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
@@ -13,10 +13,11 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import {
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
-	type DataflowGraphVertexInfo
-	, VertexType } from '../graph/vertex';
+	type DataflowGraphVertexInfo,
+	VertexType
+} from '../graph/vertex';
 import { resolveByName } from '../environments/resolve-by-name';
-import { type BuiltIn , isBuiltIn } from '../environments/built-in';
+import { type BuiltIn, isBuiltIn } from '../environments/built-in';
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
 import type { ExitPoint } from '../info';
@@ -29,9 +30,9 @@ export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 export function findNonLocalReads(graph: DataflowGraph, ignore: readonly IdentifierReference[]): IdentifierReference[] {
 	const ignores = new Set(ignore.map(i => i.nodeId));
 	const ids = new Set(
-		graph.vertices(true)
-			.filter(([_, info]) => info.tag === VertexType.Use || info.tag === VertexType.FunctionCall)
-			.map(([id, _]) => id)
+		graph.vertexIdsOfType(VertexType.Use).concat(
+			graph.vertexIdsOfType(VertexType.FunctionCall)
+		)
 	);
 	/* find all variable use ids which do not link to a given id */
 	const nonLocalReads: IdentifierReference[] = [];
@@ -241,10 +242,8 @@ export function linkFunctionCalls(
 	thisGraph: DataflowGraph
 ): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[] }[] {
 	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] = [];
-	for(const [id, info] of thisGraph.vertices(true)) {
-		if(info.tag === VertexType.FunctionCall) {
-			linkFunctionCall(graph, id, info as DataflowGraphVertexFunctionCall, idMap, thisGraph, calledFunctionDefinitions);
-		}
+	for(const [id, info] of thisGraph.verticesOfType(VertexType.FunctionCall)) {
+		linkFunctionCall(graph, id, info as DataflowGraphVertexFunctionCall, idMap, thisGraph, calledFunctionDefinitions);
 	}
 	return calledFunctionDefinitions;
 }

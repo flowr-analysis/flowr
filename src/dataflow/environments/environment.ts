@@ -12,6 +12,7 @@ import { happensInEveryBranch } from '../info';
 import type { FlowrConfigOptions } from '../../config';
 import { mergeDefinitionsForPointer } from './define';
 import { uniqueMergeValuesInDefinitions } from './append';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
@@ -26,6 +27,8 @@ export interface IEnvironment {
 	 */
 	builtInEnv?: true | undefined
 }
+
+type Jsonified = { id: NodeId, parent: Jsonified | undefined, builtInEnv?: true, memory: BuiltInMemory };
 
 /**
  * Please use this function only if you do not know the object type.
@@ -42,6 +45,7 @@ export class Environment implements IEnvironment {
 	readonly id;
 	parent:      Environment;
 	memory:      BuiltInMemory;
+	// TODO: mae cache filer sensitive
 	cache?:      BuiltInMemory;
 	// TODO: maybe also cache all known names in general as a count map/bag/ref counter to allow for remove etc. to work with cache invalidation
 	builtInEnv?: true;
@@ -58,7 +62,7 @@ export class Environment implements IEnvironment {
 
 	/**
 	 * Create a deep clone of this environment.
-	 * @param recurseParents - Whether to also clone parent environments
+	 * @param recurseParents     - Whether to also clone parent environments
 	 * @see {@link shallowClone} - to create a shallow clone of this environment
 	 */
 	public clone(recurseParents: boolean): Environment {
@@ -68,6 +72,7 @@ export class Environment implements IEnvironment {
 
 		const parent = recurseParents ? this.parent.clone(recurseParents) : this.parent;
 		const clone = new Environment(parent, this.builtInEnv);
+		clone.cache = this.cache ? new Map(this.cache) : undefined;
 		clone.memory = new Map(
 			this.memory.entries()
 				.map(([k, v]) => [k,
@@ -83,7 +88,7 @@ export class Environment implements IEnvironment {
 	/**
 	 * Create a shallow clone of this environment.
 	 * @param recurseParents - Whether to also clone parent environments
-	 * @see {@link clone} - to create a deep clone of this environment
+	 * @see {@link clone}    - to create a deep clone of this environment
 	 */
 	public shallowClone(recurseParents: boolean): Environment {
 		if(this.builtInEnv) {
@@ -93,6 +98,7 @@ export class Environment implements IEnvironment {
 		const parent = recurseParents ? this.parent.shallowClone(recurseParents) : this.parent;
 		const clone = new Environment(parent, this.builtInEnv);
 		clone.memory = new Map(this.memory);
+		clone.cache = this.cache ? new Map(this.cache) : undefined;
 		return clone;
 	}
 
@@ -113,6 +119,7 @@ export class Environment implements IEnvironment {
 			do{
 				if(current.memory.has(name)) {
 					current.memory.set(name, [definition]);
+					this.cache?.set(name, [definition]);
 					found = true;
 					break;
 				}
@@ -122,6 +129,7 @@ export class Environment implements IEnvironment {
 			if(!found) {
 				guard(last !== undefined, () => `Could not find global scope for ${name}`);
 				last.memory.set(name, [definition]);
+				this.cache?.set(name, [definition]);
 			}
 		} else {
 			newEnvironment = this.clone(false);
@@ -144,8 +152,10 @@ export class Environment implements IEnvironment {
 					}
 				} else if(existing === undefined || definition.controlDependencies === undefined) {
 					newEnvironment.memory.set(name, [definition]);
+					this.cache?.set(name, [definition]);
 				} else {
 					existing.push(definition);
+					this.cache?.set(name, existing.slice());
 				}
 			}
 		}
@@ -190,6 +200,15 @@ export class Environment implements IEnvironment {
 
 		const out = new Environment(this.parent.overwrite(other.parent, applyCds));
 		out.memory = map;
+		let newCache = this.cache ? new Map(this.cache) : undefined;
+		if(newCache && other.cache) {
+			for(const [key, values] of other.cache) {
+				newCache.set(key, values);
+			}
+		} else if(!newCache && other.cache) {
+			newCache = other.cache;
+		}
+		out.cache = newCache;
 		return out;
 	}
 
@@ -213,6 +232,12 @@ export class Environment implements IEnvironment {
 
 		const out = new Environment(this.parent.append(other.parent));
 		out.memory = map;
+		const newCache = this.cache ? new Map(this.cache) : undefined;
+		if(newCache && other.cache) {
+			for(const [key, values] of other.cache) {
+				newCache.set(key, uniqueMergeValuesInDefinitions(newCache.get(key) ?? [], values));
+			}
+		}
 		return out;
 	}
 
@@ -224,6 +249,7 @@ export class Environment implements IEnvironment {
 		let cont = true;
 		if(definition !== undefined) {
 			this.memory.delete(name);
+			this.cache?.delete(name);
 			cont = !definition.every(d => happensInEveryBranch(d.controlDependencies));
 		}
 		if(cont) {
@@ -245,12 +271,16 @@ export class Environment implements IEnvironment {
 		return newEnv;
 	}
 
-	toJSON() {
-		return {
+	toJSON(): Jsonified {
+		return this.builtInEnv ? {
 			id:         this.id,
-			parent:     this.parent.id,
+			parent:     this.parent,
+			builtInEnv: this.builtInEnv,
 			memory:     this.memory,
-			builtInEnv: this.builtInEnv
+		} : {
+			id:     this.id,
+			parent: this.parent,
+			memory: this.memory,
 		};
 	}
 }

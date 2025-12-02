@@ -1,6 +1,6 @@
-import type { IEnvironment, REnvironmentInformation } from './environment';
+import type { Environment, REnvironmentInformation } from './environment';
 import { Ternary } from '../../util/logic';
-import { type Identifier, type IdentifierDefinition , isReferenceType, ReferenceType } from './identifier';
+import { type Identifier, type IdentifierDefinition, isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 
 
@@ -30,10 +30,13 @@ const TargetTypePredicate = {
  *          if the identifier is undefined in the current scope/with the current environment information.
  */
 export function resolveByName(name: Identifier, environment: REnvironmentInformation, target: ReferenceType = ReferenceType.Unknown): IdentifierDefinition[] | undefined {
-	let current: IEnvironment = environment.current;
+	let current: Environment = environment.current;
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	const wantedType = TargetTypePredicate[target];
 	do{
+		if(target === ReferenceType.Unknown && current.cache?.has(name)) {
+			return current.cache.get(name);
+		}
 		const definition = current.memory.get(name);
 		if(definition !== undefined) {
 			const filtered = target === ReferenceType.Unknown ? definition : definition.filter(wantedType);

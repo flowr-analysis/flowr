@@ -5,8 +5,12 @@
  */
 import { jsonReplacer } from '../../util/json';
 import type { BuiltInMemory } from './built-in';
-import type { Identifier, IdentifierDefinition } from './identifier';
+import type { Identifier, IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
 import { guard } from '../../util/assert';
+import type { ControlDependency } from '../info';
+import type { FlowrConfigOptions } from '../../config';
+import { mergeDefinitionsForPointer } from './define';
+import { uniqueMergeValuesInDefinitions } from './append';
 
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
@@ -50,6 +54,11 @@ export class Environment implements IEnvironment {
 		}
 	}
 
+	/**
+	 * Create a deep clone of this environment.
+	 * @param recurseParents - Whether to also clone parent environments
+	 * @see {@link shallowClone} - to create a shallow clone of this environment
+	 */
 	public clone(recurseParents: boolean): Environment {
 		if(this.builtInEnv) {
 			return this; // do not clone the built-in environment
@@ -69,7 +78,12 @@ export class Environment implements IEnvironment {
 		return clone;
 	}
 
-	private shallowClone(recurseParents: boolean): Environment {
+	/**
+	 * Create a shallow clone of this environment.
+	 * @param recurseParents - Whether to also clone parent environments
+	 * @see {@link clone} - to create a deep clone of this environment
+	 */
+	public shallowClone(recurseParents: boolean): Environment {
 		if(this.builtInEnv) {
 			return this; // do not clone the built-in environment
 		}
@@ -80,11 +94,17 @@ export class Environment implements IEnvironment {
 		return clone;
 	}
 
-	public define(definition: IdentifierDefinition & { name: Identifier }, superAssign?: boolean): REnvironmentInformation {
+	/**
+	 * Define a new identifier definition within this environment.
+	 * @param definition  - The definition to add.
+	 * @param superAssign - Whether to perform a super assignment (i.e., update an existing definition in a parent environment).
+	 * @param config      - The flowr configuration options.
+	 */
+	public define(definition: IdentifierDefinition & { name: Identifier }, superAssign: boolean | undefined, config: FlowrConfigOptions): Environment {
 		const { name } = definition;
 		let newEnvironment;
 		if(superAssign) {
-			newEnvironment = this.shallowClone(true);
+			newEnvironment = this.clone(true);
 			let current = newEnvironment;
 			let last = undefined;
 			let found = false;
@@ -102,11 +122,98 @@ export class Environment implements IEnvironment {
 				last.memory.set(name, [definition]);
 			}
 		} else {
-			newEnvironment = this.shallowClone(false);
-			defInEnv(newEnvironment.current, name, definition, config);
+			newEnvironment = this.clone(false);
+			// When there are defined indices, merge the definitions
+			if(definition.controlDependencies === undefined && !config.solver.pointerTracking) {
+				newEnvironment.memory.set(name, [definition]);
+			} else {
+				const existing = newEnvironment.memory.get(name);
+				const inGraphDefinition = definition as InGraphIdentifierDefinition;
+				if(
+					config.solver.pointerTracking &&
+                    existing !== undefined &&
+                    inGraphDefinition.controlDependencies === undefined
+				) {
+					if(inGraphDefinition.indicesCollection !== undefined) {
+						newEnvironment.memory.set(name, mergeDefinitionsForPointer(existing, inGraphDefinition));
+					} else if((existing as InGraphIdentifierDefinition[])?.flatMap(i => i.indicesCollection ?? []).length > 0) {
+						// When indices couldn't be resolved, but indices where defined before, just add the definition
+						existing.push(definition);
+					}
+				} else if(existing === undefined || definition.controlDependencies === undefined) {
+					newEnvironment.memory.set(name, [definition]);
+				} else {
+					existing.push(definition);
+				}
+			}
 		}
 		return newEnvironment;
 	}
+
+	/**
+	 * Assumes, that all definitions within other replace those within this environment (given the same name).
+	 * <b>But</b> if all definitions within other are maybe, then they are appended to the current definitions (updating them to be `maybe` from now on as well), similar to {@link appendEnvironment}.
+	 * This always recurses parents.
+	 */
+	public overwrite(other: Environment | undefined, applyCds?: readonly ControlDependency[]): Environment {
+		if(!other || this.builtInEnv) {
+			return this;
+		}
+		const map = new Map(this.memory);
+		for(const [key, values] of other.memory) {
+			const hasMaybe = applyCds === undefined ? values.length === 0 || values.some(v => v.controlDependencies !== undefined) : true;
+			if(hasMaybe) {
+				const old = map.get(key);
+				// we need to make a copy to avoid side effects for old reference in other environments
+				const updatedOld: IdentifierDefinition[] = old?.slice() ?? [];
+				for(const v of values) {
+					const index = updatedOld.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt);
+					if(index >= 0) {
+						continue;
+					}
+					if(applyCds === undefined) {
+						updatedOld.push(v);
+					} else {
+						updatedOld.push({
+							...v,
+							controlDependencies: v.controlDependencies ? applyCds.concat(v.controlDependencies) : applyCds.slice()
+						});
+					}
+				}
+				map.set(key, updatedOld);
+			} else {
+				map.set(key, values);
+			}
+		}
+
+		const out = new Environment(this.parent.overwrite(other.parent, applyCds));
+		out.memory = map;
+		return out;
+	}
+
+	/**
+	 * Adds all writes of `other` to this environment (i.e., the operations of `other` *might* happen).
+	 * This always recurses parents.
+	 */
+	public append(other: Environment | undefined): Environment {
+		if(!other || this.builtInEnv) {
+			return this;
+		}
+		const map = new Map(this.memory);
+		for(const [key, value] of other.memory) {
+			const old = map.get(key);
+			if(old) {
+				map.set(key, uniqueMergeValuesInDefinitions(old, value));
+			} else {
+				map.set(key, value);
+			}
+		}
+
+		const out = new Environment(this.parent.append(other.parent));
+		out.memory = map;
+		return out;
+	}
+
 
 	toJSON() {
 		return {

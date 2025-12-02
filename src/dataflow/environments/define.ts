@@ -1,42 +1,13 @@
-import { guard, isNotUndefined } from '../../util/assert';
-import type { IEnvironment, REnvironmentInformation } from './environment';
-import { cloneEnvironmentInformation } from './clone';
-import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
+import type { REnvironmentInformation  } from './environment';
+import type { Identifier, IdentifierDefinition , InGraphIdentifierDefinition } from './identifier';
+import { isNotUndefined } from '../../util/assert';
 import { type ContainerIndex, type ContainerIndices , isParentContainerIndex, isSameIndex } from '../graph/vertex';
 import type { FlowrConfigOptions } from '../../config';
-
-function defInEnv(newEnvironments: IEnvironment, name: string, definition: IdentifierDefinition, config: FlowrConfigOptions) {
-	const existing = newEnvironments.memory.get(name);
-
-	// When there are defined indices, merge the definitions
-	const inGraphDefinition = definition as InGraphIdentifierDefinition;
-	if(
-		config.solver.pointerTracking &&
-		existing !== undefined &&
-		inGraphDefinition.controlDependencies === undefined
-	) {
-		if(inGraphDefinition.indicesCollection !== undefined) {
-			newEnvironments.memory.set(name, mergeDefinitions(existing, inGraphDefinition));
-			return;
-		} else if((existing as InGraphIdentifierDefinition[])?.flatMap(i => i.indicesCollection ?? []).length > 0) {
-			// When indices couldn't be resolved, but indices where defined before, just add the definition
-			existing.push(definition);
-			return;
-		}
-	}
-
-	// check if it is maybe or not
-	if(existing === undefined || definition.controlDependencies === undefined) {
-		newEnvironments.memory.set(name, [definition]);
-	} else {
-		existing.push(definition);
-	}
-}
 
 /**
  * assumes: existing is not undefined, the overwrite has indices
  */
-export function mergeDefinitions(existing: readonly IdentifierDefinition[], definition: InGraphIdentifierDefinition): InGraphIdentifierDefinition[] {
+export function mergeDefinitionsForPointer(existing: readonly IdentifierDefinition[], definition: InGraphIdentifierDefinition): InGraphIdentifierDefinition[] {
 	// When new definition is not a single index, e.g., a list redefinition, then reset existing definition
 	if(definition.indicesCollection?.some(indices => indices.isContainer)) {
 		return [definition];
@@ -133,33 +104,11 @@ function overwriteContainerIndices(
 /**
  * Insert the given `definition` --- defined within the given scope --- into the passed along `environments` will take care of propagation.
  * Does not modify the passed along `environments` in-place! It returns the new reference.
+ * @see {@link Environment#define} - for details on how definitions are handled.
  */
-export function define(definition: IdentifierDefinition, superAssign: boolean | undefined, environment: REnvironmentInformation, config: FlowrConfigOptions): REnvironmentInformation {
-	const name = definition.name;
-	guard(name !== undefined, () => `Name must be defined, but isn't for ${JSON.stringify(definition)}`);
-	let newEnvironment;
-	if(superAssign) {
-		newEnvironment = cloneEnvironmentInformation(environment, true);
-		let current: IEnvironment = newEnvironment.current;
-		let last = undefined;
-		let found = false;
-		do{
-			if(current.memory.has(name)) {
-				current.memory.set(name, [definition]);
-				found = true;
-				break;
-			}
-			last = current;
-			current = current.parent;
-		} while(!current.builtInEnv);
-		if(!found) {
-			guard(last !== undefined, () => `Could not find global scope for ${name}`);
-			last.memory.set(name, [definition]);
-		}
-	} else {
-		newEnvironment = cloneEnvironmentInformation(environment, false);
-		defInEnv(newEnvironment.current, name, definition, config);
-	}
-
-	return newEnvironment;
+export function define(definition: IdentifierDefinition & { name: Identifier }, superAssign: boolean | undefined, environment: REnvironmentInformation, config: FlowrConfigOptions): REnvironmentInformation {
+	return {
+		level:   environment.level,
+		current: environment.current.define(definition, superAssign, config)
+	};
 }

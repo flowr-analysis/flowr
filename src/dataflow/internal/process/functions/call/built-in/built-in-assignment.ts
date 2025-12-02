@@ -257,14 +257,14 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
 /**
  * Promotes the ingoing/unknown references of target (an assignment) to definitions
  */
-function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): InGraphIdentifierDefinition[] {
+function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): (InGraphIdentifierDefinition & { name: string })[] {
 	return target.in.concat(target.unknownReferences).map(ref => ({
 		...ref,
 		type:                referenceType,
 		definedAt:           rootId,
 		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
 		value
-	}));
+	}) as InGraphIdentifierDefinition & { name: string });
 }
 
 function processAssignmentToString<OtherInfo>(
@@ -351,7 +351,7 @@ export function markAsAssignment<OtherInfo>(
 		environment: REnvironmentInformation,
 		graph:       DataflowGraph
 	},
-	nodeToDefine: InGraphIdentifierDefinition,
+	nodeToDefine: InGraphIdentifierDefinition & { name: string},
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
 	data: DataflowProcessorInformation<OtherInfo>,
@@ -420,7 +420,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		definedAt:           rootId,
 		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
 		value:               aliases
-	} satisfies InGraphIdentifierDefinition]
+	} satisfies InGraphIdentifierDefinition & { name: string }]
 		: produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
 
 	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {

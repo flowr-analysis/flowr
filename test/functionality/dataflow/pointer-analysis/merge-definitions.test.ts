@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { type InGraphIdentifierDefinition , ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import type { ContainerIndices } from '../../../../src/dataflow/graph/vertex';
 import { deterministicCountingIdGenerator } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { mergeDefinitions } from '../../../../src/dataflow/environments/define';
+import { mergeDefinitionsForPointer } from '../../../../src/dataflow/environments/define';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 describe('Pointer Analysis', () => {
@@ -33,7 +33,7 @@ describe('Pointer Analysis', () => {
 
 		function testMerge(name: string, existing: InGraphIdentifierDefinition[], definition: InGraphIdentifierDefinition, expected: InGraphIdentifierDefinition[]) {
 			return test(name, () => {
-				const result = mergeDefinitions(existing, definition);
+				const result = mergeDefinitionsForPointer(existing, definition);
 				assert.sameDeepMembers(result, expected);
 			});
 		}

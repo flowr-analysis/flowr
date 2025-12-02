@@ -44,8 +44,8 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
  */
 export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnvironmentContext {
 	public readonly name = 'flowr-analyzer-environment-context';
-	private readonly builtInEnv:      IEnvironment;
-	private readonly emptyBuiltInEnv: IEnvironment;
+	private readonly builtInEnv:      Environment;
+	private readonly emptyBuiltInEnv: Environment;
 
 	private builtInEnvFingerprint: Fingerprint | undefined;
 
@@ -53,10 +53,10 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 		const builtInsConfig = ctx.config.semantics.environment.overwriteBuiltIns;
 		const builtIns = getBuiltInDefinitions(builtInsConfig.definitions, builtInsConfig.loadDefaults);
 
-		this.builtInEnv = new Environment(undefined as unknown as IEnvironment, true);
+		this.builtInEnv = new Environment(undefined as unknown as Environment, true);
 		this.builtInEnv.memory = builtIns.builtInMemory;
 
-		this.emptyBuiltInEnv = new Environment(undefined as unknown as IEnvironment, true);
+		this.emptyBuiltInEnv = new Environment(undefined as unknown as Environment, true);
 		this.emptyBuiltInEnv.memory = builtIns.emptyBuiltInMemory;
 	}
 

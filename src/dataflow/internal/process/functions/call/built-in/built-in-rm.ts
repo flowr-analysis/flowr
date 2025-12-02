@@ -9,7 +9,6 @@ import {
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { remove } from '../../../../../environments/remove';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 
 
@@ -45,13 +44,16 @@ export function processRm<OtherInfo>(
 		}
 	}
 
-	let env = res.environment;
+	let env = res.environment.current;
 	for(const name of names) {
-		env = remove(name, env, data.ctx.env.builtInEnvironment);
+		env = env.remove(name);
 	}
 
 	return {
 		...res,
-		environment: env
+		environment: {
+			current: env,
+			level:   res.environment.level
+		}
 	};
 }

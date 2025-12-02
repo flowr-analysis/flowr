@@ -8,6 +8,7 @@ import type { BuiltInMemory } from './built-in';
 import type { Identifier, IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
 import { guard } from '../../util/assert';
 import type { ControlDependency } from '../info';
+import { happensInEveryBranch } from '../info';
 import type { FlowrConfigOptions } from '../../config';
 import { mergeDefinitionsForPointer } from './define';
 import { uniqueMergeValuesInDefinitions } from './append';
@@ -42,6 +43,7 @@ export class Environment implements IEnvironment {
 	parent:      Environment;
 	memory:      BuiltInMemory;
 	cache?:      BuiltInMemory;
+	// TODO: maybe also cache all known names in general as a count map/bag/ref counter to allow for remove etc. to work with cache invalidation
 	builtInEnv?: true;
 
 	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined) {
@@ -214,6 +216,34 @@ export class Environment implements IEnvironment {
 		return out;
 	}
 
+	public remove(name: Identifier) {
+		if(this.builtInEnv) {
+			return this;
+		}
+		const definition = this.memory.get(name);
+		let cont = true;
+		if(definition !== undefined) {
+			this.memory.delete(name);
+			cont = !definition.every(d => happensInEveryBranch(d.controlDependencies));
+		}
+		if(cont) {
+			this.parent.remove(name);
+		}
+
+		return this;
+	}
+
+	public removeAll(names: readonly { name: Identifier }[]) {
+		if(this.builtInEnv || names.length === 0) {
+			return this;
+		}
+		const newEnv = this.clone(true);
+		// we should optimize this later
+		for(const { name } of names) {
+			newEnv.remove(name);
+		}
+		return newEnv;
+	}
 
 	toJSON() {
 		return {

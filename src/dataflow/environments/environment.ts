@@ -119,8 +119,6 @@ export class Environment implements IEnvironment {
 			do{
 				if(current.memory.has(name)) {
 					current.memory.set(name, [definition]);
-					current.cache ??= new Map();
-					current.cache.set(name, [definition]);
 					found = true;
 					break;
 				}
@@ -130,16 +128,12 @@ export class Environment implements IEnvironment {
 			if(!found) {
 				guard(last !== undefined, () => `Could not find global scope for ${name}`);
 				last.memory.set(name, [definition]);
-				last.cache ??= new Map();
-				last.cache.set(name, [definition]);
 			}
 		} else {
 			newEnvironment = this.clone(false);
 			// When there are defined indices, merge the definitions
 			if(definition.controlDependencies === undefined && !config.solver.pointerTracking) {
 				newEnvironment.memory.set(name, [definition]);
-				newEnvironment.cache ??= new Map();
-				newEnvironment.cache.set(name, [definition]);
 			} else {
 				const existing = newEnvironment.memory.get(name);
 				const inGraphDefinition = definition as InGraphIdentifierDefinition;
@@ -151,22 +145,14 @@ export class Environment implements IEnvironment {
 					if(inGraphDefinition.indicesCollection !== undefined) {
 						const defs = mergeDefinitionsForPointer(existing, inGraphDefinition);
 						newEnvironment.memory.set(name, defs);
-						newEnvironment.cache ??= new Map();
-						newEnvironment.cache.set(name, defs.slice());
 					} else if((existing as InGraphIdentifierDefinition[])?.flatMap(i => i.indicesCollection ?? []).length > 0) {
 						// When indices couldn't be resolved, but indices where defined before, just add the definition
 						existing.push(definition);
-						newEnvironment.cache ??= new Map();
-						newEnvironment.cache.set(name, existing.slice());
 					}
 				} else if(existing === undefined || definition.controlDependencies === undefined) {
 					newEnvironment.memory.set(name, [definition]);
-					newEnvironment.cache ??= new Map();
-					newEnvironment.cache.set(name, [definition]);
 				} else {
 					existing.push(definition);
-					newEnvironment.cache ??= new Map();
-					newEnvironment.cache.set(name, existing.slice());
 				}
 			}
 		}

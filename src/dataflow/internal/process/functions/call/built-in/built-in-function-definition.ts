@@ -175,7 +175,7 @@ export function updateNestedFunctionClosures(
 ) {
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-	for(const [id, { subflow, tag }] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+	for(const [id, { subflow }] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 		const ingoingRefs = subflow.in;
 		const remainingIn: IdentifierReference[] = [];
 		for(const ingoing of ingoingRefs) {

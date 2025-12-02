@@ -314,7 +314,7 @@ export class DataflowGraph<
 			return this;
 		}
 
-		const fallback = vertex.tag === VertexType.Use || vertex.tag === VertexType.Value || vertex.tag === VertexType.VariableDefinition || (vertex.tag === VertexType.FunctionCall && vertex.onlyBuiltin) ? undefined : fallbackEnv;
+		const fallback = vertex.tag === VertexType.FunctionDefinition || (vertex.tag === VertexType.FunctionCall && !vertex.onlyBuiltin) ? fallbackEnv : undefined;
 		// keep a clone of the original environment
 		const environment = vertex.environment ? cloneEnvironmentInformation(vertex.environment) : fallback;
 
@@ -323,7 +323,11 @@ export class DataflowGraph<
 			environment
 		} as unknown as Vertex);
 		const has =  this.types.get(vertex.tag);
-		this.types.set(vertex.tag, has === undefined ? [vertex.id] : [...has, vertex.id]);
+		if(has) {
+			has.push(vertex.id);
+		} else {
+			this.types.set(vertex.tag, [vertex.id]);
+		}
 
 		if(asRoot) {
 			this.rootVertices.add(vertex.id);

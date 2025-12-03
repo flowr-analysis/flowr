@@ -259,7 +259,8 @@ interface MermaidGraphConfiguration {
 	markStyle?:           MermaidMarkStyle,
 	rootGraph?:           DataflowGraph,
 	presentEdges?:        Set<string>,
-	simplified?:          boolean
+	simplified?:          boolean,
+	includeOnlyIds?:      ReadonlySet<NodeId> // If provided, only the given ids will be included in the mermaid graph
 }
 
 
@@ -283,7 +284,7 @@ function graphToMermaidGraph(
  * Converts a dataflow graph to mermaid graph code that visualizes the graph.
  */
 export function graphToMermaid(config: MermaidGraphConfiguration): { string: string, mermaid: MermaidGraph } {
-	const mermaid = graphToMermaidGraph(config.graph.rootIds(), config);
+	const mermaid = graphToMermaidGraph(config.includeOnlyIds ? config.includeOnlyIds : config.graph.rootIds(), config);
 	return { string: `${mermaid.nodeLines.join('\n')}\n${mermaid.edgeLines.join('\n')}`, mermaid };
 }
 

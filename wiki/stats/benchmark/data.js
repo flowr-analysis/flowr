@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1764765647650,
+  "lastUpdate": 1764765650293,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -21210,6 +21210,116 @@ window.BENCHMARK_DATA = {
             "extra": "median: 34.18"
           }
         ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "6a75a4fb1580fb3d26de71d59c6a6b4f20823ea3",
+          "message": "[release:minor] 2.7.0 Set-Range Domains, Environment Caches, and Mermaid Exclusions",
+          "timestamp": "2025-12-03T13:21:40+01:00",
+          "tree_id": "81d5be6eccf50444e4a8391a0ecec541d33d00df",
+          "url": "https://github.com/flowr-analysis/flowr/commit/6a75a4fb1580fb3d26de71d59c6a6b4f20823ea3"
+        },
+        "date": 1764765648915,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 12.802365636363637,
+            "range": "15.490057669827847",
+            "unit": "ms",
+            "extra": "median: 9.33ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 14.228470727272727,
+            "range": "18.728453335950892",
+            "unit": "ms",
+            "extra": "median: 9.19ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 56.4452555,
+            "range": "108.06651275707125",
+            "unit": "ms",
+            "extra": "median: 31.07ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 497.755534,
+            "range": "1259.2264488006165",
+            "unit": "ms",
+            "extra": "median: 125.44ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 8.597318863636364,
+            "range": "19.604759240180485",
+            "unit": "ms",
+            "extra": "median: 3.45ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.4425792138918379,
+            "range": "0.45922022000848195",
+            "unit": "ms",
+            "extra": "median: 0.10ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.242225288635582,
+            "range": "0.1733508663167471",
+            "unit": "ms",
+            "extra": "median: 0.11ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 0.69703848690514,
+            "range": "0.60144139913191",
+            "unit": "ms",
+            "extra": "median: 0.40ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7801660063880064,
+            "unit": "#",
+            "extra": "std: 0.1261285782699485"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7575735855163274,
+            "unit": "#",
+            "extra": "std: 0.12942676908005035"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 117.68869850852273,
+            "range": "301.0391208122946",
+            "unit": "KiB",
+            "extra": "median: 34.18"
+          }
+        ]
       }
     ],
     "\"social-science\" Benchmark Suite (tree-sitter)": [
@@ -24508,6 +24618,116 @@ window.BENCHMARK_DATA = {
             "range": "123.18697480849939",
             "unit": "KiB",
             "extra": "median: 54.67"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "6a75a4fb1580fb3d26de71d59c6a6b4f20823ea3",
+          "message": "[release:minor] 2.7.0 Set-Range Domains, Environment Caches, and Mermaid Exclusions",
+          "timestamp": "2025-12-03T13:21:40+01:00",
+          "tree_id": "81d5be6eccf50444e4a8391a0ecec541d33d00df",
+          "url": "https://github.com/flowr-analysis/flowr/commit/6a75a4fb1580fb3d26de71d59c6a6b4f20823ea3"
+        },
+        "date": 1764765650285,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 19.284452039999998,
+            "range": "11.243069899654246",
+            "unit": "ms",
+            "extra": "median: 13.80ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 20.764798,
+            "range": "11.311929426573409",
+            "unit": "ms",
+            "extra": "median: 16.73ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 79.59544764,
+            "range": "65.27777313197369",
+            "unit": "ms",
+            "extra": "median: 50.72ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 2183.25336216,
+            "range": "4033.3211588496565",
+            "unit": "ms",
+            "extra": "median: 368.14ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 10.2571344,
+            "range": "8.564210101360734",
+            "unit": "ms",
+            "extra": "median: 7.46ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 5.064406176847604,
+            "range": "15.47824414279004",
+            "unit": "ms",
+            "extra": "median: 0.72ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2726351524259434,
+            "range": "0.16655848042505786",
+            "unit": "ms",
+            "extra": "median: 0.17ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 5.34455109239953,
+            "range": "15.50373020176344",
+            "unit": "ms",
+            "extra": "median: 1.01ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 12710 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8760875201716902,
+            "unit": "#",
+            "extra": "std: 0.10724166547613748"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.822167260204735,
+            "unit": "#",
+            "extra": "std: 0.1527967200673481"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 110.73416015625,
+            "range": "123.2036565786505",
+            "unit": "KiB",
+            "extra": "median: 54.68"
           }
         ]
       }

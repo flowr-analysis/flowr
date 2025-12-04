@@ -182,19 +182,47 @@ print(df)
 			[['6@df', { colnames: [['id'], Top], cols: [1, 2], rows: [10, 10] }]]
 		);
 
-		describe('Unsupported', { fails: true }, () => {
-			testDataFrameDomain(
-				shell,
-				`
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:5)
 while (nrow(df) < 10) {
 	df <- rbind(df, 10)
 }
 print(df)
-				`.trim(),
-				[['5@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, Infinity] }]]
-			);
-		});
+			`.trim(),
+			[['5@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, Infinity] }]]
+		);
+
+		assertDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:5)
+repeat {
+	df <- rbind(df, 10)
+	if (unknown) {
+		break
+	}
+}
+print(df)
+			`.trim(),
+			[['8@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, Infinity] }]]
+		);
+
+		assertDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:5)
+repeat {
+	if (unknown) {
+		break
+	}
+	df <- rbind(df, 10)
+}
+print(df)
+			`.trim(),
+			[['8@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, Infinity] }]]
+		);
 
 		testDataFrameDomain(
 			shell,

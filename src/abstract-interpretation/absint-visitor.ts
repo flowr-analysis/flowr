@@ -1,5 +1,5 @@
-import type { CfgBasicBlockVertex, CfgSimpleVertex, ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { CfgVertexType, getVertexRootId, isMarkerVertex } from '../control-flow/control-flow-graph';
+import type { CfgSimpleVertex, ControlFlowInformation } from '../control-flow/control-flow-graph';
+import { CfgVertexType, getVertexRootId } from '../control-flow/control-flow-graph';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import type { DataflowGraph } from '../dataflow/graph/graph';
@@ -35,21 +35,14 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	private readonly unassigned: Set<NodeId> = new Set();
 
 	/**
-	 * The old domain of an AST node before processing the node retrieved from the current {@link state}.
-	 * This is used to check whether the state has changed and successors should be visited again, and is also required for widening.
+	 * The current state domain at the currently processed AST node.
 	 */
-	private oldDomain: StateAbstractDomain<Domain>;
-	/**
-	 * The new domain of an AST node during and after processing the node.
-	 * This information is stored in the current {@link state} afterward.
-	 */
-	private newDomain: StateAbstractDomain<Domain>;
+	private currentDomain: StateAbstractDomain<Domain>;
 
 	constructor(config: Config) {
 		super({ ...config, defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' });
 
-		this.oldDomain = config.domain.bottom();
-		this.newDomain = config.domain.bottom();
+		this.currentDomain = config.domain.bottom();
 	}
 
 	/**
@@ -61,7 +54,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 */
 	public getValue(id: RNode<ParentInformation & OtherInfo> | NodeId | undefined, domain?: StateAbstractDomain<Domain>): Domain | undefined {
 		const node = (id === undefined || typeof id === 'object') ? id : this.getNormalizedAst(id);
-		domain ??= node !== undefined ? this.state.get(node.info.id) : undefined;
+		domain ??= node !== undefined ? this.getState(node.info.id) : undefined;
 
 		if(node === undefined) {
 			return;
@@ -127,7 +120,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	public getResult(): StateAbstractDomain<Domain> {
 		const exitPoints = this.config.controlFlow.exitPoints.map(id => this.getCfgVertex(id)).filter(isNotUndefined);
 		const exitNodes = exitPoints.map(vertex => getVertexRootId(vertex)).filter(isNotUndefined);
-		const domains = exitNodes.map(node => this.state.get(node)).filter(isNotUndefined);
+		const domains = exitNodes.map(node => this.getState(node)).filter(isNotUndefined);
 
 		return this.config.domain.bottom().joinAll(domains);
 	}
@@ -138,39 +131,48 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		this.unassigned.clear();
 	}
 
-	protected override visitNode(nodeId: NodeId): boolean {
-		const vertex = this.getCfgVertex(nodeId);
+	protected override visitNode(vertexId: NodeId): boolean {
+		const vertex = this.getCfgVertex(vertexId);
 
-		// skip vertices representing entries of complex nodes
-		if(vertex === undefined || this.shouldSkipVertex(vertex)) {
+		if(vertex === undefined) {
 			return true;
 		}
-		const predecessors = this.getPredecessorNodes(vertex.id);
-		const predecessorDomains = predecessors.map(pred => this.state.get(pred)).filter(isNotUndefined);
-		this.newDomain = this.config.domain.bottom().joinAll(predecessorDomains);
-
-		this.onVisitNode(nodeId);
-
-		const visitedCount = this.visited.get(vertex.id) ?? 0;
-		this.visited.set(vertex.id, visitedCount + 1);
-
-		// only continue visiting if the node has not been visited before or the abstract state of the node changed
-		return visitedCount === 0 || !this.oldDomain.equals(this.newDomain);
-	}
-
-	protected override visitDataflowNode(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): void {
 		const nodeId = getVertexRootId(vertex);
-		this.oldDomain = this.state.get(nodeId) ?? this.config.domain.bottom();
 
-		super.visitDataflowNode(vertex);
+		if(this.isWideningPoint(nodeId)) {
+			// only check widening points at the entry vertex
+			if(vertex.type === CfgVertexType.EndMarker) {
+				return true;
+			}
+			const oldDomain = this.getState(nodeId) ?? this.config.domain.bottom();
+			const predecessorDomains = this.getPredecessorNodes(vertex.id).map(pred => this.getState(pred)).filter(isNotUndefined);
+			this.currentDomain = this.config.domain.bottom().joinAll(predecessorDomains);
 
+			if(this.shouldWiden(vertex)) {
+				this.currentDomain = oldDomain.widen(this.currentDomain);
+			}
+			this.state.set(nodeId, this.currentDomain);
+
+			const visitedCount = this.visited.get(vertex.id) ?? 0;
+			this.visited.set(vertex.id, visitedCount + 1);
+
+			// only continue visiting if the widening point is visited for the first time or the abstract state at the widening point changed
+			return visitedCount === 0 || !oldDomain.equals(this.currentDomain);
+		} else if(this.shouldSkipVertex(vertex)) {
+			return true;
+		}
+		const predecessorDomains = this.getPredecessorNodes(vertex.id).map(pred => this.getState(pred)).filter(isNotUndefined);
+		this.currentDomain = this.config.domain.bottom().joinAll(predecessorDomains);
+
+		this.onVisitNode(vertexId);
+
+		// discard the inferred abstract state when encountering functions with unknown side effects (e.g. `eval`)
 		if(this.config.dfg.unknownSideEffects.has(nodeId)) {
-			this.newDomain = this.newDomain.bottom();
+			this.currentDomain = this.currentDomain.bottom();
 		}
-		if(this.shouldWiden(vertex)) {
-			this.newDomain = this.oldDomain.widen(this.newDomain);
-		}
-		this.state.set(nodeId, this.newDomain);
+		this.state.set(nodeId, this.currentDomain);
+
+		return true;
 	}
 
 	protected override onVariableDefinition({ vertex }: { vertex: DataflowGraphVertexVariableDefinition; }): void {
@@ -187,8 +189,8 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		this.unassigned.delete(target);
 
 		if(value !== undefined) {
-			this.newDomain.set(target, value);
-			this.state.set(target, this.newDomain.create(this.newDomain.value));
+			this.currentDomain.set(target, value);
+			this.state.set(target, this.currentDomain.create(this.currentDomain.value));
 		}
 	}
 
@@ -196,60 +198,60 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		if(source === undefined || target === undefined) {
 			return;
 		}
-		this.newDomain = this.evalReplacementCall(call, target, source, this.newDomain);
+		this.currentDomain = this.evalReplacementCall(call, target, source, this.currentDomain);
 		this.unassigned.delete(target);
 	}
 
 	protected override onAccessCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.newDomain = this.evalAccessCall(call, this.newDomain);
+		this.currentDomain = this.evalAccessCall(call, this.currentDomain);
 	}
 
 	protected override onUnnamedCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.newDomain = this.evalFunctionCall(call, this.newDomain);
+		this.currentDomain = this.evalFunctionCall(call, this.currentDomain);
 	}
 
 	protected override onEvalFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.newDomain = this.evalFunctionCall(call, this.newDomain);
+		this.currentDomain = this.evalFunctionCall(call, this.currentDomain);
 	}
 
 	protected override onApplyFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.newDomain = this.evalFunctionCall(call, this.newDomain);
+		this.currentDomain = this.evalFunctionCall(call, this.currentDomain);
 	}
 
 	protected override onSourceCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.newDomain = this.evalFunctionCall(call, this.newDomain);
+		this.currentDomain = this.evalFunctionCall(call, this.currentDomain);
 	}
 
 	protected override onGetCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.newDomain = this.evalFunctionCall(call, this.newDomain);
+		this.currentDomain = this.evalFunctionCall(call, this.currentDomain);
 	}
 
 	protected override onRmCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.newDomain = this.evalFunctionCall(call, this.newDomain);
+		this.currentDomain = this.evalFunctionCall(call, this.currentDomain);
 	}
 
 	protected override onListCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.newDomain = this.evalFunctionCall(call, this.newDomain);
+		this.currentDomain = this.evalFunctionCall(call, this.currentDomain);
 	}
 
 	protected override onVectorCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.newDomain = this.evalFunctionCall(call, this.newDomain);
+		this.currentDomain = this.evalFunctionCall(call, this.currentDomain);
 	}
 
 	protected override onSpecialBinaryOpCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.newDomain = this.evalFunctionCall(call, this.newDomain);
+		this.currentDomain = this.evalFunctionCall(call, this.currentDomain);
 	}
 
 	protected override onQuoteCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.newDomain = this.evalFunctionCall(call, this.newDomain);
+		this.currentDomain = this.evalFunctionCall(call, this.currentDomain);
 	}
 
 	protected override onLibraryCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.newDomain = this.evalFunctionCall(call, this.newDomain);
+		this.currentDomain = this.evalFunctionCall(call, this.currentDomain);
 	}
 
 	protected override onDefaultFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.newDomain = this.evalFunctionCall(call, this.newDomain);
+		this.currentDomain = this.evalFunctionCall(call, this.currentDomain);
 	}
 
 	/**
@@ -291,7 +293,6 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 					return [getVertexRootId(vertex)];
 				}
 			})
-			.filter(isNotUndefined)
 			.toArray() ?? [];
 	}
 
@@ -303,12 +304,34 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			.filter(origin => this.state.has(origin) && !this.unassigned.has(origin)) ?? [];
 	}
 
-	/** We only process vertices of leaf nodes and exit vertices (no entry nodes of complex nodes) */
-	protected shouldSkipVertex(vertex: CfgSimpleVertex): boolean {
-		return isMarkerVertex(vertex) ? vertex.type !== CfgVertexType.EndMarker : vertex.end !== undefined;
+	/** We only perform widening at `for`, `while`, or `repeat` loops with more than one incoming CFG edge */
+	protected isWideningPoint(nodeId: NodeId): boolean {
+		const incomingEdges = this.config.controlFlow.graph.outgoingEdges(nodeId)?.size;  // outgoing dependency edges are incoming CFG edges
+
+		if(incomingEdges === undefined || incomingEdges <= 1) {
+			return false;
+		}
+		const node = this.getNormalizedAst(nodeId);
+
+		if(node?.type === RType.ForLoop || node?.type === RType.WhileLoop || node?.type === RType.RepeatLoop) {
+			return true;
+		}
+		const dataflowVertex = this.getDataflowGraph(nodeId);
+
+		if(dataflowVertex?.tag !== VertexType.FunctionCall || !Array.isArray(dataflowVertex.origin)) {
+			return false;
+		}
+		const origin = dataflowVertex.origin;
+
+		return origin.includes('builtin:for-loop') || origin.includes('builtin:while-loop') || origin.includes('builtin:repeat-loop');
 	}
 
-	protected shouldWiden(vertex: Exclude<CfgSimpleVertex, CfgBasicBlockVertex>): boolean {
+	/** We only process vertices of leaf nodes and exit vertices (no entry nodes of complex nodes) */
+	protected shouldSkipVertex(vertex: CfgSimpleVertex): boolean {
+		return vertex.type !== CfgVertexType.EndMarker && vertex.end !== undefined;
+	}
+
+	protected shouldWiden(vertex: CfgSimpleVertex): boolean {
 		return (this.visited.get(vertex.id) ?? 0) >= this.config.ctx.config.abstractInterpretation.wideningThreshold;
 	}
 }

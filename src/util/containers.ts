@@ -1,6 +1,6 @@
 import type { REnvironmentInformation } from '../dataflow/environments/environment';
 import type { Identifier, InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
-import { resolveByName } from '../dataflow/environments/resolve-by-name';
+import { resolveByNameAnyType } from '../dataflow/environments/resolve-by-name';
 import {
 	type ContainerIndex,
 	type ContainerIndices,
@@ -36,7 +36,7 @@ export function getAccessOperands<OtherInfo>(
  * @returns The indicesCollection of the resolved definitions
  */
 export function resolveIndicesByName(name: Identifier, environment: REnvironmentInformation) {
-	const definitions = resolveByName(name, environment);
+	const definitions = resolveByNameAnyType(name, environment);
 	return definitions?.flatMap(def => (def as InGraphIdentifierDefinition)?.indicesCollection ?? []);
 }
 

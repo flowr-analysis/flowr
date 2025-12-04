@@ -1,5 +1,5 @@
 import type { DataflowInformation } from './info';
-import { type DataflowProcessorInformation, type DataflowProcessors , processDataflowFor } from './processor';
+import { type DataflowProcessorInformation, type DataflowProcessors, processDataflowFor } from './processor';
 import { processUninterestingLeaf } from './internal/process/process-uninteresting-leaf';
 import { processSymbol } from './internal/process/process-symbol';
 import { processFunctionCall } from './internal/process/functions/call/default-call-handling';
@@ -12,7 +12,6 @@ import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument
 import { rangeFrom } from '../util/range';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { initializeCleanEnvironments } from './environments/environment';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
 import { extractCfgQuick, getCallsInCfg } from '../control-flow/extract-cfg';
@@ -23,7 +22,6 @@ import {
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { getBuiltInDefinitions } from './environments/built-in-config';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -109,9 +107,6 @@ export function produceDataFlowGraph<OtherInfo>(
 	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
 	ctx:         FlowrAnalyzerContext
 ): DataflowInformation & { cfgQuick: ControlFlowInformation | undefined } {
-	const builtInsConfig = ctx.config.semantics.environment.overwriteBuiltIns;
-	const builtIns = getBuiltInDefinitions(builtInsConfig.definitions, builtInsConfig.loadDefaults);
-	const env = initializeCleanEnvironments(builtIns.builtInMemory);
 
 	// we freeze the files here to avoid endless modifications during processing
 	const files = completeAst.ast.files.slice();
@@ -121,8 +116,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
-		environment:         env,
-		builtInEnvironment:  env.current.parent,
+		environment:         ctx.env.makeCleanEnv(),
 		processors,
 		controlDependencies: undefined,
 		referenceChain:      [files[0].filePath],

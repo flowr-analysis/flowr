@@ -24,7 +24,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.6.3, R grammar v14 (tree-sitter engine)
+    flowR repl using flowR v2.7.0, R grammar v14 (tree-sitter engine)
     R> :query @linter "read.csv(\"/root/x.txt\")"
     ```
     
@@ -45,11 +45,11 @@ It offers a wide variety of features, for example:
        ╰ **Absolute Paths** (absolute-file-paths):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
-           ╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":0,"processTimeMs":0}</code>
+           ╰ _Metadata_: <code>{"totalConsidered":1,"totalUnknown":0,"searchTimeMs":1,"processTimeMs":0}</code>
        ╰ **Unused Definitions** (unused-definitions):
            ╰ _Metadata_: <code>{"totalConsidered":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Naming Convention** (naming-convention):
-           ╰ _Metadata_: <code>{"numMatches":0,"numBreak":0,"searchTimeMs":1,"processTimeMs":0}</code>
+           ╰ _Metadata_: <code>{"numMatches":0,"numBreak":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Network Functions** (network-functions):
            ╰ _Metadata_: <code>{"totalCalls":0,"totalFunctionDefinitions":0,"searchTimeMs":0,"processTimeMs":0}</code>
        ╰ **Dataframe Access Validation** (dataframe-access-validation):
@@ -307,7 +307,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.6.3, R grammar v14 (tree-sitter engine)
+    flowR repl using flowR v2.7.0, R grammar v14 (tree-sitter engine)
     R> :query @static-slice (11@sum) file://test/testfiles/example.R
     ```
     
@@ -321,7 +321,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    [;3mAll queries together required ≈2 ms (1ms accuracy, total 3 ms)[0m[0m
+    [;3mAll queries together required ≈2 ms (1ms accuracy, total 2 ms)[0m[0m
     ```
     
     
@@ -355,7 +355,7 @@ It offers a wide variety of features, for example:
         
 
 * 🚀 **fast data- and control-flow graphs**\
-  Within just <i><span title="This measurement is automatically fetched from the latest benchmark!">125 ms</span></i> (as of Nov 25, 2025), 
+  Within just <i><span title="This measurement is automatically fetched from the latest benchmark!">119.6 ms</span></i> (as of Dec 3, 2025), 
   _flowR_ can analyze the data- and control-flow of the average real-world R script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
   and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for more details on the dataflow graph.
 
@@ -391,7 +391,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.6.3, R grammar v14 (tree-sitter engine)
+    flowR repl using flowR v2.7.0, R grammar v14 (tree-sitter engine)
     R> :dataflow* test/testfiles/example.R
     ```
     
@@ -696,7 +696,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _2.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _2.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

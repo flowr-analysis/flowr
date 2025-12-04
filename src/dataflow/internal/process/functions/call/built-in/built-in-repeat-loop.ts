@@ -7,7 +7,7 @@ import {
 } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
-import { unpackArgument } from '../argument/unpack-argument';
+import { unpackNonameArg } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -33,7 +33,7 @@ export function processRepeatLoop<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
-	const unpacked = unpackArgument(args[0]);
+	const unpacked = unpackNonameArg(args[0]);
 	const { information, processedArguments } = processKnownFunctionCall({
 		name,
 		args:      unpacked ? [unpacked] : args,

@@ -1,6 +1,6 @@
-import { describe, assert, test } from 'vitest';
+import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { type SingleSlicingCriterion , tryResolveSliceCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { type SingleSlicingCriterion, tryResolveSliceCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { isHigherOrder } from '../../../../src/dataflow/fn/higher-order-function';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
@@ -17,15 +17,16 @@ describe('is-higher-order-function', withTreeSitter(ts => {
 		for(const [exp, crit] of [[true, expect.pos], [false, expect.neg]] as const) {
 			for(const c of crit ?? []) {
 				test(`${label} (expect ${c} to be ${exp ? 'ho' : 'not ho'})`, async() => {
+					const context = contextFromInput(code);
 					const df = await createDataflowPipeline(ts, {
-						context: contextFromInput(code)
+						context: context
 					}).allRemainingSteps();
 
 					const id = tryResolveSliceCriterionToId(c, df.normalize.idMap);
 					// move up the error message :sparkles:
 					assert.isDefined(id, `could not resolve criterion ${c}`);
 
-					assert.strictEqual(isHigherOrder(id, df.dataflow.graph), exp);
+					assert.strictEqual(isHigherOrder(id, df.dataflow.graph, context), exp);
 				});
 			}
 		}

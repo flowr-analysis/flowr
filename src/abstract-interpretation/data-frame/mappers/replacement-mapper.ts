@@ -4,6 +4,7 @@ import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking'
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { isFunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RAccess, RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -47,16 +48,18 @@ type DataFrameReplacementFunction = keyof typeof DataFrameReplacementFunctionMap
  * Maps a concrete data frame replacement function call to abstract data frame operations.
  * @param node - The R node of the replacement function call
  * @param dfg  - The data flow graph for resolving the arguments
+ * @param ctx - The current flowR analysis context
  * @returns The mapped abstract data frame operations for the replacement function call, or `undefined` if the node does not represent a data frame replacement function call
  */
 export function mapDataFrameReplacementFunction(
 	node: RNode<ParentInformation>,
 	expression: RNode<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor,
-	dfg: DataflowGraph
+	dfg: DataflowGraph,
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameOperation[] | undefined {
 	const parent = hasParentReplacement(node, dfg) ? dfg.idMap?.get(node.info.parent) : undefined;
-	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
+	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
 
 	if(node.type === RType.Access) {
 		if(node.access.every(arg => arg === EmptyArgument)) {

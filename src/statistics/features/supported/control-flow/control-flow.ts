@@ -2,7 +2,7 @@ import type { Feature, FeatureProcessorInput } from '../../feature';
 import type { Writable } from 'ts-essentials';
 import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../../common-syntax-probability';
 import { postProcess } from './post-process';
-import { unpackArgument } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument';
+import { unpackNonameArg } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument';
 import type { ParentInformation, RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
@@ -30,7 +30,7 @@ function visitIfThenElse(info: ControlflowInfo, input: FeatureProcessorInput): v
 		node => {
 			if(node.type !== RType.IfThenElse) {
 				if(node.type === RType.FunctionCall && node.named && node.functionName.content === 'switch') {
-					const initialArg = unpackArgument(node.arguments[0]);
+					const initialArg = unpackNonameArg(node.arguments[0]);
 					if(initialArg) {
 						info.switchCase = updateCommonSyntaxTypeCounts(info.switchCase, initialArg);
 					}

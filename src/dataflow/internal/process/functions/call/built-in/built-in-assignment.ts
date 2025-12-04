@@ -2,7 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { log, LogLevel } from '../../../../../../util/log';
-import { unpackArgument } from '../argument/unpack-argument';
+import { unpackArg } from '../argument/unpack-argument';
 import { processAsNamedCall } from '../../../process-named-call';
 import { toUnnamedArgument, wrapArgumentsUnnamed } from '../argument/make-argument';
 import type {
@@ -21,13 +21,14 @@ import { dataflowLogger } from '../../../../../logger';
 import {
 	type IdentifierReference,
 	type InGraphIdentifierDefinition,
-	type InGraphReferenceType
-	, ReferenceType } from '../../../../../environments/identifier';
+	type InGraphReferenceType,
+	ReferenceType
+} from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { type ContainerIndicesCollection , VertexType } from '../../../../../graph/vertex';
+import { type ContainerIndicesCollection, VertexType } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
@@ -173,7 +174,7 @@ export function processAssignment<OtherInfo>(
 			});
 		}  else {
 			// try to resolve the variable first
-			const n = resolveIdToValue(target.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true });
+			const n = resolveIdToValue(target.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true, ctx: data.ctx });
 			if(n.type === 'set' && n.elements.length === 1 && n.elements[0].type === 'string') {
 				const val = n.elements[0].value;
 				if(isValue(val)) {
@@ -248,22 +249,22 @@ export function processAssignment<OtherInfo>(
 }
 
 function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]) {
-	const source = unpackArgument(args[1], false);
-	const target = unpackArgument(args[0], false);
+	const source = unpackArg(args[1]);
+	const target = unpackArg(args[0]);
 	return { source, target };
 }
 
 /**
  * Promotes the ingoing/unknown references of target (an assignment) to definitions
  */
-function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): InGraphIdentifierDefinition[] {
+function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): (InGraphIdentifierDefinition & { name: string })[] {
 	return target.in.concat(target.unknownReferences).map(ref => ({
 		...ref,
 		type:                referenceType,
 		definedAt:           rootId,
 		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
 		value
-	}));
+	}) as InGraphIdentifierDefinition & { name: string });
 }
 
 function processAssignmentToString<OtherInfo>(
@@ -350,7 +351,7 @@ export function markAsAssignment<OtherInfo>(
 		environment: REnvironmentInformation,
 		graph:       DataflowGraph
 	},
-	nodeToDefine: InGraphIdentifierDefinition,
+	nodeToDefine: InGraphIdentifierDefinition & { name: string},
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
 	data: DataflowProcessorInformation<OtherInfo>,
@@ -419,7 +420,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		definedAt:           rootId,
 		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
 		value:               aliases
-	} satisfies InGraphIdentifierDefinition]
+	} satisfies InGraphIdentifierDefinition & { name: string }]
 		: produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
 
 	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {

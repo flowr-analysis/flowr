@@ -1,10 +1,11 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print';
-import { type IPipelineStep , PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import type { DataflowInformation } from '../../../../dataflow/info';
 import type { SlicingCriteria } from '../../../../slicing/criterion/parse';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { staticSlice } from '../../../../slicing/static/static-slicer';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../../project/context/flowr-analyzer-context';
 
 export interface SliceRequiredInput {
 	/** The slicing criterion is only of interest if you actually want to slice the R code */
@@ -13,6 +14,8 @@ export interface SliceRequiredInput {
 	readonly threshold?: number
 	/** The direction to slice in. Defaults to backward slicing if unset. */
 	readonly direction?: SliceDirection
+	/** The context of the analysis */
+	readonly context?:   ReadOnlyFlowrAnalyzerContext
 }
 
 export enum SliceDirection {
@@ -22,7 +25,8 @@ export enum SliceDirection {
 
 function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>) {
 	const direction = input.direction ?? SliceDirection.Backward;
-	return staticSlice((results.dataflow as DataflowInformation), results.normalize as NormalizedAst, input.criterion as SlicingCriteria, direction, input.threshold);
+	const threshold = input.threshold ?? input.context?.config.solver.slicer?.threshold;
+	return staticSlice(input.context as ReadOnlyFlowrAnalyzerContext, (results.dataflow as DataflowInformation), results.normalize as NormalizedAst, input.criterion as SlicingCriteria, direction, threshold);
 }
 
 export const STATIC_SLICE = {

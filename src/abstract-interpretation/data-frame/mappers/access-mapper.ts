@@ -1,9 +1,10 @@
 import { VariableResolve } from '../../../config';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RAccess, RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
-import { type RFunctionArgument, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { resolveIdToArgValue, resolveIdToArgValueSymbolName, unquoteArgument } from '../resolve-args';
@@ -22,17 +23,19 @@ const SpecialAccessArgumentsMapper: Record<RIndexAccess['operator'], string[]> =
  * Maps a concrete data frame access operation to abstract data frame operations.
  * @param node - The R node of the access
  * @param dfg  - The data flow graph for resolving the arguments
+ * @param ctx  - The current flowR analyzer context
  * @returns The mapped abstract data frame operations for the access operation, or `undefined` if the node does not represent a data frame access operation
  */
 export function mapDataFrameAccess(
 	node: RNode<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor,
-	dfg: DataflowGraph
+	dfg: DataflowGraph,
+	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameOperation[] | undefined {
 	if(node.type !== RType.Access) {
 		return;
 	}
-	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
+	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
 
 	if(isStringBasedAccess(node)) {
 		return mapDataFrameNamedColumnAccess(node, inference, resolveInfo);

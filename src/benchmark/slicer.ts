@@ -3,7 +3,7 @@
  * @module
  */
 
-import { type IStoppableStopwatch , Measurements } from './stopwatch';
+import { type IStoppableStopwatch, Measurements } from './stopwatch';
 import seedrandom from 'seedrandom';
 import { log, LogLevel } from '../util/log';
 import type { MergeableRecord } from '../util/objects';
@@ -25,10 +25,18 @@ import type {
 } from './stats/stats';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
-import { type DEFAULT_SLICING_PIPELINE, type TREE_SITTER_SLICING_PIPELINE , createSlicePipeline } from '../core/steps/pipeline/default-pipelines';
-import { type RParseRequestFromFile, type RParseRequestFromText , retrieveNumberOfRTokensOfLastParse } from '../r-bridge/retriever';
+import {
+	createSlicePipeline,
+	type DEFAULT_SLICING_PIPELINE,
+	type TREE_SITTER_SLICING_PIPELINE
+} from '../core/steps/pipeline/default-pipelines';
+import {
+	retrieveNumberOfRTokensOfLastParse,
+	type RParseRequestFromFile,
+	type RParseRequestFromText
+} from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
-import { type SlicingCriteriaFilter , collectAllSlicingCriteria } from '../slicing/criterion/collect-all';
+import { collectAllSlicingCriteria, type SlicingCriteriaFilter } from '../slicing/criterion/collect-all';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
@@ -39,9 +47,9 @@ import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
-import { type ContainerIndicesCollection , isParentContainerIndex } from '../dataflow/graph/vertex';
+import { type ContainerIndicesCollection, isParentContainerIndex, VertexType } from '../dataflow/graph/vertex';
 import { equidistantSampling } from '../util/collections/arrays';
-import { type FlowrConfigOptions , getEngineConfig } from '../config';
+import { type FlowrConfigOptions, getEngineConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
 import type { DataFrameDomain } from '../abstract-interpretation/data-frame/dataframe-domain';
@@ -197,9 +205,9 @@ export class BenchmarkSlicer {
 		for(const [n, info] of vertices) {
 			const outgoingEdges = this.dataflow.graph.outgoingEdges(n);
 			numberOfEdges += outgoingEdges?.size ?? 0;
-			if(info.tag === 'function-call') {
+			if(info.tag === VertexType.FunctionCall) {
 				numberOfCalls++;
-			} else if(info.tag === 'function-definition') {
+			} else if(info.tag === VertexType.FunctionDefinition) {
 				numberOfDefinitions++;
 			}
 		}
@@ -244,7 +252,7 @@ export class BenchmarkSlicer {
 				numberOfNormalizedTokensNoComments:        nodesNoComments
 			},
 			dataflow: {
-				numberOfNodes:               [...this.dataflow.graph.vertices(true)].length,
+				numberOfNodes:               this.dataflow.graph.vertices(true).toArray().length,
 				numberOfEdges:               numberOfEdges,
 				numberOfCalls:               numberOfCalls,
 				numberOfFunctionDefinitions: numberOfDefinitions,
@@ -357,7 +365,7 @@ export class BenchmarkSlicer {
 		}
 
 		// if it is not in the dataflow graph it was kept to be safe and should not count to the included nodes
-		stats.numberOfDataflowNodesSliced = [...slicedOutput.result].filter(id => results.dataflow.graph.hasVertex(id, false)).length;
+		stats.numberOfDataflowNodesSliced = Array.from(slicedOutput.result).filter(id => results.dataflow.graph.hasVertex(id, false)).length;
 		stats.timesHitThreshold = slicedOutput.timesHitThreshold;
 
 		stats.measurements = measurements.get();

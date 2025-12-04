@@ -2,9 +2,9 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { RShell } from '../../r-bridge/shell';
 import { createDataflowPipeline, createNormalizePipeline } from '../../core/steps/pipeline/default-pipelines';
 import {
+	deterministicCountingIdGenerator,
 	type ParentInformation,
-	type RNodeWithParent,
-	deterministicCountingIdGenerator
+	type RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
 import { diffOfDataflowGraphs } from '../../dataflow/graph/diff-dataflow-graph';
@@ -80,13 +80,14 @@ ${normalizedAstToMermaid(result.normalize.ast, prefix)}
  */
 export async function verifyExpectedSubgraph(shell: RShell, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
 	/* we verify that we get what we want first! */
+	const context = contextFromInput(code);
 	const info = await createDataflowPipeline(shell, {
-		context: contextFromInput(code),
+		context: context,
 		getId:   deterministicCountingIdGenerator(0)
 	}).allRemainingSteps();
 
 	expectedSubgraph.setIdMap(info.normalize.idMap);
-	expectedSubgraph = resolveDataflowGraph(expectedSubgraph);
+	expectedSubgraph = resolveDataflowGraph(expectedSubgraph, context);
 	const report: GraphDifferenceReport = diffOfDataflowGraphs(
 		{ name: 'expected', graph: expectedSubgraph },
 		{ name: 'got',      graph: info.dataflow.graph },

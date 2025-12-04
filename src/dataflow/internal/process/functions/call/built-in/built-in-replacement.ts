@@ -23,7 +23,7 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { constructNestedAccess, getAccessOperands } from '../../../../../../util/containers';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { unpackArgument } from '../argument/unpack-argument';
+import { unpackNonameArg } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
 import { type BuiltInMappingName , BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { ReferenceType } from '../../../../../environments/identifier';
@@ -92,12 +92,12 @@ export function processReplacementFunction<OtherInfo>(
 		rootId,
 		name,
 		argumentProcessResult:
-			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackArgument(a)?.info.id as NodeId }),
+			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackNonameArg(a)?.info.id as NodeId }),
 		origin: 'builtin:replacement' satisfies BuiltInMappingName,
 		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});
 
-	const firstArg = unpackArgument(args[0]);
+	const firstArg = unpackNonameArg(args[0]);
 
 	handleReplacementOperator({
 		operator: name.content,
@@ -123,7 +123,7 @@ export function processReplacementFunction<OtherInfo>(
 	}
 
 
-	const fa = unpackArgument(args[0]);
+	const fa = unpackNonameArg(args[0]);
 	if(!data.ctx.config.solver.pointerTracking && fa) {
 		res = {
 			...res,

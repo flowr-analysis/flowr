@@ -1,7 +1,14 @@
-import { type LintingResult, type LintingRule, type LintQuickFixReplacement , LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
-import { type MergeableRecord , compactRecord } from '../../util/objects';
+import {
+	LintingPrettyPrintContext,
+	type LintingResult,
+	LintingResultCertainty,
+	type LintingRule,
+	LintingRuleCertainty,
+	type LintQuickFixReplacement
+} from '../linter-format';
+import { compactRecord, type MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
-import { type SourceRange , rangeFrom } from '../../util/range';
+import { rangeFrom, type SourceRange } from '../../util/range';
 import { formatRange } from '../../util/mermaid/dfg';
 import { LintingRuleTag } from '../linter-tags';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -13,14 +20,14 @@ import { WriteFunctions } from '../../queries/catalog/dependencies-query/functio
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
-import { type DataflowGraphVertexFunctionCall , isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { QueryResults } from '../../queries/query';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
 import path from 'path';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import type { FlowrConfigOptions } from '../../config';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,
@@ -81,11 +88,13 @@ function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | un
 	}];
 }
 
+type PathFunction = (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, ctx: ReadOnlyFlowrAnalyzerContext) => string[] | undefined;
+
 /** return all strings constructable by these functions */
-const PathFunctions: Record<string, (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, config: FlowrConfigOptions) => string[] | undefined> = {
-	'file.path': (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, config: FlowrConfigOptions): string[] | undefined => {
-		const fsep = getArgumentStringValue(config.solver.variables,
-			df, vtx, undefined, 'fsep', true
+const PathFunctions: Record<string, PathFunction> = {
+	'file.path': (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined => {
+		const fsep = getArgumentStringValue(ctx.config.solver.variables,
+			df, vtx, undefined, 'fsep', true, ctx
 		);
 		// in the future we can access `.Platform$file.sep` here
 		const sepValues: string[] = fsep?.values()?.flatMap(s => s.values().filter(isNotUndefined)).toArray() ?? [path.sep];
@@ -93,7 +102,7 @@ const PathFunctions: Record<string, (df: DataflowGraph, vtx: DataflowGraphVertex
 			// if we have no fsep, we cannot construct a path
 			return undefined;
 		}
-		const args = getArgumentStringValue(config.solver.variables, df, vtx, 'unnamed', undefined, true);
+		const args = getArgumentStringValue(ctx.config.solver.variables, df, vtx, 'unnamed', undefined, true, ctx);
 		const argValues = args ? Array.from(args.values()).flatMap(v => [...v]) : [];
 		if(!argValues || argValues.length === 0 || argValues.some(v => v === Unknown || isUndefined(v))) {
 			// if we have no arguments, we cannot construct a path
@@ -171,7 +180,7 @@ export const ABSOLUTE_PATH = {
 					const dfNode = data.dataflow.graph.getVertex(node.info.id);
 					if(isFunctionCallVertex(dfNode)) {
 						const handler = PathFunctions[dfNode.name ?? ''];
-						const strings = handler ? handler(data.dataflow.graph, dfNode, data.analyzer.flowrConfig) : [];
+						const strings = handler ? handler(data.dataflow.graph, dfNode, data.analyzer.inspectContext()) : [];
 						if(strings) {
 							return strings.filter(s => isAbsolutePath(s, regex)).map(str => ({
 								certainty: LintingResultCertainty.Uncertain,

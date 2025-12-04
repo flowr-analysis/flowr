@@ -1,5 +1,5 @@
-import { type DataflowProcessorInformation , processDataflowFor } from '../../../processor';
-import { type DataflowInformation , ExitPointType } from '../../../info';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../processor';
+import { type DataflowInformation, ExitPointType } from '../../../info';
 import { collectAllIds } from '../../../../r-bridge/lang-4.x/ast/model/collect';
 import type { ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
@@ -42,7 +42,7 @@ export function processFunctionArgument<OtherInfo>(
 			tag: VertexType.Use,
 			id:  argument.info.id,
 			cds: data.controlDependencies
-		});
+		}, data.ctx.env.makeCleanEnv());
 		entryPoint = argument.info.id;
 	}
 

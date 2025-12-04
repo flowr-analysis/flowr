@@ -93,7 +93,7 @@ export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisito
 		if(node === undefined || targetNode === undefined || sourceNode === undefined) {
 			return domain;
 		}
-		const operations = mapDataFrameReplacementFunction(node, sourceNode, this, this.config.dfg);
+		const operations = mapDataFrameReplacementFunction(node, sourceNode, this, this.config.dfg, this.config.ctx);
 
 		return this.applyDataFrameExpression(node, operations, domain);
 	}
@@ -104,7 +104,7 @@ export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisito
 		if(node === undefined) {
 			return domain;
 		}
-		const operations = mapDataFrameAccess(node, this, this.config.dfg);
+		const operations = mapDataFrameAccess(node, this, this.config.dfg, this.config.ctx);
 
 		return this.applyDataFrameExpression(node, operations, domain);
 	}

@@ -9,7 +9,7 @@ import type {
 	LinkTo,
 	SubCallContextQueryFormat
 } from './call-context-query-format';
-import { type NodeId , recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId, recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
@@ -238,10 +238,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);
 
-	for(const [nodeId, info] of dataflow.graph.vertices(true)) {
-		if(info.tag !== VertexType.FunctionCall) {
-			continue;
-		}
+	for(const [nodeId, info] of dataflow.graph.verticesOfType(VertexType.FunctionCall)) {
 		/* if we have a vertex, and we check for aliased calls, we want to know if we define this as desired! */
 		if(queriesWhichWantAliases.length > 0) {
 			/*

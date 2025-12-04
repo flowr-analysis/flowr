@@ -1,7 +1,7 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { unpackArgument } from '../argument/unpack-argument';
+import { unpackNonameArg } from '../argument/unpack-argument';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -26,7 +26,7 @@ export function processGet<OtherInfo>(
 		dataflowLogger.warn(`symbol access with ${name.content} has not 1 argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const retrieve = unpackArgument(args[0]);
+	const retrieve = unpackNonameArg(args[0]);
 	if(retrieve === undefined || retrieve.type !== RType.String) {
 		dataflowLogger.warn(`symbol access with ${name.content} has not 1 argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;

@@ -1,8 +1,8 @@
-import { type DataflowProcessorInformation , processDataflowFor } from '../../../../../processor';
-import { type DataflowInformation , alwaysExits } from '../../../../../info';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
+import { alwaysExits, type DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { patchFunctionCall } from '../common';
-import { unpackArgument } from '../argument/unpack-argument';
+import { unpackNonameArg } from '../argument/unpack-argument';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -10,14 +10,17 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
 import { appendEnvironment } from '../../../../../environments/append';
-import { type IdentifierReference , ReferenceType } from '../../../../../environments/identifier';
-import { type REnvironmentInformation , makeAllMaybe } from '../../../../../environments/environment';
+import { type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
+import { type REnvironmentInformation } from '../../../../../environments/environment';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 
 
 /**
- *
+ * Processes an if-then-else built-in function call.
+ * For example, `if(cond) thenExpr else elseExpr` and `if(cond) thenExpr`.
+ * The arguments will be either `[cond, thenExpr]` or `[cond, thenExpr, elseExpr]`.
  */
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -30,7 +33,7 @@ export function processIfThenElse<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
-	const [condArg, thenArg, otherwiseArg] = args.map(e => unpackArgument(e));
+	const [condArg, thenArg, otherwiseArg] = args.map(e => unpackNonameArg(e));
 
 	if(condArg === undefined || thenArg === undefined) {
 		dataflowLogger.warn(`If-then-else ${name.content} has empty condition or then case in ${JSON.stringify(args)}, skipping`);
@@ -52,7 +55,7 @@ export function processIfThenElse<OtherInfo>(
 	let makeThenMaybe = false;
 
 	// we should defer this to the abstract interpretation
-	const values = resolveIdToValue(condArg?.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables });
+	const values = resolveIdToValue(condArg?.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx });
 	const conditionIsAlwaysFalse = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
 	const conditionIsAlwaysTrue = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 

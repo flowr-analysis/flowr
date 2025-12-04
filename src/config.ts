@@ -162,17 +162,17 @@ export interface FlowrConfigOptions extends MergeableRecord {
 	 */
 	readonly abstractInterpretation: {
 		/**
+		 * The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration
+		 */
+		readonly wideningThreshold: number;
+		/**
 		 * The configuration of the shape inference for data frames
 		 */
 		readonly dataFrame: {
 			/**
 			 * The maximum number of columns names to infer for data frames before over-approximating the column names to top
 			 */
-			readonly maxColNames:       number;
-			/**
-			 * The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration
-			 */
-			readonly wideningThreshold: number;
+			readonly maxColNames:    number;
 			/**
 			 * Configuration options for reading data frame shapes from loaded external data files, such as CSV files
 			 */
@@ -253,10 +253,10 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 		}
 	},
 	abstractInterpretation: {
-		dataFrame: {
-			maxColNames:       50,
-			wideningThreshold: 4,
-			readLoadedData:    {
+		wideningThreshold: 4,
+		dataFrame:         {
+			maxColNames:    50,
+			readLoadedData: {
 				readExternalFiles: true,
 				maxReadLines:      1e6
 			}

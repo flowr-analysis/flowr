@@ -120,7 +120,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 		}
 	}
 
-	return [...definitions];
+	return Array.from(definitions);
 }
 
 /**

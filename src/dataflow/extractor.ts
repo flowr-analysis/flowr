@@ -12,7 +12,6 @@ import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument
 import { rangeFrom } from '../util/range';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { initializeCleanEnvironments } from './environments/environment';
 import { mergeDataflowInformation, standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
 import { extractCfgQuick, getCallsInCfg } from '../control-flow/extract-cfg';
@@ -28,6 +27,7 @@ import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 import { Threadpool } from './parallel/threadpool';
+import { toClonableDataflowProcessorInfo } from './parallel/clonable-data';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -124,9 +124,41 @@ export function produceDataFlowGraph<OtherInfo>(
 		referenceChain:      [files[0].filePath],
 		ctx
 	};
-	let df = processDataflowFor<OtherInfo>(files[0].root, dfData);
 
-	/*
+
+	// do some stupid stuff
+	console.log('Cloning AST');
+	//structuredClone(dfData.completeAst);
+
+	console.log('Cloning env');
+	//structuredClone(dfData.environment);
+
+	console.log('Cloning env');
+	structuredClone(JSON.stringify(dfData.environment));
+
+	console.log('Cloning CDP');
+	structuredClone(dfData.controlDependencies);
+	structuredClone(dfData.referenceChain);
+
+	console.log('Cloning CTX');
+	//structuredClone(JSON.stringify(dfData.ctx));
+	
+	const clonable = toClonableDataflowProcessorInfo(dfData);
+	structuredClone(clonable);
+	
+	
+	
+	let df = processDataflowFor<OtherInfo>(files[0].root, dfData);
+	
+	
+	console.log('Cloning Dataflow');
+	structuredClone(df.graph.toJSON());
+	
+	// construct clonable ProcessorInformation
+
+	// construct clonable DataflowInformation
+
+	
 	// first call with threadpool
 	const pool = new Threadpool();
 
@@ -139,22 +171,16 @@ export function produceDataFlowGraph<OtherInfo>(
 				data:         undefined as unknown as DataflowProcessorInformation<OtherInfo & ParentInformation>,
 				dataflowInfo: undefined as unknown as DataflowInformation
 			}))
-	);*/
+	);
 
-	const dataflow: DataflowInformation[] = [];
+	_result.then( () => {
+		pool.closePool();
+	})
 
 	for(let i = 1; i < files.length; i++) {
 		/* source requests register automatically */
-		dataflow.push(standaloneSourceFile(i, files[i], dfData, df));
-
+		df = standaloneSourceFile(i, files[i], dfData, df);
 	}
-
-	for(let i = 0; i < dataflow.length; i++){
-		// merge dataflow back together via reduction with the helper function
-		df = mergeDataflowInformation(i + '-file', dfData, files[i].filePath, df, dataflow[i]);
-	}
-
-
 
 	// finally, resolve linkages
 	updateNestedFunctionCalls(df.graph, df.environment);
@@ -163,4 +189,46 @@ export function produceDataFlowGraph<OtherInfo>(
 
 	// performance optimization: return cfgQuick as part of the result to avoid recomputation
 	return { ...df, cfgQuick };
+
+	//const dataflow: DataflowInformation[] = [];
+	//dataflow.push(df);
+	//let dfInfo = df;
+
+
+	//for(let i = 1; i < files.length; i++) {
+	//	/* source requests register automatically */
+	//	dataflow.push(standaloneSourceFile(i, files[i], dfData, df, true));
+	//	//const dataflowInfo = standaloneSourceFile(i, files[i], dfData, df, true);
+	//	//df = mergeDataflowInformation('file-' + i, dfData, files[i].filePath, df, dataflowInfo);
+	//}
+
+	/*
+	const pool = new Threadpool();
+
+	return pool.submitTasks(
+		'parallelFiles',
+		files.map((file, i) => ({
+			index:        i,
+			file,
+			data:         dfData,
+			dataflowInfo: df,
+		}))
+	).then(results => {
+		const dataflow = results as DataflowInformation[];
+		for(let i = 1; i < results.length; i++){
+			// merge dataflow back together via reduction with the helper function
+			df = mergeDataflowInformation('file-' + i, dfData, files[i].filePath, df, dataflow[i]);
+		}
+		//df = dfInfo;
+
+		// finally, resolve linkages
+		updateNestedFunctionCalls(df.graph, df.environment);
+
+		const cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
+
+		// performance optimization: return cfgQuick as part of the result to avoid recomputation
+		return { ...df, cfgQuick };
+	});*/
+
+
 }

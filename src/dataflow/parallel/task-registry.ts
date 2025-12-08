@@ -38,7 +38,7 @@ export const workerTasks = {
 		payload: SourceFilePayload<OtherInfo>,
 		_runSubtask: RunSubtask
 	): DataflowInformation => {
-		let result = standaloneSourceFile<OtherInfo>(
+		const result = standaloneSourceFile<OtherInfo>(
 			payload.index, payload.file,
 			payload.data, payload.dataflowInfo
 		);

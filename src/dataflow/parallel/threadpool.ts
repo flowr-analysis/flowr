@@ -1,10 +1,8 @@
 import os from 'os';
 import type { TaskName } from './task-registry';
 import type { MessagePort } from 'node:worker_threads';
-import { MessageChannel } from 'node:worker_threads';
 import { Piscina } from 'piscina';
 import { dataflowLogger } from '../logger';
-import worker from './worker';
 
 
 export interface RegisterPortMessage {
@@ -88,7 +86,7 @@ export class Threadpool {
 			maxThreads:               numThreads,
 			filename:                 '/home/jonas/Git/ba-thesis/flowr/dist/src/dataflow/parallel/worker.js',//`${__dirname}/${workerPath}.js`,
 			concurrentTasksPerWorker: 1,
-			
+
 		});
 
 		this.pool.on('message', (msg: unknown) => {
@@ -157,7 +155,7 @@ export class Threadpool {
 	}
 
 	/**
-	 * 
+	 *
 	 */
 	closePool(): void{
 		this.closeMessagePorts();
@@ -165,7 +163,7 @@ export class Threadpool {
 	}
 
 	private closeMessagePorts(): void {
-		for(let port of this.workerPorts.values()){
+		for(const port of this.workerPorts.values()){
 			port.close();
 		}
 	}

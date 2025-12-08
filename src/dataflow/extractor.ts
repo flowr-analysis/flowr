@@ -12,7 +12,7 @@ import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument
 import { rangeFrom } from '../util/range';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { mergeDataflowInformation, standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
+import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
 import { extractCfgQuick, getCallsInCfg } from '../control-flow/extract-cfg';
 import { EdgeType } from './graph/edge';
@@ -142,40 +142,40 @@ export function produceDataFlowGraph<OtherInfo>(
 
 	console.log('Cloning CTX');
 	//structuredClone(JSON.stringify(dfData.ctx));
-	
+
 	const clonable = toClonableDataflowProcessorInfo(dfData);
 	structuredClone(clonable);
-	
-	
-	
+
+
+
 	let df = processDataflowFor<OtherInfo>(files[0].root, dfData);
-	
-	
+
+
 	console.log('Cloning Dataflow');
 	structuredClone(df.graph.toJSON());
-	
+
 	// construct clonable ProcessorInformation
 
 	// construct clonable DataflowInformation
 
-	
+
 	// first call with threadpool
 	const pool = new Threadpool();
 
 	// submit all files
 	const _result = pool.submitTasks(
-			'testPool',
-			files.map((file, i) => ({
-				index:        i,
-				file,
-				data:         undefined as unknown as DataflowProcessorInformation<OtherInfo & ParentInformation>,
-				dataflowInfo: undefined as unknown as DataflowInformation
-			}))
+		'testPool',
+		files.map((file, i) => ({
+			index:        i,
+			file,
+			data:         undefined as unknown as DataflowProcessorInformation<OtherInfo & ParentInformation>,
+			dataflowInfo: undefined as unknown as DataflowInformation
+		}))
 	);
 
-	_result.then( () => {
+	void _result.then( () => {
 		pool.closePool();
-	})
+	});
 
 	for(let i = 1; i < files.length; i++) {
 		/* source requests register automatically */
@@ -195,12 +195,12 @@ export function produceDataFlowGraph<OtherInfo>(
 	//let dfInfo = df;
 
 
-	//for(let i = 1; i < files.length; i++) {
-	//	/* source requests register automatically */
-	//	dataflow.push(standaloneSourceFile(i, files[i], dfData, df, true));
-	//	//const dataflowInfo = standaloneSourceFile(i, files[i], dfData, df, true);
-	//	//df = mergeDataflowInformation('file-' + i, dfData, files[i].filePath, df, dataflowInfo);
-	//}
+	/*for(let i = 1; i < files.length; i++) {
+		/* source requests register automatically *//*
+		dataflow.push(standaloneSourceFile(i, files[i], dfData, df, true));
+		//const dataflowInfo = standaloneSourceFile(i, files[i], dfData, df, true);
+		//df = mergeDataflowInformation('file-' + i, dfData, files[i].filePath, df, dataflowInfo);
+	}*/
 
 	/*
 	const pool = new Threadpool();

@@ -1,4 +1,4 @@
-import { parentPort, MessageChannel, workerData, threadId } from 'node:worker_threads';
+import { parentPort, MessageChannel, threadId } from 'node:worker_threads';
 import type { TaskName } from './task-registry';
 import { workerTasks } from './task-registry';
 import type { SubtaskReceivedMessage } from './threadpool';
@@ -26,7 +26,7 @@ if(!parentPort){
 	parentPort.postMessage({
 		type:     'register-port',
 		workerId: threadId,
-		port: mainPort,
+		port:     mainPort,
 	},
 	[mainPort] // transfer port to main thread
 	);

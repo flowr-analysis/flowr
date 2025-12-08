@@ -1,4 +1,4 @@
-import { parentPort, MessageChannel, workerData } from 'node:worker_threads';
+import { parentPort, MessageChannel, workerData, threadId } from 'node:worker_threads';
 import type { TaskName } from './task-registry';
 import { workerTasks } from './task-registry';
 import type { SubtaskReceivedMessage } from './threadpool';
@@ -15,27 +15,27 @@ const pending = new Map<
         PendingEntry<unknown>
     >();
 
+
 const { port1: workerPort, port2: mainPort } = new MessageChannel();
 
 if(!parentPort){
 	dataflowLogger.error('Worker started without parentPort present, Aborting worker');
 } else {
+	//console.log(`Worker ${workerData.workerId} registering port to main thread.`);
+	console.log(threadId);
 	parentPort.postMessage({
 		type:     'register-port',
-		workerId: typeof workerData === 'object' &&
-					workerData !== null &&
-					typeof (workerData as { id?: number }).id === 'number'
-			? (workerData as { id: number }).id : Math.floor(Math.random() * 1e9),
+		workerId: threadId,
 		port: mainPort,
 	},
 	[mainPort] // transfer port to main thread
 	);
 }
 
-
 workerPort.on('message', (msg: unknown) => {
 	if(isSubtaskResponseMessage(msg)){
 		const { id, result, error } = msg;
+		console.log(`got response for ${id}`);
 		const entry = pending.get(id);
 		if(!entry) {
 			return;
@@ -59,7 +59,7 @@ async function runSubtask<TInput, TOutput>(taskName: TaskName, taskPayload: TInp
 	//return undefined as unknown as TOutput;
 	return new Promise((resolve, reject) => {
 		pending.set(id, { resolve: resolve as (value: unknown) => void, reject });
-
+		console.log(`submitting subtask with ${id} from ${threadId}`);
 		// submit the subtask to main thread
 		workerPort.postMessage({
 			type: 'subtask',

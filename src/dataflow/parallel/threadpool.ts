@@ -1,7 +1,10 @@
 import os from 'os';
 import type { TaskName } from './task-registry';
 import type { MessagePort } from 'node:worker_threads';
-import Piscina from 'piscina';
+import { MessageChannel } from 'node:worker_threads';
+import { Piscina } from 'piscina';
+import { dataflowLogger } from '../logger';
+import worker from './worker';
 
 
 export interface RegisterPortMessage {
@@ -58,7 +61,7 @@ export function isSubtaskResponseMessage(msg: unknown): msg is SubtaskResponseMe
 		typeof msg === 'object' &&
         msg !== null &&
         (msg as SubtaskResponseMessage).type === 'subtask-response' &&
-        typeof (msg as SubtaskResponseMessage).id === 'string'
+        typeof (msg as SubtaskResponseMessage).id === 'number'
 	);
 }
 
@@ -77,12 +80,15 @@ export class Threadpool {
 
 		console.log(numThreads);
 
+		console.log(`${__dirname}/${workerPath}.js`);
+
 		// create tiny pool instance
 		this.pool = new Piscina({
 			minThreads:               1,
 			maxThreads:               numThreads,
-			filename:                 `${__dirname}/${workerPath}.js`,
+			filename:                 '/home/jonas/Git/ba-thesis/flowr/dist/src/dataflow/parallel/worker.js',//`${__dirname}/${workerPath}.js`,
 			concurrentTasksPerWorker: 1,
+			
 		});
 
 		this.pool.on('message', (msg: unknown) => {
@@ -93,7 +99,7 @@ export class Threadpool {
 			if(isRegisterPortMessage(msg)) {
 				const { workerId, port } = msg;
 				this.workerPorts.set(workerId, port);
-
+				console.log(`Port registered for ${workerId}`);
 
 				// Listen for subtasks from this worker
 				port.on('message', (subMsg: unknown) => {
@@ -109,13 +115,16 @@ export class Threadpool {
 	private async handleSubtask(workerId: number, msg: SubtaskReceivedMessage) {
 		const { id, taskName, taskPayload } = msg;
 		const port = this.workerPorts.get(workerId);
+		console.log(`got subtask ${id} from ${workerId}`);
 		if(!port) {
+			dataflowLogger.error(`subtask submitted from worker ${workerId} has no corresponding message port. Aborting subtask`);
 			return;
 		}
 
 
 		try {
 			const result = await this.submitTask(taskName, taskPayload);
+			console.log(`resolving subtask ${taskName} @ ${id} for ${workerId}`);
 			port.postMessage({ type: 'subtask-response', id, result });
 		} catch(err: unknown) {
 			port.postMessage({
@@ -128,6 +137,9 @@ export class Threadpool {
 
 	async submitTask<TInput, TOutput>(taskName: TaskName, taskPayload: TInput): Promise<TOutput>{
 		console.log(`Threadpool called with task: ${taskName}`);
+		console.log('Payload keys:', Object.keys(taskPayload as object));
+		console.log('Contains function?', Object.values(taskPayload as object).some(v => typeof v === 'function'));
+
 		return this.pool.run({ type: 'task', taskName, taskPayload }) as Promise<TOutput>;
 	}
 
@@ -140,10 +152,21 @@ export class Threadpool {
 	 *
 	 */
 	destroyPool(): void {
+		this.closeMessagePorts();
 		void this.pool.destroy();
 	}
 
-	clearAllPendingTasks(): void{
+	/**
+	 * 
+	 */
+	closePool(): void{
+		this.closeMessagePorts();
+		void this.pool.close();
+	}
 
+	private closeMessagePorts(): void {
+		for(let port of this.workerPorts.values()){
+			port.close();
+		}
 	}
 }

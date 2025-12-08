@@ -38,17 +38,20 @@ export const workerTasks = {
 		payload: SourceFilePayload<OtherInfo>,
 		_runSubtask: RunSubtask
 	): DataflowInformation => {
-		return standaloneSourceFile<OtherInfo>(
+		let result = standaloneSourceFile<OtherInfo>(
 			payload.index, payload.file,
 			payload.data, payload.dataflowInfo
 		);
+
+		// convert to clonable Dataflow Information
+		return result;
 	},
 
 	testPool: async <OtherInfo>(
 		payload: SourceFilePayload<OtherInfo>,
 		runSubtask: RunSubtask
 	): Promise<undefined> => {
-		console.log(`Processing ${JSON.stringify(payload.file)} @ index ${payload.index}`);
+		//console.log(`Processing ${JSON.stringify(payload.file)} @ index ${payload.index}`);
 		const result = await runSubtask<Record<string, never>, number>('otherFunction', {});
 		const result2 = await runSubtask<Record<string, never>, number>('otherFunction', {});
 		console.log(`Got ${result} and ${result2} as value from subtask`);

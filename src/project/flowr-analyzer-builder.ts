@@ -11,6 +11,8 @@ import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 import { FlowrAnalyzerPluginDefaults } from './plugins/flowr-analyzer-plugin-defaults';
 import type { BuiltInFlowrPluginName, PluginToRegister } from './plugins/plugin-registry';
 import { makePlugin } from './plugins/plugin-registry';
+import { FeatureManager } from '../core/feature-flags/feature-manager';
+import { FeatureFlag } from '../core/feature-flags/feature-def';
 
 /**
  * Builder for the {@link FlowrAnalyzer}, use it to configure all analysis aspects before creating the analyzer instance
@@ -40,6 +42,7 @@ export class FlowrAnalyzerBuilder {
 	private parser?:     KnownParser;
 	private input?:      Omit<NormalizeRequiredInput, 'context'>;
 	private plugins:     Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
+	private features: FeatureManager;
 
 	/**
 	 * Creates a new builder for the {@link FlowrAnalyzer}.
@@ -53,6 +56,7 @@ export class FlowrAnalyzerBuilder {
 		if(withDefaultPlugins) {
 			this.registerPlugins(...FlowrAnalyzerPluginDefaults());
 		}
+		this.features = new FeatureManager();
 	}
 
 	/**
@@ -135,6 +139,34 @@ export class FlowrAnalyzerBuilder {
 	}
 
 	/**
+	 * Sets the provided `feature` to `state` for the {@link FlowrAnalyzer} to be built by this instance
+	 * @param feature - feature to set
+	 * @param state - boolean state
+	 */
+	public setFeatureState(feature: FeatureFlag, state: boolean): this{
+		this.features.setFlag(feature, state);
+		return this;
+	}
+
+	/**
+	 * Sets the provided `feature` to `true` for the {@link FlowrAnalyzer} to be built by this instance
+	 * @param feature - feature to set
+	 */
+	public setFeature(feature: FeatureFlag): this{
+		this.features.setFlag(feature, true);
+		return this;
+	}
+
+	/**
+	 * Sets the provided `feature` to `false` for the {@link FlowrAnalyzer} to be built by this instance
+	 * @param feature - feature to set
+	 */
+	public unsetFeature(feature: FeatureFlag): this{
+		this.features.setFlag(feature, false);
+		return this;
+	}
+
+	/**
 	 * Create the {@link FlowrAnalyzer} instance using the given information.
 	 * Please note that the only reason this is `async` is that if no parser is set,
 	 * we need to retrieve the default engine instance which is an async operation.
@@ -166,7 +198,8 @@ export class FlowrAnalyzerBuilder {
 		const analyzer = new FlowrAnalyzer(
 			this.parser,
 			context,
-			cache
+			cache,
+			this.features,
 		);
 
 		// we do it here to save time later if the analyzer is to be duplicated

@@ -3,6 +3,7 @@ import type { TaskName } from './task-registry';
 import type { MessagePort } from 'node:worker_threads';
 import { Piscina } from 'piscina';
 import { dataflowLogger } from '../logger';
+import { resolve } from 'node:path';
 
 
 export interface RegisterPortMessage {
@@ -78,15 +79,17 @@ export class Threadpool {
 
 		console.log(numThreads);
 
-		console.log(`${__dirname}/${workerPath}.js`);
+		console.log(`worker filename: ${resolve(__dirname, './worker.ts')}`);
 
 		// create tiny pool instance
 		this.pool = new Piscina({
 			minThreads:               1,
-			maxThreads:               numThreads,
-			filename:                 '/home/jonas/Git/ba-thesis/flowr/dist/src/dataflow/parallel/worker.js',//`${__dirname}/${workerPath}.js`,
+			maxThreads:               2,
+			filename:                resolve(__dirname, './workerWrapper.js'),
 			concurrentTasksPerWorker: 1,
-
+			workerData: {
+      			fullPath: resolve(__dirname, './worker.ts')
+    		},
 		});
 
 		this.pool.on('message', (msg: unknown) => {

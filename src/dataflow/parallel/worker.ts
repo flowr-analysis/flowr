@@ -5,6 +5,7 @@ import type { SubtaskReceivedMessage } from './threadpool';
 import { isSubtaskResponseMessage } from './threadpool';
 import { dataflowLogger } from '../logger';
 
+
 type PendingEntry<T> = {
 	resolve: (value: T | PromiseLike<T>) => void;
 	reject:  (reason: unknown) => void;
@@ -21,7 +22,7 @@ const { port1: workerPort, port2: mainPort } = new MessageChannel();
 if(!parentPort){
 	dataflowLogger.error('Worker started without parentPort present, Aborting worker');
 } else {
-	//console.log(`Worker ${workerData.workerId} registering port to main thread.`);
+	console.log(`Worker ${threadId} registering port to main thread.`);
 	console.log(threadId);
 	parentPort.postMessage({
 		type:     'register-port',

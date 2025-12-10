@@ -19,6 +19,9 @@ const pending = new Map<
 
 const { port1: workerPort, port2: mainPort } = new MessageChannel();
 
+let portRegisteredResolve: () => void;
+const portRegistered = new Promise<void>(res => (portRegisteredResolve = res));
+
 if(!parentPort){
 	dataflowLogger.error('Worker started without parentPort present, Aborting worker');
 } else {
@@ -31,6 +34,13 @@ if(!parentPort){
 	},
 	[mainPort] // transfer port to main thread
 	);
+
+	// Listen for confirmation from main thread
+	workerPort.on('message', (msg) => {
+		if (msg?.type === 'port-registered') {
+			portRegisteredResolve();
+		}
+	});
 }
 
 workerPort.on('message', (msg: unknown) => {
@@ -71,16 +81,19 @@ async function runSubtask<TInput, TOutput>(taskName: TaskName, taskPayload: TInp
 	});
 }
 
-export default(msg: SubtaskReceivedMessage) => {
-	const { type, taskName, taskPayload } = msg;
-	console.log(type);
-	const taskHandler = workerTasks[taskName];
-	console.log(taskHandler);
-	console.log(taskName);
-	if(!taskHandler){
-		console.log(`Requested unknown task (${taskName})`);
-		return undefined;
-	}
-	console.log('Hello from worker thread');
-	return taskHandler(taskPayload as never, runSubtask);
-};
+async function initialize(){
+	await portRegistered;
+
+	return (msg: SubtaskReceivedMessage) => {
+		const { type, taskName, taskPayload } = msg;
+		const taskHandler = workerTasks[taskName];
+		if(!taskHandler){
+			dataflowLogger.error(`Requested unknown task (${taskName})`);
+			return undefined;
+		}
+		console.log('Hello from worker thread');
+		return taskHandler(taskPayload as never, runSubtask);
+	};
+}
+
+module.exports = initialize();

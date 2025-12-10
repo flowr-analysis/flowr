@@ -83,10 +83,11 @@ export class Threadpool {
 
 		// create tiny pool instance
 		this.pool = new Piscina({
-			minThreads:               1,
-			maxThreads:               2,
+			//minThreads:               2,
+			maxThreads:               numThreads,
 			filename:                resolve(__dirname, './workerWrapper.js'),
-			concurrentTasksPerWorker: 1,
+			concurrentTasksPerWorker: 5,
+			idleTimeout: 30 * 1000, // 30 seconds idle timeout
 			workerData: {
       			fullPath: resolve(__dirname, './worker.ts')
     		},
@@ -101,6 +102,9 @@ export class Threadpool {
 				const { workerId, port } = msg;
 				this.workerPorts.set(workerId, port);
 				console.log(`Port registered for ${workerId}`);
+
+				// Confirm Registration
+				port.postMessage({ type: 'port-registered' });
 
 				// Listen for subtasks from this worker
 				port.on('message', (subMsg: unknown) => {

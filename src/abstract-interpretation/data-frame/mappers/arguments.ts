@@ -10,9 +10,8 @@ import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/pro
 import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
-import type { AbstractInterpretationInfo } from '../absint-info';
 import { resolveIdToArgName, resolveIdToArgValue, unquoteArgument } from '../resolve-args';
-import { resolveIdToDataFrameShape } from '../shape-inference';
+import type { DataFrameShapeInferenceVisitor } from '../shape-inference';
 
 /** Regular expression representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
@@ -206,17 +205,17 @@ export function hasCriticalArgument(
 }
 
 /**
- * Checks if a given argument has any data frame shape information and therefore may represent a data frame.
- * @param arg  - The argument to check
- * @param info - Argument resolve information
- * @returns Whether the argument has any data frame shape information and may represent a data frame
+ * Checks if a given argument has inferred data frame shape information and therefore represents a data frame
+ * @param arg       - The argument to check
+ * @param inference - The data frame shape inference visitor to use
+ * @returns Whether the argument has inferred data frame shape information and represents a data frame
  */
-export function isDataFrameArgument(arg: RNode<ParentInformation> | undefined, info: ResolveInfo):
-	arg is RNode<ParentInformation & Required<AbstractInterpretationInfo>>;
-export function isDataFrameArgument(arg: RFunctionArgument<ParentInformation> | undefined, info: ResolveInfo):
-	arg is RArgument<ParentInformation & Required<AbstractInterpretationInfo>> & { value: RNode<ParentInformation & Required<AbstractInterpretationInfo>> };
-export function isDataFrameArgument(arg: RNode<ParentInformation> | RFunctionArgument<ParentInformation> | undefined, info: ResolveInfo): boolean {
-	return arg !== EmptyArgument && resolveIdToDataFrameShape(arg, info.graph) !== undefined;
+export function isDataFrameArgument(arg: RNode<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor):
+	arg is RNode<ParentInformation>;
+export function isDataFrameArgument(arg: RFunctionArgument<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor):
+	arg is RArgument<ParentInformation> & { value: RNode<ParentInformation> };
+export function isDataFrameArgument(arg: RNode<ParentInformation> | RFunctionArgument<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor): boolean {
+	return arg !== EmptyArgument && inference.getValue(arg) !== undefined;
 }
 
 /**

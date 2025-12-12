@@ -19,8 +19,8 @@ export class FlowrAnalyzerNewsFilePlugin extends FlowrAnalyzerFilePlugin {
 	private readonly pattern: RegExp;
 
 	/**
-	 * Creates a new instance of the DESCRIPTION file plugin.
-	 * @param filePattern - The pattern to identify DESCRIPTION files, see {@link NewsFilePattern} for the default pattern.
+	 * Creates a new instance of the NEWS file plugin.
+	 * @param filePattern - The pattern to identify NEWS files, see {@link NewsFilePattern} for the default pattern.
 	 */
 	constructor(filePattern: RegExp = NewsFilePattern) {
 		super();

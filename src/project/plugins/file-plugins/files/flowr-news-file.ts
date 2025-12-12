@@ -25,7 +25,7 @@ export class FlowrNewsFile extends FlowrFile<NewsChunk[]> {
 	}
 
 	/**
-	 * Loads and parses the content of the wrapped file as a DCF structure.
+	 * Loads and parses the content of the wrapped file as news chunks.
 	 * @see {@link parseNews} for details on the parsing logic.
 	 */
 	protected loadContent(): NewsChunk[] {

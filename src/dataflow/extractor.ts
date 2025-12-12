@@ -28,6 +28,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 import { Threadpool } from './parallel/threadpool';
 import { toClonableDataflowProcessorInfo } from './parallel/clonable-data';
+import { dataflowLogger } from './logger';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -107,13 +108,17 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 export function produceDataFlowGraph<OtherInfo>(
 	parser:      Parser<KnownParserType>,
 	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
-	ctx:         FlowrAnalyzerContext
+	ctx:         FlowrAnalyzerContext,
 ): DataflowInformation & { cfgQuick: ControlFlowInformation | undefined } {
 
 	// we freeze the files here to avoid endless modifications during processing
 	const files = completeAst.ast.files.slice();
 
 	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
+
+	const features = ctx.features;
+	const fileParallelization = features.isEnabled('paralleliseFiles');
+	const workerPool = fileParallelization ? ctx.workerPool ?? new Threadpool() : undefined;
 
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
@@ -140,8 +145,14 @@ export function produceDataFlowGraph<OtherInfo>(
 	structuredClone(dfData.controlDependencies);
 	structuredClone(dfData.referenceChain);
 
-	console.log('Cloning CTX');
-	//structuredClone(JSON.stringify(dfData.ctx));
+	//console.log('Cloning CTX files');
+	//structuredClone(dfData.ctx.files);
+	//console.log('Cloning CTX deps');
+	//structuredClone(dfData.ctx.deps);
+	//console.log('Cloning CTX config');
+	//structuredClone(dfData.ctx.config);
+	//console.log('Cloning CTX env');
+	//structuredClone(dfData.ctx.env);
 
 	const clonable = toClonableDataflowProcessorInfo(dfData);
 	structuredClone(clonable);
@@ -159,23 +170,30 @@ export function produceDataFlowGraph<OtherInfo>(
 	// construct clonable DataflowInformation
 
 
-	// first call with threadpool
-	const pool = new Threadpool();
+	if(fileParallelization && workerPool){
+		// parallelise the dataflow graph analysis
+		// submit all files
+		const _result = workerPool.submitTasks(
+			'testPool',
+			files.map((file, i) => ({
+				index:        i,
+				file,
+				data:         undefined as unknown as DataflowProcessorInformation<OtherInfo & ParentInformation>,
+				dataflowInfo: undefined as unknown as DataflowInformation
+			}))
+		);
 
-	// submit all files
-	const _result = pool.submitTasks(
-		'testPool',
-		files.map((file, i) => ({
-			index:        i,
-			file,
-			data:         undefined as unknown as DataflowProcessorInformation<OtherInfo & ParentInformation>,
-			dataflowInfo: undefined as unknown as DataflowInformation
-		}))
-	);
+		void _result.then( () => {
+			workerPool.closePool();
+		});
 
-	void _result.then( () => {
-		pool.closePool();
-	});
+	} else {
+		if(!workerPool){
+			dataflowLogger.error('Dataflow:: Parallelization is enabled, but no Threadpool is provided. Falling back to sequential computation.');
+		}
+		// use the sequential analysis
+	}
+
 
 	for(let i = 1; i < files.length; i++) {
 		/* source requests register automatically */

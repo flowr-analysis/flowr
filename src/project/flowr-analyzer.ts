@@ -16,9 +16,7 @@ import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import { fileProtocol, requestFromInput } from '../r-bridge/retriever';
 import { isFilePath } from '../util/files';
 import type { FlowrFileProvider } from './context/flowr-file';
-import { FeatureManager } from '../core/feature-flags/feature-manager';
-import { Threadpool } from '../dataflow/parallel/threadpool';
-import { FeatureFlag } from '../core/feature-flags/feature-def';
+import type { FeatureFlag } from '../core/feature-flags/feature-def';
 
 /**
  * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
@@ -142,8 +140,6 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	private readonly cache:  FlowrAnalyzerCache<Parser>;
 	private readonly ctx:    FlowrAnalyzerContext;
 	private parserInfo:      KnownParserInformation | undefined;
-	private features: FeatureManager;
-	private workerPool: Threadpool | undefined;
 
 	/**
 	 * Create a new analyzer instance.
@@ -152,15 +148,10 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	 * @param ctx    - The context to use for the analyses.
 	 * @param cache  - The caching layer to use for storing analysis results.
 	 */
-	constructor(parser: Parser, ctx: FlowrAnalyzerContext, cache: FlowrAnalyzerCache<Parser>, features: FeatureManager) {
+	constructor(parser: Parser, ctx: FlowrAnalyzerContext, cache: FlowrAnalyzerCache<Parser>) {
 		this.parser = parser;
 		this.ctx = ctx;
 		this.cache = cache;
-		this.features = features;
-		if(this.features.isEnabled('paralleliseFiles')){
-			// create worker Pool
-			this.workerPool = new Threadpool();
-		}
 	}
 
 	public get flowrConfig(): FlowrConfigOptions {
@@ -278,7 +269,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	 * @param state - boolean state
 	 */
 	public setFeatureState(feature: FeatureFlag, state: boolean): this{
-		this.features.setFlag(feature, state);
+		this.ctx.features.setFlag(feature, state);
 		return this;
 	}
 
@@ -287,7 +278,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	 * @param feature - feature to set
 	 */
 	public setFeature(feature: FeatureFlag): this{
-		this.features.setFlag(feature, true);
+		this.ctx.features.setFlag(feature, true);
 		return this;
 	}
 
@@ -296,7 +287,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	 * @param feature - feature to set
 	 */
 	public unsetFeature(feature: FeatureFlag): this{
-		this.features.setFlag(feature, false);
+		this.ctx.features.setFlag(feature, false);
 		return this;
 	}
 

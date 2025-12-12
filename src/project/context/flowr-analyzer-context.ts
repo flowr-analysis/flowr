@@ -28,6 +28,8 @@ import type { FlowrFileProvider } from './flowr-file';
 import { FlowrInlineTextFile } from './flowr-file';
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
 import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
+import { FeatureManager } from '../../core/feature-flags/feature-manager';
+import type { Threadpool } from '../../dataflow/parallel/threadpool';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -66,19 +68,23 @@ export interface ReadOnlyFlowrAnalyzerContext {
  * If you are just interested in inspecting the context, you can use {@link ReadOnlyFlowrAnalyzerContext} instead (e.g., via {@link inspect}).
  */
 export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
-	public readonly files: FlowrAnalyzerFilesContext;
-	public readonly deps:  FlowrAnalyzerDependenciesContext;
-	public readonly env:   FlowrAnalyzerEnvironmentContext;
+	public readonly files:       FlowrAnalyzerFilesContext;
+	public readonly deps:        FlowrAnalyzerDependenciesContext;
+	public readonly env:         FlowrAnalyzerEnvironmentContext;
+	public readonly features:    FeatureManager;
+	public readonly workerPool?: Threadpool;
 
 	public readonly config: FlowrConfigOptions;
 
-	constructor(config: FlowrConfigOptions, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>) {
+	constructor(config: FlowrConfigOptions, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>, features = new FeatureManager(), workerPool?: Threadpool) {
 		this.config = config;
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		this.files = new FlowrAnalyzerFilesContext(loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
             (plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.deps  = new FlowrAnalyzerDependenciesContext(this, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 		this.env   = new FlowrAnalyzerEnvironmentContext(this);
+		this.features = features;
+		this.workerPool = workerPool;
 	}
 
 	/** delegate request addition */

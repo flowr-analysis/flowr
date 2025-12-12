@@ -26,6 +26,10 @@ export interface SubtaskResponseMessage {
 	error?:  string;
 }
 
+export interface PortRegisteredMessage {
+    type: 'port-registered';
+}
+
 /**
  *
  */
@@ -64,6 +68,18 @@ export function isSubtaskResponseMessage(msg: unknown): msg is SubtaskResponseMe
 	);
 }
 
+
+/**
+ *
+ */
+export function isPortRegisteredMessage(msg: unknown): msg is PortRegisteredMessage {
+	return (
+		typeof msg === 'object' &&
+        msg !== null &&
+        (msg as PortRegisteredMessage).type === 'port-registered'
+	);
+}
+
 /**
  * Simple warpper for piscina used for dataflow parallelization
  */
@@ -71,7 +87,7 @@ export class Threadpool {
 	private readonly pool: Piscina;
 	private workerPorts = new Map<number, MessagePort>();
 
-	constructor(numThreads = 0, workerPath = 'worker') {
+	constructor(numThreads = 0, workerPath = '/workerWrapper.js') {
 		if(numThreads <= 0){
 			// use avalaible core
 			numThreads = Math.max(1, os.cpus().length); // may be problematic, as this returns SMT threads as cores
@@ -85,12 +101,12 @@ export class Threadpool {
 		this.pool = new Piscina({
 			//minThreads:               2,
 			maxThreads:               numThreads,
-			filename:                resolve(__dirname, './workerWrapper.js'),
+			filename:                 resolve(__dirname, workerPath),
 			concurrentTasksPerWorker: 5,
-			idleTimeout: 30 * 1000, // 30 seconds idle timeout
-			workerData: {
-      			fullPath: resolve(__dirname, './worker.ts')
-    		},
+			idleTimeout:              30 * 1000, // 30 seconds idle timeout
+			workerData:               {
+				fullPath: resolve(__dirname, './worker.ts')
+			},
 		});
 
 		this.pool.on('message', (msg: unknown) => {

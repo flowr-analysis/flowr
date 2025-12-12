@@ -5,7 +5,7 @@ import { featureFlags } from './feature-def';
 
 /**
  *  Feature Manager object to handle interacting with Feature Flags
-*/
+ */
 export class FeatureManager {
 	/**
 	 * Mutable version of the feature Flags for type safety
@@ -13,7 +13,7 @@ export class FeatureManager {
 	private mutableFlags;
 
 	constructor(flags?: typeof featureFlags){
-		this.mutableFlags = {...(flags ?? featureFlags)};
+		this.mutableFlags = { ...(flags ?? featureFlags) };
 	}
 
 	/**

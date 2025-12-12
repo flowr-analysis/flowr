@@ -12,7 +12,8 @@ import { FlowrAnalyzerPluginDefaults } from './plugins/flowr-analyzer-plugin-def
 import type { BuiltInFlowrPluginName, PluginToRegister } from './plugins/plugin-registry';
 import { makePlugin } from './plugins/plugin-registry';
 import { FeatureManager } from '../core/feature-flags/feature-manager';
-import { FeatureFlag } from '../core/feature-flags/feature-def';
+import type { FeatureFlag } from '../core/feature-flags/feature-def';
+import { Threadpool } from '../dataflow/parallel/threadpool';
 
 /**
  * Builder for the {@link FlowrAnalyzer}, use it to configure all analysis aspects before creating the analyzer instance
@@ -42,7 +43,7 @@ export class FlowrAnalyzerBuilder {
 	private parser?:     KnownParser;
 	private input?:      Omit<NormalizeRequiredInput, 'context'>;
 	private plugins:     Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
-	private features: FeatureManager;
+	private features:    FeatureManager;
 
 	/**
 	 * Creates a new builder for the {@link FlowrAnalyzer}.
@@ -188,7 +189,12 @@ export class FlowrAnalyzerBuilder {
 	public buildSync(): FlowrAnalyzer {
 		guard(this.parser !== undefined, 'No parser set, please use the setParser or setEngine method to set a parser before building the analyzer');
 
-		const context = new FlowrAnalyzerContext(this.flowrConfig, this.plugins);
+		let workerPool = undefined;
+		if(this.features.isEnabled('paralleliseFiles')){
+			workerPool = new Threadpool();
+		}
+
+		const context = new FlowrAnalyzerContext(this.flowrConfig, this.plugins, this.features, workerPool);
 		const cache = FlowrAnalyzerCache.create({
 			parser: this.parser,
 			context,
@@ -199,7 +205,6 @@ export class FlowrAnalyzerBuilder {
 			this.parser,
 			context,
 			cache,
-			this.features,
 		);
 
 		// we do it here to save time later if the analyzer is to be duplicated

@@ -2,7 +2,7 @@ import { parentPort, MessageChannel, threadId } from 'node:worker_threads';
 import type { TaskName } from './task-registry';
 import { workerTasks } from './task-registry';
 import type { SubtaskReceivedMessage } from './threadpool';
-import { isSubtaskResponseMessage } from './threadpool';
+import { isPortRegisteredMessage, isSubtaskResponseMessage } from './threadpool';
 import { dataflowLogger } from '../logger';
 
 
@@ -36,8 +36,8 @@ if(!parentPort){
 	);
 
 	// Listen for confirmation from main thread
-	workerPort.on('message', (msg) => {
-		if (msg?.type === 'port-registered') {
+	workerPort.on('message', (msg: unknown) => {
+		if(isPortRegisteredMessage(msg)) {
 			portRegisteredResolve();
 		}
 	});
@@ -85,7 +85,7 @@ async function initialize(){
 	await portRegistered;
 
 	return (msg: SubtaskReceivedMessage) => {
-		const { type, taskName, taskPayload } = msg;
+		const { taskName, taskPayload } = msg;
 		const taskHandler = workerTasks[taskName];
 		if(!taskHandler){
 			dataflowLogger.error(`Requested unknown task (${taskName})`);

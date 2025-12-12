@@ -38,19 +38,23 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	/**
 	 * The files context provides access to the files to be analyzed and their loading order.
 	 */
-	readonly files:  ReadOnlyFlowrAnalyzerFilesContext;
+	readonly files:              ReadOnlyFlowrAnalyzerFilesContext;
 	/**
 	 * The dependencies context provides access to the identified dependencies and their versions.
 	 */
-	readonly deps:   ReadOnlyFlowrAnalyzerDependenciesContext;
+	readonly deps:               ReadOnlyFlowrAnalyzerDependenciesContext;
 	/**
 	 * The environment context provides access to the environment information used during analysis.
 	 */
-	readonly env:    ReadOnlyFlowrAnalyzerEnvironmentContext;
+	readonly env:                ReadOnlyFlowrAnalyzerEnvironmentContext;
 	/**
 	 * The configuration options used by the analyzer.
 	 */
-	readonly config: FlowrConfigOptions;
+	readonly config:             FlowrConfigOptions;
+	/**
+	 * Run all resolution steps that can be done before the main analysis run.
+	 */
+	readonly resolvePreAnalysis: () => void;
 }
 
 /**

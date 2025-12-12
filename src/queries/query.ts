@@ -61,6 +61,8 @@ import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { log } from '../util/log';
 import type { ReplOutput } from '../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../cli/repl/core';
+import type { FilesQuery } from './catalog/files-query/files-query-format';
+import { FilesQueryDefinition } from './catalog/files-query/files-query-format';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -71,6 +73,7 @@ export type Query = CallContextQuery
 	| DataflowQuery
 	| ControlFlowQuery
 	| DataflowLensQuery
+	| FilesQuery
 	| DfShapeQuery
 	| NormalizedAstQuery
 	| IdMapQuery
@@ -132,6 +135,7 @@ export const SupportedQueries = {
 	'dataflow':             DataflowQueryDefinition,
 	'dataflow-lens':        DataflowLensQueryDefinition,
 	'df-shape':             DfShapeQueryDefinition,
+	'files':                FilesQueryDefinition,
 	'id-map':               IdMapQueryDefinition,
 	'normalized-ast':       NormalizedAstQueryDefinition,
 	'dataflow-cluster':     ClusterQueryDefinition,
@@ -227,7 +231,7 @@ export async function executeQueries<
 
 	for(const [type, group] of entries) {
 		try {
-			const result = await Promise.resolve(executeQueriesOfSameType(data, group));
+			const result = await executeQueriesOfSameType(data, group);
 			results.push([type, result] as [Base, Awaited<QueryResult<Base>>]);
 		} catch(e) {
 			log.warn(e);

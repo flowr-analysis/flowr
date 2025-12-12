@@ -1,7 +1,5 @@
-import { fileProtocol } from '../../../r-bridge/retriever';
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
-import { splitAtEscapeSensitive } from '../../../util/text/args';
-import { ansiFormatter, italic } from '../../../util/text/ansi';
+import { ansiFormatter, ColorEffect, Colors, FontStyles, italic } from '../../../util/text/ansi';
 import { describeSchema } from '../../../util/schema';
 import {
 	AnyQuerySchema,
@@ -13,10 +11,12 @@ import {
 	type SupportedQuery,
 	type SupportedQueryTypes
 } from '../../../queries/query';
-import { jsonReplacer } from '../../../util/json';
-import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
-import type { BaseQueryResult } from '../../../queries/base-query-format';
 import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import { fileProtocol } from '../../../r-bridge/retriever';
+import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
+import { jsonReplacer } from '../../../util/json';
+import type { BaseQueryResult } from '../../../queries/base-query-format';
+import { splitAtEscapeSensitive } from '../../../util/text/args';
 
 
 function printHelp(output: ReplOutput) {
@@ -58,8 +58,20 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 		}
 		const validationResult = QueriesSchema().validate(parsedQuery);
 		if(validationResult.error) {
-			output.stderr(`Invalid query: ${validationResult.error.message}`);
-			printHelp(output);
+			output.stderr(`Invalid query: "${output.formatter.format(JSON.stringify(parsedQuery), { style: FontStyles.Italic, color: Colors.Yellow, effect: ColorEffect.Foreground })}"`);
+			for(const line of validationResult.error.details) {
+				const value = line.context?.value ? JSON.stringify(line.context.value) : undefined;
+				output.stderr(` - ${line.message} ${value ? '(' + italic(value, output.formatter) + ')' : ''}`);
+				const ctx = line.context as { details?: Array<{ message: string }> } | undefined;
+				for(const detail of ctx?.details?.slice(0, ctx.details.length - 1) ?? []) {
+					if('context' in detail && 'message' in (detail.context as object)) {
+						const lines = (detail.context as { message: string }).message.split('. ');
+						for(const l of lines) {
+							output.stderr(`   - ${l.trim()}`);
+						}
+					}
+				}
+			}
 			return;
 		}
 	} else if(query.startsWith('[')) {

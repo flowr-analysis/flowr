@@ -35,7 +35,7 @@ function summarizeObjectWithLimit(obj: object, limitChars = 500, limitLines = 10
 	if(str.split('\n').length > limitLines) {
 		const lines = str.split('\n').slice(0, limitLines);
 		return lines.join('\n') + '\n... (truncated)';
-	} else if(str.length <= limitChars) {
+	} else if(str.length > limitChars) {
 		return str.slice(0, limitChars) + '... (truncated)';
 	} else {
 		return str;
@@ -43,15 +43,15 @@ function summarizeObjectWithLimit(obj: object, limitChars = 500, limitLines = 10
 }
 
 
-function rolesFromInput(rulesPart: readonly string[]): {valid: FileRole[], invalid: string[]} {
-	return rulesPart
-		.reduce((acc, ruleName) => {
-			ruleName = ruleName.trim();
+function rolesFromInput(rolesPart: readonly string[]): {valid: FileRole[], invalid: string[]} {
+	return rolesPart
+		.reduce((acc, roleName) => {
+			roleName = roleName.trim();
 			// check if it is one of the values
-			if(Object.values(FileRole).includes(ruleName as FileRole)) {
-				acc.valid.push(ruleName as FileRole);
+			if(Object.values(FileRole).includes(roleName as FileRole)) {
+				acc.valid.push(roleName as FileRole);
 			} else {
-				acc.invalid.push(ruleName);
+				acc.invalid.push(roleName);
 			}
 			return acc;
 		}, { valid: [] as FileRole[], invalid: [] as string[] });
@@ -80,11 +80,11 @@ function filesQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 function filesQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfigOptions): CommandCompletions {
 	const rolesPrefixNotPresent = line.length == 0 || (line.length == 1 && line[0].length < rolePrefix.length);
 	const rolesNotFinished = line.length == 1 && line[0].startsWith(rolePrefix) && !startingNewArg;
-	const endOfRules = line.length == 1 && startingNewArg || line.length == 2;
+	const endOfRoles = line.length == 1 && startingNewArg || line.length == 2;
 
 	if(rolesPrefixNotPresent) {
 		return { completions: [`${rolePrefix}`] };
-	} else if(endOfRules) {
+	} else if(endOfRoles) {
 		return { completions: [fileProtocol] };
 	} else if(rolesNotFinished) {
 		const rolesWithoutPrefix = line[0].slice(rolePrefix.length);
@@ -109,7 +109,6 @@ export const FilesQueryDefinition = {
 	executor:        executeFileQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'files'>['files'];
-		console.log(out);
 		result.push(`Query: ${bold('files', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 		result.push(`   ╰ Found ${out.files.length} file${out.files.length === 1 ? '' : 's'}`);
 		for(const f of out.files) {

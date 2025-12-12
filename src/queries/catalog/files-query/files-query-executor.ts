@@ -7,7 +7,7 @@ import type { BasicQueryData } from '../../base-query-format';
 import type { FileRole } from '../../../project/context/flowr-file';
 
 /**
- * Executes the given dataflow cluster queries using the provided analyzer.
+ * Executes the given files queries using the provided analyzer.
  */
 export function executeFileQuery({ analyzer }: BasicQueryData, queries: readonly FilesQuery[]): Promise<FilesQueryResult> {
 	const start = Date.now();

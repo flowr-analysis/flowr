@@ -6,7 +6,7 @@ import { SemVer } from 'semver';
 import { type PackageType , Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { FileRole } from '../../context/flowr-file';
-import type { DCF } from '../file-plugins/flowr-description-file';
+import type { DCF } from '../file-plugins/files/flowr-description-file';
 
 const VersionRegex = /^([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([\d.]+)\))?$/;
 

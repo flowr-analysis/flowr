@@ -10,6 +10,7 @@ import { FlowrAnalyzerRmdFilePlugin } from './file-plugins/notebooks/flowr-analy
 import { FlowrAnalyzerQmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
 import { guard } from '../../util/assert';
 import { FlowrAnalyzerJupyterFilePlugin } from './file-plugins/notebooks/flowr-analyzer-jupyter-file-plugin';
+import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-file-plugin';
 
 /**
  * The built-in Flowr Analyzer plugins that are always available.
@@ -21,6 +22,7 @@ export const BuiltInPlugins = [
 	['file:rmd', FlowrAnalyzerRmdFilePlugin],
 	['file:qmd', FlowrAnalyzerQmdFilePlugin],
 	['file:ipynb', FlowrAnalyzerJupyterFilePlugin],
+	['file:news', FlowrAnalyzerNewsFilePlugin]
 ] as const satisfies [string, PluginProducer][];
 
 export type BuiltInFlowrPluginName = typeof BuiltInPlugins[number][0];

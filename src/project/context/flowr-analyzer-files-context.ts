@@ -14,10 +14,11 @@ import {
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
 import { type FilePath, FlowrFile, type FlowrFileProvider, FlowrTextFile, FileRole } from './flowr-file';
-import type { FlowrDescriptionFile } from '../plugins/file-plugins/flowr-description-file';
+import type { FlowrDescriptionFile } from '../plugins/file-plugins/files/flowr-description-file';
 import { log } from '../../util/log';
 import fs from 'fs';
 import path from 'path';
+import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
@@ -36,6 +37,7 @@ export type RAnalysisRequest = RParseRequest | RProjectAnalysisRequest
 
 export type RoleBasedFiles = {
     [FileRole.Description]: FlowrDescriptionFile[];
+	[FileRole.News]:           FlowrNewsFile[];
     /* currently no special support */
     [FileRole.Namespace]:   FlowrFileProvider[];
     [FileRole.Source]:      FlowrFileProvider[];
@@ -123,6 +125,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	/* files that are part of the analysis, e.g. source files */
 	private byRole:        RoleBasedFiles = {
 		[FileRole.Description]: [],
+		[FileRole.News]:        [],
 		[FileRole.Namespace]:   [],
 		[FileRole.Source]:      [],
 		[FileRole.Data]:        [],
@@ -211,7 +214,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		}
 
 		if(f.role) {
-			this.byRole[f.role].push(f as typeof this.byRole[FileRole.Description][number]);
+			this.byRole[f.role].push(f as never);
 		}
 
 		return f;

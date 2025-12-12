@@ -77,6 +77,12 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * ```
 	 */
 	getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role];
+
+	/**
+	 * Get all files known to this context.
+	 * @returns An array of all files.
+	 */
+	getAllFiles(): FlowrFileProvider[];
 	/**
 	 * Check if the context has a file with the given path.
 	 * Please note, that this may also check the file system, depending on the configuration
@@ -309,5 +315,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role] {
 		return this.byRole[role];
+	}
+
+	public getAllFiles(): FlowrFileProvider[] {
+		return [...this.files.values(), ...this.inlineFiles];
 	}
 }

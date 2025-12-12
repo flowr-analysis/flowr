@@ -21,6 +21,7 @@ export abstract class FlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerP
 }
 
 const discoverRSourcesRegex = /\.(r|rmd|ipynb|qmd)$/i;
+const ignorePathsWith = /(\.git|\.svn|\.hg|renv|packrat|node_modules|__pycache__|\.Rproj\.user)/i;
 
 /**
  * This is the default dummy implementation of the {@link FlowrAnalyzerProjectDiscoveryPlugin}.
@@ -31,16 +32,21 @@ class DefaultFlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerProjectDis
 	public readonly description = 'This is the default project discovery plugin that does nothing.';
 	public readonly version = new SemVer('0.0.0');
 	private readonly supportedExtensions: RegExp;
+	private readonly ignorePathsRegex:    RegExp;
 
-	constructor(triggerOnExtensions: RegExp = discoverRSourcesRegex) {
+	constructor(triggerOnExtensions: RegExp = discoverRSourcesRegex, ignorePathsRegex: RegExp = ignorePathsWith) {
 		super();
 		this.supportedExtensions = triggerOnExtensions;
+		this.ignorePathsRegex = ignorePathsRegex;
 	}
 
 	public process(_context: unknown, args: RProjectAnalysisRequest): (RParseRequest | FlowrFile<string>)[] {
 		const requests: (RParseRequest | FlowrFile<string>)[] = [];
 		/* the dummy approach of collecting all files, group R and Rmd files, and be done with it */
 		for(const file of getAllFilesSync(args.content)) {
+			if(this.ignorePathsRegex.test(file)) {
+				continue;
+			}
 			if(this.supportedExtensions.test(file)) {
 				requests.push({ content: file, request: 'file' });
 			} else {

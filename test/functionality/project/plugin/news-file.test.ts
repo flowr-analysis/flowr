@@ -520,6 +520,9 @@ to gracefully prepare for changes in the next major release.
 		assert.lengthOf(files, 1, 'There should be exactly one NEWS file');
 
 		const chunks = files[0].content();
+		console.log(chunks);
+		console.log(chunks[0]);
+		console.log(chunks[2]);
 		assert.lengthOf(chunks, 4, 'There should be four news chunks for every version');
 		assert.strictEqual(chunks[1].version, '4.0.1', 'The second chunk should be for version 4.0.1');
 		assert.typeOf(chunks[2].entries[0], 'object', 'The first entry of version 4.0.1 should be an object');

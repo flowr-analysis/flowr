@@ -61,8 +61,8 @@ function parseDCF(file: FlowrFileProvider): Map<string, string[]> {
 			}
 
 			const [key, rest] = line.split(firstColonRegex).map(s => s.trim());
-			currentKey = key.trim();
-			currentValue = rest.trim();
+			currentKey = key?.trim() ?? '';
+			currentValue = rest?.trim() ?? '';
 		}
 	}
 

@@ -79,7 +79,8 @@ const RBulletPointRegex = /^\s*(?<bullet>[o*+-])/;
 // ^([[:alpha:]].*)[[:space:]]*$"
 const RCategoryRegex = /^((#+\s*)?([A-Za-z].*))\s*$/;
 const AnyVersionRegex = new RegExp(
-	RStandardRegexp.ValidPackageVersion.source + '|deve(l(opment)?)? ver(sion)?|(?<=\\()[^)]*(?=\\))',
+	RStandardRegexp.ValidPackageVersion.source + '|dev(e(l(opment)?)?)? (ver(sion)?)?|(?<=\\()[^)]*(?=\\))',
+	'i'
 );
 
 function splitLinesRegex(relevantLines: string[], regex: RegExp) {

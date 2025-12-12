@@ -4,7 +4,7 @@ import {
 	FlowrRMarkdownFile,
 	isRCodeBlock,
 	restoreBlocksWithoutMd
-} from '../../../../src/project/plugins/file-plugins/notebooks/flowr-rmarkdown-file';
+} from '../../../../src/project/plugins/file-plugins/files/flowr-rmarkdown-file';
 import { FlowrInlineTextFile, FlowrTextFile } from '../../../../src/project/context/flowr-file';
 
 describe('rmd', () => {

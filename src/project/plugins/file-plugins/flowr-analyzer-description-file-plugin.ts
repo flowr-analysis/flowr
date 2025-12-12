@@ -3,7 +3,7 @@ import { SemVer } from 'semver';
 import type { PathLike } from 'fs';
 import { log } from '../../../util/log';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
-import { FlowrDescriptionFile } from './flowr-description-file';
+import { FlowrDescriptionFile } from './files/flowr-description-file';
 import { type FlowrFileProvider , FileRole } from '../../context/flowr-file';
 import { platformBasename } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 

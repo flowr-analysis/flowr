@@ -1,5 +1,4 @@
 import { type FlowrFileProvider, type FileRole , FlowrFile } from '../../../context/flowr-file';
-import { parseDCF } from '../../../../util/files';
 
 export type DCF = Map<string, string[]>;
 

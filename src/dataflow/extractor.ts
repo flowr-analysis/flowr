@@ -27,7 +27,6 @@ import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 import { Threadpool } from './parallel/threadpool';
-import { toClonableDataflowProcessorInfo } from './parallel/clonable-data';
 import { dataflowLogger } from './logger';
 
 /**
@@ -130,46 +129,6 @@ export function produceDataFlowGraph<OtherInfo>(
 		ctx
 	};
 
-
-	// do some stupid stuff
-	console.log('Cloning AST');
-	//structuredClone(dfData.completeAst);
-
-	console.log('Cloning env');
-	//structuredClone(dfData.environment);
-
-	console.log('Cloning env');
-	structuredClone(JSON.stringify(dfData.environment));
-
-	console.log('Cloning CDP');
-	structuredClone(dfData.controlDependencies);
-	structuredClone(dfData.referenceChain);
-
-	//console.log('Cloning CTX files');
-	//structuredClone(dfData.ctx.files);
-	//console.log('Cloning CTX deps');
-	//structuredClone(dfData.ctx.deps);
-	//console.log('Cloning CTX config');
-	//structuredClone(dfData.ctx.config);
-	//console.log('Cloning CTX env');
-	//structuredClone(dfData.ctx.env);
-
-	const clonable = toClonableDataflowProcessorInfo(dfData);
-	structuredClone(clonable);
-
-
-
-	let df = processDataflowFor<OtherInfo>(files[0].root, dfData);
-
-
-	console.log('Cloning Dataflow');
-	structuredClone(df.graph.toJSON());
-
-	// construct clonable ProcessorInformation
-
-	// construct clonable DataflowInformation
-
-
 	if(fileParallelization && workerPool){
 		// parallelise the dataflow graph analysis
 		// submit all files
@@ -187,13 +146,23 @@ export function produceDataFlowGraph<OtherInfo>(
 			workerPool.closePool();
 		});
 
-	} else {
-		if(!workerPool){
-			dataflowLogger.error('Dataflow:: Parallelization is enabled, but no Threadpool is provided. Falling back to sequential computation.');
-		}
-		// use the sequential analysis
+		const df = undefined as unknown as DataflowInformation;
+
+		// finally, resolve linkages
+		updateNestedFunctionCalls(df.graph, df.environment);
+
+		const cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
+
+		// performance optimization: return cfgQuick as part of the result to avoid recomputation
+		return { ...df, cfgQuick };
+
 	}
 
+	if(!workerPool && fileParallelization){
+		dataflowLogger.error('Dataflow:: Parallelization is enabled, but no Threadpool is provided. Falling back to sequential computation.');
+	}
+	// use the sequential analysis
+	let df = processDataflowFor<OtherInfo>(files[0].root, dfData);
 
 	for(let i = 1; i < files.length; i++) {
 		/* source requests register automatically */
@@ -207,46 +176,5 @@ export function produceDataFlowGraph<OtherInfo>(
 
 	// performance optimization: return cfgQuick as part of the result to avoid recomputation
 	return { ...df, cfgQuick };
-
-	//const dataflow: DataflowInformation[] = [];
-	//dataflow.push(df);
-	//let dfInfo = df;
-
-
-	/*for(let i = 1; i < files.length; i++) {
-		/* source requests register automatically *//*
-		dataflow.push(standaloneSourceFile(i, files[i], dfData, df, true));
-		//const dataflowInfo = standaloneSourceFile(i, files[i], dfData, df, true);
-		//df = mergeDataflowInformation('file-' + i, dfData, files[i].filePath, df, dataflowInfo);
-	}*/
-
-	/*
-	const pool = new Threadpool();
-
-	return pool.submitTasks(
-		'parallelFiles',
-		files.map((file, i) => ({
-			index:        i,
-			file,
-			data:         dfData,
-			dataflowInfo: df,
-		}))
-	).then(results => {
-		const dataflow = results as DataflowInformation[];
-		for(let i = 1; i < results.length; i++){
-			// merge dataflow back together via reduction with the helper function
-			df = mergeDataflowInformation('file-' + i, dfData, files[i].filePath, df, dataflow[i]);
-		}
-		//df = dfInfo;
-
-		// finally, resolve linkages
-		updateNestedFunctionCalls(df.graph, df.environment);
-
-		const cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
-
-		// performance optimization: return cfgQuick as part of the result to avoid recomputation
-		return { ...df, cfgQuick };
-	});*/
-
 
 }

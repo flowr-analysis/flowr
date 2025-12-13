@@ -1,5 +1,6 @@
 export const featureFlags = {
-	paralleliseFiles: true,
+	paralleliseFiles:              false,
+	paralleliseDataflowOperations: false,
 };
 
 export type FeatureFlag = keyof typeof featureFlags;

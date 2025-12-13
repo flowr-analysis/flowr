@@ -78,7 +78,7 @@ You can combine commands by separating them with a semicolon ${bold(';',output.f
 /**
  * All commands that should be available in the REPL.
  */
-const _commands: Record<string, ReplCommand | ReplCodeCommand> = {
+const _commands = {
 	'help':            helpCommand,
 	'quit':            quitCommand,
 	'version':         versionCommand,
@@ -96,7 +96,10 @@ const _commands: Record<string, ReplCommand | ReplCodeCommand> = {
 	'controlflowbb*':  controlflowBbStarCommand,
 	'query':           queryCommand,
 	'query*':          queryStarCommand
-};
+} as const satisfies Record<string, ReplCommand | ReplCodeCommand>;
+
+export type ReplCommandNames = keyof typeof _commands | keyof typeof scripts;
+
 let commandsInitialized = false;
 
 function hasModule(path: string): boolean {
@@ -112,14 +115,14 @@ function hasModule(path: string): boolean {
 /**
  * Retrieve all REPL commands (including those generated from master scripts)
  */
-export function getReplCommands() {
+export function getReplCommands(): Record<string, ReplCommand | ReplCodeCommand> {
 	if(commandsInitialized) {
 		return _commands;
 	}
 	commandsInitialized = true;
 	for(const [script, { target, description, type }] of Object.entries(scripts)) {
 		if(type === 'master script') {
-			_commands[script] = {
+			(_commands as Record<string, ReplCommand | ReplCodeCommand>)[script] = {
 				description,
 				aliases:       [],
 				script:        true,
@@ -184,7 +187,7 @@ export function getCommand(command: string): ReplCodeCommand | ReplCommand | und
 	if(commandMapping === undefined) {
 		initCommandMapping();
 	}
-	return getReplCommands()[(commandMapping as Record<string, string>)[command]];
+	return getReplCommands()[(commandMapping as Record<string, string>)[command] as keyof typeof _commands];
 }
 
 /**

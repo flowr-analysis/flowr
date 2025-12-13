@@ -17,7 +17,7 @@ function summarizeIfTooLong(text: string, maxLength = 52): string {
 /**
  * https://github.com/flowr-analysis/flowr/blob/main/.github/ISSUE_TEMPLATE/linting-rule.yaml
  */
-export class IssueLintingRule extends DocMaker {
+export class IssueLintingRule extends DocMaker<'.github/ISSUE_TEMPLATE/linting-rule.yaml'> {
 	constructor() {
 		super('.github/ISSUE_TEMPLATE/linting-rule.yaml', module.filename, '', false);
 	}

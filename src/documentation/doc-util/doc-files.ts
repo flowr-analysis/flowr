@@ -5,12 +5,14 @@ export const FlowrGithubBaseRef = `https://github.com/${FlowrGithubGroupName}`;
 export const FlowrSiteBaseRef = `https://${FlowrGithubGroupName}.github.io/flowr`;
 export const RemoteFlowrFilePathBaseRef = `${FlowrGithubBaseRef}/flowr/tree/main/`;
 export const FlowrWikiBaseRef = `${FlowrGithubBaseRef}/flowr/wiki`;
+export const FlowrGithubRef = FlowrGithubBaseRef + '/flowr';
 export const FlowrNpmRef = 'https://www.npmjs.com/package/@eagleoutice/flowr';
 export const FlowrDockerRef = 'https://hub.docker.com/r/eagleoutice/flowr';
 export const FlowrCodecovRef = `https://app.codecov.io/gh/${FlowrGithubGroupName}/flowr`;
 export const FlowrVsCode = 'https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr';
 export const FlowrPositron = 'https://open-vsx.org/extension/code-inspect/vscode-flowr';
-
+export const FlowrRStudioAddin = `${FlowrGithubBaseRef}/rstudio-addin-flowr`;
+export const FlowrRAdapter = `${FlowrGithubBaseRef}/flowr-r-adapter`;
 /**
  * Returns a markdown link to the given file path relative to the project root.
  */

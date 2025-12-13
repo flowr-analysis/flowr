@@ -2,7 +2,6 @@ import { RShell } from '../r-bridge/shell';
 import { RShellExecutor } from '../r-bridge/shell-executor';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FlowrWikiBaseRef } from './doc-util/doc-files';
-import { getCliLongOptionOf } from './doc-util/doc-cli-option';
 import { block } from './doc-util/doc-structure';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
@@ -10,7 +9,7 @@ import { DocMaker } from './wiki-mk/doc-maker';
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Engines
  */
-export class WikiEngine extends DocMaker {
+export class WikiEngine extends DocMaker<'wiki/Engines.md'> {
 	constructor() {
 		super('wiki/Engines.md', module.filename, 'engines');
 	}
@@ -30,13 +29,13 @@ we provide the concept of engines.
 Engines can be loaded with [flowR's configuration file](${FlowrWikiBaseRef}/Interface#configuring-flowr). Additionally, they
 are exposed with some command line options (e.g., when using the docker image of flowR):
 
-- ${getCliLongOptionOf('flowr', 'engine.r-shell.disabled', false)} to disable the ${ctx.link(RShell)} engine
-- ${getCliLongOptionOf('flowr', 'engine.r-shell.r-path', false)} (which is the canonical version of ${getCliLongOptionOf('flowr', 'r-path')})
-- ${getCliLongOptionOf('flowr', 'engine.tree-sitter.disabled', false)} to disable the ${ctx.link(TreeSitterExecutor)} engine
-- ${getCliLongOptionOf('flowr', 'engine.tree-sitter.lax', false)} to use lax parsing with tree-sitter
-- ${getCliLongOptionOf('flowr', 'engine.tree-sitter.wasm-path', false)} pass the path to the wasm of the r grammar of tree-sitter (see [below](#tree-sitter))
-- ${getCliLongOptionOf('flowr', 'engine.tree-sitter.tree-sitter-wasm-path', false)} pass the path to the wasm of tree-sitter (see [below](#tree-sitter))
-- ${getCliLongOptionOf('flowr', 'default-engine', false)} to set the default engine to use
+- ${ctx.cliOption('flowr', 'engine.r-shell.disabled', false)} to disable the ${ctx.link(RShell)} engine
+- ${ctx.cliOption('flowr', 'engine.r-shell.r-path', false)} (which is the canonical version of ${ctx.cliOption('flowr', 'r-path')})
+- ${ctx.cliOption('flowr', 'engine.tree-sitter.disabled', false)} to disable the ${ctx.link(TreeSitterExecutor)} engine
+- ${ctx.cliOption('flowr', 'engine.tree-sitter.lax', false)} to use lax parsing with tree-sitter
+- ${ctx.cliOption('flowr', 'engine.tree-sitter.wasm-path', false)} pass the path to the wasm of the r grammar of tree-sitter (see [below](#tree-sitter))
+- ${ctx.cliOption('flowr', 'engine.tree-sitter.tree-sitter-wasm-path', false)} pass the path to the wasm of tree-sitter (see [below](#tree-sitter))
+- ${ctx.cliOption('flowr', 'default-engine', false)} to set the default engine to use
 
 <a id="tree-sitter"></a>
 ## Dealing with the Tree-Sitter Engine
@@ -49,8 +48,8 @@ ${
 }
 
 In general, there is no need for you to pass custom paths using either
-${getCliLongOptionOf('flowr', 'engine.tree-sitter.wasm-path', false)} or
-${getCliLongOptionOf('flowr', 'engine.tree-sitter.tree-sitter-wasm-path', false)}.
+${ctx.cliOption('flowr', 'engine.tree-sitter.wasm-path', false)} or
+${ctx.cliOption('flowr', 'engine.tree-sitter.tree-sitter-wasm-path', false)}.
 However, you may want to experiment with the R grammar or provide a newer
 one in case that of _flowR_ is outdated.
 

@@ -5,7 +5,13 @@ import { edgeIncludesType, EdgeType, edgeTypeToName, splitEdgeTypes } from '../d
 import { DataflowGraphBuilder, emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
 import { formatSideEffect, printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
-import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
+import {
+	FlowrGithubBaseRef,
+	FlowrGithubGroupName,
+	FlowrVsCode,
+	FlowrWikiBaseRef,
+	getFilePathMd
+} from './doc-util/doc-files';
 import { jsonReplacer } from '../util/json';
 import { printEnvironmentToMarkdown } from './doc-util/doc-env';
 import { type ExplanationParameters, type SubExplanationParameters , getAllEdges, getAllVertices } from './data/dfg/doc-data-dfg-util';
@@ -856,7 +862,7 @@ async function dummyDataflow(): Promise<DataflowInformation> {
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph
  */
-export class WikiDataflowGraph extends DocMaker {
+export class WikiDataflowGraph extends DocMaker<'wiki/Dataflow Graph.md'> {
 	constructor() {
 		super('wiki/Dataflow Graph.md', module.filename, 'dataflow graph');
 	}
@@ -865,7 +871,7 @@ export class WikiDataflowGraph extends DocMaker {
 		return `
 This page briefly summarizes flowR's dataflow graph, represented by the ${ctx.link(DataflowGraph)} class within the code.
 In case you want to manually build such a graph (e.g., for testing), you can use the ${ctx.link(DataflowGraphBuilder)}.
-If you are interested in which features we support and which features are still to be worked on, please refer to our [capabilities](${FlowrWikiBaseRef}/Capabilities) page.
+If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities')} page.
 In summary, we discuss the following topics:
 
 - [Vertices](#vertices)
@@ -884,12 +890,12 @@ wiki page if you are unsure.
 
 > [!TIP]
 > If you want to investigate the dataflow graph,
-> you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('dataflow*')}
-> command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information). 
-> There is also a simplified perspective available with ${getReplCommand('dataflowsimple*')} that does not show everything but is easier to read.
+> you can either use the [Visual Studio Code extension](${FlowrVsCode}) or the ${ctx.replCmd('dataflow*')}
+> command in the REPL (see the ${ctx.linkPage('wiki/Interface', 'Interface wiki page')} for more information). 
+> There is also a simplified perspective available with ${ctx.replCmd('dataflowsimple*')} that does not show everything but is easier to read.
 > When using _flowR_ as a library, you may use the functions in ${getFilePathMd('../util/mermaid/dfg.ts')}.
 > 
-> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](${FlowrWikiBaseRef}/Interface)), you can use ${ctx.link(`${DataflowGraph.name}::${DataflowGraph.fromJson.name}`, { realNameWrapper: 'i', codeFont: true })} to retrieve the graph from the JSON representation.
+> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](${FlowrWikiBaseRef}/Interface)), you can use ${ctx.linkM(DataflowGraph, 'fromJson', { realNameWrapper: 'i', codeFont: true })} to retrieve the graph from the JSON representation.
 >
 > Also, check out the [${FlowrGithubGroupName}/sample-analyzer-df-diff](${FlowrGithubBaseRef}/sample-analyzer-df-diff) repository for a complete example project creating and comparing dataflow graphs.
 
@@ -899,7 +905,7 @@ ${await printDfGraphForCode(treeSitter,'x <- 3\ny <- x + 1\ny')}
 The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between ${getAllVertices().length} types of vertices V and
 ${getAllEdges().length} types of edges E allowing each vertex to have a single, and each edge to have multiple distinct types.
 Additionally, every node may have links to its [control dependencies](#control-dependencies) (which you may view as a ${nth(getAllEdges().length + 1)} edge type, 
-although they are explicitly no data dependency and relate to the [Control Flow Graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph)).
+although they are explicitly no data dependency and relate to the ${ctx.linkPage('wiki/Control Flow Graph')}. 
 
 <details open>
 

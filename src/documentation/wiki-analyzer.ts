@@ -67,7 +67,7 @@ async function analyzerQuickExampleToRegisterPlugins() {
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Analyzer
  */
-export class WikiAnalyzer extends DocMaker {
+export class WikiAnalyzer extends DocMaker<'wiki/Analyzer.md'> {
 	constructor() {
 		super('wiki/Analyzer.md', module.filename, 'analyzer');
 	}

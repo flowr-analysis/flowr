@@ -759,7 +759,7 @@ All locations are given as a ${ctx.link('SourceRange')} paired with the file id 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Query-API
  */
-export class WikiQuery extends DocMaker {
+export class WikiQuery extends DocMaker<'wiki/Query API.md'> {
 	constructor() {
 		super('wiki/Query API.md', module.filename, 'query API');
 	}
@@ -767,7 +767,7 @@ export class WikiQuery extends DocMaker {
 	protected async text({ ctx, shell }: DocMakerArgs): Promise<string> {
 		return `
 This page briefly summarizes flowR's query API, represented by the ${executeQueries.name} function in ${getFilePathMd('../queries/query.ts')}.
-Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API.
+Please see the ${ctx.linkPage('wiki/Interface')} wiki page for more information on how to access this API.
 
 ${
 	block({

@@ -340,7 +340,7 @@ async function getTexts(parser: KnownParser): Promise<Record<string, string> & {
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Linter
  */
-export class WikiLinter extends DocMaker {
+export class WikiLinter extends DocMaker<'wiki/Linter.md'> {
 	constructor() {
 		super('wiki/Linter.md', module.filename, 'linter');
 	}

@@ -21,7 +21,7 @@ export interface CommonOptions {
  */
 const StartTimeString = date2string(new Date());
 
-export const benchmarkOptions: OptionDefinition[] = [
+export const benchmarkOptions = [
 	{ name: 'verbose',       alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
 	{ name: 'help',          alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'limit',         alias: 'l', type: Number,  description: 'Limit the number of files to process (if given, this will choose these files randomly and add the chosen names to the output' },
@@ -39,9 +39,9 @@ export const benchmarkOptions: OptionDefinition[] = [
 	{ name: 'per-file-time-limit',       type: Number,  description: 'Time limit in milliseconds to process single file (disabled by default)', defaultValue: undefined, typeLabel: '{underline number}' },
 	{ name: 'sampling-strategy',         type: String,  description: 'Which strategy to use, when sampling is enabled', defaultValue: 'random', typeLabel: '{underline random/equidistant}' },
 	{ name: 'cfg',           alias: 'c', type: Boolean, description: 'Extract the control flow graph of the file (benchmark it too)' }
-];
+] as const satisfies OptionDefinition[];
 
-export const benchmarkHelperOptions: OptionDefinition[] = [
+export const benchmarkHelperOptions = [
 	{ name: 'verbose',       alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
 	{ name: 'help',          alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'input',         alias: 'i', type: String,  description: 'Pass a single file as src to read from', multiple: false, defaultOption: true, typeLabel: '{underline file}' },
@@ -57,17 +57,17 @@ export const benchmarkHelperOptions: OptionDefinition[] = [
 	{ name: 'threshold',     alias: 't', type: Number,  description: 'How many re-visits of the same node are ok?', defaultValue: undefined, typeLabel: '{underline number}' },
 	{ name: 'sampling-strategy',         type: String,  description: 'Which strategy to use, when sampling is enabled', defaultValue: 'random', typeLabel: '{underline random/equidistant}' },
 	{ name: 'seed',                      type: String,  description: 'The random seed for sampling the slicing criteria if a maximum is set' },
-];
+] as const satisfies OptionDefinition[];
 
-export const exportQuadsOptions: OptionDefinition[] = [
+export const exportQuadsOptions = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
 	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process' },
 	{ name: 'output',       alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to {italic out.quads})', typeLabel: '{underline file}' },
-];
+] as const satisfies OptionDefinition[];
 
-export const slicerOptions: OptionDefinition[] = [
+export const slicerOptions = [
 	{ name: 'verbose',           alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',              alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'input',             alias: 'i', type: String,  description: '(Required) Pass a single file to slice', multiple: false, defaultOption: true, typeLabel: '{underline files}' },
@@ -78,10 +78,10 @@ export const slicerOptions: OptionDefinition[] = [
 	{ name: 'output',            alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to the commandline)', typeLabel: '{underline file}' },
 	{ name: 'no-magic-comments', alias: 'm', type: Boolean, description: 'Disable the effects of magic comments which force lines to be included.' },
 	{ name: 'api',                           type: Boolean, description: 'Instead of human-readable output, dump a lot of json with the results of all intermediate steps.' },
-];
+] as const satisfies OptionDefinition[];
 
-const featureNameList = [...allFeatureNames].map(s => `"${s}"`).join(', ');
-export const statisticOptions: OptionDefinition[] = [
+const featureNameList = Array.from(allFeatureNames).map(s => `"${s}"`).join(', ');
+export const statisticOptions = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process' },
@@ -91,9 +91,9 @@ export const statisticOptions: OptionDefinition[] = [
 	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.' },
 	{ name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
 	{ name: 'features',                 type: String,  description: `Features to track, supported are "all" or ${featureNameList}`, multiple: true, defaultValue: 'all', typeLabel: '{underline names}' },
-];
+] as const satisfies OptionDefinition[];
 
-export const statisticHelperOptions: OptionDefinition[] = [
+export const statisticHelperOptions = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass single file as src to read from', multiple: false, defaultOption: true, typeLabel: '{underline file}' },
@@ -103,9 +103,9 @@ export const statisticHelperOptions: OptionDefinition[] = [
 	{ name: 'dump-json',                type: Boolean, description: 'Write JSON output during the extraction', typeLabel: '{underline folder}' },
 	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.' },
 	{ name: 'features',                 type: String,  description: `Features to track, supported are "all" or ${featureNameList}`, multiple: true, defaultValue: 'all', typeLabel: '{underline names}' },
-];
+] as const satisfies OptionDefinition[];
 
-export const summarizerOptions: OptionDefinition[] = [
+export const summarizerOptions = [
 	{ name: 'verbose',       alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',          alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'type',          alias: 't', type: String,  description: 'Manually specify if you want to post-process benchmark results, statistics, or compressed statistics (defaults to auto).', defaultValue: 'auto' },
@@ -115,4 +115,4 @@ export const summarizerOptions: OptionDefinition[] = [
 	{ name: 'ultimate-only', alias: 'u', type: Boolean, description: 'Only perform the second summary-stage, with this, the input is used to find the summary-output.' },
 	{ name: 'input',         alias: 'i', type: String,  description: 'The {italic output} produced by the benchmark, the statistics, ...', defaultOption: true, multiple: false, typeLabel: '{underline file.json/output}' },
 	{ name: 'output',        alias: 'o', type: String,  description: 'Basename of the summaries (defaults to {italic <input>-summary})', typeLabel: '{underline file}' },
-];
+] as const satisfies OptionDefinition[];

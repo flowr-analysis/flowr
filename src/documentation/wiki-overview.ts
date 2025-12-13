@@ -33,7 +33,7 @@ for instructions on how to install _flowR_.
 
 ## _flowR_'s Modules
 
-[![flowRview](https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowr-overview.png)](${FlowrGithubBaseRef}/flowr/wiki)
+[![flowRview](https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowr-overview.jpg)](${FlowrGithubBaseRef}/flowr/wiki)
 
 Primarily, _flowR_ provides a dataflow analysis framework for the [*R*](https://www.r-project.org/) programming language.
 Its subcomponents (like the custom ${ctx.link(RShell)}) or the internals of the static ${ctx.link(DataflowGraph)}) 

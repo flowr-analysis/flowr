@@ -41,11 +41,10 @@ export function tryNormalizeParameter(data: NormalizerData, objs: readonly Named
 		special: content === '...',
 		lexeme:  content,
 		name:    {
-			type:      RType.Symbol,
+			type:   RType.Symbol,
 			location, content,
-			namespace: undefined,
-			lexeme:    content,
-			info:      {
+			lexeme: content,
+			info:   {
 				fullRange:        location,
 				additionalTokens: [],
 				fullLexeme:       content

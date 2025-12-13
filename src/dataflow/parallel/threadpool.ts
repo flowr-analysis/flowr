@@ -87,13 +87,11 @@ export class Threadpool {
 	private readonly pool: Piscina;
 	private workerPorts = new Map<number, MessagePort>();
 
-	constructor(numThreads = 0, workerPath = '/workerWrapper.js') {
+	constructor(numThreads = 0, workerPath = '/worker.ts') {
 		if(numThreads <= 0){
 			// use avalaible core
 			numThreads = Math.max(1, os.cpus().length); // may be problematic, as this returns SMT threads as cores
 		}
-
-		console.log(numThreads);
 
 		console.log(`worker filename: ${resolve(__dirname, './worker.ts')}`);
 

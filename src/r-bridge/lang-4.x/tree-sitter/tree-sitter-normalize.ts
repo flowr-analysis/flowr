@@ -496,12 +496,11 @@ function convertTreeNode(node: SyntaxNode): RNode<TreeSitterInfo> {
 			return {
 				type: RType.Parameter,
 				name: {
-					type:      RType.Symbol,
-					location:  nameRange,
-					namespace: undefined,
-					content:   name.text,
-					lexeme:    name.text,
-					info:      {
+					type:     RType.Symbol,
+					location: nameRange,
+					content:  name.text,
+					lexeme:   name.text,
+					info:     {
 						fullRange:        range,
 						additionalTokens: [],
 						fullLexeme:       name.text,

@@ -86,6 +86,8 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 
 /**
  * Links the given arguments to the given parameters within the given graph.
+ * This follows the `pmatch` semantics of R
+ * @see https://cran.r-project.org/doc/manuals/R-lang.html#Argument-matching
  */
 export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<ParentInformation>[], graph: DataflowGraph): void {
 	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
@@ -96,18 +98,15 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 	// all parameters matched by name
 	const matchedParameters = new Set<string>();
 
-
 	// first map names
 	for(const [name, arg] of nameArgMap) {
 		const pmatchName = findByPrefixIfUnique(name, nameParamMap.keys()) ?? name;
 		const param = nameParamMap.get(pmatchName);
 		if(param?.name) {
-			dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`);
 			graph.addEdge(arg.nodeId, param.name.info.id, EdgeType.DefinesOnCall);
 			graph.addEdge(param.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
 			matchedParameters.add(name);
 		} else if(specialDotParameter?.name) {
-			dataflowLogger.trace(`mapping named argument "${name}" to dot-dot-dot parameter`);
 			graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, EdgeType.DefinesOnCall);
 			graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
 		}

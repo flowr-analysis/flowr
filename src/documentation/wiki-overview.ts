@@ -16,7 +16,7 @@ export class WikiOverview extends DocMaker<'wiki/Overview.md'> {
 	public text({ ctx }: DocMakerArgs): string {
 		return `
 First of all, if you have never used _flowR_ before,
-please refer to the ${ctx.linkPage('wiki/Setup')}  wiki page first, 
+please refer to the ${ctx.linkPage('wiki/Setup')} wiki page first, 
 for instructions on how to install _flowR_.
 
 <!-- TOC -->
@@ -29,7 +29,6 @@ for instructions on how to install _flowR_.
   - [Benchmark the Slicer](#benchmark-the-slicer)
     - [Summarizing the Benchmark Results](#summarizing-the-benchmark-results)
   - [Generate Usage Statistics of R Code](#generate-usage-statistics-of-r-code)
-  - [Export RDF N-Quads](#export-rdf-n-quads)
 <!-- TOC -->
 
 ## _flowR_'s Modules
@@ -158,7 +157,7 @@ The server allows accessing the REPL as well
 
 ## Calling the Scripts Directly
 
-This describes the old way of using _flowR_ by creating and calling the respective scripts directly
+This describes the old way of using _flowR_ by creating and calling the respective scripts directly.
 Although this is no longer necessary, the scripts still remain, fully integrated into the REPL of _flowR_ (you can access them simply by adding a colon \`:\` before the name).
 
 ### Generate Static Slices

@@ -222,7 +222,7 @@ export interface GeneralDocContext {
 	 * Generates the CLI long option for a given script and option name.
 	 * @example
 	 * ```ts
-	 * getCliLongOptionOf('flowr', 'help')
+	 * cliOption('flowr', 'help')
 	 * ```
 	 * Returns `--help` with the accompanying docs.
 	 * @param scriptName - The name of the script (e.g., 'flowr', 'analyze', etc.)

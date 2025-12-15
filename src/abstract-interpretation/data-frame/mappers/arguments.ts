@@ -49,13 +49,15 @@ export function escapeRegExp(text: string, allowTokens: boolean = false): string
  * @param checkNames   - Whether to map all invalid column names to top (`undefined`)
  * @param noDupNames   - Whether to map all duplicate column names to top (`undefined`)
  * @param noEmptyNames - Whether to map all empty column names to top (`undefined`)
+ * @param collapseDups - Whether duplicate columns should be collapsed to single occurrences afterward (excluding `undefined` values)
  * @returns The filtered column names
  */
 export function filterValidNames(
 	colnames: (string | undefined)[] | undefined,
 	checkNames?: boolean,
 	noDupNames?: boolean,
-	noEmptyNames?: boolean
+	noEmptyNames?: boolean,
+	collapseDups: boolean = false
 ): (string | undefined)[] | undefined {
 	if(checkNames) {  // map all invalid column names to top
 		colnames = colnames?.map(entry => isValidColName(entry) ? entry : undefined);
@@ -65,6 +67,9 @@ export function filterValidNames(
 	}
 	if(noEmptyNames) {  // map all empty column names to top
 		colnames = colnames?.map(entry => entry?.length === 0 ? undefined : entry);
+	}
+	if(collapseDups) {
+		colnames = colnames?.filter((value, index, array) => value === undefined || array.indexOf(value) === index);
 	}
 	return colnames;
 }

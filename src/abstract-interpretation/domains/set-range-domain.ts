@@ -18,6 +18,8 @@ type SetRangeTop = typeof SetRangeTop;
 type SetRangeBottom = typeof Bottom;
 /** The type of the abstract values of the set range domain that are Top, Bottom, or actual values */
 type SetRangeLift<T> = SetRangeValue<T> | SetRangeTop | SetRangeBottom;
+/** The type of the actual values of the set range domain with a finite range (the range cannot be Top) */
+type SetRangeFinite<T> = { readonly min: ReadonlySet<T>, readonly range: ReadonlySet<T> };
 
 /** The type of the actual values of the set range domain as array tuple with a minimum array and range array for better readability (e.g. `[["id","name"], []]`, or `[["id"], ["score"]]`) */
 export type ArrayRangeValue<T> = { readonly min: T[], readonly range: T[] | typeof Top };
@@ -71,9 +73,9 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	/**
 	 * The minimum set (lower bound) of the set range representing all values that must exist (subset of {@link upper}).
 	 */
-	public lower(): SetRangeValue<T>['min'] | typeof Bottom {
+	public lower(): Value extends SetRangeValue<T> ? ReadonlySet<T> : ReadonlySet<T> | typeof Bottom {
 		if(this.value === Bottom) {
-			return Bottom;
+			return Bottom as Value extends SetRangeValue<T> ? ReadonlySet<T> : ReadonlySet<T> | typeof Bottom;
 		}
 		return this.value.min;
 	}
@@ -81,11 +83,13 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	/**
 	 * The maximum set (upper bound) of the set range representing all values that can possibly exist (union of {@link lower} and range).
 	 */
-	public upper(): SetRangeValue<T>['range'] | typeof Bottom {
+	public upper(): Value extends SetRangeFinite<T> ? ReadonlySet<T> : Value extends SetRangeValue<T> ? ReadonlySet<T> | typeof Top : ReadonlySet<T> | typeof Top | typeof Bottom {
 		if(this.value === Bottom) {
-			return Bottom;
+			return Bottom as Value extends SetRangeFinite<T> ? ReadonlySet<T> : Value extends SetRangeValue<T> ? ReadonlySet<T> | typeof Top : ReadonlySet<T> | typeof Top | typeof Bottom;
+		} else if(this.value.range == Top) {
+			return Top as Value extends SetRangeFinite<T> ? ReadonlySet<T> : ReadonlySet<T> | typeof Top;
 		}
-		return this.value.range === Top ? Top : this.value.min.union(this.value.range);
+		return this.value.min.union(this.value.range) as ReadonlySet<T> as Value extends SetRangeFinite<T> ? ReadonlySet<T> : ReadonlySet<T> | typeof Top;
 	}
 
 	public static top<T>(limit?: SetRangeLimit | number, setType?: typeof Set<T>): SetRangeDomain<T, SetRangeTop> {
@@ -143,8 +147,8 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		return thisUpper !== Top && thisUpper.isSubsetOf(otherUpper);
 	}
 
-	public join(other: this): this;
 	public join(other: SetRangeLift<T> | ArrayRangeValue<T>): this;
+	public join(other: this): this;
 	public join(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
 		other = other instanceof SetRangeDomain ? other : this.create(other);
 		const thisLower = this.lower(), thisUpper = this.upper();
@@ -166,8 +170,8 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		return this.create({ min: joinLower, range: joinUpper === Top ? Top : joinUpper.difference(joinLower) });
 	}
 
-	public meet(other: this): this;
 	public meet(other: SetRangeLift<T> | ArrayRangeValue<T>): this;
+	public meet(other: this): this;
 	public meet(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
 		other = other instanceof SetRangeDomain ? other : this.create(other);
 		const thisLower = this.lower(), thisUpper = this.upper();
@@ -449,5 +453,9 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 
 	public isValue(): this is SetRangeDomain<T, SetRangeValue<T>> {
 		return this.value !== Bottom;
+	}
+
+	public isFinite(): this is SetRangeDomain<T, SetRangeFinite<T>> {
+		return this.value !== Bottom && this.value.range !== Top;
 	}
 }

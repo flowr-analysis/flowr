@@ -1135,8 +1135,8 @@ function mapDataFrameMutate(
 		.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph))
 		.filter(arg => !mutatedCols?.includes(arg));
 
-	deletedCols = filterValidNames(deletedCols, params.checkNames, params.noDupNames);
-	mutatedCols = filterValidNames(mutatedCols, params.checkNames, params.noDupNames);
+	deletedCols = filterValidNames(deletedCols, params.checkNames, params.noDupNames, undefined, true);
+	mutatedCols = filterValidNames(mutatedCols, params.checkNames, params.noDupNames, undefined, true);
 
 	if(accessedNames.length > 0) {
 		result.push({

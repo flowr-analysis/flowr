@@ -1,8 +1,8 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AbstractDomainValue } from '../domains/abstract-domain';
+import { Top } from '../domains/lattice';
 import { PosIntervalDomain } from '../domains/positive-interval-domain';
 import { ProductDomain } from '../domains/product-domain';
-import type { SetRangeLimit } from '../domains/set-range-domain';
 import { SetRangeDomain } from '../domains/set-range-domain';
 import { StateAbstractDomain } from '../domains/state-abstract-domain';
 
@@ -20,17 +20,19 @@ export type DataFrameShapeProperty<Property extends keyof AbstractDataFrameShape
  * The data frame abstract domain as product domain of a column names domain, column count domain, and row count domain.
  */
 export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
-	constructor(value: AbstractDataFrameShape, maxColNames?: SetRangeLimit | number) {
+	constructor(value: AbstractDataFrameShape) {
+		const refined = DataFrameDomain.refine(value);
+
 		super({
-			colnames: new SetRangeDomain(value.colnames.value, maxColNames ?? value.colnames.limit),
-			cols:     new PosIntervalDomain(value.cols.value),
-			rows:     new PosIntervalDomain(value.rows.value)
+			colnames: refined.colnames,
+			cols:     refined.cols,
+			rows:     refined.rows
 		});
 	}
 
 	public create(value: AbstractDataFrameShape): this;
 	public create(value: AbstractDataFrameShape): DataFrameDomain {
-		return new DataFrameDomain(value, this.colnames.limit);
+		return new DataFrameDomain(value);
 	}
 
 	/**
@@ -68,6 +70,23 @@ export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 			cols:     PosIntervalDomain.top(),
 			rows:     PosIntervalDomain.top()
 		});
+	}
+
+	private static refine(value: AbstractDataFrameShape): AbstractDataFrameShape {
+		if(value.colnames.isValue() && value.cols.isValue()) {
+			if(value.colnames.value.range === Top && value.colnames.value.min.size >= value.cols.value[1]) {
+				value.colnames = value.colnames.meet({ min: new Set(), range: value.colnames.value.min });
+			}
+			if(value.colnames.isValue()) {
+				const minColNames = value.colnames.value.min.size;
+				const maxColNames = value.colnames.isFinite() ? value.colnames.value.min.size + value.colnames.value.range.size : Infinity;
+
+				if(minColNames > value.cols.value[0] || maxColNames < value.cols.value[1]) {
+					value.cols = value.cols.meet([minColNames, maxColNames]);
+				}
+			}
+		}
+		return value;
 	}
 }
 

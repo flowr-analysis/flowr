@@ -1,5 +1,5 @@
 import type { DataflowGraph, UnknownSideEffect } from '../../dataflow/graph/graph';
-import { graphToMermaid, type MermaidMarkdownMark } from '../../util/mermaid/dfg';
+import { graphToMermaid } from '../../util/mermaid/dfg';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
 import { createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
 import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -13,6 +13,7 @@ import { FlowrWikiBaseRef } from './doc-files';
 import { codeBlock } from './doc-code';
 import type { GraphDifferenceReport } from '../../util/diff-graph';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
+import type { MermaidMarkdownMark } from '../../util/mermaid/info';
 
 
 /**

@@ -1,5 +1,4 @@
 import { DataflowGraph } from '../dataflow/graph/graph';
-import type { MermaidMarkdownMark } from '../util/mermaid/dfg';
 import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition , VertexType } from '../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType, edgeTypeToName, splitEdgeTypes } from '../dataflow/graph/edge';
 import { DataflowGraphBuilder, emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
@@ -51,6 +50,7 @@ import { DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import type { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { KnownParser } from '../r-bridge/parser';
+import type { MermaidMarkdownMark } from '../util/mermaid/info';
 
 async function subExplanation(parser: KnownParser, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(parser, code, expectedSubgraph);

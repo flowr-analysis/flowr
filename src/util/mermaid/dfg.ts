@@ -166,7 +166,7 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 	return lines;
 }
 
-function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, mark: ReadonlySet<NodeId> | undefined): void {
+function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, mark: ReadonlySet<NodeId> | undefined, includeOnlyIds: ReadonlySet<NodeId> | undefined): void {
 	const fCall = info.tag === VertexType.FunctionCall;
 	const { open, close } = mermaidNodeBrackets(info.tag);
 	id = escapeId(id);
@@ -210,6 +210,10 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	const artificialCdEdges = (info.cds ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False'>([x.when ? 'CD-True' : 'CD-False']) }] as const);
 	// eslint-disable-next-line prefer-const
 	for(let [target, edge] of [...edges[1], ...artificialCdEdges]) {
+		if(includeOnlyIds && !includeOnlyIds.has(target)) {
+			continue;
+		}
+
 		const originalTarget = target;
 		target = escapeId(target);
 		const edgeTypes = typeof edge.types == 'number' ? new Set(splitEdgeTypes(edge.types)) : edge.types;
@@ -257,13 +261,13 @@ interface MermaidGraphConfiguration {
 // make the passing of root ids more performant again
 function graphToMermaidGraph(
 	rootIds: ReadonlySet<NodeId>,
-	{ simplified, graph, prefix = 'flowchart BT', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = MermaidDefaultMarkStyle }: MermaidGraphConfiguration
+	{ simplified, graph, prefix = 'flowchart BT', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = MermaidDefaultMarkStyle, includeOnlyIds }: MermaidGraphConfiguration
 ): MermaidGraph {
 	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, presentVertices: new Set(), mark, rootGraph: rootGraph ?? graph, includeEnvironments, markStyle, simplified };
 
 	for(const [id, info] of graph.vertices(true)) {
 		if(rootIds.has(id)) {
-			vertexToMermaid(info, mermaid, id, idPrefix, mark);
+			vertexToMermaid(info, mermaid, id, idPrefix, mark, includeOnlyIds);
 		}
 	}
 

@@ -6,6 +6,8 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { FlowrFile } from '../../project/context/flowr-file';
+import type { MermaidGraphPrinterInfo } from './info';
+import { MermaidDefaultMarkStyle } from './info';
 
 function identifyMermaidDirection(prefix: string): string {
 	const directionMatch = prefix.match(/flowchart (TD|LR|RL|BT)/);
@@ -18,12 +20,19 @@ function identifyMermaidDirection(prefix: string): string {
 /**
  * Serialize the normalized AST to mermaid format
  */
-export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeWithParent, prefix = 'flowchart TD\n'): string {
+export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeWithParent, { prefix = 'flowchart TD\n', markStyle = MermaidDefaultMarkStyle, includeOnlyIds, mark }: MermaidGraphPrinterInfo): string {
 	let output = prefix;
 	function showNode(n: RNodeWithParent): void {
+		if(includeOnlyIds && !includeOnlyIds.has(n.info.id)) {
+			return;
+		}
+
 		const name = `${n.type} (${n.info.id})\\n${n.lexeme ?? ' '}`;
 		output += `    n${n.info.id}(["${escapeMarkdown(name)}"])\n`;
-		if(n.info.parent !== undefined) {
+		if(mark?.has(n.info.id)) {
+			output += `    style n${n.info.id} ${markStyle.vertex}\n`;
+		}
+		if(n.info.parent !== undefined && (!includeOnlyIds || includeOnlyIds.has(n.info.parent))) {
 			const context = n.info;
 			const roleSuffix = context.role === RoleInParent.ExpressionListChild || context.role === RoleInParent.FunctionCallArgument || context.role === RoleInParent.FunctionDefinitionParameter ? `-${context.index}` : '';
 			output += `    n${n.info.parent} -->|"${context.role}${roleSuffix}"| n${n.info.id}\n`;
@@ -51,9 +60,8 @@ export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeW
 		for(const f of ast.files) {
 			// add a subgraph for each file
 			if(ast.files.length !== 1 || (f.filePath && f.filePath !== FlowrFile.INLINE_PATH)) {
-				output += `    subgraph "File: ${escapeMarkdown(f.filePath ?? FlowrFile.INLINE_PATH)}"\n`;
 				const direction = identifyMermaidDirection(prefix);
-				output += `        direction ${direction}\n`;
+				output += `    subgraph "File: ${escapeMarkdown(f.filePath ?? FlowrFile.INLINE_PATH)}" direction ${direction}\n`;
 				showAst(f.root);
 				output += '    end\n';
 			} else {
@@ -70,6 +78,6 @@ export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeW
 /**
  * Use mermaid to visualize the normalized AST.
  */
-export function normalizedAstToMermaidUrl(ast: RProject<ParentInformation> | RNodeWithParent, prefix = 'flowchart TD\n'): string {
-	return mermaidCodeToUrl(normalizedAstToMermaid(ast, prefix));
+export function normalizedAstToMermaidUrl(ast: RProject<ParentInformation> | RNodeWithParent, info?: MermaidGraphPrinterInfo): string {
+	return mermaidCodeToUrl(normalizedAstToMermaid(ast, info ?? {}));
 }

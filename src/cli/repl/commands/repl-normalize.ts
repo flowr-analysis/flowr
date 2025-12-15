@@ -18,7 +18,7 @@ export const normalizeCommand: ReplCodeCommand = {
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.normalize();
-		const mermaid = normalizedAstToMermaid(result.ast);
+		const mermaid = normalizedAstToMermaid(result.ast, {});
 		output.stdout(mermaid);
 		try {
 			const clipboard = await import('clipboardy');

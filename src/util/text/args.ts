@@ -17,7 +17,7 @@
 export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, split: RegExp | string = ' '): string[] {
 	const args = [];
 	let current = '';
-	let inQuotes = false;
+	let inQuotes: false | '"' | '\'' = false;
 	let escaped = false;
 
 	for(let i = 0; i < inputString.length;  i++) {
@@ -42,10 +42,18 @@ export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, 
 			args.push(current);
 			current = '';
 		} else if(c === '"' || c === "'") {
-			inQuotes = !inQuotes;
-			if(!escapeQuote) {
-				current += c;
+			if(!inQuotes) {
+				inQuotes = c;
+				if(escapeQuote) {
+					continue;
+				}
+			} else if(inQuotes === c) {
+				inQuotes = false;
+				if(escapeQuote) {
+					continue;
+				}
 			}
+			current += c;
 		} else if(c === '\\' && escapeQuote) {
 			escaped = true;
 		} else {

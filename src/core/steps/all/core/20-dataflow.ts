@@ -26,8 +26,15 @@ const staticDataflowCommon = {
 	dependencies: [ 'normalize' ],
 } as const;
 
-function processor(results: { normalize?: NormalizedAst }, input: { parser?: Parser<KnownParserType>, context?: FlowrAnalyzerContext }) {
-	return produceDataFlowGraph(input.parser as Parser<KnownParserType>, results.normalize as NormalizedAst, input.context as FlowrAnalyzerContext);
+function processor(
+	results: { normalize?: NormalizedAst },
+	input: { parser?: Parser<KnownParserType>,
+	context?:         FlowrAnalyzerContext,}) {
+	return produceDataFlowGraph(
+		input.parser as Parser<KnownParserType>,
+		results.normalize as NormalizedAst,
+		input.context as FlowrAnalyzerContext,
+	);
 }
 
 export const STATIC_DATAFLOW = {

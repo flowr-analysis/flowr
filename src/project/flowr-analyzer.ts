@@ -16,6 +16,7 @@ import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import { fileProtocol, requestFromInput } from '../r-bridge/retriever';
 import { isFilePath } from '../util/files';
 import type { FlowrFileProvider } from './context/flowr-file';
+import type { FeatureFlag } from '../core/feature-flags/feature-def';
 
 /**
  * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
@@ -260,6 +261,34 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
         Search extends FlowrSearchLike
     >(search: Search): Promise<GetSearchElements<SearchOutput<Search>>> {
 		return runSearch(search, this);
+	}
+
+	/**
+	 * Sets the provided `feature` to `state`
+	 * @param feature - feature to set
+	 * @param state - boolean state
+	 */
+	public setFeatureState(feature: FeatureFlag, state: boolean): this{
+		this.ctx.features.setFlag(feature, state);
+		return this;
+	}
+
+	/**
+	 * Sets the provided `feature` to `true`
+	 * @param feature - feature to set
+	 */
+	public setFeature(feature: FeatureFlag): this{
+		this.ctx.features.setFlag(feature, true);
+		return this;
+	}
+
+	/**
+	 * Sets the provided `feature` to `false`
+	 * @param feature - feature to set
+	 */
+	public unsetFeature(feature: FeatureFlag): this{
+		this.ctx.features.setFlag(feature, false);
+		return this;
 	}
 
 	/**

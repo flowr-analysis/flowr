@@ -26,6 +26,8 @@ import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-con
 import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
+import { Threadpool } from './parallel/threadpool';
+import { dataflowLogger } from './logger';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -105,13 +107,17 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 export function produceDataFlowGraph<OtherInfo>(
 	parser:      Parser<KnownParserType>,
 	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
-	ctx:         FlowrAnalyzerContext
+	ctx:         FlowrAnalyzerContext,
 ): DataflowInformation & { cfgQuick: ControlFlowInformation | undefined } {
 
 	// we freeze the files here to avoid endless modifications during processing
 	const files = completeAst.ast.files.slice();
 
 	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
+
+	const features = ctx.features;
+	const fileParallelization = features.isEnabled('paralleliseFiles');
+	const workerPool = fileParallelization ? ctx.workerPool ?? new Threadpool() : undefined;
 
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
@@ -122,6 +128,40 @@ export function produceDataFlowGraph<OtherInfo>(
 		referenceChain:      [files[0].filePath],
 		ctx
 	};
+
+	if(fileParallelization && workerPool){
+		// parallelise the dataflow graph analysis
+		// submit all files
+		const _result = workerPool.submitTasks(
+			'testPool',
+			files.map((file, i) => ({
+				index:        i,
+				file,
+				data:         undefined as unknown as DataflowProcessorInformation<OtherInfo & ParentInformation>,
+				dataflowInfo: undefined as unknown as DataflowInformation
+			}))
+		);
+
+		void _result.then( () => {
+			workerPool.closePool();
+		});
+
+		const df = undefined as unknown as DataflowInformation;
+
+		// finally, resolve linkages
+		updateNestedFunctionCalls(df.graph, df.environment);
+
+		const cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
+
+		// performance optimization: return cfgQuick as part of the result to avoid recomputation
+		return { ...df, cfgQuick };
+
+	}
+
+	if(!workerPool && fileParallelization){
+		dataflowLogger.error('Dataflow:: Parallelization is enabled, but no Threadpool is provided. Falling back to sequential computation.');
+	}
+	// use the sequential analysis
 	let df = processDataflowFor<OtherInfo>(files[0].root, dfData);
 
 	for(let i = 1; i < files.length; i++) {
@@ -136,4 +176,5 @@ export function produceDataFlowGraph<OtherInfo>(
 
 	// performance optimization: return cfgQuick as part of the result to avoid recomputation
 	return { ...df, cfgQuick };
+
 }

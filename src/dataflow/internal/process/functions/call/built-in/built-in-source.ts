@@ -216,15 +216,24 @@ export function processSourceCall<OtherInfo>(
  * Processes a source request with the given dataflow processor information and existing dataflow information
  * Otherwise, this can be an {@link RProjectFile} representing a standalone source file
  */
-export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest | RProjectFile<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, getId?: IdGenerator<NoInfo>): DataflowInformation {
+export function sourceRequest<OtherInfo>(
+	rootId: NodeId, request: RParseRequest | RProjectFile<OtherInfo & ParentInformation>,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	information: DataflowInformation,
+	getId?: IdGenerator<NoInfo>,
+	allowDeferredMerge = false
+): DataflowInformation {
 	// parse, normalize and dataflow the sourced file
 	let dataflow: DataflowInformation;
 	let fst: RProjectFile<OtherInfo & ParentInformation>;
 	let filePath: string | undefined;
 
+	console.log(rootId);
+
 	if('root' in request) {
 		fst = request;
 		filePath = request.filePath;
+		console.log(request.filePath);
 	} else {
 		const textRequest: { r: RParseRequestFromText, path?: string } | undefined = data.ctx.files.resolveRequest(request);
 
@@ -265,6 +274,46 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 		return information;
 	}
 
+	if(allowDeferredMerge) {
+		return dataflow;
+	}
+
+	return mergeDataflowInformation(rootId, data, filePath, information, dataflow);
+
+	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
+	if(!String(rootId).startsWith('file-')) {
+		if(dataflow.graph.hasVertex(dataflow.entryPoint)) {
+			dataflow.graph.addControlDependency(dataflow.entryPoint, rootId, true);
+		}
+		for(const out of dataflow.out) {
+			dataflow.graph.addControlDependency(out.nodeId, rootId, true);
+		}
+	}
+
+	data.ctx.files.addConsideredFile(filePath ?? '<inline>');
+
+	// update our graph with the sourced file's information
+
+	return {
+		...information,
+		environment:       overwriteEnvironment(information.environment, dataflow.environment),
+		graph:             information.graph.mergeWith(dataflow.graph),
+		in:                information.in.concat(dataflow.in),
+		out:               information.out.concat(dataflow.out),
+		unknownReferences: information.unknownReferences.concat(dataflow.unknownReferences),
+		exitPoints:        dataflow.exitPoints
+	};
+}
+
+/**
+ *
+ */
+export function mergeDataflowInformation<OtherInfo>(rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+																																																				filePath: string | undefined, information: DataflowInformation, dataflow: DataflowInformation
+): DataflowInformation{
+
+	console.log(rootId);
+	console.log(filePath);
 	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
 	if(!String(rootId).startsWith('file-')) {
 		if(dataflow.graph.hasVertex(dataflow.entryPoint)) {
@@ -297,7 +346,8 @@ export function standaloneSourceFile<OtherInfo>(
 	idx: number,
 	file: RProjectFile<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	information: DataflowInformation
+	information: DataflowInformation,
+	allowDeferredMerge = false
 ): DataflowInformation {
 	// check if the sourced file has already been dataflow analyzed, and if so, skip it
 	if(data.referenceChain.find(e => e !== undefined && e === file.filePath)) {
@@ -310,5 +360,5 @@ export function standaloneSourceFile<OtherInfo>(
 		...data,
 		environment:    information.environment,
 		referenceChain: [...data.referenceChain, file.filePath]
-	}, information);
+	}, information, undefined, allowDeferredMerge);
 }

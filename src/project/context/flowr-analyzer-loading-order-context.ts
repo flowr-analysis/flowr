@@ -41,6 +41,15 @@ export interface ReadOnlyFlowrAnalyzerLoadingOrderContext {
 
 const loadingOrderLog = log.getSubLogger({ name: 'loading-order' });
 
+
+export interface SerializedFlowrAnalyzerLoadingOrderContext{
+    knownOrder?: readonly RParseRequest[];
+    guesses: readonly RParseRequest[][];
+    unordered: readonly RParseRequest[];
+    rerunRequired: boolean;
+}
+
+
 /**
  * This context is responsible for managing the loading order of script files in a project, including guesses and known orders provided by {@link FlowrAnalyzerLoadingOrderPlugin}s.
  *
@@ -138,4 +147,30 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 
 		return this.peekLoadingOrder() ?? this.unordered;
 	}
+
+    public toSerilizable(): SerializedFlowrAnalyzerLoadingOrderContext
+    {
+        return {
+            knownOrder: this.knownOrder,
+            guesses: this.guesses,
+            unordered: this.unordered,
+            rerunRequired: this.rerunRequired,
+        }
+    }
+
+    public static fromSerializable(
+        ctx: FlowrAnalyzerContext,
+        data: SerializedFlowrAnalyzerLoadingOrderContext,
+        plugins?: readonly FlowrAnalyzerLoadingOrderPlugin[]
+    ): FlowrAnalyzerLoadingOrderContext
+    {
+        const ldOrderCtx = new FlowrAnalyzerLoadingOrderContext(ctx, plugins);
+
+        ldOrderCtx.knownOrder = data.knownOrder;
+        ldOrderCtx.guesses = data.guesses.map(g => [...g]); // discard readonly
+        ldOrderCtx.unordered = [...data.unordered];
+        ldOrderCtx.rerunRequired = data.rerunRequired;
+
+        return ldOrderCtx;
+    }
 }

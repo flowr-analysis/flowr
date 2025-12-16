@@ -13,7 +13,8 @@ import type { BuiltInFlowrPluginName, PluginToRegister } from './plugins/plugin-
 import { makePlugin } from './plugins/plugin-registry';
 import { FeatureManager } from '../core/feature-flags/feature-manager';
 import type { FeatureFlag } from '../core/feature-flags/feature-def';
-import { Threadpool } from '../dataflow/parallel/threadpool';
+import type { ThreadPoolSettings } from '../dataflow/parallel/threadpool';
+import { Threadpool, ThreadpoolDefaultSettings } from '../dataflow/parallel/threadpool';
 
 /**
  * Builder for the {@link FlowrAnalyzer}, use it to configure all analysis aspects before creating the analyzer instance
@@ -191,7 +192,13 @@ export class FlowrAnalyzerBuilder {
 
 		let workerPool = undefined;
 		if(this.features.isEnabled('paralleliseFiles')){
-			workerPool = new Threadpool();
+			const settings: ThreadPoolSettings = {
+				...ThreadpoolDefaultSettings,
+				workerData: {
+					flowrConfig: this.flowrConfig,
+				}, // change the parser to the currently used
+			};
+			workerPool = new Threadpool(settings);
 		}
 
 		const context = new FlowrAnalyzerContext(this.flowrConfig, this.plugins, this.features, workerPool);

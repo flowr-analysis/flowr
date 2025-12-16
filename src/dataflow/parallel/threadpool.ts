@@ -4,6 +4,7 @@ import type { MessagePort } from 'node:worker_threads';
 import { Piscina } from 'piscina';
 import { dataflowLogger } from '../logger';
 import { resolve } from 'node:path';
+import { cloneConfig, defaultConfigOptions, type FlowrConfigOptions } from '../../config';
 
 
 export interface RegisterPortMessage {
@@ -80,6 +81,41 @@ export function isPortRegisteredMessage(msg: unknown): msg is PortRegisteredMess
 	);
 }
 
+
+export interface ThreadPoolSettings{
+    /** Number of workers that should be started on pool creation */
+    nofMinWorkers:            number;
+    /** Number of workers that can be alive simultaniously in the pool*/
+    nofMaxWorkers:            number;
+    /** path to the the worker file to be loaded by the pool */
+    workerPath:               string;
+    /** Timeout in milliseconds each worker can spend idle */
+    idleTimeout:              number;
+    /** Amount of tasks each worker can compute */
+    concurrentTasksPerWorker: number;
+    /**
+     * Data that is given to each worker via the workerData
+     * Important: data needs to be clonable and data is copied for each worker
+     */
+    workerData: {
+        /** */
+        flowrConfig: FlowrConfigOptions;
+    };
+}
+
+export type WorkerData = ThreadPoolSettings['workerData'];
+
+export const ThreadpoolDefaultSettings: ThreadPoolSettings = {
+	nofMinWorkers:            0,
+	nofMaxWorkers:            0,
+	workerPath:               './worker.ts',
+	idleTimeout:              30_000, // 30 seconds timeout
+	concurrentTasksPerWorker: 4,
+	workerData:               {
+		flowrConfig: cloneConfig(defaultConfigOptions),
+	},
+};
+
 /**
  * Simple warpper for piscina used for dataflow parallelization
  */
@@ -87,23 +123,24 @@ export class Threadpool {
 	private readonly pool: Piscina;
 	private workerPorts = new Map<number, MessagePort>();
 
-	constructor(numThreads = 0, workerPath = '/worker.ts') {
-		if(numThreads <= 0){
+	constructor(settings: ThreadPoolSettings = ThreadpoolDefaultSettings) {
+		let workers = settings.nofMaxWorkers;
+		if(workers <= 0){
 			// use avalaible core
-			numThreads = Math.max(1, os.cpus().length); // may be problematic, as this returns SMT threads as cores
+			workers = Math.max(1, os.cpus().length); // may be problematic, as this returns SMT threads as cpu cores
 		}
 
 		console.log(`worker filename: ${resolve(__dirname, './worker.ts')}`);
 
 		// create tiny pool instance
 		this.pool = new Piscina({
-			//minThreads:               2,
-			maxThreads:               numThreads,
-			filename:                 resolve(__dirname, workerPath),
-			concurrentTasksPerWorker: 5,
-			idleTimeout:              30 * 1000, // 30 seconds idle timeout
+			minThreads:               Math.max(settings.nofMinWorkers, 0),
+			maxThreads:               workers,
+			filename:                 resolve(__dirname, settings.workerPath),
+			concurrentTasksPerWorker: settings.concurrentTasksPerWorker,
+			idleTimeout:              settings.idleTimeout, // 30 seconds idle timeout
 			workerData:               {
-				fullPath: resolve(__dirname, './worker.ts')
+				...settings.workerData,
 			},
 		});
 

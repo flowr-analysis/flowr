@@ -1,5 +1,5 @@
 import type { DataflowInformation } from './info';
-import { type DataflowProcessorInformation, type DataflowProcessors, processDataflowFor } from './processor';
+import { type DataflowProcessorInformation, type DataflowProcessors, DeserializeDataflowProcessorInformation, processDataflowFor, SerializeDataflowProcessorInformation } from './processor';
 import { processUninterestingLeaf } from './internal/process/process-uninteresting-leaf';
 import { processSymbol } from './internal/process/process-symbol';
 import { processFunctionCall } from './internal/process/functions/call/default-call-handling';
@@ -113,13 +113,13 @@ export function produceDataFlowGraph<OtherInfo>(
 	// we freeze the files here to avoid endless modifications during processing
 	const files = completeAst.ast.files.slice();
 
-	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
+	//ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
 
 	const features = ctx.features;
 	const fileParallelization = features.isEnabled('paralleliseFiles');
 	const workerPool = fileParallelization ? ctx.workerPool ?? new Threadpool() : undefined;
 
-	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
+	const dfInfo: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
 		environment:         ctx.env.makeCleanEnv(),
@@ -128,6 +128,16 @@ export function produceDataFlowGraph<OtherInfo>(
 		referenceChain:      [files[0].filePath],
 		ctx
 	};
+
+    const serializeddfData = SerializeDataflowProcessorInformation<OtherInfo & ParentInformation>(dfInfo);
+    
+    const clone = structuredClone(serializeddfData);
+    const dfData = DeserializeDataflowProcessorInformation<OtherInfo & ParentInformation>(clone, processors, parser);
+
+    console.log(dfInfo);
+    console.log(dfData);
+
+    dfData.ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
 
 	if(fileParallelization && workerPool){
 		// parallelise the dataflow graph analysis
@@ -147,6 +157,9 @@ export function produceDataFlowGraph<OtherInfo>(
 		});
 
 		const df = undefined as unknown as DataflowInformation;
+		if(!df) {
+			return df;
+		}
 
 		// finally, resolve linkages
 		updateNestedFunctionCalls(df.graph, df.environment);

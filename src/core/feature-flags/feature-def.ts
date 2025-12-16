@@ -4,3 +4,4 @@ export const featureFlags = {
 };
 
 export type FeatureFlag = keyof typeof featureFlags;
+export type Features = typeof featureFlags;

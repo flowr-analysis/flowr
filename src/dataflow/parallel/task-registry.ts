@@ -1,5 +1,7 @@
 import type { RProjectFile } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { KnownParser } from '../../r-bridge/parser';
+import { guard } from '../../util/assert';
 import type { DataflowInformation } from '../info';
 import { standaloneSourceFile } from '../internal/process/functions/call/built-in/built-in-source';
 import type { DataflowProcessorInformation } from '../processor';
@@ -8,36 +10,37 @@ import type { DataflowProcessorInformation } from '../processor';
 export interface SourceFilePayload<OtherInfo>{
     index:        number;
     file:         RProjectFile<OtherInfo & ParentInformation>;
-    data:         DataflowProcessorInformation<OtherInfo & ParentInformation>;
-    dataflowInfo: DataflowInformation;
+    data:         DataflowProcessorInformation<OtherInfo & ParentInformation>; //switch with serializable version
+    dataflowInfo: DataflowInformation; // not needed
 }
 
 export type TaskType = 'task' | 'subtask' | 'init';
-
-// export interface TaskMessage<OtherInfo> {
-//     type:     TaskType;
-//     id:       number;
-//     taskName: TaskName;
-//     payload:  SourceFilePayload<OtherInfo>;
-// }
 
 export type RunSubtask = <TInput, TOutput>(
     taskName: TaskName,
     taskPayload: TInput
 ) => Promise<TOutput>;
 
-// export type WorkerTask<TInput, TOutput> = (
-//     payload: TInput,
-//     runSubtask: RunSubtask
-// ) => Promise<TOutput> | TOutput;
 
+let parserEngine: KnownParser;
+/** Cache this as it rarely changes */
+let dataflowProcessorInfo: DataflowProcessorInformation<unknown>;
 
+/**
+ *
+ */
+export function SetParserEngine(engine: KnownParser | undefined){
+	guard(engine !== undefined, 'Worker received no parser.');
+	parserEngine = engine;
+}
 
 export const workerTasks = {
 	parallelFiles: <OtherInfo>(
 		payload: SourceFilePayload<OtherInfo>,
 		_runSubtask: RunSubtask
 	): DataflowInformation => {
+		// rebuild data
+
 		const result = standaloneSourceFile<OtherInfo>(
 			payload.index, payload.file,
 			payload.data, payload.dataflowInfo

@@ -74,6 +74,15 @@ export interface FlowrFileProvider<Content extends { toString(): string } = { to
     assignRole(role: FileRole): void;
 }
 
+
+export interface SerializedFlowrFile {
+    className: string;
+    path: string;
+    content: unknown;
+    role?: FileRole;
+}
+
+
 /**
  * A basic implementation of the {@link FlowrFileProvider} interface that caches the content after the first load (i.e., updates on disk are ignored).
  *
@@ -120,6 +129,29 @@ export abstract class FlowrFile<Content extends StringableContent = StringableCo
 			return new FlowrInlineTextFile(FlowrFile.INLINE_PATH, request.content);
 		}
 	}
+
+    public toSerializable(): SerializedFlowrFile
+    {
+        return {
+            className: this.constructor.name,
+            path: this.path(),
+            content: this.content() as unknown,
+            role: this.role,
+        };
+    }
+
+    public static fromSerializable(data: SerializedFlowrFile): FlowrFileProvider
+    {
+        const fileClass = data.className;
+        switch(fileClass){
+            case 'FlowrTextFile':
+                return new FlowrTextFile(data.path, data.role);
+            case 'FlowrInlineTextFile':
+                return new FlowrInlineTextFile(data.path, data.content as string);
+            default:
+                return new FlowrTextFile(data.path, data.role);
+        }
+    }
 }
 
 /**

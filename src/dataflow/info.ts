@@ -73,6 +73,13 @@ export interface DataflowCfgInformation {
 	exitPoints: readonly ExitPoint[]
 }
 
+export interface SerializableDataflowInformation{
+    unknownReferences: readonly IdentifierReference[];
+    in: readonly IdentifierReference[];
+    out: readonly IdentifierReference[];
+    
+}
+
 /**
  * The dataflow information is one of the fundamental structures we have in the dataflow analysis.
  * It is continuously updated during the dataflow analysis

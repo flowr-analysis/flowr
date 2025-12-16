@@ -9,7 +9,6 @@ import type { DataflowProcessorInformation } from '../processor';
 
 
 export interface ClonableDataflowProcessorInformation {
-    // clonable AST
     readonly normalizedAST:       ClonableNormalizedAST
     readonly environement:        ClonableREnvironemntInformation
     readonly referenceChain:      (string | undefined)[]

@@ -1,10 +1,13 @@
-import { parentPort, MessageChannel, threadId } from 'node:worker_threads';
+import { parentPort, MessageChannel, threadId, workerData } from 'node:worker_threads';
 import type { TaskName } from './task-registry';
-import { workerTasks } from './task-registry';
-import type { SubtaskReceivedMessage } from './threadpool';
+import { SetParserEngine, workerTasks } from './task-registry';
+import type { SubtaskReceivedMessage, WorkerData } from './threadpool';
 import { isPortRegisteredMessage, isSubtaskResponseMessage } from './threadpool';
 import { dataflowLogger } from '../logger';
+import { retrieveEngineInstances } from '../../engines';
+import { cloneConfig, defaultConfigOptions } from '../../config';
 
+const typedWorkerData = workerData as WorkerData;
 
 type PendingEntry<T> = {
 	resolve: (value: T | PromiseLike<T>) => void;
@@ -23,25 +26,27 @@ let portRegisteredResolve: () => void;
 const portRegistered = new Promise<void>(res => (portRegisteredResolve = res));
 
 if(!parentPort){
+	/** This 'should' never happen, as this port is provided natively by piscina */
 	dataflowLogger.error('Worker started without parentPort present, Aborting worker');
-} else {
-	console.log(`Worker ${threadId} registering port to main thread.`);
-	console.log(threadId);
-	parentPort.postMessage({
-		type:     'register-port',
-		workerId: threadId,
-		port:     mainPort,
-	},
-	[mainPort] // transfer port to main thread
-	);
-
-	// Listen for confirmation from main thread
-	workerPort.on('message', (msg: unknown) => {
-		if(isPortRegisteredMessage(msg)) {
-			portRegisteredResolve();
-		}
-	});
+	process.exit(1);
 }
+
+console.log(`Worker ${threadId} registering port to main thread.`);
+console.log(threadId);
+parentPort.postMessage({
+	type:     'register-port',
+	workerId: threadId,
+	port:     mainPort,
+},
+[mainPort] // transfer port to main thread
+);
+// Listen for confirmation from main thread
+workerPort.on('message', (msg: unknown) => {
+	if(isPortRegisteredMessage(msg)) {
+		portRegisteredResolve();
+	}
+});
+
 
 workerPort.on('message', (msg: unknown) => {
 	if(isSubtaskResponseMessage(msg)){
@@ -83,6 +88,10 @@ async function runSubtask<TInput, TOutput>(taskName: TaskName, taskPayload: TInp
 
 async function initialize(){
 	await portRegistered;
+
+	const config = typedWorkerData.flowrConfig ?? cloneConfig(defaultConfigOptions);
+	const engines = await retrieveEngineInstances(config, true);
+	SetParserEngine(engines.engines[engines.default]);
 
 	return (msg: SubtaskReceivedMessage) => {
 		const { taskName, taskPayload } = msg;

@@ -1,3 +1,7 @@
+export interface SerializableBiMap<K, V extends object> {
+    entries: Array<[K, V]>
+}
+
 /**
  * Implementation of a bidirectional map
  *
@@ -75,5 +79,13 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 
 	public values(): MapIterator<V> {
 		return this.k2v.values();
+	}
+
+	public toSerializable(): SerializableBiMap<K, V>{
+		return { entries: [...this.k2v] };
+	}
+
+	public static fromSerializable<K, V extends object>(data: SerializableBiMap<K, V>){
+		return new BiMap(data.entries);
 	}
 }

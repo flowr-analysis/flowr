@@ -11,6 +11,7 @@
 import type { NoInfo, RNode } from '../model';
 import { guard } from '../../../../../util/assert';
 import type { SourceRange } from '../../../../../util/range';
+import type { SerializableBiMap } from '../../../../../util/collections/bimap';
 import { BiMap } from '../../../../../util/collections/bimap';
 import type { MergeableRecord } from '../../../../../util/objects';
 import { RoleInParent } from './role';
@@ -113,7 +114,37 @@ export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & ParentInform
 
 
 export type AstIdMap<OtherInfo = NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
+export type SerializableAstIdMap<OtherInfo = NoInfo> = SerializableBiMap<NodeId, RNodeWithParent<OtherInfo>>
 interface FoldInfo<OtherInfo> { idMap: AstIdMap<OtherInfo>, getId: IdGenerator<OtherInfo>, file?: string }
+
+
+export interface SerializedNormalizedAst<OtherInfo = ParentInformation, Node = RProject<OtherInfo & ParentInformation>>{
+    idMap: SerializableAstIdMap<OtherInfo>;
+    ast: Node;
+    hasError?: boolean;
+}
+
+export function SerializeNormalizedAst<OtherInfo>(
+    normalizedAst: NormalizedAst<OtherInfo>
+): SerializedNormalizedAst<OtherInfo> 
+{
+    return {
+        idMap: normalizedAst.idMap.toSerializable(),
+        ast: normalizedAst.ast,
+        hasError: normalizedAst.hasError,
+    }
+}
+
+export function DeserializeNormalizedAst<OtherInfo>(serializedAst: SerializedNormalizedAst<OtherInfo>)
+: NormalizedAst<OtherInfo>
+{
+    return {
+        idMap: BiMap.fromSerializable<NodeId, RNodeWithParent<OtherInfo>>(serializedAst.idMap),
+        ast: serializedAst.ast,
+        hasError: serializedAst.hasError,
+    }
+}
+
 
 /**
  * Contains the normalized AST as a doubly linked tree

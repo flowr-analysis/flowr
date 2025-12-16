@@ -22,16 +22,16 @@ export type RunSubtask = <TInput, TOutput>(
 ) => Promise<TOutput>;
 
 
-let parserEngine: KnownParser;
+let _parserEngine: KnownParser;
 /** Cache this as it rarely changes */
-let dataflowProcessorInfo: DataflowProcessorInformation<unknown>;
+let _dataflowProcessorInfo: DataflowProcessorInformation<unknown>;
 
 /**
  *
  */
 export function SetParserEngine(engine: KnownParser | undefined){
 	guard(engine !== undefined, 'Worker received no parser.');
-	parserEngine = engine;
+	_parserEngine = engine;
 }
 
 export const workerTasks = {

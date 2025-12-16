@@ -77,9 +77,9 @@ export interface FlowrFileProvider<Content extends { toString(): string } = { to
 
 export interface SerializedFlowrFile {
     className: string;
-    path: string;
-    content: unknown;
-    role?: FileRole;
+    path:      string;
+    content:   unknown;
+    role?:     FileRole;
 }
 
 
@@ -130,28 +130,26 @@ export abstract class FlowrFile<Content extends StringableContent = StringableCo
 		}
 	}
 
-    public toSerializable(): SerializedFlowrFile
-    {
-        return {
-            className: this.constructor.name,
-            path: this.path(),
-            content: this.content() as unknown,
-            role: this.role,
-        };
-    }
+	public toSerializable(): SerializedFlowrFile {
+		return {
+			className: this.constructor.name,
+			path:      this.path(),
+			content:   this.content() as unknown,
+			role:      this.role,
+		};
+	}
 
-    public static fromSerializable(data: SerializedFlowrFile): FlowrFileProvider
-    {
-        const fileClass = data.className;
-        switch(fileClass){
-            case 'FlowrTextFile':
-                return new FlowrTextFile(data.path, data.role);
-            case 'FlowrInlineTextFile':
-                return new FlowrInlineTextFile(data.path, data.content as string);
-            default:
-                return new FlowrTextFile(data.path, data.role);
-        }
-    }
+	public static fromSerializable(data: SerializedFlowrFile): FlowrFileProvider {
+		const fileClass = data.className;
+		switch(fileClass){
+			case 'FlowrTextFile':
+				return new FlowrTextFile(data.path, data.role);
+			case 'FlowrInlineTextFile':
+				return new FlowrInlineTextFile(data.path, data.content as string);
+			default:
+				return new FlowrTextFile(data.path, data.role);
+		}
+	}
 }
 
 /**

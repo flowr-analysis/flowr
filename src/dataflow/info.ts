@@ -75,9 +75,9 @@ export interface DataflowCfgInformation {
 
 export interface SerializableDataflowInformation{
     unknownReferences: readonly IdentifierReference[];
-    in: readonly IdentifierReference[];
-    out: readonly IdentifierReference[];
-    
+    in:                readonly IdentifierReference[];
+    out:               readonly IdentifierReference[];
+
 }
 
 /**

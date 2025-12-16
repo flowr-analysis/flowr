@@ -119,30 +119,33 @@ interface FoldInfo<OtherInfo> { idMap: AstIdMap<OtherInfo>, getId: IdGenerator<O
 
 
 export interface SerializedNormalizedAst<OtherInfo = ParentInformation, Node = RProject<OtherInfo & ParentInformation>>{
-    idMap: SerializableAstIdMap<OtherInfo>;
-    ast: Node;
+    idMap:     SerializableAstIdMap<OtherInfo>;
+    ast:       Node;
     hasError?: boolean;
 }
 
+/**
+ *
+ */
 export function SerializeNormalizedAst<OtherInfo>(
-    normalizedAst: NormalizedAst<OtherInfo>
-): SerializedNormalizedAst<OtherInfo> 
-{
-    return {
-        idMap: normalizedAst.idMap.toSerializable(),
-        ast: normalizedAst.ast,
-        hasError: normalizedAst.hasError,
-    }
+	normalizedAst: NormalizedAst<OtherInfo>
+): SerializedNormalizedAst<OtherInfo> {
+	return {
+		idMap:    normalizedAst.idMap.toSerializable(),
+		ast:      normalizedAst.ast,
+		hasError: normalizedAst.hasError,
+	};
 }
 
-export function DeserializeNormalizedAst<OtherInfo>(serializedAst: SerializedNormalizedAst<OtherInfo>)
-: NormalizedAst<OtherInfo>
-{
-    return {
-        idMap: BiMap.fromSerializable<NodeId, RNodeWithParent<OtherInfo>>(serializedAst.idMap),
-        ast: serializedAst.ast,
-        hasError: serializedAst.hasError,
-    }
+/**
+ *
+ */
+export function DeserializeNormalizedAst<OtherInfo>(serializedAst: SerializedNormalizedAst<OtherInfo>): NormalizedAst<OtherInfo> {
+	return {
+		idMap:    BiMap.fromSerializable<NodeId, RNodeWithParent<OtherInfo>>(serializedAst.idMap),
+		ast:      serializedAst.ast,
+		hasError: serializedAst.hasError,
+	};
 }
 
 

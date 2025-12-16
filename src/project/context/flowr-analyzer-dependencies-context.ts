@@ -2,9 +2,9 @@ import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context'
 import {
 	FlowrAnalyzerPackageVersionsPlugin
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
-import { Package, SerializedPackage } from '../plugins/package-version-plugins/package';
-import { FlowrAnalyzerContext } from './flowr-analyzer-context';
-import { Pack } from 'tar';
+import type { SerializedPackage } from '../plugins/package-version-plugins/package';
+import { Package } from '../plugins/package-version-plugins/package';
+import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerDependenciesContext}.
@@ -28,7 +28,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 
 
 export interface SerializedFlowrAnalyzerDependenciesContext{
-    dependencies: SerializedPackage[];
+    dependencies:  SerializedPackage[];
     staticsLoaded: boolean;
 }
 
@@ -73,29 +73,27 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		return this.dependencies.get(name);
 	}
 
-    public toSerializable(): SerializedFlowrAnalyzerDependenciesContext
-    {
-        return {
-            dependencies: [...this.dependencies.values()].map(p => p.toSerializable()),
-            staticsLoaded: this.staticsLoaded,
-        };
-    }
+	public toSerializable(): SerializedFlowrAnalyzerDependenciesContext {
+		return {
+			dependencies:  [...this.dependencies.values()].map(p => p.toSerializable()),
+			staticsLoaded: this.staticsLoaded,
+		};
+	}
 
-    public static fromSerializable(
-        ctx: FlowrAnalyzerContext,
-        data: SerializedFlowrAnalyzerDependenciesContext,
-        plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]
-    ): FlowrAnalyzerDependenciesContext
-    {
-        const dependencyCtx = new FlowrAnalyzerDependenciesContext(ctx, plugins);
+	public static fromSerializable(
+		ctx: FlowrAnalyzerContext,
+		data: SerializedFlowrAnalyzerDependenciesContext,
+		plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]
+	): FlowrAnalyzerDependenciesContext {
+		const dependencyCtx = new FlowrAnalyzerDependenciesContext(ctx, plugins);
 
-        for(const pkg of data.dependencies){
-            dependencyCtx.addDependency(Package.fromSerializable(pkg));
-        }
+		for(const pkg of data.dependencies){
+			dependencyCtx.addDependency(Package.fromSerializable(pkg));
+		}
 
-        dependencyCtx.staticsLoaded = data.staticsLoaded;
+		dependencyCtx.staticsLoaded = data.staticsLoaded;
 
-        return dependencyCtx;
-    }
+		return dependencyCtx;
+	}
 
 }

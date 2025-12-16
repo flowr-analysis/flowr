@@ -2,9 +2,9 @@
  * Based on a two-way fold, this processor will automatically supply scope information
  */
 import type { ControlDependency, DataflowInformation } from './info';
-import {
-    DeserializeNormalizedAst,
-    SerializedNormalizedAst,
+import type {
+	SerializedNormalizedAst ,
+	DeserializeNormalizedAst,
 	SerializeNormalizedAst,
 	type NormalizedAst,
 	type ParentInformation,
@@ -13,8 +13,8 @@ import {
 import type { REnvironmentInformation } from './environments/environment';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
-import { FlowrAnalyzerContext, SerializedFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
-import { diffFunctionArguments } from './graph/diff-dataflow-graph';
+import type { SerializedFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 export interface SerializedDataflowProcessorInformation<OtherInfo>{
     //parser:              EngineConfig['type'];
@@ -22,7 +22,7 @@ export interface SerializedDataflowProcessorInformation<OtherInfo>{
     serializedAST:       SerializedNormalizedAst<OtherInfo>;
     controlDependencies: ControlDependency[] | undefined;
     referenceChain:      (string | undefined)[];
-    ctx: SerializedFlowrAnalyzerContext;
+    ctx:                 SerializedFlowrAnalyzerContext;
 }
 
 export interface DataflowProcessorInformation<OtherInfo> {
@@ -55,35 +55,39 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	readonly ctx:                 FlowrAnalyzerContext
 }
 
+/**
+ *
+ */
 export function SerializeDataflowProcessorInformation<OtherInfo>(
-    dfInfo: DataflowProcessorInformation<OtherInfo>
-) : SerializedDataflowProcessorInformation<OtherInfo>
-{
-    return {
-        serializedAST: SerializeNormalizedAst<OtherInfo>(dfInfo.completeAst),
-        controlDependencies: dfInfo.controlDependencies,
-        referenceChain: dfInfo.referenceChain,
-        ctx: dfInfo.ctx.toSerializable(),
-    }
+	dfInfo: DataflowProcessorInformation<OtherInfo>
+): SerializedDataflowProcessorInformation<OtherInfo> {
+	return {
+		serializedAST:       SerializeNormalizedAst<OtherInfo>(dfInfo.completeAst),
+		controlDependencies: dfInfo.controlDependencies,
+		referenceChain:      dfInfo.referenceChain,
+		ctx:                 dfInfo.ctx.toSerializable(),
+	};
 }
 
+/**
+ *
+ */
 export function DeserializeDataflowProcessorInformation<OtherInfo>(
-    serializedDfInfo: SerializedDataflowProcessorInformation<OtherInfo>,
-    processors: DataflowProcessors<OtherInfo>,
-    parser: Parser<KnownParserType>
-): DataflowProcessorInformation<OtherInfo>
-{
-    const ctx = FlowrAnalyzerContext.fromSerializable(serializedDfInfo.ctx);
+	serializedDfInfo: SerializedDataflowProcessorInformation<OtherInfo>,
+	processors: DataflowProcessors<OtherInfo>,
+	parser: Parser<KnownParserType>
+): DataflowProcessorInformation<OtherInfo> {
+	const ctx = FlowrAnalyzerContext.fromSerializable(serializedDfInfo.ctx);
 
-    return {
-        parser,
-        completeAst: DeserializeNormalizedAst(serializedDfInfo.serializedAST),
-        environment: ctx.env.makeCleanEnv(),
-        processors,
-        referenceChain: serializedDfInfo.referenceChain,
-        controlDependencies: serializedDfInfo.controlDependencies,
-        ctx
-    }
+	return {
+		parser,
+		completeAst:         DeserializeNormalizedAst(serializedDfInfo.serializedAST),
+		environment:         ctx.env.makeCleanEnv(),
+		processors,
+		referenceChain:      serializedDfInfo.referenceChain,
+		controlDependencies: serializedDfInfo.controlDependencies,
+		ctx
+	};
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation

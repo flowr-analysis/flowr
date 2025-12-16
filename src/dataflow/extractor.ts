@@ -129,15 +129,15 @@ export function produceDataFlowGraph<OtherInfo>(
 		ctx
 	};
 
-    const serializeddfData = SerializeDataflowProcessorInformation<OtherInfo & ParentInformation>(dfInfo);
-    
-    const clone = structuredClone(serializeddfData);
-    const dfData = DeserializeDataflowProcessorInformation<OtherInfo & ParentInformation>(clone, processors, parser);
+	const serializeddfData = SerializeDataflowProcessorInformation<OtherInfo & ParentInformation>(dfInfo);
 
-    console.log(dfInfo);
-    console.log(dfData);
+	const clone = structuredClone(serializeddfData);
+	const dfData = DeserializeDataflowProcessorInformation<OtherInfo & ParentInformation>(clone, processors, parser);
 
-    dfData.ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
+	console.log(dfInfo);
+	console.log(dfData);
+
+	dfData.ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
 
 	if(fileParallelization && workerPool){
 		// parallelise the dataflow graph analysis

@@ -1,15 +1,14 @@
 import { Range } from 'semver';
 import { guard, isNotUndefined } from '../../../util/assert';
-import { Pack } from 'tar';
 
 export type PackageType = 'package' | 'system' | 'r';
 
 export interface SerializedPackage{
-    name: string;
-    type?: PackageType;
-    derivedVersion?: string;
+    name:               string;
+    type?:              PackageType;
+    derivedVersion?:    string;
     versionConstraints: string[];
-    dependencies?: SerializedPackage[];
+    dependencies?:      SerializedPackage[];
 }
 
 export class Package {
@@ -71,36 +70,34 @@ export class Package {
 		}
 	}
 
-    public toSerializable(): SerializedPackage
-    {
-        return {
-            name: this.name,
-            type: this.type,
-            derivedVersion: this.derivedVersion !== undefined ? this.derivedVersion.raw : undefined,
-            versionConstraints: this.versionConstraints.map(v => v.raw),
-            dependencies: this.dependencies !== undefined ? this.dependencies.map(d => d.toSerializable()) : undefined,
-        };
-    }
+	public toSerializable(): SerializedPackage {
+		return {
+			name:               this.name,
+			type:               this.type,
+			derivedVersion:     this.derivedVersion !== undefined ? this.derivedVersion.raw : undefined,
+			versionConstraints: this.versionConstraints.map(v => v.raw),
+			dependencies:       this.dependencies !== undefined ? this.dependencies.map(d => d.toSerializable()) : undefined,
+		};
+	}
 
-    public static fromSerializable(serializedPackage: SerializedPackage): Package 
-    {
-        const pkg = new Package(serializedPackage.name, serializedPackage.type);
+	public static fromSerializable(serializedPackage: SerializedPackage): Package {
+		const pkg = new Package(serializedPackage.name, serializedPackage.type);
 
-        if(serializedPackage.versionConstraints.length > 0) {
-            pkg.addInfo(
-                undefined, undefined,
-                ...serializedPackage.versionConstraints.map(v => new Range(v))
-            );
-        }
+		if(serializedPackage.versionConstraints.length > 0) {
+			pkg.addInfo(
+				undefined, undefined,
+				...serializedPackage.versionConstraints.map(v => new Range(v))
+			);
+		}
 
-        if(serializedPackage.dependencies !== undefined){
-            pkg.dependencies = serializedPackage.dependencies.map(Package.fromSerializable);
-        }
+		if(serializedPackage.dependencies !== undefined){
+			pkg.dependencies = serializedPackage.dependencies.map(d => Package.fromSerializable(d));
+		}
 
-        if(serializedPackage.derivedVersion !== undefined){
-            pkg.derivedVersion = new Range(serializedPackage.derivedVersion);
-        }
+		if(serializedPackage.derivedVersion !== undefined){
+			pkg.derivedVersion = new Range(serializedPackage.derivedVersion);
+		}
 
-        return pkg;
-    }
+		return pkg;
+	}
 }

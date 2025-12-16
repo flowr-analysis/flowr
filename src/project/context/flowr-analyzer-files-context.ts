@@ -5,22 +5,24 @@ import type {
 	RParseRequestFromFile } from '../../r-bridge/retriever';
 import { isParseRequest } from '../../r-bridge/retriever';
 import { guard } from '../../util/assert';
-import {
-	FlowrAnalyzerLoadingOrderContext,
+import type {
 	ReadOnlyFlowrAnalyzerLoadingOrderContext,
-    SerializedFlowrAnalyzerLoadingOrderContext
+	SerializedFlowrAnalyzerLoadingOrderContext
+} from './flowr-analyzer-loading-order-context';
+import {
+	FlowrAnalyzerLoadingOrderContext
 } from './flowr-analyzer-loading-order-context';
 import {
 	FlowrAnalyzerProjectDiscoveryPlugin
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
-import { type FilePath, FlowrFile, type FlowrFileProvider, FlowrTextFile, FileRole, SerializedFlowrFile } from './flowr-file';
+import type { SerializedFlowrFile , type FilePath, FlowrFile, type FlowrFileProvider, FlowrTextFile, FileRole } from './flowr-file';
 import type { FlowrDescriptionFile } from '../plugins/file-plugins/flowr-description-file';
 import { log } from '../../util/log';
 import fs from 'fs';
 import path from 'path';
-import { FlowrAnalyzerLoadingOrderPlugin } from '../plugins/loading-order-plugins/flowr-analyzer-loading-order-plugin';
-import { FlowrAnalyzerContext } from './flowr-analyzer-context';
+import type { FlowrAnalyzerLoadingOrderPlugin } from '../plugins/loading-order-plugins/flowr-analyzer-loading-order-plugin';
+import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
@@ -109,8 +111,8 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 
 
 export interface SerializedFlowrAnalyzerFilesContext{
-    loadingorder: SerializedFlowrAnalyzerLoadingOrderContext;
-    files: SerializedFlowrFile[];
+    loadingorder:    SerializedFlowrAnalyzerLoadingOrderContext;
+    files:           SerializedFlowrFile[];
     consideredFiles: string[];
 }
 
@@ -318,43 +320,41 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return this.byRole[role];
 	}
 
-    public toSerializable(): SerializedFlowrAnalyzerFilesContext
-    {
-        return {
-            loadingorder: this.loadingOrder.toSerilizable(),
-            files: [
-                ...this.files.values(),
-                ...this.inlineFiles
-            ].map( f => {
-                guard(f instanceof FlowrFile, `Cannot serialize non-Flowr Files: ${f.constructor.name}`);
-                return f.toSerializable();
-            }),
-            consideredFiles: [...this.consideredFiles],
-        }
-    }
+	public toSerializable(): SerializedFlowrAnalyzerFilesContext {
+		return {
+			loadingorder: this.loadingOrder.toSerilizable(),
+			files:        [
+				...this.files.values(),
+				...this.inlineFiles
+			].map( f => {
+				guard(f instanceof FlowrFile, `Cannot serialize non-Flowr Files: ${f.constructor.name}`);
+				return f.toSerializable();
+			}),
+			consideredFiles: [...this.consideredFiles],
+		};
+	}
 
-    public static fromSerializable(
-        serialized: SerializedFlowrAnalyzerFilesContext,
-        ctx: FlowrAnalyzerContext,
-        plugins: readonly FlowrAnalyzerProjectDiscoveryPlugin[],
-        fileLoaders: readonly FlowrAnalyzerFilePlugin[],
-        loadingOrderPlugin?: FlowrAnalyzerLoadingOrderPlugin[],
-    ): FlowrAnalyzerFilesContext
-    {
-        const loadingOrder = FlowrAnalyzerLoadingOrderContext.fromSerializable(ctx, serialized.loadingorder, loadingOrderPlugin);
+	public static fromSerializable(
+		serialized: SerializedFlowrAnalyzerFilesContext,
+		ctx: FlowrAnalyzerContext,
+		plugins: readonly FlowrAnalyzerProjectDiscoveryPlugin[],
+		fileLoaders: readonly FlowrAnalyzerFilePlugin[],
+		loadingOrderPlugin?: FlowrAnalyzerLoadingOrderPlugin[],
+	): FlowrAnalyzerFilesContext {
+		const loadingOrder = FlowrAnalyzerLoadingOrderContext.fromSerializable(ctx, serialized.loadingorder, loadingOrderPlugin);
 
-        const filesCtx = new FlowrAnalyzerFilesContext(loadingOrder, plugins, fileLoaders);
+		const filesCtx = new FlowrAnalyzerFilesContext(loadingOrder, plugins, fileLoaders);
 
-        // restore each file
-        for(const f of serialized.files){
-            const file = FlowrFile.fromSerializable(f);
-            filesCtx.addFile(file);
-        }
+		// restore each file
+		for(const f of serialized.files){
+			const file = FlowrFile.fromSerializable(f);
+			filesCtx.addFile(file);
+		}
 
-        for(const f of serialized.consideredFiles){
-            filesCtx.addConsideredFile(f);
-        }   
+		for(const f of serialized.consideredFiles){
+			filesCtx.addConsideredFile(f);
+		}
 
-        return filesCtx;
-    }
+		return filesCtx;
+	}
 }

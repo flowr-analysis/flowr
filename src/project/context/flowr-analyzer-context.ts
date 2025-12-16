@@ -1,10 +1,10 @@
-import type {
+import {
 	SerializedFlowrAnalyzerFilesContext ,
 	FlowrAnalyzerFilesContext,
 	type RAnalysisRequest,
 	type ReadOnlyFlowrAnalyzerFilesContext
 } from './flowr-analyzer-files-context';
-import type {
+import {
 	SerializedFlowrAnalyzerDependenciesContext ,
 	FlowrAnalyzerDependenciesContext,
 	type ReadOnlyFlowrAnalyzerDependenciesContext

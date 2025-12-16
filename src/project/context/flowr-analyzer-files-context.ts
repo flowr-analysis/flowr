@@ -16,7 +16,7 @@ import {
 	FlowrAnalyzerProjectDiscoveryPlugin
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
-import type { SerializedFlowrFile , type FilePath, FlowrFile, type FlowrFileProvider, FlowrTextFile, FileRole } from './flowr-file';
+import { SerializedFlowrFile , type FilePath, FlowrFile, type FlowrFileProvider, FlowrTextFile, FileRole } from './flowr-file';
 import type { FlowrDescriptionFile } from '../plugins/file-plugins/flowr-description-file';
 import { log } from '../../util/log';
 import fs from 'fs';

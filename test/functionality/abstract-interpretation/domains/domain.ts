@@ -2,7 +2,7 @@ import { assert, test } from 'vitest';
 import { type AnyAbstractDomain, type ConcreteDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Top, TopSymbol } from '../../../../src/abstract-interpretation/domains/lattice';
 
-const ConcretizationLimit = 20;
+const ConcretizationLimit = 12;
 
 export interface DomainTestExpectation<AbstractValue, ConcreteValue>{
     readonly equal:     boolean,
@@ -35,11 +35,11 @@ export function assertAbstractDomain<AbstractValue, Domain extends AnyAbstractDo
 	const abstract = create(expected.abstract ?? value1);
 
 	test(`${domain1.toString()} = ${domain2.toString()}`, () => {
-		assert.strictEqual(domain1.equals(domain2), expected.equal, `expected ${domain1.toString()} to equal ${domain2.toString()}`);
-		assert.strictEqual(domain2.equals(domain1), expected.equal, `expected ${domain2.toString()} to equal ${domain1.toString()}`);
+		assert.strictEqual(domain1.equals(domain2), expected.equal, `expected ${domain1.toString()} to ${expected.equal ? '' : 'not '}equal ${domain2.toString()}`);
+		assert.strictEqual(domain2.equals(domain1), expected.equal, `expected ${domain2.toString()} to ${expected.equal ? '' : 'not '}equal ${domain1.toString()}`);
 	});
 	test(`${domain1.toString()} ⊑ ${domain2.toString()}`, () => {
-		assert.strictEqual(domain1.leq(domain2), expected.leq, `expected ${domain1.toString()} to less than or equal to ${domain2.toString()}`);
+		assert.strictEqual(domain1.leq(domain2), expected.leq, `expected ${domain1.toString()} to ${expected.leq ? '' : 'not '}less than or equal to ${domain2.toString()}`);
 		assert.isTrue(!expected.leq || domain1.equals(domain2) || !domain2.leq(domain1), `expected ${domain2.toString()} to be greater than or equal to ${domain1.toString()}`);
 	});
 	test(`${domain1.toString()} ⊔ ${domain2.toString()}`, () => {

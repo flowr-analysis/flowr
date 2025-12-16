@@ -21,13 +21,11 @@ export type DataFrameShapeProperty<Property extends keyof AbstractDataFrameShape
  */
 export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 	constructor(value: AbstractDataFrameShape) {
-		const refined = DataFrameDomain.refine(value);
-
-		super({
-			colnames: refined.colnames,
-			cols:     refined.cols,
-			rows:     refined.rows
-		});
+		super(DataFrameDomain.refine({
+			colnames: value.colnames.create(value.colnames.value),
+			cols:     value.cols.create(value.cols.value),
+			rows:     value.rows.create(value.rows.value)
+		}));
 	}
 
 	public create(value: AbstractDataFrameShape): this;

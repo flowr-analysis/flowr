@@ -1,7 +1,6 @@
-import { type AbstractInterpretationInfo, type DataFrameOperationType, hasDataFrameExpressionInfo } from '../../abstract-interpretation/data-frame/absint-info';
 import type { DataFrameDomain } from '../../abstract-interpretation/data-frame/dataframe-domain';
-import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../abstract-interpretation/data-frame/shape-inference';
-import { SetComparator , NumericalComparator } from '../../abstract-interpretation/domains/satisfiable-domain';
+import { DataFrameShapeInferenceVisitor, type DataFrameOperationType } from '../../abstract-interpretation/data-frame/shape-inference';
+import { NumericalComparator, SetComparator } from '../../abstract-interpretation/domains/satisfiable-domain';
 import { amendConfig } from '../../config';
 import { extractCfg } from '../../control-flow/extract-cfg';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -14,7 +13,7 @@ import { Ternary } from '../../util/logic';
 import { formatRange } from '../../util/mermaid/dfg';
 import { type MergeableRecord } from '../../util/objects';
 import { rangeFrom, type SourceRange } from '../../util/range';
-import { type LintingResult, type LintingRule , LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty, type LintingResult, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
 interface DataFrameAccessOperation {
@@ -71,9 +70,10 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 			})
 		};
 		const cfg = extractCfg(data.normalize, ctx, data.dataflow.graph);
-		inferDataFrameShapes(cfg, data.dataflow.graph, data.normalize, ctx);
+		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: data.dataflow.graph, normalizedAst: data.normalize, ctx });
+		inference.start();
 
-		const accessOperations = getAccessOperations(elements);
+		const accessOperations = getAccessOperations(elements, inference);
 		const accesses: DataFrameAccessOperation[] = [];
 
 		for(const [nodeId, operations] of accessOperations) {
@@ -81,7 +81,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 
 			for(const operation of operations) {
 				access.operand ??= operation.operand;
-				access.operandShape ??= resolveIdToDataFrameShape(operation.operand, data.dataflow.graph);
+				access.operandShape ??= inference.getAbstractValue(operation.operand);
 
 				if(operation.operation === 'accessCols' && operation.columns !== undefined) {
 					access.accessedCols ??= [];
@@ -142,16 +142,15 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 } as const satisfies LintingRule<DataFrameAccessValidationResult, DataFrameAccessValidationMetadata, DataFrameAccessValidationConfig>;
 
 function getAccessOperations(
-	elements: FlowrSearchElements<ParentInformation & AbstractInterpretationInfo>
+	elements: FlowrSearchElements<ParentInformation>,
+	inference: DataFrameShapeInferenceVisitor
 ): Map<NodeId, DataFrameOperationType<'accessCols' | 'accessRows'>[]> {
 	return new Map(elements.getElements()
-		.map(element => element.node)
-		.filter(hasDataFrameExpressionInfo)
-		.map<[NodeId, DataFrameOperationType<'accessCols' | 'accessRows'>[]]>(node =>
-			[node.info.id, node.info.dataFrame.operations
-				.filter(({ operation }) => operation === 'accessCols' || operation === 'accessRows')
+		.map<[NodeId, DataFrameOperationType<'accessCols' | 'accessRows'>[]]>(element =>
+			[element.node.info.id, inference.getAbstractOperations(element.node.info.id)
+				?.filter(({ operation }) => operation === 'accessCols' || operation === 'accessRows')
 				.map(({ operation, operand, type: _type, options: _options, ...args }) =>
-					({ operation, operand, ...args } as DataFrameOperationType<'accessCols' | 'accessRows'>))
+					({ operation, operand, ...args } as DataFrameOperationType<'accessCols' | 'accessRows'>)) ?? []
 			])
 		.filter(([, operations]) => operations.length > 0)
 	);

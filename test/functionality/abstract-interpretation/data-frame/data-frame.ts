@@ -1,8 +1,7 @@
 import { assert, beforeAll, test } from 'vitest';
-import { type AbstractInterpretationInfo, type DataFrameOperation, hasDataFrameExpressionInfo } from '../../../../src/abstract-interpretation/data-frame/absint-info';
 import type { AbstractDataFrameShape, DataFrameDomain, DataFrameShapeProperty } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
 import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../../src/abstract-interpretation/data-frame/semantics';
-import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
+import { type DataFrameOperations, DataFrameShapeInferenceVisitor } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
 import type { AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import type { ArrayRangeValue } from '../../../../src/abstract-interpretation/domains/set-range-domain';
@@ -219,7 +218,7 @@ export function assertDataFrameOperation(
 
 	test.skipIf(skipTestBecauseConfigNotMet(config)).each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
-		const operations = getInferredOperationsForCriterion(result, criterion, context as ReadOnlyFlowrAnalyzerContext);
+		const operations = getInferredOperationsForCriterion(result, criterion, context as ReadOnlyFlowrAnalyzerContext) ?? [];
 		assert.containSubset(operations, expect, `expected ${JSON.stringify(operations)} to equal ${JSON.stringify(expect)}`);
 	});
 }
@@ -375,8 +374,9 @@ function getInferredDomainForCriterion(
 		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
 	}
 	const cfg = extractCfg(result.normalize, ctx, result.dataflow.graph);
-	inferDataFrameShapes(cfg, result.dataflow.graph, result.normalize, ctx);
-	const value = resolveIdToDataFrameShape(node, result.dataflow.graph);
+	const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: result.dataflow.graph, normalizedAst: result.normalize, ctx });
+	inference.start();
+	const value = inference.getAbstractValue(node);
 
 	return [value, node];
 }
@@ -385,21 +385,19 @@ function getInferredOperationsForCriterion(
 	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
 	criterion: SingleSlicingCriterion,
 	ctx: ReadOnlyFlowrAnalyzerContext
-): DataFrameOperation[] {
+): Readonly<DataFrameOperations> {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
 	const nodeId = slicingCriterionToId(criterion, idMap);
-	let node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = idMap.get(nodeId);
+	let node = idMap.get(nodeId);
 
 	if(node?.info.role === RoleInParent.FunctionCallName) {
 		node = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
 	}
-	if(node === undefined) {
-		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
-	}
 	const cfg = extractCfg(result.normalize, ctx, result.dataflow.graph);
-	inferDataFrameShapes(cfg, result.dataflow.graph, result.normalize, ctx);
+	const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: result.dataflow.graph, normalizedAst: result.normalize, ctx });
+	inference.start();
 
-	return hasDataFrameExpressionInfo(node) ? node.info.dataFrame.operations : [];
+	return inference.getAbstractOperations(node?.info.id);
 }
 
 function getRealDomainFromOutput(

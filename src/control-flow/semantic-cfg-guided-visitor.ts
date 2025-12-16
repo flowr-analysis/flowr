@@ -153,7 +153,7 @@ export class SemanticCfgGuidedVisitor<
 	protected override visitFunctionCall(vertex: DataflowGraphVertexFunctionCall) {
 		super.visitFunctionCall(vertex);
 		if(vertex.origin === 'unnamed') {
-			this.onUnnamedCall({ vertex });
+			this.onUnnamedCall({ call: vertex });
 		} else {
 			this.onDispatchFunctionCallOrigins(vertex, vertex.origin);
 		}
@@ -380,7 +380,7 @@ export class SemanticCfgGuidedVisitor<
 	 * to rely on {@link SemanticCfgGuidedVisitor#getOrigins|`getOrigins`} to get more information.
 	 * @protected
 	 */
-	protected onUnnamedCall(_data: { vertex: DataflowGraphVertexFunctionCall }) {}
+	protected onUnnamedCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 
 	/**
 	 * This event triggers for every function call that is not handled by a specific overload,

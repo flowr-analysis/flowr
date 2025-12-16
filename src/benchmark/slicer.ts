@@ -426,7 +426,7 @@ export class BenchmarkSlicer {
 
 		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg, normalizedAst: ast, ctx: this.context });
 		this.measureSimpleStep('infer data frame shapes', () => inference.start());
-		const result = inference.getResult();
+		const result = inference.getEndState();
 		stats.numberOfResultConstraints = result.value.size;
 
 		for(const value of result.value.values()) {
@@ -440,15 +440,15 @@ export class BenchmarkSlicer {
 		}
 
 		visitAst(this.normalizedAst.ast.files.map(file => file.root), node => {
-			const operations = inference.getOperations(node.info.id);
-			const value = inference.getValue(node.info.id);
+			const operations = inference.getAbstractOperations(node.info.id);
+			const value = inference.getAbstractValue(node.info.id);
 
 			// Only store per-node information for nodes representing expressions or nodes with abstract values
 			if(operations === undefined && value === undefined) {
 				stats.numberOfEmptyNodes++;
 				return;
 			}
-			const state = inference.getState(node.info.id);
+			const state = inference.getAbstractState(node.info.id);
 			stats.sizeOfInfo += safeSizeOf([state]);
 
 			const nodeStats: PerNodeStatsDfShape = {

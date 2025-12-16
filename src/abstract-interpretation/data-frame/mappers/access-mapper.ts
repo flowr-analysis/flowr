@@ -8,7 +8,7 @@ import { EmptyArgument, type RFunctionArgument } from '../../../r-bridge/lang-4.
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { resolveIdToArgValue, resolveIdToArgValueSymbolName, unquoteArgument } from '../resolve-args';
-import type { DataFrameOperation, DataFrameShapeInferenceVisitor } from '../shape-inference';
+import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { getArgumentValue, isDataFrameArgument } from './arguments';
 
 /**
@@ -31,7 +31,7 @@ export function mapDataFrameAccess(
 	inference: DataFrameShapeInferenceVisitor,
 	dfg: DataflowGraph,
 	ctx: ReadOnlyFlowrAnalyzerContext
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	if(node.type !== RType.Access) {
 		return;
 	}
@@ -48,7 +48,7 @@ function mapDataFrameNamedColumnAccess(
 	access: RNamedAccess<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	const dataFrame = access.accessed;
 
 	if(!isDataFrameArgument(dataFrame, inference)) {
@@ -67,7 +67,7 @@ function mapDataFrameIndexColRowAccess(
 	access: RIndexAccess<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	const dataFrame = access.accessed;
 	const drop = getArgumentValue(access.access, 'drop', info);
 	const exact = getArgumentValue(access.access, 'exact', info);
@@ -78,7 +78,7 @@ function mapDataFrameIndexColRowAccess(
 	} else if(args.every(arg => arg === EmptyArgument)) {
 		return [{ operation: 'identity', operand: dataFrame.info.id }];
 	}
-	const result: DataFrameOperation[] = [];
+	const result: DataFrameOperations = [];
 
 	const rowArg = args.length < 2 ? undefined : args[0];
 	const colArg = args.length < 2 ? args[0] : args[1];

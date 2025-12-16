@@ -21,7 +21,7 @@ export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries:
 	const start = Date.now();
 	const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg, normalizedAst: ast, ctx: analyzer.inspectContext() });
 	inference.start();
-	const domains = inference.getResult();
+	const domains = inference.getEndState();
 
 	if(queries.length === 1 && queries[0].criterion === undefined) {
 		return {
@@ -43,7 +43,7 @@ export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries:
 		}
 		const nodeId = slicingCriterionToId(query.criterion, ast.idMap);
 		const node = ast.idMap.get(nodeId);
-		const value = inference.getValue(node?.info.id);
+		const value = inference.getAbstractValue(node?.info.id);
 		result.set(query.criterion, value);
 	}
 

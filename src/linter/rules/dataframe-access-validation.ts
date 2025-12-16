@@ -81,7 +81,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 
 			for(const operation of operations) {
 				access.operand ??= operation.operand;
-				access.operandShape ??= inference.getValue(operation.operand);
+				access.operandShape ??= inference.getAbstractValue(operation.operand);
 
 				if(operation.operation === 'accessCols' && operation.columns !== undefined) {
 					access.accessedCols ??= [];
@@ -147,7 +147,7 @@ function getAccessOperations(
 ): Map<NodeId, DataFrameOperationType<'accessCols' | 'accessRows'>[]> {
 	return new Map(elements.getElements()
 		.map<[NodeId, DataFrameOperationType<'accessCols' | 'accessRows'>[]]>(element =>
-			[element.node.info.id, inference.getOperations(element.node.info.id)
+			[element.node.info.id, inference.getAbstractOperations(element.node.info.id)
 				?.filter(({ operation }) => operation === 'accessCols' || operation === 'accessRows')
 				.map(({ operation, operand, type: _type, options: _options, ...args }) =>
 					({ operation, operand, ...args } as DataFrameOperationType<'accessCols' | 'accessRows'>)) ?? []

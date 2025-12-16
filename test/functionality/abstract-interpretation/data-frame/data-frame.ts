@@ -1,7 +1,7 @@
 import { assert, beforeAll, test } from 'vitest';
 import type { AbstractDataFrameShape, DataFrameDomain, DataFrameShapeProperty } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
 import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../../src/abstract-interpretation/data-frame/semantics';
-import { type DataFrameOperation, DataFrameShapeInferenceVisitor } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
+import { type DataFrameOperations, DataFrameShapeInferenceVisitor } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
 import type { AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import type { ArrayRangeValue } from '../../../../src/abstract-interpretation/domains/set-range-domain';
@@ -218,7 +218,7 @@ export function assertDataFrameOperation(
 
 	test.skipIf(skipTestBecauseConfigNotMet(config)).each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
-		const operations = getInferredOperationsForCriterion(result, criterion, context as ReadOnlyFlowrAnalyzerContext);
+		const operations = getInferredOperationsForCriterion(result, criterion, context as ReadOnlyFlowrAnalyzerContext) ?? [];
 		assert.containSubset(operations, expect, `expected ${JSON.stringify(operations)} to equal ${JSON.stringify(expect)}`);
 	});
 }
@@ -376,7 +376,7 @@ function getInferredDomainForCriterion(
 	const cfg = extractCfg(result.normalize, ctx, result.dataflow.graph);
 	const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: result.dataflow.graph, normalizedAst: result.normalize, ctx });
 	inference.start();
-	const value = inference.getValue(node);
+	const value = inference.getAbstractValue(node);
 
 	return [value, node];
 }
@@ -385,7 +385,7 @@ function getInferredOperationsForCriterion(
 	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
 	criterion: SingleSlicingCriterion,
 	ctx: ReadOnlyFlowrAnalyzerContext
-): readonly DataFrameOperation[] {
+): Readonly<DataFrameOperations> {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
 	const nodeId = slicingCriterionToId(criterion, idMap);
 	let node = idMap.get(nodeId);
@@ -397,7 +397,7 @@ function getInferredOperationsForCriterion(
 	const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: result.dataflow.graph, normalizedAst: result.normalize, ctx });
 	inference.start();
 
-	return inference.getOperations(node?.info.id) ?? [];
+	return inference.getAbstractOperations(node?.info.id);
 }
 
 function getRealDomainFromOutput(

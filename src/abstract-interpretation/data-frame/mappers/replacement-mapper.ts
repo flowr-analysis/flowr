@@ -14,7 +14,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { resolveIdToArgStringVector, resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
 import { ConstraintType } from '../semantics';
-import type { DataFrameOperation, DataFrameShapeInferenceVisitor } from '../shape-inference';
+import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { isStringBasedAccess } from './access-mapper';
 import { isDataFrameArgument, isRNull } from './arguments';
 
@@ -39,7 +39,7 @@ type DataFrameReplacementFunctionMapping = (
 	inference: DataFrameShapeInferenceVisitor,
     info: ResolveInfo,
 	parent?: RNode<ParentInformation>
-) => DataFrameOperation[] | undefined;
+) => DataFrameOperations;
 
 /** All currently supported data frame replacement functions */
 type DataFrameReplacementFunction = keyof typeof DataFrameReplacementFunctionMapper;
@@ -57,7 +57,7 @@ export function mapDataFrameReplacementFunction(
 	inference: DataFrameShapeInferenceVisitor,
 	dfg: DataflowGraph,
 	ctx: ReadOnlyFlowrAnalyzerContext
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	const parent = hasParentReplacement(node, dfg) ? dfg.idMap?.get(node.info.parent) : undefined;
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
 
@@ -96,7 +96,7 @@ function mapDataFrameContentAssignment(
 	access: RAccess<ParentInformation>,
 	expression: RNode<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	const dataFrame = access.accessed;
 
 	if(!isDataFrameArgument(dataFrame, inference)) {
@@ -123,7 +123,7 @@ function mapDataFrameNamedColumnAssignment(
 	expression: RNode<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	const dataFrame = access.accessed;
 
 	if(!isDataFrameArgument(dataFrame, inference)) {
@@ -153,14 +153,14 @@ function mapDataFrameIndexColRowAssignment(
 	expression: RNode<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	const dataFrame = access.accessed;
 	const args = access.access;
 
 	if(!isDataFrameArgument(dataFrame, inference) || args.every(arg => arg === EmptyArgument)) {
 		return;
 	}
-	const result: DataFrameOperation[] = [];
+	const result: DataFrameOperations = [];
 	const rowArg = args.length < 2 ? undefined : args[0];
 	const colArg = args.length < 2 ? args[0] : args[1];
 
@@ -215,7 +215,7 @@ function mapDataFrameColNamesAssignment(
 	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo,
 	parent?: RNode<ParentInformation>
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	if(!isDataFrameArgument(operand, inference)) {
 		return;
 	}
@@ -234,7 +234,7 @@ function mapDataFrameRowNamesAssignment(
 	operand: RArgument<ParentInformation>,
 	expression: RNode<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	if(!isDataFrameArgument(operand, inference)) {
 		return;
 	}
@@ -249,7 +249,7 @@ function mapDataFrameDimNamesAssignment(
 	operand: RArgument<ParentInformation>,
 	expression: RNode<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	if(!isDataFrameArgument(operand, inference)) {
 		return;
 	}
@@ -264,7 +264,7 @@ function mapDataFrameUnknownAssignment(
 	operand: RArgument<ParentInformation>,
 	expression: RNode<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	if(!isDataFrameArgument(operand, inference)) {
 		return;
 	}

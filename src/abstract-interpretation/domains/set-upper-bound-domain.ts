@@ -86,8 +86,8 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 		return this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value.isSubsetOf(other.value));
 	}
 
-	public join(other: this): this;
 	public join(other: SetUpperBoundLift<T> | T[]): this;
+	public join(other: this): this;
 	public join(other: this | SetUpperBoundLift<T> | T[]): this {
 		const otherValue = other instanceof SetUpperBoundDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
 
@@ -102,8 +102,8 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 		}
 	}
 
-	public meet(other: this): this;
 	public meet(other: SetUpperBoundLift<T> | T[]): this;
+	public meet(other: this): this;
 	public meet(other: this | SetUpperBoundLift<T> | T[]): this {
 		const otherValue = other instanceof SetUpperBoundDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
 

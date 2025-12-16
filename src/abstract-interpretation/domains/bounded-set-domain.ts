@@ -83,8 +83,8 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 		return other.value === Top || (this.isValue() && this.value.isSubsetOf(other.value));
 	}
 
-	public join(other: this): this;
 	public join(other: BoundedSetLift<T> | T[]): this;
+	public join(other: this): this;
 	public join(other: this | BoundedSetLift<T> | T[]): this {
 		const otherValue = other instanceof BoundedSetDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
 
@@ -95,8 +95,8 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 		}
 	}
 
-	public meet(other: this): this;
 	public meet(other: BoundedSetLift<T> | T[]): this;
+	public meet(other: this): this;
 	public meet(other: this | BoundedSetLift<T> | T[]): this {
 		const otherValue = other instanceof BoundedSetDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
 

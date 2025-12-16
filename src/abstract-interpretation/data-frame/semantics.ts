@@ -163,11 +163,9 @@ function applyAssignColsSemantics(
 	{ columns }: { columns: string[] | number[] | undefined }
 ): DataFrameDomain {
 	if(columns?.every(col => typeof col === 'string')) {
-		const cols = columns.length;
-
 		return new DataFrameDomain({
 			colnames: value.colnames.union(setRange(columns)),
-			cols:     value.cols.add([0, cols]).max([cols, cols]),
+			cols:     value.cols.add([0, columns.length]).max([columns.length, columns.length]),
 			rows:     value.rows
 		});
 	} else if(columns?.every(col => typeof col === 'number')) {
@@ -217,7 +215,7 @@ function applySetColNamesSemantics(
 	const allColNames = colnames?.every(isNotUndefined) && value.cols.value !== Bottom && colnames.length >= value.cols.value[1];
 
 	return new DataFrameDomain({
-		colnames: allColNames ? value.colnames.create(setRange(colnames)) : value.colnames.widenDown().union(setRange(colnames)).widenUp(),
+		colnames: allColNames ? value.colnames.create(setRange(colnames)) : value.colnames.create(setRange(colnames)).widenUp(),
 		cols:     value.cols,
 		rows:     value.rows
 	});

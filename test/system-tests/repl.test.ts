@@ -47,7 +47,7 @@ describe('repl', () => {
 					assert.include(output, expect, `output ${output} does not contain ${expect}`);
 				});
 				test(':n', () => {
-					const expect = normalized ? normalizedAstToMermaid(normalized.ast) : '';
+					const expect = normalized ? normalizedAstToMermaid(normalized.ast, {}) : '';
 					assert.include(output, expect, `output ${output} does not contain ${expect}`);
 				});
 				test(':n*', () => {

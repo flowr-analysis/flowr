@@ -12,6 +12,7 @@ import {
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { reconstructToCode } from '../../reconstruct/reconstruct';
 import { doNotAutoSelect } from '../../reconstruct/auto-select/auto-select-defaults';
+import { MermaidDefaultMarkStyle, type MermaidGraphPrinterInfo } from './info';
 
 function getLexeme(n?: RNodeWithParent) {
 	return n ? n.info.fullLexeme ?? n.lexeme ?? '' : undefined;
@@ -40,7 +41,7 @@ const getDirRegex = /flowchart\s+([A-Za-z]+)/;
  * @param prefix           - The prefix to use for the mermaid string.
  * @param simplify         - Whether to simplify the control flow graph (especially in the context of basic blocks).
  */
-export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = 'flowchart BT\n', simplify: boolean = false): string {
+export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, { prefix = 'flowchart BT\n', simplify = false, markStyle = MermaidDefaultMarkStyle, includeOnlyIds, mark }: MermaidGraphPrinterInfo = {}): string {
 	let output = prefix;
 
 	const dirIs: string = getDirRegex.exec(prefix)?.at(1) ?? 'LR';
@@ -63,6 +64,11 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 				output += `        direction ${dirIs}\n`;
 				let last: NodeId | undefined = undefined;
 				for(const element of vertex.elems ?? []) {
+					if(includeOnlyIds && !includeOnlyIds.has(element.id)) {
+						last = undefined;
+						continue;
+					}
+
 					const childNormalizedVertex = normalizedAst?.idMap.get(element.id);
 					const childContent = getLexeme(childNormalizedVertex);
 					output = cfgOfNode(vertex, childNormalizedVertex, element.id, childContent, output);
@@ -74,7 +80,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 				}
 				output += '    end\n';
 			}
-		} else {
+		} else if(!includeOnlyIds || includeOnlyIds.has(id)) {
 			output = cfgOfNode(vertex, normalizedVertex, id, content, output);
 		}
 		if(vertex.name === RType.ExpressionList && vertex.type === CfgVertexType.EndMarker) {
@@ -82,7 +88,15 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 		}
 	}
 	for(const [from, targets] of cfg.graph.edges()) {
+		if(includeOnlyIds && !includeOnlyIds.has(from)) {
+			continue;
+		}
+
 		for(const [to, edge] of targets) {
+			if(includeOnlyIds && !includeOnlyIds.has(to)) {
+				continue;
+			}
+
 			const edgeType = edge.label === CfgEdgeType.Cd ? '-->' : '-.->';
 			const edgeSuffix = edge.label === CfgEdgeType.Cd ? ` (${edge.when})` : '';
 			output += `    n${from} ${edgeType}|"${escapeMarkdown(edgeTypeToString(edge.label))}${edgeSuffix}"| n${to}\n`;
@@ -90,10 +104,19 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 	}
 
 	for(const entryPoint of cfg.entryPoints) {
-		output += `    style n${entryPoint} stroke:cyan,stroke-width:6.5px;`;
+		if(!includeOnlyIds || includeOnlyIds.has(entryPoint)) {
+			output += `    style n${entryPoint} stroke:cyan,stroke-width:6.5px;`;
+		}
 	}
 	for(const exitPoint of cfg.exitPoints) {
-		output += `    style n${exitPoint} stroke:green,stroke-width:6.5px;`;
+		if(!includeOnlyIds || includeOnlyIds.has(exitPoint)) {
+			output += `    style n${exitPoint} stroke:green,stroke-width:6.5px;`;
+		}
+	}
+	if(mark) {
+		for(const id of mark.values()) {
+			output += `    style n${id} ${markStyle.vertex}`;
+		}
 	}
 	return output;
 }
@@ -101,6 +124,6 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 /**
  * Use mermaid to visualize the normalized AST.
  */
-export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = 'flowchart BT\n'): string {
-	return mermaidCodeToUrl(cfgToMermaid(cfg, normalizedAst, prefix));
+export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, info?: MermaidGraphPrinterInfo): string {
+	return mermaidCodeToUrl(cfgToMermaid(cfg, normalizedAst, info ?? {}));
 }

@@ -144,7 +144,7 @@ export interface ReadOnlyControlFlowGraph {
 	readonly rootIds:            () => ReadonlySet<NodeId>
 	/**
 	 * Provide a view of all vertices in the graph.
-	 * @param includeBasicBlockElements - if true, the elements of basic block elements are included in the result, otherwise this will only the basic blocks themselves
+	 * @param includeBasicBlockElements - if true, the elements of basic block elements are included in the result, otherwise only the basic blocks themselves are included
 	 * @see {@link ReadOnlyControlFlowGraph#rootVertexIds|rootVertexIds()} - for a way to get the root vertices of the graph.
 	 * @see {@link ReadOnlyControlFlowGraph#getVertex|getVertex()} - for a way to get a specific vertex by its id.
 	 * @see {@link ReadOnlyControlFlowGraph#edges|edges()} - for a way to get all edges in the graph.

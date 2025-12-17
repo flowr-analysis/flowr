@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1765976489529,
+  "lastUpdate": 1765976492360,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -21540,6 +21540,116 @@ window.BENCHMARK_DATA = {
             "extra": "median: 34.18"
           }
         ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "f1a2885127c7e8c67841600f34c677aa8096fe53",
+          "message": "[release:patch] 2.7.2 News File Support, files Query, Better Doc Context, Mermaid for NAST and CFG (npm retry)",
+          "timestamp": "2025-12-17T13:44:16+01:00",
+          "tree_id": "16694244a284b080a16f01a6a8761fa969522a4c",
+          "url": "https://github.com/flowr-analysis/flowr/commit/f1a2885127c7e8c67841600f34c677aa8096fe53"
+        },
+        "date": 1765976490871,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 13.255244772727274,
+            "range": "17.135298391911128",
+            "unit": "ms",
+            "extra": "median: 9.45ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 14.454532545454544,
+            "range": "18.36685092690339",
+            "unit": "ms",
+            "extra": "median: 11.07ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 59.11674118181818,
+            "range": "116.24766139783513",
+            "unit": "ms",
+            "extra": "median: 31.87ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 516.1474766363636,
+            "range": "1307.6919124784338",
+            "unit": "ms",
+            "extra": "median: 129.59ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 8.266484954545454,
+            "range": "17.856530119118272",
+            "unit": "ms",
+            "extra": "median: 3.54ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.4631105600489594,
+            "range": "0.49450369253394166",
+            "unit": "ms",
+            "extra": "median: 0.15ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.25606902019446665,
+            "range": "0.18141934698988837",
+            "unit": "ms",
+            "extra": "median: 0.13ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 0.7323158747709118,
+            "range": "0.6402432700301774",
+            "unit": "ms",
+            "extra": "median: 0.37ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7801660063880064,
+            "unit": "#",
+            "extra": "std: 0.1261285782699485"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7575735855163274,
+            "unit": "#",
+            "extra": "std: 0.12942676908005035"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 117.68869850852273,
+            "range": "301.0391208122946",
+            "unit": "KiB",
+            "extra": "median: 34.18"
+          }
+        ]
       }
     ],
     "\"social-science\" Benchmark Suite (tree-sitter)": [
@@ -24918,6 +25028,116 @@ window.BENCHMARK_DATA = {
             "range": "15.50373020176344",
             "unit": "ms",
             "extra": "median: 1.01ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 12710 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8760875201716902,
+            "unit": "#",
+            "extra": "std: 0.10724166547613748"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.822167260204735,
+            "unit": "#",
+            "extra": "std: 0.1527967200673481"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 110.73416015625,
+            "range": "123.2036565786505",
+            "unit": "KiB",
+            "extra": "median: 54.68"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "f1a2885127c7e8c67841600f34c677aa8096fe53",
+          "message": "[release:patch] 2.7.2 News File Support, files Query, Better Doc Context, Mermaid for NAST and CFG (npm retry)",
+          "timestamp": "2025-12-17T13:44:16+01:00",
+          "tree_id": "16694244a284b080a16f01a6a8761fa969522a4c",
+          "url": "https://github.com/flowr-analysis/flowr/commit/f1a2885127c7e8c67841600f34c677aa8096fe53"
+        },
+        "date": 1765976492352,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 19.48264942,
+            "range": "11.675074554449862",
+            "unit": "ms",
+            "extra": "median: 14.22ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 21.8866065,
+            "range": "12.401607866482617",
+            "unit": "ms",
+            "extra": "median: 18.36ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 82.0679256,
+            "range": "68.54067349181992",
+            "unit": "ms",
+            "extra": "median: 50.86ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 2245.2375222399996,
+            "range": "4149.277608942743",
+            "unit": "ms",
+            "extra": "median: 373.24ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 10.25151872,
+            "range": "8.891866930818082",
+            "unit": "ms",
+            "extra": "median: 7.49ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 5.147142560623066,
+            "range": "15.954927456548598",
+            "unit": "ms",
+            "extra": "median: 0.71ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.29177935688455175,
+            "range": "0.16416528649918188",
+            "unit": "ms",
+            "extra": "median: 0.20ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 5.446715154619072,
+            "range": "15.98931894787442",
+            "unit": "ms",
+            "extra": "median: 0.99ms"
           },
           {
             "name": "failed to reconstruct/re-parse",

@@ -41,7 +41,7 @@ const getDirRegex = /flowchart\s+([A-Za-z]+)/;
  * @param prefix           - The prefix to use for the mermaid string.
  * @param simplify         - Whether to simplify the control flow graph (especially in the context of basic blocks).
  */
-export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, { prefix = 'flowchart BT\n', simplify = false, markStyle = MermaidDefaultMarkStyle, includeOnlyIds, mark }: MermaidGraphPrinterInfo ): string {
+export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, { prefix = 'flowchart BT\n', simplify = false, markStyle = MermaidDefaultMarkStyle, includeOnlyIds, mark }: MermaidGraphPrinterInfo = {}): string {
 	let output = prefix;
 
 	const dirIs: string = getDirRegex.exec(prefix)?.at(1) ?? 'LR';

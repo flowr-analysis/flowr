@@ -34,7 +34,7 @@ export function normalizedAstToQuads(ast: NormalizedAst, config: QuadSerializati
  * @see {@link printNormalizedAstToMermaidUrl}
  */
 export function printNormalizedAstToMermaid(ast: NormalizedAst): string {
-	return normalizedAstToMermaid(ast.ast, {});
+	return normalizedAstToMermaid(ast.ast);
 }
 
 /**

@@ -20,7 +20,7 @@ function identifyMermaidDirection(prefix: string): string {
 /**
  * Serialize the normalized AST to mermaid format
  */
-export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeWithParent, { prefix = 'flowchart TD\n', markStyle = MermaidDefaultMarkStyle, includeOnlyIds, mark }: MermaidGraphPrinterInfo): string {
+export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeWithParent, { prefix = 'flowchart TD\n', markStyle = MermaidDefaultMarkStyle, includeOnlyIds, mark }: MermaidGraphPrinterInfo = {}): string {
 	let output = prefix;
 	function showNode(n: RNodeWithParent): void {
 		if(includeOnlyIds && !includeOnlyIds.has(n.info.id)) {

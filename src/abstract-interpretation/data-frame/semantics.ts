@@ -460,13 +460,13 @@ function applyJoinSemantics(
 
 	switch(joinType) {
 		case 'inner':
-			rows = value.rows.min(other.rows).widenDown();
+			rows = value.rows.max(other.rows).widenDown();
 			break;
 		case 'left':
-			rows = value.rows;
+			rows = value.rows.max(other.rows.isValue() ? [0, other.rows.value[1]] : Bottom);
 			break;
 		case 'right':
-			rows = other.rows;
+			rows = other.rows.max(value.rows.isValue() ? [0, value.rows.value[1]] : Bottom);
 			break;
 		case 'full':
 			rows = mergeInterval(value.rows, other.rows);

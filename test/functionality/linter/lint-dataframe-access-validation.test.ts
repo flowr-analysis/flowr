@@ -136,12 +136,12 @@ print(df3${access})
 				[exampleCode({ access: '[["name"]]' }), { type: 'column', accessed: 'name', access: '[[', operand: 'df3', range: rangeFrom(18, 7, 18, 19) }],
 				[exampleCode({ access: '[5]' }), { type: 'column', accessed: 5, access: '[', operand: 'df3', range: rangeFrom(18, 7, 18, 12) }],
 				[exampleCode({ access: '[[12]]' }), { type: 'column', accessed: 12, access: '[[', operand: 'df3', range: rangeFrom(18, 7, 18, 15) }],
-				[exampleCode({ access: '[6, ]' }), { type: 'row', accessed: 6, access: '[', operand: 'df3', range: rangeFrom(18, 7, 18, 14) }],
+				[exampleCode({ access: '[7, ]' }), { type: 'row', accessed: 7, access: '[', operand: 'df3', range: rangeFrom(18, 7, 18, 14) }],
 				[exampleCode({ access: '[5, 6]' }), { type: 'column', accessed: 6, access: '[', operand: 'df3', range: rangeFrom(18, 7, 18, 15) }],
-				[exampleCode({ access: '[7, 4]' }), { type: 'row', accessed: 7, access: '[', operand: 'df3', range: rangeFrom(18, 7, 18, 15) }],
+				[exampleCode({ access: '[8, 4]' }), { type: 'row', accessed: 8, access: '[', operand: 'df3', range: rangeFrom(18, 7, 18, 15) }],
 				[exampleCode({ access: '[3:5]' }), { type: 'column', accessed: 5, access: '[', operand: 'df3', range: rangeFrom(18, 7, 18, 14) }],
 				[exampleCode({ access: '[3:5, c(2, 8)]' }), { type: 'column', accessed: 8, access: '[', operand: 'df3', range: rangeFrom(18, 7, 18, 23) }],
-				[exampleCode({ access: '[3:6, c(1, 3)]' }), { type: 'row', accessed: 6, access: '[', operand: 'df3', range: rangeFrom(18, 7, 18, 23) }]
+				[exampleCode({ access: '[3:7, c(1, 3)]' }), { type: 'row', accessed: 7, access: '[', operand: 'df3', range: rangeFrom(18, 7, 18, 23) }]
 			];
 
 			for(const [test, result] of testCases) {

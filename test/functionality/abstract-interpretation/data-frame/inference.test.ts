@@ -17,17 +17,18 @@ describe.sequential('Data Frame Shape Inference', withShell(shell => {
 
 	const sources = {
 		'a.csv': 'id,name,"score"\n1,"A",95\n2,"B",80\n4,"A",85',
-		'b.csv': 'id,name,\'score\'\n1,\'A\',95\n2,\'B\',80\n4,\'A\',85',
+		'b.csv': 'id,name,\'score\'\r\n1,\'A\',95\r\n2,\'B\',80\r\n4,\'A\',85',
 		'c.csv': '# this is a comment :D\n\n,"id,number","""unique"" name" #this is a comment\n\n"1",1,6\n\n"2",2,7\n\n"3",3,8\n\n"4",4,9\n\n"5",5,10\n',
-		'd.csv': '1;3,5;banana\n2;7,8;apple\n3;4,2;peach\n4;1,9;grape\n',
+		'd.csv': '1;3,5;banana\r\n2;7,8;apple\r\n3;4,2;peach\r\n4;1,9;grape\r\n',
 		'e.csv': 'first last     state phone\nJohn  Smith    WA    418-Y11-4111\nMary  Hartford CA    319-Z19-4341\nEvan  Nolan    IL    219-532-c301\n',
-		'f.csv': 'name\tname\tstate\tphone\nJohn\tSmith\tWA\t418-Y11-4111\nMary\tHartford\tCA\t319-Z19-4341\nEvan\tNolan\tIL\t219-532-c301'
+		'f.csv': 'name\tname\tstate\tphone\nJohn\tSmith\tWA\t418-Y11-4111\nMary\tHartford\tCA\t319-Z19-4341\nEvan\tNolan\tIL\t219-532-c301',
+		'g.csv': 'id,name,"score"\r1,"A",95\r2,"B",80\r4,"A",85'
 	} as const satisfies Readonly<{ [path: string]: string }>;
 
 	const addFiles = Object.entries(sources).map(([path, content]) => new FlowrInlineTextFile(path, content));
 
 	function getFileContent(source: keyof typeof sources) {
-		return sources[source].replaceAll('\n', '\\n').replaceAll('\t', ' \\t').replaceAll('"', '\\"');
+		return sources[source].replaceAll('\r', '\\r').replaceAll('\n', '\\n').replaceAll('\t', ' \\t').replaceAll('"', '\\"');
 	}
 
 	beforeAll(async() => {
@@ -600,6 +601,14 @@ df2 <- as.data.frame(df1)
 			'"f.csv"', `text = "${getFileContent('f.csv')}"`,
 			source => `df <- read.delim(${source})`,
 			[['1@df', { colnames: [['state', 'phone'], Top], cols: [4, 4], rows: [3, 3] }]],
+			{ addFiles }
+		);
+
+		testDataFrameDomainWithSource(
+			shell,
+			'"g.csv"', `text = "${getFileContent('a.csv')}"`,
+			source => `df <- read.csv(${source})`,
+			[['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] }]],
 			{ addFiles }
 		);
 

@@ -1366,6 +1366,7 @@ function getRequestFromRead(
 		const fileName = resolveIdToArgValue(fileNameArg, info);
 
 		if(typeof fileName === 'string') {
+			const text = unescapeSpecialChars(fileName);
 			source = fileName;
 			const referenceChain = fileNameArg.info.file ? [fileNameArg.info.file] : [];
 			const sources = findSource(info.ctx.config.solver.resolveSource, fileName, { referenceChain, ctx: info.ctx });
@@ -1374,9 +1375,9 @@ function getRequestFromRead(
 				source = sources[0];
 				// create request from resolved source file path
 				request = { request: 'file', content: sources[0] };
-			} else if(params.text === undefined && unescapeSpecialChars(fileName).includes('\n')) {
+			} else if(params.text === undefined && text.includes('\n')) {
 				// create request from string if file name argument contains newline
-				request = requestFromInput(unescapeSpecialChars(fileName));
+				request = requestFromInput(text);
 			}
 		}
 	} else if(textArg !== undefined && textArg !== EmptyArgument) {
@@ -1401,7 +1402,7 @@ function parseRequestContent(
 
 	switch(requestType) {
 		case 'text':
-			request.content.split('\n').forEach(parser);
+			unescapeSpecialChars(request.content).split(/\r\n|\r|\n/).forEach(parser);
 			return true;
 		case 'file':
 			return readLineByLineSync(request.content, parser, maxLines);

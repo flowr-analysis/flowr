@@ -15,13 +15,14 @@ export interface NamespaceFormat {
 }
 
 /**
- *
+ * This decorates a text file and provides access to its content in the {@link NamespaceFormat}.
  */
 export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	private readonly wrapped: FlowrFileProvider;
 
 	/**
-	 *
+	 * Prefer the static {@link FlowrNamespaceFile.from} method to create instances of this class as it will not re-create if already a namespace file
+	 * and handle role assignments.
 	 */
 	constructor(file: FlowrFileProvider) {
 		super(file.path(), file.role);
@@ -29,12 +30,12 @@ export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	}
 
 	/**
+	 * Loads and parses the content of the wrapped file in the {@link NamespaceFormat}.
 	 * @see {@link parseNamespace} for details on the parsing logic.
 	 */
 	protected loadContent(): NamespaceFormat {
 		return parseNamespace(this.wrapped);
 	}
-
 
 	/**
 	 * Namespace file lifter, this does not re-create if already a namespace file

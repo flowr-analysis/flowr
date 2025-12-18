@@ -7,7 +7,7 @@ import { FileRole } from '../../context/flowr-file';
 import { FlowrNamespaceFile } from './flowr-namespace-file';
 import { platformBasename } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 
-const NamespaceFilePattern = /^(NAMESPACE(\.txt)?)$/i;
+const NamespaceFilePattern = /^NAMESPACE(\.txt)?$/i;
 
 /**
  * This plugin provides support for R `NAMESPACE` files.

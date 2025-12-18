@@ -1,12 +1,12 @@
 import { FlowrAnalyzerPackageVersionsPlugin } from './flowr-analyzer-package-versions-plugin';
-import {
-	descriptionFileLog
-} from '../file-plugins/flowr-analyzer-description-file-plugin';
 import { SemVer } from 'semver';
 import { Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { FileRole } from '../../context/flowr-file';
 import type { NamespaceFormat } from '../file-plugins/flowr-namespace-file';
+import { log } from '../../../util/log';
+
+export const namespaceFileLog = log.getSubLogger({ name: 'flowr-analyzer-package-versions-namespace-file-plugin' });
 
 export class FlowrAnalyzerPackageVersionsNamespaceFilePlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name = 'flowr-analyzer-package-version-namespace-file-plugin';
@@ -15,10 +15,7 @@ export class FlowrAnalyzerPackageVersionsNamespaceFilePlugin extends FlowrAnalyz
 
 	process(ctx: FlowrAnalyzerContext): void {
 		const nmspcFiles = ctx.files.getFilesByRole(FileRole.Namespace);
-		if(nmspcFiles.length !== 1) {
-			descriptionFileLog.warn(`Supporting only exactly one NAMESPACE file, found ${nmspcFiles.length}`);
-			return;
-		}
+		namespaceFileLog.info(`Found ${nmspcFiles.length} namespace files!`);
 
 		/** this will do the caching etc. for me */
 		const deps = nmspcFiles[0].content() as NamespaceFormat;
@@ -32,7 +29,7 @@ export class FlowrAnalyzerPackageVersionsNamespaceFilePlugin extends FlowrAnalyz
 				}
 			));
 			for(const exportedSymbol of info.exportedSymbols) {
-				ctx.functions.addFunctionInfo({
+				ctx.deps.functionsContext.addFunctionInfo({
 					name:          exportedSymbol,
 					packageOrigin: pkg,
 					isExported:    true,
@@ -40,7 +37,7 @@ export class FlowrAnalyzerPackageVersionsNamespaceFilePlugin extends FlowrAnalyz
 				});
 			}
 			for(const exportedFunction of info.exportedFunctions) {
-				ctx.functions.addFunctionInfo({
+				ctx.deps.functionsContext.addFunctionInfo({
 					name:          exportedFunction,
 					packageOrigin: pkg,
 					isExported:    true,
@@ -48,13 +45,13 @@ export class FlowrAnalyzerPackageVersionsNamespaceFilePlugin extends FlowrAnalyz
 				});
 			}
 			for(const [genericName, classes] of info.exportS3Generics.entries()) {
-				for(const className of classes) {
-					ctx.functions.addFunctionInfo({
-						name:          genericName,
-						packageOrigin: pkg,
-						isExported:    true,
-						isS3Generic:   true,
-						className:     className,
+				for(const s3TypeDispatch of classes) {
+					ctx.deps.functionsContext.addFunctionInfo({
+						name:           genericName,
+						packageOrigin:  pkg,
+						isExported:     true,
+						isS3Generic:    true,
+						s3TypeDispatch: s3TypeDispatch,
 					});
 				}
 			}

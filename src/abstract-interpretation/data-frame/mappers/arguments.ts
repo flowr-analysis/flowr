@@ -10,11 +10,17 @@ import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/pro
 import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
-import { resolveIdToArgName, resolveIdToArgValue, unquoteArgument } from '../resolve-args';
+import type { RParseRequest } from '../../../r-bridge/retriever';
+import { assertUnreachable } from '../../../util/assert';
+import { readLineByLineSync } from '../../../util/files';
+import { resolveIdToArgName, resolveIdToArgValue, unescapeSpecialChars, unquoteArgument } from '../resolve-args';
 import type { DataFrameShapeInferenceVisitor } from '../shape-inference';
 
 /** Regular expression representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
+
+/** Regular expression representing line terminations (LF, CRLF, CR) */
+const LineTerminationRegex = /\r\n|\r|\n/;
 
 /**
  * The location of a function parameter for mapping function call arguments to function parameters.
@@ -251,4 +257,25 @@ export function isRNull(node: RNode<ParentInformation> | RFunctionArgument<Paren
  */
 export function isValidColName(colname: string | undefined): boolean {
 	return colname !== undefined && ColNamesRegex.test(colname);
+}
+
+/**
+ * Parses a text of file parse request using the provided parser function.
+ */
+export function parseRequestContent(
+	request: RParseRequest,
+	parser: (line: Buffer | string, lineNumber: number) => void,
+	maxLines?: number
+): boolean {
+	const requestType = request.request;
+
+	switch(requestType) {
+		case 'text':
+			unescapeSpecialChars(request.content).split(LineTerminationRegex).forEach(parser);
+			return true;
+		case 'file':
+			return readLineByLineSync(request.content, parser, maxLines);
+		default:
+			assertUnreachable(requestType);
+	}
 }

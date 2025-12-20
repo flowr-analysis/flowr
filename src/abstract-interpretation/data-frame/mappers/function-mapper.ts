@@ -10,12 +10,11 @@ import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/pro
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { requestFromInput, type RParseRequest } from '../../../r-bridge/retriever';
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../util/assert';
-import { readLineByLineSync } from '../../../util/files';
 import { DataFrameDomain } from '../dataframe-domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from '../resolve-args';
 import type { ConstraintType } from '../semantics';
 import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
-import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isNamedArgument, isRNull, type FunctionParameterLocation } from './arguments';
+import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isNamedArgument, isRNull, parseRequestContent, type FunctionParameterLocation } from './arguments';
 
 /**
  * Represents the different types of data frames in R
@@ -1393,31 +1392,13 @@ function getRequestFromRead(
 	return { source, request };
 }
 
-function parseRequestContent(
-	request: RParseRequest,
-	parser: (line: Buffer | string, lineNumber: number) => void,
-	maxLines?: number
-): boolean {
-	const requestType = request.request;
-
-	switch(requestType) {
-		case 'text':
-			unescapeSpecialChars(request.content).split(/\r\n|\r|\n/).forEach(parser);
-			return true;
-		case 'file':
-			return readLineByLineSync(request.content, parser, maxLines);
-		default:
-			assertUnreachable(requestType);
-	}
-}
-
 /**
  * Gets all entries from a line of a CSV file using a custom separator char, quote char, and comment char
  */
 function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = '"', comment: string = '', trim: boolean = true): (string | undefined)[] {
 	sep = escapeRegExp(sep, true);  // only allow tokens like `\s`, `\t`, or `\n` in separator, quote, and comment chars
-	quote = escapeRegExp(quote, true);
-	comment = escapeRegExp(comment, true);
+	quote = escapeRegExp(quote);
+	comment = escapeRegExp(comment);
 	const quantifier = sep === '\\s' ? '+' : '*';  // do not allow unquoted empty entries in whitespace-sparated files
 
 	const LineCommentRegex = new RegExp(`[${comment}].*`);
@@ -1444,6 +1425,10 @@ function getSelectedColumns(args: readonly (RFunctionArgument<ParentInformation>
 		if(arg !== undefined && arg !== EmptyArgument) {
 			if(arg.value?.type === RType.FunctionCall && arg.value.named && arg.value.functionName.content === 'c') {
 				const result = getSelectedColumns(arg.value.arguments, info);
+				selectedCols = joinColumns(selectedCols, result.selectedCols);
+				unselectedCols = joinColumns(unselectedCols, result.unselectedCols);
+			} else if(arg.value?.type === RType.UnaryOp && arg.value.operator === '+' && info.idMap !== undefined) {
+				const result = getSelectedColumns([toUnnamedArgument(arg.value.operand, info.idMap)], info);
 				selectedCols = joinColumns(selectedCols, result.selectedCols);
 				unselectedCols = joinColumns(unselectedCols, result.unselectedCols);
 			} else if(arg.value?.type === RType.UnaryOp && arg.value.operator === '-' && info.idMap !== undefined) {

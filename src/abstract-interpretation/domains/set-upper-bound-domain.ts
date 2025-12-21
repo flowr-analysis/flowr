@@ -2,7 +2,7 @@ import { assertUnreachable } from '../../util/assert';
 import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain, DEFAULT_INFERENCE_LIMIT, domainElementToString } from './abstract-domain';
-import { Bottom, Top } from './lattice';
+import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 import { type SatisfiableDomain , SetComparator } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
@@ -86,8 +86,8 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 		return this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value.isSubsetOf(other.value));
 	}
 
-	public join(other: this): this;
 	public join(other: SetUpperBoundLift<T> | T[]): this;
+	public join(other: this): this;
 	public join(other: this | SetUpperBoundLift<T> | T[]): this {
 		const otherValue = other instanceof SetUpperBoundDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
 
@@ -102,8 +102,8 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 		}
 	}
 
-	public meet(other: this): this;
 	public meet(other: SetUpperBoundLift<T> | T[]): this;
+	public meet(other: this): this;
 	public meet(other: this | SetUpperBoundLift<T> | T[]): this {
 		const otherValue = other instanceof SetUpperBoundDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
 
@@ -204,9 +204,9 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 
 	public toString(): string {
 		if(this.value === Top) {
-			return '⊤';
+			return TopSymbol;
 		} else if(this.value === Bottom) {
-			return '⊥';
+			return BottomSymbol;
 		}
 		const string = this.value.values().map(domainElementToString).toArray().join(', ');
 

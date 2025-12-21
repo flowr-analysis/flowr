@@ -10,14 +10,15 @@ import { DefaultMap } from '../../../../src/util/collections/defaultmap';
 import { EnvironmentBuilderPrinter } from './environment-builder-printer';
 import { wrap, wrapControlDependencies, wrapReference } from './printer';
 import { EdgeType, splitEdgeTypes } from '../../../../src/dataflow/graph/edge';
-import { type DataflowGraph, type FunctionArgument , isPositionalArgument } from '../../../../src/dataflow/graph/graph';
+import { type DataflowGraph, type FunctionArgument, isPositionalArgument } from '../../../../src/dataflow/graph/graph';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexInfo,
-	type DataflowGraphVertexUse
-	, VertexType } from '../../../../src/dataflow/graph/vertex';
+	type DataflowGraphVertexUse,
+	VertexType
+} from '../../../../src/dataflow/graph/vertex';
 import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ControlDependency } from '../../../../src/dataflow/info';
 import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
@@ -69,20 +70,16 @@ class DataflowBuilderPrinter {
 	}
 
 	private processUseInitial() {
-		for(const [id, vertex] of this.graph.vertices(true)) {
-			if(vertex.tag === VertexType.Use) {
-				const res = this.processUseVertexInitial(id, vertex);
-				if(res) {
-					this.processEdges(id);
-				}
+		for(const [id, vertex] of this.graph.verticesOfType(VertexType.Use)) {
+			const res = this.processUseVertexInitial(id, vertex);
+			if(res) {
+				this.processEdges(id);
 			}
 		}
 	}
 	private processCalls() {
-		for(const [id, vertex] of this.graph.vertices(true)) {
-			if(vertex.tag === VertexType.FunctionCall) {
-				this.processVertex(id, vertex);
-			}
+		for(const [id, vertex] of this.graph.verticesOfType(VertexType.FunctionCall)) {
+			this.processVertex(id, vertex);
 		}
 	}
 

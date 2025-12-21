@@ -16,6 +16,7 @@ describe('Arguments', () => {
 		positive('argument are cool', ['argument', 'are', 'cool']);
 		positive('a "b c" d', ['a', 'b c', 'd']);
 		positive('a "b\nc" d', ['a', 'b\nc', 'd']);
+		positive('a "x <- \'y\'" d', ['a', "x <- 'y'", 'd']);
 		// this seems to be an error with the comparison function as it does not expand escaped characters?
 		positive('a "b\\nc" d', ['a', 'b\nc', 'd']);
 		positive('a "b\t\r\v\f\bc" d', ['a', 'b\t\r\v\f\bc', 'd']);

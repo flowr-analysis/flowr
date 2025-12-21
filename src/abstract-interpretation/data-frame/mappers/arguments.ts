@@ -4,18 +4,23 @@ import { isUseVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { type RFunctionArgument, type RFunctionCall , EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument, type RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
-import type { AbstractInterpretationInfo } from '../absint-info';
-import { resolveIdToDataFrameShape } from '../shape-inference';
-import { resolveIdToArgName, resolveIdToArgValue, unquoteArgument } from '../resolve-args';
-import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
+import type { RParseRequest } from '../../../r-bridge/retriever';
+import { assertUnreachable } from '../../../util/assert';
+import { readLineByLineSync } from '../../../util/files';
+import { resolveIdToArgName, resolveIdToArgValue, unescapeSpecialChars, unquoteArgument } from '../resolve-args';
+import type { DataFrameShapeInferenceVisitor } from '../shape-inference';
 
 /** Regular expression representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
+
+/** Regular expression representing line terminations (LF, CRLF, CR) */
+const LineTerminationRegex = /\r\n|\r|\n/;
 
 /**
  * The location of a function parameter for mapping function call arguments to function parameters.
@@ -49,13 +54,15 @@ export function escapeRegExp(text: string, allowTokens: boolean = false): string
  * @param checkNames   - Whether to map all invalid column names to top (`undefined`)
  * @param noDupNames   - Whether to map all duplicate column names to top (`undefined`)
  * @param noEmptyNames - Whether to map all empty column names to top (`undefined`)
+ * @param collapseDups - Whether duplicate columns should be collapsed to single occurrences afterward (excluding `undefined` values)
  * @returns The filtered column names
  */
 export function filterValidNames(
 	colnames: (string | undefined)[] | undefined,
 	checkNames?: boolean,
 	noDupNames?: boolean,
-	noEmptyNames?: boolean
+	noEmptyNames?: boolean,
+	collapseDups: boolean = false
 ): (string | undefined)[] | undefined {
 	if(checkNames) {  // map all invalid column names to top
 		colnames = colnames?.map(entry => isValidColName(entry) ? entry : undefined);
@@ -65,6 +72,9 @@ export function filterValidNames(
 	}
 	if(noEmptyNames) {  // map all empty column names to top
 		colnames = colnames?.map(entry => entry?.length === 0 ? undefined : entry);
+	}
+	if(collapseDups) {
+		colnames = colnames?.filter((value, index, array) => value === undefined || array.indexOf(value) === index);
 	}
 	return colnames;
 }
@@ -206,17 +216,17 @@ export function hasCriticalArgument(
 }
 
 /**
- * Checks if a given argument has any data frame shape information and therefore may represent a data frame.
- * @param arg  - The argument to check
- * @param info - Argument resolve information
- * @returns Whether the argument has any data frame shape information and may represent a data frame
+ * Checks if a given argument has an inferred data frame shape and therefore represents a data frame
+ * @param arg       - The argument to check
+ * @param inference - The data frame shape inference visitor to use
+ * @returns Whether the argument represents a data frame
  */
-export function isDataFrameArgument(arg: RNode<ParentInformation> | undefined, info: ResolveInfo):
-	arg is RNode<ParentInformation & Required<AbstractInterpretationInfo>>;
-export function isDataFrameArgument(arg: RFunctionArgument<ParentInformation> | undefined, info: ResolveInfo):
-	arg is RArgument<ParentInformation & Required<AbstractInterpretationInfo>> & { value: RNode<ParentInformation & Required<AbstractInterpretationInfo>> };
-export function isDataFrameArgument(arg: RNode<ParentInformation> | RFunctionArgument<ParentInformation> | undefined, info: ResolveInfo): boolean {
-	return arg !== EmptyArgument && resolveIdToDataFrameShape(arg, info.graph) !== undefined;
+export function isDataFrameArgument(arg: RNode<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor):
+	arg is RNode<ParentInformation>;
+export function isDataFrameArgument(arg: RFunctionArgument<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor):
+	arg is RArgument<ParentInformation> & { value: RNode<ParentInformation> };
+export function isDataFrameArgument(arg: RNode<ParentInformation> | RFunctionArgument<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor): boolean {
+	return arg !== EmptyArgument && inference.getAbstractValue(arg) !== undefined;
 }
 
 /**
@@ -247,4 +257,25 @@ export function isRNull(node: RNode<ParentInformation> | RFunctionArgument<Paren
  */
 export function isValidColName(colname: string | undefined): boolean {
 	return colname !== undefined && ColNamesRegex.test(colname);
+}
+
+/**
+ * Parses a text of file parse request using the provided parser function.
+ */
+export function parseRequestContent(
+	request: RParseRequest,
+	parser: (line: Buffer | string, lineNumber: number) => void,
+	maxLines?: number
+): boolean {
+	const requestType = request.request;
+
+	switch(requestType) {
+		case 'text':
+			unescapeSpecialChars(request.content).split(LineTerminationRegex).forEach(parser);
+			return true;
+		case 'file':
+			return readLineByLineSync(request.content, parser, maxLines);
+		default:
+			assertUnreachable(requestType);
+	}
 }

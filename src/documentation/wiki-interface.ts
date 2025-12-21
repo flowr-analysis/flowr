@@ -101,11 +101,11 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 }
 
 
-async function explainRepl(parser: KnownParser): Promise<string> {
+async function explainRepl(parser: KnownParser, ctx: GeneralDocContext): Promise<string> {
 	return `
 > [!NOTE]
-> To execute arbitrary R commands with a repl request, _flowR_ has to be started explicitly with ${getCliLongOptionOf('flowr', 'r-session-access')}.
-> Please be aware that this introduces a security risk and note that this relies on the [\`r-shell\` engine](${FlowrWikiBaseRef}/Engines).
+> To execute arbitrary R commands with a repl request, _flowR_ has to be started explicitly with ${ctx.cliOption('flowr', 'r-session-access')}.
+> Please be aware that this introduces a security risk and note that this relies on the ${ctx.linkPage('wiki/Engines', '`r-shell` engine')} .
 
 Although primarily meant for users to explore, 
 there is nothing which forbids simply calling _flowR_ as a subprocess to use standard-in, -output, and -error 
@@ -115,8 +115,8 @@ with the [REPL Request](#message-request-repl-execution) message).
 The read-eval-print loop&nbsp;(REPL) works relatively simple.
 You can submit an expression (using <kbd>Enter</kbd>),
 which is interpreted as an R&nbsp;expression by default but interpreted as a *command* if it starts with a colon (\`:\`).
-The best command to get started with the REPL is ${getReplCommand('help')}.
-Besides, you can leave the REPL either with the command ${getReplCommand('quit')} or by pressing <kbd>Ctrl</kbd>+<kbd>C</kbd> twice.
+The best command to get started with the REPL is ${ctx.replCmd('help')}.
+Besides, you can leave the REPL either with the command ${ctx.replCmd('quit')} or by pressing <kbd>Ctrl</kbd>+<kbd>C</kbd> twice.
 When writing a *command*, you may press <kbd>Tab</kbd> to get a list of completions, if available.
 Multiple commands can be entered in a single line by separating them with a semicolon (\`;\`), e.g. \`:parse "x<-2"; :df*\`.
 If a command is given without R code, the REPL will re-use R code given in a previous command. 
@@ -151,20 +151,20 @@ the REPL will re-use previously obtained information and not re-parse the code a
 ### Example: Retrieving the Dataflow Graph
 
 To retrieve a URL to the [mermaid](https://mermaid.js.org/) diagram of the dataflow of a given expression, 
-use ${getReplCommand('dataflow*')} (or ${getReplCommand('dataflow')} to get the mermaid code in the cli):
+use ${ctx.replCmd('dataflow*')} (or ${ctx.replCmd('dataflow')} to get the mermaid code in the cli):
 
 ${await documentReplSession(parser, [{
 	command:     ':dataflow* y <- 1 + x',
 	description: `Retrieve the dataflow graph of the expression \`y <- 1 + x\`. It looks like this:\n${await printDfGraphForCode(parser, 'y <- 1 + x')}`
 }])}
 
-For the slicing with ${getReplCommand('slicer')}, you have access to the same [magic comments](#slice-magic-comments) as with the [slice request](#message-request-slice).
+For the slicing with ${ctx.replCmd('slicer')}, you have access to the same [magic comments](#slice-magic-comments) as with the [slice request](#message-request-slice).
 
 ### Example: Interfacing with the File System
 
-Many commands that allow for an R-expression (like ${getReplCommand('dataflow*')}) allow for a file as well 
+Many commands that allow for an R-expression (like ${ctx.replCmd('dataflow*')}) allow for a file as well 
 if the argument starts with \`${fileProtocol}\`. 
-If you are working from the root directory of the _flowR_ repository, the following gives you the parsed AST of the example file using the ${getReplCommand('parse')} command:
+If you are working from the root directory of the _flowR_ repository, the following gives you the parsed AST of the example file using the ${ctx.replCmd('parse')} command:
 
 ${await documentReplSession(parser, [{
 	command:     `:parse ${fileProtocol}test/testfiles/example.R`,
@@ -243,10 +243,10 @@ ${codeBlock('json', JSON.stringify(
 				}
 			},
 			abstractInterpretation: {
-				dataFrame: {
-					maxColNames:       20,
-					wideningThreshold: 4,
-					readLoadedData:    {
+				wideningThreshold: 4,
+				dataFrame:         {
+					maxColNames:    20,
+					readLoadedData: {
 						readExternalFiles: true,
 						maxReadLines:      1_000_000
 					}
@@ -453,15 +453,14 @@ We use \`example.name\` to avoid duplication with the name that we’ve assigned
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Interface
  */
-export class WikiInterface extends DocMaker {
+export class WikiInterface extends DocMaker<'wiki/Interface.md'> {
 	constructor() {
 		super('wiki/Interface.md', module.filename, 'interface');
 	}
 
 	protected async text({ shell, ctx, treeSitter }: DocMakerArgs): Promise<string> {
 		return `
-Although far from being as detailed as the in-depth explanation of
-[_flowR_](${FlowrWikiBaseRef}/Core),
+Although far from being as detailed as the in-depth explanation of ${ctx.linkPage('wiki/Core', '_flowR_')},
 this wiki page explains how to interface with _flowR_ in more detail.
 In general, command line arguments and other options provide short descriptions on hover over.
 
@@ -478,7 +477,7 @@ ${await explainServer(shell)}
 <a id='using-the-repl'></a>
 ## 💻 Using the REPL
 
-${await explainRepl(treeSitter)}
+${await explainRepl(treeSitter, ctx)}
 
 <a id='configuring-flowr'></a>
 ## ⚙️ Configuring FlowR

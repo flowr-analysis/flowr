@@ -1,12 +1,12 @@
 import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
-import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../../abstract-interpretation/data-frame/shape-inference';
-import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../slicing/criterion/parse';
+import { DataFrameShapeInferenceVisitor } from '../../../abstract-interpretation/data-frame/shape-inference';
+import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../slicing/criterion/parse';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import type { DfShapeQuery, DfShapeQueryResult } from './df-shape-query-format';
 
 /**
- * Executes the given dataframe shape queries using the provided analyzer.
+ * Executes the given data frame shape queries using the provided analyzer.
  */
 export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries: readonly DfShapeQuery[]): Promise<DfShapeQueryResult> {
 	if(queries.length !== 1 && queries.some(query => query.criterion === undefined)) {
@@ -19,7 +19,9 @@ export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries:
 	const cfg = await analyzer.controlflow();
 
 	const start = Date.now();
-	const domains = inferDataFrameShapes(cfg, dfg, ast, analyzer.inspectContext());
+	const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg, normalizedAst: ast, ctx: analyzer.inspectContext() });
+	inference.start();
+	const domains = inference.getEndState();
 
 	if(queries.length === 1 && queries[0].criterion === undefined) {
 		return {
@@ -41,7 +43,7 @@ export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries:
 		}
 		const nodeId = slicingCriterionToId(query.criterion, ast.idMap);
 		const node = ast.idMap.get(nodeId);
-		const value = resolveIdToDataFrameShape(node?.info.id, dfg);
+		const value = inference.getAbstractValue(node?.info.id);
 		result.set(query.criterion, value);
 	}
 

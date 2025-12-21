@@ -178,43 +178,6 @@ export function getParentDirectory(directory: string): string{
 }
 
 /**
- * Parses the given file in the 'Debian Control Format'.
- * @param file - The file to parse
- * @returns Map containing the keys and values of the provided file.
- */
-export function parseDCF(file: FlowrFileProvider): Map<string, string[]> {
-	const result = new Map<string, string[]>();
-	let currentKey = '';
-	let currentValue = '';
-	const indentRegex = new RegExp(/^\s/);
-	const firstColonRegex = new RegExp(/:(.*)/s);
-
-	const fileContent = file.content().toString().split(/\r?\n/);
-
-	for(const line of fileContent) {
-		if(indentRegex.test(line)) {
-			currentValue += '\n' + line.trim();
-		} else {
-			if(currentKey) {
-				const values = currentValue ? cleanValues(currentValue) : [];
-				result.set(currentKey, values);
-			}
-
-			const [key, rest] = line.split(firstColonRegex).map(s => s.trim());
-			currentKey = key.trim();
-			currentValue = rest.trim();
-		}
-	}
-
-	if(currentKey) {
-		const values = currentValue ? cleanValues(currentValue) : [];
-		result.set(currentKey, values);
-	}
-
-	return result;
-}
-
-/**
  * Parses the given NAMESPACE file
  * @param file - The file to parse
  * @returns NamespaceFormat
@@ -283,17 +246,6 @@ export function parseNamespace(file: FlowrFileProvider): NamespaceFormat {
 	}
 
 	return result;
-}
-
-const cleanLineCommentRegex = /^#.*$/gm;
-const cleanSplitRegex = /[\n,]+/;
-const cleanQuotesRegex = /'/g;
-
-function cleanValues(values: string): string[] {
-	return values
-		.split(cleanSplitRegex)
-		.map(s => s.trim().replace(cleanQuotesRegex, ''))
-		.filter(s => s.length > 0);
 }
 
 /**

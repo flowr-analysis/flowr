@@ -14,11 +14,7 @@ import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import {
-	type IEnvironment,
-	initializeCleanEnvironments,
-	type REnvironmentInformation
-} from '../environments/environment';
+import { Environment , type IEnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
 import { jsonReplacer } from '../../util/json';
@@ -106,9 +102,10 @@ export type IngoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = M
  * The structure of the serialized {@link DataflowGraph}.
  */
 export interface DataflowGraphJson {
-	readonly rootVertices:      NodeId[],
-	readonly vertexInformation: [NodeId, DataflowGraphVertexInfo][],
-	readonly edgeInformation:   [NodeId, [NodeId, DataflowGraphEdge][]][]
+	readonly rootVertices:        NodeId[],
+	readonly vertexInformation:   [NodeId, DataflowGraphVertexInfo][],
+	readonly edgeInformation:     [NodeId, [NodeId, DataflowGraphEdge][]][]
+	readonly _unknownSideEffects: UnknownSideEffect[]
 }
 
 /**
@@ -138,8 +135,7 @@ export class DataflowGraph<
 	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
 	Edge   extends DataflowGraphEdge       = DataflowGraphEdge
 > {
-	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined;
-	private _idMap:                     AstIdMap | undefined;
+	private _idMap: AstIdMap | undefined;
 
 	/*
 	 * Set of vertices which have sideEffects that we do not know anything about.
@@ -149,7 +145,6 @@ export class DataflowGraph<
 	private readonly _unknownSideEffects = new Set<UnknownSideEffect>();
 
 	constructor(idMap: AstIdMap | undefined) {
-		DataflowGraph.DEFAULT_ENVIRONMENT ??= initializeCleanEnvironments();
 		this._idMap = idMap;
 	}
 
@@ -159,6 +154,18 @@ export class DataflowGraph<
 	private vertexInformation: DataflowGraphVertices<Vertex> = new Map<NodeId, Vertex>();
 	/** All edges in the complete graph (including those nested in function definition) */
 	private edgeInformation:   Map<NodeId, OutgoingEdges<Edge>> = new Map<NodeId, OutgoingEdges<Edge>>();
+
+	private types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
+
+
+	toJSON(): DataflowGraphJson {
+		return {
+			rootVertices:        Array.from(this.rootVertices),
+			vertexInformation:   Array.from(this.vertexInformation.entries()),
+			edgeInformation:     Array.from(this.edgeInformation.entries()).map(([id, edges]) => [id, Array.from(edges.entries())]),
+			_unknownSideEffects: Array.from(this._unknownSideEffects)
+		};
+	}
 
 	/**
 	 * Get the {@link DataflowGraphVertexInfo} attached to a node as well as all outgoing edges.
@@ -252,6 +259,17 @@ export class DataflowGraph<
 		}
 	}
 
+	public* verticesOfType<T extends Vertex['tag']>(type: T): MapIterator<[NodeId, Vertex & { tag: T }]> {
+		const ids = this.types.get(type) ?? [];
+		for(const id of ids) {
+			yield [id, this.vertexInformation.get(id) as Vertex & { tag: T }];
+		}
+	}
+
+	public vertexIdsOfType<T extends Vertex['tag']>(type: T): NodeId[] {
+		return this.types.get(type) ?? [];
+	}
+
 	/**
 	 * @returns the ids of all edges in the graph together with their edge information
 	 * @see #vertices
@@ -283,19 +301,20 @@ export class DataflowGraph<
 	/**
 	 * Adds a new vertex to the graph, for ease of use, some arguments are optional and filled automatically.
 	 * @param vertex - The vertex to add
+	 * @param fallbackEnv - A clean environment to use if no environment is given in the vertex
 	 * @param asRoot - If false, this will only add the vertex but do not add it to the {@link rootIds|root vertices} of the graph.
 	 *                 This is probably only of use, when you construct dataflow graphs for tests.
 	 * @param overwrite - If true, this will overwrite the vertex if it already exists in the graph (based on the id).
 	 * @see DataflowGraphVertexInfo
 	 * @see DataflowGraphVertexArgument
 	 */
-	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, asRoot = true, overwrite = false): this {
+	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, fallbackEnv: REnvironmentInformation, asRoot = true, overwrite = false): this {
 		const oldVertex = this.vertexInformation.get(vertex.id);
 		if(oldVertex !== undefined && !overwrite) {
 			return this;
 		}
 
-		const fallback = vertex.tag === VertexType.VariableDefinition || vertex.tag === VertexType.Use || vertex.tag === VertexType.Value || (vertex.tag === VertexType.FunctionCall && vertex.onlyBuiltin) ? undefined : DataflowGraph.DEFAULT_ENVIRONMENT;
+		const fallback = vertex.tag === VertexType.FunctionDefinition || (vertex.tag === VertexType.FunctionCall && !vertex.onlyBuiltin) ? fallbackEnv : undefined;
 		// keep a clone of the original environment
 		const environment = vertex.environment ? cloneEnvironmentInformation(vertex.environment) : fallback;
 
@@ -303,6 +322,12 @@ export class DataflowGraph<
 			...vertex,
 			environment
 		} as unknown as Vertex);
+		const has =  this.types.get(vertex.tag);
+		if(has) {
+			has.push(vertex.id);
+		} else {
+			this.types.set(vertex.tag, [vertex.id]);
+		}
 
 		if(asRoot) {
 			this.rootVertices.add(vertex.id);
@@ -368,6 +393,10 @@ export class DataflowGraph<
 			const currentInfo = this.vertexInformation.get(id);
 			this.vertexInformation.set(id, currentInfo === undefined ? info : mergeNodeInfos(currentInfo, info));
 		}
+		for(const [type, ids] of otherGraph.types) {
+			const existing = this.types.get(type);
+			this.types.set(type, existing ? existing.concat(ids) : ids.slice());
+		}
 
 		this.mergeEdges(otherGraph);
 		return this;
@@ -412,7 +441,10 @@ export class DataflowGraph<
 	public updateToFunctionCall(info: DataflowGraphVertexFunctionCall): void {
 		const vertex = this.getVertex(info.id, true);
 		guard(vertex !== undefined && (vertex.tag === VertexType.Use || vertex.tag === VertexType.Value), () => `node must be a use or value node for ${JSON.stringify(info.id)} to update it to a function call but is ${vertex?.tag}`);
+		const previousTag = vertex.tag;
 		this.vertexInformation.set(info.id, { ...vertex, ...info, tag: VertexType.FunctionCall });
+		this.types.set(previousTag, (this.types.get(previousTag) ?? []).filter(id => id !== info.id));
+		this.types.set(VertexType.FunctionCall, (this.types.get(VertexType.FunctionCall) ?? []).concat([info.id]));
 	}
 
 	/** If you do not pass the `to` node, this will just mark the node as maybe */
@@ -464,6 +496,9 @@ export class DataflowGraph<
 			}
 		}
 		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DataflowGraphEdge>(edges)]));
+		for(const unknown of data._unknownSideEffects) {
+			graph._unknownSideEffects.add(unknown);
+		}
 		return graph;
 	}
 }
@@ -507,21 +542,16 @@ interface REnvironmentInformationJson {
 	readonly level:   number;
 }
 
-function envFromJson(json: IEnvironmentJson): IEnvironment {
+function envFromJson(json: IEnvironmentJson): Environment {
 	const parent = json.parent ? envFromJson(json.parent) : undefined;
 	const memory: BuiltInMemory = new Map();
 	for(const [key, value] of Object.entries(json.memory)) {
 		memory.set(key as Identifier, value);
 	}
-	const obj: Writable<IEnvironment> = {
-		id:     json.id,
-		parent: parent as IEnvironment,
-		memory
-	};
-	if(json.builtInEnv) {
-		obj.builtInEnv = true;
-	}
-	return obj as IEnvironment;
+	const obj: Writable<IEnvironment> = new Environment(parent as Environment, json.builtInEnv);
+	obj.id = json.id;
+	obj.memory = memory;
+	return obj as Environment;
 }
 
 function renvFromJson(json: REnvironmentInformationJson): REnvironmentInformation {

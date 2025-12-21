@@ -112,7 +112,7 @@ export interface Namespace {
 	 * The namespace attached to the given node
 	 * (e.g., a namespaced symbol in `x::y`).
 	 */
-	namespace: NamespaceIdentifier | undefined
+	namespace?: NamespaceIdentifier
 }
 
 

@@ -2,14 +2,15 @@ import { DataflowGraph } from './graph';
 import { type AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard } from '../../util/assert';
-import { type SingleSlicingCriterion , slicingCriterionToId } from '../../slicing/criterion/parse';
+import { type SingleSlicingCriterion, slicingCriterionToId } from '../../slicing/criterion/parse';
 import { splitEdgeTypes } from './edge';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 /**
  * Resolves the dataflow graph ids from slicing criterion form to ids.
  * This returns a **new** graph with the resolved ids.
  */
-export function resolveDataflowGraph(graph: DataflowGraph, idMap?: AstIdMap): DataflowGraph {
+export function resolveDataflowGraph(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, idMap?: AstIdMap): DataflowGraph {
 	const resolveMap = idMap ?? graph.idMap;
 	guard(resolveMap !== undefined, 'idMap must be provided to resolve the graph');
 
@@ -40,7 +41,7 @@ export function resolveDataflowGraph(graph: DataflowGraph, idMap?: AstIdMap): Da
 		resultGraph.addVertex({
 			...vertex,
 			id: resolve(id as string)
-		}, roots.has(id));
+		}, ctx.env.makeCleanEnv(), roots.has(id));
 	}
 	/* recreate edges */
 	for(const [from, targets] of graph.edges()) {

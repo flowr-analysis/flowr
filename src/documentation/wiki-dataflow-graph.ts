@@ -1,11 +1,16 @@
 import { DataflowGraph } from '../dataflow/graph/graph';
-import type { MermaidMarkdownMark } from '../util/mermaid/dfg';
 import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition , VertexType } from '../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType, edgeTypeToName, splitEdgeTypes } from '../dataflow/graph/edge';
 import { DataflowGraphBuilder, emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
 import { formatSideEffect, printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
-import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
+import {
+	FlowrGithubBaseRef,
+	FlowrGithubGroupName,
+	FlowrVsCode,
+	FlowrWikiBaseRef,
+	getFilePathMd
+} from './doc-util/doc-files';
 import { jsonReplacer } from '../util/json';
 import { printEnvironmentToMarkdown } from './doc-util/doc-env';
 import { type ExplanationParameters, type SubExplanationParameters , getAllEdges, getAllVertices } from './data/dfg/doc-data-dfg-util';
@@ -18,7 +23,11 @@ import { lastJoin, prefixLines } from './doc-util/doc-general';
 import { type NodeId , recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { resolveByName, resolvesToBuiltInConstant, } from '../dataflow/environments/resolve-by-name';
+import {
+	resolveByName,
+	resolveByNameAnyType,
+	resolvesToBuiltInConstant,
+} from '../dataflow/environments/resolve-by-name';
 import { createDataflowPipeline } from '../core/steps/pipeline/default-pipelines';
 import { nth } from '../util/text/text';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
@@ -41,6 +50,7 @@ import { DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import type { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { KnownParser } from '../r-bridge/parser';
+import type { MermaidMarkdownMark } from '../util/mermaid/info';
 
 async function subExplanation(parser: KnownParser, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(parser, code, expectedSubgraph);
@@ -250,7 +260,7 @@ ${
 		await (async() => {
 			const code = 'foo(x,3,y=3,)';
 			const [text, info] = await printDfGraphForCode(parser, code, { mark: new Set([8]), exposeResult: true });
-			const callInfo = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name === 'foo');
+			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name === 'foo');
 			guard(callInfo !== undefined, () => `Could not find call vertex for ${code}`);
 			const [callId, callVert] = callInfo as [NodeId, DataflowGraphVertexFunctionCall];
 			const inverseMapReferenceTypes = Object.fromEntries(Object.entries(ReferenceType).map(([k, v]) => [v, k]));
@@ -375,7 +385,7 @@ Consider a case in which you have a built-in function (like the assignment opera
 ${await (async() => {
 	const [text, info] = await printDfGraphForCode(parser, 'x <- 2\nif(u) `<-` <- `*`\nx <- 3', { switchCodeAndGraph: true, mark: new Set([9, '9->0', '9->10']), exposeResult: true });
 
-	const interestingUseOfAssignment = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.id === 11);
+	const interestingUseOfAssignment = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.id === 11);
 	guard(interestingUseOfAssignment !== undefined, () => 'Could not find interesting assignment vertex for the code');
 	const [id, interestingVertex] = interestingUseOfAssignment;
 	const env = interestingVertex.environment;
@@ -400,7 +410,7 @@ Hence, trying to re-resolve the call using ${ctx.link(getAllFunctionCallTargets)
 the following target ids: { \`${[...getAllFunctionCallTargets(id, info.dataflow.graph)].join('`, `')}\` }.
 This way we know that the call may refer to the built-in assignment operator or to the multiplication.
 Similarly, trying to resolve the name with ${ctx.link(resolveByName)}\` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
-{ \`${resolveByName(name, env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
+{ \`${resolveByNameAnyType(name, env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
 
 	`;
 })()}
@@ -536,8 +546,7 @@ ${details('Example: Nested Function Definitions',
 	await (async() => {
 		const [text, info] = await printDfGraphForCode(parser, 'f <- function() { g <- function() 3 }', { mark: new Set([9, 6]), exposeResult: true });
 
-		const definitions = info.dataflow.graph.vertices(true)
-			.filter(([, vertex]) => vertex.tag === VertexType.FunctionDefinition)
+		const definitions = info.dataflow.graph.verticesOfType(VertexType.FunctionDefinition)
 			.map(([id, vertex]) => `| \`${id}\` | { \`${[...(vertex as DataflowGraphVertexFunctionDefinition).subflow.graph].join('`, `')}\` } |`)
 			.toArray();
 
@@ -853,7 +862,7 @@ async function dummyDataflow(): Promise<DataflowInformation> {
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph
  */
-export class WikiDataflowGraph extends DocMaker {
+export class WikiDataflowGraph extends DocMaker<'wiki/Dataflow Graph.md'> {
 	constructor() {
 		super('wiki/Dataflow Graph.md', module.filename, 'dataflow graph');
 	}
@@ -862,7 +871,7 @@ export class WikiDataflowGraph extends DocMaker {
 		return `
 This page briefly summarizes flowR's dataflow graph, represented by the ${ctx.link(DataflowGraph)} class within the code.
 In case you want to manually build such a graph (e.g., for testing), you can use the ${ctx.link(DataflowGraphBuilder)}.
-If you are interested in which features we support and which features are still to be worked on, please refer to our [capabilities](${FlowrWikiBaseRef}/Capabilities) page.
+If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities')} page.
 In summary, we discuss the following topics:
 
 - [Vertices](#vertices)
@@ -881,12 +890,12 @@ wiki page if you are unsure.
 
 > [!TIP]
 > If you want to investigate the dataflow graph,
-> you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('dataflow*')}
-> command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information). 
-> There is also a simplified perspective available with ${getReplCommand('dataflowsimple*')} that does not show everything but is easier to read.
+> you can either use the [Visual Studio Code extension](${FlowrVsCode}) or the ${ctx.replCmd('dataflow*')}
+> command in the REPL (see the ${ctx.linkPage('wiki/Interface', 'Interface wiki page')} for more information). 
+> There is also a simplified perspective available with ${ctx.replCmd('dataflowsimple*')} that does not show everything but is easier to read.
 > When using _flowR_ as a library, you may use the functions in ${getFilePathMd('../util/mermaid/dfg.ts')}.
 > 
-> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](${FlowrWikiBaseRef}/Interface)), you can use ${ctx.link(`${DataflowGraph.name}::${DataflowGraph.fromJson.name}`, { realNameWrapper: 'i', codeFont: true })} to retrieve the graph from the JSON representation.
+> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](${FlowrWikiBaseRef}/Interface)), you can use ${ctx.linkM(DataflowGraph, 'fromJson', { realNameWrapper: 'i', codeFont: true })} to retrieve the graph from the JSON representation.
 >
 > Also, check out the [${FlowrGithubGroupName}/sample-analyzer-df-diff](${FlowrGithubBaseRef}/sample-analyzer-df-diff) repository for a complete example project creating and comparing dataflow graphs.
 
@@ -896,7 +905,7 @@ ${await printDfGraphForCode(treeSitter,'x <- 3\ny <- x + 1\ny')}
 The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between ${getAllVertices().length} types of vertices V and
 ${getAllEdges().length} types of edges E allowing each vertex to have a single, and each edge to have multiple distinct types.
 Additionally, every node may have links to its [control dependencies](#control-dependencies) (which you may view as a ${nth(getAllEdges().length + 1)} edge type, 
-although they are explicitly no data dependency and relate to the [Control Flow Graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph)).
+although they are explicitly no data dependency and relate to the ${ctx.linkPage('wiki/Control Flow Graph')}. 
 
 <details open>
 

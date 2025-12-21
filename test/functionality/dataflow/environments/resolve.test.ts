@@ -7,7 +7,7 @@ import { Ternary } from '../../../../src/util/logic';
 import { assert, describe, expect, test } from 'vitest';
 import { valueFromTsValue } from '../../../../src/dataflow/eval/values/general';
 import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
-import { type Lift, type Value , Bottom, isBottom, isTop, Top } from '../../../../src/dataflow/eval/values/r-value';
+import { Bottom, isBottom, isTop, type Lift, Top, type Value } from '../../../../src/dataflow/eval/values/r-value';
 import { withShell } from '../../_helper/shell';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
@@ -69,9 +69,10 @@ describe.sequential('Resolve', withShell(shell => {
 		const effectiveName = decorateLabelContext(label(name), ['resolve']);
 
 		test(effectiveName, async() => {
+			const context = contextFromInput(code.trim());
 			const dataflow = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-				parser:  shell,
-				context: contextFromInput(code.trim()),
+				parser: shell,
+				context
 			}).allRemainingSteps();
 
 			const resolved = resolveIdToValue(slicingCriterionToId(identifier, dataflow.normalize.idMap), {
@@ -79,7 +80,8 @@ describe.sequential('Resolve', withShell(shell => {
 				graph:       dataflow.dataflow.graph,
 				idMap:       dataflow.normalize.idMap,
 				full:        true,
-				resolve:     defaultConfigOptions.solver.variables
+				resolve:     defaultConfigOptions.solver.variables,
+				ctx:         context
 			});
 
 			if((allow & Allow.Top) == Allow.Top && isTop(resolved)) {

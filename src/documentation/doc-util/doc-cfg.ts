@@ -39,7 +39,7 @@ export async function getCfg(parser: KnownParser, code: string, simplifications:
  */
 export function printCfg(cfg: ControlFlowInformation, ast: NormalizedAst, prefix = 'flowchart BT\n', simplify = false) {
 	return `
-${codeBlock('mermaid', cfgToMermaid(cfg, ast, prefix, simplify))}
+${codeBlock('mermaid', cfgToMermaid(cfg, ast, { prefix, simplify }))}
 	`;
 }
 

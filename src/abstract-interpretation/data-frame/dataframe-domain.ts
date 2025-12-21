@@ -1,13 +1,14 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AbstractDomainValue } from '../domains/abstract-domain';
+import { Top } from '../domains/lattice';
 import { PosIntervalDomain } from '../domains/positive-interval-domain';
 import { ProductDomain } from '../domains/product-domain';
-import { SetUpperBoundDomain } from '../domains/set-upper-bound-domain';
+import { SetRangeDomain } from '../domains/set-range-domain';
 import { StateAbstractDomain } from '../domains/state-abstract-domain';
 
 /** The type of the abstract product representing the shape of data frames */
 export type AbstractDataFrameShape = {
-	colnames: SetUpperBoundDomain<string>;
+	colnames: SetRangeDomain<string>;
 	cols:     PosIntervalDomain;
 	rows:     PosIntervalDomain;
 }
@@ -19,17 +20,17 @@ export type DataFrameShapeProperty<Property extends keyof AbstractDataFrameShape
  * The data frame abstract domain as product domain of a column names domain, column count domain, and row count domain.
  */
 export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
-	constructor(value: AbstractDataFrameShape, maxColNames?: number) {
-		super({
-			colnames: new SetUpperBoundDomain(value.colnames.value, maxColNames ?? value.colnames.limit),
-			cols:     new PosIntervalDomain(value.cols.value),
-			rows:     new PosIntervalDomain(value.rows.value)
-		});
+	constructor(value: AbstractDataFrameShape) {
+		super(DataFrameDomain.refine({
+			colnames: value.colnames.create(value.colnames.value),
+			cols:     value.cols.create(value.cols.value),
+			rows:     value.rows.create(value.rows.value)
+		}));
 	}
 
 	public create(value: AbstractDataFrameShape): this;
 	public create(value: AbstractDataFrameShape): DataFrameDomain {
-		return new DataFrameDomain(value, this.maxColNames);
+		return new DataFrameDomain(value);
 	}
 
 	/**
@@ -53,16 +54,9 @@ export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 		return this.value.rows;
 	}
 
-	/**
-	 * The maximum number of inferred column names of the column names domain.
-	 */
-	public get maxColNames(): number {
-		return this.value.colnames.limit;
-	}
-
 	public static bottom(maxColNames?: number): DataFrameDomain {
 		return new DataFrameDomain({
-			colnames: SetUpperBoundDomain.bottom(maxColNames),
+			colnames: SetRangeDomain.bottom(maxColNames),
 			cols:     PosIntervalDomain.bottom(),
 			rows:     PosIntervalDomain.bottom()
 		});
@@ -70,10 +64,27 @@ export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 
 	public static top(maxColNames?: number): DataFrameDomain {
 		return new DataFrameDomain({
-			colnames: SetUpperBoundDomain.top(maxColNames),
+			colnames: SetRangeDomain.top(maxColNames),
 			cols:     PosIntervalDomain.top(),
 			rows:     PosIntervalDomain.top()
 		});
+	}
+
+	private static refine(value: AbstractDataFrameShape): AbstractDataFrameShape {
+		if(value.colnames.isValue() && value.cols.isValue()) {
+			if(value.colnames.value.range === Top && value.colnames.value.min.size >= value.cols.value[1]) {
+				value.colnames = value.colnames.meet({ min: new Set(), range: value.colnames.value.min });
+			}
+			if(value.colnames.isValue()) {
+				const minColNames = value.colnames.value.min.size;
+				const maxColNames = value.colnames.isFinite() ? value.colnames.value.min.size + value.colnames.value.range.size : Infinity;
+
+				if(minColNames > value.cols.value[0] || maxColNames < value.cols.value[1]) {
+					value.cols = value.cols.meet([minColNames, maxColNames]);
+				}
+			}
+		}
+		return value;
 	}
 }
 

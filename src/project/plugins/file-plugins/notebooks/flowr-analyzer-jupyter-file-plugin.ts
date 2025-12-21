@@ -4,7 +4,7 @@ import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-conte
 import type { FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrAnalyzerFilePlugin } from '../flowr-analyzer-file-plugin';
 import { platformBasename } from '../../../../dataflow/internal/process/functions/call/built-in/built-in-source';
-import { FlowrJupyterFile } from './flowr-jupyter-file';
+import { FlowrJupyterFile } from '../files/flowr-jupyter-file';
 
 const IpynbPattern = /\.ipynb$/i;
 

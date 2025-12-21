@@ -36,6 +36,7 @@ import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { FlowrAnalyzerRmdFilePlugin } from '../project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
 import { FlowrAnalyzerPlugin } from '../project/plugins/flowr-analyzer-plugin';
+import { FlowrAnalyzerEnvironmentContext } from '../project/context/flowr-analyzer-environment-context';
 
 async function analyzerQuickExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -66,7 +67,7 @@ async function analyzerQuickExampleToRegisterPlugins() {
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Analyzer
  */
-export class WikiAnalyzer extends DocMaker {
+export class WikiAnalyzer extends DocMaker<'wiki/Analyzer.md'> {
 	constructor() {
 		super('wiki/Analyzer.md', module.filename, 'analyzer');
 	}
@@ -97,7 +98,8 @@ ${
 		'Context Information': {
 			'Files Context':         undefined,
 			'Loading Order Context': undefined,
-			'Dependencies Context':  undefined
+			'Dependencies Context':  undefined,
+			'Environment Context':   undefined
 		},
 		'Caching': undefined
 	})
@@ -433,6 +435,17 @@ ${ctx.hierarchy(FlowrAnalyzerDependenciesContext, { showImplSnippet: false })}
 Probably the most important method is
 ${ctx.linkM(FlowrAnalyzerDependenciesContext, 'getDependency', { codeFont: true, realNameWrapper: 'i' })}
 that allows you to query for a specific dependency by name.
+
+${section('Environment Context', 3)}
+
+Here is the structure of the ${ctx.link(FlowrAnalyzerEnvironmentContext)} that provides access to the built-in environment:
+
+${ctx.hierarchy(FlowrAnalyzerEnvironmentContext, { showImplSnippet: false })}
+
+The environment context provides access to the built-in environment via
+${ctx.linkM(FlowrAnalyzerEnvironmentContext, 'makeCleanEnv', { codeFont: true, realNameWrapper: 'i' })}.
+It also provides the empty built-in environment, which only contains primitives, via
+${ctx.linkM(FlowrAnalyzerEnvironmentContext, 'makeCleanEnvWithEmptyBuiltIns', { codeFont: true, realNameWrapper: 'i' })}.
 
 ${section('Caching', 2)}
 

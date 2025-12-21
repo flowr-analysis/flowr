@@ -32,7 +32,7 @@ export async function executeResolveValueQuery({ analyzer }: BasicQueryData, que
 
 		const values = query.criteria
 			.map(criteria => slicingCriterionToId(criteria, ast.idMap))
-			.flatMap(ident => resolveIdToValue(ident, { graph, full: true, idMap: ast.idMap, resolve: analyzer.flowrConfig.solver.variables }));
+			.flatMap(ident => resolveIdToValue(ident, { graph, full: true, idMap: ast.idMap, resolve: analyzer.flowrConfig.solver.variables, ctx: analyzer.inspectContext() }));
 
 		results[key] = {
 			values: values

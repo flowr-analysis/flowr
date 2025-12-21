@@ -1,14 +1,16 @@
 import { assert, beforeAll, test } from 'vitest';
-import { hasDataFrameExpressionInfo, type AbstractInterpretationInfo, type DataFrameOperation } from '../../../../src/abstract-interpretation/data-frame/absint-info';
 import type { AbstractDataFrameShape, DataFrameDomain, DataFrameShapeProperty } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
 import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../../src/abstract-interpretation/data-frame/semantics';
-import { inferDataFrameShapes, resolveIdToDataFrameShape } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
+import { type DataFrameOperations, DataFrameShapeInferenceVisitor } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
 import type { AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
-import { type FlowrConfigOptions , defaultConfigOptions } from '../../../../src/config';
+import type { ArrayRangeValue } from '../../../../src/abstract-interpretation/domains/set-range-domain';
+import { type FlowrConfigOptions, defaultConfigOptions } from '../../../../src/config';
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
-import { type DEFAULT_DATAFLOW_PIPELINE, type TREE_SITTER_DATAFLOW_PIPELINE , createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
+import { type DEFAULT_DATAFLOW_PIPELINE, type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
+import { type FlowrAnalyzerContext, type ReadOnlyFlowrAnalyzerContext, contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import type { FlowrFileProvider } from '../../../../src/project/context/flowr-file';
 import type { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -16,16 +18,11 @@ import { RoleInParent } from '../../../../src/r-bridge/lang-4.x/ast/model/proces
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
 import type { RShell } from '../../../../src/r-bridge/shell';
-import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
 import { getRangeEnd } from '../../../../src/util/range';
-import { decorateLabelContext, type TestLabel } from '../../_helper/label';
-import { type TestConfiguration , skipTestBecauseConfigNotMet } from '../../_helper/shell';
-import {
-	type FlowrAnalyzerContext,
-	type ReadOnlyFlowrAnalyzerContext
-	, contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
-import type { FlowrFileProvider } from '../../../../src/project/context/flowr-file';
+import { type TestLabel, decorateLabelContext } from '../../_helper/label';
+import { type TestConfiguration, skipTestBecauseConfigNotMet } from '../../_helper/shell';
 
 /**
  * The default flowR configuration options for performing abstract interpretation.
@@ -65,17 +62,10 @@ export const DataFrameShapeOverapproximation: DataFrameShapeMatching = {
 };
 
 /**
- * Data frame shape matching options defining that the inferred columns names should be an over-approximation of the actual value.
- */
-export const ColNamesOverapproximation: Partial<DataFrameShapeMatching> = {
-	colnames: DomainMatchingType.Overapproximation
-};
-
-/**
  * The expected data frame shape for data frame shape assertion tests.
  */
 export interface ExpectedDataFrameShape {
-	colnames: Exclude<DataFrameShapeProperty<'colnames'>, ReadonlySet<string>> | string[],
+	colnames: [min: string[], range: string[] | typeof Top] | typeof Bottom,
 	cols:     DataFrameShapeProperty<'cols'>,
 	rows:     DataFrameShapeProperty<'rows'>
 }
@@ -228,7 +218,7 @@ export function assertDataFrameOperation(
 
 	test.skipIf(skipTestBecauseConfigNotMet(config)).each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
 		guard(isNotUndefined(result), 'Result cannot be undefined');
-		const operations = getInferredOperationsForCriterion(result, criterion, context as ReadOnlyFlowrAnalyzerContext);
+		const operations = getInferredOperationsForCriterion(result, criterion, context as ReadOnlyFlowrAnalyzerContext) ?? [];
 		assert.containSubset(operations, expect, `expected ${JSON.stringify(operations)} to equal ${JSON.stringify(expect)}`);
 	});
 }
@@ -308,7 +298,7 @@ function assertDomainMatches(
 		assert.ok(inferred === undefined || expected !== undefined, `result is no over-approximation: expected ${inferred?.toString()} to be an over-approximation of ${JSON.stringify(expected)}`);
 	}
 	if(inferred !== undefined && expected !== undefined) {
-		assertPropertyMatches('colnames', inferred.colnames, inferred.colnames.create(expected.colnames), matching.colnames);
+		assertPropertyMatches('colnames', inferred.colnames, inferred.colnames.create(createSetRange(expected.colnames)), matching.colnames);
 		assertPropertyMatches('cols', inferred.cols, inferred.cols.create(expected.cols), matching.cols);
 		assertPropertyMatches('rows', inferred.rows, inferred.rows.create(expected.rows), matching.rows);
 	}
@@ -338,12 +328,20 @@ function createCodeForOutput(
 	return `cat(sprintf("${marker} %s,%s,%s,%s\\n", is.data.frame(${symbol}), paste(names(${symbol}), collapse = ";"), paste(ncol(${symbol}), collapse = ""), paste(nrow(${symbol}), collapse = "")))`;
 }
 
+function createSetRange(value: [string[], string[] | typeof Top] | typeof Bottom): ArrayRangeValue<string> | typeof Bottom {
+	return value === Bottom ? value : { min: value[0], range: value[1] === Top ? Top : value[1] };
+}
+
 function getDefaultMatchingType(expected: ExpectedDataFrameShape | undefined, matching?: Partial<DataFrameShapeMatching>): Partial<DataFrameShapeMatching> {
 	const matchingType: Partial<DataFrameShapeMatching> = { ...matching };
 
 	if(expected !== undefined) {
-		if(matching?.colnames === undefined && expected.colnames === Top) {
-			matchingType.colnames = DomainMatchingType.Overapproximation;
+		if(matching?.colnames === undefined) {
+			if(expected.colnames === Bottom || (expected.colnames[1] !== Top && expected.colnames[1].length === 0)) {
+				matchingType.colnames = DomainMatchingType.Exact;
+			} else {
+				matchingType.colnames = DomainMatchingType.Overapproximation;
+			}
 		}
 		if(matching?.cols === undefined) {
 			if(expected.cols === Bottom || expected.cols[0] === expected.cols[1]) {
@@ -376,8 +374,9 @@ function getInferredDomainForCriterion(
 		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
 	}
 	const cfg = extractCfg(result.normalize, ctx, result.dataflow.graph);
-	inferDataFrameShapes(cfg, result.dataflow.graph, result.normalize, ctx);
-	const value = resolveIdToDataFrameShape(node, result.dataflow.graph);
+	const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: result.dataflow.graph, normalizedAst: result.normalize, ctx });
+	inference.start();
+	const value = inference.getAbstractValue(node);
 
 	return [value, node];
 }
@@ -386,21 +385,19 @@ function getInferredOperationsForCriterion(
 	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
 	criterion: SingleSlicingCriterion,
 	ctx: ReadOnlyFlowrAnalyzerContext
-): DataFrameOperation[] {
+): Readonly<DataFrameOperations> {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
 	const nodeId = slicingCriterionToId(criterion, idMap);
-	let node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = idMap.get(nodeId);
+	let node = idMap.get(nodeId);
 
 	if(node?.info.role === RoleInParent.FunctionCallName) {
 		node = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
 	}
-	if(node === undefined) {
-		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
-	}
 	const cfg = extractCfg(result.normalize, ctx, result.dataflow.graph);
-	inferDataFrameShapes(cfg, result.dataflow.graph, result.normalize, ctx);
+	const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: result.dataflow.graph, normalizedAst: result.normalize, ctx });
+	inference.start();
 
-	return hasDataFrameExpressionInfo(node) ? node.info.dataFrame.operations : [];
+	return inference.getAbstractOperations(node?.info.id);
 }
 
 function getRealDomainFromOutput(
@@ -422,7 +419,7 @@ function getRealDomainFromOutput(
 		const cols = Number.parseInt(result[3]);
 		const rows = Number.parseInt(result[4]);
 
-		return dataFrame ? { colnames: colnames, cols: [cols, cols], rows: [rows, rows] } : undefined;
+		return dataFrame ? { colnames: [colnames, []], cols: [cols, cols], rows: [rows, rows] } : undefined;
 	}
 	return undefined;
 }
@@ -436,18 +433,20 @@ function guardValidCriteria(
 ): void {
 	for(const [criterion, domain, matching] of criteria) {
 		if(domain !== undefined) {
-			if(domain.colnames === Top) {
-				guard(matching?.colnames === DomainMatchingType.Overapproximation, `Domain matching type for column names of "${criterion}" must be \`Overapproximation\` if expected column names are ${domain.colnames.toString()}`);
+			if(domain.colnames !== Bottom && (domain.colnames[1] === Top || domain.colnames[1].length > 0)) {
+				guard(matching?.colnames === DomainMatchingType.Overapproximation, `Domain matching type for column names of "${criterion}" must be \`Overapproximation\` if expected column names have a non-empty range set ${JSON.stringify(domain.colnames)}`);
+			} else {
+				guard((matching?.colnames ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for column names of "${criterion}" must be \`Exact\` if expected column names have an empty range set ${JSON.stringify(domain.colnames)}`);
 			}
 			if(domain.cols !== Bottom && domain.cols[0] !== domain.cols[1]) {
-				guard(matching?.cols === DomainMatchingType.Overapproximation, `Domain matching type for number of columns of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element ${domain.cols.toString()}`);
+				guard(matching?.cols === DomainMatchingType.Overapproximation, `Domain matching type for number of columns of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element ${JSON.stringify(domain.cols)}`);
 			} else {
-				guard((matching?.cols ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for number of columns of "${criterion}" must be \`Exact\` if expected interval has only 1 element ${domain.cols.toString()}`);
+				guard((matching?.cols ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for number of columns of "${criterion}" must be \`Exact\` if expected interval has only 1 element ${JSON.stringify(domain.cols)}`);
 			}
 			if(domain.rows !== Bottom && domain.rows[0] !== domain.rows[1]) {
-				guard(matching?.rows === DomainMatchingType.Overapproximation, `Domain matching type for number of rows of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element ${domain.rows.toString()}`);
+				guard(matching?.rows === DomainMatchingType.Overapproximation, `Domain matching type for number of rows of "${criterion}" must be \`Overapproximation\` if expected interval has more than 1 element ${JSON.stringify(domain.rows)}`);
 			} else {
-				guard((matching?.rows ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for number of rows of "${criterion}" must be \`Exact\` if expected interval has only 1 element ${domain.rows.toString()}`);
+				guard((matching?.rows ?? DomainMatchingType.Exact) === DomainMatchingType.Exact, `Domain matching type for number of rows of "${criterion}" must be \`Exact\` if expected interval has only 1 element ${JSON.stringify(domain.rows)}`);
 			}
 		}
 	}

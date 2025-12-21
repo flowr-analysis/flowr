@@ -79,7 +79,7 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
  * @returns The size of the array in bytes.
  */
 export function safeSizeOf<T>(array: T[]): number {
-	const size = sizeof(array);
+	const size = sizeof(array) as number | unknown;
 
 	if(typeof size === 'number') {
 		return size;

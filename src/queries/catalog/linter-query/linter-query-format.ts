@@ -64,7 +64,7 @@ function linterQueryLineParser(output: ReplOutput, line: readonly string[], _con
 		const rulesPart = line[0].slice(rulesPrefix.length).split(',');
 		const parseResult = rulesFromInput(output, rulesPart);
 		if(parseResult.invalid.length > 0) {
-			output.stdout(`Invalid linting rule name(s): ${parseResult.invalid.map(r => bold(r, output.formatter)).join(', ')}`
+			output.stderr(`Invalid linting rule name(s): ${parseResult.invalid.map(r => bold(r, output.formatter)).join(', ')}`
 				+`\nValid rule names are: ${Object.keys(LintingRules).map(r => bold(r, output.formatter)).join(', ')}`);
 		}
 		rules = parseResult.valid;

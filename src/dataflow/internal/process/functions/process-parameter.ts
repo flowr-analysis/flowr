@@ -17,11 +17,11 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 	const defaultValue = parameter.defaultValue === undefined ? undefined : processDataflowFor(parameter.defaultValue, data);
 	const graph = defaultValue !== undefined ? name.graph.mergeWith(defaultValue.graph) : name.graph;
 
-	const writtenNodes: readonly IdentifierDefinition[] = name.unknownReferences.map(n => ({
+	const writtenNodes: readonly (IdentifierDefinition & { name: string })[] = name.unknownReferences.map(n => ({
 		...n,
 		type:      ReferenceType.Parameter,
 		definedAt: parameter.info.id
-	}));
+	}) as IdentifierDefinition & { name: string });
 
 	let environment = name.environment;
 	for(const writtenNode of writtenNodes) {

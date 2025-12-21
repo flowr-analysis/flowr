@@ -1,13 +1,14 @@
 import { VariableResolve } from '../../../config';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RAccess, RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
-import { type RFunctionArgument , EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { DataFrameExpressionInfo, DataFrameOperation } from '../absint-info';
 import { resolveIdToArgValue, resolveIdToArgValueSymbolName, unquoteArgument } from '../resolve-args';
+import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { getArgumentValue, isDataFrameArgument } from './arguments';
 
 /**
@@ -19,38 +20,38 @@ const SpecialAccessArgumentsMapper: Record<RIndexAccess['operator'], string[]> =
 };
 
 /**
- * Maps a concrete data frame access to abstract data frame operations.
+ * Maps a concrete data frame access operation to abstract data frame operations.
  * @param node - The R node of the access
  * @param dfg  - The data flow graph for resolving the arguments
- * @returns Data frame expression info containing the mapped abstract data frame operations, or `undefined` if the node does not represent a data frame access
+ * @param ctx  - The current flowR analyzer context
+ * @returns The mapped abstract data frame operations for the access operation, or `undefined` if the node does not represent a data frame access operation
  */
 export function mapDataFrameAccess(
 	node: RNode<ParentInformation>,
-	dfg: DataflowGraph
-): DataFrameExpressionInfo | undefined {
+	inference: DataFrameShapeInferenceVisitor,
+	dfg: DataflowGraph,
+	ctx: ReadOnlyFlowrAnalyzerContext
+): DataFrameOperations {
 	if(node.type !== RType.Access) {
 		return;
 	}
-	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
-	let operations: DataFrameOperation[] | undefined;
+	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
 
 	if(isStringBasedAccess(node)) {
-		operations = mapDataFrameNamedColumnAccess(node, resolveInfo);
+		return mapDataFrameNamedColumnAccess(node, inference, resolveInfo);
 	} else {
-		operations = mapDataFrameIndexColRowAccess(node, resolveInfo);
-	}
-	if(operations !== undefined) {
-		return { type: 'expression', operations: operations };
+		return mapDataFrameIndexColRowAccess(node, inference, resolveInfo);
 	}
 }
 
 function mapDataFrameNamedColumnAccess(
 	access: RNamedAccess<ParentInformation>,
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	const dataFrame = access.accessed;
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	}
 	const colname = resolveIdToArgValueSymbolName(access.access[0], info);
@@ -64,19 +65,20 @@ function mapDataFrameNamedColumnAccess(
 
 function mapDataFrameIndexColRowAccess(
 	access: RIndexAccess<ParentInformation>,
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	const dataFrame = access.accessed;
 	const drop = getArgumentValue(access.access, 'drop', info);
 	const exact = getArgumentValue(access.access, 'exact', info);
 	const args = getAccessArgs(access.operator, access.access);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	} else if(args.every(arg => arg === EmptyArgument)) {
 		return [{ operation: 'identity', operand: dataFrame.info.id }];
 	}
-	const result: DataFrameOperation[] = [];
+	const result: DataFrameOperations = [];
 
 	const rowArg = args.length < 2 ? undefined : args[0];
 	const colArg = args.length < 2 ? args[0] : args[1];

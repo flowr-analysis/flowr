@@ -1,8 +1,8 @@
 import { assertUnreachable } from '../../util/assert';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain } from './abstract-domain';
-import { Bottom, Top } from './lattice';
-import { type SatisfiableDomain , NumericalComparator } from './satisfiable-domain';
+import { Bottom, BottomSymbol, Top } from './lattice';
+import { type SatisfiableDomain, NumericalComparator } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The Top element of the interval domain as interval [-∞, +∞] */
@@ -78,8 +78,8 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return this.value === Bottom || (other.isValue() && other.value[0] <= this.value[0] && this.value[1] <= other.value[1]);
 	}
 
-	public join(other: this): this;
 	public join(other: IntervalLift): this;
+	public join(other: this): this;
 	public join(other: this | IntervalLift): this {
 		const otherValue = other instanceof IntervalDomain ? other.value : other;
 
@@ -92,14 +92,12 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		}
 	}
 
-	public meet(other: this): this;
 	public meet(other: IntervalLift): this;
+	public meet(other: this): this;
 	public meet(other: this | IntervalLift): this {
 		const otherValue = other instanceof IntervalDomain ? other.value : other;
 
 		if(this.value === Bottom || otherValue === Bottom) {
-			return this.bottom();
-		} else if(Math.max(this.value[0], otherValue[0]) > Math.min(this.value[1], otherValue[1])) {
 			return this.bottom();
 		} else {
 			return this.create([Math.max(this.value[0], otherValue[0]), Math.min(this.value[1], otherValue[1])]);
@@ -248,7 +246,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	/**
 	 * Extends the lower bound of the current abstract value down to -∞.
 	 */
-	public extendDown(): this {
+	public widenDown(): this {
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {
@@ -259,7 +257,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	/**
 	 * Extends the upper bound of the current abstract value up to +∞.
 	 */
-	public extendUp(): this {
+	public widenUp(): this {
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {
@@ -276,7 +274,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 
 	public toString(): string {
 		if(this.value === Bottom) {
-			return '⊥';
+			return BottomSymbol;
 		}
 		return `[${isFinite(this.value[0]) ? this.value[0] : '-∞'}, ${isFinite(this.value[1]) ? this.value[1] : '+∞'}]`;
 	}

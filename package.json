@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.6.3",
+  "version": "2.7.2",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -28,7 +28,6 @@
     "capabilities-markdown": "ts-node src/documentation/doc-capabilities.ts",
     "wiki": "ts-node src/cli/wiki.ts",
     "wiki:watch": "ts-node-dev src/cli/wiki.ts -- --keep-alive",
-    "wiki:linter": "ts-node src/documentation/wiki-linter.ts",
     "build": "tsc --project .",
     "build-dev": "npm run build && npm run build:copy-wasm",
     "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --tree-shaking=true --bundle --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm",

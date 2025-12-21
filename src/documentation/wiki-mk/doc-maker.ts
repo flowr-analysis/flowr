@@ -32,9 +32,9 @@ export enum WikiChangeType {
 	Identical
 }
 
-export interface DocMakerLike {
+export interface DocMakerLike<Target extends string = string> {
 	make(args: DocMakerArgs & DocMakerOutputArgs): Promise<boolean>;
-	getTarget(): string;
+	getTarget(): Target;
 	getProducer(): string;
 	getWrittenSubfiles(): Set<string>;
 }
@@ -49,8 +49,11 @@ const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	[/%%\s*\d*-+/g, ''],
 	[/"[rR]": "\d+\.\d+\.\d+.*?"/g, ''],
 	[/R\s*\d+\.\d+\.\d+/g, ''],
+	[/v\d+\.\d+\.\d+/g, ''],
+	// clean paths
+	[/%2Fhome%2F([a-zA-Z0-9._-]+%2F)*/g, ''],
 	// async wrapper depends on whether the promise got forfilled already
-	[/%20async%20/g, ' ']
+	[/async|%20/g, '']
 ];
 
 /**
@@ -61,8 +64,8 @@ const DefaultReplacementPatterns: Array<[RegExp, string]> = [
  * If this wiki page produces multiple pages ("sub files"), you can use `writeSubFile` inside the `text` method
  * to write those additional files.
  */
-export abstract class DocMaker implements DocMakerLike {
-	private readonly target:      PathLike;
+export abstract class DocMaker<Target extends string> implements DocMakerLike<Target> {
+	private readonly target:      Target;
 	private readonly filename:    string;
 	private readonly purpose:     string;
 	private readonly printHeader: boolean;
@@ -77,7 +80,7 @@ export abstract class DocMaker implements DocMakerLike {
 	 * @param printHeader - Whether to print the auto-generation header. Default is `true`. Only mark this `false` if you plan to add it yourself.
 	 * @protected
 	 */
-	protected constructor(target: PathLike, filename: string, purpose: string, printHeader = true) {
+	protected constructor(target: Target, filename: string, purpose: string, printHeader = true) {
 		this.filename = filename;
 		this.purpose = purpose;
 		this.target = target;
@@ -87,8 +90,8 @@ export abstract class DocMaker implements DocMakerLike {
 	/**
 	 * Gets the target path where the wiki file will be generated.
 	 */
-	public getTarget(): string {
-		return this.target.toString();
+	public getTarget(): Target {
+		return this.target;
 	}
 
 	/**

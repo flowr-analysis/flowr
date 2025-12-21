@@ -1,33 +1,37 @@
-import { type MergeableRecord , deepMergeObject } from '../../../src/util/objects';
+import { deepMergeObject, type MergeableRecord } from '../../../src/util/objects';
 import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct';
 import { guard, isNotUndefined } from '../../../src/util/assert';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
-import { type TestLabel, type TestLabelContext , decorateLabelContext, dropTestLabel, modifyLabelName } from './label';
+import { decorateLabelContext, dropTestLabel, modifyLabelName, type TestLabel, type TestLabelContext } from './label';
 import { printAsBuilder } from './dataflow/dataflow-builder-printer';
 import { RShell } from '../../../src/r-bridge/shell';
 import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
-import { type fileProtocol, type RParseRequests  } from '../../../src/r-bridge/retriever';
-import { type ParentInformation,
+import { type fileProtocol, type RParseRequests } from '../../../src/r-bridge/retriever';
+import {
 	type AstIdMap,
+	deterministicCountingIdGenerator,
 	type IdGenerator,
 	type NormalizedAst,
+	type ParentInformation,
 	type RNodeWithParent
-	, deterministicCountingIdGenerator
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
-	type DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
-	type TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE
-	,
 	createSlicePipeline,
 	DEFAULT_NORMALIZE_PIPELINE,
-	TREE_SITTER_NORMALIZE_PIPELINE
+	type DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
+	TREE_SITTER_NORMALIZE_PIPELINE,
+	type TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff-dataflow-graph';
-import { type NodeId , normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId, normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
-import { type SingleSlicingCriterion, type SlicingCriteria , slicingCriterionToId } from '../../../src/slicing/criterion/parse';
+import {
+	type SingleSlicingCriterion,
+	type SlicingCriteria,
+	slicingCriterionToId
+} from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
 import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph';
@@ -38,12 +42,12 @@ import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
 import type { ContainerIndex } from '../../../src/dataflow/graph/vertex';
 import type { REnvironmentInformation } from '../../../src/dataflow/environments/environment';
-import { resolveByName } from '../../../src/dataflow/environments/resolve-by-name';
+import { resolveByNameAnyType } from '../../../src/dataflow/environments/resolve-by-name';
 import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/util/diff-graph';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
-import { type CfgProperty , assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
-import { type FlowrConfigOptions , cloneConfig, defaultConfigOptions } from '../../../src/config';
+import { assertCfgSatisfiesProperties, type CfgProperty } from '../../../src/control-flow/cfg-properties';
+import { cloneConfig, defaultConfigOptions, type FlowrConfigOptions } from '../../../src/config';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
 import type { KnownParser } from '../../../src/r-bridge/parser';
@@ -410,7 +414,7 @@ export function assertDataflow(
 		expected.setIdMap(normalize.idMap);
 
 		if(userConfig?.resolveIdsAsCriterion) {
-			expected = resolveDataflowGraph(expected);
+			expected = resolveDataflowGraph(expected, analyzer.inspectContext());
 		}
 
 		const report: GraphDifferenceReport = diffOfDataflowGraphs(
@@ -652,7 +656,7 @@ function findInEnv(id: NodeId, ast: NormalizedAst, dfg: DataflowGraph, env: REnv
 	}
 	const mayVertex = dfg.getVertex(id);
 	const useEnv = mayVertex?.environment ?? env;
-	const result = resolveByName(name, useEnv)?.flatMap(f => {
+	const result = resolveByNameAnyType(name, useEnv)?.flatMap(f => {
 		if('indicesCollection' in f) {
 			return f.indicesCollection?.flatMap(collection => collection.indices);
 		} else {

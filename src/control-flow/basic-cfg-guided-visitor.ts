@@ -48,20 +48,19 @@ export class BasicCfgGuidedVisitor<
 	}
 
 	protected startVisitor(start: readonly NodeId[]): void {
-		const g = this.config.controlFlow.graph;
-		const n = this.config.defaultVisitingOrder === 'forward' ?
-			(n: NodeId) => g.ingoingEdges(n) :
-			(n: NodeId) => g.outgoingEdges(n);
+		const graph = this.config.controlFlow.graph;
+		const getNext = this.config.defaultVisitingOrder === 'forward' ?
+			(node: NodeId) => graph.ingoingEdges(node)?.keys().toArray().toReversed() :
+			(node: NodeId) => graph.outgoingEdges(node)?.keys().toArray();
 		const stack = [...start];
 		while(stack.length > 0) {
-			const current = stack.shift() as NodeId;
+			const current = stack.pop() as NodeId;
 
 			if(!this.visitNode(current)) {
 				continue;
 			}
-			const outgoing = n(current) ?? [];
-			for(const [to] of outgoing) {
-				stack.unshift(to);
+			for(const next of getNext(current) ?? []) {
+				stack.push(next);
 			}
 		}
 	}

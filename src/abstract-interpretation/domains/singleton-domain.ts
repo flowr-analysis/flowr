@@ -1,6 +1,6 @@
 import { Ternary } from '../../util/logic';
 import { AbstractDomain, domainElementToString } from './abstract-domain';
-import { Bottom, Top } from './lattice';
+import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 import type { SatisfiableDomain } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
@@ -63,8 +63,8 @@ export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T
 		return this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value <= other.value);
 	}
 
-	public join(other: this): this;
 	public join(other: SingletonLift<T>): this;
+	public join(other: this): this;
 	public join(other: this | SingletonLift<T>): this {
 		const otherValue = other instanceof SingletonDomain ? other.value : other;
 
@@ -79,8 +79,8 @@ export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T
 		}
 	}
 
-	public meet(other: this): this;
 	public meet(other: SingletonLift<T>): this;
+	public meet(other: this): this;
 	public meet(other: this | SingletonLift<T>): this {
 		const otherValue = other instanceof SingletonDomain ? other.value : other;
 
@@ -137,9 +137,9 @@ export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T
 
 	public toString(): string {
 		if(this.value === Top) {
-			return '⊤';
+			return TopSymbol;
 		} else if(this.value === Bottom) {
-			return '⊥';
+			return BottomSymbol;
 		}
 		return domainElementToString(this.value);
 	}

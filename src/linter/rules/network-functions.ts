@@ -1,5 +1,5 @@
-import { LintingRuleCertainty, type LintingRule } from '../linter-format';
-import { type FunctionsMetadata, type FunctionsResult , functionFinderUtil } from './function-finder-util';
+import { type LintingRule, LintingRuleCertainty } from '../linter-format';
+import { functionFinderUtil, type FunctionsMetadata, type FunctionsResult } from './function-finder-util';
 import { LintingRuleTag } from '../linter-tags';
 import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import type { MergeableRecord } from '../../util/objects';
@@ -18,7 +18,7 @@ export const NETWORK_FUNCTIONS = {
 			es.filter(e => functionFinderUtil.requireArgumentValue(
 				e,
 				ReadFunctions,
-				{ config: d.analyzer.flowrConfig, dataflow: d.dataflow, normalize: d.normalize },
+				{ analyzer: d.analyzer, dataflow: d.dataflow, normalize: d.normalize },
 				c.onlyTriggerWithArgument
 			))
 	),

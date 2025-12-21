@@ -1,7 +1,7 @@
 import { describe } from 'vitest';
 import { testFileLoadPlugin } from './plugin-test-helper';
 import { FlowrAnalyzerJupyterFilePlugin } from '../../../../src/project/plugins/file-plugins/notebooks/flowr-analyzer-jupyter-file-plugin';
-import { FlowrJupyterFile } from '../../../../src/project/plugins/file-plugins/notebooks/flowr-jupyter-file';
+import { FlowrJupyterFile } from '../../../../src/project/plugins/file-plugins/files/flowr-jupyter-file';
 
 describe('Jupyter-file', async() => {
 	await testFileLoadPlugin(FlowrAnalyzerJupyterFilePlugin, FlowrJupyterFile, 'test/testfiles/notebook/example.ipynb', `x <- 5

@@ -19,6 +19,8 @@ export enum FileRole {
 	Description = 'description',
 	/** The `NAMESPACE` file in R packages, currently not specially supported. */
 	Namespace   = 'namespace',
+	/** The `NEWS` file in R packages */
+	News = 'news',
 	/** Data files, e.g., `R/sysdata.rda`, currently not specially supported. */
 	Data        = 'data',
 	/**

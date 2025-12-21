@@ -9,18 +9,18 @@ import { ReferenceType } from '../../environments/identifier';
 /**
  *
  */
-export function processValue<OtherInfo>({ info: { id } }: RNodeWithParent, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
+export function processValue<OtherInfo>({ info: { id } }: RNodeWithParent, { controlDependencies, completeAst: { idMap }, ctx: { env }, environment }: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: id, name: undefined, controlDependencies: data.controlDependencies, type: ReferenceType.Constant }],
+		in:                [{ nodeId: id, name: undefined, controlDependencies, type: ReferenceType.Constant }],
 		out:               [],
-		environment:       data.environment,
-		graph:             new DataflowGraph(data.completeAst.idMap).addVertex({
+		environment,
+		graph:             new DataflowGraph(idMap).addVertex({
 			tag: VertexType.Value,
 			id:  id,
-			cds: data.controlDependencies
-		}),
-		exitPoints: [{ nodeId: id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }],
+			cds: controlDependencies
+		}, env.makeCleanEnv()),
+		exitPoints: [{ nodeId: id, type: ExitPointType.Default, controlDependencies }],
 		entryPoint: id
 	};
 }

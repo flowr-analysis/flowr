@@ -1,22 +1,20 @@
-import {  VariableResolve } from '../../../config';
+import { VariableResolve } from '../../../config';
 import { type ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { findSource } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import { type RFunctionArgument , EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import { type RParseRequest , requestFromInput } from '../../../r-bridge/retriever';
+import { requestFromInput, type RParseRequest } from '../../../r-bridge/retriever';
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../util/assert';
-import { readLineByLineSync } from '../../../util/files';
-import type { DataFrameExpressionInfo, DataFrameOperation } from '../absint-info';
 import { DataFrameDomain } from '../dataframe-domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from '../resolve-args';
 import type { ConstraintType } from '../semantics';
-import { resolveIdToDataFrameShape } from '../shape-inference';
-import { type FunctionParameterLocation , escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isNamedArgument, isRNull } from './arguments';
-import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
+import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
+import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isNamedArgument, isRNull, parseRequestContent, type FunctionParameterLocation } from './arguments';
 
 /**
  * Represents the different types of data frames in R
@@ -564,14 +562,13 @@ type OtherDataFrameFunctionMapping = OtherDataFrameEntryPoint | OtherDataFrameTr
  * - `args` contains the function call arguments
  * - `params` contains the expected argument location for each parameter of the function
  * - `info` contains the resolve information
- * - `ctx` access to the current flowR analyzer context
  */
 type DataFrameFunctionMapping<Params extends object> = (
     args: readonly RFunctionArgument<ParentInformation>[],
 	params: Params,
-    info: ResolveInfo,
-	ctx: ReadOnlyFlowrAnalyzerContext
-) => DataFrameOperation[] | undefined;
+	inference: DataFrameShapeInferenceVisitor,
+    info: ResolveInfo
+) => DataFrameOperations;
 
 /** All currently supported data frame functions */
 type DataFrameFunction = keyof typeof DataFrameFunctionMapper;
@@ -592,18 +589,18 @@ type DataFrameFunctionParamsMapping = {
  * @param node - The R node of the function call
  * @param dfg  - The data flow graph for resolving the arguments
  * @param ctx  - The current flowR analyzer context
- * @returns Data frame expression info containing the mapped abstract data frame operations, or `undefined` if the node does not represent a data frame function call
+ * @returns The mapped abstract data frame operations for the function call, or `undefined` if the node does not represent a data frame function call
  */
 export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 	node: RNode<ParentInformation>,
+	inference: DataFrameShapeInferenceVisitor,
 	dfg: DataflowGraph,
 	ctx: ReadOnlyFlowrAnalyzerContext
-): DataFrameExpressionInfo | undefined {
+): DataFrameOperations {
 	if(node.type !== RType.FunctionCall || !node.named) {
 		return;
 	}
-	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias };
-	let operations: DataFrameOperation[] | undefined;
+	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
 
 	if(isDataFrameFunction(node.functionName.content)) {
 		const functionName = node.functionName.content as Name;
@@ -612,9 +609,9 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 		const args = getFunctionArguments(node, dfg);
 
 		if(hasCriticalArgument(args, params.critical, resolveInfo)) {
-			operations = [{ operation: 'unknown', operand: undefined }];
+			return [{ operation: 'unknown', operand: undefined }];
 		} else {
-			operations = mapper(args, params, resolveInfo, ctx);
+			return mapper(args, params, inference, resolveInfo);
 		}
 	} else {
 		const mapping = getOtherDataFrameFunction(node.functionName.content);
@@ -622,16 +619,13 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 		if(mapping === undefined) {
 			return;
 		} else if(mapping.type === 'entry_point') {
-			operations = [{ operation: 'unknown', operand: undefined }];
+			return [{ operation: 'unknown', operand: undefined }];
 		} else if(mapping.type === 'transformation' || mapping.type === 'modification') {
 			const args = getFunctionArguments(node, dfg);
-			operations = mapDataFrameUnknown(args, mapping, resolveInfo);
+			return mapDataFrameUnknown(args, mapping, inference, resolveInfo);
 		} else {
 			assertUnreachable(mapping);
 		}
-	}
-	if(operations !== undefined) {
-		return { type: 'expression', operations };
 	}
 }
 
@@ -651,8 +645,9 @@ function mapDataFrameCreate(
 		noDupNames: FunctionParameterLocation<boolean>,
 		special:    string[]
 	},
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] {
+): DataFrameOperations {
 	const checkNames = getArgumentValue(args, params.checkNames, info);
 	const noDupNames = getArgumentValue(args, params.noDupNames, info);
 	args = getEffectiveArgs(args, params.special);
@@ -682,8 +677,9 @@ function mapDataFrameCreate(
 function mapDataFrameConvert(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation },
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
 	if(dataFrame === EmptyArgument || dataFrame?.value === undefined) {
@@ -709,12 +705,12 @@ function mapDataFrameRead(
 		noDupNames:    FunctionParameterLocation<boolean>,
 		noEmptyNames?: boolean
 	},
-	info: ResolveInfo,
-	ctx: ReadOnlyFlowrAnalyzerContext
-): DataFrameOperation[] {
+	inference: DataFrameShapeInferenceVisitor,
+	info: ResolveInfo
+): DataFrameOperations {
 	const fileNameArg = getFunctionArgument(args, params.fileName, info);
 	const textArg = params.text ? getFunctionArgument(args, params.text, info) : undefined;
-	const { source, request } = getRequestFromRead(fileNameArg, textArg, params, info, ctx);
+	const { source, request } = getRequestFromRead(fileNameArg, textArg, params, info);
 
 	const header = getArgumentValue(args, params.header, info);
 	const separator = getArgumentValue(args, params.separator, info);
@@ -727,7 +723,7 @@ function mapDataFrameRead(
 	const validArguments = typeof header === 'boolean' && typeof separator === 'string' && typeof quote === 'string' && typeof comment === 'string' &&
 		typeof skipLines === 'number' && typeof checkNames === 'boolean' && typeof noDupNames === 'boolean';
 
-	if(request === undefined || !ctx.config.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles || !validArguments) {
+	if(request === undefined || !info.ctx.config.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles || !validArguments) {
 		return [{
 			operation: 'read',
 			operand:   undefined,
@@ -754,7 +750,7 @@ function mapDataFrameRead(
 			}
 		}
 	};
-	const allLines = parseRequestContent(request, parseLine, ctx.config.abstractInterpretation.dataFrame.readLoadedData.maxReadLines);
+	const allLines = parseRequestContent(request, parseLine, info.ctx.config.abstractInterpretation.dataFrame.readLoadedData.maxReadLines);
 	let colnames: (string | undefined)[] | undefined;
 
 	if(header) {
@@ -774,23 +770,24 @@ function mapDataFrameRead(
 function mapDataFrameColBind(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	params: { special: string[] },
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
-	const dataFrame = args.find(arg => isDataFrameArgument(arg, info));
+	const dataFrame = args.find(arg => isDataFrameArgument(arg, inference));
 
 	if(dataFrame === undefined) {
 		return;
 	} else if(args.length === 1) {
 		return [{ operation: 'identity', operand: dataFrame.value.info.id }];
 	}
-	const result: DataFrameOperation[] = [];
+	const result: DataFrameOperations = [];
 	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
 	let colnames: (string | undefined)[] | undefined = [];
 
 	for(const arg of args) {
 		if(arg !== dataFrame && arg !== EmptyArgument) {
-			const otherDataFrame = resolveIdToDataFrameShape(arg.value, info.graph);
+			const otherDataFrame = inference.getAbstractValue(arg.value);
 
 			if(otherDataFrame !== undefined) {
 				result.push({
@@ -821,23 +818,24 @@ function mapDataFrameColBind(
 function mapDataFrameRowBind(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	params: { special: string[] },
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
-	const dataFrame = args.find(arg => isDataFrameArgument(arg, info));
+	const dataFrame = args.find(arg => isDataFrameArgument(arg, inference));
 
 	if(dataFrame === undefined) {
 		return;
 	} else if(args.length === 1) {
 		return [{ operation: 'identity', operand: dataFrame.value.info.id }];
 	}
-	const result: DataFrameOperation[] = [];
+	const result: DataFrameOperations = [];
 	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
 	let rows: number | undefined = 0;
 
 	for(const arg of args) {
 		if(arg !== dataFrame && arg !== EmptyArgument) {
-			const otherDataFrame = resolveIdToDataFrameShape(arg.value, info.graph);
+			const otherDataFrame = inference.getAbstractValue(arg.value);
 
 			if(otherDataFrame !== undefined) {
 				result.push({
@@ -867,14 +865,15 @@ function mapDataFrameRowBind(
 function mapDataFrameHeadTail(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, amount: FunctionParameterLocation<number> },
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	}
-	const result: DataFrameOperation[] = [];
+	const result: DataFrameOperations = [];
 	const amount = getArgumentValue(args, params.amount, info);
 	let rows: number | undefined = undefined;
 	let cols: number | undefined = undefined;
@@ -909,16 +908,17 @@ function mapDataFrameSubset(
 		select:    FunctionParameterLocation,
 		drop:      FunctionParameterLocation<boolean>
 	},
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	} else if(args.length === 1) {
 		return [{ operation: 'identity', operand: dataFrame.value.info.id }];
 	}
-	const result: DataFrameOperation[] = [];
+	const result: DataFrameOperations = [];
 	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
 
 	const filterArg = getFunctionArgument(args, params.subset, info);
@@ -983,17 +983,18 @@ function mapDataFrameSubset(
 function mapDataFrameFilter(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	} else if(args.length === 1) {
 		return [{ operation: 'identity', operand: dataFrame.value.info.id }];
 	}
-	const result: DataFrameOperation[] = [];
+	const result: DataFrameOperations = [];
 
 	const filterArgs = args.filter(arg => arg !== dataFrame);
 	const filterValues = filterArgs.map(arg => resolveIdToArgValue(arg, info));
@@ -1020,15 +1021,16 @@ function mapDataFrameFilter(
 function mapDataFrameSelect(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	}
-	const result: DataFrameOperation[] = [];
+	const result: DataFrameOperations = [];
 	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
 
 	const selectArgs = args.filter(arg => arg !== dataFrame);
@@ -1089,17 +1091,18 @@ function mapDataFrameMutate(
 		checkNames?: boolean,
 		noDupNames?: boolean
 	},
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	} else if(args.length === 1) {
 		return [{ operation: 'identity', operand: dataFrame.value.info.id }];
 	}
-	const result: DataFrameOperation[] = [];
+	const result: DataFrameOperations = [];
 	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
 
 	const mutateArgs = args.filter(arg => arg !== dataFrame);
@@ -1116,8 +1119,8 @@ function mapDataFrameMutate(
 		.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph))
 		.filter(arg => !mutatedCols?.includes(arg));
 
-	deletedCols = filterValidNames(deletedCols, params.checkNames, params.noDupNames);
-	mutatedCols = filterValidNames(mutatedCols, params.checkNames, params.noDupNames);
+	deletedCols = filterValidNames(deletedCols, params.checkNames, params.noDupNames, undefined, true);
+	mutatedCols = filterValidNames(mutatedCols, params.checkNames, params.noDupNames, undefined, true);
 
 	if(accessedNames.length > 0) {
 		result.push({
@@ -1127,20 +1130,20 @@ function mapDataFrameMutate(
 		});
 	}
 
+	if(mutatedCols === undefined || mutatedCols.length > 0 || deletedCols?.length === 0) {
+		result.push({
+			operation: 'mutateCols',
+			operand:   operand?.info.id,
+			colnames:  mutatedCols
+		});
+		operand = undefined;
+	}
 	if(deletedCols === undefined || deletedCols.length > 0) {
 		result.push({
 			operation: 'removeCols',
 			operand:   operand?.info.id,
 			colnames:  deletedCols,
 			options:   { maybe: true }
-		});
-		operand = undefined;
-	}
-	if(mutatedCols === undefined || mutatedCols.length > 0 || deletedCols?.length === 0) {
-		result.push({
-			operation: 'mutateCols',
-			operand:   operand?.info.id,
-			colnames:  mutatedCols
 		});
 		operand = undefined;
 	}
@@ -1154,17 +1157,18 @@ function mapDataFrameGroupBy(
 		by:        FunctionParameterLocation,
 		special:   string[]
 	},
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	} else if(args.length === 1) {
 		return [{ operation: 'identity', operand: dataFrame.value.info.id }];
 	}
-	const result: DataFrameOperation[] = [];
+	const result: DataFrameOperations = [];
 	const byArgs = args.filter(arg => arg !== dataFrame);
 
 	const accessedNames = byArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph));
@@ -1192,15 +1196,16 @@ function mapDataFrameGroupBy(
 function mapDataFrameSummarize(
 	args: readonly RFunctionArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	}
-	const result: DataFrameOperation[] = [];
+	const result: DataFrameOperations = [];
 	const summarizeArgs = args.filter(arg => arg !== dataFrame);
 
 	const summarizedCols = summarizeArgs.map(arg => resolveIdToArgName(arg, info));
@@ -1236,27 +1241,27 @@ function mapDataFrameJoin(
 		joinLeft:       FunctionParameterLocation<boolean>,
 		joinRight:      FunctionParameterLocation<boolean>
 	},
-	info: ResolveInfo,
-	ctx: ReadOnlyFlowrAnalyzerContext
-): DataFrameOperation[] | undefined {
+	inference: DataFrameShapeInferenceVisitor,
+	info: ResolveInfo
+): DataFrameOperations {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 	const joinAll = getArgumentValue(args, params.joinAll, info);
 	const joinLeft = getArgumentValue(args, params.joinLeft, info);
 	const joinRight = getArgumentValue(args, params.joinRight, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	} else if(args.length === 1) {
 		return [{ operation: 'identity', operand: dataFrame.value.info.id }];
 	} else if(typeof joinAll !== 'boolean' || typeof joinLeft !== 'boolean' || typeof joinRight !== 'boolean') {
 		return [{ operation: 'unknown', operand: dataFrame.value.info.id }];
 	}
-	const result: DataFrameOperation[] = [];
+	const result: DataFrameOperations = [];
 
 	const otherArg = getFunctionArgument(args, params.otherDataFrame, info);
 	const byArg = getFunctionArgument(args, params.by, info);
 
-	const otherDataFrame = resolveIdToDataFrameShape(otherArg, info.graph) ?? DataFrameDomain.top(ctx.config.abstractInterpretation.dataFrame.maxColNames);
+	const otherDataFrame = inference.getAbstractValue(otherArg) ?? DataFrameDomain.top(info.ctx.config.abstractInterpretation.dataFrame.maxColNames);
 	let byCols: (string | number | undefined)[] | undefined;
 
 	const joinType = getJoinType(joinAll, joinLeft, joinRight);
@@ -1303,12 +1308,13 @@ function mapDataFrameIdentity(
 		special:            string[],
 		disallowNamedArgs?: boolean
 	},
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	} else if(params.disallowNamedArgs && args.some(isNamedArgument)) {
 		return [{ operation: 'unknown', operand: dataFrame.value.info.id }];
@@ -1325,17 +1331,18 @@ function mapDataFrameUnknown(
 		dataFrame?:      FunctionParameterLocation,
 		constraintType?: Exclude<ConstraintType, ConstraintType.OperandPrecondition>
 	},
+	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
-): DataFrameOperation[] | undefined {
+): DataFrameOperations {
 	let dataFrame;
 
 	if(params.dataFrame !== undefined) {
 		dataFrame = getFunctionArgument(args, params.dataFrame, info);
 	} else {
-		dataFrame = args.find(arg => isDataFrameArgument(arg ,info));
+		dataFrame = args.find(arg => isDataFrameArgument(arg, inference));
 	}
 
-	if(!isDataFrameArgument(dataFrame, info)) {
+	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	}
 	return [{
@@ -1349,8 +1356,7 @@ function getRequestFromRead(
 	fileNameArg: RFunctionArgument<ParentInformation> | undefined,
 	textArg: RFunctionArgument<ParentInformation> | undefined,
 	params: DataFrameFunctionParams<'read.table'>,
-	info: ResolveInfo,
-	ctx: ReadOnlyFlowrAnalyzerContext
+	info: ResolveInfo
 ) {
 	let source: string | undefined;
 	let request: RParseRequest | undefined;
@@ -1359,17 +1365,18 @@ function getRequestFromRead(
 		const fileName = resolveIdToArgValue(fileNameArg, info);
 
 		if(typeof fileName === 'string') {
+			const text = unescapeSpecialChars(fileName);
 			source = fileName;
 			const referenceChain = fileNameArg.info.file ? [fileNameArg.info.file] : [];
-			const sources = findSource(ctx.config.solver.resolveSource, fileName, { referenceChain, ctx });
+			const sources = findSource(info.ctx.config.solver.resolveSource, fileName, { referenceChain, ctx: info.ctx });
 
 			if(sources?.length === 1) {
 				source = sources[0];
 				// create request from resolved source file path
 				request = { request: 'file', content: sources[0] };
-			} else if(params.text === undefined && unescapeSpecialChars(fileName).includes('\n')) {
+			} else if(params.text === undefined && text.includes('\n')) {
 				// create request from string if file name argument contains newline
-				request = requestFromInput(unescapeSpecialChars(fileName));
+				request = requestFromInput(text);
 			}
 		}
 	} else if(textArg !== undefined && textArg !== EmptyArgument) {
@@ -1380,26 +1387,9 @@ function getRequestFromRead(
 			request = requestFromInput(unescapeSpecialChars(text));
 		}
 	}
-	request = request ? ctx.files.resolveRequest(request).r : undefined;
+	request = request ? info.ctx.files.resolveRequest(request).r : undefined;
+
 	return { source, request };
-}
-
-function parseRequestContent(
-	request: RParseRequest,
-	parser: (line: Buffer | string, lineNumber: number) => void,
-	maxLines?: number
-): boolean {
-	const requestType = request.request;
-
-	switch(requestType) {
-		case 'text':
-			request.content.split('\n').forEach(parser);
-			return true;
-		case 'file':
-			return readLineByLineSync(request.content, parser, maxLines);
-		default:
-			assertUnreachable(requestType);
-	}
 }
 
 /**
@@ -1407,8 +1397,8 @@ function parseRequestContent(
  */
 function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = '"', comment: string = '', trim: boolean = true): (string | undefined)[] {
 	sep = escapeRegExp(sep, true);  // only allow tokens like `\s`, `\t`, or `\n` in separator, quote, and comment chars
-	quote = escapeRegExp(quote, true);
-	comment = escapeRegExp(comment, true);
+	quote = escapeRegExp(quote);
+	comment = escapeRegExp(comment);
 	const quantifier = sep === '\\s' ? '+' : '*';  // do not allow unquoted empty entries in whitespace-sparated files
 
 	const LineCommentRegex = new RegExp(`[${comment}].*`);
@@ -1435,6 +1425,10 @@ function getSelectedColumns(args: readonly (RFunctionArgument<ParentInformation>
 		if(arg !== undefined && arg !== EmptyArgument) {
 			if(arg.value?.type === RType.FunctionCall && arg.value.named && arg.value.functionName.content === 'c') {
 				const result = getSelectedColumns(arg.value.arguments, info);
+				selectedCols = joinColumns(selectedCols, result.selectedCols);
+				unselectedCols = joinColumns(unselectedCols, result.unselectedCols);
+			} else if(arg.value?.type === RType.UnaryOp && arg.value.operator === '+' && info.idMap !== undefined) {
+				const result = getSelectedColumns([toUnnamedArgument(arg.value.operand, info.idMap)], info);
 				selectedCols = joinColumns(selectedCols, result.selectedCols);
 				unselectedCols = joinColumns(unselectedCols, result.unselectedCols);
 			} else if(arg.value?.type === RType.UnaryOp && arg.value.operator === '-' && info.idMap !== undefined) {

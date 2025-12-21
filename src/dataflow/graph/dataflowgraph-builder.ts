@@ -1,9 +1,20 @@
 import { deepMergeObject } from '../../util/objects';
-import { type NodeId , normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type DataflowFunctionFlowInformation, type FunctionArgument , DataflowGraph, isPositionalArgument } from './graph';
-import { type IEnvironment, type REnvironmentInformation , initializeCleanEnvironments } from '../environments/environment';
-import { type DataflowGraphVertexAstLink, type DataflowGraphVertexUse, type FunctionOriginInformation , VertexType } from './vertex';
+import {
+	type DataflowFunctionFlowInformation,
+	DataflowGraph,
+	type FunctionArgument,
+	isPositionalArgument
+} from './graph';
+import { type IEnvironment, type REnvironmentInformation } from '../environments/environment';
+import {
+	type DataflowGraphVertexArgument,
+	type DataflowGraphVertexAstLink, type DataflowGraphVertexInfo,
+	type DataflowGraphVertexUse,
+	type FunctionOriginInformation,
+	VertexType
+} from './vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isBuiltIn } from '../environments/built-in';
 import { EdgeType } from './edge';
@@ -14,13 +25,14 @@ import type { FlowrSearchLike } from '../../search/flowr-search-builder';
 import { runSearch } from '../../search/flowr-search-executor';
 import { guard } from '../../util/assert';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
-
+import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 
 /**
- *
+ * Creates an empty dataflow graph.
+ * Should only be used in tests and documentation.
  */
-export function emptyGraph(idMap?: AstIdMap) {
-	return new DataflowGraphBuilder(idMap);
+export function emptyGraph(cleanEnv?: REnvironmentInformation, idMap?: AstIdMap) {
+	return new DataflowGraphBuilder(cleanEnv, idMap);
 }
 
 export type DataflowGraphEdgeTarget = NodeId | (readonly NodeId[]);
@@ -30,7 +42,21 @@ export type DataflowGraphEdgeTarget = NodeId | (readonly NodeId[]);
  * easily and compactly add vertices and edges to a dataflow graph. Its usage thus
  * simplifies writing tests for dataflow graphs.
  */
-export class DataflowGraphBuilder extends DataflowGraph {
+export class DataflowGraphBuilder<
+	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
+> extends DataflowGraph {
+	private readonly defaultEnvironment: REnvironmentInformation;
+
+	constructor(cleanEnv?: REnvironmentInformation, idMap?: AstIdMap) {
+		super(idMap);
+		this.defaultEnvironment = cleanEnv ?? contextFromInput('').env.makeCleanEnv();
+	}
+
+	public addVertexWithDefaultEnv(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, asRoot = true, overwrite = false): this {
+		super.addVertex(vertex, this.defaultEnvironment, asRoot, overwrite);
+		return this;
+	}
+
 	/**
 	 * Adds a **vertex** for a **function definition** (V1).
 	 * @param id - AST node ID
@@ -44,7 +70,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation,
 		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, controlDependencies?: ControlDependency[] },
 		asRoot: boolean = true) {
-		return this.addVertex({
+		return this.addVertexWithDefaultEnv({
 			tag:     VertexType.FunctionDefinition,
 			id:      normalizeIdToNumberIfPossible(id),
 			subflow: {
@@ -57,7 +83,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			} as DataflowFunctionFlowInformation,
 			exitPoints:  exitPoints.map(normalizeIdToNumberIfPossible),
 			cds:         info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
-			environment: info?.environment
+			environment: info?.environment,
 		}, asRoot);
 	}
 
@@ -83,12 +109,12 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		},
 		asRoot: boolean = true) {
 		const onlyBuiltInAuto = info?.reads?.length === 1 && isBuiltIn(info?.reads[0]);
-		this.addVertex({
+		this.addVertexWithDefaultEnv({
 			tag:         VertexType.FunctionCall,
 			id:          normalizeIdToNumberIfPossible(id),
 			name,
 			args:        args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: normalizeIdToNumberIfPossible(a.nodeId), controlDependencies: undefined }),
-			environment: (info?.onlyBuiltIn || onlyBuiltInAuto) ? undefined : info?.environment ?? initializeCleanEnvironments(),
+			environment: (info?.onlyBuiltIn || onlyBuiltInAuto) ? undefined : info?.environment ?? this.defaultEnvironment,
 			cds:         info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
 			onlyBuiltin: info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false,
 			origin:      info?.origin ?? [ getDefaultProcessor(name) ?? 'function' ],
@@ -137,7 +163,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public defineVariable(id: NodeId, name?: string,
 		info?: { controlDependencies?: ControlDependency[], definedBy?: NodeId[]}, asRoot: boolean = true) {
-		this.addVertex({
+		this.addVertexWithDefaultEnv({
 			tag: VertexType.VariableDefinition,
 			id:  normalizeIdToNumberIfPossible(id),
 			name,
@@ -160,7 +186,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point) or is it nested (e.g., as part of a function definition)
 	 */
 	public use(id: NodeId, name?: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({
+		return this.addVertexWithDefaultEnv(deepMergeObject({
 			tag:         VertexType.Use,
 			id:          normalizeIdToNumberIfPossible(id),
 			name,
@@ -181,7 +207,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public constant(id: NodeId, options?: { controlDependencies?: ControlDependency[] }, asRoot: boolean = true) {
-		return this.addVertex({
+		return this.addVertexWithDefaultEnv({
 			tag:         VertexType.Value,
 			id:          normalizeIdToNumberIfPossible(id),
 			cds:         options?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),

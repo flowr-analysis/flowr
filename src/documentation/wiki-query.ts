@@ -44,6 +44,7 @@ import { escapeNewline } from './doc-util/doc-escape';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
+import { executeFileQuery } from '../queries/catalog/files-query/files-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -137,6 +138,24 @@ Using the example code \`${exampleCode}\`, the following query returns the dataf
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'dataflow'
+	}], { showCode: true, collapseQuery: true })
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('files', {
+	name:             'Files Query',
+	type:             'active',
+	shortDescription: 'Returns the files matching the given criteria.',
+	functionName:     executeFileQuery.name,
+	functionFile:     '../queries/catalog/files-query/files-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		return `
+This query returns the files that match the given criteria.
+${
+	await showQuery(shell, '', [{
+		type: 'files'
 	}], { showCode: true, collapseQuery: true })
 }
 		`;
@@ -740,7 +759,7 @@ All locations are given as a ${ctx.link('SourceRange')} paired with the file id 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Query-API
  */
-export class WikiQuery extends DocMaker {
+export class WikiQuery extends DocMaker<'wiki/Query API.md'> {
 	constructor() {
 		super('wiki/Query API.md', module.filename, 'query API');
 	}
@@ -748,7 +767,7 @@ export class WikiQuery extends DocMaker {
 	protected async text({ ctx, shell }: DocMakerArgs): Promise<string> {
 		return `
 This page briefly summarizes flowR's query API, represented by the ${executeQueries.name} function in ${getFilePathMd('../queries/query.ts')}.
-Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API.
+Please see the ${ctx.linkPage('wiki/Interface')} wiki page for more information on how to access this API.
 
 ${
 	block({

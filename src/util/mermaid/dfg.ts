@@ -1,25 +1,25 @@
 import type { SourceRange } from '../range';
 import { escapeId, escapeMarkdown, mermaidCodeToUrl } from './mermaid';
-import { type DataflowFunctionFlowInformation, type DataflowGraph, type FunctionArgument , isNamedArgument, isPositionalArgument } from '../../dataflow/graph/graph';
-import { type NodeId , normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type IdentifierDefinition, type IdentifierReference , ReferenceTypeReverseMapping } from '../../dataflow/environments/identifier';
+import {
+	type DataflowFunctionFlowInformation,
+	type DataflowGraph,
+	type FunctionArgument,
+	isNamedArgument,
+	isPositionalArgument
+} from '../../dataflow/graph/graph';
+import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import {
+	type IdentifierDefinition,
+	type IdentifierReference,
+	ReferenceTypeReverseMapping
+} from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { type EdgeType , edgeTypeToName, splitEdgeTypes } from '../../dataflow/graph/edge';
-import { type DataflowGraphVertexInfo , VertexType } from '../../dataflow/graph/vertex';
+import { type EdgeType, edgeTypeToName, splitEdgeTypes } from '../../dataflow/graph/edge';
+import { type DataflowGraphVertexInfo, VertexType } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isBuiltIn } from '../../dataflow/environments/built-in';
-
-
-type MarkVertex = NodeId
-type MarkEdge = `${string}->${string}`
-
-export type MermaidMarkdownMark = MarkVertex | MarkEdge
-
-export interface MermaidMarkStyle {
-	readonly vertex: string
-	readonly edge:   string
-}
+import { MermaidDefaultMarkStyle, type MermaidMarkdownMark, type MermaidMarkStyle } from './info';
 
 interface MermaidGraph {
 	nodeLines:           string[]
@@ -128,7 +128,7 @@ function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD-True' | 
 function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: string, close: string } {
 	let open: string;
 	let close: string;
-	if(tag === 'function-definition' || tag === 'variable-definition') {
+	if(tag === VertexType.FunctionDefinition || tag === VertexType.VariableDefinition) {
 		open = '[';
 		close = ']';
 	} else if(tag === VertexType.FunctionCall) {
@@ -166,7 +166,7 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 	return lines;
 }
 
-function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, mark: ReadonlySet<NodeId> | undefined): void {
+function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, mark: ReadonlySet<NodeId> | undefined, includeOnlyIds: ReadonlySet<NodeId> | undefined): void {
 	const fCall = info.tag === VertexType.FunctionCall;
 	const { open, close } = mermaidNodeBrackets(info.tag);
 	id = escapeId(id);
@@ -210,6 +210,10 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	const artificialCdEdges = (info.cds ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False'>([x.when ? 'CD-True' : 'CD-False']) }] as const);
 	// eslint-disable-next-line prefer-const
 	for(let [target, edge] of [...edges[1], ...artificialCdEdges]) {
+		if(includeOnlyIds && !includeOnlyIds.has(target)) {
+			continue;
+		}
+
 		const originalTarget = target;
 		target = escapeId(target);
 		const edgeTypes = typeof edge.types == 'number' ? new Set(splitEdgeTypes(edge.types)) : edge.types;
@@ -235,7 +239,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 			}
 		}
 	}
-	if(info.tag === 'function-definition') {
+	if(info.tag === VertexType.FunctionDefinition) {
 		subflowToMermaid(id, info.exitPoints, info.subflow, mermaid, idPrefix);
 	}
 }
@@ -249,20 +253,21 @@ interface MermaidGraphConfiguration {
 	markStyle?:           MermaidMarkStyle,
 	rootGraph?:           DataflowGraph,
 	presentEdges?:        Set<string>,
-	simplified?:          boolean
+	simplified?:          boolean,
+	includeOnlyIds?:      ReadonlySet<NodeId> // If provided, only the given ids will be included in the mermaid graph
 }
 
 
 // make the passing of root ids more performant again
 function graphToMermaidGraph(
 	rootIds: ReadonlySet<NodeId>,
-	{ simplified, graph, prefix = 'flowchart BT', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = { vertex: 'stroke:teal,stroke-width:7px,stroke-opacity:.8;', edge: 'stroke:teal,stroke-width:4.2px,stroke-opacity:.8' } }: MermaidGraphConfiguration
+	{ simplified, graph, prefix = 'flowchart BT', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = MermaidDefaultMarkStyle, includeOnlyIds }: MermaidGraphConfiguration
 ): MermaidGraph {
 	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, presentVertices: new Set(), mark, rootGraph: rootGraph ?? graph, includeEnvironments, markStyle, simplified };
 
 	for(const [id, info] of graph.vertices(true)) {
 		if(rootIds.has(id)) {
-			vertexToMermaid(info, mermaid, id, idPrefix, mark);
+			vertexToMermaid(info, mermaid, id, idPrefix, mark, includeOnlyIds);
 		}
 	}
 
@@ -273,7 +278,7 @@ function graphToMermaidGraph(
  * Converts a dataflow graph to mermaid graph code that visualizes the graph.
  */
 export function graphToMermaid(config: MermaidGraphConfiguration): { string: string, mermaid: MermaidGraph } {
-	const mermaid = graphToMermaidGraph(config.graph.rootIds(), config);
+	const mermaid = graphToMermaidGraph(config.includeOnlyIds ? config.includeOnlyIds : config.graph.rootIds(), config);
 	return { string: `${mermaid.nodeLines.join('\n')}\n${mermaid.edgeLines.join('\n')}`, mermaid };
 }
 

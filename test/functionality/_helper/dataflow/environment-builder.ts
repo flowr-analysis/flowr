@@ -1,16 +1,21 @@
-import { type NodeId , normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type IdentifierDefinition , ReferenceType } from '../../../../src/dataflow/environments/identifier';
+import {
+	type NodeId,
+	normalizeIdToNumberIfPossible
+} from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type IdentifierDefinition, ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import type { FunctionArgument } from '../../../../src/dataflow/graph/graph';
 import {
 	type Environment,
 	type IEnvironment,
 	type REnvironmentInformation
-	, initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment';
+} from '../../../../src/dataflow/environments/environment';
 import { define } from '../../../../src/dataflow/environments/define';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping';
 import type { ControlDependency } from '../../../../src/dataflow/info';
 import { defaultConfigOptions } from '../../../../src/config';
 import { appendEnvironment } from '../../../../src/dataflow/environments/append';
+import { FlowrAnalyzerEnvironmentContext } from '../../../../src/project/context/flowr-analyzer-environment-context';
+import type { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 
 
 /**
@@ -40,7 +45,8 @@ export function argumentInCall(nodeId: NodeId, options?: { name?: string, contro
  * The constant global environment with all pre-defined functions.
  */
 export const defaultEnv = () => {
-	const global = initializeCleanEnvironments();
+	const ctx = new FlowrAnalyzerEnvironmentContext({ config: defaultConfigOptions } as FlowrAnalyzerContext);
+	const global = ctx.makeCleanEnv();
 	return new EnvironmentBuilder(global.current, global.current.parent, 0);
 };
 
@@ -143,7 +149,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 			definedAt:           normalizeIdToNumberIfPossible(def.definedAt),
 			nodeId:              normalizeIdToNumberIfPossible(def.nodeId),
 			controlDependencies: def.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) }))
-		} as IdentifierDefinition, superAssignment, this, defaultConfigOptions);
+		} as IdentifierDefinition & { name: string }, superAssignment, this, defaultConfigOptions);
 		return new EnvironmentBuilder(envWithDefinition.current, this.builtInEnv, envWithDefinition.level);
 	}
 

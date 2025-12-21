@@ -1,25 +1,33 @@
 import { executeQueriesOfSameType } from '../../query';
 import {
+	DefaultDependencyCategories,
 	type DefaultDependencyCategoryName,
 	type DependenciesQuery,
 	type DependenciesQueryResult,
 	type DependencyCategoryName,
 	type DependencyCategorySettings,
-	type DependencyInfo
-	, DefaultDependencyCategories, getAllCategories, Unknown } from './dependencies-query-format';
+	type DependencyInfo,
+	getAllCategories,
+	Unknown
+} from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
-import { type DataflowGraphVertexFunctionCall , VertexType } from '../../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, VertexType } from '../../../dataflow/graph/vertex';
 import { log } from '../../../util/log';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BasicQueryData } from '../../base-query-format';
 import { compactRecord } from '../../../util/objects';
-import { type DependencyInfoLinkAttachedInfo, type FunctionInfo , DependencyInfoLinkConstraint } from './function-info/function-info';
+import {
+	type DependencyInfoLinkAttachedInfo,
+	DependencyInfoLinkConstraint,
+	type FunctionInfo
+} from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowInformation } from '../../../dataflow/info';
 import type { FlowrConfigOptions } from '../../../config';
 import { guard } from '../../../util/assert';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 
@@ -93,7 +101,7 @@ function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: o
 const readOnlyModes = new Set(['r', 'rt', 'rb']);
 const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab']);
 
-function getResults(queries: readonly DependenciesQuery[], { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfigOptions, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data?: BasicQueryData): DependencyInfo[] {
+function getResults(queries: readonly DependenciesQuery[], { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfigOptions, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data: BasicQueryData): DependencyInfo[] {
 	const defaultValue = getAllCategories(queries)[kind].defaultValue;
 	const functionMap = new Map<string, FunctionInfo>(functions.map(f => [f.name, f]));
 	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});
@@ -101,8 +109,8 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 		const vertex = dataflow.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
 		const info = functionMap.get(name) as FunctionInfo;
 
-		const args = getArgumentStringValue(config.solver.variables, dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
-		const linkedArgs = collectValuesFromLinks(args, { dataflow, config }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
+		const args = getArgumentStringValue(config.solver.variables, dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue, data.analyzer.inspectContext());
+		const linkedArgs = collectValuesFromLinks(args, { dataflow, config, ctx: data.analyzer.inspectContext() }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
 		const linked = dropInfoOnLinkedIds(linkedIds);
 
 		const foundValues = linkedArgs ?? args;
@@ -122,7 +130,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 			guard('mode' in (info.additionalArgs ?? {}), 'Need additional argument mode when checking for mode');
 			const margs = info.additionalArgs?.mode;
 			guard(margs, 'Need additional argument mode when checking for mode');
-			const modeArgs = getArgumentStringValue(config.solver.variables, dataflow.graph, vertex, margs.argIdx, margs.argName, margs.resolveValue);
+			const modeArgs = getArgumentStringValue(config.solver.variables, dataflow.graph, vertex, margs.argIdx, margs.argName, margs.resolveValue, data?.analyzer.inspectContext());
 			const modeValues = modeArgs?.values().flatMap(v => [...v]) ?? [];
 			if(info.ignoreIf === 'mode-only-read' && modeValues.every(m => m && readOnlyModes.has(m))) {
 				// all modes are read-only, so we can ignore this
@@ -166,7 +174,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 	}
 }
 
-function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfigOptions }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string|undefined>> | undefined {
+function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfigOptions, ctx: ReadOnlyFlowrAnalyzerContext }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string|undefined>> | undefined {
 	if(!linkedIds || linkedIds.length === 0) {
 		return undefined;
 	}
@@ -186,7 +194,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undef
 		if(vertex === undefined || vertex.tag !== VertexType.FunctionCall) {
 			continue;
 		}
-		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue);
+		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue, data.ctx);
 		if(args === undefined) {
 			continue;
 		}

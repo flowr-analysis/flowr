@@ -3,7 +3,7 @@ import {
 	FlowrAnalyzerPackageVersionsPlugin
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
-import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
+import type { FlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerDependenciesContext}.
@@ -33,6 +33,8 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerDependenciesContext {
 	public readonly name = 'flowr-analyzer-dependencies-context';
 
+	public readonly functionsContext: FlowrAnalyzerFunctionsContext;
+
 	private dependencies: Map<string, Package> = new Map();
 	private staticsLoaded = false;
 
@@ -41,8 +43,9 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		this.staticsLoaded = false;
 	}
 
-	public constructor(ctx: FlowrAnalyzerContext, plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]) {
-		super(ctx, FlowrAnalyzerPackageVersionsPlugin.defaultPlugin(), plugins);
+	public constructor(functionsContext: FlowrAnalyzerFunctionsContext, plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]) {
+		super(functionsContext.getAttachedContext(), FlowrAnalyzerPackageVersionsPlugin.defaultPlugin(), plugins);
+		this.functionsContext = functionsContext;
 	}
 
 	public resolveStaticDependencies(): void {

@@ -19,6 +19,7 @@ import type {
 	FlowrAnalyzerProjectDiscoveryPlugin
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import type { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
+import { FlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
 import { arraysGroupBy } from '../../util/collections/arrays';
 import type { fileProtocol, RParseRequestFromFile, RParseRequests } from '../../r-bridge/retriever';
 import { requestFromInput } from '../../r-bridge/retriever';
@@ -81,8 +82,9 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		this.files = new FlowrAnalyzerFilesContext(loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
             (plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
-		this.deps  = new FlowrAnalyzerDependenciesContext(this, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 		this.env   = new FlowrAnalyzerEnvironmentContext(this);
+		const functions = new FlowrAnalyzerFunctionsContext(this);
+		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 	}
 
 	/** delegate request addition */

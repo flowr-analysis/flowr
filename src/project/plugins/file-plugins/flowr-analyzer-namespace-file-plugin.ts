@@ -4,7 +4,7 @@ import type { PathLike } from 'fs';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import type { FlowrFileProvider } from '../../context/flowr-file';
 import { FileRole } from '../../context/flowr-file';
-import { FlowrNamespaceFile } from './flowr-namespace-file';
+import { FlowrNamespaceFile } from './files/flowr-namespace-file';
 import { platformBasename } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 
 const NamespaceFilePattern = /^NAMESPACE(\.txt)?$/i;

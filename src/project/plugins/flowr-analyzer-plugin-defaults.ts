@@ -23,7 +23,7 @@ export function FlowrAnalyzerPluginDefaults(): FlowrAnalyzerPlugin[] {
 		new FlowrAnalyzerRmdFilePlugin(),
 		new FlowrAnalyzerQmdFilePlugin(),
 		new FlowrAnalyzerJupyterFilePlugin(),
-		new FlowrAnalyzerNamespaceFilePlugin()
+		new FlowrAnalyzerNamespaceFilePlugin(),
 		new FlowrAnalyzerNewsFilePlugin()
 	];
 }

@@ -1,6 +1,6 @@
 import { Range } from 'semver';
 import { guard } from '../../../util/assert';
-import type { NamespaceInfo } from '../file-plugins/flowr-namespace-file';
+import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
 
 export type PackageType = 'package' | 'system' | 'r';
 

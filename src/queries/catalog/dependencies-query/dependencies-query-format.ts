@@ -16,7 +16,7 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { Range } from 'semver';
 import type { AsyncOrSync } from 'ts-essentials';
-import type { NamespaceInfo } from '../../../project/plugins/file-plugins/flowr-namespace-file';
+import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
 
 export const Unknown = 'unknown';
 

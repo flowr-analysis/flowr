@@ -3,7 +3,7 @@ import { SemVer } from 'semver';
 import { Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { FileRole } from '../../context/flowr-file';
-import type { NamespaceFormat } from '../file-plugins/flowr-namespace-file';
+import type { NamespaceFormat } from '../file-plugins/files/flowr-namespace-file';
 import { log } from '../../../util/log';
 
 export const namespaceFileLog = log.getSubLogger({ name: 'flowr-analyzer-package-versions-namespace-file-plugin' });

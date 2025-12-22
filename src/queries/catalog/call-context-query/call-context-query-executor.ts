@@ -235,7 +235,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 	if(requiresCfg) {
 		cfg = await analyzer.controlflow([], CfgKind.WithDataflow);
 	}
-
+	const calls = cfg ? getCallsInCfg(cfg, dataflow.graph) : undefined;
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);
 
 	for(const [nodeId, info] of dataflow.graph.verticesOfType(VertexType.FunctionCall)) {
@@ -255,7 +255,6 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 				}
 			}
 		}
-		const calls = cfg ? getCallsInCfg(cfg, dataflow.graph) : undefined;
 
 		for(const query of promotedQueries.filter(q => !q.includeAliases && (q.callName instanceof RegExp ? q.callName.test(info.name) : q.callName.has(info.name)))) {
 			const file = ast.idMap.get(nodeId)?.info.file;
@@ -299,7 +298,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 				id:        nodeId,
 				name:      info.name,
 				calls:     targets,
-				linkedIds: linkedIds ? [...linkedIds] : undefined
+				linkedIds: linkedIds ? Array.from(linkedIds) : undefined
 			}));
 		}
 	}

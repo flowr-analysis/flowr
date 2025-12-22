@@ -86,12 +86,13 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 			continue;
 		}
 		handled.add(s.id);
-		if(killedRegexes.has(s.linkTo.callName.source)) {
+		const regexKey = s.linkTo.callName.source + '//' + s.linkTo.callName.flags;
+		if(killedRegexes.has(regexKey)) {
 			// we already know we will not find it!
 			continue;
 		} else if(allCallNames.length > 0 && !allCallNames.some(name => s.linkTo.callName.test(name))) {
 			// we know no call matches the regex
-			killedRegexes.add(s.linkTo.callName.source);
+			killedRegexes.add(regexKey);
 			continue;
 		}
 		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */

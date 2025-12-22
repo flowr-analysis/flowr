@@ -19,8 +19,7 @@ export class FlowrAnalyzerLoadingOrderDescriptionFilePlugin extends FlowrAnalyze
 	process(ctx: FlowrAnalyzerContext): void {
 		const descFiles = ctx.files.getFilesByRole(FileRole.Description);
 		if(descFiles.length !== 1) {
-			descriptionFileLog.warn(`Supporting only exactly one DESCRIPTION file, found ${descFiles.length}`);
-			return;
+			descriptionFileLog.warn(`Found ${descFiles.length} description files, expected exactly one.`);
 		}
 
 		/** this will do the caching etc. for me */

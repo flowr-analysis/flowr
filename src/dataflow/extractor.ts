@@ -69,6 +69,8 @@ export const processors: DataflowProcessors<ParentInformation> = {
 function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 	let cf: ControlFlowInformation | undefined = undefined;
 	let knownCalls: Map<NodeId, Required<DataflowGraphVertexFunctionCall>> | undefined;
+	let allCallNames: string[] = [];
+	const killedRegexes = new Set<string>();
 	const handled = new Set<NodeId>();
 	for(const s of graph.unknownSideEffects) {
 		if(typeof s !== 'object') {
@@ -78,11 +80,21 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 			cf = extractCfgQuick(ast);
 			if(graph.unknownSideEffects.size > 20) {
 				knownCalls = getCallsInCfg(cf, graph);
+				allCallNames = Array.from(new Set(knownCalls.values().map(c => c.name)));
 			}
 		} else if(handled.has(s.id)) {
 			continue;
 		}
 		handled.add(s.id);
+		const regexKey = s.linkTo.callName.source + '//' + s.linkTo.callName.flags;
+		if(killedRegexes.has(regexKey)) {
+			// we already know we will not find it!
+			continue;
+		} else if(allCallNames.length > 0 && !allCallNames.some(name => s.linkTo.callName.test(name))) {
+			// we know no call matches the regex
+			killedRegexes.add(regexKey);
+			continue;
+		}
 		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */
 		const potentials = identifyLinkToLastCallRelation(s.id, cf.graph, graph, s.linkTo, knownCalls);
 		for(const pot of potentials) {

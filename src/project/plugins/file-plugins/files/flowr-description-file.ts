@@ -35,6 +35,8 @@ export class FlowrDescriptionFile extends FlowrFile<DCF> {
 		}
 		return file instanceof FlowrDescriptionFile ? file : new FlowrDescriptionFile(file);
 	}
+
+	// TODO: add helper methods to get version, parsed authors, parsed spdx license etc, ...
 }
 
 

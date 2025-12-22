@@ -37,6 +37,7 @@ import { DocMaker } from './wiki-mk/doc-maker';
 import { FlowrAnalyzerRmdFilePlugin } from '../project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
 import { FlowrAnalyzerPlugin } from '../project/plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerEnvironmentContext } from '../project/context/flowr-analyzer-environment-context';
+import { FlowrAnalyzerFunctionsContext } from '../project/context/flowr-analyzer-functions-context';
 
 async function analyzerQuickExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -435,6 +436,17 @@ ${ctx.hierarchy(FlowrAnalyzerDependenciesContext, { showImplSnippet: false })}
 Probably the most important method is
 ${ctx.linkM(FlowrAnalyzerDependenciesContext, 'getDependency', { codeFont: true, realNameWrapper: 'i' })}
 that allows you to query for a specific dependency by name.
+
+${section('Functions Context', 3)}
+
+The ${ctx.link(FlowrAnalyzerDependenciesContext)} also provides access to the associated
+${ctx.link(FlowrAnalyzerFunctionsContext)} via its \`functionsContext\` attribute.
+
+${ctx.hierarchy(FlowrAnalyzerFunctionsContext, { showImplSnippet: false })}
+
+Probably the most important method is
+${ctx.linkM(FlowrAnalyzerFunctionsContext, 'getFunctionInfo', { codeFont: true, realNameWrapper: 'i' })}
+that allows you to query for a specific function by name.
 
 ${section('Environment Context', 3)}
 

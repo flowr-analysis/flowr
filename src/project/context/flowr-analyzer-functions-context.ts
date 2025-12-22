@@ -22,12 +22,28 @@ export interface FunctionInfo {
 	inferredType?:   string;
 }
 
+/**
+ * This is a read-only interface to the {@link FlowrAnalyzerFunctionsContext}.
+ * It prevents you from modifying the functions, but allows you to inspect them (which is probably what you want when using the {@link FlowrAnalyzer}).
+ * If you are a {@link FlowrAnalyzerPackageVersionsPlugin} and want to modify the functions, you can use the {@link FlowrAnalyzerFunctionsContext} directly.
+ */
 export interface ReadOnlyFlowrAnalyzerFunctionsContext {
 	readonly name: string;
 
+	/**
+	 * Get the function information for the given function name and optional class name.
+	 * @param name - The name of the function to get information for.
+	 * @param className - The optional class name (e.g., for S3 generics).
+	 */
 	getFunctionInfo(name: string, className?: string): FunctionInfo | FunctionInfo[] | undefined;
 }
 
+/**
+ * This context is responsible for managing the functions identified in the project, including their origins, types, and other metadata.
+ * It works in conjunction with {@link FlowrAnalyzerPackageVersionsPlugin}s to gather and maintain this information.
+ *
+ * If you are interested in inspecting these functions, refer to {@link ReadOnlyFlowrAnalyzerFunctionsContext}.
+ */
 export class FlowrAnalyzerFunctionsContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerFunctionsContext {
 	public readonly name = 'flowr-analyzer-functions-context';
 

@@ -21,7 +21,10 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 
 	process(ctx: FlowrAnalyzerContext): void {
 		const descFiles = ctx.files.getFilesByRole(FileRole.Description);
-		if(descFiles.length !== 1) {
+		if(descFiles.length === 0) {
+			descriptionFileLog.warn('No description file found, cannot extract package versions.');
+			return;
+		} if(descFiles.length > 1) {
 			descriptionFileLog.warn(`Found ${descFiles.length} description files, expected exactly one.`);
 		}
 

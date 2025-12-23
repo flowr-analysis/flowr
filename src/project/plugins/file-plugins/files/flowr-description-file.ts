@@ -5,13 +5,14 @@ import { log } from '../../../../util/log';
 import type { RAuthorInfo } from '../../../../util/r-author';
 import { parseRAuthorString } from '../../../../util/r-author';
 import { splitAtEscapeSensitive } from '../../../../util/text/args';
+import type { DeepReadonly } from 'ts-essentials';
 
 export type DCF = Map<string, string[]>;
 
 /**
  * This decorates a text file and provides access to its content as a DCF (Debian Control File)-like structure.
  */
-export class FlowrDescriptionFile extends FlowrFile<DCF> {
+export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 	private readonly wrapped: FlowrFileProvider;
 
 	/**
@@ -65,10 +66,10 @@ export class FlowrDescriptionFile extends FlowrFile<DCF> {
 function cleanUpDescLicense(licenseStr: string): string {
 	// we have to replace '\s[|+&]\s' with ' OR ' or ' AND ' respectively
 	return licenseStr
-		.replace(/\s*[|]\s*/g, ' OR ')
-		.replace(/\s*[&+,]\s*/g, ' AND ')
-		// we have to replace any variant of 'file LICENSE' with just 'LicenseRef-FILE
-		.replace(/file(\s+|-)LICENSE/gi, 'LicenseRef-FILE')
+		.replaceAll(/\s*\|\s*/g, ' OR ')
+		.replaceAll(/\s*[&+,]\s*/g, ' AND ')
+		// we have to replace any variant of 'file LICENSE' with just LicenseRef-FILE
+		.replaceAll(/file(\s+|-)LICENSE/gi, 'LicenseRef-FILE')
 	;
 }
 

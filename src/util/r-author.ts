@@ -18,7 +18,8 @@ export enum AuthorRole {
 }
 
 /**
- * Information about an author
+ * Information about an author.
+ * See {@link parseRAuthorString} for parsing R `Authors@R` strings, and {@link rAuthorInfoToReadable} for printing them.
  */
 export interface RAuthorInfo {
 	/** The name (components) of the author. */
@@ -31,6 +32,18 @@ export interface RAuthorInfo {
 	readonly orcid?:   string;
 	/** Any additional comments about the author. */
 	readonly comment?: string[];
+}
+
+/**
+ * Convert structured R author information into an R `Authors@R` string.
+ */
+export function rAuthorInfoToReadable(author: RAuthorInfo): string {
+	const nameStr = author.name.join(' ');
+	const emailStr = author.email ? ` <${author.email}>` : '';
+	const rolesStr = author.roles.length > 0 ? ` [${author.roles.join(', ')}]` : '';
+	const orcidStr = author.orcid ? ` (ORCID: ${author.orcid})` : '';
+	const commentStr = author.comment && author.comment.length > 0 ? ` {${author.comment.join('; ')}}` : '';
+	return `${nameStr}${emailStr}${rolesStr}${orcidStr}${commentStr}`;
 }
 
 /**

@@ -7,6 +7,7 @@ import { type PackageType , Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { FileRole } from '../../context/flowr-file';
 import type { DCF } from '../file-plugins/files/flowr-description-file';
+import type { DeepReadonly } from 'ts-essentials';
 
 const VersionRegex = /^([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([\d.]+)\))?$/;
 
@@ -24,7 +25,7 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 		if(descFiles.length === 0) {
 			descriptionFileLog.warn('No description file found, cannot extract package versions.');
 			return;
-		} if(descFiles.length > 1) {
+		} else if(descFiles.length > 1) {
 			descriptionFileLog.warn(`Found ${descFiles.length} description files, expected exactly one.`);
 		}
 
@@ -35,7 +36,7 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 		this.retrieveVersionsFromField(ctx, deps, 'Imports', 'package');
 	}
 
-	private retrieveVersionsFromField(ctx: FlowrAnalyzerContext, file: DCF, field: string, type?: PackageType): void {
+	private retrieveVersionsFromField(ctx: FlowrAnalyzerContext, file: DeepReadonly<DCF>, field: string, type?: PackageType): void {
 		for(const entry of file.get(field) ?? []) {
 			const match = VersionRegex.exec(entry);
 

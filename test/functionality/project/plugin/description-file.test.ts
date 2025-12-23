@@ -61,21 +61,6 @@ Collate:
     'main.R'
     'zzz.R'`));
 	ctx.addFile(new FlowrInlineTextFile('pete.R', 'x <- 2'));
-	ctx.addFile(new FlowrInlineTextFile('another/DESCRIPTION', `Package: mypackage
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
-Authors@R:
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-License: \`use_mit_license()\`, \`use_gpl3_license()\` or friends to pick a
-    license
-Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
-Description: The description of a package usually spans multiple lines.
-    The second and subsequent lines should be indented, usually with four
-    spaces.
-`));
 	ctx.addRequests([{ request: 'file', content: 'pete.R' }]);
 	ctx.resolvePreAnalysis();
 
@@ -94,28 +79,25 @@ Description: The description of a package usually spans multiple lines.
 
 		test('License parsing', () => {
 			const descFile = ctx.files.getFilesByRole(FileRole.Description);
-			assert.lengthOf(descFile, 2);
+			assert.lengthOf(descFile, 1);
 			const descContent = descFile[0];
 			const license = descContent.license();
 			assert.isDefined(license);
 			assert.lengthOf(license, 1);
 			const [first] = license;
-			// TODO
-			// assert.deepStrictEqual(first, { conjunction: 'and', left: { license: 'MIT' }, right: { license: 'LicenseRef-FILE' } });
-		});
-
-		test('Broken license parsing', () => {
-			const descFile = ctx.files.getFilesByRole(FileRole.Description);
-			assert.lengthOf(descFile, 2);
-			const descContent = descFile[1];
-			const license = descContent.license();
-			assert.isDefined(license);
-			assert.lengthOf(license, 0);
+			assert.deepStrictEqual(first, {
+				type:        'combination',
+				combination: 'and',
+				elements:    [
+					{ type: 'license', license: 'MIT' },
+					{ type: 'license', license: 'file LICENSE' }
+				]
+			});
 		});
 
 		test('Author retrieval', () => {
 			const descFile = ctx.files.getFilesByRole(FileRole.Description);
-			assert.lengthOf(descFile, 2);
+			assert.lengthOf(descFile, 1);
 			const descContent = descFile[0];
 			const authors = descContent.authors();
 			assert.isDefined(authors);

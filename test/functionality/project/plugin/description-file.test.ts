@@ -12,6 +12,7 @@ import {
 } from '../../../../src/project/plugins/loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { defaultConfigOptions } from '../../../../src/config';
+import { AuthorRole } from '../../../../src/util/r-author';
 
 
 describe('DESCRIPTION-file', function() {
@@ -110,6 +111,21 @@ Description: The description of a package usually spans multiple lines.
 			const license = descContent.license();
 			assert.isDefined(license);
 			assert.lengthOf(license, 0);
+		});
+
+		test('Author retrieval', () => {
+			const descFile = ctx.files.getFilesByRole(FileRole.Description);
+			assert.lengthOf(descFile, 2);
+			const descContent = descFile[0];
+			const authors = descContent.authors();
+			assert.isDefined(authors);
+			assert.lengthOf(authors, 1);
+			const [first] = authors;
+			assert.deepStrictEqual(first, {
+				name:  ['First', 'Last'],
+				email: 'first.last@example.com',
+				roles: [AuthorRole.Author, AuthorRole.Creator]
+			});
 		});
 	});
 });

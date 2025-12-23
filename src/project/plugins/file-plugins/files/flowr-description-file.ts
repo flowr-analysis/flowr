@@ -2,6 +2,9 @@ import { type FlowrFileProvider, type FileRole , FlowrFile } from '../../../cont
 import type { Info } from 'spdx-expression-parse';
 import parse from 'spdx-expression-parse';
 import { log } from '../../../../util/log';
+import type { RAuthorInfo } from '../../../../util/r-author';
+import { parseRAuthorString } from '../../../../util/r-author';
+import { splitAtEscapeSensitive } from '../../../../util/text/args';
 
 export type DCF = Map<string, string[]>;
 
@@ -39,6 +42,9 @@ export class FlowrDescriptionFile extends FlowrFile<DCF> {
 		return file instanceof FlowrDescriptionFile ? file : new FlowrDescriptionFile(file);
 	}
 
+	/**
+	 * Returns the parsed license information from the 'License' field in the DESCRIPTION file.
+	 */
 	public license(): Info[] | undefined {
 		const licenses = this.content().get('License');
 		if(!licenses) {
@@ -47,7 +53,13 @@ export class FlowrDescriptionFile extends FlowrFile<DCF> {
 		return parseRLicenseField(...licenses);
 	}
 
-	// TODO: add helper methods to get version, parsed authors, parsed spdx license etc, ...
+	/**
+	 * Returns the parsed authors from the `Authors@R` field in the DESCRIPTION file.
+	 */
+	public authors(): RAuthorInfo[] | undefined {
+		const authors = this.content().get('Authors@R');
+		return authors ? authors.flatMap(parseRAuthorString) : undefined;
+	}
 }
 
 function cleanUpDescLicense(licenseStr: string): string {
@@ -79,6 +91,20 @@ export function parseRLicenseField(...licenseField: string[]): Info[] {
 	return licenses;
 }
 
+
+function emplaceDCF(key: string, val: string, result: Map<string, string[]>) {
+	if(!key) {
+		return;
+	}
+	let values: string[] = [];
+	if(key.includes('@')) {
+		values = [val.trim()];
+	} else {
+		values = val ? cleanValues(val) : [];
+	}
+	result.set(key, values);
+}
+
 /**
  * Parses the given file in the 'Debian Control Format'.
  * @param file - The file to parse
@@ -96,10 +122,7 @@ function parseDCF(file: FlowrFileProvider): Map<string, string[]> {
 		if(indentRegex.test(line)) {
 			currentValue += '\n' + line.trim();
 		} else {
-			if(currentKey) {
-				const values = currentValue ? cleanValues(currentValue) : [];
-				result.set(currentKey, values);
-			}
+			emplaceDCF(currentKey, currentValue, result);
 
 			const [key, rest] = line.split(firstColonRegex).map(s => s.trim());
 			currentKey = key?.trim() ?? '';
@@ -107,21 +130,14 @@ function parseDCF(file: FlowrFileProvider): Map<string, string[]> {
 		}
 	}
 
-	if(currentKey) {
-		const values = currentValue ? cleanValues(currentValue) : [];
-		result.set(currentKey, values);
-	}
+	emplaceDCF(currentKey, currentValue, result);
 
 	return result;
 }
 
-
-const cleanSplitRegex = /[\n,]+/;
-const cleanQuotesRegex = /'/g;
-
+const splitRegex = /[\n\r]+/g;
 function cleanValues(values: string): string[] {
-	return values
-		.split(cleanSplitRegex)
-		.map(s => s.trim().replace(cleanQuotesRegex, ''))
+	return values.split(splitRegex).flatMap(l => splitAtEscapeSensitive(l, false, ','))
+		.map(s => s.trim())
 		.filter(s => s.length > 0);
 }

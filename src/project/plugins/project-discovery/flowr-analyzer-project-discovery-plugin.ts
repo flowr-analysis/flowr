@@ -22,6 +22,7 @@ export abstract class FlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerP
 
 const discoverRSourcesRegex = /\.(r|rmd|ipynb|qmd)$/i;
 const ignorePathsWith = /(\.git|\.svn|\.hg|renv|packrat|node_modules|__pycache__|\.Rproj\.user)/i;
+const excludeRequestsForPaths = /(vignettes?|tests?|revdep|inst|data).*/i;
 
 /**
  * This is the default dummy implementation of the {@link FlowrAnalyzerProjectDiscoveryPlugin}.
@@ -33,11 +34,19 @@ class DefaultFlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerProjectDis
 	public readonly version = new SemVer('0.0.0');
 	private readonly supportedExtensions: RegExp;
 	private readonly ignorePathsRegex:    RegExp;
+	private readonly excludePathsRegex:   RegExp = excludeRequestsForPaths;
 
-	constructor(triggerOnExtensions: RegExp = discoverRSourcesRegex, ignorePathsRegex: RegExp = ignorePathsWith) {
+	/**
+	 * Creates a new instance of the default project discovery plugin.
+	 * @param triggerOnExtensions - the regex to trigger R source file discovery on (and hence analyze them as R files)
+	 * @param ignorePathsRegex    - the regex to ignore certain paths entirely
+	 * @param excludePathsRegex   - the regex to exclude certain paths from being requested as R files (they are still collected as text files)
+	 */
+	constructor(triggerOnExtensions: RegExp = discoverRSourcesRegex, ignorePathsRegex: RegExp = ignorePathsWith, excludePathsRegex: RegExp = excludeRequestsForPaths) {
 		super();
 		this.supportedExtensions = triggerOnExtensions;
 		this.ignorePathsRegex = ignorePathsRegex;
+		this.excludePathsRegex = excludePathsRegex;
 	}
 
 	public process(_context: unknown, args: RProjectAnalysisRequest): (RParseRequest | FlowrFile<string>)[] {
@@ -47,7 +56,7 @@ class DefaultFlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerProjectDis
 			if(this.ignorePathsRegex.test(file)) {
 				continue;
 			}
-			if(this.supportedExtensions.test(file)) {
+			if(this.supportedExtensions.test(file) && !this.excludePathsRegex.test(file)) {
 				requests.push({ content: file, request: 'file' });
 			} else {
 				requests.push(new FlowrTextFile(file));

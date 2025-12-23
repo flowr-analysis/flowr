@@ -7,6 +7,7 @@ import { parseCommand } from './repl-parse';
 import { executeCommand } from './repl-execute';
 import { normalizeCommand, normalizeStarCommand } from './repl-normalize';
 import {
+	dataflowAsciiCommand,
 	dataflowCommand, dataflowSilentCommand,
 	dataflowSimpleStarCommand,
 	dataflowSimplifiedCommand,
@@ -90,6 +91,7 @@ const _commands = {
 	'dataflow*':       dataflowStarCommand,
 	'dataflowsimple':  dataflowSimplifiedCommand,
 	'dataflowsimple*': dataflowSimpleStarCommand,
+	'dataflowascii':   dataflowAsciiCommand,
 	'dataflowsilent':  dataflowSilentCommand,
 	'controlflow':     controlflowCommand,
 	'controlflow*':    controlflowStarCommand,

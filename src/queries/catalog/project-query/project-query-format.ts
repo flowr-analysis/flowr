@@ -6,7 +6,7 @@ import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import type { RAuthorInfo } from '../../../util/r-author';
 import { rAuthorInfoToReadable } from '../../../util/r-author';
-import type { Info } from 'spdx-expression-parse';
+import type { RLicenseElementInfo } from '../../../util/r-license';
 
 
 export interface ProjectQuery extends BaseQueryFormat {
@@ -21,7 +21,7 @@ export interface ProjectQueryResult extends BaseQueryResult {
 	/** The files considered part of the project. */
 	readonly files:     (string | '<inline>')[];
 	/** The licenses of the project. */
-	readonly licenses?: Info[];
+	readonly licenses?: RLicenseElementInfo[];
 	/** The encoding of the project files. */
 	readonly encoding?: string;
 	/** The version of the project, if available. */

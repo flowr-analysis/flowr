@@ -51,7 +51,7 @@ export const dataflowStarCommand: ReplCodeCommand = {
 };
 
 export const dataflowSilentCommand: ReplCodeCommand = {
-	description:   'Just calculates the DFG, but only print summary info',
+	description:   'Just calculates the DFG, but only prints summary info',
 	isCodeCommand: true,
 	usageExample:  ':dataflowsilent',
 	aliases:       [ 'd#', 'df#' ],

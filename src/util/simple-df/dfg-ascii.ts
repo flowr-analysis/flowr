@@ -35,7 +35,7 @@ class AsciiCanvas {
 	private readonly shiftX: number;
 	private readonly shiftY: number;
 
-	constructor(filler = ' ',shiftX = 0, shiftY = 0) {
+	constructor(filler = ' ', shiftX = 0, shiftY = 0) {
 		this.grid = [];
 		this.filler = filler;
 		this.shiftX = shiftX;
@@ -57,13 +57,13 @@ class AsciiCanvas {
 		this.grid[y][x] = overwrite ? char : combineAscii(this.grid[y][x], char);
 	}
 
-	drawText(x: number, y: number, text: string) {
+	drawText(x: number, y: number, text: string): void {
 		for(let i = 0; i < text.length; i++) {
 			this.set(x + i, y, text[i]);
 		}
 	}
 
-	toString() {
+	toString(): string {
 		return this.grid.map(r => r.join('')).join('\n');
 	}
 }
@@ -82,7 +82,7 @@ export function dfgToAscii(dfg: DataflowGraph): string {
 		edgesep: 0
 	});
 	for(const [id, v] of verts) {
-		let label = recoverName(id,dfg.idMap) ?? v.tag;
+		let label = recoverName(id, dfg.idMap) ?? v.tag;
 
 		if(label.length < 3) {
 			label = label.padStart(2, ' ').padEnd(3, ' ');
@@ -90,7 +90,7 @@ export function dfgToAscii(dfg: DataflowGraph): string {
 
 		g.setNode(String(id), {
 			label,
-			width:  Math.max(3,label.length),
+			width:  Math.max(3, label.length),
 			height: 4,
 			shape:  'box'
 		});
@@ -128,7 +128,7 @@ export function dfgToAscii(dfg: DataflowGraph): string {
 		lines.push('Edges:');
 	}
 	const longestFirstLine = Math.max(...edgeLines.map(l => l.length));
-	for(let i = 0; i < edgeLines.length; i+=2) {
+	for(let i = 0; i < edgeLines.length; i += 2) {
 		const line1 = edgeLines[i];
 		const line2 = edgeLines[i + 1];
 		if(line2) {
@@ -149,7 +149,7 @@ const type2Edge = {
 
 } as const satisfies Record<VertexType, string>;
 
-function renderVertices(dfg: DataflowGraph, g: graphlib.Graph, canvas: AsciiCanvas) {
+function renderVertices(dfg: DataflowGraph, g: graphlib.Graph, canvas: AsciiCanvas): void {
 	for(const nodeId of g.nodes()) {
 		const node = g.node(nodeId);
 		if(!node) {
@@ -166,7 +166,7 @@ function renderVertices(dfg: DataflowGraph, g: graphlib.Graph, canvas: AsciiCanv
 			e = type2Edge[tag as VertexType];
 		}
 		canvas.drawText(x - 1, y - 1, `${e}${'-'.repeat(label.length)}${e}`);
-		canvas.drawText(x - 1 + label.length/2 - nodeId.length/2, y - 1, `<${nodeId}>`);
+		canvas.drawText(x - 1 + Math.round(label.length/2 - nodeId.length/2), y - 1, `<${nodeId}>`);
 		canvas.drawText(x - 1, y, `|${label}|`);
 		canvas.drawText(x - 1, y + 1, `${e}${'-'.repeat(label.length)}${e}`);
 	}
@@ -189,7 +189,7 @@ function determineCornerChar(lastDirection: 'horizontal' | 'vertical' | null, px
 		if(py < ty) {
 			return lastDirection === 'horizontal' ? edgesChar.topRight : edgesChar.bottomLeft;
 		} else {
-			return lastDirection === 'horizontal' ?  edgesChar.bottomRight : edgesChar.topLeft;
+			return lastDirection === 'horizontal' ? edgesChar.bottomRight : edgesChar.topLeft;
 		}
 	} else {
 		if(py < ty) {
@@ -200,7 +200,7 @@ function determineCornerChar(lastDirection: 'horizontal' | 'vertical' | null, px
 	}
 }
 
-function renderEdges(g: graphlib.Graph, canvas: AsciiCanvas) {
+function renderEdges(g: graphlib.Graph, canvas: AsciiCanvas): void {
 	const otherEdges = new Set<string>();
 	for(const e of g.edges()) {
 		const edge = g.edge(e);

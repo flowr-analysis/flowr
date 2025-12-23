@@ -5,6 +5,7 @@ import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import { handleString } from '../core';
 import { VertexType } from '../../../dataflow/graph/vertex';
+import { dfgToAscii } from '../../../util/simple-df/dfg-ascii';
 
 function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInformation ): string {
 	return out.formatter.format(`Copied ${type} to clipboard (dataflow: ${meta['.meta'].timing + 'ms'}).`,
@@ -47,6 +48,19 @@ export const dataflowStarCommand: ReplCodeCommand = {
 			clipboard.default.writeSync(mermaid);
 			output.stdout(formatInfo(output, 'mermaid url', result));
 		} catch{ /* do nothing this is a service thing */ }
+	}
+};
+
+export const dataflowAsciiCommand: ReplCodeCommand = {
+	description:   'Returns an ASCII representation of the dataflow graph',
+	isCodeCommand: true,
+	usageExample:  ':dataflowascii',
+	aliases:       [ 'df!' ],
+	script:        false,
+	argsParser:    (args: string) => handleString(args),
+	fn:            async({ output, analyzer }) => {
+		const result = await analyzer.dataflow();
+		output.stdout(dfgToAscii(result.graph));
 	}
 };
 

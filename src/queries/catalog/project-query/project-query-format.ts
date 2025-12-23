@@ -10,9 +10,9 @@ import type { Info } from 'spdx-expression-parse';
 
 
 export interface ProjectQuery extends BaseQueryFormat {
-	readonly type:      'project';
+	readonly type:       'project';
     /** Whether to include Dataflow information in the result. */
-    readonly withDf: boolean;
+    readonly withDf?: boolean;
 }
 
 export interface ProjectQueryResult extends BaseQueryResult {
@@ -59,7 +59,7 @@ export const ProjectQueryDefinition = {
 	},
 	schema: Joi.object({
 		type:   Joi.string().valid('project').required().description('The type of the query.'),
-		withDf: Joi.boolean().default(false).description('Whether to include Dataflow information in the result.')
+		withDf: Joi.boolean().optional().default(false).description('Whether to include Dataflow information in the result.')
 	}).description('The project query provides information on the analyzed project.'),
 	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'project'>;

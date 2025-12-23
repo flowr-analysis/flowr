@@ -25,9 +25,9 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 			timing: 0
 		},
 		files:    Array.from(analyzer.inspectContext().files.consideredFilesList()),
-		authors:  desc.authors(),
-		encoding: desc.content().get('Encoding')?.[0],
-		version:  desc.content().get('Version')?.[0],
-		licenses: desc.license()
+		authors:  desc?.authors(),
+		encoding: desc?.content().get('Encoding')?.[0],
+		version:  desc?.content().get('Version')?.[0],
+		licenses: desc?.license()
 	};
 }

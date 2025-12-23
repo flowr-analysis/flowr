@@ -25,7 +25,7 @@ function nodeString(nodeId: NodeId | { id: NodeId, info?: object}, formatter: Ou
 
 function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly CallContextQuerySubKindResult[], idMap: AstIdMap<ParentInformation>): string {
 	const result: string[] = [];
-	for(const { id, calls = [], linkedIds = [], aliasRoots = [] } of results) {
+	for(const { id, calls = [], linkedIds = [], aliasRoots = [] } of results.slice(0,20)) {
 		const node = idMap.get(id);
 		if(node === undefined) {
 			result.push(` ${bold('UNKNOWN: ' + JSON.stringify({ calls, linkedIds }))}`);
@@ -43,6 +43,9 @@ function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly Ca
 		}
 		result.push(line);
 	}
+	if(results.length > 20) {
+		result.push(` ... and ${results.length - 20} more hits`);
+	}
 	return result.join(', ');
 }
 
@@ -53,9 +56,11 @@ export function asciiCallContext(formatter: OutputFormatter, results: QueryResul
 	/* traverse over 'kinds' and within them 'subkinds' */
 	const result: string[] = [];
 	for(const [kind, { subkinds }] of Object.entries(results['kinds'])) {
-		result.push(`   ╰ ${bold(kind, formatter)}`);
+		const amountOfHits = Object.values(subkinds).reduce((acc, cur) => acc + cur.length, 0);
+		result.push(`   ╰ ${bold(kind, formatter)} (${amountOfHits} hit${amountOfHits === 1 ? '' : 's'}):`);
 		for(const [subkind, values] of Object.entries(subkinds)) {
-			result.push(`     ╰ ${bold(subkind, formatter)}: ${asciiCallContextSubHit(formatter, values, idMap)}`);
+			const amountOfSubHits = values.length;
+			result.push(`     ╰ ${bold(subkind, formatter)} (${amountOfSubHits} hit${amountOfSubHits === 1 ? '' : 's'}): ${asciiCallContextSubHit(formatter, values, idMap)}`);
 		}
 	}
 	return result.join('\n');

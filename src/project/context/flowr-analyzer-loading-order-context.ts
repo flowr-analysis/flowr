@@ -32,7 +32,7 @@ export interface ReadOnlyFlowrAnalyzerLoadingOrderContext {
 	/**
 	 * Get the current guesses for the loading order, if any. These are populated by {@link FlowrAnalyzerLoadingOrderPlugin}s.
 	 */
-	currentGuesses(): readonly RParseRequest[][];
+	currentGuesses(): readonly (readonly RParseRequest[])[];
 	/**
 	 * Get the current known loading order, if any. This is populated by {@link FlowrAnalyzerLoadingOrderPlugin}s if they have a source of identifying the order definitively.
 	 */
@@ -57,10 +57,10 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 		this.rerunRequired = this.plugins.length > 0;
 	}
 
-	private knownOrder?: readonly RParseRequest[];
-	private guesses:     RParseRequest[][] = [];
+	private knownOrder?:        readonly RParseRequest[];
+	private readonly guesses:   (readonly RParseRequest[])[] = [];
 	/** just the base collection of requests we know nothing about the order! */
-	private unordered:   RParseRequest[] = [];
+	private readonly unordered: RParseRequest[] = [];
 
 	public reset(): void {
 		this.knownOrder = undefined;
@@ -107,14 +107,17 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 				loadingOrderLog.warn(`Adding certain guess ${guess.map(g => g.request).join(', ')} after known order!`);
 				if(!arrayEqual(this.knownOrder, guess)) {
 					loadingOrderLog.error(`Certain guess ${guess.map(g => g.request).join(', ')} does not match known order ${this.knownOrder.map(g => g.request).join(', ')}`);
+					this.guesses.push(guess);
 				}
 			} else {
 				this.knownOrder = guess;
 			}
+		} else {
+			this.guesses.push(guess);
 		}
 	}
 
-	public currentGuesses(): readonly RParseRequest[][] {
+	public currentGuesses(): readonly (readonly RParseRequest[])[] {
 		return this.guesses;
 	}
 

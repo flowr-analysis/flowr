@@ -107,6 +107,11 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			}
 		}
 	}
+    /** Configuration options for the REPL */
+    readonly repl: {
+        /** Whether to show quick stats in the REPL after each evaluation */
+        quickStats: boolean
+    }
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
 		resolveUnknownPathsOnDisk: boolean
@@ -232,6 +237,9 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 			}
 		}
 	},
+	repl: {
+		quickStats: false
+	},
 	project: {
 		resolveUnknownPathsOnDisk: true
 	},
@@ -274,6 +282,9 @@ export const flowrConfigFileSchema = Joi.object({
 			}).optional().description('Do you want to overwrite (parts) of the builtin definition?')
 		}).optional().description('Semantics regarding how to handle the R environment.')
 	}).description('Configure language semantics and how flowR handles them.'),
+	repl: Joi.object({
+		quickStats: Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.')
+	}).description('Configuration options for the REPL.'),
 	project: Joi.object({
 		resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.')
 	}).description('Project specific configuration options.'),

@@ -4,6 +4,7 @@ import { graphToMermaid, graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import { handleString } from '../core';
+import { VertexType } from '../../../dataflow/graph/vertex';
 
 function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInformation ): string {
 	return out.formatter.format(`Copied ${type} to clipboard (dataflow: ${meta['.meta'].timing + 'ms'}).`,
@@ -46,6 +47,35 @@ export const dataflowStarCommand: ReplCodeCommand = {
 			clipboard.default.writeSync(mermaid);
 			output.stdout(formatInfo(output, 'mermaid url', result));
 		} catch{ /* do nothing this is a service thing */ }
+	}
+};
+
+export const dataflowSilentCommand: ReplCodeCommand = {
+	description:   'Just calculates the DFG, but only prints summary info',
+	isCodeCommand: true,
+	usageExample:  ':dataflowsilent',
+	aliases:       [ 'd#', 'df#' ],
+	script:        false,
+	argsParser:    (args: string) => handleString(args),
+	fn:            async({ output, analyzer }) => {
+		const result = await analyzer.dataflow();
+		const numOfEdges = Array.from(result.graph.edges().flatMap(e => e[1].entries())).length;
+		const numOfVertices = Array.from(result.graph.vertices(true)).length;
+		output.stdout(
+			output.formatter.format(`Dataflow calculated in ${result['.meta'].timing}ms.`,
+				{ color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic }) + '\n' +
+            'Edges:    ' + output.formatter.format(`${String(numOfEdges).padStart(12)}`, { color: Colors.Cyan, effect: ColorEffect.Foreground }) + '\n' +
+            // number of vertices and edges
+            'Vertices: ' + output.formatter.format(`${String(numOfVertices).padStart(12)}`, { color: Colors.Cyan, effect: ColorEffect.Foreground })
+		);
+		const longestVertexType = Math.max(...Object.keys(VertexType).map(vt => vt.length));
+		for(const vertType of Object.values(VertexType)) {
+			const vertsOfType = Array.from(result.graph.verticesOfType(vertType));
+			const longVertexName = Object.entries(VertexType).find(([, v]) => v === vertType)?.[0] ?? vertType;
+			output.stdout(
+				` - ${(longVertexName + ':').padEnd(longestVertexType+1)} ` + output.formatter.format(`${String(vertsOfType.length).padStart(8)}`, { color: Colors.Cyan, effect: ColorEffect.Foreground }).padStart(9, ' ')
+			);
+		}
 	}
 };
 

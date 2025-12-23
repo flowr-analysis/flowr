@@ -224,6 +224,9 @@ ${codeBlock('json', JSON.stringify(
 					}
 				}
 			},
+			repl: {
+				quickStats: false
+			},
 			project: {
 				resolveUnknownPathsOnDisk: true
 			},

@@ -82,7 +82,7 @@ export class Package {
 
 			for(const constraint of versionConstraints) {
 				if(!this.derivedVersion?.intersects(constraint)) {
-					throw Error('Version constraint mismatch!');
+					throw new Error('Version constraint mismatch!');
 				}
 				this.versionConstraints.push(constraint);
 				this.derivedVersion = this.deriveVersion();

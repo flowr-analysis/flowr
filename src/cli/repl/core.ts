@@ -9,7 +9,7 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { splitAtEscapeSensitive } from '../../util/text/args';
-import { FontStyles } from '../../util/text/ansi';
+import { ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
 import { fileProtocol } from '../../r-bridge/retriever';
@@ -127,6 +127,7 @@ export function handleString(code: string) {
 }
 
 async function replProcessStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean): Promise<void> {
+	const time = Date.now();
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase();
 		const processor = getCommand(command);
@@ -157,6 +158,26 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 		}
 	} else {
 		await tryExecuteRShellCommand({ output, analyzer, remainingLine: statement, allowRSessionAccess });
+	}
+
+	if(analyzer.inspectContext().config.repl.quickStats) {
+		try {
+			const duration = Date.now() - time;
+			console.log(output.formatter.format(`[REPL Stats] Processed in ${duration}ms`, {
+				style:  FontStyles.Italic,
+				effect: ColorEffect.Foreground,
+				color:  Colors.White
+			}));
+			const memoryUsage = process.memoryUsage();
+			const memoryUsageStr = Object.entries(memoryUsage).map(([key, value]) => `${key}: ${(value / 1024 / 1024).toFixed(2)} MB`).join(', ');
+			console.log(output.formatter.format(`[REPL Stats] Memory Usage: ${memoryUsageStr}`, {
+				style:  FontStyles.Italic,
+				effect: ColorEffect.Foreground,
+				color:  Colors.White
+			}));
+		} catch{
+			// do nothing, this is just a nice-to-have
+		}
 	}
 }
 

@@ -61,6 +61,8 @@ export interface ProjectQueryResult extends BaseQueryResult {
 	readonly files:    (string | '<inline>')[];
 	/** The licenses of the project. */
 	readonly licenses: ProjectLicenseInfo[];
+	/** The encoding of the project files. */
+	readonly encoding: string;
 	/** The version of the project, if available. */
 	readonly version?: string;
 }

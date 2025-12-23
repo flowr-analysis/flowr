@@ -1,4 +1,7 @@
 import { type FlowrFileProvider, type FileRole , FlowrFile } from '../../../context/flowr-file';
+import type { Info } from 'spdx-expression-parse';
+import parse from 'spdx-expression-parse';
+import { log } from '../../../../util/log';
 
 export type DCF = Map<string, string[]>;
 
@@ -36,9 +39,45 @@ export class FlowrDescriptionFile extends FlowrFile<DCF> {
 		return file instanceof FlowrDescriptionFile ? file : new FlowrDescriptionFile(file);
 	}
 
+	public license(): Info[] | undefined {
+		const licenses = this.content().get('License');
+		if(!licenses) {
+			return undefined;
+		}
+		return parseRLicenseField(...licenses);
+	}
+
 	// TODO: add helper methods to get version, parsed authors, parsed spdx license etc, ...
 }
 
+function cleanUpDescLicense(licenseStr: string): string {
+	// we have to replace '\s[|+&]\s' with ' OR ' or ' AND ' respectively
+	return licenseStr
+		.replace(/\s*[|]\s*/g, ' OR ')
+		.replace(/\s*[&+,]\s*/g, ' AND ')
+		// we have to replace any variant of 'file LICENSE' with just 'LicenseRef-FILE
+		.replace(/file(\s+|-)LICENSE/gi, 'LicenseRef-FILE')
+	;
+}
+
+/**
+ * Parses the 'License' field from an R DESCRIPTION file into SPDX license expressions.
+ * @param licenseField - The 'License' field from the DESCRIPTION file as an array of strings.
+ * @returns An array of SPDX license information objects if parsing was successful.
+ */
+export function parseRLicenseField(...licenseField: string[]): Info[] {
+	const licenses: Info[] = [];
+	for(const licenseEntry of licenseField) {
+		const cleanedLicense = cleanUpDescLicense(licenseEntry);
+		try {
+			const parsed = parse(cleanedLicense);
+			licenses.push(parsed);
+		} catch(e) {
+			log.warn(`Failed to parse license expression '${cleanedLicense}': ${(e as Error).message}`);
+		}
+	}
+	return licenses;
+}
 
 /**
  * Parses the given file in the 'Debian Control Format'.

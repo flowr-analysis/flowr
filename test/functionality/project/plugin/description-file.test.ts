@@ -10,7 +10,7 @@ import {
 import {
 	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
 } from '../../../../src/project/plugins/loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
-import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
+import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { defaultConfigOptions } from '../../../../src/config';
 
 
@@ -30,8 +30,7 @@ Version: 0.0.0.9000
 Authors@R:
     person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
 Description: What the package does (one paragraph).
-License: \`use_mit_license()\`, \`use_gpl3_license()\` or friends to pick a
-    license
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
@@ -62,6 +61,21 @@ Collate:
     'main.R'
     'zzz.R'`));
 	ctx.addFile(new FlowrInlineTextFile('pete.R', 'x <- 2'));
+	ctx.addFile(new FlowrInlineTextFile('another/DESCRIPTION', `Package: mypackage
+Title: What the Package Does (One Line, Title Case)
+Version: 0.0.0.9000
+Authors@R:
+    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
+Description: What the package does (one paragraph).
+License: \`use_mit_license()\`, \`use_gpl3_license()\` or friends to pick a
+    license
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Description: The description of a package usually spans multiple lines.
+    The second and subsequent lines should be indented, usually with four
+    spaces.
+`));
 	ctx.addRequests([{ request: 'file', content: 'pete.R' }]);
 	ctx.resolvePreAnalysis();
 
@@ -76,6 +90,26 @@ Collate:
 			const order = ctx.files.computeLoadingOrder();
 			assert.isNotEmpty(order);
 			assert.deepStrictEqual(order[0], { request: 'file', content: 'pete.R' });
+		});
+
+		test('License parsing', () => {
+			const descFile = ctx.files.getFilesByRole(FileRole.Description);
+			assert.lengthOf(descFile, 2);
+			const descContent = descFile[0];
+			const license = descContent.license();
+			assert.isDefined(license);
+			assert.lengthOf(license, 1);
+			const [first] = license;
+			assert.deepStrictEqual(first, { conjunction: 'and', left: { license: 'MIT' }, right: { license: 'LicenseRef-FILE' } });
+		});
+
+		test('Broken license parsing', () => {
+			const descFile = ctx.files.getFilesByRole(FileRole.Description);
+			assert.lengthOf(descFile, 2);
+			const descContent = descFile[1];
+			const license = descContent.license();
+			assert.isDefined(license);
+			assert.lengthOf(license, 0);
 		});
 	});
 });

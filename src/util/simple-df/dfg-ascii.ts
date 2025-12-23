@@ -75,11 +75,11 @@ export function dfgToAscii(dfg: DataflowGraph): string {
 	const g = new graphlib.Graph();
 	const verts = Array.from(dfg.vertices(true));
 	g.setGraph({
-		rankdir: verts.length < 15 ? 'LR' : 'TB',
-		align:   'UL',
 		nodesep: 1,
-		ranksep: 5,
-		edgesep: 0
+		ranksep: 4,
+		edgesep: 0,
+		rankdir: verts.length < 15 ? 'LR' : 'TB',
+		ranker:  'longest-path',
 	});
 	for(const [id, v] of verts) {
 		let label = recoverName(id, dfg.idMap) ?? v.tag;
@@ -90,9 +90,9 @@ export function dfgToAscii(dfg: DataflowGraph): string {
 
 		g.setNode(String(id), {
 			label,
-			width:  Math.max(3, label.length),
-			height: 4,
-			shape:  'box'
+			width:  Math.max(3, label.length*2),
+			height: 3,
+			shape:  'rectangle'
 		});
 	}
 	const edgesDone = new Set<string>();
@@ -108,7 +108,9 @@ export function dfgToAscii(dfg: DataflowGraph): string {
 			edgesDone.add(`${from}-${to}`);
 		}
 	}
-	layout(g);
+	layout(g, {
+		minlen: 2
+	});
 	const canvas = new AsciiCanvas();
 	renderEdges(g, canvas);
 	renderVertices(dfg, g, canvas);

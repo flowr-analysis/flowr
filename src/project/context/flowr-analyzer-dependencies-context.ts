@@ -3,7 +3,7 @@ import {
 	FlowrAnalyzerPackageVersionsPlugin
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
-import type { FlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
+import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerDependenciesContext}.
@@ -14,7 +14,11 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	/**
 	 * The name of this context.
 	 */
-	readonly name: string;
+	readonly name:             string;
+	/**
+	 * The functions context associated with this dependencies-context.
+	 */
+	readonly functionsContext: ReadOnlyFlowrAnalyzerFunctionsContext;
 	/**
 	 * Get the dependency with the given name, if it exists.
 	 *

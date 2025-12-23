@@ -172,7 +172,7 @@ registerQueryDocumentation('project', {
 		const exampleCode = 'x + 1';
 		return `
 This query returns the information about the analyzed project.
-Currently, this is only the list of file paths included.
+If present, it will incorporate plugins to, e.g., extract author and license information from R package DESCRIPTION files.
 
 ${
 	await showQuery(shell, exampleCode, [{

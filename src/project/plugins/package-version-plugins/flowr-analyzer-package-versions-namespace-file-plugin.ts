@@ -15,7 +15,11 @@ export class FlowrAnalyzerPackageVersionsNamespaceFilePlugin extends FlowrAnalyz
 
 	process(ctx: FlowrAnalyzerContext): void {
 		const nmspcFiles = ctx.files.getFilesByRole(FileRole.Namespace);
-		namespaceFileLog.info(`Found ${nmspcFiles.length} namespace files!`);
+		if(nmspcFiles.length === 0) {
+			namespaceFileLog.warn('No namespace file found, cannot extract package versions.');
+		} else if(nmspcFiles.length > 1) {
+			namespaceFileLog.warn(`Found ${nmspcFiles.length} namespace files, expected exactly one.`);
+		}
 
 		/** this will do the caching etc. for me */
 		const deps = nmspcFiles[0].content() as NamespaceFormat;

@@ -25,7 +25,7 @@ function nodeString(nodeId: NodeId | { id: NodeId, info?: object}, formatter: Ou
 
 function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly CallContextQuerySubKindResult[], idMap: AstIdMap<ParentInformation>): string {
 	const result: string[] = [];
-	for(const { id, calls = [], linkedIds = [], aliasRoots = [] } of results) {
+	for(const { id, calls = [], linkedIds = [], aliasRoots = [] } of results.slice(0,20)) {
 		const node = idMap.get(id);
 		if(node === undefined) {
 			result.push(` ${bold('UNKNOWN: ' + JSON.stringify({ calls, linkedIds }))}`);
@@ -42,6 +42,9 @@ function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly Ca
 			line += ` with ${aliasRoots.length} alias root${aliasRoots.length > 1 ? 's' : ''} (${aliasRoots.map(c => nodeString(c, formatter, idMap)).join(', ')})`;
 		}
 		result.push(line);
+	}
+	if(results.length > 20) {
+		result.push(` ... and ${results.length - 20} more hits`);
 	}
 	return result.join(', ');
 }

@@ -52,8 +52,11 @@ export const ProjectQueryDefinition = {
 			}
 		}
 		result.push(`   ╰ Dataflow Analysis considered ${out.files.length} file${out.files.length === 1 ? '' : 's'}`);
-		for(const file of out.files) {
+		for(const file of out.files.slice(0, 20)) {
 			result.push(`      ╰ \`${file}\``);
+		}
+		if(result.length > 20) {
+			result.push(`      ╰ ... and ${out.files.length - 20} more files`);
 		}
 		return true;
 	},

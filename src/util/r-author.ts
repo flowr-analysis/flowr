@@ -1,7 +1,7 @@
 import { splitAtEscapeSensitive } from './text/args';
 import { isNotUndefined } from './assert';
 import { compactRecord } from './objects';
-import { startAndEndsWith } from './text/strings';
+import { removeRQuotes } from '../r-bridge/retriever';
 
 /** https://r-pkgs.org/description.html#sec-description-authors-at-r */
 export enum AuthorRole {
@@ -132,7 +132,7 @@ function parseRoles(roleStr: string | undefined): AuthorRole[] {
 	const parts = splitVector(roleStr);
 	for(const part of parts) {
 		const trimmed = part.trim();
-		const roleValue = trimQuotes(trimmed);
+		const roleValue = removeRQuotes(trimmed);
 		if(Object.values(AuthorRole).includes(roleValue as AuthorRole)) {
 			roles.push(roleValue as AuthorRole);
 		}
@@ -140,10 +140,6 @@ function parseRoles(roleStr: string | undefined): AuthorRole[] {
 	return roles;
 }
 
-function trimQuotes(trimmed: string) {
-	return (startAndEndsWith(trimmed, '"') || startAndEndsWith(trimmed, "'")) ?
-		trimmed.slice(1, -1) : trimmed;
-}
 
 function parseComments(commentStr: string | undefined): { contents: string[], orcid: string | undefined } | undefined {
 	if(!commentStr) {
@@ -154,11 +150,11 @@ function parseComments(commentStr: string | undefined): { contents: string[], or
 	let orcid: string | undefined = undefined;
 	for(const part of parts) {
 		const trimmed = part.trim();
-		const commentValue = trimQuotes(trimmed);
+		const commentValue = removeRQuotes(trimmed);
 		if(/ORCID\s*=/ig.test(commentValue)) {
 			const orcidIndex = commentValue.indexOf('=');
 			if(orcidIndex !== -1) {
-				orcid = trimQuotes(commentValue.slice(orcidIndex + 1).trim());
+				orcid = removeRQuotes(commentValue.slice(orcidIndex + 1).trim());
 			}
 			continue;
 		}
@@ -173,9 +169,7 @@ function assignArg(argMap: Map<string, string | undefined>, split: {
 }) {
 	argMap.set(
 		split.name as (typeof defaultPosArgNames)[number],
-		split.value && (startAndEndsWith(split.value, '"') || startAndEndsWith(split.value, "'"))
-			? split.value.slice(1, -1)
-			: (split.value?.length === 0 ? undefined : split.value)
+		split.value === undefined || split.value?.length === 0 ? undefined : removeRQuotes(split.value)
 	);
 }
 
@@ -192,10 +186,10 @@ function parseRPersonCall(personCall: string): RAuthorInfo | undefined {
 	const parArgs = joinPartsWithVectors(splitAtEscapeSensitive(inner, false, ','));
 	const argMap: Map<(typeof defaultPosArgNames)[number], string | undefined> = new Map();
 	const unnamed: string[] = [];
-	for(let i = 0; i < parArgs.length; i++) {
-		const split = splitArgNameValue(parArgs[i].trim());
+	for(const arg of parArgs) {
+		const split = splitArgNameValue(arg.trim());
 		if(!split.name) {
-			unnamed.push(parArgs[i].trim());
+			unnamed.push(arg.trim());
 			continue;
 		}
 		assignArg(argMap, split);

@@ -9,7 +9,7 @@ import { platformBasename } from '../../../dataflow/internal/process/functions/c
 
 export const descriptionFileLog = log.getSubLogger({ name: 'flowr-analyzer-loading-order-description-file-plugin' });
 
-const DescriptionFilePattern = /^(DESCRIPTION|DESCRIPTION\.txt)$/i;
+const DescriptionFilePattern = /^DESCRIPTION(\.(txt|in))?$/i;
 
 /**
  * This plugin provides support for R `DESCRIPTION` files.

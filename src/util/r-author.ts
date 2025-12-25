@@ -216,3 +216,25 @@ function parseRPersonCall(personCall: string): RAuthorInfo | undefined {
 		orcid:   comments?.orcid
 	});
 }
+
+const classicalAuthorRegex = /^(?<name>[^<[(]+)(\s*<(?<email>[^>]+)>)?(\s*\[(?<roles>[^\]]+)])?(\s*\((?<comment>[^)]+)\))?$/;
+/**
+ * In contrast to `parseRAuthorString`, this function parses simple textual author strings,
+ * like `First Middle Last <email> [roles] (comment)...`. It does not support the full R `person()` syntax.
+ */
+export function parseTextualAuthorString(authorString: string): RAuthorInfo[] {
+	const parts = authorString.split(/\s+and\s+/);
+	const authors: RAuthorInfo[] = [];
+	for(const part of parts) {
+		const match = classicalAuthorRegex.exec(part.trim());
+		if(match && match.groups) {
+			authors.push(compactRecord({
+				name:    match.groups['name'].trim().split(/\s+/),
+				email:   match.groups['email'] ? match.groups['email'].trim() : undefined,
+				roles:   match.groups['roles'] ? match.groups['roles'].trim().split(/\s*,\s*/).map(r => r as AuthorRole) : [],
+				comment: match.groups['comment'] ? [match.groups['comment'].trim()] : undefined
+			}));
+		}
+	}
+	return authors;
+}

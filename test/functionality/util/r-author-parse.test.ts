@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import type { RAuthorInfo } from '../../../src/util/r-author';
-import { parseRAuthorString , AuthorRole } from '../../../src/util/r-author';
+import { parseTextualAuthorString , parseRAuthorString , AuthorRole } from '../../../src/util/r-author';
 
 describe('R Author Parsing', function() {
 	const cases = [
@@ -96,5 +96,43 @@ describe('R Author Parsing', function() {
 	test.each(cases)('parse($input)', ({ input, expect }) => {
 		const result = parseRAuthorString(input);
 		assert.deepStrictEqual(result, expect);
+	});
+
+	describe('classical parsing', () => {
+		const classicalCases = [
+			{
+				input:  'First Last <first.last@email.com> [aut, cre]',
+				expect: [{
+					name:  ['First', 'Last'],
+					email: 'first.last@email.com',
+					roles: [AuthorRole.Author, AuthorRole.Creator]
+				}] satisfies RAuthorInfo[]
+			},
+			{
+				input:  'First Last <first.last@email.com> (Comment)',
+				expect: [{
+					name:    ['First', 'Last'],
+					email:   'first.last@email.com',
+					roles:   [],
+					comment: ['Comment']
+				}]
+			},
+			{
+				input:  'A B. c <abc@b.edu> and A D. e <lol>',
+				expect: [{
+					name:  ['A', 'B.', 'c'],
+					email: 'abc@b.edu',
+					roles: [],
+				}, {
+					name:  ['A', 'D.', 'e'],
+					email: 'lol',
+					roles: [],
+				}]
+			}
+		];
+		test.each(classicalCases)('parseTextual($input)', ({ input, expect }) => {
+			const result = parseTextualAuthorString(input);
+			assert.deepStrictEqual(result, expect);
+		});
 	});
 });

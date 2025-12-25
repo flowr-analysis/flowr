@@ -1,6 +1,6 @@
 import { type FlowrFileProvider, type FileRole , FlowrFile } from '../../../context/flowr-file';
 import type { RAuthorInfo } from '../../../../util/r-author';
-import { parseRAuthorString } from '../../../../util/r-author';
+import { parseTextualAuthorString , parseRAuthorString } from '../../../../util/r-author';
 import { splitAtEscapeSensitive } from '../../../../util/text/args';
 import type { DeepReadonly } from 'ts-essentials';
 import type { RLicenseElementInfo } from '../../../../util/r-license';
@@ -57,8 +57,12 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 	 * Returns the parsed authors from the `Authors@R` field in the DESCRIPTION file.
 	 */
 	public authors(): RAuthorInfo[] | undefined {
-		const authors = this.content().get('Authors@R');
-		return authors ? authors.flatMap(parseRAuthorString) : undefined;
+		let authors = this.content().get('Authors@R');
+		if(authors) {
+			return authors.flatMap(parseRAuthorString);
+		}
+		authors = this.content().get('Authors') ?? this.content().get('Author');
+		return authors?.flatMap(parseTextualAuthorString);
 	}
 }
 

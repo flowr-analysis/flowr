@@ -19,6 +19,7 @@ import { log } from '../../util/log';
 import fs from 'fs';
 import path from 'path';
 import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
+import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
@@ -36,13 +37,13 @@ export interface RProjectAnalysisRequest {
 export type RAnalysisRequest = RParseRequest | RProjectAnalysisRequest
 
 export type RoleBasedFiles = {
-    [FileRole.Description]: FlowrDescriptionFile[];
-	[FileRole.News]:           FlowrNewsFile[];
+	[FileRole.Description]: FlowrDescriptionFile[];
+	[FileRole.News]:        FlowrNewsFile[];
+	[FileRole.Namespace]:   FlowrNamespaceFile[];
     /* currently no special support */
-    [FileRole.Namespace]:   FlowrFileProvider[];
-    [FileRole.Source]:      FlowrFileProvider[];
-    [FileRole.Data]:        FlowrFileProvider[];
-    [FileRole.Other]:       FlowrFileProvider[];
+    [FileRole.Source]:   FlowrFileProvider[];
+    [FileRole.Data]:     FlowrFileProvider[];
+    [FileRole.Other]:    FlowrFileProvider[];
 }
 
 function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, role?: FileRole): FlowrFileProvider {

@@ -3,7 +3,6 @@ import { SemVer } from 'semver';
 import { Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { FileRole } from '../../context/flowr-file';
-import type { NamespaceFormat } from '../file-plugins/files/flowr-namespace-file';
 import { log } from '../../../util/log';
 
 export const namespaceFileLog = log.getSubLogger({ name: 'flowr-analyzer-package-versions-namespace-file-plugin' });
@@ -22,7 +21,7 @@ export class FlowrAnalyzerPackageVersionsNamespaceFilePlugin extends FlowrAnalyz
 		}
 
 		/** this will do the caching etc. for me */
-		const deps = nmspcFiles[0].content() as NamespaceFormat;
+		const deps = nmspcFiles[0].content();
 
 		for(const pkg in deps) {
 			const info = deps[pkg];

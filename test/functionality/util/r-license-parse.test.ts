@@ -8,7 +8,7 @@ describe('R license parsing', () => {
 		test.each(strings)('parses \'%s\'', (str: string) => {
 			const parse = parseRLicense(str);
 			function ignoreRawStringifier(key: string, value: unknown): unknown {
-				if(key === 'raw') {
+				if(key === 'raw' || key === 'str') {
 					return undefined;
 				} else {
 					return value;

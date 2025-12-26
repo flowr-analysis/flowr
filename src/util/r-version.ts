@@ -33,6 +33,7 @@ function normalizeAdditionalVersionsToPrerelease(version: string): string {
 		newVersion = `${prefix}${match[1]}-${newPrerelease}`;
 		version = version.slice(match.index + match[0].length);
 	}
+	newVersion += version; // append any remaining part
 	return newVersion;
 }
 
@@ -70,9 +71,6 @@ export function parseRRange(range: string): Range & { str: string } {
 	try {
 		return makeRange(range, range);
 	} catch{/* try to normalize R range to SemVer */}
-	try {
-		const normalized = normalizeAdditionalVersionsToPrerelease(range);
-		return makeRange(normalized, range);
-	} catch{ /* do nothing */ }
-	return makeRange(range.replace(/==/g, '='), range);
+	const normalized = normalizeAdditionalVersionsToPrerelease(range);
+	return makeRange(normalized.replace(/==/g, '='), range);
 }

@@ -1,6 +1,7 @@
-import { Range } from 'semver';
+import type { Range } from 'semver';
 import { guard } from '../../../util/assert';
 import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
+import { parseRRange } from '../../../util/r-version';
 
 export type PackageType = 'package' | 'system' | 'r';
 
@@ -96,13 +97,13 @@ export class Package {
 
 	public deriveVersion(): Range | undefined {
 		return this.versionConstraints.length > 0
-			? new Range(this.versionConstraints.map(c => c.raw).join(' '))
+			? parseRRange(this.versionConstraints.map(c => c.raw).join(' '))
 			: undefined;
 	}
 
 	public static parsePackageVersionRange(constraint?: string, version?: string): Range | undefined {
 		if(version) {
-			return constraint ? new Range(constraint + version) : new Range(version);
+			return constraint ? parseRRange(constraint + version) : parseRRange(version);
 		} else {
 			return undefined;
 		}

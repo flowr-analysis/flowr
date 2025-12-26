@@ -8,13 +8,14 @@ function makeVersion(version: string, original: string) {
 	return semver;
 }
 
-const AdditionalVersionRegex = /(\d+\.\d+\.\d+)(?<additional>(\.\d+)+)(-(?<prerelease>[0-9A-Za-z-.]+))?/g;
 /**
  * For every version `a.b.c.d.e...` converts it to `a.b.c-d.e...`
- * If the version already contains a prerelease part, this is prepended:
+ * If the version already contains a prerelease part, it is appended:
  * `a.b.c.d.e-prerelease...` becomes `a.b.c-d.e-prerelease...`
  */
 function normalizeAdditionalVersionsToPrerelease(version: string): string {
+	const AdditionalVersionRegex = /(\d+\.\d+\.\d+)(?<additional>(\.\d+)+)(-(?<prerelease>[0-9A-Za-z-.]+))?/g;
+
 	let match: RegExpExecArray | null;
 	let newVersion = '';
 	// repeat until no more matches

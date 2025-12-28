@@ -24,8 +24,8 @@ export const CallGraphQueryDefinition = {
 	executor:        executeCallGraphQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'call-graph'>['call-graph'];
-		result.push(`Query: ${bold('dataflow', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push(`   ╰ [Dataflow Graph](${graphToMermaidUrl(out.graph)})`);
+		result.push(`Query: ${bold('call-graph', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(`   ╰ [Call Graph](${graphToMermaidUrl(out.graph)})`);
 		return true;
 	},
 	schema: Joi.object({

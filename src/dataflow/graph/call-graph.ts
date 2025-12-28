@@ -17,8 +17,6 @@ import { builtInId } from '../environments/built-in';
 export type CallGraph = DataflowGraph<
 	Required<DataflowGraphVertexFunctionCall | DataflowGraphVertexFunctionDefinition>
 >
-
-// TODO: wiki-analyzer doku on callgraph link to a new wiki page explaining the call-graph!; explain cg as a *view* of the DFG
 /**
  * Computes the call graph from the given dataflow graph.
  */
@@ -32,7 +30,7 @@ export function computeCallGraph(graph: DataflowGraph): CallGraph {
 			processFunctionDefinition(vert, undefined, graph, result, visited);
 		}
 	}
-	return result; // pruneTransitiveEdges(result);
+	return result;
 }
 
 function processCds(vtx: DataflowGraphVertexInfo, graph: DataflowGraph, result: CallGraph, visited: Set<NodeId>): void {
@@ -54,9 +52,8 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 	result.addVertex(vtx, undefined as unknown as REnvironmentInformation, true);
 	processCds(vtx, graph, result, visited);
 	visited.add(vtx.id);
-	// TODO: handle origins!
 
-	// for each calls, resolve the targets
+	// for each call, resolve the targets
 	const tars = getAllFunctionCallTargets(vtx.id, graph, vtx.environment);
 	for(const tar of tars) {
 		const targetVtx = graph.getVertex(tar, true);

@@ -208,8 +208,9 @@ export interface GeneralDocContext {
 	 * Creates a link to the `wiki/Setup` wiki page with the link text `Setup`.
 	 * @param pageName - The name of the wiki page to link to.
 	 * @param linkText - Optional text to display for the link. If not provided, the page name will be used.
+	 * @param segment  - An optional segment within the page to link to (e.g., a header anchor).
 	 */
-	linkPage(pageName: ValidWikiDocumentTargetsNoSuffix, linkText?: string): string;
+	linkPage(pageName: ValidWikiDocumentTargetsNoSuffix, linkText?: string, segment?: string): string;
 
 	/**
 	 * Generates a link to a code file in the code base.
@@ -315,10 +316,10 @@ export function makeDocContextForTypes(
 				inlineTypes
 			}) as string;
 		},
-		linkPage(pageName: ValidWikiDocumentTargetsNoSuffix, linkText?: string): string {
+		linkPage(pageName: ValidWikiDocumentTargetsNoSuffix, linkText?: string, segment?: string): string {
 			const text = linkText ?? pageName.split('/').pop() ?? pageName;
 			const link = pageName.toLowerCase().replace(/ /g, '-');
-			return `[${text}](${FlowrGithubRef}/${link})`;
+			return `[${text}](${FlowrGithubRef}/${link}${segment ? `#${segment}` : ''})`;
 		},
 		linkCode(path: PathLike, lineNumber?: number): string {
 			const lnk = lineNumber ? `${path.toString()}#L${lineNumber}` : path.toString();

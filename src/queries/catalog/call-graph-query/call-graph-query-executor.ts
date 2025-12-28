@@ -7,7 +7,7 @@ import type { BasicQueryData } from '../../base-query-format';
  */
 export async function executeCallGraphQuery({ analyzer }: BasicQueryData, queries: readonly CallGraphQuery[]): Promise<CallGraphQueryResult> {
 	if(queries.length !== 1) {
-		log.warn('Dataflow query expects only up to one query, but got', queries.length);
+		log.warn('Call Graph query expects only up to one query, but got', queries.length);
 	}
 	return {
 		'.meta': {

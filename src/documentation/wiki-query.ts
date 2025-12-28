@@ -45,6 +45,7 @@ import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { executeFileQuery } from '../queries/catalog/files-query/files-query-executor';
+import { executeCallGraphQuery } from '../queries/catalog/call-graph-query/call-graph-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -138,6 +139,27 @@ Using the example code \`${exampleCode}\`, the following query returns the dataf
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'dataflow'
+	}], { showCode: true, collapseQuery: true })
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('call-graph', {
+	name:             'Call-Graph Query',
+	type:             'active',
+	shortDescription: 'Returns the call graph of the given code.',
+	functionName:     executeCallGraphQuery.name,
+	functionFile:     '../queries/catalog/call-graph-query/call-graph-query-executor.ts',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const exampleCode = 'x + 1';
+		return `
+This query calculates and returns the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')} of the given code.
+
+Using the example code \`${exampleCode}\`, the following query returns the dataflow graph of the code:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'call-graph'
 	}], { showCode: true, collapseQuery: true })
 }
 		`;

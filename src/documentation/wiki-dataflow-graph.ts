@@ -1,5 +1,9 @@
 import { DataflowGraph } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition , VertexType } from '../dataflow/graph/vertex';
+import {
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexFunctionDefinition,
+	VertexType
+} from '../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType, edgeTypeToName, splitEdgeTypes } from '../dataflow/graph/edge';
 import { DataflowGraphBuilder, emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
@@ -13,14 +17,19 @@ import {
 } from './doc-util/doc-files';
 import { jsonReplacer } from '../util/json';
 import { printEnvironmentToMarkdown } from './doc-util/doc-env';
-import { type ExplanationParameters, type SubExplanationParameters , getAllEdges, getAllVertices } from './data/dfg/doc-data-dfg-util';
+import {
+	type ExplanationParameters,
+	getAllEdges,
+	getAllVertices,
+	type SubExplanationParameters
+} from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { getTypesFromFolder, printHierarchy } from './doc-util/doc-types';
 import { block, details, section } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import path from 'path';
 import { lastJoin, prefixLines } from './doc-util/doc-general';
-import { type NodeId , recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId, recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import {
@@ -51,6 +60,8 @@ import type { GeneralDocContext } from './wiki-mk/doc-context';
 import type { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { KnownParser } from '../r-bridge/parser';
 import type { MermaidMarkdownMark } from '../util/mermaid/info';
+import { FlowrAnalyzer } from '../project/flowr-analyzer';
+import { showQuery } from './doc-util/doc-query';
 
 async function subExplanation(parser: KnownParser, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(parser, code, expectedSubgraph);
@@ -604,7 +615,7 @@ Besides this being a theoretically "shorter" way of defining a function, this be
 
 `,
 		code:             'function() 1',
-		expectedSubgraph: emptyGraph().defineFunction('1@function', [0], { graph: new Set('0'), in: [], out: [], unknownReferences: [], entryPoint: 0, environment: defaultEnv() })
+		expectedSubgraph: emptyGraph().defineFunction('1@function', [0], { graph: new Set('0'), in: [{ nodeId: 0, controlDependencies: [], type: ReferenceType.Constant, name: undefined }], out: [], unknownReferences: [], entryPoint: 0, environment: defaultEnv() })
 	}, []]);
 
 	const results = [];
@@ -879,6 +890,8 @@ In summary, we discuss the following topics:
 - [Control Dependencies](#control-dependencies)
 - [Dataflow Information](#dataflow-information)
 	- [Unknown Side Effects](#unknown-side-effects)
+- [Perspectives on the Dataflow Graph](#perspectives)
+    - [Call Graph Perspective](#perspectives-cg)
 - [Working with the Dataflow Graph](#dfg-working)
 
 Please be aware that the accompanied [dataflow information](#dataflow-information) (${ctx.link('DataflowInformation')}) returned by _flowR_ contains things besides the graph,
@@ -1096,6 +1109,27 @@ Additionally, we express this by a ${linkEdgeName(EdgeType.Reads)} edge.
 	`;
 		})()}
  
+${section('Perspectives on the Dataflow Graph', 2, 'perspectives')}
+
+For certain questions, handling the *full* dataflow graph may be too complex or unnecessary, given that you might have to consider edge interactions, or trace
+transitive relationships by yourself.
+Perspectives are simplified views on the dataflow graph, tailored to specific questions, which still comply with the ${ctx.link(DataflowGraph)} interface
+so you can use them as drop-in replacements for the full dataflow graph. Although, please be aware that this does not mean that every function will work correctly&mdash;a
+call graph will no longer contain information on variables, for example.
+
+${section('Call Graphs', 3, 'perspectives-cg')}
+
+These are simplified views on the dataflow graph, following the ${ctx.link('CallGraph')} type.
+It can be obtained, e.g., by ${ctx.linkM(FlowrAnalyzer, 'callGraph')}.
+These graphs only contain function definitions and function calls as vertices, and ${linkEdgeName(EdgeType.Calls)} edges.
+Consider the following example:
+
+${codeBlock('r', 'f <- function() f()')}
+
+The resulting call graph looks like this:
+
+${await showQuery(treeSitter, 'f <- function() f()', [{ type: 'call-graph' }])}
+
 ${section('Working with the Dataflow Graph', 2, 'dfg-working')}
 
 The ${ctx.link('DataflowInformation')} is the core result of _flowR_ and summarizes a lot of information.

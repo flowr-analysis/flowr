@@ -5,7 +5,7 @@ import { arrayEqual } from '../../util/collections/arrays';
 import { VertexType } from './vertex';
 import { type DataflowGraphEdge , edgeTypesToNames, splitEdgeTypes } from './edge';
 import { type NodeId , recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IdentifierReference } from '../environments/identifier';
+import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments/diff';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { diffControlDependencies } from '../info';
@@ -245,8 +245,48 @@ export function diffVertices(ctx: GraphDiffContext): void {
 					...ctx,
 					position: `${ctx.position}Vertex ${id} differs in subflow graph. `
 				});
+				diffReferenceLists(id, lInfo.subflow.in, rInfo.subflow.in, {
+					...ctx,
+					position: `${ctx.position}Vertex ${id} differs in subflow *in* refs. `
+				});
+				diffReferenceLists(id, lInfo.subflow.out, rInfo.subflow.out, {
+					...ctx,
+					position: `${ctx.position}Vertex ${id} differs in subflow *out* refs. `
+				});
+				diffReferenceLists(id, lInfo.subflow.unknownReferences, rInfo.subflow.unknownReferences, {
+					...ctx,
+					position: `${ctx.position}Vertex ${id} differs in subflow *unknown* refs. `
+				});
 			}
 		}
+	}
+}
+
+function diffReferenceLists(fn: NodeId, a: readonly IdentifierReference[] | readonly IdentifierDefinition[] | undefined, b: readonly IdentifierReference[] | readonly IdentifierDefinition[] | undefined, ctx: GenericDifferenceInformation<GraphDifferenceReport>): void {
+	// sort by id
+	if(a === undefined || b === undefined) {
+		if(a !== b) {
+			ctx.report.addComment(
+				`${ctx.position}${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`,
+				{ tag: 'vertex', id: fn }
+			);
+		}
+		return;
+	}
+	if(a.length !== b.length) {
+		ctx.report.addComment(
+			`${ctx.position}Differs in number of references. ${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`,
+			{ tag: 'vertex', id: fn }
+		);
+		return;
+	}
+	const aSorted = [...a].sort((x, y) => x.nodeId.toString().localeCompare(y.nodeId.toString()));
+	const bSorted = [...b].sort((x, y) => x.nodeId.toString().localeCompare(y.nodeId.toString()));
+	for(let i = 0; i < aSorted.length; ++i) {
+		diffIdentifierReferences(aSorted[i], bSorted[i], {
+			...ctx,
+			position: `${ctx.position}In reference #${i} ("${aSorted[i].name ?? '?'}", id: ${aSorted[i].nodeId ?? '?'}) `,
+		});
 	}
 }
 

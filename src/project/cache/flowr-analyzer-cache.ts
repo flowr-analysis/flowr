@@ -16,6 +16,8 @@ import type { ControlFlowInformation } from '../../control-flow/control-flow-gra
 import type { CfgKind } from '../cfg-kind';
 import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 import { FlowrAnalyzerControlFlowCache } from './flowr-analyzer-controlflow-cache';
+import type { CallGraph } from '../../dataflow/graph/call-graph';
+import { computeCallGraph } from '../../dataflow/graph/call-graph';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
     parser:  Parser;
@@ -39,6 +41,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	private args:             FlowrAnalyzerCacheOptions<Parser>;
 	private pipeline:         AnalyzerPipelineExecutor<Parser> = undefined as unknown as AnalyzerPipelineExecutor<Parser>;
 	private controlFlowCache: FlowrAnalyzerControlFlowCache = undefined as unknown as FlowrAnalyzerControlFlowCache;
+	private callGraphCache:   CallGraph | undefined = undefined;
 
 	protected constructor(args: FlowrAnalyzerCacheOptions<Parser>) {
 		super();
@@ -173,5 +176,23 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 */
 	public peekControlflow(kind: CfgKind, simplifications: readonly CfgSimplificationPassName[] | undefined): ControlFlowInformation | undefined {
 		return this.controlFlowCache.peek(kind, simplifications);
+	}
+
+	/**
+	 * Get the call graph for the request, computing if necessary.
+	 * @param force - Do not use the cache, instead force new analyses.
+	 */
+	public async callGraph(force?: boolean): Promise<CallGraph> {
+		if(!this.callGraphCache || force) {
+			this.callGraphCache = computeCallGraph((await this.dataflow(force)).graph);
+		}
+		return this.callGraphCache;
+	}
+
+	/**
+	 * Get the call graph for the request if already available, otherwise return `undefined`.
+	 */
+	public peekCallGraph(): CallGraph | undefined {
+		return this.callGraphCache;
 	}
 }

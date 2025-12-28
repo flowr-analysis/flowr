@@ -129,7 +129,7 @@ export class DocReadme extends DocMaker<'README.md'> {
 		super('README.md', module.filename, 'flowR README', false);
 	}
 
-	public async text({ treeSitter }: DocMakerArgs): Promise<string> {
+	public async text({ treeSitter, ctx }: DocMakerArgs): Promise<string> {
 		const dateOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
 
 		return `
@@ -194,7 +194,7 @@ ${await documentReplSession(treeSitter, [{
    `), '    ')}
 
 * 📚 **dependency analysis**\\
-  Given your analysis project, flowR offers a plethora of so-called [queries](${FlowrWikiBaseRef}/Query-API) to get more information about your code.
+  Given your analysis project, flowR offers a plethora of so-called ${ctx.linkPage('wiki/Query API', 'queries')} to get more information about your code.
   An important query is the [dependencies query](${FlowrWikiBaseRef}/Query-API#dependencies-query), which shows you the library your project needs,
   the data files it reads, the scripts it sources, and the data it outputs.
   
@@ -205,10 +205,10 @@ The following showcases the dependency view of the [Visual Studio Code extension
   
   `), '    ')}
 
-* 🚀 **fast data- and control-flow graphs**\\
+* 🚀 **fast call-graph, data-, and control-flow graphs**\\
   Within just ${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"social-science" Benchmark Suite (tree-sitter)'), 1) + ' ms', 'This measurement is automatically fetched from the latest benchmark!') + '</i>'} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)}), 
   _flowR_ can analyze the data- and control-flow of the average real-world R script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
-  and consult the [wiki pages](${FlowrWikiBaseRef}/Dataflow-Graph) for more details on the dataflow graph.
+  and consult the ${ctx.linkPage('wiki/Dataflow Graph', 'wiki pages')} for more details on the dataflow graphs as well as call graphs.
 
 ${prefixLines(details('Example: Generating a dataflow graph with flowR', `
 You can investigate flowR's analyses using the [REPL](${FlowrWikiBaseRef}/Interface#using-the-repl).

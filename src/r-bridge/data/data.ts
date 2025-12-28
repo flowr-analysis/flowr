@@ -218,6 +218,12 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							]
 						},
 						{
+							name:        'Recursion',
+							id:          'recursion',
+							supported:   'fully',
+							description: '_Recognize and resolve recursive calls like `f(3)` inside the definition of `f`, ..._'
+						},
+						{
 							name:        'Anonymous Calls',
 							id:          'call-anonymous',
 							supported:   'fully',

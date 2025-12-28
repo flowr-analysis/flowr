@@ -11,11 +11,12 @@ export async function executeNormalizedAstQuery({ analyzer }: BasicQueryData, qu
 	if(queries.length !== 1) {
 		log.warn('Normalized-Ast query expects only up to one query, but got', queries.length);
 	}
+	const startTime = Date.now();
+	const normalized = await analyzer.normalize();
 	return {
 		'.meta': {
-			/* there is no sense in measuring a get */
-			timing: 0
+			timing: Date.now() - startTime
 		},
-		normalized: await analyzer.normalize()
+		normalized
 	};
 }

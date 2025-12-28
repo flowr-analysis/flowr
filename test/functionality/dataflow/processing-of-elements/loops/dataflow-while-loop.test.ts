@@ -22,7 +22,7 @@ describe.sequential('While', withShell(shell => {
 		.constant('0')
 	);
 	assertDataflow(label('assignment in loop body', ['while-loop', 'logical', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers']), shell, 'while (TRUE) { x <- 3 }', emptyGraph()
-		.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [builtInId('<-')], controlDependencies: [{ id: 7, when: true }], origin: ['builtin:assignment'] })
+		.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [builtInId('<-'), 4], onlyBuiltIn: true, controlDependencies: [{ id: 7, when: true }], origin: ['builtin:assignment'] })
 		.calls('5', builtInId('<-'))
 		.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [builtInId('{')], controlDependencies: [{ id: 7, when: true }], origin: ['builtin:expression-list'] })
 		.calls('6', builtInId('{'))
@@ -39,7 +39,7 @@ describe.sequential('While', withShell(shell => {
 		.reads('12', '2')
 		.call('5', '-', [argumentInCall('3'), argumentInCall('4')], { returns: [], reads: [builtInId('-'), '3', '4'], onlyBuiltIn: true, origin: ['builtin:default'] })
 		.calls('5', builtInId('-'))
-		.call('6', '<-', [argumentInCall('2'), argumentInCall('5')], { returns: ['2'], reads: [builtInId('<-')], origin: ['builtin:assignment'] })
+		.call('6', '<-', [argumentInCall('2'), argumentInCall('5')], { returns: ['2'], reads: [builtInId('<-'), 5], origin: ['builtin:assignment'], onlyBuiltIn: true })
 		.calls('6', builtInId('<-'))
 		.call('7', '(', [argumentInCall('6')], { returns: ['6'], reads: [builtInId('(')], origin: ['builtin:default'] })
 		.calls('7', builtInId('('))

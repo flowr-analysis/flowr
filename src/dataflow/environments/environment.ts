@@ -13,6 +13,8 @@ import type { FlowrConfigOptions } from '../../config';
 import { mergeDefinitionsForPointer } from './define';
 import { uniqueMergeValuesInDefinitions } from './append';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import * as v8 from 'v8';
+import type { FlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
@@ -232,17 +234,67 @@ export class Environment implements IEnvironment {
 		return newEnv;
 	}
 
-	toJSON(): Jsonified {
+	public toJSON(excludeBuiltIn = false): Jsonified {
 		return this.builtInEnv ? {
 			id:         this.id,
-			parent:     this.parent,
+			parent:     this.parent ? this.parent.toJSON(excludeBuiltIn) : undefined, // walk up the chain
 			builtInEnv: this.builtInEnv,
-			memory:     this.memory,
+			memory:     excludeBuiltIn ? undefined as unknown as BuiltInMemory: this.memory, // discard if this is a builtin env
 		} : {
 			id:     this.id,
-			parent: this.parent,
+			parent: this.parent.toJSON(excludeBuiltIn),
 			memory: this.memory,
 		};
+	}
+
+	public toSerializable(): Uint8Array {
+		try {
+			const json = this.toJSON(true);
+			console.log(this.builtInEnv);
+			if(this.builtInEnv){
+				// erase content, as we will restore this later
+				json.memory = undefined as unknown as BuiltInMemory;
+			}
+			return v8.serialize(json);
+		} catch(err: unknown) {
+			console.warn('Failed to serialize env:', err);
+			return new Uint8Array();
+		}
+	}
+
+	public static fromSerializable(data: Uint8Array, ctx?: FlowrAnalyzerContext): Environment {
+		try {
+			const json = v8.deserialize(data) as Jsonified;
+			return this.fromJSON(json, ctx);
+		} catch(err) {
+			console.warn('Failed to deserialize env:', err);
+			return new Environment(undefined as unknown as Environment);
+		}
+	}
+
+	public static fromJSON(json: Jsonified, ctx?: FlowrAnalyzerContext): Environment {
+		if(!json){
+			console.warn('Failed to deserialize env json as nothing was provided');
+			return new Environment(undefined as unknown as Environment);
+		}
+
+		// handle the builtin env
+		if(json.builtInEnv){
+			if(!ctx){
+				console.error('Failed to deserialize builtin env as no context was provided');
+				return new Environment(undefined as unknown as Environment, true);
+			}
+			// just retrieve from FlowrAnalyzerContext -> FlowrEnvironmentContext
+			return ctx.env.builtInEnvironment as Environment;
+		}
+		const parent = json.parent ? Environment.fromJSON(json.parent, ctx) : undefined as unknown as Environment;
+		if(!parent && json.parent){
+			console.warn('Env Parent could not be deserialized');
+		}
+
+		const env = new Environment(parent);
+		env.memory = json.memory instanceof Map ? json.memory : new Map(json.memory);
+		return env;
 	}
 }
 
@@ -273,6 +325,34 @@ export interface REnvironmentInformation {
 	readonly level:   number
 }
 
+export interface SerializedREnvironmentInformation {
+    readonly current: Uint8Array;
+    readonly level:   number;
+}
+
+/**
+ *
+ */
+export function toSerializedREnvironmentInformation(env: REnvironmentInformation): SerializedREnvironmentInformation {
+	return {
+		level:   env.level,
+		current: env.current.toSerializable()
+	};
+}
+
+/**
+ *
+ */
+export function fromSerializedREnvironmentInformation(
+	data: SerializedREnvironmentInformation,
+	flowrContext?: FlowrAnalyzerContext
+): REnvironmentInformation {
+	return {
+		level:   data.level,
+		current: Environment.fromSerializable(data.current, flowrContext)
+	};
+}
+
 /**
  * Helps to serialize an environment, but replaces the built-in environment with a placeholder.
  */
@@ -284,4 +364,175 @@ export function builtInEnvJsonReplacer(k: unknown, v: unknown): unknown {
 	}
 }
 
+export interface EnvironmentDiff {
+    isEqual: boolean;
+    issues:  EnvironmentIssue[];
+}
 
+export interface EnvironmentIssue {
+    path:     string;
+    kind:     EnvironmentIssueType;
+    comment?: string;
+}
+
+export type EnvironmentIssueType = 'type-mismatch'
+                                | 'value-mismatch'
+                                | 'missing-key'
+                                | 'extra-key'
+                                | 'map-size-mismatch'
+                                | 'set-size-mismatch'
+                                | 'function-found'
+                                | 'builtin-mismatch';
+
+/**
+ *
+ */
+export function diffEnvironments(a: Environment, b: Environment): EnvironmentDiff {
+	const issues: EnvironmentIssue[] = [];
+
+	// Built-in envs must match by identity
+	if(a.builtInEnv || b.builtInEnv) {
+		if(a !== b) {
+			issues.push({
+				path: 'env',
+				kind: 'builtin-mismatch'
+			});
+		}
+		return {
+			isEqual: issues.length === 0,
+			issues
+		};
+	}
+
+	// Compare memory
+	diffDeep(a.memory, b.memory, 'memory', issues);
+
+	// Compare parents recursively
+	if(a.parent || b.parent) {
+		if(!a.parent || !b.parent) {
+			issues.push({
+				path: 'parent',
+				kind: 'value-mismatch'
+			});
+		} else {
+			const parentDiff = diffEnvironments(a.parent, b.parent);
+			issues.push(
+				...parentDiff.issues.map(i => ({
+					...i,
+					path: `parent.${i.path}`
+				}))
+			);
+		}
+	}
+
+	return {
+		isEqual: issues.length === 0,
+		issues
+	};
+}
+
+
+function diffDeep(
+	a: unknown,
+	b: unknown,
+	path: string,
+	issues: EnvironmentIssue[]
+): void {
+	if(a === b) {
+		return;
+	}
+
+	if(typeof a !== typeof b) {
+		issues.push({ path, kind: 'type-mismatch' });
+		return;
+	}
+
+	if(typeof a === 'function' || typeof b === 'function') {
+		issues.push({ path, kind: 'function-found' });
+		return;
+	}
+
+	if(a === null || b === null) {
+		if(a !== b) {
+			issues.push({ path, kind: 'value-mismatch' });
+		}
+		return;
+	}
+
+	if(Array.isArray(a)) {
+		if(!Array.isArray(b)) {
+			issues.push({ path, kind: 'type-mismatch' });
+			return;
+		}
+		if(a.length !== b.length) {
+			issues.push({ path, kind: 'value-mismatch' });
+		}
+		a.forEach((v, i) =>
+			diffDeep(v, b[i], `${path}[${i}]`, issues)
+		);
+		return;
+	}
+
+	if(a instanceof Map) {
+		if(!(b instanceof Map)) {
+			issues.push({ path, kind: 'type-mismatch' });
+			return;
+		}
+		if(a.size !== b.size) {
+			issues.push({ path, kind: 'map-size-mismatch' });
+		}
+		for(const [k, v] of a) {
+			if(!b.has(k)) {
+				issues.push({ path: `${path}.${String(k)}`, kind: 'missing-key' });
+			} else {
+				diffDeep(v, b.get(k), `${path}.${String(k)}`, issues);
+			}
+		}
+		for(const k of b.keys()) {
+			if(!a.has(k)) {
+				issues.push({ path: `${path}.${String(k)}`, kind: 'extra-key' });
+			}
+		}
+		return;
+	}
+
+	if(a instanceof Set) {
+		if(!(b instanceof Set)) {
+			issues.push({ path, kind: 'type-mismatch' });
+			return;
+		}
+		if(a.size !== b.size) {
+			issues.push({ path, kind: 'set-size-mismatch' });
+		}
+		return;
+	}
+
+	if(typeof a === 'object') {
+		const ak = Object.keys(a);
+		const bk = Object.keys(b as object);
+
+		for(const k of ak) {
+			if(!(k in (b as object))) {
+				issues.push({ path: `${path}.${k}`, kind: 'missing-key' });
+			} else {
+				diffDeep(
+					(a as Record<string, unknown>)[k],
+					(b as Record<string, unknown>)[k],
+					`${path}.${k}`,
+					issues
+				);
+			}
+		}
+
+		for(const k of bk) {
+			if(!(k in (a))) {
+				issues.push({ path: `${path}.${k}`, kind: 'extra-key' });
+			}
+		}
+		return;
+	}
+
+	if(a !== b) {
+		issues.push({ path, kind: 'value-mismatch' });
+	}
+}

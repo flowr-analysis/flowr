@@ -72,7 +72,7 @@ export function processFunctionDefinition<OtherInfo>(
 
 	readInParameters = findPromiseLinkagesForParameters(subgraph, readInParameters, paramsEnvironments, body);
 
-	const readInBody = [...body.in, ...body.unknownReferences];
+	const readInBody = body.in.concat(body.unknownReferences);
 
 	// there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
 	const remainingRead = linkInputs(readInBody, paramsEnvironments, readInParameters.slice(), body.graph, true /* functions do not have to be called */);
@@ -83,7 +83,7 @@ export function processFunctionDefinition<OtherInfo>(
 	if(remainingRead.length > 0) {
 		const nameIdShares = produceNameSharedIdMap(remainingRead);
 
-		const definedInLocalEnvironment = new Set([...bodyEnvironment.current.memory.values()].flat().map(d => d.nodeId));
+		const definedInLocalEnvironment = new Set(Array.from(bodyEnvironment.current.memory.values()).flat().map(d => d.nodeId));
 
 		// Everything that is in body.out but not within the local environment populated for the function scope is a potential escape ~> global definition
 		const globalBodyOut = body.out.filter(d => !definedInLocalEnvironment.has(d.nodeId));

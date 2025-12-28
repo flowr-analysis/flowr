@@ -55,7 +55,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('5@foo', '1@function')
 		, { context: 'call-graph', resolveIdsAsCriterion: true }
 	);
-	/*
+
 	assertDataflow(label('recursion', ['function-calls', 'function-definitions', 'recursion']),
 		ts,
 		`fib <- function(n) {
@@ -79,9 +79,31 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 				graph:             new Set([1,5,6,7,11,13,14,15,18,19,20,22,24,25,26,28,29,31,32]),
 				environment:       defaultEnv().pushEnv().defineParameter('n', '1@n', '1@n')
 			})
+			.calls('1@function', '3@return').calls('1@function', '5@return')
+			.call('2@if', 'if', [argumentInCall(7), argumentInCall('2@return'), argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true })
+			.calls('2@if', builtInId('if-then-else')).calls('2@if', 14).calls('2@if', 7)
+			.call(14, '{', [argumentInCall(13)], { omitArgs: true, onlyBuiltIn: true, controlDependencies: [{ id: 15, when: true }] })
+			.calls(14, builtInId('expression-list')).calls(14, 13)
+			.call('3@return', 'return', [argumentInCall('3@return')], { onlyBuiltIn: true, omitArgs: true, origin: ['builtin:return'], controlDependencies: [{ id: 15, when: true }] })
+			.calls('3@return', builtInId('return'))
+			.call(7, '<=', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true })
+			.calls(7, builtInId('default'))
+			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: ['builtin:return'], controlDependencies: [] })
+			.calls('5@return', builtInId('return')).calls('5@return', '5@+')
+			.call('5@+', '+', [argumentInCall('5@fib'), argumentInCall(28)], { onlyBuiltIn: true, omitArgs: true, controlDependencies: [] })
+			.calls('5@+', builtInId('default')).calls('5@+', 22).calls('5@+', 28)
+			.call(22, 'fib', [argumentInCall(24)], { omitArgs: true, controlDependencies: [] })
+			.calls(22, '1@function').calls(22, 20)
+			.call(28, 'fib', [argumentInCall(26)], { omitArgs: true, controlDependencies: [] })
+			.calls(28, '1@function').calls(28, 26)
+			.call(20, '-', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true, controlDependencies: [] })
+			.calls(20, builtInId('default'))
+			.call(26, '-', [argumentInCall('1@n'), argumentInCall('1@2')], { onlyBuiltIn: true, omitArgs: true, controlDependencies: [] })
+			.calls(26, builtInId('default'))
 		, { context: 'call-graph', resolveIdsAsCriterion: true }
 	);
 
+	/*
 		assertDataflow(label('with alias', []),
 			ts,
 			`

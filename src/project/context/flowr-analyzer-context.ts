@@ -1,11 +1,11 @@
 import {
-	SerializedFlowrAnalyzerFilesContext ,
+	type SerializedFlowrAnalyzerFilesContext ,
 	FlowrAnalyzerFilesContext,
 	type RAnalysisRequest,
 	type ReadOnlyFlowrAnalyzerFilesContext
 } from './flowr-analyzer-files-context';
 import {
-	SerializedFlowrAnalyzerDependenciesContext ,
+	type SerializedFlowrAnalyzerDependenciesContext ,
 	FlowrAnalyzerDependenciesContext,
 	type ReadOnlyFlowrAnalyzerDependenciesContext
 } from './flowr-analyzer-dependencies-context';

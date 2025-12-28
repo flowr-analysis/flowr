@@ -1,5 +1,5 @@
 import type { DataflowInformation } from './info';
-import { type DataflowProcessorInformation, type DataflowProcessors, DeserializeDataflowProcessorInformation, processDataflowFor, SerializeDataflowProcessorInformation } from './processor';
+import { type DataflowProcessorInformation, type DataflowProcessors, processDataflowFor, SerializeDataflowProcessorInformation } from './processor';
 import { processUninterestingLeaf } from './internal/process/process-uninteresting-leaf';
 import { processSymbol } from './internal/process/process-symbol';
 import { processFunctionCall } from './internal/process/functions/call/default-call-handling';
@@ -12,7 +12,7 @@ import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument
 import { rangeFrom } from '../util/range';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
+import { mergeDataflowInformation, standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
 import { extractCfgQuick, getCallsInCfg } from '../control-flow/extract-cfg';
 import { EdgeType } from './graph/edge';
@@ -28,6 +28,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 import { Threadpool } from './parallel/threadpool';
 import { dataflowLogger } from './logger';
+import type { SourceFilePayload } from './parallel/task-registry';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -104,22 +105,22 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
  * (e.g., in the event of a `source` call).
  * For the actual, canonical fold entry point, see {@link processDataflowFor}.
  */
-export function produceDataFlowGraph<OtherInfo>(
+export async function produceDataFlowGraph<OtherInfo>(
 	parser:      Parser<KnownParserType>,
 	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
 	ctx:         FlowrAnalyzerContext,
-): DataflowInformation & { cfgQuick: ControlFlowInformation | undefined } {
+): Promise<DataflowInformation & { cfgQuick: ControlFlowInformation | undefined }> {
 
 	// we freeze the files here to avoid endless modifications during processing
 	const files = completeAst.ast.files.slice();
 
-	//ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
+	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
 
 	const features = ctx.features;
 	const fileParallelization = features.isEnabled('paralleliseFiles');
 	const workerPool = fileParallelization ? ctx.workerPool ?? new Threadpool() : undefined;
 
-	const dfInfo: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
+	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
 		environment:         ctx.env.makeCleanEnv(),
@@ -129,20 +130,10 @@ export function produceDataFlowGraph<OtherInfo>(
 		ctx
 	};
 
-	const serializeddfData = SerializeDataflowProcessorInformation<OtherInfo & ParentInformation>(dfInfo);
-
-	const clone = structuredClone(serializeddfData);
-	const dfData = DeserializeDataflowProcessorInformation<OtherInfo & ParentInformation>(clone, processors, parser);
-
-	console.log(dfInfo);
-	console.log(dfData);
-
-	dfData.ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
-
 	if(fileParallelization && workerPool){
 		// parallelise the dataflow graph analysis
 		// submit all files
-		const _result = workerPool.submitTasks(
+		/* const _result = workerPool.submitTasks(
 			'testPool',
 			files.map((file, i) => ({
 				index:        i,
@@ -159,6 +150,24 @@ export function produceDataFlowGraph<OtherInfo>(
 		const df = undefined as unknown as DataflowInformation;
 		if(!df) {
 			return df;
+		}
+ */
+		// parse data
+		const parsed = SerializeDataflowProcessorInformation(dfData);
+		const result = await workerPool.submitTasks<SourceFilePayload<OtherInfo>, DataflowInformation>(
+			'parallelFiles',
+			files.map((file, i) => ({
+				index: i,
+				file,
+				data:  parsed,
+			}))
+		);
+
+		let df = result[0];
+
+		// merge dataflowinformation via folding
+		for(let i = 1; i < result.length; i++){
+			df = mergeDataflowInformation('file-'+i, dfData, files[i].filePath, df, result[i]);
 		}
 
 		// finally, resolve linkages

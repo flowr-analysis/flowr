@@ -18,7 +18,7 @@ export type CallGraph = DataflowGraph<
 	Required<DataflowGraphVertexFunctionCall | DataflowGraphVertexFunctionDefinition>
 >
 
-// TODO: wiki-analyzer doku on callgraph link to a new wiki page explaining the call-graph!
+// TODO: wiki-analyzer doku on callgraph link to a new wiki page explaining the call-graph!; explain cg as a *view* of the DFG
 /**
  * Computes the call graph from the given dataflow graph.
  */

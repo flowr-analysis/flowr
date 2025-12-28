@@ -105,7 +105,8 @@ export class DataflowGraphBuilder<
 			builtInEnvironment?:  IEnvironment,
 			controlDependencies?: ControlDependency[],
 			origin?:              FunctionOriginInformation[]
-			link?:                DataflowGraphVertexAstLink
+			link?:                DataflowGraphVertexAstLink,
+			omitArgs?:            boolean
 		},
 		asRoot: boolean = true) {
 		const onlyBuiltInAuto = info?.reads?.length === 1 && isBuiltIn(info?.reads[0]);
@@ -120,7 +121,9 @@ export class DataflowGraphBuilder<
 			origin:      info?.origin ?? [ getDefaultProcessor(name) ?? 'function' ],
 			link:        info?.link
 		}, asRoot);
-		this.addArgumentLinks(id, args);
+		if(!info?.omitArgs) {
+			this.addArgumentLinks(id, args);
+		}
 		if(info?.returns) {
 			for(const ret of info.returns) {
 				this.returns(id, ret);

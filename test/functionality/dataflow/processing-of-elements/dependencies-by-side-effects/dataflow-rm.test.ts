@@ -15,7 +15,7 @@ describe.sequential('Dataflow Plot Dependencies', withShell(shell => {
 			.returns('1@<-', '1@x')
 			.use('2@x')
 			.constant('1@2')
-			.call('1@<-', '<-', [argumentInCall('1'), argumentInCall('0')], { onlyBuiltIn: true, origin: ['builtin:assignment'], reads: [builtInId('<-')] })
+			.call('1@<-', '<-', [argumentInCall('1'), argumentInCall('0')], { onlyBuiltIn: true, origin: ['builtin:assignment'], reads: [builtInId('<-'), 1] })
 			.calls('1@<-', builtInId('<-'))
 			.reads('2@x', '1@x')
 			.use('3@x'), // there is no link between 3@x and 1@x

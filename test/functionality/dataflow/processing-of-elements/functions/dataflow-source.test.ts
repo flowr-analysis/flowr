@@ -35,7 +35,7 @@ describe('source', withTreeSitter(parser => {
 		.reads('5', 'simple-1:1-1:6-0')
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [builtInId('source')] })
 		.calls('3', builtInId('source'))
-		.call('simple-1:1-1:6-2', '<-', [argumentInCall('simple-1:1-1:6-0'), argumentInCall('simple-1:1-1:6-1')], { returns: ['simple-1:1-1:6-0'], reads: [builtInId('<-')] })
+		.call('simple-1:1-1:6-2', '<-', [argumentInCall('simple-1:1-1:6-0'), argumentInCall('simple-1:1-1:6-1')], { returns: ['simple-1:1-1:6-0'], reads: [builtInId('<-'), 'simple-1:1-1:6-1'], onlyBuiltIn: true })
 		.calls('simple-1:1-1:6-2', builtInId('<-'))
 		.addControlDependency('simple-1:1-1:6-2', '3', true)
 		.call('7', 'cat', [argumentInCall('5')], { returns: [], reads: [builtInId('cat')], environment: defaultEnv().defineVariable('N', 'simple-1:1-1:6-0', 'simple-1:1-1:6-2') })
@@ -54,14 +54,14 @@ describe('source', withTreeSitter(parser => {
 		.reads('12', 'simple-3:1-3:6-0')
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [builtInId('source')] })
 		.calls('3', builtInId('source'))
-		.call('simple-1:1-1:6-2', '<-', [argumentInCall('simple-1:1-1:6-0'), argumentInCall('simple-1:1-1:6-1')], { returns: ['simple-1:1-1:6-0'], reads: [builtInId('<-')] })
+		.call('simple-1:1-1:6-2', '<-', [argumentInCall('simple-1:1-1:6-0'), argumentInCall('simple-1:1-1:6-1')], { returns: ['simple-1:1-1:6-0'], reads: [builtInId('<-'), 'simple-1:1-1:6-1'], onlyBuiltIn: true })
 		.calls('simple-1:1-1:6-2', builtInId('<-'))
 		.addControlDependency('simple-1:1-1:6-2', '3', true)
-		.call('6', '<-', [argumentInCall('4'), argumentInCall('5')], { returns: ['4'], reads: [builtInId('<-')], environment: defaultEnv().defineVariable('N', 'simple-1:1-1:6-0', 'simple-1:1-1:6-2') })
+		.call('6', '<-', [argumentInCall('4'), argumentInCall('5')], { returns: ['4'], reads: [builtInId('<-'), 5], onlyBuiltIn: true, environment: defaultEnv().defineVariable('N', 'simple-1:1-1:6-0', 'simple-1:1-1:6-2') })
 		.calls('6', builtInId('<-'))
 		.call('10', 'source', [argumentInCall('8')], { returns: [], reads: [builtInId('source')], environment: defaultEnv().defineVariable('N', '4', '6') })
 		.calls('10', builtInId('source'))
-		.call('simple-3:1-3:6-2', '<-', [argumentInCall('simple-3:1-3:6-0'), argumentInCall('simple-3:1-3:6-1')], { returns: ['simple-3:1-3:6-0'], reads: [builtInId('<-')], environment: defaultEnv().defineVariable('N', '4', '6') })
+		.call('simple-3:1-3:6-2', '<-', [argumentInCall('simple-3:1-3:6-0'), argumentInCall('simple-3:1-3:6-1')], { returns: ['simple-3:1-3:6-0'], reads: [builtInId('<-'), 'simple-3:1-3:6-1'], onlyBuiltIn: true, environment: defaultEnv().defineVariable('N', '4', '6') })
 		.calls('simple-3:1-3:6-2', builtInId('<-'))
 		.addControlDependency('simple-3:1-3:6-2', '10', true)
 		.call('14', 'cat', [argumentInCall('12')], { returns: [], reads: [builtInId('cat')], environment: defaultEnv().defineVariable('N', 'simple-3:1-3:6-0', 'simple-3:1-3:6-2') })
@@ -87,7 +87,7 @@ describe('source', withTreeSitter(parser => {
 		.reads('10', 'simple-1:10-1:15-0')
 		.call('6', 'source', [argumentInCall('4')], { returns: [], reads: [builtInId('source')], controlDependencies: [{ id: '8', when: true }] })
 		.calls('6', builtInId('source'))
-		.call('simple-1:10-1:15-2', '<-', [argumentInCall('simple-1:10-1:15-0'), argumentInCall('simple-1:10-1:15-1')], { returns: ['simple-1:10-1:15-0'], reads: [builtInId('<-')] })
+		.call('simple-1:10-1:15-2', '<-', [argumentInCall('simple-1:10-1:15-0'), argumentInCall('simple-1:10-1:15-1')], { returns: ['simple-1:10-1:15-0'], reads: [builtInId('<-'), 'simple-1:10-1:15-1'], onlyBuiltIn: true })
 		.calls('simple-1:10-1:15-2', builtInId('<-'))
 		.addControlDependency('simple-1:10-1:15-2', '6', true)
 		.addControlDependency('simple-1:10-1:15-2', '8', true)
@@ -122,7 +122,7 @@ describe('source', withTreeSitter(parser => {
 	}, emptyGraph()
 		.use('recursive2-2:1-2:6-1', 'x')
 		.reads('recursive2-2:1-2:6-1', '0')
-		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
+		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 		.calls('2', builtInId('<-'))
 		.call('6', 'source', [argumentInCall('4')], {
 			returns:     [],
@@ -176,7 +176,7 @@ describe('source', withTreeSitter(parser => {
 	assertDataflow(label('non-constant source (but constant alias)', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'strings', 'newlines', 'unnamed-arguments']), parser, 'x <- "simple"\nsource(x)', emptyGraph()
 		.use('4', 'x')
 		.reads('4', '0')
-		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
+		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 		.calls('2', builtInId('<-'))
 		.call('6', 'source', [argumentInCall('4')], {
 			returns:     [],
@@ -186,8 +186,9 @@ describe('source', withTreeSitter(parser => {
 		.calls('6', builtInId('source'))
 		.defineVariable('simple-2:1-2:6-0', 'N', { definedBy: ['simple-2:1-2:6-1', 'simple-2:1-2:6-2'] })
 		.call('simple-2:1-2:6-2', '<-', [argumentInCall('simple-2:1-2:6-0'), argumentInCall('simple-2:1-2:6-1')], {
-			returns: ['simple-2:1-2:6-0'],
-			reads:   [builtInId('<-')]
+			returns:     ['simple-2:1-2:6-0'],
+			reads:       [builtInId('<-'), 'simple-2:1-2:6-1'],
+			onlyBuiltIn: true
 		})
 		.calls('simple-2:1-2:6-2', builtInId('<-'))
 		.addControlDependency('simple-2:1-2:6-2', '6', true)
@@ -204,8 +205,9 @@ describe('source', withTreeSitter(parser => {
 			.calls('3', builtInId('source'))
 			.argument('3', '1')
 			.call('closure1-1:1-1:6-8', '<-', [argumentInCall('closure1-1:1-1:6-0'), argumentInCall('closure1-1:1-1:6-7')], {
-				returns: ['closure1-1:1-1:6-0'],
-				reads:   [builtInId('<-')]
+				returns:     ['closure1-1:1-1:6-0'],
+				reads:       [builtInId('<-'), 'closure1-1:1-1:6-7'],
+				onlyBuiltIn: true
 			})
 			.calls('closure1-1:1-1:6-8', builtInId('<-'))
 			.addControlDependency('closure1-1:1-1:6-8', '3', true)
@@ -219,7 +221,8 @@ describe('source', withTreeSitter(parser => {
 			.argument('7', '6')
 			.call('7', '<-', [argumentInCall('4'), argumentInCall('6')], {
 				returns:     ['4'],
-				reads:       [builtInId('<-')],
+				reads:       [builtInId('<-'), 6],
+				onlyBuiltIn: true,
 				environment: defaultEnv().defineFunction('f', 'closure1-1:1-1:6-0', 'closure1-1:1-1:6-8')
 			})
 			.calls('7', builtInId('<-'))
@@ -280,7 +283,7 @@ describe('source', withTreeSitter(parser => {
 		parser, 'x <- 2\nsource("closure2")\nf()\nprint(x)', emptyGraph()
 			.use('10', 'x')
 			.reads('10', 'closure2-2:1-2:6-3')
-			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
+			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 			.calls('2', builtInId('<-'))
 			.argument('2', ['1', '0'])
 			.call('6', 'source', [argumentInCall('4')], {
@@ -292,14 +295,16 @@ describe('source', withTreeSitter(parser => {
 			.argument('6', '4')
 			.call('closure2-2:1-2:6-5', '<<-', [argumentInCall('closure2-2:1-2:6-3'), argumentInCall('closure2-2:1-2:6-4')], {
 				returns:     ['closure2-2:1-2:6-3'],
-				reads:       [builtInId('<<-')],
+				reads:       [builtInId('<<-'), 'closure2-2:1-2:6-4'],
+				onlyBuiltIn: true,
 				environment: defaultEnv().pushEnv()
 			}, false)
 			.calls('closure2-2:1-2:6-5', builtInId('<<-'))
 			.argument('closure2-2:1-2:6-5', ['closure2-2:1-2:6-4', 'closure2-2:1-2:6-3'])
 			.call('closure2-2:1-2:6-8', '<-', [argumentInCall('closure2-2:1-2:6-0'), argumentInCall('closure2-2:1-2:6-7')], {
 				returns:     ['closure2-2:1-2:6-0'],
-				reads:       [builtInId('<-')],
+				reads:       [builtInId('<-'), 'closure2-2:1-2:6-7'],
+				onlyBuiltIn: true,
 				environment: defaultEnv().defineVariable('x', '0', '2')
 			})
 			.calls('closure2-2:1-2:6-8', builtInId('<-'))

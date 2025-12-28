@@ -9,11 +9,12 @@ export async function executeCallGraphQuery({ analyzer }: BasicQueryData, querie
 	if(queries.length !== 1) {
 		log.warn('Call Graph query expects only up to one query, but got', queries.length);
 	}
+	const startTime = Date.now();
+	const graph = await analyzer.callGraph();
 	return {
 		'.meta': {
-			/* there is no sense in measuring a get */
-			timing: 0
+			timing: Date.now() - startTime
 		},
-		graph: await analyzer.callGraph()
+		graph
 	};
 }

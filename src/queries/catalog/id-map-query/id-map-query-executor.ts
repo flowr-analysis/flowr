@@ -10,11 +10,12 @@ export async function executeIdMapQuery({ analyzer }: BasicQueryData, queries: r
 		log.warn('Id-Map query expects only up to one query, but got', queries.length);
 	}
 
+	const startTime = Date.now();
+	const idMap = (await analyzer.normalize()).idMap;
 	return {
 		'.meta': {
-			/* there is no sense in measuring a get */
-			timing: 0
+			timing: Date.now() - startTime
 		},
-		idMap: (await analyzer.normalize()).idMap
+		idMap
 	};
 }

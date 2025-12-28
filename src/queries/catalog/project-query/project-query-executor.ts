@@ -11,6 +11,7 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 	if(queries.length !== 1) {
 		log.warn('Project query expects only up to one query, but got', queries.length);
 	}
+	const startTime = Date.now();
 	const withDf = queries.some(q => q.withDf);
 	// we need to know what is considered by the analyzer
 	if(withDf) {
@@ -21,8 +22,7 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 	const desc: FlowrDescriptionFile | undefined = descFile[0];
 	return {
 		'.meta': {
-			/* there is no sense in measuring a get */
-			timing: 0
+			timing: Date.now() - startTime
 		},
 		files:    Array.from(analyzer.inspectContext().files.consideredFilesList()),
 		authors:  desc?.authors(),

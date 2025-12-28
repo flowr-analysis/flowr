@@ -22,6 +22,7 @@ import { dataflowLogger } from '../logger';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
 import type { BuiltInMemory } from '../environments/built-in';
+import * as v8 from 'v8';
 
 /**
  * Describes the information we store per function body.
@@ -501,6 +502,41 @@ export class DataflowGraph<
 		}
 		return graph;
 	}
+
+	/**
+	 * Serializes the DataflowGraüh into simple Byte Data
+	 * @returns Buffer containing the unsigned data bytes
+	 */
+	public toSerializable(): Uint8Array{
+		try {
+			return v8.serialize(this.toJSON());
+		} catch{
+			// return empty buffer as call failed
+			console.log('Failed');
+			console.log(v8);
+			return new Uint8Array();
+		}
+	}
+
+	/**
+	 * Deserializes from byte data into identical DataflowGraph
+	 * @param buffer - Buffer to reconstruct DataflowGraph from
+	 * @returns DataflowGraph Instance
+	 */
+	public static fromSerializable(buffer: Uint8Array): DataflowGraph {
+		if(buffer.length === 0){
+			dataflowLogger.warn('DataflowGraph: deserialize called with empty buffer.');
+			return new DataflowGraph(undefined);
+		}
+		try {
+			const json = v8.deserialize(buffer) as DataflowGraphJson;
+			return DataflowGraph.fromJson(json);
+		} catch{
+			dataflowLogger.warn('DataflowGraph: deserialize failed on parsing');
+			return new DataflowGraph(undefined);
+		}
+	}
+
 }
 
 function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex, next: Vertex): Vertex {

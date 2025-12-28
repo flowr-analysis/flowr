@@ -28,13 +28,23 @@ export function computeCallGraph(graph: DataflowGraph): CallGraph {
 	for(const [,vert] of graph.vertices(false)) {
 		if(vert?.tag === VertexType.FunctionCall) {
 			processCall(vert, undefined, graph, result, visited);
+		} else if(vert?.tag === VertexType.FunctionDefinition) {
+			processFunctionDefinition(vert, undefined, graph, result, visited);
 		}
 	}
-	console.log([...result.edges()]);
 	return result; // pruneTransitiveEdges(result);
 }
 
-function processCall(vtx: DataflowGraphVertexFunctionCall, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, visited: Set<NodeId>): void {
+function processCds(vtx: DataflowGraphVertexInfo, graph: DataflowGraph, result: CallGraph, visited: Set<NodeId>): void {
+	for(const tar of vtx.cds ?? []) {
+		const targetVtx = graph.getVertex(tar.id, true);
+		if(targetVtx) {
+			processUnknown(targetVtx, undefined, graph, result, visited);
+		}
+	}
+}
+
+function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, visited: Set<NodeId>): void {
 	if(from) {
 		result.addEdge(from, vtx.id, EdgeType.Calls);
 	}
@@ -42,6 +52,7 @@ function processCall(vtx: DataflowGraphVertexFunctionCall, from: NodeId | undefi
 		return;
 	}
 	result.addVertex(vtx, undefined as unknown as REnvironmentInformation, true);
+	processCds(vtx, graph, result, visited);
 	visited.add(vtx.id);
 	// TODO: handle origins!
 
@@ -54,6 +65,15 @@ function processCall(vtx: DataflowGraphVertexFunctionCall, from: NodeId | undefi
 		}
 		processFunctionDefinition(targetVtx, vtx.id, graph, result, visited);
 	}
+	if(vtx.origin !== 'unnamed') {
+		for(const origs of vtx.origin) {
+			if(origs.startsWith('builtin:')) {
+				result.addEdge(vtx.id, builtInId(
+					origs.substring('builtin:'.length)
+				), EdgeType.Calls);
+			}
+		}
+	}
 
 	// handle arguments, traversing the 'reads' and the 'returns' edges
 	for(const [tar, { types }] of graph.outgoingEdges(vtx.id) ?? []) {
@@ -64,17 +84,17 @@ function processCall(vtx: DataflowGraphVertexFunctionCall, from: NodeId | undefi
 		if(!tVtx) {
 			continue;
 		}
-		processArg(tVtx, vtx.id, graph, result, visited);
+		processUnknown(tVtx, vtx.id, graph, result, visited);
 	}
 }
-function processArg(vtx: DataflowGraphVertexInfo, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, visited: Set<NodeId>): void {
+function processUnknown(vtx: DataflowGraphVertexInfo, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, visited: Set<NodeId>): void {
 	switch(vtx.tag) {
 		case VertexType.FunctionCall:
-			processCall(vtx as DataflowGraphVertexFunctionCall, from, graph, result, visited);
+			processCall(vtx, from, graph, result, visited);
 			return;
 		case VertexType.FunctionDefinition:
 			if(from) {
-				graph.addEdge(from, builtInId('function'), EdgeType.Calls);
+				result.addEdge(from, builtInId('function'), EdgeType.Calls);
 			}
 			return;
 		case VertexType.Use:
@@ -92,8 +112,10 @@ function trackAliasedCallsOfUse(vtx: DataflowGraphVertexInfo, from: NodeId | und
 
 
 
-function processFunctionDefinition(vtx: DataflowGraphVertexFunctionDefinition, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, visited: Set<NodeId>): void {
+function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefinition>, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, visited: Set<NodeId>): void {
 	result.addVertex(vtx, undefined as unknown as REnvironmentInformation, true);
+	processCds(vtx, graph, result, visited);
+
 	if(from) {
 		result.addEdge(from, vtx.id, EdgeType.Calls);
 	}
@@ -101,51 +123,7 @@ function processFunctionDefinition(vtx: DataflowGraphVertexFunctionDefinition, f
 	for(const id of s) {
 		const v = graph.getVertex(id, true);
 		if(v) {
-			processArg(v, vtx.id, graph, result, visited);
+			processUnknown(v, vtx.id, graph, result, visited);
 		}
 	}
 }
-
-/*
-function pruneTransitiveEdges(graph: CallGraph): CallGraph {
-	const newGraph: CallGraph = new DataflowGraph(graph.idMap);
-	for(const [,vert] of graph.vertices(true)) {
-		newGraph.addVertex(vert, undefined as unknown as REnvironmentInformation, true);
-	}
-	const foundPaths = new DefaultMap(() => new Set<NodeId>());
-	function hasTransitivePath(from: NodeId, to: NodeId): boolean {
-		const visited = new Set<NodeId>();
-		// TODO: improve
-		const stack: NodeId[] = Array.from(graph.outgoingEdges(from)?.entries()?.map(([id]) => id).filter(f => f !== to) ?? []);
-		while(stack.length > 0) {
-			console.log(stack.length);
-			const current = stack.pop() as NodeId;
-			if(current === to || foundPaths.get(from).has(to) || visited.has(from)) {
-				return true;
-			}
-			visited.add(current);
-			for(const [next] of graph.outgoingEdges(current) ?? []) {
-				if(!visited.has(next)) {
-					stack.push(next);
-				}
-			}
-		}
-		return false;
-	}
-
-	for(const [from, targets] of graph.edges()) {
-		for(const [to, { types }] of targets) {
-			if(!edgeIncludesType(types, EdgeType.Calls) || foundPaths.get(from).has(to)) {
-				continue;
-			}
-			if(!hasTransitivePath(from, to)) {
-				newGraph.addEdge(from, to, EdgeType.Calls);
-			}
-			foundPaths.get(from).add(to);
-
-		}
-	}
-	return newGraph;
-}
-
- */

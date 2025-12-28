@@ -220,7 +220,6 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edgeTypes);
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId);
-			console.log(id, 'EDGE for', target);
 			const style = isBuiltIn(target) ? '-.->' : '-->';
 			mermaid.edgeLines.push(`    ${idPrefix}${id} ${style}|"${[...edgeTypes].map(e => typeof e === 'number' ? edgeTypeToName(e) : e).join(', ')}"| ${idPrefix}${target}`);
 			if(mermaid.mark?.has(id + '->' + target)) {
@@ -234,7 +233,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray;`);
 				if(!mermaid.presentVertices.has(target)) {
 					mermaid.nodeLines.push(`    ${idPrefix}${target}["\`Built-In:\n${escapeMarkdown(String(originalTarget).replace('built-in:', ''))}\`"]`);
-					mermaid.nodeLines.push(`    style ${idPrefix}${target} stroke:gray,fill:lightgray,stroke-width:2px,opacity:.8;`);
+					mermaid.nodeLines.push(`    style ${idPrefix}${target} stroke:gray,fill:gray,stroke-width:2px,opacity:.8;`);
 					mermaid.presentVertices.add(target);
 				}
 			}

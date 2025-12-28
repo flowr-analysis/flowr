@@ -4,7 +4,7 @@ import { label } from '../../_helper/label';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 
 describe('Call Graph Generation', withTreeSitter(ts => {
-	/* assertDataflow(label('sample calls', ['name-normal', 'numbers', 'single-bracket-access']),
+	assertDataflow(label('sample calls', []),
 		ts,
 		`
 		foo <- function(x) {
@@ -14,11 +14,13 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			return(foo(y) * 2)
 		}
 		u <- bar(3)
-		`, emptyGraph(),
+		`, emptyGraph() // TODO: complete
+			.call('2@return', 'return', [])
+		,
 		{ context: 'call-graph' }
-	); */
+	);
 
-	assertDataflow(label('recursion', ['name-normal', 'numbers', 'single-bracket-access']),
+	assertDataflow(label('recursion', []),
 		ts,
 		`
 		fib <- function(n) {
@@ -32,7 +34,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 		{ context: 'call-graph' }
 	);
 
-	/*assertDataflow(label('with alias', ['name-normal', 'numbers', 'single-bracket-access']),
+	assertDataflow(label('with alias', []),
 		ts,
 		`
 		increment <- function(a) {
@@ -45,5 +47,17 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 		u <- add(4)
 		`, emptyGraph(),
 		{ context: 'call-graph' }
-	);*/
+	);
+
+	assertDataflow(label('with alias', []),
+		ts,
+		`
+		increment <- function(a) {
+			return(a + 1)
+		}
+		add <- increment
+		u <- add(4)
+		`, emptyGraph(),
+		{ context: 'call-graph' }
+	);
 }));

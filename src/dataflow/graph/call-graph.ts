@@ -97,20 +97,10 @@ function processUnknown(vtx: DataflowGraphVertexInfo, from: NodeId | undefined, 
 				result.addEdge(from, builtInId('function'), EdgeType.Calls);
 			}
 			return;
-		case VertexType.Use:
-			trackAliasedCallsOfUse(vtx, from, graph, result, visited);
-			return;
 		default:
 			return;
 	}
 }
-
-// TODO:
-function trackAliasedCallsOfUse(vtx: DataflowGraphVertexInfo, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, visited: Set<NodeId>): void {
-
-}
-
-
 
 function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefinition>, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, visited: Set<NodeId>): void {
 	result.addVertex(vtx, undefined as unknown as REnvironmentInformation, true);

@@ -63,6 +63,8 @@ import type { ReplOutput } from '../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../cli/repl/core';
 import type { FilesQuery } from './catalog/files-query/files-query-format';
 import { FilesQueryDefinition } from './catalog/files-query/files-query-format';
+import type { CallGraphQuery } from './catalog/call-graph-query/call-graph-query-format';
+import { CallGraphQueryDefinition } from './catalog/call-graph-query/call-graph-query-format';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -71,6 +73,7 @@ export type Query = CallContextQuery
 	| ConfigQuery
 	| SearchQuery
 	| DataflowQuery
+	| CallGraphQuery
 	| ControlFlowQuery
 	| DataflowLensQuery
 	| FilesQuery
@@ -132,6 +135,7 @@ export const SupportedQueries = {
 	'call-context':         CallContextQueryDefinition,
 	'config':               ConfigQueryDefinition,
 	'control-flow':         ControlFlowQueryDefinition,
+	'call-graph':           CallGraphQueryDefinition,
 	'dataflow':             DataflowQueryDefinition,
 	'dataflow-lens':        DataflowLensQueryDefinition,
 	'df-shape':             DfShapeQueryDefinition,

@@ -16,6 +16,7 @@ import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import { fileProtocol, requestFromInput } from '../r-bridge/retriever';
 import { isFilePath } from '../util/files';
 import type { FlowrFileProvider } from './context/flowr-file';
+import type { CallGraph } from '../dataflow/graph/call-graph';
 
 /**
  * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
@@ -105,6 +106,14 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * Peek at the control flow graph (CFG) for the request, if it was already computed.
 	 */
 	peekControlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind): ControlFlowInformation | undefined;
+	/**
+	 * Calculate the call graph for the request.
+	 */
+	callGraph(force?: boolean): Promise<CallGraph>;
+	/**
+	 * Peek at the call graph for the request, if it was already computed.
+	 */
+	peekCallGraph(): CallGraph | undefined;
 	/**
 	 * Access the query API for the request.
 	 * @param query - The list of queries.
@@ -248,6 +257,14 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public peekControlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind): ControlFlowInformation | undefined {
 		return this.cache.peekControlflow(kind ?? CfgKind.NoDataflow, simplifications);
+	}
+
+	public async callGraph(force?: boolean): Promise<CallGraph> {
+		return this.cache.callGraph(force);
+	}
+
+	public peekCallGraph(): CallGraph | undefined {
+		return this.cache.peekCallGraph();
 	}
 
 	public async query<

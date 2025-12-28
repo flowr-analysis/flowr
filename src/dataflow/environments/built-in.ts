@@ -51,7 +51,7 @@ export type BuiltIn = `built-in:${string}`;
 /**
  * Generate a built-in id for the given name
  */
-export function builtInId(name: string): BuiltIn {
+export function builtInId<T extends string>(name: T): `built-in:${T}` {
 	return `built-in:${name}`;
 }
 

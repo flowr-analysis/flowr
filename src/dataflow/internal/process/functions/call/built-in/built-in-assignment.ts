@@ -449,6 +449,9 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 
 	if(quoteSource) {
 		information.graph.addEdge(rootId, source.info.id, EdgeType.NonStandardEvaluation);
+	} else {
+		// we read the source
+		information.graph.addEdge(rootId, source.info.id, EdgeType.Reads);
 	}
 
 	return {

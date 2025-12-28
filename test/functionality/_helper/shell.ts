@@ -367,6 +367,7 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	 * Which files to add to the project context
 	 */
 	addFiles:              FlowrFileProvider[]
+	context:               'dataflow' | 'call-graph'
 }
 
 function cropIfTooLong(str: string): string {
@@ -379,6 +380,8 @@ function cropIfTooLong(str: string): string {
  * You may want to have a look at the {@link DataflowTestConfiguration} to see what you can configure.
  * Especially the `resolveIdsAsCriterion` and the `expectIsSubgraph` are interesting as they allow you for rather
  * flexible matching of the expected graph.
+ *
+ * Pleas note, that if you pass `context: 'call-graph'` in the userConfig, the call graph will be tested as a view of the dataflow graph.
  */
 export function assertDataflow(
 	name: string | TestLabel,
@@ -389,7 +392,7 @@ export function assertDataflow(
 	startIndexForDeterministicIds = 0,
 	config = cloneConfig(defaultConfigOptions)
 ): void {
-	const effectiveName = decorateLabelContext(name, ['dataflow']);
+	const effectiveName = decorateLabelContext(name, [userConfig?.context ?? 'dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setInput({
@@ -408,7 +411,7 @@ export function assertDataflow(
 		}
 
 		const normalize = await analyzer.normalize();
-		const dataflow = await analyzer.dataflow();
+		const graph = userConfig?.context === 'call-graph' ? await analyzer.callGraph() : (await analyzer.dataflow()).graph;
 
 		// assign the same id map to the expected graph, so that resolves work as expected
 		expected.setIdMap(normalize.idMap);
@@ -419,7 +422,7 @@ export function assertDataflow(
 
 		const report: GraphDifferenceReport = diffOfDataflowGraphs(
 			{ name: 'expected', graph: expected },
-			{ name: 'got',      graph: dataflow.graph },
+			{ name: 'got',      graph: graph },
 			{
 				leftIsSubgraph: userConfig?.expectIsSubgraph
 			}
@@ -430,13 +433,13 @@ export function assertDataflow(
 		} /* v8 ignore start */ catch(e) {
 			const diff = diffGraphsToMermaidUrl(
 				{ label: 'expected', graph: expected, mark: mapProblematicNodesToIds(report.problematic()) },
-				{ label: 'got', graph: dataflow.graph, mark: mapProblematicNodesToIds(report.problematic()) },
+				{ label: 'got', graph: graph, mark: mapProblematicNodesToIds(report.problematic()) },
 				`%% ${JSON.stringify(input).replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') + '\n'
 			);
 
 			console.error('ast', normalizedAstToMermaidUrl(normalize.ast));
 
-			console.error('best-effort reconstruction:\n', printAsBuilder(dataflow.graph));
+			console.error('best-effort reconstruction:\n', printAsBuilder(graph));
 
 			console.error('diff:\n', diff);
 			throw e;

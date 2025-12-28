@@ -103,11 +103,24 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 		, { context: 'call-graph', resolveIdsAsCriterion: true }
 	);
 
-	/*
-		assertDataflow(label('with alias', []),
-			ts,
-			`
-			increment <- function(a) {
+	assertDataflow(label('with alias chain', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
+		ts,
+		`increment <- function(a) {
+				return(a + 1)
+			}
+			add <- increment
+			foo <- add
+			bar <- foo
+			u <- bar(4)
+			`,
+		emptyGraph()
+			.calls('7@bar', '1@function')
+		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+
+	assertDataflow(label('with alias in nest', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
+		ts,
+		`increment <- function(a) {
 				return(a + 1)
 			}
 			add <- function(b) {
@@ -115,21 +128,52 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 				return(inc(b) + 2)
 			}
 			u <- add(4)
-			`, emptyGraph(),
-			{ context: 'call-graph' }
-		);
+			`,
+		emptyGraph()
+			.calls('6@inc', '1@function')
+			.calls('1@function', '2@return')
+			.calls('8@<-', builtInId('assignment'))
+			.calls('8@<-', '8@add')
+		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
 
-		assertDataflow(label('with alias', []),
-			ts,
-			`
+
+	assertDataflow(label('higher-order fn', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
+		ts,
+		`f <- function(g, x) {
+				return(g(x) + 1)
+			}
 			increment <- function(a) {
 				return(a + 1)
 			}
-			add <- increment
-			u <- add(4)
-			`, emptyGraph(),
-			{ context: 'call-graph' }
-		);
-		// TODO: add one with a higher-order function!
-	 */
+			u <- f(increment, 5)
+			`,
+		emptyGraph()
+			.calls('2@g', '4@function')
+		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+
+	assertDataflow(label('ping-pong-rec', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'recursion']),
+		ts,
+		`a <- function(n) {
+				if (n <= 0) {
+					return(0)
+				}
+				return(b(n - 1) + 1)
+		    }
+		 	b <- function(n) {
+				if (n <= 0) {
+					return(0)
+				}
+				return(a(n - 1) + 1)
+			}
+			u <- a(5)
+			`,
+		emptyGraph()
+			.calls('11@a', '1@function')
+			.calls('5@b', '7@function')
+		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+
+
 }));

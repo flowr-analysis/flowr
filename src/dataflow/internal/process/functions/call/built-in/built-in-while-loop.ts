@@ -94,7 +94,7 @@ export function processWhileLoop<OtherInfo>(
 		return condition;
 	}
 
-	const cdTrue = { id: name.info.id, when: true };
+	const cdTrue = [{ id: name.info.id, when: true }];
 	const remainingInputs = linkInputs(
 		makeAllMaybe(body.unknownReferences, information.graph, information.environment, false, cdTrue).concat(
 			makeAllMaybe(body.in, information.graph, information.environment, false, cdTrue)),

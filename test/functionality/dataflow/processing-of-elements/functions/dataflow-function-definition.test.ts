@@ -435,7 +435,7 @@ print(x)`,  emptyGraph()
 			.calls('16', builtInId('return'))
 			.call('18', 'if', [argumentInCall('12'), argumentInCall('16'), EmptyArgument], { returns: ['16'], reads: ['12', builtInId('if')], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11') }, false)
 			.calls('18', builtInId('if'))
-			.call('21', '<-', [argumentInCall('19'), argumentInCall('20')], { returns: ['19'], reads: [builtInId('<-'), 20], onlyBuiltIn: true, controlDependencies: [], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11') }, false)
+			.call('21', '<-', [argumentInCall('19'), argumentInCall('20')], { returns: ['19'], reads: [builtInId('<-'), 20], onlyBuiltIn: true, controlDependencies: [{ id: 18, when: false }], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11') }, false)
 			.calls('21', builtInId('<-'))
 			.call('23', '{', [argumentInCall('8'), argumentInCall('11'), argumentInCall('18'), argumentInCall('21'), argumentInCall('22')], { returns: ['22'], reads: [builtInId('{')], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11').defineVariable('y', '19', '21', []) }, false)
 			.calls('23', builtInId('{'))
@@ -452,13 +452,13 @@ print(x)`,  emptyGraph()
 			.constant('10', undefined, false)
 			.defineVariable('9', 'y', { definedBy: ['10', '11'] }, false)
 			.constant('20', undefined, false)
-			.defineVariable('19', 'y', { definedBy: ['20', '21'], controlDependencies: [] }, false)
+			.defineVariable('19', 'y', { definedBy: ['20', '21'], controlDependencies: [{ id: 18, when: false }] }, false)
 			.defineFunction('24', ['16', '22'], {
 				out: [],
 				in:  [
 					{ nodeId: 8, name: '<-', type: ReferenceType.Function, controlDependencies: undefined },
 					{ nodeId: 11, name: '<-', type: ReferenceType.Function, controlDependencies: undefined },
-					{ nodeId: 21, name: '<-', type: ReferenceType.Function, controlDependencies: [] },
+					{ nodeId: 21, name: '<-', type: ReferenceType.Function, controlDependencies: [{ id: 18, when: false }] },
 					{ nodeId: 18, name: 'if', type: ReferenceType.Function, controlDependencies: undefined },
 					{ nodeId: 16, name: 'return', type: ReferenceType.Function, controlDependencies: [{ id: '18', when: true }] },
 					{ nodeId: 12, name: 'z', type: ReferenceType.Unknown, controlDependencies: [] },

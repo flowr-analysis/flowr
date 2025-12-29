@@ -96,8 +96,8 @@ export function processIfThenElse<OtherInfo>(
 		finalEnvironment = appendEnvironment(thenEnvironment, otherwise ? otherwise.environment : cond.environment);
 	}
 
-	const cdTrue = { id: rootId, when: true };
-	const cdFalse = { id: rootId, when: false };
+	const cdTrue = [{ id: rootId, when: true }];
+	const cdFalse = [{ id: rootId, when: false }];
 	// again within an if-then-else we consider all actives to be read
 	const ingoing: IdentifierReference[] = cond.in.concat(
 		makeThenMaybe ? makeAllMaybe(then?.in, nextGraph, finalEnvironment, false, cdTrue) : then?.in ?? [],

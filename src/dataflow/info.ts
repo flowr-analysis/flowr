@@ -4,6 +4,7 @@ import type { IdentifierReference } from './environments/identifier';
 import type { REnvironmentInformation } from './environments/environment';
 import { DataflowGraph } from './graph/graph';
 import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../util/diff';
+import { isNotUndefined } from '../util/assert';
 
 
 /**
@@ -11,6 +12,7 @@ import type { GenericDifferenceInformation, WriteableDifferenceReport } from '..
  * may have an influence on its execution.
  * Within `if(p) a else b`, `a` and `b` have a control dependency on the `if` (which in turn decides based on `p`).
  * @see {@link happensInEveryBranch} - to check whether a list of control dependencies is exhaustive
+ * @see {@link negateControlDependency} - to easily negate a control dependency
  */
 export interface ControlDependency {
 	/** The id of the node that causes the control dependency to be active (e.g., the condition of an if) */
@@ -19,6 +21,17 @@ export interface ControlDependency {
 	readonly when?:        boolean
 	/** whether this control dependency was created due to iteration (e.g., a loop) */
 	readonly byIteration?: boolean
+}
+
+/**
+ * Negates the given control dependency (i.e., flips the `when` flag).
+ * This keeps undefined `when` values intact as undefined.
+ */
+export function negateControlDependency(cd: ControlDependency): ControlDependency {
+	return {
+		...cd,
+		when: cd.when === undefined ? undefined : !cd.when,
+	};
 }
 
 
@@ -59,10 +72,19 @@ export interface ExitPoint {
 }
 
 /**
- * Adds all non-default exit points to the existing list.
+ * Adds all non-default exit points to the existing list and updates the `invertExitCds` accordingly.
  */
-export function addNonDefaultExitPoints(existing: ExitPoint[], add: readonly ExitPoint[]): void {
-	existing.push(...add.filter(({ type }) => type !== ExitPointType.Default));
+export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: ControlDependency[], activeCds: ControlDependency[] | undefined, add: readonly ExitPoint[]): void {
+	const toAdd = add.filter(({ type }) => type !== ExitPointType.Default);
+	const invertedCds = toAdd.flatMap(e => e.controlDependencies?.filter(
+		icd => !activeCds?.some(e => e.id === icd.id && e.when === icd.when)
+	).map(negateControlDependency)).filter(isNotUndefined);
+	existing.push(...toAdd);
+	for(const icd of invertedCds) {
+		if(!invertExitCds.some(e => e.id === icd.id && e.when === icd.when)) {
+			invertExitCds.push(icd);
+		}
+	}
 }
 
 /** The control flow information for the current DataflowInformation. */

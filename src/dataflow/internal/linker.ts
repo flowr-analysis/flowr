@@ -8,7 +8,7 @@ import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-param
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { edgeIncludesType, EdgeType } from '../graph/edge';
+import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import {
 	type DataflowGraphVertexFunctionCall,
@@ -214,7 +214,7 @@ function linkFunctionCall(
 
 	const functionDefinitionReadIds = new Set<NodeId>();
 	for(const [t, { types }] of edges.entries()) {
-		if(!isBuiltIn(t) && edgeIncludesType(types, FCallLinkReadBits)) {
+		if(!isBuiltIn(t) && edgeDoesNotIncludeType(types, EdgeType.Argument) && edgeIncludesType(types, FCallLinkReadBits)) {
 			functionDefinitionReadIds.add(t);
 		}
 	}

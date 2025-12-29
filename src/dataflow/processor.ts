@@ -2,8 +2,8 @@
  * Based on a two-way fold, this processor will automatically supply scope information
  */
 import type { ControlDependency, DataflowInformation } from './info';
-import type {
-	SerializedNormalizedAst ,
+import {
+	type SerializedNormalizedAst ,
 	DeserializeNormalizedAst,
 	SerializeNormalizedAst,
 	type NormalizedAst,

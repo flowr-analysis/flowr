@@ -308,7 +308,7 @@ export function sourceRequest<OtherInfo>(
 /**
  *
  */
-export function mergeDataflowInformation<OtherInfo>(rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+export function mergeDataflowInformation<OtherInfo>(rootId: NodeId, processorInfo: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 																																																				filePath: string | undefined, information: DataflowInformation, dataflow: DataflowInformation
 ): DataflowInformation{
 
@@ -324,7 +324,7 @@ export function mergeDataflowInformation<OtherInfo>(rootId: NodeId, data: Datafl
 		}
 	}
 
-	data.ctx.files.addConsideredFile(filePath ?? '<inline>');
+	processorInfo.ctx.files.addConsideredFile(filePath ?? '<inline>');
 
 	// update our graph with the sourced file's information
 

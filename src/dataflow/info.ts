@@ -1,9 +1,11 @@
-import type { DataflowProcessorInformation } from './processor';
+import { type DataflowProcessorInformation } from './processor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from './environments/identifier';
-import type { REnvironmentInformation } from './environments/environment';
+import { fromSerializedREnvironmentInformation, toSerializedREnvironmentInformation, type REnvironmentInformation, type SerializedREnvironmentInformation } from './environments/environment';
 import { DataflowGraph } from './graph/graph';
 import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../util/diff';
+import { dataflowLogger } from './logger';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 
 /**
@@ -74,10 +76,13 @@ export interface DataflowCfgInformation {
 }
 
 export interface SerializableDataflowInformation{
+    entryPoint:        NodeId;
+    exitPoints:        readonly ExitPoint[];
     unknownReferences: readonly IdentifierReference[];
     in:                readonly IdentifierReference[];
     out:               readonly IdentifierReference[];
-
+    env:               SerializedREnvironmentInformation;
+    graph:             Uint8Array;
 }
 
 /**
@@ -113,6 +118,68 @@ export interface DataflowInformation extends DataflowCfgInformation {
 	environment:       REnvironmentInformation
 	/** The current constructed dataflow graph */
 	graph:             DataflowGraph
+}
+
+/**
+ *
+ */
+export function SerializeDataflowInformation(data: DataflowInformation): SerializableDataflowInformation {
+	try {
+		return {
+			entryPoint:        data.entryPoint,
+			exitPoints:        [...data.exitPoints],
+			unknownReferences: [...data.unknownReferences],
+			in:                [...data.in],
+			out:               [...data.out],
+			env:               toSerializedREnvironmentInformation(data.environment),
+			graph:             data.graph.toSerializable(),
+		};
+	} catch(err: unknown) {
+		dataflowLogger.warn('Serialization of DataflowInformation failed with: ', err);
+		return {
+			entryPoint:        undefined as unknown as NodeId,
+			exitPoints:        [],
+			unknownReferences: [],
+			in:                [],
+			out:               [],
+			env:               {
+				level:   data.environment.level,
+				current: new Uint8Array(),
+			},
+			graph: new Uint8Array(),
+		};
+	}
+}
+
+/**
+ *
+ */
+export function DeserializeDataflowInformation(
+	data: SerializableDataflowInformation,
+	ctx?: FlowrAnalyzerContext
+): DataflowInformation {
+	try {
+		return {
+			entryPoint:        data.entryPoint,
+			exitPoints:        data.exitPoints,
+			unknownReferences: data.unknownReferences,
+			in:                data.in,
+			out:               data.out,
+			environment:       fromSerializedREnvironmentInformation(data.env, ctx),
+			graph:             DataflowGraph.fromSerializable(data.graph),
+		};
+	} catch(err: unknown) {
+		dataflowLogger.warn('Deserialize of DataflowInformation failed with: ', err);
+		return {
+			entryPoint:        data.entryPoint,
+			exitPoints:        [],
+			unknownReferences: [],
+			in:                [],
+			out:               [],
+			environment:       fromSerializedREnvironmentInformation({ level: data.env.level, current: new Uint8Array() }, ctx),
+			graph:             DataflowGraph.fromSerializable(new Uint8Array()),
+		};
+	}
 }
 
 /**

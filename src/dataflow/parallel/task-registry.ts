@@ -2,16 +2,22 @@ import type { RProjectFile } from '../../r-bridge/lang-4.x/ast/model/nodes/r-pro
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { KnownParser } from '../../r-bridge/parser';
 import { guard } from '../../util/assert';
-import type { DataflowInformation } from '../info';
+import type { SerializableDataflowInformation } from '../info';
+import { initializeCleanDataflowInformation, SerializeDataflowInformation } from '../info';
 import { standaloneSourceFile } from '../internal/process/functions/call/built-in/built-in-source';
-import type { DataflowProcessorInformation } from '../processor';
+import { DeserializeDataflowProcessorInformation, SerializeDataflowProcessorInformation, type SerializedDataflowProcessorInformation } from '../processor';
+import { processors } from '../extractor';
 
 
-export interface SourceFilePayload<OtherInfo>{
-    index:        number;
-    file:         RProjectFile<OtherInfo & ParentInformation>;
-    data:         DataflowProcessorInformation<OtherInfo & ParentInformation>; //switch with serializable version
-    dataflowInfo: DataflowInformation; // not needed
+export interface DataflowPayload<OtherInfo>{
+    index: number;
+    file:  RProjectFile<OtherInfo & ParentInformation>;
+    data:  SerializedDataflowProcessorInformation<OtherInfo & ParentInformation>; //switch with serializable version
+}
+
+export interface DataflowReturnPayload<OtherInfo>{
+    processorInfo: SerializedDataflowProcessorInformation<OtherInfo & ParentInformation>;
+    dataflowData:  SerializableDataflowInformation;
 }
 
 export type TaskType = 'task' | 'subtask' | 'init';
@@ -23,8 +29,6 @@ export type RunSubtask = <TInput, TOutput>(
 
 
 let _parserEngine: KnownParser;
-/** Cache this as it rarely changes */
-let _dataflowProcessorInfo: DataflowProcessorInformation<unknown>;
 
 /**
  *
@@ -36,22 +40,29 @@ export function SetParserEngine(engine: KnownParser | undefined){
 
 export const workerTasks = {
 	parallelFiles: <OtherInfo>(
-		payload: SourceFilePayload<OtherInfo>,
+		payload: DataflowPayload<OtherInfo>,
 		_runSubtask: RunSubtask
-	): DataflowInformation => {
+	): DataflowReturnPayload<OtherInfo> => {
 		// rebuild data
+		const dataflowProcessorInfo = DeserializeDataflowProcessorInformation(payload.data, processors, _parserEngine);
+
+		// create new DataflowInfo
+		const dataflow = initializeCleanDataflowInformation(payload.file.root.info.id, dataflowProcessorInfo);
 
 		const result = standaloneSourceFile<OtherInfo>(
 			payload.index, payload.file,
-			payload.data, payload.dataflowInfo
+			dataflowProcessorInfo, dataflow
 		);
 
-		// convert to clonable Dataflow Information
-		return result;
+		// convert to return payload
+		return {
+			processorInfo: SerializeDataflowProcessorInformation(dataflowProcessorInfo),
+			dataflowData:  SerializeDataflowInformation(result),
+		};
 	},
 
 	testPool: async <OtherInfo>(
-		payload: SourceFilePayload<OtherInfo>,
+		payload: DataflowPayload<OtherInfo>,
 		runSubtask: RunSubtask
 	): Promise<undefined> => {
 		//console.log(`Processing ${JSON.stringify(payload.file)} @ index ${payload.index}`);

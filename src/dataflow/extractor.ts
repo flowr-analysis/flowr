@@ -1,5 +1,5 @@
-import type { DataflowInformation } from './info';
-import { type DataflowProcessorInformation, type DataflowProcessors, processDataflowFor, SerializeDataflowProcessorInformation } from './processor';
+import { DeserializeDataflowInformation, type DataflowInformation } from './info';
+import { type DataflowProcessorInformation, type DataflowProcessors, DeserializeDataflowProcessorInformation, processDataflowFor, SerializeDataflowProcessorInformation } from './processor';
 import { processUninterestingLeaf } from './internal/process/process-uninteresting-leaf';
 import { processSymbol } from './internal/process/process-symbol';
 import { processFunctionCall } from './internal/process/functions/call/default-call-handling';
@@ -28,7 +28,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 import { Threadpool } from './parallel/threadpool';
 import { dataflowLogger } from './logger';
-import type { SourceFilePayload } from './parallel/task-registry';
+import type { DataflowPayload, DataflowReturnPayload } from './parallel/task-registry';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -154,7 +154,7 @@ export async function produceDataFlowGraph<OtherInfo>(
  */
 		// parse data
 		const parsed = SerializeDataflowProcessorInformation(dfData);
-		const result = await workerPool.submitTasks<SourceFilePayload<OtherInfo>, DataflowInformation>(
+		const result = await workerPool.submitTasks<DataflowPayload<OtherInfo>, DataflowReturnPayload<OtherInfo>>(
 			'parallelFiles',
 			files.map((file, i) => ({
 				index: i,
@@ -163,11 +163,20 @@ export async function produceDataFlowGraph<OtherInfo>(
 			}))
 		);
 
-		let df = result[0];
+		const parsedResult = result.map(data => {
+			const dfInfo = DeserializeDataflowProcessorInformation(data.processorInfo, dfData.processors, dfData.parser);
+			const dataflow = DeserializeDataflowInformation(data.dataflowData, dfInfo.ctx);
+			return {
+				processorInfo: dfInfo,
+				dataflow:      dataflow,
+			};
+		});
+
+		let df = parsedResult[0].dataflow;
 
 		// merge dataflowinformation via folding
 		for(let i = 1; i < result.length; i++){
-			df = mergeDataflowInformation('file-'+i, dfData, files[i].filePath, df, result[i]);
+			df = mergeDataflowInformation('file-'+i, parsedResult[i].processorInfo, files[i].filePath, df, parsedResult[i].dataflow);
 		}
 
 		// finally, resolve linkages

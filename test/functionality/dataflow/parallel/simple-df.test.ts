@@ -27,7 +27,7 @@ const SingleFile: AnalyzerSetupFunction = (analyzer) => {
 	return analyzer;
 };
 
-const _MultiFile: AnalyzerSetupFunction = (analyzer) => {
+const MultiFile: AnalyzerSetupFunction = (analyzer) => {
 	analyzer.addRequest({ request: 'text', content: 'x <- 3' });
 	analyzer.addRequest({ request: 'text', content: 'y <- 2\n print(y)' });
 	return analyzer;
@@ -39,6 +39,9 @@ describe.sequential('Simple Parallel Dataflow test', () => {
 		void checkGraphEquality( SingleFile );
 	});
 
+	test('Multi File Analysis', () => {
+		void checkGraphEquality( MultiFile );
+	});
 
 });
 
@@ -68,8 +71,6 @@ describe('Serialization tests', () => {
 		const byteData = toSerializedREnvironmentInformation(df.environment);
 		const parsedEnv = fromSerializedREnvironmentInformation(byteData, analyzer.context());
 		const diff = diffEnvironments(df.environment.current, parsedEnv.current);
-		console.log(df.environment.current);
-		console.log(parsedEnv.current);
 
 		assert.isTrue(diff.isEqual);
 		if(!diff.isEqual){

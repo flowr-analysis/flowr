@@ -69,7 +69,7 @@ export function processNamedCall<OtherInfo>(
 
 	for(const resolvedFunction of resolved) {
 		if(resolvedFunction.type === ReferenceType.BuiltInFunction && typeof resolvedFunction.processor === 'function') {
-			builtIn = true;
+			builtIn ||= resolvedFunction.config?.libFn !== true;
 			information = mergeInformation(information, resolvedFunction.processor(name, args, rootId, data));
 		} else {
 			defaultProcessor = true;

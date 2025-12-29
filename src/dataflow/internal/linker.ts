@@ -1,5 +1,5 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
-import { guard, isNotUndefined } from '../../util/assert';
+import { isNotUndefined } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type IdentifierReference, isReferenceType, ReferenceType } from '../environments/identifier';
@@ -8,7 +8,7 @@ import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-param
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge';
+import { edgeIncludesType, EdgeType } from '../graph/edge';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import {
 	type DataflowGraphVertexFunctionCall,
@@ -193,6 +193,7 @@ export function linkFunctionCallWithSingleTarget(
 	linkFunctionCallArguments(def.id, idMap, defName, id, info.args, graph);
 }
 
+const FCallLinkReadBits = EdgeType.Reads | EdgeType.Calls;
 /* there is _a lot_ potential for optimization here */
 function linkFunctionCall(
 	graph: DataflowGraph,
@@ -211,19 +212,19 @@ function linkFunctionCall(
 		return;
 	}
 
-	const readBits = EdgeType.Reads | EdgeType.Calls;
-	const functionDefinitionReadIds = [...edges].filter(([_, e]) =>
-		edgeDoesNotIncludeType(e.types, EdgeType.Argument)
-		&& edgeIncludesType(e.types, readBits)
-	).map(([target, _]) => target);
+	const functionDefinitionReadIds = new Set<NodeId>();
+	for(const [t, { types }] of edges.entries()) {
+		if(!isBuiltIn(t) && edgeIncludesType(types, FCallLinkReadBits)) {
+			functionDefinitionReadIds.add(t);
+		}
+	}
 
-	const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)[0];
+	const [functionDefs] = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph);
 	for(const def of functionDefs.values()) {
-		guard(def.tag === VertexType.FunctionDefinition, () => `expected function definition, but got ${def.tag}`);
 		linkFunctionCallWithSingleTarget(graph, def, info, idMap);
 	}
 	if(thisGraph.isRoot(id) && functionDefs.size > 0) {
-		calledFunctionDefinitions.push({ functionCall: id, called: [...functionDefs.values()] });
+		calledFunctionDefinitions.push({ functionCall: id, called: functionDefs.values().toArray() });
 	}
 }
 
@@ -241,7 +242,9 @@ export function linkFunctionCalls(
 ): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[] }[] {
 	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] = [];
 	for(const [id, info] of thisGraph.verticesOfType(VertexType.FunctionCall)) {
-		linkFunctionCall(graph, id, info as DataflowGraphVertexFunctionCall, idMap, thisGraph, calledFunctionDefinitions);
+		if(!info.onlyBuiltin) {
+			linkFunctionCall(graph, id, info, idMap, thisGraph, calledFunctionDefinitions);
+		}
 	}
 	return calledFunctionDefinitions;
 }
@@ -275,11 +278,13 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 		for(const target of functionCallTargets) {
 			found.push(target.id);
 		}
-		found = found.concat(...builtInTargets, functionCallDefs);
+		found = found.concat(Array.from(builtInTargets), functionCallDefs);
 	}
 
 	return found;
 }
+
+const LinkedFnFollowBits = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 
 /**
  * Finds all linked function definitions starting from the given set of read ids.
@@ -287,16 +292,21 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 export function getAllLinkedFunctionDefinitions(
 	functionDefinitionReadIds: ReadonlySet<NodeId>,
 	dataflowGraph: DataflowGraph
-): [Set<DataflowGraphVertexInfo>, Set<BuiltIn>] {
-	let potential: NodeId[] = functionDefinitionReadIds.values().toArray();
-	const visited = new Set<NodeId>();
-	const result = new Set<DataflowGraphVertexInfo>();
+): [Set<Required<DataflowGraphVertexFunctionDefinition>>, Set<BuiltIn>] {
+	const result = new Set<Required<DataflowGraphVertexFunctionDefinition>>();
 	const builtIns = new Set<BuiltIn>();
 
-	while(potential.length > 0) {
-		const currentId = potential.pop() as NodeId;
+	if(functionDefinitionReadIds.size === 0) {
+		return [result, builtIns];
+	}
 
-		// do not traverse builtins further
+	const potential: NodeId[] = Array.from(functionDefinitionReadIds);
+	const visited = new Set<NodeId>();
+
+	while(potential.length !== 0) {
+		const currentId = potential.pop() as NodeId;
+		visited.add(currentId);
+
 		if(isBuiltIn(currentId)) {
 			builtIns.add(currentId);
 			continue;
@@ -306,32 +316,36 @@ export function getAllLinkedFunctionDefinitions(
 		if(currentInfo === undefined) {
 			continue;
 		}
-		visited.add(currentId);
 
-		const outgoingEdges = currentInfo[1].entries().toArray();
+		const [vertex, edges] = currentInfo;
 
-		const returnEdges = outgoingEdges
-			.filter(([_, e]) => edgeIncludesType(e.types, EdgeType.Returns));
-		if(returnEdges.length > 0) {
-			// only traverse return edges and do not follow `calls` etc. as this indicates that we have a function call which returns a result, and not the function calls itself
-			potential = potential.concat(returnEdges.map(([target]) => target).filter(id => !visited.has(id)));
+		// Found a function definition
+		if(vertex.subflow !== undefined) {
+			result.add(vertex as Required<DataflowGraphVertexFunctionDefinition>);
 			continue;
 		}
 
-		const followBits = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
-		const followEdges = outgoingEdges.filter(([_, e]) => edgeIncludesType(e.types, followBits));
-
-		if(currentInfo[0].subflow !== undefined) {
-			result.add(currentInfo[0]);
+		let hasReturnEdge = false;
+		for(const [target, { types }] of edges) {
+			if(edgeIncludesType(types, EdgeType.Returns)) {
+				hasReturnEdge = true;
+				if(!visited.has(target)) {
+					potential.push(target);
+				}
+			}
 		}
 
-		// trace all joined reads
-		potential = potential.concat(
-			followEdges
-				.map(([target]) => target)
-				.filter(id => !visited.has(id))
-		);
+		if(hasReturnEdge) {
+			continue;
+		}
+
+		for(const [target, { types }] of edges) {
+			if(edgeIncludesType(types, LinkedFnFollowBits) && !visited.has(target)) {
+				potential.push(target);
+			}
+		}
 	}
+
 	return [result, builtIns];
 }
 
@@ -393,10 +407,10 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 	}
 
 	for(const [name, targets] of openIns.entries()) {
-		for(const out of lastOutgoing.values()) {
-			if(out.name === name) {
+		for(const { name: outName, nodeId } of lastOutgoing.values()) {
+			if(outName === name) {
 				for(const target of targets) {
-					graph.addEdge(target.nodeId, out.nodeId, EdgeType.Reads);
+					graph.addEdge(target.nodeId, nodeId, EdgeType.Reads);
 				}
 			}
 		}
@@ -412,8 +426,9 @@ export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: r
 
 	for(const ref of references) {
 		for(const cd of exitCds) {
+			const { id: cId, when: cWhen } = cd;
 			if(ref.controlDependencies) {
-				if(!ref.controlDependencies?.find(c => c.id === cd.id && c.when === cd.when)) {
+				if(!ref.controlDependencies?.find(c => c.id === cId && c.when === cWhen)) {
 					ref.controlDependencies.push({ ...cd, byIteration: true });
 				}
 			} else {

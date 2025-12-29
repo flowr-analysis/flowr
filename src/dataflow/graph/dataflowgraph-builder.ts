@@ -413,7 +413,7 @@ export class DataflowGraphBuilder<
  *
  */
 export function getBuiltInSideEffect(name: string): LinkTo<RegExp> | undefined {
-	const got = DefaultBuiltinConfig.find(e => e.names.includes(name));
+	const got = DefaultBuiltinConfig.find(e => (e.names as string[]).includes(name));
 	if(got?.type !== 'function') {
 		return undefined;
 	}

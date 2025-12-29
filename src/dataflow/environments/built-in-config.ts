@@ -28,7 +28,7 @@ export interface BuiltInConstantDefinition<Value> extends BaseBuiltInDefinition 
 export interface BuiltInFunctionDefinition<BuiltInProcessor extends BuiltInMappingName> extends BaseBuiltInDefinition {
     readonly type:      'function';
     readonly processor: BuiltInProcessor;
-    readonly config?:   ConfigOfBuiltInMappingName<BuiltInProcessor>;
+    readonly config?:   ConfigOfBuiltInMappingName<BuiltInProcessor> & { libFn?: boolean };
 	readonly evalHandler?: string
 }
 
@@ -39,15 +39,14 @@ export interface BuiltInFunctionDefinition<BuiltInProcessor extends BuiltInMappi
 export interface BuiltInReplacementDefinition extends BaseBuiltInDefinition {
     readonly type:     'replacement';
     readonly suffixes: ('<<-' | '<-')[];
-	readonly config:      { readIndices: boolean }
+    readonly config:   { readIndices: boolean }
 }
 
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-export type BuiltInDefinition = BuiltInConstantDefinition<any> | BuiltInFunctionDefinition<any> | BuiltInReplacementDefinition;
+export type BuiltInDefinition<T extends BuiltInMappingName = BuiltInMappingName> = BuiltInConstantDefinition<unknown> | BuiltInFunctionDefinition<T> | BuiltInReplacementDefinition;
 /**
  * @see DefaultBuiltinConfig
  */
-export type BuiltInDefinitions = BuiltInDefinition[];
+export type BuiltInDefinitions<Keys extends BuiltInMappingName[] = BuiltInMappingName[]> = [...{ [ K in keyof Keys]: BuiltInDefinition<Keys[K]> }]
 
 
 /**
@@ -56,7 +55,7 @@ export type BuiltInDefinitions = BuiltInDefinition[];
 export function getDefaultBuiltInDefinitions(): BuiltIns {
 	const builtIns = new BuiltIns();
 	for(const definition of DefaultBuiltinConfig) {
-		builtIns.registerBuiltInDefinition(definition);
+		builtIns.registerBuiltInDefinition(definition as BuiltInDefinition);
 	}
 	return builtIns;
 }
@@ -66,7 +65,7 @@ export function getDefaultBuiltInDefinitions(): BuiltIns {
  * @param definitions - the list of built-in definitions
  * @param loadDefaults - whether to first add the {@link DefaultBuiltinConfig} before the given {@link definitions}
  */
-export function getBuiltInDefinitions(definitions: BuiltInDefinitions, loadDefaults: boolean | undefined): BuiltIns {
+export function getBuiltInDefinitions<Keys extends BuiltInMappingName[]>(definitions: BuiltInDefinitions<Keys>, loadDefaults: boolean | undefined): BuiltIns {
 	let builtIns = new BuiltIns();
 
 	if(loadDefaults) {

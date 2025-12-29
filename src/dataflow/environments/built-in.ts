@@ -81,7 +81,7 @@ export interface BuiltInIdentifierDefinition extends IdentifierReference {
 	type:      ReferenceType.BuiltInFunction
 	definedAt: BuiltIn
 	processor: BuiltInIdentifierProcessor
-	config?:   object
+	config?:   ConfigOfBuiltInMappingName<BuiltInMappingName> & { libFn?: boolean }
 }
 
 export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierReference {

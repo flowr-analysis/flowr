@@ -30,7 +30,7 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** Should we unquote the function if it is given as a string? */
 	readonly unquoteFunction?:        boolean
 	/** Should the function be resolved in the global environment? */
-	readonly resolveInEnvironment:    'global' | 'local'
+	readonly resolveInEnvironment?:   'global' | 'local'
 	/** Should the value of the function be resolved? */
 	readonly resolveValue?:           boolean
 }

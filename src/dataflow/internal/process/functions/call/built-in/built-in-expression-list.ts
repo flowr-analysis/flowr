@@ -152,12 +152,10 @@ export function processExpressionList<OtherInfo>(
 	const activeCdsAtStart: ControlDependency[] | undefined = data.controlDependencies;
 	const invertExitCds: ControlDependency[] = [];
 
-	let expressionCounter = 0;
 	const processedExpressions: (DataflowInformation | undefined)[] = [];
 	let defaultReturnExpr: undefined | DataflowInformation = undefined;
 
 	for(const expression of expressions) {
-		expensiveTrace(dataflowLogger, () => `processing expression ${++expressionCounter} of ${expressions.length}`);
 		if(expression === undefined) {
 			processedExpressions.push(undefined);
 			continue;
@@ -168,7 +166,6 @@ export function processExpressionList<OtherInfo>(
 		processedExpressions.push(processed);
 		nextGraph.mergeWith(processed.graph);
 		defaultReturnExpr = processed;
-
 		// if the expression contained next or break anywhere before the next loop, the "overwrite" should be an "append", because we do not know if the rest is executed
 		// update the environments for the next iteration with the previous writes
 		if(exitPoints.length > 0) {
@@ -181,12 +178,9 @@ export function processExpressionList<OtherInfo>(
 
 		out = out.concat(processed.out);
 
-		expensiveTrace(dataflowLogger, () => `expression ${expressionCounter} of ${expressions.length} has ${processed.unknownReferences.length} unknown nodes`);
-
 		processNextExpression(processed, environment, listEnvironments, remainingRead, nextGraph);
 
 		environment = exitPoints.length > 0 ? overwriteEnvironment(environment, processed.environment) : processed.environment;
-
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph);
 		// if the called function has global redefinitions, we have to keep them within our environment
 		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out);

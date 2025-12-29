@@ -99,7 +99,7 @@ function toRegex(n: readonly string[]): RegExp {
 /**
  * Contains the built-in definitions recognized by flowR
  */
-export const DefaultBuiltinConfig: BuiltInDefinitions = [
+export const DefaultBuiltinConfig = [
 	{ type: 'constant', names: ['NULL', 'NA', 'NaN', 'NA_integer_', 'NA_real_', 'NA_complex_', 'NA_character_'],  value: null,  assumePrimitive: true },
 	{ type: 'constant', names: ['TRUE', 'T'],   value: true,  assumePrimitive: true },
 	{ type: 'constant', names: ['FALSE', 'F'],  value: false, assumePrimitive: true },
@@ -186,6 +186,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 		names:     GgPlotAddons,
 		processor: 'builtin:default',
 		config:    {
+			libFn:                 true,
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
@@ -197,6 +198,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 		names:     TinyPlotAddons,
 		processor: 'builtin:default',
 		config:    {
+			libFn:                 true,
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
@@ -208,6 +210,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 		names:     ['image_write', 'image_capture', 'dev.capture', 'dev.off'],
 		processor: 'builtin:default',
 		config:    {
+			libFn:                 true,
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
@@ -217,14 +220,17 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{ type: 'function', names: ['('],                                          processor: 'builtin:default',             config: { returnsNthArgument: 0 },                                                     assumePrimitive: true  },
 	{ type: 'function', names: ['load', 'load_all', 'setwd', 'set.seed'],      processor: 'builtin:default',             config: { hasUnknownSideEffects: true, forceArgs: [true] },                            assumePrimitive: false },
 	{ type: 'function', names: ['body', 'formals', 'environment'],             processor: 'builtin:default',             config: { hasUnknownSideEffects: true, forceArgs: [true] },                            assumePrimitive: true },
-	{ type:      'function', names:     ['.Call', '.External', '.C', '.Fortran'],       processor: 'builtin:default',             config:    { hasUnknownSideEffects: true, forceArgs:             [true],
-		treatAsFnCall:         {
-			'.Call':     ['.NAME'],
-			'.External': ['.NAME'],
-			'.C':        ['.NAME'],
-			'.Fortran':  ['.NAME']
-		}
-	},                            assumePrimitive: true },
+	{ type:      'function',
+		names:     ['.Call', '.External', '.C', '.Fortran'],
+		processor: 'builtin:default',
+		config:    { hasUnknownSideEffects: true, forceArgs:             [true],
+			treatAsFnCall:         {
+				'.Call':     ['.NAME'],
+				'.External': ['.NAME'],
+				'.C':        ['.NAME'],
+				'.Fortran':  ['.NAME']
+			}
+		},                            assumePrimitive: true },
 	{ type: 'function', names: ['eval'],                                       processor: 'builtin:eval',                config: { includeFunctionCall: true },                                                 assumePrimitive: true },
 	{ type: 'function', names: ['cat'],                                        processor: 'builtin:default',             config: { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } },                                                         assumePrimitive: false },
 	{ type: 'function', names: ['switch'],                                     processor: 'builtin:default',             config: { forceArgs: [true] },                                                         assumePrimitive: false },
@@ -257,8 +263,8 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{ type: 'function', names: ['while'],                                      processor: 'builtin:while-loop',          config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['do.call'],                                    processor: 'builtin:apply',               config: { indexOfFunction: 0, unquoteFunction: true },                                 assumePrimitive: true  },
 	{ type: 'function', names: ['.Primitive', '.Internal'],                    processor: 'builtin:apply',               config: { indexOfFunction: 0, unquoteFunction: true, resolveInEnvironment: 'global' }, assumePrimitive: true  },
-	{ type: 'function', names: ['interference'],                               processor: 'builtin:apply',               config: { unquoteFunction: true, nameOfFunctionArgument: 'propensity_integrand' },     assumePrimitive: false },
-	{ type: 'function', names: ['ddply'],                                      processor: 'builtin:apply',               config: { unquoteFunction: true, indexOfFunction: 2, nameOfFunctionArgument: '.fun' }, assumePrimitive: false },
+	{ type: 'function', names: ['interference'],                               processor: 'builtin:apply',               config: { unquoteFunction: true, nameOfFunctionArgument: 'propensity_integrand', libFn: true },     assumePrimitive: false },
+	{ type: 'function', names: ['ddply'],                                      processor: 'builtin:apply',               config: { unquoteFunction: true, indexOfFunction: 2, nameOfFunctionArgument: '.fun', libFn: true }, assumePrimitive: false },
 	{ type: 'function', names: ['list'],                                       processor: 'builtin:list',                config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['c'],                                          processor: 'builtin:vector',              config: {},                                                                            assumePrimitive: true, evalHandler: 'builtin:c'  },
 	{
@@ -275,11 +281,9 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{
 		type:  'function',
 		names: [
-			'on.exit', 'sys.on.exit', 'par', 'tpar', 'sink', 'tinytheme', 'theme_set',
+			'on.exit', 'sys.on.exit', 'par', 'tpar', 'sink',
 			/* library and require is handled above */
 			'requireNamespace', 'loadNamespace', 'attachNamespace', 'asNamespace',
-			/* downloader and installer functions (R, devtools, BiocManager) */
-			'library.dynam', 'install.packages','install', 'install_github', 'install_gitlab', 'install_bitbucket', 'install_url', 'install_git', 'install_svn', 'install_local', 'install_version', 'update_packages',
 			/* weird env attachments */
 			'attach', 'unname', 'data',
 			/* file creation/removal */
@@ -287,6 +291,17 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 		],
 		processor:       'builtin:default',
 		config:          { hasUnknownSideEffects: true },
+		assumePrimitive: false
+	},
+	{
+		type:  'function',
+		names: [
+			'tinytheme', 'theme_set',
+			/* downloader and installer functions (R, devtools, BiocManager) */
+			'library.dynam', 'install.packages','install', 'install_github', 'install_gitlab', 'install_bitbucket', 'install_url', 'install_git', 'install_svn', 'install_local', 'install_version', 'update_packages',
+		],
+		processor:       'builtin:default',
+		config:          { hasUnknownSideEffects: true, libFn: true },
 		assumePrimitive: false
 	},
 	/* they are all mapped to `<-` but we separate super assignments */
@@ -306,17 +321,17 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			readIndices: false
 		}
 	}
-];
+] as const satisfies BuiltInDefinitions;
 
 
 /**
- *
+ * Expensive and naive lookup of the default processor for a built-in function name
  */
 export function getDefaultProcessor(name: string): BuiltInMappingName | 'unnamed' | undefined {
 	if(name.startsWith(UnnamedFunctionCallPrefix)) {
 		return 'unnamed';
 	}
-	const fn = DefaultBuiltinConfig.find(def => (def.names.includes(name) && def.type !== 'constant')
+	const fn = DefaultBuiltinConfig.find(def => ((def.names as string[]).includes(name) && def.type !== 'constant')
 	|| (def.type === 'replacement' && def.suffixes.flatMap(d => def.names.map(n => `${n}${d}`)).includes(name))
 	) as BuiltInFunctionDefinition<'builtin:default'> | BuiltInReplacementDefinition | undefined;
 	return fn?.type === 'replacement' ? 'builtin:replacement' : fn?.processor as BuiltInMappingName;

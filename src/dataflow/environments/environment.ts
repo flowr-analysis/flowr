@@ -155,8 +155,9 @@ export class Environment implements IEnvironment {
 				// we need to make a copy to avoid side effects for old reference in other environments
 				const updatedOld: IdentifierDefinition[] = old?.slice() ?? [];
 				for(const v of values) {
-					const index = updatedOld.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt);
-					if(index >= 0) {
+					const { nodeId, definedAt } = v;
+					const index = updatedOld.find(o => o.nodeId === nodeId && o.definedAt === definedAt);
+					if(index) {
 						continue;
 					}
 					if(applyCds === undefined) {

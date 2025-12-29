@@ -241,6 +241,10 @@ export function diffVertices(ctx: GraphDiffContext): void {
 						position: `${ctx.position}Vertex ${id} (function definition) differs in subflow environments. `
 					});
 				}
+				diffInReadParameters(lInfo.params, rInfo.params, {
+					...ctx,
+					position: `${ctx.position}Vertex ${id} differs in subflow in-read-parameters. `
+				});
 				setDifference(lInfo.subflow.graph, rInfo.subflow.graph, {
 					...ctx,
 					position: `${ctx.position}Vertex ${id} differs in subflow graph. `
@@ -257,6 +261,32 @@ export function diffVertices(ctx: GraphDiffContext): void {
 					...ctx,
 					position: `${ctx.position}Vertex ${id} differs in subflow *unknown* refs. `
 				});
+			}
+		}
+	}
+}
+
+function diffInReadParameters(l: Record<NodeId, boolean>, r: Record<NodeId, boolean>, ctx: GraphDiffContext): void {
+	const lKeys = new Set(Object.keys(l));
+	const rKeys = new Set(Object.keys(r));
+	setDifference(lKeys, rKeys, { ...ctx, position: `${ctx.position}In-read-parameters differ in graphs. ` });
+	for(const k of lKeys) {
+		const lVal = l[k];
+		const rVal = r[k];
+		if(rVal === undefined) {
+			if(!ctx.config.rightIsSubgraph) {
+				ctx.report.addComment(`In-read-parameter ${k} is not present in ${ctx.rightname}`, { tag: 'vertex', id: k });
+			}
+			continue;
+		}
+		if(lVal !== rVal) {
+			ctx.report.addComment(`In-read-parameter ${k} differs. ${ctx.leftname}: ${lVal} vs ${ctx.rightname}: ${rVal}`, { tag: 'vertex', id: k });
+		}
+	}
+	for(const k of rKeys) {
+		if(!lKeys.has(k)) {
+			if(!ctx.config.leftIsSubgraph) {
+				ctx.report.addComment(`In-read-parameter ${k} is not present in ${ctx.leftname}`, { tag: 'vertex', id: k });
 			}
 		}
 	}

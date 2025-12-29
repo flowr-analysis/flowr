@@ -54,7 +54,7 @@ describe.sequential('Function Call', withShell(shell => {
 					entryPoint:        '9',
 					graph:             new Set(['4', '8', '9']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '4', '5')
-				})
+				}, { readParams: [[4, true]] })
 				.defineVariable('3', 'a', { definedBy: ['10', '11'] })
 		);
 
@@ -106,7 +106,7 @@ describe.sequential('Function Call', withShell(shell => {
 					entryPoint:        '9',
 					graph:             new Set(['4', '8', '9']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '4', '5')
-				})
+				}, { readParams: [[4, true]] })
 				.defineVariable('3', 'a', { definedBy: ['10', '11'] })
 				.defineVariable('12', 'b', { definedBy: ['13', '14'] })
 		);
@@ -169,7 +169,7 @@ a(i)`, emptyGraph()
 				entryPoint:        '15',
 				graph:             new Set(['4', '9', '8', '10', '12', '11', '13', '14', '15']),
 				environment:       defaultEnv().pushEnv().defineVariable('x', '11', '13')
-			})
+			}, { readParams: [[4, true]] })
 			.defineVariable('3', 'a', { definedBy: ['16', '17'] })
 		);
 	});
@@ -204,7 +204,7 @@ a(i)`, emptyGraph()
 				entryPoint:        '9',
 				graph:             new Set(['2', '6', '7', '8', '9']),
 				environment:       defaultEnv().pushEnv().defineParameter('x', '2', '3')
-			})
+			}, { readParams: [[2, true]] })
 			.constant('12', undefined)
 			.definesOnCall('12', '2')
 			.definedByOnCall('2', '12');
@@ -385,7 +385,7 @@ a(,3)`, emptyGraph()
 				entryPoint:        '9',
 				graph:             new Set(['1', '2', '4', '8', '9']),
 				environment:       defaultEnv().pushEnv().defineParameter('x', '1', '3').defineParameter('y', '4', '5')
-			})
+			}, { readParams: [[1, false], [4, true]] })
 			.defineVariable('0', 'a', { definedBy: ['10', '11'] })
 			.constant('13')
 			.definesOnCall('13', '4')

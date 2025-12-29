@@ -456,7 +456,7 @@ f()`, emptyGraph()
 					entryPoint:        '13',
 					graph:             new Set(['4', '6', '8', '12', '13']),
 					environment:       defaultEnv().pushEnv().defineParameter('a', '4', '9')
-				})
+				}, { readParams: [[4, true]] })
 				.defineVariable('3', 'f', { definedBy: ['14', '15'] }));
 	});
 	describe('Dead Code', () => {

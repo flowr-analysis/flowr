@@ -68,11 +68,12 @@ export class DataflowGraphBuilder<
 	 */
 	public defineFunction(id: NodeId,
 		exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation,
-		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, controlDependencies?: ControlDependency[] },
+		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, controlDependencies?: ControlDependency[], readParams?: [NodeId, boolean][] },
 		asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({
 			tag:     VertexType.FunctionDefinition,
 			id:      normalizeIdToNumberIfPossible(id),
+			params:  Object.fromEntries(info?.readParams ?? []),
 			subflow: {
 				...subflow,
 				entryPoint:        normalizeIdToNumberIfPossible(subflow.entryPoint),

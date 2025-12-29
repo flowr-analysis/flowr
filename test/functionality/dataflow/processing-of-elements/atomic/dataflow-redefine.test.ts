@@ -33,7 +33,7 @@ if(1)
 				entryPoint:        '3',
 				graph:             new Set(['1', '3']),
 				environment:       defaultEnv().pushEnv().defineParameter('...', '1', '2')
-			})
+			}, { readParams: [[1, false]] })
 			.defineVariable('0', '`if`', { definedBy: ['5', '6'] })
 			.constant('7')
 			.definesOnCall('7', '1')
@@ -71,7 +71,7 @@ print(x)`, emptyGraph()
 				entryPoint:        '3',
 				graph:             new Set(['1', '3']),
 				environment:       defaultEnv().pushEnv().defineParameter('...', '1', '2')
-			})
+			}, { readParams: [[1, false]] })
 			.defineVariable('0', '`if`', { definedBy: ['5', '6'] })
 			.constant('7')
 			.definesOnCall('7', '1')

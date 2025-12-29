@@ -175,7 +175,7 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCa
  */
 export function linkFunctionCallWithSingleTarget(
 	graph: DataflowGraph,
-	{ subflow: fnSubflow, exitPoints, id: fnId }: DataflowGraphVertexFunctionDefinition,
+	{ subflow: fnSubflow, exitPoints, id: fnId, params }: DataflowGraphVertexFunctionDefinition,
 	info: DataflowGraphVertexFunctionCall,
 	idMap: AstIdMap
 ) {
@@ -203,13 +203,18 @@ export function linkFunctionCallWithSingleTarget(
 	const defName = recoverName(fnId, idMap);
 	expensiveTrace(dataflowLogger, () => `recording expression-list-level call from ${recoverName(info.id, idMap)} to ${defName}`);
 	graph.addEdge(id, fnId, EdgeType.Calls);
-	applyForForcedArgs(graph, linkFunctionCallArguments(fnId, idMap, defName, id, info.args, graph));
+	applyForForcedArgs(graph, info.id, params, linkFunctionCallArguments(fnId, idMap, defName, id, info.args, graph));
 }
 
-/** for each parameter that we link that gets forced, add a readsd edge from the call to argument to show that it reads it */
-function applyForForcedArgs(graph: DataflowGraph, maps: Map<NodeId, NodeId> | undefined): void {
+/** for each parameter that we link that gets forced, add a reads edge from the call to argument to show that it reads it */
+function applyForForcedArgs(graph: DataflowGraph, callId: NodeId, readParams: Record<NodeId, boolean>, maps: Map<NodeId, NodeId> | undefined): void {
 	if(maps === undefined) {
 		return;
+	}
+	for(const [arg, param] of maps.entries()) {
+		if(readParams[String(param)]) {
+			graph.addEdge(callId, arg, EdgeType.Reads);
+		}
 	}
 }
 

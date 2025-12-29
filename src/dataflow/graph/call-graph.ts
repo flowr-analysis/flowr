@@ -58,7 +58,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 	for(const tar of tars) {
 		const targetVtx = graph.getVertex(tar, true);
 		if(targetVtx?.tag !== VertexType.FunctionDefinition) {
-			return;
+			continue;
 		}
 		processFunctionDefinition(targetVtx, vtx.id, graph, result, visited);
 	}

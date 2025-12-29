@@ -64,7 +64,19 @@ export function processApply<OtherInfo>(
 			index = mayFn;
 		}
 	}
-
+	// shift the index to point to the index'd unnamed argument
+	let posArgsFound = 0;
+	for(let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		if(arg !== EmptyArgument && arg.name) {
+			// do nothing
+		} else if(posArgsFound === index) {
+			index = i;
+			break;
+		} else {
+			posArgsFound++;
+		}
+	}
 
 	/* validate, that we indeed have so many arguments to fill this one :D */
 	if(index >= args.length) {
@@ -96,7 +108,8 @@ export function processApply<OtherInfo>(
 		if(resolveValue) {
 			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: data.environment, idMap: data.completeAst.idMap , resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
 			if(resolved?.elements.length === 1 && resolved.elements[0].type === 'string') {
-				functionName = isValue(resolved.elements[0].value) ? resolved.elements[0].value.str : undefined;
+				const r = resolved.elements[0];
+				functionName = isValue(r.value) ? r.value.str : undefined;
 			}
 		} else {
 			functionName = val.content;

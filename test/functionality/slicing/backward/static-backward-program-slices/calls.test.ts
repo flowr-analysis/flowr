@@ -753,6 +753,18 @@ x`);
 				'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)'
 				);
 			});
+			describe('With FUN.VALUE', () => {
+				assertSliced(label('Force-Including Call Reference', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'closures'
+				]), shell,
+				`themed <- vapply(defaults, FUN.VALUE = logical(1), function(x) {
+    is_quosure(x) && quo_is_call(x, name = "from_theme")
+  })`, ['1@themed'],
+				`themed <- vapply(defaults, FUN.VALUE = logical(1), function(x) {
+    is_quosure(x) && quo_is_call(x, name = "from_theme")
+  })`
+				);
+			});
 			describe('nested ddply', () => {
 				assertSliced(label('Force-Including Call Reference', [
 					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'closures'

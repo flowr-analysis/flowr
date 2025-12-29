@@ -625,7 +625,7 @@ export function assertSliced(
 					const decodedExpected = expected.map(e => slicingCriterionToId(e, result.normalize.idMap))
 						.sort((a, b) => String(a).localeCompare(String(b)))
 						.map(n => normalizeIdToNumberIfPossible(n));
-					const inSlice = [...result.slice.result]
+					const inSlice = Array.from(result.slice.result)
 						.sort((a, b) => String(a).localeCompare(String(b)))
 						.map(n => normalizeIdToNumberIfPossible(n));
 					assert.deepStrictEqual(inSlice, decodedExpected, `expected ids ${JSON.stringify(decodedExpected)} are not in the slice result ${JSON.stringify(inSlice)}, for input ${input} (slice for ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`);
@@ -635,6 +635,7 @@ export function assertSliced(
 						`got: ${result.reconstruct.code as string}, vs. expected: ${JSON.stringify(expected)}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
 					);
 				}
+				assert.strictEqual(result.slice.timesHitThreshold, 0, 'the slice shall not hit the threshold');
 			} /* v8 ignore start */ catch(e) {
 				if(printError) {
 					console.error(`got:\n${result.reconstruct.code as string}\nvs. expected:\n${JSON.stringify(expected)}`);

@@ -3,7 +3,7 @@
  * @module
  */
 import type { ControlDependency, DataflowInformation, ExitPoint } from '../../../../../info';
-import { addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
+import {  addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { type DataflowProcessorInformation , processDataflowFor } from '../../../../../processor';
 import { linkFunctionCalls } from '../../../../linker';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
@@ -149,6 +149,8 @@ export function processExpressionList<OtherInfo>(
 	const nextGraph = new DataflowGraph(data.completeAst.idMap);
 	let out: IdentifierReference[] = [];
 	const exitPoints: ExitPoint[] = [];
+	const activeCdsAtStart: ControlDependency[] | undefined = data.controlDependencies;
+	const invertExitCds: ControlDependency[] = [];
 
 	let expressionCounter = 0;
 	const processedExpressions: (DataflowInformation | undefined)[] = [];
@@ -170,12 +172,12 @@ export function processExpressionList<OtherInfo>(
 		// if the expression contained next or break anywhere before the next loop, the "overwrite" should be an "append", because we do not know if the rest is executed
 		// update the environments for the next iteration with the previous writes
 		if(exitPoints.length > 0) {
-			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment, true);
-			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment, false);
+			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment, true, invertExitCds);
+			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment, false, invertExitCds);
 			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment, false);
 		}
 
-		addNonDefaultExitPoints(exitPoints, processed.exitPoints);
+		addNonDefaultExitPoints(exitPoints, invertExitCds, activeCdsAtStart, processed.exitPoints);
 
 		out = out.concat(processed.out);
 

@@ -137,7 +137,7 @@ if(require.main === module) {
 		{ name: 'force', alias: 'F', type: Boolean, description: 'Overwrite existing wiki files, even if nothing changes' },
 		{ name: 'filter', alias: 'f', type: String, multiple: true, description: 'Only generate wikis whose target path contains the given string' },
 		{ name: 'help', alias: 'h', type: Boolean, description: 'Print this usage guide for the wiki generator' },
-		{ name: 'keep-alive', type: Boolean, description: 'Keep-alive wiki generator (only sensible with a reloading script like ts-node-dev)' },
+		{ name: 'keep-alive', type: Boolean, description: 'Keep-alive wiki generator (only sensible with a reloading script like node --watch)' },
 	];
 
 	interface WikiCliOptions {

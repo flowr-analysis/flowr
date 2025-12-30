@@ -39,6 +39,7 @@ describe('is-recursive-function', withTreeSitter(ts => {
 
 	testRec('direct recursion','f <- function(x) {\n if(x <= 1) 1 else x * f(x - 1)\n}', { pos: ['1@function'], neg: ['2@-'] });
 	testRec('non-recursive','f <- function(x) {\n g(x - 1)\n}', { neg: ['1@function'] });
+	testRec('fak', 'f <- function(x) {\n if(x <= 1) 1 else x * (function(y) { y - 1 })(x)\n}', { neg: ['1@function'] });
 	testRec('fib', `fib <- function(n) {
 	if(n <= 1) n else fib(n - 1) + fib(n - 2)
 }
@@ -66,11 +67,15 @@ x <- function(z) {
 }
 `, { neg: ['1@function'] });
 	// we assume it is!
-	/* testRec('Recursive Higher-Order Function Unknown',`applyRec <- function(f, x) {
+	testRec('Recursive Higher-Order Function Unknown',`applyRec <- function(f, x) {
 	if(x <= 1) return(1)
 	else return(f(x, applyRec(f, x -1)))
 }
-`, { pos: ['1@function'] }); */
+`, { pos: ['1@function'] });
+	testRec('Non-Recursive Higher-Order Function',`applyNonRec <- function(f, x) {
+	if(x <= 1) return(1)
+	else return(f(x, x - 1))
+	}`, { neg: ['1@function'] });
 	testRec('Recursive Higher-Order Function Known',`applyRec <- function(x) {
 	f <- function(a, b) { a + b }
 	if(x <= 1) return(1)

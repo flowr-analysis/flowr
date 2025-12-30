@@ -8,7 +8,7 @@ import { VertexType } from './vertex';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getAllFunctionCallTargets } from '../internal/linker';
-import { edgeIncludesType, EdgeType } from './edge';
+import { edgeDoesNotIncludeType, EdgeType } from './edge';
 import { builtInId } from '../environments/built-in';
 
 /**
@@ -74,7 +74,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 
 	// handle arguments, traversing the 'reads' and the 'returns' edges
 	for(const [tar, { types }] of graph.outgoingEdges(vtx.id) ?? []) {
-		if(!edgeIncludesType(types, EdgeType.Reads) && !edgeIncludesType(types, EdgeType.Returns)) {
+		if(edgeDoesNotIncludeType(types, EdgeType.Reads | EdgeType.Returns | EdgeType.Argument)) {
 			continue;
 		}
 		const tVtx = graph.getVertex(tar, true);

@@ -26,7 +26,7 @@ interface CallsConstraints {
 	readonly calls: readonly CallsConstraint[];
 }
 
-type CallsConstraint = CallsIdConstraint | CallsWithNameConstraint | CallsConstraints;
+export type CallsConstraint = CallsIdConstraint | CallsWithNameConstraint | CallsConstraints;
 
 /**
  * Either checks whether a given function calls another function matching the given constraints,
@@ -36,20 +36,16 @@ export interface DoesCallQuery extends BaseQueryFormat {
 	readonly type:     'does-call';
 	// this should be a unique id if you give multiple queries of this type, to identify them in the output
 	readonly queryId?: string;
-	/**
-	 * If given, checks whether this call calls any of the given constraints.
-	 * Otherwise, this returns all functions that call any of the constraints.
-	 */
-	readonly call?:    SingleSlicingCriterion;
+	readonly call:     SingleSlicingCriterion;
 	readonly calls:    CallsConstraint;
 }
 
-interface FindAllCallsResult {
-	readonly callsMatching: NodeId[];
+export interface FindAllCallsResult {
+	readonly call: NodeId
 }
 
 export interface DoesCallQueryResult extends BaseQueryResult {
-	/** Results are either false (does not call) or an object with details on the calls made (which may be only the id if `call` was given). */
+	/** Results are either false (does not call) or an object with details on the calls made */
 	readonly results: Record<string, FindAllCallsResult | false>;
 }
 
@@ -67,10 +63,8 @@ export const DoesCallQueryDefinition = {
 			if(v === false) {
 				result.push('    - Does not call any matching functions.');
 			} else {
-				for(const calledId of v.callsMatching) {
-					const loc = idMap.get(calledId)?.location ?? undefined;
-					result.push(`    - Call ${bold(String(calledId), formatter)} (${formatRange(loc)})`);
-				}
+				const loc = idMap.get(v.call)?.location ?? undefined;
+				result.push(`    - Call ${bold(String(v.call), formatter)} (${formatRange(loc)})`);
 			}
 		}
 		return true;
@@ -78,13 +72,13 @@ export const DoesCallQueryDefinition = {
 	schema: Joi.object({
 		type:    Joi.string().valid('does-call').required().description('The type of the query.'),
 		queryId: Joi.string().optional().description('An optional unique identifier for this query, to identify it in the output.'),
-		call:    Joi.string().optional().description('If given, checks whether this call calls any of the given constraints. Otherwise, this returns all functions that call any of the constraints.'),
+		call:    Joi.string().description('The function from which calls are being made. This is a slicing criterion that resolves to a function definition node.'),
 		calls:   Joi.object().required().description('The constraints on which functions are being called. This can be a combination of name-based or id-based constraints, combined with logical operators (and, or, one-of).')
 	}).description('Either returns all function definitions alongside whether they are recursive, or just those matching the filters.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as QueryResults<'does-call'>['does-call'];
 		return Object.entries(out.results).flatMap(([, v]) => {
-			return v !== false ? v.callsMatching : [];
+			return v !== false ? v.call : [];
 		});
 	}
 } as const satisfies SupportedQuery<'does-call'>;

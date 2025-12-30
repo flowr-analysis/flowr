@@ -1,16 +1,99 @@
-import type { DoesCallQuery, DoesCallQueryResult } from './does-call-query-format';
+import type { CallsConstraint, DoesCallQuery, DoesCallQueryResult, FindAllCallsResult } from './does-call-query-format';
 import type { BasicQueryData } from '../../base-query-format';
+import { log } from '../../../util/log';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { CallGraph } from '../../../dataflow/graph/call-graph';
+import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../../../dataflow/graph/vertex';
+import { tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
 
 /**
  * Execute does call queries on the given analyzer.
  */
 export async function executeDoesCallQuery({ analyzer }: BasicQueryData, queries: readonly DoesCallQuery[]): Promise<DoesCallQueryResult> {
 	const start = Date.now();
-	// TODO
+	const cg = await analyzer.callGraph();
+	const idMap = (await analyzer.normalize()).idMap;
+	const results: Record<string, FindAllCallsResult | false> = {};
+	for(const query of queries) {
+		const id = query.queryId ?? JSON.stringify(query);
+		if(id in results) {
+			log.warn(`Duplicate query id '${id}' in does-call queries, SKIP.`);
+			continue;
+		}
+		const nodeId = tryResolveSliceCriterionToId(query.call, idMap);
+		if(!nodeId) {
+			log.error(`Could not resolve call criterion ${JSON.stringify(query.call)} to a node id in does-call query ${id}, marking as false.`);
+			continue;
+		}
+		const c = makeCallMatcher(query.calls);
+		const r = findCallersMatchingConstraints(cg, nodeId, c);
+		results[id] = r;
+	}
 	return {
 		'.meta': {
 			timing: Date.now() - start
 		},
-		results: {}
+		results
 	};
+}
+
+type CheckCallMatch = (vtx: Required<DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall>, cg: CallGraph) => boolean
+
+function makeCallMatcher(constraint: CallsConstraint): CheckCallMatch {
+	switch(constraint.type) {
+		case 'calls-id':
+			return (vtx) => vtx.id === constraint.id;
+		case 'name':
+			if(constraint.nameExact) {
+				return (vtx) => vtx.name === constraint.name;
+			} else {
+				const regex = new RegExp(constraint.name);
+				return (vtx) => 'name' in vtx && vtx.name ? regex.test(vtx.name as string) : false;
+			}
+		case 'and': {
+			let matchersAndRemain = constraint.calls.map(makeCallMatcher);
+			return (vtx, cg) => {
+				const matchersToRemove: CheckCallMatch[] = [];
+				for(const matcher of matchersAndRemain) {
+					if(!matcher(vtx, cg)) {
+						return false;
+					}
+					matchersToRemove.push(matcher);
+				}
+				matchersAndRemain = matchersAndRemain.filter(m => !matchersToRemove.includes(m));
+				return matchersAndRemain.length === 0;
+			};
+		}
+		case 'or': {
+			const matchersOr = constraint.calls.map(makeCallMatcher);
+			return (vtx, cg) => matchersOr.some(m => m(vtx, cg));
+		}
+		default: {
+			throw new Error(`Unhandled constraint type ${JSON.stringify(constraint)}`);
+		}
+	}
+}
+
+function findCallersMatchingConstraints(cg: CallGraph, start: NodeId, constraints: CheckCallMatch): FindAllCallsResult | false {
+	const visited = new Set<NodeId>();
+	const toVisit: NodeId[] = [start];
+	while(toVisit.length > 0) {
+		const cur = toVisit.pop() as NodeId;
+		if(visited.has(cur)) {
+			continue;
+		}
+		visited.add(cur);
+		const vtx = cg.getVertex(cur);
+		if(!vtx) {
+			continue;
+		}
+		// check if matches
+		if(cur !== start && constraints(vtx, cg)) {
+			return { call: start };
+		}
+		for(const out of cg.outgoingEdges(cur) ?? []) {
+			toVisit.push(out[0]);
+		}
+	}
+	return false;
 }

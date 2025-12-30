@@ -108,6 +108,7 @@ async function explanation(
 
 	return `
 <a id='${name.toLowerCase().replaceAll(' ', '-')}'> </a>
+<a id='${String(type).toLowerCase().replaceAll(' ', '-')}-vertex'> </a>
 ### ${index}) ${name}
 
 Type: \`${type}\` (this is the bit-flag value, e.g., when looking at the serialization)
@@ -524,7 +525,7 @@ As you can see, _flowR_ is able to recognize that the initial definition of \`x\
 		name:        'Function Definition Vertex',
 		type:        VertexType.FunctionDefinition,
 		description: `
-Defining a function does do a lot of things: 1) it creates a new scope, 2) it may introduce parameters which act as promises and which are only evaluated if they are actually required in the body, 3) it may access the enclosing environments and the callstack.
+Defining a function does do a lot of things:  1) it creates a new scope,  2) it may introduce parameters which act as promises and which are only evaluated if they are actually required in the body,  3) it may access the enclosing environments and the callstack.
 The vertex object in the dataflow graph stores multiple things, including all exit points, the enclosing environment if necessary, and the information of the subflow (the "body" of the function).
 
 ${
@@ -538,7 +539,6 @@ And if you are interested in the exit points, they are defined like this:
 ${
 	ctx.hierarchy('ExitPoint')
 }
-
 
 Whenever we visualize a function definition, we use a dedicated node to represent the anonymous function object,
 and a subgraph (usually with the name \`"function <id>"\`) to encompass the body of the function (they are linked with a dotted line).
@@ -707,7 +707,9 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 		name:        'Calls Edge',
 		type:        EdgeType.Calls,
 		description: `Link the [function call](#function-call-vertex) to the [function definition](#function-definition-vertex) that is called. To find all called definitions, 
-		please use the ${ctx.link(getOriginInDfg.name)} function, as explained in [working with the dataflow graph](${FlowrWikiBaseRef}/Working%20with%20the%20Dataflow%20Graph).`,
+		please use the ${ctx.link(getOriginInDfg.name)} function, as explained in ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'Working-with-the-Dataflow-Graph')}.
+		If you are interested in the call graph, refer to ${ctx.linkM(FlowrAnalyzer, 'callGraph')} and consult the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph wiki', 'perspectives-cg')} for more information.
+		`,
 		code:             'foo <- function() {}\nfoo()',
 		expectedSubgraph: emptyGraph().calls('2@foo', '1@function')
 	}, []]);
@@ -971,7 +973,7 @@ ${prefixLines(codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap)
 ${section('Vertices', 2, 'vertices')}
 
 1. ${getAllVertices().map(
-	([k,v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
+	([k,v]) => `[\`${k}\`](#${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
 ).join('\n1. ')}
 
 ${await getVertexExplanations(treeSitter, ctx)}

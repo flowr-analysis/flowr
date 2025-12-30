@@ -1,11 +1,14 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
-import type { QueryResults, SupportedQuery } from '../../query';
+import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeRecursionQuery } from './inspect-recursion-query-executor';
 import { type NodeId , normalizeIdToNumberIfPossible } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { formatRange } from '../../../util/mermaid/dfg';
+import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
+import type { FlowrConfigOptions } from '../../../config';
+import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 
 /**
  * Either returns all function definitions alongside whether they are recursive,
@@ -20,6 +23,17 @@ export interface InspectRecursionQueryResult extends BaseQueryResult {
 	readonly recursive: Record<NodeId, boolean>;
 }
 
+function inspectRecLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'inspect-recursion'> {
+	const criteria = sliceCriteriaParser(line[0]);
+	return {
+		query: {
+			type:   'inspect-recursion',
+			filter: criteria
+		},
+		rCode: criteria ? line[1] : line[0]
+	};
+}
+
 export const InspectRecursionQueryDefinition = {
 	executor:        executeRecursionQuery,
 	asciiSummarizer: async(formatter, processed, queryResults, result) => {
@@ -31,7 +45,8 @@ export const InspectRecursionQueryDefinition = {
 		}
 		return true;
 	},
-	schema: Joi.object({
+	fromLine: inspectRecLineParser,
+	schema:   Joi.object({
 		type:   Joi.string().valid('inspect-recursion').required().description('The type of the query.'),
 		filter: Joi.array().items(Joi.string().required()).optional().description('If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered.')
 	}).description('Either returns all function definitions alongside whether they are recursive, or just those matching the filters.'),

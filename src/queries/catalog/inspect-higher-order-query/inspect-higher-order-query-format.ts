@@ -1,11 +1,14 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
-import type { QueryResults, SupportedQuery } from '../../query';
+import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeHigherOrderQuery } from './inspect-higher-order-query-executor';
 import { type NodeId , normalizeIdToNumberIfPossible } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { formatRange } from '../../../util/mermaid/dfg';
+import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
+import type { FlowrConfigOptions } from '../../../config';
+import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 
 /**
  * Either returns all function definitions alongside whether they are higher-order functions,
@@ -20,6 +23,17 @@ export interface InspectHigherOrderQueryResult extends BaseQueryResult {
 	readonly higherOrder: Record<NodeId, boolean>;
 }
 
+function inspectHoLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'inspect-higher-order'> {
+	const criteria = sliceCriteriaParser(line[0]);
+	return {
+		query: {
+			type:   'inspect-higher-order',
+			filter: criteria
+		},
+		rCode: criteria ? line[1] : line[0]
+	};
+}
+
 export const InspectHigherOrderQueryDefinition = {
 	executor:        executeHigherOrderQuery,
 	asciiSummarizer: async(formatter, processed, queryResults, result) => {
@@ -31,7 +45,8 @@ export const InspectHigherOrderQueryDefinition = {
 		}
 		return true;
 	},
-	schema: Joi.object({
+	fromLine: inspectHoLineParser,
+	schema:   Joi.object({
 		type:   Joi.string().valid('inspect-higher-order').required().description('The type of the query.'),
 		filter: Joi.array().items(Joi.string().required()).optional().description('If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered.')
 	}).description('Either returns all function definitions alongside whether they are higher-order functions, or just those matching the filters.'),

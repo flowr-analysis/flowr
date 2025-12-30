@@ -25,6 +25,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('7@<-', builtInId('assignment')).calls('7@<-', '7@bar')
 			.call('7@bar', 'bar', [argumentInCall('7@3')], { omitArgs: true })
 			.calls('7@bar', '4@function')
+			.calls('7@bar', '5@return')
 			.defineFunction('4@function', [27], {
 				out:               [],
 				in:                [],
@@ -71,6 +72,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('1@<-', builtInId('function')).calls('1@<-', builtInId('assignment'))
 			.call('7@fib', 'fib', [argumentInCall('7@5')], { omitArgs: true })
 			.calls('7@fib', '1@function')
+			.calls('7@fib', '3@return').calls('7@fib', '5@return')
 			.defineFunction('1@function', [13, 31], {
 				out:               [],
 				in:                [],

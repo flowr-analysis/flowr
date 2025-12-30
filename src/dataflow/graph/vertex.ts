@@ -283,7 +283,7 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	 * In other words: last expressions/return calls
 	 */
 	exitPoints:   readonly NodeId[]
-	/** Maps each param to whether it is read */
+	/** Maps each param to whether it is read, this is an estimate! */
 	params:       Record<NodeId, boolean>
 	/**
 	 * The environment in which the function is defined (this is only attached if the DFG deems it necessary).

@@ -5,7 +5,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import type { CallGraph } from '../../../dataflow/graph/call-graph';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
-import { isBuiltIn } from '../../../dataflow/environments/built-in';
+import { dropBuiltInPrefix, isBuiltIn } from '../../../dataflow/environments/built-in';
 
 /**
  * Execute does call queries on the given analyzer.
@@ -84,7 +84,7 @@ function findCallersMatchingConstraints(cg: CallGraph, start: NodeId, constraint
 		}
 		visited.add(cur);
 		if(isBuiltIn(cur)) {
-			const name = cur.slice('built-in:'.length);
+			const name = dropBuiltInPrefix(cur);
 			if(constraints({ id: cur, name } as Required<DataflowGraphVertexFunctionCall>, cg)) {
 				return { call: start };
 			}

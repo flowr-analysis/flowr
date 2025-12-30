@@ -61,7 +61,6 @@ import type { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-s
 import type { KnownParser } from '../r-bridge/parser';
 import type { MermaidMarkdownMark } from '../util/mermaid/info';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
-import { showQuery } from './doc-util/doc-query';
 
 async function subExplanation(parser: KnownParser, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(parser, code, expectedSubgraph);
@@ -1130,7 +1129,22 @@ ${codeBlock('r', 'f <- function() f()')}
 
 The resulting call graph looks like this:
 
-${await showQuery(treeSitter, 'f <- function() f()', [{ type: 'call-graph' }])}
+${await printDfGraphForCode(treeSitter, 'f <- function() f()', { callGraph: true })}
+
+Please note, that, due to the over-approximative nature of call-graphs, the call-graph may label some function calls that are *not*
+marked as such in the full dataflow graph (which may have more precise information).
+For example, if we call an unknown alias:
+
+${codeBlock('r', 'alias <- unknown\nalias(print)')}
+
+The resulting call graph looks like this:
+
+${await printDfGraphForCode(treeSitter, 'alias <- unknown\nalias()', { callGraph: true })}
+
+Here, \`unknown\` is a function call, while it is a symbol in the full dataflow graph (as we cannot resolve it):
+
+${await printDfGraphForCode(treeSitter, 'alias <- unknown\nalias()', { callGraph: false })}
+
 
 ${section('Working with the Dataflow Graph', 2, 'dfg-working')}
 

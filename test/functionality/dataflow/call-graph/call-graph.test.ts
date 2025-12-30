@@ -187,4 +187,14 @@ f(1)`,
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
+	assertDataflow(label('call graph with scoped, unknown, alias', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'recursion']),
+		ts,
+		`g <- rofl
+f <- function(x) { g(x) }
+f(1)`,
+		emptyGraph()
+			.calls('2@g', '1@rofl')
+		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+
 }));

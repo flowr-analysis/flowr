@@ -64,10 +64,14 @@ describe('Does Call Query', withTreeSitter(parser => {
 		{ call: '3@f',  calls: n('eval') },
 	], ['1@function', '2@function', '3@f']);
 
-	testQuery('Calling eval with alias', 'g <- eval\nf <- function(x) { g(x) }\nf(1)', [
-		{ call: '1@g',  calls: n('eval') },
-		{ call: '2@g',  calls: n('eval') },
-		{ call: '2@function',  calls: n('eval') },
-		{ call: '3@f',  calls: n('eval') },
-	], [false, '2@g', '2@function', '3@f']);
+	for(const fname of ['eval', '*', 'quote', 'rofl']) {
+		testQuery(`Calling '${fname}' with alias`, `g <- ${fname === '*' ? `\`${fname}\`` : fname}\nf <- function(x) { g(x) }\nf(1)`, [
+			{ call: '1@g', calls: n(fname) },
+			{ call: '2@g', calls: n(fname) },
+			{ call: '2@function', calls: n(fname) },
+			{ call: '3@f', calls: n(fname) },
+		], [false, '2@g', '2@function', '3@f']);
+	}
+
+	// TODO: and and or!
 }));

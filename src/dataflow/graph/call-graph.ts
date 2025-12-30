@@ -10,7 +10,6 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { edgeDoesNotIncludeType, EdgeType } from './edge';
 import { builtInId } from '../environments/built-in';
-import { getOriginInDfg } from '../origin/dfg-get-origin';
 
 /**
  * A call graph is a dataflow graph where all vertices are function calls.
@@ -41,6 +40,14 @@ function processCds(vtx: DataflowGraphVertexInfo, graph: DataflowGraph, result: 
 			processUnknown(targetVtx, undefined, graph, result, visited);
 		}
 	}
+}
+
+/**
+ * This tracks the known symbol origins for a function call for which we know that flowr found no targets!
+ */
+function fallbackUntargetedCall(vtx: Required<DataflowGraphVertexFunctionCall>, graph: DataflowGraph): Set<NodeId> {
+	// TODO!
+	return new Set();
 }
 
 function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, visited: Set<NodeId>): void {
@@ -75,9 +82,8 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 		}
 	}
 	if(tars.length === 0 && !builtInOrigin) {
-		console.log(`[CallGraph] Warning: could not resolve targets for function call id ${vtx.id} (${vtx.name})`);
-		const origs = getOriginInDfg(graph, vtx.id);
-		console.log(`[CallGraph]   origins: ${JSON.stringify(origs)}`);
+		const origs = fallbackUntargetedCall(vtx, graph);
+		// TODO:!
 	}
 
 	// handle arguments, traversing the 'reads' and the 'returns' edges

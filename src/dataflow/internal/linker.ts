@@ -218,7 +218,7 @@ function applyForForcedArgs(graph: DataflowGraph, callId: NodeId, readParams: Re
 	}
 }
 
-const FCallLinkReadBits = EdgeType.Reads | EdgeType.Calls;
+const FCallLinkReadBits = EdgeType.Reads | EdgeType.Calls | EdgeType.DefinedByOnCall;
 /* there is _a lot_ potential for optimization here */
 function linkFunctionCall(
 	graph: DataflowGraph,

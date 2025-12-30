@@ -197,7 +197,7 @@ a(i)`, emptyGraph()
 			.call('11', '(', [argumentInCall('10')], { returns: ['10'], reads: [builtInId('(')] })
 			.calls('11', builtInId('('))
 			.call('14', `${UnnamedFunctionCallPrefix}14`, [argumentInCall('12')], { returns: ['8'], reads: ['11'] })
-			.calls('14', ['11', '10'])
+			.calls('14', ['10'])
 			.defineVariable('2', 'x', { definedBy: [] }, false)
 			.constant('7', undefined, false)
 			.defineFunction('10', ['8'], {
@@ -244,7 +244,7 @@ a()()`, emptyGraph()
 				reads:       ['12'],
 				environment: defaultEnv().defineFunction('a', '0', '10')
 			})
-			.calls('13', ['12', '7'])
+			.calls('13', ['7'])
 			.constant('5', undefined, false)
 			.defineFunction('7', ['5'], {
 				out:               [],

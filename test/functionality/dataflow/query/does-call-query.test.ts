@@ -12,7 +12,7 @@ import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import type { DeepWritable } from 'ts-essentials';
 
 describe('Does Call Query', withTreeSitter(parser => {
-	function testQuery(name: string, code: string, rawQueries: readonly Omit<DoesCallQuery, 'type'> [], results: (SingleSlicingCriterion|false)[]) {
+	function testQuery(name: string, code: string, rawQueries: readonly Omit<DoesCallQuery, 'type'> [], results: readonly (SingleSlicingCriterion|false)[]) {
 		let i = 0;
 		const query: DoesCallQuery[] = [];
 		for(const rq of rawQueries) {
@@ -82,12 +82,13 @@ describe('Does Call Query', withTreeSitter(parser => {
 		], [false, '2@g', '2@function', '3@f']);
 	}
 
-	const threeCalls = and(
-		n('eval'),
-		n('<-'),
-		r('^foo|bar$')
-	);
-	testQuery('Must have three calls!', `allInOne <- function() { foo <- 1; eval(parse(text="bar(foo)")) }
+	const threeCalls = and(n('eval'), n('<-'), r('^foo|bar$'));
+	const anyOfThreeCalls = or(n('eval'), n('<-'), r('^foo|bar$'));
+	for(const [constr, result] of [
+		[threeCalls, ['1@function', false, false, false, false, '6@function', '7@function', '8@function', '9@function', '10@function']],
+		[anyOfThreeCalls, ['1@function', '2@function', '3@function', '4@function', false, '6@function', '7@function', '8@function', '9@function', '10@function']]
+	] as const) {
+		testQuery('Must have three calls!', `allInOne <- function() { foo <- 1; eval(parse(text="bar(foo)")) }
        onlyTwosA <- function() { foo <- 2; bar(foo) } # no eval
        onlyTwosB <- function() { foo <- 2; eval(parse(text="baz(foo)")) } # no bar|foo call
        onlyTwosC <- function() { foo = 2; eval(x); foo(3) } # no <- call
@@ -98,17 +99,16 @@ describe('Does Call Query', withTreeSitter(parser => {
        allThree <- function() { allInOne() }
        combineABC <- function() { onlyTwosA(); onlyTwosB(); onlyTwosC() }
 	`, [
-		{ call: '1@function',  calls: threeCalls }, // allInOne
-		/* { call: '2@function',  calls: threeCalls }, // onlyTwosA
-		{ call: '3@function',  calls: threeCalls }, // onlyTwosB
-		{ call: '4@function',  calls: threeCalls }, // onlyTwosC
-		{ call: '5@function',  calls: threeCalls }, // none
-		{ call: '6@function',  calls: threeCalls }, // combineAB
-		{ call: '7@function',  calls: threeCalls }, // combineAC
-		{ call: '8@function',  calls: threeCalls }, // combineBC
-		{ call: '9@function',  calls: threeCalls }, // allThree
-		{ call: '10@function', calls: threeCalls } // combineABC */
-	], ['1@function' /*, false, false, false, false, '6@function', '7@function', '8@function', '9@function', '10@function' */]);
-
-	// TODO: and and or!
+			{ call: '1@function',  calls: constr }, // allInOne
+			{ call: '2@function',  calls: constr }, // onlyTwosA
+			{ call: '3@function',  calls: constr }, // onlyTwosB
+			{ call: '4@function',  calls: constr }, // onlyTwosC
+			{ call: '5@function',  calls: constr }, // none
+			{ call: '6@function',  calls: constr }, // combineAB
+			{ call: '7@function',  calls: constr }, // combineAC
+			{ call: '8@function',  calls: constr }, // combineBC
+			{ call: '9@function',  calls: constr }, // allThree
+			{ call: '10@function', calls: constr } // combineABC
+		], result);
+	}
 }));

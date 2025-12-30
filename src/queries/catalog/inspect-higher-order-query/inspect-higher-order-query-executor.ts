@@ -18,7 +18,7 @@ export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, quer
 			break;
 		} else {
 			filters ??= [];
-			filters = filters.concat(filters);
+			filters = filters.concat(q.filter);
 		}
 	}
 

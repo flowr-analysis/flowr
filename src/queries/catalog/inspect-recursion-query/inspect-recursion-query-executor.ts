@@ -6,7 +6,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { isFunctionRecursive } from '../../../dataflow/fn/recursive-function';
 
 /**
- * Execute higher-order function inspection queries on the given analyzer.
+ * Execute recursion function inspection queries on the given analyzer.
  */
 export async function executeRecursionQuery({ analyzer }: BasicQueryData, queries: readonly InspectRecursionQuery[]): Promise<InspectRecursionQueryResult> {
 	const start = Date.now();
@@ -18,7 +18,7 @@ export async function executeRecursionQuery({ analyzer }: BasicQueryData, querie
 			break;
 		} else {
 			filters ??= [];
-			filters = filters.concat(filters);
+			filters = filters.concat(q.filter);
 		}
 	}
 

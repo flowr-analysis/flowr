@@ -65,6 +65,11 @@ import type { FilesQuery } from './catalog/files-query/files-query-format';
 import { FilesQueryDefinition } from './catalog/files-query/files-query-format';
 import type { CallGraphQuery } from './catalog/call-graph-query/call-graph-query-format';
 import { CallGraphQueryDefinition } from './catalog/call-graph-query/call-graph-query-format';
+import type {
+	InspectRecursionQuery } from './catalog/inspect-recursion-query/inspect-recursion-query-format';
+import {
+	InspectRecursionQueryDefinition
+} from './catalog/inspect-recursion-query/inspect-recursion-query-format';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -86,6 +91,7 @@ export type Query = CallContextQuery
 	| LocationMapQuery
 	| HappensBeforeQuery
     | InspectHigherOrderQuery
+	| InspectRecursionQuery
 	| ResolveValueQuery
 	| ProjectQuery
 	| OriginQuery
@@ -149,6 +155,7 @@ export const SupportedQueries = {
 	'search':               SearchQueryDefinition,
 	'happens-before':       HappensBeforeQueryDefinition,
 	'inspect-higher-order': InspectHigherOrderQueryDefinition,
+	'inspect-recursion':    InspectRecursionQueryDefinition,
 	'resolve-value':        ResolveValueQueryDefinition,
 	'project':              ProjectQueryDefinition,
 	'origin':               OriginQueryDefinition,

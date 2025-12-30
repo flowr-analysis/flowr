@@ -153,7 +153,7 @@ print(x)`, emptyGraph()
 					entryPoint:        '3',
 					graph:             new Set(['1', '3']),
 					environment:       defaultEnv().pushEnv().defineParameter('...', '1', '2')
-				})
+				}, { readParams: [[1, false]] })
 				.defineVariable('0', '`{`', { definedBy: ['5', '6'] })
 				.constant('8')
 				.defineVariable('7', 'x', { definedBy: ['8', '9'] })

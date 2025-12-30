@@ -68,9 +68,18 @@ export interface DocumentReplCommand {
 	description: string;
 }
 
+function dropAnsiEscapeCodesAndCodeTags(input: string): string {
+	// eslint-disable-next-line no-control-regex
+	return input.replace(/\x1B\[[0-9;]*[mK]/g, '')
+		.replace(/<\/?code>/g, '')
+		.replace(/\**([^*]+)\**/g, '$1')
+		.replace(/_([^_]+)_/g, '$1')
+	;
+}
 
 /**
- *
+ * Creates a documented REPL session for the given commands.
+ * This is intended for documentation purposes.
  */
 export async function documentReplSession(parser: KnownParser, commands: readonly DocumentReplCommand[], options?: DocumentReplSessionOptions): Promise<string> {
 	const collect: Collect[] = [];
@@ -80,10 +89,10 @@ export async function documentReplSession(parser: KnownParser, commands: readonl
 		const collectingOutput: ReplOutput = {
 			formatter: voidFormatter,
 			stdout(msg: string) {
-				entry.lines.push(msg);
+				entry.lines.push(dropAnsiEscapeCodesAndCodeTags(msg));
 			},
 			stderr(msg: string) {
-				entry.lines.push(msg);
+				entry.lines.push(dropAnsiEscapeCodesAndCodeTags(msg));
 			}
 		};
 		const analyzer = await new FlowrAnalyzerBuilder()

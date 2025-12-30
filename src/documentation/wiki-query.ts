@@ -46,6 +46,7 @@ import { DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { executeFileQuery } from '../queries/catalog/files-query/files-query-executor';
 import { executeCallGraphQuery } from '../queries/catalog/call-graph-query/call-graph-query-executor';
+import { executeRecursionQuery } from '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -299,7 +300,46 @@ Using the example code \`${exampleCode}\` the following query returns the inform
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'inspect-higher-order',
-	}], { showCode: true })
+	}], { showCode: true, collapseQuery: true })
+}
+
+This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'inspect-higher-order',
+		filter: ['1@function']
+	}], { showCode: false, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)) })
+}
+		`;
+	}
+});
+
+
+registerQueryDocumentation('inspect-recursion', {
+	name:             'Inspect Recursive Functions Query',
+	type:             'active',
+	shortDescription: 'Determine whether functions are recursive',
+	functionName:     executeRecursionQuery.name,
+	functionFile:     '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'fact <- function(n) { if(n <= 1) 1 else n * fact(n - 1) }';
+		return `
+With this query you can identify which functions in the code are recursive.
+Please note, that functions that *may* be recursive due to indirect calls are also considered recursive.
+
+Using the example code \`${exampleCode}\` the following query returns the information for all identified function definitions whether they are recursive:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'inspect-recursion',
+	}], { showCode: true, collapseQuery: true })
+}
+
+This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'inspect-recursion',
+		filter: ['1@function']
+	}], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)) })
 }
 		`;
 	}
@@ -429,6 +469,9 @@ ${
 		}
 	])
 }
+
+One of the most useful options to change on-the-fly are probably those under \`repl\`. For example, setting \`repl.quickStats=true\`
+enables quick statistics after each REPL command.
 `;
 	}
 });

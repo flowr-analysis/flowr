@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { type SingleSlicingCriterion, tryResolveSliceCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { isHigherOrder } from '../../../../src/dataflow/fn/higher-order-function';
+import { isFunctionHigherOrder } from '../../../../src/dataflow/fn/higher-order-function';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 describe('is-higher-order-function', withTreeSitter(ts => {
@@ -26,7 +26,7 @@ describe('is-higher-order-function', withTreeSitter(ts => {
 					// move up the error message :sparkles:
 					assert.isDefined(id, `could not resolve criterion ${c}`);
 
-					assert.strictEqual(isHigherOrder(id, df.dataflow.graph, context), exp);
+					assert.strictEqual(isFunctionHigherOrder(id, df.dataflow.graph, context), exp);
 				});
 			}
 		}

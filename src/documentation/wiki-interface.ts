@@ -148,6 +148,10 @@ the REPL will re-use previously obtained information and not re-parse the code a
 	})
 }
 
+Generally, many commands offer shortcut versions in the REPL. Many queries, for example, offer a shortened format (see the example below).
+Of special note, the ${ctx.linkPage('wiki/Query API', 'Config Query', 'Config-Query')}
+can be used to also modify the currently active configuration of _flowR_ within the REPL (see the ${ctx.linkPage('wiki/Query API', 'wiki page', 'Config-Query')} for more information).
+
 ### Example: Retrieving the Dataflow Graph
 
 To retrieve a URL to the [mermaid](https://mermaid.js.org/) diagram of the dataflow of a given expression, 
@@ -181,6 +185,22 @@ ${codeBlock('r', getFileContentFromRoot('test/testfiles/example.R'))}
 As _flowR_ directly transforms this AST the output focuses on being human-readable instead of being machine-readable. 
 		`
 }])}
+
+### Example: Run a Query
+
+You can run any query supported by _flowR_ using the ${ctx.replCmd('query')} command.
+For example, to obtain the shapes of all data frames in a given piece of code, you can run:
+${await documentReplSession(parser, [{
+	command:     ':query @df-shape "x <- data.frame(a = 1:10, b = 1:10)\\ny <- x$a"',
+	description: 'Retrieve the shapes of all data frames in the given code.'
+}], { openOutput: true })}
+To run the linter on a file, you can use (in this example, we just issue the \`dead-code\` linter on a small piece of code):
+${await documentReplSession(parser, [{
+	command:     ':query @linter rules:dead-code "if(FALSE) x <- 2"',
+	description: 'Run the linter on the given code, with only the `dead-code` rule enabled.'
+}], { openOutput: true })}
+
+For more information on the available queries, please check out the ${ctx.linkPage('wiki/Query API', 'Query API')}.
 `;
 }
 
@@ -467,20 +487,21 @@ Although far from being as detailed as the in-depth explanation of ${ctx.linkPag
 this wiki page explains how to interface with _flowR_ in more detail.
 In general, command line arguments and other options provide short descriptions on hover over.
 
-* [💬 Communicating with the Server](#communicating-with-the-server)
 * [💻 Using the REPL](#using-the-repl)
+* [💬 Communicating with the Server](#communicating-with-the-server)
 * [⚙️ Configuring FlowR](#configuring-flowr)
 * [⚒️ Writing Code](#writing-code)
+
+<a id='using-the-repl'></a>
+## 💻 Using the REPL
+
+${await explainRepl(treeSitter, ctx)}
 
 <a id='communicating-with-the-server'></a>
 ## 💬 Communicating with the Server
 
 ${await explainServer(shell)}
 
-<a id='using-the-repl'></a>
-## 💻 Using the REPL
-
-${await explainRepl(treeSitter, ctx)}
 
 <a id='configuring-flowr'></a>
 ## ⚙️ Configuring FlowR

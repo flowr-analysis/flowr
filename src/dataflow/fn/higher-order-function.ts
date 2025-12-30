@@ -69,7 +69,7 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
  * If the return is an identity, e.g., `function(x) x`, this is not considered higher-order,
  * if no function is passed as an argument.
  */
-export function isHigherOrder(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+export function isFunctionHigherOrder(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const vert = graph.getVertex(id);
 	if(!vert || !isFunctionDefinitionVertex(vert)) {
 		return false;

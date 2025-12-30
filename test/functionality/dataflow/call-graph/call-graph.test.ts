@@ -25,6 +25,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('7@<-', builtInId('assignment')).calls('7@<-', '7@bar')
 			.call('7@bar', 'bar', [argumentInCall('7@3')], { omitArgs: true })
 			.calls('7@bar', '4@function')
+			.calls('7@bar', '5@return')
 			.defineFunction('4@function', [27], {
 				out:               [],
 				in:                [],
@@ -32,7 +33,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 				entryPoint:        '5@return',
 				graph:             new Set([15, 21, 23, 24, 25, 27, 28]),
 				environment:       defaultEnv().pushEnv().defineParameter('y', '4@y', '4@y')
-			})
+			}, { readParams: [[15, true]] })
 			.calls('4@function', '5@return')
 			.defineFunction('1@function', [10], {
 				out:               [],
@@ -41,7 +42,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 				entryPoint:        '2@return',
 				graph:             new Set([1, 6, 7, 8, 10, 11]),
 				environment:       defaultEnv().pushEnv().defineParameter('x', '1@x', '1@x')
-			})
+			}, { readParams: [[1, true]] })
 			.call('2@return', 'return', [argumentInCall('2@return')], { onlyBuiltIn: true, omitArgs: true, origin: ['builtin:return'] })
 			.calls('2@return', builtInId('return')).calls('2@return', '2@+')
 			.call('2@+', '+', [argumentInCall('2@x'), argumentInCall('2@1')], { onlyBuiltIn: true, omitArgs: true })
@@ -71,6 +72,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('1@<-', builtInId('function')).calls('1@<-', builtInId('assignment'))
 			.call('7@fib', 'fib', [argumentInCall('7@5')], { omitArgs: true })
 			.calls('7@fib', '1@function')
+			.calls('7@fib', '3@return').calls('7@fib', '5@return')
 			.defineFunction('1@function', [13, 31], {
 				out:               [],
 				in:                [],
@@ -78,7 +80,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 				entryPoint:        '2@if',
 				graph:             new Set([1,5,6,7,11,13,14,15,18,19,20,22,24,25,26,28,29,31,32]),
 				environment:       defaultEnv().pushEnv().defineParameter('n', '1@n', '1@n')
-			})
+			}, { readParams: [[1, true]] })
 			.calls('1@function', '3@return').calls('1@function', '5@return')
 			.call('2@if', 'if', [argumentInCall(7), argumentInCall('2@return'), argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true })
 			.calls('2@if', builtInId('if-then-else')).calls('2@if', 14).calls('2@if', 7)

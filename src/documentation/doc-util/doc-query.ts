@@ -50,7 +50,7 @@ ${codeBlock('json', collapseQuery ? str.split('\n').join(' ').replace(/([{[])\s{
 
 ${(function() {
 	if((queries.length === 1 && Object.keys(queries[0]).length === 1) || shorthand) {
-		return `(This query can be shortened to \`@${queries[0].type}${shorthand ? ' ' + shorthand : ''}\` when used within the REPL command ${getReplCommand('query')}).`;
+		return `(This can be shortened to \`@${queries[0].type}${shorthand ? ' ' + shorthand : ''}\` when used with the REPL command ${getReplCommand('query')}).`;
 	} else {
 		return '';
 	}

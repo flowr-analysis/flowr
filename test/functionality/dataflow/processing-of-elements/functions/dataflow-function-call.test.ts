@@ -21,6 +21,7 @@ describe.sequential('Function Call', withShell(shell => {
 				.reads('8', '4')
 				.use('13', 'i', undefined)
 				.reads('13', '0')
+				.reads(15, 13)
 				.definesOnCall('13', '4')
 				.definedByOnCall('4', '13')
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
@@ -54,7 +55,7 @@ describe.sequential('Function Call', withShell(shell => {
 					entryPoint:        '9',
 					graph:             new Set(['4', '8', '9']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '4', '5')
-				})
+				}, { readParams: [[4, true]] })
 				.defineVariable('3', 'a', { definedBy: ['10', '11'] })
 		);
 
@@ -65,6 +66,7 @@ describe.sequential('Function Call', withShell(shell => {
 				.use('13', 'a', undefined)
 				.reads('13', '3')
 				.use('16', 'i', undefined)
+				.reads(18, 16)
 				.reads('16', '0')
 				.definesOnCall('16', '4')
 				.definedByOnCall('4', '16')
@@ -106,7 +108,7 @@ describe.sequential('Function Call', withShell(shell => {
 					entryPoint:        '9',
 					graph:             new Set(['4', '8', '9']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '4', '5')
-				})
+				}, { readParams: [[4, true]] })
 				.defineVariable('3', 'a', { definedBy: ['10', '11'] })
 				.defineVariable('12', 'b', { definedBy: ['13', '14'] })
 		);
@@ -118,6 +120,7 @@ a(i)`, emptyGraph()
 			.reads('9', '4')
 			.use('19', 'i', undefined)
 			.reads('19', '0')
+			.reads(21, 19)
 			.definesOnCall('19', '4')
 			.definedByOnCall('4', '19')
 			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
@@ -169,7 +172,7 @@ a(i)`, emptyGraph()
 				entryPoint:        '15',
 				graph:             new Set(['4', '9', '8', '10', '12', '11', '13', '14', '15']),
 				environment:       defaultEnv().pushEnv().defineVariable('x', '11', '13')
-			})
+			}, { readParams: [[4, true]] })
 			.defineVariable('3', 'a', { definedBy: ['16', '17'] })
 		);
 	});
@@ -204,8 +207,9 @@ a(i)`, emptyGraph()
 				entryPoint:        '9',
 				graph:             new Set(['2', '6', '7', '8', '9']),
 				environment:       defaultEnv().pushEnv().defineParameter('x', '2', '3')
-			})
+			}, { readParams: [[2, true]] })
 			.constant('12', undefined)
+			.reads(14, 12)
 			.definesOnCall('12', '2')
 			.definedByOnCall('2', '12');
 
@@ -385,9 +389,10 @@ a(,3)`, emptyGraph()
 				entryPoint:        '9',
 				graph:             new Set(['1', '2', '4', '8', '9']),
 				environment:       defaultEnv().pushEnv().defineParameter('x', '1', '3').defineParameter('y', '4', '5')
-			})
+			}, { readParams: [[1, false], [4, true]] })
 			.defineVariable('0', 'a', { definedBy: ['10', '11'] })
 			.constant('13')
+			.reads(15, 13)
 			.definesOnCall('13', '4')
 			.definedByOnCall('4', '13')
 		);
@@ -443,7 +448,8 @@ ${applyFn}(x, g)`,
 				emptyGraph()
 					.defineVariable('1@g')
 					.call('3@g', 'g', [argumentInCall('3@x')], { returns: [], reads: [] })
-					.reads('3@g', '1@g'),
+					.reads('3@g', '1@g')
+					.reads(19, 17),
 				{
 					resolveIdsAsCriterion: true,
 					expectIsSubgraph:      true
@@ -464,7 +470,8 @@ ${applyFn}(x, g, k, u)`,
 						returns: [],
 						reads:   []
 					})
-					.reads('5@g', '1@g'),
+					.reads('5@g', '1@g')
+					.reads(31, 29),
 				{
 					resolveIdsAsCriterion: true,
 					expectIsSubgraph:      true

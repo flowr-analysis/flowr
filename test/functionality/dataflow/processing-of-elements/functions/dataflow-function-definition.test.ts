@@ -45,7 +45,7 @@ describe.sequential('Function Definition', withShell(shell => {
 					entryPoint:        '5',
 					graph:             new Set(['0', '4', '5']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '0', '1')
-				})
+				}, { readParams: [ [0, true] ] })
 		);
 		assertDataflow(label('read of parameter in return', ['formals-named', 'return', 'name-normal']),
 			shell, 'function(x) { return(x) }',  emptyGraph()
@@ -65,7 +65,7 @@ describe.sequential('Function Definition', withShell(shell => {
 					entryPoint:        '8',
 					graph:             new Set(['0', '5', '7', '8']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '0', '1')
-				})
+				}, { readParams: [ [0, true] ] })
 		);
 
 		describe('x', () => {
@@ -88,7 +88,7 @@ describe.sequential('Function Definition', withShell(shell => {
 						entryPoint:        '9',
 						graph:             new Set(['0', '6', '7', '8', '9']),
 						environment:       defaultEnv().pushEnv().defineParameter('x', '0', '1')
-					})
+					}, { readParams: [ [0, true] ] })
 			);
 		});
 
@@ -107,7 +107,7 @@ describe.sequential('Function Definition', withShell(shell => {
 					entryPoint:        '8',
 					graph:             new Set(['0', '2', '4', '6']),
 					environment:       envWithXYZParam
-				})
+				}, { readParams: [ [0, false], [2, true], [4, false] ] })
 				.defineVariable('0', 'x', { },  false)
 				.defineVariable('2', 'y', { },  false)
 				.defineVariable('4', 'z', { },  false)
@@ -307,7 +307,7 @@ print(x)`,  emptyGraph()
 				entryPoint:        '8',
 				graph:             new Set(['3', '7', '8']),
 				environment:       defaultEnv().pushEnv().defineParameter('x', '3', '4')
-			})
+			}, { readParams: [[3, true]] })
 		);
 	});
 	describe('Access dot-dot-dot', () => {
@@ -325,7 +325,7 @@ print(x)`,  emptyGraph()
 				entryPoint:        '5',
 				graph:             new Set(['0', '4', '5']),
 				environment:       defaultEnv().pushEnv().defineParameter('...', '0', '1')
-			})
+			}, { readParams: [[0, true]] })
 		);
 	});
 	describe('Using named arguments', () => {
@@ -346,7 +346,7 @@ print(x)`,  emptyGraph()
 				entryPoint:        '9',
 				graph:             new Set(['0', '1', '3', '4', '8', '9']),
 				environment:       defaultEnv().pushEnv().defineParameter('a', '0', '2').defineParameter('b', '3', '5')
-			})
+			}, { readParams: [[0, true], [3, true]] })
 		);
 
 		assertDataflow(label('Read later definition', ['formals-named', 'name-normal', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'semicolons', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities]), shell, 'function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }', emptyGraph()
@@ -385,7 +385,7 @@ print(x)`,  emptyGraph()
 				entryPoint:        '18',
 				graph:             new Set(['0', '1', '3', '4', '9', '8', '10', '11', '13', '12', '14', '15', '16', '17', '18']),
 				environment:       defaultEnv().pushEnv().defineParameter('a', '0', '2').defineParameter('m', '3', '5').defineVariable('b', '12', '14')
-			})
+			}, { readParams: [ [0, true], [3, false] ] })
 		);
 	});
 	describe('Using special argument', () => {
@@ -406,7 +406,7 @@ print(x)`,  emptyGraph()
 				entryPoint:        '10',
 				graph:             new Set(['0', '2', '7', '9', '10']),
 				environment:       defaultEnv().pushEnv().defineParameter('a', '0', '1').defineParameter('...', '2', '3')
-			})
+			}, { readParams: [ [0, false], [2, true] ] } )
 		);
 	});
 	describe('Bind environment to correct exit point', () => {
@@ -519,7 +519,7 @@ print(x)`,  emptyGraph()
 				entryPoint:        '11',
 				graph:             new Set(['4', '9', '8', '10', '11']),
 				environment:       defaultEnv().pushEnv().pushEnv().defineVariable('x', '8', '10')
-			}, { environment: defaultEnv().pushEnv() }, false)
+			}, { environment: defaultEnv().pushEnv(), readParams: [ [4, false] ] }, false)
 			.defineVariable('3', 'x', { definedBy: ['12', '13'] }, false)
 			.defineFunction('16', ['14'], {
 				out:               [],
@@ -577,13 +577,14 @@ print(g())`, emptyGraph()
 					entryPoint:        '9',
 					graph:             new Set(['1', '2', '8', '9']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '1', '3')
-				})
+				}, { readParams: [ [1, true] ] })
 				.defineVariable('0', 'f', { definedBy: ['10', '11'] })
-				.constant('14')
-				.definesOnCall('14', '1')
-				.definedByOnCall('1', '14')
-				.defineVariable('12', 'g', { definedBy: ['16', '17'] })
-				.markIdForUnknownSideEffects('22')
+				.constant(14)
+				.reads(16, 14)
+				.definesOnCall(14, 1)
+				.definedByOnCall(1, 14)
+				.defineVariable(12, 'g', { definedBy: [16, 17] })
+				.markIdForUnknownSideEffects(22)
 		);
 		assertDataflow(label('nested closures w/ default arguments', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'lambda-syntax', 'implicit-return', ...OperatorDatabase['+'].capabilities, 'closures', 'grouping']),
 			shell, `f <- function(x = 1) {
@@ -642,7 +643,7 @@ print(g())`, emptyGraph()
 					entryPoint:        '18',
 					graph:             new Set(['11', '12', '14', '15', '16', '17', '18']),
 					environment:       defaultEnv().pushEnv().pushEnv().pushEnv().defineParameter('z', '11', '13')
-				}, { environment: defaultEnv().pushEnv().pushEnv() }, false)
+				}, { environment: defaultEnv().pushEnv().pushEnv(), readParams: [ [11, true] ] }, false)
 				.defineFunction('22', ['20'], {
 					out:               [],
 					in:                [],
@@ -650,7 +651,7 @@ print(g())`, emptyGraph()
 					entryPoint:        '20',
 					graph:             new Set(['8', '9', '20']),
 					environment:       defaultEnv().pushEnv().pushEnv().defineParameter('y', '8', '10')
-				}, { environment: defaultEnv().pushEnv() }, false)
+				}, { environment: defaultEnv().pushEnv(), readParams: [ [8, true] ] }, false)
 				.defineFunction('26', ['24'], {
 					out:               [],
 					in:                [{ nodeId: '24', name: `${UnnamedFunctionCallPrefix}24`, controlDependencies: [], type: ReferenceType.Argument }],
@@ -658,13 +659,14 @@ print(g())`, emptyGraph()
 					entryPoint:        '25',
 					graph:             new Set(['1', '2', '22', '23', '24', '25']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '1', '3')
-				})
+				}, { readParams: [ [1, true ] ] })
 				.defineVariable('0', 'f', { definedBy: ['26', '27'] })
-				.constant('30')
-				.definesOnCall('30', '1')
-				.definedByOnCall('1', '30')
-				.defineVariable('28', 'g', { definedBy: ['32', '33'] })
-				.markIdForUnknownSideEffects('38'),
+				.constant(30)
+				.reads(32, 30)
+				.definesOnCall(30, 1)
+				.definedByOnCall(1, 30)
+				.defineVariable(28, 'g', { definedBy: [32, 33] })
+				.markIdForUnknownSideEffects(38),
 			{ minRVersion: MIN_VERSION_LAMBDA });
 		assertDataflow(label('closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'closures', ...OperatorDatabase['<<-'].capabilities, 'side-effects-in-function-call', ...OperatorDatabase['+'].capabilities, 'numbers']),
 			shell, `f <- function() {
@@ -784,11 +786,13 @@ f(5)`, emptyGraph()
 					entryPoint:        '21',
 					graph:             new Set(['1', '6', '7', '8', '5', '9', '11', '13', '21']),
 					environment:       defaultEnv().pushEnv().defineVariable('x', '5', '9')
-				})
-				.defineVariable('0', 'f', { definedBy: ['22', '23'] })
-				.constant('25')
-				.definesOnCall('25', '1')
-				.definedByOnCall('1', '25'));
+				}, { readParams: [ [1, true ] ] })
+				.defineVariable(0, 'f', { definedBy: [22, 23] })
+				.constant(25)
+				.reads(27, 25)
+				.definesOnCall(25, 1)
+				.definedByOnCall(1, 25)
+		);
 		assertDataflow(label('return in if',['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'newlines', 'numbers', ...OperatorDatabase['*'].capabilities, 'return', 'unnamed-arguments', 'if']),
 			shell, `f <- function(x) {
    x <- 3 * x
@@ -843,14 +847,15 @@ f(5)`, emptyGraph()
 					out:               [],
 					in:                [{ nodeId: '10', name: 'k', controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
-					entryPoint:        '29',
-					graph:             new Set(['1', '6', '7', '8', '5', '9', '10', '12', '14', '17', '19', '21', '29']),
-					environment:       defaultEnv().pushEnv().defineVariable('x', '5', '9')
-				})
-				.defineVariable('0', 'f', { definedBy: ['30', '31'] })
-				.constant('33')
-				.definesOnCall('33', '1')
-				.definedByOnCall('1', '33'));
+					entryPoint:        29,
+					graph:             new Set([1, 6, 7, 8, 5, 9, 10, 12, 14, 17, 19, 21, 29]),
+					environment:       defaultEnv().pushEnv().defineVariable('x', 5, 9)
+				}, { readParams: [ [1, true] ] })
+				.defineVariable('0', 'f', { definedBy: [30, 31] })
+				.constant(33)
+				.reads(35, 33)
+				.definesOnCall(33, 1)
+				.definedByOnCall(1, 33));
 	});
 
 	describe('Side Effects', () => {
@@ -906,7 +911,7 @@ f(3)`, emptyGraph()
 					entryPoint:        '5',
 					graph:             new Set(['1', '3', '4', '5']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '1', '2')
-				})
+				}, { readParams: [ [1, true] ] })
 				.defineVariable('0', 'f', { definedBy: ['7', '8'] })
 				.defineVariable('10', 'g', { definedBy: [] }, false)
 				.defineVariable('14', 'f', { definedBy: ['15', '16'] }, false)
@@ -918,7 +923,7 @@ f(3)`, emptyGraph()
 					entryPoint:        '17',
 					graph:             new Set(['10', '15', '14', '16', '17']),
 					environment:       defaultEnv().defineVariable('f', '14', '16').pushEnv().defineParameter('g', '10', '11')
-				}, { environment: defaultEnv().defineVariable('f', '14', '16') })
+				}, { environment: defaultEnv().defineVariable('f', '14', '16'), readParams: [ [10, true] ] })
 				.defineVariable('9', 'm', { definedBy: ['18', '19'] })
 				.defineVariable('21', 'x', { definedBy: [] }, false)
 				.constant('24', undefined, false)
@@ -929,12 +934,14 @@ f(3)`, emptyGraph()
 					entryPoint:        '25',
 					graph:             new Set(['21', '23', '24', '25']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '21', '22')
-				})
-				.definesOnCall('27', '10')
-				.definedByOnCall('10', '27')
-				.constant('31')
-				.definesOnCall('31', '21')
-				.definedByOnCall('21', '31'), { minRVersion: MIN_VERSION_LAMBDA });
+				}, { readParams: [ [21, true] ] })
+				.definesOnCall(27, 10)
+				.definedByOnCall(10, 27)
+				.constant(31)
+				.reads(33, 31)
+				.reads(29, 27)
+				.definesOnCall(31, 21)
+				.definedByOnCall(21, 31), { minRVersion: MIN_VERSION_LAMBDA });
 	});
 	describe('Failures in Practice', () => {
 		assertDataflow(label('linking within nested named arguments', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'formals-named', 'function-definitions', 'function-calls', 'logical']),

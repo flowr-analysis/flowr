@@ -23,44 +23,6 @@ export interface FileFilter<FilterType> {
 	readonly includeUndefinedFiles?: boolean;
 }
 
-interface CallConstraintsRange {
-	/** 0 if not set */
-	readonly min?: number;
-	/** Infinity if not set */
-	readonly max?: number;
-}
-/** Specify a name constraint for calls */
-interface CallConstraintElementsName {
-	readonly type:   'regexp' | 'string';
-	// defaults to [1, 1]
-	readonly range?: CallConstraintsRange
-	readonly value:  string;
-}
-/** Specify a list of exact names for calls */
-interface CallConstraintElementsNames {
-	readonly type:   'strings';
-	// defaults to [1, 1]
-	readonly range?: CallConstraintsRange
-	readonly value:  string[];
-}
-
-/** Specify any call */
-interface CallConstraintElementsAny {
-	readonly type:   '*';
-	// defaults to [0, Infinity]
-	readonly range?: CallConstraintsRange
-}
-
-type CallConstraintElement = CallConstraintElementsName | CallConstraintElementsNames | CallConstraintElementsAny;
-
-export interface CallConstraints {
-	/** Whether this specifies names called by this function, or functions calling this function */
-	readonly type:    'calls' | 'called-by';
-	/** Whether to negate the constraint */
-	readonly negate:  boolean;
-	/** Specify the calls that have to appear following the given order. */
-	readonly inOrder: CallConstraintElement;
-}
 
 export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> extends BaseQueryFormat {
 	readonly type:                   'call-context';
@@ -83,8 +45,6 @@ export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> 
 	readonly ignoreParameterValues?: boolean;
 	/** Filter that, when set, a node's file attribute must match to be considered */
 	readonly fileFilter?:            FileFilter<RegexType>;
-	/** Specify constraints on calls made by / calling the function */
-	readonly calls:                  readonly CallConstraints[];
 }
 
 export type CallNameTypes = RegExp | string | string[]

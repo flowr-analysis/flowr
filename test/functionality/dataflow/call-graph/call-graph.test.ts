@@ -25,7 +25,8 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('7@<-', builtInId('assignment')).calls('7@<-', '7@bar')
 			.call('7@bar', 'bar', [argumentInCall('7@3')], { omitArgs: true })
 			.calls('7@bar', '4@function')
-			.calls('7@bar', '5@return')
+			.call(11, '{', [argumentInCall('1@10')], { omitArgs: true, onlyBuiltIn: true })
+			.call(28, '{', [argumentInCall('4@27')], { omitArgs: true, onlyBuiltIn: true })
 			.defineFunction('4@function', [27], {
 				out:               [],
 				in:                [],
@@ -34,7 +35,8 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 				graph:             new Set([15, 21, 23, 24, 25, 27, 28]),
 				environment:       defaultEnv().pushEnv().defineParameter('y', '4@y', '4@y')
 			}, { readParams: [[15, true]] })
-			.calls('4@function', '5@return')
+			.calls('4@function', [28, '5@return'])
+			.calls(28, [27, builtInId('expression-list')])
 			.defineFunction('1@function', [10], {
 				out:               [],
 				in:                [],
@@ -48,7 +50,8 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.call('2@+', '+', [argumentInCall('2@x'), argumentInCall('2@1')], { onlyBuiltIn: true, omitArgs: true })
 			.calls('2@+', builtInId('default'))
 			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: ['builtin:return'] })
-			.calls('1@function', '2@return')
+			.calls('1@function', [11, '2@return'])
+			.calls(11, [10, builtInId('expression-list')])
 			.calls('5@return', builtInId('return')).calls('5@return', '5@*')
 			.call('5@*', '*', [argumentInCall('5@foo'), argumentInCall('5@2')], { onlyBuiltIn: true, omitArgs: true })
 			.calls('5@*', builtInId('default')).calls('5@*', '5@foo')
@@ -72,7 +75,8 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('1@<-', builtInId('function')).calls('1@<-', builtInId('assignment'))
 			.call('7@fib', 'fib', [argumentInCall('7@5')], { omitArgs: true })
 			.calls('7@fib', '1@function')
-			.calls('7@fib', '3@return').calls('7@fib', '5@return')
+			.call(32, '{', [argumentInCall(31)], { omitArgs: true, onlyBuiltIn: true })
+			.calls(32, [builtInId('expression-list'), 15, 31])
 			.defineFunction('1@function', [13, 31], {
 				out:               [],
 				in:                [],
@@ -81,7 +85,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 				graph:             new Set([1,5,6,7,11,13,14,15,18,19,20,22,24,25,26,28,29,31,32]),
 				environment:       defaultEnv().pushEnv().defineParameter('n', '1@n', '1@n')
 			}, { readParams: [[1, true]] })
-			.calls('1@function', '3@return').calls('1@function', '5@return')
+			.calls('1@function', ['3@return', '5@return', 7, 14, 15, 32])
 			.call('2@if', 'if', [argumentInCall(7), argumentInCall('2@return'), argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true })
 			.calls('2@if', builtInId('if-then-else')).calls('2@if', 14).calls('2@if', 7)
 			.call(14, '{', [argumentInCall(13)], { omitArgs: true, onlyBuiltIn: true, controlDependencies: [{ id: 15, when: true }] })
@@ -187,13 +191,20 @@ f(1)`,
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
-	assertDataflow(label('call graph with scoped, unknown, alias', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'recursion']),
+	assertDataflow(label('call graph with scoped, unknown, alias', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
 		ts,
 		`g <- rofl
 f <- function(x) { g(x) }
 f(1)`,
 		emptyGraph()
 			.calls('2@g', '1@rofl')
+		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+	assertDataflow(label('correctly track assignments', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
+		ts,
+		'f <- function() {\n x <- 2; 3 }',
+		emptyGraph()
+			.calls('1@function', '2@<-')
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 

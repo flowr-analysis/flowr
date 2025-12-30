@@ -55,10 +55,9 @@ function makeCallMatcher(constraint: CallsConstraint): CheckCallMatch {
 			return (vtx, cg) => {
 				const matchersToRemove: CheckCallMatch[] = [];
 				for(const matcher of matchersAndRemain) {
-					if(!matcher(vtx, cg)) {
-						return false;
+					if(matcher(vtx, cg)) {
+						matchersToRemove.push(matcher);
 					}
-					matchersToRemove.push(matcher);
 				}
 				matchersAndRemain = matchersAndRemain.filter(m => !matchersToRemove.includes(m));
 				return matchersAndRemain.length === 0;

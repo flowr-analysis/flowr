@@ -3,6 +3,7 @@ import { label } from '../../_helper/label';
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import type {
+	CallsConstraint,
 	DoesCallQuery,
 	DoesCallQueryResult
 } from '../../../../src/queries/catalog/does-call-query/does-call-query-format';
@@ -39,6 +40,8 @@ describe('Does Call Query', withTreeSitter(parser => {
 	}
 	const n = (name: string) => ({ type: 'name', name, nameExact: true } as const);
 	const r = (name: string) => ({ type: 'name', name, nameExact: false } as const);
+	const and = (...calls: readonly CallsConstraint[]) => ({ type: 'and', calls } as const);
+	const or = (...calls: readonly CallsConstraint[]) => ({ type: 'or', calls } as const);
 
 	testQuery('Calling eval (named & regex)', 'f <- function(x) { eval(x) }\nf(1)', [
 		{ call: '1@function',  calls: n('eval') },
@@ -64,6 +67,12 @@ describe('Does Call Query', withTreeSitter(parser => {
 		{ call: '3@f',  calls: n('eval') },
 	], ['1@function', '2@function', '3@f']);
 
+	testQuery('Not calling eval because dead code', 'g <- function() { if(FALSE) { eval(x) } }\nf <- function(x) { g() }\nf(1)', [
+		{ call: '1@function',  calls: n('eval') },
+		{ call: '2@function',  calls: n('eval') },
+		{ call: '3@f',  calls: n('eval') },
+	], [false, false, false]);
+
 	for(const fname of ['eval', '*', 'quote', 'rofl']) {
 		testQuery(`Calling '${fname}' with alias`, `g <- ${fname === '*' ? `\`${fname}\`` : fname}\nf <- function(x) { g(x) }\nf(1)`, [
 			{ call: '1@g', calls: n(fname) },
@@ -72,6 +81,34 @@ describe('Does Call Query', withTreeSitter(parser => {
 			{ call: '3@f', calls: n(fname) },
 		], [false, '2@g', '2@function', '3@f']);
 	}
+
+	const threeCalls = and(
+		n('eval'),
+		n('<-'),
+		r('^foo|bar$')
+	);
+	testQuery('Must have three calls!', `allInOne <- function() { foo <- 1; eval(parse(text="bar(foo)")) }
+       onlyTwosA <- function() { foo <- 2; bar(foo) } # no eval
+       onlyTwosB <- function() { foo <- 2; eval(parse(text="baz(foo)")) } # no bar|foo call
+       onlyTwosC <- function() { foo = 2; eval(x); foo(3) } # no <- call
+       none <- function() { baz(3) } # no eval, <-, foo, or bar
+       combineAB <- function() { onlyTwosA(); onlyTwosB() }
+       combineAC <- function() { onlyTwosA(); onlyTwosC() }
+       combineBC <- function() { onlyTwosB(); onlyTwosC() }
+       allThree <- function() { allInOne() }
+       combineABC <- function() { onlyTwosA(); onlyTwosB(); onlyTwosC() }
+	`, [
+		{ call: '1@function',  calls: threeCalls }, // allInOne
+		/* { call: '2@function',  calls: threeCalls }, // onlyTwosA
+		{ call: '3@function',  calls: threeCalls }, // onlyTwosB
+		{ call: '4@function',  calls: threeCalls }, // onlyTwosC
+		{ call: '5@function',  calls: threeCalls }, // none
+		{ call: '6@function',  calls: threeCalls }, // combineAB
+		{ call: '7@function',  calls: threeCalls }, // combineAC
+		{ call: '8@function',  calls: threeCalls }, // combineBC
+		{ call: '9@function',  calls: threeCalls }, // allThree
+		{ call: '10@function', calls: threeCalls } // combineABC */
+	], ['1@function' /*, false, false, false, false, '6@function', '7@function', '8@function', '9@function', '10@function' */]);
 
 	// TODO: and and or!
 }));

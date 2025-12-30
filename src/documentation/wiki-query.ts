@@ -469,6 +469,9 @@ ${
 		}
 	])
 }
+
+One of the most useful options to change on-the-fly are probably those under \`repl\`. For example, setting \`repl.quickStats=true\`
+enables quick statistics after each REPL command.
 `;
 	}
 });

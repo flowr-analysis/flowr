@@ -108,7 +108,7 @@ export type WorkerData = ThreadPoolSettings['workerData'];
 export const ThreadpoolDefaultSettings: ThreadPoolSettings = {
 	nofMinWorkers:            0,
 	nofMaxWorkers:            0,
-	workerPath:               './worker.ts',
+	workerPath:               './worker.js',
 	idleTimeout:              30_000, // 30 seconds timeout
 	concurrentTasksPerWorker: 4,
 	workerData:               {
@@ -117,26 +117,29 @@ export const ThreadpoolDefaultSettings: ThreadPoolSettings = {
 };
 
 /**
- * Simple warpper for piscina used for dataflow parallelization
+ * Simple wrapper for piscina used for dataflow parallelization
  */
 export class Threadpool {
 	private readonly pool: Piscina;
 	private workerPorts = new Map<number, MessagePort>();
 
 	constructor(settings: ThreadPoolSettings = ThreadpoolDefaultSettings) {
+		console.log('hey', __dirname, process.env.NODE_ENV, settings.workerPath);
 		let workers = settings.nofMaxWorkers;
 		if(workers <= 0){
-			// use avalaible core
+			// use available core
 			workers = Math.max(1, os.cpus().length); // may be problematic, as this returns SMT threads as cpu cores
 		}
+		const finalPath = process.env.NODE_ENV === 'test' ?
+			resolve('dist', 'src', 'dataflow', 'parallel', 'worker.js') :
+			resolve(__dirname, settings.workerPath);
 
-		console.log(`worker filename: ${resolve(__dirname, './worker.ts')}`);
-
+		console.log(finalPath);
 		// create tiny pool instance
 		this.pool = new Piscina({
 			minThreads:               Math.max(settings.nofMinWorkers, 0),
 			maxThreads:               workers,
-			filename:                 resolve(__dirname, settings.workerPath),
+			filename:                 finalPath,
 			concurrentTasksPerWorker: settings.concurrentTasksPerWorker,
 			idleTimeout:              settings.idleTimeout, // 30 seconds idle timeout
 			workerData:               {

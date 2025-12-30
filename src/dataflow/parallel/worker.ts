@@ -14,10 +14,11 @@ type PendingEntry<T> = {
 	reject:  (reason: unknown) => void;
 }
 
+
 const pending = new Map<
-        number,
-        PendingEntry<unknown>
-    >();
+		number,
+		PendingEntry<unknown>
+	>();
 
 
 const { port1: workerPort, port2: mainPort } = new MessageChannel();
@@ -25,7 +26,7 @@ const { port1: workerPort, port2: mainPort } = new MessageChannel();
 let portRegisteredResolve: () => void;
 const portRegistered = new Promise<void>(res => (portRegisteredResolve = res));
 
-if(!parentPort){
+if(!parentPort) {
 	/** This 'should' never happen, as this port is provided natively by piscina */
 	dataflowLogger.error('Worker started without parentPort present, Aborting worker');
 	process.exit(1);
@@ -49,7 +50,7 @@ workerPort.on('message', (msg: unknown) => {
 
 
 workerPort.on('message', (msg: unknown) => {
-	if(isSubtaskResponseMessage(msg)){
+	if(isSubtaskResponseMessage(msg)) {
 		const { id, result, error } = msg;
 		console.log(`got response for ${id}`);
 		const entry = pending.get(id);
@@ -59,14 +60,13 @@ workerPort.on('message', (msg: unknown) => {
 
 		pending.delete(id);
 
-		if(error !== undefined){
+		if(error !== undefined) {
 			entry.reject(error);
 		} else {
 			entry.resolve(result);
 		}
 	}
 });
-
 
 
 async function runSubtask<TInput, TOutput>(taskName: TaskName, taskPayload: TInput): Promise<TOutput> {
@@ -86,7 +86,7 @@ async function runSubtask<TInput, TOutput>(taskName: TaskName, taskPayload: TInp
 	});
 }
 
-async function initialize(){
+async function initialize() {
 	await portRegistered;
 
 	const config = typedWorkerData.flowrConfig ?? cloneConfig(defaultConfigOptions);
@@ -96,7 +96,7 @@ async function initialize(){
 	return (msg: SubtaskReceivedMessage) => {
 		const { taskName, taskPayload } = msg;
 		const taskHandler = workerTasks[taskName];
-		if(!taskHandler){
+		if(!taskHandler) {
 			dataflowLogger.error(`Requested unknown task (${taskName})`);
 			return undefined;
 		}

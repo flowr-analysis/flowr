@@ -178,6 +178,7 @@ async function mainRepl() {
 	const analyzer = new FlowrAnalyzerBuilder()
 		.setParser(defaultEngine)
 		.setConfig(config)
+		.setFeature('paralleliseFiles')
 		.buildSync();
 
 	const allowRSessionAccess = options['r-session-access'] ?? false;

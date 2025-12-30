@@ -164,5 +164,9 @@ function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, res
 			}
 		}
 	}
-	result.push(`       ╰ _Metadata_: ${codeInline(JSON.stringify(results['.meta']))}`);
+	result.push(`       ╰ _Metadata_: ${codeInline(renderMetaData(results['.meta']))}`);
+}
+
+function renderMetaData(metadata: object): string {
+	return Object.entries(metadata).map(r => `${r[0]}: ${JSON.stringify(r[1])}`).join(', ');
 }

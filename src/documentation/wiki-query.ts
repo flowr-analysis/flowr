@@ -47,6 +47,7 @@ import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { executeFileQuery } from '../queries/catalog/files-query/files-query-executor';
 import { executeCallGraphQuery } from '../queries/catalog/call-graph-query/call-graph-query-executor';
 import { executeRecursionQuery } from '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor';
+import { executeDoesCallQuery } from '../queries/catalog/does-call-query/does-call-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -166,6 +167,33 @@ ${
 		`;
 	}
 });
+
+registerQueryDocumentation('does-call', {
+	name:             'Does-Call Query',
+	type:             'active',
+	shortDescription: 'Checks whether a function calls another function matching given constraints.',
+	functionName:     executeDoesCallQuery.name,
+	functionFile:     '../queries/catalog/does-call-query/does-call-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'f <- function(x) { eval(x) };\nf("1 + 1")';
+		return `
+This query checks whether a function calls another function matching given constraints.
+
+Using the example code:
+${codeBlock('r', exampleCode)}
+the following query checks whether the call to \`f\` calls \`eval\`:
+${
+	await showQuery(shell, exampleCode, [{
+		type:    'does-call',
+		queryId: 'calls-eval',
+		call:    '2@f',
+		calls:   { type: 'name', name: 'eval', nameExact: true }
+	}], { showCode: true, collapseQuery: false })
+}
+		`;
+	}
+});
+
 
 registerQueryDocumentation('files', {
 	name:             'Files Query',

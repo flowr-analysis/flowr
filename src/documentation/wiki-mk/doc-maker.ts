@@ -52,7 +52,7 @@ const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	[/v\d+\.\d+\.\d+/g, ''],
 	// clean paths
 	[/%2Fhome%2F([a-zA-Z0-9._-]+%2F)*/g, ''],
-	// async wrapper depends on whether the promise got forfilled already
+	// async wrapper depends on whether the promise got fulfilled already
 	[/async|%20/g, '']
 ];
 

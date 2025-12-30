@@ -188,7 +188,7 @@ ${
 		queryId: 'calls-eval',
 		call:    '2@f',
 		calls:   { type: 'name', name: 'eval', nameExact: true }
-	}], { showCode: true, collapseQuery: false })
+	}], { showCode: true, collapseQuery: false, shorthand: '(2@f:"eval")' })
 }
 		`;
 	}

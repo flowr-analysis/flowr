@@ -1,16 +1,20 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import { bold } from '../../../util/text/ansi';
+import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import Joi from 'joi';
-import type { QueryResults, SupportedQuery } from '../../query';
+import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeDoesCallQuery } from './does-call-query-executor';
 import { type NodeId  } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { formatRange } from '../../../util/mermaid/dfg';
+import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
+import type { FlowrConfigOptions } from '../../../config';
+import { splitAtEscapeSensitive } from '../../../util/text/args';
+import { startAndEndsWith } from '../../../util/text/strings';
 
 interface CallsIdConstraint {
 	readonly type: 'calls-id';
 	/** The id of the function being called. */
-	readonly id:   SingleSlicingCriterion;
+	readonly id:   NodeId;
 }
 interface CallsWithNameConstraint {
 	readonly type:       'name';
@@ -49,8 +53,65 @@ export interface DoesCallQueryResult extends BaseQueryResult {
 	readonly results: Record<string, FindAllCallsResult | false>;
 }
 
-// TODO: from line parser
-// TODO: fix queries type with new knowledge on inferring T extends unknown[] to get a type per element!
+const FormatError = 'Invalid constraint format, expected format "(left:$id/"regex")"';
+/**
+ * Parses a constraint from a string argument.
+ * Returns the constraint or an error message.
+ */
+function constraintParser(argument: string | undefined): { call: SingleSlicingCriterion, constraint: CallsWithNameConstraint | CallsIdConstraint } | string {
+	if(!argument?.startsWith('(') || !argument.includes(')')) {
+		return FormatError + ` (got: "${argument}")`;
+	}
+	const endBracket = argument.indexOf(')');
+	const constrPart = argument.slice(1, endBracket);
+	const args = splitAtEscapeSensitive(constrPart, true, ':');
+	if(args.length !== 2) {
+		return FormatError + ` (got ${args.length} parts: ${args.join(', ')})`;
+	}
+	const [criteria, ...rhs] = args;
+	const rhsStr = rhs.join(' ');
+	if(rhsStr.startsWith('$')) {
+		return {
+			call:       criteria as SingleSlicingCriterion,
+			constraint: {
+				type: 'calls-id',
+				id:   rhsStr.slice(1) as SingleSlicingCriterion,
+			}
+		};
+	} else {
+		const isExact = startAndEndsWith(rhsStr, '"');
+		const name = isExact ? rhsStr.slice(1, -1) : rhsStr;
+		return {
+			call:       criteria as SingleSlicingCriterion,
+			constraint: {
+				type:      'name',
+				name:      name,
+				nameExact: isExact ? true : undefined,
+			}
+		};
+	}
+}
+
+function doesCallQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'does-call'> {
+	const constraint = constraintParser(line[0]);
+	if(!constraint || typeof constraint === 'string') {
+		output.stderr(output.formatter.format(`Invalid does-call query format:\n  ${constraint}`,
+			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
+		return { query: [] };
+	}
+
+	return {
+		query: [
+			{
+				type:    'does-call',
+				queryId: constraint.call + ' (shorthand)',
+				call:    constraint.call,
+				calls:   constraint.constraint,
+			}],
+		rCode: line[1]
+	} ;
+}
+
 
 export const DoesCallQueryDefinition = {
 	executor:        executeDoesCallQuery,
@@ -69,7 +130,8 @@ export const DoesCallQueryDefinition = {
 		}
 		return true;
 	},
-	schema: Joi.object({
+	fromLine: doesCallQueryLineParser,
+	schema:   Joi.object({
 		type:    Joi.string().valid('does-call').required().description('The type of the query.'),
 		queryId: Joi.string().optional().description('An optional unique identifier for this query, to identify it in the output.'),
 		call:    Joi.string().description('The function from which calls are being made. This is a slicing criterion that resolves to a function definition node.'),

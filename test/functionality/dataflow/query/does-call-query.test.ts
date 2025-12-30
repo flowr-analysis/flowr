@@ -23,7 +23,6 @@ describe('Does Call Query', withTreeSitter(parser => {
 			}
 			query.push(q as DoesCallQuery);
 		}
-		// TODO: add index to the respective query as id, accept an array of findings with either an id or a boolean
 		assertQuery(label(name), parser, code, query, (info) => {
 			const idMap = info.normalize.idMap;
 			const expectedResults: DoesCallQueryResult['results'] = {};

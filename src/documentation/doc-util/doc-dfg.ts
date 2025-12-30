@@ -14,6 +14,7 @@ import { codeBlock } from './doc-code';
 import type { GraphDifferenceReport } from '../../util/diff-graph';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 import type { MermaidMarkdownMark } from '../../util/mermaid/info';
+import { computeCallGraph } from '../../dataflow/graph/call-graph';
 
 
 /**
@@ -38,6 +39,7 @@ export interface PrintDataflowGraphOptions {
 	readonly exposeResult?:       boolean;
 	readonly switchCodeAndGraph?: boolean;
 	readonly simplified?:         boolean;
+	readonly callGraph?:          boolean;
 }
 
 
@@ -60,7 +62,7 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, opt
  * This function returns a markdown string containing the dataflow graph as a mermaid code block,
  * along with the R code itself in a collapsible section.
  */
-export async function printDfGraphForCode(parser: KnownParser, code: string, { simplified = false, mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
+export async function printDfGraphForCode(parser: KnownParser, code: string, { callGraph = false, simplified = false, mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();
 	const result = await createDataflowPipeline(parser, {
 		context: contextFromInput(code)
@@ -72,8 +74,10 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, { s
 	}
 
 	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parse and normalize, using the [${parser.name}](${FlowrWikiBaseRef}/Engines) engine) within the generation environment.`;
-	const dfGraph = printDfGraph(result.dataflow.graph, mark, simplified);
+	const graph = callGraph ? computeCallGraph(result.dataflow.graph) : result.dataflow.graph;
+	const dfGraph = printDfGraph(graph, mark, simplified);
 	const simplyText = simplified ? '(simplified) ' : '';
+	const graphName = callGraph ? 'Call Graph' : 'Dataflow Graph';
 	let resultText = '\n\n';
 
 	if(showCode) {
@@ -82,10 +86,10 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, { s
 		resultText += `
 <details${codeOpen ? ' open' : ''}>
 
-<summary style="color:gray">${switchCodeAndGraph ? `${simplyText}Dataflow Graph of the R Code` : `R Code of the ${simplyText}Dataflow Graph`}</summary>
+<summary style="color:gray">${switchCodeAndGraph ? `${simplyText}${graphName} of the R Code` : `R Code of the ${simplyText}${graphName}`}</summary>
 
 ${metaInfo} ${mark ? `The following marks are used in the graph to highlight sub-parts (uses ids): {${[...mark].join(', ')}}.` : ''}
-We encountered ${result.dataflow.graph.unknownSideEffects.size > 0 ? 'unknown side effects (with ids: ' + [...result.dataflow.graph.unknownSideEffects].map(formatSideEffect).join(', ') + ')' : 'no unknown side effects'} during the analysis.
+We encountered ${graph.unknownSideEffects.size > 0 ? 'unknown side effects (with ids: ' + [...graph.unknownSideEffects].map(formatSideEffect).join(', ') + ')' : 'no unknown side effects'} during the analysis.
 
 ${switchCodeAndGraph ? dfGraph : codeText}
 

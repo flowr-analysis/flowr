@@ -62,6 +62,14 @@ export function isBuiltIn(name: NodeId | string): name is BuiltIn {
 	return String(name).startsWith('built-in:');
 }
 
+const builtInPrefixLength = 'built-in:'.length;
+/**
+ * Drops the `built-in:` prefix from the given built-in name
+ */
+export function dropBuiltInPrefix<T extends string>(name: `built-in:${T}`): T {
+	return name.slice(builtInPrefixLength) as T;
+}
+
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
 	args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],

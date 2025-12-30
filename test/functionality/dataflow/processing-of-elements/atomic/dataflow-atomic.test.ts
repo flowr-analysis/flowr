@@ -894,7 +894,6 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				.call(9, `${UnnamedFunctionCallPrefix}9`, [], { returns: [1], reads: [8], environment: defaultEnv().defineFunction('a', 0, 4) })
 				.call(4, '<-', [argumentInCall(0), argumentInCall(3)],{ returns: [0], reads: [builtInId('<-'), 3], onlyBuiltIn: true })
 				.calls(4, builtInId('<-'))
-				.calls(9, 8)
 				.calls(9, 3)
 				.call(8, 'get', [argumentInCall(6)], { reads: [6, builtInId('get')], onlyBuiltIn: true, environment: defaultEnv().defineFunction('a', 0, 4) })
 				.calls(8, builtInId('get'))

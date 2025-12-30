@@ -55,6 +55,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 			getId:   this.args.getId
 		}) as AnalyzerPipelineExecutor<Parser>;
 		this.controlFlowCache = new FlowrAnalyzerControlFlowCache();
+		this.callGraphCache = undefined;
 	}
 
 	public static create<Parser extends KnownParser>(data: FlowrAnalyzerCacheOptions<Parser>): FlowrAnalyzerCache<Parser> {

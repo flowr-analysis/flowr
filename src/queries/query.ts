@@ -70,6 +70,8 @@ import type {
 import {
 	InspectRecursionQueryDefinition
 } from './catalog/inspect-recursion-query/inspect-recursion-query-format';
+import type { DoesCallQuery } from './catalog/does-call-query/does-call-query-format';
+import { DoesCallQueryDefinition } from './catalog/does-call-query/does-call-query-format';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -78,6 +80,7 @@ export type Query = CallContextQuery
 	| ConfigQuery
 	| SearchQuery
 	| DataflowQuery
+	| DoesCallQuery
 	| CallGraphQuery
 	| ControlFlowQuery
 	| DataflowLensQuery
@@ -143,6 +146,7 @@ export const SupportedQueries = {
 	'control-flow':         ControlFlowQueryDefinition,
 	'call-graph':           CallGraphQueryDefinition,
 	'dataflow':             DataflowQueryDefinition,
+	'does-call':            DoesCallQueryDefinition,
 	'dataflow-lens':        DataflowLensQueryDefinition,
 	'df-shape':             DfShapeQueryDefinition,
 	'files':                FilesQueryDefinition,

@@ -53,7 +53,8 @@ const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	// clean paths
 	[/%2Fhome%2F([a-zA-Z0-9._-]+%2F)*/g, ''],
 	// async wrapper depends on whether the promise got fulfilled already
-	[/async|%20/g, '']
+	[/async|%20/g, ''],
+	[/\s*Copied mermaid url to clipboard\s*\([^)]+\)/gmi, '']
 ];
 
 /**

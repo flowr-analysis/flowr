@@ -23,13 +23,12 @@ export interface FileFilter<FilterType> {
 	readonly includeUndefinedFiles?: boolean;
 }
 
+
 export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> extends BaseQueryFormat {
 	readonly type:                   'call-context';
 	/** Regex regarding the function name, please note that strings will be interpreted as regular expressions too! */
 	readonly callName:               RegexType;
-	/**
-	 * Should we automatically add the `^` and `$` anchors to the regex to make it an exact match?
-	 */
+	/** Should we automatically add the `^` and `$` anchors to the regex to make it an exact match? */
 	readonly callNameExact?:         boolean;
 	/** kind may be a step or anything that you attach to the call, this can be used to group calls together (e.g., linking `ggplot` to `visualize`). Defaults to `.` */
 	readonly kind?:                  string;
@@ -40,17 +39,11 @@ export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> 
 	 * Request this specifically to gain all call targets we can resolve.
 	 */
 	readonly callTargets?:           CallTargets;
-	/**
-	 * Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?
-	 */
+	/** Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results? */
 	readonly includeAliases?:        boolean;
-	/**
-	 * Should we ignore default values for parameters in the results?
-	 */
+	/** Should we ignore default values for parameters in the results? */
 	readonly ignoreParameterValues?: boolean;
-	/**
-	 * Filter that, when set, a node's file attribute must match to be considered
-	 */
+	/** Filter that, when set, a node's file attribute must match to be considered */
 	readonly fileFilter?:            FileFilter<RegexType>;
 }
 

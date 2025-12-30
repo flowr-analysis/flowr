@@ -243,6 +243,10 @@ export function updateNestedFunctionCalls(
 
 		const targets = getAllFunctionCallTargets(id, graph, effectiveEnvironment);
 		for(const target of targets) {
+			if(isBuiltIn(target)) {
+				graph.addEdge(id, target, EdgeType.Calls);
+				continue;
+			}
 			const targetVertex = graph.getVertex(target);
 			if(targetVertex?.tag !== VertexType.FunctionDefinition) {
 				// support reads on symbols

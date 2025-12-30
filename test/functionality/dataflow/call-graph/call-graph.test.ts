@@ -177,5 +177,15 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
+	assertDataflow(label('call graph with scoped alias', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'recursion']),
+		ts,
+		`g <- eval
+f <- function(x) { g(x) }
+f(1)`,
+		emptyGraph()
+			.calls('11@a', '1@function')
+			.calls('5@b', '7@function')
+		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
 
 }));

@@ -10,6 +10,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { edgeDoesNotIncludeType, EdgeType } from './edge';
 import { builtInId } from '../environments/built-in';
+import { getOriginInDfg } from '../origin/dfg-get-origin';
 
 /**
  * A call graph is a dataflow graph where all vertices are function calls.
@@ -62,14 +63,21 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 		}
 		processFunctionDefinition(targetVtx, vtx.id, graph, result, visited);
 	}
+	let builtInOrigin = false;
 	if(vtx.origin !== 'unnamed') {
 		for(const origs of vtx.origin) {
 			if(origs.startsWith('builtin:')) {
+				builtInOrigin = true;
 				result.addEdge(vtx.id, builtInId(
 					origs.substring('builtin:'.length)
 				), EdgeType.Calls);
 			}
 		}
+	}
+	if(tars.length === 0 && !builtInOrigin) {
+		console.log(`[CallGraph] Warning: could not resolve targets for function call id ${vtx.id} (${vtx.name})`);
+		const origs = getOriginInDfg(graph, vtx.id);
+		console.log(`[CallGraph]   origins: ${JSON.stringify(origs)}`);
 	}
 
 	// handle arguments, traversing the 'reads' and the 'returns' edges

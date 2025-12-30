@@ -13,11 +13,11 @@ interface CallsIdConstraint {
 	readonly id:   SingleSlicingCriterion;
 }
 interface CallsWithNameConstraint {
-	readonly type:      'name';
+	readonly type:       'name';
 	/** The name of the function being called. */
-	readonly name:      string;
+	readonly name:       string;
 	/** Should we match the name exactly, or as a regex? */
-	readonly nameExact: boolean;
+	readonly nameExact?: boolean;
 }
 
 interface CallsConstraints {
@@ -64,7 +64,7 @@ export const DoesCallQueryDefinition = {
 				result.push('    - Does not call any matching functions.');
 			} else {
 				const loc = idMap.get(v.call)?.location ?? undefined;
-				result.push(`    - Call ${bold(String(v.call), formatter)} (${formatRange(loc)})`);
+				result.push(`    - Call with id ${bold(String(v.call), formatter)} (${formatRange(loc)})`);
 			}
 		}
 		return true;

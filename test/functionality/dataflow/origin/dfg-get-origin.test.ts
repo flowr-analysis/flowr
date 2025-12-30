@@ -60,6 +60,11 @@ describe('Dataflow', withTreeSitter(ts => {
 				'2@x': [ro('1@x')],
 				'1@2': [co('1@2')],
 			});
+			chk(`x <- 2\ny <- x\nprint(y)${suffix}`, {
+				'1@x': [wo('1@x')],
+				'2@y': [wo('2@y')],
+				'3@y': [ro('2@y')],
+			});
 			chk(`x <- 2\nif(u) {\nx <- 3\n}\nprint(x)${suffix}`, {
 				'3@x': [wo('3@x')],
 				'5@x': [ro('1@x'), ro('3@x')]
@@ -127,6 +132,10 @@ describe('Dataflow', withTreeSitter(ts => {
 		chk('f <- 3\neval(u)\nf', {
 			/* under the assumption of eval impact */
 			'3@f': [ro('1@f')]
+		});
+		// call with an end!
+		chk('g <- x\ng()', {
+			'2@g': [ro('1@g')]
 		});
 	});
 }));

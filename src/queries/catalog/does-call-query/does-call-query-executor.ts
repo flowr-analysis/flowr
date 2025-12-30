@@ -22,12 +22,11 @@ export async function executeDoesCallQuery({ analyzer }: BasicQueryData, queries
 		}
 		const nodeId = tryResolveSliceCriterionToId(query.call, idMap);
 		if(!nodeId) {
-			log.error(`Could not resolve call criterion ${JSON.stringify(query.call)} to a node id in does-call query ${id}, marking as false.`);
+			results[id] = false;
 			continue;
 		}
 		const c = makeCallMatcher(query.calls);
-		const r = findCallersMatchingConstraints(cg, nodeId, c);
-		results[id] = r;
+		results[id] = findCallersMatchingConstraints(cg, nodeId, c);
 	}
 	return {
 		'.meta': {
@@ -88,7 +87,7 @@ function findCallersMatchingConstraints(cg: CallGraph, start: NodeId, constraint
 			continue;
 		}
 		// check if matches
-		if(cur !== start && constraints(vtx, cg)) {
+		if(constraints(vtx, cg)) {
 			return { call: start };
 		}
 		for(const out of cg.outgoingEdges(cur) ?? []) {

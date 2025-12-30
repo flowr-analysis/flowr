@@ -9,7 +9,8 @@ import type { REnvironmentInformation } from '../environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { edgeDoesNotIncludeType, EdgeType } from './edge';
-import { builtInId } from '../environments/built-in';
+import { builtInId, isBuiltIn } from '../environments/built-in';
+import { getOriginInDfg } from '../origin/dfg-get-origin';
 
 /**
  * A call graph is a dataflow graph where all vertices are function calls.
@@ -45,7 +46,7 @@ function processCds(vtx: DataflowGraphVertexInfo, graph: DataflowGraph, result: 
 /**
  * This tracks the known symbol origins for a function call for which we know that flowr found no targets!
  */
-function fallbackUntargetedCall(vtx: Required<DataflowGraphVertexFunctionCall>, graph: DataflowGraph): Set<NodeId> {
+function fallBackUntargetedCall(vtx: Required<DataflowGraphVertexFunctionCall>, graph: DataflowGraph): Set<NodeId> {
 	// TODO!
 	return new Set();
 }
@@ -64,6 +65,10 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 	// for each call, resolve the targets
 	const tars = getAllFunctionCallTargets(vtx.id, graph, vtx.environment);
 	for(const tar of tars) {
+		if(isBuiltIn(tar)) {
+			result.addEdge(vtx.id, tar, EdgeType.Calls);
+			continue;
+		}
 		const targetVtx = graph.getVertex(tar, true);
 		if(targetVtx?.tag !== VertexType.FunctionDefinition) {
 			continue;
@@ -82,8 +87,9 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 		}
 	}
 	if(tars.length === 0 && !builtInOrigin) {
-		const origs = fallbackUntargetedCall(vtx, graph);
-		// TODO:!
+		console.log(`[CallGraph] Warning: could not resolve targets for function call id ${vtx.id} (${vtx.name})`);
+		const origs = getOriginInDfg(graph, vtx.id);
+		console.log(`[CallGraph]   origins: ${JSON.stringify(origs)}`);
 	}
 
 	// handle arguments, traversing the 'reads' and the 'returns' edges

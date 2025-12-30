@@ -3,8 +3,9 @@ import type { BasicQueryData } from '../../base-query-format';
 import { log } from '../../../util/log';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { CallGraph } from '../../../dataflow/graph/call-graph';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../../../dataflow/graph/vertex';
+import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
+import { isBuiltIn } from '../../../dataflow/environments/built-in';
 
 /**
  * Execute does call queries on the given analyzer.
@@ -36,7 +37,7 @@ export async function executeDoesCallQuery({ analyzer }: BasicQueryData, queries
 	};
 }
 
-type CheckCallMatch = (vtx: Required<DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall>, cg: CallGraph) => boolean
+type CheckCallMatch = (vtx: { id: NodeId, name?: string }, cg: CallGraph) => boolean
 
 function makeCallMatcher(constraint: CallsConstraint): CheckCallMatch {
 	switch(constraint.type) {
@@ -47,7 +48,7 @@ function makeCallMatcher(constraint: CallsConstraint): CheckCallMatch {
 				return (vtx) => vtx.name === constraint.name;
 			} else {
 				const regex = new RegExp(constraint.name);
-				return (vtx) => 'name' in vtx && vtx.name ? regex.test(vtx.name as string) : false;
+				return (vtx) => 'name' in vtx && vtx.name ? regex.test(vtx.name) : false;
 			}
 		case 'and': {
 			let matchersAndRemain = constraint.calls.map(makeCallMatcher);
@@ -82,6 +83,14 @@ function findCallersMatchingConstraints(cg: CallGraph, start: NodeId, constraint
 			continue;
 		}
 		visited.add(cur);
+		if(isBuiltIn(cur)) {
+			const name = cur.slice('built-in:'.length);
+			if(constraints({ id: cur, name } as Required<DataflowGraphVertexFunctionCall>, cg)) {
+				return { call: start };
+			}
+			continue;
+		}
+
 		const vtx = cg.getVertex(cur);
 		if(!vtx) {
 			continue;

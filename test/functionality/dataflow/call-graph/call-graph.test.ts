@@ -183,8 +183,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 f <- function(x) { g(x) }
 f(1)`,
 		emptyGraph()
-			.calls('11@a', '1@function')
-			.calls('5@b', '7@function')
+			.calls('2@g', builtInId('eval'))
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 

@@ -13,11 +13,11 @@ function makeVersion(version: string, original: string) {
  * ensure valid SemVer format.
  */
 function normalizeTooShortVersions(versions: string): string {
-	const TooShortVersionRegex = /(^|[^\d.-])(?<major>\d+)(\.(?<minor>\d+))?\.?-(?<prerelease>[0-9A-Za-z-.]+)(\s|$)/g;
+	const TooShortVersionRegex = /(^|(?<=[^\d.-]))(?<major>\d+)(\.(?<minor>\d+))?\.?-(?<prerelease>[0-9A-Za-z-.]+)(\s|$)/g;
 	let newVersions = '';
 	let match: RegExpExecArray | null;
 	while((match = TooShortVersionRegex.exec(versions)) !== null) {
-		const { major, minor, prerelease } = match.groups as { major: string; minor?: string; suffdot?: string; prerelease: string };
+		const { major, minor, prerelease } = match.groups as { major: string; minor?: string; prerelease: string };
 		const prefix = versions.slice(0, match.index);
 		let newVersion = '';
 		if(minor === undefined) {

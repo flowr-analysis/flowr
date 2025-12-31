@@ -69,7 +69,7 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 		);
 	}
 
-	public suggests(): Package[] |  undefined {
+	public suggests(): Package[] | undefined {
 		const suggests = this.content().get('Suggests');
 		return suggests ? parsePackagesWithVersions(suggests, 'package') : undefined;
 	}

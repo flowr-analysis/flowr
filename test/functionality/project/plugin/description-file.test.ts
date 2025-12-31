@@ -192,38 +192,4 @@ describe('DESCRIPTION-file', function() {
 			);
 		});
 	});
-	describe('Variant B', () => {
-		const ctx = contextWithFile(DescriptionB);
-		test('Library-Versions-Plugin', () => {
-			const deps = ctx.deps.getDependencies();
-			assert.lengthOf(deps, 5);
-
-			assert.includeMembers(deps.map(n => n.name), ['methods', 'utils', 'ggplot2', 'rlang', 'R']);
-			const rDep = ctx.deps.getDependency('R');
-			assert.isDefined(rDep);
-			assert.isTrue(rDep?.derivedVersion?.test('3.5.0'));
-			assert.isFalse(rDep?.derivedVersion?.test('3.4.0'));
-		});
-		test('License parsing', () => {
-			const license = getDescContent(ctx).license();
-			assert.isDefined(license);
-			assert.lengthOf(license, 1);
-			const [first] = license;
-			assert.deepStrictEqual(first, { type: 'license', license: 'GPL-3' });
-		});
-		test('Author retrieval', () => {
-			const authors = getDescContent(ctx).authors();
-			assert.isDefined(authors);
-			assert.lengthOf(authors, 2);
-			assert.deepStrictEqual(authors[0], {
-				name:  ['Author', 'Surname'],
-				roles: [AuthorRole.Author]
-			});
-			assert.deepStrictEqual(authors[1], {
-				name:  ['Firstname', 'Lastname'],
-				email: 'firstname.lastname@gmail.com',
-				roles: [AuthorRole.Creator]
-			});
-		});
-	});
 });

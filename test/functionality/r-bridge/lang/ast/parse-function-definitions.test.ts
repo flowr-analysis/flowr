@@ -234,7 +234,6 @@ describe.sequential('Parse function definitions', withShell(shell => {
 						type:      RType.Comment,
 						location:  rangeFrom(1, 15, 1, 22),
 						lexeme:    '# hehehe',
-						content:   ' hehehe',
 						namespace: undefined,
 						info:      {}
 					}

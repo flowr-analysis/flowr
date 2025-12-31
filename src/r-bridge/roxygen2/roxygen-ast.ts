@@ -63,6 +63,8 @@ export enum KnownRoxygenTags {
 	Template = 'template',
 	TemplateVar = 'templateVar',
 	/* ---- Other, not part of the references above ---- */
+	/** Just plain old text */
+	Text = 'text',
 	Name = 'name',
 	DocType = 'docType',
 	Author = 'author',
@@ -74,9 +76,7 @@ export enum KnownRoxygenTags {
  */
 export interface RoxygenTagBase<Type extends KnownRoxygenTags> {
 	/** The type of the roxygen tag. */
-	type:      Type;
-	/** The source location of the roxygen tag, if available. */
-	location?: SourceLocation;
+	type: Type;
 }
 
 interface RoxygenTagWithValue<Type extends KnownRoxygenTags, Value> extends RoxygenTagBase<Type> {
@@ -157,11 +157,12 @@ export type RoxygenTagTemplate = RoxygenTagWithValue<KnownRoxygenTags.Template, 
 export type RoxygenTagTemplateVar = RoxygenTagWithValue<KnownRoxygenTags.TemplateVar, { name: string; value: string }>;
 /** https://roxygen2.r-lib.org/reference/tags-reuse.html */
 export type RoxygenReusingDocumentationTag = RoxygenTagDescribeIn | RoxygenTagEval | RoxygenTagEvalRd | RoxygenTagIncludeRmd | RoxygenTagInherit | RoxygenTagInheritDotParams | RoxygenTagInheritParams | RoxygenTagInheritSection | RoxygenTagOrder | RoxygenTagRdName | RoxygenTagTemplate | RoxygenTagTemplateVar;
-export type RoxygenUnknownTag = RoxygenTagWithValue<KnownRoxygenTags.Unknown, string>;
+export type RoxygenUnknownTag = RoxygenTagWithValue<KnownRoxygenTags.Unknown, { tag: string, content: string }>;
 export type RoxygenTagAuthor = RoxygenTagWithValue<KnownRoxygenTags.Author, string>;
 export type RoxygenDocType = RoxygenTagWithValue<KnownRoxygenTags.DocType, string>;
 export type RoxygenTagName = RoxygenTagWithValue<KnownRoxygenTags.Name, string>;
-export type RoxygenOtherTag = RoxygenTagAuthor | RoxygenUnknownTag | RoxygenDocType | RoxygenTagName;
+export type RoxygenTagText = RoxygenTagWithValue<KnownRoxygenTags.Text, string>;
+export type RoxygenOtherTag = RoxygenTagAuthor | RoxygenUnknownTag | RoxygenDocType | RoxygenTagName | RoxygenTagText;
 
 /**
  * All known Roxygen tag types.
@@ -174,13 +175,25 @@ export type RoxygenTag = RoxygenCrossrefTag
 	| RoxygenReusingDocumentationTag
     | RoxygenOtherTag;
 
-
+/**
+ * A roxygen comment block, consisting of multiple {@link RoxygenTag|roxygen tags}.
+ */
 export interface RoxygenBlock {
-	readonly type:      'roxygen-block';
+	readonly type:        'roxygen-block';
 	/** The ast node ID of the comment that produced this tag. */
-	readonly commentId: NodeId;
-	readonly range?:    SourceLocation;
-	readonly tags:      readonly RoxygenTag[];
+	readonly commentId:   NodeId;
+	/** The AST node ID of the R node this roxygen block is attached to, if any. */
+	readonly attachedTo?: NodeId;
+	/** The source location of the entire roxygen block, if available. */
+	readonly range?:      SourceLocation;
+	/** The roxygen tags contained in this block. */
+	readonly tags:        readonly RoxygenTag[];
 }
 
-
+const ValidRoxygenTagsSet: Set<string> = new Set(Object.values(KnownRoxygenTags));
+/**
+ * Checks whether the given text is a known roxygen tag.
+ */
+export function isKnownRoxygenText(text: string): text is KnownRoxygenTags {
+	return ValidRoxygenTagsSet.has(text);
+}

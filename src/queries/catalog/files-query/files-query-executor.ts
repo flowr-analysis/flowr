@@ -34,7 +34,7 @@ export function executeFileQuery({ analyzer }: BasicQueryData, queries: readonly
 			if(pathRegex && !pathRegex.test(file.path())) {
 				continue;
 			}
-			if(query.roles && !query.roles?.every(r => file.roles?.includes(r))) {
+			if((query.roles?.length ?? 0) > 0 && !query.roles?.every(r => file.roles?.includes(r))) {
 				continue;
 			}
 			foundFingerprints.add(fingerprint);

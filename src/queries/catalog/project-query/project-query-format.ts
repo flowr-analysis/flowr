@@ -65,15 +65,17 @@ export const ProjectQueryDefinition = {
 			}
 		}
 		if(out.roleCounts) {
-			result.push('   ╰ File Role Counts:');
 			const entries = Object.entries(out.roleCounts).filter(([, count]) => count > 0);
-			const longestRole = Math.max(...entries.map(([r]) => r.length));
-			const longestCount = Math.max(...entries.map(([, c]) => String(c).length));
-			for(const [role, count] of entries) {
-				result.push(`      ╰ ${(role + ':').padEnd(longestRole + 1, ' ')} ${formatter.format(String(count).padStart(longestCount, ' '), {
-					effect: ColorEffect.Foreground,
-					color:  Colors.Cyan
-				})}`);
+			if(entries.length > 0) {
+				result.push('   ╰ File Role Counts:');
+				const longestRole = Math.max(...entries.map(([r]) => r.length));
+				const longestCount = Math.max(...entries.map(([, c]) => String(c).length));
+				for(const [role, count] of entries) {
+					result.push(`      ╰ ${(role + ':').padEnd(longestRole + 1, ' ')} ${formatter.format(String(count).padStart(longestCount, ' '), {
+						effect: ColorEffect.Foreground,
+						color:  Colors.Cyan
+					})}`);
+				}
 			}
 		}
 		if(analyzer.peekDataflow() === undefined) {

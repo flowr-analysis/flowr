@@ -11,7 +11,7 @@ import {
 const TestPathPattern = /tests?/i;
 
 /**
- * This plugin provides supports the loading for Test files.
+ * This plugin provides supports for the identification of test files.
  * If you use multiple plugins, this should be included *before* other plugins.
  */
 export class FlowrAnalyzerMetaTestFilesPlugin extends FlowrAnalyzerFilePlugin {
@@ -21,8 +21,8 @@ export class FlowrAnalyzerMetaTestFilesPlugin extends FlowrAnalyzerFilePlugin {
 	private readonly pathPattern: RegExp;
 
 	/**
-	 * Creates a new instance of the NAMESPACE file plugin.
-	 * @param pathPattern - The pathPattern to identify NAMESPACE files, see {@link TestPathPattern} for the default pathPattern.
+	 * Creates a new instance of the TEST file plugin.
+	 * @param pathPattern - The pathPattern to identify TEST files, see {@link TestPathPattern} for the default pathPattern.
 	 */
 	constructor(pathPattern: RegExp = TestPathPattern) {
 		super();
@@ -34,7 +34,7 @@ export class FlowrAnalyzerMetaTestFilesPlugin extends FlowrAnalyzerFilePlugin {
 	}
 
 	/**
-	 * Processes the given file, assigning it the {@link FileRole.Vignette} role.
+	 * Processes the given file, assigning it the {@link FileRole.Test} role.
 	 * Given that the file may still need to be processed by other plugins, this method returns the `true` flag for that purpose.
 	 */
 	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider): [FlowrFileProvider, true] {

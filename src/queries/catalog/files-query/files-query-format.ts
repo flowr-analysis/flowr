@@ -107,10 +107,11 @@ function filesQueryCompleter(line: readonly string[], startingNewArg: boolean, _
 }
 
 function guessProto(obj: object): string | undefined {
-	if(typeof obj !== 'object' || obj === null) {
+	if(obj === null || obj === undefined) {
+		return undefined;
+	} else if(typeof obj !== 'object') {
 		return typeof obj;
-	}
-	if('prototype' in obj && obj.prototype && typeof obj.prototype === 'object') {
+	} else if('prototype' in obj && obj.prototype && typeof obj.prototype === 'object') {
 		const proto = obj.prototype as { constructor: { name: unknown } };
 		if(proto.constructor && typeof proto.constructor.name === 'string') {
 			return proto.constructor.name;

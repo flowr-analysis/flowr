@@ -11,7 +11,7 @@ import {
 const VignettePathPattern = /vignettes?/i;
 
 /**
- * This plugin provides supports the loading for Vignette files.
+ * This plugin provides supports for the loading of Vignette files.
  * If you use multiple plugins, this should be included *before* other plugins.
  */
 export class FlowrAnalyzerMetaVignetteFilesPlugin extends FlowrAnalyzerFilePlugin {
@@ -21,8 +21,8 @@ export class FlowrAnalyzerMetaVignetteFilesPlugin extends FlowrAnalyzerFilePlugi
 	private readonly pathPattern: RegExp;
 
 	/**
-	 * Creates a new instance of the NAMESPACE file plugin.
-	 * @param pathPattern - The pathPattern to identify NAMESPACE files, see {@link VignettePathPattern} for the default pathPattern.
+	 * Creates a new instance of the VIGNETTE file plugin.
+	 * @param pathPattern - The pathPattern to identify VIGNETTE files, see {@link VignettePathPattern} for the default pathPattern.
 	 */
 	constructor(pathPattern: RegExp = VignettePathPattern) {
 		super();

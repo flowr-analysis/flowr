@@ -20,14 +20,20 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 
 	const descFile = analyzer.inspectContext().files.getFilesByRole(FileRole.Description);
 	const desc: FlowrDescriptionFile | undefined = descFile[0];
+	const roleCounts: Record<FileRole, number> = {} as Record<FileRole, number>;
+	for(const file of Object.values(FileRole)) {
+		roleCounts[file] = analyzer.inspectContext().files.getFilesByRole(file).length;
+	}
 	return {
 		'.meta': {
 			timing: Date.now() - startTime
 		},
-		files:    Array.from(analyzer.inspectContext().files.consideredFilesList()),
-		authors:  desc?.authors(),
-		encoding: desc?.content().get('Encoding')?.[0],
-		version:  desc?.content().get('Version')?.[0],
-		licenses: desc?.license()
+		name:       desc?.content().get('Package')?.[0] ?? desc?.content()?.get('Title')?.[0],
+		files:      Array.from(analyzer.inspectContext().files.consideredFilesList()),
+		authors:    desc?.authors(),
+		encoding:   desc?.content().get('Encoding')?.[0],
+		version:    desc?.content().get('Version')?.[0],
+		licenses:   desc?.license(),
+		roleCounts: roleCounts
 	};
 }

@@ -20,7 +20,7 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 	 * and handle role assignments.
 	 */
 	constructor(file: FlowrFileProvider) {
-		super(file.path(), file.role);
+		super(file.path(), file.roles);
 		this.wrapped = file;
 	}
 

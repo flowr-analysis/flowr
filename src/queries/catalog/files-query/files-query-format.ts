@@ -1,5 +1,5 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import { bold } from '../../../util/text/ansi';
+import { bold, ColorEffect, Colors } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeFileQuery } from './files-query-executor';
@@ -16,12 +16,13 @@ import { fileProtocol } from '../../../r-bridge/retriever';
  */
 export interface FilesQuery extends BaseQueryFormat {
 	readonly type:              'files';
+	/** If you provide roles, only files with all the given roles are returned. Supply multiple queries if you want a union! */
 	readonly roles?:            FileRole[],
 	readonly matchesPathRegex?: string;
 }
 
 export interface FileQueryInfo<T = object> {
-	role?:   FileRole,
+	roles?:  readonly FileRole[],
 	path:    string,
 	content: T
 }
@@ -30,7 +31,7 @@ export interface FilesQueryResult extends BaseQueryResult {
 	files: FileQueryInfo[]
 }
 
-function summarizeObjectWithLimit(obj: object, limitChars = 500, limitLines = 10): string {
+function summarizeObjectWithLimit(obj: object | string, limitChars = 500, limitLines = 10): string {
 	const str = JSON.stringify(obj, jsonReplacer, 2);
 	if(str.split('\n').length > limitLines) {
 		const lines = str.split('\n').slice(0, limitLines);
@@ -105,6 +106,20 @@ function filesQueryCompleter(line: readonly string[], startingNewArg: boolean, _
 	return { completions: [] };
 }
 
+function guessProto(obj: object): string | undefined {
+	if(obj === null || obj === undefined) {
+		return undefined;
+	} else if(typeof obj !== 'object') {
+		return typeof obj;
+	} else if('prototype' in obj && obj.prototype && typeof obj.prototype === 'object') {
+		const proto = obj.prototype as { constructor: { name: unknown } };
+		if(proto.constructor && typeof proto.constructor.name === 'string') {
+			return proto.constructor.name;
+		}
+	}
+	return undefined;
+}
+
 export const FilesQueryDefinition = {
 	executor:        executeFileQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
@@ -112,8 +127,9 @@ export const FilesQueryDefinition = {
 		result.push(`Query: ${bold('files', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 		result.push(`   ╰ Found ${out.files.length} file${out.files.length === 1 ? '' : 's'}`);
 		for(const f of out.files) {
-			result.push(`      ╰ ${bold(f.path, formatter)}${f.role ? ` [role: ${f.role}]` : ''}:`);
-			const summary = summarizeObjectWithLimit(f.content);
+			const nam = guessProto(f.content);
+			result.push(`      ╰ ${bold(f.path, formatter)}${nam ? ' ' + formatter.format(nam, { effect: ColorEffect.Foreground, color: Colors.White }) : ''}${f.roles ? ` [role: ${f.roles.join(', ')}]` : ''}:`);
+			const summary = summarizeObjectWithLimit(f.content, 250);
 			for(const line of summary.split('\n')) {
 				result.push(`          ${line}`);
 			}

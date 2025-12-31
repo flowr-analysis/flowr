@@ -1,5 +1,5 @@
 import type { Range } from 'semver';
-import { guard } from './assert';
+import { assertUnreachable, guard } from './assert';
 import { compactRecord } from './objects';
 import { parseRRange } from './r-version';
 
@@ -24,16 +24,42 @@ export interface NoLicenseInfo {
 	type: 'no-license';
 }
 
-
+/**
+ * The structured representation of an R license element.
+ * This can be a license, an exception, a combination of licenses, or no license.
+ * @see {@link parseRLicense} and {@link stringifyRLicense} to parse and stringify R license strings.
+ */
 export type RLicenseElementInfo = RLicenseInfo | RLicenseExceptionInfo | RLicenseCombinationInfo | NoLicenseInfo;
 
 /**
  * Parses an R license string into its structured representation.
  */
 export function parseRLicense(licenseString: string): RLicenseElementInfo {
-	const start = skipWhitespace({ position: 0, remInput: licenseString });
-	const parsed = parseLicenseInfo(start);
-	return parsed.element;
+	return parseLicenseInfo(skipWhitespace({ position: 0, remInput: licenseString })).element;
+}
+
+/**
+ * Stringifies an R license element back into its string representation.
+ */
+export function stringifyRLicense(license: RLicenseElementInfo): string {
+	const t = license.type;
+	switch(t) {
+		case 'no-license':
+			return 'NO LICENSE';
+		case 'license':
+			return license.versionConstraint ? `${license.license} (${license.versionConstraint.raw})` : license.license;
+		case 'exception':
+			return `with ${license.exception}`;
+		case 'combination': {
+			const left = stringifyRLicense(license.elements[0]);
+			const right = stringifyRLicense(license.elements[1]);
+			const leftStr = license.elements[0].type === 'combination' ? `(${left})` : left;
+			const rightStr = license.elements[1].type === 'combination' ? `(${right})` : right;
+			return `${leftStr} ${license.combination} ${rightStr}`;
+		}
+		default:
+			assertUnreachable(t);
+	}
 }
 
 interface ParserInfo {

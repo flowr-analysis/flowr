@@ -3,8 +3,8 @@ import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-anal
 import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import {
-	FlowrAnalyzerNamespaceFilePlugin
-} from '../../../../src/project/plugins/file-plugins/flowr-analyzer-namespace-file-plugin';
+	FlowrAnalyzerNamespaceFilesPlugin
+} from '../../../../src/project/plugins/file-plugins/flowr-analyzer-namespace-files-plugin';
 import {
 	FlowrAnalyzerPackageVersionsNamespaceFilePlugin
 } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
@@ -15,7 +15,7 @@ describe('NAMESPACE-file', function() {
 	const ctx = new FlowrAnalyzerContext(
 		defaultConfigOptions,
 		arraysGroupBy([
-			new FlowrAnalyzerNamespaceFilePlugin(),
+			new FlowrAnalyzerNamespaceFilesPlugin(),
 			new FlowrAnalyzerPackageVersionsNamespaceFilePlugin()
 		], p => p.type)
 	);

@@ -20,7 +20,7 @@ export class FlowrNewsFile extends FlowrFile<NewsChunk[]> {
 	 * and handle role assignments.
 	 */
 	constructor(file: FlowrFileProvider) {
-		super(file.path(), file.role);
+		super(file.path(), file.roles);
 		this.wrapped = file;
 	}
 

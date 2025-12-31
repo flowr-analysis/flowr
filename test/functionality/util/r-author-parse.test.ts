@@ -109,6 +109,14 @@ describe('R Author Parsing', function() {
 				}] satisfies RAuthorInfo[]
 			},
 			{
+				input:  'First Last [aut, cre] <first.last@email.com>',
+				expect: [{
+					name:  ['First', 'Last'],
+					email: 'first.last@email.com',
+					roles: [AuthorRole.Author, AuthorRole.Creator]
+				}] satisfies RAuthorInfo[]
+			},
+			{
 				input:  'First Last <first.last@email.com> (Comment)',
 				expect: [{
 					name:    ['First', 'Last'],
@@ -127,6 +135,19 @@ describe('R Author Parsing', function() {
 					name:  ['A', 'D.', 'e'],
 					email: 'lol',
 					roles: [],
+				}]
+			},
+			{
+				input:  'A B. c (Comment) <abc@b.edu> and A D. e [ctb, cph] <lol>',
+				expect: [{
+					name:    ['A', 'B.', 'c'],
+					email:   'abc@b.edu',
+					roles:   [],
+					comment: ['Comment']
+				}, {
+					name:  ['A', 'D.', 'e'],
+					email: 'lol',
+					roles: [AuthorRole.Contributor, AuthorRole.CopyrightHolder]
 				}]
 			}
 		];

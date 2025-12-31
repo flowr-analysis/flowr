@@ -13,18 +13,9 @@ import {
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { defaultConfigOptions } from '../../../../src/config';
 import { AuthorRole } from '../../../../src/util/r-author';
+import type { FlowrDescriptionFile } from '../../../../src/project/plugins/file-plugins/files/flowr-description-file';
 
-describe('DESCRIPTION-file', function() {
-	const ctx = new FlowrAnalyzerContext(
-		defaultConfigOptions,
-		arraysGroupBy([
-			new FlowrAnalyzerDescriptionFilePlugin(),
-			new FlowrAnalyzerPackageVersionsDescriptionFilePlugin(),
-			new FlowrAnalyzerLoadingOrderDescriptionFilePlugin()
-		], p => p.type)
-	);
-
-	ctx.addFile(new FlowrInlineTextFile('DESCRIPTION', `Package: mypackage
+const DescriptionA = `Package: mypackage
 Title: What the Package Does (One Line, Title Case)
 Version: 0.0.0.9000
 Authors@R:
@@ -59,29 +50,73 @@ LazyData: true
 Collate:
     'aaa.R'
     'main.R'
-    'zzz.R'`));
+    'zzz.R'`;
+const DescriptionB = `Package: Sample
+Type: Package
+Title: Record Linkage and Epidemiological Case Definitions in 'R'
+Date: 2025-12-31
+Version: 0.42.33
+URL: https://AUTH.github.io/diyar/index.html
+BugReports: https://github.com/AUTH/diyar/issues
+Author: Author Surname
+Maintainer: Firstname Lastname <firstname.lastname@gmail.com>
+Description: An R package ...
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Imports: methods, utils, ggplot2, rlang
+RoxygenNote: 7.2.3
+Suggests: knitr, rmarkdown, testthat, covr
+VignetteBuilder: knitr
+Language: en-GB
+NeedsCompilation: no
+Packaged: 2025-12-31 22:50:00 UTC Master of Desaster
+Depends: R (>= 3.5.0)
+Repository: CRAN
+Date/Publication: 2025-12-31 23:00:00 UTC
+`;
+
+function contextWithFile(desc: string): FlowrAnalyzerContext {
+	const ctx = new FlowrAnalyzerContext(
+		defaultConfigOptions,
+		arraysGroupBy([
+			new FlowrAnalyzerDescriptionFilePlugin(),
+			new FlowrAnalyzerPackageVersionsDescriptionFilePlugin(),
+			new FlowrAnalyzerLoadingOrderDescriptionFilePlugin()
+		], p => p.type)
+	);
+
+	ctx.addFile(new FlowrInlineTextFile('DESCRIPTION', desc));
 	ctx.addFile(new FlowrInlineTextFile('pete.R', 'x <- 2'));
 	ctx.addRequests([{ request: 'file', content: 'pete.R' }]);
 	ctx.resolvePreAnalysis();
+	return ctx;
+}
 
-	describe.sequential('Parsing', function() {
+function getDescContent(ctx: FlowrAnalyzerContext): FlowrDescriptionFile {
+	const descFile = ctx.files.getFilesByRole(FileRole.Description);
+	assert.lengthOf(descFile, 1);
+	return descFile[0];
+}
+
+describe('DESCRIPTION-file', function() {
+	describe('Variant A', () => {
+		const ctx = contextWithFile(DescriptionA);
 		test('Library-Versions-Plugin', () => {
-			const deps = ctx.deps.getDependency('dplyr');
-			assert.isDefined(deps);
-			assert.isTrue(deps.derivedVersion?.test('1.4.0'));
+			assert.isTrue(
+				ctx.deps.getDependency('dplyr')
+					?.derivedVersion
+					?.test('1.4.0')
+			);
 		});
-
 		test('Loading-Order-Plugin', () => {
-			const order = ctx.files.computeLoadingOrder();
-			assert.isNotEmpty(order);
-			assert.deepStrictEqual(order[0], { request: 'file', content: 'pete.R' });
+			assert.deepStrictEqual(
+				ctx.files.computeLoadingOrder()[0],
+				{ request: 'file', content: 'pete.R' }
+			);
 		});
-
 		test('License parsing', () => {
-			const descFile = ctx.files.getFilesByRole(FileRole.Description);
-			assert.lengthOf(descFile, 1);
-			const descContent = descFile[0];
-			const license = descContent.license();
+			const license = getDescContent(ctx).license();
 			assert.isDefined(license);
 			assert.lengthOf(license, 1);
 			const [first] = license;
@@ -94,12 +129,8 @@ Collate:
 				]
 			});
 		});
-
 		test('Author retrieval', () => {
-			const descFile = ctx.files.getFilesByRole(FileRole.Description);
-			assert.lengthOf(descFile, 1);
-			const descContent = descFile[0];
-			const authors = descContent.authors();
+			const authors = getDescContent(ctx).authors();
 			assert.isDefined(authors);
 			assert.lengthOf(authors, 1);
 			const [first] = authors;
@@ -107,6 +138,40 @@ Collate:
 				name:  ['First', 'Last'],
 				email: 'first.last@example.com',
 				roles: [AuthorRole.Author, AuthorRole.Creator]
+			});
+		});
+	});
+	describe('Variant B', () => {
+		const ctx = contextWithFile(DescriptionB);
+		test('Library-Versions-Plugin', () => {
+			const deps = ctx.deps.getDependencies();
+			assert.lengthOf(deps, 5);
+
+			assert.includeMembers(deps.map(n => n.name), ['methods', 'utils', 'ggplot2', 'rlang', 'R']);
+			const rDep = ctx.deps.getDependency('R');
+			assert.isDefined(rDep);
+			assert.isTrue(rDep?.derivedVersion?.test('3.5.0'));
+			assert.isFalse(rDep?.derivedVersion?.test('3.4.0'));
+		});
+		test('License parsing', () => {
+			const license = getDescContent(ctx).license();
+			assert.isDefined(license);
+			assert.lengthOf(license, 1);
+			const [first] = license;
+			assert.deepStrictEqual(first, { type: 'license', license: 'GPL-3' });
+		});
+		test('Author retrieval', () => {
+			const authors = getDescContent(ctx).authors();
+			assert.isDefined(authors);
+			assert.lengthOf(authors, 2);
+			assert.deepStrictEqual(authors[0], {
+				name:  ['Author', 'Surname'],
+				roles: [AuthorRole.Author]
+			});
+			assert.deepStrictEqual(authors[1], {
+				name:  ['Firstname', 'Lastname'],
+				email: 'firstname.lastname@gmail.com',
+				roles: [AuthorRole.Creator]
 			});
 		});
 	});

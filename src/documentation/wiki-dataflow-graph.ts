@@ -849,7 +849,7 @@ async function dummyDataflow(): Promise<DataflowInformation> {
 	const analyzer = await new FlowrAnalyzerBuilder().build();
 	analyzer.addRequest('x <- 1\nx + 1');
 	const result = await analyzer.dataflow();
-	analyzer.close();
+	await analyzer.close();
 	return result;
 }
 

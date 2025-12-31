@@ -26,7 +26,6 @@ import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-con
 import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
-import { Threadpool } from './parallel/threadpool';
 import { dataflowLogger } from './logger';
 import type { DataflowPayload, DataflowReturnPayload } from './parallel/task-registry';
 
@@ -118,7 +117,7 @@ export async function produceDataFlowGraph<OtherInfo>(
 
 	const features = ctx.features;
 	const fileParallelization = features.isEnabled('paralleliseFiles');
-	const workerPool = fileParallelization ? ctx.workerPool ?? new Threadpool() : undefined;
+	const workerPool = fileParallelization ? ctx.workerPool : undefined;
 
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,

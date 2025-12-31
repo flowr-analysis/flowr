@@ -33,7 +33,7 @@ import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-co
 import { FeatureManager } from '../../core/feature-flags/feature-manager';
 import type { Threadpool } from '../../dataflow/parallel/threadpool';
 import type { Features } from '../../core/feature-flags/feature-def';
-import { makePlugin } from '../plugins/plugin-registry';
+import { getPluginRegistrationName, makePlugin } from '../plugins/plugin-registry';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -142,11 +142,12 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	public toSerializable(): SerializedFlowrAnalyzerContext{
 		// get plugin names needed for init
 		const pluginNames: FlowrAnalyzerContextPluginNames = {
-			filesPlugins:     this.plugins.filesPlugin ? this.plugins.filesPlugin.map(p => p.name) : [],
-			discoveryPlugin:  this.plugins.discoveryPlugin !== undefined ? this.plugins.discoveryPlugin.map(p => p.name) : [],
-			fileLoadPlugin:   this.plugins.fileLoadPlugin !== undefined ? this.plugins.fileLoadPlugin.map(p => p.name) : [],
-			dependencyPlugin: this.plugins.dependencyPlugin !== undefined ? this.plugins.dependencyPlugin.map(p => p.name) : [],
+			filesPlugins:     this.plugins.filesPlugin ? this.plugins.filesPlugin.map(getPluginRegistrationName) : [],
+			discoveryPlugin:  this.plugins.discoveryPlugin !== undefined ? this.plugins.discoveryPlugin.map(getPluginRegistrationName) : [],
+			fileLoadPlugin:   this.plugins.fileLoadPlugin !== undefined ? this.plugins.fileLoadPlugin.map(getPluginRegistrationName) : [],
+			dependencyPlugin: this.plugins.dependencyPlugin !== undefined ? this.plugins.dependencyPlugin.map(getPluginRegistrationName) : [],
 		};
+		console.log(pluginNames);
 
 		// serialize feature manager
 		const features = this.features.toSerializable();

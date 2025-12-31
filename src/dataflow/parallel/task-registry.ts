@@ -7,6 +7,7 @@ import { initializeCleanDataflowInformation, SerializeDataflowInformation } from
 import { standaloneSourceFile } from '../internal/process/functions/call/built-in/built-in-source';
 import { DeserializeDataflowProcessorInformation, SerializeDataflowProcessorInformation, type SerializedDataflowProcessorInformation } from '../processor';
 import { processors } from '../extractor';
+import { dataflowLogger } from '../logger';
 
 
 export interface DataflowPayload<OtherInfo>{
@@ -44,6 +45,7 @@ export const workerTasks = {
 		_runSubtask: RunSubtask
 	): DataflowReturnPayload<OtherInfo> => {
 		// rebuild data
+		dataflowLogger.info('Parser Engine: ', _parserEngine);
 		const dataflowProcessorInfo = DeserializeDataflowProcessorInformation(payload.data, processors, _parserEngine);
 
 		// create new DataflowInfo

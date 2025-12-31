@@ -17,6 +17,7 @@ import { fileProtocol, requestFromInput } from '../r-bridge/retriever';
 import { isFilePath } from '../util/files';
 import type { FlowrFileProvider } from './context/flowr-file';
 import type { FeatureFlag } from '../core/feature-flags/feature-def';
+import type { Threadpool } from '../dataflow/parallel/threadpool';
 
 /**
  * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
@@ -140,6 +141,8 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	private readonly cache:  FlowrAnalyzerCache<Parser>;
 	private readonly ctx:    FlowrAnalyzerContext;
 	private parserInfo:      KnownParserInformation | undefined;
+	private pool?:           Threadpool;
+	private closed = false;
 
 	/**
 	 * Create a new analyzer instance.
@@ -152,6 +155,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.parser = parser;
 		this.ctx = ctx;
 		this.cache = cache;
+		this.pool = ctx.workerPool;
 	}
 
 	public get flowrConfig(): FlowrConfigOptions {
@@ -292,9 +296,39 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	/**
-	 * Close the parser if it was created by this builder. This is only required if you rely on an RShell/remote engine.
+	 * Close the parser and the workerPool if it was created by this builder. This is only required if you rely on an RShell/remote engine or use parallelization.
 	 */
-	public close() {
-		return this.parser?.close();
+	public async close(): Promise<undefined | boolean> {
+		if(this.closed) {
+			return true;
+		}
+		this.closed = true;
+
+		// close the threadpool and wait for execution to finish
+		if(this.pool) {
+			await this.pool.closePool();
+		}
+
+		const result = this.parser?.close();
+		return result === undefined ? undefined : result;
+	}
+
+	/**
+	 * Closes the parser and destroys the workerPool by immideatly aborting all running tasks. This should only be used in case of critical errors, where
+	 * task results are meaningless.
+	 */
+	public async destroy(): Promise<undefined | boolean> {
+		if(this.closed) {
+			return true;
+		}
+		this.closed = true;
+
+		// destroys the threadpool and abort all tasks
+		if(this.pool) {
+			await this.pool.destroyPool();
+		}
+
+		const result = this.parser?.close();
+		return result === undefined ? undefined : result;
 	}
 }

@@ -13,6 +13,12 @@ export interface RegisterPortMessage {
 	port:     MessagePort;
 }
 
+export interface TaskReceivedMessage {
+    type:        'task';
+    taskName:    TaskName;
+    taskPayload: unknown;
+}
+
 export interface SubtaskReceivedMessage{
 	type:        'subtask';
 	id:          number;
@@ -30,6 +36,30 @@ export interface SubtaskResponseMessage {
 export interface PortRegisteredMessage {
     type: 'port-registered';
 }
+
+export interface LogCorrelation {
+	workerId:   number;
+	taskName?:  string;
+	taskId?:    number;
+	subtaskId?: number;
+}
+
+export type WorkerLogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+export interface WorkerLogMessage {
+	type:  'worker-log';
+	level: WorkerLogLevel;
+
+	timestamp: number;
+	hrtime:    [number, number];
+
+	message: string;
+	data?:   unknown[];
+	stack?:  string;
+
+	correlation: LogCorrelation;
+}
+
 
 /**
  *
@@ -81,6 +111,17 @@ export function isPortRegisteredMessage(msg: unknown): msg is PortRegisteredMess
 	);
 }
 
+/**
+ *
+ */
+export function isWorkerLogMessage(msg: unknown): msg is WorkerLogMessage {
+	return (
+		typeof msg === 'object' &&
+		msg !== null &&
+		(msg as WorkerLogMessage).type === 'worker-log'
+	);
+}
+
 
 export interface ThreadPoolSettings{
     /** Number of workers that should be started on pool creation */
@@ -122,6 +163,7 @@ export const ThreadpoolDefaultSettings: ThreadPoolSettings = {
 export class Threadpool {
 	private readonly pool: Piscina;
 	private workerPorts = new Map<number, MessagePort>();
+	private destroyed = false;
 
 	constructor(settings: ThreadPoolSettings = ThreadpoolDefaultSettings) {
 		console.log('hey', __dirname, process.env.NODE_ENV, settings.workerPath);
@@ -151,6 +193,11 @@ export class Threadpool {
 			if(!msg) {
 				return;
 			}
+
+			if(this.tryReplayWorkerLog(msg)) {
+				return;
+			}
+
 			// Worker sends initial port registration
 			if(isRegisterPortMessage(msg)) {
 				const { workerId, port } = msg;
@@ -171,7 +218,47 @@ export class Threadpool {
 		});
 	}
 
+	private assertAlive() {
+		if(this.destroyed) {
+			throw new Error('Threadpool used after destruction');
+		}
+	}
+
+	private tryReplayWorkerLog(msg: unknown): boolean {
+		if(!isWorkerLogMessage(msg)) {
+			return false;
+		}
+
+		const {
+			level,
+			message,
+			data,
+			timestamp,
+			correlation,
+			stack,
+		} = msg;
+
+		const time = new Date(timestamp).toISOString();
+
+		const prefix =
+            `[${time}]` +
+            `[worker:${correlation.workerId}]` +
+            (correlation.taskId ? `[task:${correlation.taskId}]` : '') +
+            (correlation.subtaskId ? `[subtask:${correlation.subtaskId}]` : '') +
+            (correlation.taskName ? `[${correlation.taskName}]` : '');
+
+		console[level](prefix, message, ...(data ?? []));
+
+		if(stack) {
+			console.error(stack);
+		}
+
+		return true;
+	}
+
+
 	private async handleSubtask(workerId: number, msg: SubtaskReceivedMessage) {
+		this.assertAlive();
 		const { id, taskName, taskPayload } = msg;
 		const port = this.workerPorts.get(workerId);
 		console.log(`got subtask ${id} from ${workerId}`);
@@ -195,37 +282,53 @@ export class Threadpool {
 	}
 
 	async submitTask<TInput, TOutput>(taskName: TaskName, taskPayload: TInput): Promise<TOutput>{
-		console.log(`Threadpool called with task: ${taskName}`);
-		console.log('Payload keys:', Object.keys(taskPayload as object));
-		console.log('Contains function?', Object.values(taskPayload as object).some(v => typeof v === 'function'));
+		this.assertAlive();
+		const msg = { type: 'task', taskName, taskPayload } as TaskReceivedMessage;
 
-		return this.pool.run({ type: 'task', taskName, taskPayload }) as Promise<TOutput>;
+		return this.pool.run(msg) as Promise<TOutput>;
 	}
 
 	async submitTasks<TInput, TOutput>(taskName: TaskName, taskPayload: TInput[]): Promise<TOutput[]> {
+		this.assertAlive();
 		// Tinypool.run returns a Promise, so we can fully parallelize:
 		return await Promise.all(taskPayload.map(t => this.submitTask<TInput, TOutput>(taskName, t)));
 	}
 
 	/**
-	 *
+	 * Stops all worker and rejects the promises for pending tasks
+	 * @returns Promise, that is fullfilled when all workers are stopped
 	 */
-	destroyPool(): void {
+	async destroyPool(): Promise<void> {
+		if(this.destroyed) {
+			return;
+		}
+		this.destroyed = true;
+
 		this.closeMessagePorts();
-		void this.pool.destroy();
+
+		await this.pool.destroy();
 	}
 
 	/**
-	 *
+	 * Stops all workers gracefully
+	 * @param abortUnqueued - aborts non-running taks if true
+	 * @returns Promise, that is fullfilled when all threads are finished
 	 */
-	closePool(): void{
+	async closePool(abortUnqueued: boolean = false): Promise<void>{
+		if(this.destroyed) {
+			return;
+		}
+		this.destroyed = true;
+		console.log('Closing threadpool');
 		this.closeMessagePorts();
-		void this.pool.close();
+
+		await this.pool.close({ force: abortUnqueued });
 	}
 
 	private closeMessagePorts(): void {
 		for(const port of this.workerPorts.values()){
 			port.close();
 		}
+		this.workerPorts.clear();
 	}
 }

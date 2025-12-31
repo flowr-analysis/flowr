@@ -43,6 +43,18 @@ export function registerPluginMaker(plugin: PluginProducer, name: Exclude<string
 	PluginRegistry.set(name, plugin);
 }
 
+/**
+ *
+ */
+export function getPluginRegistrationName(plugin: FlowrAnalyzerPlugin): string {
+	for(const [name, producer] of PluginRegistry.entries()) {
+		if(plugin instanceof producer) {
+			return name;
+		}
+	}
+	throw new Error(`Plugin [${plugin.constructor.name}] not registered in PluginRegistry`);
+}
+
 export function getPlugin(name: BuiltInFlowrPluginName, args: BuiltInFlowrPluginArgs<typeof name>): FlowrAnalyzerPlugin
 export function getPlugin(name: string, args?: unknown[]): FlowrAnalyzerPlugin | undefined
 /**
@@ -79,6 +91,7 @@ export function makePlugin<T extends BuiltInFlowrPluginName | string>(toRegister
 		return plugin;
 	}
 	const plugin = getPlugin(toRegister, []);
+	console.log('Plugin Registry Entries:', Array.from(PluginRegistry.keys()));
 	guard(plugin !== undefined, () => `Unknown Flowr Analyzer plugin: ${toRegister.toString()}`);
 	return plugin;
 }

@@ -17,6 +17,10 @@ async function checkGraphEquality(func: AnalyzerSetupFunction){
 	const df = await parallelAnalyzer.dataflow();
 	const syncDf = await analyzer.dataflow();
 
+	// close analyzers
+	await parallelAnalyzer.close();
+	await analyzer.close();
+
 	assert.isTrue(diffOfDataflowGraphs(
 		{ name: 'Parallel graph', graph: df.graph }, { name: 'Sync graph', graph: syncDf.graph }
 	).isEqual(), 'Dataflow graphs should be equal');
@@ -35,12 +39,12 @@ const MultiFile: AnalyzerSetupFunction = (analyzer) => {
 
 describe.sequential('Simple Parallel Dataflow test', () => {
 
-	test('Single File Analysis', () => {
-		void checkGraphEquality( SingleFile );
+	test('Single File Analysis', async() => {
+		await checkGraphEquality( SingleFile );
 	});
 
-	test('Multi File Analysis', () => {
-		void checkGraphEquality( MultiFile );
+	test('Multi File Analysis', async() => {
+		await checkGraphEquality( MultiFile );
 	});
 
 });
@@ -51,6 +55,7 @@ describe('Serialization tests', () => {
 		analyzer.addRequest({ request: 'text', content: 'x <- 1 \n y <- x + 2 \n print(y)' });
 
 		const df = await analyzer.dataflow();
+		await analyzer.close();
 
 		// parse and reparse
 		const byteData = df.graph.toSerializable();
@@ -66,6 +71,7 @@ describe('Serialization tests', () => {
 		analyzer.addRequest({ request: 'text', content: 'x <- 1 \n y <- x + 2 \n print(y)' });
 
 		const df = await analyzer.dataflow();
+		await analyzer.close();
 
 		// parse and reparse
 		const byteData = toSerializedREnvironmentInformation(df.environment);

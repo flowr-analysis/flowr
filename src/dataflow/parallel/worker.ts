@@ -1,7 +1,7 @@
 import { parentPort, MessageChannel, threadId, workerData } from 'node:worker_threads';
 import type { TaskName } from './task-registry';
 import { SetParserEngine, workerTasks } from './task-registry';
-import type { SubtaskReceivedMessage, WorkerData } from './threadpool';
+import type { TaskReceivedMessage, WorkerData, WorkerLogLevel } from './threadpool';
 import { isPortRegisteredMessage, isSubtaskResponseMessage } from './threadpool';
 import { dataflowLogger } from '../logger';
 import { retrieveEngineInstances } from '../../engines';
@@ -14,14 +14,57 @@ type PendingEntry<T> = {
 	reject:  (reason: unknown) => void;
 }
 
+export interface LogScope {
+	taskName?:  string;
+	taskId?:    number;
+	subtaskId?: number;
+}
 
-const pending = new Map<
-		number,
-		PendingEntry<unknown>
-	>();
+function createLogger(scope: LogScope = {}) {
+	function send(
+		level: WorkerLogLevel,
+		message: string,
+		data?: unknown[],
+		stack = false
+	) {
+		parentPort?.postMessage({
+			type:        'worker-log',
+			level,
+			timestamp:   Date.now(),
+			hrtime:      process.hrtime(),
+			message,
+			data,
+			stack:       stack ? new Error().stack : undefined,
+			correlation: {
+				workerId: threadId,
+				...scope,
+			},
+		});
+	}
+
+	return {
+		debug: (msg: string, ...data: unknown[]) =>
+			send('debug', msg, data),
+		info: (msg: string, ...data: unknown[]) =>
+			send('info', msg, data),
+		warn: (msg: string, ...data: unknown[]) =>
+			send('warn', msg, data),
+		error: (msg: string, ...data: unknown[]) =>
+			send('error', msg, data, true),
+
+		/** create nested correlation */
+		child(extra: Partial<LogScope>) {
+			return createLogger({ ...scope, ...extra });
+		},
+	};
+}
+
+
+const pending = new Map<number,PendingEntry<unknown>>();
 
 
 const { port1: workerPort, port2: mainPort } = new MessageChannel();
+const rootLog = createLogger();
 
 let portRegisteredResolve: () => void;
 const portRegistered = new Promise<void>(res => (portRegisteredResolve = res));
@@ -32,8 +75,7 @@ if(!parentPort) {
 	process.exit(1);
 }
 
-console.log(`Worker ${threadId} registering port to main thread.`);
-console.log(threadId);
+rootLog.info(`Worker ${threadId} registering port to main thread.`);
 parentPort.postMessage({
 	type:     'register-port',
 	workerId: threadId,
@@ -52,7 +94,8 @@ workerPort.on('message', (msg: unknown) => {
 workerPort.on('message', (msg: unknown) => {
 	if(isSubtaskResponseMessage(msg)) {
 		const { id, result, error } = msg;
-		console.log(`got response for ${id}`);
+		const logger = rootLog.child({ subtaskId: id });
+		logger.info('got response for subtask request');
 		const entry = pending.get(id);
 		if(!entry) {
 			return;
@@ -61,8 +104,10 @@ workerPort.on('message', (msg: unknown) => {
 		pending.delete(id);
 
 		if(error !== undefined) {
+			logger.error(`subtask failed with error: ${error}`);
 			entry.reject(error);
 		} else {
+			logger.info('subtask completed successfully');
 			entry.resolve(result);
 		}
 	}
@@ -70,12 +115,12 @@ workerPort.on('message', (msg: unknown) => {
 
 
 async function runSubtask<TInput, TOutput>(taskName: TaskName, taskPayload: TInput): Promise<TOutput> {
-	console.log('Entering subtask emitter');
 	const id = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+	const logger = rootLog.child({ taskName, taskId: id });
 	//return undefined as unknown as TOutput;
 	return new Promise((resolve, reject) => {
 		pending.set(id, { resolve: resolve as (value: unknown) => void, reject });
-		console.log(`submitting subtask with ${id} from ${threadId}`);
+		logger.info(`submitting subtask ${taskName} with ${id} from ${threadId}`);
 		// submit the subtask to main thread
 		workerPort.postMessage({
 			type: 'subtask',
@@ -93,14 +138,14 @@ async function initialize() {
 	const engines = await retrieveEngineInstances(config, true);
 	SetParserEngine(engines.engines[engines.default]);
 
-	return (msg: SubtaskReceivedMessage) => {
+	return (msg: TaskReceivedMessage) => {
 		const { taskName, taskPayload } = msg;
+		const logger = rootLog.child({ taskName });
 		const taskHandler = workerTasks[taskName];
 		if(!taskHandler) {
-			dataflowLogger.error(`Requested unknown task (${taskName})`);
+			logger.error(`Requested unknown task (${taskName})`);
 			return undefined;
 		}
-		console.log('Hello from worker thread');
 		return taskHandler(taskPayload as never, runSubtask);
 	};
 }

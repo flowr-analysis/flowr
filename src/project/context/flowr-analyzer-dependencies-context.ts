@@ -27,6 +27,11 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * @returns The dependency with the given name, or undefined if it does not exist.
 	 */
 	getDependency(name: string): Package | undefined;
+
+	/**
+	 * Get all dependencies known to this context.
+	 */
+	getDependencies(): Package[];
 }
 
 /**
@@ -71,5 +76,12 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 			this.resolveStaticDependencies();
 		}
 		return this.dependencies.get(name);
+	}
+
+	public getDependencies(): Package[] {
+		if(!this.staticsLoaded) {
+			this.resolveStaticDependencies();
+		}
+		return Array.from(this.dependencies.values());
 	}
 }

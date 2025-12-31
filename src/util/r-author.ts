@@ -1,4 +1,4 @@
-import { splitAtEscapeSensitive } from './text/args';
+import { splitAtEscapeSensitive, splitOnNestingSensitive } from './text/args';
 import { isNotUndefined } from './assert';
 import { compactRecord } from './objects';
 import { removeRQuotes } from '../r-bridge/retriever';
@@ -217,24 +217,110 @@ function parseRPersonCall(personCall: string): RAuthorInfo | undefined {
 	});
 }
 
-const classicalAuthorRegex = /^(?<name>[^<[(]+)(\s*<(?<email>[^>]+)>)?(\s*\[(?<roles>[^\]]+)])?(\s*\((?<comment>[^)]+)\))?$/;
+function collectUntil(source: string, anyOf: RegExp): { collected: string; rest: string } {
+	let collected = '';
+	let i = 0;
+	while(i < source.length && !anyOf.test(source[i])) {
+		collected += source[i];
+		i++;
+	}
+	return { collected, rest: source.slice(i) };
+}
+
 /**
  * In contrast to `parseRAuthorString`, this function parses simple textual author strings,
  * like `First Middle Last <email> [roles] (comment)...`. It does not support the full R `person()` syntax.
  */
-export function parseTextualAuthorString(authorString: string): RAuthorInfo[] {
-	const parts = authorString.split(/\s+and\s+/);
+export function parseTextualAuthorString(authorString: string, addRoles: AuthorRole[] = []): RAuthorInfo[] {
+	const parts = splitOnNestingSensitive(authorString, 'and', {
+		'<': '>',
+		'[': ']',
+		'(': ')',
+		'"': '"',
+		"'": "'"
+	} as const);
 	const authors: RAuthorInfo[] = [];
 	for(const part of parts) {
-		const match = classicalAuthorRegex.exec(part.trim());
-		if(match && match.groups) {
-			authors.push(compactRecord({
-				name:    match.groups['name'].trim().split(/\s+/),
-				email:   match.groups['email'] ? match.groups['email'].trim() : undefined,
-				roles:   match.groups['roles'] ? match.groups['roles'].trim().split(/\s*,\s*/).map(r => r as AuthorRole) : [],
-				comment: match.groups['comment'] ? [match.groups['comment'].trim()] : undefined
-			}));
-		}
+		const name = collectUntil(part.trim(), /[<[(]/);
+		const others = parseOnRest(name.rest);
+		const c = processComment(others.comment);
+		authors.push(compactRecord({
+			name:    name.collected.trim().split(/\s+/),
+			email:   others.email,
+			roles:   others.roles.concat(addRoles),
+			comment: c.comment,
+			orcid:   c.orcid
+		}));
 	}
 	return authors;
+}
+
+function processComment(comment: string | undefined): { comment?: string[]; orcid?: string } {
+	if(!comment) {
+		return {};
+	}
+	const parts = comment.split(/\s*[,;]\s*/);
+	const comments: string[] = [];
+	let orcid: string | undefined = undefined;
+	for(const part of parts) {
+		const orcidExtract = /ORCID\s*[:= ]\s*(?<orcid>.+)/i;
+		const match = part.match(orcidExtract);
+		if(match && match.groups && match.groups['orcid']) {
+			orcid = match.groups['orcid'].trim();
+		} else {
+			comments.push(part.trim());
+		}
+	}
+	if(orcid) {
+		return { comment: comments.length > 0 ? comments : undefined, orcid };
+	} else {
+		return { comment: [comment] };
+	}
+}
+
+function parseOnRest(rest: string): { email?: string; roles: AuthorRole[]; comment?: string } {
+	let email: string | undefined = undefined;
+	let roles: AuthorRole[] = [];
+	let comment: string | undefined = undefined;
+	while(rest.length > 0) {
+		rest = rest.trim();
+		switch(rest[0]) {
+			case '<': {
+				const emailEnd = rest.indexOf('>');
+				if(emailEnd !== -1) {
+					email = rest.slice(1, emailEnd).trim();
+					rest = rest.slice(emailEnd + 1);
+				} else {
+					rest = '';
+				}
+				break;
+			}
+			case '[': {
+				const rolesEnd = rest.indexOf(']');
+				if(rolesEnd !== -1) {
+					const rolesStr = rest.slice(1, rolesEnd).trim();
+					roles = rolesStr.split(/\s*,\s*/).map(r => r as AuthorRole);
+					rest = rest.slice(rolesEnd + 1);
+				} else {
+					rest = '';
+				}
+				break;
+			}
+			case '(': {
+				const commentEnd = rest.indexOf(')');
+				if(commentEnd !== -1) {
+					comment = rest.slice(1, commentEnd).trim();
+					rest = rest.slice(commentEnd + 1);
+				} else {
+					rest = '';
+				}
+				break;
+			}
+			default: {
+				rest = '';
+				break;
+			}
+		}
+	}
+	return { email, roles, comment };
 }

@@ -109,6 +109,53 @@ describe('R Author Parsing', function() {
 				}] satisfies RAuthorInfo[]
 			},
 			{
+				input:  'First Last [aut, cre] <first.last@email.com>',
+				expect: [{
+					name:  ['First', 'Last'],
+					email: 'first.last@email.com',
+					roles: [AuthorRole.Author, AuthorRole.Creator]
+				}] satisfies RAuthorInfo[]
+			},
+			{
+				input:  'First Last (ORCID: 0000-0001-2345-6789) <foo.bar@x>',
+				expect: [{
+					name:  ['First', 'Last'],
+					email: 'foo.bar@x',
+					roles: [],
+					orcid: '0000-0001-2345-6789'
+				}] satisfies RAuthorInfo[]
+			},
+			{
+				input:  'First Last (ORCID: 0000-0001-2345-6789, and stuff) <foo.bar@x>',
+				expect: [{
+					name:    ['First', 'Last'],
+					email:   'foo.bar@x',
+					roles:   [],
+					orcid:   '0000-0001-2345-6789',
+					comment: ['and stuff']
+				}] satisfies RAuthorInfo[]
+			},
+			{
+				input:  'First Last (stuff and, ORCID: 0000-0001-2345-6789) <foo.bar@x>',
+				expect: [{
+					name:    ['First', 'Last'],
+					email:   'foo.bar@x',
+					roles:   [],
+					orcid:   '0000-0001-2345-6789',
+					comment: ['stuff and']
+				}] satisfies RAuthorInfo[]
+			},
+			{
+				input:  'First Last (stuff and, ORCID: 0000-0001-2345-6789, and stuff) <foo.bar@x>',
+				expect: [{
+					name:    ['First', 'Last'],
+					email:   'foo.bar@x',
+					roles:   [],
+					orcid:   '0000-0001-2345-6789',
+					comment: ['stuff and', 'and stuff']
+				}] satisfies RAuthorInfo[]
+			},
+			{
 				input:  'First Last <first.last@email.com> (Comment)',
 				expect: [{
 					name:    ['First', 'Last'],
@@ -127,6 +174,19 @@ describe('R Author Parsing', function() {
 					name:  ['A', 'D.', 'e'],
 					email: 'lol',
 					roles: [],
+				}]
+			},
+			{
+				input:  'A B. c (Comment) <abc@b.edu> and A D. e [ctb, cph] <lol>',
+				expect: [{
+					name:    ['A', 'B.', 'c'],
+					email:   'abc@b.edu',
+					roles:   [],
+					comment: ['Comment']
+				}, {
+					name:  ['A', 'D.', 'e'],
+					email: 'lol',
+					roles: [AuthorRole.Contributor, AuthorRole.CopyrightHolder]
 				}]
 			}
 		];

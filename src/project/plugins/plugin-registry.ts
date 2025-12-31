@@ -10,8 +10,9 @@ import { FlowrAnalyzerRmdFilePlugin } from './file-plugins/notebooks/flowr-analy
 import { FlowrAnalyzerQmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
 import { guard } from '../../util/assert';
 import { FlowrAnalyzerJupyterFilePlugin } from './file-plugins/notebooks/flowr-analyzer-jupyter-file-plugin';
-import { FlowrAnalyzerNamespaceFilePlugin } from './file-plugins/flowr-analyzer-namespace-file-plugin';
+import { FlowrAnalyzerNamespaceFilesPlugin } from './file-plugins/flowr-analyzer-namespace-files-plugin';
 import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-file-plugin';
+import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
 
 /**
  * The built-in Flowr Analyzer plugins that are always available.
@@ -20,10 +21,11 @@ export const BuiltInPlugins = [
 	['file:description', FlowrAnalyzerDescriptionFilePlugin],
 	['versions:description', FlowrAnalyzerPackageVersionsDescriptionFilePlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],
+	['files:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],
 	['file:rmd', FlowrAnalyzerRmdFilePlugin],
 	['file:qmd', FlowrAnalyzerQmdFilePlugin],
 	['file:ipynb', FlowrAnalyzerJupyterFilePlugin],
-	['file:namespace', FlowrAnalyzerNamespaceFilePlugin],
+	['file:namespace', FlowrAnalyzerNamespaceFilesPlugin],
 	['file:news', FlowrAnalyzerNewsFilePlugin]
 ] as const satisfies [string, PluginProducer][];
 

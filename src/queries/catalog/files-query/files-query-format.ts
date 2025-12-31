@@ -1,5 +1,5 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import { bold } from '../../../util/text/ansi';
+import { bold, ColorEffect, Colors } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeFileQuery } from './files-query-executor';
@@ -105,6 +105,19 @@ function filesQueryCompleter(line: readonly string[], startingNewArg: boolean, _
 	return { completions: [] };
 }
 
+function guessProto(obj: object): string | undefined {
+	if(typeof obj !== 'object' || obj === null) {
+		return typeof obj;
+	}
+	if('prototype' in obj && obj.prototype && typeof obj.prototype === 'object') {
+		const proto = obj.prototype as { constructor: { name: string } };
+		if(proto.constructor && typeof proto.constructor.name === 'string') {
+			return proto.constructor.name;
+		}
+	}
+	return undefined;
+}
+
 export const FilesQueryDefinition = {
 	executor:        executeFileQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
@@ -112,8 +125,9 @@ export const FilesQueryDefinition = {
 		result.push(`Query: ${bold('files', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 		result.push(`   ╰ Found ${out.files.length} file${out.files.length === 1 ? '' : 's'}`);
 		for(const f of out.files) {
-			result.push(`      ╰ ${bold(f.path, formatter)}${f.role ? ` [role: ${f.role}]` : ''}:`);
-			const summary = summarizeObjectWithLimit(f.content);
+			const nam = guessProto(f.content);
+			result.push(`      ╰ ${bold(f.path, formatter)}${nam ? ' ' + formatter.format(nam, { effect: ColorEffect.Foreground, color: Colors.White }) : ''}${f.role ? ` [role: ${f.role}]` : ''}:`);
+			const summary = summarizeObjectWithLimit(f.content, 250);
 			for(const line of summary.split('\n')) {
 				result.push(`          ${line}`);
 			}

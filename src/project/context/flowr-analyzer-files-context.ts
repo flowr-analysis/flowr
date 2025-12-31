@@ -147,6 +147,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	public reset(): void {
 		this.loadingOrder.reset();
 		this.files = new Map<FilePath, FlowrFileProvider>();
+		this.consideredFiles.length = 0;
+		this.inlineFiles.length = 0;
+		this.byRole = Object.fromEntries<FlowrFileProvider[]>(Object.values(FileRole).map(k => [k, []])) as RoleBasedFiles;
 	}
 
 	/**

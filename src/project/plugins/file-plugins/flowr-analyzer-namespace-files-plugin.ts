@@ -12,7 +12,7 @@ const NamespaceFilePattern = /^NAMESPACE(\.txt)?$/i;
 /**
  * This plugin provides support for R `NAMESPACE` files.
  */
-export class FlowrAnalyzerNamespaceFilePlugin extends FlowrAnalyzerFilePlugin {
+export class FlowrAnalyzerNamespaceFilesPlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-namespace-file-plugin';
 	public readonly description = 'This plugin provides support for NAMESPACE files and extracts their content into the NAMESPACEFormat.';
 	public readonly version = new SemVer('0.1.0');

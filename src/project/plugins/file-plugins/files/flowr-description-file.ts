@@ -5,6 +5,7 @@ import { splitAtEscapeSensitive } from '../../../../util/text/args';
 import type { DeepReadonly } from 'ts-essentials';
 import type { RLicenseElementInfo } from '../../../../util/r-license';
 import { parseRLicense } from '../../../../util/r-license';
+import { Package, type PackageType } from '../../package-version-plugins/package';
 
 export type DCF = Map<string, string[]>;
 
@@ -54,7 +55,7 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 	}
 
 	/**
-	 * Returns the parsed authors from the `Authors@R` field in the DESCRIPTION file.
+	 * Returns the parsed authors from the `Authors@R` or Author&Maintainer fields in the DESCRIPTION file.
 	 */
 	public authors(): RAuthorInfo[] | undefined {
 		let authors = this.content().get('Authors@R');
@@ -66,6 +67,11 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 		return parsedAuthors.concat(
 			this.content().get('Maintainer')?.flatMap(m => parseTextualAuthorString(m, [AuthorRole.Creator])) ?? []
 		);
+	}
+
+	public suggests(): Package[] |  undefined {
+		const suggests = this.content().get('Suggests');
+		return suggests ? parsePackagesWithVersions(suggests, 'package') : undefined;
 	}
 }
 
@@ -127,4 +133,33 @@ function cleanValues(values: string): string[] {
 	return values.split(splitRegex).flatMap(l => splitAtEscapeSensitive(l, false, ','))
 		.map(s => s.trim())
 		.filter(s => s.length > 0);
+}
+
+
+const VersionRegex = /^([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([^)]+)\))?$/;
+
+/**
+ * Parses package strings with optional version constraints into Package objects.
+ * @param packageStrings - The package strings to parse
+ * @param type           - The type of the packages (e.g., 'r' or 'package')
+ */
+export function parsePackagesWithVersions(packageStrings: readonly string[], type?: PackageType): Package[] {
+	const packages: Package[] = [];
+	for(const entry of packageStrings) {
+		const match = VersionRegex.exec(entry);
+
+		if(match) {
+			const [, name, operator, version] = match;
+
+			const range = Package.parsePackageVersionRange(operator, version);
+			packages.push(new Package(
+				{
+					name:               name,
+					type:               type,
+					versionConstraints: range ? [range] : undefined
+				}
+			));
+		}
+	}
+	return packages;
 }

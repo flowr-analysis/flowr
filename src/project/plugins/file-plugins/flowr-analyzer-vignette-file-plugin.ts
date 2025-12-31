@@ -35,9 +35,13 @@ export class FlowrAnalyzerMetaVignetteFilesPlugin extends FlowrAnalyzerFilePlugi
 		return this.pathPattern.test(platformDirname(file.toString()));
 	}
 
-	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider): FlowrFileProvider {
+	/**
+	 * Processes the given file, assigning it the {@link FileRole.Vignette} role.
+	 * Given that the file may still need to be processed by other plugins, this method returns the `true` flag for that purpose.
+	 */
+	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider): [FlowrFileProvider, true] {
 		// TODO: do we have to trigger other loads?
 		file.assignRole(FileRole.Vignette);
-		return file;
+		return [file, true];
 	}
 }

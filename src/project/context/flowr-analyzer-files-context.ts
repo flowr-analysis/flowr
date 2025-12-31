@@ -266,8 +266,16 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		for(const loader of this.fileLoaders) {
 			if(loader.applies(f.path())) {
 				fileLog.debug(`Applying file loader ${loader.name} to file ${f.path()}`);
-				fFinal = loader.processor(this.ctx, f);
-				break;
+				const res = loader.processor(this.ctx, f);
+				if(Array.isArray(res)) {
+					fFinal = res[0];
+					if(!res[1]) {
+						break;
+					}
+				} else {
+					fFinal = res;
+					break;
+				}
 			}
 		}
 		return fFinal;

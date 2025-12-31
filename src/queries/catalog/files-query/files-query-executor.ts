@@ -25,7 +25,6 @@ export function executeFileQuery({ analyzer }: BasicQueryData, queries: readonly
 			}));
 			break;
 		}
-		const queryRoles = new Set<string>(query.roles);
 		const pathRegex = query.matchesPathRegex ? new RegExp(query.matchesPathRegex) : undefined;
 		for(const file of base) {
 			const fingerprint = `${file.roles?.join(':')}:::${file.path()}`;
@@ -35,7 +34,7 @@ export function executeFileQuery({ analyzer }: BasicQueryData, queries: readonly
 			if(pathRegex && !pathRegex.test(file.path())) {
 				continue;
 			}
-			if(query.roles && !file.roles?.every(r => queryRoles.has(r))) {
+			if(query.roles && !query.roles?.every(r => file.roles?.includes(r))) {
 				continue;
 			}
 			foundFingerprints.add(fingerprint);

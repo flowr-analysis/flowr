@@ -13,6 +13,7 @@ import { FlowrAnalyzerJupyterFilePlugin } from './file-plugins/notebooks/flowr-a
 import { FlowrAnalyzerNamespaceFilesPlugin } from './file-plugins/flowr-analyzer-namespace-files-plugin';
 import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-file-plugin';
 import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
+import { FlowrAnalyzerMetaTestFilesPlugin } from './file-plugins/flowr-analyzer-test-file-plugin';
 
 /**
  * The built-in Flowr Analyzer plugins that are always available.
@@ -22,6 +23,7 @@ export const BuiltInPlugins = [
 	['versions:description', FlowrAnalyzerPackageVersionsDescriptionFilePlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],
 	['files:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],
+	['files:test', FlowrAnalyzerMetaTestFilesPlugin],
 	['file:rmd', FlowrAnalyzerRmdFilePlugin],
 	['file:qmd', FlowrAnalyzerQmdFilePlugin],
 	['file:ipynb', FlowrAnalyzerJupyterFilePlugin],

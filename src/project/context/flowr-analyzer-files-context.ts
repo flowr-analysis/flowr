@@ -42,7 +42,7 @@ export type RoleBasedFiles = {
 	[FileRole.Namespace]:   FlowrNamespaceFile[];
     /* currently no special support */
 	[FileRole.Vignette]:    FlowrFileProvider[];
-	[FileRole.TestSource]:  FlowrFileProvider[];
+	[FileRole.Test]:        FlowrFileProvider[];
 	[FileRole.Source]:      FlowrFileProvider[];
 	[FileRole.Data]:        FlowrFileProvider[];
 	[FileRole.Other]:       FlowrFileProvider[];
@@ -266,7 +266,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		for(const loader of this.fileLoaders) {
 			if(loader.applies(f.path())) {
 				fileLog.debug(`Applying file loader ${loader.name} to file ${f.path()}`);
-				const res = loader.processor(this.ctx, f);
+				const res = loader.processor(this.ctx, fFinal);
 				if(Array.isArray(res)) {
 					fFinal = res[0];
 					if(!res[1]) {

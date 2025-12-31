@@ -31,7 +31,7 @@ export interface FilesQueryResult extends BaseQueryResult {
 	files: FileQueryInfo[]
 }
 
-function summarizeObjectWithLimit(obj: object, limitChars = 500, limitLines = 10): string {
+function summarizeObjectWithLimit(obj: object | string, limitChars = 500, limitLines = 10): string {
 	const str = JSON.stringify(obj, jsonReplacer, 2);
 	if(str.split('\n').length > limitLines) {
 		const lines = str.split('\n').slice(0, limitLines);
@@ -111,7 +111,7 @@ function guessProto(obj: object): string | undefined {
 		return typeof obj;
 	}
 	if('prototype' in obj && obj.prototype && typeof obj.prototype === 'object') {
-		const proto = obj.prototype as { constructor: { name: string } };
+		const proto = obj.prototype as { constructor: { name: unknown } };
 		if(proto.constructor && typeof proto.constructor.name === 'string') {
 			return proto.constructor.name;
 		}

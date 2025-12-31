@@ -12,6 +12,7 @@ import { FlowrAnalyzerJupyterFilePlugin } from './file-plugins/notebooks/flowr-a
 import { FlowrAnalyzerNamespaceFilesPlugin } from './file-plugins/flowr-analyzer-namespace-files-plugin';
 import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-file-plugin';
 import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
+import { FlowrAnalyzerMetaTestFilesPlugin } from './file-plugins/flowr-analyzer-test-file-plugin';
 
 /**
  * Provides the default set of Flowr Analyzer plugins.
@@ -19,6 +20,7 @@ import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analy
 export function FlowrAnalyzerPluginDefaults(): FlowrAnalyzerPlugin[] {
 	return [
 		new FlowrAnalyzerMetaVignetteFilesPlugin(),
+		new FlowrAnalyzerMetaTestFilesPlugin(),
 		new FlowrAnalyzerDescriptionFilePlugin(),
 		new FlowrAnalyzerPackageVersionsDescriptionFilePlugin(),
 		new FlowrAnalyzerLoadingOrderDescriptionFilePlugin(),

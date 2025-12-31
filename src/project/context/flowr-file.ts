@@ -21,6 +21,10 @@ export enum FileRole {
 	Namespace   = 'namespace',
 	/** The `NEWS` file in R packages */
 	News = 'news',
+	/** Vignette files, e.g., R Markdown files in the `vignettes/` folder */
+	Vignette   = 'vignette',
+	/** Test source files, e.g., files in the `tests/` folder */
+	TestSource = 'test-source',
 	/** Data files, e.g., `R/sysdata.rda`, currently not specially supported. */
 	Data        = 'data',
 	/**

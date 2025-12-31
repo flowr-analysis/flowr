@@ -41,9 +41,11 @@ export type RoleBasedFiles = {
 	[FileRole.News]:        FlowrNewsFile[];
 	[FileRole.Namespace]:   FlowrNamespaceFile[];
     /* currently no special support */
-    [FileRole.Source]:   FlowrFileProvider[];
-    [FileRole.Data]:     FlowrFileProvider[];
-    [FileRole.Other]:    FlowrFileProvider[];
+	[FileRole.Vignette]:    FlowrFileProvider[];
+	[FileRole.TestSource]:  FlowrFileProvider[];
+	[FileRole.Source]:      FlowrFileProvider[];
+	[FileRole.Data]:        FlowrFileProvider[];
+	[FileRole.Other]:       FlowrFileProvider[];
 }
 
 function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, role?: FileRole): FlowrFileProvider {
@@ -130,14 +132,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private readonly consideredFiles: string[] = [];
 
 	/* files that are part of the analysis, e.g. source files */
-	private byRole:        RoleBasedFiles = {
-		[FileRole.Description]: [],
-		[FileRole.News]:        [],
-		[FileRole.Namespace]:   [],
-		[FileRole.Source]:      [],
-		[FileRole.Data]:        [],
-		[FileRole.Other]:       []
-	} satisfies Record<FileRole, FlowrFileProvider[]>;
+	private byRole: RoleBasedFiles = Object.fromEntries<FlowrFileProvider[]>(Object.values(FileRole).map(k => [k, []])) as RoleBasedFiles;
 
 	constructor(
 		loadingOrder: FlowrAnalyzerLoadingOrderContext,

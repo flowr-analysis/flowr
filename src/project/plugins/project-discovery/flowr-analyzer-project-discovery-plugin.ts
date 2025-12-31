@@ -2,7 +2,7 @@ import { FlowrAnalyzerPlugin, PluginType } from '../flowr-analyzer-plugin';
 import type { RParseRequest } from '../../../r-bridge/retriever';
 import type { RProjectAnalysisRequest } from '../../context/flowr-analyzer-files-context';
 import { SemVer } from 'semver';
-import { type FlowrFile , FlowrTextFile } from '../../context/flowr-file';
+import { type FlowrFile, FlowrTextFile } from '../../context/flowr-file';
 import { getAllFilesSync } from '../../../util/files';
 import { platformDirname } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 
@@ -25,6 +25,18 @@ const discoverRSourcesRegex = /\.(r|rmd|ipynb|qmd)$/i;
 const ignorePathsWith = /(\.git|\.svn|\.hg|renv|packrat|node_modules|__pycache__|\.Rproj\.user)/i;
 const excludeRequestsForPaths = /vignettes?|tests?|revdep|inst|data/i;
 
+/** Configuration options for the {@link DefaultFlowrAnalyzerProjectDiscoveryPlugin}. */
+export interface ProjectDiscoveryConfig {
+	/** the regex to trigger R source file discovery on (and hence analyze them as R files) */
+	triggerOnExtensions?: RegExp;
+	/** the regex to ignore certain paths entirely */
+	ignorePathsRegex?:    RegExp;
+	/** the regex to exclude certain paths from being requested as R files (they are still collected as text files) */
+	excludePathsRegex?:   RegExp;
+	/** if set, only paths matching this regex are traversed */
+	onlyTraversePaths?:   RegExp;
+}
+
 /**
  * This is the default dummy implementation of the {@link FlowrAnalyzerProjectDiscoveryPlugin}.
  * It simply collects all files in the given folder and returns them as either {@link RParseRequest} (for R and Rmd files) or {@link FlowrTextFile} (for all other files).
@@ -36,18 +48,21 @@ class DefaultFlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerProjectDis
 	private readonly supportedExtensions: RegExp;
 	private readonly ignorePathsRegex:    RegExp;
 	private readonly excludePathsRegex:   RegExp = excludeRequestsForPaths;
+	private readonly onlyTraversePaths:   RegExp | undefined;
 
 	/**
 	 * Creates a new instance of the default project discovery plugin.
 	 * @param triggerOnExtensions - the regex to trigger R source file discovery on (and hence analyze them as R files)
 	 * @param ignorePathsRegex    - the regex to ignore certain paths entirely
 	 * @param excludePathsRegex   - the regex to exclude certain paths from being requested as R files (they are still collected as text files)
+	 * @param onlyTraversePaths   - if set, only paths matching this regex are traversed
 	 */
-	constructor(triggerOnExtensions: RegExp = discoverRSourcesRegex, ignorePathsRegex: RegExp = ignorePathsWith, excludePathsRegex: RegExp = excludeRequestsForPaths) {
+	constructor({ triggerOnExtensions = discoverRSourcesRegex, ignorePathsRegex = ignorePathsWith, excludePathsRegex = excludeRequestsForPaths, onlyTraversePaths }: ProjectDiscoveryConfig = {}) {
 		super();
 		this.supportedExtensions = triggerOnExtensions;
 		this.ignorePathsRegex = ignorePathsRegex;
 		this.excludePathsRegex = excludePathsRegex;
+		this.onlyTraversePaths = onlyTraversePaths;
 	}
 
 	public process(_context: unknown, args: RProjectAnalysisRequest): (RParseRequest | FlowrFile<string>)[] {
@@ -57,7 +72,7 @@ class DefaultFlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerProjectDis
 			if(this.ignorePathsRegex.test(file)) {
 				continue;
 			}
-			if(this.supportedExtensions.test(file) && !this.excludePathsRegex.test(platformDirname(file))) {
+			if(this.supportedExtensions.test(file) && (!this.onlyTraversePaths || this.onlyTraversePaths.test(file)) && !this.excludePathsRegex.test(platformDirname(file))) {
 				requests.push({ content: file, request: 'file' });
 			} else {
 				requests.push(new FlowrTextFile(file));

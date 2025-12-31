@@ -10,6 +10,8 @@ import {
 
 const VignettePathPattern = /vignettes?/i;
 
+// TODO: mark that other laoders should still apply, ensure role stays, support multiple roles
+// TODO: likewise a test loader
 /**
  * This plugin provides supports the loading for Vignette files.
  * If you use multiple meta plugins, this should be included *before* other plugins.

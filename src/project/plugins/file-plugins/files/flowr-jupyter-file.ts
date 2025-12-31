@@ -15,7 +15,7 @@ export class FlowrJupyterFile extends FlowrFile<string> {
 	 * @param file - the file to load as R Markdown
 	 */
 	constructor(file: FlowrFileProvider<string>) {
-		super(file.path(), FileRole.Source);
+		super(file.path(), [FileRole.Source]);
 		this.wrapped = file;
 	}
 

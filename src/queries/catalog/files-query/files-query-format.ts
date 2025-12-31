@@ -16,12 +16,13 @@ import { fileProtocol } from '../../../r-bridge/retriever';
  */
 export interface FilesQuery extends BaseQueryFormat {
 	readonly type:              'files';
+	/** If you provide roles, only files with all the given roles are returned. Supply multiple queries if you want a union! */
 	readonly roles?:            FileRole[],
 	readonly matchesPathRegex?: string;
 }
 
 export interface FileQueryInfo<T = object> {
-	role?:   FileRole,
+	roles?:  readonly FileRole[],
 	path:    string,
 	content: T
 }
@@ -126,7 +127,7 @@ export const FilesQueryDefinition = {
 		result.push(`   ╰ Found ${out.files.length} file${out.files.length === 1 ? '' : 's'}`);
 		for(const f of out.files) {
 			const nam = guessProto(f.content);
-			result.push(`      ╰ ${bold(f.path, formatter)}${nam ? ' ' + formatter.format(nam, { effect: ColorEffect.Foreground, color: Colors.White }) : ''}${f.role ? ` [role: ${f.role}]` : ''}:`);
+			result.push(`      ╰ ${bold(f.path, formatter)}${nam ? ' ' + formatter.format(nam, { effect: ColorEffect.Foreground, color: Colors.White }) : ''}${f.roles ? ` [role: ${f.roles.join(', ')}]` : ''}:`);
 			const summary = summarizeObjectWithLimit(f.content, 250);
 			for(const line of summary.split('\n')) {
 				result.push(`          ${line}`);

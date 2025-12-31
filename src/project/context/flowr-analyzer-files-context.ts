@@ -48,9 +48,9 @@ export type RoleBasedFiles = {
 	[FileRole.Other]:       FlowrFileProvider[];
 }
 
-function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, role?: FileRole): FlowrFileProvider {
+function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]): FlowrFileProvider {
 	if(typeof file === 'string') {
-		return new FlowrTextFile(file, role);
+		return new FlowrTextFile(file, roles);
 	} else if('request' in file) {
 		return FlowrFile.fromRequest(file);
 	} else {
@@ -189,7 +189,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			if(isParseRequest(req)) {
 				this.addRequest(req);
 			} else {
-				this.addFile(req, req.role);
+				this.addFile(req, req.roles);
 			}
 		}
 	}
@@ -207,8 +207,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 * Add a file to the context. If the file has a special role, it will be added to the corresponding list of special files.
 	 * This method also applies any registered {@link FlowrAnalyzerFilePlugin}s to the file before adding it to the context.
 	 */
-	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile, role?: FileRole) {
-		const f = this.fileLoadPlugins(wrapFile(file, role));
+	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]) {
+		const f = this.fileLoadPlugins(wrapFile(file, roles));
 
 		if(f.path() === FlowrFile.INLINE_PATH) {
 			this.inlineFiles.push(f);
@@ -218,8 +218,10 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			this.files.set(f.path(), f);
 		}
 
-		if(f.role) {
-			this.byRole[f.role].push(f as never);
+		if(f.roles) {
+			for(const r of f.roles) {
+				this.byRole[r].push(f as never);
+			}
 		}
 
 		return f;

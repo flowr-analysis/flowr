@@ -4,7 +4,6 @@ import type {
 	FilesQueryResult
 } from './files-query-format';
 import type { BasicQueryData } from '../../base-query-format';
-import type { FileRole } from '../../../project/context/flowr-file';
 
 /**
  * Executes the given files queries using the provided analyzer.
@@ -20,27 +19,28 @@ export function executeFileQuery({ analyzer }: BasicQueryData, queries: readonly
 	for(const query of queries) {
 		if(query.matchesPathRegex === undefined && query.roles === undefined) {
 			files = base.map(l => ({
-				role:    l.role,
+				roles:   l.roles,
 				content: l.content(),
 				path:    l.path()
 			}));
 			break;
 		}
+		const queryRoles = new Set<string>(query.roles);
 		const pathRegex = query.matchesPathRegex ? new RegExp(query.matchesPathRegex) : undefined;
 		for(const file of base) {
-			const fingerprint = `${file.role}:::${file.path()}`;
+			const fingerprint = `${file.roles?.join(':')}:::${file.path()}`;
 			if(foundFingerprints.has(fingerprint)) {
 				continue;
 			}
 			if(pathRegex && !pathRegex.test(file.path())) {
 				continue;
 			}
-			if(query.roles && !query.roles.includes(file.role ?? '' as FileRole)) {
+			if(query.roles && !file.roles?.every(r => queryRoles.has(r))) {
 				continue;
 			}
 			foundFingerprints.add(fingerprint);
 			files.push({
-				role:    file.role,
+				roles:   file.roles,
 				content: file.content(),
 				path:    file.path()
 			});

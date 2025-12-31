@@ -1,6 +1,5 @@
 import type { PathLike } from 'fs';
 import fs from 'fs';
-import { guard } from '../../util/assert';
 import type { RParseRequest } from '../../r-bridge/retriever';
 
 /**
@@ -53,11 +52,11 @@ export type StringableContent = { toString(): string };
  */
 export interface FlowrFileProvider<Content extends { toString(): string } = { toString(): string }> {
 	/**
-	 * The role of this file, if any, in general your file should _not_ decide for itself what role it has in the project context,
+	 * The role(s) of this file, if any, in general your file should _not_ decide for itself what role it has in the project context,
 	 * this is for the loaders plugins to decide (cf. {@link PluginType}) as they can, e.g., respect ignore files, updated mappings, etc.
 	 * However, they will 1) set this role as soon as they decide on it (using {@link assignRole}) and 2) try to respect an already assigned role (however, user configurations may override this).
 	 */
-    role?: FileRole;
+    roles?: readonly FileRole[];
 
 	/**
 	 * The path to the file, this is used for identification and logging purposes.
@@ -86,14 +85,18 @@ export interface FlowrFileProvider<Content extends { toString(): string } = { to
  * See {@link FlowrTextFile} for a text-file specific implementation and {@link FlowrInlineTextFile} for inline text files.
  */
 export abstract class FlowrFile<Content extends StringableContent = StringableContent> implements FlowrFileProvider<Content> {
-	private contentCache:  Content | undefined;
-	protected filePath:    PathLike;
-	public readonly role?: FileRole;
+	private contentCache: Content | undefined;
+	protected filePath:   PathLike;
+	private _roles?:      FileRole[];
 	public static readonly INLINE_PATH = '@inline';
 
-	public constructor(filePath: PathLike, role?: FileRole) {
+	public constructor(filePath: PathLike, roles?: readonly FileRole[]) {
 		this.filePath = filePath;
-		this.role     = role;
+		this._roles     = roles ? Array.from(roles) : undefined;
+	}
+
+	public get roles(): readonly FileRole[] | undefined {
+		return this._roles;
 	}
 
 	public path(): string {
@@ -110,8 +113,14 @@ export abstract class FlowrFile<Content extends StringableContent = StringableCo
 	protected abstract loadContent(): Content;
 
 	public assignRole(role: FileRole): void {
-		guard(this.role === undefined || this.role === role, `File ${this.filePath.toString()} already has a role assigned: ${this.role}`);
-		(this as { role?: FileRole }).role = role;
+		if(this._roles === undefined) {
+			this._roles = [role];
+		} else if(this._roles.includes(role)) {
+			// already assigned
+			return;
+		} else {
+			this._roles.push(role);
+		}
 	}
 
 	/**

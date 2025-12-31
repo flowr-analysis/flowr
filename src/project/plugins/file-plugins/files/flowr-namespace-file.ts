@@ -24,7 +24,7 @@ export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	 * and handle role assignments.
 	 */
 	constructor(file: FlowrFileProvider) {
-		super(file.path(), file.role);
+		super(file.path(), file.roles);
 		this.wrapped = file;
 	}
 

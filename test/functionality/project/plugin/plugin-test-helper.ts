@@ -37,8 +37,6 @@ export async function testFileLoadPlugin<F extends ConstructTo<FlowrFile>, P ext
 			analyzer.addRequest(testFilePath);
 		}],
 	] satisfies TestCaseEntries)('load via $0', async(_, loadFn: LoadFn) => {
-		analyzer.reset();
-
 		loadFn(analyzer);
 		await analyzer.parse();
 

@@ -82,7 +82,8 @@ const MatchingClose = {
  * This also handles escaped quotes.
  * @param str - The string to split
  * @param splitOn - The string to split on (default: 'and')
- * @param closes - The matching of closing characters for nesting
+ * @param closes - The matching of closing characters for nesting, structures with different open and close characters only can be nested
+ *                 of each other, while those with the same open and close character (like quotes) can not be nested inside themselves.
  */
 export function splitOnNestingSensitive(
 	str: string,
@@ -90,6 +91,7 @@ export function splitOnNestingSensitive(
 	closes: Record<string, string> = MatchingClose,
 ): string[] {
 	const result: string[] = [];
+	const openCloseSame = new Set(Object.entries(closes).filter(([open, close]) => open === close).map(([open]) => open));
 	let current = '';
 	const nestStack: (keyof typeof closes)[] = [];
 	for(let i = 0; i < str.length; i++) {
@@ -99,9 +101,14 @@ export function splitOnNestingSensitive(
 			current += c + str[i + 1];
 			i++;
 		} else if(nestStack.length > 0) {
-			const top = nestStack[nestStack.length - 1];
-			if(c === closes[top]) {
-				nestStack.pop();
+			if(!openCloseSame.has(c) && c in closes) {
+				// opening a new nest
+				nestStack.push(c as keyof typeof MatchingClose);
+			} else {
+				const top = nestStack[nestStack.length - 1];
+				if(c === closes[top]) {
+					nestStack.pop();
+				}
 			}
 			current += c;
 		} else {

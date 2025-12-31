@@ -117,6 +117,45 @@ describe('R Author Parsing', function() {
 				}] satisfies RAuthorInfo[]
 			},
 			{
+				input:  'First Last (ORCID: 0000-0001-2345-6789) <foo.bar@x>',
+				expect: [{
+					name:  ['First', 'Last'],
+					email: 'foo.bar@x',
+					roles: [],
+					orcid: '0000-0001-2345-6789'
+				}] satisfies RAuthorInfo[]
+			},
+			{
+				input:  'First Last (ORCID: 0000-0001-2345-6789, and stuff) <foo.bar@x>',
+				expect: [{
+					name:    ['First', 'Last'],
+					email:   'foo.bar@x',
+					roles:   [],
+					orcid:   '0000-0001-2345-6789',
+					comment: ['and stuff']
+				}] satisfies RAuthorInfo[]
+			},
+			{
+				input:  'First Last (stuff and, ORCID: 0000-0001-2345-6789) <foo.bar@x>',
+				expect: [{
+					name:    ['First', 'Last'],
+					email:   'foo.bar@x',
+					roles:   [],
+					orcid:   '0000-0001-2345-6789',
+					comment: ['stuff and']
+				}] satisfies RAuthorInfo[]
+			},
+			{
+				input:  'First Last (stuff and, ORCID: 0000-0001-2345-6789, and stuff) <foo.bar@x>',
+				expect: [{
+					name:    ['First', 'Last'],
+					email:   'foo.bar@x',
+					roles:   [],
+					orcid:   '0000-0001-2345-6789',
+					comment: ['stuff and', 'and stuff']
+				}] satisfies RAuthorInfo[]
+			},
+			{
 				input:  'First Last <first.last@email.com> (Comment)',
 				expect: [{
 					name:    ['First', 'Last'],

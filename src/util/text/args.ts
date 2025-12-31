@@ -67,3 +67,64 @@ export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, 
 
 	return args;
 }
+
+
+const MatchingClose = {
+	'<': '>',
+	'[': ']',
+	'(': ')',
+	'"': '"',
+	"'": "'"
+} as const;
+
+/**
+ * Splits the given string on 'and', but only if not nested inside `<>`, `[]`, `()`, or quotes.
+ * This also handles escaped quotes.
+ * @param str - The string to split
+ * @param splitOn - The string to split on (default: 'and')
+ * @param closes - The matching of closing characters for nesting
+ */
+export function splitOnNestingSensitive(
+	str: string,
+	splitOn: string = 'and',
+	closes: Record<string, string> = MatchingClose,
+): string[] {
+	const result: string[] = [];
+	let current = '';
+	const nestStack: (keyof typeof closes)[] = [];
+	for(let i = 0; i < str.length; i++) {
+		const c = str[i];
+		if(c === '\\' && i + 1 < str.length) {
+			// skip escaped characters
+			current += c + str[i + 1];
+			i++;
+		} else if(nestStack.length > 0) {
+			const top = nestStack[nestStack.length - 1];
+			if(c === closes[top]) {
+				nestStack.pop();
+			}
+			current += c;
+		} else {
+			if(c in closes) {
+				nestStack.push(c as keyof typeof MatchingClose);
+				current += c;
+				continue;
+			}
+			// check for 'and' split
+			if(str.slice(i, i + splitOn.length) === splitOn &&
+				(i === 0 || /\s/.test(str[i - 1])) &&
+				(i + splitOn.length >= str.length || /\s/.test(str[i + splitOn.length]))) {
+				// split here
+				result.push(current.trim());
+				current = '';
+				i += splitOn.length - 1;
+				continue;
+			}
+			current += c;
+		}
+	}
+	if(current.trim().length > 0) {
+		result.push(current.trim());
+	}
+	return result;
+}

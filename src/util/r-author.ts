@@ -1,4 +1,4 @@
-import { splitAtEscapeSensitive } from './text/args';
+import { splitAtEscapeSensitive, splitOnNestingSensitive } from './text/args';
 import { isNotUndefined } from './assert';
 import { compactRecord } from './objects';
 import { removeRQuotes } from '../r-bridge/retriever';
@@ -232,20 +232,50 @@ function collectUntil(source: string, anyOf: RegExp): { collected: string; rest:
  * like `First Middle Last <email> [roles] (comment)...`. It does not support the full R `person()` syntax.
  */
 export function parseTextualAuthorString(authorString: string, addRoles: AuthorRole[] = []): RAuthorInfo[] {
-	const parts = authorString.split(/\s+and\s+/);
+	const parts = splitOnNestingSensitive(authorString, 'and', {
+		'<': '>',
+		'[': ']',
+		'(': ')',
+		'"': '"',
+		"'": "'"
+	} as const);
 	const authors: RAuthorInfo[] = [];
 	for(const part of parts) {
 		const name = collectUntil(part.trim(), /[<[(]/);
 		const others = parseOnRest(name.rest);
-
+		const c = processComment(others.comment);
 		authors.push(compactRecord({
 			name:    name.collected.trim().split(/\s+/),
 			email:   others.email,
 			roles:   others.roles.concat(addRoles),
-			comment: others.comment ? [others.comment] : undefined
+			comment: c.comment,
+			orcid:   c.orcid
 		}));
 	}
 	return authors;
+}
+
+function processComment(comment: string | undefined): { comment?: string[]; orcid?: string } {
+	if(!comment) {
+		return {};
+	}
+	const parts = comment.split(/\s*[,;]\s*/);
+	const comments: string[] = [];
+	let orcid: string | undefined = undefined;
+	for(const part of parts) {
+		const orcidExtract = /ORCID\s*[:= ]\s*(?<orcid>.+)/i;
+		const match = part.match(orcidExtract);
+		if(match && match.groups && match.groups['orcid']) {
+			orcid = match.groups['orcid'].trim();
+		} else {
+			comments.push(part.trim());
+		}
+	}
+	if(orcid) {
+		return { comment: comments.length > 0 ? comments : undefined, orcid };
+	} else {
+		return { comment: [comment] };
+	}
 }
 
 function parseOnRest(rest: string): { email?: string; roles: AuthorRole[]; comment?: string } {

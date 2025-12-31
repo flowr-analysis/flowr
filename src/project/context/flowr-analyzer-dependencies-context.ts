@@ -4,7 +4,6 @@ import {
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
-import type { DeepReadonly } from 'ts-essentials';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerDependenciesContext}.
@@ -27,12 +26,12 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * @param name - The name of the dependency to get.
 	 * @returns The dependency with the given name, or undefined if it does not exist.
 	 */
-	getDependency(name: string): DeepReadonly<Package> | undefined;
+	getDependency(name: string): Readonly<Package> | undefined;
 
 	/**
 	 * Get all dependencies known to this context.
 	 */
-	getDependencies(): DeepReadonly<Package[]>;
+	getDependencies(): readonly Readonly<Package>[];
 }
 
 /**

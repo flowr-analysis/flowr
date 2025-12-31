@@ -86,13 +86,13 @@ interface RoxygenTagWithValue<Type extends KnownRoxygenTags, Value> extends Roxy
 
 type RoxygenTagFlag<Type extends KnownRoxygenTags> = RoxygenTagBase<Type>
 
-export type RoxygenTagAlias = RoxygenTagWithValue<KnownRoxygenTags.Aliases, string[] | 'inhibit-default'>;
+export type RoxygenTagAlias = RoxygenTagWithValue<KnownRoxygenTags.Aliases, string[]>;
 export type RoxygenTagBackref = RoxygenTagWithValue<KnownRoxygenTags.Backref, string>;
 export type RoxygenTagConcept = RoxygenTagWithValue<KnownRoxygenTags.Concept, string>;
 export type RoxygenTagFamily = RoxygenTagWithValue<KnownRoxygenTags.Family, string>;
 /** Internal is special in that it causes the topic to be removed from the index */
 export type RoxygenTagKeywords = RoxygenTagWithValue<KnownRoxygenTags.Keywords, (string | 'internal')[]>;
-export type RoxygenTagReferences = RoxygenTagWithValue<KnownRoxygenTags.References, string[]>;
+export type RoxygenTagReferences = RoxygenTagWithValue<KnownRoxygenTags.References, string>;
 // TODO: support various writing styles with [...], \code{...}, etc.
 export type RoxygenTagSeeAlso = RoxygenTagWithValue<KnownRoxygenTags.SeeAlso, string[]>;
 /** https://roxygen2.r-lib.org/reference/tags-index-crossref.html */
@@ -104,7 +104,7 @@ export type RoxygenTagExportClass = RoxygenTagWithValue<KnownRoxygenTags.ExportC
 export type RoxygenTagExportMethod = RoxygenTagWithValue<KnownRoxygenTags.ExportMethod, string>;
 export type RoxygenTagExportPattern = RoxygenTagWithValue<KnownRoxygenTags.ExportPattern, string>;
 export type RoxygenTagExportS3Method = RoxygenTagWithValue<KnownRoxygenTags.ExportS3Method, string>;
-export type RoxygenTagImport = RoxygenTagFlag<KnownRoxygenTags.Import>;
+export type RoxygenTagImport = RoxygenTagWithValue<KnownRoxygenTags.Import, string>;
 export type RoxygenTagImportClassesFrom = RoxygenTagWithValue<KnownRoxygenTags.ImportClassesFrom, { package: string; classes: string[] }>;
 export type RoxygenTagImportMethodsFrom = RoxygenTagWithValue<KnownRoxygenTags.ImportMethodsFrom, { package: string; methods: string[] }>;
 export type RoxygenTagImportFrom = RoxygenTagWithValue<KnownRoxygenTags.ImportFrom, { package: string; symbols: string[] }>;
@@ -141,17 +141,17 @@ export type RoxygenTagTitle = RoxygenTagWithValue<KnownRoxygenTags.Title, string
 export type RoxygenTagUsage = RoxygenTagWithValue<KnownRoxygenTags.Usage, string>;
 /** https://roxygen2.r-lib.org/reference/tags-rd.html */
 export type RoxygenFunctionDocumentationTag = RoxygenTagDescription | RoxygenTagDetails | RoxygenTagExample | RoxygenTagExamples | RoxygenTagExamplesIf | RoxygenTagNoRd | RoxygenTagParam | RoxygenTagRawRd | RoxygenTagReturn | RoxygenTagTitle | RoxygenTagUsage;
-export type RoxygenTagDescribeIn = RoxygenTagWithValue<KnownRoxygenTags.DescribeIn, { destination: string, description: string }>;
+export type RoxygenTagDescribeIn = RoxygenTagWithValue<KnownRoxygenTags.DescribeIn, { dest: string, description: string }>;
 /** Evaluate R code and insert the results into the Rd file */
 export type RoxygenTagEval = RoxygenTagWithValue<KnownRoxygenTags.Eval, string>;
 export type RoxygenTagEvalRd = RoxygenTagWithValue<KnownRoxygenTags.EvalRd, string>;
 export type RoxygenTagIncludeRmd = RoxygenTagWithValue<KnownRoxygenTags.IncludeRmd, string>;
-export const RoxygenTagInheritComponents = ['params', 'return', 'title', 'description', 'details', 'seealso', 'sections', 'references', 'examples', 'author', 'source', 'note', 'format'] as const;
-export type RoxygenTagInherit = RoxygenTagWithValue<KnownRoxygenTags.Inherit, { source: string, components: typeof RoxygenTagInheritComponents[number][] }>;
+// export const RoxygenTagInheritComponents = ['params', 'return', 'title', 'description', 'details', 'seealso', 'sections', 'references', 'examples', 'author', 'source', 'note', 'format'] as const;
+export type RoxygenTagInherit = RoxygenTagWithValue<KnownRoxygenTags.Inherit, { source: string, components: string[] }>;
 export type RoxygenTagInheritDotParams = RoxygenTagWithValue<KnownRoxygenTags.InheritDotParams, { source: string, args: string[] }>;
 export type RoxygenTagInheritParams = RoxygenTagWithValue<KnownRoxygenTags.InheritParams, string>;
 export type RoxygenTagInheritSection = RoxygenTagWithValue<KnownRoxygenTags.InheritSection, { source: string; section: string }>;
-export type RoxygenTagOrder = RoxygenTagWithValue<KnownRoxygenTags.Order, number>;
+export type RoxygenTagOrder = RoxygenTagWithValue<KnownRoxygenTags.Order, number | undefined>;
 export type RoxygenTagRdName = RoxygenTagWithValue<KnownRoxygenTags.RdName, string>;
 export type RoxygenTagTemplate = RoxygenTagWithValue<KnownRoxygenTags.Template, string>;
 export type RoxygenTagTemplateVar = RoxygenTagWithValue<KnownRoxygenTags.TemplateVar, { name: string; value: string }>;

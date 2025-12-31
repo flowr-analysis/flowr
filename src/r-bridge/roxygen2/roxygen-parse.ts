@@ -4,6 +4,7 @@ import type { RNode } from '../lang-4.x/ast/model/model';
 import type { ParentInformation } from '../lang-4.x/ast/model/processing/decorate';
 import { isRComment } from '../lang-4.x/ast/model/nodes/r-comment';
 import { isNotUndefined } from '../../util/assert';
+import { splitAtEscapeSensitive } from '../../util/text/args';
 
 function prepareCommentContext(commentText: readonly string[]): string[] {
 	const contents = [];
@@ -15,7 +16,7 @@ function prepareCommentContext(commentText: readonly string[]): string[] {
 			// we are done with the roxygen comment
 			break;
 		}
-		contents.push((trimmed.startsWith('#\'') ? trimmed.slice(2) : trimmed.slice(1)).trim());
+		contents.push((trimmed.startsWith('#\'') ? trimmed.slice(2) : trimmed.slice(1)).trimEnd());
 	}
 	return contents;
 }
@@ -63,7 +64,7 @@ function atTag(state: RoxygenParseContext): TagLine | undefined {
 	if(atEnd(state)) {
 		return undefined;
 	}
-	const line = state.lines[state.idx];
+	const line = state.lines[state.idx].trim();
 	if(!line.startsWith('@')) {
 		return undefined;
 	}
@@ -92,94 +93,124 @@ function addTag(state: RoxygenParseContext, tag: RoxygenTag): void {
 	state.tags.push(tag);
 }
 
-function stringVal(state: RoxygenParseContext, tagName: TagLine): void {
+function val(state: RoxygenParseContext, tagName: TagLine, lineToVal: (lines: readonly string[]) => unknown | undefined = l => l.join('\n').trim()): void {
 	const [lines, nextTag] = collectUntilNextTag(state);
 	if(tagName[1]) {
 		lines.unshift(tagName[1]);
 	}
 	if(lines.length > 0) {
 		const n = tagName[0];
-		addTag(state, (isKnownRoxygenText(n) ? {
-			type:  n,
-			value: lines.join('\n').trim(),
-		} : {
-			type:  KnownRoxygenTags.Unknown,
-			value: {
-				tag:     n,
-				content: lines.join(' ')
-			}
-		}) as RoxygenTag);
+		if(isKnownRoxygenText(n)) {
+			const val: undefined | unknown = lineToVal(lines);
+			addTag(state, (val ? {
+				type:  n,
+				value: val
+			} : { type: n }) as RoxygenTag);
+		} else {
+			addTag(state, {
+				type:  KnownRoxygenTags.Unknown,
+				value: {
+					tag:     n,
+					content: lines.join(' ')
+				}
+			});
+		}
+
 	}
 	parseRoxygenTag(state, nextTag);
 }
 
+const spaceVals = (s: RoxygenParseContext, t: TagLine): void => val(s, t, l => splitAtEscapeSensitive(l.join(' ')));
+const flagVal =  (s: RoxygenParseContext, t: TagLine): void => val(s, t, () => undefined);
+
+const section = (s: RoxygenParseContext, t: TagLine): void => val(s, t, l => {
+	return { title: l[0].trim(), content: l.slice(1).join('\n').trim() };
+});
+
+export const firstAndRest = (firstName: string, secondName: string) => (s: RoxygenParseContext, t: TagLine): void => val(s, t, l => {
+	const vals = splitAtEscapeSensitive(l.join('\n'));
+	return { [firstName]: vals[0], [secondName]: vals.slice(1).join(' ').trim() };
+});
+const firstAndArrayRest = (firstName: string, secondName: string) => (s: RoxygenParseContext, t: TagLine): void => val(s, t, l => {
+	const vals = splitAtEscapeSensitive(l.join('\n'));
+	return { [firstName]: vals[0], [secondName]: vals.slice(1) };
+});
+
+const asNumber = (s: RoxygenParseContext, t: TagLine): void => val(s, t, l => {
+	const num = Number(l.join(' ').trim());
+	return Number.isNaN(num) ? undefined : num;
+});
+
 const TagMap = {
-	[KnownRoxygenTags.Aliases]:           stringVal,
-	[KnownRoxygenTags.Backref]:           stringVal,
-	[KnownRoxygenTags.Concept]:           stringVal,
-	[KnownRoxygenTags.Family]:            stringVal,
-	[KnownRoxygenTags.Keywords]:          stringVal,
-	[KnownRoxygenTags.References]:        stringVal,
-	[KnownRoxygenTags.SeeAlso]:           stringVal,
-	[KnownRoxygenTags.EvalNamespace]:     stringVal,
-	[KnownRoxygenTags.Export]:            stringVal,
-	[KnownRoxygenTags.ExportClass]:       stringVal,
-	[KnownRoxygenTags.ExportMethod]:      stringVal,
-	[KnownRoxygenTags.ExportPattern]:     stringVal,
-	[KnownRoxygenTags.ExportS3Method]:    stringVal,
-	[KnownRoxygenTags.Import]:            stringVal,
-	[KnownRoxygenTags.ImportClassesFrom]: stringVal,
-	[KnownRoxygenTags.ImportMethodsFrom]: stringVal,
-	[KnownRoxygenTags.ImportFrom]:        stringVal,
-	[KnownRoxygenTags.RawNamespace]:      stringVal,
-	[KnownRoxygenTags.UseDynLib]:         stringVal,
-	[KnownRoxygenTags.Md]:                stringVal,
-	[KnownRoxygenTags.NoMd]:              stringVal,
-	[KnownRoxygenTags.Section]:           stringVal,
-	[KnownRoxygenTags.Field]:             stringVal,
-	[KnownRoxygenTags.Format]:            stringVal,
-	[KnownRoxygenTags.Method]:            stringVal,
-	[KnownRoxygenTags.Slot]:              stringVal,
-	[KnownRoxygenTags.Source]:            stringVal,
-	[KnownRoxygenTags.Description]:       stringVal,
-	[KnownRoxygenTags.Details]:           stringVal,
-	[KnownRoxygenTags.Example]:           stringVal,
-	[KnownRoxygenTags.Examples]:          stringVal,
-	[KnownRoxygenTags.ExamplesIf]:        stringVal,
-	[KnownRoxygenTags.NoRd]:              stringVal,
-	[KnownRoxygenTags.Param]:             stringVal,
-	[KnownRoxygenTags.RawRd]:             stringVal,
-	[KnownRoxygenTags.Return]:            stringVal,
-	[KnownRoxygenTags.Returns]:           stringVal,
-	[KnownRoxygenTags.Title]:             stringVal,
-	[KnownRoxygenTags.Usage]:             stringVal,
-	[KnownRoxygenTags.DescribeIn]:        stringVal,
-	[KnownRoxygenTags.Eval]:              stringVal,
-	[KnownRoxygenTags.EvalRd]:            stringVal,
-	[KnownRoxygenTags.IncludeRmd]:        stringVal,
-	[KnownRoxygenTags.Inherit]:           stringVal,
-	[KnownRoxygenTags.InheritDotParams]:  stringVal,
-	[KnownRoxygenTags.InheritParams]:     stringVal,
-	[KnownRoxygenTags.InheritSection]:    stringVal,
-	[KnownRoxygenTags.Order]:             stringVal,
-	[KnownRoxygenTags.RdName]:            stringVal,
-	[KnownRoxygenTags.Template]:          stringVal,
-	[KnownRoxygenTags.TemplateVar]:       stringVal,
-	[KnownRoxygenTags.Text]:              stringVal,
-	[KnownRoxygenTags.Name]:              stringVal,
-	[KnownRoxygenTags.DocType]:           stringVal,
-	[KnownRoxygenTags.Author]:            stringVal,
-	[KnownRoxygenTags.Unknown]:           stringVal
+	[KnownRoxygenTags.Aliases]:           spaceVals,
+	[KnownRoxygenTags.Backref]:           val,
+	[KnownRoxygenTags.Concept]:           val,
+	[KnownRoxygenTags.Family]:            val,
+	[KnownRoxygenTags.Keywords]:          spaceVals,
+	[KnownRoxygenTags.References]:        val,
+	[KnownRoxygenTags.SeeAlso]:           spaceVals,
+	[KnownRoxygenTags.EvalNamespace]:     val,
+	[KnownRoxygenTags.Export]:            flagVal,
+	[KnownRoxygenTags.ExportClass]:       val,
+	[KnownRoxygenTags.ExportMethod]:      val,
+	[KnownRoxygenTags.ExportPattern]:     val,
+	[KnownRoxygenTags.ExportS3Method]:    val, // TODO: test with spaces and nothing!
+	[KnownRoxygenTags.Import]:            val,
+	[KnownRoxygenTags.ImportClassesFrom]: firstAndArrayRest('package', 'classes'),
+	[KnownRoxygenTags.ImportMethodsFrom]: firstAndArrayRest('package', 'methods'),
+	[KnownRoxygenTags.ImportFrom]:        firstAndArrayRest('package', 'symbols'),
+	[KnownRoxygenTags.RawNamespace]:      val,
+	[KnownRoxygenTags.UseDynLib]:         val,
+	[KnownRoxygenTags.Md]:                flagVal,
+	[KnownRoxygenTags.NoMd]:              flagVal,
+	[KnownRoxygenTags.Section]:           section,
+	[KnownRoxygenTags.Field]:             firstAndRest('name', 'description'),
+	[KnownRoxygenTags.Format]:            val,
+	[KnownRoxygenTags.Method]:            firstAndRest('generic', 'class'),
+	[KnownRoxygenTags.Slot]:              firstAndRest('name', 'description'),
+	[KnownRoxygenTags.Source]:            val,
+	[KnownRoxygenTags.Description]:       val,
+	[KnownRoxygenTags.Details]:           val,
+	[KnownRoxygenTags.Example]:           val,
+	[KnownRoxygenTags.Examples]:          val,
+	[KnownRoxygenTags.ExamplesIf]:        firstAndRest('condition', 'content'),
+	[KnownRoxygenTags.NoRd]:              flagVal,
+	[KnownRoxygenTags.Param]:             firstAndRest('name', 'description'),
+	[KnownRoxygenTags.RawRd]:             val,
+	[KnownRoxygenTags.Return]:            val,
+	[KnownRoxygenTags.Returns]:           val,
+	[KnownRoxygenTags.Title]:             val,
+	[KnownRoxygenTags.Usage]:             val,
+	[KnownRoxygenTags.DescribeIn]:        firstAndRest('dest', 'description'),
+	[KnownRoxygenTags.Eval]:              val,
+	[KnownRoxygenTags.EvalRd]:            val,
+	[KnownRoxygenTags.IncludeRmd]:        val,
+	[KnownRoxygenTags.Inherit]:           firstAndArrayRest('source', 'components'),
+	[KnownRoxygenTags.InheritDotParams]:  firstAndArrayRest('source', 'args'),
+	[KnownRoxygenTags.InheritParams]:     val,
+	[KnownRoxygenTags.InheritSection]:    firstAndRest('source', 'section'),
+	[KnownRoxygenTags.Order]:             asNumber,
+	[KnownRoxygenTags.RdName]:            val,
+	[KnownRoxygenTags.Template]:          val,
+	[KnownRoxygenTags.TemplateVar]:       firstAndRest('name', 'value'),
+	[KnownRoxygenTags.Text]:              val,
+	[KnownRoxygenTags.Name]:              val,
+	[KnownRoxygenTags.DocType]:           val,
+	[KnownRoxygenTags.Author]:            val,
+	[KnownRoxygenTags.Unknown]:           (s, t) => val(s, t, l => ({
+		tag:     t[0],
+		content: l.join(' ')
+	}))
 } as const satisfies Record<KnownRoxygenTags, (state: RoxygenParseContext, tagName: TagLine) => void>;
 
 function parseRoxygenTag(state: RoxygenParseContext, tagName: TagLine | undefined): void {
 	if(tagName === undefined) {
 		return;
 	}
-	const parser = TagMap[tagName[0] as KnownRoxygenTags] ?? stringVal;
+	const parser = TagMap[tagName[0] as KnownRoxygenTags] ?? val;
 	parser(state, tagName);
 }
 
 function parseRoxygenBase(state: RoxygenParseContext): void {
-	stringVal(state, [KnownRoxygenTags.Text]);
+	val(state, [KnownRoxygenTags.Text]);
 }

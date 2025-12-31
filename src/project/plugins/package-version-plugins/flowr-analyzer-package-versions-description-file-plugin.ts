@@ -3,13 +3,13 @@ import {
 	descriptionFileLog
 } from '../file-plugins/flowr-analyzer-description-file-plugin';
 import { SemVer } from 'semver';
-import { type PackageType , Package } from './package';
+import { type PackageType  } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { FileRole } from '../../context/flowr-file';
 import type { DCF } from '../file-plugins/files/flowr-description-file';
+import { parsePackagesWithVersions } from '../file-plugins/files/flowr-description-file';
 import type { DeepReadonly } from 'ts-essentials';
 
-const VersionRegex = /^([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([\d.]+)\))?$/;
 
 /**
  * This plugin extracts package versions from R `DESCRIPTION` files.
@@ -37,21 +37,8 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 	}
 
 	private retrieveVersionsFromField(ctx: FlowrAnalyzerContext, file: DeepReadonly<DCF>, field: string, type?: PackageType): void {
-		for(const entry of file.get(field) ?? []) {
-			const match = VersionRegex.exec(entry);
-
-			if(match) {
-				const [, name, operator, version] = match;
-
-				const range = Package.parsePackageVersionRange(operator, version);
-				ctx.deps.addDependency(new Package(
-					{
-						name:               name,
-						type:               type,
-						versionConstraints: range ? [range] : undefined
-					}
-				));
-			}
+		for(const pkg of parsePackagesWithVersions(file.get(field) ?? [], type)) {
+			ctx.deps.addDependency(pkg);
 		}
 	}
 }

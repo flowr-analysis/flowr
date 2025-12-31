@@ -93,7 +93,6 @@ export type RoxygenTagFamily = RoxygenTagWithValue<KnownRoxygenTags.Family, stri
 /** Internal is special in that it causes the topic to be removed from the index */
 export type RoxygenTagKeywords = RoxygenTagWithValue<KnownRoxygenTags.Keywords, (string | 'internal')[]>;
 export type RoxygenTagReferences = RoxygenTagWithValue<KnownRoxygenTags.References, string>;
-// TODO: support various writing styles with [...], \code{...}, etc.
 export type RoxygenTagSeeAlso = RoxygenTagWithValue<KnownRoxygenTags.SeeAlso, string[]>;
 /** https://roxygen2.r-lib.org/reference/tags-index-crossref.html */
 export type RoxygenCrossrefTag = RoxygenTagAlias | RoxygenTagBackref | RoxygenTagConcept | RoxygenTagFamily | RoxygenTagKeywords | RoxygenTagReferences | RoxygenTagSeeAlso;
@@ -110,7 +109,6 @@ export type RoxygenTagImportMethodsFrom = RoxygenTagWithValue<KnownRoxygenTags.I
 export type RoxygenTagImportFrom = RoxygenTagWithValue<KnownRoxygenTags.ImportFrom, { package: string; symbols: string[] }>;
 /** Insert literal text directly into the NAMESPACE */
 export type RoxygenTagRawNamespace = RoxygenTagWithValue<KnownRoxygenTags.RawNamespace, string>;
-// TODO: support .registration
 export type RoxygenTagUseDynLib = RoxygenTagWithValue<KnownRoxygenTags.UseDynLib, string>;
 /** https://roxygen2.r-lib.org/reference/tags-namespace.html */
 export type RoxygenNamespaceTag = RoxygenTagEvalNamespace | RoxygenTagExport | RoxygenTagExportClass | RoxygenTagExportMethod | RoxygenTagExportPattern | RoxygenTagExportS3Method | RoxygenTagImport | RoxygenTagImportClassesFrom | RoxygenTagImportMethodsFrom | RoxygenTagImportFrom | RoxygenTagRawNamespace | RoxygenTagUseDynLib;

@@ -95,14 +95,15 @@ function addTag(state: RoxygenParseContext, tag: RoxygenTag): void {
 
 function val(state: RoxygenParseContext, tagName: TagLine, lineToVal: (lines: readonly string[]) => unknown | undefined = l => l.join('\n').trim()): void {
 	const [lines, nextTag] = collectUntilNextTag(state);
+
 	if(tagName[1]) {
 		lines.unshift(tagName[1]);
 	}
-	if(lines.length > 0) {
+	if(tagName[0] !== KnownRoxygenTags.Text || lines.length > 0) {
 		const n = tagName[0];
 		if(isKnownRoxygenText(n)) {
 			const val: undefined | unknown = lineToVal(lines);
-			addTag(state, (val ? {
+			addTag(state, (val !== undefined ? {
 				type:  n,
 				value: val
 			} : { type: n }) as RoxygenTag);
@@ -154,7 +155,7 @@ const TagMap = {
 	[KnownRoxygenTags.ExportClass]:       val,
 	[KnownRoxygenTags.ExportMethod]:      val,
 	[KnownRoxygenTags.ExportPattern]:     val,
-	[KnownRoxygenTags.ExportS3Method]:    val, // TODO: test with spaces and nothing!
+	[KnownRoxygenTags.ExportS3Method]:    val,
 	[KnownRoxygenTags.Import]:            val,
 	[KnownRoxygenTags.ImportClassesFrom]: firstAndArrayRest('package', 'classes'),
 	[KnownRoxygenTags.ImportMethodsFrom]: firstAndArrayRest('package', 'methods'),

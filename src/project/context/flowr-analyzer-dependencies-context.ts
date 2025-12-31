@@ -26,12 +26,12 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * @param name - The name of the dependency to get.
 	 * @returns The dependency with the given name, or undefined if it does not exist.
 	 */
-	getDependency(name: string): Package | undefined;
+	getDependency(name: string): Readonly<Package> | undefined;
 
 	/**
 	 * Get all dependencies known to this context.
 	 */
-	getDependencies(): Package[];
+	getDependencies(): readonly Readonly<Package>[];
 }
 
 /**

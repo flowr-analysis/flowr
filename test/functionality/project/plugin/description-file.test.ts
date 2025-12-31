@@ -140,13 +140,21 @@ describe('DESCRIPTION-file', function() {
 				roles: [AuthorRole.Author, AuthorRole.Creator]
 			});
 		});
+		test('Suggest Retrieval', () => {
+			const sugg = getDescContent(ctx).suggests();
+			assert.isDefined(sugg);
+			assert.lengthOf(sugg, 6);
+			assert.includeMembers(
+				sugg?.map(n => n.name),
+				['sf', 'tibble', 'testthat', 'svglite', 'xml2', 'vdiffr']
+			);
+		});
 	});
 	describe('Variant B', () => {
 		const ctx = contextWithFile(DescriptionB);
 		test('Library-Versions-Plugin', () => {
 			const deps = ctx.deps.getDependencies();
 			assert.lengthOf(deps, 5);
-
 			assert.includeMembers(deps.map(n => n.name), ['methods', 'utils', 'ggplot2', 'rlang', 'R']);
 			const rDep = ctx.deps.getDependency('R');
 			assert.isDefined(rDep);
@@ -173,6 +181,15 @@ describe('DESCRIPTION-file', function() {
 				email: 'firstname.lastname@gmail.com',
 				roles: [AuthorRole.Creator]
 			});
+		});
+		test('Suggest Retrieval', () => {
+			const sugg = getDescContent(ctx).suggests();
+			assert.isDefined(sugg);
+			assert.lengthOf(sugg, 4);
+			assert.includeMembers(
+				sugg?.map(n => n.name),
+				['knitr', 'rmarkdown', 'testthat', 'covr']
+			);
 		});
 	});
 });

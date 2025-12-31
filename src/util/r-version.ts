@@ -9,11 +9,38 @@ function makeVersion(version: string, original: string) {
 }
 
 /**
+ * Additionally, this transforms `a-b.c` into `a.0.0-b.c` and `a.b-c.d` into `a.b.0-c.d` to
+ * ensure valid SemVer format.
+ */
+function normalizeTooShortVersions(versions: string): string {
+	const TooShortVersionRegex = /(^|(?<=[^\d.-]))(?<major>\d+)(\.(?<minor>\d+))?\.?-(?<prerelease>[0-9A-Za-z-.]+)(\s|$)/g;
+	let newVersions = '';
+	let match: RegExpExecArray | null;
+	while((match = TooShortVersionRegex.exec(versions)) !== null) {
+		const { major, minor, prerelease } = match.groups as { major: string; minor?: string; prerelease: string };
+		const prefix = versions.slice(0, match.index);
+		let newVersion = '';
+		if(minor === undefined) {
+			// only major version present
+			newVersion = `${major}.0.0-${prerelease}`;
+		} else {
+			// major and minor version present, but dot before prerelease
+			newVersion = `${major}.${minor}.0-${prerelease}`;
+		}
+		newVersions += `${prefix}${newVersion}`;
+		versions = versions.slice(match.index + match[0].length);
+	}
+	newVersions += versions; // append any remaining part
+	return newVersions;
+}
+
+/**
  * For every version `a.b.c.d.e...` converts it to `a.b.c-d.e...`
  * If the version already contains a prerelease part, it is appended:
  * `a.b.c.d.e-prerelease...` becomes `a.b.c-d.e-prerelease...`
  */
 function normalizeAdditionalVersionsToPrerelease(version: string): string {
+	version = normalizeTooShortVersions(version);
 	const AdditionalVersionRegex = /(\d+\.\d+\.\d+)(?<additional>(\.\d+)+)(-(?<prerelease>[0-9A-Za-z-.]+))?/g;
 
 	let match: RegExpExecArray | null;

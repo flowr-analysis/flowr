@@ -4,6 +4,7 @@ import { label } from '../../_helper/label';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { builtInId } from '../../../../src/dataflow/environments/built-in';
 import { argumentInCall, defaultEnv } from '../../_helper/dataflow/environment-builder';
+import { ExitPointType } from '../../../../src/dataflow/info';
 
 describe('Call Graph Generation', withTreeSitter(ts => {
 	assertDataflow(label('sample calls', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
@@ -27,7 +28,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('7@bar', '4@function')
 			.call(11, '{', [argumentInCall('1@10')], { omitArgs: true, onlyBuiltIn: true })
 			.call(28, '{', [argumentInCall('4@27')], { omitArgs: true, onlyBuiltIn: true })
-			.defineFunction('4@function', [27], {
+			.defineFunction('4@function', [{ nodeId: 27, controlDependencies: undefined, type: ExitPointType.Return }], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -37,7 +38,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			}, { readParams: [[15, true]] })
 			.calls('4@function', [28, '5@return'])
 			.calls(28, [27, builtInId('expression-list')])
-			.defineFunction('1@function', [10], {
+			.defineFunction('1@function', [{ nodeId: 10, controlDependencies: undefined, type: ExitPointType.Return }], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -77,7 +78,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('7@fib', '1@function')
 			.call(32, '{', [argumentInCall(31)], { omitArgs: true, onlyBuiltIn: true })
 			.calls(32, [builtInId('expression-list'), 15, 31])
-			.defineFunction('1@function', [13, 31], {
+			.defineFunction('1@function', [{ nodeId: 13, type: ExitPointType.Return, controlDependencies: [{ id: 15, when: true }] }, { nodeId: 31, type: ExitPointType.Return, controlDependencies: undefined }], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],

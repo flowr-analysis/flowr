@@ -118,7 +118,7 @@ export function modifyLabelName(label: TestLabel | string, nameModification: (na
 /**
  * Returns the full name of the testlabel and adds the respective contexts
  */
-export function decorateLabelContext(label: TestLabel | string, context: readonly TestLabelContext[], ids: SupportedFlowrCapabilityId[] = []): string {
+export function decorateLabelContext(label: TestLabel | string, context: readonly TestLabelContext[]): string {
 	if(typeof label === 'string') {
 		return label;
 	}

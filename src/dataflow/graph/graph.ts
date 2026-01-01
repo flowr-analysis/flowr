@@ -315,12 +315,11 @@ export class DataflowGraph<
 		}
 
 		const fallback = vertex.tag === VertexType.FunctionDefinition || (vertex.tag === VertexType.FunctionCall && !vertex.onlyBuiltin) ? fallbackEnv : undefined;
-		// keep a clone of the original environment
-		const environment = vertex.environment ? cloneEnvironmentInformation(vertex.environment) : fallback;
 
 		this.vertexInformation.set(vertex.id, {
 			...vertex,
-			environment
+			// keep a clone of the original environment
+			environment: vertex.environment ? cloneEnvironmentInformation(vertex.environment) : fallback
 		} as unknown as Vertex);
 		const has =  this.types.get(vertex.tag);
 		if(has) {
@@ -428,7 +427,7 @@ export class DataflowGraph<
 		const vertex = this.getVertex(reference.nodeId, true);
 		guard(vertex !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`);
 		if(vertex.tag === VertexType.FunctionDefinition || vertex.tag === VertexType.VariableDefinition) {
-			vertex.cds = reference.controlDependencies;
+			vertex.controlDependencies = reference.controlDependencies;
 		} else {
 			this.vertexInformation.set(reference.nodeId, { ...vertex, tag: VertexType.VariableDefinition });
 			this.types.set(vertex.tag, (this.types.get(vertex.tag) ?? []).filter(id => id !== reference.nodeId));
@@ -454,17 +453,17 @@ export class DataflowGraph<
 		to = to ? normalizeIdToNumberIfPossible(to) : undefined;
 		const vertex = this.getVertex(from, true);
 		guard(vertex !== undefined, () => `node must be defined for ${from} to add control dependency`);
-		vertex.cds ??= [];
+		vertex.controlDependencies ??= [];
 		if(to) {
 			let hasControlDependency = false;
-			for(const { id, when: cond } of vertex.cds) {
+			for(const { id, when: cond } of vertex.controlDependencies) {
 				if(id === to && when !== cond) {
 					hasControlDependency = true;
 					break;
 				}
 			}
 			if(!hasControlDependency) {
-				vertex.cds.push({ id: to, when });
+				vertex.controlDependencies.push({ id: to, when });
 			}
 		}
 		return this;

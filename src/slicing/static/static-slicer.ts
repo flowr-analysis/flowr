@@ -90,9 +90,9 @@ export function staticSlice(
 		const [currentVertex, currentEdges] = currentInfo;
 
 		// we only add control dependencies iff 1) we are in different function call or 2) they have, at least, the same nesting as the slicing seed
-		if(currentVertex.cds && currentVertex.cds.length > 0) {
+		if(currentVertex.controlDependencies && currentVertex.controlDependencies.length > 0) {
 			const topLevel = graph.isRoot(id) || sliceSeedIds.has(id);
-			for(const cd of currentVertex.cds.filter(({ id }) => !queue.hasId(id))) {
+			for(const cd of currentVertex.controlDependencies.filter(({ id }) => !queue.hasId(id))) {
 				if(!topLevel || (idMap.get(cd.id)?.info.nesting ?? 0) >= minNesting) {
 					queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false);
 				}

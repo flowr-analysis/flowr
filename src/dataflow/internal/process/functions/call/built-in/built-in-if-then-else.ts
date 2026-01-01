@@ -127,8 +127,8 @@ export function processIfThenElse<OtherInfo>(
 	// as an if always evaluates its condition, we add a 'reads'-edge
 	nextGraph.addEdge(name.info.id, cond.entryPoint, EdgeType.Reads);
 
-	const exitPoints = (then?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeThenMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: true }] : e.cds }))
-		.concat((otherwise?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeOtherwiseMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: false }] : e.cds })));
+	const exitPoints = (then?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeThenMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: true }] : e.controlDependencies }))
+		.concat((otherwise?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeOtherwiseMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: false }] : e.controlDependencies })));
 
 	return {
 		unknownReferences: [],

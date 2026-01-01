@@ -188,7 +188,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\`"${close}`);
 	} else {
 		const escapedName = escapeMarkdown(node ? `[${node.type}] ${lexeme}` : '??');
-		const deps = info.cds ? ', :may:' + info.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
+		const deps = info.controlDependencies ? ', :may:' + info.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
 		const lnks = info.link?.origin ? ', :links:' + info.link.origin.join(',') : '';
 		const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps}${lnks})\n      *${formatRange(n)}*${
@@ -207,7 +207,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		mermaid.nodeLines.push('   %% No edges found for ' + id);
 		return;
 	}
-	const artificialCdEdges = (info.cds ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False'>([x.when ? 'CD-True' : 'CD-False']) }] as const);
+	const artificialCdEdges = (info.controlDependencies ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False'>([x.when ? 'CD-True' : 'CD-False']) }] as const);
 	// eslint-disable-next-line prefer-const
 	for(let [target, edge] of [...edges[1], ...artificialCdEdges]) {
 		if(includeOnlyIds && !includeOnlyIds.has(target)) {

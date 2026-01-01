@@ -102,10 +102,10 @@ export function processFunctionDefinition<OtherInfo>(
 	for(const read of remainingRead) {
 		if(read.name) {
 			subgraph.addVertex({
-				tag:         VertexType.Use,
-				id:          read.nodeId,
-				environment: undefined,
-				cds:         undefined
+				tag:                 VertexType.Use,
+				id:                  read.nodeId,
+				environment:         undefined,
+				controlDependencies: undefined
 			}, data.ctx.env.makeCleanEnv());
 		}
 	}
@@ -130,13 +130,13 @@ export function processFunctionDefinition<OtherInfo>(
 
 	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false);
 	graph.addVertex({
-		tag:         VertexType.FunctionDefinition,
-		id:          name.info.id,
-		environment: popLocalEnvironment(outEnvironment),
-		cds:         data.controlDependencies,
-		params:      readParams,
-		subflow:     flow,
-		exitPoints:  exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default).map(e => e.nodeId) ?? []
+		tag:                 VertexType.FunctionDefinition,
+		id:                  name.info.id,
+		environment:         popLocalEnvironment(outEnvironment),
+		controlDependencies: data.controlDependencies,
+		params:              readParams,
+		subflow:             flow,
+		exitPoints:          exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default).map(e => e.nodeId) ?? []
 	}, data.ctx.env.makeCleanEnv());
 	return {
 		/* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */

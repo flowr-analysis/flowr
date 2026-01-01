@@ -143,15 +143,15 @@ export function processApply<OtherInfo>(
 		const rootFnId = functionId;
 		functionId = 'anon-' + rootFnId;
 		information.graph.addVertex({
-			tag:         VertexType.FunctionCall,
-			id:          functionId,
-			environment: data.environment,
-			name:        functionName,
+			tag:                 VertexType.FunctionCall,
+			id:                  functionId,
+			environment:         data.environment,
+			name:                functionName,
 			/* can never be a direct built-in-call */
-			onlyBuiltin: false,
-			cds:         data.controlDependencies,
-			args:        allOtherArguments, // same reference
-			origin:      ['function']
+			onlyBuiltin:         false,
+			controlDependencies: data.controlDependencies,
+			args:                allOtherArguments, // same reference
+			origin:              ['function']
 		}, data.ctx.env.makeCleanEnv());
 		information.graph.addEdge(rootId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
@@ -191,14 +191,14 @@ export function processApply<OtherInfo>(
 	} else {
 		/* identify it as a full-blown function call :) */
 		information.graph.updateToFunctionCall({
-			tag:         VertexType.FunctionCall,
-			id:          functionId,
-			name:        functionName,
-			args:        allOtherArguments,
-			environment: resolveInEnvironment === 'global' ? undefined : data.environment,
-			onlyBuiltin: resolveInEnvironment === 'global',
-			cds:         data.controlDependencies,
-			origin:      ['function']
+			tag:                 VertexType.FunctionCall,
+			id:                  functionId,
+			name:                functionName,
+			args:                allOtherArguments,
+			environment:         resolveInEnvironment === 'global' ? undefined : data.environment,
+			onlyBuiltin:         resolveInEnvironment === 'global',
+			controlDependencies: data.controlDependencies,
+			origin:              ['function']
 		});
 	}
 

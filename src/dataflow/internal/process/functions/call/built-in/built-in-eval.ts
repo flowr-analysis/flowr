@@ -87,7 +87,7 @@ export function processEvalCall<OtherInfo>(
 			result.push(r);
 			// add a returns edge from the eval to the result
 			for(const e of r.exitPoints) {
-				information.graph.addEdge(rootId, e, EdgeType.Returns);
+				information.graph.addEdge(rootId, e.nodeId, EdgeType.Returns);
 			}
 		}
 		return {

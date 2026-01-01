@@ -37,10 +37,10 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 	}
 	const node = graph.getVertex(ref.nodeId, true);
 	if(node) {
-		if(node.cds) {
-			appToCdsUnique(node.cds, defaultCd);
+		if(node.controlDependencies) {
+			appToCdsUnique(node.controlDependencies, defaultCd);
 		} else {
-			node.cds = defaultCd ? Array.from(defaultCd) : [];
+			node.controlDependencies = defaultCd ? Array.from(defaultCd) : [];
 		}
 	}
 	if(ref.controlDependencies) {

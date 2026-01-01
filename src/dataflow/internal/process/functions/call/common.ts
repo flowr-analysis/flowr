@@ -171,15 +171,15 @@ export function patchFunctionCall<OtherInfo>(
 	{ nextGraph, rootId, name, data, argumentProcessResult, origin, link }: PatchFunctionCallInput<OtherInfo>
 ): void {
 	nextGraph.addVertex({
-		tag:         VertexType.FunctionCall,
-		id:          rootId,
-		name:        name.content,
-		environment: data.environment,
+		tag:                 VertexType.FunctionCall,
+		id:                  rootId,
+		name:                name.content,
+		environment:         data.environment,
 		/* will be overwritten accordingly */
-		onlyBuiltin: false,
-		cds:         data.controlDependencies,
-		args:        argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined, type: ReferenceType.Argument }),
-		origin:      [origin],
+		onlyBuiltin:         false,
+		controlDependencies: data.controlDependencies,
+		args:                argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined, type: ReferenceType.Argument }),
+		origin:              [origin],
 		link
 	}, data.ctx.env.makeCleanEnv(), !nextGraph.hasVertex(rootId) || nextGraph.isRoot(rootId), true);
 	for(const arg of argumentProcessResult) {

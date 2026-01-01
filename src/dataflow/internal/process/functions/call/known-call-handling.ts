@@ -83,16 +83,16 @@ export function processKnownFunctionCall<OtherInfo>(
 	}
 
 	finalGraph.addVertex({
-		tag:               VertexType.FunctionCall,
-		id:                rootId,
-		environment:       data.environment,
-		name:              functionCallName,
+		tag:                 VertexType.FunctionCall,
+		id:                  rootId,
+		environment:         data.environment,
+		name:                functionCallName,
 		/* will be overwritten accordingly */
-		onlyBuiltin:       false,
-		cds:               data.controlDependencies,
-		args:              reverseOrder ? callArgs.reverse() : callArgs,
-		indicesCollection: indicesCollection,
-		origin:            origin === 'default' ? ['function'] : [origin]
+		onlyBuiltin:         false,
+		controlDependencies: data.controlDependencies,
+		args:                reverseOrder ? callArgs.reverse() : callArgs,
+		indicesCollection:   indicesCollection,
+		origin:              origin === 'default' ? ['function'] : [origin]
 	}, data.ctx.env.makeCleanEnv());
 
 	if(hasUnknownSideEffect) {
@@ -112,7 +112,7 @@ export function processKnownFunctionCall<OtherInfo>(
 			graph:             finalGraph,
 			environment:       finalEnv,
 			entryPoint:        rootId,
-			exitPoints:        [{ nodeId: rootId, type: ExitPointType.Default, cds: data.controlDependencies }]
+			exitPoints:        [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
 		},
 		processedArguments: reverseOrder ? processedArguments.reverse() : processedArguments,
 		fnRef

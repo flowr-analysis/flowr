@@ -452,7 +452,7 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
  */
 export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: readonly IdentifierReference[]): void {
 	// just apply the cds of all exit points not already present
-	const exitCds = new Set(exits.flatMap(e => e.cds).filter(isNotUndefined));
+	const exitCds = new Set(exits.flatMap(e => e.controlDependencies).filter(isNotUndefined));
 
 	for(const ref of references) {
 		for(const cd of exitCds) {

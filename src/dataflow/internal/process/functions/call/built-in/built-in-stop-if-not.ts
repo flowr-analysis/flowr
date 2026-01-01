@@ -68,9 +68,9 @@ export function processStopIfNot<OtherInfo>(
 				when: false
 			})));
 			(res.exitPoints as ExitPoint[]).push({
-				type:   ExitPointType.Error,
-				nodeId: rootId,
-				cds:    cds
+				type:                ExitPointType.Error,
+				nodeId:              rootId,
+				controlDependencies: cds
 			});
 			return res;
 		}
@@ -83,9 +83,9 @@ export function processStopIfNot<OtherInfo>(
 		if(alwaysFalse) {
 			// we know that this fails *always*
 			(res.exitPoints as ExitPoint[]).push({
-				type:   ExitPointType.Error,
-				nodeId: rootId,
-				cds:    data.controlDependencies
+				type:                ExitPointType.Error,
+				nodeId:              rootId,
+				controlDependencies: data.controlDependencies
 			});
 			return res;
 		}
@@ -104,9 +104,9 @@ export function processStopIfNot<OtherInfo>(
 	}
 
 	(res.exitPoints as ExitPoint[]).push({
-		type:   ExitPointType.Error,
-		nodeId: rootId,
-		cds:    (data.controlDependencies ?? []).concat(cds)
+		type:                ExitPointType.Error,
+		nodeId:              rootId,
+		controlDependencies: (data.controlDependencies ?? []).concat(cds)
 	});
 	return res;
 }

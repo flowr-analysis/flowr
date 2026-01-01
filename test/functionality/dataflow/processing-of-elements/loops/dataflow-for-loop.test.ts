@@ -10,7 +10,7 @@ import { describe } from 'vitest';
 describe.sequential('for', withShell(shell => {
 	assertDataflow(label('Single-vector for Loop', ['for-loop', 'name-normal', 'numbers']),
 		shell, 'for(i in 0) i',  emptyGraph()
-			.use('2', 'i', { cds: [{ id: '4', when: true }] })
+			.use('2', 'i', { controlDependencies: [{ id: '4', when: true }] })
 			.reads('2', '0')
 			.argument('4', '2')
 			.call('4', 'for', [argumentInCall('0'), argumentInCall('1'), argumentInCall('2')], { returns: [], reads: ['1', builtInId('for')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('i', '0', '4'), origin: ['builtin:for-loop'] })
@@ -30,7 +30,7 @@ describe.sequential('for', withShell(shell => {
   x <- 3
 }
 x`, emptyGraph()
-				.use('5', 'z', { cds: [{ id: '13' }, { id: '8', when: true }] })
+				.use('5', 'z', { controlDependencies: [{ id: '13' }, { id: '8', when: true }] })
 				.use('14', 'x')
 				.reads('14', ['2', '9'])
 				.call('4', '<-', [argumentInCall('2'), argumentInCall('3')], { origin: ['builtin:assignment'], returns: ['2'], reads: [builtInId('<-'), 3], onlyBuiltIn: true, controlDependencies: [{ id: '13' }, { id: '8', when: true }] })
@@ -54,7 +54,7 @@ x`, emptyGraph()
 	});
 
 	assertDataflow(label('Read in for Loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 12\nfor(i in 1:10) x ', emptyGraph()
-		.use('7', 'x', { cds: [{ id: '9', when: true }] })
+		.use('7', 'x', { controlDependencies: [{ id: '9', when: true }] })
 		.reads('7', '0')
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { origin: ['builtin:assignment'], returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 		.calls('2', builtInId('<-'))
@@ -112,7 +112,7 @@ x`, emptyGraph()
 		.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [{ id: '13', when: true }] })
 	);
 	assertDataflow(label('redefinition within loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- x }\n x',  emptyGraph()
-		.use('10', 'x', { cds: [{ id: '13', when: true }] })
+		.use('10', 'x', { controlDependencies: [{ id: '13', when: true }] })
 		.reads('10', ['9', '0'])
 		.use('14', 'x')
 		.reads('14', ['0', '9'])
@@ -137,14 +137,14 @@ x`, emptyGraph()
 
 	assertDataflow(label('Simple Circular Redefinition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']),
 		shell, 'for(i in 1:10) x <- x + 1',
-		emptyGraph().defineVariable('1@x', 'x', { controlDependencies: [{ id: 10, when: true }] }).use('1:21', 'x', { cds: [{ id: 10, when: true }] }).reads('1:21', '1@x'),
+		emptyGraph().defineVariable('1@x', 'x', { controlDependencies: [{ id: 10, when: true }] }).use('1:21', 'x', { controlDependencies: [{ id: 10, when: true }] }).reads('1:21', '1@x'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 
 	assertDataflow(label('double redefinition within loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']), shell, 'x <- 9\nfor(i in 1:10) { x <- x; x <- x }\n x', emptyGraph()
-		.use('10', 'x', { cds: [{ id: '16', when: true }] })
+		.use('10', 'x', { controlDependencies: [{ id: '16', when: true }] })
 		.reads('10', ['12', '0'])
-		.use('13', 'x', { cds: [{ id: '16', when: true }] })
+		.use('13', 'x', { controlDependencies: [{ id: '16', when: true }] })
 		/* we should try to narrow this */
 		.reads('13', ['0', '9', '12'])
 		.use('17', 'x')
@@ -172,7 +172,7 @@ x`, emptyGraph()
 	);
 
 	assertDataflow(label('loop-variable redefined within loop', ['name-normal', 'for-loop', 'semicolons', 'newlines', 'numbers']), shell, 'for(i in 1:10) { i; i <- 12 }\n i', emptyGraph()
-		.use('6', 'i', { cds: [{ id: '11', when: true }] })
+		.use('6', 'i', { controlDependencies: [{ id: '11', when: true }] })
 		.reads('6', '0')
 		.use('12', 'i')
 		.reads('12', ['0', '7'])
@@ -238,7 +238,7 @@ repeat {
       break
 }
 print(x)`, emptyGraph()
-					.use('8', 'foo', { cds: [{ id: '13' }, { id: '11', when: true }] })
+					.use('8', 'foo', { controlDependencies: [{ id: '13' }, { id: '11', when: true }] })
 					.use('15', 'x')
 					.reads('15', '5')
 					.reads('15', '0')
@@ -362,7 +362,7 @@ for(i in 1:100) {
       break
 }
 print(x)`,  emptyGraph()
-					.use('12', 'foo', { cds: [{ id: '17', when: true }, { id: '15', when: true }] })
+					.use('12', 'foo', { controlDependencies: [{ id: '17', when: true }, { id: '15', when: true }] })
 					.use('19', 'x')
 					.reads('19', ['0', '9'])
 					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
@@ -499,7 +499,7 @@ while(TRUE) {
       break
 }
 print(x)`, emptyGraph()
-					.use('9', 'foo', { cds: [{ id: 14, when: true }, { id: '12', when: true }] })
+					.use('9', 'foo', { controlDependencies: [{ id: 14, when: true }, { id: '12', when: true }] })
 					.use('16', 'x')
 					.reads('16', ['0', '6'])
 					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })

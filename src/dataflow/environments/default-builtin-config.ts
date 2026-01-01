@@ -90,9 +90,10 @@ export const GgPlotAddons = [
 ];
 const PlotAddons = GraphicsPlotAddons.concat(GgPlotImplicitAddons, ...PlotFunctionsWithAddParam);
 
+const RegexConvIn = /[-/\\^$*+?.()|[\]{}]/g;
 function toRegex(n: readonly string[]): RegExp {
 	return new RegExp(`^(${
-		[...new Set(n)].map(s => s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')).filter(s => s.length > 0).join('|')
+		Array.from(new Set(n)).map(s => s.replace(RegexConvIn, '\\$&')).filter(s => s.length > 0).join('|')
 	})$`);
 }
 
@@ -161,7 +162,7 @@ export const DefaultBuiltinConfig = [
 			},
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: toRegex([...PlotCreate, ...PlotAddons]),
+				callName: toRegex(PlotCreate.concat(PlotAddons)),
 				ignoreIf: (source: NodeId, graph: DataflowGraph) => {
 					const sourceVertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;
 
@@ -190,7 +191,7 @@ export const DefaultBuiltinConfig = [
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: toRegex([...GgPlotCreate, ...GgPlotAddons])
+				callName: toRegex((GgPlotCreate as readonly string[]).concat(GgPlotAddons))
 			}
 		}, assumePrimitive: true },
 	{
@@ -214,7 +215,7 @@ export const DefaultBuiltinConfig = [
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: toRegex([...GraphicDeviceOpen, ...PlotCreate, ...PlotAddons, ...GgPlotAddons, ...TinyPlotAddons])
+				callName: toRegex((GraphicDeviceOpen as readonly string[]).concat(PlotCreate, PlotAddons, GgPlotAddons, TinyPlotAddons))
 			}
 		}, assumePrimitive: true },
 	{ type: 'function', names: ['('],                                          processor: 'builtin:default',             config: { returnsNthArgument: 0 },                                                     assumePrimitive: true  },
@@ -234,7 +235,7 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['eval'],                                       processor: 'builtin:eval',                config: { includeFunctionCall: true },                                                 assumePrimitive: true },
 	{ type: 'function', names: ['cat'],                                        processor: 'builtin:default',             config: { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } },                                                         assumePrimitive: false },
 	{ type: 'function', names: ['switch'],                                     processor: 'builtin:default',             config: { forceArgs: [true] },                                                         assumePrimitive: false },
-	{ type: 'function', names: ['return'],                                     processor: 'builtin:default',             config: { returnsNthArgument: 0, cfg: ExitPointType.Return, useAsProcessor: 'builtin:return' }, assumePrimitive: false },
+	{ type: 'function', names: ['return'],                                     processor: 'builtin:default',             config: { returnsNthArgument: 0, cfg: ExitPointType.Return, useAsProcessor: 'builtin:return' }, assumePrimitive: true },
 	{ type: 'function', names: ['stop', 'abort'],                              processor: 'builtin:default',             config: { useAsProcessor: 'builtin:stop', cfg: ExitPointType.Error, forceArgs: ['all'] }, assumePrimitive: false },
 	{ type: 'function', names: ['stopifnot'],                                  processor: 'builtin:stopifnot',           config: { },                                                                           assumePrimitive: false },
 	{ type: 'function', names: ['break'],                                      processor: 'builtin:default',             config: { useAsProcessor: 'builtin:break', cfg: ExitPointType.Break },                 assumePrimitive: false },

@@ -45,15 +45,15 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	});
 
 	finalGraph.addVertex({
-		tag:         VertexType.FunctionCall,
-		id:          functionRootId,
-		environment: data.environment,
-		name:        functionCallName,
+		tag:                 VertexType.FunctionCall,
+		id:                  functionRootId,
+		environment:         data.environment,
+		name:                functionCallName,
 		/* can never be a direct built-in-call */
-		onlyBuiltin: false,
-		cds:         data.controlDependencies,
-		args:        callArgs, // same reference
-		origin:      [UnnamedFunctionCallOrigin]
+		onlyBuiltin:         false,
+		controlDependencies: data.controlDependencies,
+		args:                callArgs, // same reference
+		origin:              [UnnamedFunctionCallOrigin]
 	}, data.ctx.env.makeCleanEnv());
 
 	let inIds = remainingReadInArgs;

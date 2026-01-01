@@ -117,7 +117,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 					};
 				}
 				if(callDependencies === null) {
-					callDependencies = nextGraph.getVertex(functionCall, true)?.cds;
+					callDependencies = nextGraph.getVertex(functionCall, true)?.controlDependencies;
 				}
 				inputEnvironment = overwriteEnvironment(inputEnvironment, environment, callDependencies);
 			}
@@ -199,9 +199,9 @@ export function processExpressionList<OtherInfo>(
 
 	if(defaultReturnExpr) {
 		exitPoints.push({
-			type:   ExitPointType.Default,
-			nodeId: defaultReturnExpr.entryPoint,
-			cds:    data.controlDependencies
+			type:                ExitPointType.Default,
+			nodeId:              defaultReturnExpr.entryPoint,
+			controlDependencies: data.controlDependencies
 		});
 	}
 

@@ -165,21 +165,21 @@ function defaultBuiltInProcessor<OtherInfo>(
 					continue;
 				}
 				res.graph.updateToFunctionCall({
-					tag:         VertexType.FunctionCall,
-					id:          fnId,
-					name:        fnName,
-					args:        [],
-					environment: data.environment,
-					onlyBuiltin: false,
-					cds:         data.controlDependencies,
-					origin:      [activeProcessor]
+					tag:                 VertexType.FunctionCall,
+					id:                  fnId,
+					name:                fnName,
+					args:                [],
+					environment:         data.environment,
+					onlyBuiltin:         false,
+					controlDependencies: data.controlDependencies,
+					origin:              [activeProcessor]
 				});
 			}
 		}
 	}
 
 	if(cfg !== undefined) {
-		(res.exitPoints as ExitPoint[]).push({ type: cfg, nodeId: rootId, cds: data.controlDependencies });
+		(res.exitPoints as ExitPoint[]).push({ type: cfg, nodeId: rootId, controlDependencies: data.controlDependencies });
 	}
 
 	return res;

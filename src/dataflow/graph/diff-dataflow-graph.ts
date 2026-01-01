@@ -177,7 +177,7 @@ export function diffVertices(ctx: GraphDiffContext): void {
 				});
 			}
 		}
-		diffControlDependencies(lInfo.cds, rInfo.cds, { ...ctx, position: `Vertex ${id} differs in controlDependencies. ` });
+		diffControlDependencies(lInfo.controlDependencies, rInfo.controlDependencies, { ...ctx, position: `Vertex ${id} differs in controlDependencies. ` });
 		if(lInfo.origin !== undefined || rInfo.origin !== undefined) {
 			// compare arrays
 			const equalArrays = lInfo.origin && rInfo.origin && arrayEqual(lInfo.origin as unknown as unknown[], rInfo.origin as unknown as unknown[]);

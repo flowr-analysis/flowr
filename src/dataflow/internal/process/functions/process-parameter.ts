@@ -48,6 +48,6 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		graph:             graph,
 		environment:       environment,
 		entryPoint:        parameter.info.id,
-		exitPoints:        [{ nodeId: parameter.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
+		exitPoints:        [{ nodeId: parameter.info.id, type: ExitPointType.Default, cds: data.controlDependencies }]
 	};
 }

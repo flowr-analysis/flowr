@@ -19,7 +19,7 @@ function uniqueTestId(): string {
 }
 
 
-const _TestLabelContexts = ['parse', 'desugar-shell', 'desugar-tree-sitter', 'dataflow', 'call-graph', 'other', 'slice', 'output', 'query', 'search', 'linter', 'resolve', 'absint'] as const;
+const _TestLabelContexts = ['parse', 'desugar-shell', 'desugar-tree-sitter', 'dataflow', 'controlflow', 'call-graph', 'other', 'slice', 'output', 'query', 'search', 'linter', 'resolve', 'absint'] as const;
 export type TestLabelContext = typeof _TestLabelContexts[number]
 
 export interface TestLabel extends MergeableRecord {
@@ -118,7 +118,7 @@ export function modifyLabelName(label: TestLabel | string, nameModification: (na
 /**
  * Returns the full name of the testlabel and adds the respective contexts
  */
-export function decorateLabelContext(label: TestLabel | string, context: readonly TestLabelContext[]): string {
+export function decorateLabelContext(label: TestLabel | string, context: readonly TestLabelContext[], ids: SupportedFlowrCapabilityId[] = []): string {
 	if(typeof label === 'string') {
 		return label;
 	}

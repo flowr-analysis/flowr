@@ -12,6 +12,9 @@ import type { DataflowInformation } from '../../../../src/dataflow/info';
 import type { NormalizedAst } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { CfgKind } from '../../../../src/project/cfg-kind';
+import { label } from '../label';
+import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
+import { dataflowGraphToMermaidUrl } from '../../../../src/core/print/dataflow-printer';
 
 function normAllIds(ids: readonly NodeId[]): NodeId[] {
 	return ids.map(normalizeIdToNumberIfPossible);
@@ -23,6 +26,7 @@ export interface AssertCfgOptions {
 	excludeProperties?:    readonly CfgProperty[]
 	simplificationPasses?: readonly CfgSimplificationPassName[]
 	additionalAsserts?:    (cfg: ControlFlowInformation, ast: NormalizedAst, dfg: DataflowInformation) => void
+	testIds?:              readonly SupportedFlowrCapabilityId[]
 }
 
 /**
@@ -31,7 +35,8 @@ export interface AssertCfgOptions {
 export function assertCfg(parser: KnownParser, code: string, partialExpected: Partial<ControlFlowInformation>, options?: Partial<AssertCfgOptions>) {
 	// shallow copy is important to avoid killing the CFG :c
 	const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected };
-	return test(code, async()=> {
+	const effectiveName = label(code, options?.testIds ?? [], ['controlflow']);
+	return test(effectiveName, async()=> {
 		const config = cloneConfig(defaultConfigOptions);
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setConfig(config)
@@ -69,10 +74,11 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 			}
 		} /* v8 ignore next 7 */ catch(e: unknown) {
 			if(diff) {
-				console.error(diff.comments());
+				console.error('Diff: ', diff.comments());
 			}
 			console.error(`expected: ${cfgToMermaidUrl(expected, await analyzer.normalize())}`);
 			console.error(`actual: ${cfgToMermaidUrl(cfg, await analyzer.normalize())}`);
+			console.error('Dataflow:', dataflowGraphToMermaidUrl(await analyzer.dataflow()));
 			throw e;
 		}
 	});

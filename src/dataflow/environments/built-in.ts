@@ -45,6 +45,7 @@ import type {
 	BuiltInReplacementDefinition
 } from './built-in-config';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import { processStopIfNot } from '../internal/process/functions/call/built-in/built-in-stop-if-not';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -178,34 +179,35 @@ function defaultBuiltInProcessor<OtherInfo>(
 	}
 
 	if(cfg !== undefined) {
-		(res.exitPoints as ExitPoint[]).push({ type: cfg, nodeId: rootId, controlDependencies: data.controlDependencies });
+		(res.exitPoints as ExitPoint[]).push({ type: cfg, nodeId: rootId, cds: data.controlDependencies });
 	}
 
 	return res;
 }
 
 export const BuiltInProcessorMapper = {
+	'builtin:access':              processAccess,
+	'builtin:apply':               processApply,
+	'builtin:assignment':          processAssignment,
 	'builtin:default':             defaultBuiltInProcessor,
 	'builtin:eval':                processEvalCall,
-	'builtin:apply':               processApply,
 	'builtin:expression-list':     processExpressionList,
-	'builtin:source':              processSourceCall,
-	'builtin:access':              processAccess,
-	'builtin:if-then-else':        processIfThenElse,
-	'builtin:get':                 processGet,
-	'builtin:rm':                  processRm,
-	'builtin:library':             processLibrary,
-	'builtin:assignment':          processAssignment,
-	'builtin:special-bin-op':      processSpecialBinOp,
-	'builtin:pipe':                processPipe,
-	'builtin:function-definition': processFunctionDefinition,
-	'builtin:quote':               processQuote,
 	'builtin:for-loop':            processForLoop,
-	'builtin:repeat-loop':         processRepeatLoop,
-	'builtin:while-loop':          processWhileLoop,
-	'builtin:replacement':         processReplacementFunction,
+	'builtin:function-definition': processFunctionDefinition,
+	'builtin:get':                 processGet,
+	'builtin:if-then-else':        processIfThenElse,
+	'builtin:library':             processLibrary,
 	'builtin:list':                processList,
+	'builtin:pipe':                processPipe,
+	'builtin:quote':               processQuote,
+	'builtin:repeat-loop':         processRepeatLoop,
+	'builtin:replacement':         processReplacementFunction,
+	'builtin:rm':                  processRm,
+	'builtin:source':              processSourceCall,
+	'builtin:special-bin-op':      processSpecialBinOp,
+	'builtin:stopifnot':           processStopIfNot,
 	'builtin:vector':              processVector,
+	'builtin:while-loop':          processWhileLoop,
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;
 
 export const BuiltInEvalHandlerMapper = {

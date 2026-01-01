@@ -47,7 +47,9 @@ export const enum ExitPointType {
 	/** The exit point is an explicit `break` call (or an alias of it) */
 	Break = 2,
 	/** The exit point is an explicit `next` call (or an alias of it) */
-	Next = 3
+	Next = 3,
+	/** The exit point is caused by an error being thrown, e.g., by `stop` or `stopifnot` */
+	Error = 4
 }
 
 /**
@@ -60,15 +62,15 @@ export const enum ExitPointType {
  */
 export interface ExitPoint {
 	/** What kind of exit point is this one? May be used to filter for exit points of specific causes. */
-	readonly type:                ExitPointType,
+	readonly type:   ExitPointType,
 	/** The id of the node which causes the exit point! */
-	readonly nodeId:              NodeId,
+	readonly nodeId: NodeId,
 	/**
 	 * Control dependencies which influence if the exit point triggers
 	 * (e.g., if the `return` is contained within an `if` statement).
 	 * @see {@link happensInEveryBranch} - to check whether control dependencies are exhaustive
 	 */
-	readonly controlDependencies: ControlDependency[] | undefined
+	readonly cds:    ControlDependency[] | undefined
 }
 
 /**
@@ -76,7 +78,7 @@ export interface ExitPoint {
  */
 export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: ControlDependency[], activeCds: ControlDependency[] | undefined, add: readonly ExitPoint[]): void {
 	const toAdd = add.filter(({ type }) => type !== ExitPointType.Default);
-	const invertedCds = toAdd.flatMap(e => e.controlDependencies?.filter(
+	const invertedCds = toAdd.flatMap(e => e.cds?.filter(
 		icd => !activeCds?.some(e => e.id === icd.id && e.when === icd.when)
 	).map(negateControlDependency)).filter(isNotUndefined);
 	existing.push(...toAdd);
@@ -143,7 +145,7 @@ export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: 
 		environment:       data.environment,
 		graph:             new DataflowGraph(data.completeAst.idMap),
 		entryPoint,
-		exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default, controlDependencies: undefined }]
+		exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default, cds: undefined }]
 	};
 }
 
@@ -202,7 +204,7 @@ export function happensInEveryBranchSet(controlDependencies: ReadonlySet<Control
  */
 export function alwaysExits(data: DataflowInformation): boolean {
 	return data.exitPoints?.some(
-		e => e.type !== ExitPointType.Default && happensInEveryBranch(e.controlDependencies)
+		e => e.type !== ExitPointType.Default && happensInEveryBranch(e.cds)
 	) ?? false;
 }
 

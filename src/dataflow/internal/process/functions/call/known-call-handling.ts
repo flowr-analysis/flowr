@@ -112,7 +112,7 @@ export function processKnownFunctionCall<OtherInfo>(
 			graph:             finalGraph,
 			environment:       finalEnv,
 			entryPoint:        rootId,
-			exitPoints:        [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
+			exitPoints:        [{ nodeId: rootId, type: ExitPointType.Default, cds: data.controlDependencies }]
 		},
 		processedArguments: reverseOrder ? processedArguments.reverse() : processedArguments,
 		fnRef

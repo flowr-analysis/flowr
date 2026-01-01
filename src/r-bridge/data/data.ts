@@ -452,9 +452,9 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 									description: '_Handle `return(3)`, ... in function definitions_'
 								},
 								{
-									name:        'exceptions',
-									id:          'exceptions',
-									supported:   'not',
+									name:        'Exceptions and Errors',
+									id:          'exceptions-and-errors',
+									supported:   'partially',
 									description: '_Handle `try`, `stop`, ..._'
 								}
 							]

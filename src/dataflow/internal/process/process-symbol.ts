@@ -28,6 +28,6 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 			cds: data.controlDependencies
 		}, data.ctx.env.makeCleanEnv()),
 		entryPoint: symbol.info.id,
-		exitPoints: [{ nodeId: symbol.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
+		exitPoints: [{ nodeId: symbol.info.id, type: ExitPointType.Default, cds: data.controlDependencies }]
 	};
 }

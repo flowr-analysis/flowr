@@ -20,7 +20,7 @@ export function processValue<OtherInfo>({ info: { id } }: RNodeWithParent, { con
 			id:  id,
 			cds: controlDependencies
 		}, env.makeCleanEnv()),
-		exitPoints: [{ nodeId: id, type: ExitPointType.Default, controlDependencies }],
+		exitPoints: [{ nodeId: id, type: ExitPointType.Default, cds: controlDependencies }],
 		entryPoint: id
 	};
 }

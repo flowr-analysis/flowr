@@ -199,9 +199,9 @@ export function processExpressionList<OtherInfo>(
 
 	if(defaultReturnExpr) {
 		exitPoints.push({
-			type:                ExitPointType.Default,
-			nodeId:              defaultReturnExpr.entryPoint,
-			controlDependencies: data.controlDependencies
+			type:   ExitPointType.Default,
+			nodeId: defaultReturnExpr.entryPoint,
+			cds:    data.controlDependencies
 		});
 	}
 

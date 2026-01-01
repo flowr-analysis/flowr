@@ -178,9 +178,9 @@ export type RoxygenTag = RoxygenCrossrefTag
  */
 export interface RoxygenBlock {
 	readonly type:        'roxygen-block';
-	/** The ast node ID of the comment that produced this tag. */
-	readonly commentId:   NodeId;
-	/** The AST node ID of the R node this roxygen block is attached to, if any. */
+	/** The ast node to which we assign the comment */
+	readonly requestNode: NodeId;
+	/** The AST node ID of the R node this roxygen block is attached to, if any (this comment may be a parent of the requested) */
 	readonly attachedTo?: NodeId;
 	/** The source location of the entire roxygen block, if available. */
 	readonly range?:      SourceLocation;

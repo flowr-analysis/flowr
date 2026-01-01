@@ -1,10 +1,12 @@
 import type { RoxygenBlock, RoxygenTag } from './roxygen-ast';
 import { isKnownRoxygenText , KnownRoxygenTags } from './roxygen-ast';
 import type { RNode } from '../lang-4.x/ast/model/model';
-import type { ParentInformation } from '../lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../lang-4.x/ast/model/processing/decorate';
+import type { RComment } from '../lang-4.x/ast/model/nodes/r-comment';
 import { isRComment } from '../lang-4.x/ast/model/nodes/r-comment';
 import { isNotUndefined } from '../../util/assert';
 import { splitAtEscapeSensitive } from '../../util/text/args';
+import { mergeRanges } from '../../util/range';
 
 function prepareCommentContext(commentText: readonly string[]): string[] {
 	const contents = [];
@@ -25,11 +27,28 @@ function prepareCommentContext(commentText: readonly string[]): string[] {
  * Parses the roxygen comments attached to a node into a RoxygenBlock AST node.
  * Will return `undefined` if there are no valid roxygen comments attached to the node.
  */
-export function parseCommentsOf(node: RNode<ParentInformation>): RoxygenBlock | undefined {
-	const comments = node.info.additionalTokens
-		?.filter(isRComment).map(r => r.lexeme).filter(isNotUndefined);
-	console.log(comments);
-	return undefined;
+export function parseCommentsOf(node: RNode<ParentInformation>, idMap: AstIdMap): RoxygenBlock | undefined {
+	let comments: RComment<ParentInformation>[] | undefined;
+	let cur: RNode<ParentInformation> | undefined = node;
+	do{
+		comments = cur?.info.additionalTokens
+			?.filter(isRComment).filter(r => isNotUndefined(r.lexeme)) as RComment<ParentInformation>[] | undefined;
+		cur = cur?.info.parent ? idMap.get(cur.info.parent) : undefined;
+	} while((comments === undefined || comments.length === 0) && cur !== undefined);
+	if(comments === undefined || comments.length === 0) {
+		return undefined;
+	}
+	const commentContent = comments.map(c => c.lexeme);
+	return {
+		type:        'roxygen-block',
+		tags:        parseRoxygenComment(commentContent),
+		attachedTo:  cur?.info.id,
+		requestNode: node.info.id,
+		range:       [
+			...mergeRanges(...comments.map(c => c.location)),
+			comments.find(c => c.info.file)?.info.file
+		]
+	};
 }
 
 
@@ -52,7 +71,7 @@ export function parseRoxygenComment(commentText: readonly string[]): RoxygenTag[
 		tags:  [],
 		idx:   0
 	};
-	parseRoxygenBase(state);
+	val(state, [KnownRoxygenTags.Text]);
 	return state.tags;
 }
 
@@ -210,8 +229,4 @@ function parseRoxygenTag(state: RoxygenParseContext, tagName: TagLine | undefine
 	}
 	const parser = TagMap[tagName[0] as KnownRoxygenTags] ?? val;
 	parser(state, tagName);
-}
-
-function parseRoxygenBase(state: RoxygenParseContext): void {
-	val(state, [KnownRoxygenTags.Text]);
 }

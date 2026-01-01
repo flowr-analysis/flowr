@@ -167,18 +167,18 @@ export function happensInEveryBranch(controlDependencies: readonly ControlDepend
 }
 
 function coversSet(controlDependencies: ReadonlySet<ControlDependency> | readonly ControlDependency[]) {
-	const trues = [];
+	const trues = new Set();
 	const falseSet = new Set();
 
 	for(const { id, when } of controlDependencies) {
 		if(when) {
-			trues.push(id);
+			trues.add(id);
 		} else {
 			falseSet.add(id);
 		}
 	}
 
-	return trues.every(id => falseSet.has(id));
+	return trues.symmetricDifference(falseSet).size === 0;
 }
 
 /**

@@ -26,14 +26,16 @@ function prepareCommentContext(commentText: readonly string[]): string[] {
 /**
  * Parses the roxygen comments attached to a node into a RoxygenBlock AST node.
  * Will return `undefined` if there are no valid roxygen comments attached to the node.
+ * @param node  - The node to parse the roxygen comments for
+ * @param idMap - An optional id map to traverse up the AST to find comments attached to parent nodes
  */
-export function parseCommentsOf(node: RNode<ParentInformation>, idMap: AstIdMap): RoxygenBlock | undefined {
+export function parseRoxygenCommentsOfNode(node: RNode<ParentInformation>, idMap?: AstIdMap): RoxygenBlock | undefined {
 	let comments: RComment<ParentInformation>[] | undefined;
 	let cur: RNode<ParentInformation> | undefined = node;
 	do{
 		comments = cur?.info.additionalTokens
 			?.filter(isRComment).filter(r => isNotUndefined(r.lexeme)) as RComment<ParentInformation>[] | undefined;
-		cur = cur?.info.parent ? idMap.get(cur.info.parent) : undefined;
+		cur = cur?.info.parent ? idMap?.get(cur.info.parent) : undefined;
 	} while((comments === undefined || comments.length === 0) && cur !== undefined);
 	if(comments === undefined || comments.length === 0) {
 		return undefined;
@@ -62,7 +64,7 @@ type TagLine = [tag: string, remTagLine?: string];
 /**
  * Parses a roxygen comment into a RoxygenBlock AST node.
  * Will return `undefined` if the comment is not a valid roxygen comment.
- * @see {@link parseCommentsOf} - to parse comments attached to a node
+ * @see {@link parseRoxygenCommentsOfNode} - to parse comments attached to a node
  */
 export function parseRoxygenComment(commentText: readonly string[]): RoxygenTag[] {
 	const contents = prepareCommentContext(commentText);

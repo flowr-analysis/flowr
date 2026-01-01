@@ -15,6 +15,7 @@ import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrInlineTextFile } from '../project/context/flowr-file';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
+import { parseRoxygenCommentsOfNode } from '../r-bridge/roxygen2/roxygen-parse';
 
 async function quickNormalizedAstMultipleFiles() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -101,6 +102,11 @@ The following segments intend to give you an overview of how to work with the no
 
 * [How to get a Normalized AST](#how-to-get-a-normalized-ast)
 * [Visitors and Folds](#visitors-and-folds)
+
+> [!TIP]
+> If you want to get more information on roxygen comments attached to AST nodes,
+> check out ${ctx.link(parseRoxygenCommentsOfNode)}.
+
 
 ## How to Get a Normalized AST
 

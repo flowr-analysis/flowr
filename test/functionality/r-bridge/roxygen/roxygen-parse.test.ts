@@ -1,7 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import type { RoxygenTag } from '../../../../src/r-bridge/roxygen2/roxygen-ast';
 import { KnownRoxygenTags } from '../../../../src/r-bridge/roxygen2/roxygen-ast';
-import { parseCommentsOf, parseRoxygenComment } from '../../../../src/r-bridge/roxygen2/roxygen-parse';
+import { parseRoxygenCommentsOfNode, parseRoxygenComment } from '../../../../src/r-bridge/roxygen2/roxygen-parse';
 import { withTreeSitter } from '../../_helper/shell';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
@@ -106,7 +106,7 @@ describe('Parse Comments', () => {
 				const criterion = slicingCriterionToId(ask, nast.idMap);
 				const vertex = nast.idMap.get(criterion);
 				guard(vertex !== undefined, `No vertex found for criterion ${JSON.stringify(ask)}`);
-				const comments = parseCommentsOf(vertex, nast.idMap);
+				const comments = parseRoxygenCommentsOfNode(vertex, nast.idMap);
 				assert.isDefined(comments);
 				assert.deepStrictEqual(comments.tags, expected);
 			});

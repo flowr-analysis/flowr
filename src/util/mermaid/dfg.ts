@@ -52,7 +52,7 @@ export function formatRange(range: SourceRange | undefined): string {
 	return `${range[0]}.${range[1]}-${range[2]}.${range[3]}`;
 }
 
-function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation | undefined, mermaid: MermaidGraph, idPrefix = ''): void {
+function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformation | undefined, mermaid: MermaidGraph, idPrefix = ''): void {
 	if(subflow === undefined) {
 		return;
 	}
@@ -240,7 +240,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		}
 	}
 	if(info.tag === VertexType.FunctionDefinition) {
-		subflowToMermaid(id, info.exitPoints, info.subflow, mermaid, idPrefix);
+		subflowToMermaid(id, info.subflow, mermaid, idPrefix);
 	}
 }
 

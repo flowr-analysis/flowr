@@ -2,7 +2,7 @@ import type { MergeableRecord } from '../../util/objects';
 import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
-import type { ControlDependency } from '../info';
+import type { ControlDependency, ExitPoint } from '../info';
 import type { BuiltInMappingName } from '../environments/built-in';
 
 
@@ -282,12 +282,10 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	 * All exit points of the function definitions.
 	 * In other words: last expressions/return calls
 	 */
-	exitPoints:   readonly NodeId[]
+	exitPoints:   readonly ExitPoint[]
 	/** Maps each param to whether it is read, this is an estimate! */
 	params:       Record<NodeId, boolean>
-	/**
-	 * The environment in which the function is defined (this is only attached if the DFG deems it necessary).
-	 */
+	/** The environment in which the function is defined (this is only attached if the DFG deems it necessary). */
 	environment?: REnvironmentInformation
 }
 

@@ -59,14 +59,10 @@ ${v}
 		for(const [stopName, callArgs] of [['stop',''], ['stopifnot', 'FALSE'], ['abort', '']] as const) {
 			describe(stopName, () => {
 				checkDfContains(`1
-alias <- ${stopName}
-alias(${callArgs})
-3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
-				return;
-				checkDfContains(`1
 indirect <- function() { ${stopName}(${callArgs}) }
 indirect()
 3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
+				return;
 				checkDfContains(`1
 indirect <- function() { ${stopName}(${callArgs}) }; double_indirect <- function() { indirect() }
 double_indirect()

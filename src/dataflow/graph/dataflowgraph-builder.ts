@@ -18,7 +18,8 @@ import {
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isBuiltIn } from '../environments/built-in';
 import { EdgeType } from './edge';
-import type { ControlDependency } from '../info';
+import type { ControlDependency, ExitPoint } from '../info';
+import { ExitPointType } from '../info';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { DefaultBuiltinConfig, getDefaultProcessor } from '../environments/default-builtin-config';
 import type { FlowrSearchLike } from '../../search/flowr-search-builder';
@@ -67,7 +68,7 @@ export class DataflowGraphBuilder<
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public defineFunction(id: NodeId,
-		exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation,
+		exitPoints: readonly ExitPoint[] | readonly NodeId[], subflow: DataflowFunctionFlowInformation,
 		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, controlDependencies?: ControlDependency[], readParams?: [NodeId, boolean][] },
 		asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({
@@ -82,7 +83,9 @@ export class DataflowGraphBuilder<
 				in:                subflow.in.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), controlDependencies: o.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
 				unknownReferences: subflow.unknownReferences.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), controlDependencies: o.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) }))
 			} as DataflowFunctionFlowInformation,
-			exitPoints:          exitPoints.map(normalizeIdToNumberIfPossible),
+			exitPoints: exitPoints.map(e => typeof e === 'object' ? ({ ...e, nodeId: normalizeIdToNumberIfPossible(e.nodeId) }) :
+				({ nodeId: normalizeIdToNumberIfPossible(e), type: ExitPointType.Default, controlDependencies: undefined })
+			),
 			controlDependencies: info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
 			environment:         info?.environment,
 		}, asRoot);

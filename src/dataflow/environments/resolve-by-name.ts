@@ -31,7 +31,7 @@ const TargetTypePredicate = {
  * @returns A list of possible identifier definitions (one if the definition location is exactly and always known), or `undefined`
  *          if the identifier is undefined in the current scope/with the current environment information.
  */
-export function resolveByName(name: Identifier, environment: REnvironmentInformation, target: ReferenceType): IdentifierDefinition[] | undefined {
+export function resolveByName(name: Identifier, environment: REnvironmentInformation, target: ReferenceType): readonly IdentifierDefinition[] | undefined {
 	if(target === ReferenceType.Unknown) {
 		return resolveByNameAnyType(name, environment);
 	}
@@ -111,19 +111,28 @@ export function resolveByNameAnyType(name: Identifier, environment: REnvironment
  * This is an extended version of {@link resolveByName} which follows all alias chains.
  */
 export function resolveAliasesInEnvironment(name: Identifier, environment: REnvironmentInformation, target: ReferenceType): IdentifierDefinition[] {
-	const current = resolveByName(name, environment, target) ?? [];
+	const current = Array.from(resolveByName(name, environment, target) ?? []);
 	const visited = new Set<Identifier>();
 	// only return the ultimate aliases
 	const found: IdentifierDefinition[] = [];
 	while(current.length > 0) {
+		console.log(current.map(r => r.name));
 		const c = current.pop() as IdentifierDefinition;
-		if(!c.name || visited.has(c.name)) {
+		if(!c.name) {
+			found.push(c);
+			continue;
+		} else if(visited.has(c.name)) {
 			continue;
 		} else if(isBuiltIn(c.nodeId)) {
 			found.push(c);
+			continue;
 		}
 		visited.add(c.name);
 		const aliases = resolveByName(c.name, environment, target) ?? [];
+		if(aliases.length === 0) {
+			found.push(c);
+			continue;
+		}
 		for(const alias of aliases) {
 			current.push(alias);
 		}

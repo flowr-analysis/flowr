@@ -66,7 +66,7 @@ export function processFunctionDefinition<OtherInfo>(
 		subgraph.mergeWith(processed.graph);
 		const read = processed.in.concat(processed.unknownReferences);
 		linkInputs(read, data.environment, readInParameters, subgraph, false);
-		data = { ...data, environment: overwriteEnvironment(data.environment, processed.environment) };
+		(data as { environment: REnvironmentInformation}).environment = overwriteEnvironment(data.environment, processed.environment);
 	}
 	const paramsEnvironments = data.environment;
 
@@ -136,7 +136,7 @@ export function processFunctionDefinition<OtherInfo>(
 		controlDependencies: data.controlDependencies,
 		params:              readParams,
 		subflow:             flow,
-		exitPoints:          exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default).map(e => e.nodeId) ?? []
+		exitPoints:          exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default || e.type === ExitPointType.Error) ?? []
 	}, data.ctx.env.makeCleanEnv());
 	return {
 		/* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */

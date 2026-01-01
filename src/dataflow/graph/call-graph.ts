@@ -225,8 +225,8 @@ function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefi
 	processCds(vtx, graph, result, state);
 
 	const exits = new Set(vtx.exitPoints);
-	for(const id of exits) {
-		const v = graph.getVertex(id, true);
+	for(const { nodeId } of exits) {
+		const v = graph.getVertex(nodeId, true);
 		if(v) {
 			processUnknown(v, vtx.id, graph, result, state);
 		}

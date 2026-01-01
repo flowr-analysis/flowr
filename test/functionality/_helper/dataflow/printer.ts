@@ -5,7 +5,7 @@ import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isBuiltIn } from '../../../../src/dataflow/environments/built-in';
 import type { IdentifierReference } from '../../../../src/dataflow/environments/identifier';
-import type { ControlDependency } from '../../../../src/dataflow/info';
+import type { ControlDependency, ExitPoint } from '../../../../src/dataflow/info';
 
 
 /**
@@ -40,8 +40,14 @@ export function wrapControlDependencies(controlDependencies: ControlDependency[]
 }
 
 /**
- *
+ * Wraps an identifier reference for printing.
  */
 export function wrapReference(ref: IdentifierReference): string {
 	return `{ nodeId: ${wrap(ref.nodeId)}, name: ${wrap(ref.name)}, controlDependencies: ${wrapControlDependencies(ref.controlDependencies)} }`;
+}
+/**
+ * Wraps an exit point for printing.
+ */
+export function wrapExitPoint(ep: ExitPoint): string {
+	return `{ type: ${ep.type}, controlDependencies: ${wrapControlDependencies(ep.controlDependencies)}, nodeId: ${wrap(ep.nodeId)} }`;
 }

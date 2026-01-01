@@ -77,7 +77,7 @@ function linkCallTargets(
 ): void {
 	for(const functionCallTarget of functionCallTargets) {
 		for(const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
-			queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, onlyForSideEffects);
+			queue.add(exitPoint.nodeId, activeEnvironment, activeEnvironmentFingerprint, onlyForSideEffects);
 		}
 		// handle open reads
 		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {

@@ -196,6 +196,7 @@ export function linkFunctionCallWithSingleTarget(
 		}
 	}
 
+	console.log(exitPoints);
 	for(const exitPoint of exitPoints) {
 		graph.addEdge(id, exitPoint, EdgeType.Returns);
 	}

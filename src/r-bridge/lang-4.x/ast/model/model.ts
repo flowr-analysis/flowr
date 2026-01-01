@@ -24,7 +24,7 @@ import type { RBinaryOp } from './nodes/r-binary-op';
 import type { RPipe } from './nodes/r-pipe';
 import type { RDelimiter } from './nodes/info/r-delimiter';
 
-/** Simply an empty type constraint used to say that there are additional decorations (see {@link Base}). */
+/** Simply an empty type constraint used to say that there are additional decorations (see {@link RAstNodeBase}). */
 export type NoInfo = object;
 
 /**
@@ -60,7 +60,7 @@ interface Source {
  * @typeParam Info       - can be used to store additional information about the node
  * @typeParam LexemeType - the type of the lexeme, probably always a `string` or `string | undefined`
  */
-export interface Base<Info, LexemeType = string> extends MergeableRecord {
+export interface RAstNodeBase<Info, LexemeType = string> extends MergeableRecord {
 	type:   RType
 	/** the original string retrieved from R, can be used for further identification */
 	lexeme: LexemeType
@@ -68,7 +68,7 @@ export interface Base<Info, LexemeType = string> extends MergeableRecord {
 	info:   Info & Source
 }
 
-export interface WithChildren<Info, Children extends Base<Info, string | undefined>> {
+export interface WithChildren<Info, Children extends RAstNodeBase<Info, string | undefined>> {
 	children: readonly Children[]
 }
 
@@ -76,16 +76,16 @@ export interface WithChildren<Info, Children extends Base<Info, string | undefin
  * A helper interface we use to "mark" leaf nodes.
  * <p>
  * Please be aware, that this is not marking from a language perspective,
- * as it is equivalent to the {@link Base} interface.
+ * as it is equivalent to the {@link RAstNodeBase} interface.
  * It is intended to help humans understand the code.
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface Leaf<Info = NoInfo, LexemeType = string> extends Base<Info, LexemeType> {
+export interface Leaf<Info = NoInfo, LexemeType = string> extends RAstNodeBase<Info, LexemeType> {
 
 }
 
 /**
- * Indicates, that the respective {@link Base} node has known source code
+ * Indicates, that the respective {@link RAstNodeBase} node has known source code
  * location information.
  */
 export interface Location {
@@ -105,7 +105,7 @@ export type NamespaceIdentifier = string
 
 /**
  * Similar to {@link Location} this is an interface that indicates that
- * the respective {@link Base} node has a respective property (a namespace).
+ * the respective {@link RAstNodeBase} node has a respective property (a namespace).
  */
 export interface Namespace {
 	/**

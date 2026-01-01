@@ -38,7 +38,7 @@ const magicCommentIdMapper: Record<string, MagicCommentConsumer> = {
 	}
 };
 
-const commentTriggerRegex = / flowr@(\w+)/;
+const commentTriggerRegex = /# flowr@(\w+)/;
 
 /**
  * This takes an {@link NormalizedAst} and returns an auto-select predicate for {@link reconstructToCode},
@@ -66,11 +66,11 @@ export function makeMagicCommentHandler(and?: AutoSelectPredicate): AutoSelectPr
 					return;
 				}
 				for(const c of comments) {
-					if(c.type !== RType.Comment || !c.content.startsWith(' flowr@')) {
+					if(c.type !== RType.Comment || !c.lexeme.startsWith('# flowr@')) {
 						continue;
 					}
-					const match = commentTriggerRegex.exec(c.content);
-					guard(match !== null, `invalid magic comment: ${c.content}`);
+					const match = commentTriggerRegex.exec(c.lexeme);
+					guard(match !== null, `invalid magic comment: ${c.lexeme}`);
 					const idMapper = magicCommentIdMapper[match[1]];
 					guard(idMapper !== undefined, `unknown magic comment: ${match[1]}`);
 					const ls = idMapper(c, startLineStack);

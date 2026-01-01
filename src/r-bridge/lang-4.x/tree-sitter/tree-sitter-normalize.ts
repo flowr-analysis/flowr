@@ -567,7 +567,6 @@ function convertTreeNode(node: SyntaxNode): RNode<TreeSitterInfo> {
 			return {
 				type:     RType.Comment,
 				location: range,
-				content:  node.text.slice(1),
 				lexeme:   node.text,
 				...defaultInfo
 			};
@@ -602,7 +601,7 @@ function makeSourceRange(node: SyntaxNode): SourceRange {
 	}
 }
 
-function splitComments(nodes: SyntaxNode[]): [SyntaxAndRNode[], SyntaxNode[]] {
+function splitComments(nodes: readonly SyntaxNode[]): [SyntaxAndRNode[], SyntaxNode[]] {
 	const comments: SyntaxAndRNode[] = [];
 	const others: SyntaxNode[] = [];
 	for(const node of nodes) {
@@ -610,7 +609,6 @@ function splitComments(nodes: SyntaxNode[]): [SyntaxAndRNode[], SyntaxNode[]] {
 			comments.push([node, {
 				type:     RType.Comment,
 				location: makeSourceRange(node),
-				content:  node.text.slice(1),
 				lexeme:   node.text,
 				info:     {
 					additionalTokens: [],

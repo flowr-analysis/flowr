@@ -15,11 +15,10 @@ export function normalizeComment(data: NormalizerData, obj: JsonEntry): RComment
 	const { location, content } = retrieveMetaStructure(obj);
 	guard(content.startsWith('#'), 'comment must start with #');
 	return {
-		type:    RType.Comment,
+		type:   RType.Comment,
 		location,
-		content: content.slice(1),
-		lexeme:  content,
-		info:    {
+		lexeme: content,
+		info:   {
 			fullRange:        data.currentRange,
 			additionalTokens: [],
 			fullLexeme:       content

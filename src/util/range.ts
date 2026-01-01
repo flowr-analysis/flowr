@@ -125,3 +125,6 @@ export function rangeIsSubsetOf([r1sl,r1sc,r1el,r1ec]: SourceRange, [r2sl,r2sc,r
 export function combineRanges(...ranges: SourceRange[]): SourceRange[] {
 	return ranges.filter(range => !ranges.some(other => range !== other && rangeIsSubsetOf(range, other)));
 }
+
+/** A source location consisting of a source range and an optional file name. */
+export type SourceLocation = [...r: SourceRange, f?: string];

@@ -1,4 +1,4 @@
-import type { Base, Location, NoInfo, RNode } from '../model';
+import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
 import type { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 import type { RArgument } from './r-argument';
@@ -11,7 +11,7 @@ export type RFunctionArgument<Info = NoInfo> = RArgument<Info> | typeof EmptyArg
  * Calls of functions like `a()` and `foo(42, "hello")`.
  * @see RUnnamedFunctionCall
  */
-export interface RNamedFunctionCall<Info = NoInfo> extends Base<Info>, Location {
+export interface RNamedFunctionCall<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	readonly type:      RType.FunctionCall;
 	readonly named:     true;
 	functionName:       RSymbol<Info>;
@@ -24,7 +24,7 @@ export interface RNamedFunctionCall<Info = NoInfo> extends Base<Info>, Location 
  * Direct calls of functions like `(function(x) { x })(3)`.
  * @see RNamedFunctionCall
  */
-export interface RUnnamedFunctionCall<Info = NoInfo> extends Base<Info>, Location {
+export interface RUnnamedFunctionCall<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	readonly type:      RType.FunctionCall;
 	readonly named:     false | undefined;
 	calledFunction:     RNode<Info>; /* can be either a function definition or another call that returns a function etc. */

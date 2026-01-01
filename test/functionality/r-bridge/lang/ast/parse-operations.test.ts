@@ -73,7 +73,6 @@ describe.sequential('Parse simple operations', withShell(shell => {
 								additionalTokens: [
 									{
 										type:     RType.Comment,
-										content:  ' comment',
 										lexeme:   '# comment',
 										location: rangeFrom(1, 5, 1, 13),
 										info:     {}

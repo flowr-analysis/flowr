@@ -13,9 +13,11 @@ interface DFConstraints {
 	// TODO: wanted cds
 }
 
+// TODO: support try, tryCatch, withCallingHandlers
+
 describe('Dataflow, Handle Exceptions', withTreeSitter(ts  => {
 	function checkDfContains(code: string, constraints: DFConstraints): void {
-		const effName = label(code,['exceptions-and-errors'], ['dataflow']);
+		const effName = label(code, ['exceptions-and-errors'], ['dataflow']);
 		test(effName, async() => {
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
 			analyzer.addRequest(requestFromInput(code));
@@ -36,7 +38,8 @@ describe('Dataflow, Handle Exceptions', withTreeSitter(ts  => {
 			}
 		});
 	}
-	describe('Simple stops', () => {
+
+	describe('Simple Exceptions', () => {
 		const trueVariants = ['stopifnot(TRUE)', 'if(FALSE) stop()', 'stopifnot(u)', 'stopifnot(TRUE, u)', 'stopifnot(TRUE, TRUE)', 'stopifnot(TRUE, T, TRUE)', 'stopifnot(t, t)', 'stopifnot(exprs={TRUE; TRUE})'];
 		const falseVariants = ['if(TRUE) stop()', 'stop()', 'stop(msg)', 'stopifnot(FALSE)', 'stopifnot(FALSE, u)', 'stopifnot(FALSE, TRUE)', 'stopifnot(FALSE, F, FALSE)', 'stopifnot(f, f)', 'stopifnot(exprs={FALSE; FALSE})'];
 		for(const [variant, exp] of [[trueVariants, true], [falseVariants, false]] as const) {
@@ -48,6 +51,28 @@ f <- FALSE
 ${v}
 3`, { hasVertices: exp ? ['1@1', '5@3'] : ['1@1'], doesNotHaveVertices: exp ? [] : ['5@3'] });
 				}
+			});
+		}
+	});
+	describe('Exceptions must propagate through functions', () => {
+		for(const [stopName, callArgs] of [['stop',''], ['stopifnot', 'FALSE'], ['abort', '']] as const) {
+			describe(stopName, () => {
+				checkDfContains(`1
+alias <- ${stopName}
+alias(${callArgs})
+3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
+				checkDfContains(`1
+indirect <- function() { ${stopName}(${callArgs}) }
+indirect()
+3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
+				checkDfContains(`1
+indirect <- function() { ${stopName}(${callArgs}) }; double_indirect <- function() { indirect() }
+double_indirect()
+3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
+				checkDfContains(`1
+indirect <- function() { ${stopName}(${callArgs}) }; double_indirect <- function() { indirect() }; triple_indirect <- function() { double_indirect() }
+triple_indirect()
+3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
 			});
 		}
 	});

@@ -1,5 +1,5 @@
 import type { RoxygenBlock, RoxygenTag } from './roxygen-ast';
-import { isKnownRoxygenText , KnownRoxygenTags } from './roxygen-ast';
+import { isKnownRoxygenText, KnownRoxygenTags } from './roxygen-ast';
 import type { RNode } from '../lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../lang-4.x/ast/model/processing/decorate';
 import type { RComment } from '../lang-4.x/ast/model/nodes/r-comment';
@@ -63,7 +63,7 @@ interface RoxygenParseContext {
 type TagLine = [tag: string, remTagLine?: string];
 /**
  * Parses a roxygen comment into a RoxygenBlock AST node.
- * Will return `undefined` if the comment is not a valid roxygen comment.
+ * Will return an empty array if the comment has no valid roxygen comment.
  * @see {@link parseRoxygenCommentsOfNode} - to parse comments attached to a node
  */
 export function parseRoxygenComment(commentText: readonly string[]): RoxygenTag[] {

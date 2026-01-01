@@ -90,10 +90,10 @@ describe('Parse Comments', () => {
 			{ type: KnownRoxygenTags.Returns, value: 'Even more retuuuhuuurn' },
 			{ type: KnownRoxygenTags.ImportFrom, value: { package: 'stats', symbols: ['sd', 'IQR'] } }
 		]);
-		check('No S3Method','#\' @exportS3Method', [
+		check('No S3Method', '#\' @exportS3Method', [
 			{ type: KnownRoxygenTags.ExportS3Method, value: '' }
 		]);
-		check('Spaced S3Method','#\' @exportS3Method a  b', [
+		check('Spaced S3Method', '#\' @exportS3Method a  b', [
 			{ type: KnownRoxygenTags.ExportS3Method, value: 'a  b' }
 		]);
 	});

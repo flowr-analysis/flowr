@@ -6,7 +6,7 @@ import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/mod
 import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { resolveByName } from '../../../../environments/resolve-by-name';
+import { resolveAliasesInEnvironment, resolveByName } from '../../../../environments/resolve-by-name';
 import { VertexType } from '../../../../graph/vertex';
 import { ReferenceType } from '../../../../environments/identifier';
 import type { DataflowGraph } from '../../../../graph/graph';
@@ -66,6 +66,8 @@ export function processNamedCall<OtherInfo>(
 
 	let information: DataflowInformation | undefined = undefined;
 	let builtIn = false;
+	console.log('Processing named call for', name.content, 'with resolved functions:', resolved);
+	console.log('Aliases:', resolveAliasesInEnvironment(name.content, data.environment, ReferenceType.Function));
 
 	for(const resolvedFunction of resolved) {
 		if(resolvedFunction.type === ReferenceType.BuiltInFunction && typeof resolvedFunction.processor === 'function') {
@@ -75,7 +77,8 @@ export function processNamedCall<OtherInfo>(
 			defaultProcessor = true;
 		}
 	}
-
+	// TODO: find out whether there is a transitive/linked built-in that we should apply!
+	// TODO: support applying these later/afteward
 	if(defaultProcessor) {
 		information = processDefaultFunctionProcessor(information, name, args, rootId, data);
 	} else if(information && builtIn) {

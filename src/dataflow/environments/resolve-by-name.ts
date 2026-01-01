@@ -2,6 +2,7 @@ import type { Environment, REnvironmentInformation } from './environment';
 import { Ternary } from '../../util/logic';
 import { type Identifier, type IdentifierDefinition, isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
+import { isBuiltIn } from './built-in';
 
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
@@ -102,6 +103,32 @@ export function resolveByNameAnyType(name: Identifier, environment: REnvironment
 		environment.current.cache?.set(name, ret);
 	}
 	return ret;
+}
+
+/**
+ * Resolves all aliases of the given identifier name in the given environment,
+ * following all alias chains until the ultimate definitions are found.
+ * This is an extended version of {@link resolveByName} which follows all alias chains.
+ */
+export function resolveAliasesInEnvironment(name: Identifier, environment: REnvironmentInformation, target: ReferenceType): IdentifierDefinition[] {
+	const current = resolveByName(name, environment, target) ?? [];
+	const visited = new Set<Identifier>();
+	// only return the ultimate aliases
+	const found: IdentifierDefinition[] = [];
+	while(current.length > 0) {
+		const c = current.pop() as IdentifierDefinition;
+		if(!c.name || visited.has(c.name)) {
+			continue;
+		} else if(isBuiltIn(c.nodeId)) {
+			found.push(c);
+		}
+		visited.add(c.name);
+		const aliases = resolveByName(c.name, environment, target) ?? [];
+		for(const alias of aliases) {
+			current.push(alias);
+		}
+	}
+	return found;
 }
 
 

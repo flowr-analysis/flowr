@@ -101,7 +101,10 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	 * (the arrow operator for e.g. `x <- 3`, or `assign` call in `assign("x", 3)`)
 	 */
 	readonly definedAt: NodeId
-
+	/**
+	 * For value tracking, this contains all nodeIds of constant values that may be made available to this identifier
+	 * For example, in `x <- 3; y <- x`, the definition of `y` will have the value `3` in its value set
+	 */
 	readonly value?:    NodeId[]
 	/**
 	 * this attribute links a definition to indices (pointer links) it may be affected by or related to

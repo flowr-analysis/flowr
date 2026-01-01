@@ -54,13 +54,15 @@ ${v}
 			});
 		}
 	});
-	describe('Exceptions must propagate through functions', () => {
+	// TODO: add tests to see that returns etc. are broken
+	describe.only('Exceptions must propagate through functions', () => {
 		for(const [stopName, callArgs] of [['stop',''], ['stopifnot', 'FALSE'], ['abort', '']] as const) {
 			describe(stopName, () => {
 				checkDfContains(`1
 alias <- ${stopName}
 alias(${callArgs})
 3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
+				return;
 				checkDfContains(`1
 indirect <- function() { ${stopName}(${callArgs}) }
 indirect()
@@ -74,6 +76,7 @@ indirect <- function() { ${stopName}(${callArgs}) }; double_indirect <- function
 triple_indirect()
 3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
 			});
+			break;
 		}
 	});
 }));

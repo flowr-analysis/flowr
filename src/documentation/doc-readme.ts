@@ -1,7 +1,7 @@
 import {
 	FlowrDockerRef,
 	FlowrGithubBaseRef,
-	FlowrNpmRef, FlowrPositron,
+	FlowrNpmRef, FlowrPositron, FlowrSiteBaseRef,
 	FlowrVsCode,
 	FlowrWikiBaseRef, getFileContentFromRoot,
 	linkFlowRSourceFile
@@ -206,7 +206,7 @@ The following showcases the dependency view of the [Visual Studio Code extension
   `), '    ')}
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\\
-  Within just ${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"social-science" Benchmark Suite (tree-sitter)'), 1) + ' ms', 'This measurement is automatically fetched from the latest benchmark!') + '</i>'} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)}), 
+  Within just [${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"social-science" Benchmark Suite (tree-sitter)'), 1) + ' ms', 'This measurement is automatically fetched from the latest benchmark!') + '</i>'} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)})](${FlowrSiteBaseRef}/wiki/stats/benchmark), 
   _flowR_ can analyze the data- and control-flow of the average real-world R script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
   and consult the ${ctx.linkPage('wiki/Dataflow Graph', 'wiki pages')} for more details on the dataflow graphs as well as call graphs.
 

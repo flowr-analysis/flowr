@@ -14,7 +14,6 @@ import { valueSetGuard } from '../../../../../eval/values/general';
 import { isNotUndefined } from '../../../../../../util/assert';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 
-// TODO: support `.Internal(.signalCondition(cond, message, call))`
 /**
  * Processes a built-in 'stopifnot' function call.
  * This is special in that it may take a number of boolean expressions either via `...` or

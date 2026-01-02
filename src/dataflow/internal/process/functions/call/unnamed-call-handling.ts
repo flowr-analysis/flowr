@@ -59,11 +59,12 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	let inIds = remainingReadInArgs;
 	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependencies: data.controlDependencies, type: ReferenceType.Function });
 
+	// if we just call a nested fdef
 	if(functionCall.calledFunction.type === RType.FunctionDefinition) {
 		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph);
 	}
-	// push the called function to the ids:
 
+	// push the called function to the ids:
 	inIds = inIds.concat(calledFunction.in, calledFunction.unknownReferences);
 
 	return {

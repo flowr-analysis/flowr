@@ -1,5 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { type DataflowInformation, doesExitPointPropagateCalls, ExitPointType } from '../../../../../info';
+import { type DataflowInformation, ExitPointType } from '../../../../../info';
 import {
 	getAllFunctionCallTargets,
 	linkCircularRedefinitionsWithinALoop,
@@ -274,12 +274,6 @@ export function updateNestedFunctionCalls(
 			}
 			expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${id}`);
 			targetVertex.subflow.in = remainingIn;
-			for(const ep of targetVertex.exitPoints) {
-				if(doesExitPointPropagateCalls(ep.type)) {
-					console.log('linking exit point', ep);
-					console.log('from', id, 'to', ep.nodeId);
-				}
-			}
 		}
 	}
 }

@@ -16,3 +16,10 @@ export function unpackNonameArg<OtherInfo>(arg: RFunctionArgument<OtherInfo> | u
 export function unpackArg<OtherInfo>(arg: RFunctionArgument<OtherInfo> | undefined): RNode<OtherInfo> | undefined {
 	return arg === EmptyArgument ? undefined : arg?.value;
 }
+
+/**
+ * Try to unpack the given argument, if it is not empty.
+ */
+export function tryUnpackNoNameArg<OtherInfo>(arg: RFunctionArgument<OtherInfo>): RNode<OtherInfo> | RFunctionArgument<OtherInfo> {
+	return unpackNonameArg<OtherInfo>(arg) ?? arg;
+}

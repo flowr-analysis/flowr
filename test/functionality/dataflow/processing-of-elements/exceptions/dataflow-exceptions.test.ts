@@ -73,5 +73,24 @@ indirect()
 			checkDfContains('1\nstop();try(x)\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
 			checkDfContains('1\nprint({ stop("error") })\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
 		});
+		describe('tryCatch', () => {
+			checkDfContains('1\ntryCatch({ stop("error") }, error=function(e) {  })\n3', { hasVertices: ['1@1', '3@3'], doesNotHaveVertices: [] });
+			checkDfContains('1\ntryCatch({ stop("error") }, error=function(e) { stop("another") })\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
+			checkDfContains('1\ntryCatch({ if(u) stop("error") }, error=function(e) {  })\n3', { hasVertices: ['1@1', '3@3'], doesNotHaveVertices: [] });
+			checkDfContains('1\ntryCatch({ x }, error=function(e) { stop("x") })\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
+			checkDfContains('1\nstop();tryCatch({ x }, error=function(e) {  })\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
+			checkDfContains('1\ntryCatch({ stop("error") }, error=function(e) {  });stop()\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
+			checkDfContains('1\nprint(tryCatch({ stop("error") }, error=function(e) {  }))\n3', { hasVertices: ['1@1', '3@3'], doesNotHaveVertices: [] });
+			describe('With finally', () => {
+				checkDfContains('1\ntryCatch({ stop("error") }, error=function(e) {  }, finally={  })\n3', { hasVertices: ['1@1', '3@3'], doesNotHaveVertices: [] });
+				checkDfContains('1\ntryCatch({ stop("error") }, error=function(e) { stop("another") }, finally={  })\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
+				checkDfContains('1\ntryCatch({ if(u) stop("error") }, error=function(e) {  }, finally={  })\n3', { hasVertices: ['1@1', '3@3'], doesNotHaveVertices: [] });
+				checkDfContains('1\ntryCatch({ x }, error=function(e) { stop("x") }, finally={  })\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
+				checkDfContains('1\nstop();tryCatch({ x }, error=function(e) {  }, finally={  })\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
+				checkDfContains('1\ntryCatch({ stop("error") }, error=function(e) {  }, finally={ });stop()\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
+				checkDfContains('1\ntryCatch({ stop("error") }, error=function(e) {  }, finally={ stop() });\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
+				checkDfContains('1\nprint(tryCatch({ stop("error") }, error=function(e) {  }, finally={ }))\n3', { hasVertices: ['1@1', '3@3'], doesNotHaveVertices: [] });
+			});
+		});
 	});
 }));

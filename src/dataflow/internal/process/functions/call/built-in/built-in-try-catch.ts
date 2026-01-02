@@ -16,8 +16,6 @@ import { tryUnpackNoNameArg } from '../argument/unpack-argument';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 
-// TODO: try writes to try.outfile if set as option ~> dependencies query
-/// TODO: try outfile!
 
 function getArgsOfName(argMaps: Map<NodeId, string>, name: string): Set<NodeId> {
 	return new Set(argMaps.entries().filter(([, v]) => v === name).map(([k]) => k));

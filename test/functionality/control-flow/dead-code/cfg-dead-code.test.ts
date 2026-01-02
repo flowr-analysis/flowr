@@ -114,7 +114,6 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 		});
 	});
 	describe('Exception Handling', () => {
-		// TODO: cfg construction should respect missing dfg vertices!
 		describe('Simple [stop] instructions', () => {
 			assertDeadCode('x <- 1\nstop()\n3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['3@3'], ids: ['exceptions-and-errors'] });
 			assertDeadCode('x <- 1\nstop(TRUE)\n3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['3@3'], ids: ['exceptions-and-errors'] });

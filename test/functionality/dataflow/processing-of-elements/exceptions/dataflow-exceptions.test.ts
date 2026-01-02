@@ -10,11 +10,7 @@ import { graphToMermaidUrl } from '../../../../../src/util/mermaid/dfg';
 interface DFConstraints {
 	hasVertices:         SingleSlicingCriterion[];
 	doesNotHaveVertices: SingleSlicingCriterion[];
-	// TODO: wanted cds
 }
-
-// TODO: support try, tryCatch, withCallingHandlers
-// TODO: test that it breaks loops with another visitor that does these computations transitively
 
 describe('Dataflow, Handle Exceptions', withTreeSitter(ts  => {
 	function checkDfContains(code: string, constraints: DFConstraints): void {

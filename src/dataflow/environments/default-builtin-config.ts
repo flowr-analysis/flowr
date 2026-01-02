@@ -236,7 +236,6 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['cat'],                                        processor: 'builtin:default',             config: { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } },                                                         assumePrimitive: false },
 	{ type: 'function', names: ['switch'],                                     processor: 'builtin:default',             config: { forceArgs: [true] },                                                         assumePrimitive: false },
 	{ type: 'function', names: ['return'],                                     processor: 'builtin:default',             config: { returnsNthArgument: 0, cfg: ExitPointType.Return, useAsProcessor: 'builtin:return' }, assumePrimitive: true },
-	// TODO: testthat assert support
 	{ type: 'function', names: ['stop', 'abort'],                              processor: 'builtin:default',             config: { useAsProcessor: 'builtin:stop', cfg: ExitPointType.Error, forceArgs: ['all'] }, assumePrimitive: false },
 	{ type: 'function', names: ['try'],                                        processor: 'builtin:try',                 config: { block: 'expr', handlers: {} }, assumePrimitive: true },
 	{ type: 'function', names: ['tryCatch', 'tryCatchLog'],                    processor: 'builtin:try',                 config: { block: 'expr', handlers: { error: 'error', finally: 'finally' } }, assumePrimitive: true },

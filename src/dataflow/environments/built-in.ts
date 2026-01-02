@@ -46,6 +46,7 @@ import type {
 } from './built-in-config';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { processStopIfNot } from '../internal/process/functions/call/built-in/built-in-stop-if-not';
+import { processTryCatch } from '../internal/process/functions/call/built-in/built-in-try-catch';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -206,6 +207,7 @@ export const BuiltInProcessorMapper = {
 	'builtin:source':              processSourceCall,
 	'builtin:special-bin-op':      processSpecialBinOp,
 	'builtin:stopifnot':           processStopIfNot,
+	'builtin:try':                 processTryCatch,
 	'builtin:vector':              processVector,
 	'builtin:while-loop':          processWhileLoop,
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;

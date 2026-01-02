@@ -85,6 +85,9 @@ export interface ExitPoint {
  */
 export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: ControlDependency[], activeCds: ControlDependency[] | undefined, add: readonly ExitPoint[]): void {
 	const toAdd = add.filter(({ type }) => type !== ExitPointType.Default);
+	if(toAdd.length === 0) {
+		return;
+	}
 	const invertedCds = toAdd.flatMap(e => e.controlDependencies?.filter(
 		icd => !activeCds?.some(e => e.id === icd.id && e.when === icd.when)
 	).map(negateControlDependency)).filter(isNotUndefined);
@@ -211,7 +214,7 @@ export function alwaysExits(data: DataflowInformation): boolean {
  * Filters out exit points which end their cascade within a loop.
  */
 export function filterOutLoopExitPoints(exitPoints: readonly ExitPoint[]): readonly ExitPoint[] {
-	return exitPoints.filter(({ type }) => type === ExitPointType.Return || type === ExitPointType.Default);
+	return exitPoints.filter(({ type }) => type !== ExitPointType.Break && type !== ExitPointType.Next);
 }
 
 /**

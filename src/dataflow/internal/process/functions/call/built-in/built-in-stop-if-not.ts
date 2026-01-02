@@ -82,10 +82,13 @@ export function processStopIfNot<OtherInfo>(
 		const alwaysFalse = valueSetGuard(val)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
 		if(alwaysFalse) {
 			// we know that this fails *always*
-			(res.exitPoints as ExitPoint[]).push({
+			(res.exitPoints as ExitPoint[]).push(data.controlDependencies ? {
 				type:                ExitPointType.Error,
 				nodeId:              rootId,
 				controlDependencies: data.controlDependencies
+			} : {
+				type:   ExitPointType.Error,
+				nodeId: rootId
 			});
 			return res;
 		}

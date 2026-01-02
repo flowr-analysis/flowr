@@ -1,5 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { type DataflowInformation, ExitPointType } from '../../../../../info';
+import { type DataflowInformation, doesExitPointPropagateCalls, ExitPointType } from '../../../../../info';
 import {
 	getAllFunctionCallTargets,
 	linkCircularRedefinitionsWithinALoop,
@@ -225,10 +225,11 @@ export function updateNestedFunctionCalls(
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
 	for(const [id, { onlyBuiltin, environment, name }] of graph.verticesOfType(VertexType.FunctionCall)) {
-		if(!name || onlyBuiltin) {
+		if(onlyBuiltin || !name) {
 			continue;
 		}
 
+		let effectiveEnvironment = outEnvironment;
 		// only the call environment counts!
 		if(environment) {
 			while(outEnvironment.level > environment.level) {
@@ -237,22 +238,21 @@ export function updateNestedFunctionCalls(
 			while(outEnvironment.level < environment.level) {
 				outEnvironment = pushLocalEnvironment(outEnvironment);
 			}
+			effectiveEnvironment = overwriteEnvironment(outEnvironment, environment);
 		}
 
-		const effectiveEnvironment = environment ? overwriteEnvironment(outEnvironment, environment) : outEnvironment;
-
-		const targets = getAllFunctionCallTargets(id, graph, effectiveEnvironment);
+		const targets = new Set(getAllFunctionCallTargets(id, graph, effectiveEnvironment));
 		for(const target of targets) {
 			if(isBuiltIn(target)) {
 				graph.addEdge(id, target, EdgeType.Calls);
 				continue;
 			}
 			const targetVertex = graph.getVertex(target);
-			if(targetVertex?.tag !== VertexType.FunctionDefinition) {
-				// support reads on symbols
-				if(targetVertex?.tag === VertexType.Use) {
-					graph.addEdge(id, target, EdgeType.Reads);
-				}
+			// support reads on symbols
+			if(targetVertex?.tag === VertexType.Use) {
+				graph.addEdge(id, target, EdgeType.Reads);
+				continue;
+			} else if(targetVertex?.tag !== VertexType.FunctionDefinition) {
 				continue;
 			}
 			graph.addEdge(id, target, EdgeType.Calls);
@@ -274,6 +274,12 @@ export function updateNestedFunctionCalls(
 			}
 			expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${id}`);
 			targetVertex.subflow.in = remainingIn;
+			for(const ep of targetVertex.exitPoints) {
+				if(doesExitPointPropagateCalls(ep.type)) {
+					console.log('linking exit point', ep);
+					console.log('from', id, 'to', ep.nodeId);
+				}
+			}
 		}
 	}
 }

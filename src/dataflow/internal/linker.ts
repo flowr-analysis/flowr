@@ -90,6 +90,7 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
  * This follows the `pmatch` semantics of R
  * @see https://cran.r-project.org/doc/manuals/R-lang.html#Argument-matching
  * This returns the resolved map from argument ids to parameter ids.
+ * If you just want to match by name, use {@link pMatch}.
  */
 export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], graph: DataflowGraph): Map<NodeId, NodeId> {
 	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
@@ -103,10 +104,10 @@ export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: r
 
 	// all parameters matched by name
 	const matchedParameters = new Set<string>();
-
+	const paramNames = nameParamMap.keys().toArray();
 	// first map names
 	for(const [name, { nodeId: argId }] of nameArgMap) {
-		const pmatchName = findByPrefixIfUnique(name, nameParamMap.keys()) ?? name;
+		const pmatchName = findByPrefixIfUnique(name, paramNames) ?? name;
 		const param = nameParamMap.get(pmatchName);
 		if(param?.name) {
 			const pid = param.name.info.id;
@@ -147,6 +148,54 @@ export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: r
 			graph.addEdge(aid, pid, EdgeType.DefinesOnCall);
 			graph.addEdge(pid, aid, EdgeType.DefinedByOnCall);
 			maps.set(aid, pid);
+		}
+	}
+	return maps;
+}
+
+/**
+ * Links the given arguments to the given parameters within the given graph by name only.
+ */
+export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<NodeId, Targets> {
+	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
+
+	const maps = new Map<NodeId, Targets>();
+
+	const sid = params['...'];
+	const paramNames = Object.keys(params);
+
+	// all parameters matched by name
+	const matchedParameters = new Set<string>();
+
+	// first map names
+	for(const [name, { nodeId: argId }] of nameArgMap) {
+		const pmatchName = findByPrefixIfUnique(name, paramNames) ?? name;
+		const param = params[pmatchName];
+		if(param) {
+			maps.set(argId, param);
+		} else if(sid) {
+			maps.set(argId, sid);
+		}
+	}
+
+	const remainingParameter = paramNames.filter(p => !matchedParameters.has(p));
+	const remainingArguments = args.filter(a => !isNamedArgument(a));
+
+	for(let i = 0; i < remainingArguments.length; i++) {
+		const arg = remainingArguments[i];
+		if(arg === EmptyArgument) {
+			continue;
+		}
+		const aid = arg.nodeId;
+		if(remainingParameter.length <= i) {
+			if(sid) {
+				maps.set(aid, sid);
+			}
+			continue;
+		}
+		const param = params[remainingParameter[i]];
+		if(param) {
+			maps.set(aid, param);
 		}
 	}
 	return maps;
@@ -207,7 +256,7 @@ export function linkFunctionCallWithSingleTarget(
 	}
 
 	const defName = recoverName(fnId, idMap);
-	expensiveTrace(dataflowLogger, () => `recording expression-list-level call from ${recoverName(info.id, idMap)} to ${defName}`);
+	expensiveTrace(dataflowLogger, () => `recording expr-list-level call from ${recoverName(info.id, idMap)} to ${defName}`);
 	graph.addEdge(id, fnId, EdgeType.Calls);
 	applyForForcedArgs(graph, info.id, params, linkFunctionCallArguments(fnId, idMap, defName, id, info.args, graph));
 	return propagateExitPoints;

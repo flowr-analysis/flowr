@@ -14,6 +14,7 @@ interface DFConstraints {
 }
 
 // TODO: support try, tryCatch, withCallingHandlers
+// TODO: test that it breaks loops with another visitor that does these computations transitively
 
 describe('Dataflow, Handle Exceptions', withTreeSitter(ts  => {
 	function checkDfContains(code: string, constraints: DFConstraints): void {
@@ -41,7 +42,7 @@ describe('Dataflow, Handle Exceptions', withTreeSitter(ts  => {
 
 	describe('Simple Exceptions', () => {
 		const trueVariants = ['stopifnot(TRUE)', 'if(FALSE) stop()', 'stopifnot(u)', 'stopifnot(TRUE, u)', 'stopifnot(TRUE, TRUE)', 'stopifnot(TRUE, T, TRUE)', 'stopifnot(t, t)', 'stopifnot(exprs={TRUE; TRUE})'];
-		const falseVariants = ['if(TRUE) stop()', 'stop()', 'stop(msg)', 'stopifnot(FALSE)', 'stopifnot(FALSE, u)', 'stopifnot(FALSE, TRUE)', 'stopifnot(FALSE, F, FALSE)', 'stopifnot(f, f)', 'stopifnot(exprs={FALSE; FALSE})'];
+		const falseVariants = ['if(TRUE) stop()', 'repeat { stop() }', 'stop()', 'stop(msg)', 'stopifnot(FALSE)', 'stopifnot(FALSE, u)', 'stopifnot(FALSE, TRUE)', 'stopifnot(FALSE, F, FALSE)', 'stopifnot(f, f)', 'stopifnot(exprs={FALSE; FALSE})'];
 		for(const [variant, exp] of [[trueVariants, true], [falseVariants, false]] as const) {
 			describe(exp ? 'Reachable' : 'Unreachable', () => {
 				for(const v of variant) {
@@ -54,26 +55,23 @@ ${v}
 			});
 		}
 	});
-	// TODO: add tests to see that returns etc. are broken
-	describe.only('Exceptions must propagate through functions', () => {
+	describe('Exceptions must propagate through functions', () => {
 		for(const [stopName, callArgs] of [['stop',''], ['stopifnot', 'FALSE'], ['abort', '']] as const) {
-			describe(stopName, () => {
-				checkDfContains(`1
+			checkDfContains(`1
 indirect <- function() { ${stopName}(${callArgs}) }
 indirect()
 3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
-				return;
-				checkDfContains(`1
-indirect <- function() { ${stopName}(${callArgs}) }; double_indirect <- function() { indirect() }
-double_indirect()
-3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
-				// TODO: test that it breaks loops!
-				checkDfContains(`1
-indirect <- function() { ${stopName}(${callArgs}) }; double_indirect <- function() { indirect() }; triple_indirect <- function() { double_indirect() }
-triple_indirect()
-3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
-			});
-			break;
 		}
+	});
+	describe('Exceptions with try and tryCatch', () => {
+		describe('try', () => {
+			checkDfContains('1\ntry({ stop("error") })\n3', { hasVertices: ['1@1', '3@3'], doesNotHaveVertices: [] });
+			checkDfContains('1\ntry({ stop("error") }, silent=TRUE)\n3', { hasVertices: ['1@1', '3@3'], doesNotHaveVertices: [] });
+			checkDfContains('1\ntry(if(u) stop(), silent=TRUE)\n3', { hasVertices: ['1@1', '3@3'], doesNotHaveVertices: [] });
+			checkDfContains('1\ntry(x, silent=stop("x"))\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
+			checkDfContains('1\ntry(x);stop()\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
+			checkDfContains('1\nstop();try(x)\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
+			checkDfContains('1\nprint({ stop("error") })\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
+		});
 	});
 }));

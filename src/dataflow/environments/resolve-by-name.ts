@@ -2,7 +2,6 @@ import type { Environment, REnvironmentInformation } from './environment';
 import { Ternary } from '../../util/logic';
 import { type Identifier, type IdentifierDefinition, isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
-import { isBuiltIn } from './built-in';
 
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
@@ -106,43 +105,11 @@ export function resolveByNameAnyType(name: Identifier, environment: REnvironment
 }
 
 /**
- * Resolves all aliases of the given identifier name in the given environment,
- * following all alias chains until the ultimate definitions are found.
- * This is an extended version of {@link resolveByName} which follows all alias chains.
- */
-export function resolveAliasesInEnvironment(name: Identifier, environment: REnvironmentInformation, target: ReferenceType): IdentifierDefinition[] {
-	const current = Array.from(resolveByName(name, environment, target) ?? []);
-	const visited = new Set<Identifier>();
-	// only return the ultimate aliases
-	const found: IdentifierDefinition[] = [];
-	while(current.length > 0) {
-		console.log(current.map(r => r.name));
-		const c = current.pop() as IdentifierDefinition;
-		if(!c.name) {
-			found.push(c);
-			continue;
-		} else if(visited.has(c.name)) {
-			continue;
-		} else if(isBuiltIn(c.nodeId)) {
-			found.push(c);
-			continue;
-		}
-		visited.add(c.name);
-		const aliases = resolveByName(c.name, environment, target) ?? [];
-		if(aliases.length === 0) {
-			found.push(c);
-			continue;
-		}
-		for(const alias of aliases) {
-			current.push(alias);
-		}
-	}
-	return found;
-}
-
-
-/**
- *
+ * Checks whether the given identifier name resolves to a built-in constant with the given value.
+ * @param name               - The name of the identifier to resolve
+ * @param environment        - The current environment used for name resolution
+ * @param wantedValue        - The built-in constant value to check for
+ * @returns Whether the identifier always, never, or maybe resolves to the given built-in constant value
  */
 export function resolvesToBuiltInConstant(name: Identifier | undefined, environment: REnvironmentInformation, wantedValue: unknown): Ternary {
 	if(name === undefined) {

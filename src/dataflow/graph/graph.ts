@@ -83,12 +83,6 @@ export function getReferenceOfArgument(arg: FunctionArgument): NodeId | undefine
 }
 
 /**
- * A reference that is enough to indicate start and end points of an edge within the dataflow graph.
- */
-type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'controlDependencies'>  | IdentifierDefinition
-
-
-/**
  * Maps the edges target to the edge information
  */
 export type OutgoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = Map<NodeId, Edge>
@@ -177,7 +171,6 @@ export class DataflowGraph<
 	public get(id: NodeId, includeDefinedFunctions = true): [Vertex, OutgoingEdges] | undefined {
 		// if we do not want to include function definitions, only retrieve the value if the id is part of the root vertices
 		const vertex: Vertex | undefined = this.getVertex(id, includeDefinedFunctions);
-
 		return vertex === undefined ? undefined : [vertex, this.outgoingEdges(id) ?? new Map()];
 	}
 
@@ -523,7 +516,7 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 }
 
 /**
- * Returns the ids of the dataflow vertices referenced by a {@link ReferenceForEdge}.
+ * Returns the ids of the dataflow vertices referenced.
  */
 function extractEdgeIds(from: NodeId | { nodeId: NodeId }, to: NodeId | { nodeId: NodeId }): [fromId: NodeId, toId: NodeId] {
 	const fromId = typeof from === 'object' ? from.nodeId : from;

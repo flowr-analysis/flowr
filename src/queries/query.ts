@@ -72,6 +72,11 @@ import {
 } from './catalog/inspect-recursion-query/inspect-recursion-query-format';
 import type { DoesCallQuery } from './catalog/does-call-query/does-call-query-format';
 import { DoesCallQueryDefinition } from './catalog/does-call-query/does-call-query-format';
+import type {
+	InspectExceptionQuery } from './catalog/inspect-exceptions-query/inspect-exception-query-format';
+import {
+	InspectExceptionQueryDefinition
+} from './catalog/inspect-exceptions-query/inspect-exception-query-format';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -93,6 +98,7 @@ export type Query = CallContextQuery
 	| DependenciesQuery
 	| LocationMapQuery
 	| HappensBeforeQuery
+	| InspectExceptionQuery
     | InspectHigherOrderQuery
 	| InspectRecursionQuery
 	| ResolveValueQuery
@@ -158,6 +164,7 @@ export const SupportedQueries = {
 	'location-map':         LocationMapQueryDefinition,
 	'search':               SearchQueryDefinition,
 	'happens-before':       HappensBeforeQueryDefinition,
+	'inspect-exception':    InspectExceptionQueryDefinition,
 	'inspect-higher-order': InspectHigherOrderQueryDefinition,
 	'inspect-recursion':    InspectRecursionQueryDefinition,
 	'resolve-value':        ResolveValueQueryDefinition,

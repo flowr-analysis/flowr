@@ -21,6 +21,7 @@ import { type BuiltIn, isBuiltIn } from '../environments/built-in';
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
 import type { ExitPoint } from '../info';
+import { doesExitPointPropagateCalls } from '../info';
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
@@ -178,7 +179,7 @@ export function linkFunctionCallWithSingleTarget(
 	{ subflow: fnSubflow, exitPoints, id: fnId, params }: DataflowGraphVertexFunctionDefinition,
 	info: DataflowGraphVertexFunctionCall,
 	idMap: AstIdMap
-) {
+): ExitPoint[] {
 	const id = info.id;
 	if(info.environment !== undefined) {
 		// for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it
@@ -196,15 +197,20 @@ export function linkFunctionCallWithSingleTarget(
 		}
 	}
 
-	console.log(exitPoints);
+	const propagateExitPoints: ExitPoint[] = [];
 	for(const exitPoint of exitPoints) {
-		graph.addEdge(id, exitPoint, EdgeType.Returns);
+		graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
+		if(doesExitPointPropagateCalls(exitPoint.type)) {
+			// add the exit point to the call!
+			propagateExitPoints.push(exitPoint);
+		}
 	}
 
 	const defName = recoverName(fnId, idMap);
 	expensiveTrace(dataflowLogger, () => `recording expression-list-level call from ${recoverName(info.id, idMap)} to ${defName}`);
 	graph.addEdge(id, fnId, EdgeType.Calls);
 	applyForForcedArgs(graph, info.id, params, linkFunctionCallArguments(fnId, idMap, defName, id, info.args, graph));
+	return propagateExitPoints;
 }
 
 /** for each parameter that we link that gets forced, add a reads edge from the call to argument to show that it reads it */
@@ -228,8 +234,9 @@ function linkFunctionCall(
 	idMap: AstIdMap,
 	thisGraph: DataflowGraph,
 	calledFunctionDefinitions: {
-		functionCall: NodeId;
-		called:       readonly DataflowGraphVertexInfo[]
+		functionCall:        NodeId;
+		called:              readonly DataflowGraphVertexInfo[],
+		propagateExitPoints: readonly ExitPoint[]
 	}[]
 ) {
 	const edges = graph.outgoingEdges(id);
@@ -246,16 +253,19 @@ function linkFunctionCall(
 	}
 
 	const [functionDefs] = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph);
+	const propagateExitPoints: ExitPoint[] = [];
 	for(const def of functionDefs.values()) {
 		// we can skip this if we already linked it
 		const oEdge = graph.outgoingEdges(id)?.get(def.id);
 		if(oEdge && edgeIncludesType(oEdge.types, EdgeType.Calls)) {
 			continue;
 		}
-		linkFunctionCallWithSingleTarget(graph, def, info, idMap);
+		for(const ep of linkFunctionCallWithSingleTarget(graph, def, info, idMap)) {
+			propagateExitPoints.push(ep);
+		}
 	}
 	if(thisGraph.isRoot(id) && functionDefs.size > 0) {
-		calledFunctionDefinitions.push({ functionCall: id, called: functionDefs.values().toArray() });
+		calledFunctionDefinitions.push({ functionCall: id, called: functionDefs.values().toArray(), propagateExitPoints });
 	}
 }
 
@@ -270,8 +280,8 @@ export function linkFunctionCalls(
 	graph: DataflowGraph,
 	idMap: AstIdMap,
 	thisGraph: DataflowGraph
-): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[] }[] {
-	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] = [];
+): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[] }[] {
+	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[] }[] = [];
 	for(const [id, info] of thisGraph.verticesOfType(VertexType.FunctionCall)) {
 		if(!info.onlyBuiltin) {
 			linkFunctionCall(graph, id, info, idMap, thisGraph, calledFunctionDefinitions);

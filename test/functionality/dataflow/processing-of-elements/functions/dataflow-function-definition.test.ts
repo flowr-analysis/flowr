@@ -11,6 +11,7 @@ import {
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
+import { ExitPointType } from '../../../../../src/dataflow/info';
 
 describe.sequential('Function Definition', withShell(shell => {
 	describe('Only functions', () => {
@@ -58,7 +59,7 @@ describe.sequential('Function Definition', withShell(shell => {
 				.call('8', '{', [argumentInCall('7')], { returns: ['7'], reads: [builtInId('{')], environment: defaultEnv().pushEnv().defineParameter('x', '0', '1') }, false)
 				.calls('8', builtInId('{'))
 				.defineVariable('0', 'x', { definedBy: [] }, false)
-				.defineFunction('9', ['7'], {
+				.defineFunction('9', [{ nodeId: '7', type: ExitPointType.Return }], {
 					out:               [],
 					in:                [{ nodeId: 7, name: 'return', controlDependencies: undefined, type: ReferenceType.Function }, { nodeId: 8, name: '{', controlDependencies: undefined, type: ReferenceType.Function }],
 					unknownReferences: [],
@@ -81,7 +82,7 @@ describe.sequential('Function Definition', withShell(shell => {
 					.call('9', '{', [argumentInCall('8')], { returns: ['8'], reads: [builtInId('{')], environment: defaultEnv().pushEnv().defineParameter('x', '0', '1') }, false)
 					.calls('9', builtInId('{'))
 					.defineVariable('0', 'x', { definedBy: [] }, false)
-					.defineFunction('10', ['8'], {
+					.defineFunction('10', [{ nodeId: '8', type: ExitPointType.Return }], {
 						out:               [],
 						in:                [{ nodeId: 8, name: 'return', controlDependencies: undefined, type: ReferenceType.Function }, { nodeId: 9, name: '{', controlDependencies: undefined, type: ReferenceType.Function }],
 						unknownReferences: [],
@@ -453,7 +454,7 @@ print(x)`,  emptyGraph()
 			.defineVariable('9', 'y', { definedBy: ['10', '11'] }, false)
 			.constant('20', undefined, false)
 			.defineVariable('19', 'y', { definedBy: ['20', '21'], controlDependencies: [{ id: 18, when: false }] }, false)
-			.defineFunction('24', ['16', '22'], {
+			.defineFunction('24', [{ nodeId: '16', type: ExitPointType.Return, controlDependencies: [{ id: 18, when: true }] }, { nodeId: '22', type: ExitPointType.Default }], {
 				out: [],
 				in:  [
 					{ nodeId: 8, name: '<-', type: ReferenceType.Function, controlDependencies: undefined },
@@ -779,7 +780,7 @@ f(5)`, emptyGraph()
 				.defineVariable('1', 'x', { definedBy: [] }, false)
 				.constant('6', undefined, false)
 				.defineVariable('5', 'x', { definedBy: ['8', '9'] }, false)
-				.defineFunction('22', ['13'], {
+				.defineFunction('22', [{ nodeId: '13', type: ExitPointType.Return }], {
 					out:               [],
 					in:                [],
 					unknownReferences: [],
@@ -843,7 +844,7 @@ f(5)`, emptyGraph()
 				.constant('6', undefined, false)
 				.defineVariable('5', 'x', { definedBy: ['8', '9'] }, false)
 				.constant('17', undefined, false)
-				.defineFunction('30', ['14', '19'], {
+				.defineFunction('30', [{ nodeId: '14', type: ExitPointType.Return, controlDependencies: [{ id: '21', when: true }] }, { nodeId: '19', controlDependencies: [{ id: 21, when: false }], type: ExitPointType.Return }], {
 					out:               [],
 					in:                [{ nodeId: '10', name: 'k', controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],

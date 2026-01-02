@@ -58,7 +58,7 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 	if(valueVertex.tag !== VertexType.Value) {
 		if(valueVertex.tag === VertexType.FunctionDefinition) {
 			for(const exit of valueVertex.exitPoints) {
-				graph.addEdge(rootId, exit, EdgeType.Reads);
+				graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
 			}
 		} else {
 			for(const exit of value.exitPoints) {

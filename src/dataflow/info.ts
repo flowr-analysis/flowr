@@ -53,6 +53,13 @@ export const enum ExitPointType {
 }
 
 /**
+ * Checks whether the given exit point type propagates calls (i.e., whether it aborts the current function execution).
+ */
+export function doesExitPointPropagateCalls(type: ExitPointType): boolean {
+	return type === ExitPointType.Error;
+}
+
+/**
  * An exit point describes the position which ends the current control flow structure.
  * This may be as innocent as the last expression or explicit with a `return`/`break`/`next`.
  * @see {@link ExitPointType} - for the different types of exit points
@@ -62,15 +69,15 @@ export const enum ExitPointType {
  */
 export interface ExitPoint {
 	/** What kind of exit point is this one? May be used to filter for exit points of specific causes. */
-	readonly type:                ExitPointType,
+	readonly type:                 ExitPointType,
 	/** The id of the node which causes the exit point! */
-	readonly nodeId:              NodeId,
+	readonly nodeId:               NodeId,
 	/**
 	 * Control dependencies which influence if the exit point triggers
 	 * (e.g., if the `return` is contained within an `if` statement).
 	 * @see {@link happensInEveryBranch} - to check whether control dependencies are exhaustive
 	 */
-	readonly controlDependencies: ControlDependency[] | undefined
+	readonly controlDependencies?: ControlDependency[] | undefined
 }
 
 /**

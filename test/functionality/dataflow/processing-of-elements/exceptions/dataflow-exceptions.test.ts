@@ -67,6 +67,7 @@ indirect()
 indirect <- function() { ${stopName}(${callArgs}) }; double_indirect <- function() { indirect() }
 double_indirect()
 3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
+				// TODO: test that it breaks loops!
 				checkDfContains(`1
 indirect <- function() { ${stopName}(${callArgs}) }; double_indirect <- function() { indirect() }; triple_indirect <- function() { double_indirect() }
 triple_indirect()

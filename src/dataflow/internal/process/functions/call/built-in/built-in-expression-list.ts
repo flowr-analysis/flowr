@@ -65,20 +65,6 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 	}
 }
 
-
-function processNextExpression(
-	currentElement: DataflowInformation,
-	environment: REnvironmentInformation,
-	listEnvironments: Set<NodeId>,
-	remainingRead: Map<string, IdentifierReference[]>,
-	nextGraph: DataflowGraph
-) {
-	// all inputs that have not been written until now are read!
-	for(const read of currentElement.in.concat(currentElement.unknownReferences)) {
-		linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
-	}
-}
-
 function updateSideEffectsForCalledFunctions(calledEnvs: {
 	functionCall: NodeId;
 	called:       readonly DataflowGraphVertexInfo[]
@@ -174,14 +160,25 @@ export function processExpressionList<OtherInfo>(
 			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment, false);
 		}
 
-		addNonDefaultExitPoints(exitPoints, invertExitCds, activeCdsAtStart, processed.exitPoints);
 
 		out = out.concat(processed.out);
 
-		processNextExpression(processed, environment, listEnvironments, remainingRead, nextGraph);
+		// all inputs that have not been written until now are read!
+		for(const read of processed.in.concat(processed.unknownReferences)) {
+			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
+		}
 
-		environment = exitPoints.length > 0 ? overwriteEnvironment(environment, processed.environment) : processed.environment;
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph);
+		for(const c of calledEnvs) {
+			if(c.propagateExitPoints.length > 0) {
+				for(const exit of c.propagateExitPoints) {
+					(processed.exitPoints as Writable<ExitPoint[]>).push(exit);
+				}
+			}
+		}
+
+		addNonDefaultExitPoints(exitPoints, invertExitCds, activeCdsAtStart, processed.exitPoints);
+		environment = exitPoints.length > 0 ? overwriteEnvironment(environment, processed.environment) : processed.environment;
 		// if the called function has global redefinitions, we have to keep them within our environment
 		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out);
 
@@ -198,10 +195,13 @@ export function processExpressionList<OtherInfo>(
 	}
 
 	if(defaultReturnExpr) {
-		exitPoints.push({
+		exitPoints.push(data.controlDependencies ? {
 			type:                ExitPointType.Default,
 			nodeId:              defaultReturnExpr.entryPoint,
 			controlDependencies: data.controlDependencies
+		} : {
+			type:   ExitPointType.Default,
+			nodeId: defaultReturnExpr.entryPoint
 		});
 	}
 

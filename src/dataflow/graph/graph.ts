@@ -337,10 +337,10 @@ export class DataflowGraph<
 	/** {@inheritDoc} */
 	public addEdge(from: NodeId, to: NodeId, type: EdgeType | number): this
 	/** {@inheritDoc} */
-	public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: EdgeType | number): this
+	public addEdge(from: { nodeId: NodeId }, to: { nodeId: NodeId }, type: EdgeType | number): this
 	/** {@inheritDoc} */
-	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType | number): this
-	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType | number): this {
+	public addEdge(from: NodeId | { nodeId: NodeId }, to: NodeId | { nodeId: NodeId }, type: EdgeType | number): this
+	public addEdge(from: NodeId | { nodeId: NodeId }, to: NodeId | { nodeId: NodeId }, type: EdgeType | number): this {
 		const [fromId, toId] = extractEdgeIds(from, to);
 
 		if(fromId === toId) {
@@ -525,7 +525,7 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 /**
  * Returns the ids of the dataflow vertices referenced by a {@link ReferenceForEdge}.
  */
-function extractEdgeIds(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge): [fromId: NodeId, toId: NodeId] {
+function extractEdgeIds(from: NodeId | { nodeId: NodeId }, to: NodeId | { nodeId: NodeId }): [fromId: NodeId, toId: NodeId] {
 	const fromId = typeof from === 'object' ? from.nodeId : from;
 	const toId = typeof to === 'object' ? to.nodeId : to;
 	return [fromId, toId];

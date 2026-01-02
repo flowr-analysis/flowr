@@ -83,7 +83,7 @@ export class DataflowGraphBuilder<
 				in:                subflow.in.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), controlDependencies: o.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
 				unknownReferences: subflow.unknownReferences.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), controlDependencies: o.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) }))
 			} as DataflowFunctionFlowInformation,
-			exitPoints: exitPoints.map(e => typeof e === 'object' ? ({ ...e, nodeId: normalizeIdToNumberIfPossible(e.nodeId) }) :
+			exitPoints: exitPoints.map(e => typeof e === 'object' ? ({ ...e, nodeId: normalizeIdToNumberIfPossible(e.nodeId), controlDependencies: e.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) }) :
 				({ nodeId: normalizeIdToNumberIfPossible(e), type: ExitPointType.Default, controlDependencies: undefined })
 			),
 			controlDependencies: info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),

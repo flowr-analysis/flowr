@@ -53,7 +53,7 @@ export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerIn
 	return [functionCallTargets, activeEnvironment];
 }
 
-function includeArgumentFunctionCallClosure(arg: FunctionArgument, baseEnvironment: REnvironmentInformation, activeEnvironment: REnvironmentInformation, queue: VisitingQueue, dataflowGraph: DataflowGraph): void {
+function includeArgumentFunctionCallClosure(arg: FunctionArgument, activeEnvironment: REnvironmentInformation, queue: VisitingQueue, dataflowGraph: DataflowGraph): void {
 	const valueRoot = getReferenceOfArgument(arg);
 	if(!valueRoot) {
 		return;
@@ -77,7 +77,7 @@ function linkCallTargets(
 ): void {
 	for(const functionCallTarget of functionCallTargets) {
 		for(const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
-			queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, onlyForSideEffects);
+			queue.add(exitPoint.nodeId, activeEnvironment, activeEnvironmentFingerprint, onlyForSideEffects);
 		}
 		// handle open reads
 		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
@@ -94,7 +94,6 @@ function linkCallTargets(
 
 /** returns the new threshold hit count */
 export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, dataflowInformation: DataflowInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): void {
-	const baseEnvironment = current.baseEnvironment;
 	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargets(dataflowInformation.graph, callerInfo, current.baseEnvironment, queue, ctx);
 	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment);
 
@@ -104,7 +103,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 		 * hence, we add a new flag and add all argument values to the queue causing directly
 		 */
 		for(const arg of callerInfo.args) {
-			includeArgumentFunctionCallClosure(arg, baseEnvironment, activeEnvironment, queue, dataflowInformation.graph);
+			includeArgumentFunctionCallClosure(arg, activeEnvironment, queue, dataflowInformation.graph);
 		}
 		return;
 	}

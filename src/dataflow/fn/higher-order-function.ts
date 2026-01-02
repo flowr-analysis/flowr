@@ -15,7 +15,7 @@ import { valueSetGuard } from '../eval/values/general';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
-	const workingQueue: DataflowGraphVertexArgument[] = def.exitPoints.map(d => graph.getVertex(d, true)).filter(isNotUndefined);
+	const workingQueue: DataflowGraphVertexArgument[] = def.exitPoints.map(d => graph.getVertex(d.nodeId, true)).filter(isNotUndefined);
 	const seen = new Set<NodeId>();
 	while(workingQueue.length > 0) {
 		const current = workingQueue.pop() as DataflowGraphVertexArgument;

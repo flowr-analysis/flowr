@@ -48,9 +48,9 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 
 	// cluster function def exit points
 	if(info.tag === VertexType.FunctionDefinition) {
-		for(const sub of info.exitPoints){
-			if(notReached.delete(sub)) {
-				makeCluster(graph, sub, notReached).forEach(n => nodes.add(n));
+		for(const { nodeId } of info.exitPoints){
+			if(notReached.delete(nodeId)) {
+				makeCluster(graph, nodeId, notReached).forEach(n => nodes.add(n));
 			}
 		}
 	}

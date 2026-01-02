@@ -151,13 +151,13 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 		for(const origin of data.call.origin) {
 			if(origin === 'builtin:stop' || origin === 'builtin:return' || origin === 'builtin:break') {
 				this.encounteredLoopBreaker = true;
-				this.app(data.call.cds);
+				this.app(data.call.controlDependencies);
 				return;
 			} else if(origin === 'builtin:stopifnot') {
 				const arg = this.getBoolArgValue(data);
 				if(arg === false) {
 					this.encounteredLoopBreaker = true;
-					this.app(data.call.cds);
+					this.app(data.call.controlDependencies);
 					return;
 				}
 			}

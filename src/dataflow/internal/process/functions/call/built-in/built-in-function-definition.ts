@@ -66,7 +66,7 @@ export function processFunctionDefinition<OtherInfo>(
 		subgraph.mergeWith(processed.graph);
 		const read = processed.in.concat(processed.unknownReferences);
 		linkInputs(read, data.environment, readInParameters, subgraph, false);
-		data = { ...data, environment: overwriteEnvironment(data.environment, processed.environment) };
+		(data as { environment: REnvironmentInformation}).environment = overwriteEnvironment(data.environment, processed.environment);
 	}
 	const paramsEnvironments = data.environment;
 
@@ -102,10 +102,10 @@ export function processFunctionDefinition<OtherInfo>(
 	for(const read of remainingRead) {
 		if(read.name) {
 			subgraph.addVertex({
-				tag:         VertexType.Use,
-				id:          read.nodeId,
-				environment: undefined,
-				cds:         undefined
+				tag:                 VertexType.Use,
+				id:                  read.nodeId,
+				environment:         undefined,
+				controlDependencies: undefined
 			}, data.ctx.env.makeCleanEnv());
 		}
 	}
@@ -130,13 +130,13 @@ export function processFunctionDefinition<OtherInfo>(
 
 	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false);
 	graph.addVertex({
-		tag:         VertexType.FunctionDefinition,
-		id:          name.info.id,
-		environment: popLocalEnvironment(outEnvironment),
-		cds:         data.controlDependencies,
-		params:      readParams,
-		subflow:     flow,
-		exitPoints:  exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default).map(e => e.nodeId) ?? []
+		tag:                 VertexType.FunctionDefinition,
+		id:                  name.info.id,
+		environment:         popLocalEnvironment(outEnvironment),
+		controlDependencies: data.controlDependencies,
+		params:              readParams,
+		subflow:             flow,
+		exitPoints:          exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default || e.type === ExitPointType.Error) ?? []
 	}, data.ctx.env.makeCleanEnv());
 	return {
 		/* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */
@@ -225,10 +225,11 @@ export function updateNestedFunctionCalls(
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
 	for(const [id, { onlyBuiltin, environment, name }] of graph.verticesOfType(VertexType.FunctionCall)) {
-		if(!name || onlyBuiltin) {
+		if(onlyBuiltin || !name) {
 			continue;
 		}
 
+		let effectiveEnvironment = outEnvironment;
 		// only the call environment counts!
 		if(environment) {
 			while(outEnvironment.level > environment.level) {
@@ -237,22 +238,21 @@ export function updateNestedFunctionCalls(
 			while(outEnvironment.level < environment.level) {
 				outEnvironment = pushLocalEnvironment(outEnvironment);
 			}
+			effectiveEnvironment = overwriteEnvironment(outEnvironment, environment);
 		}
 
-		const effectiveEnvironment = environment ? overwriteEnvironment(outEnvironment, environment) : outEnvironment;
-
-		const targets = getAllFunctionCallTargets(id, graph, effectiveEnvironment);
+		const targets = new Set(getAllFunctionCallTargets(id, graph, effectiveEnvironment));
 		for(const target of targets) {
 			if(isBuiltIn(target)) {
 				graph.addEdge(id, target, EdgeType.Calls);
 				continue;
 			}
 			const targetVertex = graph.getVertex(target);
-			if(targetVertex?.tag !== VertexType.FunctionDefinition) {
-				// support reads on symbols
-				if(targetVertex?.tag === VertexType.Use) {
-					graph.addEdge(id, target, EdgeType.Reads);
-				}
+			// support reads on symbols
+			if(targetVertex?.tag === VertexType.Use) {
+				graph.addEdge(id, target, EdgeType.Reads);
+				continue;
+			} else if(targetVertex?.tag !== VertexType.FunctionDefinition) {
 				continue;
 			}
 			graph.addEdge(id, target, EdgeType.Calls);

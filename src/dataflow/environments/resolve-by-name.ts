@@ -30,7 +30,7 @@ const TargetTypePredicate = {
  * @returns A list of possible identifier definitions (one if the definition location is exactly and always known), or `undefined`
  *          if the identifier is undefined in the current scope/with the current environment information.
  */
-export function resolveByName(name: Identifier, environment: REnvironmentInformation, target: ReferenceType): IdentifierDefinition[] | undefined {
+export function resolveByName(name: Identifier, environment: REnvironmentInformation, target: ReferenceType): readonly IdentifierDefinition[] | undefined {
 	if(target === ReferenceType.Unknown) {
 		return resolveByNameAnyType(name, environment);
 	}
@@ -104,9 +104,12 @@ export function resolveByNameAnyType(name: Identifier, environment: REnvironment
 	return ret;
 }
 
-
 /**
- *
+ * Checks whether the given identifier name resolves to a built-in constant with the given value.
+ * @param name               - The name of the identifier to resolve
+ * @param environment        - The current environment used for name resolution
+ * @param wantedValue        - The built-in constant value to check for
+ * @returns Whether the identifier always, never, or maybe resolves to the given built-in constant value
  */
 export function resolvesToBuiltInConstant(name: Identifier | undefined, environment: REnvironmentInformation, wantedValue: unknown): Ternary {
 	if(name === undefined) {

@@ -84,7 +84,7 @@ export function computeCallGraph(graph: DataflowGraph): CallGraph {
 }
 
 function processCds(vtx: DataflowGraphVertexInfo, graph: DataflowGraph, result: CallGraph, state: State): void {
-	for(const tar of vtx.cds ?? []) {
+	for(const tar of vtx.controlDependencies ?? []) {
 		const targetVtx = graph.getVertex(tar.id, true);
 		if(targetVtx) {
 			processUnknown(targetVtx, undefined, graph, result, state);
@@ -225,8 +225,8 @@ function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefi
 	processCds(vtx, graph, result, state);
 
 	const exits = new Set(vtx.exitPoints);
-	for(const id of exits) {
-		const v = graph.getVertex(id, true);
+	for(const { nodeId } of exits) {
+		const v = graph.getVertex(nodeId, true);
 		if(v) {
 			processUnknown(v, vtx.id, graph, result, state);
 		}

@@ -201,9 +201,9 @@ function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformatio
 
 	return {
 		graph,
-		breaks:      [...then.breaks, ...otherwise?.breaks ?? []],
-		nexts:       [...then.nexts, ...otherwise?.nexts ?? []],
-		returns:     [...then.returns, ...otherwise?.returns ?? []],
+		breaks:      then.breaks.concat(otherwise?.breaks ?? []),
+		nexts:       then.nexts.concat(otherwise?.nexts ?? []),
+		returns:     then.returns.concat(otherwise?.returns ?? []),
 		exitPoints:  [ifId + '-exit'],
 		entryPoints: [ifId]
 	};

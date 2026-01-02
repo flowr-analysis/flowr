@@ -8,7 +8,7 @@
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert';
 import { DefaultMap } from '../../../../src/util/collections/defaultmap';
 import { EnvironmentBuilderPrinter } from './environment-builder-printer';
-import { wrap, wrapControlDependencies, wrapReference } from './printer';
+import { wrap, wrapControlDependencies, wrapExitPoint, wrapReference } from './printer';
 import { EdgeType, splitEdgeTypes } from '../../../../src/dataflow/graph/edge';
 import { type DataflowGraph, type FunctionArgument, isPositionalArgument } from '../../../../src/dataflow/graph/graph';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -116,7 +116,7 @@ class DataflowBuilderPrinter {
 		this.recordFnCall(id,'call', [
 			wrap(id),
 			`[${vertex.args.map(a => this.processArgumentInCall(vertex.id, a)).join(', ')}]`,
-			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${readSuffix}${this.getControlDependencySuffix(vertex.cds, ', ', '') ?? ''}${this.getEnvironmentSuffix(vertex.environment, ', ', '') ?? ''} }`,
+			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${readSuffix}${this.getControlDependencySuffix(vertex.controlDependencies, ', ', '') ?? ''}${this.getEnvironmentSuffix(vertex.environment, ', ', '') ?? ''} }`,
 			this.asRootArg(id)
 		]);
 	}
@@ -158,7 +158,7 @@ class DataflowBuilderPrinter {
 	private controlDependenciesForArgument(id: NodeId): ControlDependency[] | undefined {
 		// we ignore the control dependency of the argument in the call as it is usually separate, and the auto creation
 		// will respect the corresponding node!
-		return this.graph.getVertex(id, true)?.cds;
+		return this.graph.getVertex(id, true)?.controlDependencies;
 	}
 
 	private processVertex(id: NodeId, vertex: DataflowGraphVertexInfo): void {
@@ -180,7 +180,7 @@ class DataflowBuilderPrinter {
 				const root = this.asRootArg(id);
 				this.recordFnCall(id, 'constant', [
 					wrap(id),
-					this.getControlDependencySuffix(vertex.cds) ?? (root ? 'undefined' : undefined),
+					this.getControlDependencySuffix(vertex.controlDependencies) ?? (root ? 'undefined' : undefined),
 					root
 				]);
 				break;
@@ -210,7 +210,7 @@ class DataflowBuilderPrinter {
 		const root = this.asRootArg(id);
 		this.recordFnCall(id, 'use', [
 			wrap(id),
-			this.getControlDependencySuffix(vertex.cds) ?? (root ? 'undefined' : undefined),
+			this.getControlDependencySuffix(vertex.controlDependencies) ?? (root ? 'undefined' : undefined),
 			root
 		]);
 	}
@@ -220,7 +220,7 @@ class DataflowBuilderPrinter {
 		const suffix = this.getEnvironmentSuffix(vertex.environment, '{ ', ' }') ?? (root ? 'undefined' : undefined);
 		this.recordFnCall(id,'defineFunction', [
 			wrap(id),
-			`[${vertex.exitPoints.map(wrap).join(', ')}]`,
+			`[${vertex.exitPoints.map(wrapExitPoint).join(', ')}]`,
 			`{
 				out:               [${vertex.subflow.out.map(wrapReference).join(', ')}],
 				in:                [${vertex.subflow.in.map(wrapReference).join(', ')}],
@@ -242,7 +242,7 @@ class DataflowBuilderPrinter {
 
 		this.recordFnCall(id,'defineVariable', [
 			wrap(id),
-			'{ definedBy: [' + (definedBy?.map(wrap).join(', ') ?? '') + ']' + (this.getControlDependencySuffix(vertex.cds, ', ', '') ?? '') + ' }',
+			'{ definedBy: [' + (definedBy?.map(wrap).join(', ') ?? '') + ']' + (this.getControlDependencySuffix(vertex.controlDependencies, ', ', '') ?? '') + ' }',
 			this.asRootArg(id)
 		]);
 	}

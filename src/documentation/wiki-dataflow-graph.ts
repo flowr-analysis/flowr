@@ -44,7 +44,7 @@ import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
 import { getValueOfArgument } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
-import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
+import { getAliases, resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import {
 	UnnamedFunctionCallOrigin,
@@ -1028,8 +1028,7 @@ ${codeBlock('ts', dummyDataflow.toString())}
 
 Now, you can find the dataflow _information_ with \`result.dataflow\`. More specifically, the graph is stored in \`result.dataflow.graph\` and looks like this:
 
-${
-	await (async() => {
+${await (async() => {
 		const result = await dummyDataflow();
 		const dfGraphString = printDfGraph(result.graph);
 
@@ -1151,13 +1150,14 @@ ${section('Working with the Dataflow Graph', 2, 'dfg-working')}
 The ${ctx.link('DataflowInformation')} is the core result of _flowR_ and summarizes a lot of information.
 Depending on what you are interested in, there exists a plethora of functions and queries to help you out, answering the most important questions:
 
-* The **[Query API](${FlowrWikiBaseRef}/Query%20API)** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
-* The **[Search API](${FlowrWikiBaseRef}/Search%20API)** allows you to search for specific vertices or edges in the dataflow graph or the original program
-* ${ctx.link(recoverName.name)} and ${ctx.link(recoverContent.name)} to get the name or content of a vertex in the dataflow graph
-* ${ctx.link(resolveIdToValue.name)} to resolve the value of a variable or id (if possible, see [below](#dfg-resolving-values))
-* ${ctx.link(edgeIncludesType.name)} to check if an edge includes a specific type and ${ctx.link(splitEdgeTypes.name)} to split the bitmask of edges into its types (see [below](#dfg-resolving-values))
-* ${ctx.link(getValueOfArgument.name)} to get the (syntactical) value of an argument in a function call 
-* ${ctx.link(getOriginInDfg.name)} to get information about where a read, call, ... comes from (see [below](#dfg-resolving-values))
+* The **${ctx.linkPage('wiki/Query API')}** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
+* The **${ctx.linkPage('wiki/Search API')}** allows you to search for specific vertices or edges in the dataflow graph or the original program
+* ${ctx.link(recoverName)} and ${ctx.link(recoverContent)} to get the name or content of a vertex in the dataflow graph
+* ${ctx.link(resolveIdToValue)} to resolve the value of a variable or id (if possible, see [below](#dfg-resolving-values))
+* ${ctx.link(getAliases)} to get all (potentially currently) aliases of a given definition
+* ${ctx.link(edgeIncludesType)} to check if an edge includes a specific type and ${ctx.link(splitEdgeTypes)} to split the bitmask of edges into its types (see [below](#dfg-resolving-values))
+* ${ctx.link(getValueOfArgument)} to get the (syntactical) value of an argument in a function call 
+* ${ctx.link(getOriginInDfg)} to get information about where a read, call, ... comes from (see [below](#dfg-resolving-values))
 
 Some of these functions have been explained in their respective wiki pages. However, some are part of the [Dataflow Graph API](${FlowrWikiBaseRef}/Dataflow-Graph) and so we explain them here.
 If you are interested in which features we support and which features are still to be worked on, please refer to our [capabilities](${FlowrWikiBaseRef}/Capabilities) page.
@@ -1167,12 +1167,12 @@ ${section('Resolving Values', 3, 'dfg-resolving-values')}
 FlowR supports a [configurable](${FlowrWikiBaseRef}/Interface#configuring-flowr) level of value tracking&mdash;all with the goal of knowing the static value domain of a variable.
 These capabilities are exposed by the [resolve value Query](${FlowrWikiBaseRef}/Query-API#resolve-value-query) and backed by two important functions:
 
-${ctx.link(resolveIdToValue.name)} provides an environment-sensitive (see ${ctx.link('REnvironmentInformation')})
+${ctx.link(resolveIdToValue)} provides an environment-sensitive (see ${ctx.link('REnvironmentInformation')})
 value resolution depending on if the environment is provided.
-The idea of ${ctx.link(resolveIdToValue.name)} is to provide a compromise between precision and performance, to
+The idea of ${ctx.link(resolveIdToValue)} is to provide a compromise between precision and performance, to
 be used _during_ and _after_ the core analysis. After the dataflow analysis completes, there are much more expensive queries possible (such as the resolution of the data frame shape, see the [Query API](${FlowrWikiBaseRef}/Query-API)).
 
-Additionally, to ${ctx.link(resolveIdToValue.name)}, we offer the aforementioned ${ctx.link(getValueOfArgument.name)} to retrieve the value of an argument in a function call.
+Additionally, to ${ctx.link(resolveIdToValue)}, we offer the aforementioned ${ctx.link(getValueOfArgument)} to retrieve the value of an argument in a function call.
 Be aware, that this function is currently not optimized for speed, so if you frequently require the values of multiple arguments of the same function call, you may want to open [an issue](${NewIssueUrl}) to request support for resolving
 multiple arguments at once.
 
@@ -1220,7 +1220,6 @@ ${
 Please note, the current structure of this function is biased by what implementations already exist in flowR.
 Hence, we do not just track definitions and constants, but also the origins of function calls, albeit we do not yet track the origins of values (only resorting to
 a constant origin). If you are confused by this please start a discussion&mdash;in a way we are still deciding on a good API for this.
-
 	`;
 
 	})()

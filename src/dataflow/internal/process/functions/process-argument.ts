@@ -39,26 +39,26 @@ export function processFunctionArgument<OtherInfo>(
 	let entryPoint = value?.entryPoint;
 	if(argumentName) {
 		graph.addVertex({
-			tag: VertexType.Use,
-			id:  argument.info.id,
-			cds: data.controlDependencies
+			tag:                 VertexType.Use,
+			id:                  argument.info.id,
+			controlDependencies: data.controlDependencies
 		}, data.ctx.env.makeCleanEnv());
 		entryPoint = argument.info.id;
 	}
 
-	const ingoingRefs = [...value?.unknownReferences ?? [], ...value?.in ?? [], ...(name === undefined ? [] : [...name.in])];
+	const ingoingRefs = value ? value.unknownReferences.concat(value.in, name?.in ?? []) : name?.in;
 
 	if(entryPoint && argument.value?.type === RType.FunctionDefinition) {
 		graph.addEdge(entryPoint, argument.value.info.id, EdgeType.Reads);
-	} else if(argumentName) {
+	} else if(argumentName && ingoingRefs) {
 		// we only need to link against those which are not already bound to another function call argument
-		linkReadsForArgument(argument, [...ingoingRefs, ...value?.out ?? [] /* value may perform definitions */], graph);
+		linkReadsForArgument(argument, value ? ingoingRefs.concat(value.out/* value may perform definitions */) : ingoingRefs, graph);
 	}
 
 	return {
 		unknownReferences: [],
 		// active nodes of the name will be lost as they are only used to reference the corresponding parameter
-		in:                ingoingRefs.filter(r => r.name !== undefined),
+		in:                ingoingRefs?.filter(r => r.name !== undefined) ?? [],
 		out:               [...value?.out ?? [], ...(name?.out ?? [])],
 		graph:             graph,
 		environment:       value?.environment ?? data.environment,

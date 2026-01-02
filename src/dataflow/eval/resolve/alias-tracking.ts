@@ -329,7 +329,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 			continue;
 		}
 		const [vertex, outgoingEdges] = res;
-		const cds = vertex.cds;
+		const cds = vertex.controlDependencies;
 		for(const cd of cds ?? []) {
 			const target = graph.idMap?.get(cd.id);
 			if(target === undefined) {

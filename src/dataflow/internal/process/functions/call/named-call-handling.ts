@@ -66,7 +66,6 @@ export function processNamedCall<OtherInfo>(
 
 	let information: DataflowInformation | undefined = undefined;
 	let builtIn = false;
-
 	for(const resolvedFunction of resolved) {
 		if(resolvedFunction.type === ReferenceType.BuiltInFunction && typeof resolvedFunction.processor === 'function') {
 			builtIn ||= resolvedFunction.config?.libFn !== true;

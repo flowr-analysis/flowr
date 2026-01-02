@@ -21,6 +21,7 @@ import { type BuiltIn, isBuiltIn } from '../environments/built-in';
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
 import type { ExitPoint } from '../info';
+import { doesExitPointPropagateCalls } from '../info';
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
@@ -89,6 +90,7 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
  * This follows the `pmatch` semantics of R
  * @see https://cran.r-project.org/doc/manuals/R-lang.html#Argument-matching
  * This returns the resolved map from argument ids to parameter ids.
+ * If you just want to match by name, use {@link pMatch}.
  */
 export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], graph: DataflowGraph): Map<NodeId, NodeId> {
 	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
@@ -102,10 +104,10 @@ export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: r
 
 	// all parameters matched by name
 	const matchedParameters = new Set<string>();
-
+	const paramNames = nameParamMap.keys().toArray();
 	// first map names
 	for(const [name, { nodeId: argId }] of nameArgMap) {
-		const pmatchName = findByPrefixIfUnique(name, nameParamMap.keys()) ?? name;
+		const pmatchName = findByPrefixIfUnique(name, paramNames) ?? name;
 		const param = nameParamMap.get(pmatchName);
 		if(param?.name) {
 			const pid = param.name.info.id;
@@ -151,6 +153,54 @@ export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: r
 	return maps;
 }
 
+/**
+ * Links the given arguments to the given parameters within the given graph by name only.
+ */
+export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<NodeId, Targets> {
+	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
+
+	const maps = new Map<NodeId, Targets>();
+
+	const sid = params['...'];
+	const paramNames = Object.keys(params);
+
+	// all parameters matched by name
+	const matchedParameters = new Set<string>();
+
+	// first map names
+	for(const [name, { nodeId: argId }] of nameArgMap) {
+		const pmatchName = findByPrefixIfUnique(name, paramNames) ?? name;
+		const param = params[pmatchName];
+		if(param) {
+			maps.set(argId, param);
+		} else if(sid) {
+			maps.set(argId, sid);
+		}
+	}
+
+	const remainingParameter = paramNames.filter(p => !matchedParameters.has(p));
+	const remainingArguments = args.filter(a => !isNamedArgument(a));
+
+	for(let i = 0; i < remainingArguments.length; i++) {
+		const arg = remainingArguments[i];
+		if(arg === EmptyArgument) {
+			continue;
+		}
+		const aid = arg.nodeId;
+		if(remainingParameter.length <= i) {
+			if(sid) {
+				maps.set(aid, sid);
+			}
+			continue;
+		}
+		const param = params[remainingParameter[i]];
+		if(param) {
+			maps.set(aid, param);
+		}
+	}
+	return maps;
+}
+
 
 /**
  * Links the function call arguments to the target function definition and returns a map from argument ids to parameter ids.
@@ -178,7 +228,7 @@ export function linkFunctionCallWithSingleTarget(
 	{ subflow: fnSubflow, exitPoints, id: fnId, params }: DataflowGraphVertexFunctionDefinition,
 	info: DataflowGraphVertexFunctionCall,
 	idMap: AstIdMap
-) {
+): ExitPoint[] {
 	const id = info.id;
 	if(info.environment !== undefined) {
 		// for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it
@@ -196,14 +246,20 @@ export function linkFunctionCallWithSingleTarget(
 		}
 	}
 
+	const propagateExitPoints: ExitPoint[] = [];
 	for(const exitPoint of exitPoints) {
-		graph.addEdge(id, exitPoint, EdgeType.Returns);
+		graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
+		if(doesExitPointPropagateCalls(exitPoint.type)) {
+			// add the exit point to the call!
+			propagateExitPoints.push(exitPoint);
+		}
 	}
 
 	const defName = recoverName(fnId, idMap);
-	expensiveTrace(dataflowLogger, () => `recording expression-list-level call from ${recoverName(info.id, idMap)} to ${defName}`);
+	expensiveTrace(dataflowLogger, () => `recording expr-list-level call from ${recoverName(info.id, idMap)} to ${defName}`);
 	graph.addEdge(id, fnId, EdgeType.Calls);
 	applyForForcedArgs(graph, info.id, params, linkFunctionCallArguments(fnId, idMap, defName, id, info.args, graph));
+	return propagateExitPoints;
 }
 
 /** for each parameter that we link that gets forced, add a reads edge from the call to argument to show that it reads it */
@@ -227,8 +283,9 @@ function linkFunctionCall(
 	idMap: AstIdMap,
 	thisGraph: DataflowGraph,
 	calledFunctionDefinitions: {
-		functionCall: NodeId;
-		called:       readonly DataflowGraphVertexInfo[]
+		functionCall:        NodeId;
+		called:              readonly DataflowGraphVertexInfo[],
+		propagateExitPoints: readonly ExitPoint[]
 	}[]
 ) {
 	const edges = graph.outgoingEdges(id);
@@ -245,16 +302,19 @@ function linkFunctionCall(
 	}
 
 	const [functionDefs] = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph);
+	const propagateExitPoints: ExitPoint[] = [];
 	for(const def of functionDefs.values()) {
 		// we can skip this if we already linked it
 		const oEdge = graph.outgoingEdges(id)?.get(def.id);
 		if(oEdge && edgeIncludesType(oEdge.types, EdgeType.Calls)) {
 			continue;
 		}
-		linkFunctionCallWithSingleTarget(graph, def, info, idMap);
+		for(const ep of linkFunctionCallWithSingleTarget(graph, def, info, idMap)) {
+			propagateExitPoints.push(ep);
+		}
 	}
 	if(thisGraph.isRoot(id) && functionDefs.size > 0) {
-		calledFunctionDefinitions.push({ functionCall: id, called: functionDefs.values().toArray() });
+		calledFunctionDefinitions.push({ functionCall: id, called: functionDefs.values().toArray(), propagateExitPoints });
 	}
 }
 
@@ -269,8 +329,8 @@ export function linkFunctionCalls(
 	graph: DataflowGraph,
 	idMap: AstIdMap,
 	thisGraph: DataflowGraph
-): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[] }[] {
-	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] = [];
+): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[] }[] {
+	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[] }[] = [];
 	for(const [id, info] of thisGraph.verticesOfType(VertexType.FunctionCall)) {
 		if(!info.onlyBuiltin) {
 			linkFunctionCall(graph, id, info, idMap, thisGraph, calledFunctionDefinitions);

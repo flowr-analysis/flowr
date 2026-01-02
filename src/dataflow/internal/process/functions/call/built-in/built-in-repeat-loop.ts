@@ -39,6 +39,7 @@ export function processRepeatLoop<OtherInfo>(
 		args:      unpacked ? [unpacked] : args,
 		rootId,
 		data,
+		forceArgs: 'all',
 		patchData: (d, i) => {
 			if(i === 0) {
 				return { ...d, controlDependencies: [...d.controlDependencies ?? [], { id: name.info.id }] };

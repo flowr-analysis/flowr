@@ -83,12 +83,6 @@ export function getReferenceOfArgument(arg: FunctionArgument): NodeId | undefine
 }
 
 /**
- * A reference that is enough to indicate start and end points of an edge within the dataflow graph.
- */
-type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'controlDependencies'>  | IdentifierDefinition
-
-
-/**
  * Maps the edges target to the edge information
  */
 export type OutgoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = Map<NodeId, Edge>
@@ -177,7 +171,6 @@ export class DataflowGraph<
 	public get(id: NodeId, includeDefinedFunctions = true): [Vertex, OutgoingEdges] | undefined {
 		// if we do not want to include function definitions, only retrieve the value if the id is part of the root vertices
 		const vertex: Vertex | undefined = this.getVertex(id, includeDefinedFunctions);
-
 		return vertex === undefined ? undefined : [vertex, this.outgoingEdges(id) ?? new Map()];
 	}
 
@@ -315,12 +308,11 @@ export class DataflowGraph<
 		}
 
 		const fallback = vertex.tag === VertexType.FunctionDefinition || (vertex.tag === VertexType.FunctionCall && !vertex.onlyBuiltin) ? fallbackEnv : undefined;
-		// keep a clone of the original environment
-		const environment = vertex.environment ? cloneEnvironmentInformation(vertex.environment) : fallback;
 
 		this.vertexInformation.set(vertex.id, {
 			...vertex,
-			environment
+			// keep a clone of the original environment
+			environment: vertex.environment ? cloneEnvironmentInformation(vertex.environment) : fallback
 		} as unknown as Vertex);
 		const has =  this.types.get(vertex.tag);
 		if(has) {
@@ -338,10 +330,10 @@ export class DataflowGraph<
 	/** {@inheritDoc} */
 	public addEdge(from: NodeId, to: NodeId, type: EdgeType | number): this
 	/** {@inheritDoc} */
-	public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: EdgeType | number): this
+	public addEdge(from: { nodeId: NodeId }, to: { nodeId: NodeId }, type: EdgeType | number): this
 	/** {@inheritDoc} */
-	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType | number): this
-	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType | number): this {
+	public addEdge(from: NodeId | { nodeId: NodeId }, to: NodeId | { nodeId: NodeId }, type: EdgeType | number): this
+	public addEdge(from: NodeId | { nodeId: NodeId }, to: NodeId | { nodeId: NodeId }, type: EdgeType | number): this {
 		const [fromId, toId] = extractEdgeIds(from, to);
 
 		if(fromId === toId) {
@@ -428,7 +420,7 @@ export class DataflowGraph<
 		const vertex = this.getVertex(reference.nodeId, true);
 		guard(vertex !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`);
 		if(vertex.tag === VertexType.FunctionDefinition || vertex.tag === VertexType.VariableDefinition) {
-			vertex.cds = reference.controlDependencies;
+			vertex.controlDependencies = reference.controlDependencies;
 		} else {
 			this.vertexInformation.set(reference.nodeId, { ...vertex, tag: VertexType.VariableDefinition });
 			this.types.set(vertex.tag, (this.types.get(vertex.tag) ?? []).filter(id => id !== reference.nodeId));
@@ -454,17 +446,17 @@ export class DataflowGraph<
 		to = to ? normalizeIdToNumberIfPossible(to) : undefined;
 		const vertex = this.getVertex(from, true);
 		guard(vertex !== undefined, () => `node must be defined for ${from} to add control dependency`);
-		vertex.cds ??= [];
+		vertex.controlDependencies ??= [];
 		if(to) {
 			let hasControlDependency = false;
-			for(const { id, when: cond } of vertex.cds) {
+			for(const { id, when: cond } of vertex.controlDependencies) {
 				if(id === to && when !== cond) {
 					hasControlDependency = true;
 					break;
 				}
 			}
 			if(!hasControlDependency) {
-				vertex.cds.push({ id: to, when });
+				vertex.controlDependencies.push({ id: to, when });
 			}
 		}
 		return this;
@@ -524,9 +516,9 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 }
 
 /**
- * Returns the ids of the dataflow vertices referenced by a {@link ReferenceForEdge}.
+ * Returns the ids of the dataflow vertices referenced.
  */
-function extractEdgeIds(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge): [fromId: NodeId, toId: NodeId] {
+function extractEdgeIds(from: NodeId | { nodeId: NodeId }, to: NodeId | { nodeId: NodeId }): [fromId: NodeId, toId: NodeId] {
 	const fromId = typeof from === 'object' ? from.nodeId : from;
 	const toId = typeof to === 'object' ? to.nodeId : to;
 	return [fromId, toId];

@@ -144,8 +144,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	// finally, resolve linkages
 	updateNestedFunctionCalls(df.graph, df.environment);
 
-	const cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
-
+	(df as { cfgQuick?: ControlFlowInformation }).cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
 	// performance optimization: return cfgQuick as part of the result to avoid recomputation
-	return { ...df, cfgQuick };
+	return df as DataflowInformation & { cfgQuick: ControlFlowInformation | undefined };
 }

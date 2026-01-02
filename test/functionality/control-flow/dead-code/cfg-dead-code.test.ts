@@ -5,14 +5,16 @@ import { ControlFlowGraph } from '../../../../src/control-flow/control-flow-grap
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { tryResolveSliceCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { canReach } from '../../../../src/control-flow/simple-visitor';
+import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 
 interface CfgDeadCodeArgs {
 	readonly reachableFromStart:   readonly NodeId[];
 	readonly unreachableFromStart: readonly NodeId[];
+	readonly ids?:                 readonly SupportedFlowrCapabilityId[];
 }
 
 describe('Control Flow Graph', withTreeSitter(parser => {
-	function assertDeadCode(code: string, { reachableFromStart, unreachableFromStart }: CfgDeadCodeArgs): void {
+	function assertDeadCode(code: string, { reachableFromStart, unreachableFromStart, ids }: CfgDeadCodeArgs): void {
 		assertCfg(parser, code, {
 			graph: new ControlFlowGraph()
 		}, {
@@ -20,6 +22,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			simplificationPasses: ['analyze-dead-code'],
 			/** we break unreachable edges for this test, the whole point is for not all of them being reachable */
 			excludeProperties:    ['entry-reaches-all', 'exit-reaches-all'],
+			testIds:              ids,
 			additionalAsserts:    (cfg, ast) => {
 				for(const [n, i] of [...reachableFromStart.map(n => [n, false] as const), ...unreachableFromStart.map(n => [n, true] as const)]) {
 					const resolved = tryResolveSliceCriterionToId(n, ast.idMap) ?? n;
@@ -108,6 +111,15 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					}
 				}
 			}
+		});
+	});
+	describe('Exception Handling', () => {
+		describe('Simple [stop] instructions', () => {
+			assertDeadCode('x <- 1\nstop()\n3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['3@3'], ids: ['exceptions-and-errors'] });
+			assertDeadCode('x <- 1\nstop(TRUE)\n3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['3@3'], ids: ['exceptions-and-errors'] });
+			assertDeadCode('x <- 1\nstop(FALSE)\n3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['3@3'], ids: ['exceptions-and-errors'] });
+			assertDeadCode('x <- 1\nstop(msg)\n3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['3@3'], ids: ['exceptions-and-errors'] });
+			assertDeadCode('x <- 1\nabort()\n3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['3@3'], ids: ['exceptions-and-errors'] });
 		});
 	});
 }));

@@ -52,7 +52,7 @@ export function formatRange(range: SourceRange | undefined): string {
 	return `${range[0]}.${range[1]}-${range[2]}.${range[3]}`;
 }
 
-function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation | undefined, mermaid: MermaidGraph, idPrefix = ''): void {
+function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformation | undefined, mermaid: MermaidGraph, idPrefix = ''): void {
 	if(subflow === undefined) {
 		return;
 	}
@@ -188,7 +188,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\`"${close}`);
 	} else {
 		const escapedName = escapeMarkdown(node ? `[${node.type}] ${lexeme}` : '??');
-		const deps = info.cds ? ', :may:' + info.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
+		const deps = info.controlDependencies ? ', :may:' + info.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
 		const lnks = info.link?.origin ? ', :links:' + info.link.origin.join(',') : '';
 		const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps}${lnks})\n      *${formatRange(n)}*${
@@ -207,7 +207,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		mermaid.nodeLines.push('   %% No edges found for ' + id);
 		return;
 	}
-	const artificialCdEdges = (info.cds ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False'>([x.when ? 'CD-True' : 'CD-False']) }] as const);
+	const artificialCdEdges = (info.controlDependencies ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False'>([x.when ? 'CD-True' : 'CD-False']) }] as const);
 	// eslint-disable-next-line prefer-const
 	for(let [target, edge] of [...edges[1], ...artificialCdEdges]) {
 		if(includeOnlyIds && !includeOnlyIds.has(target)) {
@@ -240,7 +240,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		}
 	}
 	if(info.tag === VertexType.FunctionDefinition) {
-		subflowToMermaid(id, info.exitPoints, info.subflow, mermaid, idPrefix);
+		subflowToMermaid(id, info.subflow, mermaid, idPrefix);
 	}
 }
 

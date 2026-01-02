@@ -177,7 +177,7 @@ export function diffVertices(ctx: GraphDiffContext): void {
 				});
 			}
 		}
-		diffControlDependencies(lInfo.cds, rInfo.cds, { ...ctx, position: `Vertex ${id} differs in controlDependencies. ` });
+		diffControlDependencies(lInfo.controlDependencies, rInfo.controlDependencies, { ...ctx, position: `Vertex ${id} differs in controlDependencies. ` });
 		if(lInfo.origin !== undefined || rInfo.origin !== undefined) {
 			// compare arrays
 			const equalArrays = lInfo.origin && rInfo.origin && arrayEqual(lInfo.origin as unknown as unknown[], rInfo.origin as unknown as unknown[]);
@@ -226,7 +226,13 @@ export function diffVertices(ctx: GraphDiffContext): void {
 			if(rInfo.tag !== VertexType.FunctionDefinition) {
 				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`, { tag: 'vertex', id });
 			} else {
-				if(!arrayEqual(lInfo.exitPoints, rInfo.exitPoints)) {
+				if(!arrayEqual(lInfo.exitPoints, rInfo.exitPoints, (a, b) => {
+					if(a.type !== b.type || a.nodeId !== b.nodeId) {
+						return false;
+					}
+					diffControlDependencies(a.controlDependencies, b.controlDependencies, { ...ctx, position: '' });
+					return true;
+				})) {
 					ctx.report.addComment(
 						`Vertex ${id} differs in exit points. ${ctx.leftname}: ${JSON.stringify(lInfo.exitPoints, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.exitPoints, jsonReplacer)}`,
 						{ tag: 'vertex', id }

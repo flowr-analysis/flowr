@@ -218,7 +218,7 @@ export function diffControlDependency<Report extends WriteableDifferenceReport>(
 		return;
 	}
 	if(a.id !== b.id) {
-		info.report.addComment(`${info.position}Different control dependency ids. ${info.leftname}: ${a.id} vs. ${info.rightname}: ${b.id}`);
+		info.report.addComment(`${info.position}Different control dependency ids. ${info.leftname}: ${JSON.stringify(a.id)} vs. ${info.rightname}: ${JSON.stringify(b.id)}`);
 	}
 	if(a.when !== b.when) {
 		info.report.addComment(`${info.position}Different control dependency when. ${info.leftname}: ${a.when} vs. ${info.rightname}: ${b.when}`);

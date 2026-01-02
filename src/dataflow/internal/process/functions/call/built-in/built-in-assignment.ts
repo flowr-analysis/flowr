@@ -9,13 +9,11 @@ import type {
 	ParentInformation,
 	RNodeWithParent
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RAstNodeBase, Location, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import type { Location, RAstNodeBase, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import type {
-	EmptyArgument,
-	RFunctionArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { type NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import {
@@ -73,6 +71,11 @@ export interface AssignmentConfiguration extends ForceArguments {
 	readonly mayHaveMoreArgs?:     boolean
 }
 
+export interface ExtendedAssignmentConfiguration extends AssignmentConfiguration {
+	readonly source: { idx?: number, name: string};
+	readonly target: { idx?: number, name: string};
+}
+
 function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): RSymbol<OtherInfo & ParentInformation> | undefined {
 	let current = node;
 	while(current.type === RType.Access) {
@@ -122,6 +125,42 @@ function tryReplacementPassingIndices<OtherInfo>(
 
 	markAsOnlyBuiltIn(info.graph, functionName.info.id);
 	return info;
+}
+
+/**
+ * In contrast to `processAssignment`, this function allows more flexible handling of assignment-like functions.
+ */
+export function processAssignmentLike<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	/* we expect them to be ordered in the sense that we have (source, target): `<source> <- <target>` */
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: ExtendedAssignmentConfiguration
+): DataflowInformation {
+	const argsWithNames = new Map<string, RFunctionArgument<OtherInfo & ParentInformation>>();
+	const argsWithoutNames: RFunctionArgument<OtherInfo & ParentInformation>[] = [];
+	for(const arg of args) {
+		const name = arg !== EmptyArgument ? arg.name?.content : undefined;
+		if(name !== undefined) {
+			argsWithNames.set(name, arg);
+		} else {
+			argsWithoutNames.push(arg);
+		}
+	}
+	const source = argsWithNames.get(config.source.name) ?? (config.source.idx !== undefined ? argsWithoutNames[config.source.idx] : undefined);
+	const target = argsWithNames.get(config.target.name) ?? (config.target.idx !== undefined ? argsWithoutNames[config.target.idx] : undefined);
+	if(source && target) {
+		args = [target, source];
+	}
+
+	return processAssignment<OtherInfo>(
+		name,
+		args,
+		rootId,
+		data,
+		{ ...config, mayHaveMoreArgs: true }
+	);
 }
 
 /**

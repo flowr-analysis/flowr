@@ -910,5 +910,37 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				.constant(1, undefined, false)
 				.reads(6, 0)
 		);
+
+		describe('S4 assign/get', () => {
+			for(const fn of ['setGeneric', 'setValidity']) {
+				assertDataflow(label(fn, ['oop-s4', 'strings', 'implicit-return', 'normal-definition', 'newlines', 'call-normal', 'numbers']),
+					shell, `${fn}("a", function() 1)
+a()`, emptyGraph()
+						.call(9, 'a', [], {
+							returns:     [3],
+							reads:       [1],
+							environment: defaultEnv().defineFunction('a', 1, 7)
+						})
+						.calls(9, 5)
+						.defineVariable(1, '"a"', { definedBy: [7, 5] })
+						.call(7, fn, [argumentInCall(1), argumentInCall(5)], {
+							returns:     [1],
+							onlyBuiltIn: true,
+							reads:       [builtInId(fn), 5],
+							origin:      ['builtin:assignment']
+						})
+						.calls(7, builtInId(fn))
+						.defineFunction(5, [3], {
+							entryPoint:        5,
+							environment:       defaultEnv().pushEnv(),
+							graph:             new Set([3]),
+							in:                [{ nodeId: 3, name: undefined, controlDependencies: [], type: ReferenceType.Constant }],
+							out:               [],
+							unknownReferences: []
+						})
+						.constant(3, undefined, false)
+				);
+			}
+		});
 	});
 }));

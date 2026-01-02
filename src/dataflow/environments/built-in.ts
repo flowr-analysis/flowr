@@ -3,7 +3,10 @@ import type { DataflowInformation, ExitPoint, ExitPointType } from '../info';
 import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling';
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access';
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else';
-import { processAssignment } from '../internal/process/functions/call/built-in/built-in-assignment';
+import {
+	processAssignment,
+	processAssignmentLike
+} from '../internal/process/functions/call/built-in/built-in-assignment';
 import { processSpecialBinOp } from '../internal/process/functions/call/built-in/built-in-special-bin-op';
 import { processPipe } from '../internal/process/functions/call/built-in/built-in-pipe';
 import { processForLoop } from '../internal/process/functions/call/built-in/built-in-for-loop';
@@ -190,6 +193,7 @@ export const BuiltInProcessorMapper = {
 	'builtin:access':              processAccess,
 	'builtin:apply':               processApply,
 	'builtin:assignment':          processAssignment,
+	'builtin:assignment-like':     processAssignmentLike,
 	'builtin:default':             defaultBuiltInProcessor,
 	'builtin:eval':                processEvalCall,
 	'builtin:expression-list':     processExpressionList,

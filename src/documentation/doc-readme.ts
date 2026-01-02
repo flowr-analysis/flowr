@@ -203,7 +203,7 @@ The following showcases the dependency view of the [Visual Studio Code extension
 
 ![Dependency Analysis](https://raw.githubusercontent.com/flowr-analysis/vscode-flowr/refs/heads/main/media/dependencies.png)
   
-  `), '    ')}
+  `), '    ')} 
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\\
   Within just [${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"social-science" Benchmark Suite (tree-sitter)'), 1) + ' ms', 'This measurement is automatically fetched from the latest benchmark!') + '</i>'} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)})](${FlowrSiteBaseRef}/wiki/stats/benchmark), 

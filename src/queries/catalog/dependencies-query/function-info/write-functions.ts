@@ -18,7 +18,7 @@ export const WriteFunctions: FunctionInfo[] = [
 		package:        'base',
 		name:           'try',
 		linkTo:         OutputRedirects,
-		argIdx:         3,
+		argIdx:         2,
 		argName:        'outFile',
 		resolveValue:   true,
 		defaultValue:   'stderr',

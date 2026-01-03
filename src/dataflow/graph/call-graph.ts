@@ -62,9 +62,9 @@ export function computeCallGraph(graph: DataflowGraph): CallGraph {
 		knownReachability: new DefaultMap(() => new Set())
 	};
 	for(const [,vert] of graph.vertices(false)) {
-		if(vert?.tag === VertexType.FunctionCall) {
+		if(vert.tag === VertexType.FunctionCall) {
 			processCall(vert, undefined, graph, result, state);
-		} else if(vert?.tag === VertexType.FunctionDefinition) {
+		} else if(vert.tag === VertexType.FunctionDefinition) {
 			processFunctionDefinition(vert, undefined, graph, result, state);
 		}
 	}
@@ -95,6 +95,9 @@ function processCds(vtx: DataflowGraphVertexInfo, graph: DataflowGraph, result: 
 	}
 }
 
+const UntargetedCallFollow = EdgeType.Reads | EdgeType.DefinedByOnCall | EdgeType.DefinedBy | EdgeType.Returns;
+const UntargetedCallAvoid = EdgeType.NonStandardEvaluation | EdgeType.Argument;
+
 /**
  * This tracks the known symbol origins for a function call for which we know that flowr found no targets!
  */
@@ -116,7 +119,7 @@ function fallbackUntargetedCall(vtx: Required<DataflowGraphVertexFunctionCall>, 
 		}
 		let addedNew = false;
 		for(const [tar, { types }] of graph.outgoingEdges(currentId) ?? []) {
-			if(edgeIncludesType(types, EdgeType.Reads | EdgeType.DefinedByOnCall | EdgeType.DefinedBy | EdgeType.Returns) && edgeDoesNotIncludeType(types, EdgeType.NonStandardEvaluation | EdgeType.Argument)) {
+			if(edgeIncludesType(types, UntargetedCallFollow) && edgeDoesNotIncludeType(types, UntargetedCallAvoid)) {
 				addedNew = true;
 				toVisit.push(tar);
 			}

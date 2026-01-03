@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1766529237094,
+  "lastUpdate": 1767478623377,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -9453,6 +9453,116 @@ window.BENCHMARK_DATA = {
             "name": "memory (df-graph)",
             "value": 117.68869850852273,
             "range": "301.0391208122946",
+            "unit": "KiB",
+            "extra": "median: 34.18"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "e31adf1f97c0d6086d52d8e0b2839eefeb8eca5c",
+          "message": "[release:minor] 2.8.0 Call-Graphs, Roxygen 2 Support, Many Plugins, Registrations, Exceptions and Hooks",
+          "timestamp": "2026-01-03T22:59:25+01:00",
+          "tree_id": "352f59ea06cc313f58abb4295c602797c49f107a",
+          "url": "https://github.com/flowr-analysis/flowr/commit/e31adf1f97c0d6086d52d8e0b2839eefeb8eca5c"
+        },
+        "date": 1767478623369,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 246.37688495454546,
+            "range": "108.01781992697524",
+            "unit": "ms",
+            "extra": "median: 215.77ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 19.322312227272725,
+            "range": "32.71729253463986",
+            "unit": "ms",
+            "extra": "median: 10.42ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 48.98087240909091,
+            "range": "90.8025053154274",
+            "unit": "ms",
+            "extra": "median: 27.80ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 708.9325477272728,
+            "range": "1308.355033808945",
+            "unit": "ms",
+            "extra": "median: 318.70ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 9.290041045454545,
+            "range": "21.55389275670168",
+            "unit": "ms",
+            "extra": "median: 3.02ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.5176167594493881,
+            "range": "0.5396828594927694",
+            "unit": "ms",
+            "extra": "median: 0.23ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.25725976634969505,
+            "range": "0.19608335549740913",
+            "unit": "ms",
+            "extra": "median: 0.14ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 0.7924369664667342,
+            "range": "0.697469327899471",
+            "unit": "ms",
+            "extra": "median: 0.46ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7801660063880064,
+            "unit": "#",
+            "extra": "std: 0.1261285782699485"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7575735855163274,
+            "unit": "#",
+            "extra": "std: 0.12942676908005035"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 119.32293146306819,
+            "range": "305.20520739372563",
             "unit": "KiB",
             "extra": "median: 34.18"
           }

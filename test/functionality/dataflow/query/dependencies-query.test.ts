@@ -319,6 +319,15 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		testQuery('single write (variable)', 'u <- "test.csv"; write.csv(data, file=u)', { write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'test.csv' }] });
 
+		describe('try with outfile', () => {
+			testQuery('unconfigured', 'try(u)', { write: [{ nodeId: '1@try', functionName: 'try', value: 'stderr' }] });
+			testQuery('with outfile', 'try(u, outFile="myfile.txt")', { write: [{ nodeId: '1@try', functionName: 'try', value: 'myfile.txt' }] });
+			testQuery('unconfigured, with silent', 'try(u, silent=TRUE)', { write: [] });
+			testQuery('unconfigured, with implicit silent', 'try(u, TRUE)', { write: [] });
+			testQuery('with outfile and silent', 'try(u, outFile="myfile.txt", silent=TRUE)', { write: [] });
+			testQuery('with outfile and silent b', 'try(u, silent=TRUE, outFile="myfile.txt")', { write: [] });
+		});
+
 		describe('Custom', () => {
 			const writeCustomFile: Partial<DependenciesQuery> = {
 				writeFunctions: [{ name: 'write.custom.file', argIdx: 1, argName: 'file' }]

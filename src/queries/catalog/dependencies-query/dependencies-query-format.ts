@@ -23,6 +23,7 @@ export const Unknown = 'unknown';
 export interface DependencyCategorySettings {
     queryDisplayName?:   string
     functions:           FunctionInfo[]
+	/** this describes the global default value for this category, e.g., 'stdout' for write operations, please be aware, that this can be overwritten by a by-function default value */
     defaultValue?:       string
     additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => AsyncOrSync<void>
 }

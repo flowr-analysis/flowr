@@ -20,12 +20,18 @@ export interface FunctionArgInfo {
     resolveValue?: boolean | 'library'
 }
 
-export interface FunctionInfo extends FunctionArgInfo{
+/** Describes a function that may create a dependency */
+export interface FunctionInfo extends FunctionArgInfo {
+    /** Which package does the function belong to */
     package?:        string
+    /** The name of the function */
     name:            string
+    /** links to other function calls to get the dependency from there (e.g., with `sink` for `print`) */
     linkTo?:         DependencyInfoLink[]
-    // the function is not to be counted as a dependency if the argument is missing
-    ignoreIf?:       'arg-missing' | 'mode-only-read' | 'mode-only-write',
+    /** default value for the argument if no binding value is found, please be aware, that categories can define global defaults, these are overwritten by the per-function defaults */
+    defaultValue?:   string
+    /** the function is not to be counted as a dependency if the argument is missing */
+    ignoreIf?:       'arg-missing' | 'mode-only-read' | 'mode-only-write' | 'arg-true' | 'arg-false',
     /** additional info on arguments - e.g. for the mode flag */
     additionalArgs?: Record<string, FunctionArgInfo>
 }

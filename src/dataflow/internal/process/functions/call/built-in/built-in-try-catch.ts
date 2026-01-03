@@ -1,6 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation, ExitPoint } from '../../../../../info';
-import { happensInEveryBranch ,  ExitPointType } from '../../../../../info';
+import { ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
@@ -17,6 +17,7 @@ import { tryUnpackNoNameArg } from '../argument/unpack-argument';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { isUndefined } from '../../../../../../util/assert';
+import { EdgeType } from '../../../../../graph/edge';
 
 
 function getArgsOfName(argMaps: Map<NodeId, string>, name: string): Set<NodeId> {
@@ -72,7 +73,12 @@ export function processTryCatch<OtherInfo>(
 		}
 		// this calls error and finally args
 		if(finallyArg.has(arg.entryPoint)) {
-			return handleFdefAsCalled(arg.entryPoint, info.graph, arg.exitPoints, undefined);
+			const exits = handleFdefAsCalled(arg.entryPoint, info.graph, arg.exitPoints, undefined);
+			for(const e of exits) {
+				// TODO: handle dead code here!
+				info.graph.addEdge(rootId, e.nodeId, EdgeType.Returns);
+			}
+			return exits;
 		} else if(errorArg.has(arg.entryPoint)) {
 			errorExitPoints.push(...getExitPoints(info.graph.getVertex(arg.entryPoint), info.graph) ?? []);
 		}
@@ -90,7 +96,6 @@ export function processTryCatch<OtherInfo>(
 			(info.exitPoints as ExitPoint[]).push(...constrainExitPoints(errorExitPoints, blockArg));
 		}
 	}
-
 	return info;
 }
 

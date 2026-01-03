@@ -48,6 +48,7 @@ import { executeFileQuery } from '../queries/catalog/files-query/files-query-exe
 import { executeCallGraphQuery } from '../queries/catalog/call-graph-query/call-graph-query-executor';
 import { executeRecursionQuery } from '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor';
 import { executeDoesCallQuery } from '../queries/catalog/does-call-query/does-call-query-executor';
+import { executeExceptionQuery } from '../queries/catalog/inspect-exceptions-query/inspect-exception-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -372,6 +373,39 @@ ${
 		`;
 	}
 });
+
+registerQueryDocumentation('inspect-exception', {
+	name:             'Inspect Exceptions of Functions Query',
+	type:             'active',
+	shortDescription: 'Determine whether functions throw exceptions (known to flowR)',
+	functionName:     executeExceptionQuery.name,
+	functionFile:     '../queries/catalog/inspect-exceptions-query/inspect-exception-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = `mayFail <- function(x) {
+  if(x < 0) stop("Negative value!")
+  else sqrt(x)
+}
+safeFail <- function(x) {
+  tryCatch(
+    mayFail(x),
+    error = function(e) { NA }
+  )
+}`;
+		return `
+With this query you can identify which functions in the code throw exceptions (known to flowR).
+
+Using the following example code:
+${codeBlock('r', exampleCode)}
+the following query returns the information for all identified function definitions whether they throw exceptions:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'inspect-exception',
+	}], { showCode: true, collapseQuery: true })
+}
+		`;
+	}
+});
+
 
 registerQueryDocumentation('origin', {
 	name:             'Origin Query',

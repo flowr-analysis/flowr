@@ -96,6 +96,7 @@ export interface QueryDocumentation {
 	readonly type:             'virtual' | 'active';
 	readonly shortDescription: string;
 	readonly functionName:     string;
+	/** Path to the file implementing the query function, the wiki generation will fail if this isnt found */
 	readonly functionFile:     string;
 	readonly buildExplanation: (shell: RShell, ctx: GeneralDocContext) => Promise<string>;
 }

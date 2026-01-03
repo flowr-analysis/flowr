@@ -57,7 +57,7 @@ export const InspectExceptionQueryDefinition = {
 			return n.idMap.get(normalizeIdToNumberIfPossible(r))?.lexeme ?? String(r);
 		}
 		for(const [r, v] of Object.entries(out.exceptions)) {
-			result.push(`  - Function ${bold(r, formatter)} (${formatRange(getLoc(r))}) ${v.length > 0 ? 'throws exceptions at functions:' : 'does not throw exceptions.'}`);
+			result.push(`  - Function ${bold(r, formatter)} (${formatRange(getLoc(r))}) ${v.length > 0 ? 'throws exceptions:' : 'does not throw exceptions.'}`);
 			for(const { id: ex, cds } of v) {
 				result.push(`      - Exception ${happensInEveryBranch(cds) ? 'always ' : 'maybe '}thrown at id ${bold(String(ex), formatter)} "${getLexeme(ex)}" (${formatRange(getLoc(ex))}, cds: ${cds?.map(c => c.when + ':' + formatRange(getLoc(c.id))).join(', ') ?? 'none'})`);
 			}

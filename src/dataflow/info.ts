@@ -103,9 +103,12 @@ export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: Co
 /**
  * Overwrites the existing exit points with the given ones, taking care of cds.
  */
-export function overwriteExitPoints(existing: ExitPoint[], replace: ExitPoint[]): ExitPoint[] {
-	//TODO: handle cds
-	return replace;
+export function overwriteExitPoints(existing: readonly ExitPoint[], replace: ExitPoint[]): ExitPoint[] {
+	const replaceCds = replace.flatMap(e => e.controlDependencies);
+	if(replaceCds.length === 0 || replaceCds.some(r => r === undefined) || happensInEveryBranch(replaceCds.filter(e => e !== undefined))) {
+		return replace;
+	}
+	return existing.concat(replace);
 }
 
 /** The control flow information for the current DataflowInformation. */

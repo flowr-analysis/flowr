@@ -98,6 +98,7 @@ export function processEvalCall<OtherInfo>(
 			in:                information.in.concat(result.flatMap(r => r.in)),
 			unknownReferences: information.unknownReferences.concat(result.flatMap(r => r.unknownReferences)),
 			exitPoints:        information.exitPoints.concat(result.flatMap(r => r.exitPoints)),
+			hooks:             information.hooks.concat(result.flatMap(r => r.hooks)),
 		};
 	}
 

@@ -50,6 +50,7 @@ import type {
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { processStopIfNot } from '../internal/process/functions/call/built-in/built-in-stop-if-not';
 import { processTryCatch } from '../internal/process/functions/call/built-in/built-in-try-catch';
+import { processRegisterHook } from '../internal/process/functions/call/built-in/built-in-register-hook';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -205,6 +206,7 @@ export const BuiltInProcessorMapper = {
 	'builtin:list':                processList,
 	'builtin:pipe':                processPipe,
 	'builtin:quote':               processQuote,
+	'builtin:register-hook':       processRegisterHook,
 	'builtin:repeat-loop':         processRepeatLoop,
 	'builtin:replacement':         processReplacementFunction,
 	'builtin:rm':                  processRm,

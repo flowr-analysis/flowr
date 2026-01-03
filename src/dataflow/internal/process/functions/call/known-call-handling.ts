@@ -103,7 +103,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		/* will be overwritten accordingly */
 		onlyBuiltin:         false,
 		controlDependencies: data.controlDependencies,
-		args:                reverseOrder ? callArgs.reverse() : callArgs,
+		args:                reverseOrder ? callArgs.toReversed() : callArgs,
 		indicesCollection:   indicesCollection,
 		origin:              origin === 'default' ? ['function'] : [origin]
 	}, data.ctx.env.makeCleanEnv());
@@ -149,7 +149,8 @@ export function processKnownFunctionCall<OtherInfo>(
 			graph:             finalGraph,
 			environment:       finalEnv,
 			entryPoint:        rootId,
-			exitPoints:        exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
+			exitPoints:        exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }],
+			hooks:             functionName.hooks
 		},
 		callArgs,
 		processedArguments: reverseOrder ? processedArguments.reverse() : processedArguments,

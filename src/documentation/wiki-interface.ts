@@ -162,6 +162,13 @@ ${await documentReplSession(parser, [{
 	description: `Retrieve the dataflow graph of the expression \`y <- 1 + x\`. It looks like this:\n${await printDfGraphForCode(parser, 'y <- 1 + x')}`
 }])}
 
+For small graphs like this, ${ctx.replCmd('dataflowascii')} also provides an ASCII representation directly in the REPL:
+
+${await documentReplSession(parser, [{
+	command:     ':df! y <- 1 + x',
+	description: 'Retrieve the dataflow graph of the expression `y <- 1 + x` as ASCII art.'
+}], { openOutput: true })}
+
 For the slicing with ${ctx.replCmd('slicer')}, you have access to the same [magic comments](#slice-magic-comments) as with the [slice request](#message-request-slice).
 
 ### Example: Interfacing with the File System

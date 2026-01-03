@@ -65,6 +65,13 @@ export function rangeFrom(sl: number | string, sc: number | string, el: number |
 }
 
 /**
+ * @returns an invalid source range
+ */
+export function invalidRange(): SourceRange {
+	return [-1, -1, -1, -1];
+}
+
+/**
  * Merges multiple source ranges into a single source range that spans from the earliest start to the latest end.
  * If you are interested in combining overlapping ranges into a minimal set of ranges, see {@link combineRanges}.
  * @throws if no ranges are provided

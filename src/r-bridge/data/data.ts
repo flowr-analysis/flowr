@@ -658,7 +658,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 				{
 					name:        'Hooks',
 					id:          'hooks',
-					supported:   'not',
+					supported:   'partially',
 					description: '_Handle hooks like [`userhooks`](https://stat.ethz.ch/R-manual/R-devel/library/base/html/userhooks.html) and [`on.exit`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/on.exit)._ We do not support hooks.'
 				},
 				{

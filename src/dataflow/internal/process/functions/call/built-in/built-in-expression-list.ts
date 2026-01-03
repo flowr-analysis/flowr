@@ -240,6 +240,7 @@ export function processExpressionList<OtherInfo>(
 		graph:             nextGraph,
 		/* if we have no group, we take the last evaluated expr */
 		entryPoint:        meId,
-		exitPoints:        exitPoints
+		exitPoints:        exitPoints,
+		hooks:             processedExpressions.flatMap(p => p?.hooks ?? []),
 	};
 }

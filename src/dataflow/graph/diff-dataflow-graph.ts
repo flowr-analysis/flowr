@@ -10,6 +10,7 @@ import { diffEnvironmentInformation, diffIdentifierReferences } from '../environ
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { diffControlDependencies } from '../info';
 import { type GraphDiffContext, type NamedGraph , initDiffContext, GraphDifferenceReport } from '../../util/diff-graph';
+import type { HookInformation } from '../hooks';
 
 /**
  * Compare two dataflow graphs and return a report on the differences.
@@ -267,6 +268,7 @@ export function diffVertices(ctx: GraphDiffContext): void {
 					...ctx,
 					position: `${ctx.position}Vertex ${id} differs in subflow *unknown* refs. `
 				});
+				diffHooks(lInfo.subflow.hooks, rInfo.subflow.hooks, ctx, id);
 			}
 		}
 	}
@@ -311,7 +313,7 @@ function diffReferenceLists(fn: NodeId, a: readonly IdentifierReference[] | read
 	}
 	if(a.length !== b.length) {
 		ctx.report.addComment(
-			`${ctx.position}Differs in number of references. ${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`,
+			`${ctx.position}Differs in number of references.\n   - ${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs\n   - ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`,
 			{ tag: 'vertex', id: fn }
 		);
 		return;
@@ -323,6 +325,32 @@ function diffReferenceLists(fn: NodeId, a: readonly IdentifierReference[] | read
 			...ctx,
 			position: `${ctx.position}In reference #${i} ("${aSorted[i].name ?? '?'}", id: ${aSorted[i].nodeId ?? '?'}) `,
 		});
+	}
+}
+
+function diffHooks(left: HookInformation[], right: HookInformation[], ctx: GraphDiffContext, id: NodeId): void {
+	// compare length
+	if(left.length !== right.length) {
+		ctx.report.addComment(`Differs in number of hooks. ${ctx.leftname}: ${JSON.stringify(left, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(right, jsonReplacer)}`, { tag: 'vertex', id });
+		return;
+	}
+	// compare each hook
+	for(let i = 0; i < left.length; ++i) {
+		const lHook = left[i];
+		const rHook = right[i];
+		if(lHook.type !== rHook.type) {
+			ctx.report.addComment(`Hook #${i} differs in type. ${ctx.leftname}: ${JSON.stringify(lHook.type)} vs ${ctx.rightname}: ${JSON.stringify(rHook.type)}`, { tag: 'vertex', id });
+		}
+		if(lHook.id !== rHook.id) {
+			ctx.report.addComment(`Hook #${i} differs in id. ${ctx.leftname}: ${lHook.id} vs ${ctx.rightname}: ${rHook.id}`, { tag: 'vertex', id });
+		}
+		if(lHook.add !== rHook.add) {
+			ctx.report.addComment(`Hook #${i} differs in add. ${ctx.leftname}: ${lHook.add} vs ${ctx.rightname}: ${rHook.add}`, { tag: 'vertex', id });
+		}
+		if(lHook.after !== rHook.after) {
+			ctx.report.addComment(`Hook #${i} differs in after. ${ctx.leftname}: ${lHook.after} vs ${ctx.rightname}: ${rHook.after}`, { tag: 'vertex', id });
+		}
+		diffControlDependencies(lHook.cds, rHook.cds, { ...ctx, position: `Hook #${i} differs in control dependencies. ` });
 	}
 }
 

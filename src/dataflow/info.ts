@@ -5,6 +5,7 @@ import type { REnvironmentInformation } from './environments/environment';
 import { DataflowGraph } from './graph/graph';
 import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../util/diff';
 import { isNotUndefined } from '../util/assert';
+import type { HookInformation } from './hooks';
 
 
 /**
@@ -99,12 +100,29 @@ export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: Co
 	}
 }
 
+/**
+ * Overwrites the existing exit points with the given ones, taking care of cds.
+ */
+export function overwriteExitPoints(existing: readonly ExitPoint[], replace: ExitPoint[]): ExitPoint[] {
+	const replaceCds = replace.flatMap(e => e.controlDependencies);
+	if(replaceCds.length === 0 || replaceCds.some(r => r === undefined) || happensInEveryBranch(replaceCds.filter(e => e !== undefined))) {
+		return replace;
+	}
+	return existing.concat(replace);
+}
+
 /** The control flow information for the current DataflowInformation. */
 export interface DataflowCfgInformation {
 	/** The entry node into the subgraph */
 	entryPoint: NodeId,
-	/** All already identified exit points (active 'return'/'break'/'next'-likes) of the respective structure. */
+	/**
+	 * All already identified exit points (active 'return'/'break'/'next'-likes) of the respective structure.
+	 * This also tracks (local knowledge of) exceptions thrown within the structure.
+	 * See the {@link ExitPointType#Error|Error} type for more information.
+	 */
 	exitPoints: readonly ExitPoint[]
+	/** Registered hooks within the current subtree */
+	hooks:      HookInformation[];
 }
 
 /**
@@ -155,7 +173,8 @@ export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: 
 		environment:       data.environment,
 		graph:             new DataflowGraph(data.completeAst.idMap),
 		entryPoint,
-		exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default, controlDependencies: undefined }]
+		exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default }],
+		hooks:             []
 	};
 }
 

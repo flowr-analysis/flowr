@@ -102,6 +102,7 @@ export function processForLoop<OtherInfo>(
 		graph:             nextGraph,
 		entryPoint:        name.info.id,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
-		environment:       outEnvironment
+		environment:       outEnvironment,
+		hooks:             variable.hooks.concat(vector.hooks, body.hooks),
 	};
 }

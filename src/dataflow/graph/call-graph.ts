@@ -74,6 +74,9 @@ export function computeCallGraph(graph: DataflowGraph): CallGraph {
 				const v = graph.getVertex(to, true);
 				if(v) {
 					processUnknown(v, from, graph, result, state);
+					if(v.tag === VertexType.FunctionDefinition) {
+						processFunctionDefinition(v, from, graph, result, state);
+					}
 				}
 			} else if(!reaches(from, to, result, state.knownReachability)) {
 				result.addEdge(from, to, EdgeType.Calls);

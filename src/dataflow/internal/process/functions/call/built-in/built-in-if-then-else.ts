@@ -137,6 +137,7 @@ export function processIfThenElse<OtherInfo>(
 		exitPoints,
 		entryPoint:        rootId,
 		environment:       finalEnvironment,
-		graph:             nextGraph
+		graph:             nextGraph,
+		hooks:             cond.hooks.concat(then?.hooks ?? [], otherwise?.hooks ?? []),
 	};
 }

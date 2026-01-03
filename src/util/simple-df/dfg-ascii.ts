@@ -90,8 +90,8 @@ export function dfgToAscii(dfg: DataflowGraph): string {
 
 		g.setNode(String(id), {
 			label,
-			width:  Math.max(3, label.length*2),
-			height: 3,
+			width:  Math.max(3, label.length*1.2),
+			height: 4,
 			shape:  'rectangle'
 		});
 	}

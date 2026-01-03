@@ -1,5 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { type DataflowInformation, ExitPointType } from '../../../../../info';
+import { type DataflowInformation, ExitPointType, overwriteExitPoints } from '../../../../../info';
 import {
 	getAllFunctionCallTargets,
 	linkCircularRedefinitionsWithinALoop,
@@ -29,6 +29,7 @@ import { expensiveTrace } from '../../../../../../util/log';
 import { isBuiltIn } from '../../../../../environments/built-in';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
@@ -47,7 +48,7 @@ export function processFunctionDefinition<OtherInfo>(
 	/* we remove the last argument, as it is the body */
 	const parameters = args.slice(0, -1);
 	const bodyArg = unpackNonameArg(args[args.length - 1]);
-	guard(bodyArg !== undefined, () => `Function Definition ${JSON.stringify(args)} has missing body! This is bad!`);
+	guard(bodyArg !== undefined, () => `Function Definition ${JSON.stringify(args)} has no body! This is bad!`);
 
 	const originalEnvironment = data.environment;
 	// within a function def we do not pass on the outer binds as they could be overwritten when called
@@ -110,13 +111,17 @@ export function processFunctionDefinition<OtherInfo>(
 		}
 	}
 
+	const compactedHooks = compactHookStates(body.hooks);
+	const exitHooks = getHookInformation(compactedHooks, KnownHooks.OnFnExit);
+
 	const flow: DataflowFunctionFlowInformation = {
 		unknownReferences: [],
 		in:                remainingRead,
 		out:               [],
 		entryPoint:        body.entryPoint,
 		graph:             new Set(subgraph.rootIds()),
-		environment:       outEnvironment
+		environment:       outEnvironment,
+		hooks:             compactedHooks
 	};
 
 	updateNestedFunctionClosures(subgraph, outEnvironment, name.info.id);
@@ -128,6 +133,20 @@ export function processFunctionDefinition<OtherInfo>(
 		readParams[paramId] = ingoing?.values().some(({ types }) => edgeIncludesType(types, EdgeType.Reads)) ?? false;
 	}
 
+	let afterHookExitPoints = exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default || e.type === ExitPointType.Error) ?? [];
+	for(const hook of exitHooks) {
+		const vert = subgraph.getVertex(hook.id);
+		if(vert?.tag !== VertexType.FunctionDefinition) {
+			continue;
+		}
+		// call all hooks
+		subgraph.addEdge(rootId, hook.id, EdgeType.Calls);
+		const hookExitPoints = vert.exitPoints.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Error);
+		if(hookExitPoints.length > 0) {
+			afterHookExitPoints = overwriteExitPoints(afterHookExitPoints, hookExitPoints);
+		}
+	}
+
 	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false);
 	graph.addVertex({
 		tag:                 VertexType.FunctionDefinition,
@@ -136,8 +155,9 @@ export function processFunctionDefinition<OtherInfo>(
 		controlDependencies: data.controlDependencies,
 		params:              readParams,
 		subflow:             flow,
-		exitPoints:          exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default || e.type === ExitPointType.Error) ?? []
+		exitPoints:          afterHookExitPoints
 	}, data.ctx.env.makeCleanEnv());
+
 	return {
 		/* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */
 		unknownReferences: [],
@@ -146,15 +166,17 @@ export function processFunctionDefinition<OtherInfo>(
 		exitPoints:        [],
 		entryPoint:        name.info.id,
 		graph,
-		environment:       originalEnvironment
+		environment:       originalEnvironment,
+		hooks:             []
 	};
 }
 
-// this is no longer necessary when we update environments to be back to front (e.g., with a list of environments)
-// this favors the bigger environment
-
 /**
- *
+ * Retrieve the active environment when entering a function definition or call
+ * @param callerEnvironment - environment at the call site / function definition site
+ * @param baseEnvironment   - base environment within the function definition / call
+ * @param ctx               - analyzer context
+ * @returns active environment within the function definition / call
  */
 export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext): REnvironmentInformation {
 	callerEnvironment ??= ctx.env.makeCleanEnv();

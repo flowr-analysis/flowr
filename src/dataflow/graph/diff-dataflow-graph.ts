@@ -313,7 +313,7 @@ function diffReferenceLists(fn: NodeId, a: readonly IdentifierReference[] | read
 	}
 	if(a.length !== b.length) {
 		ctx.report.addComment(
-			`${ctx.position}Differs in number of references. ${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`,
+			`${ctx.position}Differs in number of references.\n   - ${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs\n   - ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`,
 			{ tag: 'vertex', id: fn }
 		);
 		return;
@@ -343,6 +343,12 @@ function diffHooks(left: HookInformation[], right: HookInformation[], ctx: Graph
 		}
 		if(lHook.id !== rHook.id) {
 			ctx.report.addComment(`Hook #${i} differs in id. ${ctx.leftname}: ${lHook.id} vs ${ctx.rightname}: ${rHook.id}`, { tag: 'vertex', id });
+		}
+		if(lHook.add !== rHook.add) {
+			ctx.report.addComment(`Hook #${i} differs in add. ${ctx.leftname}: ${lHook.add} vs ${ctx.rightname}: ${rHook.add}`, { tag: 'vertex', id });
+		}
+		if(lHook.after !== rHook.after) {
+			ctx.report.addComment(`Hook #${i} differs in after. ${ctx.leftname}: ${lHook.after} vs ${ctx.rightname}: ${rHook.after}`, { tag: 'vertex', id });
 		}
 		diffControlDependencies(lHook.cds, rHook.cds, { ...ctx, position: `Hook #${i} differs in control dependencies. ` });
 	}

@@ -1,5 +1,7 @@
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from './info';
+import { happensInEveryBranch } from './info';
+import { DefaultMap } from '../util/collections/defaultmap';
 
 export enum KnownHooks {
 	/** Triggers on the exit of a function, no matter how this exit is enforced. */
@@ -11,37 +13,41 @@ export enum KnownHooks {
  */
 export interface HookInformation {
 	/** The type of the hook */
-	type: KnownHooks,
+	type:   KnownHooks,
 	/** The id of the function definition which is added by the hook */
-	id:   NodeId,
+	id:     NodeId,
 	/** Control dependencies under which the hook was registered */
-	cds?: ControlDependency[]
-	// TODO: handle add and after
+	cds?:   ControlDependency[],
+	/** Whether the hook is added on top of existing ones (true) or replaces them (false) */
+	add?:   boolean,
+	/** Whether the hook is executed after existing ones (true) or before (false) */
+	after?: boolean
 }
 
 
 /**
- * Compacts a list of hook registrations by removing redundant ones.
+ * Compacts a list of hook registrations by removing redundant and dominated ones.
  */
 export function compactHookStates(hooks: HookInformation[]): HookInformation[] {
-	// TODO: handle add and after, for now only take the last one of each type
-	const seen = new Set<KnownHooks>();
-	const result: HookInformation[] = [];
-	for(let i = hooks.length - 1; i >= 0; i--) {
-		const hook = hooks[i];
-		if(!seen.has(hook.type)) {
-			seen.add(hook.type);
-			result.push(hook);
+	const hooksByType: DefaultMap<KnownHooks, HookInformation[]> = new DefaultMap(() => []);
+	for(const hook of hooks) {
+		if(!hook.add && happensInEveryBranch(hook.cds)) {
+			hooksByType.set(hook.type, [hook]);
+		} else if(hook.after) {
+			hooksByType.get(hook.type).push(hook);
+		} else {
+			hooksByType.get(hook.type).unshift(hook);
 		}
 	}
-	return result.reverse();
+
+	return hooksByType.values().flatMap(f => f).toArray();
 }
 
 /**
  * Extracts all hooks of the given type from the list of hooks.
+ * Please consider {@link compactHookStates} to remove redundant or dominated hooks first.
  */
 export function getHookInformation(hooks: HookInformation[], type: KnownHooks): HookInformation[] {
-	// TODO: consider cds, add, and after
 	return hooks.filter(h => h.type === type);
 }
 

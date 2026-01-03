@@ -16,6 +16,9 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { invalidRange } from '../../../../../../util/range';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { HookInformation, KnownHooks } from '../../../../../hooks';
+import type { ResolveInfo } from '../../../../../eval/resolve/alias-tracking';
+import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { valueSetGuard } from '../../../../../eval/values/general';
 
 export interface RegisterHookConfig {
 	/** name of the hook to register, 'fn-exit' if it triggers on exit */
@@ -97,12 +100,28 @@ export function processRegisterHook<OtherInfo>(
 	// TODO addIds and argIds
 
 	const res = processKnownFunctionCall({ name, args: transformed, rootId, data, origin: 'builtin:register-hook' });
+	const resolveArgs: ResolveInfo = {
+		graph:       res.information.graph,
+		environment: res.information.environment,
+		resolve:     data.ctx.config.solver.variables,
+		ctx:         data.ctx,
+		idMap:       data.completeAst.idMap,
+		full:        true
+	};
+	const shouldAdd = addIds.size === 0 ? config.args.add?.default :
+		Array.from(addIds).flatMap(id => valueSetGuard(resolveIdToValue(id, resolveArgs))?.elements ?? [])
+			.some(v => v.type === 'logical' && v.value !== false);
+	const shouldBeAfter = afterIds.size === 0 ? config.args.after?.default :
+		Array.from(afterIds).flatMap(id => valueSetGuard(resolveIdToValue(id, resolveArgs))?.elements ?? [])
+			.some(v => v.type === 'logical' && v.value !== false);
 
 	const info = res.information;
 	const hooks: HookInformation[] = Array.from(wrappedFunctions, id => ({
-		type: config.hook,
+		type:  config.hook,
 		id,
-		cds:  data.controlDependencies
+		cds:   data.controlDependencies,
+		add:   shouldAdd,
+		after: shouldBeAfter
 	}));
 
 	info.hooks.push(...hooks);

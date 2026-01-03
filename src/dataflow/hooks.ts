@@ -41,6 +41,7 @@ export function compactHookStates(hooks: HookInformation[]): HookInformation[] {
  * Extracts all hooks of the given type from the list of hooks.
  */
 export function extractHookInformation(hooks: HookInformation[], type: KnownHooks): [extract: HookInformation[], rest: HookInformation[]] {
+	// TODO: consider cds, add, and after
 	const extract: HookInformation[] = [];
 	const rest: HookInformation[] = [];
 	for(const hook of hooks) {
@@ -52,3 +53,4 @@ export function extractHookInformation(hooks: HookInformation[], type: KnownHook
 	}
 	return [extract, rest];
 }
+

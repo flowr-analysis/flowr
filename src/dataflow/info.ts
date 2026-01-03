@@ -100,6 +100,14 @@ export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: Co
 	}
 }
 
+/**
+ * Overwrites the existing exit points with the given ones, taking care of cds.
+ */
+export function overwriteExitPoints(existing: ExitPoint[], replace: ExitPoint[]): ExitPoint[] {
+	//TODO: handle cds
+	return replace;
+}
+
 /** The control flow information for the current DataflowInformation. */
 export interface DataflowCfgInformation {
 	/** The entry node into the subgraph */

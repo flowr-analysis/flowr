@@ -1,5 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { type DataflowInformation, ExitPointType } from '../../../../../info';
+import { type DataflowInformation, ExitPointType, overwriteExitPoints } from '../../../../../info';
 import {
 	getAllFunctionCallTargets,
 	linkCircularRedefinitionsWithinALoop,
@@ -134,6 +134,20 @@ export function processFunctionDefinition<OtherInfo>(
 	}
 
 	console.log('About to apply', exitHooks);
+	let afterHookExitPoints = exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default || e.type === ExitPointType.Error) ?? [];
+	for(const hook of exitHooks) {
+		const vert = subgraph.getVertex(hook.id);
+		if(vert?.tag !== VertexType.FunctionDefinition) {
+			continue;
+		}
+		// call all hooks
+		console.log('At hook', hook);
+		subgraph.addEdge(rootId, hook.id, EdgeType.Calls);
+		const hookExitPoints = vert.exitPoints.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Error);
+		if(hookExitPoints.length > 0) {
+			afterHookExitPoints = overwriteExitPoints(afterHookExitPoints, hookExitPoints);
+		}
+	}
 	// TODO: these can overwrit ethe exit point
 
 	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false);
@@ -144,8 +158,9 @@ export function processFunctionDefinition<OtherInfo>(
 		controlDependencies: data.controlDependencies,
 		params:              readParams,
 		subflow:             flow,
-		exitPoints:          exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default || e.type === ExitPointType.Error) ?? []
+		exitPoints:          afterHookExitPoints
 	}, data.ctx.env.makeCleanEnv());
+
 	return {
 		/* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */
 		unknownReferences: [],

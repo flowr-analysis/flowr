@@ -71,16 +71,16 @@ export interface IdentifierReference {
 	/**
 	 * The id of the node which represents the reference in the {@link NormalizedAst|normalized AST} and the {@link DataflowGraph|dataflow graph}.
 	 */
-	readonly nodeId:     NodeId
+	readonly nodeId:      NodeId
 	/** Name the reference is identified by (e.g., the name of the variable), undefined if the reference is "artificial" (e.g., anonymous) */
-	readonly name:       Identifier | undefined
+	readonly name:        Identifier | undefined
 	/** Type of the reference to be resolved */
-	readonly type:       ReferenceType;
+	readonly type:        ReferenceType;
 	/**
 	 * If the reference is only effective, if, for example, an if-then-else condition is true, this references the root of the `if`.
 	 * As a hacky intermediate solution (until we have pointer-analysis), an empty array may indicate a `maybe` which is due to pointer access (e.g., in `a[x] <- 3`).
 	 */
-	controlDependencies: ControlDependency[] | undefined
+	controlDependencies?: ControlDependency[] | undefined
 }
 
 /**

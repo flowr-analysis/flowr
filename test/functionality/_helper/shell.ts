@@ -30,7 +30,7 @@ import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mer
 import {
 	type SingleSlicingCriterion,
 	type SlicingCriteria,
-	slicingCriterionToId
+	slicingCriterionToId, tryResolveSliceCriterionToId
 } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
@@ -367,6 +367,11 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	 * Which files to add to the project context
 	 */
 	addFiles:              FlowrFileProvider[]
+	/** The collection of vertex ids that should not exist */
+	mustNotHaveVertices:   Set<NodeId>
+	/** The collection of edges that should not exist */
+	mustNotHaveEdges:      [NodeId, NodeId][]
+	/** Whether to test the call graph instead of the dataflow graph */
 	context:               'dataflow' | 'call-graph'
 }
 
@@ -430,6 +435,29 @@ export function assertDataflow(
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
 			guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`);
+			if(userConfig?.mustNotHaveVertices) {
+				if(userConfig?.resolveIdsAsCriterion) {
+					userConfig.mustNotHaveVertices = new Set(Array.from(userConfig.mustNotHaveVertices).map(id => {
+						return tryResolveSliceCriterionToId(id as SingleSlicingCriterion, normalize.idMap) ?? id;
+					}));
+				}
+				for(const id of userConfig.mustNotHaveVertices) {
+					guard(!graph.hasVertex(id), () => `Graph must not have vertex ${id}, but it exists.`);
+				}
+			}
+			if(userConfig?.mustNotHaveEdges) {
+				if(userConfig?.resolveIdsAsCriterion) {
+					userConfig.mustNotHaveEdges = userConfig.mustNotHaveEdges.map(([from, to]) => {
+						const resolvedFrom = tryResolveSliceCriterionToId(from as SingleSlicingCriterion, normalize.idMap) ?? from;
+						const resolvedTo = tryResolveSliceCriterionToId(to as SingleSlicingCriterion, normalize.idMap) ?? to;
+						return [resolvedFrom, resolvedTo] as [NodeId, NodeId];
+					});
+				}
+				for(const [from, to] of userConfig.mustNotHaveEdges) {
+					const out = graph.outgoingEdges(from);
+					guard(!out?.has(to), () => `Graph must not have edge ${from} -> ${to}, but it exists.`);
+				}
+			}
 		} /* v8 ignore start */ catch(e) {
 			const diff = diffGraphsToMermaidUrl(
 				{ label: 'expected', graph: expected, mark: mapProblematicNodesToIds(report.problematic()) },

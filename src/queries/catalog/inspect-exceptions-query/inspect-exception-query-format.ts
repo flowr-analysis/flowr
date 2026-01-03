@@ -4,7 +4,6 @@ import Joi from 'joi';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeExceptionQuery } from './inspect-exception-query-executor';
 import { type NodeId , normalizeIdToNumberIfPossible } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { formatRange } from '../../../util/mermaid/dfg';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfigOptions } from '../../../config';
@@ -12,14 +11,47 @@ import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser
 import type { SourceRange } from '../../../util/range';
 import type { ExceptionPoint } from '../../../dataflow/fn/exceptions-of-function';
 import { happensInEveryBranch } from '../../../dataflow/info';
+import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+
+/**
+ * Describe Functions that should be considered to be throwing exceptions (alongside flowR's own analysis).
+ *
+ * Either,
+ * - a string representing the name of the exception-throwing function,
+ * - or an object with the name and a flag indicating it always throws,
+ * - or an object with the name and specific arguments to consider as constraining the exceptions thrown.
+ */
+type ConsiderAsException = string | { name: string, always: boolean } | { name: string, cdArgs: { idx?: number, name: string }[]};
+/**
+ * Either a string representing the name of the try-catching function (in this case all args are considered),
+ * or an object with the name and specific arguments to consider as catching exceptions.
+ * @example
+ * R's `try` would be represented as:
+ * ```ts
+ * {
+ *    name:    'try',
+ *    tryArgs: [{ id: 0, name: 'expr' }]
+ * }
+ * ```
+ */
+type ConsiderAsTry = string | { name: string, tryArgs: { idx?: number, name: string }[]};
 /**
  * Either returns all function definitions alongside exception information,
  * or just those matching the filters.
  */
 export interface InspectExceptionQuery extends BaseQueryFormat {
-	readonly type:    'inspect-exception';
-	readonly filter?: SingleSlicingCriterion[]
+	readonly type:                  'inspect-exception';
+	/** If given, only function definitions that match one of the given slicing criteria are considered. */
+	readonly filter?:               SingleSlicingCriterion[];
+	/* Functions to consider as throwing exceptions in addition to flowR's own analysis. */
+	readonly considerAsExceptions?: ConsiderAsException[];
+	/** Functions to consider as catching exceptions (i.e., try-catch constructs). */
+	readonly considerAsTry?:        ConsiderAsTry[];
+	/** If true, ignore flowR's default set of known exception-throwing functions. */
+	readonly ignoreDefaults?:       boolean;
 }
+
+// TODO: example with an indirect stop in the try error clause
 
 export interface InspectExceptionQueryResult extends BaseQueryResult {
 	/**
@@ -29,7 +61,7 @@ export interface InspectExceptionQueryResult extends BaseQueryResult {
 	readonly exceptions: Record<NodeId, ExceptionPoint[]>;
 }
 
-function inspectExceptionLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'inspect-exception'> {
+function inspectExceptionLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'inspect-exception'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	return {
 		query: {
@@ -62,8 +94,37 @@ export const InspectExceptionQueryDefinition = {
 	},
 	fromLine: inspectExceptionLineParser,
 	schema:   Joi.object({
-		type:   Joi.string().valid('inspect-exception').required().description('The type of the query.'),
-		filter: Joi.array().items(Joi.string().required()).optional().description('If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered.')
+		type:                 Joi.string().valid('inspect-exception').required().description('The type of the query.'),
+		filter:               Joi.array().items(Joi.string().required()).optional().description('If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered.'),
+		considerAsExceptions: Joi.array().items(Joi.alternatives().try(
+			Joi.string().required(),
+			Joi.object({
+				name:   Joi.string().required(),
+				always: Joi.boolean().required()
+			}).required(),
+			Joi.object({
+				name:   Joi.string().required(),
+				cdArgs: Joi.array().items(
+					Joi.object({
+						idx:  Joi.number().optional(),
+						name: Joi.string().required()
+					}).required()
+				).required()
+			}).required()
+		)).optional().description('Functions to consider as throwing exceptions in addition to flowR\'s own analysis.'),
+		considerAsTry: Joi.alternatives().try(
+			Joi.string().required(),
+			Joi.object({
+				name:    Joi.string().required(),
+				tryArgs: Joi.array().items(
+					Joi.object({
+						idx:  Joi.number().optional(),
+						name: Joi.string().required()
+					}).required()
+				).required()
+			}).required()
+		).optional().description('Functions to consider as catching exceptions (i.e., try-catch constructs).'),
+		ignoreDefaults: Joi.boolean().optional().description('If true, ignore flowR\'s default set of known exception-throwing functions.')
 	}).description('Query to inspect which functions throw exceptions.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as QueryResults<'inspect-exception'>['inspect-exception'];

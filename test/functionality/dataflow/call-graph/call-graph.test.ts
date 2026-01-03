@@ -201,6 +201,7 @@ f(1)`,
 			.calls('2@g', '1@rofl')
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
+
 	assertDataflow(label('correctly track assignments', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
 		ts,
 		'f <- function() {\n x <- 2; 3 }',
@@ -209,4 +210,11 @@ f(1)`,
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
+	assertDataflow(label('Handle finally in tryCatch', ['exceptions-and-errors', 'function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
+		ts,
+		'f = function() { tryCatch({ 1 }, finally=function() { x <- 2 }) }',
+		emptyGraph()
+			.calls('1@tryCatch', '1@<-')
+		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
 }));

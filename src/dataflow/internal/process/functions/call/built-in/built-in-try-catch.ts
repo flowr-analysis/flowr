@@ -96,6 +96,12 @@ export function processTryCatch<OtherInfo>(
 			(info.exitPoints as ExitPoint[]).push(...constrainExitPoints(errorExitPoints, blockArg));
 		}
 	}
+	for(const e of errorArg) {
+		info.graph.addEdge(rootId, e, EdgeType.Calls);
+	}
+	for(const f of finallyArg) {
+		info.graph.addEdge(rootId, f, EdgeType.Calls);
+	}
 	return info;
 }
 

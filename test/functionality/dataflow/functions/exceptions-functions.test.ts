@@ -66,7 +66,7 @@ f <- function(x) { try(stop("error")) }
 g <- function(y) { tryCatch(stopifnot(FALSE), error=function(e) {}) }
 h <- function(z) { f(); }
 i <- function() { f(); stop("direct") }
-j <- function() { tryCatch({ g() }, finally=function(e) {stop("also direct")}) }
+j <- function() { tryCatch({ g() }, finally={stop("also direct")}) }
 	`, {
 		'2@function': [], // f
 		'3@function': [], // g

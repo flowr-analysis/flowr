@@ -11,8 +11,6 @@ export interface ExceptionPoint {
 	id:   NodeId;
 	cds?: readonly ControlDependency[] | undefined;
 }
-
-// TODO: support custome exception providers like read file if not found etc.
 /**
  * Collect exception sources of a function in the call graph.
  * This returns the `NodeId`s of functions that may throw exceptions when called by the given function.

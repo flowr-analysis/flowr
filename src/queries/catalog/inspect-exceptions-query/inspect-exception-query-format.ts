@@ -14,41 +14,13 @@ import { happensInEveryBranch } from '../../../dataflow/info';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 
 /**
- * Describe Functions that should be considered to be throwing exceptions (alongside flowR's own analysis).
- *
- * Either,
- * - a string representing the name of the exception-throwing function,
- * - or an object with the name and a flag indicating it always throws,
- * - or an object with the name and specific arguments to consider as constraining the exceptions thrown.
- */
-type ConsiderAsException = string | { name: string, always: boolean } | { name: string, cdArgs: { idx?: number, name: string }[]};
-/**
- * Either a string representing the name of the try-catching function (in this case all args are considered),
- * or an object with the name and specific arguments to consider as catching exceptions.
- * @example
- * R's `try` would be represented as:
- * ```ts
- * {
- *    name:    'try',
- *    tryArgs: [{ id: 0, name: 'expr' }]
- * }
- * ```
- */
-type ConsiderAsTry = string | { name: string, tryArgs: { idx?: number, name: string }[]};
-/**
  * Either returns all function definitions alongside exception information,
  * or just those matching the filters.
  */
 export interface InspectExceptionQuery extends BaseQueryFormat {
-	readonly type:                  'inspect-exception';
+	readonly type:    'inspect-exception';
 	/** If given, only function definitions that match one of the given slicing criteria are considered. */
-	readonly filter?:               SingleSlicingCriterion[];
-	/* Functions to consider as throwing exceptions in addition to flowR's own analysis. */
-	readonly considerAsExceptions?: ConsiderAsException[];
-	/** Functions to consider as catching exceptions (i.e., try-catch constructs). */
-	readonly considerAsTry?:        ConsiderAsTry[];
-	/** If true, ignore flowR's default set of known exception-throwing functions. */
-	readonly ignoreDefaults?:       boolean;
+	readonly filter?: SingleSlicingCriterion[];
 }
 
 // TODO: example with an indirect stop in the try error clause

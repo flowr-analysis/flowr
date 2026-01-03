@@ -64,37 +64,8 @@ export const InspectExceptionQueryDefinition = {
 	},
 	fromLine: inspectExceptionLineParser,
 	schema:   Joi.object({
-		type:                 Joi.string().valid('inspect-exception').required().description('The type of the query.'),
-		filter:               Joi.array().items(Joi.string().required()).optional().description('If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered.'),
-		considerAsExceptions: Joi.array().items(Joi.alternatives().try(
-			Joi.string().required(),
-			Joi.object({
-				name:   Joi.string().required(),
-				always: Joi.boolean().required()
-			}).required(),
-			Joi.object({
-				name:   Joi.string().required(),
-				cdArgs: Joi.array().items(
-					Joi.object({
-						idx:  Joi.number().optional(),
-						name: Joi.string().required()
-					}).required()
-				).required()
-			}).required()
-		)).optional().description('Functions to consider as throwing exceptions in addition to flowR\'s own analysis.'),
-		considerAsTry: Joi.alternatives().try(
-			Joi.string().required(),
-			Joi.object({
-				name:    Joi.string().required(),
-				tryArgs: Joi.array().items(
-					Joi.object({
-						idx:  Joi.number().optional(),
-						name: Joi.string().required()
-					}).required()
-				).required()
-			}).required()
-		).optional().description('Functions to consider as catching exceptions (i.e., try-catch constructs).'),
-		ignoreDefaults: Joi.boolean().optional().description('If true, ignore flowR\'s default set of known exception-throwing functions.')
+		type:   Joi.string().valid('inspect-exception').required().description('The type of the query.'),
+		filter: Joi.array().items(Joi.string().required()).optional().description('If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered.'),
 	}).description('Query to inspect which functions throw exceptions.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as QueryResults<'inspect-exception'>['inspect-exception'];

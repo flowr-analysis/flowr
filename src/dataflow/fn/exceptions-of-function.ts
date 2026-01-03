@@ -54,5 +54,5 @@ export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph): Exc
 		}
 	}
 
-	return Array.from(collectedExceptions);
+	return collectedExceptions;
 }

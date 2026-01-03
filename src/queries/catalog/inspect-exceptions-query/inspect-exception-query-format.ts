@@ -23,8 +23,6 @@ export interface InspectExceptionQuery extends BaseQueryFormat {
 	readonly filter?: SingleSlicingCriterion[];
 }
 
-// TODO: example with an indirect stop in the try error clause
-
 export interface InspectExceptionQueryResult extends BaseQueryResult {
 	/**
 	 * If a function throws exceptions, the Ids of the throwing functions (at least the functions flowr knows about).

@@ -73,12 +73,7 @@ export function processTryCatch<OtherInfo>(
 		}
 		// this calls error and finally args
 		if(finallyArg.has(arg.entryPoint)) {
-			const exits = handleFdefAsCalled(arg.entryPoint, info.graph, arg.exitPoints, undefined);
-			for(const e of exits) {
-				// TODO: handle dead code here!
-				info.graph.addEdge(rootId, e.nodeId, EdgeType.Returns);
-			}
-			return exits;
+			return handleFdefAsCalled(arg.entryPoint, info.graph, arg.exitPoints, undefined);
 		} else if(errorArg.has(arg.entryPoint)) {
 			errorExitPoints.push(...getExitPoints(info.graph.getVertex(arg.entryPoint), info.graph) ?? []);
 		}
@@ -101,6 +96,11 @@ export function processTryCatch<OtherInfo>(
 	}
 	for(const f of finallyArg) {
 		info.graph.addEdge(rootId, f, EdgeType.Calls);
+	}
+	for(const e of info.exitPoints) {
+		if(e.type !== ExitPointType.Error) {
+			info.graph.addEdge(rootId, e.nodeId, EdgeType.Returns);
+		}
 	}
 	return info;
 }

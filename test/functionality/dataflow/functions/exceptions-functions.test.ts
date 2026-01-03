@@ -71,8 +71,8 @@ j <- function() { tryCatch({ g() }, finally={stop("also direct")}) }
 		'2@function': [], // f
 		'3@function': [], // g
 		'4@function': [], // h
-		'5@function': ['5@stop'],  // i
-		'6@function': ['6@stop']   // j
+		'5@function': ['5@stop'], // i
+		'6@function': ['6@stop'] // j
 	});
 
 }));

@@ -28,7 +28,7 @@ describe('Call Graph Generation (With Hooks)', withTreeSitter(ts => {
 			.calls('15-hook-fn', '2@cat'),
 		{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
-	assertDataflow(label('Unreachable hooks don\'t coun', ['hooks', 'function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
+	assertDataflow(label('Unreachable hooks don\'t count', ['hooks', 'function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
 		ts,
 		'function(x) { on.exit(print("hi")); return(x);\n on.exit(cat("ho")); }',
 		emptyGraph()

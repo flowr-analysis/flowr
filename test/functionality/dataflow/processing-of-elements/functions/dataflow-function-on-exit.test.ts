@@ -98,7 +98,7 @@ describe.sequential('Function Definition - On.Exit', withShell(shell => {
 				expectIsSubgraph:      true,
 			}
 		);
-		assertDataflow(label('on.exit does not overwrite all, if it doesnt always exit`', ['normal-definition', 'implicit-return', 'name-normal', 'hooks']),
+		assertDataflow(label('on.exit does not overwrite all, if it doesn\'t always exit`', ['normal-definition', 'implicit-return', 'name-normal', 'hooks']),
 			shell, 'function() { x <- 1\n on.exit(if(u) return(2))\n return(x) }',
 			emptyGraph()
 				.calls('1@function', '12-hook-fn')
@@ -123,7 +123,7 @@ describe.sequential('Function Definition - On.Exit', withShell(shell => {
 			}
 		);
 
-		assertDataflow(label('on.exit closure reads last value`', ['normal-definition', 'implicit-return', 'name-normal', 'hooks']),
+		assertDataflow(label('on.exit closure reads last value', ['normal-definition', 'implicit-return', 'name-normal', 'hooks']),
 			shell, 'function() { x <- 2;\non.exit(return(x));\nx <- 3; }',
 			emptyGraph()
 				.calls('1@function', '9-hook-fn')
@@ -148,7 +148,7 @@ describe.sequential('Function Definition - On.Exit', withShell(shell => {
 			}
 		);
 
-		assertDataflow(label('by default, on.exit overwrite each other`', ['normal-definition', 'implicit-return', 'name-normal', 'hooks']),
+		assertDataflow(label('by default, on.exit overwrite each other', ['normal-definition', 'implicit-return', 'name-normal', 'hooks']),
 			shell, 'function() { x <- 2;\non.exit(return(x));\nx <- 3;\non.exit(return(y)); }',
 			emptyGraph()
 				.calls('1@function', '21-hook-fn')

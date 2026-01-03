@@ -25,6 +25,7 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 		environment:       appendEnvironment(info.environment, newInfo.environment),
 		entryPoint:        newInfo.entryPoint,
 		exitPoints:        info.exitPoints.concat(newInfo.exitPoints),
+		hooks:             info.hooks.concat(newInfo.hooks)
 	};
 }
 

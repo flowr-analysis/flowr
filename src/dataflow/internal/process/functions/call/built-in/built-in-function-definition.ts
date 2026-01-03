@@ -29,6 +29,7 @@ import { expensiveTrace } from '../../../../../../util/log';
 import { isBuiltIn } from '../../../../../environments/built-in';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { compactHookStates, extractHookInformation, KnownHooks } from '../../../../../hooks';
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
@@ -47,7 +48,7 @@ export function processFunctionDefinition<OtherInfo>(
 	/* we remove the last argument, as it is the body */
 	const parameters = args.slice(0, -1);
 	const bodyArg = unpackNonameArg(args[args.length - 1]);
-	guard(bodyArg !== undefined, () => `Function Definition ${JSON.stringify(args)} has missing body! This is bad!`);
+	guard(bodyArg !== undefined, () => `Function Definition ${JSON.stringify(args)} has no body! This is bad!`);
 
 	const originalEnvironment = data.environment;
 	// within a function def we do not pass on the outer binds as they could be overwritten when called
@@ -110,13 +111,17 @@ export function processFunctionDefinition<OtherInfo>(
 		}
 	}
 
+	const [exitHooks, remHooks] = extractHookInformation(compactHookStates(body.hooks), KnownHooks.OnFnExit);
+
+
 	const flow: DataflowFunctionFlowInformation = {
 		unknownReferences: [],
 		in:                remainingRead,
 		out:               [],
 		entryPoint:        body.entryPoint,
 		graph:             new Set(subgraph.rootIds()),
-		environment:       outEnvironment
+		environment:       outEnvironment,
+		hooks:             remHooks
 	};
 
 	updateNestedFunctionClosures(subgraph, outEnvironment, name.info.id);
@@ -127,6 +132,9 @@ export function processFunctionDefinition<OtherInfo>(
 		const ingoing = subgraph.ingoingEdges(paramId);
 		readParams[paramId] = ingoing?.values().some(({ types }) => edgeIncludesType(types, EdgeType.Reads)) ?? false;
 	}
+
+	console.log('About to apply', exitHooks);
+	// TODO: these can overwrit ethe exit point
 
 	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false);
 	graph.addVertex({
@@ -146,15 +154,17 @@ export function processFunctionDefinition<OtherInfo>(
 		exitPoints:        [],
 		entryPoint:        name.info.id,
 		graph,
-		environment:       originalEnvironment
+		environment:       originalEnvironment,
+		hooks:             []
 	};
 }
 
-// this is no longer necessary when we update environments to be back to front (e.g., with a list of environments)
-// this favors the bigger environment
-
 /**
- *
+ * Retrieve the active environment when entering a function definition or call
+ * @param callerEnvironment - environment at the call site / function definition site
+ * @param baseEnvironment   - base environment within the function definition / call
+ * @param ctx               - analyzer context
+ * @returns active environment within the function definition / call
  */
 export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext): REnvironmentInformation {
 	callerEnvironment ??= ctx.env.makeCleanEnv();

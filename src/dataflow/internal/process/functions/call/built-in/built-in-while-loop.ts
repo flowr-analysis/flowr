@@ -81,7 +81,8 @@ export function processWhileLoop<OtherInfo>(
 			entryPoint:        name.info.id,
 			exitPoints:        [],
 			graph:             information.graph,
-			environment:       information.environment
+			environment:       information.environment,
+			hooks:             condition.hooks
 		};
 	}
 
@@ -112,6 +113,7 @@ export function processWhileLoop<OtherInfo>(
 		entryPoint:        name.info.id,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		graph:             information.graph,
-		environment:       information.environment
+		environment:       information.environment,
+		hooks:             condition.hooks.concat(body.hooks)
 	};
 }

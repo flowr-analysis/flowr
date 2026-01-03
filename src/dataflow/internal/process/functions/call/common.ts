@@ -82,6 +82,35 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 }
 
 /**
+ * Converts function arguments into function argument references for a function call vertex.
+ * Please be aware, that the ids here are those inferred from the AST, not from the dataflow graph!
+ * This function also works after the arguments were unpacked, e.g., by {@link tryUnpackNoNameArg}.
+ * @see convertFnArgument
+ */
+export function convertFnArguments<OtherInfo>(args: readonly (typeof EmptyArgument | RNode<OtherInfo & ParentInformation>)[]): FunctionArgument[] {
+	return args.map(arg => convertFnArgument(arg));
+}
+
+/**
+ * Transforms a function argument into a function argument reference for a function call vertex.
+ * Please be aware, that the ids here are those inferred from the AST, not from the dataflow graph!
+ */
+export function convertFnArgument<OtherInfo>(arg: typeof EmptyArgument | RNode<OtherInfo & ParentInformation>): FunctionArgument {
+	if(arg === EmptyArgument) {
+		return EmptyArgument;
+	} else if(!arg.name || arg.type !== RType.Argument) {
+		return { nodeId: arg.info.id, controlDependencies: undefined, type: ReferenceType.Argument };
+	} else {
+		return {
+			nodeId:              arg.info.id,
+			name:                arg.name.content,
+			controlDependencies: undefined,
+			type:                ReferenceType.Argument
+		};
+	}
+}
+
+/**
  * Processes all arguments for a function call, updating the given final graph and environment.
  */
 export function processAllArguments<OtherInfo>(

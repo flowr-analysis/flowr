@@ -9,7 +9,7 @@ import { processAsNamedCall } from './internal/process/process-named-call';
 import { processValue } from './internal/process/process-value';
 import { processNamedCall } from './internal/process/functions/call/named-call-handling';
 import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument/make-argument';
-import { rangeFrom } from '../util/range';
+import { invalidRange } from '../util/range';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
@@ -59,7 +59,7 @@ export const processors: DataflowProcessors<ParentInformation> = {
 			info:      info,
 			content:   groupStart?.content ?? '{',
 			lexeme:    groupStart?.lexeme ?? '{',
-			location:  location ?? rangeFrom(-1, -1, -1, -1),
+			location:  location ?? invalidRange(),
 			namespace: groupStart?.content ? undefined : 'base'
 		}, wrapArgumentsUnnamed(children, d.completeAst.idMap), info.id, d);
 	}

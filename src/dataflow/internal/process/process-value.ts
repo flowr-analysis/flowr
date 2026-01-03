@@ -18,11 +18,12 @@ export function processValue<OtherInfo>({ info: { id } }: RNodeWithParent, { con
 		out:               [],
 		environment,
 		graph:             new DataflowGraph(idMap).addVertex({
-			tag:                 VertexType.Value,
+			tag: VertexType.Value,
 			id,
-			controlDependencies: controlDependencies
+			controlDependencies
 		}, undefined as unknown as REnvironmentInformation),
-		exitPoints: [{ nodeId: id, type: ExitPointType.Default, controlDependencies: controlDependencies }],
-		entryPoint: id
+		exitPoints: [{ nodeId: id, type: ExitPointType.Default, controlDependencies }],
+		entryPoint: id,
+		hooks:      []
 	};
 }

@@ -8,6 +8,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 import type { BuiltInMappingName } from './built-in';
 import { UnnamedFunctionCallPrefix } from '../internal/process/functions/call/unnamed-call-handling';
+import { KnownHooks } from '../hooks';
 
 export const GgPlotCreate = [
 	'ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', 'ggseasonplot', 'ggdendrogram', 'qmap', 'qplot', 'quickplot', 'autoplot', 'grid.arrange',
@@ -286,7 +287,7 @@ export const DefaultBuiltinConfig = [
 	{
 		type:  'function',
 		names: [
-			'on.exit', 'sys.on.exit', 'par', 'tpar', 'sink',
+			'sys.on.exit', 'par', 'tpar', 'sink',
 			/* library and require is handled above */
 			'requireNamespace', 'loadNamespace', 'attachNamespace', 'asNamespace',
 			/* weird env attachments */
@@ -308,6 +309,20 @@ export const DefaultBuiltinConfig = [
 		processor:       'builtin:default',
 		config:          { hasUnknownSideEffects: true, libFn: true },
 		assumePrimitive: false
+	},
+	{
+		type:      'function',
+		names:     ['on.exit'],
+		processor: 'builtin:register-hook',
+		config:    {
+			hook: KnownHooks.OnFnExit,
+			args: {
+				expr:  { idx: 0, name: 'expr' },
+				add:   { idx: 1, name: 'add', default: false },
+				after: { idx: 2, name: 'after', default: true },
+			}
+		},
+		assumePrimitive: true
 	},
 	/* they are all mapped to `<-` but we separate super assignments */
 	{

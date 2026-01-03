@@ -155,6 +155,9 @@ export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: r
 
 /**
  * Links the given arguments to the given parameters within the given graph by name only.
+ * @note
+ * To obtain the arguments from a {@link RFunctionCall}[], either use {@link processAllArguments} (also available via {@link processKnownFunctionCall})
+ * or convert them with {@link convertFnArguments}.
  */
 export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<NodeId, Targets> {
 	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));

@@ -9,7 +9,6 @@ import {
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { pMatch } from '../../../../linker';
-import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { convertFnArguments } from '../common';
 import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -19,12 +18,11 @@ import type { HookInformation, KnownHooks } from '../../../../../hooks';
 import type { ResolveInfo } from '../../../../../eval/resolve/alias-tracking';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { valueSetGuard } from '../../../../../eval/values/general';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 
 export interface RegisterHookConfig {
 	/** name of the hook to register, 'fn-exit' if it triggers on exit */
 	hook: KnownHooks;
-	// TODO: configure body arg, whether it is additive, ...
-	// TODO: check with call-graph
 	args: {
 		/** the expression to register as hook */
 		expr:   { idx?: number, name: string },
@@ -45,12 +43,6 @@ export function processRegisterHook<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: RegisterHookConfig
 ): DataflowInformation {
-	if(args.length < 1) {
-		// TODO: clear current hook!
-		return processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:register-hook', hasUnknownSideEffect: true }).information;
-	}
-
-
 	const params = {
 		[config.args.expr.name]: 'expr',
 	};
@@ -97,8 +89,6 @@ export function processRegisterHook<OtherInfo>(
 		}
 	});
 
-	// TODO addIds and argIds
-
 	const res = processKnownFunctionCall({ name, args: transformed, rootId, data, origin: 'builtin:register-hook' });
 	const resolveArgs: ResolveInfo = {
 		graph:       res.information.graph,
@@ -125,6 +115,9 @@ export function processRegisterHook<OtherInfo>(
 	}));
 
 	info.hooks.push(...hooks);
-	handleUnknownSideEffect(info.graph, info.environment, rootId);
+	if(data.environment.level <= 1) {
+		// if we are at the root level, we need to assume that the hook can cause unknown side-effects
+		handleUnknownSideEffect(info.graph, info.environment, rootId);
+	}
 	return info;
 }

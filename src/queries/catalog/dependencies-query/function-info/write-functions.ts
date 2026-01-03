@@ -6,14 +6,28 @@ const OutputRedirects = [
 
 
 export const WriteFunctions: FunctionInfo[] = [
-	{ package: 'base', name: 'save',        argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'save.image',  argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'write',       argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'dput',        argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'dump',        argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'utils',name: 'write.table', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'utils',name: 'write.csv',   argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'saveRDS',     argIdx: 1, argName: 'file', resolveValue: true },
+	{ package: 'base', name: 'save',        argName: 'file',               resolveValue: true },
+	{ package: 'base', name: 'save.image',  argIdx: 1, argName: 'file',    resolveValue: true },
+	{ package: 'base', name: 'write',       argIdx: 1, argName: 'file',    resolveValue: true },
+	{ package: 'base', name: 'dput',        argIdx: 1, argName: 'file',    resolveValue: true },
+	{ package: 'base', name: 'dump',        argIdx: 1, argName: 'file',    resolveValue: true },
+	{ package: 'utils',name: 'write.table', argIdx: 1, argName: 'file',    resolveValue: true },
+	{ package: 'utils',name: 'write.csv',   argIdx: 1, argName: 'file',    resolveValue: true },
+	{ package: 'base', name: 'saveRDS',     argIdx: 1, argName: 'file',    resolveValue: true },
+	// TODO: link to last option with an outfile
+	{
+		package:        'base',
+		name:           'try',
+		linkTo:         OutputRedirects,
+		argIdx:         3,
+		argName:        'outFile',
+		resolveValue:   true,
+		defaultValue:   'stderr',
+		ignoreIf:       'arg-true',
+		additionalArgs: {
+			val: { argIdx: 1, argName: 'silent' }
+		}
+	},
 	// write functions that don't have argIndex are assumed to write to stdout
 	{ package: 'base', name: 'print',      linkTo: OutputRedirects,                  resolveValue: true },
 	{ package: 'base', name: 'cat',        linkTo: OutputRedirects, argName: 'file', resolveValue: true },

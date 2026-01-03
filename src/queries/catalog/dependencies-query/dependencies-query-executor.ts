@@ -101,6 +101,8 @@ function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: o
 const readOnlyModes = new Set(['r', 'rt', 'rb']);
 const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab']);
 
+
+
 function getResults(queries: readonly DependenciesQuery[], { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfigOptions, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data: BasicQueryData): DependencyInfo[] {
 	const defaultValue = getAllCategories(queries)[kind].defaultValue;
 	const functionMap = new Map<string, FunctionInfo>(functions.map(f => [f.name, f]));
@@ -113,9 +115,31 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 		const linkedArgs = collectValuesFromLinks(args, { dataflow, config, ctx: data.analyzer.inspectContext() }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
 		const linked = dropInfoOnLinkedIds(linkedIds);
 
+		function ignoreOnArgVal() {
+			if(info.ignoreIf === 'arg-true' || info.ignoreIf === 'arg-false') {
+				const margs = info.additionalArgs?.val;
+				guard(margs, 'Need additional argument val when checking for arg-true');
+				const valArgs = getArgumentStringValue(config.solver.variables, dataflow.graph, vertex, margs.argIdx, margs.argName, margs.resolveValue, data?.analyzer.inspectContext());
+				const valValues = valArgs?.values().flatMap(v => Array.from(v)).toArray() ?? [];
+				if(valValues.length === 0) {
+					return false;
+				}
+				if(info.ignoreIf === 'arg-true' && valValues.every(v => v === 'TRUE')) {
+					// all values are TRUE, so we can ignore this
+					return true;
+				} else if(info.ignoreIf === 'arg-false' && valValues.every(v => v === 'FALSE')) {
+					// all values are FALSE, so we can ignore this
+					return true;
+				}
+			}
+			return false;
+		}
+
 		const foundValues = linkedArgs ?? args;
 		if(!foundValues) {
 			if(info.ignoreIf === 'arg-missing') {
+				return [];
+			} else if(ignoreOnArgVal()) {
 				return [];
 			}
 			const record = compactRecord({
@@ -123,7 +147,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 				functionName:     vertex.name,
 				lexemeOfArgument: undefined,
 				linkedIds:        linked?.length ? linked : undefined,
-				value:            defaultValue
+				value:            info.defaultValue ?? defaultValue
 			} as DependencyInfo);
 			return record ? [record] : [];
 		} else if(info.ignoreIf === 'mode-only-read' || info.ignoreIf === 'mode-only-write') {
@@ -131,7 +155,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 			const margs = info.additionalArgs?.mode;
 			guard(margs, 'Need additional argument mode when checking for mode');
 			const modeArgs = getArgumentStringValue(config.solver.variables, dataflow.graph, vertex, margs.argIdx, margs.argName, margs.resolveValue, data?.analyzer.inspectContext());
-			const modeValues = modeArgs?.values().flatMap(v => [...v]) ?? [];
+			const modeValues = modeArgs?.values().flatMap(v => Array.from(v)) ?? [];
 			if(info.ignoreIf === 'mode-only-read' && modeValues.every(m => m && readOnlyModes.has(m))) {
 				// all modes are read-only, so we can ignore this
 				return [];
@@ -139,6 +163,8 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 				// all modes are write-only, so we can ignore this
 				return [];
 			}
+		} else if(ignoreOnArgVal()) {
+			return [];
 		}
 		const results: DependencyInfo[] = [];
 		for(const [arg, values] of foundValues.entries()) {
@@ -149,7 +175,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 					functionName:       vertex.name,
 					lexemeOfArgument:   getLexeme(value, arg),
 					linkedIds:          linked?.length ? linked : undefined,
-					value:              value ?? defaultValue,
+					value:              value ?? info.defaultValue ?? defaultValue,
 					versionConstraints: dep?.versionConstraints,
 					derivedVersion:     dep?.derivedVersion,
 					namespaceInfo:      dep?.namespaceInfo

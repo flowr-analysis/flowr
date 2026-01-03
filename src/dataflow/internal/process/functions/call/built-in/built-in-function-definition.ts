@@ -29,7 +29,7 @@ import { expensiveTrace } from '../../../../../../util/log';
 import { isBuiltIn } from '../../../../../environments/built-in';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { compactHookStates, extractHookInformation, KnownHooks } from '../../../../../hooks';
+import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
@@ -111,7 +111,8 @@ export function processFunctionDefinition<OtherInfo>(
 		}
 	}
 
-	const [exitHooks, remHooks] = extractHookInformation(compactHookStates(body.hooks), KnownHooks.OnFnExit);
+	const compactedHooks = compactHookStates(body.hooks);
+	const exitHooks = getHookInformation(compactedHooks, KnownHooks.OnFnExit);
 
 
 	const flow: DataflowFunctionFlowInformation = {
@@ -121,7 +122,7 @@ export function processFunctionDefinition<OtherInfo>(
 		entryPoint:        body.entryPoint,
 		graph:             new Set(subgraph.rootIds()),
 		environment:       outEnvironment,
-		hooks:             remHooks
+		hooks:             compactedHooks
 	};
 
 	updateNestedFunctionClosures(subgraph, outEnvironment, name.info.id);
@@ -133,7 +134,6 @@ export function processFunctionDefinition<OtherInfo>(
 		readParams[paramId] = ingoing?.values().some(({ types }) => edgeIncludesType(types, EdgeType.Reads)) ?? false;
 	}
 
-	console.log('About to apply', exitHooks);
 	let afterHookExitPoints = exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default || e.type === ExitPointType.Error) ?? [];
 	for(const hook of exitHooks) {
 		const vert = subgraph.getVertex(hook.id);
@@ -141,14 +141,12 @@ export function processFunctionDefinition<OtherInfo>(
 			continue;
 		}
 		// call all hooks
-		console.log('At hook', hook);
 		subgraph.addEdge(rootId, hook.id, EdgeType.Calls);
 		const hookExitPoints = vert.exitPoints.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Error);
 		if(hookExitPoints.length > 0) {
 			afterHookExitPoints = overwriteExitPoints(afterHookExitPoints, hookExitPoints);
 		}
 	}
-	// TODO: these can overwrit ethe exit point
 
 	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false);
 	graph.addVertex({

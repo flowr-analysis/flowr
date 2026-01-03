@@ -60,7 +60,6 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('5@foo', '1@function')
 		, { context: 'call-graph', resolveIdsAsCriterion: true }
 	);
-
 	assertDataflow(label('recursion', ['function-calls', 'function-definitions', 'recursion']),
 		ts,
 		`fib <- function(n) {

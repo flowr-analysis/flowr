@@ -15,7 +15,7 @@ export interface HookInformation {
 	/** The id of the function definition which is added by the hook */
 	id:   NodeId,
 	/** Control dependencies under which the hook was registered */
-	cds:  ControlDependency[] | undefined,
+	cds?: ControlDependency[]
 	// TODO: handle add and after
 }
 
@@ -40,17 +40,8 @@ export function compactHookStates(hooks: HookInformation[]): HookInformation[] {
 /**
  * Extracts all hooks of the given type from the list of hooks.
  */
-export function extractHookInformation(hooks: HookInformation[], type: KnownHooks): [extract: HookInformation[], rest: HookInformation[]] {
+export function getHookInformation(hooks: HookInformation[], type: KnownHooks): HookInformation[] {
 	// TODO: consider cds, add, and after
-	const extract: HookInformation[] = [];
-	const rest: HookInformation[] = [];
-	for(const hook of hooks) {
-		if(hook.type === type) {
-			extract.push(hook);
-		} else {
-			rest.push(hook);
-		}
-	}
-	return [extract, rest];
+	return hooks.filter(h => h.type === type);
 }
 

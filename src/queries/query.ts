@@ -328,6 +328,7 @@ export async function genericWrapReplFailIfNoRequest<T>(
 		        + '\nIf you consider this an error, please report a bug: '
 				+ getGuardIssueUrl('analyzer found no requests to analyze')
 			);
+			output.stderr((e instanceof Error) ? e.message : String(e));
 		} else {
 			throw e;
 		}

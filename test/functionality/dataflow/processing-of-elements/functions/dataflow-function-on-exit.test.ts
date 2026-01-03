@@ -5,6 +5,7 @@ import { describe } from 'vitest';
 import { defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { ExitPointType } from '../../../../../src/dataflow/info';
+import { KnownHooks } from '../../../../../src/dataflow/hooks';
 
 describe.sequential('Function Definition - On.Exit', withShell(shell => {
 	describe('Only functions', () => {
@@ -13,7 +14,7 @@ describe.sequential('Function Definition - On.Exit', withShell(shell => {
 			emptyGraph()
 				.calls('1@function', '3-hook-fn')
 				.defineFunction('1@function', [5], {
-					hooks: [], // they do not propagate
+					hooks: [{ type: KnownHooks.OnFnExit, id: '3-hook-fn' }],
 					in:    [
 						{ nodeId: 5, name: 'on.exit', type: ReferenceType.Function },
 						{ nodeId: 6, name: '{', type: ReferenceType.Function }
@@ -33,7 +34,7 @@ describe.sequential('Function Definition - On.Exit', withShell(shell => {
 			emptyGraph()
 				.calls('1@function', '3-hook-fn')
 				.defineFunction('1@function', [{ nodeId: 9, type: ExitPointType.Return }], {
-					hooks: [], // they do not propagate
+					hooks: [{ type: KnownHooks.OnFnExit, id: '3-hook-fn' }],
 					in:    [
 						{ nodeId: 5, name: 'on.exit', type: ReferenceType.Function },
 						{ nodeId: 9, name: 'return', type: ReferenceType.Function },
@@ -54,7 +55,7 @@ describe.sequential('Function Definition - On.Exit', withShell(shell => {
 			emptyGraph()
 				.calls('1@function', '8-hook-fn')
 				.defineFunction('1@function', [{ nodeId: 14, type: ExitPointType.Return }], {
-					hooks: [], // they do not propagate
+					hooks: [{ type: KnownHooks.OnFnExit, id: '8-hook-fn' }],
 					in:    [
 						{ nodeId: 4, name: '<-', type: ReferenceType.Function },
 						{ nodeId: 10, name: 'on.exit', type: ReferenceType.Function },
@@ -79,7 +80,7 @@ describe.sequential('Function Definition - On.Exit', withShell(shell => {
 				.calls('1@function', '9-hook-fn')
 				// returns `on.exit`, no longer `return(x)`, but `return(x)` is **not** dead!
 				.defineFunction('1@function', [{ nodeId: 9, type: ExitPointType.Return }], {
-					hooks: [], // they do not propagate
+					hooks: [{ type: KnownHooks.OnFnExit, id: '9-hook-fn' }],
 					in:    [
 						{ nodeId: 4, name: '<-', type: ReferenceType.Function },
 						{ nodeId: 11, name: 'on.exit', type: ReferenceType.Function },
@@ -103,7 +104,7 @@ describe.sequential('Function Definition - On.Exit', withShell(shell => {
 				.calls('1@function', '12-hook-fn')
 				// returns `on.exit`, no longer `return(x)`, but `return(x)` is **not** dead!
 				.defineFunction('1@function', [ { nodeId: 18, type: ExitPointType.Return }, { nodeId: 10, type: ExitPointType.Return, controlDependencies: [{ id: 12, when: true }] }], {
-					hooks: [], // they do not propagate
+					hooks: [{ type: KnownHooks.OnFnExit, id: '12-hook-fn' }],
 					in:    [
 						{ nodeId: 4, name: '<-', type: ReferenceType.Function },
 						{ nodeId: 14, name: 'on.exit', type: ReferenceType.Function },
@@ -127,7 +128,7 @@ describe.sequential('Function Definition - On.Exit', withShell(shell => {
 			emptyGraph()
 				.calls('1@function', '9-hook-fn')
 				.defineFunction('1@function', [ { nodeId: 9, type: ExitPointType.Return }], {
-					hooks: [], // they do not propagate
+					hooks: [{ type: KnownHooks.OnFnExit, id: '9-hook-fn' }],
 					in:    [
 						{ nodeId: 4, name: '<-', type: ReferenceType.Function },
 						{ nodeId: 11, name: 'on.exit', type: ReferenceType.Function },

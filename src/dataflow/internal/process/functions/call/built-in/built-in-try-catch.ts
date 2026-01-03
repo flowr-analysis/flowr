@@ -1,6 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import type { ExitPoint, DataflowInformation } from '../../../../../info';
-import { ExitPointType } from '../../../../../info';
+import type { ControlDependency, DataflowInformation, ExitPoint } from '../../../../../info';
+import { ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
@@ -11,10 +11,13 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { pMatch } from '../../../../linker';
+import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
 import { VertexType } from '../../../../../graph/vertex';
 import { tryUnpackNoNameArg } from '../argument/unpack-argument';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { isUndefined } from '../../../../../../util/assert';
+import { EdgeType } from '../../../../../graph/edge';
 
 
 function getArgsOfName(argMaps: Map<NodeId, string>, name: string): Set<NodeId> {
@@ -61,37 +64,58 @@ export function processTryCatch<OtherInfo>(
 	const errorArg = getArgsOfName(argMaps, 'error');
 	const finallyArg = getArgsOfName(argMaps, 'finally');
 	// only take those exit points from the block
+	// check whether blockArg has *always* happening exceptions, if so we do not constrain the error handler
+	const blockErrorExitPoints: (ControlDependency | undefined)[] = [];
+	const errorExitPoints: ExitPoint[] = [];
 	(info.exitPoints as ExitPoint[]) = res.processedArguments.flatMap(arg => {
 		if(!arg) {
 			return [];
 		}
 		// this calls error and finally args
-		if(finallyArg.has(arg.entryPoint) || errorArg.has(arg.entryPoint)) {
-			return handleFdefAsCalled(arg.entryPoint, info.graph, arg.exitPoints);
+		if(finallyArg.has(arg.entryPoint)) {
+			return handleFdefAsCalled(arg.entryPoint, info.graph, arg.exitPoints, undefined);
+		} else if(errorArg.has(arg.entryPoint)) {
+			errorExitPoints.push(...getExitPoints(info.graph.getVertex(arg.entryPoint), info.graph) ?? []);
 		}
 		if(!blockArg.has(arg.entryPoint)) {
 			// not killing other args
 			return arg.exitPoints;
 		}
+		blockErrorExitPoints.push(...arg.exitPoints.filter(ep => ep.type === ExitPointType.Error).flatMap(a => a.controlDependencies));
 		return arg.exitPoints.filter(ep => ep.type !== ExitPointType.Error);
 	});
-
-
+	if(errorExitPoints.length > 0) {
+		if(happensInEveryBranch(blockErrorExitPoints.some(isUndefined) ? undefined : blockErrorExitPoints as ControlDependency[])) {
+			(info.exitPoints as ExitPoint[]).push(...errorExitPoints);
+		} else {
+			(info.exitPoints as ExitPoint[]).push(...constrainExitPoints(errorExitPoints, blockArg));
+		}
+	}
+	for(const e of errorArg) {
+		info.graph.addEdge(rootId, e, EdgeType.Calls);
+	}
+	for(const f of finallyArg) {
+		info.graph.addEdge(rootId, f, EdgeType.Calls);
+	}
+	for(const e of info.exitPoints) {
+		if(e.type !== ExitPointType.Error) {
+			info.graph.addEdge(rootId, e.nodeId, EdgeType.Returns);
+		}
+	}
 	return info;
 }
 
-function handleFdefAsCalled(nodeId: NodeId, graph: DataflowGraph, def: readonly ExitPoint[]): readonly ExitPoint[] {
-	const v = graph.getVertex(nodeId);
-	if(!v) {
-		return def;
+function getExitPoints(vertex: DataflowGraphVertexInfo | undefined, graph: DataflowGraph): readonly ExitPoint[] | undefined {
+	if(!vertex) {
+		return undefined;
 	}
-	if(v.tag === VertexType.FunctionDefinition) {
-		return v.exitPoints;
+	if(vertex.tag === VertexType.FunctionDefinition) {
+		return vertex.exitPoints;
 	}
 	// we assumed named argument
-	const n = graph.idMap?.get(nodeId);
+	const n = graph.idMap?.get(vertex.id);
 	if(!n) {
-		return def;
+		return undefined;
 	}
 	if(n.type === RType.Argument && n.value?.type === RType.FunctionDefinition) {
 		const fdefV = graph.getVertex(n.value.info.id);
@@ -99,5 +123,27 @@ function handleFdefAsCalled(nodeId: NodeId, graph: DataflowGraph, def: readonly 
 			return fdefV.exitPoints;
 		}
 	}
-	return def;
+	return undefined;
+}
+
+function handleFdefAsCalled(nodeId: NodeId, graph: DataflowGraph, def: readonly ExitPoint[], constrain: Set<NodeId> | undefined): readonly ExitPoint[] {
+	const v = graph.getVertex(nodeId);
+	const e = getExitPoints(v, graph);
+	return e ? constrainExitPoints(e, constrain) : def;
+}
+
+function constrainExitPoints(exitPoints: readonly ExitPoint[], constrain: Set<NodeId> | undefined): readonly ExitPoint[] {
+	if(!constrain || constrain.size === 0) {
+		return exitPoints;
+	}
+	// append constrains with true
+	const cds = Array.from(constrain, id => ({ id, when: true }));
+	return exitPoints.map(e => {
+		if(e.controlDependencies) {
+			e.controlDependencies.push(...cds);
+			return e;
+		} else {
+			return { ...e, controlDependencies: cds };
+		}
+	});
 }

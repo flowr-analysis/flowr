@@ -7,8 +7,6 @@ import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-bui
 import { withTreeSitter } from '../../_helper/shell';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { KnownRoxygenTags } from '../../../../src/r-bridge/roxygen2/roxygen-ast';
-// TODO: check @inherit etc.
-// TODO: suppor @name in aaa.R etc. files
 
 
 describe('Provide Comments', withTreeSitter(ts => {
@@ -32,6 +30,12 @@ describe('Provide Comments', withTreeSitter(ts => {
 f <- function(arg1 = NULL, arg2 = "value", special.arg = FALSE) {
   return(TRUE)
 }
+
+#' Another function
+#' @inheritParams f
+#' @param x Some x value
+#' @param arg1 Description for argument one.
+g <- function(x, arg1, arg2) { }
 	`, {
 		'7@f': [
 			{ type: KnownRoxygenTags.Text, value: 'This is an important function description.' },
@@ -39,8 +43,19 @@ f <- function(arg1 = NULL, arg2 = "value", special.arg = FALSE) {
 			{ type: KnownRoxygenTags.Param, value: { name: 'arg2', description: 'Description for argument two.' } },
 			{ type: KnownRoxygenTags.Param, value: { name: 'special.arg', description: 'A special argument' } }
 		],
-		'$3': { type: KnownRoxygenTags.Param, value: { name: 'arg1', description: 'Description for argument one.' } },
-		'$6': { type: KnownRoxygenTags.Param, value: { name: 'arg2', description: 'Description for argument two.' } },
-		'$9': { type: KnownRoxygenTags.Param, value: { name: 'special.arg', description: 'A special argument' } }
+		'$3':   { type: KnownRoxygenTags.Param, value: { name: 'arg1', description: 'Description for argument one.' } },
+		'$6':   { type: KnownRoxygenTags.Param, value: { name: 'arg2', description: 'Description for argument two.' } },
+		'$9':   { type: KnownRoxygenTags.Param, value: { name: 'special.arg', description: 'A special argument' } },
+		'15@g': [
+			{ type: KnownRoxygenTags.Text, value: 'Another function' },
+			// is expanded!
+			{ type: KnownRoxygenTags.Param, value: { name: 'arg2', description: 'Description for argument two.' } },
+			{ type: KnownRoxygenTags.Param, value: { name: 'special.arg', description: 'A special argument' } },
+			{ type: KnownRoxygenTags.Param, value: { name: 'x', description: 'Some x value' } },
+			{ type: KnownRoxygenTags.Param, value: { name: 'arg1', description: 'Description for argument one.' } }
+		],
+		'$21': { type: KnownRoxygenTags.Param, value: { name: 'x', description: 'Some x value' } },
+		'$23': { type: KnownRoxygenTags.Param, value: { name: 'arg1', description: 'Description for argument one.' } },
+		'$25': { type: KnownRoxygenTags.Param, value: { name: 'arg2', description: 'Description for argument two.' } } // expanded
 	});
 }));

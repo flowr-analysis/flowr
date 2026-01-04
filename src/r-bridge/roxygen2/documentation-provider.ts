@@ -54,10 +54,68 @@ export function getDocumentationOf(nodeId: NodeId, idMap: AstIdMap<ParentInforma
 	}
 	const retriever = CommentRetriever[node.type as RType] ?? ((c: RNode<ParentInformation>, a: AstIdMap) => parseRoxygenCommentsOfNode(c, a)?.tags);
 	const doc = retriever(node as never, idMap);
-	// TODO: resolve reuse references too!
 	if(doc) {
 		// cache the documentation for future queries
-		(node.info as DocumentationInfo).doc = doc;
+		const expanded = expandInheritsOfTags(doc, idMap);
+		(node.info as DocumentationInfo).doc = expanded;
+		return expanded;
 	}
 	return doc;
+}
+
+function expandInheritsOfTags(tags: RoxygenTag | readonly RoxygenTag[], idMap: AstIdMap<ParentInformation & DocumentationInfo>): RoxygenTag | readonly RoxygenTag[] {
+	const expandedTags: RoxygenTag[] = [];
+	const tagArray: readonly RoxygenTag[] = Array.isArray(tags) ? tags : [tags];
+	for(const tag of tagArray) {
+		const expanded: RoxygenTag | readonly RoxygenTag[] | undefined = expandInheritOfTag(tag, tagArray, idMap);
+		if(!expanded) {
+			continue;
+		}
+		if(Array.isArray(expanded)) {
+			expandedTags.push(...expanded as readonly RoxygenTag[]);
+		} else {
+			expandedTags.push(expanded as RoxygenTag);
+		}
+	}
+	if(expandedTags.length === 1) {
+		return expandedTags[0];
+	}
+	return expandedTags;
+}
+
+function getDocumentationOfByName(name: string, idMap: AstIdMap<ParentInformation & DocumentationInfo>): Documentation | undefined {
+	for(const [, node] of idMap) {
+		const nodeName = node.lexeme ?? node.info.fullLexeme;
+		if(nodeName !== name) {
+			continue;
+		}
+		return getDocumentationOf(node.info.id, idMap);
+	}
+}
+
+function filterDocumentationForParams(doc: Documentation | undefined, filter: (r: RoxygenTag) => boolean): Documentation | undefined {
+	if(!doc) {
+		return doc;
+	}
+	if(Array.isArray(doc)) {
+		return doc.filter(filter) as readonly RoxygenTag[];
+	} else {
+		return filter(doc as RoxygenTag) ? doc : undefined;
+	}
+
+}
+
+function expandInheritOfTag(tag: RoxygenTag, otherTags: readonly RoxygenTag[], idMap: AstIdMap<ParentInformation & DocumentationInfo>): Documentation | undefined {
+	if(tag.type === KnownRoxygenTags.Inherit) {
+		const inheritDoc = getDocumentationOfByName(tag.value.source, idMap);
+		return filterDocumentationForParams(inheritDoc, t => tag.value.components.includes(t.type));
+	} else if(tag.type === KnownRoxygenTags.InheritDotParams) {
+		const inheritDoc = getDocumentationOfByName(tag.value.source, idMap);
+		return filterDocumentationForParams(inheritDoc, t => t.type === KnownRoxygenTags.Param && t.value.name === '...');
+	} else if(tag.type === KnownRoxygenTags.InheritParams) {
+		const inheritDoc = getDocumentationOfByName(tag.value, idMap);
+		const alreadyExplainedParams = new Set(otherTags.filter(t => t.type === KnownRoxygenTags.Param).map(t => t.value.name));
+		return filterDocumentationForParams(inheritDoc, t => t.type === KnownRoxygenTags.Param && !alreadyExplainedParams.has(t.value.name));
+	}
+	return tag;
 }

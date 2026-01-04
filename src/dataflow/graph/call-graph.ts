@@ -15,6 +15,8 @@ import { DefaultMap } from '../../util/collections/defaultmap';
 
 /**
  * A call graph is a dataflow graph where all vertices are function calls.
+ * You can create a call graph from a dataflow graph using {@link computeCallGraph}.
+ * If you want to extract a sub call graph, use {@link getSubCallGraph}.
  */
 export type CallGraph = DataflowGraph<
 	Required<DataflowGraphVertexFunctionCall | DataflowGraphVertexFunctionDefinition>
@@ -26,6 +28,37 @@ interface State {
 	potentials:        [NodeId, Set<NodeId>][]
 	knownReachability: DefaultMap<NodeId, Set<NodeId>>;
 }
+
+/**
+ * Extracts the sub call graph from the given call graph, starting from the given entry points.
+ */
+export function getSubCallGraph(graph: CallGraph, entryPoints: Set<NodeId>): CallGraph {
+	const result: CallGraph = new DataflowGraph(graph.idMap);
+	const toVisit: NodeId[] = Array.from(entryPoints);
+	const visited: Set<NodeId> = new Set();
+
+	while(toVisit.length > 0) {
+		const currentId = toVisit.pop() as NodeId;
+		if(visited.has(currentId)) {
+			continue;
+		}
+		visited.add(currentId);
+		const currentVtx = graph.getVertex(currentId, true);
+		if(!currentVtx) {
+			continue;
+		}
+		result.addVertex(currentVtx, undefined as unknown as REnvironmentInformation, true);
+		for(const [tar, { types }] of graph.outgoingEdges(currentId) ?? []) {
+			if(edgeIncludesType(types, EdgeType.Calls)) {
+				result.addEdge(currentId, tar, EdgeType.Calls);
+				toVisit.push(tar);
+			}
+		}
+	}
+
+	return result;
+}
+
 
 function reaches(from: NodeId, to: NodeId, graph: DataflowGraph, knownReachability: DefaultMap<NodeId, Set<NodeId>>): boolean {
 	const visited: Set<NodeId> = new Set();

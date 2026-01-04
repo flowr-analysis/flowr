@@ -315,7 +315,10 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 	});
 }
 
-function mapProblematicNodesToIds(problematic: readonly ProblematicDiffInfo[] | undefined): Set<NodeId> | undefined {
+/**
+ * Maps problematic nodes in a diff report to their ids for easier marking in mermaid graphs
+ */
+export function mapProblematicNodesToIds(problematic: readonly ProblematicDiffInfo[] | undefined): Set<NodeId> | undefined {
 	return problematic === undefined ? undefined : new Set(problematic.map(p => p.tag === 'vertex' ? String(p.id) : `${p.from}->${p.to}`));
 }
 

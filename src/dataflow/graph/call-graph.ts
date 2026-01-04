@@ -62,9 +62,9 @@ export function computeCallGraph(graph: DataflowGraph): CallGraph {
 		knownReachability: new DefaultMap(() => new Set())
 	};
 	for(const [,vert] of graph.vertices(false)) {
-		if(vert?.tag === VertexType.FunctionCall) {
+		if(vert.tag === VertexType.FunctionCall) {
 			processCall(vert, undefined, graph, result, state);
-		} else if(vert?.tag === VertexType.FunctionDefinition) {
+		} else if(vert.tag === VertexType.FunctionDefinition) {
 			processFunctionDefinition(vert, undefined, graph, result, state);
 		}
 	}
@@ -95,6 +95,9 @@ function processCds(vtx: DataflowGraphVertexInfo, graph: DataflowGraph, result: 
 	}
 }
 
+const UntargetedCallFollow = EdgeType.Reads | EdgeType.DefinedByOnCall | EdgeType.DefinedBy | EdgeType.Returns;
+const UntargetedCallAvoid = EdgeType.NonStandardEvaluation | EdgeType.Argument;
+
 /**
  * This tracks the known symbol origins for a function call for which we know that flowr found no targets!
  */
@@ -116,7 +119,7 @@ function fallbackUntargetedCall(vtx: Required<DataflowGraphVertexFunctionCall>, 
 		}
 		let addedNew = false;
 		for(const [tar, { types }] of graph.outgoingEdges(currentId) ?? []) {
-			if(edgeIncludesType(types, EdgeType.Reads | EdgeType.DefinedByOnCall | EdgeType.DefinedBy | EdgeType.Returns) && edgeDoesNotIncludeType(types, EdgeType.NonStandardEvaluation | EdgeType.Argument)) {
+			if(edgeIncludesType(types, UntargetedCallFollow) && edgeDoesNotIncludeType(types, UntargetedCallAvoid)) {
 				addedNew = true;
 				toVisit.push(tar);
 			}
@@ -131,22 +134,24 @@ function fallbackUntargetedCall(vtx: Required<DataflowGraphVertexFunctionCall>, 
 }
 
 function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, state: State): void {
-	if(from && !reaches(from, vtx.id, result, state.knownReachability)) {
-		result.addEdge(from, vtx.id, EdgeType.Calls);
+	const vid = vtx.id;
+	if(from && !reaches(from, vid, result, state.knownReachability)) {
+		result.addEdge(from, vid, EdgeType.Calls);
 	}
-	if(state.visited.has(vtx.id)) {
+	if(state.visited.has(vid)) {
 		return;
 	}
+	state.visited.add(vid);
+
 	result.addVertex(vtx, undefined as unknown as REnvironmentInformation, true);
 	processCds(vtx, graph, result, state);
-	state.visited.add(vtx.id);
 
 	// for each call, resolve the targets
-	const tars = getAllFunctionCallTargets(vtx.id, graph, vtx.environment);
+	const tars = getAllFunctionCallTargets(vid, graph, vtx.environment);
 	let addedTarget = false;
 	for(const tar of tars) {
 		if(isBuiltIn(tar)) {
-			result.addEdge(vtx.id, tar, EdgeType.Calls);
+			result.addEdge(vid, tar, EdgeType.Calls);
 			addedTarget = true;
 			continue;
 		}
@@ -155,13 +160,13 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 			continue;
 		}
 		addedTarget = true;
-		processFunctionDefinition(targetVtx, vtx.id, graph, result, state);
+		processFunctionDefinition(targetVtx, vid, graph, result, state);
 	}
 	if(vtx.origin !== 'unnamed') {
 		for(const origs of vtx.origin) {
 			if(origs.startsWith('builtin:')) {
 				addedTarget = true;
-				result.addEdge(vtx.id, builtInId(
+				result.addEdge(vid, builtInId(
 					origs.substring('builtin:'.length)
 				), EdgeType.Calls);
 			}
@@ -174,7 +179,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 			if(!oriVtx) {
 				continue;
 			}
-			result.addEdge(vtx.id, ori, EdgeType.Calls);
+			result.addEdge(vid, ori, EdgeType.Calls);
 			const name = graph.idMap?.get(ori);
 			if(name?.lexeme && oriVtx.tag === VertexType.Use) {
 				result.addVertex({
@@ -228,11 +233,12 @@ function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefi
 	processCds(vtx, graph, result, state);
 
 	const exits = new Set(vtx.exitPoints);
+	state.potentials.push([vtx.id, vtx.subflow.graph.difference(exits)]);
+
 	for(const { nodeId } of exits) {
 		const v = graph.getVertex(nodeId, true);
 		if(v) {
 			processUnknown(v, vtx.id, graph, result, state);
 		}
 	}
-	state.potentials.push([vtx.id, vtx.subflow.graph.difference(exits)]);
 }

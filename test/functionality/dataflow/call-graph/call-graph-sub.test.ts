@@ -17,7 +17,6 @@ import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/p
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 
-// TODO: provide a query
 describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 	function checkSubCallGraph(testName: string, code: string, entries: NodeId[], expectedGraph: CallGraph | DataflowGraph): void {
 		const n = label(testName, [], ['call-graph']);

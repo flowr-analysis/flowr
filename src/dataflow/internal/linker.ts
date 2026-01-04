@@ -37,34 +37,23 @@ export function findNonLocalReads(graph: DataflowGraph, ignore: readonly Identif
 	);
 	/* find all variable use ids which do not link to a given id */
 	const nonLocalReads: IdentifierReference[] = [];
-	for(const id of ids) {
-		if(ignores.has(id)) {
+	for(const nodeId of ids) {
+		if(ignores.has(nodeId)) {
 			continue;
 		}
-		const outgoing = graph.outgoingEdges(id);
-		const name = recoverName(id, graph.idMap);
-		const origin = graph.getVertex(id, true);
+		const outgoing = graph.outgoingEdges(nodeId);
+		const name = recoverName(nodeId, graph.idMap);
+		const origin = graph.getVertex(nodeId, true);
+
+		const type = origin?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Variable;
 
 		if(outgoing === undefined) {
-			nonLocalReads.push({
-				name:                recoverName(id, graph.idMap),
-				nodeId:              id,
-				controlDependencies: undefined,
-				type:                origin?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Variable
-			});
+			nonLocalReads.push({ name, nodeId, type });
 			continue;
 		}
 		for(const [target, { types }] of outgoing) {
 			if(edgeIncludesType(types, EdgeType.Reads) && !ids.has(target)) {
-				if(!name) {
-					dataflowLogger.warn('found non-local read without name for id ' + id);
-				}
-				nonLocalReads.push({
-					name:                recoverName(id, graph.idMap),
-					nodeId:              id,
-					controlDependencies: undefined,
-					type:                origin?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Variable
-				});
+				nonLocalReads.push({ name,  nodeId,  type });
 				break;
 			}
 		}

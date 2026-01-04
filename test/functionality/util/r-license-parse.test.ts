@@ -28,8 +28,8 @@ describe('R license parsing', () => {
 		chk({
 			type:              'license',
 			license:           'Apache License',
-			versionConstraint: new Range('=2.0')
-		}, 'Apache License (== 2.0)', 'Apache License (=2.0)');
+			versionConstraint: new Range('=2.0.0')
+		}, 'Apache License (== 2.0.0)', 'Apache License (=2.0.0)');
 		chk({
 			type:    'license',
 			license: 'GPL-2'

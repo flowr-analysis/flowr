@@ -8,61 +8,50 @@ function makeVersion(version: string, original: string) {
 	return semver;
 }
 
-/**
- * Additionally, this transforms `a-b.c` into `a.0.0-b.c` and `a.b-c.d` into `a.b.0-c.d` to
- * ensure valid SemVer format.
- */
-function normalizeTooShortVersions(versions: string): string {
-	const TooShortVersionRegex = /(^|(?<=[^\d.-]))(?<major>\d+)(\.(?<minor>\d+))?\.?-(?<prerelease>[0-9A-Za-z-.]+)(\s|$)/g;
-	let newVersions = '';
-	let match: RegExpExecArray | null;
-	while((match = TooShortVersionRegex.exec(versions)) !== null) {
-		const { major, minor, prerelease } = match.groups as { major: string; minor?: string; prerelease: string };
-		const prefix = versions.slice(0, match.index);
-		let newVersion = '';
-		if(minor === undefined) {
-			// only major version present
-			newVersion = `${major}.0.0-${prerelease}`;
-		} else {
-			// major and minor version present, but dot before prerelease
-			newVersion = `${major}.${minor}.0-${prerelease}`;
-		}
-		newVersions += `${prefix}${newVersion}`;
-		versions = versions.slice(match.index + match[0].length);
+
+function normalizeVersion(version: string): string {
+	version = version.trim();
+	let comparator = '';
+	// extract comparator if present
+	const comparatorMatch = version.match(/^([<>=~^]+)/);
+	if(comparatorMatch) {
+		comparator = comparatorMatch[1].replace('==', '=');
+		version = version.slice(comparatorMatch[1].length).trim();
 	}
-	newVersions += versions; // append any remaining part
-	return newVersions;
+	const [mainVersion, ...preReleaseParts] = version.split('-');
+	const mainVersionParts = mainVersion.split('.');
+	if(mainVersionParts.length > 3) {
+		const newPreReleasePart = mainVersionParts.splice(3).join('.');
+		preReleaseParts.unshift(newPreReleasePart);
+	} else {
+		while(mainVersionParts.length < 3) {
+			mainVersionParts.push('0');
+		}
+	}
+	return comparator + mainVersionParts.map(n => String(Number(n))).join('.') + (preReleaseParts.length > 0 ? `-${preReleaseParts.join('-')}` : '');
 }
 
-/**
- * For every version `a.b.c.d.e...` converts it to `a.b.c-d.e...`
- * If the version already contains a prerelease part, it is appended:
- * `a.b.c.d.e-prerelease...` becomes `a.b.c-d.e-prerelease...`
- */
-function normalizeAdditionalVersionsToPrerelease(version: string): string {
-	version = normalizeTooShortVersions(version);
-	const AdditionalVersionRegex = /(\d+\.\d+\.\d+)(?<additional>(\.\d+)+)(-(?<prerelease>[0-9A-Za-z-.]+))?/g;
 
+
+const AnyVerWithMaybeRangeRegex = /(\s*[<>=~^]*\s*\d+(\.\d*)*(-[0-9A-Za-z-.]+)?)/g;
+function normalizeVersions(versions: string): string {
+	const parts: string[] = [];
+	// extract all version-like parts and normalize them individually
 	let match: RegExpExecArray | null;
-	let newVersion = '';
-	// repeat until no more matches
-	while((match = AdditionalVersionRegex.exec(version)) !== null) {
-		// append to new version, first take over anything before the match
-		const prefix = version.slice(0, match.index);
-		const { additional, prerelease } = match.groups as { additional: string; prerelease?: string };
-		const additionalParts = additional.slice(1).split('.'); // remove leading dot and split
-		if(additionalParts.length === 0) {
-			continue; // nothing to do
+	let index = 0;
+	while((match = AnyVerWithMaybeRangeRegex.exec(versions)) !== null) {
+		const prefix = versions.slice(index, match.index);
+		if(prefix.length > 0) {
+			parts.push(prefix);
 		}
-		let newPrerelease = additionalParts.join('.');
-		if(prerelease) {
-			newPrerelease = `${newPrerelease}-${prerelease}`;
-		}
-		newVersion = `${prefix}${match[1]}-${newPrerelease}`;
-		version = version.slice(match.index + match[0].length);
+		const versionPart = match[1];
+		parts.push(normalizeVersion(versionPart));
+		index = match.index + versionPart.length;
 	}
-	newVersion += version; // append any remaining part
-	return newVersion;
+	if(index < versions.length) {
+		parts.push(versions.slice(index));
+	}
+	return parts.join('');
 }
 
 /**
@@ -76,7 +65,7 @@ export function parseRVersion(version: string): SemVer & { str: string } {
 		return makeVersion(version, version);
 	} catch{ /* do nothing */ }
 	try {
-		const normalized = normalizeAdditionalVersionsToPrerelease(version);
+		const normalized = normalizeVersions(version);
 		return makeVersion(normalized, version);
 	} catch{ /* do nothing */ }
 	const coerced = coerce(version, { loose: true, includePrerelease: true });
@@ -99,6 +88,6 @@ export function parseRRange(range: string): Range & { str: string } {
 	try {
 		return makeRange(range, range);
 	} catch{/* try to normalize R range to SemVer */}
-	const normalized = normalizeAdditionalVersionsToPrerelease(range);
-	return makeRange(normalized.replace(/==/g, '='), range);
+	const normalized = normalizeVersions(range);
+	return makeRange(normalized, range);
 }

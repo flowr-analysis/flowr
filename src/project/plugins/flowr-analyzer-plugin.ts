@@ -109,7 +109,7 @@ export abstract class FlowrAnalyzerPlugin<In = unknown, Out extends AsyncOrSync<
 			return result;
 		} catch(error) {
 			const duration = Date.now() - now;
-			generalPluginLog.error(`Plugin ${this.name} (v${this.version.format()}, {this.type}) failed after ${duration}ms. Error: ${(error as Error).message}`);
+			generalPluginLog.error(`Plugin ${this.name} (v${this.version.format()}, ${this.type}) failed after ${duration}ms. Error: ${(error as Error).message}`);
 			throw error;
 		}
 	}

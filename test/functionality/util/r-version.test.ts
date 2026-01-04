@@ -27,12 +27,12 @@ describe('R Version Utility', () => {
 			['4.2', '4.2.0'],
 			['4', '4.0.0'],
 			['00004', '4.0.0'],
-			['4.00', '4.00'],
-			['12.01', '12.01']
+			['4.00', '4.0.0'],
+			['12.01', '12.1.0']
 		);
 	});
 
-	describe.only('Range', () => {
+	describe('Range', () => {
 		function check(...tests: readonly [give: string, want: string][]) {
 			test.each(tests)('parse %s', (versionRange, expect) => {
 				const parsed = parseRRange(versionRange);

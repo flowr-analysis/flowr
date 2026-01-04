@@ -15,8 +15,8 @@ function normalizeVersion(version: string): string {
 	// extract comparator if present
 	const comparatorMatch = version.match(/^([<>=~^]+)/);
 	if(comparatorMatch) {
-		comparator = comparatorMatch[1];
-		version = version.slice(comparator.length).trim();
+		comparator = comparatorMatch[1].replace('==', '=');
+		version = version.slice(comparatorMatch[1].length).trim();
 	}
 	const [mainVersion, ...preReleaseParts] = version.split('-');
 	const mainVersionParts = mainVersion.split('.');
@@ -89,5 +89,5 @@ export function parseRRange(range: string): Range & { str: string } {
 		return makeRange(range, range);
 	} catch{/* try to normalize R range to SemVer */}
 	const normalized = normalizeVersions(range);
-	return makeRange(normalized.replace(/==/g, '='), range);
+	return makeRange(normalized, range);
 }

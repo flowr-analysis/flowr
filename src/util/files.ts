@@ -35,12 +35,14 @@ export async function* getAllFiles(dir: string, suffix = /.*/): AsyncGenerator<s
  * Retrieves all files in the given directory recursively (synchronously)
  * @see {@link getAllFiles} - for an asynchronous version.
  */
-export function* getAllFilesSync(dir: string, suffix = /.*/): Generator<string> {
+export function* getAllFilesSync(dir: string, suffix = /.*/, ignoreDirs: RegExp | undefined = undefined): Generator<string> {
 	const entries = fs.readdirSync(dir, { withFileTypes: true, recursive: false });
 	for(const subEntries of entries) {
 		const res = path.resolve(dir, subEntries.name);
 		if(subEntries.isDirectory()) {
-			yield* getAllFilesSync(res, suffix);
+			if(!ignoreDirs?.test(subEntries.name)) {
+				yield* getAllFilesSync(res, suffix);
+			}
 		} else if(suffix.test(subEntries.name)) {
 			yield res;
 		}

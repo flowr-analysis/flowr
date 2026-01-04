@@ -130,13 +130,13 @@ export const DefaultBuiltinConfig = [
 		config:          { readAllArguments: true },
 		assumePrimitive: false
 	},
-	{ type: 'function', names: ['rm'],                                         processor: 'builtin:rm',                  config: {},                                                                           assumePrimitive: true  },
-	{ type: 'function', names: ['options'],                                    processor: 'builtin:default',             config: { hasUnknownSideEffects: true, forceArgs: 'all' },                            assumePrimitive: false },
-	{ type: 'function', names: ['mapply', 'Mapply'],                           processor: 'builtin:apply',               config: { indexOfFunction: 0, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },
-	{ type: 'function', names: ['lapply', 'sapply', 'vapply'],                 processor: 'builtin:apply',               config: { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },
-	{ type: 'function', names: ['Lapply', 'Sapply', 'Vapply'],                 processor: 'builtin:apply',               config: { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false }, /* functool wrappers */
-	{ type: 'function', names: ['apply', 'tapply', 'Tapply'],                  processor: 'builtin:apply',               config: { indexOfFunction: 2, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },
-	{ type: 'function', names: ['print', 'message', 'warning'],                processor: 'builtin:default',             config: { returnsNthArgument: 0, forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } },                                  assumePrimitive: false },
+	{ type: 'function', names: ['rm'],                                          processor: 'builtin:rm',                  config: {},                                                                           assumePrimitive: true  },
+	{ type: 'function', names: ['options'],                                     processor: 'builtin:default',             config: { hasUnknownSideEffects: true, forceArgs: 'all' },                            assumePrimitive: false },
+	{ type: 'function', names: ['mapply', 'Mapply'],                            processor: 'builtin:apply',               config: { indexOfFunction: 0, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },
+	{ type: 'function', names: ['lapply', 'sapply', 'vapply'],                  processor: 'builtin:apply',               config: { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },
+	{ type: 'function', names: ['Lapply', 'Sapply', 'Vapply'],                  processor: 'builtin:apply',               config: { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false }, /* functool wrappers */
+	{ type: 'function', names: ['apply', 'tapply', 'Tapply'],                   processor: 'builtin:apply',               config: { indexOfFunction: 2, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },
+	{ type: 'function', names: ['print', 'message', 'warning', 'warn', 'info'], processor: 'builtin:default',             config: { returnsNthArgument: 0, forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } },                                  assumePrimitive: false },
 	// graphics base
 	{ type:      'function', names:     PlotCreate,
 		processor: 'builtin:default',
@@ -237,7 +237,13 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['cat'],                                        processor: 'builtin:default',             config: { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } },                                                         assumePrimitive: false },
 	{ type: 'function', names: ['switch'],                                     processor: 'builtin:default',             config: { forceArgs: [true] },                                                         assumePrimitive: false },
 	{ type: 'function', names: ['return'],                                     processor: 'builtin:default',             config: { returnsNthArgument: 0, cfg: ExitPointType.Return, useAsProcessor: 'builtin:return' }, assumePrimitive: true },
-	{ type: 'function', names: ['stop', 'abort'],                              processor: 'builtin:default',             config: { useAsProcessor: 'builtin:stop', cfg: ExitPointType.Error, forceArgs: ['all'] }, assumePrimitive: false },
+	{
+		type:            'function',
+		names:           ['stop', 'abort', 'cli_abort', 'throw', 'stop_bad_type', 'stop_bad_element_type', 'stop_bad_element_length'],
+		processor:       'builtin:default',
+		config:          { useAsProcessor: 'builtin:stop', cfg: ExitPointType.Error, forceArgs: ['all'] },
+		assumePrimitive: false
+	},
 	{ type: 'function', names: ['try'],                                        processor: 'builtin:try',                 config: { block: 'expr', handlers: {} }, assumePrimitive: true },
 	{ type: 'function', names: ['tryCatch', 'tryCatchLog'],                    processor: 'builtin:try',                 config: { block: 'expr', handlers: { error: 'error', finally: 'finally' } }, assumePrimitive: true },
 	{ type: 'function', names: ['stopifnot'],                                  processor: 'builtin:stopifnot',           config: { },                                                                           assumePrimitive: false },

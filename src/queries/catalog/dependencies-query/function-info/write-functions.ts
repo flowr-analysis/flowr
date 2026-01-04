@@ -28,10 +28,14 @@ export const WriteFunctions: FunctionInfo[] = [
 		}
 	},
 	// write functions that don't have argIndex are assumed to write to stdout
-	{ package: 'base', name: 'print',      linkTo: OutputRedirects,                  resolveValue: true },
-	{ package: 'base', name: 'cat',        linkTo: OutputRedirects, argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'message',    linkTo: OutputRedirects,                  resolveValue: true },
-	{ package: 'base', name: 'warning',    linkTo: OutputRedirects,                  resolveValue: true },
+	{ package: 'base',  name: 'print',      linkTo: OutputRedirects,                  resolveValue: false },
+	{ package: 'base',  name: 'cat',        linkTo: OutputRedirects, argName: 'file', resolveValue: true },
+	{ package: 'base',  name: 'message',    linkTo: OutputRedirects,                  resolveValue: false },
+	{ package: 'base',  name: 'warning',    linkTo: OutputRedirects,                  resolveValue: false },
+	{ package: 'rlang', name: 'warn',       linkTo: OutputRedirects,                  resolveValue: false },
+	{ package: 'rlang', name: 'info',       linkTo: OutputRedirects,                  resolveValue: false },
+	{ package: 'cli',  name: 'cli_warn',   linkTo: OutputRedirects,                  resolveValue: false },
+	{ package: 'cli',  name: 'cli_abort',  linkTo: OutputRedirects,                  resolveValue: false },
 	{ package: 'base', name: 'writeLines', argIdx: 1, argName: 'con', resolveValue: true },
 	{ package: 'base', name: 'writeChar',  argIdx: 1, argName: 'con', resolveValue: true },
 	{ package: 'base', name: 'writeBin',   argIdx: 1, argName: 'con', resolveValue: true },

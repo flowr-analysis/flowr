@@ -5,6 +5,7 @@ import { SemVer } from 'semver';
 import { type FlowrFile, FlowrTextFile } from '../../context/flowr-file';
 import { getAllFilesSync } from '../../../util/files';
 import { platformDirname } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import path from 'path';
 
 /**
  * This is the base class for all plugins that discover files in a project for analysis.
@@ -68,11 +69,9 @@ class DefaultFlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerProjectDis
 	public process(_context: unknown, args: RProjectAnalysisRequest): (RParseRequest | FlowrFile<string>)[] {
 		const requests: (RParseRequest | FlowrFile<string>)[] = [];
 		/* the dummy approach of collecting all files, group R and Rmd files, and be done with it */
-		for(const file of getAllFilesSync(args.content)) {
-			if(this.ignorePathsRegex.test(file)) {
-				continue;
-			}
-			if(this.supportedExtensions.test(file) && (!this.onlyTraversePaths || this.onlyTraversePaths.test(file)) && !this.excludePathsRegex.test(platformDirname(file))) {
+		for(const file of getAllFilesSync(args.content, /.*/, this.ignorePathsRegex)) {
+			const relativePath = path.relative(args.content, file);
+			if(this.supportedExtensions.test(relativePath) && (!this.onlyTraversePaths || this.onlyTraversePaths.test(relativePath)) && !this.excludePathsRegex.test(platformDirname(relativePath))) {
 				requests.push({ content: file, request: 'file' });
 			} else {
 				requests.push(new FlowrTextFile(file));

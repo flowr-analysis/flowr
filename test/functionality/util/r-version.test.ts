@@ -39,6 +39,8 @@ describe('R Version Utility', () => {
 				assert.strictEqual(parsed.str, versionRange, `Original version string mismatch for input "${versionRange}"`);
 				const other = new Range(expect);
 				assert.isTrue(parsed.intersects(other), `Parsed range ${parsed.raw} does not match expected ${other.raw}`);
+				assert.strictEqual(parsed.range, other.range, `Parsed range string ${parsed.range} does not match expected ${other.range}`);
+				assert.strictEqual(parsed.includePrerelease, other.includePrerelease, `Parsed range includePrerelease ${parsed.includePrerelease} does not match expected ${other.includePrerelease}`);
 			});
 		}
 		check(
@@ -49,7 +51,7 @@ describe('R Version Utility', () => {
 			['<=4.2.1-beta1', '<=4.2.1-beta1'],
 			['^4.2.1-rc2', '^4.2.1-rc2'],
 			['~4.2.1-alpha', '~4.2.1-alpha'],
-			['4.2', '4.2.0'],
+			['4.2', '>=4.2.0 <4.3.0-0'],
 			['4.2-1', '4.2.0-1'],
 			['>=4.2-1', '>=4.2.0-1'],
 			['4.2.-1', '4.2.0-1'],
@@ -57,7 +59,7 @@ describe('R Version Utility', () => {
 			['>=4..-1', '>=4.0.0-1'],
 			['4-1', '4.0.0-1'],
 			['>=4-1', '>=4.0.0-1'],
-			['4', '4.0.0'],
+			['4', '>= 4.0.0 <5.0.0-0'],
 			['==4.2.1', '=4.2.1'],
 			['>=3.5.0 <4.0.0', '>=3.5.0 <4.0.0'],
 			['>=4.0.0 <4.2.0 || >=4.2.1', '>=4.0.0 <4.2.0 || >=4.2.1'],

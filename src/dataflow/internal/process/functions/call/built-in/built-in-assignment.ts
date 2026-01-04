@@ -103,7 +103,6 @@ function tryReplacementPassingIndices<OtherInfo>(
 		return processAsNamedCall(functionName, data, name, args);
 	}
 
-
 	const info = BuiltInProcessorMapper['builtin:replacement'](
 		{
 			type:      RType.Symbol,

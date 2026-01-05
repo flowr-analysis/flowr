@@ -26,6 +26,8 @@ function prepareCommentContext(commentText: readonly string[]): string[] {
 /**
  * Parses the roxygen comments attached to a node into a RoxygenBlock AST node.
  * Will return `undefined` if there are no valid roxygen comments attached to the node.
+ * Please note that this does *not* do any clever mapping of parameters or requests.
+ * For a higher-level function that also traverses up the AST to find comments attached to parent nodes, see {@link getDocumentationOf}.
  * @param node  - The node to parse the roxygen comments for
  * @param idMap - An optional id map to traverse up the AST to find comments attached to parent nodes
  */

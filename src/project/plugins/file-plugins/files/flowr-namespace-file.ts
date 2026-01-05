@@ -1,10 +1,13 @@
 import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrFile } from '../../../context/flowr-file';
+import { unquoteArgument } from '../../../../abstract-interpretation/data-frame/resolve-args';
 
 export interface NamespaceInfo {
 	exportedSymbols:      string[];
 	exportedFunctions:    string[];
 	exportS3Generics:     Map<string, string[]>;
+	exportedPatterns:     string[];
+	importedPackages:     Map<string, string[] | 'all'>;
 	loadsWithSideEffects: boolean;
 }
 
@@ -59,6 +62,8 @@ function parseNamespace(file: FlowrFileProvider): NamespaceFormat {
 			exportedSymbols:      [] as string[],
 			exportedFunctions:    [] as string[],
 			exportS3Generics:     new Map<string, string[]>(),
+			exportedPatterns:     [] as string[],
+			importedPackages:     new Map<string, string[] | 'all'>(),
 			loadsWithSideEffects: false,
 		},
 	} as NamespaceFormat;
@@ -107,10 +112,35 @@ function parseNamespace(file: FlowrFileProvider): NamespaceFormat {
 						exportedSymbols:      [],
 						exportedFunctions:    [],
 						exportS3Generics:     new Map<string, string[]>(),
+						exportedPatterns:     [],
+						importedPackages:     new Map<string, string[] | 'all'>(),
 						loadsWithSideEffects: false,
 					};
 				}
 				result[pkg].loadsWithSideEffects = true;
+				break;
+			}
+			case 'import': {
+				const pkg = args.trim();
+				result.current.importedPackages?.set(pkg, 'all');
+				break;
+			}
+			case 'importFrom': {
+				const parts = args.split(',').map(s => s.trim());
+				if(parts.length < 2) {
+					continue;
+				}
+				const [pkg, ...symbols] = parts;
+				let arr = result.current.importedPackages?.get(pkg);
+				if(!arr || arr === 'all') {
+					arr = [];
+					result.current.importedPackages?.set(pkg, arr);
+				}
+				arr.push(...symbols);
+				break;
+			}
+			case 'exportPattern': {
+				result.current.exportedPatterns?.push(unquoteArgument(args.trim()));
 				break;
 			}
 		}

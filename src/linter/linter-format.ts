@@ -11,6 +11,7 @@ import type { SourceRange } from '../util/range';
 import type { DataflowInformation } from '../dataflow/info';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export interface LinterRuleInformation<Config extends MergeableRecord = never> {
 	/** Human-Readable name of the linting rule. */
@@ -94,11 +95,16 @@ export type LintQuickFix = LintQuickFixReplacement | LintQuickFixRemove;
  * A linting result for a single linting rule match.
  */
 export interface LintingResult {
-	readonly certainty: LintingResultCertainty
+	/** The certainty of the linting result. */
+	readonly certainty:  LintingResultCertainty
 	/**
 	 * If available, what to do to fix the linting result.
 	 */
-	readonly quickFix?: LintQuickFix[]
+	readonly quickFix?:  LintQuickFix[]
+	/**
+	 * The node ID involved in this linting result, if applicable.
+	 */
+	readonly involvedId: NodeId | undefined
 }
 
 

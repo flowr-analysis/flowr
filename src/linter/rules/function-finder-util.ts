@@ -78,9 +78,10 @@ export const functionFinderUtil = {
 		return {
 			results:
 				results.map(element => ({
-					certainty: LintingResultCertainty.Certain,
-					function:  element.target,
-					range:     element.range
+					certainty:  LintingResultCertainty.Certain,
+					involvedId: element.node.info.id,
+					function:   element.target,
+					range:      element.range
 				})),
 			'.meta': metadata
 		};

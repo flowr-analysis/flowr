@@ -1,7 +1,6 @@
 import { guard } from '../../util/assert';
 import type { DataflowGraphEdge, EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
-import { equalFunctionArguments } from './diff-dataflow-graph';
 import {
 	type DataflowGraphVertexArgument,
 	type DataflowGraphVertexFunctionCall,
@@ -505,8 +504,6 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 
 	if(current.tag === VertexType.VariableDefinition) {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope');
-	} else if(current.tag === VertexType.FunctionCall) {
-		guard(equalFunctionArguments(current.id, current.args, (next as DataflowGraphVertexFunctionCall).args), 'nodes to be joined for the same id must have the same function call information');
 	} else if(current.tag === VertexType.FunctionDefinition) {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope');
 		current.exitPoints = uniqueArrayMerge(current.exitPoints, (next as DataflowGraphVertexFunctionDefinition).exitPoints);

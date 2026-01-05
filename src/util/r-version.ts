@@ -8,7 +8,17 @@ function makeVersion(version: string, original: string) {
 	return semver;
 }
 
-
+function tryNormalizeNumberPart(part: string): string {
+	try {
+		const res = Number(part);
+		if(!Number.isNaN(res)) {
+			return String(res);
+		}
+	} catch{
+		return part;
+	}
+	return part;
+}
 function normalizeVersion(version: string): string {
 	version = version.trim();
 	let comparator = '';
@@ -28,7 +38,11 @@ function normalizeVersion(version: string): string {
 			mainVersionParts.push('0');
 		}
 	}
-	return comparator + mainVersionParts.map(n => String(Number(n))).join('.') + (preReleaseParts.length > 0 ? `-${preReleaseParts.join('-')}` : '');
+	let prerelease = '';
+	if(preReleaseParts.length > 0) {
+		prerelease = '-' + preReleaseParts.join('-').split('.').map(part => tryNormalizeNumberPart(part)).join('.');
+	}
+	return comparator + mainVersionParts.map(tryNormalizeNumberPart).join('.') + prerelease;
 }
 
 

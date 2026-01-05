@@ -132,15 +132,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 	const time = Date.now();
 	const heatMap = new Map<RType, number>();
 	if(analyzer.inspectContext().config.repl.dfProcessorHeat) {
-		const instrument = analyzer.context().config.solver.instrument.dataflowExtractors;
-		if(analyzer.context().config.solver.instrument.dataflowExtractors) {
-			analyzer.context().config.solver.instrument.dataflowExtractors = (extractor, ctx) => {
-				const instrumented = instrument ? instrument(extractor, ctx) : extractor;
-				return instrumentDataflowCount(heatMap, map => map.clear())(instrumented, ctx);
-			};
-		} else {
-			analyzer.context().config.solver.instrument.dataflowExtractors = instrumentDataflowCount(heatMap, map => map.clear());
-		}
+		analyzer.context().config.solver.instrument.dataflowExtractors = instrumentDataflowCount(heatMap, map => map.clear());
 	}
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase();

@@ -70,7 +70,6 @@ class DefaultFlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerProjectDis
 		const requests: (RParseRequest | FlowrFile<string>)[] = [];
 		/* the dummy approach of collecting all files, group R and Rmd files, and be done with it */
 		for(const file of getAllFilesSync(args.content, /.*/, this.ignorePathsRegex)) {
-			console.log(`Discovered file: ${file}`);
 			const relativePath = path.relative(args.content, file);
 			if(this.supportedExtensions.test(relativePath) && (!this.onlyTraversePaths || this.onlyTraversePaths.test(relativePath)) && !this.excludePathsRegex.test(platformDirname(relativePath))) {
 				requests.push({ content: file, request: 'file' });

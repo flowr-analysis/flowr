@@ -30,7 +30,7 @@ import type { FlowrFileProvider } from './flowr-file';
 import { FlowrInlineTextFile } from './flowr-file';
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
 import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
-import type { Threadpool } from '../../dataflow/parallel/threadpool';
+import type { Workerpool } from '../../dataflow/parallel/threadpool';
 import { getPluginRegistrationName, makePlugin } from '../plugins/plugin-registry';
 
 /**
@@ -94,13 +94,13 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	public files!:               FlowrAnalyzerFilesContext;
 	public deps!:                FlowrAnalyzerDependenciesContext;
 	public readonly env:         FlowrAnalyzerEnvironmentContext;
-	public readonly workerPool?: Threadpool; /** only used to pass the pool along into dataflow pipeline */
+	public readonly workerPool?: Workerpool; /** only used to pass the pool along into dataflow pipeline */
 
 	public readonly config: FlowrConfigOptions;
 
 	private readonly plugins: FlowrAnalyzerContextPlugins;
 
-	constructor(config: FlowrConfigOptions, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>, workerPool?: Threadpool) {
+	constructor(config: FlowrConfigOptions, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>, workerPool?: Workerpool) {
 		this.config = config;
 		this.plugins = {
 			filesPlugin:      plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[],

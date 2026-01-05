@@ -123,7 +123,7 @@ export function isWorkerLogMessage(msg: unknown): msg is WorkerLogMessage {
 }
 
 
-export interface ThreadPoolSettings{
+export interface WorkerPoolSettings{
     /** Number of workers that should be started on pool creation */
     nofMinWorkers:            number;
     /** Number of workers that can be alive simultaniously in the pool*/
@@ -143,9 +143,9 @@ export interface ThreadPoolSettings{
     };
 }
 
-export type WorkerData = ThreadPoolSettings['workerData'] & {flowrConfig: FlowrConfigOptions};
+export type WorkerData = WorkerPoolSettings['workerData'] & {flowrConfig: FlowrConfigOptions};
 
-export const ThreadpoolDefaultSettings: ThreadPoolSettings = {
+export const WorkerpoolDefaultSettings: WorkerPoolSettings = {
 	nofMinWorkers:            0,
 	nofMaxWorkers:            0,
 	workerPath:               './worker.js',
@@ -157,12 +157,12 @@ export const ThreadpoolDefaultSettings: ThreadPoolSettings = {
 /**
  * Simple wrapper for piscina used for dataflow parallelization
  */
-export class Threadpool {
+export class Workerpool {
 	private readonly pool: Piscina;
 	private workerPorts = new Map<number, MessagePort>();
 	private destroyed = false;
 
-	constructor(settings: ThreadPoolSettings = ThreadpoolDefaultSettings, flowrConfig = cloneConfig(defaultConfigOptions)) {
+	constructor(settings: WorkerPoolSettings = WorkerpoolDefaultSettings, flowrConfig = cloneConfig(defaultConfigOptions)) {
 		console.log('hey', __dirname, process.env.NODE_ENV, settings.workerPath);
 		let workers = settings.nofMaxWorkers;
 		if(workers <= 0){
@@ -218,7 +218,7 @@ export class Threadpool {
 
 	private assertAlive() {
 		if(this.destroyed) {
-			throw new Error('Threadpool used after destruction');
+			throw new Error('Workerpool used after destruction');
 		}
 	}
 

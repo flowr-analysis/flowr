@@ -11,7 +11,7 @@ import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 import { FlowrAnalyzerPluginDefaults } from './plugins/flowr-analyzer-plugin-defaults';
 import type { BuiltInFlowrPluginName, PluginToRegister } from './plugins/plugin-registry';
 import { makePlugin } from './plugins/plugin-registry';
-import { Threadpool, ThreadpoolDefaultSettings } from '../dataflow/parallel/threadpool';
+import { Workerpool, WorkerpoolDefaultSettings } from '../dataflow/parallel/threadpool';
 import * as v8 from 'v8';
 
 /**
@@ -222,7 +222,7 @@ export class FlowrAnalyzerBuilder {
 		let workerPool = undefined;
 		if(this.flowrConfig.optimizations.fileParallelization
             || this.flowrConfig.optimizations.dataflowOperationParallelization){
-			workerPool = new Threadpool(ThreadpoolDefaultSettings, this.flowrConfig);
+			workerPool = new Workerpool(WorkerpoolDefaultSettings, this.flowrConfig);
 		}
 
 		const context = new FlowrAnalyzerContext(this.flowrConfig, this.plugins, workerPool);

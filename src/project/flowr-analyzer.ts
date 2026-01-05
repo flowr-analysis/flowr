@@ -16,7 +16,7 @@ import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import { fileProtocol, requestFromInput } from '../r-bridge/retriever';
 import { isFilePath } from '../util/files';
 import type { FlowrFileProvider } from './context/flowr-file';
-import type { Threadpool } from '../dataflow/parallel/threadpool';
+import type { Workerpool } from '../dataflow/parallel/threadpool';
 
 /**
  * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
@@ -140,7 +140,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	private readonly cache:  FlowrAnalyzerCache<Parser>;
 	private readonly ctx:    FlowrAnalyzerContext;
 	private parserInfo:      KnownParserInformation | undefined;
-	private pool?:           Threadpool;
+	private pool?:           Workerpool;
 	private closed = false;
 
 	/**

@@ -22,7 +22,7 @@ import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import type { KnownParser } from '../r-bridge/parser';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
-import { ThreadpoolDefaultSettings } from '../dataflow/parallel/threadpool';
+import { WorkerpoolDefaultSettings } from '../dataflow/parallel/threadpool';
 
 async function explainServer(parser: KnownParser): Promise<string> {
 	documentAllServerMessages();
@@ -259,7 +259,7 @@ ${codeBlock('json', JSON.stringify(
 				deferredFunctionEvaluation:       false,
 			},
 			workerPool: {
-				poolSettings: ThreadpoolDefaultSettings,
+				poolSettings: WorkerpoolDefaultSettings,
 			}
 		} satisfies FlowrConfigOptions,
 		null, 2))

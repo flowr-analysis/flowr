@@ -7,8 +7,8 @@ import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
 import type { DeepWritable } from 'ts-essentials';
-import type { ThreadPoolSettings } from './dataflow/parallel/threadpool';
-import { ThreadpoolDefaultSettings } from './dataflow/parallel/threadpool';
+import type { WorkerPoolSettings } from './dataflow/parallel/threadpool';
+import { WorkerpoolDefaultSettings } from './dataflow/parallel/threadpool';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -201,7 +201,7 @@ export interface FlowrConfigOptions extends MergeableRecord {
 
     readonly workerPool: {
 
-        readonly poolSettings: ThreadPoolSettings;
+        readonly poolSettings: WorkerPoolSettings;
     }
 }
 
@@ -283,7 +283,7 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 		deferredFunctionEvaluation:       true,
 	},
 	workerPool: {
-		poolSettings: ThreadpoolDefaultSettings
+		poolSettings: WorkerpoolDefaultSettings
 	}
 };
 

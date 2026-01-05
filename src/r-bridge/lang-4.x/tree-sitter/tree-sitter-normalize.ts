@@ -4,6 +4,7 @@ import { ParseError } from '../ast/parser/main/normalizer-data';
 import { TreeSitterType } from './tree-sitter-types';
 import { RType } from '../ast/model/type';
 import type { SourceRange } from '../../../util/range';
+import { invalidRange } from '../../../util/range';
 import { removeRQuotes } from '../../retriever';
 import { boolean2ts, number2ts, string2ts } from '../convert-values';
 import { ensureExpressionList } from '../ast/parser/main/normalize-meta';
@@ -79,7 +80,21 @@ export function makeTreeSitterStrict() {
 	nonErrorChildren = nonErrorChildrenStrict;
 }
 
-function convertTreeNode(node: SyntaxNode): RNode<TreeSitterInfo> {
+function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
+	if(!node) {
+		return {
+			type:     RType.ExpressionList,
+			location: undefined,
+			lexeme:   undefined,
+			children: [],
+			grouping: undefined,
+			info:     {
+				fullRange:        invalidRange(),
+				additionalTokens: [],
+				treeSitterId:     -1,
+			}
+		} as RNode<TreeSitterInfo>;
+	}
 	// generally, the grammar source file dictates what children a node has in what order:
 	// https://github.com/r-lib/tree-sitter-r/blob/main/grammar.js
 	const range = makeSourceRange(node);
@@ -458,6 +473,7 @@ function convertTreeNode(node: SyntaxNode): RNode<TreeSitterInfo> {
 			};
 		}
 		case TreeSitterType.ExtractOperator: {
+			console.log(makeSourceRange(node));
 			const [lhs, operator, rhs] = nonErrorChildren(node);
 			const rhsRange = makeSourceRange(rhs);
 			return {
@@ -472,12 +488,12 @@ function convertTreeNode(node: SyntaxNode): RNode<TreeSitterInfo> {
 						...defaultInfo
 					},
 					location: rhsRange,
-					lexeme:   rhs.text,
+					lexeme:   rhs?.text,
 					info:     {
 						fullRange:        rhsRange,
 						additionalTokens: [],
-						fullLexeme:       rhs.text,
-						treeSitterId:     rhs.id
+						fullLexeme:       rhs?.text,
+						treeSitterId:     rhs?.id
 					}
 				}],
 				location: makeSourceRange(operator),
@@ -584,7 +600,10 @@ function convertTreeNode(node: SyntaxNode): RNode<TreeSitterInfo> {
 	}
 }
 
-function makeSourceRange(node: SyntaxNode): SourceRange {
+function makeSourceRange(node: SyntaxNode | undefined): SourceRange {
+	if(!node) {
+		return invalidRange();
+	}
 	if(node.startPosition && node.endPosition) {
 		return [
 			// tree-sitter is 0-based but we want 1-based

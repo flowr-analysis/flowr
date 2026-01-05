@@ -43,6 +43,7 @@ export(coord_cartesian)
 export(ggsave)
 export(fortify)
 export(scale_type)
+exportPattern("^[^\\.].*")
 import(grid)
 import(rlang)
 importFrom(scales,alpha)
@@ -52,7 +53,7 @@ importFrom(stats,setNames)`));
 	ctx.addRequests([{ request: 'file', content: 'test.R' }]);
 	ctx.resolvePreAnalysis();
 
-	describe.sequential('Basic exports', function() {
+	describe('Basic exports', function() {
 		test('Functions are exported', () => {
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
@@ -74,9 +75,16 @@ importFrom(stats,setNames)`));
 			assert.isTrue(deps.namespaceInfo?.exportedSymbols.includes('coord_cartesian'));
 			assert.isTrue(deps.namespaceInfo?.exportedSymbols.includes('ggsave'));
 		});
+
+		test('Export pattern registered', () => {
+			const deps = ctx.deps.getDependency('current');
+			assert.isDefined(deps);
+			assert.strictEqual(deps.namespaceInfo?.exportedPatterns?.length, 1);
+			assert.strictEqual(deps.namespaceInfo?.exportedPatterns?.[0], '^[^\\.].*');
+		});
 	});
 
-	describe.sequential('S3 methods - fortify', function() {
+	describe('S3 methods - fortify', function() {
 		test('All fortify methods registered in namespaceInfo', () => {
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
@@ -100,7 +108,24 @@ importFrom(stats,setNames)`));
 		});
 	});
 
-	describe.sequential('Mixed exports and S3', function() {
+	describe('Correct Imports', function() {
+		test('Imports are registered correctly', () => {
+			const deps = ctx.deps.getDependency('current');
+			assert.isDefined(deps);
+
+			assert.isTrue(deps.namespaceInfo?.importedPackages?.has('grid'));
+			assert.isTrue(deps.namespaceInfo?.importedPackages?.has('rlang'));
+			assert.isTrue(deps.namespaceInfo?.importedPackages?.has('scales'));
+			assert.isTrue(deps.namespaceInfo?.importedPackages?.has('stats'));
+
+			assert.strictEqual(deps.namespaceInfo?.importedPackages?.get('grid'), 'all');
+			assert.strictEqual(deps.namespaceInfo?.importedPackages?.get('rlang'), 'all');
+			assert.deepEqual(deps.namespaceInfo?.importedPackages?.get('scales'), ['alpha']);
+			assert.deepEqual(deps.namespaceInfo?.importedPackages?.get('stats'), ['setNames']);
+		});
+	});
+
+	describe('Mixed exports and S3', function() {
 		test('ggplot has export and S3 method', () => {
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);

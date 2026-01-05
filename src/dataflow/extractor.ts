@@ -96,7 +96,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 			continue;
 		}
 		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */
-		const potentials = identifyLinkToLastCallRelation(s.id, cf.graph, graph, s.linkTo, knownCalls);
+		const potentials = identifyLinkToLastCallRelation(s.id, cf?.graph, graph, s.linkTo, knownCalls);
 		for(const pot of potentials) {
 			graph.addEdge(s.id, pot, EdgeType.Reads);
 		}

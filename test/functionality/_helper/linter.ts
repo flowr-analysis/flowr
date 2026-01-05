@@ -23,8 +23,11 @@ import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 function cleanUpLintingResult<Name extends LintingRuleNames>(
 	result: LintingRuleResult<Name> | Omit<LintingRuleResult<Name>, 'involvedId'>
 ): Omit<LintingRuleResult<Name>, 'involvedId'> {
-	const { involvedId: _drop, ...rest } = result;
-	return rest;
+	if('involvedId' in result) {
+		const { involvedId: _drop, ...rest } = result;
+		return rest;
+	}
+	return result;
 }
 
 

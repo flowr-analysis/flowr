@@ -7,6 +7,9 @@ import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
 import type { DeepWritable } from 'ts-essentials';
+import type { DataflowProcessors } from './dataflow/processor';
+import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -110,7 +113,9 @@ export interface FlowrConfigOptions extends MergeableRecord {
     /** Configuration options for the REPL */
     readonly repl: {
         /** Whether to show quick stats in the REPL after each evaluation */
-        quickStats: boolean
+        quickStats:   boolean
+	    /** This instruments the dataflow processors to count how often each processor is called */
+	    dfProcessorHeat: boolean;
     }
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
@@ -145,6 +150,15 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			 * The maximum number of indices tracked per obj with the pointer analysis (currently this focuses on initialization)
 			 */
 			readonly maxIndexCount: number
+		},
+		/** These keys are only intended for use within code, allowing to instrument the dataflow analyzer! */
+		readonly instrument: {
+			/**
+			 * Modify the dataflow processors used during dataflow analysis.
+			 * Make sure that all processors required for correct analysis are still present!
+			 * This may have arbitrary consequences on the analysis precision and performance, consider focusing on decorating existing processors instead of replacing them.
+			 */
+			dataflowExtractors?: (extractor: DataflowProcessors<ParentInformation>, ctx: FlowrAnalyzerContext) => DataflowProcessors<ParentInformation>
 		},
 		/**
 		 * If lax source calls are active, flowR searches for sourced files much more freely,
@@ -238,7 +252,8 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 		}
 	},
 	repl: {
-		quickStats: false
+		quickStats:      false,
+		dfProcessorHeat: false
 	},
 	project: {
 		resolveUnknownPathsOnDisk: true
@@ -255,6 +270,9 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 			inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
 			searchPath:            [],
 			repeatedSourceLimit:   2
+		},
+		instrument: {
+			dataflowExtractors: undefined
 		},
 		slicer: {
 			threshold: 50
@@ -283,7 +301,8 @@ export const flowrConfigFileSchema = Joi.object({
 		}).optional().description('Semantics regarding how to handle the R environment.')
 	}).description('Configure language semantics and how flowR handles them.'),
 	repl: Joi.object({
-		quickStats: Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.')
+		quickStats:      Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.'),
+		dfProcessorHeat: Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.')
 	}).description('Configuration options for the REPL.'),
 	project: Joi.object({
 		resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.')
@@ -310,6 +329,9 @@ export const flowrConfigFileSchema = Joi.object({
 				maxIndexCount: Joi.number().required().description('The maximum number of indices tracked per object with the pointer analysis.')
 			})
 		).description('Whether to track pointers in the dataflow graph, if not, the graph will be over-approximated wrt. containers and accesses.'),
+		instrument: Joi.object({
+			dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
+		}),
 		resolveSource: Joi.object({
 			dropPaths:             Joi.string().valid(...Object.values(DropPathsOption)).description('Allow to drop the first or all parts of the sourced path, if it is relative.'),
 			ignoreCapitalization:  Joi.boolean().description('Search for filenames matching in the lowercase.'),

@@ -533,7 +533,7 @@ ${
 }
 
 One of the most useful options to change on-the-fly are probably those under \`repl\`. For example, setting \`repl.quickStats=true\`
-enables quick statistics after each REPL command.
+enables quick statistics after each REPL command. Likewise, setting \`repl.dfProcessorHeat=true\` enables the dataflow processor heatmap after each REPL command.
 `;
 	}
 });

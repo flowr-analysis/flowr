@@ -252,7 +252,8 @@ ${codeBlock('json', JSON.stringify(
 				}
 			},
 			repl: {
-				quickStats: false
+				quickStats:      false,
+				dfProcessorHeat: false
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true
@@ -268,7 +269,8 @@ ${codeBlock('json', JSON.stringify(
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
 					searchPath:            []
 				},
-				slicer: {
+				instrument: {},
+				slicer:     {
 					threshold: 50
 				}
 			},

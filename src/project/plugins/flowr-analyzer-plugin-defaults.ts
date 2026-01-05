@@ -13,6 +13,7 @@ import { FlowrAnalyzerNamespaceFilesPlugin } from './file-plugins/flowr-analyzer
 import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-file-plugin';
 import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
 import { FlowrAnalyzerMetaTestFilesPlugin } from './file-plugins/flowr-analyzer-test-file-plugin';
+import { FlowrAnalyzerLicenseFilePlugin } from './file-plugins/flowr-analyzer-license-file-plugin';
 
 /**
  * Provides the default set of Flowr Analyzer plugins.
@@ -26,6 +27,7 @@ export function FlowrAnalyzerPluginDefaults(): FlowrAnalyzerPlugin[] {
 		new FlowrAnalyzerLoadingOrderDescriptionFilePlugin(),
 		new FlowrAnalyzerRmdFilePlugin(),
 		new FlowrAnalyzerQmdFilePlugin(),
+		new FlowrAnalyzerLicenseFilePlugin(),
 		new FlowrAnalyzerJupyterFilePlugin(),
 		new FlowrAnalyzerNamespaceFilesPlugin(),
 		new FlowrAnalyzerNewsFilePlugin()

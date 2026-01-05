@@ -14,6 +14,7 @@ import { FlowrAnalyzerNamespaceFilesPlugin } from './file-plugins/flowr-analyzer
 import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-file-plugin';
 import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
 import { FlowrAnalyzerMetaTestFilesPlugin } from './file-plugins/flowr-analyzer-test-file-plugin';
+import { FlowrAnalyzerLicenseFilePlugin } from './file-plugins/flowr-analyzer-license-file-plugin';
 
 /**
  * The built-in Flowr Analyzer plugins that are always available.
@@ -28,7 +29,8 @@ export const BuiltInPlugins = [
 	['file:qmd', FlowrAnalyzerQmdFilePlugin],
 	['file:ipynb', FlowrAnalyzerJupyterFilePlugin],
 	['file:namespace', FlowrAnalyzerNamespaceFilesPlugin],
-	['file:news', FlowrAnalyzerNewsFilePlugin]
+	['file:news', FlowrAnalyzerNewsFilePlugin],
+	['file:license', FlowrAnalyzerLicenseFilePlugin]
 ] as const satisfies [string, PluginProducer][];
 
 export type BuiltInFlowrPluginName = typeof BuiltInPlugins[number][0];

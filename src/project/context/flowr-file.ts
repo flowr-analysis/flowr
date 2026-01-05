@@ -26,6 +26,8 @@ export enum FileRole {
 	Test        = 'test',
 	/** Data files, e.g., `R/sysdata.rda`, currently not specially supported. */
 	Data        = 'data',
+	/** Signals separate license files, but please note, that DESCRIPTION files may contain license info too */
+	License     = 'license',
 	/**
 	 * Catch-all for any file that provides usable R source code to incorporate into the analysis.
 	 * Please note, that the loading order/inclusion and even potential relevance of these source files

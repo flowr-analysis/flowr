@@ -115,8 +115,7 @@ export async function produceDataFlowGraph<OtherInfo>(
 
 	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
 
-	const features = ctx.features;
-	const fileParallelization = features.isEnabled('paralleliseFiles');
+	const fileParallelization = ctx.config.optimizations.fileParallelization;
 	const workerPool = fileParallelization ? ctx.workerPool : undefined;
 
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {

@@ -11,10 +11,8 @@ import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 import { FlowrAnalyzerPluginDefaults } from './plugins/flowr-analyzer-plugin-defaults';
 import type { BuiltInFlowrPluginName, PluginToRegister } from './plugins/plugin-registry';
 import { makePlugin } from './plugins/plugin-registry';
-import { FeatureManager } from '../core/feature-flags/feature-manager';
-import type { FeatureFlag } from '../core/feature-flags/feature-def';
-import type { ThreadPoolSettings } from '../dataflow/parallel/threadpool';
 import { Threadpool, ThreadpoolDefaultSettings } from '../dataflow/parallel/threadpool';
+import * as v8 from 'v8';
 
 /**
  * Builder for the {@link FlowrAnalyzer}, use it to configure all analysis aspects before creating the analyzer instance
@@ -44,7 +42,6 @@ export class FlowrAnalyzerBuilder {
 	private parser?:     KnownParser;
 	private input?:      Omit<NormalizeRequiredInput, 'context'>;
 	private plugins:     Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
-	private features:    FeatureManager;
 
 	/**
 	 * Creates a new builder for the {@link FlowrAnalyzer}.
@@ -58,7 +55,6 @@ export class FlowrAnalyzerBuilder {
 		if(withDefaultPlugins) {
 			this.registerPlugins(...FlowrAnalyzerPluginDefaults());
 		}
-		this.features = new FeatureManager();
 	}
 
 	/**
@@ -141,30 +137,63 @@ export class FlowrAnalyzerBuilder {
 	}
 
 	/**
-	 * Sets the provided `feature` to `state` for the {@link FlowrAnalyzer} to be built by this instance
-	 * @param feature - feature to set
-	 * @param state - boolean state
+	 * Enable file parallelization.
+	 * If v8 is not available, this function call will be ignored.
 	 */
-	public setFeatureState(feature: FeatureFlag, state: boolean): this{
-		this.features.setFlag(feature, state);
+	public enableFileParallelization(): this {
+		/** check if v8 is present */
+		if(typeof v8 === 'undefined') {
+			/** throw a warning and use sequential analysis */
+			console.warn('v8 is not available. Ignoring file parallelization request.');
+			return this;
+		}
+		this.flowrConfig.optimizations.fileParallelization = true;
 		return this;
 	}
 
 	/**
-	 * Sets the provided `feature` to `true` for the {@link FlowrAnalyzer} to be built by this instance
-	 * @param feature - feature to set
+	 * Disable file parallelization.
 	 */
-	public setFeature(feature: FeatureFlag): this{
-		this.features.setFlag(feature, true);
+	public disableFileParallelization(): this {
+		this.flowrConfig.optimizations.fileParallelization = false;
 		return this;
 	}
 
 	/**
-	 * Sets the provided `feature` to `false` for the {@link FlowrAnalyzer} to be built by this instance
-	 * @param feature - feature to set
+	 * Enable dataflow operation parallelization.
+	 * If v8 is not available, this function call will be ignored.
 	 */
-	public unsetFeature(feature: FeatureFlag): this{
-		this.features.setFlag(feature, false);
+	public enableDataflowOperationParallelization(): this {
+		if(typeof v8 === 'undefined') {
+			/** throw a warning and use sequential analysis */
+			console.warn('v8 is not available. Ignoring file parallelization request.');
+			return this;
+		}
+		this.flowrConfig.optimizations.dataflowOperationParallelization = true;
+		return this;
+	}
+
+	/**
+	 * Disable dataflow operation parallelization.
+	 */
+	public diableDataflowOperationParallelization(): this {
+		this.flowrConfig.optimizations.dataflowOperationParallelization = false;
+		return this;
+	}
+
+	/**
+	 * Enable deferred function evaluation.
+	 */
+	public enableDeferredFunctionEvaluation(): this {
+		this.flowrConfig.optimizations.deferredFunctionEvaluation = true;
+		return this;
+	}
+
+	/**
+	 * Disable deferred function evaluation.
+	 */
+	public disableDeferredFunctionEvaluation(): this {
+		this.flowrConfig.optimizations.deferredFunctionEvaluation = false;
 		return this;
 	}
 
@@ -191,17 +220,12 @@ export class FlowrAnalyzerBuilder {
 		guard(this.parser !== undefined, 'No parser set, please use the setParser or setEngine method to set a parser before building the analyzer');
 
 		let workerPool = undefined;
-		if(this.features.isEnabled('paralleliseFiles')){
-			const settings: ThreadPoolSettings = {
-				...ThreadpoolDefaultSettings,
-				workerData: {
-					flowrConfig: this.flowrConfig,
-				}, // change the parser to the currently used
-			};
-			workerPool = new Threadpool(settings);
+		if(this.flowrConfig.optimizations.fileParallelization
+            || this.flowrConfig.optimizations.dataflowOperationParallelization){
+			workerPool = new Threadpool(ThreadpoolDefaultSettings, this.flowrConfig);
 		}
 
-		const context = new FlowrAnalyzerContext(this.flowrConfig, this.plugins, this.features, workerPool);
+		const context = new FlowrAnalyzerContext(this.flowrConfig, this.plugins, workerPool);
 		const cache = FlowrAnalyzerCache.create({
 			parser: this.parser,
 			context,

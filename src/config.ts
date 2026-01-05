@@ -7,6 +7,8 @@ import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
 import type { DeepWritable } from 'ts-essentials';
+import type { ThreadPoolSettings } from './dataflow/parallel/threadpool';
+import { ThreadpoolDefaultSettings } from './dataflow/parallel/threadpool';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -188,6 +190,19 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			}
 		}
 	}
+
+    readonly optimizations: {
+        readonly fileParallelization: boolean;
+
+        readonly dataflowOperationParallelization: boolean;
+
+        readonly deferredFunctionEvaluation: boolean;
+    }
+
+    readonly workerPool: {
+
+        readonly poolSettings: ThreadPoolSettings;
+    }
 }
 
 export interface TreeSitterEngineConfig extends MergeableRecord {
@@ -261,6 +276,14 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 				maxReadLines:      1e6
 			}
 		}
+	},
+	optimizations: {
+		fileParallelization:              false,
+		dataflowOperationParallelization: false,
+		deferredFunctionEvaluation:       true,
+	},
+	workerPool: {
+		poolSettings: ThreadpoolDefaultSettings
 	}
 };
 
@@ -358,6 +381,7 @@ export function amendConfig(config: FlowrConfigOptions, amendmentFunc: (config: 
 export function cloneConfig(config: FlowrConfigOptions): FlowrConfigOptions {
 	return JSON.parse(JSON.stringify(config)) as FlowrConfigOptions;
 }
+
 
 /**
  * Loads the flowr config from the given file or the default locations.

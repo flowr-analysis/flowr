@@ -138,13 +138,12 @@ export interface ThreadPoolSettings{
      * Data that is given to each worker via the workerData
      * Important: data needs to be clonable and data is copied for each worker
      */
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     workerData: {
-        /** */
-        flowrConfig: FlowrConfigOptions;
     };
 }
 
-export type WorkerData = ThreadPoolSettings['workerData'];
+export type WorkerData = ThreadPoolSettings['workerData'] & {flowrConfig: FlowrConfigOptions};
 
 export const ThreadpoolDefaultSettings: ThreadPoolSettings = {
 	nofMinWorkers:            0,
@@ -152,9 +151,7 @@ export const ThreadpoolDefaultSettings: ThreadPoolSettings = {
 	workerPath:               './worker.js',
 	idleTimeout:              30_000, // 30 seconds timeout
 	concurrentTasksPerWorker: 4,
-	workerData:               {
-		flowrConfig: cloneConfig(defaultConfigOptions),
-	},
+	workerData:               {},
 };
 
 /**
@@ -165,7 +162,7 @@ export class Threadpool {
 	private workerPorts = new Map<number, MessagePort>();
 	private destroyed = false;
 
-	constructor(settings: ThreadPoolSettings = ThreadpoolDefaultSettings) {
+	constructor(settings: ThreadPoolSettings = ThreadpoolDefaultSettings, flowrConfig = cloneConfig(defaultConfigOptions)) {
 		console.log('hey', __dirname, process.env.NODE_ENV, settings.workerPath);
 		let workers = settings.nofMaxWorkers;
 		if(workers <= 0){
@@ -186,6 +183,7 @@ export class Threadpool {
 			idleTimeout:              settings.idleTimeout, // 30 seconds idle timeout
 			workerData:               {
 				...settings.workerData,
+				flowrConfig: flowrConfig,
 			},
 		});
 

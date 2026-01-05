@@ -30,9 +30,7 @@ import type { FlowrFileProvider } from './flowr-file';
 import { FlowrInlineTextFile } from './flowr-file';
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
 import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
-import { FeatureManager } from '../../core/feature-flags/feature-manager';
 import type { Threadpool } from '../../dataflow/parallel/threadpool';
-import type { Features } from '../../core/feature-flags/feature-def';
 import { getPluginRegistrationName, makePlugin } from '../plugins/plugin-registry';
 
 /**
@@ -74,11 +72,10 @@ export interface FlowrAnalyzerContextPlugins{
 }
 
 export interface SerializedFlowrAnalyzerContext{
-    config:   FlowrConfigOptions;
-    plugins:  FlowrAnalyzerContextPluginNames;
-    features: Readonly<Features>;
-    files:    SerializedFlowrAnalyzerFilesContext;
-    deps:     SerializedFlowrAnalyzerDependenciesContext;
+    config:  FlowrConfigOptions;
+    plugins: FlowrAnalyzerContextPluginNames;
+    files:   SerializedFlowrAnalyzerFilesContext;
+    deps:    SerializedFlowrAnalyzerDependenciesContext;
 }
 
 /**
@@ -97,14 +94,13 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	public files!:               FlowrAnalyzerFilesContext;
 	public deps!:                FlowrAnalyzerDependenciesContext;
 	public readonly env:         FlowrAnalyzerEnvironmentContext;
-	public readonly features:    FeatureManager;
 	public readonly workerPool?: Threadpool; /** only used to pass the pool along into dataflow pipeline */
 
 	public readonly config: FlowrConfigOptions;
 
 	private readonly plugins: FlowrAnalyzerContextPlugins;
 
-	constructor(config: FlowrConfigOptions, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>, features = new FeatureManager(), workerPool?: Threadpool) {
+	constructor(config: FlowrConfigOptions, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>, workerPool?: Threadpool) {
 		this.config = config;
 		this.plugins = {
 			filesPlugin:      plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[],
@@ -116,7 +112,6 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		this.files = new FlowrAnalyzerFilesContext(loadingOrder, this.plugins.discoveryPlugin, this.plugins.fileLoadPlugin);
 		this.deps  = new FlowrAnalyzerDependenciesContext(this, this.plugins.dependencyPlugin);
 		this.env   = new FlowrAnalyzerEnvironmentContext(this);
-		this.features = features;
 		this.workerPool = workerPool;
 	}
 
@@ -150,14 +145,11 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		console.log(pluginNames);
 
 		// serialize feature manager
-		const features = this.features.toSerializable();
-
 		return {
-			plugins:  pluginNames,
-			features: features,
-			config:   this.config,
-			files:    this.files.toSerializable(),
-			deps:     this.deps.toSerializable(),
+			plugins: pluginNames,
+			config:  this.config,
+			files:   this.files.toSerializable(),
+			deps:    this.deps.toSerializable(),
 		};
 	}
 
@@ -171,7 +163,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 			[PluginType.ProjectDiscovery, plugins.discoveryPlugin],
 			[PluginType.FileLoad, plugins.fileLoadPlugin],
 			[PluginType.DependencyIdentification, plugins.dependencyPlugin]
-		]), FeatureManager.fromSerializable(analyserContext.features));
+		]));
 
 		// restore files and loading order
 		const filesCtx = FlowrAnalyzerFilesContext.fromSerializable(

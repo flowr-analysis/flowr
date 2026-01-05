@@ -296,13 +296,20 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
  * Promotes the ingoing/unknown references of target (an assignment) to definitions
  */
 function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): (InGraphIdentifierDefinition & { name: string })[] {
-	return target.in.concat(target.unknownReferences).map(ref => ({
-		...ref,
-		type:                referenceType,
-		definedAt:           rootId,
-		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
-		value
-	}) as InGraphIdentifierDefinition & { name: string });
+	const written: (InGraphIdentifierDefinition & { name: string })[] = [];
+	for(const refs of [target.in, target.unknownReferences]) {
+		for(const ref of refs) {
+			written.push({
+				nodeId:              ref.nodeId,
+				name:                ref.name as string,
+				type:                referenceType,
+				definedAt:           rootId,
+				controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
+				value
+			});
+		}
+	}
+	return written;
 }
 
 function processAssignmentToString<OtherInfo>(

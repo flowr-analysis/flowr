@@ -163,8 +163,10 @@ export function processExpressionList<OtherInfo>(
 		out = out.concat(processed.out);
 
 		// all inputs that have not been written until now are read!
-		for(const read of processed.in.concat(processed.unknownReferences)) {
-			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
+		for(const ls of [processed.in, processed.unknownReferences]) {
+			for(const read of ls) {
+				linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
+			}
 		}
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph);

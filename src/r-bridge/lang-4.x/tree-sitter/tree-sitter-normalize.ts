@@ -4,6 +4,7 @@ import { ParseError } from '../ast/parser/main/normalizer-data';
 import { TreeSitterType } from './tree-sitter-types';
 import { RType } from '../ast/model/type';
 import type { SourceRange } from '../../../util/range';
+import { invalidRange } from '../../../util/range';
 import { removeRQuotes } from '../../retriever';
 import { boolean2ts, number2ts, string2ts } from '../convert-values';
 import { ensureExpressionList } from '../ast/parser/main/normalize-meta';
@@ -17,6 +18,7 @@ import type { RParameter } from '../ast/model/nodes/r-parameter';
 import { log } from '../../../util/log';
 import type { RProject } from '../ast/model/nodes/r-project';
 import type { ParseStepOutputSingleFile } from '../../parser';
+import { parseLog } from '../ast/parser/json/parser';
 
 export interface TreeSitterInfo {
 	treeSitterId: number
@@ -79,426 +81,452 @@ export function makeTreeSitterStrict() {
 	nonErrorChildren = nonErrorChildrenStrict;
 }
 
-function convertTreeNode(node: SyntaxNode): RNode<TreeSitterInfo> {
-	// generally, the grammar source file dictates what children a node has in what order:
-	// https://github.com/r-lib/tree-sitter-r/blob/main/grammar.js
-	const range = makeSourceRange(node);
-	const defaultInfo = {
-		info: {
-			fullRange:        range,
-			additionalTokens: [],
-			fullLexeme:       node.text,
-			treeSitterId:     node.id
-		}
-	};
-	switch(node.type as TreeSitterType) {
-		case TreeSitterType.Program: {
-			const [comments, children] = splitComments(nonErrorChildren(node));
-			const body = children.map(n => [n, convertTreeNode(n)] as SyntaxAndRNode);
-			const remainingComments = linkCommentsToNextNodes(body, comments);
-			return {
-				type:     RType.ExpressionList,
-				children: body.map(n => n[1]),
-				grouping: undefined,
-				lexeme:   undefined,
-				info:     {
-					additionalTokens: remainingComments.map(c => c[1]),
-					treeSitterId:     node.id
-				}
-			};
-		}
-		case TreeSitterType.BracedExpression:
-		case TreeSitterType.ParenthesizedExpression: {
-			const [comments, children] = splitComments(nonErrorChildren(node));
-			const opening = children[0];
-			const body = children.slice(1, -1).map(n => [n, convertTreeNode(n)] as SyntaxAndRNode);
-			const remainingComments = linkCommentsToNextNodes(body, comments);
-			const closing = children[children.length - 1];
-			return {
-				type:     RType.ExpressionList,
-				location: undefined,
-				lexeme:   undefined,
-				children: body.map(n => n[1]),
-				grouping: [
-					{
-						type:      RType.Symbol,
-						location:  makeSourceRange(opening),
-						content:   removeRQuotes(opening.text),
-						lexeme:    opening.text,
-						namespace: undefined,
-						...defaultInfo
-					}, {
-						type:      RType.Symbol,
-						location:  makeSourceRange(closing),
-						content:   removeRQuotes(closing.text),
-						lexeme:    closing.text,
-						namespace: undefined,
-						...defaultInfo
-					}
-				],
-				info: {
-					additionalTokens: remainingComments.map(c => c[1]),
-					treeSitterId:     node.id
-				}
-			};
-		}
-		case TreeSitterType.BinaryOperator: {
-			const children = nonErrorChildren(node);
-			const lhs = convertTreeNode(children[0]);
-			const rhs = convertTreeNode(children[children.length - 1]);
-			const [commentsBoth, [op]] = splitComments(children.slice(1, -1));
-			const comments = commentsBoth.map(c => c[1]);
-			const opSource = makeSourceRange(op);
-			const lhsAsArg: RArgument<TreeSitterInfo> = {
-				type:     RType.Argument,
-				location: lhs.location as SourceRange,
-				value:    lhs,
-				name:     undefined,
-				lexeme:   lhs.lexeme as string,
-				info:     {
-					treeSitterId: lhs.info.treeSitterId
-				}
-			};
-			if(op.type == 'special'){
+function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
+	if(!node) {
+		return {
+			type:     RType.ExpressionList,
+			location: undefined,
+			lexeme:   undefined,
+			children: [],
+			grouping: undefined,
+			info:     {
+				fullRange:        invalidRange(),
+				additionalTokens: [],
+				treeSitterId:     -1,
+			}
+		} as RNode<TreeSitterInfo>;
+	}
+	try {
+		// generally, the grammar source file dictates what children a node has in what order:
+		// https://github.com/r-lib/tree-sitter-r/blob/main/grammar.js
+		const range = makeSourceRange(node);
+		const defaultInfo = {
+			info: {
+				fullRange:        range,
+				additionalTokens: [],
+				fullLexeme:       node.text,
+				treeSitterId:     node.id
+			}
+		};
+		switch(node.type as TreeSitterType) {
+			case TreeSitterType.Program: {
+				const [comments, children] = splitComments(nonErrorChildren(node));
+				const body = children.map(n => [n, convertTreeNode(n)] as SyntaxAndRNode);
+				const remainingComments = linkCommentsToNextNodes(body, comments);
 				return {
-					type:         RType.FunctionCall,
-					location:     opSource,
-					lexeme:       node.text,
-					functionName: {
-						type:      RType.Symbol,
-						location:  opSource,
-						lexeme:    op.text,
-						content:   op.text,
-						namespace: undefined,
-						info:      {
-							treeSitterId: op.id
-						}
-					},
-					arguments: [lhsAsArg, {
-						type:     RType.Argument,
-						location: rhs.location as SourceRange,
-						value:    rhs,
-						name:     undefined,
-						lexeme:   rhs.lexeme as string,
-						info:     {
-							treeSitterId: rhs.info.treeSitterId
-						}
-					}],
-					named:        true,
-					infixSpecial: true,
-					info:         {
-						additionalTokens: comments,
-						treeSitterId:     node.id
-					}
-				};
-			} else if(op.text === '|>') {
-				return {
-					type:     RType.Pipe,
-					location: opSource,
-					lhs:      lhsAsArg,
-					rhs,
-					lexeme:   op.text,
-					...defaultInfo,
+					type:     RType.ExpressionList,
+					children: body.map(n => n[1]),
+					grouping: undefined,
+					lexeme:   undefined,
 					info:     {
-						fullRange:        range,
-						additionalTokens: comments,
-						fullLexeme:       node.text,
-						treeSitterId:     node.id
-					}
-				};
-			} else {
-				return {
-					type:     RType.BinaryOp,
-					location: opSource,
-					lhs, rhs,
-					operator: op.text,
-					lexeme:   op.text,
-					info:     {
-						fullRange:        range,
-						additionalTokens: comments,
-						fullLexeme:       node.text,
+						additionalTokens: remainingComments.map(c => c[1]),
 						treeSitterId:     node.id
 					}
 				};
 			}
-		}
-		case TreeSitterType.UnaryOperator: {
-			const [op, operand] = nonErrorChildren(node);
-			return {
-				type:     RType.UnaryOp,
-				operand:  convertTreeNode(operand),
-				location: makeSourceRange(op),
-				operator: op.text,
-				lexeme:   op.text,
-				...defaultInfo
-			};
-		}
-		case TreeSitterType.NamespaceOperator: {
-			const [lhs, /* :: or ::: */, rhs] = nonErrorChildren(node);
-			return {
-				type:      RType.Symbol,
-				location:  makeSourceRange(rhs),
-				content:   rhs.text,
-				lexeme:    rhs.text,
-				namespace: lhs.text,
-				...defaultInfo
-			};
-		}
-		case '(' as TreeSitterType:
-		case ')' as TreeSitterType:
-		case TreeSitterType.Na:
-		case TreeSitterType.Null:
-		case TreeSitterType.Dots:
-		case TreeSitterType.DotDotI:
-		case TreeSitterType.Identifier:
-		case TreeSitterType.Return:
-			return {
-				type:      RType.Symbol,
-				location:  range,
-				content:   startAndEndsWith(node.text, '`') ? node.text.slice(1, -1) : removeRQuotes(node.text),
-				lexeme:    node.text,
-				namespace: undefined,
-				...defaultInfo
-			};
-		case TreeSitterType.IfStatement: {
-			const [ifNode, /* ( */, condition,/* ) */,then, /* else */, ...otherwise] = nonErrorChildren(node);
-			const filteredOtherwise = otherwise.filter(n => n.type !== TreeSitterType.ElseStatement);
-			return {
-				type:      RType.IfThenElse,
-				condition: convertTreeNode(condition),
-				then:      ensureExpressionList(convertTreeNode(then)),
-				otherwise: filteredOtherwise.length > 0 ? ensureExpressionList(convertTreeNode(filteredOtherwise[0])) : undefined,
-				location:  makeSourceRange(ifNode),
-				lexeme:    ifNode.text,
-				...defaultInfo
-			};
-		}
-		case TreeSitterType.ForStatement: {
-			const children = nonErrorChildren(node);
-			const forNode = children[0]; // we follow with a (
-			const variable = getNodesUntil(children, 'in', 2); // we follow with the "in"
-			const sequence = getNodesUntil(children, ')', 2 + variable.length + 1); // we follow with a (
-			const body = children[2 + variable.length + 1 + sequence.length + 1];
-			const [variableComments, [variableNode]] = splitComments(variable);
-			const [sequenceComments, [sequenceNode]] = splitComments(sequence);
-			return {
-				type:     RType.ForLoop,
-				variable: {
-					type:      RType.Symbol,
-					location:  makeSourceRange(variableNode),
-					content:   removeRQuotes(variableNode.text),
-					lexeme:    variableNode.text,
-					namespace: undefined,
-					info:      {
-						fullRange:        undefined,
-						additionalTokens: [],
-						fullLexeme:       undefined,
-						treeSitterId:     variableNode.id
-					}
-				},
-				vector:   convertTreeNode(sequenceNode),
-				body:     ensureExpressionList(convertTreeNode(body)),
-				location: makeSourceRange(forNode),
-				lexeme:   forNode.text,
-				info:     {
-					fullRange:        range,
-					additionalTokens: variableComments.concat(sequenceComments).map(c => c[1]),
-					fullLexeme:       node.text,
-					treeSitterId:     node.id
-				}
-			};
-		}
-		case TreeSitterType.WhileStatement: {
-			const [whileNode, /* ( */, condition, /* ) */, body] = nonErrorChildren(node);
-			return {
-				type:      RType.WhileLoop,
-				condition: convertTreeNode(condition),
-				body:      ensureExpressionList(convertTreeNode(body)),
-				location:  makeSourceRange(whileNode),
-				lexeme:    whileNode.text,
-				...defaultInfo
-			};
-		}
-		case TreeSitterType.RepeatStatement: {
-			const [repeatNode, body] = nonErrorChildren(node);
-			return {
-				type:     RType.RepeatLoop,
-				body:     ensureExpressionList(convertTreeNode(body)),
-				location: makeSourceRange(repeatNode),
-				lexeme:   repeatNode.text,
-				...defaultInfo
-			};
-		}
-		case TreeSitterType.Call: {
-			const [func, argsParentheses] = nonErrorChildren(node);
-			// tree-sitter wraps next and break in a function call, but we don't, so unwrap
-			if(func.type === TreeSitterType.Next || func.type == TreeSitterType.Break) {
+			case TreeSitterType.BracedExpression:
+			case TreeSitterType.ParenthesizedExpression: {
+				const [comments, children] = splitComments(nonErrorChildren(node));
+				const opening = children[0];
+				const body = children.slice(1, -1).map(n => [n, convertTreeNode(n)] as SyntaxAndRNode);
+				const remainingComments = linkCommentsToNextNodes(body, comments);
+				const closing = children[children.length - 1];
 				return {
-					...convertTreeNode(func),
-					...defaultInfo
+					type:     RType.ExpressionList,
+					location: undefined,
+					lexeme:   undefined,
+					children: body.map(n => n[1]),
+					grouping: [
+						{
+							type:      RType.Symbol,
+							location:  makeSourceRange(opening),
+							content:   removeRQuotes(opening.text),
+							lexeme:    opening.text,
+							namespace: undefined,
+							...defaultInfo
+						}, {
+							type:      RType.Symbol,
+							location:  makeSourceRange(closing),
+							content:   removeRQuotes(closing.text),
+							lexeme:    closing.text,
+							namespace: undefined,
+							...defaultInfo
+						}
+					],
+					info: {
+						additionalTokens: remainingComments.map(c => c[1]),
+						treeSitterId:     node.id
+					}
 				};
 			}
-			const rawArgs = nonErrorChildren(argsParentheses);
-			const [comments, noCommentrawArgs] = splitComments(rawArgs);
-			const args = splitArrayOn(noCommentrawArgs.slice(1, -1), x => x.type === 'comma');
-			const funcRange = makeSourceRange(func);
-			const mappedArgs = args.map(n => n.length == 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument<TreeSitterInfo>);
-			const call = {
-				arguments: mappedArgs,
-				location:  funcRange,
-				lexeme:    func.text,
-				...defaultInfo,
-				info:      {
-					...defaultInfo.info,
-					additionalTokens: comments.map(c => c[1]),
-				}
-			};
-			if(func.type === TreeSitterType.Identifier || func.type === TreeSitterType.String || func.type === TreeSitterType.NamespaceOperator || func.type === TreeSitterType.Return) {
-				let funcNode = convertTreeNode(func) as RSymbol<TreeSitterInfo> | RString<TreeSitterInfo>;
-				if(funcNode.type === RType.String) {
-					funcNode = {
-						...funcNode,
-						type:      RType.Symbol,
-						namespace: undefined,
-						content:   removeRQuotes(func.text)
+			case TreeSitterType.BinaryOperator: {
+				const children = nonErrorChildren(node);
+				const lhs = convertTreeNode(children[0]);
+				const rhs = convertTreeNode(children[children.length - 1]);
+				const [commentsBoth, [op]] = splitComments(children.slice(1, -1));
+				const comments = commentsBoth.map(c => c[1]);
+				const opSource = makeSourceRange(op);
+				const lhsAsArg: RArgument<TreeSitterInfo> = {
+					type:     RType.Argument,
+					location: lhs.location as SourceRange,
+					value:    lhs,
+					name:     undefined,
+					lexeme:   lhs.lexeme as string,
+					info:     {
+						treeSitterId: lhs.info.treeSitterId
+					}
+				};
+				if(op.type == 'special') {
+					return {
+						type:         RType.FunctionCall,
+						location:     opSource,
+						lexeme:       node.text,
+						functionName: {
+							type:      RType.Symbol,
+							location:  opSource,
+							lexeme:    op.text,
+							content:   op.text,
+							namespace: undefined,
+							info:      {
+								treeSitterId: op.id
+							}
+						},
+						arguments: [lhsAsArg, {
+							type:     RType.Argument,
+							location: rhs.location as SourceRange,
+							value:    rhs,
+							name:     undefined,
+							lexeme:   rhs.lexeme as string,
+							info:     {
+								treeSitterId: rhs.info.treeSitterId
+							}
+						}],
+						named:        true,
+						infixSpecial: true,
+						info:         {
+							additionalTokens: comments,
+							treeSitterId:     node.id
+						}
 					};
-				}
-				return {
-					...call,
-					type:         RType.FunctionCall,
-					functionName: {
-						...funcNode,
-						info: {
+				} else if(op.text === '|>') {
+					return {
+						type:     RType.Pipe,
+						location: opSource,
+						lhs:      lhsAsArg,
+						rhs,
+						lexeme:   op.text,
+						...defaultInfo,
+						info:     {
 							fullRange:        range,
-							additionalTokens: [],
+							additionalTokens: comments,
 							fullLexeme:       node.text,
 							treeSitterId:     node.id
 						}
-					},
-					named: true
-				};
-			} else {
-				return {
-					...call,
-					type:           RType.FunctionCall,
-					calledFunction: convertTreeNode(func),
-					named:          undefined
-				};
-			}
-		}
-		case TreeSitterType.FunctionDefinition: {
-			const [name, paramsParens, body] = nonErrorChildren(node);
-			const [comments, noCommentRawParams] = splitComments(paramsParens.children.slice(1, -1));
-
-			const params = splitArrayOn(noCommentRawParams, x => x.type === 'comma');
-			return {
-				type:       RType.FunctionDefinition,
-				parameters: params.map(n => convertTreeNode(n[0]) as RParameter<TreeSitterInfo>),
-				body:       ensureExpressionList(convertTreeNode(body)),
-				location:   makeSourceRange(name),
-				lexeme:     name.text,
-				info:       {
-					...defaultInfo.info,
-					additionalTokens: comments.map(c => c[1]),
+					};
+				} else {
+					return {
+						type:     RType.BinaryOp,
+						location: opSource,
+						lhs, rhs,
+						operator: op.text,
+						lexeme:   op.text,
+						info:     {
+							fullRange:        range,
+							additionalTokens: comments,
+							fullLexeme:       node.text,
+							treeSitterId:     node.id
+						}
+					};
 				}
-			};
-		}
-		case TreeSitterType.String:
-			return {
-				type:     RType.String,
-				location: range,
-				content:  string2ts(node.text),
-				lexeme:   node.text,
-				...defaultInfo
-			};
-		case TreeSitterType.Float:
-		case TreeSitterType.Integer:
-		case TreeSitterType.Complex:
-		case TreeSitterType.Inf:
-		case TreeSitterType.Nan:
-			return {
-				type:     RType.Number,
-				location: range,
-				content:  number2ts(node.text),
-				lexeme:   node.text,
-				...defaultInfo
-			};
-		case TreeSitterType.True:
-		case TreeSitterType.False:
-			return {
-				type:     RType.Logical,
-				location: range,
-				content:  boolean2ts(node.text),
-				lexeme:   node.text,
-				...defaultInfo
-			};
-		case TreeSitterType.Break:
-		case TreeSitterType.Next:
-			return {
-				type:     node.type == TreeSitterType.Break ? RType.Break : RType.Next,
-				location: range,
-				lexeme:   node.text,
-				...defaultInfo
-			};
-		case TreeSitterType.Subset:
-		case TreeSitterType.Subset2: {
-			// subset has children like a and [x]
-			const [func, content] = nonErrorChildren(node);
-			// bracket is now [ or [[ and argsClosing is x] or x]]
-			const [bracket, ...argsClosing] = nonErrorChildren(content);
-			const args = splitArrayOn(argsClosing.slice(0, -1), x => x.type === 'comma');
-			return {
-				type:     RType.Access,
-				operator: bracket.text as '[' | '[[',
-				accessed: convertTreeNode(func),
-				access:   args.map(n => n.length == 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument<TreeSitterInfo>),
-				location: makeSourceRange(bracket),
-				lexeme:   bracket.text,
-				...defaultInfo
-			};
-		}
-		case TreeSitterType.ExtractOperator: {
-			const [lhs, operator, rhs] = nonErrorChildren(node);
-			const rhsRange = makeSourceRange(rhs);
-			return {
-				type:     RType.Access,
-				operator: operator.text as '$' | '@',
-				accessed: convertTreeNode(lhs),
-				access:   [{
-					type:  RType.Argument,
-					name:  undefined,
-					value: {
-						...convertTreeNode(rhs),
-						...defaultInfo
-					},
-					location: rhsRange,
-					lexeme:   rhs.text,
-					info:     {
-						fullRange:        rhsRange,
-						additionalTokens: [],
-						fullLexeme:       rhs.text,
-						treeSitterId:     rhs.id
-					}
-				}],
-				location: makeSourceRange(operator),
-				lexeme:   operator.text,
-				...defaultInfo
-			};
-		}
-		case TreeSitterType.Parameter: {
-			const children = nonErrorChildren(node);
-			const name = children[0];
-			const nameRange = makeSourceRange(name);
-			let defaultValue: RNode<TreeSitterInfo> | undefined = undefined;
-			if(children.length == 3){
-				defaultValue = convertTreeNode(children[2]);
 			}
-			return {
-				type: RType.Parameter,
-				name: {
-					type:     RType.Symbol,
+			case TreeSitterType.UnaryOperator: {
+				const [op, operand] = nonErrorChildren(node);
+				return {
+					type:     RType.UnaryOp,
+					operand:  convertTreeNode(operand),
+					location: makeSourceRange(op),
+					operator: op.text,
+					lexeme:   op.text,
+					...defaultInfo
+				};
+			}
+			case TreeSitterType.NamespaceOperator: {
+				const [lhs, /* :: or ::: */, rhs] = nonErrorChildren(node);
+				return {
+					type:      RType.Symbol,
+					location:  makeSourceRange(rhs),
+					content:   rhs.text,
+					lexeme:    rhs.text,
+					namespace: lhs.text,
+					...defaultInfo
+				};
+			}
+			case '(' as TreeSitterType:
+			case ')' as TreeSitterType:
+			case TreeSitterType.Na:
+			case TreeSitterType.Null:
+			case TreeSitterType.Dots:
+			case TreeSitterType.DotDotI:
+			case TreeSitterType.Identifier:
+			case TreeSitterType.Return:
+				return {
+					type:      RType.Symbol,
+					location:  range,
+					content:   startAndEndsWith(node.text, '`') ? node.text.slice(1, -1) : removeRQuotes(node.text),
+					lexeme:    node.text,
+					namespace: undefined,
+					...defaultInfo
+				};
+			case TreeSitterType.IfStatement: {
+				const [ifNode, /* ( */, condition,/* ) */, then, /* else */, ...otherwise] = nonErrorChildren(node);
+				const filteredOtherwise = otherwise.filter(n => n.type !== TreeSitterType.ElseStatement);
+				return {
+					type:      RType.IfThenElse,
+					condition: convertTreeNode(condition),
+					then:      ensureExpressionList(convertTreeNode(then)),
+					otherwise: filteredOtherwise.length > 0 ? ensureExpressionList(convertTreeNode(filteredOtherwise[0])) : undefined,
+					location:  makeSourceRange(ifNode),
+					lexeme:    ifNode.text,
+					...defaultInfo
+				};
+			}
+			case TreeSitterType.ForStatement: {
+				const children = nonErrorChildren(node);
+				const forNode = children[0]; // we follow with a (
+				const variable = getNodesUntil(children, 'in', 2); // we follow with the "in"
+				const sequence = getNodesUntil(children, ')', 2 + variable.length + 1); // we follow with a (
+				const body = children[2 + variable.length + 1 + sequence.length + 1];
+				const [variableComments, [variableNode]] = splitComments(variable);
+				const [sequenceComments, [sequenceNode]] = splitComments(sequence);
+				return {
+					type:     RType.ForLoop,
+					variable: {
+						type:      RType.Symbol,
+						location:  makeSourceRange(variableNode),
+						content:   removeRQuotes(variableNode.text),
+						lexeme:    variableNode.text,
+						namespace: undefined,
+						info:      {
+							fullRange:        undefined,
+							additionalTokens: [],
+							fullLexeme:       undefined,
+							treeSitterId:     variableNode.id
+						}
+					},
+					vector:   convertTreeNode(sequenceNode),
+					body:     ensureExpressionList(convertTreeNode(body)),
+					location: makeSourceRange(forNode),
+					lexeme:   forNode.text,
+					info:     {
+						fullRange:        range,
+						additionalTokens: variableComments.concat(sequenceComments).map(c => c[1]),
+						fullLexeme:       node.text,
+						treeSitterId:     node.id
+					}
+				};
+			}
+			case TreeSitterType.WhileStatement: {
+				const [whileNode, /* ( */, condition, /* ) */, body] = nonErrorChildren(node);
+				return {
+					type:      RType.WhileLoop,
+					condition: convertTreeNode(condition),
+					body:      ensureExpressionList(convertTreeNode(body)),
+					location:  makeSourceRange(whileNode),
+					lexeme:    whileNode.text,
+					...defaultInfo
+				};
+			}
+			case TreeSitterType.RepeatStatement: {
+				const [repeatNode, body] = nonErrorChildren(node);
+				return {
+					type:     RType.RepeatLoop,
+					body:     ensureExpressionList(convertTreeNode(body)),
+					location: makeSourceRange(repeatNode),
+					lexeme:   repeatNode.text,
+					...defaultInfo
+				};
+			}
+			case TreeSitterType.Call: {
+				const [func, argsParentheses] = nonErrorChildren(node);
+				// tree-sitter wraps next and break in a function call, but we don't, so unwrap
+				if(func.type === TreeSitterType.Next || func.type == TreeSitterType.Break) {
+					return {
+						...convertTreeNode(func),
+						...defaultInfo
+					};
+				}
+				const rawArgs = nonErrorChildren(argsParentheses);
+				const [comments, noCommentrawArgs] = splitComments(rawArgs);
+				const args = splitArrayOn(noCommentrawArgs.slice(1, -1), x => x.type === 'comma');
+				const funcRange = makeSourceRange(func);
+				const mappedArgs = args.map(n => n.length == 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument<TreeSitterInfo>);
+				const call = {
+					arguments: mappedArgs,
+					location:  funcRange,
+					lexeme:    func.text,
+					...defaultInfo,
+					info:      {
+						...defaultInfo.info,
+						additionalTokens: comments.map(c => c[1]),
+					}
+				};
+				if(func.type === TreeSitterType.Identifier || func.type === TreeSitterType.String || func.type === TreeSitterType.NamespaceOperator || func.type === TreeSitterType.Return) {
+					let funcNode = convertTreeNode(func) as RSymbol<TreeSitterInfo> | RString<TreeSitterInfo>;
+					if(funcNode.type === RType.String) {
+						funcNode = {
+							...funcNode,
+							type:      RType.Symbol,
+							namespace: undefined,
+							content:   removeRQuotes(func.text)
+						};
+					}
+					return {
+						...call,
+						type:         RType.FunctionCall,
+						functionName: {
+							...funcNode,
+							info: {
+								fullRange:        range,
+								additionalTokens: [],
+								fullLexeme:       node.text,
+								treeSitterId:     node.id
+							}
+						},
+						named: true
+					};
+				} else {
+					return {
+						...call,
+						type:           RType.FunctionCall,
+						calledFunction: convertTreeNode(func),
+						named:          undefined
+					};
+				}
+			}
+			case TreeSitterType.FunctionDefinition: {
+				const [name, paramsParens, body] = nonErrorChildren(node);
+				const [comments, noCommentRawParams] = splitComments(paramsParens.children.slice(1, -1));
+
+				const params = splitArrayOn(noCommentRawParams, x => x.type === 'comma');
+				return {
+					type:       RType.FunctionDefinition,
+					parameters: params.map(n => convertTreeNode(n[0]) as RParameter<TreeSitterInfo>),
+					body:       ensureExpressionList(convertTreeNode(body)),
+					location:   makeSourceRange(name),
+					lexeme:     name.text,
+					info:       {
+						...defaultInfo.info,
+						additionalTokens: comments.map(c => c[1]),
+					}
+				};
+			}
+			case TreeSitterType.String:
+				return {
+					type:     RType.String,
+					location: range,
+					content:  string2ts(node.text),
+					lexeme:   node.text,
+					...defaultInfo
+				};
+			case TreeSitterType.Float:
+			case TreeSitterType.Integer:
+			case TreeSitterType.Complex:
+			case TreeSitterType.Inf:
+			case TreeSitterType.Nan:
+				return {
+					type:     RType.Number,
+					location: range,
+					content:  number2ts(node.text),
+					lexeme:   node.text,
+					...defaultInfo
+				};
+			case TreeSitterType.True:
+			case TreeSitterType.False:
+				return {
+					type:     RType.Logical,
+					location: range,
+					content:  boolean2ts(node.text),
+					lexeme:   node.text,
+					...defaultInfo
+				};
+			case TreeSitterType.Break:
+			case TreeSitterType.Next:
+				return {
+					type:     node.type == TreeSitterType.Break ? RType.Break : RType.Next,
+					location: range,
+					lexeme:   node.text,
+					...defaultInfo
+				};
+			case TreeSitterType.Subset:
+			case TreeSitterType.Subset2: {
+				// subset has children like a and [x]
+				const [func, content] = nonErrorChildren(node);
+				// bracket is now [ or [[ and argsClosing is x] or x]]
+				const [bracket, ...argsClosing] = nonErrorChildren(content);
+				const args = splitArrayOn(argsClosing.slice(0, -1), x => x.type === 'comma');
+				return {
+					type:     RType.Access,
+					operator: bracket.text as '[' | '[[',
+					accessed: convertTreeNode(func),
+					access:   args.map(n => n.length == 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument<TreeSitterInfo>),
+					location: makeSourceRange(bracket),
+					lexeme:   bracket.text,
+					...defaultInfo
+				};
+			}
+			case TreeSitterType.ExtractOperator: {
+				const [lhs, operator, rhs] = nonErrorChildren(node);
+				const rhsRange = makeSourceRange(rhs);
+				return {
+					type:     RType.Access,
+					operator: operator.text as '$' | '@',
+					accessed: convertTreeNode(lhs),
+					access:   [{
+						type:  RType.Argument,
+						name:  undefined,
+						value: {
+							...convertTreeNode(rhs),
+							...defaultInfo
+						},
+						location: rhsRange,
+						lexeme:   rhs?.text,
+						info:     {
+							fullRange:        rhsRange,
+							additionalTokens: [],
+							fullLexeme:       rhs?.text,
+							treeSitterId:     rhs?.id
+						}
+					}],
+					location: makeSourceRange(operator),
+					lexeme:   operator.text,
+					...defaultInfo
+				};
+			}
+			case TreeSitterType.Parameter: {
+				const children = nonErrorChildren(node);
+				const name = children[0];
+				const nameRange = makeSourceRange(name);
+				let defaultValue: RNode<TreeSitterInfo> | undefined = undefined;
+				if(children.length == 3) {
+					defaultValue = convertTreeNode(children[2]);
+				}
+				return {
+					type: RType.Parameter,
+					name: {
+						type:     RType.Symbol,
+						location: nameRange,
+						content:  name.text,
+						lexeme:   name.text,
+						info:     {
+							fullRange:        range,
+							additionalTokens: [],
+							fullLexeme:       name.text,
+							treeSitterId:     name.id
+						}
+					},
+					special:  name.text === '...',
+					defaultValue,
 					location: nameRange,
-					content:  name.text,
 					lexeme:   name.text,
 					info:     {
 						fullRange:        range,
@@ -506,85 +534,90 @@ function convertTreeNode(node: SyntaxNode): RNode<TreeSitterInfo> {
 						fullLexeme:       name.text,
 						treeSitterId:     name.id
 					}
-				},
-				special:  name.text === '...',
-				defaultValue,
-				location: nameRange,
-				lexeme:   name.text,
-				info:     {
-					fullRange:        range,
-					additionalTokens: [],
-					fullLexeme:       name.text,
-					treeSitterId:     name.id
+				};
+			}
+			case TreeSitterType.Argument: {
+				const children = nonErrorChildren(node);
+				if(children.length == 1) {
+					const [arg] = children;
+					return {
+						type:     RType.Argument,
+						name:     undefined,
+						value:    convertTreeNode(arg),
+						location: range,
+						lexeme:   node.text,
+						...defaultInfo
+					};
+				} else {
+					const [nameNode, /* = */, valueNode] = children;
+					let name = convertTreeNode(nameNode) as RString<TreeSitterInfo> | RSymbol<TreeSitterInfo>;
+
+					// unescape argument names
+					if(name.type === RType.String) {
+						name = {
+							...name,
+							type:      RType.Symbol,
+							content:   name.content.str,
+							namespace: undefined
+						};
+					} else if(startAndEndsWith(name.content, '`')) {
+						name.content = name.content.slice(1, -1);
+					}
+					const nameRange = makeSourceRange(nameNode);
+
+					return {
+						type:     RType.Argument,
+						name,
+						value:    valueNode ? convertTreeNode(valueNode) : undefined,
+						location: nameRange,
+						lexeme:   nameNode.text,
+						info:     {
+							fullRange:        nameRange,
+							additionalTokens: [],
+							fullLexeme:       nameNode.text,
+							treeSitterId:     nameNode.id
+						}
+					};
 				}
-			};
-		}
-		case TreeSitterType.Argument: {
-			const children = nonErrorChildren(node);
-			if(children.length == 1){
-				const [arg] = children;
+			}
+			case TreeSitterType.Comment:
 				return {
-					type:     RType.Argument,
-					name:     undefined,
-					value:    convertTreeNode(arg),
+					type:     RType.Comment,
 					location: range,
 					lexeme:   node.text,
 					...defaultInfo
 				};
-			} else {
-				const [nameNode, /* = */, valueNode] = children;
-				let name = convertTreeNode(nameNode) as RString<TreeSitterInfo> | RSymbol<TreeSitterInfo>;
-
-				// unescape argument names
-				if(name.type === RType.String){
-					name = {
-						...name,
-						type:      RType.Symbol,
-						content:   name.content.str,
-						namespace: undefined
-					};
-				} else if(startAndEndsWith(name.content, '`')){
-					name.content = name.content.slice(1, -1);
-				}
-				const nameRange = makeSourceRange(nameNode);
-
+			case TreeSitterType.Error:
 				return {
-					type:     RType.Argument,
-					name,
-					value:    valueNode ? convertTreeNode(valueNode) : undefined,
-					location: nameRange,
-					lexeme:   nameNode.text,
-					info:     {
-						fullRange:        nameRange,
-						additionalTokens: [],
-						fullLexeme:       nameNode.text,
-						treeSitterId:     nameNode.id
-					}
+					type:     RType.ExpressionList,
+					location: undefined,
+					lexeme:   undefined,
+					children: [],
+					grouping: undefined,
+					...defaultInfo
 				};
-			}
 		}
-		case TreeSitterType.Comment:
-			return {
-				type:     RType.Comment,
-				location: range,
-				lexeme:   node.text,
-				...defaultInfo
-			};
-		case TreeSitterType.Error:
-			return {
-				type:     RType.ExpressionList,
-				location: undefined,
-				lexeme:   undefined,
-				children: [],
-				grouping: undefined,
-				...defaultInfo
-			};
-		default:
-			throw new ParseError(`unexpected node type ${node.type} at ${JSON.stringify(range)}`);
+	} catch{
+		parseLog.error(`[Tree-Sitter] Failed to convert node of type ${node.type} at ${JSON.stringify(makeSourceRange(node))}`);
 	}
+	return {
+		type:     RType.ExpressionList,
+		location: undefined,
+		lexeme:   undefined,
+		children: [],
+		grouping: undefined,
+		info:     {
+			fullRange:        invalidRange(),
+			additionalTokens: [],
+			treeSitterId:     -1,
+		}
+	} as RNode<TreeSitterInfo>;
 }
 
-function makeSourceRange(node: SyntaxNode): SourceRange {
+function makeSourceRange(node: SyntaxNode | undefined): SourceRange {
+	if(!node) {
+		return invalidRange();
+	}
 	if(node.startPosition && node.endPosition) {
 		return [
 			// tree-sitter is 0-based but we want 1-based

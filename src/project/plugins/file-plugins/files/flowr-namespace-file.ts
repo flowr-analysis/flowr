@@ -6,8 +6,8 @@ export interface NamespaceInfo {
 	exportedSymbols:      string[];
 	exportedFunctions:    string[];
 	exportS3Generics:     Map<string, string[]>;
-	exportedPatterns?:    string[];
-	importedPackages?:    Map<string, string[] | 'all'>;
+	exportedPatterns:     string[];
+	importedPackages:     Map<string, string[] | 'all'>;
 	loadsWithSideEffects: boolean;
 }
 

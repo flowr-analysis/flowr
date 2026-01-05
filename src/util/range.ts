@@ -76,7 +76,7 @@ export function invalidRange(): SourceRange {
  * If you are interested in combining overlapping ranges into a minimal set of ranges, see {@link combineRanges}.
  * @throws if no ranges are provided
  */
-export function mergeRanges(...rs: (SourceRange | undefined)[]): SourceRange {
+export function mergeRanges(rs: (SourceRange | undefined)[] = []): SourceRange {
 	const rsSafe: SourceRange[] = rs.filter(isNotUndefined);
 	guard(rsSafe.length > 0, 'Cannot merge no ranges');
 	return rsSafe.reduce(([sl, sc, el, ec], [nsl, nsc, nel, nec]) => [

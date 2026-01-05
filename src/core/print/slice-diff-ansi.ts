@@ -14,7 +14,7 @@ function mergeJointRangesInSorted(loc: { location: SourceRange; selected: boolea
 			return [
 				...acc.slice(0, -1), {
 					selected: curr.selected || acc[acc.length - 1].selected,
-					location: mergeRanges(acc[acc.length - 1].location, curr.location)
+					location: mergeRanges([acc[acc.length - 1].location, curr.location])
 				}];
 		} else {
 			return [...acc, curr];

@@ -49,7 +49,7 @@ export function parseRoxygenCommentsOfNode(node: RNode<ParentInformation>, idMap
 		attachedTo:  cur?.info.id,
 		requestNode: node.info.id,
 		range:       [
-			...mergeRanges(...comments.map(c => c.location)),
+			...mergeRanges(comments.map(c => c.location)),
 			comments.find(c => c.info.file)?.info.file
 		]
 	};
@@ -75,7 +75,10 @@ export function parseRoxygenComment(commentText: readonly string[]): RoxygenTag[
 		tags:  [],
 		idx:   0
 	};
-	val(state, [KnownRoxygenTags.Text]);
+	let tag = val(state, [KnownRoxygenTags.Text]);
+	while(tag) {
+		tag = parseRoxygenTag(state, tag);
+	}
 	return state.tags;
 }
 
@@ -116,7 +119,7 @@ function addTag(state: RoxygenParseContext, tag: RoxygenTag): void {
 	state.tags.push(tag);
 }
 
-function val(state: RoxygenParseContext, tagName: TagLine, lineToVal: (lines: readonly string[]) => unknown | undefined = l => l.join('\n').trim()): void {
+function val(state: RoxygenParseContext, tagName: TagLine, lineToVal: (lines: readonly string[]) => unknown | undefined = l => l.join('\n').trim()): TagLine | undefined {
 	const [lines, nextTag] = collectUntilNextTag(state);
 
 	if(tagName[1]) {
@@ -141,26 +144,26 @@ function val(state: RoxygenParseContext, tagName: TagLine, lineToVal: (lines: re
 		}
 
 	}
-	parseRoxygenTag(state, nextTag);
+	return nextTag;
 }
 
-const spaceVals = (s: RoxygenParseContext, t: TagLine): void => val(s, t, l => splitAtEscapeSensitive(l.join(' ')));
-const flagVal =  (s: RoxygenParseContext, t: TagLine): void => val(s, t, () => undefined);
+const spaceVals = (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, l => splitAtEscapeSensitive(l.join(' ')));
+const flagVal =  (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, () => undefined);
 
-const section = (s: RoxygenParseContext, t: TagLine): void => val(s, t, l => {
+const section = (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, l => {
 	return { title: l[0].trim(), content: l.slice(1).join('\n').trim() };
 });
 
-export const firstAndRest = (firstName: string, secondName: string) => (s: RoxygenParseContext, t: TagLine): void => val(s, t, l => {
+export const firstAndRest = (firstName: string, secondName: string) => (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, l => {
 	const vals = splitAtEscapeSensitive(l.join('\n'));
 	return { [firstName]: vals[0], [secondName]: vals.slice(1).join(' ').trim() };
 });
-const firstAndArrayRest = (firstName: string, secondName: string) => (s: RoxygenParseContext, t: TagLine): void => val(s, t, l => {
+const firstAndArrayRest = (firstName: string, secondName: string) => (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, l => {
 	const vals = splitAtEscapeSensitive(l.join('\n'));
 	return { [firstName]: vals[0], [secondName]: vals.slice(1) };
 });
 
-const asNumber = (s: RoxygenParseContext, t: TagLine): void => val(s, t, l => {
+const asNumber = (s: RoxygenParseContext, t: TagLine): TagLine | undefined => val(s, t, l => {
 	const num = Number(l.join(' ').trim());
 	return Number.isNaN(num) ? undefined : num;
 });
@@ -225,12 +228,13 @@ const TagMap = {
 		tag:     t[0],
 		content: l.join(' ')
 	}))
-} as const satisfies Record<KnownRoxygenTags, (state: RoxygenParseContext, tagName: TagLine) => void>;
+} as const satisfies Record<KnownRoxygenTags, (state: RoxygenParseContext, tagName: TagLine) => TagLine | undefined>;
 
-function parseRoxygenTag(state: RoxygenParseContext, tagName: TagLine | undefined): void {
+/** returns the next tag */
+function parseRoxygenTag(state: RoxygenParseContext, tagName: TagLine | undefined): TagLine | undefined {
 	if(tagName === undefined) {
-		return;
+		return undefined;
 	}
 	const parser = TagMap[tagName[0] as KnownRoxygenTags] ?? val;
-	parser(state, tagName);
+	return parser(state, tagName);
 }

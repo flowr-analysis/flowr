@@ -129,7 +129,7 @@ export function produceDataFlowGraph<OtherInfo>(
 		parser,
 		completeAst,
 		environment:         ctx.env.makeCleanEnv(),
-		processors,
+		processors:          ctx.config.solver.instrument.dataflowExtractors?.(processors, ctx) ?? processors,
 		controlDependencies: undefined,
 		referenceChain:      [files[0].filePath],
 		ctx

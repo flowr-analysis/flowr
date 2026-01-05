@@ -268,7 +268,8 @@ ${codeBlock('json', JSON.stringify(
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
 					searchPath:            []
 				},
-				slicer: {
+				instrument: {},
+				slicer:     {
 					threshold: 50
 				}
 			},

@@ -20,6 +20,8 @@ import type { FlowrConfigOptions } from '../../config';
 import { genericWrapReplFailIfNoRequest, SupportedQueries, type SupportedQuery } from '../../queries/query';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
 import { startAndEndsWith } from '../../util/text/strings';
+import type { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { instrumentDataflowCount } from '../../dataflow/instrument/instrument-dataflow-count';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -128,6 +130,18 @@ export function handleString(code: string) {
 
 async function replProcessStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean): Promise<void> {
 	const time = Date.now();
+	const heatMap = new Map<RType, number>();
+	if(analyzer.inspectContext().config.repl.dfProcessorHeat) {
+		const instrument = analyzer.context().config.solver.instrument.dataflowExtractors;
+		if(analyzer.context().config.solver.instrument.dataflowExtractors) {
+			analyzer.context().config.solver.instrument.dataflowExtractors = (extractor, ctx) => {
+				const instrumented = instrument ? instrument(extractor, ctx) : extractor;
+				return instrumentDataflowCount(heatMap, map => map.clear())(instrumented, ctx);
+			};
+		} else {
+			analyzer.context().config.solver.instrument.dataflowExtractors = instrumentDataflowCount(heatMap, map => map.clear());
+		}
+	}
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase();
 		const processor = getCommand(command);
@@ -179,6 +193,24 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 			// do nothing, this is just a nice-to-have
 		}
 	}
+	if(heatMap.size > 0 && analyzer.inspectContext().config.repl.dfProcessorHeat) {
+		const sorted = Array.from(heatMap.entries()).sort((a, b) => b[1] - a[1]);
+		console.log(output.formatter.format('[REPL Stats] Dataflow Processor Heatmap:', {
+			style:  FontStyles.Italic,
+			effect: ColorEffect.Foreground,
+			color:  Colors.White
+		}));
+		const longestKey = Math.max(...Array.from(heatMap.keys(), k => k.length));
+		const longestValue = Math.max(...Array.from(heatMap.values(), v => v.toString().length));
+		for(const [rType, count] of sorted) {
+			console.log(output.formatter.format(` - ${(rType + ':').padEnd(longestKey + 1, ' ')} ${count.toString().padStart(longestValue, ' ')}`, {
+				style:  FontStyles.Italic,
+				effect: ColorEffect.Foreground,
+				color:  Colors.White
+			}));
+		}
+	}
+
 }
 
 /**

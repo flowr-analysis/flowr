@@ -252,7 +252,8 @@ ${codeBlock('json', JSON.stringify(
 				}
 			},
 			repl: {
-				quickStats: false
+				quickStats:      false,
+				dfProcessorHeat: false
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true

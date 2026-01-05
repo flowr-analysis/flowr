@@ -49,12 +49,14 @@ export function getDocumentationOf(nodeId: NodeId, idMap: AstIdMap<ParentInforma
 	const node = idMap.get(nodeId);
 	if(!node) {
 		return undefined;
-	} else if(node.info.doc) {
+	} else if('doc' in node.info) {
 		return node.info.doc;
 	}
 	const retriever = CommentRetriever[node.type as RType] ?? ((c: RNode<ParentInformation>, a: AstIdMap) => parseRoxygenCommentsOfNode(c, a)?.tags);
 	const doc = retriever(node as never, idMap);
 	if(doc) {
+		// to avoid endless recursion, we block the caching here once:
+		(node.info as DocumentationInfo).doc = undefined;
 		// cache the documentation for future queries
 		const expanded = expandInheritsOfTags(doc, idMap);
 		(node.info as DocumentationInfo).doc = expanded;

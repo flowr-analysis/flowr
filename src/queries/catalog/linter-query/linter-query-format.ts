@@ -24,7 +24,7 @@ import type { FlowrConfigOptions } from '../../../config';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
-import { getGuardIssueUrl } from '../../../util/assert';
+import { getGuardIssueUrl, isNotUndefined } from '../../../util/assert';
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:   'linter';
@@ -141,7 +141,15 @@ export const LinterQueryDefinition = {
 			})
 		).description('The rules to lint for. If unset, all rules will be included.')
 	}).description('The linter query lints for the given set of rules and returns the result.'),
-	flattenInvolvedNodes: () => []
+	flattenInvolvedNodes: (queryResults) => {
+		const out = queryResults as LinterQueryResult;
+		return Object.values(out.results).flatMap(v => {
+			if(isLintingResultsError(v)) {
+				return [];
+			}
+			return v.results.map(v => v.involvedId);
+		}).filter(isNotUndefined);
+	}
 } as const satisfies SupportedQuery<'linter'>;
 
 function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, results: LintingResults<Name>, result: string[]) {

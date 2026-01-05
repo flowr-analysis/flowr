@@ -34,9 +34,10 @@ export const USELESS_LOOP = {
 		}).filter(loop =>
 			onlyLoopsOnce(loop.node.info.id, dataflow.graph, cfg, normalize, analyzer.inspectContext())
 		).map(res => ({
-			certainty: LintingResultCertainty.Certain,
-			name:      res.node.lexeme as string,
-			range:     res.node.info.fullRange as SourceRange
+			certainty:  LintingResultCertainty.Certain,
+			name:       res.node.lexeme as string,
+			range:      res.node.info.fullRange as SourceRange,
+			involvedId: res.node.info.id
 		} satisfies UselessLoopResult));
 
 		return {

@@ -84,6 +84,7 @@ export const SEEDED_RANDOMNESS = {
 				.flatMap(element => enrichmentContent(element, Enrichment.CallTargets).targets.map(target => {
 					metadata.consumerCalls++;
 					return {
+						involvedId:    element.node.info.id,
 						range:         element.node.info.fullRange as SourceRange,
 						target:        target as Identifier,
 						searchElement: element
@@ -147,9 +148,10 @@ export const SEEDED_RANDOMNESS = {
 						metadata.callsWithOtherBranchProducers++;
 					}
 					return [{
-						certainty: cdsOfProduces.size > 0 ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
-						function:  element.target,
-						range:     element.range
+						involvedId: element.involvedId,
+						certainty:  cdsOfProduces.size > 0 ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
+						function:   element.target,
+						range:      element.range
 					}];
 				}),
 			'.meta': metadata

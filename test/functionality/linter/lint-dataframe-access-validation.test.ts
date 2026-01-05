@@ -93,7 +93,7 @@ print(df3${access})
 			}
 		});
 		describe('Invalid data frame access', () => {
-			type ExpectedLinterResult = Omit<DataFrameAccessValidationResult, 'certainty' | 'quickFix'>;
+			type ExpectedLinterResult = Omit<DataFrameAccessValidationResult, 'certainty' | 'quickFix' | 'involvedId'>;
 
 			const testCases: [string, ExpectedLinterResult][] = [
 				['df <- data.frame(id = 1:5, name = "A")\ndf$score', { type: 'column', accessed: 'score', access: '$', operand: 'df', range: rangeFrom(2, 1, 2, 8) }],

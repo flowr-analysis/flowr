@@ -20,6 +20,13 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 
+function cleanUpLintingResult<Name extends LintingRuleNames>(
+	result: LintingRuleResult<Name> | Omit<LintingRuleResult<Name>, 'involvedId'>
+): Omit<LintingRuleResult<Name>, 'involvedId'> {
+	const { involvedId: _drop, ...rest } = result;
+	return rest;
+}
+
 
 /**
  *
@@ -29,7 +36,7 @@ export function assertLinter<Name extends LintingRuleNames>(
 	parser: KnownParser,
 	code: string,
 	ruleName: Name,
-	expected: LintingRuleResult<Name>[] | ((df: DataflowInformation, ast: NormalizedAst) => LintingRuleResult<Name>[]),
+	expected: Omit<LintingRuleResult<Name>, 'involvedId'>[] | ((df: DataflowInformation, ast: NormalizedAst) => Omit<LintingRuleResult<Name>, 'involvedId'>[]),
 	expectedMetadata?: LintingRuleMetadata<Name>,
 	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string, addFiles?: FlowrFileProvider[] }
 ) {
@@ -76,7 +83,7 @@ export function assertLinter<Name extends LintingRuleNames>(
 		}
 
 		try {
-			assert.deepEqual(results.results, expected, `Expected ${ruleName} to return ${JSON.stringify(expected)}, but got ${JSON.stringify(results)}`);
+			assert.deepEqual(results.results.map(cleanUpLintingResult), expected.map(cleanUpLintingResult), `Expected ${ruleName} to return ${JSON.stringify(expected)}, but got ${JSON.stringify(results)}`);
 		} catch(e) {
 			console.error('dfg:', graphToMermaidUrl((await analyzer.dataflow()).graph));
 			throw e;

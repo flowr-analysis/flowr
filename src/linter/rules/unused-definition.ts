@@ -122,10 +122,11 @@ export const UNUSED_DEFINITION = {
 				// found an unused definition
 				const variableName = element.node.lexeme;
 				return [{
-					certainty: LintingResultCertainty.Uncertain,
+					certainty:  LintingResultCertainty.Uncertain,
 					variableName,
-					range:     element.node.info.fullRange ?? element.node.location ?? rangeFrom(-1, -1, -1, -1),
-					quickFix:  buildQuickFix(element.node, data.dataflow.graph, data.normalize)
+					involvedId: element.node.info.id,
+					range:      element.node.info.fullRange ?? element.node.location ?? rangeFrom(-1, -1, -1, -1),
+					quickFix:   buildQuickFix(element.node, data.dataflow.graph, data.normalize)
 				}] satisfies UnusedDefinitionResult[];
 			}).filter(isNotUndefined)),
 			'.meta': metadata

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767635153445,
+  "lastUpdate": 1767635157812,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -24840,6 +24840,116 @@ window.BENCHMARK_DATA = {
             "extra": "median: 34.18"
           }
         ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "b18fc516a409b0e165da18267ce7152c912595a7",
+          "message": "[release:patch] 2.8.5 Provide IDs in linting rules",
+          "timestamp": "2026-01-05T18:27:08+01:00",
+          "tree_id": "0355a173a574bba001902c16a422896c113f72f0",
+          "url": "https://github.com/flowr-analysis/flowr/commit/b18fc516a409b0e165da18267ce7152c912595a7"
+        },
+        "date": 1767635155514,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 13.239141409090909,
+            "range": "15.63841169548626",
+            "unit": "ms",
+            "extra": "median: 9.56ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 16.01435831818182,
+            "range": "22.415035850098032",
+            "unit": "ms",
+            "extra": "median: 11.14ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 49.93325940909091,
+            "range": "91.38887308833283",
+            "unit": "ms",
+            "extra": "median: 25.61ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 434.64899222727274,
+            "range": "1084.5065749318292",
+            "unit": "ms",
+            "extra": "median: 119.15ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 8.284810727272728,
+            "range": "16.891197427062956",
+            "unit": "ms",
+            "extra": "median: 3.47ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.4545942519731538,
+            "range": "0.523011874997937",
+            "unit": "ms",
+            "extra": "median: 0.17ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2645463459507355,
+            "range": "0.23017470567250575",
+            "unit": "ms",
+            "extra": "median: 0.14ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 0.7323161091762449,
+            "range": "0.7041942088715977",
+            "unit": "ms",
+            "extra": "median: 0.41ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7801660063880064,
+            "unit": "#",
+            "extra": "std: 0.1261285782699485"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7575735855163274,
+            "unit": "#",
+            "extra": "std: 0.12942676908005035"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 119.05730646306819,
+            "range": "304.18943285884376",
+            "unit": "KiB",
+            "extra": "median: 34.18"
+          }
+        ]
       }
     ],
     "\"social-science\" Benchmark Suite (tree-sitter)": [
@@ -29318,6 +29428,116 @@ window.BENCHMARK_DATA = {
             "range": "22.46618027320163",
             "unit": "ms",
             "extra": "median: 0.88ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 12710 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.873739762412431,
+            "unit": "#",
+            "extra": "std: 0.10369666681111303"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8191485019146605,
+            "unit": "#",
+            "extra": "std: 0.149513783440807"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 114.74587890625,
+            "range": "126.75816377450514",
+            "unit": "KiB",
+            "extra": "median: 54.80"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "b18fc516a409b0e165da18267ce7152c912595a7",
+          "message": "[release:patch] 2.8.5 Provide IDs in linting rules",
+          "timestamp": "2026-01-05T18:27:08+01:00",
+          "tree_id": "0355a173a574bba001902c16a422896c113f72f0",
+          "url": "https://github.com/flowr-analysis/flowr/commit/b18fc516a409b0e165da18267ce7152c912595a7"
+        },
+        "date": 1767635157804,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 19.472319640000002,
+            "range": "11.329088580952154",
+            "unit": "ms",
+            "extra": "median: 15.44ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 21.65490706,
+            "range": "12.195495922001303",
+            "unit": "ms",
+            "extra": "median: 18.01ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 76.56586146,
+            "range": "61.77110442944545",
+            "unit": "ms",
+            "extra": "median: 48.00ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 1892.9274119000002,
+            "range": "3697.12421210958",
+            "unit": "ms",
+            "extra": "median: 308.40ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 10.464098640000001,
+            "range": "8.879218073817238",
+            "unit": "ms",
+            "extra": "median: 7.55ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 4.436637290958268,
+            "range": "22.533073165989954",
+            "unit": "ms",
+            "extra": "median: 0.62ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2665441795351929,
+            "range": "0.170843451071758",
+            "unit": "ms",
+            "extra": "median: 0.16ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 4.710618008036348,
+            "range": "22.5537363187445",
+            "unit": "ms",
+            "extra": "median: 0.89ms"
           },
           {
             "name": "failed to reconstruct/re-parse",

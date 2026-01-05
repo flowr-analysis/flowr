@@ -60,11 +60,11 @@ function buildQuickFix(variable: RNode<ParentInformation>, dfg: DataflowGraph, a
 	}
 
 	const totalRangeToRemove = mergeRanges(
-		...definedBys.map(d => {
+		[...definedBys.map(d => {
 			const vertex = ast.idMap.get(d);
 			return vertex?.info.fullRange ?? vertex?.location;
 		}),
-		variable.info.fullRange ?? variable.location
+		variable.info.fullRange ?? variable.location]
 	);
 
 	return [{
@@ -85,7 +85,7 @@ function onlyKeepSupersetOfUnused(
 		return elements; // nothing to filter, only one element
 	}
 	return elements.filter(e => {
-		const otherRange = mergeRanges(...(e.quickFix?.map(q => q.range) ?? [e.range]));
+		const otherRange = mergeRanges((e.quickFix?.map(q => q.range) ?? [e.range]));
 		return !ranges.some(r => rangeCompare(r, otherRange) !== 0 && rangeIsSubsetOf(otherRange, r)); // there is no smaller remove
 	});
 }

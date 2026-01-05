@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767574234715,
+  "lastUpdate": 1767574237046,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -24180,6 +24180,116 @@ window.BENCHMARK_DATA = {
             "extra": "median: 34.18"
           }
         ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "0f7f6a5b91c1f81b8d4f25bdad664a6471a49c82",
+          "message": "[release:patch] 2.8.3 Support for more Abort Functions, Doc-Retrieval for Params, extended Namespace Support",
+          "timestamp": "2026-01-05T01:33:05+01:00",
+          "tree_id": "865e676325f54862f473a3c6ffefe992360221ef",
+          "url": "https://github.com/flowr-analysis/flowr/commit/0f7f6a5b91c1f81b8d4f25bdad664a6471a49c82"
+        },
+        "date": 1767574235754,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 13.535296045454546,
+            "range": "14.792910149199093",
+            "unit": "ms",
+            "extra": "median: 10.38ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 16.16534431818182,
+            "range": "21.18801588064135",
+            "unit": "ms",
+            "extra": "median: 11.87ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 52.755587863636364,
+            "range": "96.41092260526456",
+            "unit": "ms",
+            "extra": "median: 25.82ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 440.0056108636364,
+            "range": "1098.1130385821232",
+            "unit": "ms",
+            "extra": "median: 129.58ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 8.665247454545455,
+            "range": "17.53965474669812",
+            "unit": "ms",
+            "extra": "median: 3.24ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.46423314766259566,
+            "range": "0.544260854774945",
+            "unit": "ms",
+            "extra": "median: 0.17ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2620532031537892,
+            "range": "0.2263472202937482",
+            "unit": "ms",
+            "extra": "median: 0.13ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 0.7413079252929194,
+            "range": "0.7281023173567436",
+            "unit": "ms",
+            "extra": "median: 0.41ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7801660063880064,
+            "unit": "#",
+            "extra": "std: 0.1261285782699485"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7575735855163274,
+            "unit": "#",
+            "extra": "std: 0.12942676908005035"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 119.05730646306819,
+            "range": "304.18943285884376",
+            "unit": "KiB",
+            "extra": "median: 34.18"
+          }
+        ]
       }
     ],
     "\"social-science\" Benchmark Suite (tree-sitter)": [
@@ -28438,6 +28548,116 @@ window.BENCHMARK_DATA = {
             "range": "21.962419018851975",
             "unit": "ms",
             "extra": "median: 0.86ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 12710 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.873739762412431,
+            "unit": "#",
+            "extra": "std: 0.10369666681111303"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8191485019146605,
+            "unit": "#",
+            "extra": "std: 0.149513783440807"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 114.74587890625,
+            "range": "126.75816377450514",
+            "unit": "KiB",
+            "extra": "median: 54.80"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "0f7f6a5b91c1f81b8d4f25bdad664a6471a49c82",
+          "message": "[release:patch] 2.8.3 Support for more Abort Functions, Doc-Retrieval for Params, extended Namespace Support",
+          "timestamp": "2026-01-05T01:33:05+01:00",
+          "tree_id": "865e676325f54862f473a3c6ffefe992360221ef",
+          "url": "https://github.com/flowr-analysis/flowr/commit/0f7f6a5b91c1f81b8d4f25bdad664a6471a49c82"
+        },
+        "date": 1767574237038,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 19.335360719999997,
+            "range": "11.376486618318404",
+            "unit": "ms",
+            "extra": "median: 13.68ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 20.50202652,
+            "range": "10.810825155520517",
+            "unit": "ms",
+            "extra": "median: 16.83ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 75.47291026,
+            "range": "59.29056603641792",
+            "unit": "ms",
+            "extra": "median: 44.12ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 1877.2605233800002,
+            "range": "3674.054256374559",
+            "unit": "ms",
+            "extra": "median: 310.40ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 10.93968106,
+            "range": "9.15147480053855",
+            "unit": "ms",
+            "extra": "median: 8.66ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 4.4016243834524715,
+            "range": "22.413641103543043",
+            "unit": "ms",
+            "extra": "median: 0.62ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2648761811218997,
+            "range": "0.17114447207687594",
+            "unit": "ms",
+            "extra": "median: 0.16ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 4.674000857745421,
+            "range": "22.434566195933193",
+            "unit": "ms",
+            "extra": "median: 0.84ms"
           },
           {
             "name": "failed to reconstruct/re-parse",

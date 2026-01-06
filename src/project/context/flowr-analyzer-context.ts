@@ -142,8 +142,6 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 			fileLoadPlugin:   this.plugins.fileLoadPlugin !== undefined ? this.plugins.fileLoadPlugin.map(getPluginRegistrationName) : [],
 			dependencyPlugin: this.plugins.dependencyPlugin !== undefined ? this.plugins.dependencyPlugin.map(getPluginRegistrationName) : [],
 		};
-		console.log(pluginNames);
-
 		// serialize feature manager
 		return {
 			plugins: pluginNames,

@@ -91,7 +91,6 @@ export function makePlugin<T extends BuiltInFlowrPluginName | string>(toRegister
 		return plugin;
 	}
 	const plugin = getPlugin(toRegister, []);
-	console.log('Plugin Registry Entries:', Array.from(PluginRegistry.keys()));
 	guard(plugin !== undefined, () => `Unknown Flowr Analyzer plugin: ${toRegister.toString()}`);
 	return plugin;
 }

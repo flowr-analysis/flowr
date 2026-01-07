@@ -61,7 +61,6 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			});
 		}
 
-
 		testQuery('Multiple Libraries', 'library(a)\nlibrary(b)\nrequire(c)', { library: [
 			{ nodeId: '1@library', functionName: 'library', value: 'a' },
 			{ nodeId: '2@library', functionName: 'library', value: 'b' },
@@ -258,6 +257,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		}
 
 		testQuery('read.table', "read.table('test.csv')", { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] });
+		testQuery('read_csv', "read_csv('test.csv')", { read: [{ nodeId: '1@read_csv', functionName: 'read_csv', value: 'test.csv' }] });
 		testQuery('gzfile', 'gzfile("this is my gzip file :)", "test.gz")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
 		testQuery('With Argument', 'gzfile(open="test.gz",description="this is my gzip file :)")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
 

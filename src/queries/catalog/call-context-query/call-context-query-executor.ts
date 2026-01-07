@@ -55,16 +55,17 @@ function isSubCallQuery(query: CallContextQuery): query is SubCallContextQueryFo
 	return 'linkTo' in query && query.linkTo !== undefined;
 }
 
-function exactCallNameRegex(name: RegExp | string): RegExp {
-	return new RegExp(`^(${name})$`);
-}
-
-
 /**
  *
  */
 export function promoteCallName(callName: CallNameTypes, exact = false): RegExp | Set<string> {
-	return Array.isArray(callName) ? new Set<string>(callName) : exact ? exactCallNameRegex(callName) : new RegExp(callName);
+	if(Array.isArray(callName)) {
+		return new Set<string>(callName);
+	} else if(exact) {
+		return new Set([typeof callName === 'string' ? callName : callName.source]);
+	} else {
+		return new RegExp(callName);
+	}
 }
 
 // when promoting queries, we convert all strings to regexes, and all string arrays to string sets

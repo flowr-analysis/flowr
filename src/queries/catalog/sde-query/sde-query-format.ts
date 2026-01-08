@@ -4,11 +4,11 @@ import type { SingleSlicingCriterion, SlicingCriteria } from '../../../slicing/c
 import type { QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
 import { executeSdeQuery } from './sde-query-executor';
-import { SDValue } from '../../../abstract-interpretation/eval/domain';
+import { Lift, Value } from '../../../abstract-interpretation/eval/domain';
 
 interface SdeResult {
 	readonly criterion: SingleSlicingCriterion,
-	readonly determined: SDValue | undefined,
+	readonly determined: Lift<Value> | undefined,
 }
 
 export interface SdeQuery extends BaseQueryFormat {
@@ -17,7 +17,7 @@ export interface SdeQuery extends BaseQueryFormat {
 }
 
 export interface SdeQueryResult extends BaseQueryResult {
-	results: Map<SingleSlicingCriterion, SDValue | undefined>,
+	results: Map<SingleSlicingCriterion, Lift<Value> | undefined>,
 }
 
 export const SdeQueryDefinition = {

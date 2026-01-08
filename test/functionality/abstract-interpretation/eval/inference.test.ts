@@ -5,28 +5,28 @@ import { defaultConfigOptions } from '../../../../src/config';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
-import type { StringDomainInfo } from '../../../../src/abstract-interpretation/eval/visitor';
 import type { NormalizedAst, ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
-import { inferStringDomains } from '../../../../src/abstract-interpretation/eval/inference';
+import { createDomain, inferStringDomains } from '../../../../src/abstract-interpretation/eval/inference';
 import { SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { RShell } from '../../../../src/r-bridge/shell';
-import { SDValue, Top } from '../../../../src/abstract-interpretation/eval/domain';
-import { sdEqual } from '../../../../src/abstract-interpretation/eval/equality';
 import { withShell } from '../../_helper/shell';
+import { Lift, Top, Value } from '../../../../src/abstract-interpretation/eval/domain';
+import { ConstSet } from '../../../../src/abstract-interpretation/eval/domains/constant-set';
+import { Const } from '../../../../src/abstract-interpretation/eval/domains/constant';
 
-function assertStringDomain(
+function assertStringDomain<T extends Value>(
 	name: string,
 	shell: RShell,
 	stringDomain: FlowrConfigOptions["abstractInterpretation"]["string"]["domain"],
 	input: string,
 	criterion: SingleSlicingCriterion,
-	expectedDomain: SDValue,
+	expectedDomain: Lift<T>,
 ) {
   test(name, async () => {
   	const output: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> = await createDataflowPipeline(shell, { request: requestFromInput(input) }, defaultConfigOptions).allRemainingSteps();
   	const dfg = output.dataflow.graph;
-  	const normalizedAst: NormalizedAst<ParentInformation & StringDomainInfo> = output.normalize;
+  	const normalizedAst: NormalizedAst<ParentInformation> = output.normalize;
   	const controlFlow = extractCfg(normalizedAst, defaultConfigOptions, dfg);
   	const config: FlowrConfigOptions = {
   		...defaultConfigOptions,
@@ -38,12 +38,12 @@ function assertStringDomain(
   		},
   	};
 
-  	inferStringDomains(controlFlow, dfg, normalizedAst, config);
+  	const domain = createDomain(config)!
+  	const valueMap = inferStringDomains(controlFlow, dfg, normalizedAst, config);
   	const nodeId = slicingCriterionToId(criterion, normalizedAst.idMap);
-		const node = normalizedAst.idMap.get(nodeId);
-		const value = node?.info.sdvalue;
+		const value = valueMap.get(nodeId) ?? Top;
 		assert(value !== undefined);
-		assert(sdEqual(value, expectedDomain), `Expected ${JSON.stringify(expectedDomain)} but got ${JSON.stringify(value)}`);
+		assert(domain.equals(value, expectedDomain), `Expected ${JSON.stringify(expectedDomain)} but got ${JSON.stringify(value)}`);
   })
 }
 
@@ -121,6 +121,24 @@ describe.sequential('string-domain-inference', withShell((shell) => {
     	{ kind: 'const-set', value: ['bar'] },
     );
 
+    assertStringDomain(
+    	'implicit string conversion',
+    	shell,
+    	"const-set",
+    	'paste0(7)',
+    	"1:1",
+    	{ kind: 'const-set', value: '7' },
+    );
+
+    assertStringDomain(
+    	'indirect implicit string conversion',
+    	shell,
+    	"const-set",
+    	'a <- 7\npaste0(a)',
+    	"2:1",
+    	{ kind: 'const-set', value: '7' },
+    );
+
     type VarType = "literal" | "variable" | "unknown";
     type GeneratedVar = {
       type: VarType;
@@ -158,7 +176,7 @@ describe.sequential('string-domain-inference', withShell((shell) => {
       }
     }
 
-    function getExpected(sep: string[] | undefined, ...sets: (string[] | undefined)[]): SDValue {
+    function getExpected(sep: string[] | undefined, ...sets: (string[] | undefined)[]): Lift<ConstSet> {
       if (sets.length == 1) {
         if (sets[0] === undefined) {
           return Top
@@ -319,33 +337,6 @@ describe.sequential('string-domain-inference', withShell((shell) => {
     	{ kind: 'const', value: '7' },
     );
 
-    assertStringDomain(
-    	'indirect implicit string conversion',
-    	shell,
-    	"const",
-    	'a <- 7\npaste0(a)',
-    	"2:1",
-    	{ kind: 'const', value: '7' },
-    );
-
-    // assertStringDomain(
-    // 	'indirect implicit string conversion',
-    // 	shell,
-    // 	"const-set",
-    // 	'for (i in 1:5) {\npaste0(i)\n}',
-    // 	"2:1",
-    // 	{ kind: 'const-set', value: ["1", "2", "3", "4", "5"] },
-    // );
-
-    // assertStringDomain(
-    // 	'inside function call',
-    // 	shell,
-    // 	"const",
-    // 	'f <- function(x) { print(x) }\nf(7)',
-    // 	"1:26",
-    // 	{ kind: 'const', value: '7' },
-    // );
-
     type VarType = "literal" | "unknown";
     type GeneratedVar = {
       type: VarType;
@@ -376,7 +367,7 @@ describe.sequential('string-domain-inference', withShell((shell) => {
       }
     }
 
-    function getExpected(sep: string | undefined, ...sets: (string | undefined)[]): SDValue {
+    function getExpected(sep: string | undefined, ...sets: (string | undefined)[]): Lift<Const> {
       if (sets.length == 1) {
         if (sets[0] === undefined) {
           return Top

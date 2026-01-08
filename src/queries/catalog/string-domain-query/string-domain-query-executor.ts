@@ -5,13 +5,13 @@ import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 import type { StringDomainQuery, StringDomainQueryResult } from './string-domain-query-format';
 import { inferStringDomains } from '../../../abstract-interpretation/eval/inference';
-import type { SDValue } from '../../../abstract-interpretation/eval/domain';
+import type { Lift, Value } from '../../../abstract-interpretation/eval/domain';
 
 export function executeStringDomainQuery({ dataflow: { graph }, ast, config }: BasicQueryData, queries: readonly StringDomainQuery[]): StringDomainQueryResult {
 	const start = Date.now();
 	const cfg = extractCfg(ast, config, graph);
-	inferStringDomains(cfg, graph, ast, config);
-	const result = new Map<SingleSlicingCriterion, SDValue | undefined>();
+	const values = inferStringDomains(cfg, graph, ast, config);
+	const result = new Map<SingleSlicingCriterion, Lift<Value> | undefined>();
 
 	for(const query of queries) {
 		if(result.has(query.criterion)) {
@@ -19,9 +19,7 @@ export function executeStringDomainQuery({ dataflow: { graph }, ast, config }: B
 			continue;
 		}
 		const nodeId = slicingCriterionToId(query.criterion, ast.idMap);
-		const node = ast.idMap.get(nodeId);
-		const value = node?.info.sdvalue;
-		result.set(query.criterion, value as (SDValue | undefined));
+		result.set(query.criterion, values.get(nodeId))
 	}
 
 	return {

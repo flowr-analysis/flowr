@@ -1,53 +1,65 @@
 import { describe, test } from 'vitest';
-import { sdEqual } from '../../../../src/abstract-interpretation/eval/equality';
 import { assert } from 'ts-essentials/dist/functions/assert';
-import { Bottom, SDValue, Top } from '../../../../src/abstract-interpretation/eval/domain';
+import { Bottom, Domain, Lift, Top } from '../../../../src/abstract-interpretation/eval/domain';
+import { ConstSetDomain } from '../../../../src/abstract-interpretation/eval/domains/constant-set';
+import { ConstDomain } from '../../../../src/abstract-interpretation/eval/domains/constant';
 
 describe('String Domain Equality', () => {
-  const values: (SDValue | undefined)[] = [
-    undefined,
-    Top,
-    Bottom,
-    { kind: "const", value: "foobar" },
-    { kind: "const", value: "barfoo" },
-    { kind: "const-set", value: ["foo"] },
-    { kind: "const-set", value: ["foo", "bar"] },
-  ];
+  const domains: Domain<any>[] = [ConstDomain, ConstSetDomain]
+  const getTestValues = (domain: Domain<any>) => {
+    const common: Lift<any>[] = [
+      Top,
+      Bottom,
+    ]
 
-  const allPossibleCombinations = values.flatMap(l =>
-    values.map((r): [SDValue | undefined, SDValue | undefined] => [l, r])
-  )
+    if (domain === ConstDomain) {
+      return common.concat([
+        { kind: "const", value: "foobar" },
+        { kind: "const", value: "barfoo" },
+      ])
+    } else if (domain === ConstSetDomain) {
+      return common.concat([
+        { kind: "const-set", value: ["foo"] },
+        { kind: "const-set", value: ["foo", "bar"] },
+      ])
+    } else {
+      throw "unreachable"
+    }
+  }
 
-  test.each(allPossibleCombinations)("symmetry %j + %j", (l, r) => {
-    // a => b <=> !a || b
-    assert(!sdEqual(l, r) || sdEqual(r, l))
+  describe.each(domains)("domain %s", (domain) => {
+    const testValues = getTestValues(domain)
+    const allPossibleCombinations = testValues.flatMap(l =>
+      testValues.map((r) => [l, r])
+    )
+
+    test.each(allPossibleCombinations)("symmetry %j + %j", (l, r) => {
+      // a => b <=> !a || b
+      assert(!domain.equals(l, r) || domain.equals(r, l))
+    })
+
+    test.each(testValues)("identity %j", (value) => {
+      assert(domain.equals(value, value))
+    })
+
+    test("top", () => {
+      assert(!domain.equals(Top, testValues.at(-1)))
+      assert(!domain.equals(Top, Bottom))
+    })
+
+    test("bottom", () => {
+      assert(!domain.equals(Bottom, testValues.at(-1)))
+    })
   })
 
-  test.each(values)("identity %j", (value) => {
-    assert(sdEqual(value, value))
-  })
-
-  test("undefined", () => {
-    assert(!sdEqual(undefined, Top))
-    assert(!sdEqual(undefined, { kind: "const", value: "foobar" }))
-  })
-
-  test("top", () => {
-    assert(!sdEqual(Top, { kind: "const", value: "foobar" }))
-    assert(!sdEqual(Top, Bottom))
-  })
-
-  test("bottom", () => {
-    assert(!sdEqual(Bottom, { kind: "const", value: "foobar" }))
-  })
 
   test("const", () => {
-    assert(!sdEqual({kind: "const", value: "foo"}, { kind: "const", value: "bar" }))
-    assert(!sdEqual({kind: "const", value: "foo"}, { kind: "const-set", value: ["foo"] }))
+    assert(ConstDomain.equals({kind: "const", value: "foo"}, { kind: "const", value: "foo" }))
+    assert(!ConstDomain.equals({kind: "const", value: "foo"}, { kind: "const", value: "bar" }))
   })
 
   test("const-set", () => {
-    assert(sdEqual({kind: "const-set", value: ["foo", "bar"]}, { kind: "const-set", value: ["bar", "foo"] }))
-    assert(!sdEqual({kind: "const-set", value: ["foo"]}, { kind: "const-set", value: ["bar"] }))
+    assert(ConstSetDomain.equals({kind: "const-set", value: ["foo", "bar"]}, { kind: "const-set", value: ["bar", "foo"] }))
+    assert(!ConstSetDomain.equals({kind: "const-set", value: ["foo"]}, { kind: "const-set", value: ["bar"] }))
   })
 })

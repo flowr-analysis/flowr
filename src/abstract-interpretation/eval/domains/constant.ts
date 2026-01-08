@@ -1,95 +1,93 @@
-import type { SDValue, AbstractOperationsStringDomain } from '../domain';
-import { Bottom, Top } from '../domain';
+import { Top, Value, type Domain, type Lift } from '../domain'
+import { NodeId, type Node } from '../graph'
 
 const sprintf = require('sprintf-js').sprintf;
 
-export type Const = {
-  kind:  'const',
+export interface Const extends Value<'const'> {
   value: string,
 }
 
-export function isConst(value: SDValue): value is Const {
-	return value.kind === 'const';
-}
-
-function toConst(value: SDValue): SDValue {
-	switch(value.kind) {
-		case 'const-set':
-			switch(value.value.length) {
-				case 1:
-					return {
-						kind:  'const',
-						value: value.value[0],
-					};
-
-				default:
-					return Top;
+export const ConstDomain: Domain<Const> = {
+  infer(node: Node, deps: ReadonlyMap<NodeId, Lift<Const>>): Lift<Const> {
+  	switch (node.type) {
+  		case "const": {
+				return { kind: "const", value: node.value }
 			}
 
-		case 'const':
-			return value;
+			case "alias": {
+				return deps.get(node.to) ?? Top
+			}
 
-		case 'top':
-			return Top;
+			case "concat": {
+				if (node.params.length === 0) return Top
+				const values = node.params.map(nid => deps.get(nid) ?? Top)
+				if (values.length === 1) return values[0]
+				const separator = deps.get(node.separator) ?? Top
+				if (separator.kind !== "const") return Top
+				if (!values.every(it => it.kind === "const")) return Top
+				return { kind: "const", value: values.map(it => it.value).join(separator.value) }
+			}
 
-		case 'bottom':
-			return Bottom;
-	}
-}
+			case "join": {
+				if (node.params.length === 0) return Top
+				const values = node.params.map(nid => deps.get(nid) ?? Top)
+				if (values.every(v => this.equals(v, values[0]))) return values[0]
+				else return Top
+			}
 
-function konst(value: string): Const {
-	return { kind: 'const', value };
-}
+			case "casing": {
+				let value = deps.get(node.value) ?? Top
+				if (value.kind !== "const") return value
+				let result
+				if (node.to === "upper") result = value.value.toUpperCase()
+				else if (node.to === "lower") result = value.value.toLowerCase()
+				else throw new Error("unreachable")
+				return { kind: "const", value: result }
+			}
 
-export class ConstStringDomain implements AbstractOperationsStringDomain {
-  const(value: string): SDValue {
-  	return konst(value)
-  }
-    
-	concat(_sep: SDValue, ..._args: readonly SDValue[]): SDValue {
-		const sep = toConst(_sep);
-		const args = _args.map(toConst); 
-			
-		if (_args.length === 1) {
-			return _args[0]
-		}
+			case "function": {
+				switch (node.name) {
+					case "sprintf": {
+  					if (node.named.length !== 0) return Top
+  					if (node.positional.length < 1) return Top
+  					const positional = node.positional.map(it => deps.get(it) ?? Top)
+  					if (!positional.every(it => it.kind === "const")) return Top
+  					const fmt = positional[0]
+  					const args = positional.slice(1)
+				  	return { kind: "const", value: sprintf(fmt.value, args.map(it => it.value)) }
+					}
 
-		if(!isConst(sep) || !args.every(isConst)) {
-			return Top;
-		}
+					default:
+						return Top
+				}
+			}
 
-		return konst(
-			args.slice(1).reduce((l, r) =>
-				l + sep.value + r.value, args[0].value
-			)
-		);
-	}
-    
-	join(..._args: readonly SDValue[]): SDValue {
-		const args = _args.map(toConst); 
-			
-		if(!args.every(isConst)) {
-			return Top;
-		}
-			
-    
-		if(args.every(i => i.value === args[0].value)) {
-			return konst(args[0].value);
-		} else {
-			return Top;
-		}
-	}
+			case "implicit-conversion": {
+				if (node.value.length === 1) {
+					return { kind: "const", value: node.value[0] }
+				} else {
+					return Top
+				}
+			}
 
-	map(value: SDValue, func: (str: string) => string): SDValue {
-		const innerValue = toConst(value);
-		if (!isConst(innerValue)) return Top;
-		return { kind: "const", value: func(innerValue.value) }
-	}
+			case "unknown": {
+				return Top
+			}
+  	}
+  },
 
-  sprintf(fmt: SDValue, ...args: readonly SDValue[]): SDValue {
-  	if (!isConst(fmt)) return Top;
-  	if (!args.every(isConst)) return Top;
+  widen(/* node, deps */) {
+  		return Top
+  },
 
-  	return konst(sprintf(fmt.value, args.map(it => it.value)))
-  }
+  equals(l: Lift<Const>, r: Lift<Const>): boolean {
+  	if (l.kind === "const" && r.kind === "const") return l.value === r.value
+  	else return l.kind === r.kind
+  },
+
+  represents(str, value): boolean {
+	  if (value.kind === "top") return true
+	  else if (value.kind === "bottom") return false
+	  else return value.value === str
+  },
 }

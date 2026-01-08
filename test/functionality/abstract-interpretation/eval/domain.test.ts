@@ -1,11 +1,13 @@
 import { describe, test } from 'vitest';
-import { Bottom, isBottom, isElement, isTop, SDValue, Top } from '../../../../src/abstract-interpretation/eval/domain';
+import { Bottom, Domain, isBottom, isTop, Lift, Top } from '../../../../src/abstract-interpretation/eval/domain';
 import { assert } from 'ts-essentials';
+import { Const, ConstDomain } from '../../../../src/abstract-interpretation/eval/domains/constant';
+import { ConstSetDomain } from '../../../../src/abstract-interpretation/eval/domains/constant-set';
 
 describe("String Domain", () => {
   test("isTop", () => {
     const topValue = Top;
-    const constValue: SDValue = {
+    const constValue: Const = {
       kind: "const",
       value: "foobar",
     };
@@ -16,7 +18,7 @@ describe("String Domain", () => {
 
   test("isBottom", () => {
     const bottomValue = Bottom;
-    const constValue: SDValue = {
+    const constValue: Const = {
       kind: "const",
       value: "foobar",
     };
@@ -25,18 +27,35 @@ describe("String Domain", () => {
     assert(!isBottom(constValue));
   })
 
+  const domains: Domain<any>[] = [ConstDomain, ConstSetDomain]
+  const getElementCases = (domain: Domain<any>) => {
+    const common: Lift<any>[] = [
+      ["foo", Top, true],
+      ["foo", Bottom, false],
+    ]
 
-  const isElementCases: [string, SDValue, boolean][] = [
-    ["foo", Top, true],
-    ["foo", Bottom, false],
-    ["foo", { kind: 'const', value: 'foo' }, true],
-    ["foo", { kind: 'const', value: 'bar' }, false],
-    ["foo", { kind: 'const-set', value: ['foo'] }, true],
-    ["foo", { kind: 'const-set', value: ['foo', 'bar'] }, true],
-    ["foo", { kind: 'const-set', value: ['bar'] }, false],
-  ];
+    if (domain === ConstDomain) {
+      return common.concat([
+        ["foo", { kind: 'const', value: 'foo' }, true],
+        ["foo", { kind: 'const', value: 'bar' }, false],
+      ])
+    } else if (domain === ConstSetDomain) {
+      return common.concat([
+        ["foo", { kind: 'const-set', value: ['foo'] }, true],
+        ["foo", { kind: 'const-set', value: ['foo', 'bar'] }, true],
+        ["foo", { kind: 'const-set', value: ['bar'] }, false],
+      ])
+    } else {
+      throw "unreachable"
+    }
+  }
 
-  test.each(isElementCases)('isElement(%s, %o) == %d', (value, domainValue, expected) => {
-    assert(isElement(value, domainValue) === expected);
+  describe.each(domains)("domain %s", (domain) => {
+    const elementCases = getElementCases(domain)
+
+    test.each(elementCases)('represents(%s, %o) == %d', (value, domainValue, expected) => {
+      assert(domain.represents(value, domainValue) === expected);
+    })
   })
+
 })

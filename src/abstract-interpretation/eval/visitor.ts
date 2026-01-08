@@ -1,6 +1,8 @@
+import { VariableResolve } from '../../config';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../../control-flow/semantic-cfg-guided-visitor';
+import { resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
 import { EdgeType } from '../../dataflow/graph/edge';
 import { isNamedArgument, isPositionalArgument, type DataflowGraph } from '../../dataflow/graph/graph';
 import type {
@@ -12,108 +14,33 @@ import { BuiltInFunctionOrigin, OriginType } from '../../dataflow/origin/dfg-get
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import {
-	SDValue ,
-	Top,
-	AbstractOperationsStringDomain,
-} from './domain';
-import { inspect } from 'util';
-import { sdEqual } from './equality';
 import { unescapeSpecialChars } from '../data-frame/resolve-args';
-import { resolveIdToValue, ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
-import { VariableResolve } from '../../config';
-import { isValue, Value } from '../../dataflow/eval/values/r-value';
-import { format } from "util";
+import { Graph, ImplicitConversionNode, Node, UnknownNode, type NodeId } from './graph';
+import { valueSetGuard } from '../../dataflow/eval/values/general';
+import { isValue } from '../../dataflow/eval/values/r-value';
+import { Top } from './domain';
 
-function obj<T>(obj: T) {
-	return inspect(obj, false, null, true);
-}
+const sprintf = require('sprintf-js').sprintf;
 
-function resolveNodeToString(node: RNode<StringDomainInfo & ParentInformation> | undefined): SDValue {
-	if (node === undefined) return Top;
-	if (node.info.sdvalue === undefined) return Top;
-	console.log(`${node.type}(${node.lexeme}) resolved ${obj(node.info.sdvalue)}`)
-	return node.info.sdvalue;
-}
-
-export type StringDomainInfo = {
-  sdvalue?: SDValue;
-};
-
-export type StringDomainVisitorConfiguration<
+type StringDomainVisitorConfiguration<
   OtherInfo = NoInfo,
   ControlFlow extends ControlFlowInformation = ControlFlowInformation,
-  Ast extends NormalizedAst<OtherInfo & StringDomainInfo> = NormalizedAst<
-    OtherInfo & StringDomainInfo
-  >,
+  Ast extends NormalizedAst<OtherInfo> = NormalizedAst<OtherInfo>,
   Dfg extends DataflowGraph = DataflowGraph,
 > = Omit<
   SemanticCfgGuidedVisitorConfiguration<
-    OtherInfo & StringDomainInfo,
+    OtherInfo,
     ControlFlow,
     Ast,
     Dfg
   >,
   'defaultVisitingOrder' | 'defaultVisitingType'
->;
-
-function resolveValueToStringImplicit(value: Value, domain: AbstractOperationsStringDomain): SDValue {
-	switch (value.type) {
-		case "string":
-			if (!isValue(value.value)) return Top;
-			return domain.const(unescapeSpecialChars(value.value.str))
-
-		case "number":
-			if (!isValue(value.value)) return Top;
-			if (value.value.complexNumber) return Top;
-			return domain.const(format("%d", value.value.num));
-
-		case "interval":
-			if (!isValue(value.start.value)) return Top;
-			if (!isValue(value.end.value)) return Top;
-			if (value.start.value.complexNumber || value.end.value.complexNumber) return Top;
-			if (value.end.value.num - value.start.value.num > 20) return Top;
-			let results: number[] = []
-			let v = value.start.value.num;
-			while (v <= value.end.value.num) {
-				results.push(v);
-				v += 1.0;
-			}
-			return domain.join(...results.map(it => domain.const(format("%d", it))))
-
-		case "logical":
-			if (!isValue(value.value)) return Top;
-			if (value.value === "maybe") return Top;
-			return domain.const(value.value ? "TRUE" : "FALSE");
-
-		default:
-			console.log("unhandled type: ", value.type);
-			return Top;
-	}
-}
-
-// implicit conversions
-export function resolveNodeToStringImplicit(node: RNode<StringDomainInfo & ParentInformation> | undefined, domain: AbstractOperationsStringDomain, resolveInfo: ResolveInfo): SDValue {
-	if (node === undefined) return Top;
-	if (node.info.sdvalue !== undefined && node.info.sdvalue !== Top) return node.info.sdvalue;
-	const result = resolveIdToValue(node.info.id, resolveInfo);
-	console.log(node)
-	if (!isValue(result)) return Top;
-	const values = result.elements;
-	if (values.length > 1) return Top;
-	if (!values.every(it => isValue(it))) return Top;
-
-	const stringValues = values.map(it => resolveValueToStringImplicit(it, domain))
-	return domain.join(...stringValues)
-}
+>
 
 export class StringDomainVisitor<
   OtherInfo = NoInfo,
   ControlFlow extends ControlFlowInformation = ControlFlowInformation,
-  Ast extends NormalizedAst<OtherInfo & StringDomainInfo> = NormalizedAst<
-    OtherInfo & StringDomainInfo
-  >,
+  Ast extends NormalizedAst<OtherInfo> = NormalizedAst<OtherInfo>,
   Dfg extends DataflowGraph = DataflowGraph,
   Config extends StringDomainVisitorConfiguration<
     OtherInfo,
@@ -122,54 +49,32 @@ export class StringDomainVisitor<
     Dfg
   > = StringDomainVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg>,
 > extends SemanticCfgGuidedVisitor<
-  OtherInfo & StringDomainInfo,
+  OtherInfo,
   ControlFlow,
   Ast,
   Dfg
 > {
-	domain: AbstractOperationsStringDomain;
-	dirty: boolean = false;
+	graph = new Graph()
 
-	// implicit conversions
-	resolveIdToStringImplicit(id: NodeId | undefined): SDValue {
-		if (id === undefined) return Top;
-		return resolveNodeToStringImplicit(this.getNormalizedAst(id), this.domain, {
-			resolve: this.config.flowrConfig.solver.variables,
-			graph: this.config.dfg,
-			idMap: this.config.normalizedAst.idMap,
-		});
-	}
-
-	resolveIdToString(id: NodeId | undefined): SDValue {
-		if (id === undefined) return Top;
-		const node = this.getNormalizedAst(id);
-		return resolveNodeToString(node);
-	}
-
-	updateNodeValue(node: RNode<StringDomainInfo & ParentInformation> | undefined, calculation: (node: RNode<StringDomainInfo & ParentInformation>) => SDValue) {
-		if (node === undefined) return;
-		const newValue = calculation(node)
-		const oldValue = node.info.sdvalue;
-		if (!sdEqual(newValue, oldValue)) {
-			this.dirty = true;
-			node.info.sdvalue = newValue;
-			console.log(`${node.type}(${node.lexeme}) assigned ${obj(newValue)}`)
-		}
-	}
-
-	updateIdValue(id: NodeId | undefined, calculation: (node: RNode<StringDomainInfo & ParentInformation>) => SDValue) {
-		if (id === undefined) return;
-		const node = this.getNormalizedAst(id);
-		this.updateNodeValue(node, calculation)
-	}
-
-	constructor(domain: AbstractOperationsStringDomain, config: Config) {
+	constructor(config: Config) {
 		super({
 			...config,
-			defaultVisitingOrder: 'forward',
+			defaultVisitingOrder: 'backward',
 			defaultVisitingType:  'exit',
 		});
-		this.domain = domain;
+	}
+
+	protected onStringConstant({
+		vertex,
+		node,
+	}: {
+    vertex: DataflowGraphVertexValue;
+    node:   RString;
+  }): void {
+  	this.graph.insertNode(vertex.id, {
+  		type: "const",
+  		value: unescapeSpecialChars(node.content.str)
+  	})
 	}
 
 	protected onAssignmentCall({
@@ -181,40 +86,57 @@ export class StringDomainVisitor<
     target?: NodeId;
     source?: NodeId;
   }): void {
-		this.updateIdValue(target, () => this.resolveIdToString(source));
-		this.updateIdValue(call.id, () => this.resolveIdToString(source));
-	}
-
-	protected onStringConstant({
-		vertex,
-		node,
-	}: {
-    vertex: DataflowGraphVertexValue;
-    node:   RString;
-  }): void {
-	  this.updateIdValue(vertex.id, () => this.domain.const(unescapeSpecialChars(node.content.str)));
+  	if (source !== undefined && target !== undefined) {
+  		this.graph.insertNode(target, { type: "alias", to: source})
+  		this.graph.insertNode(call.id, { type: "alias", to: source})
+  	}
 	}
 
 	protected onIfThenElseCall({
 		call,
+		condition,
 	}: {
     call:      DataflowGraphVertexFunctionCall;
-    condition: NodeId | undefined;
-    then:      NodeId | undefined;
-    else:      NodeId | undefined;
+    condition?: NodeId;
+    then?:      NodeId;
+    else?:      NodeId;
   }): void {
-  	this.updateIdValue(call.id, () => {
-			const returns = this.config.dfg.outgoingEdges(call.id);
-			if (!returns) return Top;
-  		const values = returns
-  			.entries()
-  			.filter(it => it[1].types & EdgeType.Returns)
-  			.map(it => this.resolveIdToString(it[0]))
-  			.toArray();
+		const returns = this.config.dfg.outgoingEdges(call.id);
+		if (!returns) {
+			this.graph.insertNode(call.id, { type: "unknown" })
+			return
+		};
 
-  		if (values.length === 0) return Top;
-			return this.domain.join(...values);
-  	});  
+		const values = returns
+			.entries()
+			.filter(it => it[1].types & EdgeType.Returns)
+			.map(it => it[0])
+			.toArray();
+
+  	const conditionValue = resolveIdToValue(condition, {
+  		environment: call.environment,
+	  	graph: this.config.dfg,
+	  	idMap: this.config.normalizedAst.idMap,
+	  	full: true,
+	  	resolve: VariableResolve.Alias,
+	  })
+		const conditionIsAlwaysFalse = valueSetGuard(conditionValue)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
+		const conditionIsAlwaysTrue = valueSetGuard(conditionValue)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
+
+		if (!(conditionIsAlwaysTrue || conditionIsAlwaysFalse) && values.length < 2) {
+			this.graph.insertNode(call.id, { type: "unknown" })
+			return
+		};
+
+		let node: Node
+		if (values.length === 0) {
+			node = { type: "unknown" }
+		} else if (values.length === 1) {
+			node = { type: "alias", to: values[0] }
+		} else {
+			node = { type:"join", params: values }
+		}
+		this.graph.insertNode(call.id, node)
 	}
 
 	protected onExpressionList({
@@ -222,92 +144,215 @@ export class StringDomainVisitor<
 	}: {
     call: DataflowGraphVertexFunctionCall;
   }): void {
-	  this.updateIdValue(call.id, (node) => {
-	  	const children = node.children as RNode<StringDomainInfo & ParentInformation>[]
-	  	const last = children.at(children.length - 1);
-	  	if (!last) return Top;
-	  	return resolveNodeToString(last)
-	  });
+		const astNode = this.getNormalizedAst(call.id);
+  	const children = astNode?.children as RNode<ParentInformation>[] | undefined ?? [];
+  	const last = children.at(children.length - 1);
+
+  	let node: Node
+  	if (last !== undefined) {
+  		node = { type: "alias", to: last.info.id }
+  	} else {
+  		node = { type: "unknown" }
+  	}
+		this.graph.insertNode(call.id, node)
 	}
 
 	protected onVariableUse({ vertex }: { vertex: DataflowGraphVertexUse; }): void {
-		this.updateIdValue(vertex.id, () => {
-			const origins = this.getOrigins(vertex.id);
-			if (!origins) return Top;
-			const values = origins
-				.filter(it => it.type === OriginType.ReadVariableOrigin)
-				.map(it => this.resolveIdToString(it.id))
-			return this.domain.join(...values)
-		});
+		const node = this.getNormalizedAst(vertex.id)!
+		const nodeValue = node.value as RNode<ParentInformation> | undefined
+		const origins = this.getOrigins(vertex.id) ?? (nodeValue !== undefined ? this.getOrigins(nodeValue.info.id) : undefined);
+
+		let retNode: Node
+		if (origins === undefined || origins.length === 0) {
+			retNode = { type: "unknown" }
+		} else if (origins.length === 1) {
+			retNode = { type: "alias", to: origins[0].id }
+		} else {
+			retNode = { type:"join", params: origins.map(it => it.id) }
+		}
+		this.graph.insertNode(vertex.id, retNode)
 	}
 
 	protected onDefaultFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall; }): void {
-		console.log("default", call.name)
 		const builtinOrigin = this.getOrigins(call.id)?.find(it => it.type == OriginType.BuiltInFunctionOrigin) 
 		if (builtinOrigin) {
 			this.onBuiltinFunctionCall({builtin: builtinOrigin, call});
 		} else {
 			switch (call.name) {
-				case "tolower":
-					this.updateIdValue(call.id, () => {
-						const positional = call.args.filter(it => isPositionalArgument(it))
-						if (positional.length != 1) return Top;
-						const value = this.resolveIdToStringImplicit(positional[0].nodeId)
-						return this.domain.map(value, it => it.toLowerCase())
-					});
-					break;
-
 				case "toupper":
-					this.updateIdValue(call.id, () => {
-						const positional = call.args.filter(it => isPositionalArgument(it))
-						if (positional.length != 1) return Top;
-						const value = this.resolveIdToStringImplicit(positional[0].nodeId)
-						return this.domain.map(value, it => it.toUpperCase())
-					});
-					break;
+				case "tolower": {
+					const positional = call.args.filter(it => isPositionalArgument(it))
 
-				case "sprintf":
-					this.updateIdValue(call.id, () => {
-						const positional = call.args.filter(it => isPositionalArgument(it))
-						if (positional.length == 0) return Top;
-						const values = positional.map(it => this.resolveIdToStringImplicit(it.nodeId))
-						return this.domain.sprintf(values[0], ...values.slice(1))
-					});
+					let node: Node
+					if (positional.length != 1) {
+						node = { type: "unknown" }
+					} else {
+						let value: NodeId = positional[0].nodeId
+
+						const resolvedValue = this.resolveIdToImplicitNode(value)
+						if (resolvedValue !== undefined) {
+							value = this.graph.insertNode(`${value}-converted`, resolvedValue)
+						}
+
+						node = { type: "casing", to: call.name === "toupper" ? "upper" : "lower", value: positional[0].nodeId }
+					}
+					this.graph.insertNode(call.id, node)
 					break;
+				}
+
+				case "sprintf": {
+					const named: readonly [string, NodeId][] = call.args.filter(it => isNamedArgument(it)).map(it => [it.name, it.nodeId])
+					const positional = call.args
+						.filter(it => isPositionalArgument(it))
+						.map(it => {
+							const resolvedValue = this.resolveIdToImplicitNode(it.nodeId)
+							if (resolvedValue !== undefined) {
+								return this.graph.insertNode(`${it.nodeId}-converted`, resolvedValue)
+							} else {
+								return it.nodeId
+							}
+						})
+					
+					this.graph.insertNode(call.id, {
+						type: "function",
+						name: call.name,
+						positional,
+						named
+					})
+
+					break
+				}
+
+				default: {
+					const named: readonly [string, NodeId][] = call.args.filter(it => isNamedArgument(it)).map(it => [it.name, it.nodeId])
+					const positional = call.args.filter(it => isPositionalArgument(it)).map(it => it.nodeId)
+					
+					this.graph.insertNode(call.id, {
+						type: "function",
+						name: call.name,
+						positional,
+						named
+					})
+
+					break
+				}
 			}
 		}
 	}
 
 	private onBuiltinFunctionCall({ builtin, call }: { builtin: BuiltInFunctionOrigin, call: DataflowGraphVertexFunctionCall}): void {
-		console.log("builtin", builtin.fn.name)
 		switch (builtin.fn.name) {
-			case "paste":
-				this.updateIdValue(call.id, () => {
-					const named = call.args.filter(it => isNamedArgument(it))
-					const positional = call.args.filter(it => isPositionalArgument(it))
-
-					const sepId = named.find(it => it.name === "sep")?.nodeId;
-					const sepValue = (sepId !== undefined) ? (this.getNormalizedAst(sepId)?.value as RNode<StringDomainInfo & ParentInformation> | undefined) : undefined;
-					const sep = (sepValue !== undefined) ? resolveNodeToString(sepValue) : this.domain.const(" ");
-
-					if (positional.length == 0) return Top;
-
-					const values = positional.map(it => this.resolveIdToStringImplicit(it.nodeId))
-					return this.domain.concat(sep, ...values)
-				});
-				break;
-
 			case "paste0":
-				this.updateIdValue(call.id, () => {
-					const positional = call.args.filter(it => isPositionalArgument(it))
-					const sep = this.domain.const("");
+			case "paste": {
+				const named = call.args.filter(it => isNamedArgument(it))
+				const positional = call.args.filter(it => isPositionalArgument(it))
 
-					if (positional.length == 0) return Top;
+				if (positional.length === 0) {
+					this.graph.insertNode(call.id, { type: "unknown" })
+					break
+				}
 
-					const values = positional.map(it => this.resolveIdToStringImplicit(it.nodeId))
-					return this.domain.concat(sep, ...values)
-				});
-				break;
+				let separator: NodeId
+				if (builtin.fn.name === "paste") {
+					const sepId = named.find(it => it.name === "sep")?.nodeId
+					if (sepId !== undefined) {
+						const valId = (this.getNormalizedAst(sepId)?.value as RNode<ParentInformation> | undefined)?.info.id
+						if (valId !== undefined) {
+							const origins = this.getOrigins(valId)
+								?.filter(it => it.type === OriginType.ConstantOrigin || it.type === OriginType.ReadVariableOrigin)
+								.map(it => it.id);
+
+							if (!origins || origins.length !== 1) separator = this.graph.insertIfMissing(sepId, { type: "unknown" })
+							else separator = this.graph.insertNode(sepId, { type: "alias", to: origins[0] })
+						} else {
+							separator = this.graph.insertIfMissing("sdconst-unknown", { type: "unknown" })
+						}
+					} else {
+						separator = this.graph.insertIfMissing("sdconst-space", { type: "const", value: " " })
+					}
+				} else if (builtin.fn.name === "paste0") {
+					separator = this.graph.insertIfMissing("sdconst-blank", { type: "const", value: "" })
+				} else {
+					throw "unreachable"
+				}
+
+				let node: Node = {
+					type: "concat",
+					separator,
+					params: positional.map(it => {
+						const value = this.resolveIdToImplicitNode(it.nodeId)
+						if (value !== undefined) {
+							return this.graph.insertNode(`${it.nodeId}-converted`, value)
+						} else {
+							return it.nodeId
+						}
+					})
+				}
+				this.graph.insertNode(call.id, node)
+				break
+			}
+		}
+	}
+
+	private resolveIdToImplicitNode(nodeId: NodeId): ImplicitConversionNode | UnknownNode | undefined {
+		const value = resolveIdToValue(nodeId, {
+			idMap: this.config.normalizedAst.idMap,
+			resolve: VariableResolve.Alias,
+			graph: this.config.dfg,
+			full: true,
+		})
+
+		if (isValue(value)) {
+			const allTypesSupported = value.elements.every(it => isValue(it) && (it.type === "logical" || it.type === "number" || it.type === "interval"))
+			if (allTypesSupported) {
+				const values = value.elements.filter(it => isValue(it)).flatMap((it): (string | Top)[] => {
+					if (it.type === "logical") {
+						if (!isValue(it.value)) {
+							return [Top]
+						} else if (it.value === true) {
+							return ["TRUE"]
+						} else if (it.value === false) {
+							return ["FALSE"]
+						} else if (it.value === "maybe") {
+							return ["TRUE", "FALSE"]
+						} else {
+							return [Top]
+						}
+					} else if (it.type === "number") {
+						if (!isValue(it.value) || it.value.complexNumber) {
+							return [Top]
+						} else {
+							return [sprintf("%.15g", it.value.num)]
+						}
+					} else if (it.type === "interval") {
+						if (
+							isValue(it.start.value) &&
+							isValue(it.end.value) &&
+							it.startInclusive === true &&
+							it.endInclusive === true &&
+							it.start.value.complexNumber === false &&
+							it.end.value.complexNumber === false &&
+						  it.start.value.num === it.end.value.num
+						) {
+							return [sprintf("%.15g", it.start.value.num)]
+						} else {
+							return [Top]
+						}
+					} else {
+						return [Top]
+					}
+				})
+
+				if (values.every(it => typeof(it) === "string" )) {
+					return { type: "implicit-conversion", value: values, of: nodeId }
+				} else {
+					return { type: "unknown" }
+				}
+			} else {
+				return undefined
+			}
+		} else {
+			return undefined
 		}
 	}
 }

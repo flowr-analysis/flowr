@@ -8,7 +8,7 @@ import Joi from 'joi';
 import { executeStringDomainQuery } from './string-domain-query-executor';
 import { jsonReplacer } from '../../../util/json';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
-import type { SDValue } from '../../../abstract-interpretation/eval/domain';
+import type { Lift, Value } from '../../../abstract-interpretation/eval/domain';
 
 /** Infer the shape of data frames using abstract interpretation. */
 export interface StringDomainQuery extends BaseQueryFormat {
@@ -17,7 +17,7 @@ export interface StringDomainQuery extends BaseQueryFormat {
 }
 
 export interface StringDomainQueryResult extends BaseQueryResult {
-	stringDomainValues: Map<SingleSlicingCriterion, SDValue | undefined>,
+	stringDomainValues: Map<SingleSlicingCriterion, Lift<Value> | undefined>,
 }
 
 export const StringDomainQueryDefinition = {

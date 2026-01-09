@@ -1,12 +1,12 @@
 import { describe, test } from 'vitest';
 import type { Lift } from '../../../../../src/abstract-interpretation/eval/domain';
-import { Top } from '../../../../../src/abstract-interpretation/eval/domain';
+import { Bottom, Top } from '../../../../../src/abstract-interpretation/eval/domain';
 import { assert } from 'ts-essentials';
 import type { Presuffix } from '../../../../../src/abstract-interpretation/eval/domains/presuffix';
 import { longestCommonPrefix, longestCommonSuffix, PresuffixDomain } from '../../../../../src/abstract-interpretation/eval/domains/presuffix';
-import { NodeEvaluator } from './common-ops';
+import { NodeEvaluator } from './common';
 
-function exact(value: string): Lift<Presuffix> {
+function e(value: string): Lift<Presuffix> {
 	return {
 		kind:   'presuffix',
 		prefix: value,
@@ -15,7 +15,7 @@ function exact(value: string): Lift<Presuffix> {
 	};
 }
 
-function presuf(prefix: string, suffix: string): Lift<Presuffix> {
+function ps(prefix: string, suffix: string): Lift<Presuffix> {
 	return {
 		kind:  'presuffix',
 		prefix,
@@ -37,7 +37,7 @@ function assertPresuf(value: Lift<Presuffix>, expectedPrefix: string, expectedSu
 	assert(value.suffix === expectedSuffix, `Expected suffix "${expectedSuffix}" but got ${value.suffix}`);
 }
 
-describe('Presuffix String Domain', () => {
+describe('String Domain: Presuffix', () => {
 	const domain = PresuffixDomain;
 	const ne = new NodeEvaluator(domain);
 
@@ -57,87 +57,99 @@ describe('Presuffix String Domain', () => {
 		assert(longestCommonSuffix('', 'b') === '');
 	});
 
+	const equalityCases: [Lift<Presuffix>, Lift<Presuffix>, boolean][] = [
+		[Top, Top, true],
+		[Bottom, Bottom, true],
+		[Top, Bottom, false],
+		[Top, e('foo'), false],
+		[Bottom, e('foo'), false],
+		[Top, ps('foo', 'bar'), false],
+		[Bottom, ps('foo', 'bar'), false],
+		[e('foo'), e('foo'), true],
+		[e('foo'), e('bar'), false],
+		[ps('foo', 'bar'), ps('foo', 'bar'), true],
+		[ps('foo', 'bar'), ps('bar', 'foo'), false],
+		[ps('fo', 'ar'), ps('foo', 'bar'), false],
+		[e('foo'), ps('foo', 'foo'), false],
+		[e('foo'), ps('foo', 'bar'), false],
+	];
+	test.each(equalityCases)('equality: (%j == %j) == %s', (l, r, v) => {
+		assert(domain.equals(l, r) === v);
+		assert(domain.equals(r, l) === v);
+	});
+
+	const sprintfCases: [Lift<Presuffix>, Lift<Presuffix>[], Lift<Presuffix>][] = [
+		[Top, [], Top],
+		[e('foo'), [], e('foo')],
+		[e('%s'), [Top], Top],
+		[e('%s'), [e('bar')], e('bar')],
+		[e('%s%s'), [e('foo'), e('bar')], e('foobar')],
+		[e('%s%s'), [e('foo'), Top], Top],
+		[e('%d'), [e('5')], e('5')],
+		[e('%.2f'), [e('0.33333')], e('0.33')],
+		[e('%x'), [e('15')], e('f')],
+		[ps('foo', 'bar'), [], Top],
+		[e('%s'), [ps('foo', 'bar')], Top],
+	];
+	test.each(sprintfCases)('sprintf: fmt %j with args %j == %j', (fmt, args, result) => {
+		const value = ne.function('sprintf', [fmt, ...args], []);
+		assert(domain.equals(value, result), `was actually ${JSON.stringify(value)}`);
+	});
+
+	const elementCases: [string, Lift<Presuffix>, boolean][] = [
+		['foo', Top, true],
+		['foo', Bottom, false],
+		['foo', e('foo'), true],
+		['foo', ps('foo', 'foo'), true],
+		['foo', ps('foo', ''), true],
+		['foo', ps('', 'foo'), true],
+		['foobeebar', e('foo'), false],
+		['foobeebar', ps('foo', 'foo'), false],
+		['foobeebar', ps('foo', 'bar'), true],
+		['foo', ps('x', 'x'), false],
+		['foo', e('x'), false],
+	];
+	test.each(elementCases)('%s represented by %j == %s', (string, value, expected) => {
+		assert(domain.represents(string, value) === expected);
+	});
+
 	test('operation: const', () => {
-		const value = ne.const('foobar');
-		assertExact(value, 'foobar');
+		assertExact(ne.const('foobar'), 'foobar');
 	});
 
 	test('operation: concat (single value)', () => {
-		let value = ne.concat(exact('sep'), exact('foo'));
-		assertExact(value, 'foo');
-
-		value = ne.concat(Top, presuf('foo', 'bar'));
-		assertPresuf(value, 'foo', 'bar');
-
-		assert(ne.concat(exact('sep'), Top).kind === 'top');
+		assertExact(ne.concat(e('sep'), e('foo')), 'foo');
+		assertPresuf(ne.concat(Top, ps('foo', 'bar')), 'foo', 'bar');
+		assert(ne.concat(e('sep'), Top).kind === 'top');
 	});
 
 	test('operation: concat (multiple values)', () => {
-		let value = ne.concat(exact('sep'), exact('foo'), exact('bar'));
-		assertExact(value, 'foosepbar');
-
-		value = ne.concat(Top, exact('foo'), exact('bar'));
-		assertPresuf(value, 'foo', 'bar');
-
-		value = ne.concat(Top, presuf('foo', 'bee'), exact('bar'));
-		assertPresuf(value, 'foo', 'bar');
-
-		value = ne.concat(presuf('foo', 'bar'), exact('foo'), exact('bar'));
-		assertPresuf(value, 'foofoo', 'barbar');
-
-		value = ne.concat(exact('sep'), exact('foo'), presuf('bee', 'boo'), exact('bar'));
-		assertPresuf(value, 'foosepbee', 'boosepbar');
-
-		value = ne.concat(exact('sep'), exact('foo'), Top);
-		assertPresuf(value, 'foosep', '');
-
-		value = ne.concat(exact('sep'), Top, exact('bar'));
-		assertPresuf(value, '', 'sepbar');
-
-		value = ne.concat(exact('sep'), Top, exact('foobar'), Top);
-		assert(value.kind === 'top');
+		assertExact(ne.concat(e('sep'), e('foo'), e('bar')), 'foosepbar');
+		assertPresuf(ne.concat(Top, e('foo'), e('bar')), 'foo', 'bar');
+		assertPresuf(ne.concat(Top, ps('foo', 'bee'), e('bar')), 'foo', 'bar');
+		assertPresuf(ne.concat(ps('foo', 'bar'), e('foo'), e('bar')), 'foofoo', 'barbar');
+		assertPresuf(ne.concat(e('sep'), e('foo'), ps('bee', 'boo'), e('bar')), 'foosepbee', 'boosepbar');
+		assertPresuf(ne.concat(e('sep'), e('foo'), Top), 'foosep', '');
+		assertPresuf(ne.concat(e('sep'), Top, e('bar')), '', 'sepbar');
+		assert(ne.concat(e('sep'), Top, e('foobar'), Top).kind === 'top');
 	});
 
 	test('operation: join (single value)', () => {
-		let value = ne.join(exact('foo'));
-		assertExact(value, 'foo');
-
-		value = ne.join(presuf('foo', 'bar'));
-		assertPresuf(value, 'foo', 'bar');
-
-		value = ne.join(Top);
-		assert(value.kind === 'top');
+		assertExact(ne.join(e('foo')), 'foo');
+		assertPresuf(ne.join(ps('foo', 'bar')), 'foo', 'bar');
+		assert(ne.join(Top).kind === 'top');
 	});
 
 	test('operation: join (multiple values)', () => {
-		let value = ne.join(exact('foo'), exact('bar'));
-		assert(value.kind === 'top');
-
-		value = ne.join(exact('foo'), exact('foobar'));
-		assertPresuf(value, 'foo', '');
-
-		value = ne.join(exact('foo'), exact('foobarfoo'));
-		assertPresuf(value, 'foo', 'foo');
-
-		value = ne.join(exact('foo'), exact('faao'));
-		assertPresuf(value, 'f', 'o');
-
-		value = ne.join(exact('foo'), presuf('f', 'o'));
-		assertPresuf(value, 'f', 'o');
-
-		value = ne.join(exact('foo'), presuf('f', ''));
-		assertPresuf(value, 'f', '');
-
-		value = ne.join(exact('foo'), presuf('', 'o'));
-		assertPresuf(value, '', 'o');
-
-		value = ne.join(exact('foo'), presuf('fee', 'bo'));
-		assertPresuf(value, 'f', 'o');
-
-		value = ne.join(presuf('foo', 'bar'), presuf('foe', 'bor'));
-		assertPresuf(value, 'fo', 'r');
-
-		value = ne.join(presuf('foo', 'bar'), Top);
-		assert(value.kind === 'top');
+		assert(ne.join(e('foo'), e('bar')).kind === 'top');
+		assertPresuf(ne.join(e('foo'), e('foobar')), 'foo', '');
+		assertPresuf(ne.join(e('foo'), e('foobarfoo')), 'foo', 'foo');
+		assertPresuf(ne.join(e('foo'), e('faao')), 'f', 'o');
+		assertPresuf(ne.join(e('foo'), ps('f', 'o')), 'f', 'o');
+		assertPresuf(ne.join(e('foo'), ps('f', '')), 'f', '');
+		assertPresuf(ne.join(e('foo'), ps('', 'o')), '', 'o');
+		assertPresuf(ne.join(e('foo'), ps('fee', 'bo')), 'f', 'o');
+		assertPresuf(ne.join(ps('foo', 'bar'), ps('foe', 'bor')), 'fo', 'r');
+		assert(ne.join(ps('foo', 'bar'), Top).kind === 'top');
 	});
 });

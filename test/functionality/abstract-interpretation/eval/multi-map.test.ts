@@ -1,7 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import { MultiMap } from '../../../../src/abstract-interpretation/eval/multi-map';
 
-describe('dbe: MultiMap', () => {
+describe('MultiMap', () => {
 	test('insert-has', () => {
 		const m = new MultiMap();
 		m.insert('foo', 'bar');

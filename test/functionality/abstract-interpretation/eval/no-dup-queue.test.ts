@@ -1,7 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import { NoDupQueue } from '../../../../src/abstract-interpretation/eval/no-dup-queue';
 
-describe('dbe: NoDupQueue', () => {
+describe('NoDupQueue', () => {
 	test('emptiness', () => {
 		const q = new NoDupQueue();
 		assert(q.isEmpty());

@@ -1,10 +1,10 @@
 import { describe, test } from 'vitest';
 import type { Lift } from '../../../../../src/abstract-interpretation/eval/domain';
-import { Top } from '../../../../../src/abstract-interpretation/eval/domain';
+import { Bottom, Top } from '../../../../../src/abstract-interpretation/eval/domain';
 import { assert } from 'ts-essentials';
 import type { ConstSet } from '../../../../../src/abstract-interpretation/eval/domains/constant-set';
 import { ConstSetDomain, MAX_VARIANTS } from '../../../../../src/abstract-interpretation/eval/domains/constant-set';
-import { NodeEvaluator } from './common-ops';
+import { NodeEvaluator } from './common';
 
 function v(...value: string[]): Lift<ConstSet> {
 	return {
@@ -31,9 +31,56 @@ function arreq<T>(left: T[], right: T[]): boolean {
 	return true;
 }
 
-describe('Constant Set String Domain', () => {
+describe('String Domain: Constant Set', () => {
 	const domain = ConstSetDomain;
 	const ne = new NodeEvaluator(domain);
+
+	const equalityCases: [Lift<ConstSet>, Lift<ConstSet>, boolean][] = [
+		[Top, Top, true],
+		[Bottom, Bottom, true],
+		[Top, Bottom, false],
+		[Top, v('foo'), false],
+		[Bottom, v('foo'), false],
+		[v('foo'), v('foo'), true],
+		[v('foo'), v('bar'), false],
+		[v('foo', 'bar'), v('bar', 'foo'), true],
+		[v('foo', 'bar'), v('foo'), false],
+	];
+	test.each(equalityCases)('equality: (%j == %j) == %s', (l, r, v) => {
+		assert(domain.equals(l, r) === v);
+		assert(domain.equals(r, l) === v);
+	});
+
+	const sprintfCases: [Lift<ConstSet>, Lift<ConstSet>[], Lift<ConstSet>][] = [
+		[Top, [], Top],
+		[v('foo'), [], v('foo')],
+		[v('foo', 'bar'), [], v('foo', 'bar')],
+		[v('%s'), [Top], Top],
+		[v('%s'), [v('bar')], v('bar')],
+		[v('%s'), [v('foo', 'bar')], v('foo', 'bar')],
+		[v('%s%s'), [v('foo'), v('bar')], v('foobar')],
+		[v('%s%s'), [v('foo', 'FOO'), v('bar', 'BAR')], v('foobar', 'fooBAR', 'FOObar', 'FOOBAR')],
+		[v('%s%s'), [v('foo'), Top], Top],
+		[v('%d'), [v('5')], v('5')],
+		[v('%.2f'), [v('0.33333')], v('0.33')],
+		[v('%.2f', '%.3f'), [v('0.33333')], v('0.33', '0.333')],
+		[v('%x', '%d'), [v('15')], v('f', '15')],
+	];
+	test.each(sprintfCases)('sprintf: fmt %j with args %j == %j', (fmt, args, result) => {
+		const value = ne.function('sprintf', [fmt, ...args], []);
+		assert(domain.equals(value, result), `was actually ${JSON.stringify(value)}`);
+	});
+
+	const elementCases: [string, Lift<ConstSet>, boolean][] = [
+		['foo', Top, true],
+		['foo', Bottom, false],
+		['foo', v('foo'), true],
+		['foo', v('foo', 'bar'), true],
+		['foo', v('bar'), false],
+	];
+	test.each(elementCases)('%s represented by %j == %s', (string, value, expected) => {
+		assert(domain.represents(string, value) === expected);
+	});
 
 	test('operation: const', () => {
 		const value = ne.const('foobar');

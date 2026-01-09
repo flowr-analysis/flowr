@@ -1,11 +1,7 @@
 import { describe, test } from 'vitest';
-import type { Domain, Lift, Value } from '../../../../src/abstract-interpretation/eval/domain';
-import { Bottom, isBottom, isTop, Top } from '../../../../src/abstract-interpretation/eval/domain';
+import { Bottom, isBottom, isTop, isValue, Top } from '../../../../src/abstract-interpretation/eval/domain';
 import { assert } from 'ts-essentials';
 import type { Const } from '../../../../src/abstract-interpretation/eval/domains/constant';
-import { ConstDomain } from '../../../../src/abstract-interpretation/eval/domains/constant';
-import { ConstSetDomain } from '../../../../src/abstract-interpretation/eval/domains/constant-set';
-import { PresuffixDomain } from '../../../../src/abstract-interpretation/eval/domains/presuffix';
 
 describe('String Domain', () => {
 	test('isTop', () => {
@@ -30,35 +26,16 @@ describe('String Domain', () => {
 		assert(!isBottom(constValue));
 	});
 
-	const domains = [ConstDomain, ConstSetDomain, PresuffixDomain] as Domain<Value>[];
-	const getElementCases = (domain: Domain<Value>) => {
-		const common: [string, Lift<Value>, boolean][] = [
-			['foo', Top, true],
-			['foo', Bottom, false],
-		];
-
-		if(domain === ConstDomain) {
-			return common.concat([
-				['foo', { kind: 'const', value: 'foo' }, true],
-				['foo', { kind: 'const', value: 'bar' }, false],
-			]);
-		} else if(domain === ConstSetDomain) {
-			return common.concat([
-				['foo', { kind: 'const-set', value: ['foo'] }, true],
-				['foo', { kind: 'const-set', value: ['foo', 'bar'] }, true],
-				['foo', { kind: 'const-set', value: ['bar'] }, false],
-			]);
-		} else {
-			throw new Error('unreachable');
-		}
-	};
-
-	describe.each(domains)('domain %s', (domain) => {
-		const elementCases = getElementCases(domain);
-
-		test.each(elementCases)('represents(%s, %o) == %d', (value, domainValue, expected) => {
-			assert(domain.represents(value, domainValue) === expected);
-		});
+	test('isValue', () => {
+		const topValue = Top;
+		const bottomValue = Bottom;
+		const constValue: Const = {
+			kind:  'const',
+			value: 'foobar',
+		};
+    
+		assert(isValue(constValue));
+		assert(!isValue(topValue));
+		assert(!isValue(bottomValue));
 	});
-
 });

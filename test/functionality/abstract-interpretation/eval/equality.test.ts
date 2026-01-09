@@ -3,9 +3,10 @@ import { assert } from 'ts-essentials/dist/functions/assert';
 import { Bottom, Domain, Lift, Top } from '../../../../src/abstract-interpretation/eval/domain';
 import { ConstSetDomain } from '../../../../src/abstract-interpretation/eval/domains/constant-set';
 import { ConstDomain } from '../../../../src/abstract-interpretation/eval/domains/constant';
+import { PresuffixDomain } from '../../../../src/abstract-interpretation/eval/domains/presuffix';
 
 describe('String Domain Equality', () => {
-  const domains: Domain<any>[] = [ConstDomain, ConstSetDomain]
+  const domains: Domain<any>[] = [ConstDomain, ConstSetDomain, PresuffixDomain]
   const getTestValues = (domain: Domain<any>) => {
     const common: Lift<any>[] = [
       Top,
@@ -21,6 +22,11 @@ describe('String Domain Equality', () => {
       return common.concat([
         { kind: "const-set", value: ["foo"] },
         { kind: "const-set", value: ["foo", "bar"] },
+      ])
+    } else if (domain === PresuffixDomain) {
+      return common.concat([
+        { kind: "presuffix", prefix: "abc", suffix: "xyz", exact: false },
+        { kind: "presuffix", prefix: "foo", suffix: "foo", exact: true },
       ])
     } else {
       throw "unreachable"
@@ -61,5 +67,11 @@ describe('String Domain Equality', () => {
   test("const-set", () => {
     assert(ConstSetDomain.equals({kind: "const-set", value: ["foo", "bar"]}, { kind: "const-set", value: ["bar", "foo"] }))
     assert(!ConstSetDomain.equals({kind: "const-set", value: ["foo"]}, { kind: "const-set", value: ["bar"] }))
+  })
+
+  test("presuffix", () => {
+    assert(PresuffixDomain.equals({kind: "presuffix", prefix: "foo", suffix: "foo", exact: false}, {kind: "presuffix", prefix: "foo", suffix: "foo", exact: false}))
+    assert(!PresuffixDomain.equals({kind: "presuffix", prefix: "foo", suffix: "foo", exact: false}, {kind: "presuffix", prefix: "foo", suffix: "foo", exact: true}))
+    assert(!PresuffixDomain.equals({kind: "presuffix", prefix: "foo", suffix: "foo", exact: false}, {kind: "presuffix", prefix: "foo", suffix: "", exact: false}))
   })
 })

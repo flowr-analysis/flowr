@@ -5,16 +5,24 @@ import { NormalizedAst, ParentInformation } from "../../r-bridge/lang-4.x/ast/mo
 import { Domain, Lift, Value } from "./domain";
 import { ConstDomain } from "./domains/constant";
 import { ConstSetDomain } from "./domains/constant-set";
+import { PresuffixDomain } from "./domains/presuffix";
 import { NodeId } from "./graph";
 import { StringDomainVisitor } from "./visitor";
 
 export function createDomain(config: FlowrConfigOptions): Domain<any> | undefined {
-	switch (config.abstractInterpretation.string.domain) {
+	const domain = config.abstractInterpretation.string.domain
+	switch (domain) {
 		case "const":
 			return ConstDomain
 
 		case "const-set":
 			return ConstSetDomain
+
+		case "presuffix":
+			return PresuffixDomain
+
+		default:
+			throw new Error(`unknown string domain: ${domain}`)
 	}
 }
 

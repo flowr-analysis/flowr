@@ -70,5 +70,12 @@ describe.sequential('implicit-string-conversion', withShell((shell) => {
       "const-set",
       testValue,
     )
+
+    assertPrintedValue(
+      "string",
+      shell,
+      "presuffix",
+      testValue,
+    )
   }
 }))

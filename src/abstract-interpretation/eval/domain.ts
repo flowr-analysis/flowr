@@ -1,5 +1,6 @@
 import type { Const } from './domains/constant';
 import type { ConstSet } from './domains/constant-set';
+import { Presuffix } from './domains/presuffix';
 import { type Node, NodeId } from './graph';
 
 export type Value<T extends string = string> = { kind: T }
@@ -29,4 +30,4 @@ export type Domain<T extends Value> = {
 	represents: (str: string, value: Lift<T>) => boolean
 }
 
-export type StringDomainName = Const["kind"] | ConstSet["kind"];
+export type StringDomainName = Const["kind"] | ConstSet["kind"] | Presuffix["kind"];

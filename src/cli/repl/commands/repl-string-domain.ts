@@ -14,7 +14,6 @@ import { mermaidCodeToUrl } from '../../../util/mermaid/mermaid';
 import { throwError } from '../../../util/null-or-throw';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { ReplCommand, ReplOutput } from './repl-main';
-import { inspect } from 'node:util';
 
 type StringDomainInfo = {
 	str?: Lift<Value>
@@ -103,7 +102,7 @@ export const stringGraphStarCommand: ReplCommand = {
 	}
 };
 
-function stringGraphToMermaidCode(ast: NormalizedAst<ParentInformation>, values: ReadonlyMap<NodeId, Lift<Value>>, graph: Graph) {
+function stringGraphToMermaidCode(ast: NormalizedAst<ParentInformation & StringDomainInfo>, values: ReadonlyMap<NodeId, Lift<Value>>, graph: Graph) {
 	const lines = ['flowchart BT'];
 	const nodes = graph.nodes();
 
@@ -115,12 +114,12 @@ function stringGraphToMermaidCode(ast: NormalizedAst<ParentInformation>, values:
 **${node.type.toUpperCase()}**
 type: ${astNode.type} (${id})
 src: (${astNode.location?.[0] ?? '?'}:${astNode.location?.[1] ?? '?'}) ${escape(astNode.lexeme)}
-value: ${escape(inspect(values.get(id) ?? Top))}
+value: ${escape(valueToString(values.get(id) ?? Top))}
 			`;
 		} else {
 			content = `
 **${node.type.toUpperCase()}**
-value: ${escape(inspect(values.get(id) ?? Top))}
+value: ${escape(valueToString(values.get(id) ?? Top))}
 			`;
 		}
 
@@ -139,7 +138,7 @@ value: ${escape(inspect(values.get(id) ?? Top))}
 **MISSING NODE**
 type: ${astNode.type} (${depId})
 src: (${astNode.location?.[0] ?? '?'}:${astNode.location?.[1] ?? '?'}) ${escape(astNode.lexeme)}
-value: ${escape(inspect(astNode.info.str ?? Top))}
+value: ${escape(valueToString(astNode.info.str ?? Top))}
 		`;
 
 				lines.push(
@@ -157,4 +156,29 @@ value: ${escape(inspect(astNode.info.str ?? Top))}
 
 function escape(str: string | undefined): string | undefined {
 	return str?.replaceAll('"', "'").replaceAll('_', '\\_').replaceAll('*', '\\*');
+}
+
+function valueToString(value: Lift<Value>): string {
+	switch (value.kind) {
+		case 'top':
+			return 'Top';
+
+		case 'bottom':
+			return 'Bottom';
+
+		case 'const':
+			return `"${value.value}"`;
+
+		case 'const-set':
+			return `[${value.value.map(it => `"${it}"`).join(', ')}]`;
+
+		case 'presuffix':
+			if (value.exact) return `"${value.prefix}"`;
+			else if (value.prefix !== "" && value.suffix === "") return `"${value.prefix}"...`;
+			else if (value.prefix === "" && value.suffix !== "") return `..."${value.suffix}"`;
+			else return `"${value.prefix}"..."${value.suffix}"`;
+
+		default:
+			throw new Error('unreachable');
+	}
 }

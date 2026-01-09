@@ -1,8 +1,8 @@
 import { describe, test } from 'vitest';
-import { Bottom, Lift, Top, Value } from '../../../../../src/abstract-interpretation/eval/domain';
+import { Lift, Top } from '../../../../../src/abstract-interpretation/eval/domain';
 import { assert } from 'ts-essentials';
 import { ConstSet, ConstSetDomain, MAX_VARIANTS } from '../../../../../src/abstract-interpretation/eval/domains/constant-set';
-import { ConcatNode, JoinNode, NodeId } from '../../../../../src/abstract-interpretation/eval/graph';
+import { NodeEvaluator } from './common-ops';
 
 function v(...value: string[]): Lift<ConstSet> {
   return {
@@ -24,15 +24,12 @@ function arreq<T>(left: T[], right: T[]): boolean {
   return true;
 }
 
-const makeDeps = (...values: Lift<Value>[]): Map<NodeId, any> => {
-  return new Map(values.map((it, i) => [i, it]))
-}
-
 describe('Constant Set String Domain', () => {
   const domain = ConstSetDomain;
+  const ne = new NodeEvaluator(domain)
 
   test("operation: const", () => {
-    const value = domain.infer({ type: "const", value: "foobar" }, makeDeps());
+    const value = ne.const("foobar")
 
     assert(value.kind === "const-set");
     assert(value.value.length === 1);
@@ -40,21 +37,19 @@ describe('Constant Set String Domain', () => {
   })
 
   test("operation: concat (single value)", () => {
-    let value = domain.infer({ type: "concat", params: [0], separator: 1 }, makeDeps(v("foo", "bar"), v("sep", ",")));
+    let value = ne.concat(v("sep", ","), v("foo", "bar"))
     assert(value.kind === "const-set");
     assert(arreq(value.value, ["foo", "bar"]));
 
-    value = domain.infer({ type: "concat", params: [0], separator: 1 }, makeDeps(v("foo", "bar"), Top));
+    value = ne.concat(Top, v("foo", "bar"))
     assert(value.kind === "const-set");
     assert(arreq(value.value, ["foo", "bar"]));
 
-    assert(domain.infer({ type: "concat", params: [0], separator: 1 }, makeDeps(Top, v("sep", ","))).kind === "top");
+    assert(ne.concat(v("sep", ","), Top).kind === "top");
   })
 
   test("operation: concat (multiple values)", () => {
-    const concatNode: ConcatNode = { type: "concat", params: [1, 2], separator: 0 }
-
-    const value = domain.infer(concatNode, makeDeps(v("sep", ","), v("foo", "lux"), v("bar", "baz")));
+    const value = ne.concat(v("sep", ","), v("foo", "lux"), v("bar", "baz"))
     assert(value.kind === "const-set");
     assert(arreq(value.value, [
       "foosepbar",
@@ -67,60 +62,50 @@ describe('Constant Set String Domain', () => {
       "lux,baz",
     ]));
 
-    assert(domain.infer(concatNode, makeDeps(Top, v("foo"), v("bar"))).kind === "top")
-    assert(domain.infer(concatNode, makeDeps(v("sep"), Top, v("bar"))).kind === "top")
-    assert(domain.infer(concatNode, makeDeps(v("sep"), v("foo"), Top)).kind === "top")
+    assert(ne.concat(Top, v("foo"), v("bar")).kind === "top")
+    assert(ne.concat(v("sep"), Top, v("bar")).kind === "top")
+    assert(ne.concat(v("sep"), v("foo"), Top).kind === "top")
   })
 
   test("operation: join (single value)", () => {
-    const value = domain.infer({ type: "join", params: [0] }, makeDeps(v("foo", "bar")));
+    const value = ne.join(v("foo", "bar"));
     assert(value.kind === "const-set");
     assert(arreq(value.value, ["foo", "bar"]));
 
-    assert(domain.infer({ type: "join", params: [0] }, makeDeps(Top)).kind === "top");
+    assert(ne.join(Top).kind === "top");
   })
 
   test("operation: join (multiple values)", () => {
-    const joinNode: JoinNode = {
-      type: "join",
-      params: [0, 1]
-    }
-
-    let value = domain.infer(joinNode, makeDeps(v("foo"), v("bar")));
+    let value = ne.join(v("foo"), v("bar"));
     assert(value.kind === "const-set");
     assert(arreq(value.value, ["foo", "bar"]));
 
-    value = domain.infer(joinNode, makeDeps(v("foo", "bar"), v("42", "64")));
+    value = ne.join(v("foo", "bar"), v("42", "64"));
     assert(value.kind === "const-set");
     assert(arreq(value.value, ["foo", "bar", "42", "64"]));
 
-    assert(domain.infer(joinNode, makeDeps(v("foo"), Top)).kind === "top");
-    assert(domain.infer(joinNode, makeDeps(Top, v("foo"))).kind === "top");
-    assert(domain.infer(joinNode, makeDeps(Top, Top)).kind === "top");
+    assert(ne.join(v("foo"), Top).kind === "top");
+    assert(ne.join(Top, v("foo")).kind === "top");
+    assert(ne.join(Top, Top).kind === "top");
   })
 
   test("operation: join (duplicate values)", () => {
-    const joinNode: JoinNode = {
-      type: "join",
-      params: [0, 1]
-    }
-
-    let value = domain.infer(joinNode, makeDeps(v("foo"), v("foo")));
+    let value = ne.join(v("foo"), v("foo"));
     assert(value.kind === "const-set");
     assert(arreq(value.value, ["foo"]));
 
-    value = domain.infer(joinNode, makeDeps(v("foo", "bar"), v("foo")));
+    value = ne.join(v("foo", "bar"), v("foo"));
     assert(value.kind === "const-set");
     assert(arreq(value.value, ["foo", "bar"]));
   })
 
   test("operation: join (upper limit)", () => {
-    let values: Value[] = [];
+    let values: Lift<ConstSet>[] = [];
     for (let i = 0; i < MAX_VARIANTS + 1; i++) {
       values.push(v(`${i}`))
     }
 
-    assert(domain.infer({ type: "join", params: values.map((_, i) => i) }, makeDeps(...values)).kind === "top");
+    assert(ne.join(...values).kind === "top");
   })
 })
 

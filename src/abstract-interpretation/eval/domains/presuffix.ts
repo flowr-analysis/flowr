@@ -121,7 +121,7 @@ export const PresuffixDomain: Domain<Presuffix> = {
 						}
 						const fmt = positional[0] as Presuffix;
 						const args = positional.slice(1) as Presuffix[];
-						const value = sprintf(fmt.prefix, args.map(it => it.prefix));
+						const value = sprintf(fmt.prefix, ...args.map(it => it.prefix));
 						return { kind: 'presuffix', prefix: value, suffix: value, exact: true  };
 					}
 

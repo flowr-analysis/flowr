@@ -102,9 +102,9 @@ export const ConstSetDomain: Domain<ConstSet> = {
 						}
 						const fmt = positional[0];
 						const args = positional.slice(1);
-						const variants = fmt.value.length * args
+						const variants = args
 							.map(it => it.value.length)
-							.reduce((l, r) => l * r);
+							.reduce((l, r) => l * r, fmt.value.length);
 
 						if(variants > MAX_VARIANTS) {
 							return Top;

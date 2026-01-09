@@ -79,7 +79,7 @@ export const ConstDomain: Domain<Const> = {
 						}
 						const fmt = positional[0];
 						const args = positional.slice(1);
-						return { kind: 'const', value: sprintf(fmt.value, args.map(it => it.value)) };
+						return { kind: 'const', value: sprintf(fmt.value, ...args.map(it => it.value)) };
 					}
 
 					default:

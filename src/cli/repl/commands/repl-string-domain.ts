@@ -1,5 +1,6 @@
-import { Domain, Lift, Top, Value } from '../../../abstract-interpretation/eval/domain';
-import { Graph, NodeId } from '../../../abstract-interpretation/eval/graph';
+import type { Domain, Lift, Value } from '../../../abstract-interpretation/eval/domain';
+import { Top } from '../../../abstract-interpretation/eval/domain';
+import type { Graph, NodeId } from '../../../abstract-interpretation/eval/graph';
 import { createDomain, inferStringDomains } from '../../../abstract-interpretation/eval/inference';
 import { StringDomainVisitor } from '../../../abstract-interpretation/eval/visitor';
 import type { FlowrConfigOptions } from '../../../config';
@@ -12,7 +13,7 @@ import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import { mermaidCodeToUrl } from '../../../util/mermaid/mermaid';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { ReplCommand, ReplOutput } from './repl-main';
-import { inspect } from "node:util"
+import { inspect } from 'node:util';
 
 type StringDomainInfo = {
 	str?: Lift<Value>
@@ -54,10 +55,10 @@ export const stringValuesGraphStarCommand: ReplCommand = {
 		);
 		const totalEnd = Date.now();
 		const totalDuration = totalEnd - totalStart;
-		for (const [nodeId, value] of values) {
-			const node = normalizedAst.idMap.get(nodeId)
-			if (node) {
-				node.info.str = value
+		for(const [nodeId, value] of values) {
+			const node = normalizedAst.idMap.get(nodeId);
+			if(node) {
+				node.info.str = value;
 			}
 		}
 		const mermaid = graphToMermaidUrl(dfg, false, undefined, false, ['str']);
@@ -84,12 +85,12 @@ export const stringGraphStarCommand: ReplCommand = {
 		const controlFlow = extractCfg(normalizedAst, config, dfg);
 
 		const visitor = new StringDomainVisitor({ controlFlow, dfg, normalizedAst, flowrConfig: config });
-		visitor.start()
-		const graph = visitor.graph
-		const domain = createDomain(config)! as unknown as Domain<Value>
-		const values = visitor.graph.inferValues(domain)
+		visitor.start();
+		const graph = visitor.graph;
+		const domain = createDomain(config)! as unknown as Domain<Value>;
+		const values = visitor.graph.inferValues(domain);
 
-		const mermaid = mermaidCodeToUrl(stringGraphToMermaidCode(normalizedAst, values, graph))
+		const mermaid = mermaidCodeToUrl(stringGraphToMermaidCode(normalizedAst, values, graph));
 		const totalEnd = Date.now();
 		const totalDuration = totalEnd - totalStart;
 		output.stdout(mermaid);
@@ -102,57 +103,57 @@ export const stringGraphStarCommand: ReplCommand = {
 };
 
 function stringGraphToMermaidCode(ast: NormalizedAst<ParentInformation>, values: ReadonlyMap<NodeId, Lift<Value>>, graph: Graph) {
-	const lines = ["flowchart BT"]
-	const nodes = graph.nodes()
+	const lines = ['flowchart BT'];
+	const nodes = graph.nodes();
 
-	for (const [id, node] of nodes) {
-		const astNode = ast.idMap.get(id)
-		let content: string
-		if (astNode) {
+	for(const [id, node] of nodes) {
+		const astNode = ast.idMap.get(id);
+		let content: string;
+		if(astNode) {
 			content = `
 **${node.type.toUpperCase()}**
 type: ${astNode.type} (${id})
-src: (${astNode.location?.[0] ?? "?"}:${astNode.location?.[1] ?? "?"}) ${escape(astNode.lexeme)}
+src: (${astNode.location?.[0] ?? '?'}:${astNode.location?.[1] ?? '?'}) ${escape(astNode.lexeme)}
 value: ${escape(inspect(values.get(id) ?? Top))}
-			`
+			`;
 		} else {
 			content = `
 **${node.type.toUpperCase()}**
 value: ${escape(inspect(values.get(id) ?? Top))}
-			`
+			`;
 		}
 
 		lines.push(
 			`  ${id}["\``,
-			...content.split("\n").map(it => `  ${it.replaceAll("\"", "'")}`),
-			`  \`"]`,
-		)
+			...content.split('\n').map(it => `  ${it.replaceAll('"', "'")}`),
+			'  `"]',
+		);
 	}
 
-	for (const [id] of nodes) {
-		for (const depId of graph.depsOf(id)) {
-			if (!nodes.has(depId)) {
-				const astNode = ast.idMap.get(depId)!
+	for(const [id] of nodes) {
+		for(const depId of graph.depsOf(id)) {
+			if(!nodes.has(depId)) {
+				const astNode = ast.idMap.get(depId)!;
 				const content = `
 **MISSING NODE**
 type: ${astNode.type} (${depId})
-src: (${astNode.location?.[0] ?? "?"}:${astNode.location?.[1] ?? "?"}) ${escape(astNode.lexeme)}
+src: (${astNode.location?.[0] ?? '?'}:${astNode.location?.[1] ?? '?'}) ${escape(astNode.lexeme)}
 value: ${escape(inspect(astNode.info.str ?? Top))}
-		`
+		`;
 
 				lines.push(
 					`  ${depId}["\``,
-					...content.split("\n").map(it => `  ${it.replaceAll("\"", "'")}`),
-					`  \`"]`,
-				)
+					...content.split('\n').map(it => `  ${it.replaceAll('"', "'")}`),
+					'  `"]',
+				);
 			}
-			lines.push(`  ${id} --> ${depId}`)
+			lines.push(`  ${id} --> ${depId}`);
 		}
 	}
 
-	return lines.join("\n")
+	return lines.join('\n');
 }
 
 function escape(str: string | undefined): string | undefined {
-	return str?.replaceAll("\"", "'").replaceAll("_", "\\_").replaceAll("*", "\\*")
+	return str?.replaceAll('"', "'").replaceAll('_', '\\_').replaceAll('*', '\\*');
 }

@@ -8,421 +8,423 @@ import { extractCfg } from '../../../../src/control-flow/extract-cfg';
 import type { NormalizedAst, ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
 import { createDomain, inferStringDomains } from '../../../../src/abstract-interpretation/eval/inference';
-import { SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
-import { RShell } from '../../../../src/r-bridge/shell';
+import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import type { RShell } from '../../../../src/r-bridge/shell';
 import { withShell } from '../../_helper/shell';
-import { Lift, Top, Value } from '../../../../src/abstract-interpretation/eval/domain';
-import { ConstSet } from '../../../../src/abstract-interpretation/eval/domains/constant-set';
-import { Const } from '../../../../src/abstract-interpretation/eval/domains/constant';
+import type { Lift, Value } from '../../../../src/abstract-interpretation/eval/domain';
+import { Top } from '../../../../src/abstract-interpretation/eval/domain';
+import type { ConstSet } from '../../../../src/abstract-interpretation/eval/domains/constant-set';
+import type { Const } from '../../../../src/abstract-interpretation/eval/domains/constant';
 
 function assertStringDomain<T extends Value>(
 	name: string,
 	shell: RShell,
-	stringDomain: FlowrConfigOptions["abstractInterpretation"]["string"]["domain"],
+	stringDomain: FlowrConfigOptions['abstractInterpretation']['string']['domain'],
 	input: string,
 	criterion: SingleSlicingCriterion,
 	expectedDomain: Lift<T>,
 ) {
-  test(name, async () => {
-  	const output: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> = await createDataflowPipeline(shell, { request: requestFromInput(input) }, defaultConfigOptions).allRemainingSteps();
-  	const dfg = output.dataflow.graph;
-  	const normalizedAst: NormalizedAst<ParentInformation> = output.normalize;
-  	const controlFlow = extractCfg(normalizedAst, defaultConfigOptions, dfg);
-  	const config: FlowrConfigOptions = {
-  		...defaultConfigOptions,
-  		abstractInterpretation: {
-  			...defaultConfigOptions.abstractInterpretation,
-  			string: {
-  				domain: stringDomain
-  			},
-  		},
-  	};
+	test(name, async() => {
+		const output: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> = await createDataflowPipeline(shell, { request: requestFromInput(input) }, defaultConfigOptions).allRemainingSteps();
+		const dfg = output.dataflow.graph;
+		const normalizedAst: NormalizedAst<ParentInformation> = output.normalize;
+		const controlFlow = extractCfg(normalizedAst, defaultConfigOptions, dfg);
+		const config: FlowrConfigOptions = {
+			...defaultConfigOptions,
+			abstractInterpretation: {
+				...defaultConfigOptions.abstractInterpretation,
+				string: {
+					domain: stringDomain
+				},
+			},
+		};
 
-  	const domain = createDomain(config)!
-  	const valueMap = inferStringDomains(controlFlow, dfg, normalizedAst, config);
-  	const nodeId = slicingCriterionToId(criterion, normalizedAst.idMap);
+		const domain = createDomain(config)!;
+		const valueMap = inferStringDomains(controlFlow, dfg, normalizedAst, config);
+		const nodeId = slicingCriterionToId(criterion, normalizedAst.idMap);
 		const value = valueMap.get(nodeId) ?? Top;
 		assert(value !== undefined);
 		assert(domain.equals(value, expectedDomain), `Expected ${JSON.stringify(expectedDomain)} but got ${JSON.stringify(value)}`);
-  })
+	});
 }
 
 describe.sequential('string-domain-inference', withShell((shell) => {
-  describe('const-set', () => {
-    assertStringDomain(
-    	'assignment',
-    	shell,
-    	"const-set",
-    	'a <- "foo"',
-    	"1@a",
-    	{ kind: 'const-set', value: ['foo'] },
-    );
+	describe('const-set', () => {
+		assertStringDomain(
+			'assignment',
+			shell,
+			'const-set',
+			'a <- "foo"',
+			'1@a',
+			{ kind: 'const-set', value: ['foo'] },
+		);
 
-    assertStringDomain(
-    	'indirect assignment',
-    	shell,
-    	"const-set",
-    	'a <- "foo"\nb <- a',
-    	"2@b",
-    	{ kind: 'const-set', value: ['foo'] },
-    );
+		assertStringDomain(
+			'indirect assignment',
+			shell,
+			'const-set',
+			'a <- "foo"\nb <- a',
+			'2@b',
+			{ kind: 'const-set', value: ['foo'] },
+		);
 
-    assertStringDomain(
-    	'reassignment',
-    	shell,
-    	"const-set",
-    	'a <- "foo"\na <- "bar"',
-    	"2@a",
-    	{ kind: 'const-set', value: ['bar'] },
-    );
+		assertStringDomain(
+			'reassignment',
+			shell,
+			'const-set',
+			'a <- "foo"\na <- "bar"',
+			'2@a',
+			{ kind: 'const-set', value: ['bar'] },
+		);
 
-    assertStringDomain(
-    	'conditional assignment',
-    	shell,
-    	"const-set",
-    	'a <- "foo"\nif (x) { a <- "bar" }\na',
-    	"3@a",
-    	{ kind: 'const-set', value: ['foo', 'bar'] },
-    );
+		assertStringDomain(
+			'conditional assignment',
+			shell,
+			'const-set',
+			'a <- "foo"\nif (x) { a <- "bar" }\na',
+			'3@a',
+			{ kind: 'const-set', value: ['foo', 'bar'] },
+		);
 
-    assertStringDomain(
-    	'if true branch',
-    	shell,
-    	"const-set",
-    	'if(TRUE) { "foo" } else { "bar" }',
-    	"1:1",
-    	{ kind: 'const-set', value: ['foo'] },
-    );  
+		assertStringDomain(
+			'if true branch',
+			shell,
+			'const-set',
+			'if(TRUE) { "foo" } else { "bar" }',
+			'1:1',
+			{ kind: 'const-set', value: ['foo'] },
+		);
 
-    assertStringDomain(
-    	'if false branch',
-    	shell,
-    	"const-set",
-    	'if(FALSE) { "foo" } else { "bar" }',
-    	"1:1",
-    	{ kind: 'const-set', value: ['bar'] },
-    );
+		assertStringDomain(
+			'if false branch',
+			shell,
+			'const-set',
+			'if(FALSE) { "foo" } else { "bar" }',
+			'1:1',
+			{ kind: 'const-set', value: ['bar'] },
+		);
 
-    assertStringDomain(
-    	'if else',
-    	shell,
-    	"const-set",
-    	'if(a) { "foo" } else { "bar" }',
-    	"1:1",
-    	{ kind: 'const-set', value: ['foo', 'bar'] },
-    );
+		assertStringDomain(
+			'if else',
+			shell,
+			'const-set',
+			'if(a) { "foo" } else { "bar" }',
+			'1:1',
+			{ kind: 'const-set', value: ['foo', 'bar'] },
+		);
 
-    assertStringDomain(
-    	'super assignment',
-    	shell,
-    	"const-set",
-    	'a <- "foo"\nf <- function() { a <<- "bar" }\nf()\na',
-    	"4:1",
-    	{ kind: 'const-set', value: ['bar'] },
-    );
+		assertStringDomain(
+			'super assignment',
+			shell,
+			'const-set',
+			'a <- "foo"\nf <- function() { a <<- "bar" }\nf()\na',
+			'4:1',
+			{ kind: 'const-set', value: ['bar'] },
+		);
 
-    assertStringDomain(
-    	'implicit string conversion',
-    	shell,
-    	"const-set",
-    	'paste0(7)',
-    	"1:1",
-    	{ kind: 'const-set', value: '7' },
-    );
+		assertStringDomain(
+			'implicit string conversion',
+			shell,
+			'const-set',
+			'paste0(7)',
+			'1:1',
+			{ kind: 'const-set', value: '7' },
+		);
 
-    assertStringDomain(
-    	'indirect implicit string conversion',
-    	shell,
-    	"const-set",
-    	'a <- 7\npaste0(a)',
-    	"2:1",
-    	{ kind: 'const-set', value: '7' },
-    );
+		assertStringDomain(
+			'indirect implicit string conversion',
+			shell,
+			'const-set',
+			'a <- 7\npaste0(a)',
+			'2:1',
+			{ kind: 'const-set', value: '7' },
+		);
 
-    type VarType = "literal" | "variable" | "unknown";
-    type GeneratedVar = {
-      type: VarType;
-      definition: string;
-      reference: string;
-      value: string[] | undefined;
-    };
-    
-    let i = 0;
-    function generate(type: VarType): GeneratedVar {
-      i++;
-      if (type === "literal") {
-        return {
-          type,
-          definition: '',
-          reference: `"foo${i}"`,
-          value: [`foo${i}`],
-        }
-      } else if (type === "variable") {
-        return {
-          type,
-          definition: `a${i} <- if (d${i}) { "foo${i}" } else { "bar${i}" }`,
-          reference: `a${i}`,
-          value: [`foo${i}`, `bar${i}`],
-        }
-      } else if (type === "unknown") {
-        return {
-          type,
-          definition: '',
-          reference: `unknown${i}`,
-          value: undefined,
-        }
-      } else {
-        throw new Error("unreachable");
-      }
-    }
+type VarType = 'literal' | 'variable' | 'unknown';
+type GeneratedVar = {
+type:       VarType;
+definition: string;
+reference:  string;
+value:      string[] | undefined;
+};
 
-    function getExpected(sep: string[] | undefined, ...sets: (string[] | undefined)[]): Lift<ConstSet> {
-      if (sets.length == 1) {
-        if (sets[0] === undefined) {
-          return Top
-        }
+let i = 0;
+function generate(type: VarType): GeneratedVar {
+	i++;
+	if(type === 'literal') {
+		return {
+			type,
+			definition: '',
+			reference:  `"foo${i}"`,
+			value:      [`foo${i}`],
+		};
+	} else if(type === 'variable') {
+		return {
+			type,
+			definition: `a${i} <- if (d${i}) { "foo${i}" } else { "bar${i}" }`,
+			reference:  `a${i}`,
+			value:      [`foo${i}`, `bar${i}`],
+		};
+	} else if(type === 'unknown') {
+		return {
+			type,
+			definition: '',
+			reference:  `unknown${i}`,
+			value:      undefined,
+		};
+	} else {
+		throw new Error('unreachable');
+	}
+}
 
-        return {
-          kind: "const-set",
-          value: sets[0]
-        }
-      }
+function getExpected(sep: string[] | undefined, ...sets: (string[] | undefined)[]): Lift<ConstSet> {
+	if(sets.length == 1) {
+		if(sets[0] === undefined) {
+			return Top;
+		}
 
-      if (sep === undefined) {
-        return Top
-      }
+		return {
+			kind:  'const-set',
+			value: sets[0]
+		};
+	}
 
-      if (sets.some(s => s === undefined)) {
-        return Top
-      }
+	if(sep === undefined) {
+		return Top;
+	}
 
-      const possible = (sets as string[][]).reduce((l, r) =>
-        l.flatMap(l =>
-          r.flatMap(r =>
-            sep.map(s =>
-              `${l}${s}${r}`
-            )
-          )
-        )
-      )
+	if(sets.some(s => s === undefined)) {
+		return Top;
+	}
 
-      return {
-        kind: "const-set",
-        value: possible,
-      }
-    }
+	const possible = (sets as string[][]).reduce((l, r) =>
+		l.flatMap(l =>
+			r.flatMap(r =>
+				sep.map(s =>
+					`${l}${s}${r}`
+				)
+			)
+		)
+	);
 
-    const values: VarType[] = [
-      "literal",
-      "variable",
-      "unknown"
-    ];
+	return {
+		kind:  'const-set',
+		value: possible,
+	};
+}
 
-    function assertGeneratedPaste(sep: GeneratedVar, ...args: GeneratedVar[]) {
-      assertStringDomain(
-      	`paste (${args.map(it => it.type).join(", ")}, sep=${sep.type})`,
-      	shell,
-      	"const-set",
-      	`${sep.definition}\n${args.map(it => it.definition).join("\n")}\npaste(${args.map(it => it.reference).join(", ")}, sep=${sep.reference})`,
-      	`${args.length + 2}:1`,
-      	getExpected(sep.value, ...args.map(it => it.value)),
-      );
-    }
+const values: VarType[] = [
+	'literal',
+	'variable',
+	'unknown'
+];
 
-    for (const sep of values) {
-      const vsep = generate(sep);
-      for (const a of values) {
-        const va = generate(a);
-        for (const b of values) {
-          const vb = generate(b);
-          for (const c of values) {
-              const vc = generate(c);
-              assertGeneratedPaste(vsep, va, vb, vc);
-          }
-          assertGeneratedPaste(vsep, va, vb);
-        }
-        assertGeneratedPaste(vsep, va);
-      }
-    }
-  })
+function assertGeneratedPaste(sep: GeneratedVar, ...args: GeneratedVar[]) {
+	assertStringDomain(
+		`paste (${args.map(it => it.type).join(', ')}, sep=${sep.type})`,
+		shell,
+		'const-set',
+		`${sep.definition}\n${args.map(it => it.definition).join('\n')}\npaste(${args.map(it => it.reference).join(', ')}, sep=${sep.reference})`,
+		`${args.length + 2}:1`,
+		getExpected(sep.value, ...args.map(it => it.value)),
+	);
+}
 
-  describe('const', () => {
-    assertStringDomain(
-    	'assignment',
-    	shell,
-    	"const",
-    	'a <- "foo"',
-    	"1@a",
-    	{ kind: 'const', value: 'foo' },
-    );
+for(const sep of values) {
+	const vsep = generate(sep);
+	for(const a of values) {
+		const va = generate(a);
+		for(const b of values) {
+			const vb = generate(b);
+			for(const c of values) {
+				const vc = generate(c);
+				assertGeneratedPaste(vsep, va, vb, vc);
+			}
+			assertGeneratedPaste(vsep, va, vb);
+		}
+		assertGeneratedPaste(vsep, va);
+	}
+}
+	});
 
-    assertStringDomain(
-    	'indirect assignment',
-    	shell,
-    	"const",
-    	'a <- "foo"\nb <- a',
-    	"2@b",
-    	{ kind: 'const', value: 'foo' },
-    );
+	describe('const', () => {
+		assertStringDomain(
+			'assignment',
+			shell,
+			'const',
+			'a <- "foo"',
+			'1@a',
+			{ kind: 'const', value: 'foo' },
+		);
 
-    assertStringDomain(
-    	'reassignment',
-    	shell,
-    	"const",
-    	'a <- "foo"\na <- "bar"',
-    	"2@a",
-    	{ kind: 'const', value: 'bar' },
-    );
+		assertStringDomain(
+			'indirect assignment',
+			shell,
+			'const',
+			'a <- "foo"\nb <- a',
+			'2@b',
+			{ kind: 'const', value: 'foo' },
+		);
 
-    assertStringDomain(
-    	'conditional assignment',
-    	shell,
-    	"const",
-    	'a <- "foo"\nif (x) { a <- "bar" }\na',
-    	"3@a",
-    	Top,
-    );
+		assertStringDomain(
+			'reassignment',
+			shell,
+			'const',
+			'a <- "foo"\na <- "bar"',
+			'2@a',
+			{ kind: 'const', value: 'bar' },
+		);
 
-    assertStringDomain(
-    	'if true branch',
-    	shell,
-    	"const",
-    	'if(TRUE) { "foo" } else { "bar" }',
-    	"1:1",
-    	{ kind: 'const', value: 'foo' },
-    );  
+		assertStringDomain(
+			'conditional assignment',
+			shell,
+			'const',
+			'a <- "foo"\nif (x) { a <- "bar" }\na',
+			'3@a',
+			Top,
+		);
 
-    assertStringDomain(
-    	'if false branch',
-    	shell,
-    	"const",
-    	'if(FALSE) { "foo" } else { "bar" }',
-    	"1:1",
-    	{ kind: 'const', value: 'bar' },
-    );
+		assertStringDomain(
+			'if true branch',
+			shell,
+			'const',
+			'if(TRUE) { "foo" } else { "bar" }',
+			'1:1',
+			{ kind: 'const', value: 'foo' },
+		);
 
-    assertStringDomain(
-    	'if else',
-    	shell,
-    	"const",
-    	'if(a) { "foo" } else { "bar" }',
-    	"1:1",
-    	Top,
-    );
+		assertStringDomain(
+			'if false branch',
+			shell,
+			'const',
+			'if(FALSE) { "foo" } else { "bar" }',
+			'1:1',
+			{ kind: 'const', value: 'bar' },
+		);
 
-    assertStringDomain(
-    	'super assignment',
-    	shell,
-    	"const",
-    	'a <- "foo"\nf <- function() { a <<- "bar" }\nf()\na',
-    	"4:1",
-    	{ kind: 'const', value: 'bar' },
-    );
+		assertStringDomain(
+			'if else',
+			shell,
+			'const',
+			'if(a) { "foo" } else { "bar" }',
+			'1:1',
+			Top,
+		);
 
-    assertStringDomain(
-    	'implicit string conversion',
-    	shell,
-    	"const",
-    	'paste0(7)',
-    	"1:1",
-    	{ kind: 'const', value: '7' },
-    );
+		assertStringDomain(
+			'super assignment',
+			shell,
+			'const',
+			'a <- "foo"\nf <- function() { a <<- "bar" }\nf()\na',
+			'4:1',
+			{ kind: 'const', value: 'bar' },
+		);
 
-    assertStringDomain(
-    	'indirect implicit string conversion',
-    	shell,
-    	"const",
-    	'a <- 7\npaste0(a)',
-    	"2:1",
-    	{ kind: 'const', value: '7' },
-    );
+		assertStringDomain(
+			'implicit string conversion',
+			shell,
+			'const',
+			'paste0(7)',
+			'1:1',
+			{ kind: 'const', value: '7' },
+		);
 
-    type VarType = "literal" | "unknown";
-    type GeneratedVar = {
-      type: VarType;
-      definition: string;
-      reference: string;
-      value: string | undefined;
-    };
-    
-    let i = 0;
-    function generate(type: VarType): GeneratedVar {
-      i++;
-      if (type === "literal") {
-        return {
-          type,
-          definition: '',
-          reference: `"foo${i}"`,
-          value: `foo${i}`,
-        }
-      } else if (type === "unknown") {
-        return {
-          type,
-          definition: '',
-          reference: `unknown${i}`,
-          value: undefined,
-        }
-      } else {
-        throw new Error("unreachable");
-      }
-    }
+		assertStringDomain(
+			'indirect implicit string conversion',
+			shell,
+			'const',
+			'a <- 7\npaste0(a)',
+			'2:1',
+			{ kind: 'const', value: '7' },
+		);
 
-    function getExpected(sep: string | undefined, ...sets: (string | undefined)[]): Lift<Const> {
-      if (sets.length == 1) {
-        if (sets[0] === undefined) {
-          return Top
-        }
+type VarType = 'literal' | 'unknown';
+type GeneratedVar = {
+type:       VarType;
+definition: string;
+reference:  string;
+value:      string | undefined;
+};
 
-        return {
-          kind: "const",
-          value: sets[0]
-        }
-      }
+let i = 0;
+function generate(type: VarType): GeneratedVar {
+	i++;
+	if(type === 'literal') {
+		return {
+			type,
+			definition: '',
+			reference:  `"foo${i}"`,
+			value:      `foo${i}`,
+		};
+	} else if(type === 'unknown') {
+		return {
+			type,
+			definition: '',
+			reference:  `unknown${i}`,
+			value:      undefined,
+		};
+	} else {
+		throw new Error('unreachable');
+	}
+}
 
-      if (sep === undefined) {
-        return Top
-      }
+function getExpected(sep: string | undefined, ...sets: (string | undefined)[]): Lift<Const> {
+	if(sets.length == 1) {
+		if(sets[0] === undefined) {
+			return Top;
+		}
 
-      if (sets.some(s => s === undefined)) {
-        return Top
-      }
+		return {
+			kind:  'const',
+			value: sets[0]
+		};
+	}
 
-      return {
-        kind: "const",
-        value: (sets as string[]).join(sep),
-      }
-    }
+	if(sep === undefined) {
+		return Top;
+	}
 
-    const values: VarType[] = [
-      "literal",
-      "unknown"
-    ];
+	if(sets.some(s => s === undefined)) {
+		return Top;
+	}
 
-    function assertGeneratedPaste(sep: GeneratedVar, ...args: GeneratedVar[]) {
-      assertStringDomain(
-      	`paste (${args.map(it => it.type).join(", ")}, sep=${sep.type})`,
-      	shell,
-      	"const",
-      	`${sep.definition}\n${args.map(it => it.definition).join("\n")}\npaste(${args.map(it => it.reference).join(", ")}, sep=${sep.reference})`,
-      	`${args.length + 2}:1`,
-      	getExpected(sep.value, ...args.map(it => it.value)),
-      );
-    }
+	return {
+		kind:  'const',
+		value: (sets as string[]).join(sep),
+	};
+}
 
-    for (const sep of values) {
-      const vsep = generate(sep);
-      for (const a of values) {
-        const va = generate(a);
-        for (const b of values) {
-          const vb = generate(b);
-          for (const c of values) {
-              const vc = generate(c);
-              assertGeneratedPaste(vsep, va, vb, vc);
-          }
-          assertGeneratedPaste(vsep, va, vb);
-        }
-        assertGeneratedPaste(vsep, va);
-      }
-    }
-  })
-}))
+const values: VarType[] = [
+	'literal',
+	'unknown'
+];
+
+function assertGeneratedPaste(sep: GeneratedVar, ...args: GeneratedVar[]) {
+	assertStringDomain(
+		`paste (${args.map(it => it.type).join(', ')}, sep=${sep.type})`,
+		shell,
+		'const',
+		`${sep.definition}\n${args.map(it => it.definition).join('\n')}\npaste(${args.map(it => it.reference).join(', ')}, sep=${sep.reference})`,
+		`${args.length + 2}:1`,
+		getExpected(sep.value, ...args.map(it => it.value)),
+	);
+}
+
+for(const sep of values) {
+	const vsep = generate(sep);
+	for(const a of values) {
+		const va = generate(a);
+		for(const b of values) {
+			const vb = generate(b);
+			for(const c of values) {
+				const vc = generate(c);
+				assertGeneratedPaste(vsep, va, vb, vc);
+			}
+			assertGeneratedPaste(vsep, va, vb);
+		}
+		assertGeneratedPaste(vsep, va);
+	}
+}
+	});
+}));

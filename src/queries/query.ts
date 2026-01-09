@@ -49,7 +49,8 @@ import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-forma
 import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 import type { StringDomainQuery } from './catalog/string-domain-query/string-domain-query-format';
 import { StringDomainQueryDefinition } from './catalog/string-domain-query/string-domain-query-format';
-import { SdeQuery, SdeQueryDefinition } from './catalog/sde-query/sde-query-format';
+import type { SdeQuery } from './catalog/sde-query/sde-query-format';
+import { SdeQueryDefinition } from './catalog/sde-query/sde-query-format';
 
 export type Query = CallContextQuery
 	| ConfigQuery

@@ -4,10 +4,10 @@ import type { SingleSlicingCriterion, SlicingCriteria } from '../../../slicing/c
 import type { QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
 import { executeSdeQuery } from './sde-query-executor';
-import { Lift, Value } from '../../../abstract-interpretation/eval/domain';
+import type { Lift, Value } from '../../../abstract-interpretation/eval/domain';
 
 interface SdeResult {
-	readonly criterion: SingleSlicingCriterion,
+	readonly criterion:  SingleSlicingCriterion,
 	readonly determined: Lift<Value> | undefined,
 }
 
@@ -24,15 +24,15 @@ export const SdeQueryDefinition = {
 	executor:        executeSdeQuery,
 	asciiSummarizer: (formatter, _processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'sde'>['sde'];
-		result.push("=====SDE_START=====")
-		for (const [criterion, determined] of out.results.entries()) {
+		result.push('=====SDE_START=====');
+		for(const [criterion, determined] of out.results.entries()) {
 			const sdeResult: SdeResult = {
 				criterion,
 				determined,
 			};
-			result.push(JSON.stringify(sdeResult))
+			result.push(JSON.stringify(sdeResult));
 		}
-		result.push("=====SDE_STOP=====")
+		result.push('=====SDE_STOP=====');
 		return true;
 	},
 	schema: Joi.object({

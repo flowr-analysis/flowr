@@ -19,7 +19,7 @@ export function executeStringDomainQuery({ dataflow: { graph }, ast, config }: B
 			continue;
 		}
 		const nodeId = slicingCriterionToId(query.criterion, ast.idMap);
-		result.set(query.criterion, values.get(nodeId))
+		result.set(query.criterion, values.get(nodeId));
 	}
 
 	return {

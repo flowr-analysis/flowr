@@ -206,6 +206,7 @@
   },
   "dependencies": {
     "@eagleoutice/tree-sitter-r": "^1.1.2",
+    "@types/sprintf-js": "^1.1.4",
     "@xmldom/xmldom": "^0.9.7",
     "clipboardy": "^4.0.0",
     "command-line-args": "^6.0.1",

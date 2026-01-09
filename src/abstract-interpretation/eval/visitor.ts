@@ -16,12 +16,12 @@ import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { unescapeSpecialChars } from '../data-frame/resolve-args';
-import type { ImplicitConversionNode, Node, UnknownNode , Graph, type NodeId } from './graph';
+import type { ImplicitConversionNode, Node, UnknownNode , NodeId } from './graph';
+import { Graph } from './graph';
 import { valueSetGuard } from '../../dataflow/eval/values/general';
 import { isValue } from '../../dataflow/eval/values/r-value';
 import { Top } from './domain';
-
-const sprintf = require('sprintf-js').sprintf;
+import { sprintf } from 'sprintf-js';
 
 type StringDomainVisitorConfiguration<
   OtherInfo = NoInfo,
@@ -159,7 +159,10 @@ export class StringDomainVisitor<
 	}
 
 	protected onVariableUse({ vertex }: { vertex: DataflowGraphVertexUse; }): void {
-		const node = this.getNormalizedAst(vertex.id)!;
+		const node = this.getNormalizedAst(vertex.id);
+		if(!node) {
+			return;
+		}
 		const nodeValue = node.value as RNode<ParentInformation> | undefined;
 		const origins = this.getOrigins(vertex.id) ?? (nodeValue !== undefined ? this.getOrigins(nodeValue.info.id) : undefined);
 
@@ -277,7 +280,7 @@ export class StringDomainVisitor<
 				} else if(builtin.fn.name === 'paste0') {
 					separator = this.graph.insertIfMissing('sdconst-blank', { type: 'const', value: '' });
 				} else {
-					throw'unreachable';
+					throw new Error('unreachable');
 				}
 
 				const node: Node = {

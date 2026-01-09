@@ -1,10 +1,10 @@
-import type { Value , Top, type Domain, type Lift } from '../domain';
-import type { NodeId , type Node } from '../graph';
+import { Top, type Domain, type Lift } from '../domain';
+import type { NodeId , Node } from '../graph';
+import { sprintf } from 'sprintf-js';
 
-const sprintf = require('sprintf-js').sprintf;
-
-export interface Const extends Value<'const'> {
-  value: string,
+export type Const = {
+	kind:  'const',
+	value: string,
 }
 
 export const ConstDomain: Domain<Const> = {

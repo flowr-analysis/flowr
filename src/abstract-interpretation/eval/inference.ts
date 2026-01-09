@@ -9,7 +9,7 @@ import { PresuffixDomain } from './domains/presuffix';
 import type { NodeId } from './graph';
 import { StringDomainVisitor } from './visitor';
 
-export function createDomain(config: FlowrConfigOptions): Domain<any> | undefined {
+export function createDomain(config: FlowrConfigOptions) {
 	const domain = config.abstractInterpretation.string.domain;
 	switch(domain) {
 		case 'const':
@@ -34,7 +34,7 @@ export function inferStringDomains(
 ): Map<NodeId, Lift<Value>> {
 	const visitor = new StringDomainVisitor({ controlFlow: cfinfo, dfg: dfg, normalizedAst: ast, flowrConfig: config });
 	visitor.start();
-	const domain = createDomain(config)! as unknown as Domain<Value>;
+	const domain = createDomain(config) as unknown as Domain<Value>;
 	const values = visitor.graph.inferValues(domain);
 	return values;
 }

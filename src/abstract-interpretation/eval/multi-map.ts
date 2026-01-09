@@ -1,10 +1,11 @@
+import { throwError } from '../../util/null-or-throw';
 
 export class MultiMap<K, V> {
 	private emptySet = new Set() as ReadonlySet<V>;
 	private map = new Map<K, Set<V>>();
 
 	insert(key: K, ...value: V[]) {
-		const values = this.map.get(key) ?? this.map.set(key, new Set()).get(key)!;
+		const values = this.map.get(key) ?? this.map.set(key, new Set()).get(key) ?? throwError('unreachable');
 		value.forEach(v => values.add(v));
 	}
 

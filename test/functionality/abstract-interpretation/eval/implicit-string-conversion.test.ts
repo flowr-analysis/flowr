@@ -11,6 +11,7 @@ import { extractCfg } from '../../../../src/control-flow/extract-cfg';
 import { createDomain, inferStringDomains } from '../../../../src/abstract-interpretation/eval/inference';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
+import type { Domain, Value } from '../../../../src/abstract-interpretation/eval/domain';
 import { Top } from '../../../../src/abstract-interpretation/eval/domain';
 
 function assertPrintedValue(
@@ -34,7 +35,7 @@ function assertPrintedValue(
 				},
 			},
 		};
-		const domain = createDomain(config)!;
+		const domain = createDomain(config) as Domain<Value>;
 		const valuesMap = inferStringDomains(controlFlow, dfg, normalizedAst, config);
 
 		const cmdOut = await shell.sendCommandWithOutput(src);
@@ -48,7 +49,7 @@ function assertPrintedValue(
 }
 
 describe.sequential('implicit-string-conversion', withShell((shell) => {
-	const TEST_VALUES = [
+	const testValues = [
 		'"foobar"',
 		'5',
 		'5.0',
@@ -58,7 +59,7 @@ describe.sequential('implicit-string-conversion', withShell((shell) => {
 		'42.825',
 	];
   
-	for(const testValue of TEST_VALUES) {
+	for(const testValue of testValues) {
 		assertPrintedValue(
 			'string',
 			shell,

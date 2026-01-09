@@ -1,15 +1,15 @@
 import { describe, test } from 'vitest';
 import { assert } from 'ts-essentials/dist/functions/assert';
-import type { Domain, Lift } from '../../../../src/abstract-interpretation/eval/domain';
+import type { Domain, Lift, Value } from '../../../../src/abstract-interpretation/eval/domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/eval/domain';
 import { ConstSetDomain } from '../../../../src/abstract-interpretation/eval/domains/constant-set';
 import { ConstDomain } from '../../../../src/abstract-interpretation/eval/domains/constant';
 import { PresuffixDomain } from '../../../../src/abstract-interpretation/eval/domains/presuffix';
 
 describe('String Domain Equality', () => {
-	const domains: Domain<any>[] = [ConstDomain, ConstSetDomain, PresuffixDomain];
-	const getTestValues = (domain: Domain<any>) => {
-		const common: Lift<any>[] = [
+	const domains = [ConstDomain, ConstSetDomain, PresuffixDomain] as Domain<Value>[];
+	const getTestValues = (domain: Domain<Value>) => {
+		const common: Lift<Value>[] = [
 			Top,
 			Bottom,
 		];
@@ -30,7 +30,7 @@ describe('String Domain Equality', () => {
 				{ kind: 'presuffix', prefix: 'foo', suffix: 'foo', exact: true },
 			]);
 		} else {
-			throw'unreachable';
+			throw new Error('unreachable');
 		}
 	};
 
@@ -50,12 +50,16 @@ describe('String Domain Equality', () => {
 		});
 
 		test('top', () => {
-			assert(!domain.equals(Top, testValues.at(-1)));
+			const value = testValues.at(-1);
+			assert(value !== undefined);
+			assert(!domain.equals(Top, value));
 			assert(!domain.equals(Top, Bottom));
 		});
 
 		test('bottom', () => {
-			assert(!domain.equals(Bottom, testValues.at(-1)));
+			const value = testValues.at(-1);
+			assert(value !== undefined);
+			assert(!domain.equals(Bottom, value));
 		});
 	});
 

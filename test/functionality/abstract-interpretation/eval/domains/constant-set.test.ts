@@ -18,8 +18,8 @@ function arreq<T>(left: T[], right: T[]): boolean {
 		return false;
 	}
 
-	while(left.length > 0) {
-		const value = left.pop()!;
+	let value: T | undefined;
+	while((value = left.pop()) !== undefined) {
 		const index = right.findIndex(it => it === value);
 		if(index === -1) {
 			return false;

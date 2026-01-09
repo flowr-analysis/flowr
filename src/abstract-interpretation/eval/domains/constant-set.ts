@@ -1,8 +1,7 @@
 import type { Domain, Lift } from '../domain';
 import { Top } from '../domain';
 import type { NodeId , Node } from '../graph';
-
-const sprintf = require('sprintf-js').sprintf;
+import { sprintf } from 'sprintf-js';
 
 export type ConstSet = {
   kind:  'const-set',
@@ -116,7 +115,7 @@ export const ConstSetDomain: Domain<ConstSet> = {
 							fmt.value.map(it => [it])
 						);
 
-						const results = values.map(args => sprintf(...args) as string);
+						const results = values.map(args => sprintf(args[0], ...args.slice(1)));
 						return { kind: 'const-set', value: results };
 					}
 
@@ -166,8 +165,8 @@ function arrayEquals<T>(left: T[], right: T[]): boolean {
 		return false;
 	}
 
-	while(left.length > 0) {
-		const value = left.pop()!;
+	let value: T | undefined;
+	while((value = left.pop()) !== undefined) {
 		const index = right.findIndex(it => it === value);
 		if(index === -1) {
 			return false;

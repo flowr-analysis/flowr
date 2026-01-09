@@ -35,7 +35,7 @@ function assertPrintedValue(
 				},
 			},
 		};
-		const domain = createDomain(config)!;
+		const domain = createDomain(config);
 		const valueMap = inferStringDomains(controlFlow, dfg, normalizedAst, config);
 
 		const cmdOut = await shell.sendCommandWithOutput(src);

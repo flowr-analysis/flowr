@@ -40,7 +40,7 @@ function assertStringDomain<T extends Value>(
 			},
 		};
 
-		const domain = createDomain(config)!;
+		const domain = createDomain(config);
 		const valueMap = inferStringDomains(controlFlow, dfg, normalizedAst, config);
 		const nodeId = slicingCriterionToId(criterion, normalizedAst.idMap);
 		const value = valueMap.get(nodeId) ?? Top;

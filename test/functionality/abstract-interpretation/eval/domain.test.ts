@@ -1,10 +1,11 @@
 import { describe, test } from 'vitest';
-import type { Domain, Lift } from '../../../../src/abstract-interpretation/eval/domain';
+import type { Domain, Lift, Value } from '../../../../src/abstract-interpretation/eval/domain';
 import { Bottom, isBottom, isTop, Top } from '../../../../src/abstract-interpretation/eval/domain';
 import { assert } from 'ts-essentials';
 import type { Const } from '../../../../src/abstract-interpretation/eval/domains/constant';
 import { ConstDomain } from '../../../../src/abstract-interpretation/eval/domains/constant';
 import { ConstSetDomain } from '../../../../src/abstract-interpretation/eval/domains/constant-set';
+import { PresuffixDomain } from '../../../../src/abstract-interpretation/eval/domains/presuffix';
 
 describe('String Domain', () => {
 	test('isTop', () => {
@@ -29,9 +30,9 @@ describe('String Domain', () => {
 		assert(!isBottom(constValue));
 	});
 
-	const domains: Domain<any>[] = [ConstDomain, ConstSetDomain];
-	const getElementCases = (domain: Domain<any>) => {
-		const common: Lift<any>[] = [
+	const domains = [ConstDomain, ConstSetDomain, PresuffixDomain] as Domain<Value>[];
+	const getElementCases = (domain: Domain<Value>) => {
+		const common: [string, Lift<Value>, boolean][] = [
 			['foo', Top, true],
 			['foo', Bottom, false],
 		];
@@ -48,7 +49,7 @@ describe('String Domain', () => {
 				['foo', { kind: 'const-set', value: ['bar'] }, false],
 			]);
 		} else {
-			throw'unreachable';
+			throw new Error('unreachable');
 		}
 	};
 

@@ -1,13 +1,13 @@
-import type { Domain, Lift, Value } from '../domain';
+import type { Domain, Lift } from '../domain';
 import { Top } from '../domain';
 import type { Node, NodeId } from '../graph';
+import { sprintf } from 'sprintf-js';
 
-const sprintf = require('sprintf-js').sprintf;
-
-export interface Presuffix extends Value<'presuffix'> {
-  prefix: string,
-  suffix: string,
-  exact:  boolean,
+export type Presuffix = {
+	kind:   'presuffix',
+	prefix: string,
+	suffix: string,
+	exact:  boolean,
 }
 
 export const PresuffixDomain: Domain<Presuffix> = {
@@ -101,7 +101,7 @@ export const PresuffixDomain: Domain<Presuffix> = {
 					result.prefix = result.prefix.toLowerCase();
 					result.suffix = result.suffix.toLowerCase();
 				} else {
-					throw'unreachable';
+					throw new Error('unreachable');
 				}
 				return result;
 			}
@@ -164,7 +164,7 @@ export const PresuffixDomain: Domain<Presuffix> = {
 		}
 	},
 
-	widen: function(node: Node, deps: ReadonlyMap<NodeId, Lift<Presuffix>>): Lift<Presuffix> {
+	widen: function(/* node, deps */): Lift<Presuffix> {
 		return Top;
 	},
 

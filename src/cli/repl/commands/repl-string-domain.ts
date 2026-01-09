@@ -11,6 +11,7 @@ import type { KnownParser } from '../../../r-bridge/parser';
 import { requestFromInput } from '../../../r-bridge/retriever';
 import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import { mermaidCodeToUrl } from '../../../util/mermaid/mermaid';
+import { throwError } from '../../../util/null-or-throw';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { ReplCommand, ReplOutput } from './repl-main';
 import { inspect } from 'node:util';
@@ -87,8 +88,8 @@ export const stringGraphStarCommand: ReplCommand = {
 		const visitor = new StringDomainVisitor({ controlFlow, dfg, normalizedAst, flowrConfig: config });
 		visitor.start();
 		const graph = visitor.graph;
-		const domain = createDomain(config)! as unknown as Domain<Value>;
-		const values = visitor.graph.inferValues(domain);
+		const domain = createDomain(config);
+		const values = visitor.graph.inferValues(domain as Domain<Value>);
 
 		const mermaid = mermaidCodeToUrl(stringGraphToMermaidCode(normalizedAst, values, graph));
 		const totalEnd = Date.now();
@@ -133,7 +134,7 @@ value: ${escape(inspect(values.get(id) ?? Top))}
 	for(const [id] of nodes) {
 		for(const depId of graph.depsOf(id)) {
 			if(!nodes.has(depId)) {
-				const astNode = ast.idMap.get(depId)!;
+				const astNode = ast.idMap.get(depId) ?? throwError('unreachable');
 				const content = `
 **MISSING NODE**
 type: ${astNode.type} (${depId})
@@ -154,6 +155,6 @@ value: ${escape(inspect(astNode.info.str ?? Top))}
 	return lines.join('\n');
 }
 
-function escape(str: string | undefined): string | undefined {
+function escape(str: string | undefined): string | undefined {
 	return str?.replaceAll('"', "'").replaceAll('_', '\\_').replaceAll('*', '\\*');
 }

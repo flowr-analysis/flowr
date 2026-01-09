@@ -6,7 +6,7 @@ import { NoDupQueue } from './no-dup-queue';
 
 export type NodeId = AstNodeId;
 
-export type Node = ConstNode | AliasNode | ConcatNode | JoinNode | CasingNode | FunctionNode | ImplicitConversionNode | UnknownNode
+export type Node = ConstNode | AliasNode | ConcatNode | JoinNode | CasingNode | FunctionNode | ImplicitConversionNode | UnknownNode
 
 export type UnknownNode = {
   readonly type: 'unknown',
@@ -132,6 +132,7 @@ export class Graph {
 		}
 	}
 
+	/* eslint-disable @typescript-eslint/no-non-null-assertion */
 	inferValues<T extends Value>(domain: Domain<T>, max_updates: number = 100): Map<NodeId, Lift<T>> {
 		const values = new Map<NodeId, Lift<T>>(this._nodes.keys().map(nid => [nid, Top]));
 		const dirty = new NoDupQueue<NodeId>(...this._nodes.keys());
@@ -157,4 +158,5 @@ export class Graph {
 
 		return values;
 	}
+	/* eslint-enable @typescript-eslint/no-non-null-assertion */
 }

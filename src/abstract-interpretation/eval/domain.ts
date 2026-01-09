@@ -32,6 +32,11 @@ export type Domain<T extends Value> = {
 	widen:      (node: Node, deps: ReadonlyMap<NodeId, Lift<T>>) => Lift<T>
 	equals:     (l: Lift<T>, r: Lift<T>) => boolean
 	represents: (str: string, value: Lift<T>) => boolean
+	// Returns true if and only if `l <= r`.
+	// In the context of domain values, that would mean that `r` represents at
+	// least every value `l` represents. Substituting `l` with `r` should
+	// always be correct.
+	leq:        (l: Lift<T>, r: Lift<T>) => boolean
 }
 
 export type StringDomainName = Value['kind'];

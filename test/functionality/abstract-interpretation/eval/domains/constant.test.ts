@@ -57,6 +57,30 @@ describe('String Domain: Constant', () => {
 		assert(domain.represents(string, value) === expected);
 	});
 
+
+	const leqCases: [Lift<Const>, Lift<Const>, boolean][] = [
+		[Bottom, Top, true],
+		[Bottom, v('foo'), true],
+		[v('foo'), Top, true],
+		[Bottom, v('bar'), true],
+		[v('bar'), Top, true],
+		[v('foo'), v('foo'), true],
+		[v('foo'), v('bar'), false],
+	];
+	test.each(leqCases)('%j <= %j == %s', (l, r, ordered) => {
+		if(ordered) {
+			assert(domain.leq(l, r), `${JSON.stringify(l)} should be <= ${JSON.stringify(r)} but was not`);
+			if(domain.equals(l, r)) {
+				assert(domain.leq(r, l), `${JSON.stringify(r)} should be <= ${JSON.stringify(l)} but was not`);
+			} else {
+				assert(!domain.leq(r, l), `${JSON.stringify(r)} should not be <= ${JSON.stringify(l)} but was`);
+			}
+		} else {
+			assert(!domain.leq(l, r), `${JSON.stringify(l)} should not be <= ${JSON.stringify(r)} but was`);
+			assert(!domain.leq(r, l), `${JSON.stringify(r)} should not be <= ${JSON.stringify(l)} but was`);
+		}
+	});
+
 	test('operation: const', () => {
 		const value = ne.const('foobar');
 

@@ -11,7 +11,7 @@ export type Presuffix = {
 }
 
 export const PresuffixDomain: Domain<Presuffix> = {
-	infer: function(node: Node, deps: ReadonlyMap<NodeId, Lift<Presuffix>>): Lift<Presuffix> {
+	infer(node: Node, deps: ReadonlyMap<NodeId, Lift<Presuffix>>): Lift<Presuffix> {
 		switch(node.type) {
 			case 'const': {
 				return { kind: 'presuffix', prefix: node.value, suffix: node.value, exact: true };
@@ -164,11 +164,11 @@ export const PresuffixDomain: Domain<Presuffix> = {
 		}
 	},
 
-	widen: function(/* node, deps */): Lift<Presuffix> {
+	widen(/* node, deps */): Lift<Presuffix> {
 		return Top;
 	},
 
-	equals: function(l: Lift<Presuffix>, r: Lift<Presuffix>): boolean {
+	equals(l: Lift<Presuffix>, r: Lift<Presuffix>): boolean {
 		if(l.kind === 'presuffix' && r.kind === 'presuffix') {
 			return l.prefix === r.prefix && l.suffix === r.suffix && l.exact === r.exact;
 		} else {
@@ -176,7 +176,7 @@ export const PresuffixDomain: Domain<Presuffix> = {
 		}
 	},
 
-	represents: function(str: string, value: Lift<Presuffix>): boolean {
+	represents(str: string, value: Lift<Presuffix>): boolean {
 		if(value.kind === 'top') {
 			return true;
 		} else if(value.kind === 'bottom') {
@@ -186,7 +186,21 @@ export const PresuffixDomain: Domain<Presuffix> = {
 		} else {
 			return str.startsWith(value.prefix) && str.endsWith(value.suffix);
 		}
-	}
+	},
+
+	leq(l, r): boolean {
+		if(l.kind === 'bottom' || r.kind === 'top') {
+			return true;
+		} else if(l.kind === 'top' || r.kind === 'bottom') {
+			return false;
+		} else if(l.exact && r.exact) {
+			return l.prefix === r.prefix;
+		} else if(!l.exact && r.exact) {
+			return false;
+		} else {
+			return l.prefix.startsWith(r.prefix) && l.suffix.endsWith(r.suffix);
+		}
+	},
 };
 
 function takeWhile<T>(array: T[], predicate: (value: T, i: number) => boolean) {

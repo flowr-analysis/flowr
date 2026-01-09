@@ -113,6 +113,36 @@ describe('String Domain: Presuffix', () => {
 		assert(domain.represents(string, value) === expected);
 	});
 
+	const leqCases: [Lift<Presuffix>, Lift<Presuffix>, boolean][] = [
+		[Bottom, Top, true],
+		[Bottom, e('foo'), true],
+		[e('foo'), Top, true],
+		[Bottom, e('bar'), true],
+		[e('bar'), Top, true],
+		[e('foo'), e('foo'), true],
+		[e('foo'), e('bar'), false],
+		[Bottom, ps('foo', 'bar'), true],
+		[ps('foo', 'bar'), Top, true],
+		[ps('foo', 'bar'), ps('f', 'r'), true],
+		[ps('foo', 'bar'), ps('foo', ''), true],
+		[ps('a', 'z'), ps('b', 'y'), false],
+		[e('foo'), ps('foo', 'foo'), true],
+		[e('foobar'), ps('foo', 'bar'), true],
+	];
+	test.each(leqCases)('%j <= %j == %s', (l, r, ordered) => {
+		if(ordered) {
+			assert(domain.leq(l, r), `${JSON.stringify(l)} should be <= ${JSON.stringify(r)} but was not`);
+			if(domain.equals(l, r)) {
+				assert(domain.leq(r, l), `${JSON.stringify(r)} should be <= ${JSON.stringify(l)} but was not`);
+			} else {
+				assert(!domain.leq(r, l), `${JSON.stringify(r)} should not be <= ${JSON.stringify(l)} but was`);
+			}
+		} else {
+			assert(!domain.leq(l, r), `${JSON.stringify(l)} should not be <= ${JSON.stringify(r)} but was`);
+			assert(!domain.leq(r, l), `${JSON.stringify(r)} should not be <= ${JSON.stringify(l)} but was`);
+		}
+	});
+
 	test('operation: const', () => {
 		assertExact(ne.const('foobar'), 'foobar');
 	});

@@ -122,4 +122,14 @@ export const ConstDomain: Domain<Const> = {
 			return value.value === str;
 		}
 	},
+
+	leq(l, r): boolean {
+		if(l.kind === 'bottom' || r.kind === 'top') {
+			return true;
+		} else if(l.kind === 'top' || r.kind === 'bottom') {
+			return false;
+		} else {
+			return l.value === r.value;
+		}
+	},
 };

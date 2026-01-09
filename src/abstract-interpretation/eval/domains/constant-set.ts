@@ -11,7 +11,7 @@ export type ConstSet = {
 export const MAX_VARIANTS = 1_000;
 
 export const ConstSetDomain: Domain<ConstSet> = {
-	infer: function(node: Node, deps: ReadonlyMap<NodeId, Lift<ConstSet>>): Lift<ConstSet> {
+	infer(node: Node, deps: ReadonlyMap<NodeId, Lift<ConstSet>>): Lift<ConstSet> {
 		switch(node.type) {
 			case 'const': {
 				return { kind: 'const-set', value: [node.value] };
@@ -138,7 +138,7 @@ export const ConstSetDomain: Domain<ConstSet> = {
 		return Top;
 	},
 
-	equals: function(l: Lift<ConstSet>, r: Lift<ConstSet>): boolean {
+	equals(l: Lift<ConstSet>, r: Lift<ConstSet>): boolean {
 		if(l.kind === 'const-set' && r.kind === 'const-set') {
 			return arrayEquals([...l.value], [...r.value]);
 		}
@@ -149,7 +149,7 @@ export const ConstSetDomain: Domain<ConstSet> = {
 		} 
 	},
 
-	represents: function(str: string, value: Lift<ConstSet>): boolean {
+	represents(str: string, value: Lift<ConstSet>): boolean {
 		if(value.kind === 'top') {
 			return true;
 		} else if(value.kind === 'bottom') {
@@ -157,7 +157,17 @@ export const ConstSetDomain: Domain<ConstSet> = {
 		} else {
 			return value.value.some(it => it === str);
 		}
-	}
+	},
+
+	leq(l, r): boolean {
+		if(l.kind === 'bottom' || r.kind === 'top') {
+			return true;
+		} else if(l.kind === 'top' || r.kind === 'bottom') {
+			return false;
+		} else {
+			return l.value.every(it => r.value.includes(it));
+		}
+	},
 };
 
 function arrayEquals<T>(left: T[], right: T[]): boolean {

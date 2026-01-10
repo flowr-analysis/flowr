@@ -93,6 +93,10 @@ export const stringGraphStarCommand: ReplCommand = {
 	}
 };
 
+export function stringGraphToMermaidUrl(ast: NormalizedAst<ParentInformation & StringDomainInfo>, values: ReadonlyMap<NodeId, Lift<Value>>, graph: Graph) {
+	return mermaidCodeToUrl(stringGraphToMermaidCode(ast, values, graph));
+}
+
 function stringGraphToMermaidCode(ast: NormalizedAst<ParentInformation & StringDomainInfo>, values: ReadonlyMap<NodeId, Lift<Value>>, graph: Graph) {
 	const lines = ['flowchart BT'];
 	const nodes = graph.nodes();

@@ -1,5 +1,5 @@
 import type { Domain, Lift, Value } from '../../../abstract-interpretation/eval/domain';
-import { Top } from '../../../abstract-interpretation/eval/domain';
+import { Top, valueToString } from '../../../abstract-interpretation/eval/domain';
 import type { Graph, NodeId } from '../../../abstract-interpretation/eval/graph';
 import { createDomain, inferStringDomains } from '../../../abstract-interpretation/eval/inference';
 import { StringDomainVisitor } from '../../../abstract-interpretation/eval/visitor';
@@ -156,29 +156,4 @@ value: ${escape(valueToString(astNode.info.str ?? Top))}
 
 function escape(str: string | undefined): string | undefined {
 	return str?.replaceAll('"', "'").replaceAll('_', '\\_').replaceAll('*', '\\*');
-}
-
-function valueToString(value: Lift<Value>): string {
-	switch (value.kind) {
-		case 'top':
-			return 'Top';
-
-		case 'bottom':
-			return 'Bottom';
-
-		case 'const':
-			return `"${value.value}"`;
-
-		case 'const-set':
-			return `[${value.value.map(it => `"${it}"`).join(', ')}]`;
-
-		case 'presuffix':
-			if (value.exact) return `"${value.prefix}"`;
-			else if (value.prefix !== "" && value.suffix === "") return `"${value.prefix}"...`;
-			else if (value.prefix === "" && value.suffix !== "") return `..."${value.suffix}"`;
-			else return `"${value.prefix}"..."${value.suffix}"`;
-
-		default:
-			throw new Error('unreachable');
-	}
 }

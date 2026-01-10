@@ -40,3 +40,33 @@ export type Domain<T extends Value> = {
 }
 
 export type StringDomainName = Value['kind'];
+
+export function valueToString(value: Lift<Value>): string {
+	switch(value.kind) {
+		case 'top':
+			return 'Top';
+
+		case 'bottom':
+			return 'Bottom';
+
+		case 'const':
+			return `"${value.value}"`;
+
+		case 'const-set':
+			return `[${value.value.map(it => `"${it}"`).join(', ')}]`;
+
+		case 'presuffix':
+			if(value.exact) {
+				return `"${value.prefix}"`;
+			} else if(value.prefix !== '' && value.suffix === '') {
+				return `"${value.prefix}"...`;
+			} else if(value.prefix === '' && value.suffix !== '') {
+				return `..."${value.suffix}"`;
+			} else {
+				return `"${value.prefix}"..."${value.suffix}"`;
+			}
+
+		default:
+			throw new Error('unreachable');
+	}
+}

@@ -39,7 +39,7 @@ export function createStringDomainAssert<T extends Value>(
 			};
 
 			const domain = createDomain(config) as Domain<Value>;
-			const valueMap = inferStringDomains(controlFlow, dfg, normalizedAst, config);
+			const [valueMap] = inferStringDomains(controlFlow, dfg, normalizedAst, config);
 			const nodeId = slicingCriterionToId(criterion, normalizedAst.idMap);
 			const value = valueMap.get(nodeId) ?? Top;
 			assert(value !== undefined);

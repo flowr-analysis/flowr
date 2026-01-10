@@ -2,6 +2,7 @@ import type { Domain, Lift, Value } from '../../../abstract-interpretation/eval/
 import { Top, valueToString } from '../../../abstract-interpretation/eval/domain';
 import type { Graph, NodeId } from '../../../abstract-interpretation/eval/graph';
 import { createDomain, inferStringDomains } from '../../../abstract-interpretation/eval/inference';
+import type { StringDomainInfo } from '../../../abstract-interpretation/eval/inference';
 import { StringDomainVisitor } from '../../../abstract-interpretation/eval/visitor';
 import type { FlowrConfigOptions } from '../../../config';
 import { extractCfg } from '../../../control-flow/extract-cfg';
@@ -14,10 +15,6 @@ import { mermaidCodeToUrl } from '../../../util/mermaid/mermaid';
 import { throwError } from '../../../util/null-or-throw';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { ReplCommand, ReplOutput } from './repl-main';
-
-type StringDomainInfo = {
-	str?: Lift<Value>
-}
 
 /**
  * Obtain the dataflow graph using a known parser (such as the {@link RShell} or {@link TreeSitterExecutor}).
@@ -55,13 +52,7 @@ export const stringValuesGraphStarCommand: ReplCommand = {
 		);
 		const totalEnd = Date.now();
 		const totalDuration = totalEnd - totalStart;
-		for(const [nodeId, value] of values) {
-			const node = normalizedAst.idMap.get(nodeId);
-			if(node) {
-				node.info.str = value;
-			}
-		}
-		const mermaid = graphToMermaidUrl(dfg, false, undefined, false, ['str']);
+		const mermaid = graphToMermaidUrl(dfg, false, undefined, false, ['sdvalue']);
 		output.stdout(mermaid);
 		try {
 			const clipboard = await import('clipboardy');
@@ -138,7 +129,7 @@ value: ${escape(valueToString(values.get(id) ?? Top))}
 **MISSING NODE**
 type: ${astNode.type} (${depId})
 src: (${astNode.location?.[0] ?? '?'}:${astNode.location?.[1] ?? '?'}) ${escape(astNode.lexeme)}
-value: ${escape(valueToString(astNode.info.str ?? Top))}
+value: ${escape(valueToString(astNode.info.sdvalue ?? Top))}
 		`;
 
 				lines.push(

@@ -13,6 +13,7 @@ import type { RParseRequests } from '../../../../r-bridge/retriever';
 import { produceDataFlowGraph } from '../../../../dataflow/extractor';
 import type { KnownParserType, Parser } from '../../../../r-bridge/parser';
 import type { FlowrConfigOptions } from '../../../../config';
+import { STRING_INFERENCE } from './21-string-inference';
 
 const staticDataflowCommon = {
 	name:        'dataflow',
@@ -29,7 +30,13 @@ const staticDataflowCommon = {
 } as const;
 
 function processor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequests, parser?: Parser<KnownParserType> }, config: FlowrConfigOptions) {
-	return produceDataFlowGraph(input.parser as Parser<KnownParserType>, input.request as RParseRequests, results.normalize as NormalizedAst, config);
+	const df = produceDataFlowGraph(input.parser as Parser<KnownParserType>, input.request as RParseRequests, results.normalize as NormalizedAst, config);
+	if(config.abstractInterpretation.string.enableForDataflow) {
+		const siResults = { dataflow: df, normalize: results.normalize };
+		STRING_INFERENCE.processor(siResults, input, config);
+		return siResults.dataflow;
+	}
+	return df;
 }
 
 export const STATIC_DATAFLOW = {

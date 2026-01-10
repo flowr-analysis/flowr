@@ -238,7 +238,8 @@ ${codeBlock('json', JSON.stringify(
 					}
 				},
 				string: {
-					domain: 'const-set'
+					domain:            'const-set',
+					enableForDataflow: false
 				}
 			}
 		} satisfies FlowrConfigOptions,

@@ -24,6 +24,7 @@ import type { Lift, Value, ValueSet } from '../values/r-value';
 import { Bottom, isTop, Top } from '../values/r-value';
 import { setFrom } from '../values/sets/set-constants';
 import { resolveNode } from './resolve';
+import type { Value as SDValue } from '../../../abstract-interpretation/eval/domain';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -156,6 +157,51 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 	const node = typeof id === 'object' ? id : idMap?.get(id);
 	if(node === undefined) {
 		return Top;
+	}
+
+	if('sdvalue' in node.info) {
+		const value = node.info.sdvalue as SDValue;
+		switch(value.kind) {
+			case 'const':
+				return {
+					type:     'set',
+					elements: [{
+						type:  'string',
+						value: {
+							str:    value.value,
+							quotes: '"',
+						},
+					}]
+				};
+
+			case 'const-set':
+				return {
+					type:     'set',
+					elements: value.value.map(it => ({
+						type:  'string',
+						value: {
+							str:    it,
+							quotes: '"',
+						},
+					})),
+				};
+			
+			case 'presuffix':
+				if(value.exact) {
+					return {
+						type:     'set',
+						elements: [{
+							type:  'string',
+							value: {
+								str:    value.prefix,
+								quotes: '"',
+							},
+						}]
+					};
+				} else {
+					return Top;
+				}
+		}
 	}
 
 	switch(node.type) {

@@ -3,8 +3,6 @@ import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 import { resolveIdToValue } from '../../../dataflow/eval/resolve/alias-tracking';
-import { inferStringDomains } from '../../../abstract-interpretation/eval/inference';
-import { extractCfg } from '../../../control-flow/extract-cfg';
 
 export function fingerPrintOfQuery(query: ResolveValueQuery): string {
 	return JSON.stringify(query);
@@ -13,8 +11,6 @@ export function fingerPrintOfQuery(query: ResolveValueQuery): string {
 export function executeResolveValueQuery({ dataflow: { graph }, ast, config }: BasicQueryData, queries: readonly ResolveValueQuery[]): ResolveValueQueryResult {
 	const start = Date.now();
 	const results: ResolveValueQueryResult['results'] = {};
-	const cfg = extractCfg(ast, config, graph);
-	inferStringDomains(cfg, graph, ast, config);
 	for(const query of queries) {
 		const key = fingerPrintOfQuery(query);
 		

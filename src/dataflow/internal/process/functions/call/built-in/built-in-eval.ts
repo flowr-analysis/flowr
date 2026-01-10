@@ -110,6 +110,12 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 		if(nArg !== undefined || arg === undefined || arg === EmptyArgument) {
 			return undefined;
 		}
+		if(arg.value) {
+			const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, idMap: idMap, resolve: config.solver.variables }));
+			if(resolved) {
+				return collectStrings(resolved.elements);
+			}
+		}
 		if(arg.value?.type === RType.String) {
 			return [arg.value.content.str];
 		} else if(arg.value?.type === RType.Symbol) {

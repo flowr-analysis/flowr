@@ -1,8 +1,8 @@
 import type { Domain, Lift, Value } from '../../../abstract-interpretation/eval/domain';
 import { Top, valueToString } from '../../../abstract-interpretation/eval/domain';
 import type { Graph, NodeId } from '../../../abstract-interpretation/eval/graph';
-import { createDomain, inferStringDomains } from '../../../abstract-interpretation/eval/inference';
 import type { StringDomainInfo } from '../../../abstract-interpretation/eval/inference';
+import { createDomain } from '../../../abstract-interpretation/eval/inference';
 import { StringDomainVisitor } from '../../../abstract-interpretation/eval/visitor';
 import type { FlowrConfigOptions } from '../../../config';
 import { extractCfg } from '../../../control-flow/extract-cfg';
@@ -42,14 +42,6 @@ export const stringValuesGraphStarCommand: ReplCommand = {
 		const totalStart = Date.now();
 		const result = await replGetDataflow(config, parser, handleString(remainingLine));
 		const dfg = result.dataflow.graph;
-		const normalizedAst: NormalizedAst<ParentInformation & StringDomainInfo> = result.normalize;
-		const controlFlow = extractCfg(normalizedAst, config, dfg);
-		const values = inferStringDomains(
-			controlFlow,
-			dfg,
-			normalizedAst,
-			config,
-		);
 		const totalEnd = Date.now();
 		const totalDuration = totalEnd - totalStart;
 		const mermaid = graphToMermaidUrl(dfg, false, undefined, false, ['sdvalue']);

@@ -92,11 +92,6 @@ export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
  * The data frame state abstract domain as state domain mapping AST node IDs to inferred abstract data frame shapes.
  */
 export class DataFrameStateDomain extends StateAbstractDomain<DataFrameDomain> {
-	public create(value: ReadonlyMap<NodeId, DataFrameDomain>): this;
-	public create(value: ReadonlyMap<NodeId, DataFrameDomain>): DataFrameStateDomain {
-		return new DataFrameStateDomain(value);
-	}
-
 	public static bottom(): DataFrameStateDomain {
 		return new DataFrameStateDomain(new Map<NodeId, DataFrameDomain>());
 	}

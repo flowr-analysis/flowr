@@ -146,8 +146,7 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 			}
 		}
 	}
-
-	protected onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+	private handleFunctionCall(data: { call: DataflowGraphVertexFunctionCall }): void {
 		for(const origin of data.call.origin) {
 			if(origin === 'builtin:stop' || origin === 'builtin:return' || origin === 'builtin:break') {
 				this.encounteredLoopBreaker = true;
@@ -162,6 +161,14 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 				}
 			}
 		}
+	}
+
+	protected onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+		this.handleFunctionCall(data);
+	}
+
+	protected onStopIfNotCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+		this.handleFunctionCall(data);
 	}
 
 	public loopsOnlyOnce(): boolean {

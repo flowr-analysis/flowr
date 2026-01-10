@@ -2,6 +2,7 @@ import type { CfgSimpleVertex, ControlFlowInformation } from '../control-flow/co
 import { CfgVertexType, getVertexRootId } from '../control-flow/control-flow-graph';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
+import { BuiltInProcessorMapper } from '../dataflow/environments/built-in';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, VertexType } from '../dataflow/graph/vertex';
 import { getOriginInDfg, OriginType } from '../dataflow/origin/dfg-get-origin';
@@ -14,8 +15,8 @@ import { guard, isNotUndefined } from '../util/assert';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
 import type { StateAbstractDomain } from './domains/state-abstract-domain';
 
-export interface AbsintVisitorConfiguration<Domain extends AnyAbstractDomain, OtherInfo = NoInfo>
-extends Omit<SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlowInformation, NormalizedAst<OtherInfo>>, 'defaultVisitingOrder' | 'defaultVisitingType'> {
+export interface AbsintVisitorConfiguration<Domain extends AnyAbstractDomain>
+extends Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'> {
 	readonly domain: StateAbstractDomain<Domain>;
 }
 
@@ -24,22 +25,22 @@ extends Omit<SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlowInforma
  *
  * However, the visitor does not yet support inter-procedural abstract interpretation and abstract condition semantics.
  */
-export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDomain, OtherInfo = NoInfo, Config extends AbsintVisitorConfiguration<Domain, OtherInfo> = AbsintVisitorConfiguration<Domain, OtherInfo>>
-	extends SemanticCfgGuidedVisitor<OtherInfo, ControlFlowInformation, NormalizedAst<OtherInfo>, DataflowGraph, Config & { defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' }> {
+export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDomain, Config extends AbsintVisitorConfiguration<Domain> = AbsintVisitorConfiguration<Domain>>
+	extends SemanticCfgGuidedVisitor<NoInfo, ControlFlowInformation, NormalizedAst, DataflowGraph, Config & { defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' }> {
 	/**
 	 * The abstract trace of the abstract interpretation visitor mapping node IDs to the abstract state at the respective node.
 	 */
 	protected readonly trace: Map<NodeId, StateAbstractDomain<Domain>> = new Map();
 
 	/**
+	 * The current abstract state domain at the currently processed AST node.
+	 */
+	protected currentState: StateAbstractDomain<Domain>;
+
+	/**
 	 * A set of nodes representing variable definitions that have already been visited but whose assignment has not yet been processed.
 	 */
 	private readonly unassigned: Set<NodeId> = new Set();
-
-	/**
-	 * The current abstract state domain at the currently processed AST node.
-	 */
-	private currentState: StateAbstractDomain<Domain>;
 
 	constructor(config: Config) {
 		super({ ...config, defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' });
@@ -54,7 +55,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 * @param state - An optional state abstract domain used to resolve the inferred abstract value (defaults to the state at the requested node)
 	 * @returns The inferred abstract value of the node, or `undefined` if no value was inferred for the node
 	 */
-	public getAbstractValue(id: RNode<ParentInformation & OtherInfo> | NodeId | undefined, state?: StateAbstractDomain<Domain>): Domain | undefined {
+	public getAbstractValue(id: RNode<ParentInformation> | NodeId | undefined, state?: StateAbstractDomain<Domain>): Domain | undefined {
 		const node = (id === undefined || typeof id === 'object') ? id : this.getNormalizedAst(id);
 		state ??= node !== undefined ? this.getAbstractState(node.info.id) : undefined;
 
@@ -174,8 +175,28 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		return true;
 	}
 
+	protected override onDispatchFunctionCallOrigin(call: DataflowGraphVertexFunctionCall, origin: keyof typeof BuiltInProcessorMapper | string) {
+		if(!(origin in BuiltInProcessorMapper)) {
+			return this.onFunctionCall({ call });
+		}
+		switch(origin as keyof typeof BuiltInProcessorMapper) {
+			case 'builtin:expression-list':
+			case 'builtin:if-then-else':
+			case 'builtin:for-loop':
+			case 'builtin:while-loop':
+			case 'builtin:repeat-loop':
+			case 'builtin:assignment':
+			case 'builtin:assignment-like':
+			case 'builtin:replacement':
+			case 'builtin:access':
+				return super.onDispatchFunctionCallOrigin(call, origin);
+			default:
+				return this.onFunctionCall({ call });
+		}
+	}
+
 	protected override onVariableDefinition({ vertex }: { vertex: DataflowGraphVertexVariableDefinition; }): void {
-		if(this.getAbstractState(vertex.id) === undefined) {
+		if(this.currentState.get(vertex.id) === undefined) {
 			this.unassigned.add(vertex.id);
 		}
 	}
@@ -193,91 +214,22 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		}
 	}
 
-	protected override onReplacementCall({ call, target, source }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
-		if(source === undefined || target === undefined) {
-			return;
+	protected override onReplacementCall({ target }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
+		if(target !== undefined) {
+			this.unassigned.delete(target);
 		}
-		this.currentState = this.evalReplacementCall(call, target, source, this.currentState);
-		this.unassigned.delete(target);
-	}
-
-	protected override onAccessCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.currentState = this.evalAccessCall(call, this.currentState);
-	}
-
-	protected override onUnnamedCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.currentState = this.evalFunctionCall(call, this.currentState);
-	}
-
-	protected override onEvalFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.currentState = this.evalFunctionCall(call, this.currentState);
-	}
-
-	protected override onApplyFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.currentState = this.evalFunctionCall(call, this.currentState);
-	}
-
-	protected override onSourceCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.currentState = this.evalFunctionCall(call, this.currentState);
-	}
-
-	protected override onGetCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.currentState = this.evalFunctionCall(call, this.currentState);
-	}
-
-	protected override onRmCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.currentState = this.evalFunctionCall(call, this.currentState);
-	}
-
-	protected override onListCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.currentState = this.evalFunctionCall(call, this.currentState);
-	}
-
-	protected override onVectorCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.currentState = this.evalFunctionCall(call, this.currentState);
-	}
-
-	protected override onSpecialBinaryOpCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.currentState = this.evalFunctionCall(call, this.currentState);
-	}
-
-	protected override onQuoteCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.currentState = this.evalFunctionCall(call, this.currentState);
-	}
-
-	protected override onLibraryCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.currentState = this.evalFunctionCall(call, this.currentState);
-	}
-
-	protected override onDefaultFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		this.currentState = this.evalFunctionCall(call, this.currentState);
 	}
 
 	/**
-	 * Evaluates any function call visited by the abstract interpretation visitor by applying the abstract semantics of the function call to the current abstract state.
-	 * @param call  - The data flow vertex of the function call to evaluate
-	 * @param state - The current abstract state before the evaluation of the function call
-	 * @returns The abstract state after applying the abstract semantics of the function call
+	 * This event triggers for every function call that is not a condition, loop, assignment, replacement call, or access operation.
+	 *
+	 *
+	 * For example, this triggers for `data.frame` in `x <- data.frame(id = 1:5, name = letters[1:5])`.
+	 *
+	 * This bundles all function calls that are no conditions, loops, assignments, replacement calls, and access operations.
+	 * @protected
 	 */
-	protected abstract evalFunctionCall(call: DataflowGraphVertexFunctionCall, state: StateAbstractDomain<Domain>): StateAbstractDomain<Domain>;
-
-	/**
-	 * Evaluates any replacement function call visited by the abstract interpretation visitor by applying the abstract semantics of the replacement call to the current abstract state (e.g. for `$<-`, `[<-`, `names<-`, ...).
-	 * @param call   - The data flow vertex of the replacement call to evaluate
-	 * @param source - The node ID of the assignment target of the replacement call
-	 * @param target - The node ID of the assigned expression of the replacement call
-	 * @param state  - The current abstract state before the evaluation of the replacement call
-	 * @returns The abstract state after applying the abstract semantics of the replacement call
-	 */
-	protected abstract evalReplacementCall(call: DataflowGraphVertexFunctionCall, target: NodeId, source: NodeId, state: StateAbstractDomain<Domain>): StateAbstractDomain<Domain>;
-
-	/**
-	 * Evaluates any access operation call visited by the abstract interpretation visitor by applying the abstract semantics of the access operation to the current abstract stat (e.g. for `$`, `[`, `[[`, ...).
-	 * @param call  - The data flow vertex of the access operation to evaluate
-	 * @param state - The current abstract state before the evaluation of the access operation
-	 * @returns The abstract state after applying the abstract semantics of the access operation
-	 */
-	protected abstract evalAccessCall(call: DataflowGraphVertexFunctionCall, state: StateAbstractDomain<Domain>): StateAbstractDomain<Domain>;
+	protected onFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 
 	/** Gets all AST nodes for the predecessor vertices that are leaf nodes and exit vertices */
 	protected getPredecessorNodes(vertexId: NodeId): NodeId[] {

@@ -3789,7 +3789,7 @@ df <- dplyr::group_by(df, id, name)
 			shell,
 			`
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
-df <- dplyr::summarize(df, name = literals[id], level = score / max(score))
+df <- dplyr::summarize(df, name = letters[id], level = score / max(score))
 			`.trim(),
 			[['2@summarize', [{ operation: 'accessCols', columns: ['id', 'score'] }]]]
 		);

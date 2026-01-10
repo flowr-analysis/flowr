@@ -1,4 +1,5 @@
-import ts from 'typescript';
+import type { ModifierLike, NamedDeclaration, SourceFile, TypeChecker } from 'typescript';
+import ts, { SyntaxKind } from 'typescript';
 import { guard } from '../../util/assert';
 import { RemoteFlowrFilePathBaseRef } from './doc-files';
 import fs from 'fs';
@@ -139,6 +140,30 @@ export function getStartLineOfTypeScriptNode(node: ts.Node, sourceFile: ts.Sourc
 	return lineStart + 1;
 }
 
+function formatNode(node: NamedDeclaration, sourceFile: SourceFile, typeChecker: TypeChecker): string {
+	const name = node.name?.getText(sourceFile);
+	let prefix = '', suffix = '';
+
+	if('modifiers' in node && Array.isArray(node.modifiers)) {
+		if(node.modifiers.some((modifier: ModifierLike) => modifier.kind === SyntaxKind.PrivateKeyword)) {
+			prefix = '-';
+		} else if(node.modifiers.some((modifier: ModifierLike) => modifier.kind === SyntaxKind.ProtectedKeyword)) {
+			prefix = '#';
+		} else if(node.modifiers.some((modifier: ModifierLike) => modifier.kind === SyntaxKind.PublicKeyword)) {
+			prefix = '+';
+		}
+		if(node.modifiers.some((modifier: ModifierLike) => modifier.kind === SyntaxKind.AbstractKeyword)) {
+			suffix = '*';
+		} else if(node.modifiers.some((modifier: ModifierLike) => modifier.kind === SyntaxKind.StaticKeyword)) {
+			suffix = '$';
+		}
+	}
+	const type = getType(node, typeChecker);
+	const typeAnnotation = type.includes('=>') ? type.replace(/\s+=>\s+/, ' ') : ': ' + type;
+
+	return `${prefix}${escapeMarkdown(name + typeAnnotation)}${suffix}`;
+}
+
 function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
 	const tryDirect = typeChecker.getTypeAtLocation(node);
 	return tryDirect ? typeChecker.typeToString(tryDirect) : 'unknown';
@@ -188,10 +213,7 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 				comments:   getTextualCommentsFromTypeScript(node),
 				filePath:   sourceFile.fileName,
 				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
-				properties: node.members.map(member => {
-					const name = member.name?.getText(sourceFile) ?? '';
-					return `${name}${escapeMarkdown(': ' + getType(member, typeChecker))}`;
-				}),
+				properties: node.members.map(member => formatNode(member, sourceFile, typeChecker)),
 			});
 		} else if(ts.isTypeAliasDeclaration(node)) {
 			const typeName = node.name?.getText(sourceFile) ?? '';
@@ -228,10 +250,7 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 				generics:   [],
 				filePath:   sourceFile.fileName,
 				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
-				properties: node.members.map(member => {
-					const name = member.name?.getText(sourceFile) ?? '';
-					return `${name}${escapeMarkdown(': ' + getType(member, typeChecker))}`;
-				})
+				properties: node.members.map(member => formatNode(member, sourceFile, typeChecker))
 			});
 		} else if(ts.isEnumMember(node)) {
 			const typeName = node.parent.name?.getText(sourceFile) ?? '';
@@ -264,10 +283,9 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 				generics,
 				filePath:   sourceFile.fileName,
 				lineNumber: getStartLineOfTypeScriptNode(node, sourceFile),
-				properties: node.members.map(member => {
-					const name = member.name?.getText(sourceFile) ?? '';
-					return `${name}${escapeMarkdown(': ' + getType(member, typeChecker))}`;
-				}),
+				properties: node.members
+					.filter(member => member.name !== undefined)
+					.map(member => formatNode(member, sourceFile, typeChecker)),
 			});
 		} else if(
 			ts.isVariableDeclaration(node) || ts.isExportDeclaration(node) || ts.isExportAssignment(node) || ts.isDeclarationStatement(node)
@@ -286,7 +304,7 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 			});
 		} else if(
 			ts.isPropertyAssignment(node) || ts.isPropertyDeclaration(node) || ts.isPropertySignature(node)
-			|| ts.isMethodDeclaration(node) || ts.isMethodSignature(node) || ts.isFunctionDeclaration(node)
+			|| ts.isMethodDeclaration(node) || ts.isMethodSignature(node) || ts.isFunctionDeclaration(node) || ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node)
 		) {
 			const name = node.name?.getText(sourceFile) ?? '';
 
@@ -353,18 +371,19 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 
 	const genericPart = node.generics.length > 0 ? `~${node.generics.join(', ')}~` : '';
 
-	collect.nodeLines.push(`class ${node.name}${genericPart}`);
-	collect.nodeLines.push(`    <<${node.kind}>> ${node.name}`);
+	collect.nodeLines.push(`class ${node.name}${genericPart}{`);
+	collect.nodeLines.push(`    <<${node.kind}>>`);
 	if(node.kind === 'type') {
 		collect.nodeLines.push(`style ${node.name} opacity:.35,fill:#FAFAFA`);
 	}
 	const writtenProperties = new Set<string>();
 	if(node.properties) {
 		for(const property of node.properties) {
-			collect.nodeLines.push(`    ${node.name} : ${property}`);
+			collect.nodeLines.push(`    ${property}`);
 			writtenProperties.add(property);
 		}
 	}
+	collect.nodeLines.push('}');
 	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${escapeMarkdown(node.comments?.join('; ').replace(/\n/g,' ') ?? '' )}"`);
 	const inline = [...options.inlineTypes ?? [], ...defaultSkip];
 	if(node.extends.length > 0) {

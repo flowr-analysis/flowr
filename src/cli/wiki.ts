@@ -29,6 +29,7 @@ import { WikiLinter } from '../documentation/wiki-linter';
 import os from 'os';
 import { WikiSetup } from '../documentation/wiki-setup';
 import { WikiOverview } from '../documentation/wiki-overview';
+import { WikiAbsint } from '../documentation/wiki-absint';
 
 export const AllWikiDocuments = [
 	new WikiFaq(),
@@ -46,6 +47,7 @@ export const AllWikiDocuments = [
 	new WikiDataflowGraph(),
 	new WikiLintingAndTesting(),
 	new WikiLinter(),
+	new WikiAbsint(),
 	new IssueLintingRule(),
 	new DocReadme(),
 	new DocCapabilities()

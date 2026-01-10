@@ -17,10 +17,10 @@ import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RLogical } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
 import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
-import { guard } from '../util/assert';
+import { assertUnreachable, guard } from '../util/assert';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { BuiltInProcessorMapper } from '../dataflow/environments/built-in';
+import { BuiltInProcessorMapper } from '../dataflow/environments/built-in';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
@@ -197,7 +197,12 @@ export class SemanticCfgGuidedVisitor<
 	 * @protected
 	 */
 	protected onDispatchFunctionCallOrigin(call: DataflowGraphVertexFunctionCall, origin: keyof typeof BuiltInProcessorMapper | string) {
-		switch(origin) {
+		if(!(origin in BuiltInProcessorMapper)) {
+			return this.onDefaultFunctionCall({ call });
+		}
+		const type = origin as keyof typeof BuiltInProcessorMapper;
+
+		switch(type) {
 			case 'builtin:eval':
 				return this.onEvalFunctionCall({ call });
 			case 'builtin:apply':
@@ -235,8 +240,8 @@ export class SemanticCfgGuidedVisitor<
 				return this.onListCall({ call });
 			case 'builtin:vector':
 				return this.onVectorCall({ call });
-			case 'table:assign':
-			case 'builtin:assignment': {
+			case 'builtin:assignment':
+			case 'builtin:assignment-like': {
 				const outgoing = this.config.dfg.outgoingEdges(call.id);
 				if(outgoing) {
 					const target = [...outgoing.entries()].filter(([, e]) => edgeIncludesType(e.types, EdgeType.Returns));
@@ -289,8 +294,17 @@ export class SemanticCfgGuidedVisitor<
 			case 'builtin:library':
 				return this.onLibraryCall({ call });
 			case 'builtin:default':
-			default:
 				return this.onDefaultFunctionCall({ call });
+			case 'builtin:try':
+				return this.onTryCall({ call });
+			case 'builtin:stopifnot':
+				return this.onStopIfNotCall({ call });
+			case 'builtin:register-hook':
+				return this.onRegisterHookCall({ call });
+			case 'builtin:function-definition':
+				throw new Error('Function call vertex cannot be a function definition');
+			default:
+				assertUnreachable(type);
 		}
 	}
 
@@ -586,4 +600,34 @@ export class SemanticCfgGuidedVisitor<
 	 * @protected
 	 */
 	protected onVectorCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for every call to the `stopifnot` function.
+	 *
+	 * For example, this triggers for `stopifnot` in `stopifnot(x > 0)`.
+	 *
+	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
+	 * @protected
+	 */
+	protected onStopIfNotCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for every call the `try` function, which is used to catch possible errors.
+	 *
+	 * For example, this triggers for `try` in `try(stop("error"))`.
+	 *
+	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
+	 * @protected
+	 */
+	protected onTryCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for every call to a function that registers a hook, such as `on.exit`.
+	 *
+	 * For example, this triggers for `on.exit` in `on.exit(print("exiting function"))`.
+	 *
+	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
+	 * @protected
+	 */
+	protected onRegisterHookCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 }

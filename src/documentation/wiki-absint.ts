@@ -92,25 +92,36 @@ Abstract interpretation uses an abstraction of the concrete semantics of a progr
 ${section('Abstract Domains', 2, 'abstract-domains')}
 
 To perform abstract interpretation, we first need to define an abstract domain to capture possible runtime values of the program.
-In _flowR_, an abstract domain is represented by the class ${ctx.link(AbstractDomain)} that extends the ${ctx.link('Lattice')} interface, providing the following properties and functions:
+In _flowR_, an abstract domain is represented by the class ${ctx.link(AbstractDomain)} that extends the ${ctx.link('Lattice')} interface. It has the type parameters \`Concrete\` for the concrete domain of the abstract domain (e.g. strings, numbers, lists), \`Abstract\` for the abstract representation of the values (e.g. sets, intervals), \`Top\` for the representation of the top element, \`Bot\` for the representation of the bottom element, and \`Value\` for the type of the current abstract value of the abstract domain (i.e. \`Abstract\`, \`Top\`, or \`Bot\`). An abstract domain provides the following properties and functions:
 
-* ${ctx.linkM(AbstractDomain, 'value')} the current abstract value of the abstract domain
-* ${ctx.linkM(AbstractDomain, 'leq')}) to check whether to abstract values are ordered with respect to the partial order of the lattice
-* ${ctx.linkM(AbstractDomain, 'join')} to join two abstract values to get the least upper bound (LUB)
-* ${ctx.linkM(AbstractDomain, 'meet')} to meet two abstract values to get the greates lower bound (GLB)
-* ${ctx.linkM(AbstractDomain, 'widen')} to perform widening with another abstract value to ensure termination of the fixpoint iteration
-* ${ctx.linkM(AbstractDomain, 'narrow')} to perform narrowing with another abstract value to refine the abstract value after widening
-* ${ctx.linkM(AbstractDomain, 'top')} to get the top element (greatest element) of the abstract domain
-* ${ctx.linkM(AbstractDomain, 'bottom')} to get the bottom element (least element) of the abstract domain
-* ${ctx.linkM(AbstractDomain, 'concretize')} representing the concretization function of the abstract domain
-* ${ctx.linkM(AbstractDomain, 'abstract')} representing the abstraction function of the abstract domain
-* ${ctx.linkM(AbstractDomain, 'isTop')} to check whether the current abstract value is top
-* ${ctx.linkM(AbstractDomain, 'isBottom')} to check whether the current abstract value is bottom
-* ${ctx.linkM(AbstractDomain, 'isValue')} to check whether the current abstract value is a value (can still be top or bottom)
+ * ${ctx.linkM(AbstractDomain, 'value')} the current abstract value of the abstract domain
+ * ${ctx.linkM(AbstractDomain, 'leq')}) to check whether to abstract values are ordered with respect to the partial order of the lattice
+ * ${ctx.linkM(AbstractDomain, 'join')} to join two abstract values to get the least upper bound (LUB)
+ * ${ctx.linkM(AbstractDomain, 'meet')} to meet two abstract values to get the greates lower bound (GLB)
+ * ${ctx.linkM(AbstractDomain, 'widen')} to perform widening with another abstract value to ensure termination of the fixpoint iteration
+ * ${ctx.linkM(AbstractDomain, 'narrow')} to perform narrowing with another abstract value to refine the abstract value after widening
+ * ${ctx.linkM(AbstractDomain, 'top')} to get the top element (greatest element) of the abstract domain
+ * ${ctx.linkM(AbstractDomain, 'bottom')} to get the bottom element (least element) of the abstract domain
+ * ${ctx.linkM(AbstractDomain, 'concretize')} representing the concretization function of the abstract domain
+ * ${ctx.linkM(AbstractDomain, 'abstract')} representing the abstraction function of the abstract domain
+ * ${ctx.linkM(AbstractDomain, 'isTop')} to check whether the current abstract value is top
+ * ${ctx.linkM(AbstractDomain, 'isBottom')} to check whether the current abstract value is bottom
+ * ${ctx.linkM(AbstractDomain, 'isValue')} to check whether the current abstract value is a value (can still be top or bottom)
 
 ${details('Class Diagram', `
 All boxes link to their respective implementation in the source code.
 ${codeBlock('mermaid', ctx.mermaid(AbstractDomain))}
+`.trim())}
+
+The ${ctx.link('Top')} and ${ctx.link('Bottom')} symbols can be used to explicitly represent the top or bottom elment of an abstract domain. Additionally, for value abstract domains, there is the ${ctx.link('SatisfiableDomain')} interface that provides the function ${ctx.link('SatisfiableDomain:::satisfies')} to check whether the current abstract value of the abstract domain satisfies a concrete value (see also ${ctx.link('NumericalComparator')} and ${ctx.link('SetComparator')}).
+
+_flowR_ already provides different abstract domains for abstract interpretation in [\`src/abstract-interpretation/domains\`](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains). Many of the abstract domains are generic and can be used for differend kinds of analyses. The existing abstract domains are presented in the following. Some of the listed abstract domains can be expanded to show the inherited abstract domains.
+
+${ctx.hierarchy(AbstractDomain, { collapseFromNesting: 2, skipNesting: 1, reverse: true })}
+
+${details('Class Diagram', `
+All boxes link to their respective implementation in the source code.
+${codeBlock('mermaid', ctx.mermaid(AbstractDomain, { simplify: true, reverse: true }))}
 `.trim())}
 
 ${section('Abstract Interpretation', 2, 'abstract-interpretation')}

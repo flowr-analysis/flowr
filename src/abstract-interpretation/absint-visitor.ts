@@ -176,6 +176,8 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	}
 
 	protected override onDispatchFunctionCallOrigin(call: DataflowGraphVertexFunctionCall, origin: keyof typeof BuiltInProcessorMapper | string) {
+		super.onDispatchFunctionCallOrigin(call, origin);
+
 		if(!(origin in BuiltInProcessorMapper)) {
 			return this.onFunctionCall({ call });
 		}
@@ -189,7 +191,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			case 'builtin:assignment-like':
 			case 'builtin:replacement':
 			case 'builtin:access':
-				return super.onDispatchFunctionCallOrigin(call, origin);
+				return;
 			default:
 				return this.onFunctionCall({ call });
 		}

@@ -1,4 +1,4 @@
-import type { ModifierLike, NamedDeclaration, SourceFile, TypeChecker } from 'typescript';
+import type { NamedDeclaration, SourceFile, TypeChecker } from 'typescript';
 import ts, { SyntaxKind } from 'typescript';
 import { guard } from '../../util/assert';
 import { RemoteFlowrFilePathBaseRef } from './doc-files';
@@ -140,26 +140,30 @@ export function getStartLineOfTypeScriptNode(node: ts.Node, sourceFile: ts.Sourc
 	return lineStart + 1;
 }
 
+function hasModifier(modifiers: unknown[], modifier: SyntaxKind) {
+	return modifiers.some(mod => typeof mod === 'object' && mod !== null && 'kind' in mod && mod.kind === modifier);
+}
+
 function formatNode(node: NamedDeclaration, sourceFile: SourceFile, typeChecker: TypeChecker): string {
 	const name = node.name?.getText(sourceFile);
 	let prefix = '', suffix = '';
 
 	if('modifiers' in node && Array.isArray(node.modifiers)) {
-		if(node.modifiers.some((modifier: ModifierLike) => modifier.kind === SyntaxKind.PrivateKeyword)) {
+		if(hasModifier(node.modifiers, SyntaxKind.PrivateKeyword)) {
 			prefix = '-';
-		} else if(node.modifiers.some((modifier: ModifierLike) => modifier.kind === SyntaxKind.ProtectedKeyword)) {
+		} else if(hasModifier(node.modifiers, SyntaxKind.ProtectedKeyword)) {
 			prefix = '#';
-		} else if(node.modifiers.some((modifier: ModifierLike) => modifier.kind === SyntaxKind.PublicKeyword)) {
+		} else if(hasModifier(node.modifiers, SyntaxKind.PublicKeyword)) {
 			prefix = '+';
 		}
-		if(node.modifiers.some((modifier: ModifierLike) => modifier.kind === SyntaxKind.AbstractKeyword)) {
+		if(hasModifier(node.modifiers, SyntaxKind.AbstractKeyword)) {
 			suffix = '*';
-		} else if(node.modifiers.some((modifier: ModifierLike) => modifier.kind === SyntaxKind.StaticKeyword)) {
+		} else if(hasModifier(node.modifiers, SyntaxKind.StaticKeyword)) {
 			suffix = '$';
 		}
 	}
 	const type = getType(node, typeChecker);
-	const typeAnnotation = type.includes('=>') ? type.replace(/\s+=>\s+/, ' ') : ': ' + type;
+	const typeAnnotation = type.includes('=>') ? type.replaceAll(/\s+=>\s+/g, ' ') : ': ' + type;
 
 	return `${prefix}${escapeMarkdown(name + typeAnnotation)}${suffix}`;
 }
@@ -357,7 +361,13 @@ export function getTypePathLink(elem: Pick<TypeElementInSource, 'filePath' | 'li
 	return `${prefix}/${fromSource}#L${elem.lineNumber}`;
 }
 
-function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], rootName: string, options: { inlineTypes?: readonly string[] }, visited: Set<string> = new Set()): MermaidCompact {
+export interface MermaidClassDiagramArguments {
+	readonly inlineTypes?: readonly string[]
+	readonly simplify?:    boolean
+	readonly reverse?:     boolean
+}
+
+function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], rootName: string, options: MermaidClassDiagramArguments, visited: Set<string> = new Set()): MermaidCompact {
 	const collect: MermaidCompact = { nodeLines: [], edgeLines: [] };
 	if(visited.has(rootName)) {
 		return collect;
@@ -373,21 +383,30 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 
 	collect.nodeLines.push(`class ${node.name}${genericPart}{`);
 	collect.nodeLines.push(`    <<${node.kind}>>`);
-	if(node.kind === 'type') {
-		collect.nodeLines.push(`style ${node.name} opacity:.35,fill:#FAFAFA`);
-	}
 	const writtenProperties = new Set<string>();
-	if(node.properties) {
+	if(!options.simplify && node.properties) {
 		for(const property of node.properties) {
 			collect.nodeLines.push(`    ${property}`);
 			writtenProperties.add(property);
 		}
 	}
 	collect.nodeLines.push('}');
+
+	if(node.kind === 'type') {
+		collect.nodeLines.push(`style ${node.name} opacity:.35,fill:#FAFAFA`);
+	}
 	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${escapeMarkdown(node.comments?.join('; ').replace(/\n/g,' ') ?? '' )}"`);
 	const inline = [...options.inlineTypes ?? [], ...defaultSkip];
-	if(node.extends.length > 0) {
-		for(const baseType of node.extends) {
+
+	let baseTypes = node.extends;
+	if(options.reverse) {
+		baseTypes = hierarchyList
+			.filter(e => e.kind === 'class' || e.kind === 'interface' || e.kind === 'type' || e.kind === 'enum')
+			.filter(e => e.extends.includes(rootName))
+			.map(e => e.name);
+	}
+	if(baseTypes.length > 0) {
+		for(const baseType of baseTypes) {
 			if(inline.includes(baseType)) {
 				const info = hierarchyList.find(h => h.name === baseType);
 				for(const property of info?.properties ?? []) {
@@ -400,7 +419,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 				if(node.kind === 'type' || hierarchyList.find(h => h.name === baseType)?.kind === 'type') {
 					collect.edgeLines.push(`${dropGenericsFromTypeName(baseType)} .. ${node.name}`);
 				} else {
-					collect.edgeLines.push(`${dropGenericsFromTypeName(baseType)} <|-- ${node.name}`);
+					collect.edgeLines.push(`${dropGenericsFromTypeName(baseType)} ${options.reverse ? '--|>' : '<|--'} ${node.name}`);
 				}
 				const { nodeLines, edgeLines } = generateMermaidClassDiagram(hierarchyList, baseType, options, visited);
 				collect.nodeLines.push(...nodeLines);
@@ -414,14 +433,19 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 /**
  * Visualize the type hierarchy as a mermaid class diagram.
  */
-export function visualizeMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], options: { typeNameForMermaid?: string, inlineTypes?: readonly string[] }): string | undefined {
+export function visualizeMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], options: { typeNameForMermaid?: string } & MermaidClassDiagramArguments): string | undefined {
 	if(!options.typeNameForMermaid) {
 		return undefined;
 	}
 	const { nodeLines, edgeLines } = generateMermaidClassDiagram(hierarchyList, options.typeNameForMermaid, options);
 	return nodeLines.length === 0 && edgeLines.length === 0 ? '' : `
+---
+  config:
+    class:
+      hideEmptyMembersBox: true
+---
 classDiagram
-direction RL
+direction ${options.reverse ? 'LR' : 'RL'}
 ${nodeLines.join('\n')}
 ${edgeLines.join('\n')}
 `;
@@ -515,8 +539,10 @@ export interface PrintHierarchyArguments {
 	readonly collapseFromNesting?: number
 	readonly initialNesting?:      number
 	readonly maxDepth?:            number
+	readonly skipNesting?:         number
 	readonly openTop?:             boolean
 	readonly showImplSnippet?:     boolean
+	readonly reverse?:             boolean
 }
 
 export const mermaidHide = ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial', 'RAccessBase'];
@@ -525,7 +551,7 @@ export const mermaidHide = ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildr
  * Print the hierarchy of types starting from the given root.
  * If you create a wiki, please refer to the functions provided by the {@link GeneralWikiContext}.
  */
-export function printHierarchy({ program, info, root, collapseFromNesting = 1, initialNesting = 0, maxDepth = 20, openTop, showImplSnippet = true }: PrintHierarchyArguments): string {
+export function printHierarchy({ program, info, root, collapseFromNesting = 1, initialNesting = 0, maxDepth = 20, skipNesting = 0, openTop, showImplSnippet = true, reverse = false }: PrintHierarchyArguments): string {
 	if(initialNesting > maxDepth) {
 		return '';
 	}
@@ -534,20 +560,31 @@ export function printHierarchy({ program, info, root, collapseFromNesting = 1, i
 		return '';
 	}
 
-	const thisLine = implSnippet(node, program, true, initialNesting, initialNesting === 0 && openTop, showImplSnippet);
+	let thisLine = '';
+	if(initialNesting >= skipNesting) {
+		thisLine = implSnippet(node, program, true, initialNesting, initialNesting === 0 && openTop, showImplSnippet);
+	}
+	let baseTypes = node.extends;
+	if(reverse) {
+		baseTypes = info
+			.filter(e => e.kind === 'class' || e.kind === 'interface')
+			.filter(e => e.extends.includes(root))
+			.map(e => e.name);
+	}
 	const result = [];
 
-	for(const baseType of node.extends) {
+	for(const baseType of baseTypes) {
 		if(mermaidHide.includes(baseType)) {
 			continue;
 		}
-		const res = printHierarchy({ program, info: info, root: baseType, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth, showImplSnippet });
+		const res = printHierarchy({ program, info, root: baseType, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth, skipNesting, showImplSnippet, reverse });
 		result.push(res);
 	}
 
 	const out = result.join('\n');
-	if(initialNesting === collapseFromNesting - 1) {
-		return thisLine + (out ? details(`View more (${node.extends.join(', ')})`, out, { prefixInit: ' '.repeat(2 * (collapseFromNesting + 1)) }) : '');
+	if(initialNesting >= collapseFromNesting - 1) {
+		const more = baseTypes.length > 4 ? baseTypes.slice(0, 4).join(', ') + ', ...' : baseTypes.join(', ');
+		return thisLine + (out ? details(`View more (${more})`, out, { prefixInit: ' '.repeat(2 * (initialNesting + 2)) }) + ' ' : '');
 	} else {
 		return thisLine + (out ? '\n' + out : '');
 	}

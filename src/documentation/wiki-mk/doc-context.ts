@@ -1,12 +1,10 @@
 import type {
 	FnElementInfo,
+	MermaidClassDiagramArguments,
 	PrintHierarchyArguments,
 	TypeElementKind
 } from '../doc-util/doc-types';
-import { mermaidHide
-	,
-	visualizeMermaidClassDiagram
-	, printCodeOfElement , printHierarchy , shortLinkFile , shortLink , getDocumentationForType , getTypesFromFolder } from '../doc-util/doc-types';
+import { visualizeMermaidClassDiagram, printCodeOfElement, printHierarchy, shortLinkFile, shortLink, getDocumentationForType, getTypesFromFolder } from '../doc-util/doc-types';
 import path from 'path';
 import { guard } from '../../util/assert';
 import { autoGenHeader } from '../doc-util/doc-auto-gen';
@@ -195,9 +193,9 @@ export interface GeneralDocContext {
 	/**
 	 * Generates a mermaid diagram for the given code element, returned as markdown string.
 	 * @param element - The element to create a mermaid diagram for, the name can be qualified with `::` to specify the class.
-	 * @param inlineTypes - Optional list of type names to inline in the mermaid diagram (instead of linking them out).
+	 * @param options - Formatting options for the mermaid class diagram (see {@link MermaidClassDiagramArguments})
 	 */
-	mermaid(element: ElementIdOrRef, inlineTypes?: string[]): string;
+	mermaid(element: ElementIdOrRef, options?: MermaidClassDiagramArguments): string;
 
 	/**
 	 * Generates a wiki link to another wiki or general docs page.
@@ -310,10 +308,10 @@ export function makeDocContextForTypes(
 			const rVersion = (await shell?.usedRVersion())?.format();
 			return autoGenHeader({ filename, purpose, rVersion });
 		},
-		mermaid(element: ElementIdOrRef, inlineTypes: string[] = mermaidHide): string {
+		mermaid(element: ElementIdOrRef, options?: MermaidClassDiagramArguments): string {
 			return visualizeMermaidClassDiagram(info, {
 				typeNameForMermaid: getNameFromElementIdOrRef(element),
-				inlineTypes
+				...options
 			}) as string;
 		},
 		linkPage(pageName: ValidWikiDocumentTargetsNoSuffix, linkText?: string, segment?: string): string {

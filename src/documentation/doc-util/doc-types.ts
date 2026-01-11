@@ -1,5 +1,4 @@
-import type { NamedDeclaration, SourceFile, TypeChecker } from 'typescript';
-import ts, { SyntaxKind } from 'typescript';
+import ts, { SyntaxKind, type NamedDeclaration, type SourceFile, type TypeChecker } from 'typescript';
 import { guard } from '../../util/assert';
 import { RemoteFlowrFilePathBaseRef } from './doc-files';
 import fs from 'fs';
@@ -584,7 +583,7 @@ export function printHierarchy({ program, info, root, collapseFromNesting = 1, i
 	const out = result.join('\n');
 	if(initialNesting >= collapseFromNesting - 1) {
 		const more = baseTypes.length > 4 ? baseTypes.slice(0, 4).join(', ') + ', ...' : baseTypes.join(', ');
-		return thisLine + (out ? details(`View more (${more})`, out, { prefixInit: ' '.repeat(2 * (initialNesting + 2)) }) + ' ' : '');
+		return thisLine + (out ? details(`View more (${more})`, out, { prefixInit: ' '.repeat(2 * (initialNesting + 2)) }) : '');
 	} else {
 		return thisLine + (out ? '\n' + out : '');
 	}

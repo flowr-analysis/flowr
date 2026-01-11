@@ -1,5 +1,6 @@
 import Joi from 'joi';
-import { type DataFrameDomain, DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
+import type { DataFrameDomain, DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
+import { StateAbstractDomain } from '../../../abstract-interpretation/domains/state-abstract-domain';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { sliceCriterionParser } from '../../../cli/repl/parser/slice-query-parser';
 import type { FlowrConfigOptions } from '../../../config';
@@ -36,7 +37,7 @@ export const DfShapeQueryDefinition = {
 	executor:        executeDfShapeQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'df-shape'>['df-shape'];
-		const domains = out.domains instanceof DataFrameStateDomain ? out.domains.value : out.domains;
+		const domains = out.domains instanceof StateAbstractDomain ? out.domains.value : out.domains;
 		result.push(`Query: ${bold('df-shape', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		result.push(...domains.entries().take(20).map(([key, domain]) => {
 			return `   ╰ ${key}: ${domain?.toString()}`;
@@ -48,7 +49,7 @@ export const DfShapeQueryDefinition = {
 	},
 	jsonFormatter: (queryResults: BaseQueryResult) => {
 		const { domains, ...out } = queryResults as QueryResults<'df-shape'>['df-shape'];
-		const state = domains instanceof DataFrameStateDomain ? domains.value : domains;
+		const state = domains instanceof StateAbstractDomain ? domains.value : domains;
 		const json = Object.fromEntries(state.entries().map(([key, domain]) => [key, domain?.toJson() ?? null]));
 		const result = { domains: json, ...out } as object;
 

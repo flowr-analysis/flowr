@@ -49,8 +49,8 @@ async function inferIntervals(): Promise<string> {
 		.build();
 
 	analyzer.addRequest(`
-		x <- if (runif < 0.5) 6 else 12
-		y <- 42
+		x <- 42
+		y <- if (runif < 0.5) 6 else 12
 		z <- x + y
 	`.trim());
 
@@ -126,13 +126,35 @@ ${codeBlock('mermaid', ctx.mermaid(AbstractDomain, { simplify: true, reverse: tr
 
 ${section('Abstract Interpretation', 2, 'abstract-interpretation')}
 
-We forward traverse the ${ctx.linkPage('wiki/Control Flow Graph', 'control flow graph')} of _flowR_ using a ${ctx.link(AbstractInterpretationVisitor)}.
+We perform abstract interpretation by forward-traversing the ${ctx.linkPage('wiki/Control Flow Graph', 'control flow graph')} of _flowR_ using a ${ctx.link(AbstractInterpretationVisitor)}. For each visited control flow vertex, the visitor retrieves the current abstract state by joining the abstract states of the predecessors, applies the abstract semantics of the visited control flow vertex to the current state, and updates the abstract state of the currently visited vertex to the current state. The visitor already handles assignments and (delayed) widening at widening points. However, the visitor does not yet support interprocedural abstract interpretation.
+
+To implement a custom abstract interpretation analysis, we can just create a new class and extend the ${ctx.link(AbstractInterpretationVisitor)}. The abstract interpretation visitor uses a ${ctx.link(StateAbstractDomain)} to capture the current abstract state at each vertex in the control flow graph. Hence, the abstract interpretation visitor required a value abstract domain \`Domain\` as type parameter to use for the state abstract domain. We can then extend the callback functions of the ${ctx.link(AbstractInterpretationVisitor)} to implement the abstract semantics of expressions, such as ${ctx.link('SemanticCfgGuidedVisitor:::onNumberConstant')}, ${ctx.link('AbstractInterpretationVisitor:::onFunctionCall')}, and ${ctx.link('SemanticCfgGuidedVisitor:::onAssignmentCall')} (make sure to still call the super function). The abstract interpretation visitor provides the following functions to retrieve the currently inferred values:
+
+ * ${ctx.linkM(AbstractInterpretationVisitor, 'getAbstractValue')} to resolve the inferred abstract value for an AST node (this includes resolving symbols, pipes, and if expressions)
+ * ${ctx.linkM(AbstractInterpretationVisitor, 'getAbstractState')} to get the inferred abstract state at an AST node mapping AST nodes to abstract values
+ * ${ctx.linkM(AbstractInterpretationVisitor, 'getAbstractTrace')} to get the complete abstract trace mapping AST nodes to abstract states at the respective node
+ * ${ctx.linkM(AbstractInterpretationVisitor, 'getEndState')} to get the inferred abstract state at the end of the program (at the exit points of the control flow graph)
+
+For example, if we want to perform a (very basic) interval analysis using abstract interpretation in _flowR_, we can implement the following ${ctx.link(IntervalInferenceVisitor)} that extends ${ctx.link(AbstractInterpretationVisitor)} using the ${ctx.link(IntervalDomain)}:
 
 ${ctx.code(IntervalInferenceVisitor)}
 
+The interval inference visitor first overrides the ${ctx.link('SemanticCfgGuidedVisitor:::onNumberConstant')} function to infer intervals for visited control flow vertices that represent numeric constants. For numeric constants, the resulting interval consists just of the number value of the constant. We then update the current abstract state of the visitor by setting the inferred abstract value of the currently visited control flow vertex to the new interval.
+
+In this simple example, we only want to support the addition and subtraction of numeric values. Therefore, we override the ${ctx.link('AbstractInterpretationVisitor:::onFunctionCall')} function to apply the abstract semantics of additions and subtraction with resprect to the interval domain. For the addition and subtraction, we are only interested in function calls with exactly two non-empty arguments. We first resolve the currently inferred abstract value for the left and right operand of the function call. If we have no inferred value for one of the operands, this function call might not be a numeric function call and we ignore it. Otherwise, we check whether the function call represents an addition or subtraction and apply the abstract semantics of the operation to the left and right operand. We then again update the current abstract state of the visitor by setting the inferred abstract value of the currently visited function call vertex to the abstract value resulting from applying the abstract semantics of the operation to the operands.
+
+If we know want to run the interval inference, we can write the following code:
+
 ${ctx.code(inferIntervals,{ dropLinesStart: 1, dropLinesEnd: 5 })}
 
+We first need a ${ctx.linkPage('wiki/Analyzer', 'flowR analyzer')} (in this case, using the ${ctx.linkPage('wiki/Engines', 'tree-sitter engine')}). In this example, we want to analyze a small example code that assigns \`42\` to the variable \`x\`, randomly assigns \`6\` or \`12\` to the variable \`y\`, and assignes the sum of \`x\` and \`y\` to the variable \`z\`. For the abstract interpretation visitor, we need to retrieve the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')}, ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, ${ctx.linkPage('wiki/Control Flow Graph', 'control flow graph')}, and context of the flowR anaylzer. Additionally, we need to provide a state abstract domain for the visitor -- in this case, a state abstract domain for the interval domain. We then construct a new ${ctx.link(IntervalInferenceVisitor)} using the control flow graph, dataflow graph, normalized AST, analyzer context, and state abstract domain, and start the visitor using ${ctx.linkM(AbstractInterpretationVisitor, 'start', { hideClass: true })}. After the visitor is finished, we retrieve the inferred abstract state at the end of the program using ${ctx.linkM(AbstractInterpretationVisitor, 'getEndState', { hideClass: true })}.
+
+If we now print the inferred abstract state at the end of the program, we get the following output:
+
 ${codeBlock('ts', await inferIntervals())}
+<i>The output has been prettified for better readability.</i>
+
+The AST nodes are represented as slicing criteria for better readability in the format \`<line>@<lexeme>\`. Here, the constants \`42\`, \`0.5\`, \`6\`, and \`12\` of line 1 and 2 are mapped to the intervals \`[42, 42]\`, \`[0.5, 0.5]\`, \`[6, 6]\`, and \`[12, 12]\`, respectively. The variable \`x\` of line 1 is mapped to the interval \`[42, 42]\` of the assigned value and the variable \`y\` of line 2 is assigned to the interval \`[6, 12]\` representing a sound over-approximation of the actual value, as the assigned value can be \`6\` or \`12\`. After applying the abstract semantics of the addition of \`x\` and \`y\`, the addition operation \`+\` and the variable \`z\` of line 3 are mapped to the interval \`[48, 54]\`, resulting from the addition of the interval \`[42, 42]\` of \`x\` and \`[6, 12]\` of \`y\`.
         `;
 	}
 }

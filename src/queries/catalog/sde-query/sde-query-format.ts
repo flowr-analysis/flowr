@@ -8,7 +8,7 @@ import type { Lift, Value } from '../../../abstract-interpretation/eval/domain';
 
 interface SdeResult {
 	readonly criterion:  SingleSlicingCriterion,
-	readonly determined: Lift<Value> | undefined,
+	readonly determined: Lift<Value>,
 }
 
 export interface SdeQuery extends BaseQueryFormat {
@@ -17,7 +17,7 @@ export interface SdeQuery extends BaseQueryFormat {
 }
 
 export interface SdeQueryResult extends BaseQueryResult {
-	results: Map<SingleSlicingCriterion, Lift<Value> | undefined>,
+	results: Map<SingleSlicingCriterion, Lift<Value>>,
 }
 
 export const SdeQueryDefinition = {
@@ -37,7 +37,7 @@ export const SdeQueryDefinition = {
 	},
 	schema: Joi.object({
 		type:     Joi.string().valid('sde').required().description('The type of the query.'),
-		criteria: Joi.array().items(Joi.string()).min(1).required().description('The slicing criteria to use.'),
+		criteria: Joi.array().items(Joi.string()).required().description('The slicing criteria to use.'),
 	}).description('The resolve value query used to get definitions of an identifier'),
 	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'sde'>;

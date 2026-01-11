@@ -12,7 +12,7 @@ export function fingerPrintOfQuery(query: SdeQuery): string {
 
 export function executeSdeQuery({ ast }: BasicQueryData, queries: readonly SdeQuery[]): SdeQueryResult {
 	const start = Date.now();
-	const results = new Map<SingleSlicingCriterion, Lift<Value> | undefined>();
+	const results = new Map<SingleSlicingCriterion, Lift<Value>>();
 
 	for(const query of queries) {
 		for(const criterion of query.criteria) {

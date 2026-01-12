@@ -23,8 +23,8 @@ describe.sequential('String Domain Eval Slice', withShell((shell) => {
 			abstractInterpretation: {
 				...defaultConfigOptions.abstractInterpretation,
 				string: {
-					domain:            'const-set',
-					enableForDataflow: true,
+					domain: 'const-set',
+					enable: true,
 				}
 			}
 		} }
@@ -41,8 +41,8 @@ describe.sequential('String Domain Eval Slice', withShell((shell) => {
 			abstractInterpretation: {
 				...defaultConfigOptions.abstractInterpretation,
 				string: {
-					domain:            'const-set',
-					enableForDataflow: true,
+					domain: 'const-set',
+					enable: true,
 				}
 			}
 		} }

@@ -31,7 +31,7 @@ const staticDataflowCommon = {
 
 function processor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequests, parser?: Parser<KnownParserType> }, config: FlowrConfigOptions) {
 	const df = produceDataFlowGraph(input.parser as Parser<KnownParserType>, input.request as RParseRequests, results.normalize as NormalizedAst, config);
-	if(config.abstractInterpretation.string.enableForDataflow) {
+	if(config.abstractInterpretation.string.enable) {
 		const siResults = { dataflow: df, normalize: results.normalize };
 		STRING_INFERENCE.processor(siResults, input, config);
 		return siResults.dataflow;

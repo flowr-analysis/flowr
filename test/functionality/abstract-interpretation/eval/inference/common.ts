@@ -33,8 +33,8 @@ export function createStringDomainAssert<T extends Value>(
 				abstractInterpretation: {
 					...defaultConfigOptions.abstractInterpretation,
 					string: {
-						domain:            stringDomain,
-						enableForDataflow: false,
+						domain: stringDomain,
+						enable: false,
 					},
 				},
 			};

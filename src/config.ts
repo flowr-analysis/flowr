@@ -191,8 +191,8 @@ export interface FlowrConfigOptions extends MergeableRecord {
 		 * The configuration of the string domain
 		 */
 		readonly string: {
-			readonly domain:            StringDomainName | undefined,
-			readonly enableForDataflow: boolean,
+			readonly domain: StringDomainName | undefined,
+			readonly enable: boolean,
 		},
 	}
 }
@@ -266,8 +266,8 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 			}
 		},
 		string: {
-			domain:            'const-set',
-			enableForDataflow: false,
+			domain: 'const-set',
+			enable: false,
 		},
 	}
 };
@@ -326,8 +326,8 @@ export const flowrConfigFileSchema = Joi.object({
 			}).description('Configuration options for reading data frame shapes from loaded external data files, such as CSV files.')
 		}).description('The configuration of the shape inference for data frames.'),
 		string: Joi.object({
-			domain:            Joi.allow('const', 'const-set').description('The concrete string domain to be used during analysis'),
-			enableForDataflow: Joi.bool().description('Whether to enable string inference during the default dataflow step')
+			domain: Joi.allow('const', 'const-set', 'presuffix').description('The concrete string domain to be used during analysis'),
+			enable: Joi.bool().description('Whether to enable string inference during the default dataflow step')
 		}).description('The configuration of the string domain.')
 	}).description('The configuration options for abstract interpretation.')
 }).description('The configuration file format for flowR.');

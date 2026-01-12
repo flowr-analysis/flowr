@@ -535,6 +535,7 @@ export interface PrintHierarchyArguments {
 	readonly program:              ts.Program
 	readonly info:                 TypeElementInSource[]
 	readonly root:                 string
+	readonly ignoredTypes?:        readonly string[]
 	readonly collapseFromNesting?: number
 	readonly initialNesting?:      number
 	readonly maxDepth?:            number
@@ -544,13 +545,13 @@ export interface PrintHierarchyArguments {
 	readonly reverse?:             boolean
 }
 
-export const mermaidHide = ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial', 'RAccessBase'];
+export const mermaidHide = ['MergeableRecord', 'Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial', 'RAccessBase'];
 
 /**
  * Print the hierarchy of types starting from the given root.
  * If you create a wiki, please refer to the functions provided by the {@link GeneralWikiContext}.
  */
-export function printHierarchy({ program, info, root, collapseFromNesting = 1, initialNesting = 0, maxDepth = 20, skipNesting = 0, openTop, showImplSnippet = true, reverse = false }: PrintHierarchyArguments): string {
+export function printHierarchy({ program, info, root, ignoredTypes, collapseFromNesting = 1, initialNesting = 0, maxDepth = 20, skipNesting = 0, openTop, showImplSnippet = true, reverse = false }: PrintHierarchyArguments): string {
 	if(initialNesting > maxDepth) {
 		return '';
 	}
@@ -573,7 +574,7 @@ export function printHierarchy({ program, info, root, collapseFromNesting = 1, i
 	const result = [];
 
 	for(const baseType of baseTypes) {
-		if(mermaidHide.includes(baseType)) {
+		if(mermaidHide.includes(baseType) || ignoredTypes?.includes(baseType)) {
 			continue;
 		}
 		const res = printHierarchy({ program, info, root: baseType, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth, skipNesting, showImplSnippet, reverse });

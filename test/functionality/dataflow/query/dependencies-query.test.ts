@@ -11,7 +11,7 @@ import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/proce
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 
-const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], source: [], read: [], write: [], visualize: [] };
+const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], source: [], read: [], write: [], visualize: [], test: [] };
 
 function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Partial<DependenciesQueryResult> {
 	const out: Partial<DependenciesQueryResult> = {
@@ -370,6 +370,17 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			] }, { enabledCategories: ['visualize'] } );
 		});
 	});
+
+	describe('Test', () => {
+		describe('Simple', () => {
+			testQuery('simple', 'expect_equal(1 + 1, 2)', { test: [{ nodeId: '1@expect_equal', functionName: 'expect_equal' }] });
+			testQuery('testthat', 'testthat::expect_equal(1 + 1, 2)', {
+				test:    [{ nodeId: '1@testthat::expect_equal', functionName: 'expect_equal' }],
+				library: [{ nodeId: '1@expect_equal', functionName: '::', value: 'testthat' }]
+			});
+		});
+	});
+
 
 	describe('With file connections', () => {
 		for(const ro of ['r', 'rb', 'rt'] as const) {

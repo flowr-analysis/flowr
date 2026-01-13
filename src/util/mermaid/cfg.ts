@@ -11,8 +11,18 @@ import {
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { reconstructToCode } from '../../reconstruct/reconstruct';
 import { doNotAutoSelect } from '../../reconstruct/auto-select/auto-select-defaults';
-import { MermaidDefaultMarkStyle, type MermaidGraphPrinterInfo } from './info';
+import type { MermaidMarkStyle , MermaidGraphPrinterInfo } from './info';
+import { MermaidDefaultMarkStyle } from './info';
 import { collectAllIds } from '../../r-bridge/lang-4.x/ast/model/collect';
+
+
+export interface MermaidCfgGraphPrinterInfo extends MermaidGraphPrinterInfo {
+	entryPointStyle?: MermaidMarkStyle['vertex'];
+	exitPointStyle?:  MermaidMarkStyle['vertex'];
+}
+
+export const MermaidEntryPointDefaultMarkStyle: MermaidMarkStyle['vertex'] = 'stroke:cyan,stroke-width:6.5px;';
+export const MermaidExitPointDefaultMarkStyle: MermaidMarkStyle['vertex'] = 'stroke:green,stroke-width:6.5px;';
 
 function getLexeme(n?: RNodeWithParent) {
 	return n ? n.info.fullLexeme ?? n.lexeme ?? '' : undefined;
@@ -44,7 +54,7 @@ const getDirRegex = /flowchart\s+([A-Za-z]+)/;
  * @param includeOnlyIds   - If provided, only include the vertices with the given IDs.
  * @param mark             - If provided, mark the given vertices and edges.
  */
-export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, { prefix = 'flowchart BT\n', simplify = false, markStyle = MermaidDefaultMarkStyle, includeOnlyIds, mark }: MermaidGraphPrinterInfo = {}): string {
+export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, { prefix = 'flowchart BT\n', simplify = false, markStyle = MermaidDefaultMarkStyle, entryPointStyle = MermaidEntryPointDefaultMarkStyle, exitPointStyle = MermaidExitPointDefaultMarkStyle, includeOnlyIds, mark }: MermaidCfgGraphPrinterInfo = {}): string {
 	let output = prefix;
 	if(includeOnlyIds) {
 		const completed = new Set(includeOnlyIds);
@@ -128,12 +138,12 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 
 	for(const entryPoint of cfg.entryPoints) {
 		if(!includeOnlyIds || includeOnlyIds.has(entryPoint)) {
-			output += `    style n${entryPoint} stroke:cyan,stroke-width:6.5px;`;
+			output += `    style n${entryPoint} ${entryPointStyle}`;
 		}
 	}
 	for(const exitPoint of cfg.exitPoints) {
 		if(!includeOnlyIds || includeOnlyIds.has(exitPoint)) {
-			output += `    style n${exitPoint} stroke:green,stroke-width:6.5px;`;
+			output += `    style n${exitPoint} ${exitPointStyle}`;
 		}
 	}
 	if(mark) {

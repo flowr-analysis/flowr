@@ -79,8 +79,7 @@ export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisito
 			return;
 		}
 		const operations = mapDataFrameFunctionCall(node, this, this.config.dfg, this.config.ctx);
-
-		this.currentState = this.applyDataFrameExpression(node, operations, this.currentState);
+		this.applyDataFrameExpression(node, operations);
 	}
 
 	protected override onReplacementCall({ call, target, source }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
@@ -94,8 +93,7 @@ export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisito
 			return;
 		}
 		const operations = mapDataFrameReplacementFunction(node, sourceNode, this, this.config.dfg, this.config.ctx);
-
-		this.currentState = this.applyDataFrameExpression(node, operations, this.currentState);
+		this.applyDataFrameExpression(node, operations);
 	}
 
 	protected override onAccessCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
@@ -107,13 +105,12 @@ export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisito
 			return;
 		}
 		const operations = mapDataFrameAccess(node, this, this.config.dfg, this.config.ctx);
-
-		this.currentState = this.applyDataFrameExpression(node, operations, this.currentState);
+		this.applyDataFrameExpression(node, operations);
 	}
 
-	private applyDataFrameExpression(node: RNode<ParentInformation>, operations: DataFrameOperations, state: DataFrameStateDomain): DataFrameStateDomain {
+	private applyDataFrameExpression(node: RNode<ParentInformation>, operations: DataFrameOperations): void {
 		if(operations === undefined) {
-			return state;
+			return;
 		} else if(this.operations !== undefined) {
 			this.operations.set(node.info.id, operations);
 		}
@@ -121,20 +118,19 @@ export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisito
 		let value = DataFrameDomain.top(maxColNames);
 
 		for(const { operation, operand, type, options, ...args } of operations) {
-			const operandValue = operand !== undefined ? this.getAbstractValue(operand, state) : value;
+			const operandValue = operand !== undefined ? this.getAbstractValue(operand, this.currentState) : value;
 			value = applyDataFrameSemantics(operation, operandValue ?? DataFrameDomain.top(maxColNames), args, options);
 			const constraintType = type ?? getConstraintType(operation);
 
 			if(operand !== undefined && constraintType === ConstraintType.OperandModification) {
-				state.set(operand, value);
+				this.currentState.set(operand, value);
 
 				for(const origin of this.getVariableOrigins(operand)) {
-					state.set(origin, value);
+					this.currentState.set(origin, value);
 				}
 			} else if(constraintType === ConstraintType.ResultPostcondition) {
-				state.set(node.info.id, value);
+				this.currentState.set(node.info.id, value);
 			}
 		}
-		return state;
 	}
 }

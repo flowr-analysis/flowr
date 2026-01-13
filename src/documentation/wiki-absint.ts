@@ -2,6 +2,7 @@ import { AbstractInterpretationVisitor } from '../abstract-interpretation/absint
 import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import { IntervalDomain } from '../abstract-interpretation/domains/interval-domain';
 import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
+import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -50,7 +51,7 @@ async function inferIntervals(): Promise<string> {
 
 	analyzer.addRequest(`
 		x <- 42
-		y <- if (runif < 0.5) 6 else 12
+		y <- if (runif() < 0.5) 6 else 12
 		z <- x + y
 	`.trim());
 
@@ -95,18 +96,21 @@ To perform abstract interpretation, we first need to define an abstract domain t
 In _flowR_, an abstract domain is represented by the class ${ctx.link(AbstractDomain)} that extends the ${ctx.link('Lattice')} interface. It has the type parameters \`Concrete\` for the concrete domain of the abstract domain (e.g. strings, numbers, lists), \`Abstract\` for the abstract representation of the values (e.g. sets, intervals), \`Top\` for the representation of the top element, \`Bot\` for the representation of the bottom element, and \`Value\` for the type of the current abstract value of the abstract domain (i.e. \`Abstract\`, \`Top\`, or \`Bot\`). An abstract domain provides the following properties and functions:
 
  * ${ctx.linkM(AbstractDomain, 'value')} the current abstract value of the abstract domain
- * ${ctx.linkM(AbstractDomain, 'leq')}) to check whether to abstract values are ordered with respect to the partial order of the lattice
+ * ${ctx.linkM(AbstractDomain, 'top')} to get the top element (greatest element) of the abstract domain
+ * ${ctx.linkM(AbstractDomain, 'bottom')} to get the bottom element (least element) of the abstract domain
+<!-- --->
+ * ${ctx.linkM(AbstractDomain, 'isTop')} to check whether the current abstract value is top
+ * ${ctx.linkM(AbstractDomain, 'isBottom')} to check whether the current abstract value is bottom
+ * ${ctx.linkM(AbstractDomain, 'isValue')} to check whether the current abstract value is a value (can still be top or bottom)
+<!-- --->
+ * ${ctx.linkM(AbstractDomain, 'leq')} to check whether to abstract values are ordered with respect to the partial order of the lattice
  * ${ctx.linkM(AbstractDomain, 'join')} to join two abstract values to get the least upper bound (LUB)
  * ${ctx.linkM(AbstractDomain, 'meet')} to meet two abstract values to get the greates lower bound (GLB)
  * ${ctx.linkM(AbstractDomain, 'widen')} to perform widening with another abstract value to ensure termination of the fixpoint iteration
  * ${ctx.linkM(AbstractDomain, 'narrow')} to perform narrowing with another abstract value to refine the abstract value after widening
- * ${ctx.linkM(AbstractDomain, 'top')} to get the top element (greatest element) of the abstract domain
- * ${ctx.linkM(AbstractDomain, 'bottom')} to get the bottom element (least element) of the abstract domain
+<!-- --->
  * ${ctx.linkM(AbstractDomain, 'concretize')} representing the concretization function of the abstract domain
  * ${ctx.linkM(AbstractDomain, 'abstract')} representing the abstraction function of the abstract domain
- * ${ctx.linkM(AbstractDomain, 'isTop')} to check whether the current abstract value is top
- * ${ctx.linkM(AbstractDomain, 'isBottom')} to check whether the current abstract value is bottom
- * ${ctx.linkM(AbstractDomain, 'isValue')} to check whether the current abstract value is a value (can still be top or bottom)
 
 ${details('Class Diagram', `
 All boxes link to their respective implementation in the source code.
@@ -128,7 +132,7 @@ ${section('Abstract Interpretation', 2, 'abstract-interpretation')}
 
 We perform abstract interpretation by forward-traversing the ${ctx.linkPage('wiki/Control Flow Graph', 'control flow graph')} of _flowR_ using a ${ctx.link(AbstractInterpretationVisitor)}. For each visited control flow vertex, the visitor retrieves the current abstract state by joining the abstract states of the predecessors, applies the abstract semantics of the visited control flow vertex to the current state, and updates the abstract state of the currently visited vertex to the current state. The visitor already handles assignments and (delayed) widening at widening points. However, the visitor does not yet support interprocedural abstract interpretation.
 
-To implement a custom abstract interpretation analysis, we can just create a new class and extend the ${ctx.link(AbstractInterpretationVisitor)}. The abstract interpretation visitor uses a ${ctx.link(StateAbstractDomain)} to capture the current abstract state at each vertex in the control flow graph. Hence, the abstract interpretation visitor required a value abstract domain \`Domain\` as type parameter to use for the state abstract domain. We can then extend the callback functions of the ${ctx.link(AbstractInterpretationVisitor)} to implement the abstract semantics of expressions, such as ${ctx.link('SemanticCfgGuidedVisitor:::onNumberConstant')}, ${ctx.link('AbstractInterpretationVisitor:::onFunctionCall')}, and ${ctx.link('SemanticCfgGuidedVisitor:::onAssignmentCall')} (make sure to still call the super function). The abstract interpretation visitor provides the following functions to retrieve the currently inferred values:
+To implement a custom abstract interpretation analysis, we can just create a new class and extend the ${ctx.link(AbstractInterpretationVisitor)}. The abstract interpretation visitor uses a ${ctx.link(StateAbstractDomain)} to capture the current abstract state at each vertex in the control flow graph. Hence, the abstract interpretation visitor required a value abstract domain \`Domain\` as type parameter to use for the state abstract domain. We can then extend the callback functions of the ${ctx.link(AbstractInterpretationVisitor)} to implement the abstract semantics of expressions, such as ${ctx.link(`${SemanticCfgGuidedVisitor.name}:::onNumberConstant`)}, ${ctx.link(`${AbstractInterpretationVisitor.name}:::onFunctionCall`)}, and ${ctx.link(`${SemanticCfgGuidedVisitor.name}:::onReplacementCall`)} (make sure to still call the respective super function). The abstract interpretation visitor provides the following functions to retrieve the currently inferred values:
 
  * ${ctx.linkM(AbstractInterpretationVisitor, 'getAbstractValue')} to resolve the inferred abstract value for an AST node (this includes resolving symbols, pipes, and if expressions)
  * ${ctx.linkM(AbstractInterpretationVisitor, 'getAbstractState')} to get the inferred abstract state at an AST node mapping AST nodes to abstract values
@@ -139,9 +143,9 @@ For example, if we want to perform a (very basic) interval analysis using abstra
 
 ${ctx.code(IntervalInferenceVisitor)}
 
-The interval inference visitor first overrides the ${ctx.link('SemanticCfgGuidedVisitor:::onNumberConstant')} function to infer intervals for visited control flow vertices that represent numeric constants. For numeric constants, the resulting interval consists just of the number value of the constant. We then update the current abstract state of the visitor by setting the inferred abstract value of the currently visited control flow vertex to the new interval.
+The interval inference visitor first overrides the ${ctx.link(`${SemanticCfgGuidedVisitor.name}:::onNumberConstant`)} function to infer intervals for visited control flow vertices that represent numeric constants. For numeric constants, the resulting interval consists just of the number value of the constant. We then update the current abstract state of the visitor by setting the inferred abstract value of the currently visited control flow vertex to the new interval.
 
-In this simple example, we only want to support the addition and subtraction of numeric values. Therefore, we override the ${ctx.link('AbstractInterpretationVisitor:::onFunctionCall')} function to apply the abstract semantics of additions and subtraction with resprect to the interval domain. For the addition and subtraction, we are only interested in function calls with exactly two non-empty arguments. We first resolve the currently inferred abstract value for the left and right operand of the function call. If we have no inferred value for one of the operands, this function call might not be a numeric function call and we ignore it. Otherwise, we check whether the function call represents an addition or subtraction and apply the abstract semantics of the operation to the left and right operand. We then again update the current abstract state of the visitor by setting the inferred abstract value of the currently visited function call vertex to the abstract value resulting from applying the abstract semantics of the operation to the operands.
+In this simple example, we only want to support the addition and subtraction of numeric values. Therefore, we override the ${ctx.link(`${AbstractInterpretationVisitor.name}:::onFunctionCall`)} function to apply the abstract semantics of additions and subtraction with resprect to the interval domain. For the addition and subtraction, we are only interested in function calls with exactly two non-empty arguments. We first resolve the currently inferred abstract value for the left and right operand of the function call. If we have no inferred value for one of the operands, this function call might not be a numeric function call and we ignore it. Otherwise, we check whether the function call represents an addition or subtraction and apply the abstract semantics of the operation to the left and right operand. We then again update the current abstract state of the visitor by setting the inferred abstract value of the currently visited function call vertex to the abstract value resulting from applying the abstract semantics of the operation to the operands.
 
 If we know want to run the interval inference, we can write the following code:
 

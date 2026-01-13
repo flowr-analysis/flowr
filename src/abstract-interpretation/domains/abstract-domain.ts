@@ -164,7 +164,7 @@ export function domainElementToString(value: AnyAbstractDomain | unknown): strin
 }
 
 /**
- *
+ * Checks whether a value is an abstract domain.
  */
 export function isAbstractDomain(value: unknown): value is AnyAbstractDomain {
 	if(typeof value !== 'object' || value === null) {

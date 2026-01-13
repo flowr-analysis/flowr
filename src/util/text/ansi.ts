@@ -99,7 +99,14 @@ export function italic(s: string, f: OutputFormatter = formatter, options?: Form
  * This does not work if the {@link setFormatter|formatter} is void. Tries to format the text with an italic font shape.
  */
 export function bold(s: string, f: OutputFormatter = formatter, options?: FormatOptions): string {
-	return f.format(s, { style: FontStyles.Bold, ...options });
+	return f.format(s, { style: FontStyles.Bold, ...(options ?? {}) });
+}
+
+/**
+ * This does not work if the {@link setFormatter|formatter} is void. Tries to format the text as informational message.
+ */
+export function ansiInfo(s: string, f: OutputFormatter = formatter): string {
+	return f.format(s, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
 }
 
 export const escape = '\x1b[';

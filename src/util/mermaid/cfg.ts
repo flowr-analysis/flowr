@@ -81,7 +81,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 			if(simplify) {
 				const ids = vertex.elems?.map(e => e.id) ?? [];
 				const reconstruct = reconstructToCode(normalizedAst, { nodes: new Set(ids) }, doNotAutoSelect).code;
-				const name = `"\`Basic Block (${id})\n${escapeMarkdown(reconstruct)}\`"`;
+				const name = `"\`(${id})\n${escapeMarkdown(reconstruct)}\`"`;
 				output += `    n${id}[[${name}]]\n`;
 			} else {
 				output += `    subgraph n${vertex.id} [Block ${normalizedVertex?.info.fullLexeme ?? id}]\n`;

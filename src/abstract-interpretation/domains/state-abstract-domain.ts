@@ -13,6 +13,10 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain> extends Mappe
 	public create(value: ReadonlyMap<NodeId, Domain>): StateAbstractDomain<Domain> {
 		return new StateAbstractDomain(value);
 	}
+
+	public static bottom<Domain extends AnyAbstractDomain>(): StateAbstractDomain<Domain> {
+		return new StateAbstractDomain(new Map<NodeId, Domain>());
+	}
 }
 
 /**

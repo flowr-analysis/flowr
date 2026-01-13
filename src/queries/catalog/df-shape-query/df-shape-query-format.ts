@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import type { DataFrameDomain, DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
+import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
 import { StateAbstractDomain } from '../../../abstract-interpretation/domains/state-abstract-domain';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { sliceCriterionParser } from '../../../cli/repl/parser/slice-query-parser';
@@ -18,7 +18,7 @@ export interface DfShapeQuery extends BaseQueryFormat {
 }
 
 export interface DfShapeQueryResult extends BaseQueryResult {
-	domains: DataFrameStateDomain | Map<SingleSlicingCriterion, DataFrameDomain | undefined>
+	domains: StateAbstractDomain<DataFrameDomain> | Map<SingleSlicingCriterion, DataFrameDomain | undefined>
 }
 
 function dfShapeQueryLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'df-shape'> {

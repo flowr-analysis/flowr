@@ -3,7 +3,8 @@ import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { AbstractInterpretationVisitor, type AbsintVisitorConfiguration } from '../absint-visitor';
-import { DataFrameDomain, DataFrameStateDomain } from './dataframe-domain';
+import { StateAbstractDomain } from '../domains/state-abstract-domain';
+import { DataFrameDomain } from './dataframe-domain';
 import { mapDataFrameAccess } from './mappers/access-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
 import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
@@ -46,14 +47,14 @@ interface DataFrameShapeInferenceConfiguration extends Omit<AbsintVisitorConfigu
 /**
  * The control flow graph visitor to infer the shape of data frames using abstract interpretation
  */
-export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisitor<DataFrameDomain, DataFrameShapeInferenceConfiguration & { domain: DataFrameStateDomain }> {
+export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisitor<DataFrameDomain, DataFrameShapeInferenceConfiguration & { domain: StateAbstractDomain<DataFrameDomain> }> {
 	/**
 	 * The abstract data frame operations the function call nodes are mapped to.
 	 */
 	private readonly operations?: Map<NodeId, DataFrameOperation[]>;
 
 	constructor({ trackOperations = true, ...config }: DataFrameShapeInferenceConfiguration) {
-		super({ ...config, domain: DataFrameStateDomain.bottom() });
+		super({ ...config, domain: StateAbstractDomain.bottom() });
 
 		if(trackOperations) {
 			this.operations = new Map();

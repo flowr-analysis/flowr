@@ -19,7 +19,7 @@ import { splitAtEscapeSensitive } from '../../../util/text/args';
 
 function printHelp(output: ReplOutput) {
 	output.stderr(`Format: ${italic(':query <query> <code>', output.formatter)}`);
-	output.stdout('Queries starting with \'@<type>\' is interpreted as a query of the given type.');
+	output.stdout('Queries starting with \'@<type>\' are interpreted as a query of the given type.');
 	output.stdout(`With this, ${bold(':query @config', output.formatter)} prints the result of the config query.`);
 	output.stdout(`If you want to run the linter on a project use:\n    ${bold(':query @linter file://<path>', output.formatter)}.`);
 	output.stdout(ansiInfo('Otherwise, you can also directly pass the query json. Then, the query is an array of query objects to represent multiple queries.'));

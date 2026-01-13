@@ -45,7 +45,7 @@
                 mv dist/node_modules $out/share/flowR/node_modules
                 echo "#!/usr/bin/env sh" >> $out/bin/flowR
                 echo "cd $out/share/flowR" >> $out/bin/flowR
-                echo "${pkgs.nodejs}/bin/node $out/share/flowR/src/cli/flowr.min.js \"\$@\"" >> $out/bin/flowR
+                echo "exec ${pkgs.nodejs}/bin/node $out/share/flowR/src/cli/flowr.min.js \"\$@\"" >> $out/bin/flowR
                 chmod +x $out/bin/flowR
                  wrapProgram $out/bin/flowR \
                   --set PATH ${

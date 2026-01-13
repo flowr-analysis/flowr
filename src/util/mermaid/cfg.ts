@@ -11,7 +11,7 @@ import {
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { reconstructToCode } from '../../reconstruct/reconstruct';
 import { doNotAutoSelect } from '../../reconstruct/auto-select/auto-select-defaults';
-import type { MermaidMarkStyle , MermaidGraphPrinterInfo } from './info';
+import type { MermaidMarkStyle , MermaidGraphPrinterInfo, MermaidMarkdownMark } from './info';
 import { MermaidDefaultMarkStyle } from './info';
 import { collectAllIds } from '../../r-bridge/lang-4.x/ast/model/collect';
 
@@ -43,6 +43,19 @@ function cfgOfNode(vert: CfgSimpleVertex, normalizedVertex: RNodeWithParent | un
 
 const getDirRegex = /flowchart\s+([A-Za-z]+)/;
 
+
+function shouldHighlight(simplify: boolean, element: CfgSimpleVertex, include: ReadonlySet<MermaidMarkdownMark>): boolean {
+	if(simplify) {
+		// Only basic blocks are shown, so include the BB, if at least one child is selected
+		return element.type == CfgVertexType.Block && element.elems.filter(elem => elem.type !== CfgVertexType.EndMarker).some(elem => include.has(elem.id));
+
+	} else {
+		// Basic blocks and vertices are shown, include the BB, if all children are highlighted
+		return element.type == CfgVertexType.Block
+			? element.elems.filter(elem => elem.type !== CfgVertexType.EndMarker).every(elem => include.has(elem.id))
+			: include.has(element.id);
+	}
+}
 
 /**
  * Convert the control flow graph to a mermaid string.
@@ -147,8 +160,10 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 		}
 	}
 	if(mark) {
-		for(const id of mark.values()) {
-			output += `    style n${id} ${markStyle.vertex}`;
+		for(const [_, vertex] of cfg.graph.vertices(true)) {
+			if(shouldHighlight(simplify && cfg.graph.mayHaveBasicBlocks(), vertex, mark)) {
+				output += `    style n${vertex.id} ${markStyle.vertex}`;
+			}
 		}
 	}
 	return output;

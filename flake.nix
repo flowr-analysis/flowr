@@ -31,7 +31,7 @@
             flowR = pkgs.buildNpmPackage {
               name = "flowR";
               src = ./.;
-              npmBuildScript = "build:bundle-flowr";
+              npmBuildScript = "build";
               npmDeps = pkgs.importNpmLock {
                 npmRoot = ./.;
               };
@@ -41,22 +41,20 @@
               ];
               installPhase = ''
                 mkdir -p $out/{share/flowR,bin}
+
                 mv dist/src $out/share/flowR/src
-                mv dist/node_modules $out/share/flowR/node_modules
-                echo "#!/usr/bin/env sh" >> $out/bin/flowR
-                echo "cd $out/share/flowR" >> $out/bin/flowR
-                echo "exec ${pkgs.nodejs}/bin/node $out/share/flowR/src/cli/flowr.min.js \"\$@\"" >> $out/bin/flowR
-                chmod +x $out/bin/flowR
-                 wrapProgram $out/bin/flowR \
-                  --set PATH ${
-                    lib.makeBinPath (
-                      with pkgs;
-                      [
-                        R
-                        bash
-                      ]
-                    )
+                ln -s "${
+                  pkgs.importNpmLock.buildNodeModules {
+                    npmRoot = ./.;
+                    inherit (pkgs) nodejs;
                   }
+                }/node_modules" $out/share/flowR/node_modules
+
+                echo "#!${lib.getExe pkgs.bashNonInteractive}" >> $out/bin/flowR
+                echo "cd $out/share/flowR" >> $out/bin/flowR
+                echo "exec ${lib.getExe pkgs.nodejs} $out/share/flowR/src/cli/flowr.js \"\$@\"" >> $out/bin/flowR
+                chmod +x $out/bin/flowR
+                wrapProgram $out/bin/flowR --set PATH ${lib.makeBinPath (with pkgs; [ R ])}
               '';
             };
           };

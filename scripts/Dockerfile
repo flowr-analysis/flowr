@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:25.0-alpine3.22 AS builder
+FROM node:25.2-alpine3.23 AS builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ RUN apk add --no-cache python3 make g++
 RUN npm ci && npm run build:bundle-flowr
 
 
-FROM node:25.0-alpine3.22 AS flowr
+FROM node:25.2-alpine3.23 AS flowr
 
 LABEL author="Florian Sihler" git="https://github.com/flowr-analysis/flowr"
 
@@ -28,25 +28,17 @@ COPY ./scripts/demo.R LICENSE /app/
 
 # copy all package.jsons so we can install them (see below)
 COPY ./package.json ./package-lock.json /app/
+COPY --from=builder /app/dist /app
 
-# install python and build tools for node-gyp
-RUN apk add --no-cache python3 make g++
-
-# install all modules so that we have dependencies in here too
-# (we don't copy them from the builder because builder modules include dev deps too)
-RUN npm ci --omit=dev
-
-COPY --from=builder /app/dist /app/dist
-
-# make new user
-RUN rm -rf /app/**/tsconfig.tsbuildinfo /app/dist/**/*.d.ts && addgroup -S flowr && adduser -S flowr -G flowr
+# make new user and clean up the test files
+RUN rm -rf /app/**/tsconfig.tsbuildinfo /app/**/*.d.ts /app/test/* && addgroup -S flowr && adduser -S flowr -G flowr
 USER flowr
 
+# we also configure basic memory options
 ENTRYPOINT [\
-    "node",\
-    # configure basic memory options
-    "--max-old-space-size=8192",\
-    "--stack-size=8192",\
-    "--max-semi-space-size=8192",\
-    "/app/dist/src/cli/flowr.min.js"\
-   ]
+   "node",\
+   "--max-old-space-size=8192",\
+   "--stack-size=8192",\
+   "--max-semi-space-size=8192",\
+   "/app/src/cli/flowr.min.js"\
+  ]

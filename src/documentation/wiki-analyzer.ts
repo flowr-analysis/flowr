@@ -132,7 +132,7 @@ The builder provides two methods for building the analyzer:
 
 	For more information on how to configure the builder, please refer to the [Builder Configuration](#builder-configuration) section below.
 
-	${section('Overview of the Analyzer', 3)}
+${section('Overview of the Analyzer', 3)}
 
 Once you have created an analyzer instance, you can add R files, folders, or even entire projects for analysis using the
 ${ctx.linkM(FlowrAnalyzer, 'addRequest')} method.

@@ -11,13 +11,24 @@ import { isValue } from '../../../dataflow/eval/values/r-value';
 import { unescapeSpecialChars } from '../../../abstract-interpretation/data-frame/resolve-args';
 import type { RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
 import type { ConstSet } from '../../../abstract-interpretation/eval/domains/constant-set';
+import { inferStringDomains } from '../../../abstract-interpretation/eval/inference';
+import { extractCfg } from '../../../control-flow/extract-cfg';
 
 export function fingerPrintOfQuery(query: SdeQuery): string {
 	return JSON.stringify(query);
 }
 
 export function executeSdeQuery({ ast, config, dataflow }: BasicQueryData, queries: readonly SdeQuery[]): SdeQueryResult {
-	const start = Date.now();
+
+	let start = Date.now();
+	if(queries.some(it => it.doinfer === true)) {
+		const cfg = extractCfg(ast, config, dataflow.graph);
+		start = Date.now();
+		inferStringDomains(cfg, dataflow.graph, ast, config);
+	}
+	const end = Date.now();
+
+
 	const results = new Map<SingleSlicingCriterion, Lift<Value>>();
 
 	for(const query of queries) {
@@ -46,7 +57,7 @@ export function executeSdeQuery({ ast, config, dataflow }: BasicQueryData, queri
 
 	return {
 		'.meta': {
-			timing: Date.now() - start
+			timing: end - start
 		},
 		results,
 	};

@@ -25,7 +25,11 @@ import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 
 
 /**
- *
+ * Processes a for-loop call: `for(<variable> in <vector>) <body>`
+ * desugared as:
+ * ```r
+ * `for`(<variable>, <vector>, <body>)
+ * ```
  */
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

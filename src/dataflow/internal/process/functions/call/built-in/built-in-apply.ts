@@ -37,7 +37,7 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 
 
 /**
- *
+ * Process an apply call like `vapply` or `mapply`.
  */
 export function processApply<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -59,7 +59,7 @@ export function processApply<OtherInfo>(
 	let index = indexOfFunction;
 	/* search, if one of the arguments actually contains the argument name if given in the config */
 	if(nameOfFunctionArgument !== undefined) {
-		const mayFn = args.findIndex(arg => arg !== EmptyArgument && arg.name && arg.name.content === nameOfFunctionArgument);
+		const mayFn = args.findIndex(arg => arg !== EmptyArgument && arg.name?.content === nameOfFunctionArgument);
 		if(mayFn >= 0) {
 			index = mayFn;
 		}

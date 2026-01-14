@@ -7,9 +7,9 @@ function flattenSetElements(s: Lift<Value[]>): Lift<Value[]> {
 	});
 }
 
-
 /**
- *
+ * Creates a value set from the given elements.
+ * @see {@link isSet} - to check whether a value is a set
  */
 export function setFrom<V extends Value[]>(...elements: V): Lift<ValueSet<Value[]>> {
 	const vals = elements.flatMap(e => {
@@ -24,7 +24,8 @@ export function setFrom<V extends Value[]>(...elements: V): Lift<ValueSet<Value[
 
 
 /**
- *
+ * Checks, whether the given value is a set.
+ * @see {@link setFrom} - to create sets
  */
 export function isSet<V extends Value>(element: V): boolean {
 	return element.type === 'set';

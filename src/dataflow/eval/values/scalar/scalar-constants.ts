@@ -1,9 +1,8 @@
 import { type Lift, type ValueNumber , Bottom , Top } from '../r-value';
 import type { RNumberValue } from '../../../../r-bridge/lang-4.x/convert-values';
 
-
 /**
- *
+ * Given a (ts) number, return a scalar R number value.
  */
 export function getScalarFromInteger(num: number, markedAsInt = Number.isInteger(num), complexNumber = false): ValueNumber<RNumberValue> {
 	return {
@@ -18,7 +17,7 @@ export function getScalarFromInteger(num: number, markedAsInt = Number.isInteger
 
 
 /**
- *
+ * Take a lifted R number value and wrap it into a ValueNumber.
  */
 export function liftScalar(value: Lift<RNumberValue>): ValueNumber {
 	return {

@@ -2,10 +2,8 @@ import { log } from '../../../util/log';
 import type { NormalizedAstQuery, NormalizedAstQueryResult } from './normalized-ast-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 
-
-
 /**
- *
+ * Executes the normalized-AST query.
  */
 export async function executeNormalizedAstQuery({ analyzer }: BasicQueryData, queries: readonly NormalizedAstQuery[]): Promise<NormalizedAstQueryResult> {
 	if(queries.length !== 1) {

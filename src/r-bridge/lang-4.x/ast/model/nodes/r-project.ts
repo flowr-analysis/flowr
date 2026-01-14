@@ -26,6 +26,13 @@ export interface RProject<Info = NoInfo> {
 }
 
 /**
+ * Type guard for RProject nodes.
+ */
+export function isRProject<Info = NoInfo>(node: unknown): node is RProject<Info> {
+	return typeof node === 'object' && node !== null && 'type' in node && node.type === RType.Project;
+}
+
+/**
  * Merge multiple projects into a single one by concatenating their files.
  * This will remove the `info` property of the resulting project.
  */

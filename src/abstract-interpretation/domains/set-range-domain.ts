@@ -30,7 +30,7 @@ const DefaultLimit = { min: DEFAULT_INFERENCE_LIMIT, range: DEFAULT_INFERENCE_LI
 
 /**
  * The set range abstract domain as range of possible value sets with a minimum set of values and a range of possible additional values
- * (similar to an interval like structure with a lower bound and a difference to the upper bound).
+ * (similar to an interval-like structure with a lower bound and a difference to the upper bound).
  * The Bottom element is defined as {@link Bottom} symbol and the Top element is defined as the range `[∅, Top]` where the minimum set is the empty set and the range is {@link Top}.
  * @template T     - Type of the values in the sets in the abstract domain
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)

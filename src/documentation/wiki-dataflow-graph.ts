@@ -933,7 +933,7 @@ The following vertices types exist:
 	([k,v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
 ).join('\n1. ')}
 
-${details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', ctx.mermaid('DataflowGraphVertexInfo', ['MergeableRecord'])))}
+${details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', ctx.mermaid('DataflowGraphVertexInfo', { inlineTypes: ['MergeableRecord'] })))}
 
 </details>
 
@@ -947,7 +947,7 @@ The following edges types exist, internally we use bitmasks to represent multipl
 	([k, v], index) => `[\`${k}\` (${v})](#${index + 1}-${k.toLowerCase().replace(/\s/g, '-')}-edge)`
 ).join('\n1. ')}
 
-${details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', ctx.mermaid('EdgeType', ['MergeableRecord'])))}
+${details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', ctx.mermaid('EdgeType', { inlineTypes: ['MergeableRecord'] })))}
 
 </details>
 

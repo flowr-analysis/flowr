@@ -1,10 +1,8 @@
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AbstractDomainValue } from '../domains/abstract-domain';
 import { Top } from '../domains/lattice';
 import { PosIntervalDomain } from '../domains/positive-interval-domain';
 import { ProductDomain } from '../domains/product-domain';
 import { SetRangeDomain } from '../domains/set-range-domain';
-import { StateAbstractDomain } from '../domains/state-abstract-domain';
 
 /** The type of the abstract product representing the shape of data frames */
 export type AbstractDataFrameShape = {
@@ -85,19 +83,5 @@ export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 			}
 		}
 		return value;
-	}
-}
-
-/**
- * The data frame state abstract domain as state domain mapping AST node IDs to inferred abstract data frame shapes.
- */
-export class DataFrameStateDomain extends StateAbstractDomain<DataFrameDomain> {
-	public create(value: ReadonlyMap<NodeId, DataFrameDomain>): this;
-	public create(value: ReadonlyMap<NodeId, DataFrameDomain>): DataFrameStateDomain {
-		return new DataFrameStateDomain(value);
-	}
-
-	public static bottom(): DataFrameStateDomain {
-		return new DataFrameStateDomain(new Map<NodeId, DataFrameDomain>());
 	}
 }

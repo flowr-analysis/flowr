@@ -1,10 +1,11 @@
 import { describe } from 'vitest';
-import { type AbstractDataFrameShape , DataFrameDomain, DataFrameStateDomain } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
+import { type AbstractDataFrameShape, DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
 import { DEFAULT_INFERENCE_LIMIT } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import { PosIntervalDomain, PosIntervalTop } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
 import type { ConcreteProduct } from '../../../../src/abstract-interpretation/domains/product-domain';
 import { SetRangeDomain } from '../../../../src/abstract-interpretation/domains/set-range-domain';
+import { StateAbstractDomain } from '../../../../src/abstract-interpretation/domains/state-abstract-domain';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assertAbstractDomain } from '../domains/domain';
 import type { ExpectedDataFrameShape } from './data-frame';
@@ -17,7 +18,7 @@ describe('Data Frame Domains', () => {
 	});
 
 	const createState = (state: [NodeId, ExpectedDataFrameShape][]) =>
-		new DataFrameStateDomain(new Map(state.map(([id, value]) => [id, createDomain(value)])));
+		new StateAbstractDomain(new Map(state.map(([id, value]) => [id, createDomain(value)])));
 
 	const DataFrameBottom = { colnames: Bottom, cols: Bottom, rows: Bottom } satisfies ExpectedDataFrameShape;
 	const DataFrameTop = { colnames: [[], Top], cols: PosIntervalTop, rows: PosIntervalTop } satisfies ExpectedDataFrameShape;

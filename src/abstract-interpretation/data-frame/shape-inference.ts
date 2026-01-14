@@ -1,9 +1,10 @@
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { AbstractInterpretationVisitor, type AbsintVisitorConfiguration } from '../absint-visitor';
-import { DataFrameDomain, DataFrameStateDomain } from './dataframe-domain';
+import { StateAbstractDomain } from '../domains/state-abstract-domain';
+import { DataFrameDomain } from './dataframe-domain';
 import { mapDataFrameAccess } from './mappers/access-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
 import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
@@ -46,14 +47,14 @@ interface DataFrameShapeInferenceConfiguration extends Omit<AbsintVisitorConfigu
 /**
  * The control flow graph visitor to infer the shape of data frames using abstract interpretation
  */
-export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisitor<DataFrameDomain, NoInfo, DataFrameShapeInferenceConfiguration & { domain: DataFrameStateDomain }> {
+export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisitor<DataFrameDomain, DataFrameShapeInferenceConfiguration & { domain: StateAbstractDomain<DataFrameDomain> }> {
 	/**
 	 * The abstract data frame operations the function call nodes are mapped to.
 	 */
 	private readonly operations?: Map<NodeId, DataFrameOperation[]>;
 
 	constructor({ trackOperations = true, ...config }: DataFrameShapeInferenceConfiguration) {
-		super({ ...config, domain: DataFrameStateDomain.bottom() });
+		super({ ...config, domain: StateAbstractDomain.bottom() });
 
 		if(trackOperations) {
 			this.operations = new Map();
@@ -70,44 +71,47 @@ export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisito
 		return id !== undefined ? this.operations?.get(id) : undefined;
 	}
 
-	protected override evalFunctionCall(call: DataflowGraphVertexFunctionCall, state: DataFrameStateDomain): DataFrameStateDomain {
+	protected override onFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
+		super.onFunctionCall({ call });
+
 		const node = this.getNormalizedAst(call.id);
 
 		if(node === undefined) {
-			return state;
+			return;
 		}
 		const operations = mapDataFrameFunctionCall(node, this, this.config.dfg, this.config.ctx);
-
-		return this.applyDataFrameExpression(node, operations, state);
+		this.applyDataFrameExpression(node, operations);
 	}
 
-	protected override evalReplacementCall(call: DataflowGraphVertexFunctionCall, target: NodeId, source: NodeId, state: DataFrameStateDomain): DataFrameStateDomain {
+	protected override onReplacementCall({ call, target, source }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
+		super.onReplacementCall({ call, target, source });
+
 		const node = this.getNormalizedAst(call.id);
 		const targetNode = this.getNormalizedAst(target);
 		const sourceNode = this.getNormalizedAst(source);
 
 		if(node === undefined || targetNode === undefined || sourceNode === undefined) {
-			return state;
+			return;
 		}
 		const operations = mapDataFrameReplacementFunction(node, sourceNode, this, this.config.dfg, this.config.ctx);
-
-		return this.applyDataFrameExpression(node, operations, state);
+		this.applyDataFrameExpression(node, operations);
 	}
 
-	protected override evalAccessCall(call: DataflowGraphVertexFunctionCall, state: DataFrameStateDomain): DataFrameStateDomain {
+	protected override onAccessCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
+		super.onAccessCall({ call });
+
 		const node = this.getNormalizedAst(call.id);
 
 		if(node === undefined) {
-			return state;
+			return;
 		}
 		const operations = mapDataFrameAccess(node, this, this.config.dfg, this.config.ctx);
-
-		return this.applyDataFrameExpression(node, operations, state);
+		this.applyDataFrameExpression(node, operations);
 	}
 
-	private applyDataFrameExpression(node: RNode<ParentInformation>, operations: DataFrameOperations, state: DataFrameStateDomain): DataFrameStateDomain {
+	private applyDataFrameExpression(node: RNode<ParentInformation>, operations: DataFrameOperations): void {
 		if(operations === undefined) {
-			return state;
+			return;
 		} else if(this.operations !== undefined) {
 			this.operations.set(node.info.id, operations);
 		}
@@ -115,20 +119,19 @@ export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisito
 		let value = DataFrameDomain.top(maxColNames);
 
 		for(const { operation, operand, type, options, ...args } of operations) {
-			const operandValue = operand !== undefined ? this.getAbstractValue(operand, state) : value;
+			const operandValue = operand !== undefined ? this.getAbstractValue(operand, this.currentState) : value;
 			value = applyDataFrameSemantics(operation, operandValue ?? DataFrameDomain.top(maxColNames), args, options);
 			const constraintType = type ?? getConstraintType(operation);
 
 			if(operand !== undefined && constraintType === ConstraintType.OperandModification) {
-				state.set(operand, value);
+				this.currentState.set(operand, value);
 
 				for(const origin of this.getVariableOrigins(operand)) {
-					state.set(origin, value);
+					this.currentState.set(origin, value);
 				}
 			} else if(constraintType === ConstraintType.ResultPostcondition) {
-				state.set(node.info.id, value);
+				this.currentState.set(node.info.id, value);
 			}
 		}
-		return state;
 	}
 }

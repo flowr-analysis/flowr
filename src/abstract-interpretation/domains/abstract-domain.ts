@@ -25,7 +25,7 @@ implements Lattice<Abstract, Top, Bot, Value> {
 
 	public get value(): Value {
 		return this._value;
-	};
+	}
 
 	public abstract create(value: Abstract | Top | Bot): this;
 
@@ -163,9 +163,8 @@ export function domainElementToString(value: AnyAbstractDomain | unknown): strin
 	return JSON.stringify(value);
 }
 
-
 /**
- *
+ * Checks whether a value is an abstract domain.
  */
 export function isAbstractDomain(value: unknown): value is AnyAbstractDomain {
 	if(typeof value !== 'object' || value === null) {

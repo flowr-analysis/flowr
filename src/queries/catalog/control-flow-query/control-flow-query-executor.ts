@@ -3,10 +3,8 @@ import type { ControlFlowQuery, ControlFlowQueryResult } from './control-flow-qu
 import type { BasicQueryData } from '../../base-query-format';
 import { CfgKind } from '../../../project/cfg-kind';
 
-
-
 /**
- *
+ * Executes the control flow query with the given simplification passes.
  */
 export async function executeControlFlowQuery({ analyzer }: BasicQueryData, queries: readonly ControlFlowQuery[]): Promise<ControlFlowQueryResult> {
 	if(queries.length !== 1) {

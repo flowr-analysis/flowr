@@ -11,8 +11,19 @@ import {
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { reconstructToCode } from '../../reconstruct/reconstruct';
 import { doNotAutoSelect } from '../../reconstruct/auto-select/auto-select-defaults';
-import { MermaidDefaultMarkStyle, type MermaidGraphPrinterInfo } from './info';
+import type { MermaidMarkStyle , MermaidGraphPrinterInfo, MermaidMarkdownMark } from './info';
+import { MermaidDefaultMarkStyle } from './info';
 import { collectAllIds } from '../../r-bridge/lang-4.x/ast/model/collect';
+
+
+export interface MermaidCfgGraphPrinterInfo extends MermaidGraphPrinterInfo {
+	entryPointStyle?:        MermaidMarkStyle['vertex'];
+	exitPointStyle?:         MermaidMarkStyle['vertex'];
+	includeBasicBlockLabel?: boolean;
+}
+
+export const MermaidEntryPointDefaultMarkStyle: MermaidMarkStyle['vertex'] = 'stroke:cyan,stroke-width:6.5px;';
+export const MermaidExitPointDefaultMarkStyle: MermaidMarkStyle['vertex'] = 'stroke:green,stroke-width:6.5px;';
 
 function getLexeme(n?: RNodeWithParent) {
 	return n ? n.info.fullLexeme ?? n.lexeme ?? '' : undefined;
@@ -34,6 +45,19 @@ function cfgOfNode(vert: CfgSimpleVertex, normalizedVertex: RNodeWithParent | un
 const getDirRegex = /flowchart\s+([A-Za-z]+)/;
 
 
+function shouldIncludeNode(simplify: boolean, element: CfgSimpleVertex, include: ReadonlySet<MermaidMarkdownMark>): boolean {
+	if(simplify) {
+		// Only basic blocks are shown, so include the BB, if at least one child is selected
+		return element.type == CfgVertexType.Block && element.elems.filter(elem => elem.type !== CfgVertexType.EndMarker).some(elem => include.has(elem.id));
+
+	} else {
+		// Basic blocks and vertices are shown, include the BB, if all children are highlighted
+		return element.type == CfgVertexType.Block
+			? element.elems.filter(elem => elem.type !== CfgVertexType.EndMarker).every(elem => include.has(elem.id))
+			: include.has(element.id);
+	}
+}
+
 /**
  * Convert the control flow graph to a mermaid string.
  * @param cfg              - The control flow graph to convert.
@@ -44,7 +68,8 @@ const getDirRegex = /flowchart\s+([A-Za-z]+)/;
  * @param includeOnlyIds   - If provided, only include the vertices with the given IDs.
  * @param mark             - If provided, mark the given vertices and edges.
  */
-export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, { prefix = 'flowchart BT\n', simplify = false, markStyle = MermaidDefaultMarkStyle, includeOnlyIds, mark }: MermaidGraphPrinterInfo = {}): string {
+export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, { prefix = 'flowchart BT\n', simplify = false, markStyle = MermaidDefaultMarkStyle, entryPointStyle = MermaidEntryPointDefaultMarkStyle, exitPointStyle = MermaidExitPointDefaultMarkStyle, includeOnlyIds, mark, includeBasicBlockLabel = true }: MermaidCfgGraphPrinterInfo = {}): string {
+	const hasBbandSimplify = simplify && cfg.graph.mayHaveBasicBlocks();
 	let output = prefix;
 	if(includeOnlyIds) {
 		const completed = new Set(includeOnlyIds);
@@ -69,6 +94,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 	}
 
 	const dirIs: string = getDirRegex.exec(prefix)?.at(1) ?? 'LR';
+	const diagramIncludedIds = new Set<NodeId>();
 
 	for(const [id, vertex] of cfg.graph.vertices(false)) {
 		const normalizedVertex = normalizedAst?.idMap.get(id);
@@ -79,13 +105,23 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 		}
 		if(vertex.type === CfgVertexType.Block) {
 			if(simplify) {
+				if(includeOnlyIds && !vertex.elems.some(elem => includeOnlyIds.has(elem.id))) {
+					continue;
+				}
+
 				const ids = vertex.elems?.map(e => e.id) ?? [];
 				const reconstruct = reconstructToCode(normalizedAst, { nodes: new Set(ids) }, doNotAutoSelect).code;
-				const name = `"\`Basic Block (${id})\n${escapeMarkdown(reconstruct)}\`"`;
+				const name = `"\`${includeBasicBlockLabel ? `Basic Block (${id})\n` : ''}${escapeMarkdown(reconstruct)}\`"`;
 				output += `    n${id}[[${name}]]\n`;
+				diagramIncludedIds.add(vertex.id);
 			} else {
+				if(includeOnlyIds && !vertex.elems.some(elem => includeOnlyIds.has(elem.id))) {
+					continue;
+				}
+
 				output += `    subgraph n${vertex.id} [Block ${normalizedVertex?.info.fullLexeme ?? id}]\n`;
 				output += `        direction ${dirIs}\n`;
+				diagramIncludedIds.add(vertex.id);
 				let last: NodeId | undefined = undefined;
 				for(const element of vertex.elems ?? []) {
 					if(includeOnlyIds && !includeOnlyIds.has(element.id)) {
@@ -96,6 +132,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 					const childNormalizedVertex = normalizedAst?.idMap.get(element.id);
 					const childContent = getLexeme(childNormalizedVertex);
 					output = cfgOfNode(vertex, childNormalizedVertex, element.id, childContent, output);
+					diagramIncludedIds.add(element.id);
 					// just to keep the order
 					if(last) {
 						output += `    ${last} -.-> n${element.id}\n`;
@@ -106,17 +143,18 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 			}
 		} else if(!includeOnlyIds || includeOnlyIds.has(id)) {
 			output = cfgOfNode(vertex, normalizedVertex, id, content, output);
+			diagramIncludedIds.add(vertex.id);
 		}
 		if(vertex.name === RType.ExpressionList && vertex.type === CfgVertexType.EndMarker) {
 			output += '    end\n';
 		}
 	}
 	for(const [from, targets] of cfg.graph.edges()) {
-		if(includeOnlyIds && !includeOnlyIds.has(from)) {
+		if(!diagramIncludedIds.has(from)) {
 			continue;
 		}
 		for(const [to, edge] of targets) {
-			if(includeOnlyIds && !includeOnlyIds.has(to)) {
+			if(!diagramIncludedIds.has(to)) {
 				continue;
 			}
 
@@ -127,18 +165,20 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 	}
 
 	for(const entryPoint of cfg.entryPoints) {
-		if(!includeOnlyIds || includeOnlyIds.has(entryPoint)) {
-			output += `    style n${entryPoint} stroke:cyan,stroke-width:6.5px;`;
+		if(diagramIncludedIds.has(entryPoint)) {
+			output += `    style n${entryPoint} ${entryPointStyle}`;
 		}
 	}
 	for(const exitPoint of cfg.exitPoints) {
-		if(!includeOnlyIds || includeOnlyIds.has(exitPoint)) {
-			output += `    style n${exitPoint} stroke:green,stroke-width:6.5px;`;
+		if(diagramIncludedIds.has(exitPoint)) {
+			output += `    style n${exitPoint} ${exitPointStyle}`;
 		}
 	}
 	if(mark) {
-		for(const id of mark.values()) {
-			output += `    style n${id} ${markStyle.vertex}`;
+		for(const [_, vertex] of cfg.graph.vertices(true)) {
+			if(shouldIncludeNode(hasBbandSimplify, vertex, mark)) {
+				output += `    style n${vertex.id} ${markStyle.vertex}`;
+			}
 		}
 	}
 	return output;
@@ -147,6 +187,6 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 /**
  * Use mermaid to visualize the normalized AST.
  */
-export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, info?: MermaidGraphPrinterInfo): string {
+export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, info?: MermaidCfgGraphPrinterInfo): string {
 	return mermaidCodeToUrl(cfgToMermaid(cfg, normalizedAst, info ?? {}));
 }

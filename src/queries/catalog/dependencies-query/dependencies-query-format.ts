@@ -17,6 +17,7 @@ import type { CallContextQueryResult } from '../call-context-query/call-context-
 import type { Range } from 'semver';
 import type { AsyncOrSync } from 'ts-essentials';
 import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
+import { TestFunctions } from './function-info/test-functions';
 
 export const Unknown = 'unknown';
 
@@ -71,6 +72,10 @@ export const DefaultDependencyCategories = {
 	'visualize': {
 		queryDisplayName: 'Visualizations',
 		functions:        VisualizeFunctions
+	},
+	'test': {
+		queryDisplayName: 'Tests',
+		functions:        TestFunctions
 	}
 } as const satisfies Record<string, DependencyCategorySettings>;
 export type DefaultDependencyCategoryName = keyof typeof DefaultDependencyCategories;

@@ -1,21 +1,20 @@
-import { RShell } from '../r-bridge/shell';
-import { codeBlock } from './doc-util/doc-code';
+import { codeBlock, codeInline } from './doc-util/doc-code';
 import { printNormalizedAst, printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
-import { block, details } from './doc-util/doc-structure';
-import { PipelineExecutor } from '../core/pipeline-executor';
+import { details } from './doc-util/doc-structure';
 import { requestFromInput } from '../r-bridge/retriever';
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { collectAllIds } from '../r-bridge/lang-4.x/ast/model/collect';
 import { DefaultNormalizedAstFold } from '../abstract-interpretation/normalized-ast-fold';
-import { createNormalizePipeline } from '../core/steps/pipeline/default-pipelines';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrInlineTextFile } from '../project/context/flowr-file';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { parseRoxygenCommentsOfNode } from '../r-bridge/roxygen2/roxygen-parse';
+import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 
 async function quickNormalizedAstMultipleFiles() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -32,6 +31,44 @@ async function quickNormalizedAstMultipleFiles() {
 	const n = await analyzer.normalize();
 	return n;
 }
+
+export /* we have it in this separate line just to hide it in the doc generation */
+class MyMathFold<Info> extends DefaultNormalizedAstFold<number, Info> {
+	constructor() {
+		/* use \`0\` as a placeholder empty for the monoid */
+		super(0);
+	}
+
+	protected override concat(a: number, b: number): number {
+		/* for this example, we ignore cases that we cannot handle */
+		return b;
+	}
+
+	override foldRNumber(node: RNumber<Info>) {
+	/* return the value of the number */
+		return node.content.num;
+	}
+
+	override foldRBinaryOp(node: RBinaryOp<Info>) {
+		if(node.operator === '+') {
+			return this.fold(node.lhs) + this.fold(node.rhs);
+		} else if(node.operator === '*') {
+			return this.fold(node.lhs) * this.fold(node.rhs);
+		} else {
+		/* in case we cannot handle the operator we could throw an error, or just use the default behavior: */
+			return super.foldRBinaryOp(node);
+		}
+	}
+}
+
+async function useMyMathFoldExample() {
+	const analyzer = await new FlowrAnalyzerBuilder().build();
+	analyzer.addRequest('1 + 3 * 2');
+	const normalize = await analyzer.normalize();
+	const result = new MyMathFold().fold(normalize.ast);
+	return result;
+}
+
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Normalized-AST
@@ -176,56 +213,13 @@ and happily point to them at ${getFilePathMd('../../test/functionality/r-bridge/
 
 As a simple showcase, we want to use the fold to evaluate numeric expressions containing numbers, \`+\`, and \`*\` operators.
 
-${codeBlock('ts', `
-class MyMathFold<Info> extends ${DefaultNormalizedAstFold.name}<number, Info> {
-    constructor() {
-    	/* use \`0\` as a placeholder empty for the monoid */
-        super(0);
-    }
+${ctx.code(MyMathFold, { dropLinesStart: 1 })}
 
-    protected override concat(a: number, b: number): number {
-    	/* for this example, we ignore cases that we cannot handle */ 
-        return b;
-    }
-
-    override foldRNumber(node: RNumber<Info>) {
-    	/* return the value of the number */ 
-        return node.content.num;
-    }
-
-    override foldRBinaryOp(node: RBinaryOp<Info>) {
-        if(node.operator === '+') {
-            return this.fold(node.lhs) + this.fold(node.rhs);
-        } else if(node.operator === '*') {
-            return this.fold(node.lhs) * this.fold(node.rhs);
-        } else {
-        	/* in case we cannot handle the operator we could throw an error, or just use the default behavior: */
-            return super.foldRBinaryOp(node);
-        }
-    }
-}
-`)}
-
-Now, we can use the ${ctx.link(PipelineExecutor)} to get the normalized AST and apply the fold:
+Now, we can use the ${ctx.link(FlowrAnalyzer)} (see the ${ctx.linkPage('wiki/Analyzer')} wiki page) to get the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} and apply the fold:
  
-${codeBlock('ts', `
-const shell = new ${RShell.name}();
-const ast = (await new ${PipelineExecutor.name}(DEFAULT_NORMALIZE_PIPELINE, {
-	shell, request: retrieveNormalizedAst(${RShell.name}, '1 + 3 * 2')
-}).allRemainingSteps()).normalize.ast;
+${ctx.code(useMyMathFoldExample, { dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true })}
 
-const result = new MyMathFold().fold(ast);
-console.log(result); // -> 7
-`)}
-
-${block({
-	type:    'NOTE',
-	content: `
-If you want to retrieve the normalized AST with the [Tree-Sitter Engine](${FlowrWikiBaseRef}/Engines),
-you may use the ${ctx.link('TREE_SITTER_NORMALIZE_PIPELINE')} or directly rely on one of the
-helper functions like ${ctx.link(createNormalizePipeline)}.
-		`
-})}
+Running the code, we retrieve the result: ${codeInline(String(await useMyMathFoldExample()))}.
 `;
 	}
 }

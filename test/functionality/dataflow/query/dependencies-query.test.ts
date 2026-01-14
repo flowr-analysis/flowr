@@ -379,6 +379,11 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				library: [{ nodeId: '1@expect_equal', functionName: '::', value: 'testthat' }]
 			});
 		});
+		describe('With info', () => {
+			testQuery('tinytest', 'expect_equal(1 + 1, 2, info="Failure lol")', { test: [
+				{ nodeId: '1@expect_equal', functionName: 'expect_equal', value: 'Failure lol' }
+			] });
+		});
 	});
 
 

@@ -21,6 +21,8 @@ import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RLineDirective } from '../r-bridge/lang-4.x/ast/model/nodes/r-line-directive';
 import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { isRProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 
 type FoldOfType<T extends RType, Returns = void, Info = NoInfo> = (node: Extract<RNode<Info>, { type: T }>) => Returns;
@@ -108,11 +110,20 @@ export class DefaultNormalizedAstFold<Returns = void, Info = NoInfo> implements 
 		return nodes.reduce((acc, n) => this.concat(acc, n), this.empty);
 	}
 
-	public fold(nodes: SingleOrArrayOrNothing<RNode<Info> | typeof EmptyArgument>): Returns {
+	public fold(nodes: SingleOrArrayOrNothing<RNode<Info> | typeof EmptyArgument | RProject<Info>>): Returns {
 		if(Array.isArray(nodes)) {
-			const n = nodes as readonly (RNode<Info> | null | undefined | typeof EmptyArgument)[];
-			return this.concatAll(n.filter(n => n && n !== EmptyArgument).map(node => this.foldSingle(node as RNode<Info>)));
+			const n = nodes as readonly (RNode<Info> | null | undefined | typeof EmptyArgument | RProject<Info>)[];
+			return this.concatAll(
+				n.filter(n => n && n !== EmptyArgument)
+					.map(node => isRProject<Info>(node) ?
+						this.concatAll(node.files.map(f => this.foldSingle(f.root))) :
+						this.foldSingle(node as RNode<Info>)
+					)
+			);
 		} else if(nodes) {
+			if(isRProject<Info>(nodes)) {
+				return this.concatAll(nodes.files.map(f => this.foldSingle(f.root)));
+			}
 			return this.foldSingle(nodes as RNode<Info>);
 		}
 		return this.empty;

@@ -13,7 +13,7 @@ import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { intervalFromValues } from '../../../../src/dataflow/eval/values/intervals/interval-constants';
-import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-consatnts';
+import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-constants';
 import { vectorFrom } from '../../../../src/dataflow/eval/values/vectors/vector-constants';
 import { resolveIdToValue, resolveToConstants } from '../../../../src/dataflow/eval/resolve/alias-tracking';
 import { defaultConfigOptions } from '../../../../src/config';

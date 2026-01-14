@@ -17,8 +17,9 @@ import { collectAllIds } from '../../r-bridge/lang-4.x/ast/model/collect';
 
 
 export interface MermaidCfgGraphPrinterInfo extends MermaidGraphPrinterInfo {
-	entryPointStyle?: MermaidMarkStyle['vertex'];
-	exitPointStyle?:  MermaidMarkStyle['vertex'];
+	entryPointStyle?:        MermaidMarkStyle['vertex'];
+	exitPointStyle?:         MermaidMarkStyle['vertex'];
+	includeBasicBlockLabel?: boolean;
 }
 
 export const MermaidEntryPointDefaultMarkStyle: MermaidMarkStyle['vertex'] = 'stroke:cyan,stroke-width:6.5px;';
@@ -67,7 +68,7 @@ function shouldIncludeNode(simplify: boolean, element: CfgSimpleVertex, include:
  * @param includeOnlyIds   - If provided, only include the vertices with the given IDs.
  * @param mark             - If provided, mark the given vertices and edges.
  */
-export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, { prefix = 'flowchart BT\n', simplify = false, markStyle = MermaidDefaultMarkStyle, entryPointStyle = MermaidEntryPointDefaultMarkStyle, exitPointStyle = MermaidExitPointDefaultMarkStyle, includeOnlyIds, mark }: MermaidCfgGraphPrinterInfo = {}): string {
+export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, { prefix = 'flowchart BT\n', simplify = false, markStyle = MermaidDefaultMarkStyle, entryPointStyle = MermaidEntryPointDefaultMarkStyle, exitPointStyle = MermaidExitPointDefaultMarkStyle, includeOnlyIds, mark, includeBasicBlockLabel = true }: MermaidCfgGraphPrinterInfo = {}): string {
 	const hasBbandSimplify = simplify && cfg.graph.mayHaveBasicBlocks();
 	let output = prefix;
 	if(includeOnlyIds) {
@@ -110,7 +111,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 
 				const ids = vertex.elems?.map(e => e.id) ?? [];
 				const reconstruct = reconstructToCode(normalizedAst, { nodes: new Set(ids) }, doNotAutoSelect).code;
-				const name = `"\`(${id})\n${escapeMarkdown(reconstruct)}\`"`;
+				const name = `"\`${includeBasicBlockLabel ? `Basic Block (${id})\n` : ''}${escapeMarkdown(reconstruct)}\`"`;
 				output += `    n${id}[[${name}]]\n`;
 				diagramIncludedIds.add(vertex.id);
 			} else {
@@ -186,6 +187,6 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 /**
  * Use mermaid to visualize the normalized AST.
  */
-export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, info?: MermaidGraphPrinterInfo): string {
+export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, info?: MermaidCfgGraphPrinterInfo): string {
 	return mermaidCodeToUrl(cfgToMermaid(cfg, normalizedAst, info ?? {}));
 }

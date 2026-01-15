@@ -41,11 +41,11 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 		const definition = current.memory.get(name);
 		if(definition !== undefined) {
 			const filtered = definition.filter(wantedType);
-			if(filtered.length === definition.length && definition.every(d => happensInEveryBranch(d.cds))) {
+			if(filtered.length === definition.length && (target !== ReferenceType.Function || definition.every(d => d.type !== ReferenceType.Parameter)) && definition.every(d => happensInEveryBranch(d.cds))) {
 				return definition;
 			} else if(filtered.length > 0) {
 				if(definitions) {
-					definitions = definitions.concat(filtered);
+					definitions.push(...filtered);
 				} else {
 					definitions = filtered;
 				}

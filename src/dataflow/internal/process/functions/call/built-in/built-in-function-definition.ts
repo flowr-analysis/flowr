@@ -264,10 +264,6 @@ export function updateNestedFunctionCalls(
 		}
 
 		const targets = new Set(getAllFunctionCallTargets(id, graph, effectiveEnvironment));
-		if(name === 'f') {
-			console.log(`Updating nested function call closures for call ${id} (${name})`, onlyBuiltin);
-			console.log(targets);
-		}
 		for(const target of targets) {
 			if(isBuiltIn(target)) {
 				graph.addEdge(id, target, EdgeType.Calls);

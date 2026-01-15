@@ -376,9 +376,6 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 		const functionCallDefs = resolveByName(
 			info.name, environment ?? info.environment as REnvironmentInformation, info.origin.includes(BuiltInProcName.S3Dispatch) ? ReferenceType.S3MethodPrefix : ReferenceType.Function
 		)?.map(d => d.nodeId) ?? [];
-		if(info.name === 'f') {
-			console.log(`resolved call ${recoverName(call, graph.idMap)} to ${functionCallDefs.map(id => recoverName(id, graph.idMap)).join(', ')}`);
-		}
 		for(const [target, outgoingEdge] of outgoingEdges.entries()) {
 			if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
 				functionCallDefs.push(target);

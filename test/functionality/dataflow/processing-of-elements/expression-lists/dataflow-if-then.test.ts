@@ -507,4 +507,10 @@ x`, emptyGraph()
 				.use('7@x')
 			, { resolveIdsAsCriterion: true });
 	});
+	describe('ifelse function', () => {
+		assertDataflow(label('Traditional ifelse use', ['name-normal', 'if', 'unnamed-arguments']), shell,
+			'ifelse(u, a, b)', emptyGraph(),
+			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+		);
+	});
 }));

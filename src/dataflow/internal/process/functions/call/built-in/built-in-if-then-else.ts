@@ -16,6 +16,15 @@ import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 
+/** `if(<cond>) <then> else <else>` built-in function configuration, make sure to not reuse indices */
+export interface IfThenElseConfig {
+	/** the expression to treat as condition, defaults to index 0 */
+	cond?: { idx: number, name: string },
+	/** argument to treat as 'then' case, defaults to index 1 */
+	then?: { idx: number, name: string },
+	/** argument to treat as 'else' case, defaults to index 2 */
+	else?: { idx: number, name: string }
+}
 
 /**
  * Processes an if-then-else built-in function call.
@@ -125,7 +134,7 @@ export function processIfThenElse<OtherInfo>(
 	});
 
 	// as an if always evaluates its condition, we add a 'reads'-edge
-	nextGraph.addEdge(name.info.id, cond.entryPoint, EdgeType.Reads);
+	nextGraph.addEdge(rootId, cond.entryPoint, EdgeType.Reads);
 
 	const exitPoints = (then?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeThenMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: true }] : e.controlDependencies }))
 		.concat((otherwise?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeOtherwiseMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: false }] : e.controlDependencies })));

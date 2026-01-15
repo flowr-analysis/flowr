@@ -93,7 +93,7 @@ export const SEEDED_RANDOMNESS = {
 				// filter by calls that aren't preceded by a randomness producer
 				.flatMap(element => {
 					const dfgElement = dataflow.graph.getVertex(element.searchElement.node.info.id);
-					const cds = dfgElement ? new Set(dfgElement.controlDependencies) : new Set();
+					const cds = dfgElement ? new Set(dfgElement.cds) : new Set();
 					const producers = enrichmentContent(element.searchElement, Enrichment.LastCall).linkedIds
 						.map(e => dataflow.graph.getVertex(e.node.info.id) as DataflowGraphVertexFunctionCall);
 					const { assignment, func } = Object.groupBy(producers, f => assignmentArgIndexes.has(f.name) ? 'assignment' : 'func');
@@ -103,7 +103,7 @@ export const SEEDED_RANDOMNESS = {
 					// function calls are already taken care of through the LastCall enrichment itself
 					for(const f of func ?? []) {
 						if(isConstantArgument(dataflow.graph, f, 0, analyzer.inspectContext())) {
-							const fCds = new Set(f.controlDependencies).difference(cds);
+							const fCds = new Set(f.cds).difference(cds);
 							metadata.callsWithFunctionProducers++;
 							if(fCds.size <= 0 || happensInEveryBranchSet(fCds)){
 								return [];
@@ -124,7 +124,7 @@ export const SEEDED_RANDOMNESS = {
 						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)) {
 							// we either have arg index 0 or 1 for the assignmentProducers destination, so we select the assignment value as 1-argIdx here
 							if(isConstantArgument(dataflow.graph, a, 1 - argIdx, analyzer.inspectContext())) {
-								const aCds = new Set(a.controlDependencies).difference(cds);
+								const aCds = new Set(a.cds).difference(cds);
 								if(aCds.size <= 0 || happensInEveryBranchSet(aCds)) {
 									metadata.callsWithAssignmentProducers++;
 									return [];

@@ -45,10 +45,10 @@ export function processPipe<OtherInfo>(
 
 		dataflowLogger.trace(`Linking pipe arg ${argId} as first argument of ${rhs.info.id}`);
 		functionCallNode.args.unshift({
-			name:                undefined,
-			nodeId:              argId,
-			controlDependencies: data.controlDependencies,
-			type:                ReferenceType.Function
+			name:   undefined,
+			nodeId: argId,
+			cds:    data.cds,
+			type:   ReferenceType.Function
 		});
 		information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument | EdgeType.Reads);
 	}

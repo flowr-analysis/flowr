@@ -127,7 +127,7 @@ export function processReplacementFunction<OtherInfo>(
 	if(!data.ctx.config.solver.pointerTracking && fa) {
 		res = {
 			...res,
-			in: [...res.in, { name: fa.lexeme, type: ReferenceType.Variable, nodeId: fa.info.id, controlDependencies: data.controlDependencies }]
+			in: [...res.in, { name: fa.lexeme, type: ReferenceType.Variable, nodeId: fa.info.id, cds: data.cds }]
 		};
 	}
 

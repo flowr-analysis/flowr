@@ -170,21 +170,21 @@ function defaultBuiltInProcessor<OtherInfo>(
 					continue;
 				}
 				res.graph.updateToFunctionCall({
-					tag:                 VertexType.FunctionCall,
-					id:                  fnId,
-					name:                fnName,
-					args:                [],
-					environment:         data.environment,
-					onlyBuiltin:         false,
-					controlDependencies: data.controlDependencies,
-					origin:              [activeProcessor]
+					tag:         VertexType.FunctionCall,
+					id:          fnId,
+					name:        fnName,
+					args:        [],
+					environment: data.environment,
+					onlyBuiltin: false,
+					cds:         data.cds,
+					origin:      [activeProcessor]
 				});
 			}
 		}
 	}
 
 	if(cfg !== undefined) {
-		(res.exitPoints as ExitPoint[]).push({ type: cfg, nodeId: rootId, controlDependencies: data.controlDependencies });
+		(res.exitPoints as ExitPoint[]).push({ type: cfg, nodeId: rootId, cds: data.cds });
 	}
 
 	return res;
@@ -238,12 +238,12 @@ export class BuiltIns {
 		for(const name of names) {
 			const id = builtInId(name);
 			const d: IdentifierDefinition[] = [{
-				type:                ReferenceType.BuiltInConstant,
-				definedAt:           id,
-				controlDependencies: undefined,
+				type:      ReferenceType.BuiltInConstant,
+				definedAt: id,
+				cds:       undefined,
 				value,
 				name,
-				nodeId:              id
+				nodeId:    id
 			}];
 			this.set(name, d, assumePrimitive);
 		}
@@ -259,14 +259,14 @@ export class BuiltIns {
 			guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
 			const id = builtInId(name);
 			const d: IdentifierDefinition[] = [{
-				type:                ReferenceType.BuiltInFunction,
-				definedAt:           id,
-				controlDependencies: undefined,
+				type:      ReferenceType.BuiltInFunction,
+				definedAt: id,
+				cds:       undefined,
 				/* eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-argument */
-				processor:           (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as any),
+				processor: (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as any),
 				config,
 				name,
-				nodeId:              id
+				nodeId:    id
 			}];
 			this.set(name, d, assumePrimitive);
 		}
@@ -291,9 +291,9 @@ export class BuiltIns {
 						assignmentOperator: suffix,
 						makeMaybe:          true
 					},
-					name:                effectiveName,
-					controlDependencies: undefined,
-					nodeId:              id
+					name:   effectiveName,
+					cds:    undefined,
+					nodeId: id
 				}];
 				this.set(effectiveName, d, assumePrimitive);
 			}

@@ -76,7 +76,7 @@ export function processEvalCall<OtherInfo>(
 
 		data = {
 			...data,
-			controlDependencies: [...(data.controlDependencies ?? []), { id: rootId, when: true }]
+			cds: [...(data.cds ?? []), { id: rootId, when: true }]
 		};
 		const originalInfo = { ...information };
 

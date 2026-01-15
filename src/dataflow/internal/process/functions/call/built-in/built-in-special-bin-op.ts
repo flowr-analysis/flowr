@@ -31,7 +31,7 @@ export function processSpecialBinOp<OtherInfo>(
 	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs,
 		patchData: (d, i) => {
 			if(i === 1) {
-				return { ...d, controlDependencies: [...d.controlDependencies ?? [], { id: name.info.id, when: config.evalRhsWhen }] };
+				return { ...d, cds: [...d.cds ?? [], { id: name.info.id, when: config.evalRhsWhen }] };
 			}
 			return d;
 		},

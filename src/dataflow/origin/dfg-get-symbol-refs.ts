@@ -28,7 +28,7 @@ export function getAllRefsToSymbol(graph: DataflowGraph, nodeId: NodeId): NodeId
 	}
 
 	const definitiveOrigins = origins.filter(o =>
-		happensInEveryBranch(graph.getVertex(o.id)?.controlDependencies)
+		happensInEveryBranch(graph.getVertex(o.id)?.cds)
 	);
 	if(definitiveOrigins.length === 0 ) {
 		return undefined;

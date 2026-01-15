@@ -70,15 +70,15 @@ export function doesExitPointPropagateCalls(type: ExitPointType): boolean {
  */
 export interface ExitPoint {
 	/** What kind of exit point is this one? May be used to filter for exit points of specific causes. */
-	readonly type:                 ExitPointType,
+	readonly type:   ExitPointType,
 	/** The id of the node which causes the exit point! */
-	readonly nodeId:               NodeId,
+	readonly nodeId: NodeId,
 	/**
 	 * Control dependencies which influence if the exit point triggers
 	 * (e.g., if the `return` is contained within an `if` statement).
 	 * @see {@link happensInEveryBranch} - to check whether control dependencies are exhaustive
 	 */
-	readonly controlDependencies?: ControlDependency[] | undefined
+	readonly cds?:   ControlDependency[]
 }
 
 /**
@@ -89,7 +89,7 @@ export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: Co
 	if(toAdd.length === 0) {
 		return;
 	}
-	const invertedCds = toAdd.flatMap(e => e.controlDependencies?.filter(
+	const invertedCds = toAdd.flatMap(e => e.cds?.filter(
 		icd => !activeCds?.some(e => e.id === icd.id && e.when === icd.when)
 	).map(negateControlDependency)).filter(isNotUndefined);
 	existing.push(...toAdd);
@@ -104,7 +104,7 @@ export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: Co
  * Overwrites the existing exit points with the given ones, taking care of cds.
  */
 export function overwriteExitPoints(existing: readonly ExitPoint[], replace: ExitPoint[]): ExitPoint[] {
-	const replaceCds = replace.flatMap(e => e.controlDependencies);
+	const replaceCds = replace.flatMap(e => e.cds);
 	if(replaceCds.length === 0 || replaceCds.some(r => r === undefined) || happensInEveryBranch(replaceCds.filter(e => e !== undefined))) {
 		return replace;
 	}
@@ -183,16 +183,16 @@ export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: 
  * the list contains a dependency on the `true` and on the `false` case).
  * @see {@link happensInEveryBranchSet} - for the set-based version
  */
-export function happensInEveryBranch(controlDependencies: readonly ControlDependency[] | undefined): boolean {
+export function happensInEveryBranch(cds: readonly ControlDependency[] | undefined): boolean {
 	/* this happens only when we have no idea and require more analysis */
-	return controlDependencies === undefined || (controlDependencies.length !== 0 && coversSet(controlDependencies));
+	return cds === undefined || (cds.length !== 0 && coversSet(cds));
 }
 
-function coversSet(controlDependencies: ReadonlySet<ControlDependency> | readonly ControlDependency[]) {
+function coversSet(cds: ReadonlySet<ControlDependency> | readonly ControlDependency[]) {
 	const trues = new Set();
 	const falses = new Set();
 
-	for(const { id, when } of controlDependencies) {
+	for(const { id, when } of cds) {
 		if(when) {
 			trues.add(id);
 		} else if(when === false){
@@ -208,8 +208,8 @@ function coversSet(controlDependencies: ReadonlySet<ControlDependency> | readonl
  * the list contains a dependency on the `true` and on the `false` case).
  * @see {@link happensInEveryBranch} - for the array-based version
  */
-export function happensInEveryBranchSet(controlDependencies: ReadonlySet<ControlDependency> | undefined): boolean {
-	return controlDependencies === undefined || (controlDependencies.size !== 0 && coversSet(controlDependencies));
+export function happensInEveryBranchSet(cds: ReadonlySet<ControlDependency> | undefined): boolean {
+	return cds === undefined || (cds.size !== 0 && coversSet(cds));
 }
 
 /**
@@ -220,10 +220,10 @@ export function alwaysExits(data: DataflowInformation): boolean {
 	let cds: ControlDependency[] = [];
 	for(const e of data.exitPoints) {
 		if(e.type !== ExitPointType.Default) {
-			if(e.controlDependencies === undefined) {
+			if(e.cds === undefined) {
 				return true;
 			}
-			cds = cds.concat(e.controlDependencies);
+			cds = cds.concat(e.cds);
 		}
 	}
 	return happensInEveryBranch(cds);

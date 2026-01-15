@@ -62,14 +62,14 @@ export function processStopIfNot<OtherInfo>(
 		const alwaysTrue = valueSetGuard(localVal)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 		if(!alwaysTrue) {
 			dataflowLogger.warn(`stopifnot (${name.content}) with non-true 'local' argument is not yet supported, over-approximate`);
-			const cds = (data.controlDependencies ?? []).concat(Array.from(ids).map(r => ({
+			const cds = (data.cds ?? []).concat(Array.from(ids).map(r => ({
 				id:   r,
 				when: false
 			})));
 			(res.exitPoints as ExitPoint[]).push({
-				type:                ExitPointType.Error,
-				nodeId:              rootId,
-				controlDependencies: cds
+				type:   ExitPointType.Error,
+				nodeId: rootId,
+				cds:    cds
 			});
 			return res;
 		}
@@ -81,10 +81,10 @@ export function processStopIfNot<OtherInfo>(
 		const alwaysFalse = valueSetGuard(val)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
 		if(alwaysFalse) {
 			// we know that this fails *always*
-			(res.exitPoints as ExitPoint[]).push(data.controlDependencies ? {
-				type:                ExitPointType.Error,
-				nodeId:              rootId,
-				controlDependencies: data.controlDependencies
+			(res.exitPoints as ExitPoint[]).push(data.cds ? {
+				type:   ExitPointType.Error,
+				nodeId: rootId,
+				cds:    data.cds
 			} : {
 				type:   ExitPointType.Error,
 				nodeId: rootId
@@ -106,9 +106,9 @@ export function processStopIfNot<OtherInfo>(
 	}
 
 	(res.exitPoints as ExitPoint[]).push({
-		type:                ExitPointType.Error,
-		nodeId:              rootId,
-		controlDependencies: (data.controlDependencies ?? []).concat(cds)
+		type:   ExitPointType.Error,
+		nodeId: rootId,
+		cds:    (data.cds ?? []).concat(cds)
 	});
 	return res;
 }

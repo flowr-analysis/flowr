@@ -12,7 +12,7 @@ describe.sequential('Context Assignments', withShell(shell => {
 iris[,foo:=sample(bar),]
 print(iris)
 			`,  emptyGraph()
-				.defineVariable('2@iris', undefined, { controlDependencies: [] }) // a classic maybe definition :)
+				.defineVariable('2@iris', undefined, { cds: [] }) // a classic maybe definition :)
 				.use('3@iris')
 				.reads('3@iris', '2@iris')
 				.definedBy('2@iris', '2:10')

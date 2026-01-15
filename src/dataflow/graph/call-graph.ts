@@ -120,7 +120,7 @@ export function computeCallGraph(graph: DataflowGraph): CallGraph {
 }
 
 function processCds(vtx: DataflowGraphVertexInfo, graph: DataflowGraph, result: CallGraph, state: State): void {
-	for(const tar of vtx.controlDependencies ?? []) {
+	for(const tar of vtx.cds ?? []) {
 		const targetVtx = graph.getVertex(tar.id, true);
 		if(targetVtx) {
 			processUnknown(targetVtx, undefined, graph, result, state);

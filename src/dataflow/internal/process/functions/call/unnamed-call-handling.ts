@@ -45,19 +45,19 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	});
 
 	finalGraph.addVertex({
-		tag:                 VertexType.FunctionCall,
-		id:                  functionRootId,
-		environment:         data.environment,
-		name:                functionCallName,
+		tag:         VertexType.FunctionCall,
+		id:          functionRootId,
+		environment: data.environment,
+		name:        functionCallName,
 		/* can never be a direct built-in-call */
-		onlyBuiltin:         false,
-		controlDependencies: data.controlDependencies,
-		args:                callArgs, // same reference
-		origin:              [UnnamedFunctionCallOrigin]
+		onlyBuiltin: false,
+		cds:         data.cds,
+		args:        callArgs, // same reference
+		origin:      [UnnamedFunctionCallOrigin]
 	}, data.ctx.env.makeCleanEnv());
 
 	let inIds = remainingReadInArgs;
-	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependencies: data.controlDependencies, type: ReferenceType.Function });
+	inIds.push({ nodeId: functionRootId, name: functionCallName, cds: data.cds, type: ReferenceType.Function });
 
 	// if we just call a nested fdef
 	if(functionCall.calledFunction.type === RType.FunctionDefinition) {

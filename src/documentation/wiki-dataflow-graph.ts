@@ -614,7 +614,7 @@ Besides this being a theoretically "shorter" way of defining a function, this be
 
 `,
 		code:             'function() 1',
-		expectedSubgraph: emptyGraph().defineFunction('1@function', [0], { hooks: [], graph: new Set('0'), in: [{ nodeId: 0, controlDependencies: [], type: ReferenceType.Constant, name: undefined }], out: [], unknownReferences: [], entryPoint: 0, environment: defaultEnv() })
+		expectedSubgraph: emptyGraph().defineFunction('1@function', [0], { hooks: [], graph: new Set('0'), in: [{ nodeId: 0, cds: [], type: ReferenceType.Constant, name: undefined }], out: [], unknownReferences: [], entryPoint: 0, environment: defaultEnv() })
 	}, []]);
 
 	const results = [];

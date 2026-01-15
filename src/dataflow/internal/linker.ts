@@ -446,7 +446,7 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 		if(probableTarget === undefined) {
 			log.trace(`found no target for ${bodyInput.name}`);
 			if(maybeForRemaining) {
-				bodyInput.controlDependencies ??= [];
+				bodyInput.cds ??= [];
 			}
 			givenInputs.push(bodyInput);
 		} else {
@@ -504,17 +504,17 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
  */
 export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: readonly IdentifierReference[]): void {
 	// just apply the cds of all exit points not already present
-	const exitCds = new Set(exits.flatMap(e => e.controlDependencies).filter(isNotUndefined));
+	const exitCds = new Set(exits.flatMap(e => e.cds).filter(isNotUndefined));
 
 	for(const ref of references) {
 		for(const cd of exitCds) {
 			const { id: cId, when: cWhen } = cd;
-			if(ref.controlDependencies) {
-				if(!ref.controlDependencies?.find(c => c.id === cId && c.when === cWhen)) {
-					ref.controlDependencies.push({ ...cd, byIteration: true });
+			if(ref.cds) {
+				if(!ref.cds?.find(c => c.id === cId && c.when === cWhen)) {
+					ref.cds.push({ ...cd, byIteration: true });
 				}
 			} else {
-				ref.controlDependencies = [{ ...cd, byIteration: true }];
+				ref.cds = [{ ...cd, byIteration: true }];
 			}
 		}
 	}

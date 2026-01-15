@@ -1,7 +1,7 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { alwaysExits, type DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { patchFunctionCall } from '../common';
+import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -19,11 +19,11 @@ import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 /** `if(<cond>) <then> else <else>` built-in function configuration, make sure to not reuse indices */
 export interface IfThenElseConfig {
 	/** the expression to treat as condition, defaults to index 0 */
-	cond?: { idx: number, name: string },
-	/** argument to treat as 'then' case, defaults to index 1 */
-	then?: { idx: number, name: string },
-	/** argument to treat as 'else' case, defaults to index 2 */
-	else?: { idx: number, name: string }
+	cond: { idx: number, name?: string },
+	/** argument to treat as yes/'then' case, defaults to index 1 */
+	yes:  { idx: number, name?: string },
+	/** argument to treat as no/'else' case, defaults to index 2 */
+	no:   { idx: number, name?: string }
 }
 
 /**
@@ -35,12 +35,15 @@ export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
 	args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
-	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>
+	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config?: IfThenElseConfig
 ): DataflowInformation {
 	if(args.length !== 2 && args.length !== 3) {
 		dataflowLogger.warn(`If-then-else ${name.content} has something different from 2 or 3 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
+	const fArgs = convertFnArguments(args);
+	console.log(fArgs);
 
 	const [condArg, thenArg, otherwiseArg] = args.map(e => unpackNonameArg(e));
 
@@ -56,7 +59,7 @@ export function processIfThenElse<OtherInfo>(
 		return cond;
 	}
 
-	const originalDependency = data.controlDependencies?.slice();
+	const originalDependency = data.cds?.slice();
 	// currently we update the cd afterward :sweat:
 	data = { ...data, environment: cond.environment };
 
@@ -81,7 +84,7 @@ export function processIfThenElse<OtherInfo>(
 	let otherwise: DataflowInformation | undefined;
 	let makeOtherwiseMaybe = false;
 	if(otherwiseArg !== undefined && !conditionIsAlwaysTrue) {
-		data = { ...data, controlDependencies: originalDependency?.slice() };
+		data = { ...data, cds: originalDependency?.slice() };
 		otherwise = processDataflowFor(otherwiseArg, data);
 		if(otherwise.entryPoint) {
 			otherwise.graph.addEdge(rootId, otherwise.entryPoint, EdgeType.Returns);
@@ -128,7 +131,7 @@ export function processIfThenElse<OtherInfo>(
 		nextGraph,
 		rootId,
 		name,
-		data:                  { ...data, controlDependencies: originalDependency },
+		data:                  { ...data, cds: originalDependency },
 		argumentProcessResult: [cond, then, otherwise],
 		origin:                'builtin:if-then-else'
 	});
@@ -136,12 +139,12 @@ export function processIfThenElse<OtherInfo>(
 	// as an if always evaluates its condition, we add a 'reads'-edge
 	nextGraph.addEdge(rootId, cond.entryPoint, EdgeType.Reads);
 
-	const exitPoints = (then?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeThenMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: true }] : e.controlDependencies }))
-		.concat((otherwise?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeOtherwiseMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: false }] : e.controlDependencies })));
+	const exitPoints = (then?.exitPoints ?? []).map(e => ({ ...e, cds: makeThenMaybe ? [...data.cds ?? [], { id: rootId, when: true }] : e.cds }))
+		.concat((otherwise?.exitPoints ?? []).map(e => ({ ...e, cds: makeOtherwiseMaybe ? [...data.cds ?? [], { id: rootId, when: false }] : e.cds })));
 
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency, type: ReferenceType.Function }, ...ingoing],
+		in:                [{ nodeId: rootId, name: name.content, cds: originalDependency, type: ReferenceType.Function }, ...ingoing],
 		out:               outgoing,
 		exitPoints,
 		entryPoint:        rootId,

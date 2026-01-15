@@ -44,7 +44,7 @@ function makeFilter(options: ReduceVertexOptions, idMap?: AstIdMap): <T extends 
 		return {
 			...arg,
 			environment:         options.keepEnv ? arg.environment : undefined,
-			controlDependencies: options.keepCd ? arg.controlDependencies : undefined,
+			cds:                 options.keepCd ? arg.cds : undefined,
 			functionInformation: options.compactFunctions ? arg.functionInformation : undefined
 		};
 	};

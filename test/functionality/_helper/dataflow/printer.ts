@@ -29,11 +29,11 @@ export function wrap(id: string | NodeId | undefined): string {
 /**
  *
  */
-export function wrapControlDependencies(controlDependencies: ControlDependency[] | undefined): string {
-	if(controlDependencies === undefined) {
+export function wrapControlDependencies(cds: ControlDependency[] | undefined): string {
+	if(cds === undefined) {
 		return 'undefined';
 	} else {
-		return `[${controlDependencies.map(c =>
+		return `[${cds.map(c =>
 			`{ id: ${wrap(c.id)}, when: ${c.when} }`
 		).join(', ')}]`;
 	}
@@ -43,11 +43,11 @@ export function wrapControlDependencies(controlDependencies: ControlDependency[]
  * Wraps an identifier reference for printing.
  */
 export function wrapReference(ref: IdentifierReference): string {
-	return `{ nodeId: ${wrap(ref.nodeId)}, name: ${wrap(ref.name)}, controlDependencies: ${wrapControlDependencies(ref.controlDependencies)} }`;
+	return `{ nodeId: ${wrap(ref.nodeId)}, name: ${wrap(ref.name)}, cds: ${wrapControlDependencies(ref.cds)} }`;
 }
 /**
  * Wraps an exit point for printing.
  */
 export function wrapExitPoint(ep: ExitPoint): string {
-	return `{ type: ${ep.type}, controlDependencies: ${wrapControlDependencies(ep.controlDependencies)}, nodeId: ${wrap(ep.nodeId)} }`;
+	return `{ type: ${ep.type}, cds: ${wrapControlDependencies(ep.cds)}, nodeId: ${wrap(ep.nodeId)} }`;
 }

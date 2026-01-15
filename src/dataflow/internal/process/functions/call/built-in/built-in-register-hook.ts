@@ -109,7 +109,7 @@ export function processRegisterHook<OtherInfo>(
 	const hooks: HookInformation[] = Array.from(wrappedFunctions, id => ({
 		type:  config.hook,
 		id,
-		cds:   data.controlDependencies,
+		cds:   data.cds,
 		add:   shouldAdd,
 		after: shouldBeAfter
 	}));

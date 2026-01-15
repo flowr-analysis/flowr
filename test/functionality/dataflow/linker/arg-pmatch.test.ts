@@ -34,10 +34,10 @@ describe('Dataflow Linker - Argument Matching', () => {
 			const graph = emptyGraph();
 			const useArgs: FunctionArgument[] = args.map((name, idx) => (
 				name === null ? EmptyArgument : {
-					nodeId:              `arg-${idx}`,
-					type:                ReferenceType.Argument,
-					name:                name === 'pos' ? undefined : name,
-					controlDependencies: undefined
+					nodeId: `arg-${idx}`,
+					type:   ReferenceType.Argument,
+					name:   name === 'pos' ? undefined : name,
+					cds:    undefined
 				} satisfies FunctionArgument));
 
 			const useParams: RParameter<ParentInformation>[] = params.map((name, idx) => ({

@@ -40,7 +40,7 @@ export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph): Exc
 		if(vtx.tag === VertexType.FunctionDefinition) {
 			for(const e of vtx.exitPoints.filter(e => e.type === ExitPointType.Error)) {
 				if(!collectedExceptions.find(x => x.id === e.nodeId)) {
-					collectedExceptions.push({ id: e.nodeId, cds: e.controlDependencies });
+					collectedExceptions.push({ id: e.nodeId, cds: e.cds });
 				}
 			}
 		} else if(vtx.tag === VertexType.FunctionCall && vtx.origin !== 'unnamed' && vtx.origin.some(c => CatchHandlers.has(c))) {

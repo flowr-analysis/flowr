@@ -148,7 +148,7 @@ print(x)`, emptyGraph()
 				.constant('3', undefined, false)
 				.defineFunction('5', ['3'], {
 					out:               [],
-					in:                [{ nodeId: '3', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
+					in:                [{ nodeId: '3', name: undefined, cds: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
 					entryPoint:        '3',
 					graph:             new Set(['1', '3']),

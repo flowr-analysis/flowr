@@ -55,7 +55,7 @@ describe('Benchmark Slicer', () => {
 				numberOfEdges:               5,  // the defined-by edge and the arguments, the built-in edge
 				numberOfCalls:               1,  // `<-`
 				numberOfFunctionDefinitions: 0,   // no definitions
-				sizeOfObject:                228,
+				sizeOfObject:                196,
 				storedVertexIndices:         0,  // no indices
 				storedEnvIndices:            0,  // no indices
 				overwrittenIndices:          0,  // no indices
@@ -125,7 +125,7 @@ cat(d)`
 				numberOfEdges:               38,
 				numberOfCalls:               9,
 				numberOfFunctionDefinitions: 0,
-				sizeOfObject:                1922,
+				sizeOfObject:                1666,
 				storedVertexIndices:         0,
 				storedEnvIndices:            0,
 				overwrittenIndices:          0,

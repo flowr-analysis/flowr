@@ -129,13 +129,13 @@ function processNumberBasedAccess<OtherInfo>(
 	const outInfo = { definitionRootNodes: [] };
 	const tableAssignId = builtInId(':=-table');
 	data.environment.current.memory.set(':=', [{
-		type:                ReferenceType.BuiltInFunction,
-		definedAt:           tableAssignId,
-		controlDependencies: undefined,
-		processor:           (name, args, rootId, data) => tableAssignmentProcessor(name, args, rootId, data, outInfo),
-		config:              {},
-		name:                ':=',
-		nodeId:              tableAssignId
+		type:      ReferenceType.BuiltInFunction,
+		definedAt: tableAssignId,
+		cds:       undefined,
+		processor: (name, args, rootId, data) => tableAssignmentProcessor(name, args, rootId, data, outInfo),
+		config:    {},
+		name:      ':=',
+		nodeId:    tableAssignId
 	}]);
 
 	const fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'builtin:access' });
@@ -145,7 +145,7 @@ function processNumberBasedAccess<OtherInfo>(
 		data.environment.current.memory.set(':=', existing);
 	}
 	if(head.value && outInfo.definitionRootNodes.length > 0) {
-		markAsAssignment(fnCall.information, { type: ReferenceType.Variable, name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, controlDependencies: [] },
+		markAsAssignment(fnCall.information, { type: ReferenceType.Variable, name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, cds: [] },
 			outInfo.definitionRootNodes,
 			rootId, data
 		);

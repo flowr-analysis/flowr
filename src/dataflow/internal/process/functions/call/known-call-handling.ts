@@ -96,16 +96,16 @@ export function processKnownFunctionCall<OtherInfo>(
 	}
 
 	finalGraph.addVertex({
-		tag:                 VertexType.FunctionCall,
-		id:                  rootId,
-		environment:         data.environment,
-		name:                functionCallName,
+		tag:               VertexType.FunctionCall,
+		id:                rootId,
+		environment:       data.environment,
+		name:              functionCallName,
 		/* will be overwritten accordingly */
-		onlyBuiltin:         false,
-		controlDependencies: data.controlDependencies,
-		args:                reverseOrder ? callArgs.toReversed() : callArgs,
-		indicesCollection:   indicesCollection,
-		origin:              origin === 'default' ? ['function'] : [origin]
+		onlyBuiltin:       false,
+		cds:               data.cds,
+		args:              reverseOrder ? callArgs.toReversed() : callArgs,
+		indicesCollection: indicesCollection,
+		origin:            origin === 'default' ? ['function'] : [origin]
 	}, data.ctx.env.makeCleanEnv());
 
 	if(hasUnknownSideEffect) {
@@ -113,7 +113,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	}
 
 	const inIds = remainingReadInArgs;
-	const fnRef: IdentifierReference = { nodeId: rootId, name: functionCallName, controlDependencies: data.controlDependencies, type: ReferenceType.Function };
+	const fnRef: IdentifierReference = { nodeId: rootId, name: functionCallName, cds: data.cds, type: ReferenceType.Function };
 	inIds.push(fnRef);
 
 	// if force args is not none, we need to collect all non-default exit points from our arguments!
@@ -149,7 +149,7 @@ export function processKnownFunctionCall<OtherInfo>(
 			graph:             finalGraph,
 			environment:       finalEnv,
 			entryPoint:        rootId,
-			exitPoints:        exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }],
+			exitPoints:        exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, cds: data.cds }],
 			hooks:             functionName.hooks
 		},
 		callArgs,

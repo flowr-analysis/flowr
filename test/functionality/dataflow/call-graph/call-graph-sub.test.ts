@@ -61,7 +61,7 @@ describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 		`, ['1@function'],
 		emptyGraph()
 			.call(11, '{', [argumentInCall('1@10')], { omitArgs: true, onlyBuiltIn: true })
-			.defineFunction('1@function', [{ nodeId: 10, controlDependencies: undefined, type: ExitPointType.Return }], {
+			.defineFunction('1@function', [{ nodeId: 10, cds: undefined, type: ExitPointType.Return }], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],

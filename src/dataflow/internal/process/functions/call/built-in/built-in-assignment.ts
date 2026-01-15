@@ -300,11 +300,11 @@ function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformat
 	for(const refs of [target.in, target.unknownReferences]) {
 		for(const ref of refs) {
 			written.push({
-				nodeId:              ref.nodeId,
-				name:                ref.name as string,
-				type:                referenceType,
-				definedAt:           rootId,
-				controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
+				nodeId:    ref.nodeId,
+				name:      ref.name as string,
+				type:      referenceType,
+				definedAt: rootId,
+				cds:       data.cds ?? (makeMaybe ? [] : undefined),
 				value
 			});
 		}
@@ -459,12 +459,12 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 
 	const aliases = getAliases([source.info.id], information.graph, information.environment);
 	const writeNodes = targetName ? [{
-		nodeId:              targetId,
-		name:                targetName,
-		type:                referenceType,
-		definedAt:           rootId,
-		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
-		value:               aliases
+		nodeId:    targetId,
+		name:      targetName,
+		type:      referenceType,
+		definedAt: rootId,
+		cds:       data.cds ?? (makeMaybe ? [] : undefined),
+		value:     aliases
 	} satisfies InGraphIdentifierDefinition & { name: string }]
 		: produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
 
@@ -475,7 +475,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	// we drop the first arg which we use to pass along arguments :D
 	const readFromSourceWritten = sourceArg.out.slice(1);
 	const readTargets: readonly IdentifierReference[] = [
-		{ nodeId: rootId, name: nameOfAssignmentFunction, controlDependencies: data.controlDependencies, type: ReferenceType.Function } as IdentifierReference
+		{ nodeId: rootId, name: nameOfAssignmentFunction, cds: data.cds, type: ReferenceType.Function } as IdentifierReference
 	].concat(
 		sourceArg.unknownReferences,
 		sourceArg.in,

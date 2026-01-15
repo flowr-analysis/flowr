@@ -39,9 +39,9 @@ export function processFunctionArgument<OtherInfo>(
 	let entryPoint = value?.entryPoint;
 	if(argumentName) {
 		graph.addVertex({
-			tag:                 VertexType.Use,
-			id:                  argument.info.id,
-			controlDependencies: data.controlDependencies
+			tag: VertexType.Use,
+			id:  argument.info.id,
+			cds: data.cds
 		}, data.ctx.env.makeCleanEnv());
 		entryPoint = argument.info.id;
 	}
@@ -63,7 +63,7 @@ export function processFunctionArgument<OtherInfo>(
 		graph:             graph,
 		environment:       value?.environment ?? data.environment,
 		entryPoint:        entryPoint ?? argument.info.id,
-		exitPoints:        value?.exitPoints ?? name?.exitPoints ?? [{ nodeId: argument.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }],
+		exitPoints:        value?.exitPoints ?? name?.exitPoints ?? [{ nodeId: argument.info.id, type: ExitPointType.Default, cds: data.cds }],
 		hooks:             []
 	};
 }

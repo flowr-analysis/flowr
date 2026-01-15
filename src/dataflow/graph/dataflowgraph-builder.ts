@@ -70,7 +70,7 @@ export class DataflowGraphBuilder<
 	 */
 	public defineFunction(id: NodeId,
 		exitPoints: readonly ExitPoint[] | readonly NodeId[], subflow: Omit<DataflowFunctionFlowInformation, 'hooks'> & { hooks?: HookInformation[] },
-		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, controlDependencies?: ControlDependency[], readParams?: [NodeId, boolean][] },
+		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, cds?: ControlDependency[], readParams?: [NodeId, boolean][] },
 		asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({
 			tag:     VertexType.FunctionDefinition,
@@ -80,16 +80,16 @@ export class DataflowGraphBuilder<
 				...subflow,
 				entryPoint:        normalizeIdToNumberIfPossible(subflow.entryPoint),
 				graph:             new Set([...subflow.graph].map(normalizeIdToNumberIfPossible)),
-				out:               subflow.out.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), controlDependencies: o.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
-				in:                subflow.in.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), controlDependencies: o.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
-				unknownReferences: subflow.unknownReferences.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), controlDependencies: o.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
+				out:               subflow.out.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
+				in:                subflow.in.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
+				unknownReferences: subflow.unknownReferences.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
 				hooks:             subflow.hooks ?? []
 			} as DataflowFunctionFlowInformation,
-			exitPoints: exitPoints.map(e => typeof e === 'object' ? ({ ...e, nodeId: normalizeIdToNumberIfPossible(e.nodeId), controlDependencies: e.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) }) :
-				({ nodeId: normalizeIdToNumberIfPossible(e), type: ExitPointType.Default, controlDependencies: undefined })
+			exitPoints: exitPoints.map(e => typeof e === 'object' ? ({ ...e, nodeId: normalizeIdToNumberIfPossible(e.nodeId), cds: e.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) }) :
+				({ nodeId: normalizeIdToNumberIfPossible(e), type: ExitPointType.Default, cds: undefined })
 			),
-			controlDependencies: info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
-			environment:         info?.environment,
+			cds:         info?.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
+			environment: info?.environment,
 		}, asRoot);
 	}
 
@@ -104,28 +104,28 @@ export class DataflowGraphBuilder<
 	 */
 	public call(id: NodeId, name: string, args: FunctionArgument[],
 		info?: {
-			returns?:             readonly NodeId[],
-			reads?:               readonly NodeId[],
-			onlyBuiltIn?:         boolean,
-			environment?:         REnvironmentInformation,
-			builtInEnvironment?:  IEnvironment,
-			controlDependencies?: ControlDependency[],
-			origin?:              FunctionOriginInformation[]
-			link?:                DataflowGraphVertexAstLink,
-			omitArgs?:            boolean
+			returns?:            readonly NodeId[],
+			reads?:              readonly NodeId[],
+			onlyBuiltIn?:        boolean,
+			environment?:        REnvironmentInformation,
+			builtInEnvironment?: IEnvironment,
+			cds?:                ControlDependency[],
+			origin?:             FunctionOriginInformation[]
+			link?:               DataflowGraphVertexAstLink,
+			omitArgs?:           boolean
 		},
 		asRoot: boolean = true) {
 		const onlyBuiltInAuto = info?.reads?.length === 1 && isBuiltIn(info?.reads[0]);
 		this.addVertexWithDefaultEnv({
-			tag:                 VertexType.FunctionCall,
-			id:                  normalizeIdToNumberIfPossible(id),
+			tag:         VertexType.FunctionCall,
+			id:          normalizeIdToNumberIfPossible(id),
 			name,
-			args:                args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: normalizeIdToNumberIfPossible(a.nodeId), controlDependencies: undefined }),
-			environment:         (info?.onlyBuiltIn || onlyBuiltInAuto) ? undefined : info?.environment ?? this.defaultEnvironment,
-			controlDependencies: info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
-			onlyBuiltin:         info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false,
-			origin:              info?.origin ?? [ getDefaultProcessor(name) ?? 'function' ],
-			link:                info?.link
+			args:        args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: normalizeIdToNumberIfPossible(a.nodeId), cds: undefined }),
+			environment: (info?.onlyBuiltIn || onlyBuiltInAuto) ? undefined : info?.environment ?? this.defaultEnvironment,
+			cds:         info?.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
+			onlyBuiltin: info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false,
+			origin:      info?.origin ?? [ getDefaultProcessor(name) ?? 'function' ],
+			link:        info?.link
 		}, asRoot);
 		if(!info?.omitArgs) {
 			this.addArgumentLinks(id, args);
@@ -156,7 +156,7 @@ export class DataflowGraphBuilder<
 					this.reads(arg.nodeId, withoutSuffix);
 				}
 			} else if(!this.hasVertex(arg.nodeId, true)) {
-				this.use(arg.nodeId, arg.name, { cds: arg.controlDependencies });
+				this.use(arg.nodeId, arg.name, { cds: arg.cds });
 				this.argument(id, arg.nodeId);
 			}
 		}
@@ -171,12 +171,12 @@ export class DataflowGraphBuilder<
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public defineVariable(id: NodeId, name?: string,
-		info?: { controlDependencies?: ControlDependency[], definedBy?: NodeId[]}, asRoot: boolean = true) {
+		info?: { cds?: ControlDependency[], definedBy?: NodeId[]}, asRoot: boolean = true) {
 		this.addVertexWithDefaultEnv({
-			tag:                 VertexType.VariableDefinition,
-			id:                  normalizeIdToNumberIfPossible(id),
+			tag: VertexType.VariableDefinition,
+			id:  normalizeIdToNumberIfPossible(id),
 			name,
-			controlDependencies: info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
+			cds: info?.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
 		}, asRoot);
 		if(info?.definedBy) {
 			for(const def of info.definedBy) {
@@ -196,14 +196,14 @@ export class DataflowGraphBuilder<
 	 */
 	public use(id: NodeId, name?: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv(deepMergeObject({
-			tag:                 VertexType.Use,
-			id:                  normalizeIdToNumberIfPossible(id),
+			tag:         VertexType.Use,
+			id:          normalizeIdToNumberIfPossible(id),
 			name,
-			controlDependencies: undefined,
-			environment:         undefined
+			cds:         undefined,
+			environment: undefined
 		}, {
 			...info,
-			controlDependencies: info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) }))
+			cds: info?.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) }))
 		} as Partial<DataflowGraphVertexUse>), asRoot);
 	}
 
@@ -215,12 +215,12 @@ export class DataflowGraphBuilder<
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
-	public constant(id: NodeId, options?: { controlDependencies?: ControlDependency[] }, asRoot: boolean = true) {
+	public constant(id: NodeId, options?: { cds?: ControlDependency[] }, asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({
-			tag:                 VertexType.Value,
-			id:                  normalizeIdToNumberIfPossible(id),
-			controlDependencies: options?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
-			environment:         undefined
+			tag:         VertexType.Value,
+			id:          normalizeIdToNumberIfPossible(id),
+			cds:         options?.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
+			environment: undefined
 		}, asRoot);
 	}
 

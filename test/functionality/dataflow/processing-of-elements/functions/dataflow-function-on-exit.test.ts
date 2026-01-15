@@ -103,7 +103,7 @@ describe.sequential('Function Definition - On.Exit', withShell(shell => {
 			emptyGraph()
 				.calls('1@function', '12-hook-fn')
 				// returns `on.exit`, no longer `return(x)`, but `return(x)` is **not** dead!
-				.defineFunction('1@function', [ { nodeId: 18, type: ExitPointType.Return }, { nodeId: 10, type: ExitPointType.Return, controlDependencies: [{ id: 12, when: true }] }], {
+				.defineFunction('1@function', [ { nodeId: 18, type: ExitPointType.Return }, { nodeId: 10, type: ExitPointType.Return, cds: [{ id: 12, when: true }] }], {
 					hooks: [{ type: KnownHooks.OnFnExit, id: '12-hook-fn', add: false, after: true }],
 					in:    [
 						{ nodeId: 4, name: '<-', type: ReferenceType.Function },

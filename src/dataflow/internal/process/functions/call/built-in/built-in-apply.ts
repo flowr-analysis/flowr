@@ -101,7 +101,7 @@ export function processApply<OtherInfo>(
 		functionName = val.content.str;
 		information = {
 			...information,
-			in: [...information.in, { type: ReferenceType.Function, name: functionName, controlDependencies: data.controlDependencies, nodeId: functionId }]
+			in: [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }]
 		};
 	} else if(val.type === RType.Symbol) {
 		functionId = val.info.id;
@@ -129,10 +129,10 @@ export function processApply<OtherInfo>(
 		const counterpart = args[i];
 		if(arg && counterpart !== EmptyArgument) {
 			return {
-				name:                counterpart.name?.content,
-				controlDependencies: data.controlDependencies,
-				type:                ReferenceType.Argument,
-				nodeId:              arg.entryPoint
+				name:   counterpart.name?.content,
+				cds:    data.cds,
+				type:   ReferenceType.Argument,
+				nodeId: arg.entryPoint
 			};
 		} else {
 			return EmptyArgument;
@@ -143,15 +143,15 @@ export function processApply<OtherInfo>(
 		const rootFnId = functionId;
 		functionId = 'anon-' + rootFnId;
 		information.graph.addVertex({
-			tag:                 VertexType.FunctionCall,
-			id:                  functionId,
-			environment:         data.environment,
-			name:                functionName,
+			tag:         VertexType.FunctionCall,
+			id:          functionId,
+			environment: data.environment,
+			name:        functionName,
 			/* can never be a direct built-in-call */
-			onlyBuiltin:         false,
-			controlDependencies: data.controlDependencies,
-			args:                allOtherArguments, // same reference
-			origin:              ['function']
+			onlyBuiltin: false,
+			cds:         data.cds,
+			args:        allOtherArguments, // same reference
+			origin:      ['function']
 		}, data.ctx.env.makeCleanEnv());
 		information.graph.addEdge(rootId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
@@ -159,7 +159,7 @@ export function processApply<OtherInfo>(
 			...information,
 			in: [
 				...information.in,
-				{ type: ReferenceType.Function, name: functionName, controlDependencies: data.controlDependencies, nodeId: functionId }
+				{ type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }
 			]
 		};
 		const dfVert = information.graph.getVertex(rootId);
@@ -191,14 +191,14 @@ export function processApply<OtherInfo>(
 	} else {
 		/* identify it as a full-blown function call :) */
 		information.graph.updateToFunctionCall({
-			tag:                 VertexType.FunctionCall,
-			id:                  functionId,
-			name:                functionName,
-			args:                allOtherArguments,
-			environment:         resolveInEnvironment === 'global' ? undefined : data.environment,
-			onlyBuiltin:         resolveInEnvironment === 'global',
-			controlDependencies: data.controlDependencies,
-			origin:              ['function']
+			tag:         VertexType.FunctionCall,
+			id:          functionId,
+			name:        functionName,
+			args:        allOtherArguments,
+			environment: resolveInEnvironment === 'global' ? undefined : data.environment,
+			onlyBuiltin: resolveInEnvironment === 'global',
+			cds:         data.cds,
+			origin:      ['function']
 		});
 	}
 

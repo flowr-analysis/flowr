@@ -81,7 +81,7 @@ export function processTryCatch<OtherInfo>(
 			// not killing other args
 			return arg.exitPoints;
 		}
-		blockErrorExitPoints.push(...arg.exitPoints.filter(ep => ep.type === ExitPointType.Error).flatMap(a => a.controlDependencies));
+		blockErrorExitPoints.push(...arg.exitPoints.filter(ep => ep.type === ExitPointType.Error).flatMap(a => a.cds));
 		return arg.exitPoints.filter(ep => ep.type !== ExitPointType.Error);
 	});
 	if(errorExitPoints.length > 0) {
@@ -139,11 +139,11 @@ function constrainExitPoints(exitPoints: readonly ExitPoint[], constrain: Set<No
 	// append constrains with true
 	const cds = Array.from(constrain, id => ({ id, when: true }));
 	return exitPoints.map(e => {
-		if(e.controlDependencies) {
-			e.controlDependencies.push(...cds);
+		if(e.cds) {
+			e.cds.push(...cds);
 			return e;
 		} else {
-			return { ...e, controlDependencies: cds };
+			return { ...e, cds: cds };
 		}
 	});
 }

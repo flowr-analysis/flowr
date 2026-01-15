@@ -20,41 +20,41 @@ function concatCdsUnique(target: ControlDependency[], toAdd: readonly ControlDep
 }
 
 /**
- * Marks the reference as maybe (i.e., as controlled by a set of {@link IdentifierReference#controlDependencies|control dependencies}).
+ * Marks the reference as maybe (i.e., as controlled by a set of {@link IdentifierReference#cds|control dependencies}).
  */
 export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency[] | undefined = undefined): IdentifierReference {
 	if(includeDefs) {
 		const definitions = ref.name ? resolveByName(ref.name, environments, ref.type) : undefined;
 		for(const definition of definitions ?? []) {
 			if(definition.type !== ReferenceType.BuiltInFunction && definition.type !== ReferenceType.BuiltInConstant) {
-				if(definition.controlDependencies) {
-					appToCdsUnique(definition.controlDependencies, defaultCd);
+				if(definition.cds) {
+					appToCdsUnique(definition.cds, defaultCd);
 				} else {
-					definition.controlDependencies = defaultCd ? Array.from(defaultCd) : [];
+					definition.cds = defaultCd ? Array.from(defaultCd) : [];
 				}
 			}
 		}
 	}
 	const node = graph.getVertex(ref.nodeId, true);
 	if(node) {
-		if(node.controlDependencies) {
-			appToCdsUnique(node.controlDependencies, defaultCd);
+		if(node.cds) {
+			appToCdsUnique(node.cds, defaultCd);
 		} else {
-			node.controlDependencies = defaultCd ? Array.from(defaultCd) : [];
+			node.cds = defaultCd ? Array.from(defaultCd) : [];
 		}
 	}
-	if(ref.controlDependencies) {
+	if(ref.cds) {
 		if(defaultCd) {
-			return { ...ref, controlDependencies: concatCdsUnique(ref.controlDependencies, defaultCd) };
+			return { ...ref, cds: concatCdsUnique(ref.cds, defaultCd) };
 		}
 	} else {
-		return { ...ref, controlDependencies: defaultCd ? Array.from(defaultCd) : [] };
+		return { ...ref, cds: defaultCd ? Array.from(defaultCd) : [] };
 	}
 	return ref;
 }
 
 /**
- * Marks all references as maybe (i.e., as controlled by a set of {@link IdentifierReference#controlDependencies|control dependencies}).
+ * Marks all references as maybe (i.e., as controlled by a set of {@link IdentifierReference#cds|control dependencies}).
  * @see {@link makeReferenceMaybe}
  */
 export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, applyCds: ControlDependency[] | undefined = undefined): IdentifierReference[] {

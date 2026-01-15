@@ -65,7 +65,7 @@ export function processWhileLoop<OtherInfo>(
 		markAsNSE: [1],
 		patchData: (d, i) => {
 			if(i === 1) {
-				return { ...d, controlDependencies: [...d.controlDependencies ?? [], { id: name.info.id, when: true }] };
+				return { ...d, cds: [...d.cds ?? [], { id: name.info.id, when: true }] };
 			}
 			return d;
 		}, origin: 'builtin:while-loop' });
@@ -76,7 +76,7 @@ export function processWhileLoop<OtherInfo>(
 		information.graph.addEdge(name.info.id, condition.entryPoint, EdgeType.Reads);
 		return {
 			unknownReferences: [],
-			in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependencies: data.controlDependencies, type: ReferenceType.Function }],
+			in:                [{ nodeId: name.info.id, name: name.lexeme, cds: data.cds, type: ReferenceType.Function }],
 			out:               condition.out,
 			entryPoint:        name.info.id,
 			exitPoints:        [],
@@ -87,7 +87,7 @@ export function processWhileLoop<OtherInfo>(
 	}
 
 	guard(condition !== undefined && body !== undefined, () => `While-Loop ${name.content} has no condition or body, impossible!`);
-	const originalDependency = data.controlDependencies;
+	const originalDependency = data.cds;
 
 	if(alwaysExits(condition)) {
 		dataflowLogger.warn(`While-Loop ${rootId} forces exit in condition, skipping rest`);
@@ -108,7 +108,7 @@ export function processWhileLoop<OtherInfo>(
 
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependencies: originalDependency, type: ReferenceType.Function }, ...remainingInputs],
+		in:                [{ nodeId: name.info.id, name: name.lexeme, cds: originalDependency, type: ReferenceType.Function }, ...remainingInputs],
 		out:               condition.out.concat(makeAllMaybe(body.out, information.graph, information.environment, true, cdTrue)),
 		entryPoint:        name.info.id,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),

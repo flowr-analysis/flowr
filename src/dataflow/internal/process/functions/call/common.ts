@@ -99,13 +99,13 @@ export function convertFnArgument<OtherInfo>(arg: typeof EmptyArgument | RNode<O
 	if(arg === EmptyArgument) {
 		return EmptyArgument;
 	} else if(!arg.name || arg.type !== RType.Argument) {
-		return { nodeId: arg.info.id, controlDependencies: undefined, type: ReferenceType.Argument };
+		return { nodeId: arg.info.id, cds: undefined, type: ReferenceType.Argument };
 	} else {
 		return {
-			nodeId:              arg.info.id,
-			name:                arg.name.content,
-			controlDependencies: undefined,
-			type:                ReferenceType.Argument
+			nodeId: arg.info.id,
+			name:   arg.name.content,
+			cds:    undefined,
+			type:   ReferenceType.Argument
 		};
 	}
 }
@@ -153,7 +153,7 @@ export function processAllArguments<OtherInfo>(
 				/* maybe all targets are not definitely of the current scope and should be still kept */
 				let assumeItMayHaveAHigherTarget = true;
 				for(const resolved of tryToResolve) {
-					if(happensInEveryBranch(resolved.controlDependencies) && !isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
+					if(happensInEveryBranch(resolved.cds) && !isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
 						assumeItMayHaveAHigherTarget = false;
 					}
 					// When only a single index is referenced, we don't need to reference the whole object
@@ -172,9 +172,9 @@ export function processAllArguments<OtherInfo>(
 
 
 		if(arg.type !== RType.Argument || !arg.name) {
-			callArgs.push({ nodeId: processed.entryPoint, controlDependencies: undefined, type: ReferenceType.Argument });
+			callArgs.push({ nodeId: processed.entryPoint, cds: undefined, type: ReferenceType.Argument });
 		} else {
-			callArgs.push({ nodeId: processed.entryPoint, name: arg.name.content, controlDependencies: undefined, type: ReferenceType.Argument });
+			callArgs.push({ nodeId: processed.entryPoint, name: arg.name.content, cds: undefined, type: ReferenceType.Argument });
 		}
 
 		finalGraph.addEdge(functionRootId, processed.entryPoint, EdgeType.Argument);
@@ -200,15 +200,15 @@ export function patchFunctionCall<OtherInfo>(
 	{ nextGraph, rootId, name, data, argumentProcessResult, origin, link }: PatchFunctionCallInput<OtherInfo>
 ): void {
 	nextGraph.addVertex({
-		tag:                 VertexType.FunctionCall,
-		id:                  rootId,
-		name:                name.content,
-		environment:         data.environment,
+		tag:         VertexType.FunctionCall,
+		id:          rootId,
+		name:        name.content,
+		environment: data.environment,
 		/* will be overwritten accordingly */
-		onlyBuiltin:         false,
-		controlDependencies: data.controlDependencies,
-		args:                argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined, type: ReferenceType.Argument }),
-		origin:              [origin],
+		onlyBuiltin: false,
+		cds:         data.cds,
+		args:        argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, cds: undefined, call: undefined, type: ReferenceType.Argument }),
+		origin:      [origin],
 		link
 	}, data.ctx.env.makeCleanEnv(), !nextGraph.hasVertex(rootId) || nextGraph.isRoot(rootId), true);
 	for(const arg of argumentProcessResult) {

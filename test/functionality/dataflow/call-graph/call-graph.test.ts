@@ -28,7 +28,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('7@bar', '4@function')
 			.call(11, '{', [argumentInCall('1@10')], { omitArgs: true, onlyBuiltIn: true })
 			.call(28, '{', [argumentInCall('4@27')], { omitArgs: true, onlyBuiltIn: true })
-			.defineFunction('4@function', [{ nodeId: 27, controlDependencies: undefined, type: ExitPointType.Return }], {
+			.defineFunction('4@function', [{ nodeId: 27, cds: undefined, type: ExitPointType.Return }], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -38,7 +38,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			}, { readParams: [[15, true]] })
 			.calls('4@function', [28, '5@return'])
 			.calls(28, [27, builtInId('expression-list')])
-			.defineFunction('1@function', [{ nodeId: 10, controlDependencies: undefined, type: ExitPointType.Return }], {
+			.defineFunction('1@function', [{ nodeId: 10, cds: undefined, type: ExitPointType.Return }], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -77,7 +77,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('7@fib', '1@function')
 			.call(32, '{', [argumentInCall(31)], { omitArgs: true, onlyBuiltIn: true })
 			.calls(32, [builtInId('expression-list'), 15, 31])
-			.defineFunction('1@function', [{ nodeId: 13, type: ExitPointType.Return, controlDependencies: [{ id: 15, when: true }] }, { nodeId: 31, type: ExitPointType.Return, controlDependencies: undefined }], {
+			.defineFunction('1@function', [{ nodeId: 13, type: ExitPointType.Return, cds: [{ id: 15, when: true }] }, { nodeId: 31, type: ExitPointType.Return, cds: undefined }], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -88,23 +88,23 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('1@function', ['3@return', '5@return', 7, 14, 15, 32])
 			.call('2@if', 'if', [argumentInCall(7), argumentInCall('2@return'), argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true })
 			.calls('2@if', builtInId('if-then-else')).calls('2@if', 14).calls('2@if', 7)
-			.call(14, '{', [argumentInCall(13)], { omitArgs: true, onlyBuiltIn: true, controlDependencies: [{ id: 15, when: true }] })
+			.call(14, '{', [argumentInCall(13)], { omitArgs: true, onlyBuiltIn: true, cds: [{ id: 15, when: true }] })
 			.calls(14, builtInId('expression-list')).calls(14, 13)
-			.call('3@return', 'return', [argumentInCall('3@return')], { onlyBuiltIn: true, omitArgs: true, origin: ['builtin:return'], controlDependencies: [{ id: 15, when: true }] })
+			.call('3@return', 'return', [argumentInCall('3@return')], { onlyBuiltIn: true, omitArgs: true, origin: ['builtin:return'], cds: [{ id: 15, when: true }] })
 			.calls('3@return', builtInId('return'))
 			.call(7, '<=', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true })
 			.calls(7, builtInId('default'))
-			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: ['builtin:return'], controlDependencies: [{ id: 15, when: false }] })
+			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: ['builtin:return'], cds: [{ id: 15, when: false }] })
 			.calls('5@return', builtInId('return')).calls('5@return', '5@+')
-			.call('5@+', '+', [argumentInCall('5@fib'), argumentInCall(28)], { onlyBuiltIn: true, omitArgs: true, controlDependencies: [{ id: 15, when: false } ] })
+			.call('5@+', '+', [argumentInCall('5@fib'), argumentInCall(28)], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false } ] })
 			.calls('5@+', builtInId('default')).calls('5@+', 22).calls('5@+', 28)
-			.call(22, 'fib', [argumentInCall(24)], { omitArgs: true, controlDependencies: [{ id: 15, when: false }] })
+			.call(22, 'fib', [argumentInCall(24)], { omitArgs: true, cds: [{ id: 15, when: false }] })
 			.calls(22, '1@function').calls(22, 20)
-			.call(28, 'fib', [argumentInCall(26)], { omitArgs: true, controlDependencies: [{ id: 15, when: false }] })
+			.call(28, 'fib', [argumentInCall(26)], { omitArgs: true, cds: [{ id: 15, when: false }] })
 			.calls(28, '1@function').calls(28, 26)
-			.call(20, '-', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true, controlDependencies: [{ id: 15, when: false }] })
+			.call(20, '-', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
 			.calls(20, builtInId('default'))
-			.call(26, '-', [argumentInCall('1@n'), argumentInCall('1@2')], { onlyBuiltIn: true, omitArgs: true, controlDependencies: [{ id: 15, when: false }] })
+			.call(26, '-', [argumentInCall('1@n'), argumentInCall('1@2')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
 			.calls(26, builtInId('default'))
 		, { context: 'call-graph', resolveIdsAsCriterion: true }
 	);

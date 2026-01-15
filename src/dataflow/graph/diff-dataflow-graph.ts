@@ -137,7 +137,7 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
 			if(aArg.name !== bArg.name) {
 				ctx.report.addComment(`${ctx.position}In argument #${i} (of ${ctx.leftname}, unnamed) the name differs: ${aArg.name} vs ${bArg.name}.`);
 			}
-			diffControlDependencies(aArg.controlDependencies, bArg.controlDependencies, { ...ctx, position: `${ctx.position}In argument #${i} (of ${ctx.leftname}, unnamed) the control dependency differs: ${JSON.stringify(aArg.controlDependencies)} vs ${JSON.stringify(bArg.controlDependencies)}.` });
+			diffControlDependencies(aArg.cds, bArg.cds, { ...ctx, position: `${ctx.position}In argument #${i} (of ${ctx.leftname}, unnamed) the control dependency differs: ${JSON.stringify(aArg.cds)} vs ${JSON.stringify(bArg.cds)}.` });
 		}
 	}
 }
@@ -178,7 +178,7 @@ export function diffVertices(ctx: GraphDiffContext): void {
 				});
 			}
 		}
-		diffControlDependencies(lInfo.controlDependencies, rInfo.controlDependencies, { ...ctx, position: `Vertex ${id} differs in controlDependencies. ` });
+		diffControlDependencies(lInfo.cds, rInfo.cds, { ...ctx, position: `Vertex ${id} differs in cds. ` });
 		if(lInfo.origin !== undefined || rInfo.origin !== undefined) {
 			// compare arrays
 			const equalArrays = lInfo.origin && rInfo.origin && arrayEqual(lInfo.origin as unknown as unknown[], rInfo.origin as unknown as unknown[]);
@@ -231,7 +231,7 @@ export function diffVertices(ctx: GraphDiffContext): void {
 					if(a.type !== b.type || a.nodeId !== b.nodeId) {
 						return false;
 					}
-					diffControlDependencies(a.controlDependencies, b.controlDependencies, { ...ctx, position: '' });
+					diffControlDependencies(a.cds, b.cds, { ...ctx, position: '' });
 					return true;
 				})) {
 					ctx.report.addComment(

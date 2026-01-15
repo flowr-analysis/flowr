@@ -42,7 +42,7 @@ export function processRepeatLoop<OtherInfo>(
 		forceArgs: 'all',
 		patchData: (d, i) => {
 			if(i === 0) {
-				return { ...d, controlDependencies: [...d.controlDependencies ?? [], { id: name.info.id }] };
+				return { ...d, cds: [...d.cds ?? [], { id: name.info.id }] };
 			}
 			return d;
 		},

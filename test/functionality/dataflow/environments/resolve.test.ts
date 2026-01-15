@@ -229,8 +229,8 @@ describe.sequential('Resolve', withShell(shell => {
 		// Maybe Resolve
 		test.each([
 			//Identifier  Wanted Value    Environment
-			['TRUE',  true,  defaultEnv().defineInEnv({ name: 'TRUE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }] })],
-			['FALSE', false, defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }] })]
+			['TRUE',  true,  defaultEnv().defineInEnv({ name: 'TRUE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, cds: [{ id: 42, when: true }] })],
+			['FALSE', false, defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, cds: [{ id: 42, when: true }] })]
 		])("Identifier '%s' should maybe resolve to %s", (identifier, wantedValue, environment) => {
 			const result = resolvesToBuiltInConstant(identifier, environment, wantedValue);
 			assert.strictEqual(result, Ternary.Maybe, 'should be Ternary.Maybe');
@@ -242,7 +242,7 @@ describe.sequential('Resolve', withShell(shell => {
 			[undefined, undefined, defaultEnv()],
 			['foo',     undefined, defaultEnv()],
 			['42',      true,      defaultEnv()],
-			['FALSE',   false,     defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }, { id: 42, when: false }] })]
+			['FALSE',   false,     defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, cds: [{ id: 42, when: true }, { id: 42, when: false }] })]
 		])("Identifier '%s' should never resolve to %s", (identifier, wantedValue, environment) => {
 			const result = resolvesToBuiltInConstant(identifier, environment, wantedValue);
 			assert.strictEqual(result, Ternary.Never, 'should be Ternary.Never');
@@ -267,8 +267,8 @@ describe.sequential('Resolve', withShell(shell => {
 			// Maybe Resolve
 			test.each([
 				//Identifier  Wanted Value                       Environment
-				['TRUE',  setFrom(Top, valueFromTsValue(true)),  defaultEnv().defineInEnv({ name: 'TRUE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }] })],
-				['FALSE', setFrom(Top, valueFromTsValue(false)), defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }] })]
+				['TRUE',  setFrom(Top, valueFromTsValue(true)),  defaultEnv().defineInEnv({ name: 'TRUE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, cds: [{ id: 42, when: true }] })],
+				['FALSE', setFrom(Top, valueFromTsValue(false)), defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, cds: [{ id: 42, when: true }] })]
 			])("Identifier '%s' should maybe resolve to %s", (identifier, wantedValue, environment) => {
 				const defs = resolveToConstants(identifier, environment);
 				assert.deepEqual(defs, wantedValue);
@@ -280,7 +280,7 @@ describe.sequential('Resolve', withShell(shell => {
 				[undefined,   Top,              defaultEnv()],
 				['foo',       Top,              defaultEnv()],
 				['42',        Top,              defaultEnv()],
-				['FALSE',     setFrom(Top),     defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }, { id: 42, when: false }] })]
+				['FALSE',     setFrom(Top),     defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, cds: [{ id: 42, when: true }, { id: 42, when: false }] })]
 			])("Identifier '%s' should never resolve to %s", (identifier, wantedValue, environment) => {
 				const defs = resolveToConstants(identifier, environment);
 				assert.deepEqual(defs, wantedValue);

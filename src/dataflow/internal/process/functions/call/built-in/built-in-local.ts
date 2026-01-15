@@ -76,7 +76,7 @@ export function processLocal<OtherInfo>(
 		origin:                BuiltInProcName.Local
 	});
 
-	const ingoing = dfEnv.in.concat(dfExpr.in,dfEnv.unknownReferences, dfExpr.unknownReferences);
+	const ingoing = dfEnv.in.concat(dfExpr.in, dfEnv.unknownReferences, dfExpr.unknownReferences);
 	ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
 	return {
 		hooks:             dfExpr.hooks.concat(dfEnv.hooks),

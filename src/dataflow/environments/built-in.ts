@@ -240,7 +240,7 @@ export enum BuiltInProcName {
 	Return              = 'builtin:return',
 	/** for `rm` calls, see {@link processRm} */
 	Rm                  = 'builtin:rm',
-	/** for `UseMethod` calls, see {@link processRm} */
+	/** for `UseMethod` calls, see {@link processS3Dispatch} */
 	S3Dispatch         = 'builtin:s3-dispatch',
 	/** for `source` calls, see {@link processSourceCall} */
 	Source              = 'builtin:source',

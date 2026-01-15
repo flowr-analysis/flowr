@@ -111,7 +111,7 @@ export function processS3Dispatch<OtherInfo>(
 	});
 
 
-	const ingoing = dfObj.in.concat(dfGeneric.in,dfObj.unknownReferences, dfGeneric.unknownReferences);
+	const ingoing = dfObj.in.concat(dfGeneric.in, dfObj.unknownReferences, dfGeneric.unknownReferences);
 	ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
 	for(const id of accessedIdentifiers) {
 		ingoing.push({ nodeId: generic.info.id, name: id, cds: data.cds, type: ReferenceType.S3MethodPrefix });

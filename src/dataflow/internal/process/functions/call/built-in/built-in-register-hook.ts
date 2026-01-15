@@ -8,7 +8,7 @@ import {
 	type RFunctionArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { pMatch } from '../../../../linker';
+import { getAllIdsWithTarget, pMatch } from '../../../../linker';
 import { convertFnArguments } from '../common';
 import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -56,8 +56,8 @@ export function processRegisterHook<OtherInfo>(
 
 	const argMaps = pMatch(convertFnArguments(args), params);
 	const exprIds = new Set(argMaps.entries().filter(([, v]) => v === 'expr').map(([k]) => k));
-	const addIds = config.args.add ? new Set(argMaps.entries().filter(([, v]) => v === 'add').map(([k]) => k)) : new Set<NodeId>();
-	const afterIds = config.args.after ? new Set(argMaps.entries().filter(([, v]) => v === 'after').map(([k]) => k)) : new Set<NodeId>();
+	const addIds = config.args.add ? new Set<NodeId>(getAllIdsWithTarget(argMaps, 'add')) : new Set<NodeId>();
+	const afterIds = config.args.after ? new Set<NodeId>(getAllIdsWithTarget(argMaps, 'after')) : new Set<NodeId>();
 
 	const wrappedFunctions = new Set<NodeId>();
 	// we automatically transform the expr to a function definition that takes no arguments

@@ -143,10 +143,34 @@ export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: r
 }
 
 /**
+ * Returns all argument ids that map to the given target parameter id.
+ */
+export function getAllIdsWithTarget<Targets extends NodeId>(maps: Map<NodeId, Targets>, target: Targets): NodeId[] {
+	return maps.entries().filter(([, v]) => v === target).map(([k]) => k).toArray();
+}
+
+/**
+ * Inverts the argument to parameter map to a parameter to argument map.
+ */
+export function invertArgumentMap<Targets extends NodeId>(maps: Map<NodeId, Targets>): Map<Targets, NodeId[]> {
+	const inverted = new Map<Targets, NodeId[]>();
+	for(const [arg, param] of maps.entries()) {
+		const existing = inverted.get(param);
+		if(existing) {
+			existing.push(arg);
+		} else {
+			inverted.set(param, [arg]);
+		}
+	}
+	return inverted;
+}
+
+/**
  * Links the given arguments to the given parameters within the given graph by name only.
  * @note
  * To obtain the arguments from a {@link RFunctionCall}[], either use {@link processAllArguments} (also available via {@link processKnownFunctionCall})
  * or convert them with {@link convertFnArguments}.
+ * You can use {@link getAllIdsWithTarget} to get all argument ids that map to a given parameter.
  */
 export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<NodeId, Targets> {
 	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));

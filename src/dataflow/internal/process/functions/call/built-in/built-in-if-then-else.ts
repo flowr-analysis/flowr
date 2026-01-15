@@ -2,7 +2,7 @@ import { type DataflowProcessorInformation, processDataflowFor } from '../../../
 import { alwaysExits, type DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { convertFnArguments, patchFunctionCall } from '../common';
-import { unpackNonameArg } from '../argument/unpack-argument';
+import { unpackArg } from '../argument/unpack-argument';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -15,15 +15,42 @@ import { type REnvironmentInformation } from '../../../../../environments/enviro
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { invertArgumentMap, pMatch } from '../../../../linker';
+import { getArgumentWithId } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /** `if(<cond>) <then> else <else>` built-in function configuration, make sure to not reuse indices */
 export interface IfThenElseConfig {
-	/** the expression to treat as condition, defaults to index 0 */
-	cond: { idx: number, name?: string },
-	/** argument to treat as yes/'then' case, defaults to index 1 */
-	yes:  { idx: number, name?: string },
-	/** argument to treat as no/'else' case, defaults to index 2 */
-	no:   { idx: number, name?: string }
+	args?: {
+		/** the expression to treat as condition, defaults to index 0 */
+		cond: string,
+		/** argument to treat as yes/'then' case, defaults to index 1 */
+		yes:  string,
+		/** argument to treat as no/'else' case, defaults to index 2 */
+		no:   string
+	}
+}
+
+function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]) {
+	let condArg: RNode<OtherInfo & ParentInformation> | undefined;
+	let thenArg: RNode<OtherInfo & ParentInformation> | undefined;
+	let otherwiseArg: RNode<OtherInfo & ParentInformation> | undefined;
+
+	if(config?.args) {
+		const params = {
+			[config.args.cond]: 'cond',
+			[config.args.yes]:  'yes',
+			[config.args.no]:   'no',
+			'...':              '...'
+		};
+		const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
+		condArg = unpackArg(getArgumentWithId(args, argMaps.get('cond')?.[0]));
+		thenArg = unpackArg(getArgumentWithId(args, argMaps.get('yes')?.[0]));
+		otherwiseArg = unpackArg(getArgumentWithId(args, argMaps.get('no')?.[0]));
+	} else {
+		[condArg, thenArg, otherwiseArg] = args.map(e => unpackArg(e));
+	}
+	return { condArg, thenArg, otherwiseArg };
 }
 
 /**
@@ -42,10 +69,8 @@ export function processIfThenElse<OtherInfo>(
 		dataflowLogger.warn(`If-then-else ${name.content} has something different from 2 or 3 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const fArgs = convertFnArguments(args);
-	console.log(fArgs);
 
-	const [condArg, thenArg, otherwiseArg] = args.map(e => unpackNonameArg(e));
+	const { condArg, thenArg, otherwiseArg } = getArguments(config, args);
 
 	if(condArg === undefined || thenArg === undefined) {
 		dataflowLogger.warn(`If-then-else ${name.content} has empty condition or then case in ${JSON.stringify(args)}, skipping`);

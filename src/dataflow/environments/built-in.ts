@@ -51,6 +51,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import { processStopIfNot } from '../internal/process/functions/call/built-in/built-in-stop-if-not';
 import { processTryCatch } from '../internal/process/functions/call/built-in/built-in-try-catch';
 import { processRegisterHook } from '../internal/process/functions/call/built-in/built-in-register-hook';
+import { processLocal } from '../internal/process/functions/call/built-in/built-in-local';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -222,6 +223,8 @@ export enum BuiltInProcName {
 	Library             = 'builtin:library',
 	/** for `list` calls, see {@link processList} */
 	List                = 'builtin:list',
+	/** for `local` calls, see {@link processLocal} */
+	Local               = 'builtin:local',
 	/** for the pipe operators, see {@link processPipe} */
 	Pipe                = 'builtin:pipe',
 	/** for `quote`, and other substituting calls, see {@link processQuote} */
@@ -271,6 +274,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.IfThenElse]:         processIfThenElse,
 	[BuiltInProcName.Library]:            processLibrary,
 	[BuiltInProcName.List]:               processList,
+	[BuiltInProcName.Local]:              processLocal,
 	[BuiltInProcName.Pipe]:               processPipe,
 	[BuiltInProcName.Quote]:              processQuote,
 	[BuiltInProcName.RegisterHook]:       processRegisterHook,

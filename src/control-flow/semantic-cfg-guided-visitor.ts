@@ -301,6 +301,8 @@ export class SemanticCfgGuidedVisitor<
 				return this.onStopIfNotCall({ call });
 			case BuiltInProcName.RegisterHook:
 				return this.onRegisterHookCall({ call });
+			case BuiltInProcName.Local:
+				return this.onLocalCall({ call });
 			case BuiltInProcName.FunctionDefinition:
 				throw new Error('Function call vertex cannot be a function definition');
 			default:
@@ -620,6 +622,16 @@ export class SemanticCfgGuidedVisitor<
 	 * @protected
 	 */
 	protected onTryCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for every call to a function that performs a local call, such as `local`.
+	 *
+	 * For example, this triggers for `local` in `local({ x <- 1; y <- 2; x + y })`.
+	 *
+	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
+	 * @protected
+	 */
+	protected onLocalCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 
 	/**
 	 * This event triggers for every call to a function that registers a hook, such as `on.exit`.

@@ -731,7 +731,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							url:  [
 								{ name: AdvancedR('S3'), href: 'https://adv-r.hadley.nz/s3.html' }
 							],
-							supported:   'not',
+							supported:   'partially',
 							description: '_Handle S3 classes and methods as one unit (with attributes etc.). Including Dispatch and Inheritance._ We do not support typing currently and do not handle objects of these classes "as units."'
 						},
 						{

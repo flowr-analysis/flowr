@@ -189,6 +189,7 @@ export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[]
 		const param = params[pmatchName];
 		if(param) {
 			maps.set(argId, param);
+			matchedParameters.add(name);
 		} else if(sid) {
 			maps.set(argId, sid);
 		}

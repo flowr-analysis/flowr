@@ -85,13 +85,13 @@ describe('source', withTreeSitter(parser => {
 		.use('0', 'x')
 		.use('10', 'N')
 		.reads('10', 'simple-1:10-1:15-0')
-		.call('6', 'source', [argumentInCall('4')], { returns: [], reads: [builtInId('source')], controlDependencies: [{ id: '8', when: true }] })
+		.call('6', 'source', [argumentInCall('4')], { returns: [], reads: [builtInId('source')], cds: [{ id: '8', when: true }] })
 		.calls('6', builtInId('source'))
 		.call('simple-1:10-1:15-2', '<-', [argumentInCall('simple-1:10-1:15-0'), argumentInCall('simple-1:10-1:15-1')], { returns: ['simple-1:10-1:15-0'], reads: [builtInId('<-'), 'simple-1:10-1:15-1'], onlyBuiltIn: true })
 		.calls('simple-1:10-1:15-2', builtInId('<-'))
 		.addControlDependency('simple-1:10-1:15-2', '6', true)
 		.addControlDependency('simple-1:10-1:15-2', '8', true)
-		.call('7', '{', [argumentInCall('6')], { returns: ['6'], reads: [builtInId('{')], controlDependencies: [{ id: '8', when: true }] })
+		.call('7', '{', [argumentInCall('6')], { returns: ['6'], reads: [builtInId('{')], cds: [{ id: '8', when: true }] })
 		.calls('7', builtInId('{'))
 		.call('8', 'if', [argumentInCall('0'), argumentInCall('7'), EmptyArgument], { returns: ['7'], reads: ['0', builtInId('if')], onlyBuiltIn: true })
 		.calls('8', builtInId('if'))
@@ -246,10 +246,10 @@ describe('source', withTreeSitter(parser => {
 			.defineFunction('closure1-1:1-1:6-5', ['closure1-1:1-1:6-3'], {
 				out: [],
 				in:  [{
-					nodeId:              'closure1-1:1-1:6-3',
-					name:                undefined,
-					controlDependencies: [],
-					type:                ReferenceType.Argument
+					nodeId: 'closure1-1:1-1:6-3',
+					name:   undefined,
+					cds:    [],
+					type:   ReferenceType.Argument
 				}],
 				unknownReferences: [],
 				entryPoint:        'closure1-1:1-1:6-3',

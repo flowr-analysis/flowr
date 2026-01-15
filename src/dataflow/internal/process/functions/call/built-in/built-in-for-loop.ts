@@ -1,5 +1,5 @@
-import { type DataflowProcessorInformation , processDataflowFor } from '../../../../../processor';
-import { type DataflowInformation , alwaysExits, filterOutLoopExitPoints } from '../../../../../info';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
+import { alwaysExits, type DataflowInformation, filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
@@ -22,6 +22,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { IdentifierDefinition } from '../../../../../environments/identifier';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 
 /**
@@ -54,7 +55,7 @@ export function processForLoop<OtherInfo>(
 	const variable = processDataflowFor(variableArg, data);
 	// this should not be able to exit always!
 
-	const originalDependency = data.controlDependencies;
+	const originalDependency = data.cds;
 
 	let headEnvironments = overwriteEnvironment(vector.environment, variable.environment);
 	const headGraph = variable.graph.mergeWith(vector.graph);
@@ -63,7 +64,7 @@ export function processForLoop<OtherInfo>(
 	for(const write of writtenVariable) {
 		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable } as (IdentifierDefinition & { name: string }), false, headEnvironments, data.ctx.config);
 	}
-	data = { ...data, controlDependencies: [...data.controlDependencies ?? [], { id: name.info.id, when: true }], environment: headEnvironments };
+	data = { ...data, cds: [...data.cds ?? [], { id: name.info.id, when: true }], environment: headEnvironments };
 
 	const body = processDataflowFor(bodyArg, data);
 
@@ -89,9 +90,9 @@ export function processForLoop<OtherInfo>(
 		nextGraph,
 		rootId,
 		name,
-		data:                  { ...data, controlDependencies: originalDependency },
+		data:                  { ...data, cds: originalDependency },
 		argumentProcessResult: [variable, vector, body],
-		origin:                'builtin:for-loop'
+		origin:                BuiltInProcName.ForLoop
 	});
 	/* mark the last argument as nse */
 	nextGraph.addEdge(rootId, body.entryPoint, EdgeType.NonStandardEvaluation);
@@ -101,7 +102,7 @@ export function processForLoop<OtherInfo>(
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
-		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...[...nameIdShares.values()].flat()],
+		in:                [{ nodeId: rootId, name: name.content, cds: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...[...nameIdShares.values()].flat()],
 		out:               outgoing,
 		graph:             nextGraph,
 		entryPoint:        name.info.id,

@@ -3,7 +3,7 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import { builtInId } from '../../../../../src/dataflow/environments/built-in';
+import { builtInId, BuiltInProcName } from '../../../../../src/dataflow/environments/built-in';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 
@@ -138,7 +138,7 @@ print(x)`, emptyGraph()
 				.definedByOnCall('1', '18')
 				.argument('19', '14')
 				.argument('19', '18')
-				.call('19', '{', [argumentInCall('14'), argumentInCall('18')], { origin: ['function'], returns: ['3'], reads: ['0'], environment: defaultEnv().defineFunction('{', '0', '6').defineVariable('x', '7', '9') })
+				.call('19', '{', [argumentInCall('14'), argumentInCall('18')], { origin: [BuiltInProcName.Function], returns: ['3'], reads: ['0'], environment: defaultEnv().defineFunction('{', '0', '6').defineVariable('x', '7', '9') })
 				.calls('19', '5')
 				.argument('23', '21')
 				.reads('23', '21')
@@ -148,7 +148,7 @@ print(x)`, emptyGraph()
 				.constant('3', undefined, false)
 				.defineFunction('5', ['3'], {
 					out:               [],
-					in:                [{ nodeId: '3', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
+					in:                [{ nodeId: '3', name: undefined, cds: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
 					entryPoint:        '3',
 					graph:             new Set(['1', '3']),

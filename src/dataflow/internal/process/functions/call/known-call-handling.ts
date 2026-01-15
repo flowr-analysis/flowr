@@ -15,6 +15,7 @@ import { dataflowLogger } from '../../../../logger';
 import { type ContainerIndicesCollection, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import { expensiveTrace } from '../../../../../util/log';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
+import { BuiltInProcName } from '../../../../environments/built-in';
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
@@ -96,16 +97,16 @@ export function processKnownFunctionCall<OtherInfo>(
 	}
 
 	finalGraph.addVertex({
-		tag:                 VertexType.FunctionCall,
-		id:                  rootId,
-		environment:         data.environment,
-		name:                functionCallName,
+		tag:               VertexType.FunctionCall,
+		id:                rootId,
+		environment:       data.environment,
+		name:              functionCallName,
 		/* will be overwritten accordingly */
-		onlyBuiltin:         false,
-		controlDependencies: data.controlDependencies,
-		args:                reverseOrder ? callArgs.toReversed() : callArgs,
-		indicesCollection:   indicesCollection,
-		origin:              origin === 'default' ? ['function'] : [origin]
+		onlyBuiltin:       false,
+		cds:               data.cds,
+		args:              reverseOrder ? callArgs.toReversed() : callArgs,
+		indicesCollection: indicesCollection,
+		origin:            origin === 'default' ? [BuiltInProcName.Function] : [origin]
 	}, data.ctx.env.makeCleanEnv());
 
 	if(hasUnknownSideEffect) {
@@ -113,7 +114,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	}
 
 	const inIds = remainingReadInArgs;
-	const fnRef: IdentifierReference = { nodeId: rootId, name: functionCallName, controlDependencies: data.controlDependencies, type: ReferenceType.Function };
+	const fnRef: IdentifierReference = { nodeId: rootId, name: functionCallName, cds: data.cds, type: ReferenceType.Function };
 	inIds.push(fnRef);
 
 	// if force args is not none, we need to collect all non-default exit points from our arguments!
@@ -130,9 +131,7 @@ export function processKnownFunctionCall<OtherInfo>(
 				if(p) {
 					const nonDefaults = p.exitPoints.filter(ep => ep.type !== ExitPointType.Default);
 					if(nonDefaults.length > 0) {
-						if(exitPoints === undefined) {
-							exitPoints = [];
-						}
+						exitPoints ??= [];
 						exitPoints.push(...nonDefaults);
 					}
 				}
@@ -149,11 +148,11 @@ export function processKnownFunctionCall<OtherInfo>(
 			graph:             finalGraph,
 			environment:       finalEnv,
 			entryPoint:        rootId,
-			exitPoints:        exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }],
+			exitPoints:        exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, cds: data.cds }],
 			hooks:             functionName.hooks
 		},
 		callArgs,
-		processedArguments: reverseOrder ? processedArguments.reverse() : processedArguments,
+		processedArguments: reverseOrder ? processedArguments.toReversed() : processedArguments,
 		fnRef
 	};
 }

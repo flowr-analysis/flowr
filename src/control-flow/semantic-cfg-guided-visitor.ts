@@ -1,9 +1,9 @@
 import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from './control-flow-graph';
-import { type DataflowCfgGuidedVisitorConfiguration , DataflowAwareCfgGuidedVisitor } from './dfg-cfg-guided-visitor';
+import { DataflowAwareCfgGuidedVisitor, type DataflowCfgGuidedVisitorConfiguration } from './dfg-cfg-guided-visitor';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SyntaxCfgGuidedVisitorConfiguration } from './syntax-cfg-guided-visitor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type Origin , getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
+import { getOriginInDfg, type Origin } from '../dataflow/origin/dfg-get-origin';
 import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
@@ -20,7 +20,7 @@ import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
 import { assertUnreachable, guard } from '../util/assert';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { BuiltInProcessorMapper } from '../dataflow/environments/built-in';
+import { BuiltInProcessorMapper, BuiltInProcName } from '../dataflow/environments/built-in';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
@@ -69,7 +69,7 @@ export class SemanticCfgGuidedVisitor<
 	 * A helper function to get the normalized AST node for the given id or fail if it does not exist.
 	 */
 	protected getNormalizedAst(id: NodeId | undefined): RNode<OtherInfo & ParentInformation> | undefined {
-		return id !== undefined ? this.config.normalizedAst.idMap.get(id) : undefined;
+		return id === undefined ? undefined : this.config.normalizedAst.idMap.get(id);
 	}
 
 	/**
@@ -203,45 +203,45 @@ export class SemanticCfgGuidedVisitor<
 		const type = origin as keyof typeof BuiltInProcessorMapper;
 
 		switch(type) {
-			case 'builtin:eval':
+			case BuiltInProcName.Eval:
 				return this.onEvalFunctionCall({ call });
-			case 'builtin:apply':
+			case BuiltInProcName.Apply:
 				return this.onApplyFunctionCall({ call });
-			case 'builtin:expression-list':
+			case BuiltInProcName.ExpressionList:
 				return this.onExpressionList({ call });
-			case 'builtin:source':
+			case BuiltInProcName.Source:
 				return this.onSourceCall({ call });
-			case 'builtin:access':
+			case BuiltInProcName.Access:
 				return this.onAccessCall({ call });
-			case 'builtin:if-then-else': {
+			case BuiltInProcName.IfThenElse: {
 				// recover dead arguments from ast
 				const ast = this.getNormalizedAst(call.id);
 				if(!ast || ast.type !== RType.IfThenElse) {
 					return this.onIfThenElseCall({
 						call,
 						condition: call.args[0] === EmptyArgument ? undefined : call.args[0].nodeId,
-						then:      call.args[1] === EmptyArgument ? undefined : call.args[1].nodeId,
-						else:      call.args[2] === EmptyArgument ? undefined : call.args[2].nodeId
+						yes:       call.args[1] === EmptyArgument ? undefined : call.args[1].nodeId,
+						no:        call.args[2] === EmptyArgument ? undefined : call.args[2].nodeId
 					});
 				} else {
 					return this.onIfThenElseCall({
 						call,
 						condition: ast.condition.info.id,
-						then:      ast.then.info.id,
-						else:      ast.otherwise?.info.id
+						yes:       ast.then.info.id,
+						no:        ast.otherwise?.info.id
 					});
 				}
 			}
-			case 'builtin:get':
+			case BuiltInProcName.Get:
 				return this.onGetCall({ call });
-			case 'builtin:rm':
+			case BuiltInProcName.Rm:
 				return this.onRmCall({ call });
-			case 'builtin:list':
+			case BuiltInProcName.List:
 				return this.onListCall({ call });
-			case 'builtin:vector':
+			case BuiltInProcName.Vector:
 				return this.onVectorCall({ call });
-			case 'builtin:assignment':
-			case 'builtin:assignment-like': {
+			case BuiltInProcName.Assignment:
+			case BuiltInProcName.AssignmentLike: {
 				const outgoing = this.config.dfg.outgoingEdges(call.id);
 				if(outgoing) {
 					const target = [...outgoing.entries()].filter(([, e]) => edgeIncludesType(e.types, EdgeType.Returns));
@@ -257,25 +257,25 @@ export class SemanticCfgGuidedVisitor<
 				}
 				return this.onAssignmentCall({ call, target: undefined, source: undefined });
 			}
-			case 'builtin:special-bin-op':
+			case BuiltInProcName.SpecialBinOp:
 				if(call.args.length !== 2) {
 					return this.onSpecialBinaryOpCall({ call });
 				}
 				return this.onSpecialBinaryOpCall({ call, lhs: call.args[0], rhs: call.args[1] });
-			case 'builtin:pipe':
+			case BuiltInProcName.Pipe:
 				if(call.args.length !== 2) {
 					return this.onPipeCall({ call });
 				}
 				return this.onPipeCall({ call, lhs: call.args[0], rhs: call.args[1] });
-			case 'builtin:quote':
+			case BuiltInProcName.Quote:
 				return this.onQuoteCall({ call });
-			case 'builtin:for-loop':
+			case BuiltInProcName.ForLoop:
 				return this.onForLoopCall({ call, variable: call.args[0], vector: call.args[1], body: call.args[2] });
-			case 'builtin:repeat-loop':
+			case BuiltInProcName.RepeatLoop:
 				return this.onRepeatLoopCall({ call, body: call.args[0] });
-			case 'builtin:while-loop':
+			case BuiltInProcName.WhileLoop:
 				return this.onWhileLoopCall({ call, condition: call.args[0], body: call.args[1] });
-			case 'builtin:replacement': {
+			case BuiltInProcName.Replacement: {
 				const outgoing = this.config.dfg.outgoingEdges(call.id);
 				if(outgoing) {
 					const target = [...outgoing.entries()].filter(([, e]) => edgeIncludesType(e.types, EdgeType.Returns));
@@ -291,17 +291,17 @@ export class SemanticCfgGuidedVisitor<
 				}
 				return this.onReplacementCall({ call, target: undefined, source: undefined });
 			}
-			case 'builtin:library':
+			case BuiltInProcName.Library:
 				return this.onLibraryCall({ call });
-			case 'builtin:default':
+			case BuiltInProcName.Default:
 				return this.onDefaultFunctionCall({ call });
-			case 'builtin:try':
+			case BuiltInProcName.Try:
 				return this.onTryCall({ call });
-			case 'builtin:stopifnot':
+			case BuiltInProcName.StopIfNot:
 				return this.onStopIfNotCall({ call });
-			case 'builtin:register-hook':
+			case BuiltInProcName.RegisterHook:
 				return this.onRegisterHookCall({ call });
-			case 'builtin:function-definition':
+			case BuiltInProcName.FunctionDefinition:
 				throw new Error('Function call vertex cannot be a function definition');
 			default:
 				assertUnreachable(type);
@@ -469,7 +469,7 @@ export class SemanticCfgGuidedVisitor<
 	 * This event triggers for every call to the `if` function, which is used to implement the `if-then-else` control flow.
 	 * @protected
 	 */
-	protected onIfThenElseCall(_data: { call: DataflowGraphVertexFunctionCall, condition: NodeId | undefined, then: NodeId | undefined, else: NodeId | undefined }) {}
+	protected onIfThenElseCall(_data: { call: DataflowGraphVertexFunctionCall, condition: NodeId | undefined, yes: NodeId | undefined, no: NodeId | undefined }) {}
 
 	/**
 	 * This event triggers for every call to the `get` function, which is used to access variables in the global environment.

@@ -631,7 +631,7 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 
 function isDataFrameFunction(functionName: string): functionName is DataFrameFunction {
 	// a check with `functionName in DataFrameFunctionMapper` would return true for "toString"
-	return Object.prototype.hasOwnProperty.call(DataFrameFunctionMapper, functionName);
+	return Object.hasOwn(DataFrameFunctionMapper, functionName);
 }
 
 function getOtherDataFrameFunction(functionName: string): OtherDataFrameFunctionMapping | undefined {

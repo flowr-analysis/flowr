@@ -41,7 +41,7 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 		const definition = current.memory.get(name);
 		if(definition !== undefined) {
 			const filtered = definition.filter(wantedType);
-			if(filtered.length === definition.length && definition.every(d => happensInEveryBranch(d.controlDependencies))) {
+			if(filtered.length === definition.length && definition.every(d => happensInEveryBranch(d.cds))) {
 				return definition;
 			} else if(filtered.length > 0) {
 				if(definitions) {
@@ -75,7 +75,7 @@ export function resolveByNameAnyType(name: Identifier, environment: REnvironment
 	do{
 		const definition = current.memory.get(name);
 		if(definition) {
-			if(definition.every(d => happensInEveryBranch(d.controlDependencies))) {
+			if(definition.every(d => happensInEveryBranch(d.cds))) {
 				environment.current.cache ??= new Map();
 				environment.current.cache?.set(name, definition);
 				return definition;

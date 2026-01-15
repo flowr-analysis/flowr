@@ -3,24 +3,21 @@
  * @module
  */
 import type { ControlDependency, DataflowInformation, ExitPoint } from '../../../../../info';
-import {  addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
-import { type DataflowProcessorInformation , processDataflowFor } from '../../../../../processor';
+import { addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { linkFunctionCalls } from '../../../../linker';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
-import type {
-	Environment ,
-	REnvironmentInformation
-} from '../../../../../environments/environment';
+import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
-import { type IdentifierReference , ReferenceType } from '../../../../../environments/identifier';
+import { type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
-import { type DataflowGraphVertexInfo , VertexType } from '../../../../../graph/vertex';
+import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
-import { builtInId, isBuiltIn } from '../../../../../environments/built-in';
+import { builtInId, BuiltInProcName, isBuiltIn } from '../../../../../environments/built-in';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -39,10 +36,10 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 	const probableTarget = readName ? resolveByName(readName, environments, read.type) : undefined;
 
 	// record if at least one has not been defined
-	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId) || !happensInEveryBranch(t.controlDependencies))) {
+	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId) || !happensInEveryBranch(t.cds))) {
 		const has = remainingRead.get(readName);
 		if(has) {
-			if(!has?.some(h => h.nodeId === read.nodeId && h.name === read.name && h.controlDependencies === read.controlDependencies)) {
+			if(!has?.some(h => h.nodeId === read.nodeId && h.name === read.name && h.cds === read.cds)) {
 				has.push(read);
 			}
 		} else {
@@ -103,7 +100,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 					};
 				}
 				if(callDependencies === null) {
-					callDependencies = nextGraph.getVertex(functionCall, true)?.controlDependencies;
+					callDependencies = nextGraph.getVertex(functionCall, true)?.cds;
 				}
 				inputEnvironment = overwriteEnvironment(inputEnvironment, environment, callDependencies);
 			}
@@ -135,7 +132,7 @@ export function processExpressionList<OtherInfo>(
 	const nextGraph = new DataflowGraph(data.completeAst.idMap);
 	let out: IdentifierReference[] = [];
 	const exitPoints: ExitPoint[] = [];
-	const activeCdsAtStart: ControlDependency[] | undefined = data.controlDependencies;
+	const activeCdsAtStart: ControlDependency[] | undefined = data.cds;
 	const invertExitCds: ControlDependency[] = [];
 
 	const processedExpressions: (DataflowInformation | undefined)[] = [];
@@ -196,10 +193,10 @@ export function processExpressionList<OtherInfo>(
 	}
 
 	if(defaultReturnExpr) {
-		exitPoints.push(data.controlDependencies ? {
-			type:                ExitPointType.Default,
-			nodeId:              defaultReturnExpr.entryPoint,
-			controlDependencies: data.controlDependencies
+		exitPoints.push(data.cds ? {
+			type:   ExitPointType.Default,
+			nodeId: defaultReturnExpr.entryPoint,
+			cds:    data.cds
 		} : {
 			type:   ExitPointType.Default,
 			nodeId: defaultReturnExpr.entryPoint
@@ -212,14 +209,14 @@ export function processExpressionList<OtherInfo>(
 	const withGroup = rootNode?.grouping;
 
 	if(withGroup) {
-		ingoing.push({ nodeId: rootId, name: name.content, controlDependencies: data.controlDependencies, type: ReferenceType.Function });
+		ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
 		patchFunctionCall({
 			nextGraph,
 			rootId,
 			name,
 			data,
 			argumentProcessResult: processedExpressions,
-			origin:                'builtin:expression-list'
+			origin:                BuiltInProcName.ExpressionList
 		});
 
 		nextGraph.addEdge(rootId, builtInId('{'), EdgeType.Reads | EdgeType.Calls);

@@ -11,18 +11,18 @@ import type { REnvironmentInformation } from '../../environments/environment';
  * Processes a value node in the AST for dataflow analysis.
  * For example, literals like numbers.
  */
-export function processValue<OtherInfo>({ info: { id } }: RNodeWithParent, { controlDependencies, completeAst: { idMap }, environment }: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
+export function processValue<OtherInfo>({ info: { id } }: RNodeWithParent, { cds, completeAst: { idMap }, environment }: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: id, name: undefined, controlDependencies, type: ReferenceType.Constant }],
+		in:                [{ nodeId: id, name: undefined, cds, type: ReferenceType.Constant }],
 		out:               [],
 		environment,
 		graph:             new DataflowGraph(idMap).addVertex({
 			tag: VertexType.Value,
 			id,
-			controlDependencies
+			cds
 		}, undefined as unknown as REnvironmentInformation),
-		exitPoints: [{ nodeId: id, type: ExitPointType.Default, controlDependencies }],
+		exitPoints: [{ nodeId: id, type: ExitPointType.Default, cds }],
 		entryPoint: id,
 		hooks:      []
 	};

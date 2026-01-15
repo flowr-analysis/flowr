@@ -4,7 +4,7 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { builtInId } from '../../../../../src/dataflow/environments/built-in';
+import { builtInId, BuiltInProcName } from '../../../../../src/dataflow/environments/built-in';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 
@@ -22,13 +22,13 @@ if(1)
 			.definesOnCall('11', '1')
 			.definedByOnCall('1', '11')
 			.argument('13', '11')
-			.call('13', 'if', [argumentInCall('7'), argumentInCall('11'), EmptyArgument], { origin: ['function'], returns: ['3'], reads: ['0'], environment: defaultEnv().defineFunction('if', '0', '6') })
+			.call('13', 'if', [argumentInCall('7'), argumentInCall('11'), EmptyArgument], { origin: [BuiltInProcName.Function], returns: ['3'], reads: ['0'], environment: defaultEnv().defineFunction('if', '0', '6') })
 			.calls('13', '5')
 			.defineVariable('1', '...', { definedBy: [] }, false)
 			.constant('3', undefined, false)
 			.defineFunction('5', ['3'], {
 				out:               [],
-				in:                [{ nodeId: '3', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
+				in:                [{ nodeId: '3', name: undefined, cds: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
 				entryPoint:        '3',
 				graph:             new Set(['1', '3']),
@@ -55,7 +55,7 @@ print(x)`, emptyGraph()
 			.definesOnCall('10', '1')
 			.definedByOnCall('1', '10')
 			.argument('12', '10')
-			.call('12', 'if', [argumentInCall('7'), argumentInCall('10'), EmptyArgument], { origin: ['function'], returns: ['3'], reads: ['0'], environment: defaultEnv().defineFunction('if', '0', '6') })
+			.call('12', 'if', [argumentInCall('7'), argumentInCall('10'), EmptyArgument], { origin: [BuiltInProcName.Function], returns: ['3'], reads: ['0'], environment: defaultEnv().defineFunction('if', '0', '6') })
 			.argument('12', '7')
 			.calls('12', '5')
 			.argument('16', '14')
@@ -66,7 +66,7 @@ print(x)`, emptyGraph()
 			.constant('3', undefined, false)
 			.defineFunction('5', ['3'], {
 				out:               [],
-				in:                [{ nodeId: '3', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
+				in:                [{ nodeId: '3', name: undefined, cds: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
 				entryPoint:        '3',
 				graph:             new Set(['1', '3']),
@@ -100,7 +100,7 @@ print(y = x)`, emptyGraph()
 			.calls('5', builtInId('<-'))
 			.argument('5', '3')
 			.argument('8', '6')
-			.call('8', '<-', [argumentInCall('6'), argumentInCall('7')], { origin: ['function'], returns: [], reads: ['3'], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('<-', '3', '5') })
+			.call('8', '<-', [argumentInCall('6'), argumentInCall('7')], { origin: [BuiltInProcName.Function], returns: [], reads: ['3'], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('<-', '3', '5') })
 			.calls(8, builtInId('*'))
 			.argument('8', '7')
 			.argument('13', '12')
@@ -134,7 +134,7 @@ print(y)`, emptyGraph()
 			.calls('8', builtInId('<-'))
 			.argument('8', '6')
 			.argument('11', '9')
-			.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { origin: ['function'], returns: [], reads: ['6'], environment: defaultEnv().pushEnv().defineVariable('x', '3', '5').defineVariable('<-', '6', '8') }, false)
+			.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { origin: [BuiltInProcName.Function], returns: [], reads: ['6'], environment: defaultEnv().pushEnv().defineVariable('x', '3', '5').defineVariable('<-', '6', '8') }, false)
 			.calls('11', builtInId('*'))
 			.argument('11', '10')
 			.argument('12', '5')

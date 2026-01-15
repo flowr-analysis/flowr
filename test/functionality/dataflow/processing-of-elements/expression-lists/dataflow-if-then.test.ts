@@ -24,25 +24,25 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 							.reads('3', '0')
 							.call('2', assign, [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId(assign), 1], onlyBuiltIn: true })
 							.calls('2', builtInId(assign))
-							.call('7', '{', [argumentInCall('6')], { returns: ['6'], reads: [builtInId('{')], controlDependencies: cd, environment: defaultEnv().defineVariable('x', '0', '2') })
+							.call('7', '{', [argumentInCall('6')], { returns: ['6'], reads: [builtInId('{')], cds: cd, environment: defaultEnv().defineVariable('x', '0', '2') })
 							.calls('7', builtInId('{'));
 
 						if(b.text !== '') {
 							baseGraph
-								.call('11', '{', [argumentInCall('10')], { returns: ['10'], reads: [builtInId('{')], controlDependencies: [{ id: '12', when: false }], environment: defaultEnv().defineVariable('x', '0', '2') })
+								.call('11', '{', [argumentInCall('10')], { returns: ['10'], reads: [builtInId('{')], cds: [{ id: '12', when: false }], environment: defaultEnv().defineVariable('x', '0', '2') })
 								.calls('11', builtInId('{'))
 								.call('12', 'if', [argumentInCall('3'), argumentInCall('7'), argumentInCall('11')], { returns: ['7', '11'], reads: ['3', builtInId('if')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
 								.calls('12', builtInId('if'))
 								.constant('1')
 								.defineVariable('0', 'x', { definedBy: ['1', '2'] })
-								.constant('6', { controlDependencies: [{ id: '12', when: true }] })
-								.constant('10', { controlDependencies: [{ id: '12', when: false }] });
+								.constant('6', { cds: [{ id: '12', when: true }] })
+								.constant('10', { cds: [{ id: '12', when: false }] });
 						} else {
 							baseGraph.call('8', 'if', [argumentInCall('3'), argumentInCall('7'), EmptyArgument], { returns: ['7'], reads: ['3', builtInId('if')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
 								.calls('8', builtInId('if'))
 								.constant('1')
 								.defineVariable('0', 'x', { definedBy: ['1', '2'] })
-								.constant('6', { controlDependencies: [{ id: '8', when: true }] });
+								.constant('6', { cds: [{ id: '8', when: true }] });
 						}
 						assertDataflow(label('read previous def in cond', [...OperatorDatabase[assign].capabilities, 'name-normal', 'numbers', 'newlines', 'if']),
 							shell,
@@ -123,20 +123,20 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 						.use('0', 'z')
 						.use('14', 'x')
 						.reads('14', ['3', '9'])
-						.call('5', assign, [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [builtInId(assign), 4], onlyBuiltIn: true, controlDependencies: [{ id: '13', when: true }] })
+						.call('5', assign, [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [builtInId(assign), 4], onlyBuiltIn: true, cds: [{ id: '13', when: true }] })
 						.calls('5', builtInId(assign))
-						.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [builtInId('{')], controlDependencies: [{ id: '13', when: true }] })
+						.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [builtInId('{')], cds: [{ id: '13', when: true }] })
 						.calls('6', builtInId('{'))
-						.call('11', assign, [argumentInCall('9'), argumentInCall('10')], { returns: ['9'], reads: [builtInId(assign), 10], onlyBuiltIn: true, controlDependencies: [{ id: '13', when: false }] })
+						.call('11', assign, [argumentInCall('9'), argumentInCall('10')], { returns: ['9'], reads: [builtInId(assign), 10], onlyBuiltIn: true, cds: [{ id: '13', when: false }] })
 						.calls('11', builtInId(assign))
-						.call('12', '{', [argumentInCall('11')], { returns: ['11'], reads: [builtInId('{')], controlDependencies: [{ id: '13', when: false }] })
+						.call('12', '{', [argumentInCall('11')], { returns: ['11'], reads: [builtInId('{')], cds: [{ id: '13', when: false }] })
 						.calls('12', builtInId('{'))
 						.call('13', 'if', [argumentInCall('0'), argumentInCall('6'), argumentInCall('12')], { returns: ['6', '12'], reads: ['0', builtInId('if')], onlyBuiltIn: true })
 						.calls('13', builtInId('if'))
 						.constant('4')
-						.defineVariable('3', 'x', { definedBy: ['4', '5'], controlDependencies: [{ id: '13', when: true }] })
+						.defineVariable('3', 'x', { definedBy: ['4', '5'], cds: [{ id: '13', when: true }] })
 						.constant('10')
-						.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [{ id: '13', when: false }] })
+						.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '13', when: false }] })
 				);
 			});
 		});
@@ -149,13 +149,13 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 			.reads('18', ['6', '12'])
 			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 			.calls('2', builtInId('<-'))
-			.call('8', '<-', [argumentInCall('6'), argumentInCall('7')], { returns: ['6'], reads: [builtInId('<-'), 7], onlyBuiltIn: true, controlDependencies: [{ id: '16', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
+			.call('8', '<-', [argumentInCall('6'), argumentInCall('7')], { returns: ['6'], reads: [builtInId('<-'), 7], onlyBuiltIn: true, cds: [{ id: '16', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
 			.calls('8', builtInId('<-'))
-			.call('9', '{', [argumentInCall('8')], { returns: ['8'], reads: [builtInId('{')], controlDependencies: [{ id: '16', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
+			.call('9', '{', [argumentInCall('8')], { returns: ['8'], reads: [builtInId('{')], cds: [{ id: '16', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
 			.calls('9', builtInId('{'))
-			.call('14', '<-', [argumentInCall('12'), argumentInCall('13')], { returns: ['12'], reads: [builtInId('<-'), 13], onlyBuiltIn: true, controlDependencies: [{ id: '16', when: false }], environment: defaultEnv().defineVariable('x', '0', '2') })
+			.call('14', '<-', [argumentInCall('12'), argumentInCall('13')], { returns: ['12'], reads: [builtInId('<-'), 13], onlyBuiltIn: true, cds: [{ id: '16', when: false }], environment: defaultEnv().defineVariable('x', '0', '2') })
 			.calls('14', builtInId('<-'))
-			.call('15', '{', [argumentInCall('14')], { returns: ['14'], reads: [builtInId('{')], controlDependencies: [{ id: '16', when: false }], environment: defaultEnv().defineVariable('x', '0', '2') })
+			.call('15', '{', [argumentInCall('14')], { returns: ['14'], reads: [builtInId('{')], cds: [{ id: '16', when: false }], environment: defaultEnv().defineVariable('x', '0', '2') })
 			.calls('15', builtInId('{'))
 			.call('16', 'if', [argumentInCall('3'), argumentInCall('9'), argumentInCall('15')], { returns: ['9', '15'], reads: ['3', builtInId('if')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
 			.calls('16', builtInId('if'))
@@ -164,9 +164,9 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 			.constant('1')
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 			.constant('7')
-			.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [{ id: '16', when: true }] })
+			.defineVariable('6', 'x', { definedBy: ['7', '8'], cds: [{ id: '16', when: true }] })
 			.constant('13')
-			.defineVariable('12', 'x', { definedBy: ['13', '14'], controlDependencies: [{ id: '16', when: false }] })
+			.defineVariable('12', 'x', { definedBy: ['13', '14'], cds: [{ id: '16', when: false }] })
 			.defineVariable('17', 'y', { definedBy: ['18', '19'] })
 		);
 
@@ -176,9 +176,9 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 			.reads('12', ['6', '0'])
 			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 			.calls('2', builtInId('<-'))
-			.call('8', '<-', [argumentInCall('6'), argumentInCall('7')], { returns: ['6'], reads: [builtInId('<-'), 7], onlyBuiltIn: true, controlDependencies: [{ id: '10', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
+			.call('8', '<-', [argumentInCall('6'), argumentInCall('7')], { returns: ['6'], reads: [builtInId('<-'), 7], onlyBuiltIn: true, cds: [{ id: '10', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
 			.calls('8', builtInId('<-'))
-			.call('9', '{', [argumentInCall('8')], { returns: ['8'], reads: [builtInId('{')], controlDependencies: [{ id: '10', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
+			.call('9', '{', [argumentInCall('8')], { returns: ['8'], reads: [builtInId('{')], cds: [{ id: '10', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
 			.calls('9', builtInId('{'))
 			.call('10', 'if', [argumentInCall('3'), argumentInCall('9'), EmptyArgument], { returns: ['9'], reads: ['3', builtInId('if')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2', [{ id: '10', when: true }]) })
 			.calls('10', builtInId('if'))
@@ -187,7 +187,7 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 			.constant('1')
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 			.constant('7')
-			.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [{ id: '10', when: true }] })
+			.defineVariable('6', 'x', { definedBy: ['7', '8'], cds: [{ id: '10', when: true }] })
 			.defineVariable('11', 'y', { definedBy: ['12', '13'] })
 		);
 
@@ -204,15 +204,15 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 				.calls('2', builtInId('<-'))
 				.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [builtInId('<-'), 4], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
 				.calls('5', builtInId('<-'))
-				.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { returns: ['9'], reads: [builtInId('<-'), 10], onlyBuiltIn: true, controlDependencies: [{ id: '22', when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('y', '3', '5') })
+				.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { returns: ['9'], reads: [builtInId('<-'), 10], onlyBuiltIn: true, cds: [{ id: '22', when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('y', '3', '5') })
 				.calls('11', builtInId('<-'))
-				.call('14', '<-', [argumentInCall('12'), argumentInCall('13')], { returns: ['12'], reads: [builtInId('<-'), 13], onlyBuiltIn: true, controlDependencies: [{ id: '22', when: true }], environment: defaultEnv().defineVariable('x', '9', '11').defineVariable('y', '3', '5') })
+				.call('14', '<-', [argumentInCall('12'), argumentInCall('13')], { returns: ['12'], reads: [builtInId('<-'), 13], onlyBuiltIn: true, cds: [{ id: '22', when: true }], environment: defaultEnv().defineVariable('x', '9', '11').defineVariable('y', '3', '5') })
 				.calls('14', builtInId('<-'))
-				.call('15', '{', [argumentInCall('11'), argumentInCall('14')], { returns: ['14'], reads: [builtInId('{')], controlDependencies: [{ id: '22', when: true }], environment: defaultEnv().defineVariable('x', '9', '11').defineVariable('y', '3', '5') })
+				.call('15', '{', [argumentInCall('11'), argumentInCall('14')], { returns: ['14'], reads: [builtInId('{')], cds: [{ id: '22', when: true }], environment: defaultEnv().defineVariable('x', '9', '11').defineVariable('y', '3', '5') })
 				.calls('15', builtInId('{'))
-				.call('20', '<-', [argumentInCall('18'), argumentInCall('19')], { returns: ['18'], reads: [builtInId('<-'), 19], onlyBuiltIn: true, controlDependencies: [{ id: '22', when: false }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('y', '3', '5') })
+				.call('20', '<-', [argumentInCall('18'), argumentInCall('19')], { returns: ['18'], reads: [builtInId('<-'), 19], onlyBuiltIn: true, cds: [{ id: '22', when: false }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('y', '3', '5') })
 				.calls('20', builtInId('<-'))
-				.call('21', '{', [argumentInCall('20')], { returns: ['20'], reads: [builtInId('{')], controlDependencies: [{ id: '22', when: false }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('y', '3', '5') })
+				.call('21', '{', [argumentInCall('20')], { returns: ['20'], reads: [builtInId('{')], cds: [{ id: '22', when: false }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('y', '3', '5') })
 				.calls('21', builtInId('{'))
 				.call('22', 'if', [argumentInCall('6'), argumentInCall('15'), argumentInCall('21')], { returns: ['15', '21'], reads: ['6', builtInId('if')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('y', '3', '5') })
 				.calls('22', builtInId('if'))
@@ -225,11 +225,11 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 				.constant('4')
 				.defineVariable('3', 'y', { definedBy: ['4', '5'] })
 				.constant('10')
-				.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [{ id: '22', when: true }] })
+				.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '22', when: true }] })
 				.constant('13')
-				.defineVariable('12', 'y', { definedBy: ['13', '14'], controlDependencies: [{ id: '22', when: true }] })
+				.defineVariable('12', 'y', { definedBy: ['13', '14'], cds: [{ id: '22', when: true }] })
 				.constant('19')
-				.defineVariable('18', 'x', { definedBy: ['19', '20'], controlDependencies: [{ id: '22', when: false }] })
+				.defineVariable('18', 'x', { definedBy: ['19', '20'], cds: [{ id: '22', when: false }] })
 				.defineVariable('23', 'w', { definedBy: ['24', '25'] })
 				.defineVariable('26', 'z', { definedBy: ['27', '28'] })
 		);
@@ -239,11 +239,11 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 			.reads('15', ['0', '9'])
 			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 			.calls('2', builtInId('<-'))
-			.call('6', '{', [], { returns: [], reads: [builtInId('{')], controlDependencies: [{ id: '13', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
+			.call('6', '{', [], { returns: [], reads: [builtInId('{')], cds: [{ id: '13', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
 			.calls('6', builtInId('{'))
-			.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { returns: ['9'], reads: [builtInId('<-'), 10], onlyBuiltIn: true, controlDependencies: [{ id: '13', when: false }], environment: defaultEnv().defineVariable('x', '0', '2') })
+			.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { returns: ['9'], reads: [builtInId('<-'), 10], onlyBuiltIn: true, cds: [{ id: '13', when: false }], environment: defaultEnv().defineVariable('x', '0', '2') })
 			.calls('11', builtInId('<-'))
-			.call('12', '{', [argumentInCall('11')], { returns: ['11'], reads: [builtInId('{')], controlDependencies: [{ id: '13', when: false }], environment: defaultEnv().defineVariable('x', '0', '2') })
+			.call('12', '{', [argumentInCall('11')], { returns: ['11'], reads: [builtInId('{')], cds: [{ id: '13', when: false }], environment: defaultEnv().defineVariable('x', '0', '2') })
 			.calls('12', builtInId('{'))
 			.call('13', 'if', [argumentInCall('3'), argumentInCall('6'), argumentInCall('12')], { returns: ['6', '12'], reads: ['3', builtInId('if')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2', [{ id: '13', when: false }]).defineVariable('x', '9', '11', [{ id: '13', when: false }]) })
 			.calls('13', builtInId('if'))
@@ -252,7 +252,7 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 			.constant('1')
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 			.constant('10')
-			.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [{ id: '13', when: false }] })
+			.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '13', when: false }] })
 			.defineVariable('14', 'y', { definedBy: ['15', '16'] })
 		);
 		assertDataflow(label('nested if else', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'if', 'unnamed-arguments']),
@@ -268,37 +268,37 @@ if(y) {
 }
 print(x)`,  emptyGraph()
 				.use('3', 'y')
-				.use('6', 'z', { controlDependencies: [{ id: '27', when: true }] })
+				.use('6', 'z', { cds: [{ id: '27', when: true }] })
 				.use('29', 'x')
 				.reads('29', ['9', '15', '23'])
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 				.calls('2', builtInId('<-'))
 				.argument('2', ['1', '0'])
-				.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { returns: ['9'], reads: [builtInId('<-'), 10], onlyBuiltIn: true, controlDependencies: [{ id: '19', when: true }, { id: '27', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { returns: ['9'], reads: [builtInId('<-'), 10], onlyBuiltIn: true, cds: [{ id: '19', when: true }, { id: '27', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
 				.calls('11', builtInId('<-'))
 				.argument('11', ['10', '9'])
 				.argument('12', '11')
-				.call('12', '{', [argumentInCall('11')], { returns: ['11'], reads: [builtInId('{')], controlDependencies: [{ id: '19', when: true }, { id: '27', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.call('12', '{', [argumentInCall('11')], { returns: ['11'], reads: [builtInId('{')], cds: [{ id: '19', when: true }, { id: '27', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
 				.calls('12', builtInId('{'))
-				.call('17', '<-', [argumentInCall('15'), argumentInCall('16')], { returns: ['15'], reads: [builtInId('<-'), 16], onlyBuiltIn: true, controlDependencies: [{ id: '19', when: false }, { id: '27', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.call('17', '<-', [argumentInCall('15'), argumentInCall('16')], { returns: ['15'], reads: [builtInId('<-'), 16], onlyBuiltIn: true, cds: [{ id: '19', when: false }, { id: '27', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
 				.calls('17', builtInId('<-'))
 				.argument('17', ['16', '15'])
 				.argument('18', '17')
-				.call('18', '{', [argumentInCall('17')], { returns: ['17'], reads: [builtInId('{')], controlDependencies: [{ id: '19', when: false }, { id: '27', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.call('18', '{', [argumentInCall('17')], { returns: ['17'], reads: [builtInId('{')], cds: [{ id: '19', when: false }, { id: '27', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
 				.calls('18', builtInId('{'))
 				.argument('19', '6')
 				.argument('19', '12')
 				.argument('19', '18')
-				.call('19', 'if', [argumentInCall('6'), argumentInCall('12'), argumentInCall('18')], { returns: ['12', '18'], reads: ['6', builtInId('if')], onlyBuiltIn: true, controlDependencies: [{ id: '27', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.call('19', 'if', [argumentInCall('6'), argumentInCall('12'), argumentInCall('18')], { returns: ['12', '18'], reads: ['6', builtInId('if')], onlyBuiltIn: true, cds: [{ id: '27', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
 				.calls('19', builtInId('if'))
 				.argument('20', '19')
-				.call('20', '{', [argumentInCall('19')], { returns: ['19'], reads: [builtInId('{')], controlDependencies: [{ id: '27', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.call('20', '{', [argumentInCall('19')], { returns: ['19'], reads: [builtInId('{')], cds: [{ id: '27', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
 				.calls('20', builtInId('{'))
-				.call('25','<-', [argumentInCall('23'), argumentInCall('24')], { returns: ['23'], reads: [builtInId('<-'), 24], onlyBuiltIn: true, controlDependencies: [{ id: '27', when: false }], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.call('25','<-', [argumentInCall('23'), argumentInCall('24')], { returns: ['23'], reads: [builtInId('<-'), 24], onlyBuiltIn: true, cds: [{ id: '27', when: false }], environment: defaultEnv().defineVariable('x', '0', '2') })
 				.calls('25', builtInId('<-'))
 				.argument('25', ['24', '23'])
 				.argument('26', '25')
-				.call('26', '{', [argumentInCall('25')], { returns: ['25'], reads: [builtInId('{')], controlDependencies: [{ id: '27', when: false }], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.call('26', '{', [argumentInCall('25')], { returns: ['25'], reads: [builtInId('{')], cds: [{ id: '27', when: false }], environment: defaultEnv().defineVariable('x', '0', '2') })
 				.calls('26', builtInId('{'))
 				.argument('27', '3')
 				.argument('27', '20')
@@ -312,11 +312,11 @@ print(x)`,  emptyGraph()
 				.constant('1')
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 				.constant('10')
-				.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [{ id: '19', when: true }, { id: '27', when: true }] })
+				.defineVariable('9', 'x', { definedBy: ['10', '11'], cds: [{ id: '19', when: true }, { id: '27', when: true }] })
 				.constant('16')
-				.defineVariable('15', 'x', { definedBy: ['16', '17'], controlDependencies: [{ id: '19', when: false }, { id: '27', when: true }] })
+				.defineVariable('15', 'x', { definedBy: ['16', '17'], cds: [{ id: '19', when: false }, { id: '27', when: true }] })
 				.constant('24')
-				.defineVariable('23', 'x', { definedBy: ['24', '25'], controlDependencies: [{ id: '27', when: false }] })
+				.defineVariable('23', 'x', { definedBy: ['24', '25'], cds: [{ id: '27', when: false }] })
 				.markIdForUnknownSideEffects('31')
 		);
 	});
@@ -331,10 +331,10 @@ a()`,  emptyGraph()
 				.call('4', '<-', [argumentInCall('0'), argumentInCall('3')], { returns: ['0'], reads: [builtInId('<-'), 3], onlyBuiltIn: true })
 				.calls('4', builtInId('<-'))
 				.argument('4', ['3', '0'])
-				.call('15', 'assign', [argumentInCall('9'), argumentInCall('13')], { returns: ['9'], reads: [builtInId('assign'), 13], environment: defaultEnv().defineFunction('a', '0', '4'), onlyBuiltIn: true, controlDependencies: [{ id: '17', when: true }] })
+				.call('15', 'assign', [argumentInCall('9'), argumentInCall('13')], { returns: ['9'], reads: [builtInId('assign'), 13], environment: defaultEnv().defineFunction('a', '0', '4'), onlyBuiltIn: true, cds: [{ id: '17', when: true }] })
 				.calls('15', builtInId('assign'))
 				.argument('15', ['13', '9'])
-				.call('16', '{', [argumentInCall('15', { controlDependencies: [{ id: '17', when: true }] })], { returns: ['15'], reads: [builtInId('{')], controlDependencies: [{ id: '17', when: true }], environment: defaultEnv().defineFunction('a', '0', '4') })
+				.call('16', '{', [argumentInCall('15', { cds: [{ id: '17', when: true }] })], { returns: ['15'], reads: [builtInId('{')], cds: [{ id: '17', when: true }], environment: defaultEnv().defineFunction('a', '0', '4') })
 				.calls('16', builtInId('{'))
 				.argument('17', '5')
 				.argument('17', '16')
@@ -345,7 +345,7 @@ a()`,  emptyGraph()
 				.constant('1', undefined, false)
 				.defineFunction('3', ['1'], {
 					out:               [],
-					in:                [{ nodeId: '1', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
+					in:                [{ nodeId: '1', name: undefined, cds: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
 					entryPoint:        '1',
 					graph:             new Set(['1']),
@@ -355,13 +355,13 @@ a()`,  emptyGraph()
 				.constant('11', undefined, false)
 				.defineFunction('13', ['11'], {
 					out:               [],
-					in:                [{ nodeId: '11', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
+					in:                [{ nodeId: '11', name: undefined, cds: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
 					entryPoint:        '11',
 					graph:             new Set(['11']),
 					environment:       defaultEnv().pushEnv()
 				})
-				.defineVariable('9', '"a"', { definedBy: ['13', '15'], controlDependencies: [{ id: '17', when: true }] }),
+				.defineVariable('9', '"a"', { definedBy: ['13', '15'], cds: [{ id: '17', when: true }] }),
 			{ minRVersion: MIN_VERSION_LAMBDA });
 		assertDataflow(label('assign from get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'assignment-functions', 'strings', 'unnamed-arguments', 'name-created']),
 			shell, 'b <- 5\nassign("a", get("b"))\nprint(a)', emptyGraph()
@@ -506,5 +506,23 @@ x`, emptyGraph()
 				.reads('7@x', '3@x')
 				.use('7@x')
 			, { resolveIdsAsCriterion: true });
+	});
+	describe('ifelse function', () => {
+		assertDataflow(label('Traditional ifelse use', ['name-normal', 'if', 'unnamed-arguments']), shell,
+			'ifelse(u, a, b)', emptyGraph()
+				.reads('1@ifelse', '1@u')
+				.call('1@ifelse', 'ifelse', [argumentInCall('1@u'), argumentInCall('1@a'), argumentInCall('1@b')], { returns: ['1@a', '1@b'], reads: [builtInId('ifelse')], onlyBuiltIn: true })
+				.calls('1@ifelse', builtInId('ifelse'))
+			,
+			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+		);
+		assertDataflow(label('ifelse with reordering', ['name-normal', 'if', 'named-arguments']), shell,
+			'ifelse(yes=a,test=u,no=b)', emptyGraph()
+				.reads('1@ifelse', '1@u')
+				.call('1@ifelse', 'ifelse', [argumentInCall('1@u'), argumentInCall('1@a'), argumentInCall('1@b')], { returns: ['1@a', '1@b'], reads: [builtInId('ifelse')], onlyBuiltIn: true })
+				.calls('1@ifelse', builtInId('ifelse'))
+			,
+			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+		);
 	});
 }));

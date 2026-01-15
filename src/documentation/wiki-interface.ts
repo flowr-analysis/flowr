@@ -22,6 +22,7 @@ import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import type { KnownParser } from '../r-bridge/parser';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
+import { BuiltInProcName } from '../dataflow/environments/built-in';
 
 async function explainServer(parser: KnownParser): Promise<string> {
 	documentAllServerMessages();
@@ -246,7 +247,7 @@ ${codeBlock('json', JSON.stringify(
 				environment: {
 					overwriteBuiltIns: {
 						definitions: [
-							{ type: 'function', names: ['foo'], processor: 'builtin:assignment', config: {} }
+							{ type: 'function', names: ['foo'], processor: BuiltInProcName.Assignment, config: {} }
 						]
 					}
 				}

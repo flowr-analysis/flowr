@@ -84,7 +84,7 @@ export class EnvironmentBuilderPrinter {
 	}
 
 	private getControlDependencyArgument(def: IdentifierDefinition) {
-		return def.controlDependencies ? wrapControlDependencies(def.controlDependencies) : undefined;
+		return def.cds ? wrapControlDependencies(def.cds) : undefined;
 	}
 
 	private push() {

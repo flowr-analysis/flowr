@@ -167,7 +167,7 @@ a(i)`, emptyGraph()
 			.constant('14', undefined, false)
 			.defineFunction('16', ['14'], {
 				out:               [],
-				in:                [{ nodeId: '14', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
+				in:                [{ nodeId: '14', name: undefined, cds: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
 				entryPoint:        '15',
 				graph:             new Set(['4', '9', '8', '10', '12', '11', '13', '14', '15']),
@@ -248,7 +248,7 @@ a()()`, emptyGraph()
 			.constant('5', undefined, false)
 			.defineFunction('7', ['5'], {
 				out:               [],
-				in:                [{ nodeId: '5', name: undefined, controlDependencies: [], type: ReferenceType.Argument  }],
+				in:                [{ nodeId: '5', name: undefined, cds: [], type: ReferenceType.Argument  }],
 				unknownReferences: [],
 				entryPoint:        '6',
 				graph:             new Set(['5', '6']),
@@ -291,7 +291,7 @@ a()()`, emptyGraph()
 			.constant('3', undefined, false)
 			.defineFunction('5', ['3'], {
 				out:               [],
-				in:                [{ nodeId: '3', name: undefined, controlDependencies: [], type: ReferenceType.Argument }, { nodeId: 4, name: '{', controlDependencies: undefined, type: ReferenceType.Function }],
+				in:                [{ nodeId: '3', name: undefined, cds: [], type: ReferenceType.Argument }, { nodeId: 4, name: '{', cds: undefined, type: ReferenceType.Function }],
 				unknownReferences: [],
 				entryPoint:        '4',
 				graph:             new Set(['3', '4']),

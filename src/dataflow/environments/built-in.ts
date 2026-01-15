@@ -95,7 +95,7 @@ export interface BuiltInIdentifierDefinition extends IdentifierReference {
 	type:      ReferenceType.BuiltInFunction
 	definedAt: BuiltIn
 	processor: BuiltInIdentifierProcessor
-	config?:   ConfigOfBuiltInMappingName<BuiltInMappingName> & { libFn?: boolean }
+	config?:   ConfigOfBuiltInMappingName<keyof typeof BuiltInProcessorMapper> & { libFn?: boolean }
 }
 
 export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierReference {
@@ -103,8 +103,6 @@ export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierRefere
 	definedAt: BuiltIn
 	value:     T
 }
-
-export type UseAsProcessors = 'builtin:default' | 'builtin:return' | 'builtin:stop';
 
 export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	readonly returnsNthArgument?:    number | 'last',
@@ -117,7 +115,7 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	 * Name that should be used for the origin (useful when needing to differentiate between
 	 * functions like 'return' that use the default builtin processor)
 	 */
-	readonly useAsProcessor?:        UseAsProcessors
+	readonly useAsProcessor?:        BuiltInProcName
 }
 
 
@@ -130,7 +128,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	{ returnsNthArgument, useAsProcessor, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
-	const activeProcessor = useAsProcessor ?? 'builtin:default';
+	const activeProcessor = useAsProcessor ?? BuiltInProcName.Default;
 	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: activeProcessor });
 	if(returnsNthArgument !== undefined) {
 		const arg = returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[returnsNthArgument];
@@ -146,10 +144,10 @@ function defaultBuiltInProcessor<OtherInfo>(
 		}
 	}
 	if(hasUnknownSideEffects) {
-		if(typeof hasUnknownSideEffects !== 'boolean') {
-			handleUnknownSideEffect(res.graph, res.environment, rootId, hasUnknownSideEffects);
-		} else {
+		if(typeof hasUnknownSideEffects === 'boolean') {
 			handleUnknownSideEffect(res.graph, res.environment, rootId);
+		} else {
+			handleUnknownSideEffect(res.graph, res.environment, rootId, hasUnknownSideEffects);
 		}
 	}
 
@@ -170,52 +168,121 @@ function defaultBuiltInProcessor<OtherInfo>(
 					continue;
 				}
 				res.graph.updateToFunctionCall({
-					tag:                 VertexType.FunctionCall,
-					id:                  fnId,
-					name:                fnName,
-					args:                [],
-					environment:         data.environment,
-					onlyBuiltin:         false,
-					controlDependencies: data.controlDependencies,
-					origin:              [activeProcessor]
+					tag:         VertexType.FunctionCall,
+					id:          fnId,
+					name:        fnName,
+					args:        [],
+					environment: data.environment,
+					onlyBuiltin: false,
+					cds:         data.cds,
+					origin:      [activeProcessor]
 				});
 			}
 		}
 	}
 
 	if(cfg !== undefined) {
-		(res.exitPoints as ExitPoint[]).push({ type: cfg, nodeId: rootId, controlDependencies: data.controlDependencies });
+		(res.exitPoints as ExitPoint[]).push({ type: cfg, nodeId: rootId, cds: data.cds });
 	}
 
 	return res;
 }
 
+/**
+ * This contains all names of built-in function handlers and origins
+ */
+export enum BuiltInProcName {
+	/** for subsetting operations, see {@link processAccess} */
+	Access              = 'builtin:access',
+	/** for the `*apply` family, see {@link processApply} */
+	Apply               = 'builtin:apply',
+	/** for assignments like `<-` and `=`, see {@link processAssignment} */
+	Assignment          = 'builtin:assignment',
+	/** for assignment like functions that may do additional work, see {@link processAssignmentLike} */
+	AssignmentLike      = 'builtin:assignment-like',
+	/** for `break` calls */
+	Break               = 'builtin:break',
+	/** the default built-in processor, see {@link defaultBuiltInProcessor} */
+	Default             = 'builtin:default',
+	/** for `eval` calls, see {@link processEvalCall} */
+	Eval                = 'builtin:eval',
+	/** for expression lists, see {@link processExpressionList} */
+	ExpressionList      = 'builtin:expression-list',
+	/** for `for` loops, see {@link processForLoop} */
+	ForLoop             = 'builtin:for-loop',
+	/** We resolved a function call, similar to {@link BuiltInProcName#Default} */
+	Function            = 'function',
+	/** for function definitions, see {@link processFunctionDefinition} */
+	FunctionDefinition  = 'builtin:function-definition',
+	/** for `get` calls, see {@link processGet} */
+	Get                 = 'builtin:get',
+	/** for `if-then-else` constructs, see {@link processIfThenElse} */
+	IfThenElse          = 'builtin:if-then-else',
+	/** for `library` and `require` calls, see {@link processLibrary} */
+	Library             = 'builtin:library',
+	/** for `list` calls, see {@link processList} */
+	List                = 'builtin:list',
+	/** for the pipe operators, see {@link processPipe} */
+	Pipe                = 'builtin:pipe',
+	/** for `quote`, and other substituting calls, see {@link processQuote} */
+	Quote               = 'builtin:quote',
+	/** for `on.exìt` and other hooks, see {@link processRegisterHook} */
+	RegisterHook        = 'builtin:register-hook',
+	/** for `repeat` loops, see {@link processRepeatLoop} */
+	RepeatLoop          = 'builtin:repeat-loop',
+	/** for replacement functions like `names<-`, see {@link processReplacementFunction} */
+	Replacement         = 'builtin:replacement',
+	/** for `return` calls */
+	Return              = 'builtin:return',
+	/** for `rm` calls, see {@link processRm} */
+	Rm                  = 'builtin:rm',
+	/** for `source` calls, see {@link processSourceCall} */
+	Source              = 'builtin:source',
+	/** for special binary operators like `%x%`, see {@link processSpecialBinOp} */
+	SpecialBinOp        = 'builtin:special-bin-op',
+	/** for `stop` calls */
+	Stop                = 'builtin:stop',
+	/** for `stopifnot` calls, see {@link processStopIfNot} */
+	StopIfNot           = 'builtin:stopifnot',
+	/** support for `:=` in subsetting assignments, see {@link processAccess} */
+	TableAssignment     = 'table:assign',
+	/** for `try` calls, see {@link processTryCatch} */
+	Try                 = 'builtin:try',
+	/** for unnamed directly-linked function calls */
+	Unnamed             = 'unnamed',
+	/** for vector construction calls, see {@link processVector} */
+	Vector              = 'builtin:vector',
+	/** for `while` loops, see {@link processWhileLoop} */
+	WhileLoop           = 'builtin:while-loop',
+}
+
+
 export const BuiltInProcessorMapper = {
-	'builtin:access':              processAccess,
-	'builtin:apply':               processApply,
-	'builtin:assignment':          processAssignment,
-	'builtin:assignment-like':     processAssignmentLike,
-	'builtin:default':             defaultBuiltInProcessor,
-	'builtin:eval':                processEvalCall,
-	'builtin:expression-list':     processExpressionList,
-	'builtin:for-loop':            processForLoop,
-	'builtin:function-definition': processFunctionDefinition,
-	'builtin:get':                 processGet,
-	'builtin:if-then-else':        processIfThenElse,
-	'builtin:library':             processLibrary,
-	'builtin:list':                processList,
-	'builtin:pipe':                processPipe,
-	'builtin:quote':               processQuote,
-	'builtin:register-hook':       processRegisterHook,
-	'builtin:repeat-loop':         processRepeatLoop,
-	'builtin:replacement':         processReplacementFunction,
-	'builtin:rm':                  processRm,
-	'builtin:source':              processSourceCall,
-	'builtin:special-bin-op':      processSpecialBinOp,
-	'builtin:stopifnot':           processStopIfNot,
-	'builtin:try':                 processTryCatch,
-	'builtin:vector':              processVector,
-	'builtin:while-loop':          processWhileLoop,
+	[BuiltInProcName.Access]:             processAccess,
+	[BuiltInProcName.Apply]:              processApply,
+	[BuiltInProcName.Assignment]:         processAssignment,
+	[BuiltInProcName.AssignmentLike]:     processAssignmentLike,
+	[BuiltInProcName.Default]:            defaultBuiltInProcessor,
+	[BuiltInProcName.Eval]:               processEvalCall,
+	[BuiltInProcName.ExpressionList]:     processExpressionList,
+	[BuiltInProcName.ForLoop]:            processForLoop,
+	[BuiltInProcName.FunctionDefinition]: processFunctionDefinition,
+	[BuiltInProcName.Get]:                processGet,
+	[BuiltInProcName.IfThenElse]:         processIfThenElse,
+	[BuiltInProcName.Library]:            processLibrary,
+	[BuiltInProcName.List]:               processList,
+	[BuiltInProcName.Pipe]:               processPipe,
+	[BuiltInProcName.Quote]:              processQuote,
+	[BuiltInProcName.RegisterHook]:       processRegisterHook,
+	[BuiltInProcName.RepeatLoop]:         processRepeatLoop,
+	[BuiltInProcName.Replacement]:        processReplacementFunction,
+	[BuiltInProcName.Rm]:                 processRm,
+	[BuiltInProcName.Source]:             processSourceCall,
+	[BuiltInProcName.SpecialBinOp]:       processSpecialBinOp,
+	[BuiltInProcName.StopIfNot]:          processStopIfNot,
+	[BuiltInProcName.Try]:                processTryCatch,
+	[BuiltInProcName.Vector]:             processVector,
+	[BuiltInProcName.WhileLoop]:          processWhileLoop,
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;
 
 export const BuiltInEvalHandlerMapper = {
@@ -225,48 +292,47 @@ export const BuiltInEvalHandlerMapper = {
 	'built-in:-': resolveAsMinus
 } as const satisfies Record<string, BuiltInEvalHandler>;
 
-export type BuiltInMappingName = keyof typeof BuiltInProcessorMapper;
-export type ConfigOfBuiltInMappingName<N extends BuiltInMappingName> = Parameters<typeof BuiltInProcessorMapper[N]>[4];
+export type ConfigOfBuiltInMappingName<N extends keyof typeof BuiltInProcessorMapper> = Parameters<typeof BuiltInProcessorMapper[N]>[4];
 
 export type BuiltInMemory = Map<Identifier, IdentifierDefinition[]>
 
 export class BuiltIns {
 	/**
-	 * Register a built-in constant (like `NULL` or `TRUE`) to the given {@link builtIns}
+	 * Register a built-in constant (like `NULL` or `TRUE`) to the given {@link BuiltIns}
 	 */
 	registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>): void {
 		for(const name of names) {
 			const id = builtInId(name);
 			const d: IdentifierDefinition[] = [{
-				type:                ReferenceType.BuiltInConstant,
-				definedAt:           id,
-				controlDependencies: undefined,
+				type:      ReferenceType.BuiltInConstant,
+				definedAt: id,
+				cds:       undefined,
 				value,
 				name,
-				nodeId:              id
+				nodeId:    id
 			}];
 			this.set(name, d, assumePrimitive);
 		}
 	}
 
 	/**
-	 * Register a built-in function (like `print` or `c`) to the given {@link builtIns}
+	 * Register a built-in function (like `print` or `c`) to the given {@link BuiltIns}
 	 */
-	registerBuiltInFunctions<BuiltInProcessor extends BuiltInMappingName>({ names, processor, config, assumePrimitive }: BuiltInFunctionDefinition<BuiltInProcessor> ): void {
+	registerBuiltInFunctions<BuiltInProcessor extends keyof typeof BuiltInProcessorMapper>({ names, processor, config, assumePrimitive }: BuiltInFunctionDefinition<BuiltInProcessor> ): void {
+		guard(processor !== undefined, () => `Processor for ${JSON.stringify(names)} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
 		const mappedProcessor = BuiltInProcessorMapper[processor];
 		guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
 		for(const name of names) {
-			guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
 			const id = builtInId(name);
 			const d: IdentifierDefinition[] = [{
-				type:                ReferenceType.BuiltInFunction,
-				definedAt:           id,
-				controlDependencies: undefined,
+				type:      ReferenceType.BuiltInFunction,
+				definedAt: id,
+				cds:       undefined,
 				/* eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-argument */
-				processor:           (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as any),
+				processor: (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as any),
 				config,
 				name,
-				nodeId:              id
+				nodeId:    id
 			}];
 			this.set(name, d, assumePrimitive);
 		}
@@ -291,9 +357,9 @@ export class BuiltIns {
 						assignmentOperator: suffix,
 						makeMaybe:          true
 					},
-					name:                effectiveName,
-					controlDependencies: undefined,
-					nodeId:              id
+					name:   effectiveName,
+					cds:    undefined,
+					nodeId: id
 				}];
 				this.set(effectiveName, d, assumePrimitive);
 			}
@@ -301,7 +367,7 @@ export class BuiltIns {
 	}
 
 	/**
-	 * Register a single {@link BuiltInDefinition} to the given memories in {@link builtIns}
+	 * Register a single {@link BuiltInDefinition} to the given memories in {@link BuiltIns}
 	 */
 	registerBuiltInDefinition(definition: BuiltInDefinition) {
 		switch(definition.type) {

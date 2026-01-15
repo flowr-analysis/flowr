@@ -3,7 +3,7 @@ import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
-import type { BuiltInMappingName } from '../environments/built-in';
+import type { BuiltInProcName } from '../environments/built-in';
 
 
 export enum VertexType {
@@ -163,30 +163,30 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	/**
 	 * Used to identify and separate different types of vertices.
 	 */
-	readonly tag:        VertexType
+	readonly tag:       VertexType
 	/**
 	 * The id of the node (the id assigned by the {@link ParentInformation} decoration).
 	 * This unanimously identifies the vertex in the {@link DataflowGraph|dataflow graph}
 	 * as well as the corresponding {@link NormalizedAst|normalized AST}.
 	 */
-	id:                  NodeId
+	id:                 NodeId
 	/**
 	 * The environment in which the vertex is set.
 	 */
-	environment?:        REnvironmentInformation
+	environment?:       REnvironmentInformation
 	/**
 	 * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
 	 */
-	controlDependencies: ControlDependency[] | undefined
+	cds:                ControlDependency[] | undefined
 	/**
 	 * this attribute links a vertex to indices (pointer links) it may be affected by or related to
 	 */
-	indicesCollection?:  ContainerIndicesCollection
+	indicesCollection?: ContainerIndicesCollection
 	/**
 	 * Describes the collection of AST vertices that contributed to this vertex.
 	 * For example, this is useful with replacement operators, telling you which assignment operator caused them
 	 */
-	link?:               DataflowGraphVertexAstLink
+	link?:              DataflowGraphVertexAstLink
 }
 
 export interface DataflowGraphVertexAstLink {
@@ -254,7 +254,7 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 }
 
 /** Describes the processor responsible for a function call */
-export type FunctionOriginInformation = BuiltInMappingName | string
+export type FunctionOriginInformation = BuiltInProcName
 
 /**
  * Arguments required to construct a vertex which represents the definition of a variable in the {@link DataflowGraph|dataflow graph}.

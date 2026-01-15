@@ -103,10 +103,10 @@ export function processFunctionDefinition<OtherInfo>(
 	for(const read of remainingRead) {
 		if(read.name) {
 			subgraph.addVertex({
-				tag:                 VertexType.Use,
-				id:                  read.nodeId,
-				environment:         undefined,
-				controlDependencies: undefined
+				tag:         VertexType.Use,
+				id:          read.nodeId,
+				environment: undefined,
+				cds:         undefined
 			}, data.ctx.env.makeCleanEnv());
 		}
 	}
@@ -149,13 +149,13 @@ export function processFunctionDefinition<OtherInfo>(
 
 	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false);
 	graph.addVertex({
-		tag:                 VertexType.FunctionDefinition,
-		id:                  name.info.id,
-		environment:         popLocalEnvironment(outEnvironment),
-		controlDependencies: data.controlDependencies,
-		params:              readParams,
-		subflow:             flow,
-		exitPoints:          afterHookExitPoints
+		tag:         VertexType.FunctionDefinition,
+		id:          name.info.id,
+		environment: popLocalEnvironment(outEnvironment),
+		cds:         data.cds,
+		params:      readParams,
+		subflow:     flow,
+		exitPoints:  afterHookExitPoints
 	}, data.ctx.env.makeCleanEnv());
 
 	return {
@@ -336,7 +336,7 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 			remainingRead.push(read);
 			continue;
 		}
-		if(writingOuts[0].controlDependencies === undefined) {
+		if(writingOuts[0].cds === undefined) {
 			parameters.addEdge(read, writingOuts[0], EdgeType.Reads);
 			continue;
 		}

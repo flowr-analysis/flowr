@@ -143,10 +143,34 @@ export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: r
 }
 
 /**
+ * Returns all argument ids that map to the given target parameter id.
+ */
+export function getAllIdsWithTarget<Targets extends NodeId>(maps: Map<NodeId, Targets>, target: Targets): NodeId[] {
+	return maps.entries().filter(([, v]) => v === target).map(([k]) => k).toArray();
+}
+
+/**
+ * Inverts the argument to parameter map to a parameter to argument map.
+ */
+export function invertArgumentMap<Targets extends NodeId>(maps: Map<NodeId, Targets>): Map<Targets, NodeId[]> {
+	const inverted = new Map<Targets, NodeId[]>();
+	for(const [arg, param] of maps.entries()) {
+		const existing = inverted.get(param);
+		if(existing) {
+			existing.push(arg);
+		} else {
+			inverted.set(param, [arg]);
+		}
+	}
+	return inverted;
+}
+
+/**
  * Links the given arguments to the given parameters within the given graph by name only.
  * @note
  * To obtain the arguments from a {@link RFunctionCall}[], either use {@link processAllArguments} (also available via {@link processKnownFunctionCall})
  * or convert them with {@link convertFnArguments}.
+ * You can use {@link getAllIdsWithTarget} to get all argument ids that map to a given parameter.
  */
 export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<NodeId, Targets> {
 	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
@@ -446,7 +470,7 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 		if(probableTarget === undefined) {
 			log.trace(`found no target for ${bodyInput.name}`);
 			if(maybeForRemaining) {
-				bodyInput.controlDependencies ??= [];
+				bodyInput.cds ??= [];
 			}
 			givenInputs.push(bodyInput);
 		} else {
@@ -504,17 +528,17 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
  */
 export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: readonly IdentifierReference[]): void {
 	// just apply the cds of all exit points not already present
-	const exitCds = new Set(exits.flatMap(e => e.controlDependencies).filter(isNotUndefined));
+	const exitCds = new Set(exits.flatMap(e => e.cds).filter(isNotUndefined));
 
 	for(const ref of references) {
 		for(const cd of exitCds) {
 			const { id: cId, when: cWhen } = cd;
-			if(ref.controlDependencies) {
-				if(!ref.controlDependencies?.find(c => c.id === cId && c.when === cWhen)) {
-					ref.controlDependencies.push({ ...cd, byIteration: true });
+			if(ref.cds) {
+				if(!ref.cds?.find(c => c.id === cId && c.when === cWhen)) {
+					ref.cds.push({ ...cd, byIteration: true });
 				}
 			} else {
-				ref.controlDependencies = [{ ...cd, byIteration: true }];
+				ref.cds = [{ ...cd, byIteration: true }];
 			}
 		}
 	}

@@ -9,6 +9,7 @@ import { Mapper } from '../../../src/search/search-executor/search-mappers';
 import { CallTargets } from '../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-simplification';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
+import { BuiltInProcName } from '../../../src/dataflow/environments/built-in';
 
 describe('flowR search', withTreeSitter(parser => {
 	assertSearch('simple search for first', parser, 'x <- 1\nprint(x)', ['1@x'],
@@ -61,22 +62,22 @@ describe('flowR search', withTreeSitter(parser => {
 		});
 		describe('origin', () => {
 			assertSearch('default', parser, 'x <- 2\ncat(x)', ['2@cat'],
-				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:default' } })
+				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.Default } })
 			);
 			assertSearch('literal assignment', parser, 'x <- 2\ncat(x)', ['1@<-'],
-				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:assignment' } })
+				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.Assignment } })
 			);
 			assertSearch('include function calls', parser, 'x <- 2\ncat(x)', ['1@<-', '1@x', '1@2', '2@x', '$3', '$5', '$7'],
-				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:assignment', keepNonFunctionCalls: true } })
+				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.Assignment, keepNonFunctionCalls: true } })
 			);
 			assertSearch('regex assignment', parser, 'x <- 2\ncat(x)', ['1@<-'],
 				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: /:assignment/ } })
 			);
 			assertSearch('for loop', parser, "for (i in 1:10) { cat('hi') }", ['1@for'],
-				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:for-loop' } })
+				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.ForLoop } })
 			);
 			assertSearch('for loop (overridden)', parser, "for <- function() {}; for (i in 1:10) { cat('hi') }", [],
-				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:for-loop' } })
+				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.ForLoop } })
 			);
 		});
 	});
@@ -123,7 +124,7 @@ describe('flowR search', withTreeSitter(parser => {
 
 		describe('filtered query', () => {
 			assertSearch('builtin assignment', parser, '`<-` <- function() {}\nx <- 2; y = 7', ['1@<-', '2@='],
-				Q.syntax('(binary_operator)').filter({ name: FlowrFilter.OriginKind, args: { origin: 'builtin:assignment' } }));
+				Q.syntax('(binary_operator)').filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.Assignment } }));
 			assertSearch('number assignment', parser, 'x <- 2; y <- "hello"', ['1@2'],
 				Q.syntax('(binary_operator rhs: (_) @rhs)', 'rhs').filter(RType.Number));
 		});

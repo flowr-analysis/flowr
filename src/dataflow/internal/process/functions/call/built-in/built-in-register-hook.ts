@@ -8,7 +8,7 @@ import {
 	type RFunctionArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { pMatch } from '../../../../linker';
+import { getAllIdsWithTarget, pMatch } from '../../../../linker';
 import { convertFnArguments } from '../common';
 import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -19,6 +19,7 @@ import type { ResolveInfo } from '../../../../../eval/resolve/alias-tracking';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 export interface RegisterHookConfig {
 	/** name of the hook to register, 'fn-exit' if it triggers on exit */
@@ -56,8 +57,8 @@ export function processRegisterHook<OtherInfo>(
 
 	const argMaps = pMatch(convertFnArguments(args), params);
 	const exprIds = new Set(argMaps.entries().filter(([, v]) => v === 'expr').map(([k]) => k));
-	const addIds = config.args.add ? new Set(argMaps.entries().filter(([, v]) => v === 'add').map(([k]) => k)) : new Set<NodeId>();
-	const afterIds = config.args.after ? new Set(argMaps.entries().filter(([, v]) => v === 'after').map(([k]) => k)) : new Set<NodeId>();
+	const addIds = config.args.add ? new Set<NodeId>(getAllIdsWithTarget(argMaps, 'add')) : new Set<NodeId>();
+	const afterIds = config.args.after ? new Set<NodeId>(getAllIdsWithTarget(argMaps, 'after')) : new Set<NodeId>();
 
 	const wrappedFunctions = new Set<NodeId>();
 	// we automatically transform the expr to a function definition that takes no arguments
@@ -89,7 +90,7 @@ export function processRegisterHook<OtherInfo>(
 		}
 	});
 
-	const res = processKnownFunctionCall({ name, args: transformed, rootId, data, origin: 'builtin:register-hook' });
+	const res = processKnownFunctionCall({ name, args: transformed, rootId, data, origin: BuiltInProcName.RegisterHook });
 	const resolveArgs: ResolveInfo = {
 		graph:       res.information.graph,
 		environment: res.information.environment,
@@ -109,7 +110,7 @@ export function processRegisterHook<OtherInfo>(
 	const hooks: HookInformation[] = Array.from(wrappedFunctions, id => ({
 		type:  config.hook,
 		id,
-		cds:   data.controlDependencies,
+		cds:   data.cds,
 		add:   shouldAdd,
 		after: shouldBeAfter
 	}));

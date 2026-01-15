@@ -13,33 +13,33 @@ import type { KnownParserType, Parser } from '../r-bridge/parser';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 export interface DataflowProcessorInformation<OtherInfo> {
-	readonly parser:              Parser<KnownParserType>
+	readonly parser:         Parser<KnownParserType>
     /**
      * Initial and frozen ast-information
      */
-	readonly completeAst:         NormalizedAst<OtherInfo>
+	readonly completeAst:    NormalizedAst<OtherInfo>
 	/**
 	 * Correctly contains pushed local scopes introduced by `function` scopes.
 	 * Will by default *not* contain any symbol-bindings introduced along the way; they have to be decorated when moving up the tree.
 	 */
-	readonly environment:         REnvironmentInformation
+	readonly environment:    REnvironmentInformation
 	/**
 	 * Other processors to be called by the given functions
 	 */
-	readonly processors:          DataflowProcessors<OtherInfo>
+	readonly processors:     DataflowProcessors<OtherInfo>
 	/**
 	 * The chain of file paths that lead to this inclusion.
 	 * The most recent (last) entry is expected to always be the current one.
 	 */
-	readonly referenceChain:      (string | undefined)[]
+	readonly referenceChain: (string | undefined)[]
 	/**
 	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
 	 */
-	readonly controlDependencies: ControlDependency[] | undefined
+	readonly cds:            ControlDependency[] | undefined
 	/**
 	 * The flowr context used for environment seeding, files, and precision control, ...
 	 */
-	readonly ctx:                 FlowrAnalyzerContext
+	readonly ctx:            FlowrAnalyzerContext
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation

@@ -30,6 +30,7 @@ import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effec
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import type { RProjectFile } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 /**
  * Infers working directories based on the given option and reference chain
@@ -39,7 +40,7 @@ export function inferWdFromScript(option: InferWorkingDirectory, referenceChain:
 		case InferWorkingDirectory.MainScript:
 			return referenceChain[0] ? [platformDirname(referenceChain[0])] : [];
 		case InferWorkingDirectory.ActiveScript: {
-			const secondToLast = referenceChain[referenceChain.length - 1];
+			const secondToLast = referenceChain.at(-1);
 			return secondToLast ? [platformDirname(secondToLast)] : [];
 		} case InferWorkingDirectory.AnyScript:
 			return referenceChain.filter(isNotUndefined).map(e => platformDirname(e));
@@ -75,7 +76,7 @@ function returnPlatformPath(p: string): string {
 function applyReplacements(path: string, replacements: readonly Record<string, string>[]): string[] {
 	const results = [];
 	for(const replacement of replacements) {
-		const newPath = Object.entries(replacement).reduce((acc, [key, value]) => acc.replace(new RegExp(key, 'g'), value), path);
+		const newPath = Object.entries(replacement).reduce((acc, [key, value]) => acc.replaceAll(new RegExp(key, 'g'), value), path);
 		results.push(newPath);
 	}
 
@@ -118,8 +119,8 @@ export function findSource(
 			}
 			break;
 		}
-		default:
 		case DropPathsOption.No:
+		default:
 			break;
 	}
 
@@ -166,7 +167,7 @@ export function processSourceCall<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 	const information = config.includeFunctionCall ?
-		processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:source' }).information
+		processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Source }).information
 		: initializeCleanDataflowInformation(rootId, data);
 
 	const sourceFileArgument = args[0];
@@ -186,7 +187,7 @@ export function processSourceCall<OtherInfo>(
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 
-	if(sourceFile && sourceFile.length === 1) {
+	if(sourceFile?.length === 1) {
 		const path = removeRQuotes(sourceFile[0]);
 		let filepath = path ? findSource(data.ctx.config.solver.resolveSource, path, data) : path;
 
@@ -246,7 +247,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 			data.completeAst.idMap.set(k, v);
 		}
 		// add to the main ast
-		if(!data.completeAst.ast.files.find(f => f.filePath === fst.filePath)) {
+		if(!data.completeAst.ast.files.some(f => f.filePath === fst.filePath)) {
 			data.completeAst.ast.files.push(fst);
 		}
 		filePath = textRequest.path;
@@ -300,7 +301,7 @@ export function standaloneSourceFile<OtherInfo>(
 	information: DataflowInformation
 ): DataflowInformation {
 	// check if the sourced file has already been dataflow analyzed, and if so, skip it
-	if(data.referenceChain.find(e => e !== undefined && e === file.filePath)) {
+	if(data.referenceChain.some(e => e !== undefined && e === file.filePath)) {
 		dataflowLogger.info(`Found loop in dataflow analysis for ${JSON.stringify(file.filePath)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
 		handleUnknownSideEffect(information.graph, information.environment, file.root.info.id);
 		return information;

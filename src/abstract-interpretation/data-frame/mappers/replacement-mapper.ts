@@ -1,5 +1,5 @@
 import { VariableResolve } from '../../../config';
-import type { BuiltInMappingName } from '../../../dataflow/environments/built-in';
+import { BuiltInProcName } from '../../../dataflow/environments/built-in';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { isFunctionCallVertex } from '../../../dataflow/graph/vertex';
@@ -47,6 +47,8 @@ type DataFrameReplacementFunction = keyof typeof DataFrameReplacementFunctionMap
 /**
  * Maps a concrete data frame replacement function call to abstract data frame operations.
  * @param node - The R node of the replacement function call
+ * @param expression - The assigned expression node of the replacement function call
+ * @param inference - The data frame shape inference visitor for checking data frame arguments
  * @param dfg  - The data flow graph for resolving the arguments
  * @param ctx - The current flowR analysis context
  * @returns The mapped abstract data frame operations for the replacement function call, or `undefined` if the node does not represent a data frame replacement function call
@@ -83,13 +85,13 @@ export function mapDataFrameReplacementFunction(
 
 function isDataFrameReplacement(functionName: string): functionName is DataFrameReplacementFunction {
 	// a check with `functionName in DataFrameReplacementFunctionMapper` would return true for "toString"
-	return Object.prototype.hasOwnProperty.call(DataFrameReplacementFunctionMapper, functionName);
+	return Object.hasOwn(DataFrameReplacementFunctionMapper, functionName);
 }
 
 function hasParentReplacement(node: RNode<ParentInformation>, dfg: DataflowGraph): node is RNode<ParentInformation & { parent: NodeId }> {
 	const parentVertex = node.info.parent ? dfg.getVertex(node.info.parent) : undefined;
 
-	return isFunctionCallVertex(parentVertex) && parentVertex.origin.includes('builtin:replacement' satisfies BuiltInMappingName);
+	return isFunctionCallVertex(parentVertex) && parentVertex.origin.includes(BuiltInProcName.Replacement);
 }
 
 function mapDataFrameContentAssignment(

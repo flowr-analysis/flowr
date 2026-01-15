@@ -11,6 +11,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 
 /**
@@ -46,7 +47,7 @@ export function processGet<OtherInfo>(
 		args:   wrapArgumentsUnnamed([treatTargetAsSymbol], data.completeAst.idMap),
 		rootId,
 		data,
-		origin: 'builtin:get'
+		origin: BuiltInProcName.Get
 	});
 
 	const firstArg = processedArguments[0];

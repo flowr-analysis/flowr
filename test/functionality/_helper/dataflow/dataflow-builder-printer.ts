@@ -116,7 +116,7 @@ class DataflowBuilderPrinter {
 		this.recordFnCall(id,'call', [
 			wrap(id),
 			`[${vertex.args.map(a => this.processArgumentInCall(vertex.id, a)).join(', ')}]`,
-			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${readSuffix}${this.getControlDependencySuffix(vertex.controlDependencies, ', ', '') ?? ''}${this.getEnvironmentSuffix(vertex.environment, ', ', '') ?? ''} }`,
+			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${readSuffix}${this.getControlDependencySuffix(vertex.cds, ', ', '') ?? ''}${this.getEnvironmentSuffix(vertex.environment, ', ', '') ?? ''} }`,
 			this.asRootArg(id)
 		]);
 	}
@@ -158,7 +158,7 @@ class DataflowBuilderPrinter {
 	private controlDependenciesForArgument(id: NodeId): ControlDependency[] | undefined {
 		// we ignore the control dependency of the argument in the call as it is usually separate, and the auto creation
 		// will respect the corresponding node!
-		return this.graph.getVertex(id, true)?.controlDependencies;
+		return this.graph.getVertex(id, true)?.cds;
 	}
 
 	private processVertex(id: NodeId, vertex: DataflowGraphVertexInfo): void {
@@ -180,7 +180,7 @@ class DataflowBuilderPrinter {
 				const root = this.asRootArg(id);
 				this.recordFnCall(id, 'constant', [
 					wrap(id),
-					this.getControlDependencySuffix(vertex.controlDependencies) ?? (root ? 'undefined' : undefined),
+					this.getControlDependencySuffix(vertex.cds) ?? (root ? 'undefined' : undefined),
 					root
 				]);
 				break;
@@ -210,7 +210,7 @@ class DataflowBuilderPrinter {
 		const root = this.asRootArg(id);
 		this.recordFnCall(id, 'use', [
 			wrap(id),
-			this.getControlDependencySuffix(vertex.controlDependencies) ?? (root ? 'undefined' : undefined),
+			this.getControlDependencySuffix(vertex.cds) ?? (root ? 'undefined' : undefined),
 			root
 		]);
 	}
@@ -242,14 +242,14 @@ class DataflowBuilderPrinter {
 
 		this.recordFnCall(id,'defineVariable', [
 			wrap(id),
-			'{ definedBy: [' + (definedBy?.map(wrap).join(', ') ?? '') + ']' + (this.getControlDependencySuffix(vertex.controlDependencies, ', ', '') ?? '') + ' }',
+			'{ definedBy: [' + (definedBy?.map(wrap).join(', ') ?? '') + ']' + (this.getControlDependencySuffix(vertex.cds, ', ', '') ?? '') + ' }',
 			this.asRootArg(id)
 		]);
 	}
 
 	private getControlDependencySuffix(arg: ControlDependency[] | undefined, prefix: string = '{ ', suffix: string = ' }'): string | undefined {
 		if(arg !== undefined) {
-			return `${prefix}controlDependencies: ${wrapControlDependencies(arg)}${suffix}`;
+			return `${prefix}cds: ${wrapControlDependencies(arg)}${suffix}`;
 		}
 		return undefined;
 	}

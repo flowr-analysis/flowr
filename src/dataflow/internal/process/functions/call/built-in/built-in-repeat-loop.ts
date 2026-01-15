@@ -1,18 +1,23 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { type DataflowInformation , filterOutLoopExitPoints } from '../../../../../info';
+import { type DataflowInformation, filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
-	produceNameSharedIdMap, reapplyLoopExitPoints
+	produceNameSharedIdMap,
+	reapplyLoopExitPoints
 } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	EmptyArgument,
+	type RFunctionArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 /**
  * Process a built-in repeat loop function call like `repeat { ... }`.
@@ -42,12 +47,12 @@ export function processRepeatLoop<OtherInfo>(
 		forceArgs: 'all',
 		patchData: (d, i) => {
 			if(i === 0) {
-				return { ...d, controlDependencies: [...d.controlDependencies ?? [], { id: name.info.id }] };
+				return { ...d, cds: [...d.cds ?? [], { id: name.info.id }] };
 			}
 			return d;
 		},
 		markAsNSE: [0],
-		origin:    'builtin:repeat-loop'
+		origin:    BuiltInProcName.RepeatLoop
 	});
 
 	const body = processedArguments[0];

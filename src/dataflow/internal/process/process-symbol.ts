@@ -18,17 +18,17 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 	}
 
 	return {
-		unknownReferences: [ { nodeId: symbol.info.id, name: symbol.content, controlDependencies: data.controlDependencies, type: ReferenceType.Unknown } ],
+		unknownReferences: [ { nodeId: symbol.info.id, name: symbol.content, cds: data.cds, type: ReferenceType.Unknown } ],
 		in:                [],
 		out:               [],
 		environment:       data.environment,
 		graph:             new DataflowGraph(data.completeAst.idMap).addVertex({
-			tag:                 VertexType.Use,
-			id:                  symbol.info.id,
-			controlDependencies: data.controlDependencies
+			tag: VertexType.Use,
+			id:  symbol.info.id,
+			cds: data.cds
 		}, data.ctx.env.makeCleanEnv()),
 		entryPoint: symbol.info.id,
-		exitPoints: [{ nodeId: symbol.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }],
+		exitPoints: [{ nodeId: symbol.info.id, type: ExitPointType.Default, cds: data.cds }],
 		hooks:      []
 	};
 }

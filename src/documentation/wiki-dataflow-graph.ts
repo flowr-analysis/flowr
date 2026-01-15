@@ -47,7 +47,6 @@ import { getValueOfArgument } from '../queries/catalog/call-context-query/identi
 import { getAliases, resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import {
-	UnnamedFunctionCallOrigin,
 	UnnamedFunctionCallPrefix
 } from '../dataflow/internal/process/functions/call/unnamed-call-handling';
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
@@ -61,6 +60,7 @@ import type { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-s
 import type { KnownParser } from '../r-bridge/parser';
 import type { MermaidMarkdownMark } from '../util/mermaid/info';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
+import { BuiltInProcName } from '../dataflow/environments/built-in';
 
 async function subExplanation(parser: KnownParser, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(parser, code, expectedSubgraph);
@@ -262,9 +262,9 @@ ${
 }
 
 There is another element of potential interest to you, the \`origin\` property which records how flowR created the respective function call.
-These origins may hold the name of any processor that is part of the ${ctx.link('BuiltInProcessorMapper')} to signal that the respective processor was responsible for creating the vertex.
-The entry \`function\` signals that flowR used a processor for a user-defined function defined within the source code, \`unnamed\` signals that the function as an anonymous function definition.
-However, in general, flowR may use any fitting handler as an origin. For example, within a access definition, flowR will correspondingly redefine the meaning of \`:=\` to that of the \`table:assign\`. 
+These origins may hold the name of any processor that is part of the ${ctx.link('BuiltInProcName')} enumeration to signal that the respective processor (cf. ${ctx.link('BuiltInProcessorMapper')}) was responsible for creating the vertex.
+The entry \`${BuiltInProcName.Function}\` signals that flowR used a processor for a user-defined function defined within the source code, \`${BuiltInProcName.Unnamed}\` signals that the function as an anonymous function definition.
+However, in general, flowR may use any fitting handler as an origin (see the ${ctx.link('BuiltInProcName')} enum for a *complete* list). For example, within a access definition, flowR will correspondingly redefine the meaning of \`:=\` to that of the \`${BuiltInProcName.TableAssignment}\`. 
 
 ${
 	details('Example: Simple Function Call (unresolved)',
@@ -449,7 +449,7 @@ ${block({
 	content: `Now you might be asking yourself how to differentiate anonymous and named functions and what you have to keep in mind when working with them?
 
 Unnamed functions have an array of signatures which you can use to identify them. 
-But in short: the \`origin\` attribute of the ${ctx.link('DataflowGraphVertexFunctionCall')} is \`${UnnamedFunctionCallOrigin}\`.
+But in short: the \`origin\` attribute of the ${ctx.link('DataflowGraphVertexFunctionCall')} is \`${BuiltInProcName.Unnamed}\`.
 Please be aware that unnamed functions still have a \`name\` property to give it a unique identifier that can be used for debugging and reference.
 This name _always_ starts with \`${UnnamedFunctionCallPrefix}\`.
 
@@ -614,7 +614,7 @@ Besides this being a theoretically "shorter" way of defining a function, this be
 
 `,
 		code:             'function() 1',
-		expectedSubgraph: emptyGraph().defineFunction('1@function', [0], { hooks: [], graph: new Set('0'), in: [{ nodeId: 0, controlDependencies: [], type: ReferenceType.Constant, name: undefined }], out: [], unknownReferences: [], entryPoint: 0, environment: defaultEnv() })
+		expectedSubgraph: emptyGraph().defineFunction('1@function', [0], { hooks: [], graph: new Set('0'), in: [{ nodeId: 0, cds: [], type: ReferenceType.Constant, name: undefined }], out: [], unknownReferences: [], entryPoint: 0, environment: defaultEnv() })
 	}, []]);
 
 	const results = [];
@@ -974,7 +974,7 @@ ${prefixLines(codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap)
 ${section('Vertices', 2, 'vertices')}
 
 1. ${getAllVertices().map(
-	([k,v]) => `[\`${k}\`](#${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
+	([k,v]) => `[\`${k}\`](#${v.toLowerCase().replaceAll(/\s/g, '-')}-vertex)`
 ).join('\n1. ')}
 
 ${await getVertexExplanations(treeSitter, ctx)}
@@ -1198,7 +1198,7 @@ ${await(async() => {
 					return '`' + wanted.types + '`';
 				}
 			}
-			new Error('Could not find edge');
+			throw new Error('Could not find edge');
 		})()}&mdash;which is usually not very helpful.
 You can use ${ctx.link(splitEdgeTypes.name)} to get the individual bitmasks of all included types, and 
 ${ctx.link(edgeIncludesType.name)} to check whether a specific type (or one of a collection of types) is included in the edge.
@@ -1214,7 +1214,7 @@ ${ctx.hierarchy('Origin', { openTop: true })}
 Their respective uses are documented alongside their implementation:
 
 ${
-		['SimpleOrigin', 'FunctionCallOrigin', 'BuiltInFunctionOrigin'].sort().map(
+		['SimpleOrigin', 'FunctionCallOrigin', 'BuiltInFunctionOrigin'].sort((a, b) => a.localeCompare(b)).map(
 			key => `- ${ctx.link(key)}\\\n${ctx.doc(key, { type: 'interface' })}`
 		).join('\n')
 		}

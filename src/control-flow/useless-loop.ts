@@ -32,7 +32,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 	}
 
 	guard(vertex.tag === VertexType.FunctionCall, 'invalid vertex type for onlyLoopsOnce');
-	guard(vertex.origin !== 'unnamed' && loopyFunctions.has(vertex.origin[0] as BuiltInProcName), 'onlyLoopsOnce can only be called with loops');
+	guard(vertex.origin !== 'unnamed' && loopyFunctions.has(vertex.origin[0]), 'onlyLoopsOnce can only be called with loops');
 
 	// 1. In case of for loop, check if vector has only one element
 	if(vertex.origin[0] === 'builtin:for-loop') {

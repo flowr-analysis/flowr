@@ -30,7 +30,7 @@ export const USELESS_LOOP = {
 			return vertex
 				&& isFunctionCallVertex(vertex)
 				&& vertex.origin !== 'unnamed'
-				&& useLessLoopConfig.loopyFunctions.has(vertex.origin[0] as BuiltInProcName);
+				&& useLessLoopConfig.loopyFunctions.has(vertex.origin[0]);
 		}).filter(loop =>
 			onlyLoopsOnce(loop.node.info.id, dataflow.graph, cfg, normalize, analyzer.inspectContext())
 		).map(res => ({

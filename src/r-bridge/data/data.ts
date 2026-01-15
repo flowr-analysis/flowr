@@ -148,7 +148,13 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							id:          'library-loading',
 							supported:   'not',
 							description: '_Resolve libraries identified with `library`, `require`, `attachNamespace`, ... and attach them to the search path_'
-						}
+						},
+						{
+							name:        'Dynamic Scope Changes',
+							id:          'dynamic-scope-changes',
+							supported:   'partially',
+							description: '_Manually changing scopes like [`local`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/eval)_'
+						},
 					]
 				}
 			]

@@ -305,6 +305,8 @@ export class SemanticCfgGuidedVisitor<
 				return this.onLocalCall({ call });
 			case BuiltInProcName.FunctionDefinition:
 				throw new Error('Function call vertex cannot be a function definition');
+			case BuiltInProcName.S3Dispatch:
+				return this.onS3DispatchCall({ call });
 			default:
 				assertUnreachable(type);
 		}
@@ -632,6 +634,14 @@ export class SemanticCfgGuidedVisitor<
 	 * @protected
 	 */
 	protected onLocalCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for every call to a function that performs an S3-like dispatch.
+	 *
+	 * For example, this triggers for `UseMethod` in `UseMethod("print")`.
+	 * @protected
+	 */
+	protected onS3DispatchCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 
 	/**
 	 * This event triggers for every call to a function that registers a hook, such as `on.exit`.

@@ -17,7 +17,7 @@ import {
 	VertexType
 } from '../graph/vertex';
 import { resolveByName } from '../environments/resolve-by-name';
-import { type BuiltIn, isBuiltIn } from '../environments/built-in';
+import { type BuiltIn, BuiltInProcName, isBuiltIn } from '../environments/built-in';
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
 import type { ExitPoint } from '../info';
@@ -374,8 +374,11 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 
 	if(info.name !== undefined && (environment !== undefined || info.environment !== undefined)) {
 		const functionCallDefs = resolveByName(
-			info.name, environment ?? info.environment as REnvironmentInformation, ReferenceType.Function
+			info.name, environment ?? info.environment as REnvironmentInformation, info.origin.includes(BuiltInProcName.S3Dispatch) ? ReferenceType.S3MethodPrefix : ReferenceType.Function
 		)?.map(d => d.nodeId) ?? [];
+		if(info.name === 'f') {
+			console.log(`resolved call ${recoverName(call, graph.idMap)} to ${functionCallDefs.map(id => recoverName(id, graph.idMap)).join(', ')}`);
+		}
 		for(const [target, outgoingEdge] of outgoingEdges.entries()) {
 			if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
 				functionCallDefs.push(target);

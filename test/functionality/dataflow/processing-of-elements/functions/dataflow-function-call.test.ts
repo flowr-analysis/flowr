@@ -480,4 +480,21 @@ ${applyFn}(x, g, k, u)`,
 			}
 		});
 	});
+
+	describe('Origins in higher-order function calls', () => {
+		assertDataflow(label('higher-order sum origin', ['function-calls']), shell,
+			`
+testFuncCorrect <- function(x, length=0.1){
+  length(x)
+}
+
+testFuncCorrect(1:5)
+testFuncCorrect(1:5, sum)
+`, emptyGraph()
+				.call('3@length', 'length', [argumentInCall('3@x')], { returns: [], reads: ['3@x', builtInId('length')], onlyBuiltIn: false }, false)
+				.calls('3@length', builtInId('length'))
+			,
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+	});
 }));

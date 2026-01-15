@@ -1,6 +1,6 @@
 import { type DataflowInformation , ExitPointType } from '../../../info';
 import { type DataflowProcessorInformation , processDataflowFor } from '../../../processor';
-import { log } from '../../../../util/log';
+import { expensiveTrace, log } from '../../../../util/log';
 import type { RParameter } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type IdentifierDefinition , ReferenceType } from '../../../environments/identifier';
@@ -15,7 +15,7 @@ import { EdgeType } from '../../../graph/edge';
 export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const name = processDataflowFor(parameter.name, data);
 	const defaultValue = parameter.defaultValue === undefined ? undefined : processDataflowFor(parameter.defaultValue, data);
-	const graph = defaultValue !== undefined ? name.graph.mergeWith(defaultValue.graph) : name.graph;
+	const graph = defaultValue === undefined ? name.graph : name.graph.mergeWith(defaultValue.graph);
 
 	const writtenNodes: readonly (IdentifierDefinition & { name: string })[] = name.unknownReferences.map(n => ({
 		...n,
@@ -25,7 +25,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 
 	let environment = name.environment;
 	for(const writtenNode of writtenNodes) {
-		log.trace(`parameter ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' no default value'}`);
+		expensiveTrace(log, () => `parameter ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' no default value'}`);
 		graph.setDefinitionOfVertex(writtenNode);
 		environment = define(writtenNode, false, environment, data.ctx.config);
 

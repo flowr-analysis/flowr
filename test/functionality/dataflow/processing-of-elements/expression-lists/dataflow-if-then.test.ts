@@ -509,7 +509,11 @@ x`, emptyGraph()
 	});
 	describe('ifelse function', () => {
 		assertDataflow(label('Traditional ifelse use', ['name-normal', 'if', 'unnamed-arguments']), shell,
-			'ifelse(u, a, b)', emptyGraph(),
+			'ifelse(u, a, b)', emptyGraph()
+				.reads('1@ifelse', '1@u')
+				.call('1@ifelse', 'ifelse', [argumentInCall('1@u'), argumentInCall('1@a'), argumentInCall('1@b')], { returns: ['1@a', '1@b'], reads: [builtInId('ifelse')], onlyBuiltIn: true })
+				.calls('1@ifelse', builtInId('ifelse'))
+			,
 			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 		);
 	});

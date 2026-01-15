@@ -71,7 +71,7 @@ export function processIfThenElse<OtherInfo>(
 	if(!conditionIsAlwaysFalse) {
 		then = processDataflowFor(thenArg, data);
 		if(then.entryPoint) {
-			then.graph.addEdge(name.info.id, then.entryPoint, EdgeType.Returns);
+			then.graph.addEdge(rootId, then.entryPoint, EdgeType.Returns);
 		}
 		if(!conditionIsAlwaysTrue) {
 			makeThenMaybe = true;
@@ -84,7 +84,7 @@ export function processIfThenElse<OtherInfo>(
 		data = { ...data, controlDependencies: originalDependency?.slice() };
 		otherwise = processDataflowFor(otherwiseArg, data);
 		if(otherwise.entryPoint) {
-			otherwise.graph.addEdge(name.info.id, otherwise.entryPoint, EdgeType.Returns);
+			otherwise.graph.addEdge(rootId, otherwise.entryPoint, EdgeType.Returns);
 		}
 		if(!conditionIsAlwaysFalse) {
 			makeOtherwiseMaybe = true;

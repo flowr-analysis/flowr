@@ -201,7 +201,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.6 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _1.7 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -268,7 +268,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.5 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _3.4 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `to-basic-blocks` .
 	
 
@@ -307,7 +307,7 @@ if(u || v) #123; #125;`"]]
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.5 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _1.6 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `to-basic-blocks`  and render a simplified/compacted version.
 	
 
@@ -864,7 +864,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _2.0 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _2.1 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -1068,7 +1068,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.6 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _1.7 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -2244,7 +2244,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.2 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _1.3 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -2308,7 +2308,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.3 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _1.4 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 

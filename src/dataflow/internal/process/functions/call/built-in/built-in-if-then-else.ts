@@ -18,6 +18,7 @@ import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { invertArgumentMap, pMatch } from '../../../../linker';
 import { getArgumentWithId } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 /** `if(<cond>) <then> else <else>` built-in function configuration, make sure to not reuse indices */
 export interface IfThenElseConfig {
@@ -158,7 +159,7 @@ export function processIfThenElse<OtherInfo>(
 		name,
 		data:                  { ...data, cds: originalDependency },
 		argumentProcessResult: [cond, then, otherwise],
-		origin:                'builtin:if-then-else'
+		origin:                BuiltInProcName.IfThenElse
 	});
 
 	// as an if always evaluates its condition, we add a 'reads'-edge

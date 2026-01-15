@@ -24,6 +24,7 @@ import { ReferenceType } from '../../../../../environments/identifier';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 
 /**
@@ -68,7 +69,7 @@ export function processWhileLoop<OtherInfo>(
 				return { ...d, cds: [...d.cds ?? [], { id: name.info.id, when: true }] };
 			}
 			return d;
-		}, origin: 'builtin:while-loop' });
+		}, origin: BuiltInProcName.WhileLoop });
 	const [condition, body] = processedArguments;
 
 	// If the condition is always false, we don't include the body

@@ -1,5 +1,5 @@
-import { type DataflowProcessorInformation , processDataflowFor } from '../../../../../processor';
-import { type DataflowInformation , alwaysExits, filterOutLoopExitPoints } from '../../../../../info';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
+import { alwaysExits, type DataflowInformation, filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
@@ -22,6 +22,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { IdentifierDefinition } from '../../../../../environments/identifier';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 
 /**
@@ -91,7 +92,7 @@ export function processForLoop<OtherInfo>(
 		name,
 		data:                  { ...data, cds: originalDependency },
 		argumentProcessResult: [variable, vector, body],
-		origin:                'builtin:for-loop'
+		origin:                BuiltInProcName.ForLoop
 	});
 	/* mark the last argument as nse */
 	nextGraph.addEdge(rootId, body.entryPoint, EdgeType.NonStandardEvaluation);

@@ -19,6 +19,7 @@ import type { ResolveInfo } from '../../../../../eval/resolve/alias-tracking';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 export interface RegisterHookConfig {
 	/** name of the hook to register, 'fn-exit' if it triggers on exit */
@@ -89,7 +90,7 @@ export function processRegisterHook<OtherInfo>(
 		}
 	});
 
-	const res = processKnownFunctionCall({ name, args: transformed, rootId, data, origin: 'builtin:register-hook' });
+	const res = processKnownFunctionCall({ name, args: transformed, rootId, data, origin: BuiltInProcName.RegisterHook });
 	const resolveArgs: ResolveInfo = {
 		graph:       res.information.graph,
 		environment: res.information.environment,

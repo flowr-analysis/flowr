@@ -36,7 +36,7 @@ function tableAssignmentProcessor<OtherInfo>(
 	outInfo: TableAssignmentProcessorMarker
 ): DataflowInformation {
 	outInfo.definitionRootNodes.push(rootId);
-	return processKnownFunctionCall({ name, args, rootId, data, origin: 'table:assign' }).information;
+	return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.TableAssignment }).information;
 }
 
 /**
@@ -66,13 +66,13 @@ export function processAccess<OtherInfo>(
 	let fnCall: ProcessKnownFunctionCallResult;
 	if(head === EmptyArgument) {
 		// in this case we may be within a pipe
-		fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'builtin:access' });
-	} else if(!config.treatIndicesAsString) {
+		fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: BuiltInProcName.Access });
+	} else if(config.treatIndicesAsString) {
+		fnCall = processStringBasedAccess<OtherInfo>(args, data, name, rootId, config);
+	} else {
 		/* within an access operation which treats its fields, we redefine the table assignment ':=' as a trigger if this is to be treated as a definition */
 		// do we have a local definition that needs to be recovered?
 		fnCall = processNumberBasedAccess<OtherInfo>(data, name, args, rootId, config, head);
-	} else {
-		fnCall = processStringBasedAccess<OtherInfo>(args, data, name, rootId, config);
 	}
 
 	const info = fnCall.information;
@@ -144,7 +144,7 @@ function processNumberBasedAccess<OtherInfo>(
 		nodeId:    tableAssignId
 	}]);
 
-	const fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'builtin:access' });
+	const fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: BuiltInProcName.Access });
 
 	/* recover the environment */
 	if(existing !== undefined) {

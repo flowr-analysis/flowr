@@ -1,8 +1,8 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { type DataflowInformation , initializeCleanDataflowInformation } from '../../../../../info';
+import { type DataflowInformation, initializeCleanDataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
-import { type ForceArguments , patchFunctionCall, processAllArguments } from '../common';
+import { type ForceArguments, patchFunctionCall, processAllArguments } from '../common';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import {
@@ -15,8 +15,9 @@ import {
 	type ContainerIndices,
 	type ContainerIndicesCollection,
 	type ContainerLeafIndex,
-	type IndexIdentifier
-	, VertexType } from '../../../../../graph/vertex';
+	type IndexIdentifier,
+	VertexType
+} from '../../../../../graph/vertex';
 import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -25,10 +26,9 @@ import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/no
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
-import { BuiltInProcName , BuiltInProcessorMapper } from '../../../../../environments/built-in';
+import { BuiltInProcessorMapper, BuiltInProcName } from '../../../../../environments/built-in';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { handleReplacementOperator } from '../../../../../graph/unknown-replacement';
-
 
 
 /**
@@ -72,7 +72,7 @@ export function processReplacementFunction<OtherInfo>(
 
 	const createdVert = res.graph.getVertex(rootId);
 	if(createdVert?.tag === VertexType.FunctionCall) {
-		createdVert.origin = ['builtin:replacement'];
+		createdVert.origin = [BuiltInProcName.Replacement];
 	}
 
 	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);

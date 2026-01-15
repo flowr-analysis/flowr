@@ -30,10 +30,11 @@ import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { cartesianProduct } from '../../../../../../util/collections/arrays';
 import type { FlowrConfigOptions } from '../../../../../../config';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 
 /**
- *
+ * Process a call to `eval()`, trying to resolve the code being evaluated if possible.
  */
 export function processEvalCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -51,7 +52,7 @@ export function processEvalCall<OtherInfo>(
 	}
 
 	const information = config.includeFunctionCall ?
-		processKnownFunctionCall({ name, args, rootId, data, forceArgs: [true], origin: 'builtin:eval' }).information
+		processKnownFunctionCall({ name, args, rootId, data, forceArgs: [true], origin: BuiltInProcName.Eval }).information
 		: initializeCleanDataflowInformation(rootId, data);
 	const evalArgument = args[0];
 

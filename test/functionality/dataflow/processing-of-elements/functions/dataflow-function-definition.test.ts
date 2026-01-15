@@ -2,7 +2,7 @@ import { assertDataflow, withShell } from '../../../_helper/shell';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { label } from '../../../_helper/label';
-import { builtInId } from '../../../../../src/dataflow/environments/built-in';
+import { builtInId, BuiltInProcName } from '../../../../../src/dataflow/environments/built-in';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import {
@@ -53,7 +53,7 @@ describe.sequential('Function Definition', withShell(shell => {
 				.use('5', 'x', undefined, false)
 				.reads('5', '0')
 				.argument('7', '5')
-				.call('7', 'return', [argumentInCall('5')], { returns: ['5'], reads: [builtInId('return')], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineParameter('x', '0', '1'), origin: ['builtin:return'] }, false)
+				.call('7', 'return', [argumentInCall('5')], { returns: ['5'], reads: [builtInId('return')], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineParameter('x', '0', '1'), origin: [BuiltInProcName.Return] }, false)
 				.calls('7', builtInId('return'))
 				.argument('8', '7')
 				.call('8', '{', [argumentInCall('7')], { returns: ['7'], reads: [builtInId('{')], environment: defaultEnv().pushEnv().defineParameter('x', '0', '1') }, false)
@@ -76,7 +76,7 @@ describe.sequential('Function Definition', withShell(shell => {
 					.reads('6', '0')
 					.use('7', 'x', undefined, false)
 					.reads('7', '6')
-					.call('8', 'return', [argumentInCall('7', { name: 'x' } )], { returns: ['7'], reads: [builtInId('return')], environment: defaultEnv().pushEnv().defineParameter('x', '0', '1'), origin: ['builtin:return'] }, false)
+					.call('8', 'return', [argumentInCall('7', { name: 'x' } )], { returns: ['7'], reads: [builtInId('return')], environment: defaultEnv().pushEnv().defineParameter('x', '0', '1'), origin: [BuiltInProcName.Return] }, false)
 					.calls('8', builtInId('return'))
 					.argument('8', '7')
 					.call('9', '{', [argumentInCall('8')], { returns: ['8'], reads: [builtInId('{')], environment: defaultEnv().pushEnv().defineParameter('x', '0', '1') }, false)
@@ -432,7 +432,7 @@ print(x)`,  emptyGraph()
 			.calls('8', builtInId('<-'))
 			.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { returns: ['9'], reads: [builtInId('<-'), 10], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineFunction('g', '2', '8') }, false)
 			.calls('11', builtInId('<-'))
-			.call('16', 'return', [argumentInCall('14')], { returns: ['14'], reads: [builtInId('return')], cds: [{ id: '18', when: true }], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11'), origin: ['builtin:return'] }, false)
+			.call('16', 'return', [argumentInCall('14')], { returns: ['14'], reads: [builtInId('return')], cds: [{ id: '18', when: true }], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11'), origin: [BuiltInProcName.Return] }, false)
 			.calls('16', builtInId('return'))
 			.call('18', 'if', [argumentInCall('12'), argumentInCall('16'), EmptyArgument], { returns: ['16'], reads: ['12', builtInId('if')], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11') }, false)
 			.calls('18', builtInId('if'))
@@ -765,7 +765,7 @@ f(5)`, emptyGraph()
 				.calls('9', builtInId('<-'))
 				.argument('9', '5')
 				.argument('13', '11')
-				.call('13', 'return', [argumentInCall('11')], { returns: ['11'], reads: [builtInId('return')], environment: defaultEnv().pushEnv().defineVariable('x', '5', '9'), origin: ['builtin:return'] }, false)
+				.call('13', 'return', [argumentInCall('11')], { returns: ['11'], reads: [builtInId('return')], environment: defaultEnv().pushEnv().defineVariable('x', '5', '9'), origin: [BuiltInProcName.Return] }, false)
 				.calls('13', builtInId('return'))
 				.argument('21', '9')
 				.argument('21', '13')
@@ -820,9 +820,9 @@ f(5)`, emptyGraph()
 				.calls('9', builtInId('<-'))
 				.argument('9', '5')
 				.argument('14', '12')
-				.call('14', 'return', [argumentInCall('12')], { returns: ['12'], reads: [builtInId('return')], cds: [{ id: '21', when: true }], environment: defaultEnv().pushEnv().defineVariable('x', '5', '9'), origin: ['builtin:return'] }, false)
+				.call('14', 'return', [argumentInCall('12')], { returns: ['12'], reads: [builtInId('return')], cds: [{ id: '21', when: true }], environment: defaultEnv().pushEnv().defineVariable('x', '5', '9'), origin: [BuiltInProcName.Return] }, false)
 				.calls('14', builtInId('return'))
-				.call('19', 'return', [argumentInCall('17')], { returns: ['17'], reads: [builtInId('return')], cds: [{ id: '21', when: false }], environment: defaultEnv().pushEnv().defineVariable('x', '5', '9'), origin: ['builtin:return'] }, false)
+				.call('19', 'return', [argumentInCall('17')], { returns: ['17'], reads: [builtInId('return')], cds: [{ id: '21', when: false }], environment: defaultEnv().pushEnv().defineVariable('x', '5', '9'), origin: [BuiltInProcName.Return] }, false)
 				.calls('19', builtInId('return'))
 				.argument('19', '17')
 				.argument('21', '10')

@@ -10,13 +10,12 @@ import { VertexType } from '../../../../graph/vertex';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import { dataflowLogger } from '../../../../logger';
 import { ReferenceType } from '../../../../environments/identifier';
+import { BuiltInProcName } from '../../../../environments/built-in';
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-';
-export const UnnamedFunctionCallOrigin = 'unnamed';
-
 
 /**
- *
+ * Processes an unnamed function call.
  */
 export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const calledFunction = processDataflowFor(functionCall.calledFunction, data);
@@ -53,7 +52,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		onlyBuiltin: false,
 		cds:         data.cds,
 		args:        callArgs, // same reference
-		origin:      [UnnamedFunctionCallOrigin]
+		origin:      [BuiltInProcName.Unnamed]
 	}, data.ctx.env.makeCleanEnv());
 
 	let inIds = remainingReadInArgs;

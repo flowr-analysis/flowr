@@ -3,24 +3,21 @@
  * @module
  */
 import type { ControlDependency, DataflowInformation, ExitPoint } from '../../../../../info';
-import {  addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
-import { type DataflowProcessorInformation , processDataflowFor } from '../../../../../processor';
+import { addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { linkFunctionCalls } from '../../../../linker';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
-import type {
-	Environment ,
-	REnvironmentInformation
-} from '../../../../../environments/environment';
+import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
-import { type IdentifierReference , ReferenceType } from '../../../../../environments/identifier';
+import { type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
-import { type DataflowGraphVertexInfo , VertexType } from '../../../../../graph/vertex';
+import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
-import { builtInId, isBuiltIn } from '../../../../../environments/built-in';
+import { builtInId, BuiltInProcName, isBuiltIn } from '../../../../../environments/built-in';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -219,7 +216,7 @@ export function processExpressionList<OtherInfo>(
 			name,
 			data,
 			argumentProcessResult: processedExpressions,
-			origin:                'builtin:expression-list'
+			origin:                BuiltInProcName.ExpressionList
 		});
 
 		nextGraph.addEdge(rootId, builtInId('{'), EdgeType.Reads | EdgeType.Calls);

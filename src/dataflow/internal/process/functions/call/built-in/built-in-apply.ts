@@ -21,6 +21,7 @@ import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { expensiveTrace } from '../../../../../../util/log';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** the 0-based index of the argument which is the actual function passed, defaults to 1 */
@@ -51,7 +52,7 @@ export function processApply<OtherInfo>(
 	const forceArgsMask = new Array(indexOfFunction).fill(false);
 	forceArgsMask.push(true);
 	const resFn = processKnownFunctionCall({
-		name, args, rootId, data, forceArgs: forceArgsMask, origin: 'builtin:apply'
+		name, args, rootId, data, forceArgs: forceArgsMask, origin: BuiltInProcName.Apply
 	});
 	let information = resFn.information;
 	const processedArguments = resFn.processedArguments;
@@ -151,7 +152,7 @@ export function processApply<OtherInfo>(
 			onlyBuiltin: false,
 			cds:         data.cds,
 			args:        allOtherArguments, // same reference
-			origin:      ['function']
+			origin:      [BuiltInProcName.Function]
 		}, data.ctx.env.makeCleanEnv());
 		information.graph.addEdge(rootId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
@@ -198,7 +199,7 @@ export function processApply<OtherInfo>(
 			environment: resolveInEnvironment === 'global' ? undefined : data.environment,
 			onlyBuiltin: resolveInEnvironment === 'global',
 			cds:         data.cds,
-			origin:      ['function']
+			origin:      [BuiltInProcName.Function]
 		});
 	}
 

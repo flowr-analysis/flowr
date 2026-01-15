@@ -8,7 +8,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
-
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 
 /**
@@ -22,7 +22,7 @@ export function processQuote<OtherInfo>(
 	config: { quoteArgumentsWithIndex?: number } & ForceArguments
 ): DataflowInformation {
 	const startEnv = data.environment;
-	const { information, processedArguments, fnRef } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'builtin:quote' });
+	const { information, processedArguments, fnRef } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: BuiltInProcName.Quote });
 
 	let inRefs: IdentifierReference[] = [fnRef];
 	let outRefs: IdentifierReference[] = [];

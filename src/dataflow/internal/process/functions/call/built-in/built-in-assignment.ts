@@ -35,7 +35,7 @@ import type { DataflowGraph } from '../../../../../graph/graph';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { addSubIndicesToLeafIndices, resolveIndicesByName } from '../../../../../../util/containers';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
-import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
+import { BuiltInProcessorMapper, BuiltInProcName } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { getAliases, resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { isValue } from '../../../../../eval/values/r-value';
@@ -116,7 +116,7 @@ function tryReplacementPassingIndices<OtherInfo>(
 		functionName.info.id,
 		data,
 		{
-			...(resolved[0].config ?? {}),
+			...resolved[0].config,
 			activeIndices: indices,
 			assignRootId:  rootId
 		}
@@ -140,15 +140,15 @@ export function processAssignmentLike<OtherInfo>(
 	const argsWithNames = new Map<string, RFunctionArgument<OtherInfo & ParentInformation>>();
 	const argsWithoutNames: RFunctionArgument<OtherInfo & ParentInformation>[] = [];
 	for(const arg of args) {
-		const name = arg !== EmptyArgument ? arg.name?.content : undefined;
-		if(name !== undefined) {
-			argsWithNames.set(name, arg);
-		} else {
+		const name = arg === EmptyArgument ? undefined : arg.name?.content;
+		if(name === undefined) {
 			argsWithoutNames.push(arg);
+		} else {
+			argsWithNames.set(name, arg);
 		}
 	}
-	const source = argsWithNames.get(config.source.name) ?? (config.source.idx !== undefined ? argsWithoutNames[config.source.idx] : undefined);
-	const target = argsWithNames.get(config.target.name) ?? (config.target.idx !== undefined ? argsWithoutNames[config.target.idx] : undefined);
+	const source = argsWithNames.get(config.source.name) ?? (config.source.idx === undefined ? undefined : argsWithoutNames[config.source.idx]);
+	const target = argsWithNames.get(config.target.name) ?? (config.target.idx === undefined ? undefined : argsWithoutNames[config.target.idx]);
 	if(source && target) {
 		args = [target, source];
 	}
@@ -198,7 +198,7 @@ export function processAssignment<OtherInfo>(
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
 				forceArgs:    config.forceArgs,
-				origin:       'builtin:assignment'
+				origin:       BuiltInProcName.Assignment
 			});
 			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 				...config,
@@ -223,7 +223,7 @@ export function processAssignment<OtherInfo>(
 						data,
 						reverseOrder: !config.swapSourceAndTarget,
 						forceArgs:    config.forceArgs,
-						origin:       'builtin:assignment'
+						origin:       BuiltInProcName.Assignment
 					});
 					return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 						...config,
@@ -258,7 +258,7 @@ export function processAssignment<OtherInfo>(
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
 				forceArgs:    config.forceArgs,
-				origin:       'builtin:assignment'
+				origin:       BuiltInProcName.Assignment
 			});
 
 			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
@@ -280,7 +280,7 @@ export function processAssignment<OtherInfo>(
 
 	const info = processKnownFunctionCall({
 		name, args:      effectiveArgs, rootId, data, forceArgs: config.forceArgs,
-		origin:    'builtin:assignment'
+		origin:    BuiltInProcName.Assignment
 	}).information;
 	handleUnknownSideEffect(info.graph, info.environment, rootId);
 	return info;
@@ -342,7 +342,7 @@ function processAssignmentToString<OtherInfo>(
 		data,
 		reverseOrder: !config.swapSourceAndTarget,
 		forceArgs:    config.forceArgs,
-		origin:       'builtin:assignment'
+		origin:       BuiltInProcName.Assignment
 	});
 
 	return processAssignmentToSymbol<OtherInfo & ParentInformation>({
@@ -468,7 +468,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	} satisfies InGraphIdentifierDefinition & { name: string }]
 		: produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
 
-	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {
+	if(writeNodes.length !== 1 && log.settings.minLevel >= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`);
 	}
 
@@ -500,7 +500,10 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	}
 
 	return {
-		...information,
+		environment:       information.environment,
+		graph:             information.graph,
+		exitPoints:        information.exitPoints,
+		hooks:             information.hooks,
 		unknownReferences: [],
 		entryPoint:        rootId,
 		in:                readTargets,

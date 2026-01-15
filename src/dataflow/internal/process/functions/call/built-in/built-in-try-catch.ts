@@ -18,6 +18,7 @@ import type { DataflowGraph } from '../../../../../graph/graph';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 
 function getArgsOfName(argMaps: Map<NodeId, string>, name: string): Set<NodeId> {
@@ -40,7 +41,7 @@ export function processTryCatch<OtherInfo>(
 		}
 	}
 ): DataflowInformation {
-	const res = processKnownFunctionCall({ name, args: args.map(tryUnpackNoNameArg), rootId, data, origin: 'builtin:try', forceArgs: 'all' });
+	const res = processKnownFunctionCall({ name, args: args.map(tryUnpackNoNameArg), rootId, data, origin: BuiltInProcName.Try, forceArgs: 'all' });
 	if(args.length < 1 || args[0] === EmptyArgument) {
 		dataflowLogger.warn(`TryCatch Handler ${name.content} does not have 1 argument, skipping`);
 		return res.information;

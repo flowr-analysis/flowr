@@ -15,6 +15,7 @@ import { dataflowLogger } from '../../../../logger';
 import { type ContainerIndicesCollection, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import { expensiveTrace } from '../../../../../util/log';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
+import { BuiltInProcName } from '../../../../environments/built-in';
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
@@ -105,7 +106,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		cds:               data.cds,
 		args:              reverseOrder ? callArgs.toReversed() : callArgs,
 		indicesCollection: indicesCollection,
-		origin:            origin === 'default' ? ['function'] : [origin]
+		origin:            origin === 'default' ? [BuiltInProcName.Function] : [origin]
 	}, data.ctx.env.makeCleanEnv());
 
 	if(hasUnknownSideEffect) {
@@ -130,9 +131,7 @@ export function processKnownFunctionCall<OtherInfo>(
 				if(p) {
 					const nonDefaults = p.exitPoints.filter(ep => ep.type !== ExitPointType.Default);
 					if(nonDefaults.length > 0) {
-						if(exitPoints === undefined) {
-							exitPoints = [];
-						}
+						exitPoints ??= [];
 						exitPoints.push(...nonDefaults);
 					}
 				}
@@ -153,7 +152,7 @@ export function processKnownFunctionCall<OtherInfo>(
 			hooks:             functionName.hooks
 		},
 		callArgs,
-		processedArguments: reverseOrder ? processedArguments.reverse() : processedArguments,
+		processedArguments: reverseOrder ? processedArguments.toReversed() : processedArguments,
 		fnRef
 	};
 }

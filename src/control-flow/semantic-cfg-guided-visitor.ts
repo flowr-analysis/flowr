@@ -69,7 +69,7 @@ export class SemanticCfgGuidedVisitor<
 	 * A helper function to get the normalized AST node for the given id or fail if it does not exist.
 	 */
 	protected getNormalizedAst(id: NodeId | undefined): RNode<OtherInfo & ParentInformation> | undefined {
-		return id !== undefined ? this.config.normalizedAst.idMap.get(id) : undefined;
+		return id === undefined ? undefined : this.config.normalizedAst.idMap.get(id);
 	}
 
 	/**
@@ -202,7 +202,7 @@ export class SemanticCfgGuidedVisitor<
 		}
 		const type = origin as keyof typeof BuiltInProcessorMapper;
 
-		switch(type) { // TODO: table assignment has to be added too, comments to for builtinprocname
+		switch(type) {
 			case BuiltInProcName.Eval:
 				return this.onEvalFunctionCall({ call });
 			case BuiltInProcName.Apply:

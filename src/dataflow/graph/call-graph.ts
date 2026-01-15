@@ -10,7 +10,7 @@ import type { REnvironmentInformation } from '../environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from './edge';
-import { builtInId, isBuiltIn } from '../environments/built-in';
+import { builtInId, BuiltInProcName, isBuiltIn } from '../environments/built-in';
 import { DefaultMap } from '../../util/collections/defaultmap';
 
 /**
@@ -220,7 +220,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 					tag:         VertexType.FunctionCall,
 					name:        name.lexeme,
 					onlyBuiltin: false,
-					origin:      ['function'],
+					origin:      [BuiltInProcName.Function],
 					args:        []
 				}, oriVtx.environment);
 			}

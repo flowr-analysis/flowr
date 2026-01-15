@@ -2,9 +2,13 @@ import type { CfgSimpleVertex, ControlFlowInformation } from '../control-flow/co
 import { CfgVertexType, getVertexRootId } from '../control-flow/control-flow-graph';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
-import { BuiltInProcessorMapper } from '../dataflow/environments/built-in';
+import { BuiltInProcessorMapper, BuiltInProcName } from '../dataflow/environments/built-in';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, VertexType } from '../dataflow/graph/vertex';
+import {
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexVariableDefinition,
+	VertexType
+} from '../dataflow/graph/vertex';
 import { getOriginInDfg, OriginType } from '../dataflow/origin/dfg-get-origin';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -77,14 +81,14 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		} else if(node.type === RType.Argument && node.value !== undefined) {
 			return this.getAbstractValue(node.value, state);
 		} else if(node.type === RType.ExpressionList && node.children.length > 0) {
-			return this.getAbstractValue(node.children[node.children.length - 1], state);
-		} else if(origins.includes('builtin:pipe')) {
+			return this.getAbstractValue(node.children.at(-1), state);
+		} else if(origins.includes(BuiltInProcName.Pipe)) {
 			if(node.type === RType.Pipe || node.type === RType.BinaryOp) {
 				return this.getAbstractValue(node.rhs, state);
 			} else if(call?.args.length === 2 && call?.args[1] !== EmptyArgument) {
 				return this.getAbstractValue(call.args[1].nodeId, state);
 			}
-		} else if(origins.includes('builtin:if-then-else')) {
+		} else if(origins.includes(BuiltInProcName.IfThenElse)) {
 			let values: (Domain | undefined)[] = [];
 
 			if(node.type === RType.IfThenElse && node.otherwise !== undefined) {
@@ -105,7 +109,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 * @returns The abstract state at the node, or `undefined` if the node has no abstract state (i.e. the node has not been visited or is unreachable).
 	 */
 	public getAbstractState(id: NodeId | undefined): StateAbstractDomain<Domain> | undefined {
-		return id !== undefined ? this.trace.get(id) : undefined;
+		return id === undefined ? undefined : this.trace.get(id);
 	}
 
 	/**
@@ -276,7 +280,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		}
 		const origin = dataflowVertex.origin;
 
-		return origin.includes('builtin:for-loop') || origin.includes('builtin:while-loop') || origin.includes('builtin:repeat-loop');
+		return origin.includes(BuiltInProcName.ForLoop) || origin.includes(BuiltInProcName.WhileLoop) || origin.includes(BuiltInProcName.RepeatLoop);
 	}
 
 	/**

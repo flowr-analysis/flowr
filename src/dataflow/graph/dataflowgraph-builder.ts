@@ -10,13 +10,14 @@ import {
 import { type IEnvironment, type REnvironmentInformation } from '../environments/environment';
 import {
 	type DataflowGraphVertexArgument,
-	type DataflowGraphVertexAstLink, type DataflowGraphVertexInfo,
+	type DataflowGraphVertexAstLink,
+	type DataflowGraphVertexInfo,
 	type DataflowGraphVertexUse,
 	type FunctionOriginInformation,
 	VertexType
 } from './vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { isBuiltIn } from '../environments/built-in';
+import { BuiltInProcName, isBuiltIn } from '../environments/built-in';
 import { EdgeType } from './edge';
 import type { ControlDependency, ExitPoint } from '../info';
 import { ExitPointType } from '../info';
@@ -124,7 +125,7 @@ export class DataflowGraphBuilder<
 			environment: (info?.onlyBuiltIn || onlyBuiltInAuto) ? undefined : info?.environment ?? this.defaultEnvironment,
 			cds:         info?.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
 			onlyBuiltin: info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false,
-			origin:      info?.origin ?? [ getDefaultProcessor(name) ?? 'function' ],
+			origin:      info?.origin ?? [ getDefaultProcessor(name) ?? BuiltInProcName.Function ],
 			link:        info?.link
 		}, asRoot);
 		if(!info?.omitArgs) {

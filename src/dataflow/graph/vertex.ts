@@ -254,7 +254,7 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 }
 
 /** Describes the processor responsible for a function call */
-export type FunctionOriginInformation = BuiltInProcName | string
+export type FunctionOriginInformation = BuiltInProcName
 
 /**
  * Arguments required to construct a vertex which represents the definition of a variable in the {@link DataflowGraph|dataflow graph}.

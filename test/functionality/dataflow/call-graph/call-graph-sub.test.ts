@@ -11,7 +11,7 @@ import { resolveDataflowGraph } from '../../../../src/dataflow/graph/resolve-gra
 import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../_helper/dataflow/environment-builder';
-import { builtInId } from '../../../../src/dataflow/environments/built-in';
+import { builtInId, BuiltInProcName } from '../../../../src/dataflow/environments/built-in';
 import { ExitPointType } from '../../../../src/dataflow/info';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
@@ -71,7 +71,7 @@ describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 			}, { readParams: [[1, true]] })
 			.calls('1@function', [11, '2@return'])
 			.calls(11, [10, builtInId('expression-list')])
-			.call('2@return', 'return', [argumentInCall('2@return')], { onlyBuiltIn: true, omitArgs: true, origin: ['builtin:return'] })
+			.call('2@return', 'return', [argumentInCall('2@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return] })
 			.calls('2@return', builtInId('return')).calls('2@return', '2@+')
 			.call('2@+', '+', [argumentInCall('2@x'), argumentInCall('2@1')], { onlyBuiltIn: true, omitArgs: true })
 			.calls('2@+', builtInId('default'))

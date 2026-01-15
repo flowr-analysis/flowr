@@ -128,7 +128,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	{ returnsNthArgument, useAsProcessor, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
-	const activeProcessor = useAsProcessor ?? 'builtin:default';
+	const activeProcessor = useAsProcessor ?? BuiltInProcName.Default;
 	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: activeProcessor });
 	if(returnsNthArgument !== undefined) {
 		const arg = returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[returnsNthArgument];
@@ -200,28 +200,59 @@ export enum BuiltInProcName {
 	Assignment          = 'builtin:assignment',
 	/** for assignment like functions that may do additional work, see {@link processAssignmentLike} */
 	AssignmentLike      = 'builtin:assignment-like',
+	/** for `break` calls */
+	Break               = 'builtin:break',
 	/** the default built-in processor, see {@link defaultBuiltInProcessor} */
 	Default             = 'builtin:default',
+	/** for `eval` calls, see {@link processEvalCall} */
 	Eval                = 'builtin:eval',
+	/** for expression lists, see {@link processExpressionList} */
 	ExpressionList      = 'builtin:expression-list',
+	/** for `for` loops, see {@link processForLoop} */
 	ForLoop             = 'builtin:for-loop',
+	/** We resolved a function call, similar to {@link BuiltInProcName#Default} */
+	Function            = 'function',
+	/** for function definitions, see {@link processFunctionDefinition} */
 	FunctionDefinition  = 'builtin:function-definition',
+	/** for `get` calls, see {@link processGet} */
 	Get                 = 'builtin:get',
+	/** for `if-then-else` constructs, see {@link processIfThenElse} */
 	IfThenElse          = 'builtin:if-then-else',
+	/** for `library` and `require` calls, see {@link processLibrary} */
 	Library             = 'builtin:library',
+	/** for `list` calls, see {@link processList} */
 	List                = 'builtin:list',
+	/** for the pipe operators, see {@link processPipe} */
 	Pipe                = 'builtin:pipe',
+	/** for `quote`, and other substituting calls, see {@link processQuote} */
 	Quote               = 'builtin:quote',
+	/** for `on.exìt` and other hooks, see {@link processRegisterHook} */
 	RegisterHook        = 'builtin:register-hook',
+	/** for `repeat` loops, see {@link processRepeatLoop} */
 	RepeatLoop          = 'builtin:repeat-loop',
+	/** for replacement functions like `names<-`, see {@link processReplacementFunction} */
 	Replacement         = 'builtin:replacement',
+	/** for `return` calls */
+	Return              = 'builtin:return',
+	/** for `rm` calls, see {@link processRm} */
 	Rm                  = 'builtin:rm',
+	/** for `source` calls, see {@link processSourceCall} */
 	Source              = 'builtin:source',
+	/** for special binary operators like `%x%`, see {@link processSpecialBinOp} */
 	SpecialBinOp        = 'builtin:special-bin-op',
+	/** for `stop` calls */
 	Stop                = 'builtin:stop',
+	/** for `stopifnot` calls, see {@link processStopIfNot} */
 	StopIfNot           = 'builtin:stopifnot',
+	/** support for `:=` in subsetting assignments, see {@link processAccess} */
+	TableAssignment     = 'table:assign',
+	/** for `try` calls, see {@link processTryCatch} */
 	Try                 = 'builtin:try',
+	/** for unnamed directly-linked function calls */
+	Unnamed             = 'unnamed',
+	/** for vector construction calls, see {@link processVector} */
 	Vector              = 'builtin:vector',
+	/** for `while` loops, see {@link processWhileLoop} */
 	WhileLoop           = 'builtin:while-loop',
 }
 

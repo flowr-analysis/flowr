@@ -12,11 +12,11 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { VertexType } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import { ReferenceType } from '../../../../../environments/identifier';
-
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 
 /**
- *
+ * Suport for R's pipe functions like `|>`.
  */
 export function processPipe<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -24,7 +24,7 @@ export function processPipe<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:pipe' });
+	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Pipe });
 	if(args.length !== 2) {
 		dataflowLogger.warn(`Pipe ${name.content} has something else than 2 arguments, skipping`);
 		return information;
@@ -34,14 +34,12 @@ export function processPipe<OtherInfo>(
 
 	guard(lhs !== undefined && rhs !== undefined, () => `lhs and rhs must be present, but ${JSON.stringify(lhs)} and ${JSON.stringify(rhs)} were found instead.`);
 
-	if(rhs.type !== RType.FunctionCall) {
-		dataflowLogger.warn(`Expected rhs of pipe to be a function call, but got ${rhs.type} instead.`);
-	} else {
+	if(rhs.type === RType.FunctionCall) {
 		const functionCallNode = information.graph.getVertex(rhs.info.id, true);
 		guard(functionCallNode?.tag === VertexType.FunctionCall, () => `Expected function call node with id ${rhs.info.id} to be a function call node, but got ${functionCallNode?.tag} instead.`);
 
 		// make the lhs an argument node:
-		const argId =  lhs.info.id;
+		const argId = lhs.info.id;
 
 		dataflowLogger.trace(`Linking pipe arg ${argId} as first argument of ${rhs.info.id}`);
 		functionCallNode.args.unshift({
@@ -51,6 +49,8 @@ export function processPipe<OtherInfo>(
 			type:   ReferenceType.Function
 		});
 		information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument | EdgeType.Reads);
+	} else {
+		dataflowLogger.warn(`Expected rhs of pipe to be a function call, but got ${rhs.type} instead.`);
 	}
 
 	const firstArgument = processedArguments[0];

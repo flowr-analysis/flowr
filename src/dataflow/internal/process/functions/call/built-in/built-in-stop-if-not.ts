@@ -13,6 +13,7 @@ import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { isNotUndefined } from '../../../../../../util/assert';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 /**
  * Processes a built-in 'stopifnot' function call.
@@ -34,7 +35,7 @@ export function processStopIfNot<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
-	const res = processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:stopifnot' }).information;
+	const res = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.StopIfNot }).information;
 	if(args.length === 0) {
 		dataflowLogger.warn(`stopifnot (${name.content}) has no argument, assuming trivially true and skipping`);
 		return res;
@@ -52,7 +53,7 @@ export function processStopIfNot<OtherInfo>(
 		}
 	}
 	const localArgs = argMap.get('local');
-	const localArg = localArgs.length > 0 ? localArgs[localArgs.length - 1] : undefined;
+	const localArg = localArgs.length > 0 ? localArgs.at(-1) : undefined;
 	const resolveArgs = { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx };
 
 	// we collect all control dependencies from: all '...', all expressions in 'exprs', and 'exprObject'
@@ -116,13 +117,13 @@ export function processStopIfNot<OtherInfo>(
 /** Generator so we can early exit on first always-false */
 function* collectIdsForControl<OtherInfo>(argMap: DefaultMap<string, RFunctionArgument<OtherInfo & ParentInformation>[]>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	yield* argMap.get('...')
-		.map(a => a !== EmptyArgument ? a.value?.info.id : undefined)
+		.map(a => a === EmptyArgument ? undefined : a.value?.info.id)
 		.filter(isNotUndefined)
 	;
 	const exprs = argMap.get('exprs');
 	if(exprs.length > 0) {
-		const exprsArg = exprs[exprs.length - 1];
-		if(exprsArg !== EmptyArgument && exprsArg.value?.info.id) {
+		const exprsArg = exprs.at(-1);
+		if(exprsArg !== EmptyArgument && exprsArg?.value?.info.id) {
 			const elem = data.completeAst.idMap.get(exprsArg.value?.info.id);
 			if(elem?.type === RType.ExpressionList) {
 				for(const expr of elem.children) {
@@ -135,8 +136,8 @@ function* collectIdsForControl<OtherInfo>(argMap: DefaultMap<string, RFunctionAr
 	}
 	const exprObjectArgs = argMap.get('exprObject');
 	if(exprObjectArgs.length > 0) {
-		const exprObjectArg = exprObjectArgs[exprObjectArgs.length - 1];
-		if(exprObjectArg !== EmptyArgument && exprObjectArg.value?.info.id) {
+		const exprObjectArg = exprObjectArgs.at(-1);
+		if(exprObjectArg !== EmptyArgument && exprObjectArg?.value?.info.id) {
 			yield exprObjectArg.value?.info.id;
 		}
 	}

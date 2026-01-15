@@ -354,9 +354,9 @@ export const DefaultBuiltinConfig = [
 /**
  * Expensive and naive lookup of the default processor for a built-in function name
  */
-export function getDefaultProcessor(name: string): BuiltInProcName | 'unnamed' | undefined {
+export function getDefaultProcessor(name: string): BuiltInProcName | undefined {
 	if(name.startsWith(UnnamedFunctionCallPrefix)) {
-		return 'unnamed';
+		return BuiltInProcName.Unnamed;
 	}
 	const fn = DefaultBuiltinConfig.find(def => ((def.names as string[]).includes(name) && def.type !== 'constant')
 	|| (def.type === 'replacement' && def.suffixes.flatMap(d => def.names.map(n => `${n}${d}`)).includes(name))

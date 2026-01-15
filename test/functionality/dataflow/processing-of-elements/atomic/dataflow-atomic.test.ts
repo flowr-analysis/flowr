@@ -11,7 +11,7 @@ import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environmen
 import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } from '../../../_helper/provider';
 import { startAndEndsWith } from '../../../../../src/util/text/strings';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
-import { builtInId } from '../../../../../src/dataflow/environments/built-in';
+import { builtInId, BuiltInProcName } from '../../../../../src/dataflow/environments/built-in';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { FunctionArgument } from '../../../../../src/dataflow/graph/graph';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -927,7 +927,7 @@ a()`, emptyGraph()
 							returns:     [1],
 							onlyBuiltIn: true,
 							reads:       [builtInId(fn), 5],
-							origin:      ['builtin:assignment']
+							origin:      [BuiltInProcName.Assignment]
 						})
 						.calls(7, builtInId(fn))
 						.defineFunction(5, [3], {

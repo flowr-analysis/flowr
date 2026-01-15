@@ -10,11 +10,10 @@ import { unpackNonameArg } from '../argument/unpack-argument';
 import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
-
-
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 /**
- *
+ * Process a library call like `library` or `require`
  */
 export function processLibrary<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -47,6 +46,6 @@ export function processLibrary<OtherInfo>(
 	return processKnownFunctionCall({
 		name, args:                 wrapArgumentsUnnamed([newArg], data.completeAst.idMap), rootId, data,
 		hasUnknownSideEffect: true,
-		origin:               'builtin:library'
+		origin:               BuiltInProcName.Library
 	}).information;
 }

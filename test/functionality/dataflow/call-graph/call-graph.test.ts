@@ -2,7 +2,7 @@ import { describe } from 'vitest';
 import { assertDataflow, withTreeSitter } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
-import { builtInId } from '../../../../src/dataflow/environments/built-in';
+import { builtInId, BuiltInProcName } from '../../../../src/dataflow/environments/built-in';
 import { argumentInCall, defaultEnv } from '../../_helper/dataflow/environment-builder';
 import { ExitPointType } from '../../../../src/dataflow/info';
 
@@ -46,11 +46,11 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 				graph:             new Set([1, 6, 7, 8, 10, 11]),
 				environment:       defaultEnv().pushEnv().defineParameter('x', '1@x', '1@x')
 			}, { readParams: [[1, true]] })
-			.call('2@return', 'return', [argumentInCall('2@return')], { onlyBuiltIn: true, omitArgs: true, origin: ['builtin:return'] })
+			.call('2@return', 'return', [argumentInCall('2@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return] })
 			.calls('2@return', builtInId('return')).calls('2@return', '2@+')
 			.call('2@+', '+', [argumentInCall('2@x'), argumentInCall('2@1')], { onlyBuiltIn: true, omitArgs: true })
 			.calls('2@+', builtInId('default'))
-			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: ['builtin:return'] })
+			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return] })
 			.calls('1@function', [11, '2@return'])
 			.calls(11, [10, builtInId('expression-list')])
 			.calls('5@return', builtInId('return')).calls('5@return', '5@*')
@@ -90,11 +90,11 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('2@if', builtInId('if-then-else')).calls('2@if', 14).calls('2@if', 7)
 			.call(14, '{', [argumentInCall(13)], { omitArgs: true, onlyBuiltIn: true, cds: [{ id: 15, when: true }] })
 			.calls(14, builtInId('expression-list')).calls(14, 13)
-			.call('3@return', 'return', [argumentInCall('3@return')], { onlyBuiltIn: true, omitArgs: true, origin: ['builtin:return'], cds: [{ id: 15, when: true }] })
+			.call('3@return', 'return', [argumentInCall('3@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: true }] })
 			.calls('3@return', builtInId('return'))
 			.call(7, '<=', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true })
 			.calls(7, builtInId('default'))
-			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: ['builtin:return'], cds: [{ id: 15, when: false }] })
+			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: false }] })
 			.calls('5@return', builtInId('return')).calls('5@return', '5@+')
 			.call('5@+', '+', [argumentInCall('5@fib'), argumentInCall(28)], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false } ] })
 			.calls('5@+', builtInId('default')).calls('5@+', 22).calls('5@+', 28)

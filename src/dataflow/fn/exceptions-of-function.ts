@@ -3,13 +3,12 @@ import type { CallGraph } from '../graph/call-graph';
 import { VertexType } from '../graph/vertex';
 import type { ControlDependency } from '../info';
 import { ExitPointType } from '../info';
-import type { BuiltInMappingName } from '../environments/built-in';
-import { isBuiltIn } from '../environments/built-in';
+import { BuiltInProcName , isBuiltIn } from '../environments/built-in';
 
-const CatchHandlers: ReadonlySet<string> = new Set<BuiltInMappingName>(['builtin:try']);
+const CatchHandlers: ReadonlySet<string> = new Set<BuiltInProcName>([BuiltInProcName.Try]);
 export interface ExceptionPoint {
 	id:   NodeId;
-	cds?: readonly ControlDependency[] | undefined;
+	cds?: readonly ControlDependency[];
 }
 /**
  * Collect exception sources of a function in the call graph.
@@ -39,7 +38,7 @@ export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph): Exc
 
 		if(vtx.tag === VertexType.FunctionDefinition) {
 			for(const e of vtx.exitPoints.filter(e => e.type === ExitPointType.Error)) {
-				if(!collectedExceptions.find(x => x.id === e.nodeId)) {
+				if(!collectedExceptions.some(x => x.id === e.nodeId)) {
 					collectedExceptions.push({ id: e.nodeId, cds: e.cds });
 				}
 			}

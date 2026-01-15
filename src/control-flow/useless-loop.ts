@@ -1,4 +1,4 @@
-import type { BuiltInMappingName } from '../dataflow/environments/built-in';
+import { BuiltInProcName } from '../dataflow/environments/built-in';
 import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
 import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
@@ -14,7 +14,7 @@ import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } 
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
 
-export const loopyFunctions = new Set<BuiltInMappingName>(['builtin:for-loop', 'builtin:while-loop', 'builtin:repeat-loop']);
+export const loopyFunctions = new Set<BuiltInProcName>([BuiltInProcName.ForLoop, BuiltInProcName.WhileLoop, BuiltInProcName.RepeatLoop]);
 
 /**
  * Checks whether a loop only loops once
@@ -32,7 +32,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 	}
 
 	guard(vertex.tag === VertexType.FunctionCall, 'invalid vertex type for onlyLoopsOnce');
-	guard(vertex.origin !== 'unnamed' && loopyFunctions.has(vertex.origin[0] as BuiltInMappingName), 'onlyLoopsOnce can only be called with loops');
+	guard(vertex.origin !== 'unnamed' && loopyFunctions.has(vertex.origin[0] as BuiltInProcName), 'onlyLoopsOnce can only be called with loops');
 
 	// 1. In case of for loop, check if vector has only one element
 	if(vertex.origin[0] === 'builtin:for-loop') {
@@ -51,7 +51,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 			resolve: ctx.config.solver.variables,
 			ctx:     ctx
 		}));
-		if(values === undefined || values.elements.length !== 1 || values.elements[0].type !== 'vector' || !isValue(values.elements[0].elements)) {
+		if(values?.elements.length !== 1 || values.elements[0].type !== 'vector' || !isValue(values.elements[0].elements)) {
 			return undefined;
 		}
 
@@ -97,7 +97,7 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 			resolve: this.config.ctx.config.solver.variables,
 			ctx:     this.config.ctx
 		}));
-		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
+		if(values?.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
 			return undefined;
 		}
 

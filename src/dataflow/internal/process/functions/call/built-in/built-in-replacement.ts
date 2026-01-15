@@ -25,14 +25,15 @@ import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/no
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
-import { type BuiltInMappingName , BuiltInProcessorMapper } from '../../../../../environments/built-in';
+import { BuiltInProcName , BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { handleReplacementOperator } from '../../../../../graph/unknown-replacement';
 
 
 
 /**
- *
+ * Process a replacement function call like `<-`, `[[<-`, `$<-`, etc.
+ * These are automatically created when doing assignments like `x[y] <- value` or in general `fun(x) <- value` will call `fun<- (x, value)`.
  */
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -58,12 +59,12 @@ export function processReplacementFunction<OtherInfo>(
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
 	let res = BuiltInProcessorMapper['builtin:assignment'](
 		name,
-		[args[0], args[args.length - 1]],
+		[args[0], args.at(-1) as RFunctionArgument<OtherInfo & ParentInformation>],
 		rootId,
 		data,
 		{
 			superAssignment:   config.assignmentOperator === '<<-',
-			makeMaybe:         indices !== undefined ? false : config.makeMaybe,
+			makeMaybe:         indices === undefined ? config.makeMaybe : false,
 			indicesCollection: indices,
 			canBeReplacement:  true
 		}
@@ -93,7 +94,7 @@ export function processReplacementFunction<OtherInfo>(
 		name,
 		argumentProcessResult:
 			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackNonameArg(a)?.info.id as NodeId }),
-		origin: 'builtin:replacement' satisfies BuiltInMappingName,
+		origin: BuiltInProcName.Replacement,
 		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});
 

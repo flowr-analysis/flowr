@@ -3,7 +3,7 @@ import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
-import type { BuiltInMappingName } from '../environments/built-in';
+import type { BuiltInProcName } from '../environments/built-in';
 
 
 export enum VertexType {
@@ -254,7 +254,7 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 }
 
 /** Describes the processor responsible for a function call */
-export type FunctionOriginInformation = BuiltInMappingName | string
+export type FunctionOriginInformation = BuiltInProcName | string
 
 /**
  * Arguments required to construct a vertex which represents the definition of a variable in the {@link DataflowGraph|dataflow graph}.

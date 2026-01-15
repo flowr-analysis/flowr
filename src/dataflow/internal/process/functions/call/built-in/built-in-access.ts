@@ -1,18 +1,25 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
-import { type ProcessKnownFunctionCallResult , processKnownFunctionCall } from '../known-call-handling';
+import { processKnownFunctionCall, type ProcessKnownFunctionCallResult } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	EmptyArgument,
+	type RFunctionArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
-import { type BuiltInMappingName , builtInId } from '../../../../../environments/built-in';
+import { builtInId, BuiltInProcName } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
 import { ReferenceType } from '../../../../../environments/identifier';
-import { type ContainerIndicesCollection, type ContainerParentIndex , isParentContainerIndex } from '../../../../../graph/vertex';
+import {
+	type ContainerIndicesCollection,
+	type ContainerParentIndex,
+	isParentContainerIndex
+} from '../../../../../graph/vertex';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { filterIndices, getAccessOperands, resolveSingleIndex } from '../../../../../../util/containers';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/reference-to-maybe';
@@ -133,7 +140,6 @@ function processNumberBasedAccess<OtherInfo>(
 		definedAt: tableAssignId,
 		cds:       undefined,
 		processor: (name, args, rootId, data) => tableAssignmentProcessor(name, args, rootId, data, outInfo),
-		config:    {},
 		name:      ':=',
 		nodeId:    tableAssignId
 	}]);
@@ -204,8 +210,13 @@ function processStringBasedAccess<OtherInfo>(
 ) {
 	const newArgs = symbolArgumentsToStrings(args);
 
-	const fnCall = processKnownFunctionCall({ name, args:      newArgs, rootId, data, forceArgs: config.forceArgs,
-		origin:    'builtin:access' satisfies BuiltInMappingName
+	const fnCall = processKnownFunctionCall({
+		name,
+		args:      newArgs,
+		rootId,
+		data,
+		forceArgs: config.forceArgs,
+		origin:    BuiltInProcName.Access
 	});
 
 	if(data.ctx.config.solver.pointerTracking) {

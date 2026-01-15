@@ -3,7 +3,7 @@ import { ValidVertexTypes, VertexType } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElement } from './flowr-search';
 import { type Enrichment , enrichmentContent } from './search-executor/search-enrichers';
-import type { BuiltInMappingName } from '../dataflow/environments/built-in';
+import type { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { DataflowInformation } from '../dataflow/info';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
@@ -62,7 +62,7 @@ export interface MatchesEnrichmentArgs<E extends Enrichment> {
 	test:       RegExp
 }
 export interface OriginKindArgs {
-	origin:                BuiltInMappingName | RegExp;
+	origin:                BuiltInProcName | RegExp;
 	matchType?:            'some' | 'every';
 	keepNonFunctionCalls?: boolean
 }

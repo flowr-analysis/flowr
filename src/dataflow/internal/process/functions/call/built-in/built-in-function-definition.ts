@@ -47,7 +47,7 @@ export function processFunctionDefinition<OtherInfo>(
 
 	/* we remove the last argument, as it is the body */
 	const parameters = args.slice(0, -1);
-	const bodyArg = unpackNonameArg(args[args.length - 1]);
+	const bodyArg = unpackNonameArg(args.at(-1));
 	guard(bodyArg !== undefined, () => `Function Definition ${JSON.stringify(args)} has no body! This is bad!`);
 
 	const originalEnvironment = data.environment;

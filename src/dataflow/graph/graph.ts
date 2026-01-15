@@ -148,7 +148,7 @@ export class DataflowGraph<
 	/** All edges in the complete graph (including those nested in function definition) */
 	private edgeInformation:   Map<NodeId, OutgoingEdges<Edge>> = new Map<NodeId, OutgoingEdges<Edge>>();
 
-	private types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
+	private readonly types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
 
 
 	toJSON(): DataflowGraphJson {

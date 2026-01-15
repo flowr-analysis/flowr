@@ -31,8 +31,6 @@ interface S3DispatchConfig {
 
 /**
  * Process an S3 dispatch call like `UseMethod`.
- *
- * TODO: also test with call-graphs
  */
 export function processS3Dispatch<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

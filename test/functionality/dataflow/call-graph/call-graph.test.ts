@@ -216,4 +216,21 @@ f(1)`,
 			.calls('1@tryCatch', '1@<-')
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
+
+	assertDataflow(label('Handle S3', ['function-calls', 'oop-s3']),
+		ts, `
+f.default <- function(x) {
+    length(x)
+}
+f <- function(x) {
+    UseMethod("f")
+}
+f.numeric <- function(x) {
+	sum(x)
+}`,
+		emptyGraph()
+			.calls('6@"f"', '2@function')
+			.calls('6@"f"', '8@function')
+		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
 }));

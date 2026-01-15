@@ -25,7 +25,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 
 	let environment = name.environment;
 	for(const writtenNode of writtenNodes) {
-		expensiveTrace(log, () => `parameter ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' no default value'}`);
+		expensiveTrace(log, () => `parameter ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' a default value'}`);
 		graph.setDefinitionOfVertex(writtenNode);
 		environment = define(writtenNode, false, environment, data.ctx.config);
 

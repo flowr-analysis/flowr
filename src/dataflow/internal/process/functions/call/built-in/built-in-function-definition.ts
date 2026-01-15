@@ -2,6 +2,7 @@ import { type DataflowProcessorInformation, processDataflowFor } from '../../../
 import { type DataflowInformation, ExitPointType, overwriteExitPoints } from '../../../../../info';
 import {
 	getAllFunctionCallTargets,
+	linkArgumentsOnCall,
 	linkCircularRedefinitionsWithinALoop,
 	linkInputs,
 	produceNameSharedIdMap
@@ -17,7 +18,7 @@ import {
 	type RFunctionArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type DataflowFunctionFlowInformation, DataflowGraph } from '../../../../../graph/graph';
+import { type DataflowFunctionFlowInformation, DataflowGraph, type FunctionArgument } from '../../../../../graph/graph';
 import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { VertexType } from '../../../../../graph/vertex';
@@ -26,7 +27,7 @@ import { type REnvironmentInformation } from '../../../../../environments/enviro
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { edgeIncludesType, EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
-import { isBuiltIn } from '../../../../../environments/built-in';
+import { BuiltInProcName, isBuiltIn } from '../../../../../environments/built-in';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
@@ -124,6 +125,17 @@ export function processFunctionDefinition<OtherInfo>(
 		hooks:             compactedHooks
 	};
 
+	updateS3Dispatches(subgraph, parameters.map<FunctionArgument>(p => {
+		if(p === EmptyArgument) {
+			return EmptyArgument;
+		} else if(!p.name && p.value && p.value.type === RType.Parameter) {
+			return { type: ReferenceType.Argument, cds: data.cds, nodeId: p.value.name.info.id, name: p.value.name.content };
+		} else if(p.name) {
+			return { type: ReferenceType.Argument, cds: data.cds, nodeId: p.name.info.id, name: p.name.content };
+		} else {
+			return EmptyArgument;
+		}
+	}));
 	updateNestedFunctionClosures(subgraph, outEnvironment, name.info.id);
 	const exitPoints = body.exitPoints;
 
@@ -195,13 +207,30 @@ export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInforma
 	return overwriteEnvironment(baseEnvironment, callerEnvironment);
 }
 
+function updateS3Dispatches(graph: DataflowGraph, myArgs: FunctionArgument[]): void {
+	for(const [, info] of graph.vertices(false)) {
+		if(info.tag !== VertexType.FunctionCall || !info.origin.includes(BuiltInProcName.S3Dispatch)) {
+			continue;
+		}
+		if(info.args.length === 0) {
+			info.args = myArgs;
+			for(const arg of myArgs) {
+				// add argument edges
+				if(arg !== EmptyArgument) {
+					graph.addEdge(info.id, arg.nodeId, EdgeType.Argument);
+				}
+			}
+		}
+	}
+}
+
 /**
  * Update the closure links of all nested function definitions
  * @param graph          - dataflow graph to collect the function definitions from and to update the closure links for
  * @param outEnvironment - active environment on resolving closures (i.e., exit of the function definition)
  * @param fnId           - id of the function definition to update the closure links for
  */
-export function updateNestedFunctionClosures(
+function updateNestedFunctionClosures(
 	graph: DataflowGraph,
 	outEnvironment: REnvironmentInformation,
 	fnId: NodeId
@@ -246,7 +275,7 @@ export function updateNestedFunctionCalls(
 ) {
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-	for(const [id, { onlyBuiltin, environment, name }] of graph.verticesOfType(VertexType.FunctionCall)) {
+	for(const [id, { onlyBuiltin, environment, name, args }] of graph.verticesOfType(VertexType.FunctionCall)) {
 		if(onlyBuiltin || !name) {
 			continue;
 		}
@@ -296,6 +325,10 @@ export function updateNestedFunctionCalls(
 			}
 			expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${id}`);
 			targetVertex.subflow.in = remainingIn;
+			const linkedParameters = graph.idMap?.get(target);
+			if(linkedParameters?.type === RType.FunctionDefinition) {
+				linkArgumentsOnCall(args, linkedParameters.parameters, graph);
+			}
 		}
 	}
 }

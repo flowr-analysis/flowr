@@ -32,8 +32,6 @@ interface S3DispatchConfig {
 /**
  * Process an S3 dispatch call like `UseMethod`.
  *
- * TODO: link parameters from nested function,should be present, hook to all `.<*>` methods,
- * this must also work on re-links
  * TODO: also test with call-graphs
  */
 export function processS3Dispatch<OtherInfo>(
@@ -95,12 +93,13 @@ export function processS3Dispatch<OtherInfo>(
 		location:  generic.location ?? invalidRange(),
 		namespace: undefined
 	};
+
 	patchFunctionCall({
 		nextGraph:             dfGeneric.graph,
 		rootId:                generic.info.id,
 		name:                  symbol,
 		data,
-		argumentProcessResult: [], // TODO: original function args!
+		argumentProcessResult: [], // arguments will be attached by the accompanying enveloping function definition
 		origin:                BuiltInProcName.S3Dispatch
 	});
 
@@ -110,7 +109,7 @@ export function processS3Dispatch<OtherInfo>(
 		name,
 		data,
 		argumentProcessResult: [dfGeneric, dfObj],
-		origin:                BuiltInProcName.S3Dispatch
+		origin:                BuiltInProcName.Function
 	});
 
 

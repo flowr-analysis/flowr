@@ -48,7 +48,8 @@ f.numeric <- function(x) {
 `, emptyGraph()
 			.calls('6@"f"', '2@function')
 			.calls('6@"f"', '8@function')
-		,
+			.definedByOnCall('2@x', '5@x')
+			.definedByOnCall('8@x', '5@x'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['6@"f"', '5@function']] }
 	);
 }));

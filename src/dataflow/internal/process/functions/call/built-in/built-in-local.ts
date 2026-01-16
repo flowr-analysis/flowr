@@ -51,33 +51,41 @@ export function processLocal<OtherInfo>(
 	}
 
 	const dfEnv = env ? processDataflowFor(env, data) : initializeCleanDataflowInformation(rootId, data);
-	patchFunctionCall({
-		nextGraph:             dfEnv.graph,
-		rootId,
-		name,
-		data,
-		argumentProcessResult: [dfEnv],
-		origin:                BuiltInProcName.Local
-	});
-
 	if(alwaysExits(dfEnv)) {
+		patchFunctionCall({
+			nextGraph:             dfEnv.graph,
+			rootId,
+			name,
+			data,
+			argumentProcessResult: [dfEnv],
+			origin:                BuiltInProcName.Local
+		});
 		return dfEnv;
 	}
 
 
 	const bodyData  = { ...data, environment: pushLocalEnvironment(data.environment) };
 
-	const exprDf = processDataflowFor(expr, bodyData);
-	const ingoing = dfEnv.in.concat(exprDf.in,dfEnv.unknownReferences, exprDf.unknownReferences);
+	const dfExpr = processDataflowFor(expr, bodyData);
+	patchFunctionCall({
+		nextGraph:             dfEnv.graph,
+		rootId,
+		name,
+		data,
+		argumentProcessResult: [dfExpr, dfEnv],
+		origin:                BuiltInProcName.Local
+	});
+
+	const ingoing = dfEnv.in.concat(dfExpr.in, dfEnv.unknownReferences, dfExpr.unknownReferences);
 	ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
 	return {
-		hooks:             exprDf.hooks.concat(dfEnv?.hooks),
-		environment:       popLocalEnvironment(bodyData.environment),
-		exitPoints:        dfEnv.exitPoints.concat(exprDf.exitPoints),
-		graph:             dfEnv.graph.mergeWith(exprDf.graph),
+		hooks:             dfExpr.hooks.concat(dfEnv.hooks),
+		environment:       popLocalEnvironment(dfExpr.environment),
+		exitPoints:        dfEnv.exitPoints.concat(dfExpr.exitPoints),
+		graph:             dfEnv.graph.mergeWith(dfExpr.graph),
 		entryPoint:        rootId,
 		in:                ingoing,
-		out:               exprDf.out.concat(dfEnv.out),
+		out:               dfExpr.out.concat(dfEnv.out),
 		unknownReferences: []
 	};
 }

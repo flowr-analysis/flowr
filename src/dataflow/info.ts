@@ -105,7 +105,7 @@ export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: Co
  */
 export function overwriteExitPoints(existing: readonly ExitPoint[], replace: ExitPoint[]): ExitPoint[] {
 	const replaceCds = replace.flatMap(e => e.cds);
-	if(replaceCds.length === 0 || replaceCds.some(r => r === undefined) || happensInEveryBranch(replaceCds.filter(e => e !== undefined))) {
+	if(replaceCds.length === 0 || replaceCds.includes(undefined) || happensInEveryBranch(replaceCds.filter(e => e !== undefined))) {
 		return replace;
 	}
 	return existing.concat(replace);

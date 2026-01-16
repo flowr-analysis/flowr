@@ -33,7 +33,9 @@ export enum ReferenceType {
 	/** The identifier is defined by a built-in value/constant */
 	BuiltInConstant = 64,
 	/** The identifier is defined by a built-in function */
-	BuiltInFunction = 128
+	BuiltInFunction = 128,
+	/** Prefix to identify S3 methods, use this, to for example dispatch a call to `f` which will then link to `f.*` */
+	S3MethodPrefix = 256,
 }
 
 /** Reverse mapping of the reference types so you can get the name from the bitmask (useful for debugging) */

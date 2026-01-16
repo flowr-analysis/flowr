@@ -28,7 +28,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in';
 
 
 /**
- *
+ * Process a while loop like `while(cond) { ... }`.
  */
 export function processWhileLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

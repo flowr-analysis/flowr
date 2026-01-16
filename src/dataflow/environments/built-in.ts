@@ -52,6 +52,7 @@ import { processStopIfNot } from '../internal/process/functions/call/built-in/bu
 import { processTryCatch } from '../internal/process/functions/call/built-in/built-in-try-catch';
 import { processRegisterHook } from '../internal/process/functions/call/built-in/built-in-register-hook';
 import { processLocal } from '../internal/process/functions/call/built-in/built-in-local';
+import { processS3Dispatch } from '../internal/process/functions/call/built-in/built-in-s-three-dispatch';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -239,6 +240,8 @@ export enum BuiltInProcName {
 	Return              = 'builtin:return',
 	/** for `rm` calls, see {@link processRm} */
 	Rm                  = 'builtin:rm',
+	/** for `UseMethod` calls, see {@link processS3Dispatch} */
+	S3Dispatch         = 'builtin:s3-dispatch',
 	/** for `source` calls, see {@link processSourceCall} */
 	Source              = 'builtin:source',
 	/** for special binary operators like `%x%`, see {@link processSpecialBinOp} */
@@ -281,6 +284,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.RepeatLoop]:         processRepeatLoop,
 	[BuiltInProcName.Replacement]:        processReplacementFunction,
 	[BuiltInProcName.Rm]:                 processRm,
+	[BuiltInProcName.S3Dispatch]:         processS3Dispatch,
 	[BuiltInProcName.Source]:             processSourceCall,
 	[BuiltInProcName.SpecialBinOp]:       processSpecialBinOp,
 	[BuiltInProcName.StopIfNot]:          processStopIfNot,

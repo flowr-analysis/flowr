@@ -18,7 +18,8 @@ const TargetTypePredicate = {
 	[ReferenceType.Parameter]:       () => true,
 	[ReferenceType.Argument]:        () => true,
 	[ReferenceType.BuiltInConstant]: ({ type }: IdentifierDefinition) => isReferenceType(type, BuiltInConstantTargetTypes),
-	[ReferenceType.BuiltInFunction]: ({ type }: IdentifierDefinition) => isReferenceType(type, BuiltInFunctionTargetTypes)
+	[ReferenceType.BuiltInFunction]: ({ type }: IdentifierDefinition) => isReferenceType(type, BuiltInFunctionTargetTypes),
+	[ReferenceType.S3MethodPrefix]:  ({ type }: IdentifierDefinition) => isReferenceType(type, FunctionTargetTypes),
 } as const satisfies Record<ReferenceType, (t: IdentifierDefinition) => boolean>;
 
 /**
@@ -38,8 +39,17 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	const wantedType = TargetTypePredicate[target];
 	do{
-		const definition = current.memory.get(name);
-		if(definition !== undefined) {
+		let definition: IdentifierDefinition[] | undefined;
+		if(target === ReferenceType.S3MethodPrefix) {
+			// S3 method prefixes only resolve to functions
+			definition = current.memory.entries()
+				.filter(([defName]) => defName.startsWith(name + '.'))
+				.flatMap(([, defs]) => defs)
+				.toArray();
+		} else {
+			definition = current.memory.get(name);
+		}
+		if(definition !== undefined && definition.length > 0) {
 			const filtered = definition.filter(wantedType);
 			if(filtered.length === definition.length && (target !== ReferenceType.Function || definition.every(d => d.type !== ReferenceType.Parameter)) && definition.every(d => happensInEveryBranch(d.cds))) {
 				return definition;

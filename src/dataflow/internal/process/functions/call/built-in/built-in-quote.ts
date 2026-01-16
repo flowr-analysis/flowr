@@ -12,7 +12,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in';
 
 
 /**
- *
+ * Process a call to `quote` or similar nse/substitution functions.
  */
 export function processQuote<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

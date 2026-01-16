@@ -42,9 +42,9 @@ export interface DocMakerLike<Target extends string = string> {
 
 const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	// eslint-disable-next-line no-irregular-whitespace -- we may produce it in output
-	[/[0-9]+(\.[0-9]+)?( |\s*)?ms/g, ''],
+	[/\d+(\.\d+)?( |\s*)?ms/g, ''],
 	[/tmp[%A-Za-z0-9-]+/g, ''],
-	[/"?(timing|searchTimeMs|processTimeMs|id|treeSitterId)"?:\s*[0-9]+(\.[0-9])?,?/g, ''],
+	[/"?(timing|searchTimeMs|processTimeMs|id|treeSitterId)"?:\s*\d+(\.\d)?,?/g, ''],
 	[/"format":"compact".+/gmius, ''],
 	[/%%\s*\d*-+/g, ''],
 	[/"[rR]": "\d+\.\d+\.\d+.*?"/g, ''],

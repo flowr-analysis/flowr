@@ -57,19 +57,19 @@ export function processPipe<OtherInfo>(
 
 	const uniqueIn = information.in.slice();
 	for(const ing of (firstArgument?.in ?? [])) {
-		if(!uniqueIn.find(e => e.nodeId === ing.nodeId)) {
+		if(!uniqueIn.some(e => e.nodeId === ing.nodeId)) {
 			uniqueIn.push(ing);
 		}
 	}
 	const uniqueOut = information.out.slice();
 	for(const outg of (firstArgument?.out ?? [])) {
-		if(!uniqueOut.find(e => e.nodeId === outg.nodeId)) {
+		if(!uniqueOut.some(e => e.nodeId === outg.nodeId)) {
 			uniqueOut.push(outg);
 		}
 	}
 	const uniqueUnknownReferences = information.unknownReferences.slice();
 	for(const unknown of (firstArgument?.unknownReferences ?? [])) {
-		if(!uniqueUnknownReferences.find(e => e.nodeId === unknown.nodeId)) {
+		if(!uniqueUnknownReferences.some(e => e.nodeId === unknown.nodeId)) {
 			uniqueUnknownReferences.push(unknown);
 		}
 	}

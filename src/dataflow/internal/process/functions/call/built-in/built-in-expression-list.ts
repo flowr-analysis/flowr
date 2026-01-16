@@ -111,7 +111,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 
 
 /**
- *
+ * Processes a list of expressions joining their dataflow graphs accordingly.
  */
 export function processExpressionList<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

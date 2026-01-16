@@ -78,6 +78,9 @@ export class EnvironmentBuilderPrinter {
 					this.getControlDependencyArgument(def)
 				]);
 				break;
+			case ReferenceType.S3MethodPrefix:
+				// unsupported
+				break;
 			default:
 				assertUnreachable(type);
 		}

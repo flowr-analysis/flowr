@@ -218,7 +218,7 @@ jobs:
       - name: "🚀 Deploy the Image"
         run: |
           # add -slim suffix if no R  
-          TAG="eagleoutice/${ matrix.dockerfile == 'scripts/Dockerfile-NoR' && echo 'flowr-nor' || echo 'flowr' }"
+          TAG="eagleoutice/${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' && 'flowr-slim' || 'flowr' }}"
           VERSION="$(date '+%Y%m%d')"
           FLOWR_VERSION="$(docker run --rm flowr --version | grep -oP 'flowR:\s*\K[^ ]+' | head -n1)"
           docker tag flowr "${TAG}":"date-$VERSION"

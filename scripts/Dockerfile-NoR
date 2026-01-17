@@ -26,9 +26,7 @@ COPY ./scripts/demo.R LICENSE /app/
 COPY --from=builder /app/dist /app
 
 # make new user and clean up the test files
-RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community\nhttp://dl-cdn.alpinelinux.org/alpine/edge/main"  \
-          >> /etc/apk/repositories; apk add --no-cache --update icu-libs=76.1-r1 R=4.5.2-r0 && \
-     rm -rf /app/**/tsconfig.tsbuildinfo /app/**/*.d.ts /app/test/* && addgroup -S flowr && adduser -S flowr -G flowr
+RUN rm -rf /app/**/tsconfig.tsbuildinfo /app/**/*.d.ts /app/test/* && addgroup -S flowr && adduser -S flowr -G flowr
 USER flowr
 
 # we also configure basic memory options
@@ -37,5 +35,6 @@ ENTRYPOINT [\
    "--max-old-space-size=8192",\
    "--stack-size=8192",\
    "--max-semi-space-size=8192",\
-   "/app/src/cli/flowr.min.js"\
+   "/app/src/cli/flowr.min.js",\
+   "--engine.r-shell.disabled"\
   ]

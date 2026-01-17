@@ -180,6 +180,7 @@
     "@types/semver": "^7.7.0",
     "@types/tmp": "^0.2.6",
     "@types/ws": "^8.18.1",
+    "@types/wtfnode": "^0.10.0",
     "@typescript-eslint/eslint-plugin": "^8.40.0",
     "@vitest/coverage-v8": "^3.2.4",
     "esbuild": "^0.25.9",
@@ -222,6 +223,7 @@
     "tslog": "^4.9.3",
     "web-tree-sitter": "^0.24.7",
     "ws": "^8.18.0",
+    "wtfnode": "^0.10.1",
     "xpath-ts2": "^1.4.2"
   }
 }

@@ -231,14 +231,14 @@ jobs:
 
       - name: "🗃️ Compress the image"
         run: |
-          docker save flowr | gzip > "./flowr-$THE_FLOWR_VERSION.tar.gz"
+          docker save flowr | gzip > "./flowr-$THE_FLOWR_VERSION-${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' && '-slim' || '' }}.tar.gz"
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
       - name: "⬆️ Upload the compressed image to the workflow"
         uses: actions/upload-artifact@v4
         with:
-          path: flowr-${{ env.THE_FLOWR_VERSION }}.tar.gz
+          path: flowr-${{ env.THE_FLOWR_VERSION }}-${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' && '-slim' || '' }}.tar.gz
 
   performance-test:
     name: "⏱️ Performance Test"

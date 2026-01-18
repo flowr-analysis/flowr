@@ -24,9 +24,14 @@ WORKDIR /app
 
 COPY ./scripts/demo.R LICENSE /app/
 COPY --from=builder /app/dist /app
+COPY ./package.json ./package-lock.json /app/
 
-# make new user and clean up the test files
-RUN rm -rf /app/**/tsconfig.tsbuildinfo /app/**/*.d.ts /app/test/* && addgroup -S flowr && adduser -S flowr -G flowr
+# install deps, make new user and clean up the test files; but no R!
+RUN npm ci --omit=dev --omit=optional && npm cache clean --force && \
+    rm -rf /app/package.json /app/node_modules/**/*.md /app/node_modules/.bin  \
+           /app/node_modules/**/LICENSE /app/package-lock.json \
+           /app/**/tsconfig.tsbuildinfo /app/**/*.d.ts /app/test/* && \
+    addgroup -S flowr && adduser -S flowr -G flowr
 USER flowr
 
 # we also configure basic memory options

@@ -195,7 +195,7 @@ jobs:
       matrix:
         dockerfile: [ 'scripts/Dockerfile', 'scripts/Dockerfile-NoR' ]
     concurrency:
-      group: docker-${{ github.workflow }}-${{ github.ref }}
+      group: docker-${{ github.workflow }}-${{ github.ref }}-${{ matrix.dockerfile }}
       cancel-in-progress: true
     steps:
       - name: "🛒 Checkout Repository"

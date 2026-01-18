@@ -24,11 +24,16 @@ WORKDIR /app
 
 COPY ./scripts/demo.R LICENSE /app/
 COPY --from=builder /app/dist /app
+COPY ./package.json ./package-lock.json /app/
 
-# make new user and clean up the test files
-RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community\nhttp://dl-cdn.alpinelinux.org/alpine/edge/main"  \
+# install deps, make new user and clean up the test files
+RUN npm ci --omit=dev && \
+    echo "http://dl-cdn.alpinelinux.org/alpine/edge/community\nhttp://dl-cdn.alpinelinux.org/alpine/edge/main"  \
           >> /etc/apk/repositories; apk add --no-cache --update icu-libs=76.1-r1 R=4.5.2-r0 && \
-     rm -rf /app/**/tsconfig.tsbuildinfo /app/**/*.d.ts /app/test/* && addgroup -S flowr && adduser -S flowr -G flowr
+    rm -rf /app/package.json /app/node_modules/**/*.md /app/node_modules/**/package.json  \
+           /app/node_modules/**/LICENSE /app/package-lock.json  \
+           /app/**/tsconfig.tsbuildinfo /app/**/*.d.ts /app/test/* &&  \
+    addgroup -S flowr && adduser -S flowr -G flowr
 USER flowr
 
 # we also configure basic memory options

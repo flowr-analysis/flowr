@@ -190,6 +190,10 @@ jobs:
     needs: ['release']
     name: "🚀 Deploy Docker (only on main)"
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        dockerfile: [ 'scripts/Dockerfile', 'scripts/Dockerfile-NoR' ]
     concurrency:
       group: docker-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
@@ -204,7 +208,7 @@ jobs:
         run: git pull
 
       - name: "🛠️ Build the image"
-        run: docker build -t flowr -f scripts/Dockerfile .
+        run: docker build -t flowr -f "${{ matrix.dockerfile }}" .
 
       - name: "🧪 Test that the image works"
         timeout-minutes: 5
@@ -213,7 +217,8 @@ jobs:
 
       - name: "🚀 Deploy the Image"
         run: |
-          TAG="eagleoutice/flowr"
+          # add -slim suffix if no R  
+          TAG="eagleoutice/${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' && 'flowr-slim' || 'flowr' }}"
           VERSION="$(date '+%Y%m%d')"
           FLOWR_VERSION="$(docker run --rm flowr --version | grep -oP 'flowR:\s*\K[^ ]+' | head -n1)"
           docker tag flowr "${TAG}":"date-$VERSION"

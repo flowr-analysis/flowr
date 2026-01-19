@@ -67,7 +67,7 @@ export const workerTasks = {
 		payload: DataflowPayload<OtherInfo>,
 		runSubtask: RunSubtask
 	): Promise<undefined> => {
-		//console.log(`Processing ${JSON.stringify(payload.file)} @ index ${payload.index}`);
+		console.log(`Processing ${JSON.stringify(payload.file)} @ index ${payload.index}`);
 		const result = await runSubtask<Record<string, never>, number>('otherFunction', {});
 		const result2 = await runSubtask<Record<string, never>, number>('otherFunction', {});
 		console.log(`Got ${result} and ${result2} as value from subtask`);
@@ -77,6 +77,48 @@ export const workerTasks = {
 	otherFunction: (): number => {
 		console.log('Another function as a subtask');
 		return Math.random();
+	},
+
+	__fastTask: (value: number): number => {
+		if(process.env.NODE_ENV !== 'test'){
+			throw new Error('Internal function __fastTask can only be used in test environment');
+		}
+		return value; /** mirror value back to caller */
+	},
+
+	__slowTask: async(value: number): Promise<number> => {
+		if(process.env.NODE_ENV !== 'test'){
+			throw new Error('Internal function __slowTask can only be used in test environment');
+		}
+		await new Promise( r => setTimeout(r, value));
+		return value; /** mirror value back to caller */
+	},
+
+	__spawnSubtasks: async(count: number, runSubtask: RunSubtask): Promise<void> => {
+		if(process.env.NODE_ENV !== 'test'){
+			throw new Error('Internal function __spawnSubtasks can only be used in test environment');
+		}
+		const tasks = [];
+		console.log(`Spawning ${count} subtasks`);
+		for(let i = 0; i < count; i++){
+			tasks.push(runSubtask('__fastTask', 10));
+		}
+		await Promise.all(tasks);
+		return;
+	},
+
+	__crash: () => {
+		if(process.env.NODE_ENV !== 'test'){
+			throw new Error('Internal function __crash can only be used in test environment');
+		}
+		throw new Error('Intentional crash from __crash');
+	},
+
+	__stall: async() => {
+		if(process.env.NODE_ENV !== 'test'){
+			throw new Error('Internal function __stall can only be used in test environment');
+		}
+		await new Promise( () => {}); // never resolves
 	}
 };
 

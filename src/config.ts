@@ -280,7 +280,7 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 	optimizations: {
 		fileParallelization:              false,
 		dataflowOperationParallelization: false,
-		deferredFunctionEvaluation:       true,
+		deferredFunctionEvaluation:       false,
 	},
 	workerPool: {
 		poolSettings: WorkerpoolDefaultSettings

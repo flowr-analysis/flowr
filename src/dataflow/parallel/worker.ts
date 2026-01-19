@@ -7,7 +7,6 @@ import { dataflowLogger } from '../logger';
 import { retrieveEngineInstances } from '../../engines';
 import { cloneConfig, defaultConfigOptions } from '../../config';
 
-const typedWorkerData = workerData as WorkerData;
 
 type PendingEntry<T> = {
 	resolve: (value: T | PromiseLike<T>) => void;
@@ -19,6 +18,105 @@ export interface LogScope {
 	taskId?:    number;
 	subtaskId?: number;
 }
+
+export interface WorkerInternalState {
+    subtasksStarted:   number;
+    subtasksCompleted: number;
+    pendingSubtasks:   number;
+    shutdownReason?:   string;
+}
+
+export const workerStats: WorkerInternalState = {
+	subtasksStarted:   0,
+	subtasksCompleted: 0,
+	pendingSubtasks:   0,
+};
+
+
+const pending = new Map<number,PendingEntry<unknown>>();
+
+
+const { port1: workerPort, port2: mainPort } = new MessageChannel();
+const rootLog = createLogger();
+
+let portRegisteredResolve: () => void;
+const portRegistered = new Promise<void>(res => (portRegisteredResolve = res));
+
+if(!parentPort) {
+	/** This 'should' never happen, as this port is provided natively by piscina */
+	dataflowLogger.error('Worker started without parentPort present, Aborting worker');
+	process.exit(1);
+}
+
+rootLog.info(`Worker ${threadId} registering port to main thread.`);
+parentPort.postMessage({
+	type:     'register-port',
+	workerId: threadId,
+	port:     mainPort,
+},
+[mainPort] // transfer port to main thread
+);
+
+workerPort.on('message', (msg: unknown) => {
+	if(destroyed){
+		console.warn(`Worker ${threadId} received message after being destroyed:`, msg);
+		return;
+	}
+	// Listen for confirmation from main thread
+	if(isPortRegisteredMessage(msg)) {
+		portRegisteredResolve();
+		return;
+	}
+	/** handle subtask responses */
+	if(isSubtaskResponseMessage(msg)) {
+		const { id, result, error } = msg;
+		const logger = rootLog.child({ subtaskId: id });
+		logger.info('got response for subtask request');
+		const entry = pending.get(id);
+		if(!entry) {
+			return;
+		}
+
+		pending.delete(id);
+
+		if(error !== undefined) {
+			logger.error(`subtask failed with error: ${error}`);
+			entry.reject(error);
+		} else {
+			logger.info('subtask completed successfully');
+			entry.resolve(result);
+		}
+		return;
+	}
+});
+
+let destroyed = false;
+
+function shutdown(reason: unknown) {
+	if(destroyed) {
+		return;
+	}
+	destroyed = true;
+
+	workerStats.shutdownReason = String(reason);
+	workerStats.pendingSubtasks = pending.size;
+
+
+	for(const [, entry] of pending) {
+		entry.reject(new Error(`Worker shutdown: ${String(reason)}`));
+	}
+	pending.clear();
+
+	try {
+		workerPort.close();
+	} catch(err: unknown){
+		console.warn('failed to close worker port: ', err);
+	}
+}
+
+parentPort?.once('close', () => shutdown('parentPort closed'));
+process.once('uncaughtException', shutdown);
+process.once('unhandledRejection', shutdown);
 
 function createLogger(scope: LogScope = {}) {
 	function send(
@@ -59,67 +157,25 @@ function createLogger(scope: LogScope = {}) {
 	};
 }
 
-
-const pending = new Map<number,PendingEntry<unknown>>();
-
-
-const { port1: workerPort, port2: mainPort } = new MessageChannel();
-const rootLog = createLogger();
-
-let portRegisteredResolve: () => void;
-const portRegistered = new Promise<void>(res => (portRegisteredResolve = res));
-
-if(!parentPort) {
-	/** This 'should' never happen, as this port is provided natively by piscina */
-	dataflowLogger.error('Worker started without parentPort present, Aborting worker');
-	process.exit(1);
-}
-
-rootLog.info(`Worker ${threadId} registering port to main thread.`);
-parentPort.postMessage({
-	type:     'register-port',
-	workerId: threadId,
-	port:     mainPort,
-},
-[mainPort] // transfer port to main thread
-);
-// Listen for confirmation from main thread
-workerPort.on('message', (msg: unknown) => {
-	if(isPortRegisteredMessage(msg)) {
-		portRegisteredResolve();
-	}
-});
-
-
-workerPort.on('message', (msg: unknown) => {
-	if(isSubtaskResponseMessage(msg)) {
-		const { id, result, error } = msg;
-		const logger = rootLog.child({ subtaskId: id });
-		logger.info('got response for subtask request');
-		const entry = pending.get(id);
-		if(!entry) {
-			return;
-		}
-
-		pending.delete(id);
-
-		if(error !== undefined) {
-			logger.error(`subtask failed with error: ${error}`);
-			entry.reject(error);
-		} else {
-			logger.info('subtask completed successfully');
-			entry.resolve(result);
-		}
-	}
-});
-
-
 async function runSubtask<TInput, TOutput>(taskName: TaskName, taskPayload: TInput): Promise<TOutput> {
+	if(destroyed){
+		return Promise.reject(new Error('Worker has been destroyed, cannot run subtask'));
+	}
 	const id = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
 	const logger = rootLog.child({ taskName, taskId: id });
-	//return undefined as unknown as TOutput;
+
+	workerStats.subtasksStarted++;
+
 	return new Promise((resolve, reject) => {
-		pending.set(id, { resolve: resolve as (value: unknown) => void, reject });
+		pending.set(id, {
+			resolve: (value: unknown) => {
+				workerStats.subtasksCompleted++;
+				resolve(value as TOutput);
+			}, reject: (err: unknown) => {
+				workerStats.subtasksCompleted++;
+				reject(err instanceof Error ? err : new Error(String(err)));
+			}
+		});
 		logger.info(`submitting subtask ${taskName} with ${id} from ${threadId}`);
 		// submit the subtask to main thread
 		workerPort.postMessage({
@@ -134,11 +190,11 @@ async function runSubtask<TInput, TOutput>(taskName: TaskName, taskPayload: TInp
 async function initialize() {
 	await portRegistered;
 
-	const config = typedWorkerData.flowrConfig ?? cloneConfig(defaultConfigOptions);
+	const config = (workerData as WorkerData).flowrConfig ?? cloneConfig(defaultConfigOptions);
 	const engines = await retrieveEngineInstances(config, true);
 	SetParserEngine(engines.engines[engines.default]);
 
-	return (msg: TaskReceivedMessage) => {
+	return async(msg: TaskReceivedMessage) => {
 		const { taskName, taskPayload } = msg;
 		const logger = rootLog.child({ taskName });
 		const taskHandler = workerTasks[taskName];
@@ -146,7 +202,14 @@ async function initialize() {
 			logger.error(`Requested unknown task (${taskName})`);
 			return undefined;
 		}
-		return taskHandler(taskPayload as never, runSubtask);
+		const result =  await taskHandler(taskPayload as never, runSubtask);
+
+		workerStats.pendingSubtasks = pending.size;
+		return {
+			result,
+			workerId: threadId,
+			stats:    workerStats,
+		};
 	};
 }
 

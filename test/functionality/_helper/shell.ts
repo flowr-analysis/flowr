@@ -441,6 +441,7 @@ export function assertDataflow(
 			console.error('diff:\n', diff);
 			throw e;
 		} /* v8 ignore stop */
+		await analyzer.close(true);
 	});
 	handleAssertOutput(name, parser, input, userConfig);
 }

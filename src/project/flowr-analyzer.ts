@@ -275,7 +275,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	/**
 	 * Close the parser and the workerPool if it was created by this builder. This is only required if you rely on an RShell/remote engine or use parallelization.
 	 */
-	public async close(): Promise<undefined | boolean> {
+	public async close(keepParserAlive = false): Promise<undefined | boolean> {
 		if(this.closed) {
 			return true;
 		}
@@ -284,6 +284,9 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		// close the threadpool and wait for execution to finish
 		if(this.pool) {
 			await this.pool.closePool();
+		}
+		if(keepParserAlive) {
+			return true;
 		}
 
 		const result = this.parser?.close();

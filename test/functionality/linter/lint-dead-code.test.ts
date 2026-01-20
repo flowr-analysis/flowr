@@ -18,11 +18,22 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('no analysis', parser, 'if(FALSE) 1 else 2', 'dead-code', [], { consideredNodes: 7 }, { simplificationPasses: DefaultCfgSimplificationOrder });
 		});
 
-		describe('stopifnot', () => {
+		describe('stop', () => {
 			assertLinter('stopifnot true', parser, 'if(TRUE) 1; stopifnot(TRUE); 2', 'dead-code', []);
 			assertLinter('stopifnot false', parser, 'if(TRUE) 1; stopifnot(FALSE); 2', 'dead-code', [
-				{ certainty: LintingResultCertainty.Certain, range: [1, 13, 1, 28] },
 				{ certainty: LintingResultCertainty.Certain, range: [1, 31, 1, 31] },
+			]);
+			assertLinter('stop condition', parser, `
+x <- 2
+
+if(u) {
+  stop(42)
+  x <- 3
+}
+
+print(2)
+`, 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, range: [6, 3, 6, 8] }
 			]);
 		});
 

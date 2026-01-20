@@ -59,9 +59,14 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 					} else if(og === Ternary.Never && edge.when === 'TRUE') {
 						this.config.controlFlow.graph.removeEdge(from, target);
 					}
-				} else if(edge.label === CfgEdgeType.Fd) {
-					if(this.isUnconditionalJump(target)) {
-						this.config.controlFlow.graph.removeEdge(from, target);
+				} else if(edge.label === CfgEdgeType.Fd && this.isUnconditionalJump(target)) {
+					// for each unconditional jump, we find the corresponding end/exit nodes and remove any flow edges
+					for(const end of this.getCfgVertex(target)?.end as NodeId[] ?? []) {
+						for(const [target, edge] of this.config.controlFlow.graph.ingoingEdges(end) ?? []) {
+							if(edge.label === CfgEdgeType.Fd) {
+								this.config.controlFlow.graph.removeEdge(target, end);
+							}
+						}
 					}
 				}
 			}

@@ -35,7 +35,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 	guard(vertex.origin !== 'unnamed' && loopyFunctions.has(vertex.origin[0]), 'onlyLoopsOnce can only be called with loops');
 
 	// 1. In case of for loop, check if vector has only one element
-	if(vertex.origin[0] === 'builtin:for-loop') {
+	if(vertex.origin[0] === BuiltInProcName.ForLoop) {
 		if(vertex.args.length < 2) {
 			return undefined;
 		}
@@ -146,29 +146,29 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 			}
 		}
 	}
-	private handleFunctionCall(data: { call: DataflowGraphVertexFunctionCall }): void {
-		for(const origin of data.call.origin) {
-			if(origin === 'builtin:stop' || origin === 'builtin:return' || origin === 'builtin:break') {
-				this.encounteredLoopBreaker = true;
-				this.app(data.call.cds);
-				return;
-			} else if(origin === 'builtin:stopifnot') {
-				const arg = this.getBoolArgValue(data);
-				if(arg === false) {
-					this.encounteredLoopBreaker = true;
-					this.app(data.call.cds);
-					return;
-				}
-			}
-		}
+
+	protected onBreakCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+		this.encounteredLoopBreaker = true;
+		this.app(data.call.cds);
 	}
 
-	protected onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall }): void {
-		this.handleFunctionCall(data);
+	protected onReturnCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+		this.encounteredLoopBreaker = true;
+		this.app(data.call.cds);
+	}
+
+	protected onStopCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+		this.encounteredLoopBreaker = true;
+		this.app(data.call.cds);
 	}
 
 	protected onStopIfNotCall(data: { call: DataflowGraphVertexFunctionCall }): void {
-		this.handleFunctionCall(data);
+		const arg = this.getBoolArgValue(data);
+		if(arg === false) {
+			this.encounteredLoopBreaker = true;
+			this.app(data.call.cds);
+			return;
+		}
 	}
 
 	public loopsOnlyOnce(): boolean {

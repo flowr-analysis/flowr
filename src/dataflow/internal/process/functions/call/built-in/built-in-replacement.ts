@@ -57,7 +57,7 @@ export function processReplacementFunction<OtherInfo>(
 	}
 
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
-	let res = BuiltInProcessorMapper['builtin:assignment'](
+	let res = BuiltInProcessorMapper[BuiltInProcName.Assignment](
 		name,
 		[args[0], args.at(-1) as RFunctionArgument<OtherInfo & ParentInformation>],
 		rootId,

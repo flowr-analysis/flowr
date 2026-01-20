@@ -35,7 +35,7 @@ export interface BuiltInFunctionDefinition<BuiltInProcessor extends keyof typeof
 
 /**
  * Define a built-in replacement (like `[` or `$`) and the processor to use.
- * This is a convenience for manually combined function calls with `builtin:replacement`.
+ * This is a convenience for manually combined replacement function calls.
  */
 export interface BuiltInReplacementDefinition extends BaseBuiltInDefinition {
     readonly type:     'replacement';

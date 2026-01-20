@@ -2,7 +2,7 @@ import type { CfgSimpleVertex, ControlFlowInformation } from '../control-flow/co
 import { CfgVertexType, getVertexRootId } from '../control-flow/control-flow-graph';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
-import { BuiltInProcessorMapper, BuiltInProcName } from '../dataflow/environments/built-in';
+import { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import {
 	type DataflowGraphVertexFunctionCall,
@@ -179,22 +179,24 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		return true;
 	}
 
-	protected override onDispatchFunctionCallOrigin(call: DataflowGraphVertexFunctionCall, origin: keyof typeof BuiltInProcessorMapper | string) {
+	protected override onDispatchFunctionCallOrigin(call: DataflowGraphVertexFunctionCall, origin: BuiltInProcName) {
 		super.onDispatchFunctionCallOrigin(call, origin);
 
-		if(!(origin in BuiltInProcessorMapper)) {
-			return this.onFunctionCall({ call });
-		}
-		switch(origin as keyof typeof BuiltInProcessorMapper) {
-			case 'builtin:expression-list':
-			case 'builtin:if-then-else':
-			case 'builtin:for-loop':
-			case 'builtin:while-loop':
-			case 'builtin:repeat-loop':
-			case 'builtin:assignment':
-			case 'builtin:assignment-like':
-			case 'builtin:replacement':
-			case 'builtin:access':
+		switch(origin) {
+			case BuiltInProcName.ExpressionList:
+			case BuiltInProcName.IfThenElse:
+			case BuiltInProcName.ForLoop:
+			case BuiltInProcName.WhileLoop:
+			case BuiltInProcName.RepeatLoop:
+			case BuiltInProcName.FunctionDefinition:
+			case BuiltInProcName.Assignment:
+			case BuiltInProcName.AssignmentLike:
+			case BuiltInProcName.TableAssignment:
+			case BuiltInProcName.Replacement:
+			case BuiltInProcName.Access:
+			case BuiltInProcName.Pipe:
+			case BuiltInProcName.Break:
+			case BuiltInProcName.Return:
 				return;
 			default:
 				return this.onFunctionCall({ call });

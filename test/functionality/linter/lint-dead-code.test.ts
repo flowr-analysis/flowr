@@ -35,6 +35,7 @@ print(2)
 `, 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, range: [6, 3, 6, 8] }
 			]);
+			// TODO test case with tryCatch around it shouldn't trigger the deadness
 		});
 
 		describe('non-constant', () => {

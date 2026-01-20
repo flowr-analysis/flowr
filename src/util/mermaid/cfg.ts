@@ -17,9 +17,14 @@ import { collectAllIds } from '../../r-bridge/lang-4.x/ast/model/collect';
 
 
 export interface MermaidCfgGraphPrinterInfo extends MermaidGraphPrinterInfo {
-	entryPointStyle?:        MermaidMarkStyle['vertex'];
-	exitPointStyle?:         MermaidMarkStyle['vertex'];
-	includeBasicBlockLabel?: boolean;
+	/** The style to apply to mark an entry point marker node */
+	entryPointStyle?:          MermaidMarkStyle['vertex'];
+	/** The stly eto apply to mark an exit point marker node */
+	exitPointStyle?:           MermaidMarkStyle['vertex'];
+	/** If true, a simplified basic block will have "Basic Block (id)" prepended */
+	includeBasicBlockLabel?:   boolean;
+	/** If this threshold is reached (lexemes of a simplified basic block), the remaning character will be replaced by ... */
+	basicBlockCharacterLimit?: number;
 }
 
 export const MermaidEntryPointDefaultMarkStyle: MermaidMarkStyle['vertex'] = 'stroke:cyan,stroke-width:6.5px;';
@@ -68,7 +73,7 @@ function shouldIncludeNode(simplify: boolean, element: CfgSimpleVertex, include:
  * @param includeOnlyIds   - If provided, only include the vertices with the given IDs.
  * @param mark             - If provided, mark the given vertices and edges.
  */
-export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, { prefix = 'flowchart BT\n', simplify = false, markStyle = MermaidDefaultMarkStyle, entryPointStyle = MermaidEntryPointDefaultMarkStyle, exitPointStyle = MermaidExitPointDefaultMarkStyle, includeOnlyIds, mark, includeBasicBlockLabel = true }: MermaidCfgGraphPrinterInfo = {}): string {
+export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, { prefix = 'flowchart BT\n', simplify = false, markStyle = MermaidDefaultMarkStyle, entryPointStyle = MermaidEntryPointDefaultMarkStyle, exitPointStyle = MermaidExitPointDefaultMarkStyle, includeOnlyIds, mark, includeBasicBlockLabel = true, basicBlockCharacterLimit = 100 }: MermaidCfgGraphPrinterInfo = {}): string {
 	const hasBbandSimplify = simplify && cfg.graph.mayHaveBasicBlocks();
 	let output = prefix;
 	if(includeOnlyIds) {
@@ -110,7 +115,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 				}
 
 				const ids = vertex.elems?.map(e => e.id) ?? [];
-				const reconstruct = reconstructToCode(normalizedAst, { nodes: new Set(ids) }, doNotAutoSelect).code;
+				const reconstruct = limitTo(reconstructToCode(normalizedAst, { nodes: new Set(ids) }, doNotAutoSelect).code, basicBlockCharacterLimit);
 				const name = `"\`${includeBasicBlockLabel ? `Basic Block (${id})\n` : ''}${escapeMarkdown(reconstruct)}\`"`;
 				output += `    n${id}[[${name}]]\n`;
 				diagramIncludedIds.add(vertex.id);
@@ -189,4 +194,15 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
  */
 export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, info?: MermaidCfgGraphPrinterInfo): string {
 	return mermaidCodeToUrl(cfgToMermaid(cfg, normalizedAst, info ?? {}));
+}
+
+/**
+ * Limits a string to n chars, after which the remainder will be replaced with ...
+ */
+function limitTo(str: string, limit: number): string {
+	if(str.length <= limit) {
+		return str;
+	}
+
+	return `${str.substring(0, limit)}...`;
 }

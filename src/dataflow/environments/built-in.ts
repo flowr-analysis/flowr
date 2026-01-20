@@ -350,8 +350,8 @@ export class BuiltIns {
 	 * Registers all combinations of replacements
 	 */
 	registerReplacementFunctions({ names, suffixes, assumePrimitive, config }: BuiltInReplacementDefinition): void {
-		const replacer = BuiltInProcessorMapper['builtin:replacement'];
-		guard(replacer !== undefined, () => 'Processor for builtin:replacement is undefined!');
+		const replacer = BuiltInProcessorMapper[BuiltInProcName.Replacement];
+		guard(replacer !== undefined, () => `Processor for ${BuiltInProcName.Replacement} is undefined!`);
 		for(const assignment of names) {
 			for(const suffix of suffixes) {
 				const effectiveName = `${assignment}${suffix}`;

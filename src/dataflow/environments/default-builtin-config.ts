@@ -236,7 +236,7 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['eval'],                                       processor: BuiltInProcName.Eval,                config: { includeFunctionCall: true },                                                 assumePrimitive: true },
 	{ type: 'function', names: ['cat'],                                        processor: BuiltInProcName.Default,             config: { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } },                                                         assumePrimitive: false },
 	{ type: 'function', names: ['switch'],                                     processor: BuiltInProcName.Default,             config: { forceArgs: [true] },                                                         assumePrimitive: false },
-	{ type: 'function', names: ['return'],                                     processor: BuiltInProcName.Default,             config: { returnsNthArgument: 0, cfg: ExitPointType.Return, useAsProcessor: 'builtin:return' }, assumePrimitive: true },
+	{ type: 'function', names: ['return'],                                     processor: BuiltInProcName.Default,             config: { returnsNthArgument: 0, cfg: ExitPointType.Return, useAsProcessor: BuiltInProcName.Return }, assumePrimitive: true },
 	{
 		type:            'function',
 		names:           ['stop', 'abort', 'cli_abort', 'throw', 'stop_bad_type', 'stop_bad_element_type', 'stop_bad_element_length'],
@@ -247,7 +247,7 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['try'],                                        processor: BuiltInProcName.Try,                 config: { block: 'expr', handlers: {} }, assumePrimitive: true },
 	{ type: 'function', names: ['tryCatch', 'tryCatchLog'],                    processor: BuiltInProcName.Try,                 config: { block: 'expr', handlers: { error: 'error', finally: 'finally' } }, assumePrimitive: true },
 	{ type: 'function', names: ['stopifnot'],                                  processor: BuiltInProcName.StopIfNot,           config: { },                                                                           assumePrimitive: false },
-	{ type: 'function', names: ['break'],                                      processor: BuiltInProcName.Default,             config: { useAsProcessor: 'builtin:break', cfg: ExitPointType.Break },                 assumePrimitive: false },
+	{ type: 'function', names: ['break'],                                      processor: BuiltInProcName.Default,             config: { useAsProcessor: BuiltInProcName.Break, cfg: ExitPointType.Break },                 assumePrimitive: false },
 	{ type: 'function', names: ['next'],                                       processor: BuiltInProcName.Default,             config: { cfg: ExitPointType.Next },                                                   assumePrimitive: false },
 	{ type: 'function', names: ['{'],                                          processor: BuiltInProcName.ExpressionList,     config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['source'],                                     processor: BuiltInProcName.Source,              config: { includeFunctionCall: true, forceFollow: false },                             assumePrimitive: false },
@@ -282,7 +282,7 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['interference'],                               processor: BuiltInProcName.Apply,               config: { unquoteFunction: true, nameOfFunctionArgument: 'propensity_integrand', libFn: true },     assumePrimitive: false },
 	{ type: 'function', names: ['ddply'],                                      processor: BuiltInProcName.Apply,               config: { unquoteFunction: true, indexOfFunction: 2, nameOfFunctionArgument: '.fun', libFn: true }, assumePrimitive: false },
 	{ type: 'function', names: ['list'],                                       processor: BuiltInProcName.List,                config: {},                                                                            assumePrimitive: true  },
-	{ type: 'function', names: ['c'],                                          processor: BuiltInProcName.Vector,              config: {},                                                                            assumePrimitive: true, evalHandler: 'builtin:c'  },
+	{ type: 'function', names: ['c'],                                          processor: BuiltInProcName.Vector,              config: {},                                                                            assumePrimitive: true, evalHandler: 'built-in:c'  },
 	{
 		type:      'function',
 		names:     ['setnames', 'setNames', 'setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr'],

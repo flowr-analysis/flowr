@@ -20,10 +20,11 @@ import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
 import { assertUnreachable, guard } from '../util/assert';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { BuiltInProcessorMapper, BuiltInProcName } from '../dataflow/environments/built-in';
+import { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import { RNull } from '../r-bridge/lang-4.x/convert-values';
 
 export interface SemanticCfgGuidedVisitorConfiguration<
 	OtherInfo = NoInfo,
@@ -87,10 +88,10 @@ export class SemanticCfgGuidedVisitor<
 			case RType.Number:  return this.onNumberConstant({ vertex: val, node: astNode });
 			case RType.Logical: return this.onLogicalConstant({ vertex: val, node: astNode });
 			case RType.Symbol:
-				if(astNode.lexeme === 'NULL') {
+				if(astNode.lexeme === RNull) {
 					return this.onNullConstant({
 						vertex: val,
-						node:   astNode as RSymbol<OtherInfo & ParentInformation, 'NULL'>
+						node:   astNode as RSymbol<OtherInfo & ParentInformation, typeof RNull>
 					});
 				} else {
 					return this.onSymbolConstant({ vertex: val, node: astNode as RSymbol<OtherInfo & ParentInformation> });
@@ -152,7 +153,7 @@ export class SemanticCfgGuidedVisitor<
 	 */
 	protected override visitFunctionCall(vertex: DataflowGraphVertexFunctionCall) {
 		super.visitFunctionCall(vertex);
-		if(vertex.origin === 'unnamed') {
+		if(vertex.origin === BuiltInProcName.Unnamed) {
 			this.onUnnamedCall({ call: vertex });
 		} else {
 			this.onDispatchFunctionCallOrigins(vertex, vertex.origin);
@@ -183,7 +184,7 @@ export class SemanticCfgGuidedVisitor<
 	 * with the logic you desire.
 	 * @protected
 	 */
-	protected onDispatchFunctionCallOrigins(call: DataflowGraphVertexFunctionCall, origins: readonly string[]) {
+	protected onDispatchFunctionCallOrigins(call: DataflowGraphVertexFunctionCall, origins: readonly BuiltInProcName[]) {
 		for(const origin of origins) {
 			this.onDispatchFunctionCallOrigin(call, origin);
 		}
@@ -196,13 +197,8 @@ export class SemanticCfgGuidedVisitor<
 	 * @see {@link onDispatchFunctionCallOrigins} for the aggregation in case the function call target is ambiguous.
 	 * @protected
 	 */
-	protected onDispatchFunctionCallOrigin(call: DataflowGraphVertexFunctionCall, origin: keyof typeof BuiltInProcessorMapper | string) {
-		if(!(origin in BuiltInProcessorMapper)) {
-			return this.onDefaultFunctionCall({ call });
-		}
-		const type = origin as keyof typeof BuiltInProcessorMapper;
-
-		switch(type) {
+	protected onDispatchFunctionCallOrigin(call: DataflowGraphVertexFunctionCall, origin: BuiltInProcName) {
+		switch(origin) {
 			case BuiltInProcName.Eval:
 				return this.onEvalFunctionCall({ call });
 			case BuiltInProcName.Apply:
@@ -241,7 +237,8 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.Vector:
 				return this.onVectorCall({ call });
 			case BuiltInProcName.Assignment:
-			case BuiltInProcName.AssignmentLike: {
+			case BuiltInProcName.AssignmentLike:
+			case BuiltInProcName.TableAssignment: {
 				const outgoing = this.config.dfg.outgoingEdges(call.id);
 				if(outgoing) {
 					const target = [...outgoing.entries()].filter(([, e]) => edgeIncludesType(e.types, EdgeType.Returns));
@@ -293,22 +290,30 @@ export class SemanticCfgGuidedVisitor<
 			}
 			case BuiltInProcName.Library:
 				return this.onLibraryCall({ call });
-			case BuiltInProcName.Default:
-				return this.onDefaultFunctionCall({ call });
 			case BuiltInProcName.Try:
 				return this.onTryCall({ call });
+			case BuiltInProcName.Stop:
+				return this.onStopCall({ call });
 			case BuiltInProcName.StopIfNot:
 				return this.onStopIfNotCall({ call });
 			case BuiltInProcName.RegisterHook:
 				return this.onRegisterHookCall({ call });
 			case BuiltInProcName.Local:
 				return this.onLocalCall({ call });
-			case BuiltInProcName.FunctionDefinition:
-				throw new Error('Function call vertex cannot be a function definition');
 			case BuiltInProcName.S3Dispatch:
 				return this.onS3DispatchCall({ call });
+			case BuiltInProcName.Break:
+				return this.onBreakCall({ call });
+			case BuiltInProcName.Return:
+				return this.onReturnCall({ call });
+			case BuiltInProcName.Unnamed:
+				return this.onUnnamedCall({ call });
+			case BuiltInProcName.Default:
+			case BuiltInProcName.Function:
+			case BuiltInProcName.FunctionDefinition:
+				return this.onDefaultFunctionCall({ call });
 			default:
-				assertUnreachable(type);
+				assertUnreachable(origin);
 		}
 	}
 
@@ -331,7 +336,7 @@ export class SemanticCfgGuidedVisitor<
 	 *
 	 * For other symbols that are not referenced as a variable, see {@link SemanticCfgGuidedVisitor#onSymbolConstant|`onSymbolConstant`}.
 	 */
-	protected onNullConstant(_data: { vertex: DataflowGraphVertexValue, node: RSymbol<OtherInfo & ParentInformation, 'NULL'> }) {}
+	protected onNullConstant(_data: { vertex: DataflowGraphVertexValue, node: RSymbol<OtherInfo & ParentInformation, typeof RNull> }) {}
 
 	/**
 	 * Called for every constant string value in the program.
@@ -606,6 +611,16 @@ export class SemanticCfgGuidedVisitor<
 	protected onVectorCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 
 	/**
+	 * This event triggers for every call to the `stop` function.
+	 *
+	 * For example, this triggers for `stop` in `stop()`.
+	 *
+	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
+	 * @protected
+	 */
+	protected onStopCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
 	 * This event triggers for every call to the `stopifnot` function.
 	 *
 	 * For example, this triggers for `stopifnot` in `stopifnot(x > 0)`.
@@ -652,4 +667,24 @@ export class SemanticCfgGuidedVisitor<
 	 * @protected
 	 */
 	protected onRegisterHookCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for every call to `break` to exit a loop.
+	 *
+	 * For example, this triggers for `break` in `repeat { break }`.
+	 *
+	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
+	 * @protected
+	 */
+	protected onBreakCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for every call to `return` to explicitly return a value in a function.
+	 *
+	 * For example, this triggers for `return` in `f <- function() { return(42) }`.
+	 *
+	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
+	 * @protected
+	 */
+	protected onReturnCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 }

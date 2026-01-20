@@ -111,22 +111,6 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		return Boolean(values.elements[0].value);
 	}
 
-	private handleFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
-		switch(data.call.origin[0]) {
-			case 'builtin:return':
-			case 'builtin:stop':
-				this.cachedStatements.set(data.call.id, true);
-				break;
-			case 'builtin:stopifnot': {
-				const arg = this.getBoolArgValue(data);
-				if(arg !== undefined) {
-					this.cachedStatements.set(data.call.id, !arg);
-				}
-				break;
-			}
-		}
-	}
-
 	protected onIfThenElseCall(data: { call: DataflowGraphVertexFunctionCall, condition?: NodeId }) {
 		this.handleWithCondition(data);
 	}
@@ -135,12 +119,19 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		this.handleWithCondition(data);
 	}
 
-	protected onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
-		this.handleFunctionCall(data);
+	protected onReturnCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+		this.cachedStatements.set(data.call.id, true);
 	}
 
-	protected onStopIfNotCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
-		this.handleFunctionCall(data);
+	protected onStopCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+		this.cachedStatements.set(data.call.id, true);
+	}
+
+	protected onStopIfNotCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+		const arg = this.getBoolArgValue(data);
+		if(arg !== undefined) {
+			this.cachedStatements.set(data.call.id, !arg);
+		}
 	}
 }
 

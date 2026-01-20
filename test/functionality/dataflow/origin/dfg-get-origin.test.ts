@@ -7,7 +7,7 @@ import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/process
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
 import { guard } from '../../../../src/util/assert';
 import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
-import { builtInId } from '../../../../src/dataflow/environments/built-in';
+import { builtInId, BuiltInProcName } from '../../../../src/dataflow/environments/built-in';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 describe('Dataflow', withTreeSitter(ts => {
@@ -97,10 +97,10 @@ describe('Dataflow', withTreeSitter(ts => {
 			'2@c': [ro('1@c'), fo('1@function')]
 		});
 		chk('if(u) { print <- function(x) x }\nprint("hey")', {
-			'2@print': [ro('1@print'), fo('1@function'), bo('builtin:default', 'print', '2@print'), bo(builtInId('print'), 'print', '2@print')]
+			'2@print': [ro('1@print'), fo('1@function'), bo(BuiltInProcName.Default, 'print', '2@print'), bo(builtInId('print'), 'print', '2@print')]
 		});
 		chk('c <- 1\nc(1,2,3)', {
-			'2@c': [bo('builtin:vector', 'c', '2@c')]
+			'2@c': [bo(BuiltInProcName.Vector, 'c', '2@c')]
 		});
 		chk('x <- print\nx("hey")', {
 			'2@x': [ro('1@x'), bo(builtInId('print'), 'x', '2@x')]
@@ -111,7 +111,7 @@ describe('Dataflow', withTreeSitter(ts => {
 			'3@x':     [wo('3@x')],
 			'3:11':    [ro('1@x'), ro('3@x')],
 			'5@x':     [ro('1@x'), ro('3@x')],
-			'5@print': [bo('builtin:default', 'print', '5@print')]
+			'5@print': [bo(BuiltInProcName.Default, 'print', '5@print')]
 		});
 
 		chk('x <- 1\nfor(i in 1:10) {\n x <- i + x\n x <- x + 1\n}\nprint(x)', {

@@ -143,7 +143,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	protected onTryCall(data: { call: DataflowGraphVertexFunctionCall }): void {
-		if(data.call.args.length !== 1 || data.call.args[0] === EmptyArgument) {
+		if(data.call.args.length < 1 || data.call.args[0] === EmptyArgument) {
 			return;
 		}
 		const body = this.getCfgVertex(data.call.args[0].nodeId);

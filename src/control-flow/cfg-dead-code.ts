@@ -12,15 +12,15 @@ import { log } from '../util/log';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
+import { visitCfgInOrder } from './simple-visitor';
 
 type CachedValues<Val> = Map<NodeId, Val>;
 
 class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 
 	private readonly cachedConditions: CachedValues<Ternary> = new Map();
-
 	private readonly cachedStatements: CachedValues<boolean> = new Map();
-
+	private readonly inTry:            Set<NodeId> = new Set<NodeId>();
 
 	private getValue(id: NodeId): Ternary {
 		const has = this.cachedConditions.get(id);
@@ -32,6 +32,9 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private isUnconditionalJump(id: NodeId): boolean {
+		if(this.inTry.has(id)) {
+			return false;
+		}
 		const has = this.cachedStatements.get(id);
 		if(has) {
 			return has;
@@ -137,6 +140,23 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		if(arg !== undefined) {
 			this.cachedStatements.set(data.call.id, !arg);
 		}
+	}
+
+	protected onTryCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+		if(data.call.args.length !== 1 || data.call.args[0] === EmptyArgument) {
+			return;
+		}
+		const body = this.getCfgVertex(data.call.args[0].nodeId);
+		if(!body) {
+			return;
+		}
+		visitCfgInOrder(this.config.controlFlow.graph, [body.id], n => {
+			if((body.end as NodeId[])?.includes(n)) {
+				return true;
+			}
+			this.inTry.add(n);
+			return false;
+		});
 	}
 }
 

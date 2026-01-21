@@ -35,7 +35,10 @@ print(2)
 `, 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, range: [6, 3, 6, 8] }
 			]);
-			// TODO test case with tryCatch around it shouldn't trigger the deadness
+			assertLinter('try', parser, 'try(stop(1)); 2', 'dead-code', []);
+			assertLinter('try complex', parser, 'f <- function() { try(stop(1)); 2 }; f(); stop(1); 2', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, range: [1, 52, 1, 52] }
+			]);
 		});
 
 		describe('non-constant', () => {

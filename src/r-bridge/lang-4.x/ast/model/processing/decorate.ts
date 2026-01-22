@@ -85,7 +85,7 @@ export interface ParentContextInfo extends MergeableRecord {
 	/**
 	 * The nesting of the node in the AST
 	 *
-	 * The root node has a nesting of 0, nested function calls, loops etc. will increase the nesting
+	 * The root node has a nesting of 0, contexts listed in ${@link nestForElement} will increase the nesting
 	 */
 	nesting: number
 	/**
@@ -128,7 +128,10 @@ export interface NormalizedAst<OtherInfo = ParentInformation, Node = RProject<Ot
 	hasError?: boolean
 }
 
-const nestForElement: ReadonlySet<RType> = new Set([
+/**
+ * Node types for which the nesting score will be increased
+ */
+export const nestForElement: ReadonlySet<RType> = new Set([
 	RType.FunctionDefinition, RType.ForLoop, RType.WhileLoop, RType.RepeatLoop, RType.IfThenElse,
 ]);
 

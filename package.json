@@ -178,6 +178,7 @@
     "@types/object-hash": "^3.0.6",
     "@types/seedrandom": "^3.0.8",
     "@types/semver": "^7.7.0",
+    "@types/serialize-javascript": "^5.0.4",
     "@types/tmp": "^0.2.6",
     "@types/ws": "^8.18.1",
     "@types/wtfnode": "^0.10.0",

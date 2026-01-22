@@ -18,7 +18,7 @@ describe('Dataflow Linker - Argument Matching', () => {
 	 * Give the argument names (or pos for positional, null for missing),
 	 * the parameters as their list of names (supporting `...`),
 	 * and expected as an array of same length as args, indicating the matched parameter name for each argument.
-	 * @param args      - The argument names (or 'pos' for positional, null for missing)
+	 * @param args     - The argument names (or 'pos' for positional, null for missing)
 	 * @param params   - The parameter names
 	 * @param expected - The expected matched parameter names (or ' ' for no match)
 	 */

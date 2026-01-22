@@ -13,12 +13,17 @@ import { dataflowLogger } from '../../../../../logger';
 import { pMatch } from '../../../../linker';
 import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
 import { VertexType } from '../../../../../graph/vertex';
-import { tryUnpackNoNameArg } from '../argument/unpack-argument';
+import { tryUnpackNoNameArg, unpackArg } from '../argument/unpack-argument';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
 import { BuiltInProcName } from '../../../../../environments/built-in';
+import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
+import type { IdentifierReference } from '../../../../../environments/identifier';
+import { isReferenceType , ReferenceType } from '../../../../../environments/identifier';
+import { resolveByName } from '../../../../../environments/resolve-by-name';
+import { expensiveTrace } from '../../../../../../util/log';
 
 
 function getArgsOfName(argMaps: Map<NodeId, string>, name: string): Set<NodeId> {
@@ -93,7 +98,11 @@ export function processTryCatch<OtherInfo>(
 		}
 	}
 	for(const e of errorArg) {
-		info.graph.addEdge(rootId, e, EdgeType.Calls);
+		info.graph.addEdge(rootId, e, EdgeType.Reads | EdgeType.Calls);
+		const linkTo = promoteCallToFunction(rootId, e, info, data);
+		if(linkTo) {
+			info.graph.addEdge(e, linkTo, EdgeType.Calls);
+		}
 	}
 	for(const f of finallyArg) {
 		info.graph.addEdge(rootId, f, EdgeType.Calls);
@@ -104,6 +113,75 @@ export function processTryCatch<OtherInfo>(
 		}
 	}
 	return info;
+}
+
+function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: DataflowInformation, data: DataflowProcessorInformation<ParentInformation & OtherInfo>): NodeId | undefined {
+	let functionId: NodeId | undefined = undefined;
+	let functionName: string | undefined = undefined;
+	let anonymous: boolean = false;
+	const argNode = data.completeAst.idMap.get(arg);
+	if(!argNode) {
+		return undefined;
+	}
+	const val = argNode.type === RType.Argument ? unpackArg(argNode) : argNode;
+	if(!val) {
+		return undefined;
+	}
+	if(val.type === RType.Symbol) {
+		functionId = val.info.id;
+		functionName = val.content;
+	} else if(val.type === RType.FunctionDefinition) {
+		anonymous = true;
+		functionId = val.info.id;
+		functionName = `${UnnamedFunctionCallPrefix}${functionId}`;
+	}
+	if(functionName === undefined || functionId === undefined) {
+		return undefined;
+	}
+	if(anonymous) {
+		info.graph.addEdge(arg, functionId, EdgeType.Calls | EdgeType.Reads);
+
+		const dfVert = info.graph.getVertex(call);
+		if(dfVert && dfVert.tag === VertexType.FunctionDefinition) {
+			// resolve all ingoings against the environment
+			const ingoingRefs = dfVert.subflow.in;
+			const remainingIn: IdentifierReference[] = [];
+			for(const ingoing of ingoingRefs) {
+				const resolved = ingoing.name ? resolveByName(ingoing.name, data.environment, ingoing.type) : undefined;
+				if(resolved === undefined) {
+					remainingIn.push(ingoing);
+					continue;
+				}
+				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${ingoing.nodeId} in closure of function definition ${call}`);
+				let allBuiltIn = true;
+				for(const ref of resolved) {
+					info.graph.addEdge(ingoing, ref, EdgeType.Reads);
+					info.graph.addEdge(call, ref, EdgeType.Reads); // because the def. is the anonymous call
+					if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
+						allBuiltIn = false;
+					}
+				}
+				if(allBuiltIn) {
+					remainingIn.push(ingoing);
+				}
+			}
+			dfVert.subflow.in = remainingIn;
+		}
+		// we did the linking
+		return undefined;
+	} else {
+		info.graph.updateToFunctionCall({
+			tag:         VertexType.FunctionCall,
+			id:          functionId,
+			name:        functionName,
+			args:        [],
+			environment: data.environment,
+			onlyBuiltin: false,
+			cds:         data.cds,
+			origin:      [BuiltInProcName.Function]
+		});
+		return functionId;
+	}
 }
 
 function getExitPoints(vertex: DataflowGraphVertexInfo | undefined, graph: DataflowGraph): readonly ExitPoint[] | undefined {

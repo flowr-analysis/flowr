@@ -1,11 +1,14 @@
 import { assert, describe, test } from 'vitest';
-import { withTreeSitter } from '../../../_helper/shell';
+import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../../src/r-bridge/retriever';
 import type { SingleSlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { Q } from '../../../../../src/search/flowr-search-builder';
 import { graphToMermaidUrl } from '../../../../../src/util/mermaid/dfg';
+import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
+import { EdgeType } from '../../../../../src/dataflow/graph/edge';
+import { builtInId } from '../../../../../src/dataflow/environments/built-in';
 
 interface DFConstraints {
 	hasVertices:         SingleSlicingCriterion[];
@@ -90,6 +93,35 @@ indirect()
 				checkDfContains('1\ntryCatch({ stop("error") }, error=function(e) {  }, finally={ stop() });\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
 				checkDfContains('1\ntryCatch({ u }, error=function(e) {  }, finally={ stop() });\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
 				checkDfContains('1\nprint(tryCatch({ stop("error") }, error=function(e) {  }, finally={ }))\n3', { hasVertices: ['1@1', '3@3'], doesNotHaveVertices: [] });
+			});
+			describe('Verify call edges for error handler', () => {
+				assertDataflow(label('Call edges for error', ['exceptions-and-errors', 'call-anonymous']), ts,
+					'tryCatch(x, error=function(e) {})',
+					emptyGraph()
+						.addEdge('1@tryCatch', '$10', EdgeType.Reads | EdgeType.Calls | EdgeType.Argument)
+						.addEdge('$10', '1@function', EdgeType.Reads | EdgeType.Calls)
+					,
+					{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+				);
+				assertDataflow(label('Call edges for error with fn', ['exceptions-and-errors', 'call-normal']), ts,
+					'f <- function() 2\ntryCatch(x, error=f)',
+					emptyGraph()
+						.addEdge('2@tryCatch', '$10', EdgeType.Reads | EdgeType.Calls | EdgeType.Argument)
+						.addEdge('$10', '2@f', EdgeType.Reads | EdgeType.Calls)
+						.addEdge('2@f', '1@function', EdgeType.Calls)
+					,
+					{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+				);
+				assertDataflow(label('Call edges with may built-in', ['exceptions-and-errors', 'call-normal', 'built-in']), ts,
+					'if(u) sum <- function() 3\ntryCatch(x, error=sum)',
+					emptyGraph()
+						.addEdge('2@tryCatch', '$13', EdgeType.Reads | EdgeType.Calls | EdgeType.Argument)
+						.addEdge('$13', '2@sum', EdgeType.Reads | EdgeType.Calls)
+						.calls('2@sum', '1@function')
+						.addEdge('2@sum', builtInId('sum'), EdgeType.Calls | EdgeType.Reads)
+					,
+					{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+				);
 			});
 		});
 	});

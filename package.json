@@ -216,6 +216,7 @@
     "rotating-file-stream": "^3.2.6",
     "seedrandom": "^3.0.5",
     "semver": "^7.7.1",
+    "serialize-javascript": "^7.0.2",
     "tar": "^7.4.3",
     "tinypool": "^2.0.0",
     "tmp": "^0.2.3",

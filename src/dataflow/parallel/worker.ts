@@ -1,11 +1,11 @@
 import { parentPort, MessageChannel, threadId, workerData } from 'node:worker_threads';
 import type { TaskName } from './task-registry';
 import { SetParserEngine, workerTasks } from './task-registry';
-import type { TaskReceivedMessage, WorkerData, WorkerLogLevel } from './threadpool';
-import { isPortRegisteredMessage, isSubtaskResponseMessage } from './threadpool';
+import type { WorkerData } from './threadpool';
 import { dataflowLogger } from '../logger';
 import { retrieveEngineInstances } from '../../engines';
 import { cloneConfig, defaultConfigOptions } from '../../config';
+import { isPortRegisteredMessage, isSubtaskResponseMessage, TaskReceivedMessage, WorkerLogLevel } from './pool-messages';
 
 
 type PendingEntry<T> = {

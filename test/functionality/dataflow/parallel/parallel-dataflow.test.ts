@@ -4,84 +4,58 @@ import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-bui
 import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff-dataflow-graph';
 import { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { diffEnvironments, fromSerializedREnvironmentInformation, toSerializedREnvironmentInformation } from '../../../../src/dataflow/environments/environment';
+import { AnalyzerSetupCluster, AnalyzerSetupFunction, complexDataflowTests, MultiDef, MultiFile, simpleDataflowTests, SingleFile, sourceBasedDataflowTests } from './analyzer-test-data';
 
-type AnalyzerSetupFunction = (analyzer: FlowrAnalyzer) => FlowrAnalyzer;
+async function checkGraphEquality(testCaseName: string, func: AnalyzerSetupFunction) {
+    console.log(`\n► Running test case: ${testCaseName}`);
 
+    const parallelAnalyzer = func(await new FlowrAnalyzerBuilder()
+        .enableFileParallelization().build()
+    );
+    const analyzer = func(await new FlowrAnalyzerBuilder().build());
 
-async function checkGraphEquality(func: AnalyzerSetupFunction){
-	const parallelAnalyzer = func(await new FlowrAnalyzerBuilder()
-		.enableFileParallelization().build()
-	);
-	const analyzer = func(await new FlowrAnalyzerBuilder().build());
+    const df = await parallelAnalyzer.dataflow();
+    const syncDf = await analyzer.dataflow();
 
-	const df = await parallelAnalyzer.dataflow();
-	const syncDf = await analyzer.dataflow();
+    // close analyzers
+    await parallelAnalyzer.close(true);
+    await analyzer.close(true);
 
-	// close analyzers
-	await parallelAnalyzer.close(true);
-	await analyzer.close(true);
+    const graphdiff = diffOfDataflowGraphs(
+        { name: 'Parallel graph', graph: df.graph }, { name: 'Sync graph', graph: syncDf.graph }
+    );
 
-	assert.isTrue(diffOfDataflowGraphs(
-		{ name: 'Parallel graph', graph: df.graph }, { name: 'Sync graph', graph: syncDf.graph }
-	).isEqual(), 'Dataflow graphs should be equal');
+    console.log(graphdiff.comments());
+    console.log(graphdiff.problematic());
+    assert.isTrue(graphdiff.isEqual(), `Dataflow graphs should be equal for testCase ${testCaseName}`);
 }
 
-const SingleFile: AnalyzerSetupFunction = (analyzer) => {
-	analyzer.addRequest({ request: 'text', content: 'x <- 3' });
-	return analyzer;
-};
+async function checkGraphEqualityForCluster(clusterName: string, testCluster: AnalyzerSetupCluster) {
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`Testing Cluster: ${clusterName} (${testCluster.length} test cases)`);
+    console.log(`${'='.repeat(60)}`);
+    
+    for (const testCase of testCluster) {
+        await checkGraphEquality(testCase.name, testCase.setup);
+    }
+    
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`✓ All ${testCluster.length} test cases in "${clusterName}" completed`);
+    console.log(`${'='.repeat(60)}\n`);
+}
 
-const MultiFile: AnalyzerSetupFunction = (analyzer) => {
-	analyzer.addRequest({ request: 'text', content: 'x <- 3' });
-	analyzer.addRequest({ request: 'text', content: 'y <- 2\n print(y)' });
-	//analyzer.addRequest({ request: 'text', content: 'z <- x + 1\n print(z)' });
-	return analyzer;
-};
+describe.sequential('Parallel Dataflow test', () => {
 
-describe.sequential('Simple Parallel Dataflow test', () => {
+    test('Simple File Analysis', async () => {
+        await checkGraphEqualityForCluster('Simple File Analysis', simpleDataflowTests);
+    });
 
-	test('Single File Analysis', async() => {
-		await checkGraphEquality( SingleFile );
-	});
+    test('Complex File Analysis', async () => {
+        await checkGraphEqualityForCluster('Complex File Analysis', complexDataflowTests);
+    });
 
-	test('Multi File Analysis', async() => {
-		await checkGraphEquality( MultiFile );
-	});
+    test('Source Based File Analysis', async () => {
+        await checkGraphEqualityForCluster('Source Based File Analysis', sourceBasedDataflowTests);
+    });
 
-});
-
-describe('Serialization tests', () => {
-	test('DataflowGraph Serilization', async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().build();
-		analyzer.addRequest({ request: 'text', content: 'x <- 1 \n y <- x + 2 \n print(y)' });
-
-		const df = await analyzer.dataflow();
-		await analyzer.close();
-
-		// parse and reparse
-		const byteData = df.graph.toSerializable();
-		const parsedGraph = DataflowGraph.fromSerializable(byteData);
-
-		assert.isTrue(diffOfDataflowGraphs(
-			{ name: 'Normal graph', graph: df.graph }, { name: 'Reparsed graph', graph: parsedGraph }
-		).isEqual(), 'Dataflow graphs should be equal after parsing');
-	});
-
-	test('DataflowInformation Serilization', async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().build();
-		analyzer.addRequest({ request: 'text', content: 'x <- 1 \n y <- x + 2 \n print(y)' });
-
-		const df = await analyzer.dataflow();
-		await analyzer.close();
-
-		// parse and reparse
-		const byteData = toSerializedREnvironmentInformation(df.environment);
-		const parsedEnv = fromSerializedREnvironmentInformation(byteData, analyzer.context());
-		const diff = diffEnvironments(df.environment.current, parsedEnv.current);
-
-		assert.isTrue(diff.isEqual);
-		if(!diff.isEqual){
-			console.warn(diff.issues);
-		}
-	});
 });

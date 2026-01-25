@@ -166,7 +166,7 @@ export function DeserializeDataflowInformation(
 			in:                data.in,
 			out:               data.out,
 			environment:       fromSerializedREnvironmentInformation(data.env, ctx),
-			graph:             DataflowGraph.fromSerializable(data.graph),
+			graph:             DataflowGraph.fromSerializable(data.graph, ctx),
 		};
 	} catch(err: unknown) {
 		dataflowLogger.warn('Deserialize of DataflowInformation failed with: ', err);

@@ -15,7 +15,7 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { mergeDataflowInformation, standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
 import { extractCfgQuick, getCallsInCfg } from '../control-flow/extract-cfg';
-import { EdgeType } from './graph/edge';
+import { edgeIncludesType, EdgeType } from './graph/edge';
 import {
 	identifyLinkToLastCallRelation
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
@@ -24,10 +24,13 @@ import { updateNestedFunctionCalls } from './internal/process/functions/call/bui
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
+import { recoverName, type NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { VertexType, type DataflowGraphVertexFunctionCall } from './graph/vertex';
 import { dataflowLogger } from './logger';
 import type { DataflowPayload, DataflowReturnPayload } from './parallel/task-registry';
+import { REnvironmentInformation } from './environments/environment';
+import { findNonLocalReads, linkInputs } from './internal/linker';
+import { IdentifierReference, ReferenceType } from './environments/identifier';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -98,6 +101,58 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 	return cf;
 }
 
+function resolveCrossFileReferences(
+    graph: DataflowGraph,
+    environment: REnvironmentInformation,
+): void {
+    /** get all unresolved reads in the dataflow graph, ignore nothing */
+    const unresolved: IdentifierReference[] = [];
+
+    for(const [nodeId, vertex] of graph.verticesOfType(VertexType.Use)){
+        const outgoing = graph.outgoingEdges(nodeId);
+        
+        const hasReads = (outgoing !== undefined) && [...outgoing.entries()].some(
+            ([,edge]) => edgeIncludesType(edge.types, EdgeType.Reads)
+        );
+
+        if(!hasReads) {
+            unresolved.push({
+                nodeId,
+                name: recoverName(nodeId, graph.idMap),
+                controlDependencies: vertex.cds,
+                type: ReferenceType.Variable
+            })
+        }
+    }
+
+    for(const [nodeId, vertex] of graph.verticesOfType(VertexType.FunctionCall)){
+        const outgoing = graph.outgoingEdges(nodeId);
+        
+        const hasReads = (outgoing !== undefined) && [...outgoing.entries()].some(
+            ([,edge]) => edgeIncludesType(edge.types, EdgeType.Reads)
+        );
+
+        if(!hasReads) {
+            unresolved.push({
+                nodeId,
+                name: recoverName(nodeId, graph.idMap) ?? vertex.name,
+                controlDependencies: vertex.cds,
+                type: ReferenceType.Function
+            })
+        }
+    }
+
+    console.log('Found following unresolved references: ', unresolved);
+
+    linkInputs(unresolved, environment, [], graph, false);
+
+    if(unresolved.length > 0){
+        console.warn(`Cross File Resolution: ${unresolved.length} reference(s) remain unresolved across all files for the dataflow graph: ` + 
+            unresolved.map(reference => reference.name ?? '<unnamed>').join(',')
+        );
+    }
+}
+
 /**
  * This is the main function to produce the dataflow graph from a given request and normalized AST.
  * Note, that this requires knowledge of the active parser in case the dataflow analysis uncovers other files that have to be parsed and integrated into the analysis
@@ -129,27 +184,6 @@ export async function produceDataFlowGraph<OtherInfo>(
 	};
 
 	if(fileParallelization && workerPool){
-		// parallelise the dataflow graph analysis
-		// submit all files
-		/* const _result = workerPool.submitTasks(
-			'testPool',
-			files.map((file, i) => ({
-				index:        i,
-				file,
-				data:         undefined as unknown as DataflowProcessorInformation<OtherInfo & ParentInformation>,
-				dataflowInfo: undefined as unknown as DataflowInformation
-			}))
-		);
-
-		void _result.then( () => {
-			workerPool.closePool();
-		});
-
-		const df = undefined as unknown as DataflowInformation;
-		if(!df) {
-			return df;
-		}
- */
 		// parse data
 		const parsed = SerializeDataflowProcessorInformation(dfData);
 		const result = await workerPool.submitTasks<DataflowPayload<OtherInfo>, DataflowReturnPayload<OtherInfo>>(
@@ -162,7 +196,7 @@ export async function produceDataFlowGraph<OtherInfo>(
 		);
 
 		const parsedResult = result.map(data => {
-			const dfInfo = DeserializeDataflowProcessorInformation(data.processorInfo, dfData.processors, dfData.parser);
+            const dfInfo = DeserializeDataflowProcessorInformation(data.processorInfo, dfData.processors, dfData.parser);
 			const dataflow = DeserializeDataflowInformation(data.dataflowData, dfInfo.ctx);
 			return {
 				processorInfo: dfInfo,
@@ -171,11 +205,15 @@ export async function produceDataFlowGraph<OtherInfo>(
 		});
 
 		let df = parsedResult[0].dataflow;
+        console.log('result length: ', parsedResult.length);
 
 		// merge dataflowinformation via folding
 		for(let i = 1; i < result.length; i++){
+            console.log('merging dataflow for file-', i);
 			df = mergeDataflowInformation('file-'+i, parsedResult[i].processorInfo, files[i].filePath, df, parsedResult[i].dataflow);
+            resolveCrossFileReferences(df.graph, df.environment);
 		}
+
 
 		// finally, resolve linkages
 		updateNestedFunctionCalls(df.graph, df.environment);

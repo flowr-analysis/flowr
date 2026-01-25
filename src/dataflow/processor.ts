@@ -10,7 +10,7 @@ import {
 	type ParentInformation,
 	type RNodeWithParent,
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { REnvironmentInformation } from './environments/environment';
+import { fromSerializedREnvironmentInformation, toSerializedREnvironmentInformation, type REnvironmentInformation, type SerializedREnvironmentInformation } from './environments/environment';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import type { SerializedFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
@@ -20,6 +20,7 @@ export interface SerializedDataflowProcessorInformation<OtherInfo>{
     //parser:              EngineConfig['type'];
     //flowrConfig:         FlowrConfigOptions;
     serializedAST:       SerializedNormalizedAst<OtherInfo>;
+    environment: SerializedREnvironmentInformation;
     controlDependencies: ControlDependency[] | undefined;
     referenceChain:      (string | undefined)[];
     ctx:                 SerializedFlowrAnalyzerContext;
@@ -63,6 +64,7 @@ export function SerializeDataflowProcessorInformation<OtherInfo>(
 ): SerializedDataflowProcessorInformation<OtherInfo> {
 	return {
 		serializedAST:       SerializeNormalizedAst<OtherInfo>(dfInfo.completeAst),
+        environment: toSerializedREnvironmentInformation(dfInfo.environment),
 		controlDependencies: dfInfo.controlDependencies,
 		referenceChain:      dfInfo.referenceChain,
 		ctx:                 dfInfo.ctx.toSerializable(),
@@ -82,7 +84,7 @@ export function DeserializeDataflowProcessorInformation<OtherInfo>(
 	return {
 		parser,
 		completeAst:         DeserializeNormalizedAst(serializedDfInfo.serializedAST),
-		environment:         ctx.env.makeCleanEnv(),
+		environment:         fromSerializedREnvironmentInformation(serializedDfInfo.environment, ctx),
 		processors,
 		referenceChain:      serializedDfInfo.referenceChain,
 		controlDependencies: serializedDfInfo.controlDependencies,

@@ -47,12 +47,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        r-version: [ '4.4.0', '4.3.2', '4.2.3', '4.0.0', '3.6.0' ]
+        r-version: [ '4.5.0', '4.3.2', '4.2.3', '4.0.0', '3.6.0' ]
         os: [ ubuntu-latest ]
         include:
-           - r-version: '4.4.0'
+           - r-version: '4.5.0'
              os: macos-latest
-           - r-version: '4.4.0'
+           - r-version: '4.5.0'
              os: windows-latest
     runs-on: ${{ matrix.os }}
     concurrency:
@@ -236,8 +236,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
       - name: "⬆️ Upload the compressed image to the workflow"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
+          name: flowr-image-${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' && 'slim' || 'full' }}
           path: flowr-${{ env.THE_FLOWR_VERSION }}-${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' && '-slim' || '' }}.tar.gz
 
   performance-test:

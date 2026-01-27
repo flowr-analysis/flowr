@@ -199,12 +199,13 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('Custom (by name)', 'custom.library(num1 = 1, num2 = 2, file = "my-custom-file")', expected, readCustomFile);
 			testQuery('Ignore default', 'library(testLibrary)', {}, { ignoreDefaultFunctions: true });
 			testQuery('Disabled', 'library(testLibrary)', {}, { enabledCategories: ['source', 'read', 'write'] });
+			testQuery('Disabled', 'a::dep', {}, { enabledCategories: [] });
 			testQuery('Enabled', 'library(testLibrary)', {
 				library: [{ nodeId: '1@library', functionName: 'library', value: 'testLibrary' }]
 			}, { enabledCategories: ['library'] });
 			testQuery('Empty enabled', 'library(testLibrary)', {
 				library: [{ nodeId: '1@library', functionName: 'library', value: 'testLibrary' }]
-			}, { enabledCategories: [] });
+			}, { enabledCategories: undefined });
 		});
 	});
 

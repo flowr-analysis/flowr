@@ -34,6 +34,7 @@ S3method(scale_type,default)
 S3method(ggplot,default)
 S3method(print,ggproto)
 S3method(print,rel)
+export("+")
 export(ggplot)
 export(aes)
 export(geom_point)
@@ -65,12 +66,14 @@ importFrom(stats,setNames)`));
 		test('Correct total number of exports', () => {
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
-			assert.strictEqual(deps.namespaceInfo?.exportedSymbols.length, 9);
+			assert.strictEqual(deps.namespaceInfo?.exportedSymbols.length, 10);
 		});
 
 		test('All export names present', () => {
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
+			assert.isTrue(deps.namespaceInfo?.exportedSymbols.includes('+'));
+			assert.isFalse(deps.namespaceInfo?.exportedSymbols.includes('"+"'));
 			assert.isTrue(deps.namespaceInfo?.exportedSymbols.includes('ggplot'));
 			assert.isTrue(deps.namespaceInfo?.exportedSymbols.includes('coord_cartesian'));
 			assert.isTrue(deps.namespaceInfo?.exportedSymbols.includes('ggsave'));

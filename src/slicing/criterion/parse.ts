@@ -48,12 +48,14 @@ export function slicingCriterionToId(criterion: SingleSlicingCriterion, idMap: A
  * Tries to resolve a slicing criterion to an id, but does not throw an error if it fails.
  * @see {@link slicingCriterionToId} for the version that throws an error
  */
-export function tryResolveSliceCriterionToId(criterion: string | NodeId, idMap: AstIdMap): NodeId | undefined {
+export function tryResolveSliceCriterionToId(criterion: string | NodeId, idMap: AstIdMap, warn = true): NodeId | undefined {
 	try {
 		return slicingCriterionToId(criterion as SingleSlicingCriterion, idMap);
 	} catch(e) {
 		if(e instanceof CriteriaParseError) {
-			expensiveTrace(slicerLogger, () => `could not resolve slicing criterion ${criterion}: ${e.message}`);
+			if(warn) {
+				expensiveTrace(slicerLogger, () => `could not resolve slicing criterion ${criterion}: ${e.message}`);
+			}
 			return undefined;
 		}
 		throw e; // rethrow other errors

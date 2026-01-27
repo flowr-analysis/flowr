@@ -66,7 +66,10 @@ export async function executeDependenciesQuery({
 	const results = Object.fromEntries(await Promise.all(functions.entries().map(async([c, f]) => {
 		const results = getResults(queries, { dataflow, config, normalize }, queryResults, c, f, data);
 		// only default categories allow additional analyses, so we null-coalesce here!
-		await (DefaultDependencyCategories as Record<string, DependencyCategorySettings>)[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
+		const enabled = query.enabledCategories;
+		if(enabled === undefined || (enabled?.length > 0 && enabled.includes(c))) {
+			await (DefaultDependencyCategories as Record<string, DependencyCategorySettings>)[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
+		}
 		return [c, results];
 	}))) as {[C in DependencyCategoryName]?: DependencyInfo[]};
 
@@ -237,7 +240,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undef
 
 function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, functionFlag: DependencyCategoryName, enabled: DependencyCategoryName[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
 	// "If unset or empty, all function types are searched for."
-	if(enabled?.length && enabled.indexOf(functionFlag) < 0) {
+	if(enabled !== undefined && (enabled?.length === 0 || enabled.indexOf(functionFlag) < 0)) {
 		return [];
 	}
 	let functions: FunctionInfo[] = ignoreDefaultFunctions ? [] : [...defaultFunctions];

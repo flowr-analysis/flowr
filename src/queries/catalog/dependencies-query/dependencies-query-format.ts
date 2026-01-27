@@ -158,7 +158,7 @@ export const DependenciesQueryDefinition = {
 		type:                   Joi.string().valid('dependencies').required().description('The type of the query.'),
 		ignoreDefaultFunctions: Joi.boolean().optional().description('Should the set of functions that are detected by default be ignored/skipped? Defaults to false.'),
 		...Object.fromEntries(Object.keys(DefaultDependencyCategories).map(c => [`${c}Functions`, functionInfoSchema.description(`The set of ${c} functions to search for.`)])),
-		enabledCategories:      Joi.array().optional().items(Joi.string()).description('A set of flags that determines what types of dependencies are searched for. If unset or empty, all dependency types are searched for.'),
+		enabledCategories:      Joi.array().optional().items(Joi.string()).description('A set of flags that determines what types of dependencies are searched for. If unset, all dependency types are searched for.'),
 		additionalCategories:   Joi.object().allow(Joi.object({
 			queryDisplayName: Joi.string().description('The display name in the query result.'),
 			functions:        functionInfoSchema.description('The functions that this additional category should search for.'),

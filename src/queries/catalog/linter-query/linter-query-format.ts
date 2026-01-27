@@ -147,7 +147,7 @@ export const LinterQueryDefinition = {
 			if(isLintingResultsError(v)) {
 				return [];
 			}
-			return v.results.map(v => v.involvedId);
+			return v.results.flatMap(v => Array.isArray(v.involvedId) ? v.involvedId : [v.involvedId]);
 		}).filter(isNotUndefined);
 	}
 } as const satisfies SupportedQuery<'linter'>;

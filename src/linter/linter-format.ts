@@ -102,9 +102,9 @@ export interface LintingResult {
 	 */
 	readonly quickFix?:  LintQuickFix[]
 	/**
-	 * The node ID involved in this linting result, if applicable.
+	 * The node ID or IDs involved in this linting result, if applicable.
 	 */
-	readonly involvedId: NodeId | undefined
+	readonly involvedId: NodeId | NodeId[] | undefined
 }
 
 

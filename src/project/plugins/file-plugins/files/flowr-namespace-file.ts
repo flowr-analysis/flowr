@@ -1,6 +1,7 @@
 import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrFile } from '../../../context/flowr-file';
 import { unquoteArgument } from '../../../../abstract-interpretation/data-frame/resolve-args';
+import { removeRQuotes } from '../../../../r-bridge/retriever';
 
 export interface NamespaceInfo {
 	exportedSymbols:      string[];
@@ -80,11 +81,11 @@ function parseNamespace(file: FlowrFileProvider): NamespaceFormat {
 		switch(type) {
 			case 'exportClasses':
 			case 'exportMethods':
-				result.current.exportedFunctions.push(args);
+				result.current.exportedFunctions.push(removeRQuotes(args));
 				break;
 			case 'S3method':
 			{
-				const parts = args.split(',').map(s => s.trim());
+				const parts = args.split(',').map(s => removeRQuotes(s.trim()));
 				if(parts.length !== 2) {
 					continue;
 				}
@@ -98,7 +99,7 @@ function parseNamespace(file: FlowrFileProvider): NamespaceFormat {
 				break;
 			}
 			case 'export':
-				result.current.exportedSymbols.push(args);
+				result.current.exportedSymbols.push(removeRQuotes(args));
 				break;
 			case 'useDynLib':
 			{

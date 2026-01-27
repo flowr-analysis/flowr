@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { assertLinter, assertLinterFull } from '../_helper/linter';
+import { assertLinter, assertLinterWithIds } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-simplification';
 
@@ -54,14 +54,14 @@ print(2)
 		});
 
 		describe('if-elif-else', () => {
-			assertLinterFull('TRUE FALSE', parser, 'if(TRUE) 1 else if (FALSE) 2 else 3', 'dead-code', [
+			assertLinterWithIds('TRUE FALSE', parser, 'if(TRUE) 1 else if (FALSE) 2 else 3', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, range: [1, 17, 1, 35], involvedId: ['1@if', '1@FALSE', '1@2', '1@3', '$5', '$7', '$9'] }
 			]);
-			assertLinterFull('FALSE FALSE', parser, 'if(FALSE) 1 else if (FALSE) 2 else 3', 'dead-code', [
+			assertLinterWithIds('FALSE FALSE', parser, 'if(FALSE) 1 else if (FALSE) 2 else 3', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, range: [1, 11, 1, 11], involvedId: ['1@1', '$2'] },
 				{ certainty: LintingResultCertainty.Certain, range: [1, 29, 1, 29], involvedId: ['1@2', '$5'] }
 			]);
-			assertLinterFull('FALSE TRUE', parser, 'if(FALSE) 1 else if (TRUE) 2 else 3', 'dead-code', [
+			assertLinterWithIds('FALSE TRUE', parser, 'if(FALSE) 1 else if (TRUE) 2 else 3', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, range: [1, 11, 1, 11], involvedId: ['1@1', '$2'] },
 				{ certainty: LintingResultCertainty.Certain, range: [1, 35, 1, 35], involvedId: ['1@3', '$7'] }
 			]);

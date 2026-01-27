@@ -5,7 +5,7 @@ import type { ReplOutput } from '../cli/repl/commands/repl-main';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 // this is automatically replaced with the current version by release-it
-const version = '2.8.10';
+const version = '2.8.11';
 
 /**
  * Retrieves the current flowR version as a new {@link SemVer} object.

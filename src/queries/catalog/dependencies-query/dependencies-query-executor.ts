@@ -5,7 +5,6 @@ import {
 	type DependenciesQuery,
 	type DependenciesQueryResult,
 	type DependencyCategoryName,
-	type DependencyCategorySettings,
 	type DependencyInfo,
 	getAllCategories,
 	Unknown
@@ -62,13 +61,13 @@ export async function executeDependenciesQuery({
 
 	const queryResults = functions.values().toArray().flat().length === 0 ? { kinds: {}, '.meta': { timing: 0 } } :
 		await executeQueriesOfSameType<CallContextQuery>(data, functions.entries().map(([c, f]) => makeCallContextQuery(f, c)).toArray().flat());
-
+	const g = getAllCategories(queries);
 	const results = Object.fromEntries(await Promise.all(functions.entries().map(async([c, f]) => {
 		const results = getResults(queries, { dataflow, config, normalize }, queryResults, c, f, data);
 		// only default categories allow additional analyses, so we null-coalesce here!
 		const enabled = query.enabledCategories;
 		if(enabled === undefined || (enabled?.length > 0 && enabled.includes(c))) {
-			await (DefaultDependencyCategories as Record<string, DependencyCategorySettings>)[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
+			await g[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
 		}
 		return [c, results];
 	}))) as {[C in DependencyCategoryName]?: DependencyInfo[]};

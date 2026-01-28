@@ -10,6 +10,7 @@ import {
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
+import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], source: [], read: [], write: [], visualize: [], test: [] };
 
@@ -421,6 +422,30 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				'test': {
 					queryDisplayName: 'Testing',
 					functions:        [{ name: 'cat', argIdx: 0 }]
+				}
+			}
+		});
+		testQuery('simple additional', 'cat("a")', {
+			test: [{ value: 'cat', functionName: 'cat', nodeId: '1@cat' }]
+		}, {
+			ignoreDefaultFunctions: true,
+			additionalCategories:   {
+				'test': {
+					queryDisplayName:   'Testing',
+					functions:          [],
+					additionalAnalysis: async(data, _id, _f, _qr, results) => {
+						const ns = (await data.analyzer.normalize()).idMap;
+						for(const n of ns.values()) {
+							if(n.type === RType.FunctionCall && n.lexeme === 'cat' && n.arguments.length > 0) {
+								results.push({
+									nodeId:       n.info.id,
+									functionName: 'cat',
+									value:        n.lexeme
+								});
+								break;
+							}
+						}
+					}
 				}
 			}
 		});

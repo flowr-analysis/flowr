@@ -6,11 +6,16 @@ import type { DeepReadonly } from 'ts-essentials';
 import type { RLicenseElementInfo } from '../../../../util/r-license';
 import { parseRLicense } from '../../../../util/r-license';
 import { Package, type PackageType } from '../../package-version-plugins/package';
+import { removeRQuotes } from '../../../../r-bridge/retriever';
 
 export type DCF = Map<string, string[]>;
 
 /**
  * This decorates a text file and provides access to its content as a DCF (Debian Control File)-like structure.
+ * Please use the static {@link FlowrDescriptionFile.from} method to create instances of this class.
+ * To access description specific fields, use the provided methods like {@link license}, {@link authors}, {@link suggests}, and {@link collate}.
+ * These methods parse and return the relevant information in structured formats.
+ * To access raw fields, use the {@link content} method inherited from {@link FlowrFile}.
  */
 export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 	private readonly wrapped: FlowrFileProvider;
@@ -69,9 +74,21 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 		);
 	}
 
+	/**
+	 * Returns the parsed suggested packages from the 'Suggests' field in the DESCRIPTION file.
+	 */
 	public suggests(): Package[] | undefined {
 		const suggests = this.content().get('Suggests');
 		return suggests ? parsePackagesWithVersions(suggests, 'package') : undefined;
+	}
+
+	/**
+	 * Returns the 'Collate' field from the DESCRIPTION file.
+	 */
+	public collate(): readonly string[] | undefined {
+		const c = this.content().get('Collate');
+		// we join newlines, and then split quote sensitive:
+		return c ? splitAtEscapeSensitive(c.join(' '), true, ' ').map(s => removeRQuotes(s).trim()).filter(s => s.length > 0) : undefined;
 	}
 }
 

@@ -15,7 +15,7 @@ import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visito
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { Range } from 'semver';
-import type { AsyncOrSync } from 'ts-essentials';
+import type { AsyncOrSync, MarkOptional } from 'ts-essentials';
 import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { TestFunctions } from './function-info/test-functions';
 
@@ -26,6 +26,15 @@ export interface DependencyCategorySettings {
     functions:           FunctionInfo[]
 	/** this describes the global default value for this category, e.g., 'stdout' for write operations, please be aware, that this can be overwritten by a by-function default value */
     defaultValue?:       string
+	/**
+	 * An optional additional analysis step that is executed after the main function-based analysis has been performed.
+	 * To add or modify dependency info entries, simply modify the `result` array.
+	 * @param data  - The basic query data.
+	 * @param ignoreDefault - Whether the default functions were ignored.
+	 * @param functions - The functions used for this category.
+	 * @param queryResults - The results of the call context query.
+	 * @param result - The current result array to which additional dependency info can be added.
+	 */
     additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => AsyncOrSync<void>
 }
 
@@ -85,7 +94,7 @@ export interface DependenciesQuery extends BaseQueryFormat, Partial<Record<`${De
     readonly type:                    'dependencies'
     readonly enabledCategories?:      DependencyCategoryName[]
     readonly ignoreDefaultFunctions?: boolean
-    readonly additionalCategories?:   Record<string, Omit<DependencyCategorySettings, 'additionalAnalysis'>>
+    readonly additionalCategories?:   Record<string, MarkOptional<DependencyCategorySettings, 'additionalAnalysis'>>
 }
 
 export type DependenciesQueryResult = BaseQueryResult & { [C in DefaultDependencyCategoryName]: DependencyInfo[] } & { [S in string]?: DependencyInfo[] }

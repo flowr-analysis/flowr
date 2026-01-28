@@ -3,12 +3,9 @@ import {
 	descriptionFileLog
 } from '../file-plugins/flowr-analyzer-description-file-plugin';
 import { SemVer } from 'semver';
-import { type PackageType } from './package';
+import type { Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { FileRole } from '../../context/flowr-file';
-import type { DCF } from '../file-plugins/files/flowr-description-file';
-import { parsePackagesWithVersions } from '../file-plugins/files/flowr-description-file';
-import type { DeepReadonly } from 'ts-essentials';
 
 
 /**
@@ -30,14 +27,14 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 		}
 
 		/** this will do the caching etc. for me */
-		const deps = descFiles[0].content();
+		const deps = descFiles[0];
 
-		this.retrieveVersionsFromField(ctx, deps, 'Depends', 'r');
-		this.retrieveVersionsFromField(ctx, deps, 'Imports', 'package');
+		this.retrieveVersionsFromField(ctx, deps.depends() ?? []);
+		this.retrieveVersionsFromField(ctx, deps.imports() ?? []);
 	}
 
-	private retrieveVersionsFromField(ctx: FlowrAnalyzerContext, file: DeepReadonly<DCF>, field: string, type?: PackageType): void {
-		for(const pkg of parsePackagesWithVersions(file.get(field) ?? [], type)) {
+	private retrieveVersionsFromField(ctx: FlowrAnalyzerContext, pkgs: readonly Package[]): void {
+		for(const pkg of pkgs) {
 			ctx.deps.addDependency(pkg);
 		}
 	}

@@ -39,9 +39,11 @@ Imports:
     ads (>= 0.8.1)
 Suggests:
     sf (>= 0.8-1),
-    tibble, testthat (>= 2.1.5), svglite (>= 1.1.2),
+    tibble, testthat (>= 2.1.5), svglite (>= 
+    1.1.2),
     xml2
-    vdiffr (>= 1.5.6),
+    vdiffr 
+    (>= 1.5.6),
 Enhances:
     something
 LazyData: true

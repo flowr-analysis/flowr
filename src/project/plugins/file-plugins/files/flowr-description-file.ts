@@ -90,6 +90,16 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 		// we join newlines, and then split quote sensitive:
 		return c ? splitAtEscapeSensitive(c.join(' '), true, ' ').map(s => removeRQuotes(s).trim()).filter(s => s.length > 0) : undefined;
 	}
+
+	public depends(): readonly Package[] | undefined {
+		const deps = this.content().get('Depends');
+		return deps ? parsePackagesWithVersions(deps, 'r') : undefined;
+	}
+
+	public imports(): readonly Package[] | undefined {
+		const imps = this.content().get('Imports');
+		return imps ? parsePackagesWithVersions(imps, 'package') : undefined;
+	}
 }
 
 /**
@@ -153,7 +163,7 @@ function cleanValues(values: string): string[] {
 }
 
 
-const VersionRegex = /^([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([^)]+)\))?$/;
+const VersionRegex = /([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([^)]+)\))?\s*/;
 
 /**
  * Parses package strings with optional version constraints into Package objects.
@@ -161,22 +171,22 @@ const VersionRegex = /^([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([^)]+)\))?$/;
  * @param type           - The type of the packages (e.g., 'r' or 'package')
  */
 export function parsePackagesWithVersions(packageStrings: readonly string[], type?: PackageType): Package[] {
+	let str = packageStrings.join(' ');
+	let match: RegExpExecArray | null;
 	const packages: Package[] = [];
-	for(const entry of packageStrings) {
-		const match = VersionRegex.exec(entry);
+	// match until exhaustion
+	while((match = VersionRegex.exec(str)) !== null) {
+		const [, name, operator, version] = match;
 
-		if(match) {
-			const [, name, operator, version] = match;
-
-			const range = Package.parsePackageVersionRange(operator, version);
-			packages.push(new Package(
-				{
-					name:               name,
-					type:               type,
-					versionConstraints: range ? [range] : undefined
-				}
-			));
-		}
+		const range = Package.parsePackageVersionRange(operator, version);
+		packages.push(new Package(
+			{
+				name:               name,
+				type:               type,
+				versionConstraints: range ? [range] : undefined
+			}
+		));
+		str = str.slice(match.index + match[0].length);
 	}
 	return packages;
 }

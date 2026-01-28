@@ -91,11 +91,17 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 		return c ? splitAtEscapeSensitive(c.join(' '), true, ' ').map(s => removeRQuotes(s).trim()).filter(s => s.length > 0) : undefined;
 	}
 
+	/**
+	 * Returns the parsed dependencies from the 'Depends' field in the DESCRIPTION file.
+	 */
 	public depends(): readonly Package[] | undefined {
 		const deps = this.content().get('Depends');
 		return deps ? parsePackagesWithVersions(deps, 'r') : undefined;
 	}
 
+	/**
+	 * Returns the parsed imports from the 'Imports' field in the DESCRIPTION file.
+	 */
 	public imports(): readonly Package[] | undefined {
 		const imps = this.content().get('Imports');
 		return imps ? parsePackagesWithVersions(imps, 'package') : undefined;

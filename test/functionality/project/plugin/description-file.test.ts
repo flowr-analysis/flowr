@@ -39,18 +39,18 @@ Imports:
     ads (>= 0.8.1)
 Suggests:
     sf (>= 0.8-1),
-    tibble,
-    testthat (>= 2.1.5),
-    svglite (>= 1.1.2),
+    tibble, testthat (>= 2.1.5), svglite (>= 
+    1.1.2),
     xml2
-    vdiffr (>= 1.5.6),
+    vdiffr 
+    (>= 1.5.6),
 Enhances:
     something
 LazyData: true
 Collate:
-    'aaa.R'
-    'main.R'
-    'zzz.R'`;
+    'aaa.R'   'bbb.R'
+    "main.R"
+    'zzz.R' 'x.R'`;
 const DescriptionB = `Package: Sample
 Type: Package
 Title: Record Linkage and Epidemiological Case Definitions in 'R'
@@ -147,6 +147,13 @@ describe('DESCRIPTION-file', function() {
 			assert.includeMembers(
 				sugg?.map(n => n.name),
 				['sf', 'tibble', 'testthat', 'svglite', 'xml2', 'vdiffr']
+			);
+		});
+		test('Collate Parsing', () => {
+			const collate = getDescContent(ctx).collate();
+			assert.deepStrictEqual(
+				collate,
+				['aaa.R', 'bbb.R', 'main.R', 'zzz.R', 'x.R']
 			);
 		});
 	});

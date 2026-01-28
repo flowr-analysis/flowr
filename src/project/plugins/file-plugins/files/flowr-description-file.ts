@@ -6,11 +6,16 @@ import type { DeepReadonly } from 'ts-essentials';
 import type { RLicenseElementInfo } from '../../../../util/r-license';
 import { parseRLicense } from '../../../../util/r-license';
 import { Package, type PackageType } from '../../package-version-plugins/package';
+import { removeRQuotes } from '../../../../r-bridge/retriever';
 
 export type DCF = Map<string, string[]>;
 
 /**
  * This decorates a text file and provides access to its content as a DCF (Debian Control File)-like structure.
+ * Please use the static {@link FlowrDescriptionFile.from} method to create instances of this class.
+ * To access description specific fields, use the provided methods like {@link license}, {@link authors}, {@link suggests}, and {@link collate}.
+ * These methods parse and return the relevant information in structured formats.
+ * To access raw fields, use the {@link content} method inherited from {@link FlowrFile}.
  */
 export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 	private readonly wrapped: FlowrFileProvider;
@@ -69,9 +74,37 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 		);
 	}
 
+	/**
+	 * Returns the parsed suggested packages from the 'Suggests' field in the DESCRIPTION file.
+	 */
 	public suggests(): Package[] | undefined {
 		const suggests = this.content().get('Suggests');
 		return suggests ? parsePackagesWithVersions(suggests, 'package') : undefined;
+	}
+
+	/**
+	 * Returns the 'Collate' field from the DESCRIPTION file.
+	 */
+	public collate(): readonly string[] | undefined {
+		const c = this.content().get('Collate');
+		// we join newlines, and then split quote sensitive:
+		return c ? splitAtEscapeSensitive(c.join(' '), true, ' ').map(s => removeRQuotes(s).trim()).filter(s => s.length > 0) : undefined;
+	}
+
+	/**
+	 * Returns the parsed dependencies from the 'Depends' field in the DESCRIPTION file.
+	 */
+	public depends(): readonly Package[] | undefined {
+		const deps = this.content().get('Depends');
+		return deps ? parsePackagesWithVersions(deps, 'r') : undefined;
+	}
+
+	/**
+	 * Returns the parsed imports from the 'Imports' field in the DESCRIPTION file.
+	 */
+	public imports(): readonly Package[] | undefined {
+		const imps = this.content().get('Imports');
+		return imps ? parsePackagesWithVersions(imps, 'package') : undefined;
 	}
 }
 
@@ -136,7 +169,7 @@ function cleanValues(values: string): string[] {
 }
 
 
-const VersionRegex = /^([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([^)]+)\))?$/;
+const VersionRegex = /([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([^)]+)\))?\s*/;
 
 /**
  * Parses package strings with optional version constraints into Package objects.
@@ -144,22 +177,22 @@ const VersionRegex = /^([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([^)]+)\))?$/;
  * @param type           - The type of the packages (e.g., 'r' or 'package')
  */
 export function parsePackagesWithVersions(packageStrings: readonly string[], type?: PackageType): Package[] {
+	let str = packageStrings.join(' ');
+	let match: RegExpExecArray | null;
 	const packages: Package[] = [];
-	for(const entry of packageStrings) {
-		const match = VersionRegex.exec(entry);
+	// match until exhaustion
+	while((match = VersionRegex.exec(str)) !== null) {
+		const [, name, operator, version] = match;
 
-		if(match) {
-			const [, name, operator, version] = match;
-
-			const range = Package.parsePackageVersionRange(operator, version);
-			packages.push(new Package(
-				{
-					name:               name,
-					type:               type,
-					versionConstraints: range ? [range] : undefined
-				}
-			));
-		}
+		const range = Package.parsePackageVersionRange(operator, version);
+		packages.push(new Package(
+			{
+				name:               name,
+				type:               type,
+				versionConstraints: range ? [range] : undefined
+			}
+		));
+		str = str.slice(match.index + match[0].length);
 	}
 	return packages;
 }

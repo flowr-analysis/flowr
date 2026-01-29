@@ -31,7 +31,6 @@ body:
       options:
 # START::Versions
         - <Older> (please consider updating)
-        - v2.8.4 (Jan 5, 2026)
         - v2.8.5 (Jan 5, 2026)
         - v2.8.6 (Jan 13, 2026)
         - v2.8.7 (Jan 16, 2026)
@@ -39,6 +38,7 @@ body:
         - v2.8.9 (Jan 18, 2026)
         - v2.8.10 (Jan 27, 2026)
         - v2.8.11 (Jan 27, 2026)
+        - v2.8.12 (Jan 28, 2026)
         - Unknown
         - Unreleased/Dev 
 # END::Versions

@@ -11,7 +11,7 @@ import {
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import {
+import { type DataflowGraphVertexInfo ,
 	type ContainerIndices,
 	type ContainerIndicesCollection,
 	type ContainerLeafIndex,
@@ -24,11 +24,12 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { constructNestedAccess, getAccessOperands } from '../../../../../../util/containers';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { unpackNonameArg } from '../argument/unpack-argument';
+import { unpackArg, unpackNonameArg } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
 import { BuiltInProcessorMapper, BuiltInProcName } from '../../../../../environments/built-in';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { handleReplacementOperator } from '../../../../../graph/unknown-replacement';
+import type { DeepWritable } from 'ts-essentials';
 
 
 /**
@@ -73,6 +74,10 @@ export function processReplacementFunction<OtherInfo>(
 	const createdVert = res.graph.getVertex(rootId);
 	if(createdVert?.tag === VertexType.FunctionCall) {
 		createdVert.origin = [BuiltInProcName.Replacement];
+	}
+	const targetVert = res.graph.getVertex(unpackArg(args[0])?.info.id as NodeId);
+	if(targetVert?.tag === VertexType.VariableDefinition) {
+		(targetVert as DeepWritable<DataflowGraphVertexInfo>).par = true;
 	}
 
 	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);

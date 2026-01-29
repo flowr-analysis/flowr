@@ -425,7 +425,6 @@ export function getAllLinkedFunctionDefinitions(
 
 	while(potential.length !== 0) {
 		const cid = potential.pop() as NodeId;
-		// console.log(`visiting ${recoverName(cid, dataflowGraph.idMap)} ${cid}`);
 		visited.add(cid);
 
 		if(isBuiltIn(cid)) {
@@ -456,7 +455,7 @@ export function getAllLinkedFunctionDefinitions(
 			}
 		}
 
-		if(vertex.tag === VertexType.FunctionCall || hasReturnEdge) {
+		if(vertex.tag === VertexType.FunctionCall || hasReturnEdge || (vertex.tag === VertexType.VariableDefinition && vertex.par)) {
 			continue;
 		}
 

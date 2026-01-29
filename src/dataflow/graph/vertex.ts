@@ -264,6 +264,8 @@ export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVert
 	readonly tag:          VertexType.VariableDefinition
 	/** Does not require an environment, those are attached to the call */
 	readonly environment?: undefined
+	/** Indicates whether the variable definition is a *partial* definition (e.g,. in `x[a] <- b`) */
+	readonly par?:         true;
 }
 
 /**

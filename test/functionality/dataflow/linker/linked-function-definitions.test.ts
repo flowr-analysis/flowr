@@ -58,4 +58,23 @@ describe('Linked Function Definitions', withTreeSitter(ts => {
 	expectLinkedFns('multiple defs', 'x <- function(a) { a + 1 }\nk <- function() function() 2\ny <- function() { if(u) { x } else { k() } } \nh <- y()', {
 		'4@h': { fns: ['1@function', '2@function'] }
 	});
+	expectLinkedFns('indirected to no def', 'x <- function(a) { a + 1 }\ny <- x()', {
+		'2@y': { fns: [] }
+	});
+	expectLinkedFns('more complicated indirect to no def', `
+ggp <- function(\`_x\` = NULL, ...) {
+   e <- new.env(parent = emptyenv())
+   x <- function() { eval('x') }
+   e$a <- x
+   e
+}
+example <- ggp("example", a,
+  def = abc(),
+  onDo = function(...) {
+    foo()
+  }
+)
+	`, {
+		'8@example': { fns: [] }
+	});
 }));

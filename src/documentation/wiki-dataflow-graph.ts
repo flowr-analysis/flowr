@@ -481,6 +481,7 @@ The implementation is relatively sparse and similar to the other marker vertices
 ${
 	ctx.hierarchy('DataflowGraphVertexVariableDefinition')
 }
+Of only interest is \`par\`, which signals that the definitions is partial (e.g., in the case of \`x[a] <- 1\`).
 
 Of course, there are not just operators that define variables, but also functions, like \`assign\`.
 

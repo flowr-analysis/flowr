@@ -56,7 +56,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 	const rid = read.nodeId;
 	for(const target of probableTarget) {
 		const tid = target.nodeId;
-		if((read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction) && (isBuiltIn(target.definedAt))) {
+		if((read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction) && isBuiltIn(target.definedAt)) {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads | EdgeType.Calls);
 		} else {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads);

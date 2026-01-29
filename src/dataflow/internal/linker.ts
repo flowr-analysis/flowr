@@ -254,10 +254,10 @@ export function linkFunctionCallWithSingleTarget(
 			if(defs === undefined) {
 				continue;
 			}
-			for(const def of defs) {
-				if(!isBuiltIn(def.nodeId)) {
-					graph.addEdge(ingoing, def, EdgeType.DefinedByOnCall);
-					graph.addEdge(id, def, EdgeType.DefinesOnCall);
+			for(const { nodeId } of defs) {
+				if(!isBuiltIn(nodeId)) {
+					graph.addEdge(ingoing.nodeId, nodeId, EdgeType.DefinedByOnCall);
+					graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
 				}
 			}
 		}
@@ -319,6 +319,7 @@ function linkFunctionCall(
 	}
 
 	const [functionDefs] = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph);
+
 	const propagateExitPoints: ExitPoint[] = [];
 	for(const def of functionDefs.values()) {
 		// we can skip this if we already linked it
@@ -395,6 +396,18 @@ const LinkedFnFollowBits = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.Define
 
 /**
  * Finds all linked function definitions starting from the given set of read ids.
+ * This is a complicated function, please only call it if you know what you are doing.
+ * For example, if you are interested in the called functions of a function call, use {@link getAllFunctionCallTargets} instead.
+ * This function here expects you to handle the accessed objects yourself (e.g,. already resolve the first layer of reads/returns/calls/... or resolve the identifier by name)
+ * and then pass in the relevant read ids.
+ * @example
+ * Consider a scenario like this:
+ * ```R
+ * x <- function() 3
+ * x()
+ * ```
+ * To resolve the call `x` in the second line, use {@link getAllFunctionCallTargets}!
+ * To know what fdefs the definition of `x` in the first line links to, you can use {@link getAllLinkedFunctionDefinitions|this function}.
  */
 export function getAllLinkedFunctionDefinitions(
 	functionDefinitionReadIds: ReadonlySet<NodeId>,
@@ -411,15 +424,16 @@ export function getAllLinkedFunctionDefinitions(
 	const visited = new Set<NodeId>();
 
 	while(potential.length !== 0) {
-		const currentId = potential.pop() as NodeId;
-		visited.add(currentId);
+		const cid = potential.pop() as NodeId;
+		// console.log(`visiting ${recoverName(cid, dataflowGraph.idMap)} ${cid}`);
+		visited.add(cid);
 
-		if(isBuiltIn(currentId)) {
-			builtIns.add(currentId);
+		if(isBuiltIn(cid)) {
+			builtIns.add(cid);
 			continue;
 		}
 
-		const currentInfo = dataflowGraph.get(currentId, true);
+		const currentInfo = dataflowGraph.get(cid, true);
 		if(currentInfo === undefined) {
 			continue;
 		}
@@ -442,7 +456,7 @@ export function getAllLinkedFunctionDefinitions(
 			}
 		}
 
-		if(hasReturnEdge) {
+		if(vertex.tag === VertexType.FunctionCall || hasReturnEdge) {
 			continue;
 		}
 
@@ -478,7 +492,7 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 			let allBuiltIn = true;
 			for(const target of probableTarget) {
 				// we can stick with maybe even if readId.attribute is always
-				graph.addEdge(bodyInput, target, EdgeType.Reads);
+				graph.addEdge(bodyInput.nodeId, target.nodeId, EdgeType.Reads);
 				if(!isReferenceType(target.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
 					allBuiltIn = false;
 				}

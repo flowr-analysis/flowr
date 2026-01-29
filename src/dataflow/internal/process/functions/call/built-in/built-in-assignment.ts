@@ -434,12 +434,13 @@ export function markAsAssignment<OtherInfo>(
 
 	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, data.ctx.config);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
+	const nid = nodeToDefine.nodeId;
 	if(!assignmentConfig?.quoteSource) {
 		for(const sourceId of sourceIds) {
-			information.graph.addEdge(nodeToDefine, sourceId, EdgeType.DefinedBy);
+			information.graph.addEdge(nid, sourceId, EdgeType.DefinedBy);
 		}
 	}
-	information.graph.addEdge(nodeToDefine, rootIdOfAssignment, EdgeType.DefinedBy);
+	information.graph.addEdge(nid, rootIdOfAssignment, EdgeType.DefinedBy);
 	// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
 	const out = information.graph.outgoingEdges(nodeToDefine.nodeId);
 	for(const [id, edge] of (out ?? [])) {

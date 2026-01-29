@@ -155,8 +155,9 @@ function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: Dataf
 				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${ingoing.nodeId} in closure of function definition ${call}`);
 				let allBuiltIn = true;
 				for(const ref of resolved) {
-					info.graph.addEdge(ingoing, ref, EdgeType.Reads);
-					info.graph.addEdge(call, ref, EdgeType.Reads); // because the def. is the anonymous call
+					const rid = ref.nodeId;
+					info.graph.addEdge(ingoing.nodeId, rid, EdgeType.Reads);
+					info.graph.addEdge(call, rid, EdgeType.Reads); // because the def. is the anonymous call
 					if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
 						allBuiltIn = false;
 					}

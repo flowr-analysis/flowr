@@ -53,11 +53,13 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 		return;
 	}
 
+	const rid = read.nodeId;
 	for(const target of probableTarget) {
-		// we can stick with maybe even if readId.attribute is always
-		nextGraph.addEdge(read, target, EdgeType.Reads);
+		const tid = target.nodeId;
 		if((read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction) && (isBuiltIn(target.definedAt))) {
-			nextGraph.addEdge(read, target, EdgeType.Calls);
+			nextGraph.addEdge(rid, tid, EdgeType.Reads | EdgeType.Calls);
+		} else {
+			nextGraph.addEdge(rid, tid, EdgeType.Reads);
 		}
 	}
 }

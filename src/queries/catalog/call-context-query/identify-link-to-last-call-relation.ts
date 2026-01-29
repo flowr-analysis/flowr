@@ -10,10 +10,12 @@ import { assertUnreachable } from '../../../util/assert';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { LinkTo } from './call-context-query-format';
+import type { LinkToLastCall } from './call-context-query-format';
 import { CascadeAction } from './cascade-action';
-import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
 import type { PromotedLinkTo } from './call-context-query-executor';
+import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import { CfgKind } from '../../../project/cfg-kind';
+import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
 
 export enum CallTargets {
     /** call targets a function that is not defined locally in the script (e.g., the call targets a library function) */
@@ -115,22 +117,39 @@ export function getValueOfArgument<Types extends readonly RType[] = readonly RTy
 }
 
 /**
+ * **Please refer to {@link identifyLinkToRelation}.**
+ *
  * Identifies nodes that link to the last call of a specified function from a given starting node in the control flow graph.
  * If you pass on `knownCalls` (e.g., produced by {@link getCallsInCfg}), this will only respect the functions
  * listed there and ignore any other calls. This can be also used to speed up the process if you already have
  * the known calls available.
+ * @see {@link identifyLinkToLastCallRelationSync} for the synchronous version.
  */
-export function identifyLinkToLastCallRelation(
+export async function identifyLinkToLastCallRelation(
+	from: NodeId,
+	analyzer: ReadonlyFlowrAnalysisProvider,
+	l: LinkToLastCall<RegExp> | PromotedLinkTo<LinkToLastCall<RegExp>>,
+	knownCalls?: Map<NodeId, Required<DataflowGraphVertexFunctionCall>>
+): Promise<NodeId[]> {
+	const graph = (await analyzer.dataflow()).graph;
+	const cfg = (await analyzer.controlflow([], CfgKind.WithDataflow)).graph;
+
+	return identifyLinkToLastCallRelationSync(from, cfg, graph, l, knownCalls);
+}
+
+/**
+ * Synchronous version of {@link identifyLinkToLastCallRelation}.
+ */
+export function identifyLinkToLastCallRelationSync(
 	from: NodeId,
 	cfg: ControlFlowGraph,
 	graph: DataflowGraph,
-	{ callName, ignoreIf, cascadeIf }: LinkTo<RegExp> | PromotedLinkTo,
+	{ callName, cascadeIf, ignoreIf }: LinkToLastCall<RegExp> | PromotedLinkTo<LinkToLastCall<RegExp>>,
 	knownCalls?: Map<NodeId, Required<DataflowGraphVertexFunctionCall>>
 ): NodeId[] {
 	if(ignoreIf?.(from, graph)) {
 		return [];
 	}
-
 	const found: NodeId[] = [];
 	const cNameCheck = callName instanceof RegExp ? ({ name }: DataflowGraphVertexFunctionCall) => callName.test(name)
 		: ({ name }: DataflowGraphVertexFunctionCall) => callName.has(name);

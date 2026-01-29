@@ -15,11 +15,12 @@ import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
 import type { BasicQueryData } from '../../base-query-format';
-import { identifyLinkToLastCallRelation, satisfiesCallTargets } from './identify-link-to-last-call-relation';
+import { satisfiesCallTargets } from './identify-link-to-last-call-relation';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { CfgKind } from '../../../project/cfg-kind';
 import { getCallsInCfg } from '../../../control-flow/extract-cfg';
+import { identifyLinkToRelation } from './identify-link-to-relation';
 
 /* if the node is effected by nse, we have an ingoing nse edge */
 function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
@@ -74,7 +75,7 @@ type PromotedQuery = Omit<CallContextQuery, 'callName' | 'fileFilter' | 'linkTo'
     fileFilter?: FileFilter<RegExp | Set<string>>,
     linkTo?:     PromotedLinkTo | PromotedLinkTo[]
 };
-export type PromotedLinkTo = Omit<LinkTo, 'callName'> & {callName: RegExp | Set<string>}
+export type PromotedLinkTo<LT = LinkTo> = Omit<LT, 'callName'> & {callName: RegExp | Set<string>}
 
 function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
     promotedQueries: PromotedQuery[],
@@ -281,10 +282,10 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 				const linked = Array.isArray(query.linkTo) ? query.linkTo : [query.linkTo];
 				for(const link of linked) {
 					/* if we have a linkTo query, we have to find the last call */
-					const lastCall = identifyLinkToLastCallRelation(nodeId, cfg.graph, dataflow.graph, link, calls);
-					if(lastCall) {
+					const linkTos = await identifyLinkToRelation(nodeId, analyzer, link, calls);
+					if(linkTos) {
 						linkedIds ??= new Set();
-						for(const l of lastCall) {
+						for(const l of linkTos) {
 							if(link.attachLinkInfo) {
 								linkedIds.add({ id: l, info: link.attachLinkInfo });
 							} else {

@@ -300,7 +300,7 @@ export function AnyQuerySchema() {
 	return Joi.alternatives(
 		SupportedQueriesSchema(),
 		VirtualQuerySchema()
-	).description('Any query');
+	).description('A virtual or an active query!');
 }
 
 /**

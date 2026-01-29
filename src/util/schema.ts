@@ -26,7 +26,7 @@ export function genericDescription(level: number, formatter: OutputFormatter, na
 	}
 	const lines = [...headerLine(level, formatter, name, desc.type ?? 'unknown', desc.flags)];
 	if('allow' in desc) {
-		lines.push({ level: level + 1, text: `Allows only the values: ${(desc['allow'] as string[]).map(v => "'" + v + "'").join(', ')}` });
+		lines.push({ level: level + 1, text: `Only allows: ${(desc['allow'] as string[]).map(v => "'" + v + "'").join(', ')}` });
 	}
 	switch(desc.type) {
 		case 'object':
@@ -64,19 +64,17 @@ function printFlags(flags: object | undefined): string {
 	if('presence' in flags) {
 		flagText += String(flags['presence']);
 	}
-	return flagText.trim().length > 0 ? '[' + flagText + ']' : '';
+	return flagText.trim().length > 0 ? '[' + flagText + '] ' : '';
 }
 
 /**
  * Creates the header line(s) for a schema description.
  */
 export function headerLine(level: number, formatter: OutputFormatter, name: string, type: string, flags: object | undefined): SchemaLine[] {
-	const text = `- ${bold(name, formatter)} ${formatter.format(type, { effect: ColorEffect.Foreground, color: Colors.White })} ${printFlags(flags)}`;
-	const baseLine = { level, text };
-	if(flags && 'description' in flags) {
-		return [baseLine, { level: level + 1, text: italic(flags['description'] as string, formatter) }];
-	}
-	return [baseLine];
+	const fnam = name === '.' ? '' : bold(name, formatter) + ' ';
+	const fdesc = flags && 'description' in flags ? italic(flags['description'] as string, formatter) + ' ' : '';
+	const text = `- ${fnam}${printFlags(flags)}${fdesc}(${formatter.format(type, { effect: ColorEffect.Foreground, color: Colors.White })})`;
+	return [{ level, text }];
 }
 
 /**

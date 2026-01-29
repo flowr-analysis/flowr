@@ -157,15 +157,8 @@ async function getWith<Elements extends FlowrSearchElement<ParentInformation>[],
 		args?: EnrichmentElementArguments<Enrichment>
 	}): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 
-	const data = {
-		normalize: await input.normalize(),
-		dataflow:  await input.dataflow(),
-		cfg:       await input.controlflow(),
-		config:    input.flowrConfig
-	};
-
 	return (await elements.enrich(input, info, args)).mutate(
-		async s => await Promise.all(s.map(e => enrichElement(e, elements, data, info, args))) as Elements
+		async s => await Promise.all(s.map(e => enrichElement(e, elements, input, info, args))) as Elements
 	) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
 }
 

@@ -129,7 +129,9 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	}, new Map<string, DependencyInfo[]>());
 	for(const [functionName, infos] of grouped) {
 		result.push(`       ╰ \`${functionName}\``);
-		result.push(infos.map(i => `           ╰ Node Id: ${i.nodeId}${i.value !== undefined ? `, \`${i.value}\`` : ''}${i.derivedVersion !== undefined ? `, Version: \`${i.derivedVersion.format()}\`` : ''}`).join('\n'));
+		result.push(infos.map(i =>
+			`           ╰ Node Id: ${i.nodeId}${i.value !== undefined ? `, \`${i.value}\`` : ''}${i.derivedVersion !== undefined ? `, Version: \`${i.derivedVersion.format()}\`` : ''}${i.linkedIds ? `, linked: [${i.linkedIds.join(', ')}]` : ''}`
+		).join('\n'));
 	}
 }
 

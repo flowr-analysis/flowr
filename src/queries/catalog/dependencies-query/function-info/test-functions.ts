@@ -11,7 +11,7 @@ const ExpectFunctions: LinkToNestedCall = {
 		'expect_vector|expect_no_error|expect_no_warning|expect_no_message|expect_no_condition|expect_invisible|expect_visible|' +
 		'expect_output|expect_silent|expect_snapshot|expect_snapshot_value|expect_snapshot_file|announce_snapshot_file|' +
 		'compare_file_binary|compare_file_text|snapshot_accept|snapshot_reject|snapshot_review|' +
-		'fail|pass|expect_success|expect_failure|expect_snapshot_failure|show_failure| + ' +
+		'fail|pass|expect_success|expect_failure|expect_snapshot_failure|show_failure|' +
 		/* tinytest */
 		'exit_file|exit_if_not|expect_equal|expect_identical|expect_equivalent|expect_true|expect_false|expect_silent|expect_null|' +
 		'expect_inherits|expect_error|expect_warning|expect_message|expect_stdout|expect_equal_to_reference|' +

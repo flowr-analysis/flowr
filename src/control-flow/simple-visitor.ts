@@ -39,7 +39,9 @@ export function visitCfgInReverseOrder(
 		}
 		const incoming = graph.outgoingEdges(current);
 		if(incoming) {
-			queue = queue.concat(incoming.keys().toArray());
+			for(const c of incoming.keys()) {
+				queue.push(c);
+			}
 		}
 	}
 }

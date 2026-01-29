@@ -1,6 +1,5 @@
 import type { FlowrSearchElement, FlowrSearchElements } from '../flowr-search';
 import type {
-	NormalizedAst,
 	ParentInformation,
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -8,9 +7,6 @@ import { type MergeableRecord , deepMergeObject } from '../../util/objects';
 import { VertexType } from '../../dataflow/graph/vertex';
 import type { Identifier } from '../../dataflow/environments/identifier';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
-import {
-	identifyLinkToLastCallRelation
-} from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { guard, isNotUndefined } from '../../util/assert';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -19,17 +15,16 @@ import type { Query, QueryResult } from '../../queries/query';
 import { type CfgSimplificationPassName , cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
 import type { AsyncOrSync, AsyncOrSyncType } from 'ts-essentials';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
-import type { DataflowInformation } from '../../dataflow/info';
 import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
 import { CfgKind } from '../../project/cfg-kind';
-import type { FlowrConfigOptions } from '../../config';
+import { identifyLinkToRelation } from '../../queries/catalog/call-context-query/identify-link-to-relation';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
 	/**
 	 * A function that is applied to each element of the search to enrich it with additional data.
 	 */
-	readonly enrichElement?: (element: FlowrSearchElement<ParentInformation>, search: FlowrSearchElements<ParentInformation>, data: {dataflow: DataflowInformation, normalize: NormalizedAst, cfg: ControlFlowInformation, config: FlowrConfigOptions}, args: ElementArguments | undefined, previousValue: ElementContent | undefined) => AsyncOrSync<ElementContent>
+	readonly enrichElement?: (element: FlowrSearchElement<ParentInformation>, search: FlowrSearchElements<ParentInformation>, analyzer: ReadonlyFlowrAnalysisProvider, args: ElementArguments | undefined, previousValue: ElementContent | undefined) => AsyncOrSync<ElementContent>
 	readonly enrichSearch?:  (search: FlowrSearchElements<ParentInformation>, data: ReadonlyFlowrAnalysisProvider, args: SearchArguments | undefined, previousValue: SearchContent | undefined) => AsyncOrSync<SearchContent>
 	/**
 	 * The mapping function used by the {@link Mapper.Enrichment} mapper.
@@ -110,14 +105,16 @@ export interface QueryDataSearchContent extends MergeableRecord {
  */
 export const Enrichments = {
 	[Enrichment.CallTargets]: {
-		enrichElement: (e, _s, data, args, prev) => {
+		enrichElement: async(e, _s, analyzer, args, prev) => {
 			// we don't resolve aliases here yet!
 			const content: CallTargetsContent = { targets: [] };
-			const callVertex = data.dataflow.graph.getVertex(e.node.info.id);
+			const df = await analyzer.dataflow();
+			const n = await analyzer.normalize();
+			const callVertex = df.graph.getVertex(e.node.info.id);
 			if(callVertex?.tag === VertexType.FunctionCall) {
-				const origins = getOriginInDfg(data.dataflow.graph, callVertex.id);
+				const origins = getOriginInDfg(df.graph, callVertex.id);
 				if(!origins || origins.length === 0) {
-					content.targets = [recoverName(callVertex.id, data.normalize.idMap)] as (FlowrSearchElement<ParentInformation> | Identifier)[];
+					content.targets = [recoverName(callVertex.id, n.idMap)] as (FlowrSearchElement<ParentInformation> | Identifier)[];
 				} else {
 					// find call targets in user code (which have ids!)
 					content.targets = content.targets.concat(
@@ -125,7 +122,7 @@ export const Enrichments = {
 							switch(o.type) {
 								case OriginType.FunctionCallOrigin:
 									return {
-										node: data.normalize.idMap.get(o.id) as RNodeWithParent,
+										node: n.idMap.get(o.id) as RNodeWithParent,
 									} satisfies FlowrSearchElement<ParentInformation>;
 								case OriginType.BuiltInFunctionOrigin:
 									return o.fn.name;
@@ -135,7 +132,7 @@ export const Enrichments = {
 						}).filter(isNotUndefined)
 					);
 					if(content.targets.length === 0) {
-						content.targets = [recoverName(callVertex.id, data.normalize.idMap)] as (FlowrSearchElement<ParentInformation> | Identifier)[];
+						content.targets = [recoverName(callVertex.id, n.idMap)] as (FlowrSearchElement<ParentInformation> | Identifier)[];
 					}
 				}
 			}
@@ -154,19 +151,22 @@ export const Enrichments = {
 		mapper: ({ targets }) => targets.map(t => t as FlowrSearchElement<ParentInformation>).filter(t => t.node !== undefined)
 	} satisfies EnrichmentData<CallTargetsContent, {onlyBuiltin?: boolean}>,
 	[Enrichment.LastCall]: {
-		enrichElement: (e, _s, data, args, prev) => {
+		enrichElement: async(e, _s, analyzer, args, prev) => {
 			guard(args && args.length, `${Enrichment.LastCall} enrichment requires at least one argument`);
 			const content = prev ?? { linkedIds: [] };
-			const vertex = data.dataflow.graph.get(e.node.info.id);
+			const df = await analyzer.dataflow();
+			const n = await analyzer.normalize();
+			const cfg = await analyzer.controlflow();
+			const vertex = df.graph.get(e.node.info.id);
 			if(vertex !== undefined && vertex[0].tag === VertexType.FunctionCall) {
 				for(const arg of args) {
-					const lastCalls = identifyLinkToLastCallRelation(vertex[0].id, data.cfg.graph, data.dataflow.graph, {
+					const lastCalls = await identifyLinkToRelation(vertex[0].id, analyzer, {
 						...arg,
 						callName: promoteCallName(arg.callName),
 						type:     'link-to-last-call',
 					});
 					for(const lastCall of lastCalls) {
-						content.linkedIds.push({ node: data.normalize.idMap.get(lastCall) as RNodeWithParent });
+						content.linkedIds.push({ node: n.idMap.get(lastCall) as RNodeWithParent });
 					}
 				}
 			}
@@ -227,19 +227,14 @@ export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<Pa
  * Enriches the given search element with the given enrichment type, using the provided analysis data.
  */
 export async function enrichElement<Element extends FlowrSearchElement<ParentInformation>, E extends Enrichment>(
-	e: Element, s: FlowrSearchElements<ParentInformation>, data: {
-		dataflow:  DataflowInformation,
-		normalize: NormalizedAst,
-		cfg:       ControlFlowInformation,
-		config:    FlowrConfigOptions
-	}, enrichment: E, args?: EnrichmentElementArguments<E>): Promise<Element> {
+	e: Element, s: FlowrSearchElements<ParentInformation>, analyzer: ReadonlyFlowrAnalysisProvider, enrichment: E, args?: EnrichmentElementArguments<E>): Promise<Element> {
 	const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>>;
 	const prev = e?.enrichments;
 	return {
 		...e,
 		enrichments: {
 			...prev ?? {},
-			[enrichment]: await enrichmentData.enrichElement?.(e, s, data, args, prev?.[enrichment])
+			[enrichment]: await enrichmentData.enrichElement?.(e, s, analyzer, args, prev?.[enrichment])
 		}
 	};
 }

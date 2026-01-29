@@ -53,7 +53,7 @@ export type CallNameTypes = RegExp | string | string[]
  * This way, you can link a call like `points` to the latest graphics plot etc.
  * For now, this uses the static Control-Flow-Graph produced by flowR as the FD over-approximation is still not stable (see #1005).
  * In short, this means that we are unable to detect origins over function call boundaries but plan on being more precise in the future.
- * @see LinkToParentCall
+ * @see LinkToNestedCall
  */
 export interface LinkToLastCall<CallName extends CallNameTypes = CallNameTypes> extends BaseQueryFormat {
 	readonly type:       'link-to-last-call';
@@ -80,23 +80,18 @@ export interface LinkToLastCall<CallName extends CallNameTypes = CallNameTypes> 
  * })
  * ```
  */
-export interface LinkToParentCall<CallName extends CallNameTypes = CallNameTypes> extends BaseQueryFormat {
-	readonly type:       'link-to-parent-call';
+export interface LinkToNestedCall<CallName extends CallNameTypes = CallNameTypes> extends BaseQueryFormat {
+	readonly type:      'link-to-nested-call';
 	/** Regex regarding the function name of the last call. Similar to {@link DefaultCallContextQueryFormat#callName}, strings are interpreted as a `RegExp`. */
-	readonly callName:   CallName;
+	readonly callName:  CallName;
 	/**
 	 * Should we ignore this (source) call?
 	 * Currently, there is no well working serialization for this.
 	 */
-	readonly ignoreIf?:  (id: NodeId, graph: DataflowGraph) => boolean;
-	/**
-	 * Should we continue searching after the link was created?
-	 * Currently, there is no well working serialization for this.
-	 */
-	readonly cascadeIf?: (target: DataflowGraphVertexInfo, from: NodeId, graph: DataflowGraph) => CascadeAction;
+	readonly ignoreIf?: (id: NodeId, graph: DataflowGraph) => boolean;
 }
 
-export type LinkTo<CallName extends CallNameTypes = CallNameTypes, AttachLinkInfo = NoInfo> = (LinkToLastCall<CallName> | LinkToParentCall<CallName>) & { attachLinkInfo?: AttachLinkInfo };
+export type LinkTo<CallName extends CallNameTypes = CallNameTypes, AttachLinkInfo = NoInfo> = (LinkToLastCall<CallName> | LinkToNestedCall<CallName>) & { attachLinkInfo?: AttachLinkInfo };
 
 export interface SubCallContextQueryFormat<CallName extends CallNameTypes = CallNameTypes, AttachLinkInfo = NoInfo> extends DefaultCallContextQueryFormat<CallName> {
 	readonly linkTo: LinkTo<CallName, AttachLinkInfo> | LinkTo<CallName, AttachLinkInfo>[];
@@ -141,10 +136,9 @@ const CallContextQueryLinkTo = Joi.alternatives([
 		attachLinkInfo: Joi.object().optional().description('Additional information to attach to the link.')
 	}).description('Links the current call to the last call of the given kind. This way, you can link a call like `points` to the latest graphics plot etc.'),
 	Joi.object({
-		type:           Joi.string().valid('link-to-parent-call').required().description('The type of the linkTo sub-query.'),
+		type:           Joi.string().valid('link-to-nested-call').required().description('The type of the linkTo sub-query.'),
 		callName:       Joi.alternatives(Joi.string(), Joi.array().items(Joi.string())).required().description('Test regarding the function name of the last call. Similar to `callName`, strings are interpreted as a regular expression, and string arrays are checked for containment.'),
 		ignoreIf:       Joi.function().optional().description('Should we ignore this (source) call? Currently, there is no well working serialization for this.'),
-		cascadeIf:      Joi.function().optional().description('Should we continue searching after the link was created? Currently, there is no well working serialization for this.'),
 		attachLinkInfo: Joi.object().optional().description('Additional information to attach to the link.')
 	}).description('Allows to link nested calls to their parent calls. This way, you can link an `assert_equal` call to the parent `test_that` call etc.')
 ]);

@@ -16,8 +16,7 @@ import { standaloneSourceFile } from './internal/process/functions/call/built-in
 import type { DataflowGraph } from './graph/graph';
 import { extractCfgQuick, getCallsInCfg } from '../control-flow/extract-cfg';
 import { EdgeType } from './graph/edge';
-import {
-	identifyLinkToLastCallRelation
+import { identifyLinkToLastCallRelationSync
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
@@ -26,6 +25,7 @@ import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-con
 import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
+import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -96,7 +96,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 			continue;
 		}
 		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */
-		const potentials = identifyLinkToLastCallRelation(s.id, cf?.graph, graph, s.linkTo, knownCalls);
+		const potentials = identifyLinkToLastCallRelationSync(s.id, cf.graph, graph, s.linkTo as LinkToLastCall<RegExp>, knownCalls);
 		for(const pot of potentials) {
 			graph.addEdge(s.id, pot, EdgeType.Reads);
 		}

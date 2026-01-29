@@ -1,5 +1,9 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { type DataflowInformation, ExitPointType, overwriteExitPoints } from '../../../../../info';
+import {
+	type DataflowInformation,
+	ExitPointType,
+	overwriteExitPoints
+} from '../../../../../info';
 import {
 	getAllFunctionCallTargets,
 	linkArgumentsOnCall,
@@ -246,10 +250,11 @@ function updateNestedFunctionClosures(
 				remainingIn.push(ingoing);
 				continue;
 			}
+			const inId = ingoing.nodeId;
 			expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${fnId}`);
 			let allBuiltIn = true;
 			for(const ref of resolved) {
-				graph.addEdge(ingoing, ref, EdgeType.Reads);
+				graph.addEdge(inId, ref.nodeId, EdgeType.Reads);
 				if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
 					allBuiltIn = false;
 				}
@@ -307,6 +312,9 @@ export function updateNestedFunctionCalls(
 				continue;
 			}
 			graph.addEdge(id, target, EdgeType.Calls);
+			for(const exitPoint of targetVertex.exitPoints) {
+				graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
+			}
 			const ingoingRefs = targetVertex.subflow.in;
 			const remainingIn: IdentifierReference[] = [];
 			for(const ingoing of ingoingRefs) {
@@ -315,11 +323,12 @@ export function updateNestedFunctionCalls(
 					remainingIn.push(ingoing);
 					continue;
 				}
+				const inId = ingoing.nodeId;
 				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${id}`);
-				for(const def of resolved) {
-					if(!isBuiltIn(def.nodeId)) {
-						graph.addEdge(ingoing, def, EdgeType.DefinedByOnCall);
-						graph.addEdge(id, def, EdgeType.DefinesOnCall);
+				for(const { nodeId } of resolved) {
+					if(!isBuiltIn(nodeId)) {
+						graph.addEdge(inId, nodeId, EdgeType.DefinedByOnCall);
+						graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
 					}
 				}
 			}
@@ -355,9 +364,10 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 	const remainingRead: IdentifierReference[] = [];
 	for(const read of readInParameters) {
 		const resolved = read.name ? resolveByName(read.name, parameterEnvs, read.type) : undefined;
+		const rid = read.nodeId;
 		if(resolved !== undefined) {
-			for(const ref of resolved) {
-				parameters.addEdge(read, ref, EdgeType.Reads);
+			for(const { nodeId } of resolved) {
+				parameters.addEdge(rid, nodeId, EdgeType.Reads);
 			}
 			continue;
 		}
@@ -370,11 +380,11 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 			continue;
 		}
 		if(writingOuts[0].cds === undefined) {
-			parameters.addEdge(read, writingOuts[0], EdgeType.Reads);
+			parameters.addEdge(rid, writingOuts[0].nodeId, EdgeType.Reads);
 			continue;
 		}
-		for(const out of writingOuts) {
-			parameters.addEdge(read, out, EdgeType.Reads);
+		for(const { nodeId } of writingOuts) {
+			parameters.addEdge(rid, nodeId, EdgeType.Reads);
 		}
 	}
 	return remainingRead;

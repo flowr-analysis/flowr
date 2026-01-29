@@ -53,7 +53,7 @@ export function processGet<OtherInfo>(
 	const firstArg = processedArguments[0];
 	if(firstArg) {
 		// get 'reads' its first argument
-		information.graph.addEdge(rootId, firstArg.entryPoint, EdgeType.Reads);
+		information.graph.addEdge(rootId, firstArg.entryPoint, EdgeType.Returns | EdgeType.Reads);
 	}
 
 	return information;

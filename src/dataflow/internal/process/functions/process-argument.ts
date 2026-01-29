@@ -17,9 +17,10 @@ export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentIn
 	const allIdsBeforeArguments = new Set(collectAllIds(root, n => n.type === RType.Argument && n.info.id !== root.info.id));
 	const ingoingBeforeArgs = ingoingRefs.filter(r => allIdsBeforeArguments.has(r.nodeId));
 
+	const rid = root.info.id;
 	for(const ref of ingoingBeforeArgs) {
 		// link against the root reference currently I do not know how to deal with nested function calls otherwise
-		graph.addEdge(root.info.id, ref, EdgeType.Reads);
+		graph.addEdge(rid, ref.nodeId, EdgeType.Reads);
 	}
 }
 

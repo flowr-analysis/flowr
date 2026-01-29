@@ -176,10 +176,11 @@ export function processApply<OtherInfo>(
 				}
 				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${ingoing.nodeId} in closure of function definition ${rootId}`);
 				let allBuiltIn = true;
-				for(const ref of resolved) {
-					information.graph.addEdge(ingoing, ref, EdgeType.Reads);
-					information.graph.addEdge(rootId, ref, EdgeType.Reads); // because the def. is the anonymous call
-					if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
+				const inId = ingoing.nodeId;
+				for(const { nodeId, type } of resolved) {
+					information.graph.addEdge(inId, nodeId, EdgeType.Reads);
+					information.graph.addEdge(rootId, nodeId, EdgeType.Reads); // because the def. is the anonymous call
+					if(!isReferenceType(type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
 						allBuiltIn = false;
 					}
 				}

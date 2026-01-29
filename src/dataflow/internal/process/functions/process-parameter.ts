@@ -25,17 +25,18 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 
 	let environment = name.environment;
 	for(const writtenNode of writtenNodes) {
-		expensiveTrace(log, () => `parameter ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' a default value'}`);
+		const wid = writtenNode.nodeId;
+		expensiveTrace(log, () => `parameter ${writtenNode.name} (${wid}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' a default value'}`);
 		graph.setDefinitionOfVertex(writtenNode);
 		environment = define(writtenNode, false, environment, data.ctx.config);
 
 		if(defaultValue !== undefined) {
 			if(parameter.defaultValue?.type === RType.FunctionDefinition) {
-				graph.addEdge(writtenNode, parameter.defaultValue.info.id, EdgeType.DefinedBy);
+				graph.addEdge(wid, parameter.defaultValue.info.id, EdgeType.DefinedBy);
 			} else {
 				const definedBy = defaultValue.in.concat(defaultValue.unknownReferences);
 				for(const node of definedBy) {
-					graph.addEdge(writtenNode, node, EdgeType.DefinedBy);
+					graph.addEdge(wid, node.nodeId, EdgeType.DefinedBy);
 				}
 			}
 		}

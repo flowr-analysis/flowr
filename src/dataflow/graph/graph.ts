@@ -326,15 +326,7 @@ export class DataflowGraph<
 		return this;
 	}
 
-	/** {@inheritDoc} */
-	public addEdge(from: NodeId, to: NodeId, type: EdgeType | number): this
-	/** {@inheritDoc} */
-	public addEdge(from: { nodeId: NodeId }, to: { nodeId: NodeId }, type: EdgeType | number): this
-	/** {@inheritDoc} */
-	public addEdge(from: NodeId | { nodeId: NodeId }, to: NodeId | { nodeId: NodeId }, type: EdgeType | number): this
-	public addEdge(from: NodeId | { nodeId: NodeId }, to: NodeId | { nodeId: NodeId }, type: EdgeType | number): this {
-		const [fromId, toId] = extractEdgeIds(from, to);
-
+	public addEdge(fromId: NodeId, toId: NodeId, type: EdgeType | number): this {
 		if(fromId === toId) {
 			return this;
 		}
@@ -510,15 +502,6 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 	}
 
 	return current;
-}
-
-/**
- * Returns the ids of the dataflow vertices referenced.
- */
-function extractEdgeIds(from: NodeId | { nodeId: NodeId }, to: NodeId | { nodeId: NodeId }): [fromId: NodeId, toId: NodeId] {
-	const fromId = typeof from === 'object' ? from.nodeId : from;
-	const toId = typeof to === 'object' ? to.nodeId : to;
-	return [fromId, toId];
 }
 
 export interface IEnvironmentJson {

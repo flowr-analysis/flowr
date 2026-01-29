@@ -931,7 +931,7 @@ ${tocForQueryType('virtual')}
 
 <summary>Detailed Query Format (Automatically Generated)</summary>
 
-Although it is probably better to consult the detailed explanations below, if you want to have a look at the schema, here is its description:
+Although it is probably better to consult the detailed explanations, if you want to have a look at the schema, here is its description:
 
 ${describeSchema(QueriesSchema(), markdownFormatter)}
 

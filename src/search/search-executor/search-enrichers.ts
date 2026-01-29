@@ -156,7 +156,6 @@ export const Enrichments = {
 			const content = prev ?? { linkedIds: [] };
 			const df = await analyzer.dataflow();
 			const n = await analyzer.normalize();
-			const cfg = await analyzer.controlflow();
 			const vertex = df.graph.get(e.node.info.id);
 			if(vertex !== undefined && vertex[0].tag === VertexType.FunctionCall) {
 				for(const arg of args) {

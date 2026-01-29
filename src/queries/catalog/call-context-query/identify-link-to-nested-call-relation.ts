@@ -32,6 +32,5 @@ export async function identifyLinkToNestedRelation(
 			found.push(id);
 		}
 	}
-	// TODO: allow to inverse checks to link to all nested calls! ~> rename linktonested
 	return found;
 }

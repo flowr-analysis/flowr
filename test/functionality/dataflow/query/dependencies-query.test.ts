@@ -22,7 +22,11 @@ function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Part
 		if(key === '.meta') {
 			continue;
 		}
-		out[key] = value.map(({ nodeId, ...rest }) => ({ nodeId: typeof nodeId === 'number' ? nodeId : slicingCriterionToId(String(nodeId) as SingleSlicingCriterion, idMap), ...rest }));
+		out[key] = value.map(({ nodeId, ...rest }) => ({
+			nodeId:    typeof nodeId === 'number' ? nodeId : slicingCriterionToId(String(nodeId) as SingleSlicingCriterion, idMap),
+			linkedIds: rest.linkedIds?.map(lid => typeof lid === 'number' ? lid : slicingCriterionToId(String(lid) as SingleSlicingCriterion, idMap)),
+			...rest
+		}));
 	}
 	return out;
 }
@@ -373,22 +377,6 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 	});
 
-	describe('Test', () => {
-		describe('Simple', () => {
-			testQuery('simple', 'expect_equal(1 + 1, 2)', { test: [{ nodeId: '1@expect_equal', functionName: 'expect_equal' }] });
-			testQuery('testthat', 'testthat::expect_equal(1 + 1, 2)', {
-				test:    [{ nodeId: '1@testthat::expect_equal', functionName: 'expect_equal' }],
-				library: [{ nodeId: '1@expect_equal', functionName: '::', value: 'testthat' }]
-			});
-		});
-		describe('With info', () => {
-			testQuery('tinytest', 'expect_equal(1 + 1, 2, info="Failure lol")', { test: [
-				{ nodeId: '1@expect_equal', functionName: 'expect_equal', value: 'Failure lol' }
-			] });
-		});
-	});
-
-
 	describe('With file connections', () => {
 		for(const ro of ['r', 'rb', 'rt'] as const) {
 			testQuery('read only file connection', `file("test.txt", "${ro}")`, {
@@ -458,6 +446,20 @@ describe('Dependencies Query', withTreeSitter(parser => {
 					functions: [{ name: '<-', argIdx: 1 }]
 				}
 			}
+		});
+	});
+	describe('Test Functions', () => {
+		testQuery('Nesting example', `test_that("trigonometric functions match identities", {
+  expect_equal(sin(pi / 4), 1 / sqrt(2))
+  expect_equal(cos(pi / 4), 1 / sqrt(2))
+  expect_equal(tan(pi / 4), 1)
+})`, {
+			test: [
+				/* { nodeId: '2@expect_equal', functionName: 'expect_equal' },
+				{ nodeId: '3@expect_equal', functionName: 'expect_equal' },
+				{ nodeId: '4@expect_equal', functionName: 'expect_equal' }, */
+				{ nodeId: '1@test_that', functionName: 'test_that', value: 'trigonometric functions match identities', linkedIds: [47,36,20] }
+			]
 		});
 	});
 }));

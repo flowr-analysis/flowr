@@ -17,7 +17,9 @@ import type { AsyncOrSync, AsyncOrSyncType } from 'ts-essentials';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
 import { CfgKind } from '../../project/cfg-kind';
-import { identifyLinkToRelation } from '../../queries/catalog/call-context-query/identify-link-to-relation';
+import {
+	identifyLinkToLastCallRelationSync
+} from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
@@ -154,12 +156,13 @@ export const Enrichments = {
 		enrichElement: async(e, _s, analyzer, args, prev) => {
 			guard(args && args.length, `${Enrichment.LastCall} enrichment requires at least one argument`);
 			const content = prev ?? { linkedIds: [] };
-			const df = await analyzer.dataflow();
-			const n = await analyzer.normalize();
-			const vertex = df.graph.get(e.node.info.id);
-			if(vertex !== undefined && vertex[0].tag === VertexType.FunctionCall) {
+			const df = (await analyzer.dataflow()).graph;
+			const vertex = df.getVertex(e.node.info.id);
+			if(vertex?.tag === VertexType.FunctionCall) {
+				const n = await analyzer.normalize();
+				const cfg = (await analyzer.controlflow(undefined, CfgKind.Quick)).graph;
 				for(const arg of args) {
-					const lastCalls = await identifyLinkToRelation(vertex[0].id, analyzer, {
+					const lastCalls = identifyLinkToLastCallRelationSync(vertex.id, cfg, df, {
 						...arg,
 						callName: promoteCallName(arg.callName),
 						type:     'link-to-last-call',

@@ -22,6 +22,7 @@ import { resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
 import { valueSetGuard } from '../../dataflow/eval/values/general';
 import { VariableResolve } from '../../config';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
+import { VertexType } from '../../dataflow/graph/vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { asValue } from '../../dataflow/eval/values/r-value';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -56,7 +57,7 @@ export interface SeededRandomnessMeta extends MergeableRecord {
 }
 
 export const SEEDED_RANDOMNESS = {
-	createSearch: (config) => Q.all()
+	createSearch: (config) => Q.all().filter(VertexType.FunctionCall)
 		.with(Enrichment.CallTargets, { onlyBuiltin: true })
 		.filter({
 			name: FlowrFilter.MatchesEnrichment,

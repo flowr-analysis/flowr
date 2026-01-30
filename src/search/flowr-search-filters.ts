@@ -273,7 +273,17 @@ function evalTree(tree: BooleanNode, data: FilterData): boolean {
  * Evaluates the given filter expression against the provided data.
  */
 export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): boolean {
-	/* common lift, this can be improved easily :D */
-	const tree = FlowrFilterCombinator.is(filter as FlowrFilterExpression);
-	return evalTree(tree.get(), data);
+	if(filter instanceof FlowrFilterCombinator) {
+		return evalTree(filter.get(), data);
+	} else if(typeof filter === 'string' && ValidFlowrFilters.has(filter)) {
+		const handler = FlowrFilters[filter as FlowrFilter];
+		return handler(data.element, undefined as unknown as FlowrFilterArgs<FlowrFilter>, data.data);
+	} else if(typeof filter === 'object' && 'name' in filter) {
+		const handler = FlowrFilters[filter.name];
+		const args = ('args' in filter ? filter.args : undefined) as unknown as never;
+		return handler(data.element, args, data.data);
+	} else {
+		const tree = FlowrFilterCombinator.is(filter as FlowrFilterExpression);
+		return evalTree(tree.get(), data);
+	}
 }

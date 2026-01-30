@@ -373,7 +373,7 @@ function getInferredDomainForCriterion(
 	if(node === undefined) {
 		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
 	}
-	const cfg = extractCfg(result.normalize, ctx, result.dataflow.graph);
+	const cfg = extractCfg(result.normalize, ctx, undefined, undefined, true);
 	const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: result.dataflow.graph, normalizedAst: result.normalize, ctx });
 	inference.start();
 	const value = inference.getAbstractValue(node);
@@ -393,7 +393,7 @@ function getInferredOperationsForCriterion(
 	if(node?.info.role === RoleInParent.FunctionCallName) {
 		node = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
 	}
-	const cfg = extractCfg(result.normalize, ctx, result.dataflow.graph);
+	const cfg = extractCfg(result.normalize, ctx, undefined, undefined, true);
 	const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: result.dataflow.graph, normalizedAst: result.normalize, ctx });
 	inference.start();
 

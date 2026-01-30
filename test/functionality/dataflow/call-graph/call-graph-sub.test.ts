@@ -75,5 +75,6 @@ describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 			.calls('2@return', builtInId('return')).calls('2@return', '2@+')
 			.call('2@+', '+', [argumentInCall('2@x'), argumentInCall('2@1')], { onlyBuiltIn: true, omitArgs: true })
 			.calls('2@+', builtInId('default'))
+			.calls(12, 8)
 	);
 }));

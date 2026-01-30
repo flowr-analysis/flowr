@@ -35,7 +35,7 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 			}
 		}
 	}
-	const node = graph.getVertex(ref.nodeId, true);
+	const node = graph.getVertex(ref.nodeId);
 	if(node) {
 		if(node.cds) {
 			appToCdsUnique(node.cds, defaultCd);

@@ -158,7 +158,7 @@ class DataflowBuilderPrinter {
 	private controlDependenciesForArgument(id: NodeId): ControlDependency[] | undefined {
 		// we ignore the control dependency of the argument in the call as it is usually separate, and the auto creation
 		// will respect the corresponding node!
-		return this.graph.getVertex(id, true)?.cds;
+		return this.graph.getVertex(id)?.cds;
 	}
 
 	private processVertex(id: NodeId, vertex: DataflowGraphVertexInfo): void {

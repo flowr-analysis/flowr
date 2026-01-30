@@ -43,7 +43,7 @@ export function findNonLocalReads(graph: DataflowGraph, ignore: readonly Identif
 		}
 		const outgoing = graph.outgoingEdges(nodeId);
 		const name = recoverName(nodeId, graph.idMap);
-		const origin = graph.getVertex(nodeId, true);
+		const origin = graph.getVertex(nodeId);
 
 		const type = origin?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Variable;
 

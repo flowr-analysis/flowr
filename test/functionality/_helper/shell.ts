@@ -56,6 +56,7 @@ import { contextFromInput } from '../../../src/project/context/flowr-analyzer-co
 import type { RProject } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
+import { dropTransitiveEdges } from '../../../src/dataflow/graph/call-graph';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -419,7 +420,7 @@ export function assertDataflow(
 		}
 
 		const normalize = await analyzer.normalize();
-		const graph = userConfig?.context === 'call-graph' ? await analyzer.callGraph() : (await analyzer.dataflow()).graph;
+		const graph = userConfig?.context === 'call-graph' ? dropTransitiveEdges(await analyzer.callGraph()) : (await analyzer.dataflow()).graph;
 
 		// assign the same id map to the expected graph, so that resolves work as expected
 		expected.setIdMap(normalize.idMap);

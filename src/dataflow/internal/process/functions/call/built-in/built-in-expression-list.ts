@@ -102,7 +102,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 					};
 				}
 				if(callDependencies === null) {
-					callDependencies = nextGraph.getVertex(functionCall, true)?.cds;
+					callDependencies = nextGraph.getVertex(functionCall)?.cds;
 				}
 				inputEnvironment = overwriteEnvironment(inputEnvironment, environment, callDependencies);
 			}

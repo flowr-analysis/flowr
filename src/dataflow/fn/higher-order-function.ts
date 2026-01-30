@@ -15,7 +15,7 @@ import { valueSetGuard } from '../eval/values/general';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
-	const workingQueue: DataflowGraphVertexArgument[] = def.exitPoints.map(d => graph.getVertex(d.nodeId, true)).filter(isNotUndefined);
+	const workingQueue: DataflowGraphVertexArgument[] = def.exitPoints.map(d => graph.getVertex(d.nodeId)).filter(isNotUndefined);
 	const seen = new Set<NodeId>();
 	while(workingQueue.length > 0) {
 		const current = workingQueue.pop() as DataflowGraphVertexArgument;
@@ -29,7 +29,7 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 		const next = graph.outgoingEdges(current.id) ?? [];
 		for(const [t, { types }] of next) {
 			if(edgeIncludesType(types, EdgeType.Returns)) {
-				const v = graph.getVertex(t, true);
+				const v = graph.getVertex(t);
 				if(v) {
 					workingQueue.push(v);
 				}
@@ -46,7 +46,7 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
 		if(!edgeIncludesType(types, EdgeType.Calls)) {
 			continue;
 		}
-		const caller = graph.getVertex(callerId, true);
+		const caller = graph.getVertex(callerId);
 		if(!caller || !isFunctionCallVertex(caller)) {
 			continue;
 		}

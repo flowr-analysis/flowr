@@ -33,7 +33,8 @@ describe('get-exceptions-of-function', withTreeSitter(ts => {
 			// move up the error message :sparkles:
 			assert.isDefined(id, `could not resolve criterion ${c}`);
 			try {
-				assert.deepStrictEqual(calculateExceptionsOfFunction(id, await analyzer.callGraph()), expIds);
+				const e = calculateExceptionsOfFunction(id, await analyzer.callGraph());
+				assert.deepStrictEqual(e[id], expIds);
 			} catch(e) {
 				console.error(`Error while testing criterion ${c} in code:\n${code}`);
 				console.log('CG', graphToMermaidUrl(await analyzer.callGraph()));

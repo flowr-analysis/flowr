@@ -36,7 +36,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 				graph:             new Set([15, 21, 23, 24, 25, 27, 28]),
 				environment:       defaultEnv().pushEnv().defineParameter('y', '4@y', '4@y')
 			}, { readParams: [[15, true]] })
-			.calls('4@function', [28, '5@return'])
+			.calls('4@function', [28, '5@return', 23, 25])
 			.calls(28, [27, builtInId('expression-list')])
 			.defineFunction('1@function', [{ nodeId: 10, cds: undefined, type: ExitPointType.Return }], {
 				out:               [],
@@ -51,7 +51,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.call('2@+', '+', [argumentInCall('2@x'), argumentInCall('2@1')], { onlyBuiltIn: true, omitArgs: true })
 			.calls('2@+', builtInId('default'))
 			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return] })
-			.calls('1@function', [11, '2@return'])
+			.calls('1@function', [8, 11, '2@return'])
 			.calls(11, [10, builtInId('expression-list')])
 			.calls('5@return', builtInId('return')).calls('5@return', '5@*')
 			.call('5@*', '*', [argumentInCall('5@foo'), argumentInCall('5@2')], { onlyBuiltIn: true, omitArgs: true })
@@ -85,7 +85,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 				graph:             new Set([1,5,6,7,11,13,14,15,18,19,20,22,24,25,26,28,29,31,32]),
 				environment:       defaultEnv().pushEnv().defineParameter('n', '1@n', '1@n')
 			}, { readParams: [[1, true]] })
-			.calls('1@function', ['3@return', '5@return', 7, 14, 15, 32])
+			.calls('1@function', ['3@return', '5@return', 7, 14, 15, 20, 22, 26, 28, 29, 32])
 			.call('2@if', 'if', [argumentInCall(7), argumentInCall('2@return'), argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true })
 			.calls('2@if', builtInId('if-then-else')).calls('2@if', 14).calls('2@if', 7)
 			.call(14, '{', [argumentInCall(13)], { omitArgs: true, onlyBuiltIn: true, cds: [{ id: 15, when: true }] })
@@ -97,11 +97,11 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: false }] })
 			.calls('5@return', builtInId('return')).calls('5@return', '5@+')
 			.call('5@+', '+', [argumentInCall('5@fib'), argumentInCall(28)], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false } ] })
-			.calls('5@+', builtInId('default')).calls('5@+', 22).calls('5@+', 28)
+			.calls('5@+', builtInId('default')).calls('5@+', 22)
 			.call(22, 'fib', [argumentInCall(24)], { omitArgs: true, cds: [{ id: 15, when: false }] })
-			.calls(22, '1@function').calls(22, 20)
+			.calls(22, '1@function').calls(22, 31)
 			.call(28, 'fib', [argumentInCall(26)], { omitArgs: true, cds: [{ id: 15, when: false }] })
-			.calls(28, '1@function').calls(28, 26)
+			.calls(28, '1@function').calls(28, 31)
 			.call(20, '-', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
 			.calls(20, builtInId('default'))
 			.call(26, '-', [argumentInCall('1@n'), argumentInCall('1@2')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })

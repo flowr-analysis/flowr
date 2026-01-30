@@ -17,16 +17,16 @@ import { DefaultMap } from '../../util/collections/defaultmap';
  * A call graph is a dataflow graph where all vertices are function calls.
  * You can create a call graph from a dataflow graph using {@link computeCallGraph}.
  * If you want to extract a sub call graph, use {@link getSubCallGraph}.
+ * @see {@link dropTransitiveEdges} - to reduce the call graph by dropping transitive edges
  */
 export type CallGraph = DataflowGraph<
 	Required<DataflowGraphVertexFunctionCall | DataflowGraphVertexFunctionDefinition>
 >
 
 interface State {
-	visited:           Set<NodeId>;
+	visited:    Set<NodeId>;
 	// links to be added if not otherwise found
-	potentials:        [NodeId, Set<NodeId>][]
-	knownReachability: DefaultMap<NodeId, Set<NodeId>>;
+	potentials: [NodeId, Set<NodeId>][]
 }
 
 /**
@@ -43,7 +43,7 @@ export function getSubCallGraph(graph: CallGraph, entryPoints: Set<NodeId>): Cal
 			continue;
 		}
 		visited.add(currentId);
-		const currentVtx = graph.getVertex(currentId, true);
+		const currentVtx = graph.getVertex(currentId);
 		if(!currentVtx) {
 			continue;
 		}
@@ -60,7 +60,10 @@ export function getSubCallGraph(graph: CallGraph, entryPoints: Set<NodeId>): Cal
 }
 
 
-function reaches(from: NodeId, to: NodeId, graph: DataflowGraph, knownReachability: DefaultMap<NodeId, Set<NodeId>>): boolean {
+/**
+ *
+ */
+export function reaches(from: NodeId, to: NodeId, graph: DataflowGraph, knownReachability: DefaultMap<NodeId, Set<NodeId>> = new DefaultMap(() => new Set())): boolean {
 	const visited: Set<NodeId> = new Set();
 	const toVisit: NodeId[] = [from];
 
@@ -85,14 +88,38 @@ function reaches(from: NodeId, to: NodeId, graph: DataflowGraph, knownReachabili
 }
 
 /**
+ * Reduces the call graph by dropping all transitive edges.
+ */
+export function dropTransitiveEdges(graph: CallGraph): CallGraph {
+	const newCg: CallGraph = new DataflowGraph(graph.idMap);
+	newCg.mergeVertices(graph);
+	const knownReachability: DefaultMap<NodeId, Set<NodeId>> = new DefaultMap(() => new Set());
+	// heuristically sort by dif in ids
+	const es = Array.from(
+		graph.edges(),
+		([e, ts]) => ts.entries().map(([t, { types }]) => [e, t, types] as [NodeId, NodeId, EdgeType]).toArray()
+	).flat()
+		.sort((a, b) => String(a[0]).localeCompare(String(a[1])) - String(b[0]).localeCompare(String(b[1])));
+
+	for(const [from, to, types] of es) {
+		if(!reaches(from, to, newCg, knownReachability)) {
+			newCg.addEdge(from, to, types);
+		}
+	}
+	return newCg;
+}
+
+/**
  * Computes the call graph from the given dataflow graph.
+ * @see {@link CallGraph} - for details
+ * @see {@link getSubCallGraph} - to extract sub call graphs
+ * @see {@link dropTransitiveEdges} - to reduce the call graph by dropping transitive edges
  */
 export function computeCallGraph(graph: DataflowGraph): CallGraph {
 	const result: CallGraph = new DataflowGraph(graph.idMap);
 	const state: State = {
-		visited:           new Set(),
-		potentials:        [],
-		knownReachability: new DefaultMap(() => new Set())
+		visited:    new Set(),
+		potentials: []
 	};
 	for(const [,vert] of graph.vertices(false)) {
 		if(vert.tag === VertexType.FunctionCall) {
@@ -104,14 +131,14 @@ export function computeCallGraph(graph: DataflowGraph): CallGraph {
 	for(const [from, tos] of state.potentials) {
 		for(const to of tos) {
 			if(!result.hasVertex(to)) {
-				const v = graph.getVertex(to, true);
+				const v = graph.getVertex(to);
 				if(v) {
 					processUnknown(v, from, graph, result, state);
 					if(v.tag === VertexType.FunctionDefinition) {
 						processFunctionDefinition(v, from, graph, result, state);
 					}
 				}
-			} else if(!reaches(from, to, result, state.knownReachability)) {
+			} else {
 				result.addEdge(from, to, EdgeType.Calls);
 			}
 		}
@@ -121,7 +148,7 @@ export function computeCallGraph(graph: DataflowGraph): CallGraph {
 
 function processCds(vtx: DataflowGraphVertexInfo, graph: DataflowGraph, result: CallGraph, state: State): void {
 	for(const tar of vtx.cds ?? []) {
-		const targetVtx = graph.getVertex(tar.id, true);
+		const targetVtx = graph.getVertex(tar.id);
 		if(targetVtx) {
 			processUnknown(targetVtx, undefined, graph, result, state);
 		}
@@ -146,7 +173,7 @@ function fallbackUntargetedCall(vtx: Required<DataflowGraphVertexFunctionCall>, 
 			continue;
 		}
 		visited.add(currentId);
-		const currentVtx = graph.getVertex(currentId, true);
+		const currentVtx = graph.getVertex(currentId);
 		if(!currentVtx) {
 			continue;
 		}
@@ -168,7 +195,7 @@ function fallbackUntargetedCall(vtx: Required<DataflowGraphVertexFunctionCall>, 
 
 function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, state: State): void {
 	const vid = vtx.id;
-	if(from && !reaches(from, vid, result, state.knownReachability)) {
+	if(from) {
 		result.addEdge(from, vid, EdgeType.Calls);
 	}
 	if(state.visited.has(vid)) {
@@ -188,7 +215,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 			addedTarget = true;
 			continue;
 		}
-		const targetVtx = graph.getVertex(tar, true);
+		const targetVtx = graph.getVertex(tar);
 		if(targetVtx?.tag !== VertexType.FunctionDefinition) {
 			continue;
 		}
@@ -208,7 +235,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 	if(!addedTarget) {
 		const origs = fallbackUntargetedCall(vtx, graph);
 		for(const ori of origs) {
-			const oriVtx = graph.getVertex(ori, true);
+			const oriVtx = graph.getVertex(ori);
 			if(!oriVtx) {
 				continue;
 			}
@@ -232,7 +259,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 		if(edgeDoesNotIncludeType(types, EdgeType.Reads | EdgeType.Returns | EdgeType.Argument)) {
 			continue;
 		}
-		const tVtx = graph.getVertex(tar, true);
+		const tVtx = graph.getVertex(tar);
 		if(!tVtx) {
 			continue;
 		}
@@ -269,7 +296,7 @@ function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefi
 	state.potentials.push([vtx.id, vtx.subflow.graph.difference(exits)]);
 
 	for(const { nodeId } of exits) {
-		const v = graph.getVertex(nodeId, true);
+		const v = graph.getVertex(nodeId);
 		if(v) {
 			processUnknown(v, vtx.id, graph, result, state);
 		}

@@ -35,7 +35,7 @@ export function processPipe<OtherInfo>(
 	guard(lhs !== undefined && rhs !== undefined, () => `lhs and rhs must be present, but ${JSON.stringify(lhs)} and ${JSON.stringify(rhs)} were found instead.`);
 
 	if(rhs.type === RType.FunctionCall) {
-		const functionCallNode = information.graph.getVertex(rhs.info.id, true);
+		const functionCallNode = information.graph.getVertex(rhs.info.id);
 		guard(functionCallNode?.tag === VertexType.FunctionCall, () => `Expected function call node with id ${rhs.info.id} to be a function call node, but got ${functionCallNode?.tag} instead.`);
 
 		// make the lhs an argument node:

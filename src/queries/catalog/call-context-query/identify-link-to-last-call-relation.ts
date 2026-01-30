@@ -157,7 +157,7 @@ export function identifyLinkToLastCallRelationSync(
 	const getVertex = knownCalls ?
 		(node: NodeId) => knownCalls.get(node) :
 		(node: NodeId) => {
-			const v = graph.getVertex(node, true);
+			const v = graph.getVertex(node);
 			return isFunctionCallVertex(v) ? v : undefined;
 		};
 

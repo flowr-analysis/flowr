@@ -169,19 +169,33 @@ export class DataflowGraph<
 	 */
 	public get(id: NodeId, includeDefinedFunctions = true): [Vertex, OutgoingEdges] | undefined {
 		// if we do not want to include function definitions, only retrieve the value if the id is part of the root vertices
-		const vertex: Vertex | undefined = this.getVertex(id, includeDefinedFunctions);
+		const vertex: Vertex | undefined = includeDefinedFunctions ? this.getVertex(id) : this.getRootVertex(id);
 		return vertex === undefined ? undefined : [vertex, this.outgoingEdges(id) ?? new Map()];
 	}
 
 	/**
 	 * Get the {@link DataflowGraphVertexInfo} attached to a vertex.
 	 * @param id                      - The id of the node to get
-	 * @param includeDefinedFunctions - If true this will search function definitions as well and not just the toplevel
 	 * @returns the node info for the given id (if it exists)
 	 * @see #get
+	 * @see #getRootVertex
 	 */
-	public getVertex(id: NodeId, includeDefinedFunctions = true): Vertex | undefined {
-		return includeDefinedFunctions || this.rootVertices.has(id) ? this.vertexInformation.get(id) : undefined;
+	public getVertex(id: NodeId): Vertex | undefined {
+		return this.vertexInformation.get(id);
+	}
+
+	/**
+	 * Get the {@link DataflowGraphVertexInfo} attached to a root-level vertex.
+	 * @param id - The id of the node to get
+	 * @returns the node info for the given id (if it exists)
+	 * @see #get
+	 * @see #getVertex
+	 */
+	public getRootVertex(id: NodeId): Vertex | undefined {
+		if(!this.rootVertices.has(id)) {
+			return undefined;
+		}
+		return this.vertexInformation.get(id);
 	}
 
 	public outgoingEdges(id: NodeId): OutgoingEdges | undefined {
@@ -361,6 +375,17 @@ export class DataflowGraph<
 			return this;
 		}
 
+		this.mergeVertices(otherGraph, mergeRootVertices);
+		for(const [type, ids] of otherGraph.types) {
+			const existing = this.types.get(type);
+			this.types.set(type, existing ? existing.concat(ids) : ids.slice());
+		}
+
+		this.mergeEdges(otherGraph);
+		return this;
+	}
+
+	public mergeVertices(otherGraph: DataflowGraph<Vertex, Edge>, mergeRootVertices = true) {
 		// merge root ids
 		if(mergeRootVertices) {
 			for(const root of otherGraph.rootVertices) {
@@ -371,18 +396,10 @@ export class DataflowGraph<
 		for(const unknown of otherGraph.unknownSideEffects) {
 			this._unknownSideEffects.add(unknown);
 		}
-
 		for(const [id, info] of otherGraph.vertexInformation) {
 			const currentInfo = this.vertexInformation.get(id);
 			this.vertexInformation.set(id, currentInfo === undefined ? info : mergeNodeInfos(currentInfo, info));
 		}
-		for(const [type, ids] of otherGraph.types) {
-			const existing = this.types.get(type);
-			this.types.set(type, existing ? existing.concat(ids) : ids.slice());
-		}
-
-		this.mergeEdges(otherGraph);
-		return this;
 	}
 
 	private mergeEdges(otherGraph: DataflowGraph<Vertex, Edge>) {
@@ -408,7 +425,7 @@ export class DataflowGraph<
 	 * @param reference - The reference to the vertex to mark as definition
 	 */
 	public setDefinitionOfVertex(reference: IdentifierReference): void {
-		const vertex = this.getVertex(reference.nodeId, true);
+		const vertex = this.getVertex(reference.nodeId);
 		guard(vertex !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`);
 		if(vertex.tag === VertexType.FunctionDefinition || vertex.tag === VertexType.VariableDefinition) {
 			vertex.cds = reference.cds;
@@ -424,7 +441,7 @@ export class DataflowGraph<
 	 * @param info - The information about the new function call node
 	 */
 	public updateToFunctionCall(info: DataflowGraphVertexFunctionCall): void {
-		const vertex = this.getVertex(info.id, true);
+		const vertex = this.getVertex(info.id);
 		guard(vertex !== undefined && (vertex.tag === VertexType.Use || vertex.tag === VertexType.Value), () => `node must be a use or value node for ${JSON.stringify(info.id)} to update it to a function call but is ${vertex?.tag}`);
 		const previousTag = vertex.tag;
 		this.vertexInformation.set(info.id, { ...vertex, ...info, tag: VertexType.FunctionCall });
@@ -435,7 +452,7 @@ export class DataflowGraph<
 	/** If you do not pass the `to` node, this will just mark the node as maybe */
 	public addControlDependency(from: NodeId, to?: NodeId, when?: boolean): this {
 		to = to ? normalizeIdToNumberIfPossible(to) : undefined;
-		const vertex = this.getVertex(from, true);
+		const vertex = this.getVertex(from);
 		guard(vertex !== undefined, () => `node must be defined for ${from} to add control dependency`);
 		vertex.cds ??= [];
 		if(to) {

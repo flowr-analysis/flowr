@@ -423,6 +423,7 @@ export class BenchmarkSlicer {
 		this.measureSimpleStep('infer data frame shapes', () => inference.start());
 		const result = inference.getEndState();
 		stats.numberOfResultConstraints = result.value.size;
+		stats.sizeOfInfo = safeSizeOf([inference.getAbstractTrace()]);
 
 		for(const value of result.value.values()) {
 			if(value.isTop()) {
@@ -443,11 +444,9 @@ export class BenchmarkSlicer {
 				stats.numberOfEmptyNodes++;
 				return;
 			}
-			const state = inference.getAbstractState(node.info.id);
-			stats.sizeOfInfo += safeSizeOf([state]);
 
 			const nodeStats: PerNodeStatsDfShape = {
-				numberOfEntries: state?.value.size ?? 0
+				numberOfEntries: inference.getAbstractState(node.info.id)?.value.size ?? 0
 			};
 
 			if(operations !== undefined) {

@@ -3,9 +3,9 @@
  *      WorkerPool Messages
  */
 
-import { TaskName } from "./task-registry";
-import { workerStats } from "./worker";
-import { MessagePort } from "node:worker_threads";
+import type { TaskName } from './task-registry';
+import type { workerStats } from './worker';
+import type { MessagePort } from 'node:worker_threads';
 
 export interface RegisterPortMessage {
 	type:     'register-port';
@@ -73,43 +73,46 @@ export interface WorkerLogMessage {
 
 
 /**
- * 
+ *
  *      Message Type Guards
  */
 
+/**
+ *
+ */
 export function isRegisterPortMessage(msg: unknown): msg is RegisterPortMessage {
-    return (
-        typeof msg === 'object' &&
+	return (
+		typeof msg === 'object' &&
         msg !== null &&
         (msg as RegisterPortMessage).type === 'register-port' &&
         typeof (msg as RegisterPortMessage).workerId === 'number' &&
         typeof (msg as RegisterPortMessage).port === 'object'
-    );
+	);
 }
 
 /**
  *
  */
 export function isSubtaskMessage(msg: unknown): msg is SubtaskReceivedMessage {
-    return (
-        typeof msg === 'object' &&
+	return (
+		typeof msg === 'object' &&
         msg !== null &&
         (msg as SubtaskReceivedMessage).type === 'subtask' &&
         typeof (msg as SubtaskReceivedMessage).id === 'number' &&
         typeof (msg as SubtaskReceivedMessage).taskName === 'string'
-    );
+	);
 }
 
 /**
  *
  */
 export function isSubtaskResponseMessage(msg: unknown): msg is SubtaskResponseMessage {
-    return (
-        typeof msg === 'object' &&
+	return (
+		typeof msg === 'object' &&
         msg !== null &&
         (msg as SubtaskResponseMessage).type === 'subtask-response' &&
         typeof (msg as SubtaskResponseMessage).id === 'number'
-    );
+	);
 }
 
 
@@ -117,40 +120,40 @@ export function isSubtaskResponseMessage(msg: unknown): msg is SubtaskResponseMe
  *
  */
 export function isPortRegisteredMessage(msg: unknown): msg is PortRegisteredMessage {
-    return (
-        typeof msg === 'object' &&
+	return (
+		typeof msg === 'object' &&
         msg !== null &&
         (msg as PortRegisteredMessage).type === 'port-registered'
-    );
+	);
 }
 
 /**
  *
  */
 export function isWorkerLogMessage(msg: unknown): msg is WorkerLogMessage {
-    return (
-        typeof msg === 'object' &&
+	return (
+		typeof msg === 'object' &&
         msg !== null &&
         (msg as WorkerLogMessage).type === 'worker-log'
-    );
+	);
 }
 
 /**
  *
  */
 export function isWorkerStatsRequestMessage(msg: unknown): msg is WorkerStatsRequestMessage {
-    return (
-        typeof msg === 'object' &&
+	return (
+		typeof msg === 'object' &&
         msg !== null &&
         (msg as WorkerStatsRequestMessage).type === 'worker-stats-request'
-    );
+	);
 }
 
 /**
  *
  */
 export function isWorkerFinalStatMessage(msg: unknown): msg is WorkerFinalStatMessage {
-    return typeof msg === 'object' &&
+	return typeof msg === 'object' &&
         msg !== null &&
         (msg as WorkerFinalStatMessage).type === 'worker-final-stats';
 }

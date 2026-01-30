@@ -28,9 +28,10 @@ import { recoverName, type NodeId } from '../r-bridge/lang-4.x/ast/model/process
 import { VertexType, type DataflowGraphVertexFunctionCall } from './graph/vertex';
 import { dataflowLogger } from './logger';
 import type { DataflowPayload, DataflowReturnPayload } from './parallel/task-registry';
-import { REnvironmentInformation } from './environments/environment';
-import { findNonLocalReads, linkInputs } from './internal/linker';
-import { IdentifierReference, ReferenceType } from './environments/identifier';
+import type { REnvironmentInformation } from './environments/environment';
+import { linkInputs } from './internal/linker';
+import type { IdentifierReference } from './environments/identifier';
+import { ReferenceType } from './environments/identifier';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -102,55 +103,55 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 }
 
 function resolveCrossFileReferences(
-    graph: DataflowGraph,
-    environment: REnvironmentInformation,
+	graph: DataflowGraph,
+	environment: REnvironmentInformation,
 ): void {
-    /** get all unresolved reads in the dataflow graph, ignore nothing */
-    const unresolved: IdentifierReference[] = [];
+	/** get all unresolved reads in the dataflow graph, ignore nothing */
+	const unresolved: IdentifierReference[] = [];
 
-    for(const [nodeId, vertex] of graph.verticesOfType(VertexType.Use)){
-        const outgoing = graph.outgoingEdges(nodeId);
-        
-        const hasReads = (outgoing !== undefined) && [...outgoing.entries()].some(
-            ([,edge]) => edgeIncludesType(edge.types, EdgeType.Reads)
-        );
+	for(const [nodeId, vertex] of graph.verticesOfType(VertexType.Use)){
+		const outgoing = graph.outgoingEdges(nodeId);
 
-        if(!hasReads) {
-            unresolved.push({
-                nodeId,
-                name: recoverName(nodeId, graph.idMap),
-                controlDependencies: vertex.cds,
-                type: ReferenceType.Variable
-            })
-        }
-    }
+		const hasReads = (outgoing !== undefined) && [...outgoing.entries()].some(
+			([,edge]) => edgeIncludesType(edge.types, EdgeType.Reads)
+		);
 
-    for(const [nodeId, vertex] of graph.verticesOfType(VertexType.FunctionCall)){
-        const outgoing = graph.outgoingEdges(nodeId);
-        
-        const hasReads = (outgoing !== undefined) && [...outgoing.entries()].some(
-            ([,edge]) => edgeIncludesType(edge.types, EdgeType.Reads)
-        );
+		if(!hasReads) {
+			unresolved.push({
+				nodeId,
+				name:                recoverName(nodeId, graph.idMap),
+				controlDependencies: vertex.cds,
+				type:                ReferenceType.Variable
+			});
+		}
+	}
 
-        if(!hasReads) {
-            unresolved.push({
-                nodeId,
-                name: recoverName(nodeId, graph.idMap) ?? vertex.name,
-                controlDependencies: vertex.cds,
-                type: ReferenceType.Function
-            })
-        }
-    }
+	for(const [nodeId, vertex] of graph.verticesOfType(VertexType.FunctionCall)){
+		const outgoing = graph.outgoingEdges(nodeId);
 
-    console.log('Found following unresolved references: ', unresolved);
+		const hasReads = (outgoing !== undefined) && [...outgoing.entries()].some(
+			([,edge]) => edgeIncludesType(edge.types, EdgeType.Reads)
+		);
 
-    linkInputs(unresolved, environment, [], graph, false);
+		if(!hasReads) {
+			unresolved.push({
+				nodeId,
+				name:                recoverName(nodeId, graph.idMap) ?? vertex.name,
+				controlDependencies: vertex.cds,
+				type:                ReferenceType.Function
+			});
+		}
+	}
 
-    if(unresolved.length > 0){
-        console.warn(`Cross File Resolution: ${unresolved.length} reference(s) remain unresolved across all files for the dataflow graph: ` + 
+	console.log('Found following unresolved references: ', unresolved);
+
+	linkInputs(unresolved, environment, [], graph, false);
+
+	if(unresolved.length > 0){
+		console.warn(`Cross File Resolution: ${unresolved.length} reference(s) remain unresolved across all files for the dataflow graph: ` +
             unresolved.map(reference => reference.name ?? '<unnamed>').join(',')
-        );
-    }
+		);
+	}
 }
 
 /**
@@ -196,7 +197,7 @@ export async function produceDataFlowGraph<OtherInfo>(
 		);
 
 		const parsedResult = result.map(data => {
-            const dfInfo = DeserializeDataflowProcessorInformation(data.processorInfo, dfData.processors, dfData.parser);
+			const dfInfo = DeserializeDataflowProcessorInformation(data.processorInfo, dfData.processors, dfData.parser);
 			const dataflow = DeserializeDataflowInformation(data.dataflowData, dfInfo.ctx);
 			return {
 				processorInfo: dfInfo,
@@ -205,13 +206,13 @@ export async function produceDataFlowGraph<OtherInfo>(
 		});
 
 		let df = parsedResult[0].dataflow;
-        console.log('result length: ', parsedResult.length);
+		console.log('result length: ', parsedResult.length);
 
 		// merge dataflowinformation via folding
 		for(let i = 1; i < result.length; i++){
-            console.log('merging dataflow for file-', i);
+			console.log('merging dataflow for file-', i);
 			df = mergeDataflowInformation('file-'+i, parsedResult[i].processorInfo, files[i].filePath, df, parsedResult[i].dataflow);
-            resolveCrossFileReferences(df.graph, df.environment);
+			resolveCrossFileReferences(df.graph, df.environment);
 		}
 
 

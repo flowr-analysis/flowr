@@ -5,7 +5,8 @@ import type { WorkerData } from './threadpool';
 import { dataflowLogger } from '../logger';
 import { retrieveEngineInstances } from '../../engines';
 import { cloneConfig, defaultConfigOptions } from '../../config';
-import { isPortRegisteredMessage, isSubtaskResponseMessage, TaskReceivedMessage, WorkerLogLevel } from './pool-messages';
+import type { TaskReceivedMessage, WorkerLogLevel } from './pool-messages';
+import { isPortRegisteredMessage, isSubtaskResponseMessage } from './pool-messages';
 
 
 type PendingEntry<T> = {

@@ -15,7 +15,6 @@ import { uniqueMergeValuesInDefinitions } from './append';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import * as v8 from 'v8';
 import type { FlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
-import serialize from 'serialize-javascript';
 
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
@@ -255,12 +254,12 @@ export class Environment implements IEnvironment {
 				// erase content, as we will restore this later
 				json.memory = undefined as unknown as BuiltInMemory;
 			}
-            /** replace all memory with string representation */
-            let current = json;
-            while(current.parent){
-                current.memory = serializeBuiltInMemory(current.memory) as BuiltInMemory;
-                current = current.parent;
-            }
+			/** replace all memory with string representation */
+			let current = json;
+			while(current.parent){
+				current.memory = serializeBuiltInMemory(current.memory) as BuiltInMemory;
+				current = current.parent;
+			}
 
 			return v8.serialize(json);
 		} catch(err: unknown) {
@@ -270,16 +269,18 @@ export class Environment implements IEnvironment {
 	}
 
 	public static fromSerializable(data: Uint8Array, ctx?: FlowrAnalyzerContext): Environment {
-        if(!ctx)throw new Error('deserialization for env failed, as no ctx was provided');
+		if(!ctx) {
+			throw new Error('deserialization for env failed, as no ctx was provided');
+		}
 		try {
 			const json = v8.deserialize(data) as Jsonified;
 
-            /** rebuild all memory */
-            let current = json;
-            while(current.parent){
-                current.memory = deserializeBuiltInMemory(current.memory, ctx);
-                current = current.parent;
-            }
+			/** rebuild all memory */
+			let current = json;
+			while(current.parent){
+				current.memory = deserializeBuiltInMemory(current.memory, ctx);
+				current = current.parent;
+			}
 			return this.fromJSON(json, ctx);
 		} catch(err) {
 			console.warn('Failed to deserialize env:', err);

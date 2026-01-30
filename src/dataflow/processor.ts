@@ -20,7 +20,7 @@ export interface SerializedDataflowProcessorInformation<OtherInfo>{
     //parser:              EngineConfig['type'];
     //flowrConfig:         FlowrConfigOptions;
     serializedAST:       SerializedNormalizedAst<OtherInfo>;
-    environment: SerializedREnvironmentInformation;
+    environment:         SerializedREnvironmentInformation;
     controlDependencies: ControlDependency[] | undefined;
     referenceChain:      (string | undefined)[];
     ctx:                 SerializedFlowrAnalyzerContext;
@@ -64,7 +64,7 @@ export function SerializeDataflowProcessorInformation<OtherInfo>(
 ): SerializedDataflowProcessorInformation<OtherInfo> {
 	return {
 		serializedAST:       SerializeNormalizedAst<OtherInfo>(dfInfo.completeAst),
-        environment: toSerializedREnvironmentInformation(dfInfo.environment),
+		environment:         toSerializedREnvironmentInformation(dfInfo.environment),
 		controlDependencies: dfInfo.controlDependencies,
 		referenceChain:      dfInfo.referenceChain,
 		ctx:                 dfInfo.ctx.toSerializable(),

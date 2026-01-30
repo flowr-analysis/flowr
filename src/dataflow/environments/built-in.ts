@@ -45,8 +45,7 @@ import type {
 	BuiltInReplacementDefinition
 } from './built-in-config';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
-import { serialize } from 'v8';
-import { define } from './define';
+import { DEFAULT_R_PATH } from '../../r-bridge/shell';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -216,7 +215,7 @@ export type BuiltInMemory = Map<Identifier, IdentifierDefinition[]>
 
 type SerializedBuiltInEntry = {
 	__kind: 'builtin-entry';
-	name: Identifier;
+	name:   Identifier;
 	//definedAt: BuiltIn;
 };
 
@@ -249,45 +248,51 @@ function isSerializedBuiltinEntry(
 }
 
 
+/**
+ *
+ */
 export function serializeBuiltInMemory(mem: BuiltInMemory): SerializedBuiltInMemory{
-    const serMem = new Map<Identifier, SerializedIdentifierDefinition[]>();
+	const serMem = new Map<Identifier, SerializedIdentifierDefinition[]>();
 
-    for(const [id, defs] of mem.entries()){
-        if(isPureBuiltInEntry(defs)){
-            /** just save the name, to recover later */
-            serMem.set(id, [{
-                __kind: 'builtin-entry',
-                name: id,
-            }])
-        } else {
-            /** handle normally */
-            serMem.set(id, defs);
-        }
-    }
-    return serMem;
+	for(const [id, defs] of mem.entries()){
+		if(isPureBuiltInEntry(defs)){
+			/** just save the name, to recover later */
+			serMem.set(id, [{
+				__kind: 'builtin-entry',
+				name:   id,
+			}]);
+		} else {
+			/** handle normally */
+			serMem.set(id, defs);
+		}
+	}
+	return serMem;
 }
 
+/**
+ *
+ */
 export function deserializeBuiltInMemory(
-    mem: SerializedBuiltInMemory,
-    ctx: FlowrAnalyzerContext
+	mem: SerializedBuiltInMemory,
+	ctx: FlowrAnalyzerContext
 ): BuiltInMemory {
-    const deSerMem = new Map<Identifier, IdentifierDefinition[]>();
-    for( const [id,defs] of mem.entries()){
-        if(defs.length === 1 && isSerializedBuiltinEntry(defs[0])){
-            const builtInDefs = ctx.env.builtInEnvironment.memory.get(defs[0].name);
+	const deSerMem = new Map<Identifier, IdentifierDefinition[]>();
+	for( const [id,defs] of mem.entries()){
+		if(defs.length === 1 && isSerializedBuiltinEntry(defs[0])){
+			const builtInDefs = ctx.env.builtInEnvironment.memory.get(defs[0].name);
 
-            if(!builtInDefs){
-                console.warn('Could not recover builtin defs entry: ', defs[0]);
-                continue;
-            }
-            // convert to mutable data and clone to sever connection to readonly object
-            deSerMem.set(id, defs.map(def => ({...def})) as IdentifierDefinition[]);
-        } else {
-            deSerMem.set(id, defs as IdentifierDefinition[])
-        }
-        
-    }
-    return deSerMem;
+			if(!builtInDefs){
+				console.warn('Could not recover builtin defs entry: ', defs[0]);
+				continue;
+			}
+			// convert to mutable data and clone to sever connection to readonly object
+			deSerMem.set(id, defs.map(def => ({ ...def })) as IdentifierDefinition[]);
+		} else {
+			deSerMem.set(id, defs as IdentifierDefinition[]);
+		}
+
+	}
+	return deSerMem;
 }
 
 export class BuiltIns {

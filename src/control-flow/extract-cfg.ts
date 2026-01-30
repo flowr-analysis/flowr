@@ -66,6 +66,14 @@ const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
 	}
 };
 
+const ignoreFunctDefCfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
+	...cfgFolds,
+	functions: {
+		...cfgFolds.functions,
+		foldFunctionDefinition: cfgLeaf(CfgVertexType.Expression)
+	}
+};
+
 function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInformation, ControlFlowInformation> {
 	const newFolds = {
 		...cfgFolds,
@@ -85,15 +93,18 @@ function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInf
  * @param ctx             - the flowR context
  * @param graph           - additional dataflow facts to consider by the control flow extraction
  * @param simplifications - a list of simplification passes to apply to the control flow graph
+ * @param ignoreFunctDefs - whether function definition vertices should be ignored
  * @see {@link extractCfgQuick} - for a simplified version of this function
  */
 export function extractCfg<Info = ParentInformation>(
 	ast:    NormalizedAst<Info & ParentInformation>,
 	ctx:    ReadOnlyFlowrAnalyzerContext,
 	graph?: DataflowGraph,
-	simplifications?: readonly CfgSimplificationPassName[]
+	simplifications?: readonly CfgSimplificationPassName[],
+	ignoreFunctDefs?: boolean
 ): ControlFlowInformation {
-	return simplifyControlFlowInformation(cfgFoldProject(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds), { ast, dfg: graph, ctx }, simplifications);
+	const folds = ignoreFunctDefs ? ignoreFunctDefCfgFolds : (graph ? dataflowCfgFolds(graph) : cfgFolds);
+	return simplifyControlFlowInformation(cfgFoldProject(ast.ast, folds), { ast, dfg: graph, ctx }, simplifications);
 }
 
 /**

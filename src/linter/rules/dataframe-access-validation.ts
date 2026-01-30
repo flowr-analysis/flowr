@@ -2,7 +2,7 @@ import type { DataFrameDomain } from '../../abstract-interpretation/data-frame/d
 import { DataFrameShapeInferenceVisitor, type DataFrameOperationType } from '../../abstract-interpretation/data-frame/shape-inference';
 import { NumericalComparator, SetComparator } from '../../abstract-interpretation/domains/satisfiable-domain';
 import { amendConfig } from '../../config';
-import { extractCfg } from '../../control-flow/extract-cfg';
+import { CfgKind } from '../../project/cfg-kind';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -58,7 +58,7 @@ export interface DataFrameAccessValidationMetadata extends MergeableRecord {
 
 export const DATA_FRAME_ACCESS_VALIDATION = {
 	createSearch:        () => Q.all().with(Enrichment.CallTargets, { onlyBuiltin: true }),
-	processSearchResult: (elements, config, data) => {
+	processSearchResult: async(elements, config, data) => {
 		let ctx = data.analyzer.inspectContext();
 		ctx = {
 			...ctx,
@@ -69,7 +69,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 				return flowrConfig;
 			})
 		};
-		const cfg = extractCfg(data.normalize, ctx, data.dataflow.graph);
+		const cfg = await data.analyzer.controlflow(undefined, CfgKind.NoFunctionDefs);
 		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: data.dataflow.graph, normalizedAst: data.normalize, ctx });
 		inference.start();
 

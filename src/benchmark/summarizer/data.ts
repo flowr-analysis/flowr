@@ -98,6 +98,8 @@ export interface UltimateSlicerStats {
 export interface SummarizedDfShapeStats<T = number> extends Omit<SlicerStatsDfShape<T>, 'perNodeStats'> {
 	numberOfEntriesPerNode:   SummarizedMeasurement,
 	numberOfOperations:       T,
+	numberOfTotalConstraints: T,
+	numberOfTotalExact:       T,
 	numberOfTotalValues:      T,
 	numberOfTotalBottom:      T,
 	numberOfTotalTop:         T,

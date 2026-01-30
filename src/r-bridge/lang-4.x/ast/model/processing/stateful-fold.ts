@@ -1,4 +1,3 @@
-import { assertUnreachable } from '../../../../../util/assert';
 import type { DeepReadonly } from 'ts-essentials';
 import { RType } from '../type';
 import type { RNode } from '../model';
@@ -23,6 +22,7 @@ import type { RExpressionList } from '../nodes/r-expression-list';
 import type { RFunctionDefinition } from '../nodes/r-function-definition';
 import type { RArgument } from '../nodes/r-argument';
 import type { RParameter } from '../nodes/r-parameter';
+import { assertUnreachable } from '../../../../../util/assert';
 
 
 /**

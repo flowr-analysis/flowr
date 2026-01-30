@@ -2,9 +2,11 @@ import { RType, ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import { ValidVertexTypes, VertexType } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElement } from './flowr-search';
-import { type Enrichment , enrichmentContent } from './search-executor/search-enrichers';
+import type { CallTargetsContent } from './search-executor/search-enrichers';
+import { Enrichment, enrichmentContent } from './search-executor/search-enrichers';
 import type { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { DataflowInformation } from '../dataflow/info';
+import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {
@@ -40,8 +42,24 @@ export const FlowrFilters = {
 		return e.node.type !== RType.Argument || e.node.name !== undefined;
 	}) satisfies FlowrFilterFunction<never>,
 	[FlowrFilter.MatchesEnrichment]: ((e: FlowrSearchElement<ParentInformation>, args: MatchesEnrichmentArgs<Enrichment>) => {
-		const content = JSON.stringify(enrichmentContent(e, args.enrichment));
-		return content !== undefined && args.test.test(content);
+		if(args.enrichment === Enrichment.CallTargets) {
+			const c: CallTargetsContent = enrichmentContent(e, Enrichment.CallTargets);
+			if(c === undefined || c.targets === undefined) {
+				return false;
+			}
+			for(const fn of c.targets) {
+				if(typeof fn === 'string' && args.test.test(fn)) {
+					return true;
+				}
+				if(typeof fn === 'object' && 'node' in fn && fn.node.type === RType.FunctionCall && fn.node.named && args.test.test((fn.node.functionName as RSymbol).content)) {
+					return true;
+				}
+			}
+			return false;
+		} else {
+			const content = JSON.stringify(enrichmentContent(e, args.enrichment));
+			return content !== undefined && args.test.test(content);
+		}
 	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>,
 	[FlowrFilter.OriginKind]: ((e: FlowrSearchElement<ParentInformation>, args: OriginKindArgs, data: { dataflow: DataflowInformation }) => {
 		const dfgNode = data.dataflow.graph.getVertex(e.node.info.id);
@@ -71,7 +89,7 @@ export interface OriginKindArgs {
  * Helper to create a regular expression that matches function names, ignoring their package.
  */
 export function testFunctionsIgnoringPackage(functions: readonly string[]): RegExp {
-	return new RegExp(`"(.+:::?)?(${functions.join('|')})"`);
+	return new RegExp(`^(.+:::?)?(${functions.join('|')})$`);
 }
 
 type ValidFilterTypes<F extends FlowrFilter = FlowrFilter> = FlowrFilterName | FlowrFilterWithArgs<F, FlowrFilterArgs<F>> | RType | VertexType;

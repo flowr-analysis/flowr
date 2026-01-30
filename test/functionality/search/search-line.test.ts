@@ -44,19 +44,19 @@ describe('flowR search', withTreeSitter(parser => {
 			assertSearch('call-targets (none)', parser, "cat('hello')\nprint('world')", [],
 				Q.all().filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
-					test:       /"print"/
+					test:       /print/
 				} })
 			);
 			assertSearch('call-targets (other)', parser, "cat('hello')\nprint('world')", [],
 				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
-					test:       /"library"/
+					test:       /library/
 				} })
 			);
 			assertSearch('call-targets (match)', parser, "cat('hello')\nprint('world')", ['2@print'],
 				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
-					test:       /"print"/
+					test:       /print/
 				} })
 			);
 		});

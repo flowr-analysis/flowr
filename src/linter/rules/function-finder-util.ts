@@ -11,7 +11,7 @@ import { formatRange } from '../../util/mermaid/dfg';
 import { isNotUndefined } from '../../util/assert';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowInformation } from '../../dataflow/info';
-import { isFunctionCallVertex } from '../../dataflow/graph/vertex';
+import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
@@ -40,7 +40,7 @@ export interface FunctionsToDetectConfig extends MergeableRecord {
 export const functionFinderUtil = {
 	createSearch: (functions: readonly string[]) => {
 		return (
-			Q.all()
+			Q.all().filter(VertexType.FunctionCall)
 				.with(Enrichment.CallTargets, { onlyBuiltin: true })
 				.filter({
 					name: FlowrFilter.MatchesEnrichment,

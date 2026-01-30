@@ -127,10 +127,6 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		this.handleWithCondition(data);
 	}
 
-	protected onReturnCall(data: { call: DataflowGraphVertexFunctionCall }): void {
-		this.cachedStatements.set(data.call.id, true);
-	}
-
 	protected onStopCall(data: { call: DataflowGraphVertexFunctionCall }): void {
 		this.cachedStatements.set(data.call.id, true);
 	}

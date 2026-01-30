@@ -415,6 +415,11 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 		graph.addEdge(callId + '-exit', exit, { label: CfgEdgeType.Fd });
 	}
 
+	if(call.named && call.functionName.content === 'return') {
+		info.returns.push(callId + '-exit');
+		info.exitPoints.length = 0;
+	}
+
 	// should not contain any breaks, nexts, or returns, (except for the body if something like 'break()')
 	return info;
 }

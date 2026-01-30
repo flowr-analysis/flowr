@@ -42,10 +42,15 @@ export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries:
 			log.warn('Duplicate criterion in dataframe shape query:', query.criterion);
 			continue;
 		}
-		const nodeId = slicingCriterionToId(query.criterion, ast.idMap);
-		const node = ast.idMap.get(nodeId);
-		const value = inference.getAbstractValue(node?.info.id);
-		result.set(query.criterion, value);
+		try {
+			const nodeId = slicingCriterionToId(query.criterion, ast.idMap);
+			const node = ast.idMap.get(nodeId);
+			const value = inference.getAbstractValue(node?.info.id);
+			result.set(query.criterion, value);
+		} catch(e) {
+			console.error(e instanceof Error ? e.message : e);
+			continue;
+		}
 	}
 
 	return {

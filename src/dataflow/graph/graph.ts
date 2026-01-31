@@ -21,7 +21,6 @@ import { dataflowLogger } from '../logger';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
 import type { BuiltInMemory } from '../environments/built-in';
-import { builtInId } from '../environments/built-in';
 
 /**
  * Describes the information we store per function body.
@@ -344,9 +343,6 @@ export class DataflowGraph<
 	public addEdge(fromId: NodeId, toId: NodeId, type: EdgeType | number): this {
 		if(fromId === toId) {
 			return this;
-		}
-		if(toId === builtInId('recall')) {
-			console.trace('oh no');
 		}
 
 		/* we now that we pass all required arguments */

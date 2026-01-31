@@ -53,6 +53,7 @@ import { processTryCatch } from '../internal/process/functions/call/built-in/bui
 import { processRegisterHook } from '../internal/process/functions/call/built-in/built-in-register-hook';
 import { processLocal } from '../internal/process/functions/call/built-in/built-in-local';
 import { processS3Dispatch } from '../internal/process/functions/call/built-in/built-in-s-three-dispatch';
+import { processRecall } from '../internal/process/functions/call/built-in/built-in-recall';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -230,6 +231,10 @@ export enum BuiltInProcName {
 	Pipe                = 'builtin:pipe',
 	/** for `quote`, and other substituting calls, see {@link processQuote} */
 	Quote               = 'builtin:quote',
+	/**
+	 * for `recall` calls, see {@link processRecall}
+	 */
+	Recall              = 'builtin:recall',
 	/** for `on.exìt` and other hooks, see {@link processRegisterHook} */
 	RegisterHook        = 'builtin:register-hook',
 	/** for `repeat` loops, see {@link processRepeatLoop} */
@@ -280,6 +285,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Local]:              processLocal,
 	[BuiltInProcName.Pipe]:               processPipe,
 	[BuiltInProcName.Quote]:              processQuote,
+	[BuiltInProcName.Recall]:             processRecall,
 	[BuiltInProcName.RegisterHook]:       processRegisterHook,
 	[BuiltInProcName.RepeatLoop]:         processRepeatLoop,
 	[BuiltInProcName.Replacement]:        processReplacementFunction,

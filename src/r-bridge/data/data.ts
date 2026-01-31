@@ -122,13 +122,13 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 						{
 							name:        'Search Path',
 							id:          'search-path',
-							supported:   'not',
+							supported:   'partially',
 							description: "_Handling [R's search path](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Search-path) as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#search-path)._ Currently, _flowR_ does not support dynamic modifications with `attach`, `search`, or `fn_env` and tests are definitely missing. Yet, theoretically, the tooling is all there."
 						},
 						{
 							name:        'Namespaces',
 							id:          'namespaces',
-							supported:   'not',
+							supported:   'partially',
 							description: "_Handling R's namespaces as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#namespaces)_"
 						},
 						{
@@ -140,7 +140,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 						{
 							name:        'Accessing Internal Names',
 							id:          'accessing-internal-names',
-							supported:   'not',
+							supported:   'partially',
 							description: '_Similar to `::` but for internal names._'
 						},
 						{
@@ -155,6 +155,12 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							supported:   'partially',
 							description: '_Manually changing scopes like [`local`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/eval)_'
 						},
+						{
+							name:        'Anonymous Bindings',
+							id:          'anonymous-bindings',
+							supported:   'fully',
+							description: '_Support for [`Recall`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/Recall)_'
+						}
 					]
 				}
 			]

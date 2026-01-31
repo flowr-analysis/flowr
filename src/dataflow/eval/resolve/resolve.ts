@@ -25,6 +25,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flow
  * aliases and vectors (in case of a vector).
  * @param a       - Ast node to resolve
  * @param resolve - Variable resolve mode
+ * @param ctx     - Analyzer context
  * @param env     - Environment to use
  * @param graph   - Dataflow Graph to use
  * @param map     - Idmap of Dataflow Graph

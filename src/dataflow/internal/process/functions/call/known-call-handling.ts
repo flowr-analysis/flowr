@@ -18,9 +18,13 @@ import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 import { BuiltInProcName } from '../../../../environments/built-in';
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
+	/** The name of the function being called. */
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
+	/** The arguments to the function call. */
 	readonly args:                  readonly (RNode<OtherInfo & ParentInformation> | RFunctionArgument<OtherInfo & ParentInformation>)[]
+	/** The node ID to use for the function call vertex. */
 	readonly rootId:                NodeId
+	/** The dataflow processor information at the point of the function call. */
 	readonly data:                  DataflowProcessorInformation<OtherInfo & ParentInformation>
 	/** should arguments be processed from right to left? This does not affect the order recorded in the call but of the environments */
 	readonly reverseOrder?:         boolean

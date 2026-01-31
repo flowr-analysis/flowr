@@ -49,7 +49,6 @@ export function processRecall<OtherInfo>(
 			(r as { name: string }).name = UnnamedFunctionCallPrefix + rootId + '-' + r.name;
 			(r as { environment: REnvironmentInformation }).environment = information.environment;
 		}
-		// TODO: link arguments etc.
 	} else {
 		log.warn('No enclosing function closure found for recall at node', rootId);
 	}

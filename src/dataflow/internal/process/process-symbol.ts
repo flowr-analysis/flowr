@@ -21,7 +21,7 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 	}
 
 	return {
-		unknownReferences: [ { nodeId: symbol.info.id, name: symbol.content, cds: data.cds, type: ReferenceType.Unknown } ],
+		unknownReferences: [ { nodeId: symbol.info.id, name: symbol.namespace ? symbol.namespace + '::' + symbol.content : symbol.content, cds: data.cds, type: ReferenceType.Unknown } ],
 		in:                [],
 		out:               [],
 		environment:       data.environment,

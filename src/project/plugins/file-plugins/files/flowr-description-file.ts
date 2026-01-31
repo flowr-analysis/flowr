@@ -7,6 +7,8 @@ import type { RLicenseElementInfo } from '../../../../util/r-license';
 import { parseRLicense } from '../../../../util/r-license';
 import { Package, type PackageType } from '../../package-version-plugins/package';
 import { removeRQuotes } from '../../../../r-bridge/retriever';
+import type { SemVer } from 'semver';
+import { parseRVersion } from '../../../../util/r-version';
 
 export type DCF = Map<string, string[]>;
 
@@ -60,6 +62,18 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 	}
 
 	/**
+	 * Returns the parsed version from the 'Version' field in the DESCRIPTION file.
+	 */
+	public version(): SemVer & { str: string } | undefined {
+		const v = this.content().get('Version');
+		if(!v || v.length === 0) {
+			return undefined;
+		}
+		const verStr = v[0].trim();
+		return parseRVersion(verStr);
+	}
+
+	/**
 	 * Returns the parsed authors from the `Authors@R` field in the DESCRIPTION file.
 	 */
 	public authors(): RAuthorInfo[] | undefined {
@@ -105,6 +119,22 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 	public imports(): readonly Package[] | undefined {
 		const imps = this.content().get('Imports');
 		return imps ? parsePackagesWithVersions(imps, 'package') : undefined;
+	}
+
+	/**
+	 * Returns the package name from the 'Package' field in the DESCRIPTION file.
+	 */
+	public packageName(): string | undefined {
+		const names = this.content().get('Package');
+		return names && names.length > 0 ? names[0] : names?.join(' ');
+	}
+
+	/**
+	 * Returns the package title from the 'Title' field in the DESCRIPTION file.
+	 */
+	public packageTitle(): string | undefined {
+		const titles = this.content().get('Title');
+		return titles && titles.length > 0 ? titles[0] : titles?.join(' ');
 	}
 }
 

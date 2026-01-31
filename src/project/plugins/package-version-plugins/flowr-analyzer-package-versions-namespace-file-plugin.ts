@@ -9,13 +9,13 @@ export const namespaceFileLog = log.getSubLogger({ name: 'flowr-analyzer-package
 
 export class FlowrAnalyzerPackageVersionsNamespaceFilePlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name = 'flowr-analyzer-package-version-namespace-file-plugin';
-	public readonly description = 'This plugin does...';
+	public readonly description = 'This plugin extracts package versions from R NAMESPACE files.';
 	public readonly version = new SemVer('0.1.0');
 
 	process(ctx: FlowrAnalyzerContext): void {
 		const nmspcFiles = ctx.files.getFilesByRole(FileRole.Namespace);
 		if(nmspcFiles.length === 0) {
-			namespaceFileLog.warn('No namespace file found, cannot extract package versions.');
+			namespaceFileLog.debug('No namespace file found, cannot extract package versions.');
 		} else if(nmspcFiles.length > 1) {
 			namespaceFileLog.warn(`Found ${nmspcFiles.length} namespace files, expected exactly one.`);
 		}

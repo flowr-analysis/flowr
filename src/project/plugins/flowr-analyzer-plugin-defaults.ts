@@ -14,6 +14,9 @@ import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-
 import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
 import { FlowrAnalyzerMetaTestFilesPlugin } from './file-plugins/flowr-analyzer-test-file-plugin';
 import { FlowrAnalyzerLicenseFilePlugin } from './file-plugins/flowr-analyzer-license-file-plugin';
+import {
+	FlowrAnalyzerMetaDescriptionFilePlugin
+} from './package-version-plugins/flowr-analyzer-meta-description-file-plugin';
 
 /**
  * Provides the default set of Flowr Analyzer plugins.
@@ -25,6 +28,7 @@ export function FlowrAnalyzerPluginDefaults(): FlowrAnalyzerPlugin[] {
 		new FlowrAnalyzerDescriptionFilePlugin(),
 		new FlowrAnalyzerPackageVersionsDescriptionFilePlugin(),
 		new FlowrAnalyzerLoadingOrderDescriptionFilePlugin(),
+		new FlowrAnalyzerMetaDescriptionFilePlugin(),
 		new FlowrAnalyzerRmdFilePlugin(),
 		new FlowrAnalyzerQmdFilePlugin(),
 		new FlowrAnalyzerLicenseFilePlugin(),

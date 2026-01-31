@@ -38,6 +38,7 @@ import { FlowrAnalyzerRmdFilePlugin } from '../project/plugins/file-plugins/note
 import { FlowrAnalyzerPlugin } from '../project/plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerEnvironmentContext } from '../project/context/flowr-analyzer-environment-context';
 import { FlowrAnalyzerFunctionsContext } from '../project/context/flowr-analyzer-functions-context';
+import { FlowrAnalyzerMetaContext } from '../project/context/flowr-analyzer-meta-context';
 
 async function analyzerQuickExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -100,7 +101,8 @@ ${
 			'Files Context':         undefined,
 			'Loading Order Context': undefined,
 			'Dependencies Context':  undefined,
-			'Environment Context':   undefined
+			'Environment Context':   undefined,
+			'Meta Context':          undefined,
 		},
 		'Caching': undefined
 	})
@@ -460,6 +462,19 @@ The environment context provides access to the built-in environment via
 ${ctx.linkM(FlowrAnalyzerEnvironmentContext, 'makeCleanEnv', { codeFont: true, realNameWrapper: 'i' })}.
 It also provides the empty built-in environment, which only contains primitives, via
 ${ctx.linkM(FlowrAnalyzerEnvironmentContext, 'makeCleanEnvWithEmptyBuiltIns', { codeFont: true, realNameWrapper: 'i' })}.
+
+${section('Meta Context', 3)}
+
+This ${ctx.link(FlowrAnalyzerMetaContext)} provides access to the project metadata such as name, version, and namespace:
+${ctx.hierarchy(FlowrAnalyzerMetaContext, { showImplSnippet: false })}
+
+You can access the project name via
+${ctx.linkM(FlowrAnalyzerMetaContext, 'getProjectName', { codeFont: true, realNameWrapper: 'i' })},
+the project version via
+${ctx.linkM(FlowrAnalyzerMetaContext, 'getProjectVersion', { codeFont: true, realNameWrapper: 'i' })},
+and the project namespace via
+${ctx.linkM(FlowrAnalyzerMetaContext, 'getNamespace', { codeFont: true, realNameWrapper: 'i' })}.
+
 
 ${section('Caching', 2)}
 

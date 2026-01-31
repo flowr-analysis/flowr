@@ -8,7 +8,21 @@ describe('Resolve for Namespaces', withTreeSitter(ts => {
 		'x <- 42\nprint(base::x)',
 		emptyGraph(),
 			{
-				expectIsSubgraph: true,
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+				mustNotHaveEdges:      [['2@x', '1@x']]
 			} as const
+	);
+	assertDataflow(label('Simple Assign Break', ['namespaces', 'lexicographic-scope']), ts,
+		'x <- 42\nprint(base::x)',
+		emptyGraph(),
+		{
+			expectIsSubgraph:      true,
+			resolveIdsAsCriterion: true,
+			mustNotHaveEdges:      [['2@x', '1@x']],
+			modifyAnalyzer:        a => {
+				a.context(); // TODO: add meta context for current project name so that we can give the scope a name!
+			}
+		} as const
 	);
 }));

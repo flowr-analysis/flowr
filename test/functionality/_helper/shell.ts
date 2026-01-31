@@ -49,7 +49,7 @@ import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { assertCfgSatisfiesProperties, type CfgProperty } from '../../../src/control-flow/cfg-properties';
 import { cloneConfig, defaultConfigOptions, type FlowrConfigOptions } from '../../../src/config';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import type { ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
+import type { FlowrAnalyzer, ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
@@ -376,7 +376,12 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	/** The collection of edges that should not exist */
 	mustNotHaveEdges:      [NodeId, NodeId][]
 	/** Whether to test the call graph instead of the dataflow graph */
-	context:               'dataflow' | 'call-graph'
+	context:               'dataflow' | 'call-graph',
+	/**
+	 * Allows you to modify the analyzer before running the test.
+	 * (assumes side-effects and reuses the same object if you return undefined)
+	 */
+	modifyAnalyzer:        (analyzer: FlowrAnalyzer) => FlowrAnalyzer | undefined
 }
 
 function cropIfTooLong(str: string): string {
@@ -403,7 +408,7 @@ export function assertDataflow(
 ): void {
 	const effectiveName = decorateLabelContext(name, [userConfig?.context ?? 'dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
-		const analyzer = await new FlowrAnalyzerBuilder()
+		let analyzer = await new FlowrAnalyzerBuilder()
 			.setInput({
 				getId: deterministicCountingIdGenerator(startIndexForDeterministicIds)
 			})
@@ -415,6 +420,9 @@ export function assertDataflow(
 			analyzer.addFile(...userConfig.addFiles);
 		}
 
+		if(userConfig?.modifyAnalyzer) {
+			analyzer = userConfig.modifyAnalyzer(analyzer) ?? analyzer;
+		}
 		if(typeof expected === 'function') {
 			expected = await expected(analyzer);
 		}

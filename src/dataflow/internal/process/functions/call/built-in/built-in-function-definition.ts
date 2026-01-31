@@ -347,7 +347,6 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
 	for(let i = 0; i < data.environment.level + 1 /* add another env */; i++) {
 		env = pushLocalEnvironment(env);
 		if(i === data.environment.level) {
-			// TODO: document also that we can read this out and the purpose
 			env.current.setClosureNodeId(rootId);
 		}
 	}

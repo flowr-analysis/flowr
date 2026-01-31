@@ -67,6 +67,10 @@ export class Environment implements IEnvironment {
 		this.c = nodeId;
 	}
 
+	/**
+	 * Provides the closure linked to this environment.
+	 * This is of importance if, for example, if you want to know the function definition associated with this environment.
+	 */
 	public get closure(): NodeId | undefined {
 		return this.c;
 	}

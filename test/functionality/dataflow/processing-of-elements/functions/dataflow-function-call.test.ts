@@ -501,11 +501,13 @@ testFuncCorrect(1:5, sum)
 		assertDataflow(label('Recursion with Recall', ['anonymous-bindings']),
 			ts,
 			`f <- function(g, x) {
-				Recall(2, 3)
+				Recall(x=2, 3)
 			}
 			`,
 			emptyGraph()
 				.calls('2@Recall', '1@function')
+				.definedByOnCall('1@g', '2@3')
+				.definedByOnCall('1@x', '$10')
 			, { resolveIdsAsCriterion: true, expectIsSubgraph: true }
 		);
 	});

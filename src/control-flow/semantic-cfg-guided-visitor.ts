@@ -308,6 +308,8 @@ export class SemanticCfgGuidedVisitor<
 				return this.onReturnCall({ call });
 			case BuiltInProcName.Unnamed:
 				return this.onUnnamedCall({ call });
+			case BuiltInProcName.Recall:
+				return this.onRecallCall({ call });
 			case BuiltInProcName.Default:
 			case BuiltInProcName.Function:
 			case BuiltInProcName.FunctionDefinition:
@@ -687,4 +689,10 @@ export class SemanticCfgGuidedVisitor<
 	 * @protected
 	 */
 	protected onReturnCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for every call to `Recall`, which is used to recall the function closure (usually in recursive functions).
+	 * @protected
+	 */
+	protected onRecallCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 }

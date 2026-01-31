@@ -61,7 +61,7 @@ export function getSubCallGraph(graph: CallGraph, entryPoints: Set<NodeId>): Cal
 
 
 /**
- *
+ * Determines whether there is a path from `from` to `to` in the given graph (via any edge type, only respecting direction)
  */
 export function reaches(from: NodeId, to: NodeId, graph: DataflowGraph, knownReachability: DefaultMap<NodeId, Set<NodeId>> = new DefaultMap(() => new Set())): boolean {
 	const visited: Set<NodeId> = new Set();
@@ -209,10 +209,12 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 	// for each call, resolve the targets
 	const tars = getAllFunctionCallTargets(vid, graph, vtx.environment);
 	let addedTarget = false;
+	let addedBiTarget = false;
 	for(const tar of tars) {
 		if(isBuiltIn(tar)) {
 			result.addEdge(vid, tar, EdgeType.Calls);
 			addedTarget = true;
+			addedBiTarget = true;
 			continue;
 		}
 		const targetVtx = graph.getVertex(tar);
@@ -222,7 +224,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 		addedTarget = true;
 		processFunctionDefinition(targetVtx, vid, graph, result, state);
 	}
-	if(vtx.origin !== 'unnamed') {
+	if(!addedBiTarget && vtx.origin !== 'unnamed') {
 		for(const origs of vtx.origin) {
 			if(origs.startsWith('builtin:')) {
 				addedTarget = true;

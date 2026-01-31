@@ -4,6 +4,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
 import type { BuiltInProcName } from '../environments/built-in';
+import type { Identifier } from '../environments/identifier';
 
 
 export enum VertexType {
@@ -242,7 +243,7 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	 * For example, if the function is a replacement function, in this case, the actually called fn will
 	 * have the compound name (e.g., `[<-`).
 	 */
-	readonly name: string
+	readonly name: Identifier
 	/** The arguments of the function call, in order (as they are passed to the respective call if executed in R). */
 	args:          FunctionArgument[]
 	/** a performance flag to indicate that the respective call is _only_ calling a builtin function without any df graph attached */

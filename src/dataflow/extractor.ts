@@ -125,10 +125,13 @@ export function produceDataFlowGraph<OtherInfo>(
 
 	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
 
+	const env = ctx.env.makeCleanEnv();
+	env.current.n = ctx.meta.getNamespace();
+
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
-		environment:    ctx.env.makeCleanEnv(),
+		environment:    env,
 		processors:     ctx.config.solver.instrument.dataflowExtractors?.(processors, ctx) ?? processors,
 		cds:            undefined,
 		referenceChain: [files[0].filePath],

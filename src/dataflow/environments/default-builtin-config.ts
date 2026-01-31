@@ -130,6 +130,7 @@ export const DefaultBuiltinConfig = [
 		config:          { readAllArguments: true },
 		assumePrimitive: false
 	},
+	// TODO: support register for package
 	{ type: 'function', names: ['rm'],                                          processor: BuiltInProcName.Rm,                  config: {},                                                                           assumePrimitive: true  },
 	{ type: 'function', names: ['options'],                                     processor: BuiltInProcName.Default,             config: { hasUnknownSideEffects: true, forceArgs: 'all' },                            assumePrimitive: false },
 	{ type: 'function', names: ['mapply', 'Mapply'],                            processor: BuiltInProcName.Apply,               config: { indexOfFunction: 0, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },
@@ -146,7 +147,7 @@ export const DefaultBuiltinConfig = [
 				type:     'link-to-last-call',
 				ignoreIf: (source: DataflowGraphVertexFunctionCall, graph: DataflowGraph) => {
 					/* map with add = true appends to an existing plot */
-					return (PlotFunctionsWithAddParam.has(source.name) && getValueOfArgument(graph, source, {
+					return (PlotFunctionsWithAddParam.has(source.name[0]) && getValueOfArgument(graph, source, {
 						index: -1,
 						name:  'add'
 					}, [RType.Logical])?.content === true);
@@ -168,14 +169,14 @@ export const DefaultBuiltinConfig = [
 					const sourceVertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;
 
 					/* map with add = true appends to an existing plot */
-					return (PlotFunctionsWithAddParam.has(sourceVertex.name ?? '') && getValueOfArgument(graph, sourceVertex, {
+					return (PlotFunctionsWithAddParam.has(sourceVertex.name[0] ?? '') && getValueOfArgument(graph, sourceVertex, {
 						index: -1,
 						name:  'add'
 					}, [RType.Logical])?.content !== true);
 				},
 				cascadeIf: (target: DataflowGraphVertexFunctionCall, _: NodeId, graph: DataflowGraph) => {
 					/* map with add = true appends to an existing plot */
-					return target.name === 'map' ? (getValueOfArgument(graph, target, {
+					return target.name[0] === 'map' ? (getValueOfArgument(graph, target, {
 						index: 11,
 						name:  'add'
 					}, [RType.Logical])?.content === true ? CascadeAction.Continue : CascadeAction.Stop) : CascadeAction.Stop;

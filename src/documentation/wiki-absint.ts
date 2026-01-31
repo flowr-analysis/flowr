@@ -34,7 +34,7 @@ class IntervalInferenceVisitor extends AbstractInterpretationVisitor<IntervalDom
 				return;
 			}
 			// We map the numerical operation to the resulting interval after applying the abstract semantics of the operation
-			switch(call.name) {
+			switch(call.name[0]) {
 				case '+':
 					return this.currentState.set(call.id, left.add(right));
 				case '-':

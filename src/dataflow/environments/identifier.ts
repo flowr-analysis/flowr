@@ -3,7 +3,26 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { ControlDependency } from '../info';
 import type { ContainerIndicesCollection } from '../graph/vertex';
 
-export type Identifier = string & { __brand?: 'identifier' }
+/** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
+export type BrandedIdentifier = string & { __brand?: 'identifier' }
+
+/**
+ * Refers to an identifier by its name.
+ * This can either be a simple name like `a` or a namespaced name like `pkg::a` (stored as ['a', 'pkg']).
+ * By storing the namespace second, you can easily access the actual name via `id[0]`.
+ * This represents the fundamental way to represent binding names in R.
+ * @see {@link identifier2str} - to convert an {@link Identifier|identifier} to a string representation
+ */
+export type Identifier = [id: BrandedIdentifier, namespace?: BrandedIdentifier]
+
+// TODO: explain identifier
+
+/**
+ * Convert an {@link Identifier|identifier} to a string representation.
+ */
+export function identifier2str(id: Identifier): string {
+	return id[1] ? `${id[1]}::${id[0]}` : id[0];
+}
 
 /**
  * Each reference has exactly one reference type, stored as the respective number.

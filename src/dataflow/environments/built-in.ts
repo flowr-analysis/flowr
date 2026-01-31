@@ -12,7 +12,12 @@ import { processPipe } from '../internal/process/functions/call/built-in/built-i
 import { processForLoop } from '../internal/process/functions/call/built-in/built-in-for-loop';
 import { processRepeatLoop } from '../internal/process/functions/call/built-in/built-in-repeat-loop';
 import { processWhileLoop } from '../internal/process/functions/call/built-in/built-in-while-loop';
-import { type Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from './identifier';
+import {
+	type BrandedIdentifier,
+	type IdentifierDefinition,
+	type IdentifierReference,
+	ReferenceType
+} from './identifier';
 import { guard } from '../../util/assert';
 import { processReplacementFunction } from '../internal/process/functions/call/built-in/built-in-replacement';
 import { processQuote } from '../internal/process/functions/call/built-in/built-in-quote';
@@ -159,21 +164,23 @@ function defaultBuiltInProcessor<OtherInfo>(
 		for(const arg of args) {
 			if(arg !== EmptyArgument && arg.value && fnCallNames.includes(arg.name?.content as string)) {
 				const rhs = arg.value;
-				let fnName: string | undefined;
+				let fnName: BrandedIdentifier | undefined;
 				let fnId: NodeId | undefined;
+				let ns: BrandedIdentifier | undefined;
 				if(rhs.type === RType.String) {
 					fnName = rhs.content.str;
 					fnId = rhs.info.id;
 				} else if(rhs.type === RType.Symbol) {
 					fnName = rhs.content;
 					fnId = rhs.info.id;
+					ns = rhs.namespace;
 				} else {
 					continue;
 				}
 				res.graph.updateToFunctionCall({
 					tag:         VertexType.FunctionCall,
 					id:          fnId,
-					name:        fnName,
+					name:        ns ? [fnName, ns] : [fnName],
 					args:        [],
 					environment: data.environment,
 					onlyBuiltin: false,
@@ -308,7 +315,7 @@ export const BuiltInEvalHandlerMapper = {
 
 export type ConfigOfBuiltInMappingName<N extends keyof typeof BuiltInProcessorMapper> = Parameters<typeof BuiltInProcessorMapper[N]>[4];
 
-export type BuiltInMemory = Map<Identifier, IdentifierDefinition[]>
+export type BuiltInMemory = Map<BrandedIdentifier, IdentifierDefinition[]>
 
 export class BuiltIns {
 	/**
@@ -360,7 +367,7 @@ export class BuiltIns {
 		guard(replacer !== undefined, () => `Processor for ${BuiltInProcName.Replacement} is undefined!`);
 		for(const assignment of names) {
 			for(const suffix of suffixes) {
-				const effectiveName = `${assignment}${suffix}`;
+				const effectiveName = `${assignment[0]}${suffix}`;
 				const id = builtInId(effectiveName);
 				const d: IdentifierDefinition[] = [{
 					type:      ReferenceType.BuiltInFunction,
@@ -371,7 +378,7 @@ export class BuiltIns {
 						assignmentOperator: suffix,
 						makeMaybe:          true
 					},
-					name:   effectiveName,
+					name:   assignment[1] ? [effectiveName, assignment[1]] : [effectiveName],
 					cds:    undefined,
 					nodeId: id
 				}];
@@ -400,16 +407,16 @@ export class BuiltIns {
 	 * For its default content (when not overwritten by a flowR config),
 	 * see the {@link DefaultBuiltinConfig}.
 	 */
-	builtInMemory:      BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+	builtInMemory:      BuiltInMemory = new Map<BrandedIdentifier, IdentifierDefinition[]>();
 	/**
 	 * The twin of the {@link builtInMemory} but with less built ins defined for
 	 * cases in which we want some commonly overwritten variables to remain open.
 	 * If you do not know if you need the empty environment, you do not need the empty environment (right now).
 	 * @see {@link builtInMemory}
 	 */
-	emptyBuiltInMemory: BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+	emptyBuiltInMemory: BuiltInMemory = new Map<BrandedIdentifier, IdentifierDefinition[]>();
 
-	set(identifier: Identifier, definition: IdentifierDefinition[], includeInEmptyMemory: boolean | undefined): void {
+	set(identifier: BrandedIdentifier, definition: IdentifierDefinition[], includeInEmptyMemory: boolean | undefined): void {
 		this.builtInMemory.set(identifier, definition);
 		if(includeInEmptyMemory) {
 			this.emptyBuiltInMemory.set(identifier, definition);

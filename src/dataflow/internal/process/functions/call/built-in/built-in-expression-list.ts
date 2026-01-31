@@ -12,7 +12,7 @@ import { patchFunctionCall } from '../common';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
-import { type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
+import type { Identifier , type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
@@ -31,19 +31,20 @@ import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 const dotDotDotAccess = /^\.\.\d+$/;
 
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
-	const readName = read.name && dotDotDotAccess.test(read.name) ? '...' : read.name;
+	const readName = read.name && dotDotDotAccess.test(read.name[0]) ? ['...'] as Identifier : read.name;
+	const readId = readName?.[0];
 
 	const probableTarget = readName ? resolveByName(readName, environments, read.type) : undefined;
 
 	// record if at least one has not been defined
 	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId) || !happensInEveryBranch(t.cds))) {
-		const has = remainingRead.get(readName);
+		const has = remainingRead.get(readId);
 		if(has) {
 			if(!has?.some(h => h.nodeId === read.nodeId && h.name === read.name && h.cds === read.cds)) {
 				has.push(read);
 			}
 		} else {
-			remainingRead.set(readName, [read]);
+			remainingRead.set(readId, [read]);
 		}
 	}
 

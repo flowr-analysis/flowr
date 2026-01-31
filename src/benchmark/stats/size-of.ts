@@ -1,7 +1,11 @@
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { type DataflowGraphVertexInfo , VertexType } from '../../dataflow/graph/vertex';
-import { type Identifier, type IdentifierDefinition , ReferenceType } from '../../dataflow/environments/identifier';
+import {
+	type BrandedIdentifier,
+	type IdentifierDefinition,
+	ReferenceType
+} from '../../dataflow/environments/identifier';
 import sizeof from 'object-sizeof';
 import { compactRecord } from '../../util/objects';
 
@@ -15,12 +19,12 @@ function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
 		return {
 			id:         env.id,
 			parent:     killBuiltInEnv(env.parent),
-			memory:     new Map<Identifier, IdentifierDefinition[]>(),
+			memory:     new Map<BrandedIdentifier, IdentifierDefinition[]>(),
 			builtInEnv: true
 		};
 	}
 
-	const memory = new Map<Identifier, IdentifierDefinition[]>();
+	const memory = new Map<BrandedIdentifier, IdentifierDefinition[]>();
 	for(const [k, v] of env.memory) {
 		memory.set(k, v.filter(v => v.type !== ReferenceType.BuiltInFunction && v.type !== ReferenceType.BuiltInConstant && !('processor' in v)));
 	}

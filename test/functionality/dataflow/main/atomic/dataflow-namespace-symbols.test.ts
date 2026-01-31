@@ -15,13 +15,13 @@ describe('Resolve for Namespaces', withTreeSitter(ts => {
 	);
 	assertDataflow(label('Simple Assign Break', ['namespaces', 'lexicographic-scope']), ts,
 		'x <- 42\nprint(base::x)',
-		emptyGraph(),
+		emptyGraph()
+			.reads('2@x', '1@x'),
 		{
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true,
-			mustNotHaveEdges:      [['2@x', '1@x']],
 			modifyAnalyzer:        a => {
-				a.context(); // TODO: add meta context for current project name so that we can give the scope a name!
+				a.context().meta.setNamespace('base');
 			}
 		} as const
 	);

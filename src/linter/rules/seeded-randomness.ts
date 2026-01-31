@@ -10,7 +10,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { formatRange } from '../../util/mermaid/dfg';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
-import type { Identifier } from '../../dataflow/environments/identifier';
+import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
 import { type DataflowGraph, getReferenceOfArgument } from '../../dataflow/graph/graph';
@@ -88,7 +88,7 @@ export const SEEDED_RANDOMNESS = {
 					return {
 						involvedId:    element.node.info.id,
 						range:         element.node.info.fullRange as SourceRange,
-						target:        target as Identifier,
+						target:        target as BrandedIdentifier,
 						searchElement: element
 					};
 				}))
@@ -98,7 +98,7 @@ export const SEEDED_RANDOMNESS = {
 					const cds = dfgElement ? new Set(dfgElement.cds) : new Set();
 					const producers = enrichmentContent(element.searchElement, Enrichment.LastCall).linkedIds
 						.map(e => dataflow.graph.getVertex(e.node.info.id) as DataflowGraphVertexFunctionCall);
-					const { assignment, func } = Object.groupBy(producers, f => assignmentArgIndexes.has(f.name) ? 'assignment' : 'func');
+					const { assignment, func } = Object.groupBy(producers, f => assignmentArgIndexes.has(f.name[0]) ? 'assignment' : 'func');
 					let nonConstant = false;
 					const cdsOfProduces: Set<ControlDependency> = new Set();
 
@@ -121,7 +121,7 @@ export const SEEDED_RANDOMNESS = {
 
 					// assignments have to be queried for their destination
 					for(const a of assignment ?? []) {
-						const argIdx = assignmentArgIndexes.get(a.name) as number;
+						const argIdx = assignmentArgIndexes.get(a.name[0]) as number;
 						const dest = getReferenceOfArgument(a.args[argIdx]);
 						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)) {
 							// we either have arg index 0 or 1 for the assignmentProducers destination, so we select the assignment value as 1-argIdx here

@@ -35,7 +35,7 @@ describe.sequential('Alias Tracking', withShell(shell => {
 		const result = await runPipeline(code, shell, ctx);
 		const values = trackAliasInEnvironments(
 			defaultConfigOptions.solver.variables,
-			identifier as Identifier,
+			[identifier] as Identifier,
 			result.dataflow.environment,
 			ctx,
 			result.dataflow.graph,

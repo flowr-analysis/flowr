@@ -381,7 +381,7 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	 * Allows you to modify the analyzer before running the test.
 	 * (assumes side-effects and reuses the same object if you return undefined)
 	 */
-	modifyAnalyzer:        (analyzer: FlowrAnalyzer) => FlowrAnalyzer | undefined
+	modifyAnalyzer:        (analyzer: FlowrAnalyzer) => FlowrAnalyzer | undefined | void
 }
 
 function cropIfTooLong(str: string): string {
@@ -700,7 +700,7 @@ function findInEnv(id: NodeId, ast: NormalizedAst, dfg: DataflowGraph, env: REnv
 	}
 	const mayVertex = dfg.getVertex(id);
 	const useEnv = mayVertex?.environment ?? env;
-	const result = resolveByNameAnyType(name, useEnv)?.flatMap(f => {
+	const result = resolveByNameAnyType([name], useEnv)?.flatMap(f => {
 		if('indicesCollection' in f) {
 			return f.indicesCollection?.flatMap(collection => collection.indices);
 		} else {

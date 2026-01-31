@@ -1,13 +1,12 @@
 import type { BuiltInProcessorMapper , ConfigOfBuiltInMappingName } from './built-in';
 import { BuiltIns } from './built-in';
-import type { Identifier } from './identifier';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 
 export interface BaseBuiltInDefinition {
     /** The type of the built-in configuration */
     readonly type:             string;
     /** The function name to define to the given configuration */
-    readonly names:            Identifier[];
+    readonly names:            string[];
     /** Should we assume that the value is a primitive? */
     readonly assumePrimitive?: boolean;
 }

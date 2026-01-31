@@ -32,6 +32,7 @@ const TargetTypePredicate = {
  *          if the identifier is undefined in the current scope/with the current environment information.
  */
 export function resolveByName(name: Identifier, environment: REnvironmentInformation, target: ReferenceType): readonly IdentifierDefinition[] | undefined {
+	console.log('Resolving', name, 'as', ReferenceType[target]);
 	if(target === ReferenceType.Unknown) {
 		return resolveByNameAnyType(name, environment);
 	}

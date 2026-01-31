@@ -47,7 +47,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		tag:         VertexType.FunctionCall,
 		id:          functionRootId,
 		environment: data.environment,
-		name:        functionCallName,
+		name:        [functionCallName],
 		/* can never be a direct built-in-call */
 		onlyBuiltin: false,
 		cds:         data.cds,
@@ -56,7 +56,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	}, data.ctx.env.makeCleanEnv());
 
 	let inIds = remainingReadInArgs;
-	inIds.push({ nodeId: functionRootId, name: functionCallName, cds: data.cds, type: ReferenceType.Function });
+	inIds.push({ nodeId: functionRootId, name: [functionCallName], cds: data.cds, type: ReferenceType.Function });
 
 	// if we just call a nested fdef
 	if(functionCall.calledFunction.type === RType.FunctionDefinition) {

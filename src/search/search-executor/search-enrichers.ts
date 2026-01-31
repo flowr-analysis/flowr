@@ -5,7 +5,6 @@ import type {
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type MergeableRecord , deepMergeObject } from '../../util/objects';
 import { VertexType } from '../../dataflow/graph/vertex';
-import type { Identifier } from '../../dataflow/environments/identifier';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { guard, isNotUndefined } from '../../util/assert';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
@@ -54,7 +53,7 @@ export interface CallTargetsContent extends MergeableRecord {
 	 * The call targets of the function call.
 	 * For identifier call targets, the identifier is the name of the library function being called.
 	 */
-	targets: (FlowrSearchElement<ParentInformation> | Identifier)[];
+	targets: (FlowrSearchElement<ParentInformation> | string)[];
 }
 
 export interface LastCallContent extends MergeableRecord {
@@ -116,7 +115,7 @@ export const Enrichments = {
 			if(callVertex?.tag === VertexType.FunctionCall) {
 				const origins = getOriginInDfg(df.graph, callVertex.id);
 				if(!origins || origins.length === 0) {
-					content.targets = [recoverName(callVertex.id, n.idMap)] as (FlowrSearchElement<ParentInformation> | Identifier)[];
+					content.targets = [recoverName(callVertex.id, n.idMap)] as (FlowrSearchElement<ParentInformation> | string)[];
 				} else {
 					// find call targets in user code (which have ids!)
 					content.targets = content.targets.concat(
@@ -134,7 +133,7 @@ export const Enrichments = {
 						}).filter(isNotUndefined)
 					);
 					if(content.targets.length === 0) {
-						content.targets = [recoverName(callVertex.id, n.idMap)] as (FlowrSearchElement<ParentInformation> | Identifier)[];
+						content.targets = [recoverName(callVertex.id, n.idMap)] as (FlowrSearchElement<ParentInformation> | string)[];
 					}
 				}
 			}

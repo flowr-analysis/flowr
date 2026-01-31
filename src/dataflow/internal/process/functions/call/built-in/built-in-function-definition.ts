@@ -57,7 +57,7 @@ export function processFunctionDefinition<OtherInfo>(
 
 	const originalEnvironment = data.environment;
 	// within a function def we do not pass on the outer binds as they could be overwritten when called
-	data = prepareFunctionEnvironment(data);
+	data = prepareFunctionEnvironment(data, rootId);
 
 	const subgraph = new DataflowGraph(data.completeAst.idMap);
 
@@ -342,10 +342,14 @@ export function updateNestedFunctionCalls(
 	}
 }
 
-function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
+function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, rootId: NodeId) {
 	let env = data.ctx.env.makeCleanEnv();
 	for(let i = 0; i < data.environment.level + 1 /* add another env */; i++) {
 		env = pushLocalEnvironment(env);
+		if(i === data.environment.level) {
+			// TODO: document also that we can read this out and the purpose
+			env.current.setClosureNodeId(rootId);
+		}
 	}
 	return { ...data, environment: env };
 }

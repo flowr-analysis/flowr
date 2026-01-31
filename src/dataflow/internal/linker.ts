@@ -22,6 +22,7 @@ import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
 import type { ExitPoint } from '../info';
 import { doesExitPointPropagateCalls } from '../info';
+import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call-handling';
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
@@ -361,7 +362,7 @@ export function linkFunctionCalls(
  * convenience function returning all known call targets, as well as the name source which defines them
  */
 export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation): NodeId[] {
-	let found: NodeId[] = [];
+	const found: Set<NodeId> = new Set();
 	const callVertex = graph.get(call, true);
 	if(callVertex === undefined) {
 		return [];
@@ -373,23 +374,31 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 		return [];
 	}
 
-	if(info.name !== undefined && (environment !== undefined || info.environment !== undefined)) {
-		const functionCallDefs = resolveByName(
-			info.name, environment ?? info.environment as REnvironmentInformation, info.origin.includes(BuiltInProcName.S3Dispatch) ? ReferenceType.S3MethodPrefix : ReferenceType.Function
-		)?.map(d => d.nodeId) ?? [];
+	if(environment !== undefined || info.environment !== undefined) {
+		let functionCallDefs: NodeId[] = [];
+		if(info.name !== undefined && !info.name.startsWith(UnnamedFunctionCallPrefix)) {
+			functionCallDefs = resolveByName(
+				info.name, environment ?? info.environment as REnvironmentInformation, info.origin.includes(BuiltInProcName.S3Dispatch) ? ReferenceType.S3MethodPrefix : ReferenceType.Function
+			)?.map(d => d.nodeId) ?? [];
+		}
 		for(const [target, outgoingEdge] of outgoingEdges.entries()) {
 			if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
 				functionCallDefs.push(target);
 			}
 		}
+
 		const [functionCallTargets, builtInTargets] = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), graph);
 		for(const target of functionCallTargets) {
-			found.push(target.id);
+			found.add(target.id);
 		}
-		found = found.concat(Array.from(builtInTargets), functionCallDefs);
+		for(const arr of [builtInTargets, functionCallDefs]) {
+			for(const target of arr) {
+				found.add(target);
+			}
+		}
 	}
 
-	return found;
+	return Array.from(found);
 }
 
 const LinkedFnFollowBits = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;

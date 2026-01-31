@@ -12,7 +12,7 @@ import { dataflowLogger } from '../../../../logger';
 import { ReferenceType } from '../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../environments/built-in';
 
-export const UnnamedFunctionCallPrefix = 'unnamed-function-call-';
+export const UnnamedFunctionCallPrefix = 'unnamed-fc-';
 
 /**
  * Processes an unnamed function call.

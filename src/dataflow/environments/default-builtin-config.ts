@@ -282,6 +282,7 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['interference'],                               processor: BuiltInProcName.Apply,               config: { unquoteFunction: true, nameOfFunctionArgument: 'propensity_integrand', libFn: true },     assumePrimitive: false },
 	{ type: 'function', names: ['ddply'],                                      processor: BuiltInProcName.Apply,               config: { unquoteFunction: true, indexOfFunction: 2, nameOfFunctionArgument: '.fun', libFn: true }, assumePrimitive: false },
 	{ type: 'function', names: ['list'],                                       processor: BuiltInProcName.List,                config: {},                                                                            assumePrimitive: true  },
+	{ type: 'function', names: ['Recall'],                                     processor: BuiltInProcName.Recall,              config: { libFn: true },                                                              assumePrimitive: false },
 	{ type: 'function', names: ['c'],                                          processor: BuiltInProcName.Vector,              config: {},                                                                            assumePrimitive: true, evalHandler: 'built-in:c'  },
 	{
 		type:      'function',

@@ -42,7 +42,11 @@ let environmentIdCounter = 1; // Zero is reserved for built-in environment
 
 /** @see REnvironmentInformation */
 export class Environment implements IEnvironment {
-	readonly id;
+	readonly id: number;
+	/** Optional name for namespaced/non-anonymous environments, please only set if you know what you are doing */
+	n?:          string;
+	/** if created by a closure, the node id of that closure */
+	private c?:  NodeId;
 	parent:      Environment;
 	memory:      BuiltInMemory;
 	cache?:      BuiltInMemory;
@@ -58,6 +62,15 @@ export class Environment implements IEnvironment {
 		}
 	}
 
+	/** please only use if you know what you are doing */
+	public setClosureNodeId(nodeId: NodeId) {
+		this.c = nodeId;
+	}
+
+	public get closure(): NodeId | undefined {
+		return this.c;
+	}
+
 	/**
 	 * Create a deep clone of this environment.
 	 * @param recurseParents     - Whether to also clone parent environments
@@ -69,6 +82,8 @@ export class Environment implements IEnvironment {
 
 		const parent = recurseParents ? this.parent.clone(recurseParents) : this.parent;
 		const clone = new Environment(parent, this.builtInEnv);
+		clone.c = this.c;
+		clone.n = this.n;
 		clone.memory = new Map(
 			this.memory.entries()
 				.map(([k, v]) => [k,
@@ -176,6 +191,8 @@ export class Environment implements IEnvironment {
 		}
 
 		const out = new Environment(this.parent.overwrite(other.parent, applyCds));
+		out.c = this.c;
+		out.n = this.n;
 		out.memory = map;
 		return out;
 	}

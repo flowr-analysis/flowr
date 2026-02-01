@@ -187,7 +187,9 @@ export interface PatchFunctionCallInput<OtherInfo> {
 
 
 /**
- *
+ * Patches a function call vertex into the given dataflow graph.
+ * This is mostly useful for built-in processors that have custom argument processing.
+ * Otherwise, rely on {@link processKnownFunctionCall} instead.
  */
 export function patchFunctionCall<OtherInfo>(
 	{ nextGraph, rootId, name, data, argumentProcessResult, origin, link }: PatchFunctionCallInput<OtherInfo>

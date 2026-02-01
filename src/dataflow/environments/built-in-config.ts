@@ -40,7 +40,7 @@ export interface BuiltInFunctionDefinition<BuiltInProcessor extends keyof typeof
 export interface BuiltInReplacementDefinition extends BaseBuiltInDefinition {
 	readonly type:     'replacement';
 	readonly suffixes: ('<<-' | '<-')[];
-	readonly config:   { readIndices: boolean }
+	readonly config:   { readIndices: boolean, libFn?: boolean };
 }
 
 export type BuiltInDefinition<T extends keyof typeof BuiltInProcessorMapper = keyof typeof BuiltInProcessorMapper> = BuiltInConstantDefinition<unknown> | BuiltInFunctionDefinition<T> | BuiltInReplacementDefinition;

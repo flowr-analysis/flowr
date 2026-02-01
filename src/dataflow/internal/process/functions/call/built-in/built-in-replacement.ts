@@ -11,14 +11,12 @@ import {
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import {
-	VertexType
-} from '../../../../../graph/vertex';
+import { VertexType } from '../../../../../graph/vertex';
 import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { unpackArg, unpackNonameArg } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
-import { BuiltInProcessorMapper, BuiltInProcName } from '../../../../../environments/built-in';
+import { builtInId, BuiltInProcessorMapper, BuiltInProcName } from '../../../../../environments/built-in';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { handleReplacementOperator } from '../../../../../graph/unknown-replacement';
 
@@ -113,7 +111,6 @@ export function processReplacementFunction<OtherInfo>(
 		}
 	}
 
-
 	const fa = unpackNonameArg(args[0]);
 	if(fa) {
 		res = {
@@ -122,5 +119,12 @@ export function processReplacementFunction<OtherInfo>(
 		};
 	}
 
+	// dispatches actually as S3:
+	const fns = res.in.filter(i => i.nodeId === rootId);
+	for(const fn of fns) {
+		(fn as { type: ReferenceType }).type = ReferenceType.S3MethodPrefix;
+	}
+	// link the built-in replacement op
+	res.graph.addEdge(rootId, builtInId(Identifier.getName(name.content)), EdgeType.Calls | EdgeType.Reads);
 	return res;
 }

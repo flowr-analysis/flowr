@@ -66,4 +66,14 @@ describe('Resolve for Namespaces', withTreeSitter(ts => {
 			resolveIdsAsCriterion: true
 		} as const
 	);
+	assertDataflow(label('work with s3', ['namespaces', 'replacement-functions', 'lexicographic-scope']), ts,
+		'`[[<-.foo::bar` <- function() {}\nx[[1]] <- 42',
+		emptyGraph()
+			.addEdge('2@[[', builtInId('[[<-'), EdgeType.Reads | EdgeType.Calls)
+			.reads('2@[[', '1@`[[<-.foo::bar`'),
+		{
+			expectIsSubgraph:      true,
+			resolveIdsAsCriterion: true
+		} as const
+	);
 }));

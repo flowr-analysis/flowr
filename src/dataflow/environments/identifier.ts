@@ -112,7 +112,6 @@ export const Identifier = {
 	 * If the first identifier is internal, it will match any target (internal or not).
 	 */
 	matches(this: void, id: Identifier, target: Identifier, s3: boolean = false): boolean {
-		// TODO: support replacement methods like `<-a::b`
 		const idName = Identifier.getName(id);
 		const targetName = Identifier.getName(target);
 		if(idName !== targetName) {

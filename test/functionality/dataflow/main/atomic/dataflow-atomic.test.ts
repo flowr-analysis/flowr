@@ -159,6 +159,8 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				.definedBy(3, 6)
 				.call(6, '$<-', [argumentInCall(3), argumentInCall(4), argumentInCall(7)], { returns: [], reads: [4], onlyBuiltIn: true, link: { origin: [8] } })
 				.constant(4)
+				.reads(6, builtInId('$<-'))
+				.calls(6, builtInId('$<-'))
 				.defineVariable(0, 'a', { definedBy: [7, 3] })
 				.reads(0, 3)
 				.constant(1)

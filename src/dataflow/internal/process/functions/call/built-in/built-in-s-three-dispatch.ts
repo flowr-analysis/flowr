@@ -86,7 +86,6 @@ export function processS3Dispatch<OtherInfo>(
 	const symbol: RSymbol<OtherInfo & ParentInformation> = {
 		type:     RType.Symbol,
 		info:     generic.info,
-		// TODO: check whether i have to maintain scope
 		content:  accessedIdentifiers[0],
 		lexeme:   accessedIdentifiers[0],
 		location: generic.location ?? invalidRange()

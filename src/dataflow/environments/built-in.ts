@@ -321,7 +321,8 @@ export class BuiltIns {
 	 */
 	registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>): void {
 		for(const name of names) {
-			const id = builtInId(name);
+			const n = Identifier.getName(name);
+			const id = builtInId(n);
 			const d: IdentifierDefinition[] = [{
 				type:      ReferenceType.BuiltInConstant,
 				definedAt: id,
@@ -330,7 +331,7 @@ export class BuiltIns {
 				name,
 				nodeId:    id
 			}];
-			this.set(name, d, assumePrimitive);
+			this.set(n, d, assumePrimitive);
 		}
 	}
 
@@ -342,7 +343,8 @@ export class BuiltIns {
 		const mappedProcessor = BuiltInProcessorMapper[processor];
 		guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
 		for(const name of names) {
-			const id = builtInId(name);
+			const n = Identifier.getName(name);
+			const id = builtInId(n);
 			const d: IdentifierDefinition[] = [{
 				type:      ReferenceType.BuiltInFunction,
 				definedAt: id,
@@ -353,7 +355,7 @@ export class BuiltIns {
 				name,
 				nodeId:    id
 			}];
-			this.set(name, d, assumePrimitive);
+			this.set(n, d, assumePrimitive);
 		}
 	}
 
@@ -364,9 +366,8 @@ export class BuiltIns {
 		const replacer = BuiltInProcessorMapper[BuiltInProcName.Replacement];
 		guard(replacer !== undefined, () => `Processor for ${BuiltInProcName.Replacement} is undefined!`);
 		for(const assignment of names) {
-			const i = Identifier.parse(assignment);
 			for(const suffix of suffixes) {
-				const effectiveName = `${Identifier.getName(i)}${suffix}`;
+				const effectiveName = `${Identifier.getName(assignment)}${suffix}`;
 				const id = builtInId(effectiveName);
 				const d: IdentifierDefinition[] = [{
 					type:      ReferenceType.BuiltInFunction,
@@ -377,7 +378,7 @@ export class BuiltIns {
 						assignmentOperator: suffix,
 						makeMaybe:          true
 					},
-					name:   i,
+					name:   assignment,
 					cds:    undefined,
 					nodeId: id
 				}];

@@ -152,7 +152,6 @@ export class Environment implements IEnvironment {
 				break;
 			}
 		} while(current.n !== ns);
-		// TODO: move link of parent chain into here to avoid REnvironment blocks
 		// we did not find the namespace, so we inject a new environment here
 		log.warn(`Defining ${Identifier.getName(definition.name)} in namespace ${ns}, which did not exist yet in the environment chain => create (r should fail or we miss attachment).`);
 		const env = new Environment(current.parent);

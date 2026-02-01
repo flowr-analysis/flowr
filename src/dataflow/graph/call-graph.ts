@@ -21,7 +21,7 @@ import { DefaultMap } from '../../util/collections/defaultmap';
  */
 export type CallGraph = DataflowGraph<
 	Required<DataflowGraphVertexFunctionCall | DataflowGraphVertexFunctionDefinition>
->
+>;
 
 interface State {
 	visited:    Set<NodeId>;

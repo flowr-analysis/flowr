@@ -1,5 +1,5 @@
-import { type GenericDifferenceInformation, type WriteableDifferenceReport , setDifference } from '../../util/diff';
-import { type IEnvironment, type REnvironmentInformation , builtInEnvJsonReplacer } from './environment';
+import { type GenericDifferenceInformation, type WriteableDifferenceReport, setDifference } from '../../util/diff';
+import { type IEnvironment, type REnvironmentInformation, builtInEnvJsonReplacer } from './environment';
 import { jsonReplacer } from '../../util/json';
 import type { IdentifierReference } from './identifier';
 import { diffControlDependencies } from '../info';

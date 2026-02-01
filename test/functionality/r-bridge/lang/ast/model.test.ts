@@ -1,4 +1,4 @@
-import { type SourceRange , mergeRanges, rangeFrom } from '../../../../../src/util/range';
+import { type SourceRange, mergeRanges, rangeFrom } from '../../../../../src/util/range';
 import { allPermutations } from '../../../../../src/util/collections/arrays';
 import { describe, assert, test } from 'vitest';
 

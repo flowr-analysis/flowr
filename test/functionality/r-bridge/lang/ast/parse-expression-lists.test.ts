@@ -147,7 +147,7 @@ describe.sequential('Parse expression lists', withShell(shell => {
 					}
 				],
 				lexeme:   undefined,
-				info:     { },
+				info:     {},
 				children: [
 					{
 						type:     RType.Number,
@@ -193,7 +193,7 @@ describe.sequential('Parse expression lists', withShell(shell => {
 						}
 					],
 					lexeme:   undefined,
-					info:     { },
+					info:     {},
 					children: [
 						{
 							type:     RType.Number,
@@ -254,7 +254,7 @@ describe.sequential('Parse expression lists', withShell(shell => {
 				type:     RType.ExpressionList,
 				lexeme:   undefined,
 				grouping: undefined,
-				info:     { },
+				info:     {},
 				children: [
 					{
 						type:     RType.Number,
@@ -316,7 +316,7 @@ describe.sequential('Parse expression lists', withShell(shell => {
 				type:     RType.ExpressionList,
 				lexeme:   undefined,
 				grouping: undefined,
-				info:     { },
+				info:     {},
 				children: [
 					{
 						type:     RType.Number,

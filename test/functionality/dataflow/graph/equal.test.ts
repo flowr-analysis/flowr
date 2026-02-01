@@ -1,5 +1,5 @@
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
-import { type DataflowGraphJson , DataflowGraph } from '../../../../src/dataflow/graph/graph';
+import { type DataflowGraphJson, DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import type { GenericDiffConfiguration } from '../../../../src/util/diff';
 import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff-dataflow-graph';
@@ -73,7 +73,7 @@ describe('Dataflow Graph Comparisons', () => {
 			});
 		});
 
-		describe('JSON Data', () =>{
+		describe('JSON Data', () => {
 			const graph = emptyGraph()
 				.use('0', 'a', { cds: [] })
 				.argument('3', '0')
@@ -110,8 +110,8 @@ describe('Dataflow Graph Comparisons', () => {
 			eq('Same vertex with additional (2)',
 				emptyGraph().use('0', 'x').use('1', 'y').use('2', 'z'),
 				emptyGraph().use('0', 'x').use('1', 'y'));
-			eq('Same edges', emptyGraph().use('0','x').reads('0', '1'), emptyGraph().reads('0', '1'));
-			eq('Same edges with additional', emptyGraph().use('0','x').use('1','y').reads('0', '1').reads('1', '2'), emptyGraph().reads('0', '1'));
+			eq('Same edges', emptyGraph().use('0', 'x').reads('0', '1'), emptyGraph().reads('0', '1'));
+			eq('Same edges with additional', emptyGraph().use('0', 'x').use('1', 'y').reads('0', '1').reads('1', '2'), emptyGraph().reads('0', '1'));
 		});
 	});
 });

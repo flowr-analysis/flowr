@@ -1,7 +1,7 @@
 import { assertDecoratedAst, retrieveNormalizedAst, withShell } from '../_helper/shell';
 import { numVal } from '../_helper/ast-builder';
 import { rangeFrom } from '../../../src/util/range';
-import { type RNodeWithParent , decorateAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { type RNodeWithParent, decorateAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { RoleInParent } from '../../../src/r-bridge/lang-4.x/ast/model/processing/role';
 import { collectAllIds } from '../../../src/r-bridge/lang-4.x/ast/model/collect';

@@ -5,7 +5,7 @@ import {
 	printNormalizedAstToMermaid,
 	printNormalizedAstToMermaidUrl
 } from '../../../print/normalize-printer';
-import { type IPipelineStep , PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import { normalizeTreeSitter } from '../../../../r-bridge/lang-4.x/ast/parser/json/parser';
 import { type NormalizeRequiredInput  } from './10-normalize';

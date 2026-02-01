@@ -1,5 +1,5 @@
-import { type OutputFormatter , bold, italic, markdownFormatter } from '../util/text/ansi';
-import { type Queries, type Query, type QueryResult, type QueryResults, type SupportedQueryTypes , SupportedQueries } from './query';
+import { type OutputFormatter, bold, italic, markdownFormatter } from '../util/text/ansi';
+import { type Queries, type Query, type QueryResult, type QueryResults, type SupportedQueryTypes, SupportedQueries } from './query';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { textWithTooltip } from '../util/html-hover-over';
 import type { CallContextQuerySubKindResult } from './catalog/call-context-query/call-context-query-format';
@@ -9,7 +9,7 @@ import { isBuiltIn } from '../dataflow/environments/built-in';
 import type { AstIdMap, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
-function nodeString(nodeId: NodeId | { id: NodeId, info?: object}, formatter: OutputFormatter, idMap: AstIdMap<ParentInformation>): string {
+function nodeString(nodeId: NodeId | { id: NodeId, info?: object }, formatter: OutputFormatter, idMap: AstIdMap<ParentInformation>): string {
 	const isObj = typeof nodeId === 'object' && nodeId !== null && 'id' in nodeId;
 	const id = isObj ? nodeId?.id : nodeId;
 	const info = isObj ? nodeId?.info : undefined;
@@ -25,7 +25,7 @@ function nodeString(nodeId: NodeId | { id: NodeId, info?: object}, formatter: Ou
 
 function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly CallContextQuerySubKindResult[], idMap: AstIdMap<ParentInformation>): string {
 	const result: string[] = [];
-	for(const { id, calls = [], linkedIds = [], aliasRoots = [] } of results.slice(0,20)) {
+	for(const { id, calls = [], linkedIds = [], aliasRoots = [] } of results.slice(0, 20)) {
 		const node = idMap.get(id);
 		if(node === undefined) {
 			result.push(` ${bold('UNKNOWN: ' + JSON.stringify({ calls, linkedIds }))}`);

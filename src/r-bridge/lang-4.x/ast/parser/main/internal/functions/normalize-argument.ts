@@ -37,7 +37,7 @@ export function tryToNormalizeArgument(data: NormalizerData, objs: readonly Name
 		name =    {
 			type:    RType.Symbol,
 			location,
-			content: symbolOrExpr.name === RawRType.StringConst ? content.slice(1,-1) : (startAndEndsWith(content, '`') ? content.slice(1, -1) : content),
+			content: symbolOrExpr.name === RawRType.StringConst ? content.slice(1, -1) : (startAndEndsWith(content, '`') ? content.slice(1, -1) : content),
 			lexeme:  content,
 			info:    {
 				fullRange:        location,

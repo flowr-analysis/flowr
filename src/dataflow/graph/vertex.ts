@@ -152,7 +152,7 @@ export interface ContainerIndices {
 /**
  * Collection of Indices of several statements.
  */
-export type ContainerIndicesCollection = ContainerIndices[] | undefined
+export type ContainerIndicesCollection = ContainerIndices[] | undefined;
 
 /**
  * Arguments required to construct a vertex in the {@link DataflowGraph|dataflow graph}.
@@ -255,7 +255,7 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 }
 
 /** Describes the processor responsible for a function call */
-export type FunctionOriginInformation = BuiltInProcName
+export type FunctionOriginInformation = BuiltInProcName;
 
 /**
  * Arguments required to construct a vertex which represents the definition of a variable in the {@link DataflowGraph|dataflow graph}.
@@ -295,7 +295,7 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 /**
  * What is to be passed to construct a vertex in the {@link DataflowGraph|dataflow graph}
  */
-export type DataflowGraphVertexArgument = DataflowGraphVertexUse | DataflowGraphVertexVariableDefinition | DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall | DataflowGraphVertexValue
+export type DataflowGraphVertexArgument = DataflowGraphVertexUse | DataflowGraphVertexVariableDefinition | DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall | DataflowGraphVertexValue;
 
 /**
  * This is the union type of all possible vertices that appear within a {@link DataflowGraph|dataflow graph},
@@ -303,12 +303,12 @@ export type DataflowGraphVertexArgument = DataflowGraphVertexUse | DataflowGraph
  *
  * See {@link DataflowGraphVertices} for an id-based mapping.
  */
-export type DataflowGraphVertexInfo = Required<DataflowGraphVertexArgument>
+export type DataflowGraphVertexInfo = Required<DataflowGraphVertexArgument>;
 
 /**
  * A mapping of {@link NodeId}s to {@link DataflowGraphVertexInfo|vertices}.
  */
-export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>
+export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>;
 
 
 /**

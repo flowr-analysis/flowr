@@ -3,22 +3,22 @@ import type { GenericDiffConfiguration, GenericDifferenceInformation, WriteableD
 import type { DataflowGraph } from '../dataflow/graph/graph';
 
 export interface NamedGraph<Graph = DataflowGraph> {
-    name:  string,
-    graph: Graph
+	name:  string,
+	graph: Graph
 }
 
 interface ProblematicVertex {
-    tag: 'vertex',
-    id:  NodeId
+	tag: 'vertex',
+	id:  NodeId
 }
 
 interface ProblematicEdge {
-    tag:  'edge',
-    from: NodeId,
-    to:   NodeId
+	tag:  'edge',
+	from: NodeId,
+	to:   NodeId
 }
 
-export type ProblematicDiffInfo = ProblematicVertex | ProblematicEdge
+export type ProblematicDiffInfo = ProblematicVertex | ProblematicEdge;
 
 /**
  * To be produced by a function differencing two graphs (e.g., {@link DataflowGraph|DFGs} or {@link ControlFlowGraph|CFGs}).

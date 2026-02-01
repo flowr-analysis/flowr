@@ -37,7 +37,7 @@ export function processQuote<OtherInfo>(
 		} else if(processedArg) {
 			information.graph.addEdge(rootId, processedArg.entryPoint, EdgeType.NonStandardEvaluation);
 			/* nse actually affects _everything_ within that argument! */
-			for(const [vtx,] of processedArg.graph.vertices(true)) {
+			for(const [vtx] of processedArg.graph.vertices(true)) {
 				information.graph.addEdge(rootId, vtx, EdgeType.NonStandardEvaluation);
 			}
 		}

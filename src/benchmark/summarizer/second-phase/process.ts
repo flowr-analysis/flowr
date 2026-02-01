@@ -1,7 +1,7 @@
 import type { Reduction, SummarizedDfShapeStats, SummarizedSlicerStats, TimePerToken, UltimateSlicerStats } from '../data';
 import { summarizeSummarizedReductions, summarizeSummarizedMeasurement, summarizeSummarizedTimePerToken, summarizeTimePerToken } from '../first-phase/process';
 import { DefaultMap } from '../../../util/collections/defaultmap';
-import { type SummarizedMeasurement , summarizeMeasurement } from '../../../util/summarizer';
+import { type SummarizedMeasurement, summarizeMeasurement } from '../../../util/summarizer';
 import { guard, isNotUndefined } from '../../../util/assert';
 import {
 	type BenchmarkMemoryMeasurement,
@@ -11,7 +11,7 @@ import {
 	CommonSlicerMeasurements,
 	PerSliceMeasurements
 } from '../../stats/stats';
-import { type DataFrameOperationName , DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
+import { type DataFrameOperationName, DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
 import { arraySum } from '../../../util/collections/arrays';
 
 /**

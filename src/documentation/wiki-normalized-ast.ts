@@ -75,7 +75,7 @@ async function useMyMathFoldExample() {
  */
 export class WikiNormalizedAst extends DocMaker<'wiki/Normalized AST.md'> {
 	constructor() {
-		super('wiki/Normalized AST.md', module.filename,'normalized ast');
+		super('wiki/Normalized AST.md', module.filename, 'normalized ast');
 	}
 
 	protected async text({ ctx, treeSitter }: DocMakerArgs): Promise<string> {

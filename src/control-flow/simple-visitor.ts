@@ -1,4 +1,4 @@
-import { type ControlFlowGraph , CfgVertexType } from './control-flow-graph';
+import { type ControlFlowGraph, CfgVertexType } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { invertCfg } from './invert-cfg';
 

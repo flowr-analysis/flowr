@@ -28,7 +28,7 @@ export interface BenchmarkCliOptions {
 	cfg?:                        boolean
 }
 
-const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [],{
+const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [], {
 	subtitle: 'Slice given files with additional benchmark information',
 	examples: [
 		'{italic example-folder/}',
@@ -94,7 +94,7 @@ async function benchmark() {
 	const limit = options.limit ?? files.length;
 
 	const verboseAdd = options.verbose ? ['--verbose'] : [];
-	const args = files.map((f,i) => [
+	const args = files.map((f, i) => [
 		'--input', f.request.content,
 		'--file-id', `${i}`,
 		'--output', path.join(options.output, path.relative(f.baseDir, `${f.request.content}.json`)),

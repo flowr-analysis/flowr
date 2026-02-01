@@ -84,7 +84,7 @@ interface RoxygenTagWithValue<Type extends KnownRoxygenTags, Value> extends Roxy
 	value: Value;
 }
 
-type RoxygenTagFlag<Type extends KnownRoxygenTags> = RoxygenTagBase<Type>
+type RoxygenTagFlag<Type extends KnownRoxygenTags> = RoxygenTagBase<Type>;
 
 export type RoxygenTagAlias = RoxygenTagWithValue<KnownRoxygenTags.Aliases, string[]>;
 export type RoxygenTagBackref = RoxygenTagWithValue<KnownRoxygenTags.Backref, string>;

@@ -4,18 +4,18 @@ import {
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexVariableDefinition
 	, VertexType } from '../graph/vertex';
-import { type EdgeTypeBits , edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge';
+import { type EdgeTypeBits, edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { isNotUndefined } from '../../util/assert';
 import { isBuiltIn } from '../environments/built-in';
 
 
 export const enum OriginType {
-    ReadVariableOrigin = 0,
-    WriteVariableOrigin = 1,
-    FunctionCallOrigin = 2,
-    BuiltInFunctionOrigin = 3,
-    ConstantOrigin = 4
+	ReadVariableOrigin = 0,
+	WriteVariableOrigin = 1,
+	FunctionCallOrigin = 2,
+	BuiltInFunctionOrigin = 3,
+	ConstantOrigin = 4
 }
 
 /**
@@ -32,8 +32,8 @@ export const enum OriginType {
  * - Asking for the origin of `x` in `x <- 2` returns a {@link WriteVariableOrigin} for the variable `x`.
  */
 export interface SimpleOrigin {
-    readonly type: OriginType.ReadVariableOrigin | OriginType.WriteVariableOrigin | OriginType.ConstantOrigin;
-    readonly id:   NodeId;
+	readonly type: OriginType.ReadVariableOrigin | OriginType.WriteVariableOrigin | OriginType.ConstantOrigin;
+	readonly id:   NodeId;
 }
 
 /**
@@ -54,25 +54,25 @@ export interface SimpleOrigin {
  * Either also return the {@link SimpleOrigin} for the read of the respective variable definition.
  */
 export interface FunctionCallOrigin {
-    readonly type: OriginType.FunctionCallOrigin;
-    readonly id:   NodeId;
+	readonly type: OriginType.FunctionCallOrigin;
+	readonly id:   NodeId;
 }
 
 /**
  * This is similar to a {@link FunctionCallOrigin}, but used for built-in functions that have no direct correspondence in the dataflow graph.
  */
 export interface BuiltInFunctionOrigin {
-    readonly type: OriginType.BuiltInFunctionOrigin;
+	readonly type: OriginType.BuiltInFunctionOrigin;
 	/** processor that is used to process the built-in function */
-    readonly id:   NodeId;
-    readonly proc: string;
-    readonly fn:   OriginIdentifier;
+	readonly id:   NodeId;
+	readonly proc: string;
+	readonly fn:   OriginIdentifier;
 }
 
 
 interface OriginIdentifier {
-    readonly name:       string;
-    readonly namespace?: string;
+	readonly name:       string;
+	readonly namespace?: string;
 }
 
 export type Origin = SimpleOrigin | FunctionCallOrigin | BuiltInFunctionOrigin;

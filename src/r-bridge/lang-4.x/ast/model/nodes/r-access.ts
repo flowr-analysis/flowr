@@ -28,5 +28,5 @@ export interface RIndexAccess<Info = NoInfo> extends RAccessBase<Info> {
 	access:   readonly (RArgument<Info> | typeof EmptyArgument)[]
 }
 
-export type RAccess<Info = NoInfo> = RNamedAccess<Info> | RIndexAccess<Info>
+export type RAccess<Info = NoInfo> = RNamedAccess<Info> | RIndexAccess<Info>;
 

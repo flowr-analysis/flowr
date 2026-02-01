@@ -2,7 +2,7 @@ import type { Feature, FeatureProcessorInput } from '../../feature';
 import type { Writable } from 'ts-essentials';
 import { postProcess } from './post-process';
 import type { MergeableRecord } from '../../../../util/objects';
-import { type SourcePosition , getRangeStart } from '../../../../util/range';
+import { type SourcePosition, getRangeStart } from '../../../../util/range';
 import { guard, isNotUndefined } from '../../../../util/assert';
 import type { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { ParentInformation, RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -25,7 +25,7 @@ const initialFunctionDefinitionInfo = {
 	deepestNesting:    0
 };
 
-export type FunctionDefinitionInfo = Writable<typeof initialFunctionDefinitionInfo>
+export type FunctionDefinitionInfo = Writable<typeof initialFunctionDefinitionInfo>;
 
 export const AllDefinitionsFileBase = 'all-definitions';
 

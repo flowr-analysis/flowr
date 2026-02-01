@@ -11,7 +11,7 @@ export type SourcePosition = [
 	line:   number,
 	/** starts with 1 */
 	column: number
-]
+];
 
 /**
  * Describe the start and end {@link SourcePosition|source position} of an element.
@@ -31,11 +31,11 @@ export type SourceRange = [
 	/** inclusive end position */
 	endLine:     number,
 	endColumn:   number
-]
+];
 
-export function getRangeStart(p: undefined): undefined
-export function getRangeStart(p: SourceRange): SourcePosition
-export function getRangeStart(p: SourceRange | undefined): SourcePosition | undefined
+export function getRangeStart(p: undefined): undefined;
+export function getRangeStart(p: SourceRange): SourcePosition;
+export function getRangeStart(p: SourceRange | undefined): SourcePosition | undefined;
 /**
  * Returns the start position of a source range.
  */
@@ -43,9 +43,9 @@ export function getRangeStart(p: SourceRange | undefined): SourcePosition | unde
 	return p === undefined ? undefined : [p[0], p[1]];
 }
 
-export function getRangeEnd(p: undefined): undefined
-export function getRangeEnd(p: SourceRange): SourcePosition
-export function getRangeEnd(p: SourceRange | undefined): SourcePosition | undefined
+export function getRangeEnd(p: undefined): undefined;
+export function getRangeEnd(p: SourceRange): SourcePosition;
+export function getRangeEnd(p: SourceRange | undefined): SourcePosition | undefined;
 /**
  * Returns the end position of a source range.
  */
@@ -88,21 +88,21 @@ export function mergeRanges(rs: (SourceRange | undefined)[] = []): SourceRange {
 /**
  * @returns true iff `r1` starts and ends before `r2` starts (i.e., if `r1` and `r2` do not overlap and `r1` comes before `r2`
  */
-export function rangeStartsCompletelyBefore([,,r1el,r1ec]: SourceRange, [r2sl,r2sc,,]: SourceRange): boolean {
+export function rangeStartsCompletelyBefore([,,r1el, r1ec]: SourceRange, [r2sl, r2sc,,]: SourceRange): boolean {
 	return r1el < r2sl || (r1el === r2sl && r1ec < r2sc);
 }
 
 /**
  * Checks if the two ranges overlap.
  */
-export function rangesOverlap([r1sl,r1sc,r1el,r1ec]: SourceRange, [r2sl,r2sc,r2el,r2ec]: SourceRange): boolean {
+export function rangesOverlap([r1sl, r1sc, r1el, r1ec]: SourceRange, [r2sl, r2sc, r2el, r2ec]: SourceRange): boolean {
 	return r1sl <= r2el && r2sl <= r1el && r1sc <= r2ec && r2sc <= r1ec;
 }
 
 /**
  * Calculate the component-wise sum of two ranges
  */
-export function addRanges([r1sl,r1sc,r1el,r1ec]: SourceRange, [r2sl,r2sc,r2el,r2ec]: SourceRange): SourceRange {
+export function addRanges([r1sl, r1sc, r1el, r1ec]: SourceRange, [r2sl, r2sc, r2el, r2ec]: SourceRange): SourceRange {
 	return [r1sl+r2sl, r1sc+r2sc, r1el+r2el, r1ec+r2ec];
 }
 
@@ -110,7 +110,7 @@ export function addRanges([r1sl,r1sc,r1el,r1ec]: SourceRange, [r2sl,r2sc,r2el,r2
  * Provides a comparator for {@link SourceRange}s that sorts them in ascending order.
  * @returns a positive number if `r1` comes after `r2`, a negative number if `r1` comes before `r2`, and `0` if they are equal
  */
-export function rangeCompare([r1sl,r1sc,,]: SourceRange, [r2sl,r2sc,,]: SourceRange): number {
+export function rangeCompare([r1sl, r1sc,,]: SourceRange, [r2sl, r2sc,,]: SourceRange): number {
 	if(r1sl === r2sl) {
 		return r1sc - r2sc;
 	} else {
@@ -121,7 +121,7 @@ export function rangeCompare([r1sl,r1sc,,]: SourceRange, [r2sl,r2sc,,]: SourceRa
 /**
  * Checks if the first range is a subset of the second range.
  */
-export function rangeIsSubsetOf([r1sl,r1sc,r1el,r1ec]: SourceRange, [r2sl,r2sc,r2el,r2ec]: SourceRange): boolean {
+export function rangeIsSubsetOf([r1sl, r1sc, r1el, r1ec]: SourceRange, [r2sl, r2sc, r2el, r2ec]: SourceRange): boolean {
 	return (r1sl > r2sl || r1sl === r2sl && r1sc >= r2sc) && (r1el < r2el || r1sl === r2sl && r1ec <= r2ec);
 }
 

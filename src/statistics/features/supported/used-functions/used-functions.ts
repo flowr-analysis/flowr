@@ -1,7 +1,7 @@
 import type { Feature, FeatureProcessorInput } from '../../feature';
 import type { Writable } from 'ts-essentials';
 import {
-	type CommonSyntaxTypeCounts ,
+	type CommonSyntaxTypeCounts,
 	emptyCommonSyntaxTypeCounts,
 	updateCommonSyntaxTypeCounts
 } from '../../common-syntax-probability';
@@ -27,7 +27,7 @@ const initialFunctionUsageInfo = {
 	unnamedCalls:        0
 };
 
-export type FunctionUsageInfo = Writable<typeof initialFunctionUsageInfo>
+export type FunctionUsageInfo = Writable<typeof initialFunctionUsageInfo>;
 
 export const AllCallsFileBase = 'all-calls';
 
@@ -72,7 +72,7 @@ export type FunctionCallInformation = [
 	/** whether this was called from a namespace, like `a::b()` */
 	namespace:             string | undefined,
 	knownDefinitionInFile: 0 | 1
-]
+];
 
 function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void {
 	const calls: RNodeWithParent[] = [];

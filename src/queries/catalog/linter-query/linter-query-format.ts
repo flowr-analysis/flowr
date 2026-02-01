@@ -39,10 +39,10 @@ export interface LinterQueryResult extends BaseQueryResult {
 	/**
 	 * The results of the linter query, which returns a set of linting results for each rule that was executed.
 	 */
-	readonly results: { [L in LintingRuleNames]?: LintingResults<L>}
+	readonly results: { [L in LintingRuleNames]?: LintingResults<L> }
 }
 
-function rulesFromInput(output: ReplOutput, rulesPart: readonly string[]): {valid: (LintingRuleNames | ConfiguredLintingRule)[], invalid: string[]} {
+function rulesFromInput(output: ReplOutput, rulesPart: readonly string[]): { valid: (LintingRuleNames | ConfiguredLintingRule)[], invalid: string[] } {
 	return rulesPart
 		.reduce((acc, ruleName) => {
 			ruleName = ruleName.trim();

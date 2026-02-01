@@ -21,7 +21,7 @@ export const initialCommentInfo = {
 	exportPattern:     0
 };
 
-export type CommentInfo = Writable<typeof initialCommentInfo>
+export type CommentInfo = Writable<typeof initialCommentInfo>;
 
 
 const commentQuery: Query = xpath.parse('//COMMENT');

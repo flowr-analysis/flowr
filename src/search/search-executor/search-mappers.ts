@@ -1,11 +1,11 @@
 import type { FlowrSearchElement } from '../flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type Enrichment, type EnrichmentData, type EnrichmentElementContent , enrichmentContent, Enrichments } from './search-enrichers';
+import { type Enrichment, type EnrichmentData, type EnrichmentElementContent, enrichmentContent, Enrichments } from './search-enrichers';
 import type { MergeableRecord } from '../../util/objects';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
 export enum Mapper {
-    Enrichment = 'enrichment'
+	Enrichment = 'enrichment'
 }
 
 export interface MapperData<Arguments extends string | MergeableRecord> {

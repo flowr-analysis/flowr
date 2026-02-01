@@ -12,9 +12,9 @@ import { TreeSitterExecutor } from '../../src/r-bridge/lang-4.x/tree-sitter/tree
 
 
 declare global {
-    var hasNetwork: boolean;
-    var rVersion: SemVer | null | undefined;
-    var hasXmlParseData: boolean;
+	var hasNetwork: boolean;
+	var rVersion: SemVer | null | undefined;
+	var hasXmlParseData: boolean;
 	var produceLabelSummary: boolean;
 }
 

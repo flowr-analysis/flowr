@@ -25,7 +25,7 @@ import type { REnvironmentInformation } from '../../../../src/dataflow/environme
 
 
 /** we add the node id to allow convenience sorting if we want that in the future (or grouping or, ...) */
-type Lines = [NodeId, string][]
+type Lines = [NodeId, string][];
 
 
 
@@ -113,7 +113,7 @@ class DataflowBuilderPrinter {
 		if(reads.length > 1 && vertex.onlyBuiltin) {
 			readSuffix = ', onlyBuiltIn: true';
 		}
-		this.recordFnCall(id,'call', [
+		this.recordFnCall(id, 'call', [
 			wrap(id),
 			`[${vertex.args.map(a => this.processArgumentInCall(vertex.id, a)).join(', ')}]`,
 			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${readSuffix}${this.getControlDependencySuffix(vertex.cds, ', ', '') ?? ''}${this.getEnvironmentSuffix(vertex.environment, ', ', '') ?? ''} }`,
@@ -218,7 +218,7 @@ class DataflowBuilderPrinter {
 	private processFunctionDefinition(id: NodeId, vertex: DataflowGraphVertexFunctionDefinition) {
 		const root = this.asRootArg(id);
 		const suffix = this.getEnvironmentSuffix(vertex.environment, '{ ', ' }') ?? (root ? 'undefined' : undefined);
-		this.recordFnCall(id,'defineFunction', [
+		this.recordFnCall(id, 'defineFunction', [
 			wrap(id),
 			`[${vertex.exitPoints.map(wrapExitPoint).join(', ')}]`,
 			`{
@@ -240,7 +240,7 @@ class DataflowBuilderPrinter {
 			this.coveredEdges.add(edgeId(id, target, EdgeType.DefinedBy));
 		}
 
-		this.recordFnCall(id,'defineVariable', [
+		this.recordFnCall(id, 'defineVariable', [
 			wrap(id),
 			'{ definedBy: [' + (definedBy?.map(wrap).join(', ') ?? '') + ']' + (this.getControlDependencySuffix(vertex.cds, ', ', '') ?? '') + ' }',
 			this.asRootArg(id)

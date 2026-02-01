@@ -2,7 +2,7 @@
  * Defines the type of syntax constructs that we track (e.g., true, false, 0, 1, T, F, conditions...)
  */
 import { bigint2number } from '../../util/numbers';
-import { type SummarizedMeasurement , summarizeMeasurement } from '../../util/summarizer';
+import { type SummarizedMeasurement, summarizeMeasurement } from '../../util/summarizer';
 import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';

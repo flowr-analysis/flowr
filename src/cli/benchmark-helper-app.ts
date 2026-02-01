@@ -4,7 +4,7 @@ import { guard } from '../util/assert';
 import { jsonReplacer } from '../util/json';
 import { processCommandLineArgs } from './common/script';
 import type { RParseRequestFromFile } from '../r-bridge/retriever';
-import { type SamplingStrategy , BenchmarkSlicer } from '../benchmark/slicer';
+import { type SamplingStrategy, BenchmarkSlicer } from '../benchmark/slicer';
 import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables';
 import path from 'path';
 import type { KnownParserName } from '../r-bridge/parser';
@@ -27,7 +27,7 @@ export interface SingleBenchmarkCliOptions {
 	seed?:                       string
 }
 
-const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [],{
+const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [], {
 	subtitle: 'Will slice for all possible variables, signal by exit code if slicing was successful, and can be run standalone',
 	examples: [
 		'{italic example-file.R} --output {italic output.json}',

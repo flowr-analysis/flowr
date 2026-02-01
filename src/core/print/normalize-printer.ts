@@ -1,5 +1,5 @@
 import { jsonReplacer } from '../../util/json';
-import { type QuadSerializationConfiguration , serialize2quads } from '../../util/quads';
+import { type QuadSerializationConfiguration, serialize2quads } from '../../util/quads';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../util/mermaid/ast';
 

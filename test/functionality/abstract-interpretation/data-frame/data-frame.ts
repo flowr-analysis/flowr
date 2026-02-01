@@ -34,8 +34,8 @@ const defaultAbsintConfig: FlowrConfigOptions = { ...defaultConfigOptions, solve
  * Whether the inferred values should match the actual values exactly, or should be an over-approximation of the actual values.
  */
 export enum DomainMatchingType {
-    Exact = 'exact',
-    Overapproximation = 'overapproximation'
+	Exact = 'exact',
+	Overapproximation = 'overapproximation'
 }
 
 /**
@@ -246,7 +246,7 @@ export function testDataFrameDomainAgainstReal(
 ) {
 	const { parser = shell, name = code, skipRun = false } = config ?? {};
 
-	test.skipIf(skipTestBecauseConfigNotMet(config))(decorateLabelContext(name, ['absint']), async({ skip })=> {
+	test.skipIf(skipTestBecauseConfigNotMet(config))(decorateLabelContext(name, ['absint']), async({ skip }) => {
 		if(typeof skipRun === 'boolean' ? skipRun : skipRun()) {
 			skip();
 		}

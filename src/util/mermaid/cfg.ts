@@ -11,7 +11,7 @@ import {
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { reconstructToCode } from '../../reconstruct/reconstruct';
 import { doNotAutoSelect } from '../../reconstruct/auto-select/auto-select-defaults';
-import type { MermaidMarkStyle , MermaidGraphPrinterInfo, MermaidMarkdownMark } from './info';
+import type { MermaidMarkStyle, MermaidGraphPrinterInfo, MermaidMarkdownMark } from './info';
 import { MermaidDefaultMarkStyle } from './info';
 import { collectAllIds } from '../../r-bridge/lang-4.x/ast/model/collect';
 
@@ -90,7 +90,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 			}
 		}
 		// if we have a filter, we automatically add all vertices in the cfg that are *markers* for these ids and
-		for(const [id,v] of cfg.graph.vertices()) {
+		for(const [id, v] of cfg.graph.vertices()) {
 			if(v.type === CfgVertexType.EndMarker && completed.has(v.root)) {
 				completed.add(id);
 			}

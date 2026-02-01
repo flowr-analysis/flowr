@@ -40,9 +40,9 @@ const ContextFunctions: LinkToLastCall = {
 };
 
 export const TestFunctions: FunctionInfo[] = [
-	{ package: 'testthat', name: 'test_that', argName: 'desc', argIdx: 0, resolveValue: true, linkTo: [ExpectFunctions,ContextFunctions] },
-	{ package: 'testthat', name: 'describe', argName: 'description', argIdx: 0, resolveValue: true, linkTo: [ExpectFunctions,ContextFunctions] },
-	{ package: 'testthat', name: 'it', argName: 'description', argIdx: 0, resolveValue: true, linkTo: [ExpectFunctions,ContextFunctions] },
+	{ package: 'testthat', name: 'test_that', argName: 'desc', argIdx: 0, resolveValue: true, linkTo: [ExpectFunctions, ContextFunctions] },
+	{ package: 'testthat', name: 'describe', argName: 'description', argIdx: 0, resolveValue: true, linkTo: [ExpectFunctions, ContextFunctions] },
+	{ package: 'testthat', name: 'it', argName: 'description', argIdx: 0, resolveValue: true, linkTo: [ExpectFunctions, ContextFunctions] },
 	/* for now we do not want to list them extra:
 	{ package: 'testthat', name: 'expect_lt' },
 	{ package: 'testthat', name: 'expect_lte' },

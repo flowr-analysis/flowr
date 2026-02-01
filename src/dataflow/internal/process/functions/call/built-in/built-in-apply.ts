@@ -112,7 +112,7 @@ export function processApply<OtherInfo>(
 	} else if(val.type === RType.Symbol) {
 		functionId = val.info.id;
 		if(resolveValue) {
-			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: data.environment, idMap: data.completeAst.idMap , resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
+			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
 			if(resolved?.elements.length === 1 && resolved.elements[0].type === 'string') {
 				const r = resolved.elements[0];
 				functionName = isValue(r.value) ? r.value.str : undefined;

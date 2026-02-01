@@ -59,7 +59,7 @@ export function processRepeatLoop<OtherInfo>(
 	guard(body !== undefined, () => `Repeat-Loop ${name.content} has no body, impossible!`);
 
 	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, [])), body.out);
-	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out,body.unknownReferences));
+	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences));
 
 	information.exitPoints = filterOutLoopExitPoints(information.exitPoints);
 

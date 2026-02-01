@@ -110,7 +110,7 @@ export type SamplingStrategy = 'random' | 'equidistant';
  * After slicing, call {@link finish} to close the R session and retrieve the stats.
  * @note Under the hood, the benchmark slicer maintains a {@link PipelineExecutor} using the {@link DEFAULT_SLICING_PIPELINE} or the {@link TREE_SITTER_SLICING_PIPELINE}.
  */
-type SupportedPipelines = typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_SLICING_PIPELINE
+type SupportedPipelines = typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_SLICING_PIPELINE;
 export class BenchmarkSlicer {
 	/** Measures all data recorded *once* per slicer (complete setup up to the dataflow graph creation) */
 	private readonly commonMeasurements   = new Measurements<CommonSlicerMeasurements>();

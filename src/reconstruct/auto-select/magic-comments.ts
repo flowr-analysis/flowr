@@ -13,7 +13,7 @@ function getLoc({ location, info: { fullRange } }: RNode): SourceRange {
 	return loc;
 }
 
-type MagicCommentConsumer = (n: RComment, stack: number[]) => number[] | undefined
+type MagicCommentConsumer = (n: RComment, stack: number[]) => number[] | undefined;
 
 const magicCommentIdMapper: Record<string, MagicCommentConsumer> = {
 	'include_next_line': (n: RComment) => {

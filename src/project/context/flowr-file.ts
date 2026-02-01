@@ -58,27 +58,27 @@ export interface FlowrFileProvider<Content extends { toString(): string } = { to
 	 * this is for the loaders plugins to decide (cf. {@link PluginType}) as they can, e.g., respect ignore files, updated mappings, etc.
 	 * However, they will 1) set this role as soon as they decide on it (using {@link assignRole}) and 2) try to respect an already assigned role (however, user configurations may override this).
 	 */
-    roles?: readonly FileRole[];
+	roles?: readonly FileRole[];
 
 	/**
 	 * The path to the file, this is used for identification and logging purposes.
 	 * If the file does not exist on disk, this can be a virtual path (e.g. for inline files).
 	 * Even though this is a getter, please make sure that the operation is cheap and deterministic (some decorators may overwrite the path, e.g., because they support other protocols).
 	 */
-    path(): string;
+	path(): string;
 
 	/**
 	 * The content of the file, this may be cached by the implementation and does not have to be expensive.
 	 * You can used stream based implementations but right now there is no external, project-wide expressions of life cycles for files.
 	 * So make sure your implementation closes the resource as soon as possible.
 	 */
-    content(): Content;
+	content(): Content;
 
 	/**
 	 * Assign a role to this file, this should be done by the loader plugins (cf. {@link PluginType}).
 	 * **Do not call this method yourself unless you are a file-loader plugin and/or really know what you are doing, this may break plugin assumptions!**
 	 */
-    assignRole(role: FileRole): void;
+	assignRole(role: FileRole): void;
 }
 
 /**

@@ -10,7 +10,7 @@ describe.sequential('Simple Forward', withShell(shell => {
 				shell, 'x <- 1\nx <- 2\nx <- 3', [`${i}:1`], `x <- ${i}`
 			);
 		}
-		for(const i of [1,2]) {
+		for(const i of [1, 2]) {
 			assertSlicedF(label(`slice constant assignment with print ${i}`, ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
 				shell, 'x <- 2\nx <- 3\nprint(x)', [`${i}@x`], i == 1 ? 'x <- 2' : 'x <- 3\nprint(x)'
 			);

@@ -34,10 +34,10 @@ const DataFrameReplacementFunctionMapper = {
  * - `parent` optionally contains a parent replacement function, such as the access `[` in `colnames(df)[1:2] <- ...`
  */
 type DataFrameReplacementFunctionMapping = (
-    operand: RArgument<ParentInformation>,
-    expression: RNode<ParentInformation>,
+	operand: RArgument<ParentInformation>,
+	expression: RNode<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor,
-    info: ResolveInfo,
+	info: ResolveInfo,
 	parent?: RNode<ParentInformation>
 ) => DataFrameOperations;
 

@@ -2,7 +2,7 @@ import { FlowrAnalyzerFilePlugin } from './flowr-analyzer-file-plugin';
 import { SemVer } from 'semver';
 import type { PathLike } from 'fs';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
-import { type FlowrFileProvider , FileRole } from '../../context/flowr-file';
+import { type FlowrFileProvider, FileRole } from '../../context/flowr-file';
 import { platformBasename } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { FlowrNewsFile } from './files/flowr-news-file';
 

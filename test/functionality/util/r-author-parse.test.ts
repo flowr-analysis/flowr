@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import type { RAuthorInfo } from '../../../src/util/r-author';
-import { parseTextualAuthorString , parseRAuthorString , AuthorRole } from '../../../src/util/r-author';
+import { parseTextualAuthorString, parseRAuthorString, AuthorRole } from '../../../src/util/r-author';
 
 describe('R Author Parsing', function() {
 	const cases = [

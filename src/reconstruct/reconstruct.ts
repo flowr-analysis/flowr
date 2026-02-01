@@ -22,13 +22,13 @@ import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-
 import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import type { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
-import { type RFunctionCall , EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionCall, EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { type StatefulFoldFunctions , foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
+import { type StatefulFoldFunctions, foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type AutoSelectPredicate , doNotAutoSelect } from './auto-select/auto-select-defaults';
+import { type AutoSelectPredicate, doNotAutoSelect } from './auto-select/auto-select-defaults';
 
 interface Selection {
 	/**
@@ -50,7 +50,7 @@ function plain(text: string): [PrettyPrintLine] {
 	return [{ line: text, indent: 0 }];
 }
 
-type Code = PrettyPrintLine[]
+type Code = PrettyPrintLine[];
 
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' });
 
@@ -491,8 +491,8 @@ function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[]): strin
 }
 
 
-export function reconstructToCode(ast: NormalizedAst, selection: Selection & { reconstructFiles?: [number] | undefined }, autoSelectIf?: AutoSelectPredicate): ReconstructionResult & { code: string }
-export function reconstructToCode(ast: NormalizedAst, selection: Selection, autoSelectIf?: AutoSelectPredicate): ReconstructionResult
+export function reconstructToCode(ast: NormalizedAst, selection: Selection & { reconstructFiles?: [number] | undefined }, autoSelectIf?: AutoSelectPredicate): ReconstructionResult & { code: string };
+export function reconstructToCode(ast: NormalizedAst, selection: Selection, autoSelectIf?: AutoSelectPredicate): ReconstructionResult;
 /**
  * Reconstructs parts of a normalized R ast into R code on an expression basis.
  * @param ast          - The {@link NormalizedAst|normalized ast} to be used as a basis for reconstruction

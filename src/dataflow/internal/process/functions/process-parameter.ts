@@ -1,9 +1,9 @@
-import { type DataflowInformation , ExitPointType } from '../../../info';
-import { type DataflowProcessorInformation , processDataflowFor } from '../../../processor';
+import { type DataflowInformation, ExitPointType } from '../../../info';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../processor';
 import { expensiveTrace, log } from '../../../../util/log';
 import type { RParameter } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type IdentifierDefinition , ReferenceType } from '../../../environments/identifier';
+import { type IdentifierDefinition, ReferenceType } from '../../../environments/identifier';
 import { define } from '../../../environments/define';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../graph/edge';

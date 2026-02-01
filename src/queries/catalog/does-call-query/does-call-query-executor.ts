@@ -37,7 +37,7 @@ export async function executeDoesCallQuery({ analyzer }: BasicQueryData, queries
 	};
 }
 
-type CheckCallMatch = (vtx: { id: NodeId, name?: string }, cg: CallGraph) => boolean
+type CheckCallMatch = (vtx: { id: NodeId, name?: string }, cg: CallGraph) => boolean;
 
 function makeCallMatcher(constraint: CallsConstraint): CheckCallMatch {
 	switch(constraint.type) {

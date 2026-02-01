@@ -27,11 +27,11 @@ export const LintingRules = {
 	'useless-loop':                USELESS_LOOP
 } as const;
 
-export type LintingRuleNames = keyof typeof LintingRules
+export type LintingRuleNames = keyof typeof LintingRules;
 
 export type LintingRuleMetadata<Name extends LintingRuleNames> =
-	typeof LintingRules[Name] extends LintingRule<infer _Result, infer Metadata, infer _Config, infer _Info, infer _Elements> ? Metadata : never
+	typeof LintingRules[Name] extends LintingRule<infer _Result, infer Metadata, infer _Config, infer _Info, infer _Elements> ? Metadata : never;
 export type LintingRuleResult<Name extends LintingRuleNames> =
-	typeof LintingRules[Name] extends LintingRule<infer Result, infer _Metadata, infer _Config, infer _Info, infer _Elements> ? Result : never
+	typeof LintingRules[Name] extends LintingRule<infer Result, infer _Metadata, infer _Config, infer _Info, infer _Elements> ? Result : never;
 export type LintingRuleConfig<Name extends LintingRuleNames> =
-	typeof LintingRules[Name] extends LintingRule<infer _Result, infer _Metadata, infer Config, infer _Info, infer _Elements> ? Config : never
+	typeof LintingRules[Name] extends LintingRule<infer _Result, infer _Metadata, infer Config, infer _Info, infer _Elements> ? Config : never;

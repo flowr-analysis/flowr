@@ -5,7 +5,7 @@ import { splitArrayOn } from '../../../../../../../util/collections/arrays';
 import { guard } from '../../../../../../../util/assert';
 import { tryToNormalizeArgument } from './normalize-argument';
 import type { SourceRange } from '../../../../../../../util/range';
-import { type RFunctionCall, type RNamedFunctionCall, type RUnnamedFunctionCall , EmptyArgument } from '../../../../model/nodes/r-function-call';
+import { type RFunctionCall, type RNamedFunctionCall, type RUnnamedFunctionCall, EmptyArgument } from '../../../../model/nodes/r-function-call';
 import type { RNext } from '../../../../model/nodes/r-next';
 import type { RBreak } from '../../../../model/nodes/r-break';
 import { RawRType, RType } from '../../../../model/type';

@@ -14,7 +14,7 @@ export function flowrVersion(): SemVer {
 	return new SemVer(version);
 }
 
-type Version = `${number}.${number}.${number}`
+type Version = `${number}.${number}.${number}`;
 
 /**
  * Describes the version of flowR and the used R interpreter.

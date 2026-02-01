@@ -1,15 +1,15 @@
-import { type FunctionArgument, type OutgoingEdges , isNamedArgument } from './graph';
-import { type GenericDiffConfiguration, type GenericDifferenceInformation , setDifference } from '../../util/diff';
+import { type FunctionArgument, type OutgoingEdges, isNamedArgument } from './graph';
+import { type GenericDiffConfiguration, type GenericDifferenceInformation, setDifference } from '../../util/diff';
 import { jsonReplacer } from '../../util/json';
 import { arrayEqual } from '../../util/collections/arrays';
 import { VertexType } from './vertex';
-import { type DataflowGraphEdge , edgeTypesToNames, splitEdgeTypes } from './edge';
-import { type NodeId , recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type DataflowGraphEdge, edgeTypesToNames, splitEdgeTypes } from './edge';
+import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments/diff';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { diffControlDependencies } from '../info';
-import { type GraphDiffContext, type NamedGraph , initDiffContext, GraphDifferenceReport } from '../../util/diff-graph';
+import { type GraphDiffContext, type NamedGraph, initDiffContext, GraphDifferenceReport } from '../../util/diff-graph';
 import type { HookInformation } from '../hooks';
 
 /**

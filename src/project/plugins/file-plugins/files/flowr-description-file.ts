@@ -1,6 +1,6 @@
-import { type FlowrFileProvider, type FileRole , FlowrFile } from '../../../context/flowr-file';
+import { type FlowrFileProvider, type FileRole, FlowrFile } from '../../../context/flowr-file';
 import type { RAuthorInfo } from '../../../../util/r-author';
-import { AuthorRole , parseTextualAuthorString , parseRAuthorString } from '../../../../util/r-author';
+import { AuthorRole, parseTextualAuthorString, parseRAuthorString } from '../../../../util/r-author';
 import { splitAtEscapeSensitive } from '../../../../util/text/args';
 import type { DeepReadonly } from 'ts-essentials';
 import type { RLicenseElementInfo } from '../../../../util/r-license';

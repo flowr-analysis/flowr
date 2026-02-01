@@ -1,6 +1,6 @@
 import {
 	type DummyAppendMemoryMap,
-	type StatisticAppendProvider ,
+	type StatisticAppendProvider,
 	DummyAppendProvider,
 	StatisticFileProvider
 } from './file-provider';
@@ -54,7 +54,7 @@ export type StatisticsOutputFormat<T=string> = [
 		value:   T,
 		/** the context of the information retrieval (e.g. the name of the file that contained the R source code) */
 		context: string | undefined
-]
+];
 
 /**
  * Append the content of all nodes to the storage file for the given feature

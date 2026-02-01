@@ -2,7 +2,7 @@ import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/proce
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { intervalFrom } from './intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from './logical/logical-constants';
-import { type Lift, type Value, type ValueSet , Bottom, isBottom, isTop, Top } from './r-value';
+import { type Lift, type Value, type ValueSet, Bottom, isBottom, isTop, Top } from './r-value';
 import { stringFrom } from './string/string-constants';
 
 /**

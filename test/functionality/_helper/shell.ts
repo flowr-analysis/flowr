@@ -342,7 +342,7 @@ export function assertOutput(name: string | TestLabel, parser: KnownParser, inpu
 		if(typeof expected === 'string') {
 			assert.strictEqual(lines.join('\n'), expected, `for input ${input}`);
 		} else {
-			assert.match(lines.join('\n'), expected,`, for input ${input}`);
+			assert.match(lines.join('\n'), expected, `, for input ${input}`);
 		}
 	});
 }

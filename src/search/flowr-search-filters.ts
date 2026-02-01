@@ -32,7 +32,7 @@ export enum FlowrFilter {
 	 */
 	OriginKind = 'origin-kind'
 }
-export type FlowrFilterFunction <T> = (e: FlowrSearchElement<ParentInformation>, args: T, data: {dataflow: DataflowInformation}) => boolean;
+export type FlowrFilterFunction <T> = (e: FlowrSearchElement<ParentInformation>, args: T, data: { dataflow: DataflowInformation }) => boolean;
 
 export const ValidFlowrFilters: Set<string> = new Set(Object.values(FlowrFilter));
 export const ValidFlowrFiltersReverse = Object.fromEntries(Object.entries(FlowrFilter).map(([k, v]) => [v, k]));
@@ -120,7 +120,7 @@ type BooleanNode = BooleanBinaryNode<BooleanNode>
 	| Leaf;
 
 
-type BooleanNodeOrCombinator = BooleanNode | FlowrFilterCombinator
+type BooleanNodeOrCombinator = BooleanNode | FlowrFilterCombinator;
 
 /**
  * @see {@link FlowrFilterCombinator.is}

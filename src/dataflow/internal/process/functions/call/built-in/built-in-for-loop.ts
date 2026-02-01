@@ -84,7 +84,7 @@ export function processForLoop<OtherInfo>(
 
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out);
 
-	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out,body.unknownReferences));
+	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences));
 
 	patchFunctionCall({
 		nextGraph,

@@ -1,8 +1,8 @@
 import { jsonReplacer } from '../util/json';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type GraphDiffContext, type NamedGraph , initDiffContext , GraphDifferenceReport } from '../util/diff-graph';
-import { type GenericDiffConfiguration , setDifference } from '../util/diff';
-import { type CfgEdge, type CfgSimpleVertex, type ControlFlowGraph , equalVertex } from './control-flow-graph';
+import { type GraphDiffContext, type NamedGraph, initDiffContext, GraphDifferenceReport } from '../util/diff-graph';
+import { type GenericDiffConfiguration, setDifference } from '../util/diff';
+import { type CfgEdge, type CfgSimpleVertex, type ControlFlowGraph, equalVertex } from './control-flow-graph';
 import { arrayEqual } from '../util/collections/arrays';
 
 

@@ -7,7 +7,7 @@ import { builtInId } from '../../../../../src/dataflow/environments/built-in';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
-import { type FlowrLaxSourcingOptions , amendConfig, defaultConfigOptions } from '../../../../../src/config';
+import { type FlowrLaxSourcingOptions, amendConfig, defaultConfigOptions } from '../../../../../src/config';
 import { deepMergeObject } from '../../../../../src/util/objects';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
 
@@ -30,7 +30,7 @@ describe('source', withTreeSitter(parser => {
 		return c;
 	});
 
-	assertDataflow(label('simple source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']), parser, 'source("simple")\ncat(N)', emptyGraph()
+	assertDataflow(label('simple source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), parser, 'source("simple")\ncat(N)', emptyGraph()
 		.use('5', 'N')
 		.reads('5', 'simple-1:1-1:6-0')
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [builtInId('source')] })

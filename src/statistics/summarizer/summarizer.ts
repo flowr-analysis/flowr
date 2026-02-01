@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { FileMigrator } from './first-phase/process';
 import { postProcessFeatureFolder } from './second-phase/process';
-import { type CommonSummarizerConfiguration , Summarizer } from '../../util/summarizer';
+import { type CommonSummarizerConfiguration, Summarizer } from '../../util/summarizer';
 import { longestCommonPrefix } from '../../util/text/strings';
 import { getAllFiles } from '../../util/files';
 import { date2string } from '../../util/text/time';
@@ -46,7 +46,7 @@ async function retrieveAllFilesInArchive(f: string): Promise<Map<string, string>
 		onentry: entry => {
 			if(entry.type === 'File') {
 				promises.push(
-					entry.concat().then(content =>{
+					entry.concat().then(content => {
 						filenames.set(entry.path, content.toString());
 					})
 				);
@@ -58,13 +58,13 @@ async function retrieveAllFilesInArchive(f: string): Promise<Map<string, string>
 	return filenames;
 }
 
-function identifyCommonPrefix(files: Map<string,string>): string {
+function identifyCommonPrefix(files: Map<string, string>): string {
 	return longestCommonPrefix([...files.keys()]);
 }
 
 
 /** returns the target path */
-async function extractArchive(f: string): Promise<Map<string,string>> {
+async function extractArchive(f: string): Promise<Map<string, string>> {
 	const files = await retrieveAllFilesInArchive(f);
 	const commonRoot = identifyCommonPrefix(files);
 	// post process until we find the '<filename>.(r|R)' suffix. otherwise, if there are no features and only the meta folder, the meta folder will be removed, resulting in a write
@@ -133,7 +133,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 		const migrator = new FileMigrator();
 		for await (const f of getAllFiles(this.config.inputPath, /\.tar.gz$/)) {
 			this.log(`[${count++}, ${date2string()}] processing file ${f} (to ${this.config.intermediateOutputPath})`);
-			let target: Map<string,string>;
+			let target: Map<string, string>;
 			try {
 				target = await extractArchive(f);
 				this.log('    Collected!');

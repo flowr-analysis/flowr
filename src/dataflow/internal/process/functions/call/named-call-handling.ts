@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../processor';
-import { type DataflowInformation , initializeCleanDataflowInformation } from '../../../../info';
+import { type DataflowInformation, initializeCleanDataflowInformation } from '../../../../info';
 import { processKnownFunctionCall } from './known-call-handling';
 import { appendEnvironment } from '../../../../environments/append';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';

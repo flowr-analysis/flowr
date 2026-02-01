@@ -1,4 +1,4 @@
-import { type CfgEdge, type ControlFlowInformation , CfgEdgeType, CfgVertexType, ControlFlowGraph } from './control-flow-graph';
+import { type CfgEdge, type ControlFlowInformation, CfgEdgeType, CfgVertexType, ControlFlowGraph } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** if true, return the target */

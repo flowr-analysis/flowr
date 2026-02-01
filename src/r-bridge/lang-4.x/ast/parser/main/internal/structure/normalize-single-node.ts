@@ -1,5 +1,5 @@
 import { getWithTokenType } from '../../normalize-meta';
-import { type NormalizerData , ParseError } from '../../normalizer-data';
+import { type NormalizerData, ParseError } from '../../normalizer-data';
 import { normalizeLineDirective } from '../other/normalize-line-directive';
 import { guard } from '../../../../../../../util/assert';
 import { normalizeDelimiter } from './normalize-delimiter';

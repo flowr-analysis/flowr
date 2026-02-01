@@ -1,4 +1,4 @@
-import { type MergeableRecord , deepMergeObject } from './util/objects';
+import { type MergeableRecord, deepMergeObject } from './util/objects';
 import path from 'path';
 import fs from 'fs';
 import { log } from './util/log';
@@ -110,13 +110,13 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			}
 		}
 	}
-    /** Configuration options for the REPL */
-    readonly repl: {
-        /** Whether to show quick stats in the REPL after each evaluation */
-        quickStats:   boolean
-	    /** This instruments the dataflow processors to count how often each processor is called */
-	    dfProcessorHeat: boolean;
-    }
+	/** Configuration options for the REPL */
+	readonly repl: {
+		/** Whether to show quick stats in the REPL after each evaluation */
+		quickStats:      boolean
+		/** This instruments the dataflow processors to count how often each processor is called */
+		dfProcessorHeat: boolean;
+	}
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
 		resolveUnknownPathsOnDisk: boolean
@@ -223,7 +223,7 @@ export interface RShellEngineConfig extends MergeableRecord {
 }
 
 export type EngineConfig = TreeSitterEngineConfig | RShellEngineConfig;
-export type KnownEngines = { [T in EngineConfig['type']]?: KnownParser }
+export type KnownEngines = { [T in EngineConfig['type']]?: KnownParser };
 
 const defaultEngineConfigs: { [T in EngineConfig['type']]: EngineConfig & { type: T } } = {
 	'tree-sitter': { type: 'tree-sitter' },
@@ -397,24 +397,6 @@ export function getEngineConfig<T extends EngineConfig['type']>(config: FlowrCon
 		return engines.find(e => e.type == engine) as EngineConfig & { type: T } | undefined;
 	}
 }
-
-function getPointerAnalysisThreshold(config: FlowrConfigOptions): number | 'unlimited' | 'disabled' {
-	const pointerTracking = config.solver.pointerTracking;
-	if(typeof pointerTracking === 'object') {
-		return pointerTracking.maxIndexCount;
-	} else {
-		return pointerTracking ? 'unlimited' : 'disabled';
-	}
-}
-
-/**
- * Checks whether the given count is over the pointer analysis threshold configured in the config.
- */
-export function isOverPointerAnalysisThreshold(config: FlowrConfigOptions, count: number): boolean {
-	const threshold = getPointerAnalysisThreshold(config);
-	return threshold !== 'unlimited' && (threshold === 'disabled' || count > threshold);
-}
-
 
 function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfigOptions {
 	if(configFile !== undefined) {

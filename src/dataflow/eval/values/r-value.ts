@@ -5,23 +5,23 @@ import { assertUnreachable, guard } from '../../../util/assert';
 export const Top = { type: Symbol('⊤') };
 export const Bottom = { type: Symbol('⊥') };
 
-export type Lift<N> = N | typeof Top | typeof Bottom
-export type Unlift<N> = N extends typeof Top ? never : N extends typeof Bottom ? never : N
+export type Lift<N> = N | typeof Top | typeof Bottom;
+export type Unlift<N> = N extends typeof Top ? never : N extends typeof Bottom ? never : N;
 
 export interface ValueInterval<Limit extends ValueNumber = ValueNumber> {
-    type:           'interval'
-    start:          Limit
-    startInclusive: boolean
-    end:            Limit
-    endInclusive:   boolean
+	type:           'interval'
+	start:          Limit
+	startInclusive: boolean
+	end:            Limit
+	endInclusive:   boolean
 }
 
 /**
  * An R vector with either a known set of elements or a known domain.
  */
 export interface ValueVector<Elements extends Lift<unknown[]> = Lift<Value[]>, Domain extends Lift<Value> = Lift<Value>> {
-    type:       'vector'
-    elements:   Elements
+	type:          'vector'
+	elements:      Elements
 	/** if we do not know the amount of elements, we can still know the domain */
 	elementDomain: Domain
 }
@@ -31,23 +31,23 @@ export interface ValueSet<Elements extends Lift<unknown[]> = Lift<Value[]>> {
 	elements: Elements
 }
 export interface ValueNumber<Num extends Lift<RNumberValue> = Lift<RNumberValue>> {
-    type:  'number'
-    value: Num
+	type:  'number'
+	value: Num
 }
 export interface ValueString<Str extends Lift<RStringValue> = Lift<RStringValue>> {
-    type:  'string'
-    value: Str
+	type:  'string'
+	value: Str
 }
 export interface ValueFunctionDefinition {
-    type: 'function-definition'
+	type: 'function-definition'
 }
 export interface ValueMissing {
 	type: 'missing'
 }
-export type TernaryLogical = RLogicalValue | 'maybe'
+export type TernaryLogical = RLogicalValue | 'maybe';
 export interface ValueLogical {
-    type:  'logical'
-    value: Lift<TernaryLogical>
+	type:  'logical'
+	value: Lift<TernaryLogical>
 }
 
 export type Value = Lift<
@@ -59,9 +59,9 @@ export type Value = Lift<
         | ValueLogical
 		| ValueMissing
         | ValueFunctionDefinition
-    >
-export type ValueType<V> = V extends { type: infer T } ? T : never
-export type ValueTypes = ValueType<Value>
+>;
+export type ValueType<V> = V extends { type: infer T } ? T : never;
+export type ValueTypes = ValueType<Value>;
 
 
 /**

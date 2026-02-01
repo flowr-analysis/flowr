@@ -49,7 +49,7 @@ export async function executeDependenciesQuery({
 	const now = Date.now();
 	const [query] = queries;
 	const ignoreDefault = query.ignoreDefaultFunctions ?? false;
-	const functions = new Map<DependencyCategoryName, FunctionInfo[]>(Object.entries(DefaultDependencyCategories).map(([c,v]) => {
+	const functions = new Map<DependencyCategoryName, FunctionInfo[]>(Object.entries(DefaultDependencyCategories).map(([c, v]) => {
 		return [c, getFunctionsToCheck(query[`${c as DefaultDependencyCategoryName}Functions`], c, query.enabledCategories, ignoreDefault, v.functions)];
 	}));
 	if(query.additionalCategories !== undefined){
@@ -70,7 +70,7 @@ export async function executeDependenciesQuery({
 			await g[c]?.additionalAnalysis?.(data, ignoreDefault, f, queryResults, results);
 		}
 		return [c, results];
-	}))) as {[C in DependencyCategoryName]?: DependencyInfo[]};
+	}))) as { [C in DependencyCategoryName]?: DependencyInfo[] };
 
 	return {
 		'.meta': {

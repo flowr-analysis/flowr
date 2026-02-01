@@ -288,7 +288,7 @@ Currently, flowR supports the following plugin types built-in:
 | Name | Class | Type | Description |
 |------|-------|------|-------------|
 ${
-	BuiltInPlugins.sort(([a,], [b]) => a.localeCompare(b)).map(
+	BuiltInPlugins.sort(([a], [b]) => a.localeCompare(b)).map(
 		([key, value]) => `| ${codeInline(key)} | ${ctx.link( `${value.name}`)} |  ${new value().type} | ${ctx.doc(`${value.name}`).replaceAll('|', '&#124;').replaceAll('\n', ' ')} |`
 	).join('\n')
 }

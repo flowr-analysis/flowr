@@ -21,15 +21,15 @@ export interface FlowrSearchElement<Info> {
 }
 
 export interface FlowrSearchNodeBase<Type extends string, Name extends string, Args extends Record<string, unknown> | undefined> {
-    readonly type: Type;
-    readonly name: Name;
-    readonly args: Args;
+	readonly type: Type;
+	readonly name: Name;
+	readonly args: Args;
 }
 
 export type FlowrSearchGeneratorNodeBase<Name extends string, Args extends Record<string, unknown> | undefined> =
-		FlowrSearchNodeBase<'generator', Name, Args>;
+	FlowrSearchNodeBase<'generator', Name, Args>;
 export type FlowrSearchTransformerNodeBase<Name extends string, Args extends Record<string, unknown> | undefined> =
-		FlowrSearchNodeBase<'transformer', Name, Args>;
+	FlowrSearchNodeBase<'transformer', Name, Args>;
 
 export interface FlowrSearchGetFilter extends Record<string, unknown> {
 	/**

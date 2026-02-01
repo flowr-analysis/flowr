@@ -1,4 +1,4 @@
-import { type QuadSerializationConfiguration , graph2quads } from '../../util/quads';
+import { type QuadSerializationConfiguration, graph2quads } from '../../util/quads';
 import type { DataflowGraph } from './graph';
 import { edgeTypesToNames } from './edge';
 

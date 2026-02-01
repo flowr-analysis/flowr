@@ -18,10 +18,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c(1, 2.3, 3.1e4, 0xcafe)',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 1, },
-				{ identifier: { index: 2 }, nodeId: 3, },
-				{ identifier: { index: 3 }, nodeId: 5, },
-				{ identifier: { index: 4 }, nodeId: 7, },
+				{ identifier: { index: 1 }, nodeId: 1 },
+				{ identifier: { index: 2 }, nodeId: 3 },
+				{ identifier: { index: 3 }, nodeId: 5 },
+				{ identifier: { index: 4 }, nodeId: 7 },
 			],
 			undefined,
 			config
@@ -33,10 +33,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c("hello", \'world\', "This is an", \'example\')',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 1, },
-				{ identifier: { index: 2 }, nodeId: 3, },
-				{ identifier: { index: 3 }, nodeId: 5, },
-				{ identifier: { index: 4 }, nodeId: 7, },
+				{ identifier: { index: 1 }, nodeId: 1 },
+				{ identifier: { index: 2 }, nodeId: 3 },
+				{ identifier: { index: 3 }, nodeId: 5 },
+				{ identifier: { index: 4 }, nodeId: 7 },
 			],
 			undefined,
 			config
@@ -48,10 +48,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c(TRUE, FALSE, TRUE, FALSE)',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 1, },
-				{ identifier: { index: 2 }, nodeId: 3, },
-				{ identifier: { index: 3 }, nodeId: 5, },
-				{ identifier: { index: 4 }, nodeId: 7, },
+				{ identifier: { index: 1 }, nodeId: 1 },
+				{ identifier: { index: 2 }, nodeId: 3 },
+				{ identifier: { index: 3 }, nodeId: 5 },
+				{ identifier: { index: 4 }, nodeId: 7 },
 			],
 			undefined,
 			config
@@ -80,10 +80,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c(c(1, 2), 3, 4)',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 2, },
-				{ identifier: { index: 2 }, nodeId: 4, },
-				{ identifier: { index: 3 }, nodeId: 8, },
-				{ identifier: { index: 4 }, nodeId: 10, },
+				{ identifier: { index: 1 }, nodeId: 2 },
+				{ identifier: { index: 2 }, nodeId: 4 },
+				{ identifier: { index: 3 }, nodeId: 8 },
+				{ identifier: { index: 4 }, nodeId: 10 },
 			],
 			undefined,
 			config
@@ -95,10 +95,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c(1, c(2, 3), 4)',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 1, },
-				{ identifier: { index: 2 }, nodeId: 4, },
-				{ identifier: { index: 3 }, nodeId: 6, },
-				{ identifier: { index: 4 }, nodeId: 10, },
+				{ identifier: { index: 1 }, nodeId: 1 },
+				{ identifier: { index: 2 }, nodeId: 4 },
+				{ identifier: { index: 3 }, nodeId: 6 },
+				{ identifier: { index: 4 }, nodeId: 10 },
 			],
 			undefined,
 			config
@@ -110,10 +110,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c(1, 2, c(3, 4))',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 1, },
-				{ identifier: { index: 2 }, nodeId: 3, },
-				{ identifier: { index: 3 }, nodeId: 6, },
-				{ identifier: { index: 4 }, nodeId: 8, },
+				{ identifier: { index: 1 }, nodeId: 1 },
+				{ identifier: { index: 2 }, nodeId: 3 },
+				{ identifier: { index: 3 }, nodeId: 6 },
+				{ identifier: { index: 4 }, nodeId: 8 },
 			],
 			undefined,
 			config
@@ -125,10 +125,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c(c(1, 2), c(3, 4))',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 2, },
-				{ identifier: { index: 2 }, nodeId: 4, },
-				{ identifier: { index: 3 }, nodeId: 9, },
-				{ identifier: { index: 4 }, nodeId: 11, },
+				{ identifier: { index: 1 }, nodeId: 2 },
+				{ identifier: { index: 2 }, nodeId: 4 },
+				{ identifier: { index: 3 }, nodeId: 9 },
+				{ identifier: { index: 4 }, nodeId: 11 },
 			],
 			undefined,
 			config
@@ -140,10 +140,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c(c(1, c(2, c(3, 4))))',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 2, },
-				{ identifier: { index: 2 }, nodeId: 5, },
-				{ identifier: { index: 3 }, nodeId: 8, },
-				{ identifier: { index: 4 }, nodeId: 10, },
+				{ identifier: { index: 1 }, nodeId: 2 },
+				{ identifier: { index: 2 }, nodeId: 5 },
+				{ identifier: { index: 3 }, nodeId: 8 },
+				{ identifier: { index: 4 }, nodeId: 10 },
 			],
 			undefined,
 			config
@@ -156,8 +156,8 @@ describe.sequential('Vector Definition', withShell(shell => {
 			c(a)`,
 			Q.criterion('2@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 2, },
-				{ identifier: { index: 2 }, nodeId: 4, },
+				{ identifier: { index: 1 }, nodeId: 2 },
+				{ identifier: { index: 2 }, nodeId: 4 },
 			],
 			undefined,
 			config
@@ -173,10 +173,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c(list(a = 1, b = 2), 3, 4)',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 4, },
-				{ identifier: { index: 2 }, nodeId: 7, },
-				{ identifier: { index: 3 }, nodeId: 10, },
-				{ identifier: { index: 4 }, nodeId: 12, },
+				{ identifier: { index: 1 }, nodeId: 4 },
+				{ identifier: { index: 2 }, nodeId: 7 },
+				{ identifier: { index: 3 }, nodeId: 10 },
+				{ identifier: { index: 4 }, nodeId: 12 },
 			],
 			undefined,
 			config
@@ -188,10 +188,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c(1, list(b = 2, c = 3), 4)',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 1, },
-				{ identifier: { index: 2 }, nodeId: 6, },
-				{ identifier: { index: 3 }, nodeId: 9, },
-				{ identifier: { index: 4 }, nodeId: 12, },
+				{ identifier: { index: 1 }, nodeId: 1 },
+				{ identifier: { index: 2 }, nodeId: 6 },
+				{ identifier: { index: 3 }, nodeId: 9 },
+				{ identifier: { index: 4 }, nodeId: 12 },
 			],
 			undefined,
 			config
@@ -203,10 +203,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c(1, 2, list(c = 3, d = 4))',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 1, },
-				{ identifier: { index: 2 }, nodeId: 3, },
-				{ identifier: { index: 3 }, nodeId: 8, },
-				{ identifier: { index: 4 }, nodeId: 11, },
+				{ identifier: { index: 1 }, nodeId: 1 },
+				{ identifier: { index: 2 }, nodeId: 3 },
+				{ identifier: { index: 3 }, nodeId: 8 },
+				{ identifier: { index: 4 }, nodeId: 11 },
 			],
 			undefined,
 			config
@@ -218,10 +218,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c(list(a = 1, b = 2), list(c = 3, d = 4))',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 4, },
-				{ identifier: { index: 2 }, nodeId: 7, },
-				{ identifier: { index: 3 }, nodeId: 13, },
-				{ identifier: { index: 4 }, nodeId: 16, },
+				{ identifier: { index: 1 }, nodeId: 4 },
+				{ identifier: { index: 2 }, nodeId: 7 },
+				{ identifier: { index: 3 }, nodeId: 13 },
+				{ identifier: { index: 4 }, nodeId: 16 },
 			],
 			undefined,
 			config
@@ -234,8 +234,8 @@ describe.sequential('Vector Definition', withShell(shell => {
 			c(a)`,
 			Q.criterion('2@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 4, },
-				{ identifier: { index: 2 }, nodeId: 7, },
+				{ identifier: { index: 1 }, nodeId: 4 },
+				{ identifier: { index: 2 }, nodeId: 7 },
 			],
 			undefined,
 			config
@@ -249,10 +249,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c(list(1, 2), 3, 4)',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 2, },
-				{ identifier: { index: 2 }, nodeId: 4, },
-				{ identifier: { index: 3 }, nodeId: 8, },
-				{ identifier: { index: 4 }, nodeId: 10, },
+				{ identifier: { index: 1 }, nodeId: 2 },
+				{ identifier: { index: 2 }, nodeId: 4 },
+				{ identifier: { index: 3 }, nodeId: 8 },
+				{ identifier: { index: 4 }, nodeId: 10 },
 			],
 			undefined,
 			config
@@ -264,10 +264,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c(1, list(2, 3), 4)',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 1, },
-				{ identifier: { index: 2 }, nodeId: 4, },
-				{ identifier: { index: 3 }, nodeId: 6, },
-				{ identifier: { index: 4 }, nodeId: 10, },
+				{ identifier: { index: 1 }, nodeId: 1 },
+				{ identifier: { index: 2 }, nodeId: 4 },
+				{ identifier: { index: 3 }, nodeId: 6 },
+				{ identifier: { index: 4 }, nodeId: 10 },
 			],
 			undefined,
 			config
@@ -279,10 +279,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c(1, 2, list(3, 4))',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 1, },
-				{ identifier: { index: 2 }, nodeId: 3, },
-				{ identifier: { index: 3 }, nodeId: 6, },
-				{ identifier: { index: 4 }, nodeId: 8, },
+				{ identifier: { index: 1 }, nodeId: 1 },
+				{ identifier: { index: 2 }, nodeId: 3 },
+				{ identifier: { index: 3 }, nodeId: 6 },
+				{ identifier: { index: 4 }, nodeId: 8 },
 			],
 			undefined,
 			config
@@ -294,10 +294,10 @@ describe.sequential('Vector Definition', withShell(shell => {
 			'c(list(1, 2), list(3, 4))',
 			Q.criterion('1@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 2, },
-				{ identifier: { index: 2 }, nodeId: 4, },
-				{ identifier: { index: 3 }, nodeId: 9, },
-				{ identifier: { index: 4 }, nodeId: 11, },
+				{ identifier: { index: 1 }, nodeId: 2 },
+				{ identifier: { index: 2 }, nodeId: 4 },
+				{ identifier: { index: 3 }, nodeId: 9 },
+				{ identifier: { index: 4 }, nodeId: 11 },
 			],
 			undefined,
 			config
@@ -310,8 +310,8 @@ describe.sequential('Vector Definition', withShell(shell => {
 			c(a)`,
 			Q.criterion('2@c'),
 			[
-				{ identifier: { index: 1 }, nodeId: 2, },
-				{ identifier: { index: 2 }, nodeId: 4, },
+				{ identifier: { index: 1 }, nodeId: 2 },
+				{ identifier: { index: 2 }, nodeId: 4 },
 			],
 			undefined,
 			config

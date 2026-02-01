@@ -6,7 +6,7 @@ import type {
 	IEnvironment,
 	REnvironmentInformation
 } from '../../../../src/dataflow/environments/environment';
-import { type IdentifierDefinition , ReferenceType } from '../../../../src/dataflow/environments/identifier';
+import { type IdentifierDefinition, ReferenceType } from '../../../../src/dataflow/environments/identifier';
 
 export class EnvironmentBuilderPrinter {
 	private readonly env:   REnvironmentInformation;

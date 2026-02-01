@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import {
 	findSource
 } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
-import { type FlowrLaxSourcingOptions , DropPathsOption, InferWorkingDirectory, } from '../../../../../src/config';
+import { type FlowrLaxSourcingOptions, DropPathsOption, InferWorkingDirectory } from '../../../../../src/config';
 import path from 'path';
 import { contextFromSources } from '../../../../../src/project/context/flowr-analyzer-context';
 
@@ -24,7 +24,7 @@ describe('source finding', () => {
 				inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
 				searchPath:            [],
 				applyReplacements:     [
-					{ },
+					{},
 					{ ' ': '-' }
 				]
 			};

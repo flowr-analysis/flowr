@@ -564,10 +564,10 @@ type OtherDataFrameFunctionMapping = OtherDataFrameEntryPoint | OtherDataFrameTr
  * - `info` contains the resolve information
  */
 type DataFrameFunctionMapping<Params extends object> = (
-    args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly RFunctionArgument<ParentInformation>[],
 	params: Params,
 	inference: DataFrameShapeInferenceVisitor,
-    info: ResolveInfo
+	info: ResolveInfo
 ) => DataFrameOperations;
 
 /** All currently supported data frame functions */
@@ -582,7 +582,7 @@ type DataFrameFunctionParams<N extends DataFrameFunction> = Parameters<typeof Da
  */
 type DataFrameFunctionParamsMapping = {
 	[Name in DataFrameFunction]: DataFrameFunctionParams<Name> & { critical?: FunctionParameterLocation<unknown>[] }
-}
+};
 
 /**
  * Maps a concrete data frame function call to abstract data frame operations.

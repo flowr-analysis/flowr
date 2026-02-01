@@ -1,7 +1,7 @@
 import type { JsonEntry, NamedJsonEntry } from '../json/format';
 import { ParseError } from './normalizer-data';
-import { type SourceRange , rangeStartsCompletelyBefore , rangeFrom } from '../../../../../util/range';
-import { type RawRType , RType } from '../../model/type';
+import { type SourceRange, rangeStartsCompletelyBefore, rangeFrom } from '../../../../../util/range';
+import { type RawRType, RType } from '../../model/type';
 import type { RNode } from '../../model/model';
 import type { RExpressionList } from '../../model/nodes/r-expression-list';
 

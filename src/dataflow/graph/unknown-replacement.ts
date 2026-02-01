@@ -3,11 +3,11 @@ import type { REnvironmentInformation } from '../environments/environment';
 import type { Identifier } from '../environments/identifier';
 
 export type ReplacementOperatorHandlerArgs = {
-    operator: Identifier,
-    target:   string | undefined,
-    env:      REnvironmentInformation,
-    id:       NodeId
-}
+	operator: Identifier,
+	target:   string | undefined,
+	env:      REnvironmentInformation,
+	id:       NodeId
+};
 export type ReplacementOperatorHandler = (args: ReplacementOperatorHandlerArgs) => void;
 
 const handlers: ReplacementOperatorHandler[] = [];

@@ -101,38 +101,38 @@ export interface Location {
  * Represents the type of namespaces in the R programming language.
  * At the moment, this is only the name of the namespace.
  */
-export type NamespaceIdentifier = string
+export type NamespaceIdentifier = string;
 
 
 /**
  * This subtype of {@link RNode} represents all types of constants
  * represented in the normalized AST.
  */
-export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Info>
+export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Info>;
 /**
  * This subtype of {@link RNode} represents all types of {@link Leaf} nodes in the
  * normalized AST.
  */
-export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info> | RLineDirective<Info>
+export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info> | RLineDirective<Info>;
 /**
  * This subtype of {@link RNode} represents all looping constructs in the normalized AST.
  */
-export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>
+export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>;
 /**
  * As an extension to {@link RLoopConstructs}, this subtype of {@link RNode} includes
  * the {@link RIfThenElse} construct as well.
  */
-export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>
+export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>;
 /**
  * This subtype of {@link RNode} represents all types related to functions
  * (calls and definitions) in the normalized AST.
  */
-export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RParameter<Info> | RArgument<Info>
+export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RParameter<Info> | RArgument<Info>;
 /**
  * This subtype of {@link RNode} represents all types of otherwise hard to categorize
  * nodes in the normalized AST. At the moment these are the comment-like nodes.
  */
-export type ROther<Info>          = RComment<Info> | RLineDirective<Info>
+export type ROther<Info>          = RComment<Info> | RLineDirective<Info>;
 
 /**
  * The `RNode` type is the union of all possible nodes in the R-ast.
@@ -148,7 +148,7 @@ export type ROther<Info>          = RComment<Info> | RLineDirective<Info>
  */
 export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
 	| ROther<Info> | RConstructs<Info> | RNamedAccess<Info> | RIndexAccess<Info>
-	| RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>  | RPipe<Info>
+	| RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>  | RPipe<Info>;
 
-export type OtherInfoNode = RNode | RDelimiter
+export type OtherInfoNode = RNode | RDelimiter;
 

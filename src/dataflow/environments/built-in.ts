@@ -89,7 +89,7 @@ export type BuiltInIdentifierProcessor = <OtherInfo>(
 	args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
-) => DataflowInformation
+) => DataflowInformation;
 
 export type BuiltInIdentifierProcessorWithConfig<Config> = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -97,7 +97,7 @@ export type BuiltInIdentifierProcessorWithConfig<Config> = <OtherInfo>(
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: Config
-) => DataflowInformation
+) => DataflowInformation;
 
 export interface BuiltInIdentifierDefinition extends IdentifierReference {
 	type:      ReferenceType.BuiltInFunction
@@ -315,7 +315,7 @@ export const BuiltInEvalHandlerMapper = {
 
 export type ConfigOfBuiltInMappingName<N extends keyof typeof BuiltInProcessorMapper> = Parameters<typeof BuiltInProcessorMapper[N]>[4];
 
-export type BuiltInMemory = Map<BrandedIdentifier, IdentifierDefinition[]>
+export type BuiltInMemory = Map<BrandedIdentifier, IdentifierDefinition[]>;
 
 export class BuiltIns {
 	/**

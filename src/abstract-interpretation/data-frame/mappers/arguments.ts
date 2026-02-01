@@ -30,9 +30,9 @@ const LineTerminationRegex = /\r\n|\r|\n/;
  * - `default` optionally contains the default value of the function parameter
  */
 export interface FunctionParameterLocation<T = never> {
-    pos:      number,
-    name?:    string
-    default?: T
+	pos:      number,
+	name?:    string
+	default?: T
 }
 
 /**

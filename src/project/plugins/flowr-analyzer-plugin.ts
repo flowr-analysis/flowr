@@ -30,22 +30,22 @@ export enum PluginType {
 	 * Plugins that are applied right after the builder has been created and before any analysis is done.
 	 * @see {@link FlowrAnalyzerPackageVersionsPlugin} - for the base class to implement such a plugin.
 	 */
-    DependencyIdentification = 'package-versions',
+	DependencyIdentification = 'package-versions',
 	/**
 	 * Plugins that are used to determine the order in which files are loaded and analyzed.
 	 * @see {@link FlowrAnalyzerLoadingOrderPlugin} - for the base class to implement such a plugin.
 	 */
-    LoadingOrder             = 'loading-order',
+	LoadingOrder             = 'loading-order',
 	/**
 	 * Plugins that are applied to discover the project structure, files, and folders to analyze.
 	 * @see {@link FlowrAnalyzerProjectDiscoveryPlugin} - for the base class to implement such a plugin.
 	 */
-    ProjectDiscovery         = 'project-discovery',
+	ProjectDiscovery         = 'project-discovery',
 	/**
 	 * Plugins that are applied to load and parse files.
 	 * @see {@link FlowrAnalyzerFilePlugin} - for the base class to implement such a plugin.
 	 */
-    FileLoad                 = 'file-load'
+	FileLoad                 = 'file-load'
 }
 
 /**

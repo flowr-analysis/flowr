@@ -118,7 +118,7 @@ export function handleReturns(from: NodeId, queue: VisitingQueue, currentEdges: 
 	if(found.length === 0) {
 		return false;
 	}
-	for(const [target,] of found) {
+	for(const [target] of found) {
 		queue.add(target, baseEnvironment, baseEnvFingerprint, false);
 	}
 	for(const [target, edge] of e) {

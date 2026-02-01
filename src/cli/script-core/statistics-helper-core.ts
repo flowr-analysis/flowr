@@ -16,7 +16,7 @@ import { date2string } from '../../util/text/time';
 import type { StatsHelperCliOptions } from '../statistics-helper-app';
 import { create } from 'tar';
 import { setFormatter, voidFormatter } from '../../util/text/ansi';
-import { type FlowrConfigOptions , getEngineConfig } from '../../config';
+import { type FlowrConfigOptions, getEngineConfig } from '../../config';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 
 function compressFolder(folder: string, target: string) {

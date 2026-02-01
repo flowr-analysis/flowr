@@ -1,12 +1,12 @@
 import type { FeatureStatisticsWithMeta } from '../../feature';
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer';
 import {
-	type CommonSyntaxTypeCounts ,
+	type CommonSyntaxTypeCounts,
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability';
 import type { ControlflowInfo } from './control-flow';
-import { type SummarizedWithProject , emptySummarizedWithProject, recordFilePath } from '../../post-processing';
+import { type SummarizedWithProject, emptySummarizedWithProject, recordFilePath } from '../../post-processing';
 import fs from 'fs';
 import path from 'path';
 import type { MergeableRecord } from '../../../../util/objects';

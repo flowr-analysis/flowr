@@ -9,7 +9,7 @@ import type { RAccess } from '../nodes/r-access';
 import type { RBinaryOp } from '../nodes/r-binary-op';
 import type { RPipe } from '../nodes/r-pipe';
 import type { RUnaryOp } from '../nodes/r-unary-op';
-import { type RFunctionCall , EmptyArgument } from '../nodes/r-function-call';
+import { type RFunctionCall, EmptyArgument } from '../nodes/r-function-call';
 import type { RForLoop } from '../nodes/r-for-loop';
 import type { RWhileLoop } from '../nodes/r-while-loop';
 import type { RRepeatLoop } from '../nodes/r-repeat-loop';
@@ -30,7 +30,7 @@ import { assertUnreachable } from '../../../../../util/assert';
  * <p>
  * Exists for leafs as well for consistency reasons.
  */
-export type DownFold<Info, Down> = (node: RNode<Info>, down: Down) => Down
+export type DownFold<Info, Down> = (node: RNode<Info>, down: Down) => Down;
 
 /**
  * All fold functions besides `down` are called after the down-pass in conventional fold-fashion.
@@ -119,7 +119,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 		case RType.IfThenElse:
 			return folds.foldIfThenElse(ast, foldAstStateful(ast.condition, down, folds), foldAstStateful(ast.then, down, folds), ast.otherwise === undefined ? undefined : foldAstStateful(ast.otherwise, down, folds), down);
 		case RType.ExpressionList:
-			return folds.foldExprList(ast, ast.grouping ? [foldAstStateful(ast.grouping[0], down, folds), foldAstStateful(ast.grouping[1], down, folds)] : undefined ,  ast.children.map(expr => foldAstStateful(expr, down, folds)), down);
+			return folds.foldExprList(ast, ast.grouping ? [foldAstStateful(ast.grouping[0], down, folds), foldAstStateful(ast.grouping[1], down, folds)] : undefined,  ast.children.map(expr => foldAstStateful(expr, down, folds)), down);
 		default:
 			assertUnreachable(type);
 	}

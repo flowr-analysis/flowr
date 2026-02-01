@@ -1,7 +1,7 @@
-import { type LintingResult, type LintingRule, type LintQuickFixRemove , LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, type LintQuickFixRemove, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
-import { type SourceRange , mergeRanges, rangeCompare, rangeFrom, rangeIsSubsetOf } from '../../util/range';
+import { type SourceRange, mergeRanges, rangeCompare, rangeFrom, rangeIsSubsetOf } from '../../util/range';
 import { formatRange } from '../../util/mermaid/dfg';
 import { LintingRuleTag } from '../linter-tags';
 import { isNotUndefined } from '../../util/assert';
@@ -51,7 +51,7 @@ function buildQuickFix(variable: RNode<ParentInformation>, dfg: DataflowGraph, a
 
 	const hasImportantArgs = definedBys.some(d => dfg.unknownSideEffects.has(d))
 		|| definedBys.flatMap(e => [...dfg.outgoingEdges(e) ?? []])
-			.some(([target,{ types }]) => {
+			.some(([target, { types }]) => {
 				return edgeIncludesType(types, InterestingEdgesTargets) || dfg.unknownSideEffects.has(target);
 			});
 

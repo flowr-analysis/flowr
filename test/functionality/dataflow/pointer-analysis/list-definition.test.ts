@@ -22,10 +22,10 @@ describe.sequential('List Definition', withShell(shell => {
 				'list(a = 1, b = 2.3, c = 3.1e4, d = 0xcafe)',
 				Q.criterion('1@list'),
 				[
-					{ identifier: { index: 1, lexeme: 'a' }, nodeId: 3, },
-					{ identifier: { index: 2, lexeme: 'b' }, nodeId: 6, },
-					{ identifier: { index: 3, lexeme: 'c' }, nodeId: 9, },
-					{ identifier: { index: 4, lexeme: 'd' }, nodeId: 12, },
+					{ identifier: { index: 1, lexeme: 'a' }, nodeId: 3 },
+					{ identifier: { index: 2, lexeme: 'b' }, nodeId: 6 },
+					{ identifier: { index: 3, lexeme: 'c' }, nodeId: 9 },
+					{ identifier: { index: 4, lexeme: 'd' }, nodeId: 12 },
 				],
 				undefined,
 				config
@@ -37,10 +37,10 @@ describe.sequential('List Definition', withShell(shell => {
 				'list(a = "hello", b = \'world\', c = "This is an", d = \'example\')',
 				Q.criterion('1@list'),
 				[
-					{ identifier: { index: 1, lexeme: 'a' }, nodeId: 3, },
-					{ identifier: { index: 2, lexeme: 'b' }, nodeId: 6, },
-					{ identifier: { index: 3, lexeme: 'c' }, nodeId: 9, },
-					{ identifier: { index: 4, lexeme: 'd' }, nodeId: 12, },
+					{ identifier: { index: 1, lexeme: 'a' }, nodeId: 3 },
+					{ identifier: { index: 2, lexeme: 'b' }, nodeId: 6 },
+					{ identifier: { index: 3, lexeme: 'c' }, nodeId: 9 },
+					{ identifier: { index: 4, lexeme: 'd' }, nodeId: 12 },
 				],
 				undefined,
 				config
@@ -52,10 +52,10 @@ describe.sequential('List Definition', withShell(shell => {
 				'list(a = TRUE, b = FALSE, c = TRUE, d = FALSE)',
 				Q.criterion('1@list'),
 				[
-					{ identifier: { index: 1, lexeme: 'a' }, nodeId: 3, },
-					{ identifier: { index: 2, lexeme: 'b' }, nodeId: 6, },
-					{ identifier: { index: 3, lexeme: 'c' }, nodeId: 9, },
-					{ identifier: { index: 4, lexeme: 'd' }, nodeId: 12, },
+					{ identifier: { index: 1, lexeme: 'a' }, nodeId: 3 },
+					{ identifier: { index: 2, lexeme: 'b' }, nodeId: 6 },
+					{ identifier: { index: 3, lexeme: 'c' }, nodeId: 9 },
+					{ identifier: { index: 4, lexeme: 'd' }, nodeId: 12 },
 				],
 				undefined,
 				config
@@ -96,7 +96,7 @@ describe.sequential('List Definition', withShell(shell => {
 					'list(a = 1)',
 					Q.criterion('1@list'),
 					[
-						{ identifier: { index: 1, lexeme: 'a' }, nodeId: 3, },
+						{ identifier: { index: 1, lexeme: 'a' }, nodeId: 3 },
 					],
 					undefined,
 					config
@@ -216,10 +216,10 @@ describe.sequential('List Definition', withShell(shell => {
 				'list(1, 2.3, 3.1e4, 0xcafe)',
 				Q.criterion('1@list'),
 				[
-					{ identifier: { index: 1 }, nodeId: 1, },
-					{ identifier: { index: 2 }, nodeId: 3, },
-					{ identifier: { index: 3 }, nodeId: 5, },
-					{ identifier: { index: 4 }, nodeId: 7, },
+					{ identifier: { index: 1 }, nodeId: 1 },
+					{ identifier: { index: 2 }, nodeId: 3 },
+					{ identifier: { index: 3 }, nodeId: 5 },
+					{ identifier: { index: 4 }, nodeId: 7 },
 				],
 				undefined,
 				config
@@ -231,10 +231,10 @@ describe.sequential('List Definition', withShell(shell => {
 				'list("hello", \'world\', "This is an", \'example\')',
 				Q.criterion('1@list'),
 				[
-					{ identifier: { index: 1 }, nodeId: 1, },
-					{ identifier: { index: 2 }, nodeId: 3, },
-					{ identifier: { index: 3 }, nodeId: 5, },
-					{ identifier: { index: 4 }, nodeId: 7, },
+					{ identifier: { index: 1 }, nodeId: 1 },
+					{ identifier: { index: 2 }, nodeId: 3 },
+					{ identifier: { index: 3 }, nodeId: 5 },
+					{ identifier: { index: 4 }, nodeId: 7 },
 				],
 				undefined,
 				config
@@ -246,10 +246,10 @@ describe.sequential('List Definition', withShell(shell => {
 				'list(TRUE, FALSE, TRUE, FALSE)',
 				Q.criterion('1@list'),
 				[
-					{ identifier: { index: 1 }, nodeId: 1, },
-					{ identifier: { index: 2 }, nodeId: 3, },
-					{ identifier: { index: 3 }, nodeId: 5, },
-					{ identifier: { index: 4 }, nodeId: 7, },
+					{ identifier: { index: 1 }, nodeId: 1 },
+					{ identifier: { index: 2 }, nodeId: 3 },
+					{ identifier: { index: 3 }, nodeId: 5 },
+					{ identifier: { index: 4 }, nodeId: 7 },
 				],
 				undefined,
 				config

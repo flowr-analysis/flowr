@@ -5,21 +5,21 @@ import { Q } from '../../search/flowr-search-builder';
 import { formatRange } from '../../util/mermaid/dfg';
 import type { MergeableRecord } from '../../util/objects';
 import type { SourceRange } from '../../util/range';
-import { type LintingResult, type LintingRule , LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
 export interface UselessLoopResult extends LintingResult {
-    name:  string,
-    range: SourceRange
+	name:  string,
+	range: SourceRange
 }
 
 export interface UselessLoopConfig extends MergeableRecord {
-    /** Function origins that are considered loops */
-    loopyFunctions: Set<BuiltInProcName>
+	/** Function origins that are considered loops */
+	loopyFunctions: Set<BuiltInProcName>
 }
 
 export interface UselessLoopMetadata extends MergeableRecord {
-    numOfUselessLoops: number
+	numOfUselessLoops: number
 }
 
 export const USELESS_LOOP = {

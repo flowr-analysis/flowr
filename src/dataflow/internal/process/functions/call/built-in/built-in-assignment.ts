@@ -70,8 +70,8 @@ export interface AssignmentConfiguration extends ForceArguments {
 }
 
 export interface ExtendedAssignmentConfiguration extends AssignmentConfiguration {
-	readonly source: { idx?: number, name: string};
-	readonly target: { idx?: number, name: string};
+	readonly source: { idx?: number, name: string };
+	readonly target: { idx?: number, name: string };
 }
 
 function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): RSymbol<OtherInfo & ParentInformation> | undefined {

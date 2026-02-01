@@ -4,7 +4,7 @@ import fs from 'fs';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { log } from '../../../util/log';
 import { withoutWhitespace } from '../../../util/text/strings';
-import { type SummarizedMeasurement , summarizeMeasurement } from '../../../util/summarizer';
+import { type SummarizedMeasurement, summarizeMeasurement } from '../../../util/summarizer';
 import { isNotUndefined } from '../../../util/assert';
 import type { PerNodeStatsDfShape, PerSliceMeasurements, PerSliceStats, SlicerStats, SlicerStatsDfShape, SlicerStatsDataflow, SlicerStatsInput } from '../../stats/stats';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
@@ -157,7 +157,7 @@ export async function summarizeSlicerStats(
 			const numberOfRTokensNoComments = await retrieveNumberOfRTokensOfLastParse(reParseShellSession, true);
 			sliceSize.tokensNoComments.push(numberOfRTokensNoComments);
 
-			const perSlice: {[k in keyof SliceSizeCollection]: number} = {
+			const perSlice: { [k in keyof SliceSizeCollection]: number } = {
 				lines:                             lines,
 				nonEmptyLines:                     nonEmptyLines,
 				characters:                        output.length,

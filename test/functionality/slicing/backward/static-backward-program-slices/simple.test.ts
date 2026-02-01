@@ -19,7 +19,7 @@ describe.sequential('Simple', withShell(shell => {
 				);
 			}
 			assertSliced(label('slice constant assignment with print', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
-				shell,'x <- 2\nx <- 3\nprint(x)', ['3@print'], 'x <- 3\nprint(x)', config
+				shell, 'x <- 2\nx <- 3\nprint(x)', ['3@print'], 'x <- 3\nprint(x)', config
 			);
 			assertSliced(label('slice constant assignment with print (slice for arg)', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
 				shell, 'x <- 2\nx <- 3\nprint(x)', ['3@x'], 'x <- 3\nx', config
@@ -28,7 +28,7 @@ describe.sequential('Simple', withShell(shell => {
 				shell, 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nprint(x)', ['3@x'], 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nx', config
 			);
 			assertSliced(label('using setnames but wanting another', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
-				shell,'x <- read.csv("foo")\ny <- 3\nsetnames(x, 2:3, c("foo"))\nprint(y)', ['4@print'], 'y <- 3\nprint(y)', config
+				shell, 'x <- read.csv("foo")\ny <- 3\nsetnames(x, 2:3, c("foo"))\nprint(y)', ['4@print'], 'y <- 3\nprint(y)', config
 			);
 		});
 	}

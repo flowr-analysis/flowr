@@ -274,7 +274,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					...defaultInfo
 				};
 			case TreeSitterType.IfStatement: {
-				const [ifNode, /* ( */, condition,/* ) */, then, /* else */, ...otherwise] = nonErrorChildren(node);
+				const [ifNode, /* ( */, condition, /* ) */, then, /* else */, ...otherwise] = nonErrorChildren(node);
 				const filteredOtherwise = otherwise.filter(n => n.type !== TreeSitterType.ElseStatement);
 				return {
 					type:      RType.IfThenElse,

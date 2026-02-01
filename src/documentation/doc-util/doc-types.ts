@@ -394,7 +394,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 	if(node.kind === 'type') {
 		collect.nodeLines.push(`style ${node.name} opacity:.35,fill:#FAFAFA`);
 	}
-	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${escapeMarkdown(node.comments?.join('; ').replace(/\n/g,' ') ?? '' )}"`);
+	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${escapeMarkdown(node.comments?.join('; ').replace(/\n/g, ' ') ?? '' )}"`);
 	const inline = [...options.inlineTypes ?? [], ...defaultSkip];
 
 	let baseTypes = node.extends;
@@ -481,9 +481,9 @@ export interface TypeReport {
 	program: ts.Program
 }
 
-export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid: string }): (TypeReport & { mermaid: string })
-export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid?: undefined }): (TypeReport & { mermaid: undefined })
-export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport
+export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid: string }): (TypeReport & { mermaid: string });
+export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid?: undefined }): (TypeReport & { mermaid: undefined });
+export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport;
 /**
  * Inspect typescript source code for types and return a report.
  */
@@ -528,7 +528,7 @@ function implSnippet(node: TypeElementInSource | undefined, program: ts.Program,
 		text += `\n<br/><i>(Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a>)</i>\n`;
 	}
 	const init = showName ? `* ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}` : '';
-	return ` ${indent}${showName ? init : ''} ${text.replaceAll('\t','    ').split(/\n/g).join(`\n${indent}   `)}`;
+	return ` ${indent}${showName ? init : ''} ${text.replaceAll('\t', '    ').split(/\n/g).join(`\n${indent}   `)}`;
 }
 
 export interface PrintHierarchyArguments {
@@ -725,8 +725,8 @@ export function shortLinkFile(name: string, hierarchy: readonly TypeElementInSou
 }
 
 export interface GetDocumentationForTypeFilters {
-    fuzzy?: boolean;
-    type?:  TypeElementKind;
+	fuzzy?: boolean;
+	type?:  TypeElementKind;
 }
 
 

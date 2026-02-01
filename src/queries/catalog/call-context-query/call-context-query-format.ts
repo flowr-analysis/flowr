@@ -1,7 +1,7 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { executeCallContextQueries } from './call-context-query-executor';
-import { type OutputFormatter , bold } from '../../../util/text/ansi';
+import { type OutputFormatter, bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { asciiCallContext } from '../../query-print';
@@ -47,7 +47,7 @@ export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> 
 	readonly fileFilter?:            FileFilter<RegexType>;
 }
 
-export type CallNameTypes = RegExp | string | string[]
+export type CallNameTypes = RegExp | string | string[];
 /**
  * Links the current call to the last call of the given kind.
  * This way, you can link a call like `points` to the latest graphics plot etc.
@@ -119,7 +119,7 @@ export interface CallContextQuerySubKindResult {
 export type CallContextQueryKindResult = Record<string, {
 	/** maps each subkind to the results found, to be freely in the result form, this is mutable */
 	subkinds: Record<string, CallContextQuerySubKindResult[]>
-}>
+}>;
 
 export interface CallContextQueryResult extends BaseQueryResult {
 	readonly kinds: CallContextQueryKindResult;

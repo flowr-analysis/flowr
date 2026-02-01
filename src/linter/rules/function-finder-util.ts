@@ -17,13 +17,13 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 
 export interface FunctionsResult extends LintingResult {
-    function: string
-    range:    SourceRange
+	function: string
+	range:    SourceRange
 }
 
 export interface FunctionsMetadata extends MergeableRecord {
-    totalCalls:               number;
-    totalFunctionDefinitions: number;
+	totalCalls:               number;
+	totalFunctionDefinitions: number;
 }
 
 export interface FunctionsToDetectConfig extends MergeableRecord {
@@ -86,7 +86,7 @@ export const functionFinderUtil = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint: (functionType: string) =>{
+	prettyPrint: (functionType: string) => {
 		return {
 			[LintingPrettyPrintContext.Query]: (result: FunctionsResult) => `Function \`${result.function}\` at ${formatRange(result.range)}`,
 			[LintingPrettyPrintContext.Full]:  (result: FunctionsResult) => `Function \`${result.function}\` called at ${formatRange(result.range)} is related to ${functionType}`
@@ -95,7 +95,7 @@ export const functionFinderUtil = {
 	requireArgumentValue(
 		element: FlowrSearchElement<ParentInformation>,
 		pool: readonly FunctionInfo[],
-		data: { normalize: NormalizedAst, dataflow: DataflowInformation, analyzer: ReadonlyFlowrAnalysisProvider},
+		data: { normalize: NormalizedAst, dataflow: DataflowInformation, analyzer: ReadonlyFlowrAnalysisProvider },
 		requireValue: RegExp | string | undefined
 	): boolean {
 		const info = pool.find(f => f.name === element.node.lexeme);

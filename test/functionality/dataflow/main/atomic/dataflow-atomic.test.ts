@@ -47,7 +47,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 	describe('Access', () => {
 		describe('Access with Constant', () => {
 			assertDataflow(label('single constant', ['name-normal', 'numbers', 'single-bracket-access']),
-				shell,'a[2]',  emptyGraph()
+				shell, 'a[2]',  emptyGraph()
 					.use(0, 'a', { cds: [] })
 					.argument(3, 0)
 					.call(3, '[', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [0, 1, builtInId('[')], onlyBuiltIn: true })
@@ -266,7 +266,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					dataflowGraph
 						.defineVariable(0, 'x', { definedBy: [1, 2] })
 						.use(1, 'y')
-						.reads(2,1);
+						.reads(2, 1);
 				}
 				assertDataflow(label(`${variableAssignment} (variable assignment)`, ['name-normal', ...OperatorDatabase[op].capabilities]),
 					shell,
@@ -288,7 +288,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				} else {
 					circularGraph
 						.defineVariable(0, 'x', { definedBy: [1, 2] })
-						.reads(2,1)
+						.reads(2, 1)
 						.use(1, 'x');
 				}
 
@@ -892,7 +892,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 		assertDataflow(label('simple get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'implicit-return', 'newlines', 'strings', 'call-normal', 'unnamed-arguments', 'name-created']),
 			shell, 'a <- function() 1\nget("a")()', emptyGraph()
 				.call(9, `${UnnamedFunctionCallPrefix}9`, [], { returns: [1], reads: [8], environment: defaultEnv().defineFunction('a', 0, 4) })
-				.call(4, '<-', [argumentInCall(0), argumentInCall(3)],{ returns: [0], reads: [builtInId('<-'), 3], onlyBuiltIn: true })
+				.call(4, '<-', [argumentInCall(0), argumentInCall(3)], { returns: [0], reads: [builtInId('<-'), 3], onlyBuiltIn: true })
 				.calls(4, builtInId('<-'))
 				.calls(9, 3)
 				.call(8, 'get', [argumentInCall(6)], { returns: [6], reads: [6, builtInId('get')], onlyBuiltIn: true, environment: defaultEnv().defineFunction('a', 0, 4) })

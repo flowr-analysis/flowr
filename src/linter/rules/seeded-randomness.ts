@@ -32,7 +32,7 @@ import { BuiltInProcName } from '../../dataflow/environments/built-in';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
-    range: SourceRange
+	range:    SourceRange
 }
 
 export interface SeededRandomnessConfig extends MergeableRecord {
@@ -41,11 +41,11 @@ export interface SeededRandomnessConfig extends MergeableRecord {
 	 * Each entry has a `type`, which is either `function` or `assignment`, and a `name`, which is the name of the function or variable.
 	 * The default value for this is the function `set.seed` and the variable `.Random.seed`.
 	 */
-    randomnessProducers: {type: 'function' | 'assignment', name: string }[]
+	randomnessProducers: { type: 'function' | 'assignment', name: string }[]
 	/**
 	 * A set of randomness consumer function names that require a seed to be set prior to invocation.
 	 */
-    randomnessConsumers: string[]
+	randomnessConsumers: string[]
 }
 
 export interface SeededRandomnessMeta extends MergeableRecord {
@@ -66,7 +66,7 @@ export const SEEDED_RANDOMNESS = {
 				test:       testFunctionsIgnoringPackage(config.randomnessConsumers)
 			}
 		})
-		.with(Enrichment.LastCall,[
+		.with(Enrichment.LastCall, [
 			{ callName: config.randomnessProducers.filter(p => p.type === 'function').map(p => p.name) },
 			{ callName: getDefaultAssignments().flatMap(b => b.names), cascadeIf: () => CascadeAction.Continue }
 		]),

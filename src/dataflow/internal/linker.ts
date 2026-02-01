@@ -24,7 +24,7 @@ import type { ExitPoint } from '../info';
 import { doesExitPointPropagateCalls } from '../info';
 import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call-handling';
 
-export type NameIdMap = DefaultMap<string, IdentifierReference[]>
+export type NameIdMap = DefaultMap<string, IdentifierReference[]>;
 
 /**
  * Find all reads within the graph that do not reference a local definition in the graph.

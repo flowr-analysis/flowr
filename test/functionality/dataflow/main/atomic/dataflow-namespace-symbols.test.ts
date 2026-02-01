@@ -7,11 +7,11 @@ describe('Resolve for Namespaces', withTreeSitter(ts => {
 	assertDataflow(label('Simple Assign Break', ['namespaces', 'lexicographic-scope']), ts,
 		'x <- 42\nprint(base::x)',
 		emptyGraph(),
-			{
-				expectIsSubgraph:      true,
-				resolveIdsAsCriterion: true,
-				mustNotHaveEdges:      [['2@x', '1@x']]
-			} as const
+		{
+			expectIsSubgraph:      true,
+			resolveIdsAsCriterion: true,
+			mustNotHaveEdges:      [['2@x', '1@x']]
+		} as const
 	);
 	assertDataflow(label('Simple Assign Break', ['namespaces', 'lexicographic-scope']), ts,
 		'x <- 42\nprint(base::x)',

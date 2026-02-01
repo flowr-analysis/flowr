@@ -45,7 +45,7 @@ export async function getFunctionsToConsiderInCallGraph(
 
 	let fns = (onlyDefinitions || filterFor.size === 0 ? cg.verticesOfType(VertexType.FunctionDefinition) : cg.vertices(true));
 	if(filterFor.size > 0) {
-		fns = fns.filter(([id,]) => filterFor.has(id));
+		fns = fns.filter(([id]) => filterFor.has(id));
 	}
 	return { cg, fns };
 }
@@ -58,7 +58,7 @@ export async function executeExceptionQuery({ analyzer }: BasicQueryData, querie
 	const { cg, fns } = await getFunctionsToConsiderInCallGraph(queries, analyzer);
 	const result: Record<NodeId, ExceptionPoint[]> = {};
 
-	for(const [id,] of fns) {
+	for(const [id] of fns) {
 		if(result[id]) {
 			continue;
 		}

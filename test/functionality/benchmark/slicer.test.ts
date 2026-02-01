@@ -1,7 +1,7 @@
 import { summarizeSlicerStats } from '../../../src/benchmark/summarizer/first-phase/process';
 import { BenchmarkSlicer } from '../../../src/benchmark/slicer';
 import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print';
-import { type CommonSlicerMeasurements , PerSliceMeasurements, RequiredSlicerMeasurements } from '../../../src/benchmark/stats/stats';
+import { type CommonSlicerMeasurements, PerSliceMeasurements, RequiredSlicerMeasurements } from '../../../src/benchmark/stats/stats';
 import { amendConfig, defaultConfigOptions } from '../../../src/config';
 import { assert, describe, test } from 'vitest';
 import { DefaultAllVariablesFilter } from '../../../src/slicing/criterion/filters/all-variables';

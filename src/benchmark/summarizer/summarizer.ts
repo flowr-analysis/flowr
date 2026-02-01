@@ -8,7 +8,7 @@ import { processRunMeasurement, processSummarizedRunMeasurement } from './first-
 import { processNextUltimateSummary, summarizeAllUltimateStats } from './second-phase/process';
 import { writeGraphOutput } from './second-phase/graph';
 import path from 'path';
-import { type CommonSummarizerConfiguration , Summarizer } from '../../util/summarizer';
+import { type CommonSummarizerConfiguration, Summarizer } from '../../util/summarizer';
 import { getAllFiles, readLineByLine, readLineByLineSync } from '../../util/files';
 import { jsonReplacer } from '../../util/json';
 import { ultimateStats2String } from '../stats/print';

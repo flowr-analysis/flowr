@@ -21,7 +21,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import { BuiltInProcName } from '../../../../../environments/built-in';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { Identifier, type IdentifierReference } from '../../../../../environments/identifier';
-import { isReferenceType , ReferenceType } from '../../../../../environments/identifier';
+import { isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { expensiveTrace } from '../../../../../../util/log';
 

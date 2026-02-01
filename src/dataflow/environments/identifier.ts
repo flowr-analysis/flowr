@@ -5,9 +5,9 @@ import type { ContainerIndicesCollection } from '../graph/vertex';
 import { startAndEndsWith } from '../../util/text/strings';
 
 /** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
-export type BrandedIdentifier = string & { __brand?: 'identifier' }
+export type BrandedIdentifier = string & { __brand?: 'identifier' };
 /** this is just a safe-guard type to prevent mixing up branded namespaces with normal strings */
-export type BrandedNamespace = string & { __brand?: 'namespace' }
+export type BrandedNamespace = string & { __brand?: 'namespace' };
 
 /**
  * Refers to an identifier by its name.
@@ -19,7 +19,7 @@ export type BrandedNamespace = string & { __brand?: 'namespace' }
  * @see {@link Identifier.accessesInternal} - to check if the identifier accesses internal objects (`:::`)
  * @see {@link Identifier.toString} - to convert the identifier to a string representation
  */
-export type Identifier = BrandedIdentifier | [id: BrandedIdentifier, namespace: BrandedNamespace, internal?: boolean]
+export type Identifier = BrandedIdentifier | [id: BrandedIdentifier, namespace: BrandedNamespace, internal?: boolean];
 
 const dotDotDotAccess = /^\.\.\d+$/;
 
@@ -217,7 +217,7 @@ export function isReferenceType(t: ReferenceType, target: ReferenceType): boolea
  * default definition for the assignment operator `<-`).
  * @see {@link InGraphIdentifierDefinition} - for the definition of an identifier within the graph
  */
-export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction>
+export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction>;
 
 /**
  * An identifier reference points to a variable like `a` in `b <- a`.
@@ -284,4 +284,4 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
  * {@link BuiltInIdentifierDefinition} and {@link BuiltInIdentifierConstant} are used for built-in functions and constants only,
  * so the most important one for your day-to-day R script is the {@link InGraphIdentifierDefinition}.
  */
-export type IdentifierDefinition = InGraphIdentifierDefinition | BuiltInIdentifierDefinition | BuiltInIdentifierConstant
+export type IdentifierDefinition = InGraphIdentifierDefinition | BuiltInIdentifierDefinition | BuiltInIdentifierConstant;

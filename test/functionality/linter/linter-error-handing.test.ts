@@ -1,7 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { type LintingRuleNames , LintingRules } from '../../../src/linter/linter-rules';
-import { type LintingResult, type LintingRule ,
+import { type LintingRuleNames, LintingRules } from '../../../src/linter/linter-rules';
+import { type LintingResult, type LintingRule,
 	isLintingResultsError,
 	LintingPrettyPrintContext,
 	LintingRuleCertainty

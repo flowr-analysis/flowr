@@ -1,6 +1,6 @@
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { type DataflowGraphVertexInfo , VertexType } from '../../dataflow/graph/vertex';
+import { type DataflowGraphVertexInfo, VertexType } from '../../dataflow/graph/vertex';
 import {
 	type BrandedIdentifier,
 	type IdentifierDefinition,

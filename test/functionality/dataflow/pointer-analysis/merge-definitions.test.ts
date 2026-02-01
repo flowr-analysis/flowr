@@ -1,5 +1,5 @@
 import { assert, describe, test } from 'vitest';
-import { type InGraphIdentifierDefinition , ReferenceType } from '../../../../src/dataflow/environments/identifier';
+import { type InGraphIdentifierDefinition, ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import type { ContainerIndices } from '../../../../src/dataflow/graph/vertex';
 import { deterministicCountingIdGenerator } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { mergeDefinitionsForPointer } from '../../../../src/dataflow/environments/define';

@@ -16,7 +16,7 @@ export interface StatsHelperCliOptions {
 	readonly features:     string[]
 }
 
-const scriptOptions = processCommandLineArgs<StatsHelperCliOptions>('stats-helper', [],{
+const scriptOptions = processCommandLineArgs<StatsHelperCliOptions>('stats-helper', [], {
 	subtitle: 'Given a single input file, this will collect usage statistics for the given features and write them to a file',
 	examples: [
 		'{bold -i} {italic example.R} {bold -i} {italic example2.R} {bold --output-dir} {italic "output-folder/"}',

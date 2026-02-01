@@ -33,7 +33,7 @@ export interface SliceSizeCollection {
 export type SummarizedSlicerStats = {
 	perSliceMeasurements: SummarizedPerSliceStats,
 	dataFrameShape?:      SummarizedDfShapeStats
-} & Omit<SlicerStats, 'perSliceMeasurements' | 'dataFrameShape'>
+} & Omit<SlicerStats, 'perSliceMeasurements' | 'dataFrameShape'>;
 
 export interface Reduction<T = number> {
 	numberOfLines:                   T

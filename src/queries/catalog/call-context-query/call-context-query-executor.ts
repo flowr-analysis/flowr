@@ -71,15 +71,15 @@ export function promoteCallName(callName: CallNameTypes, exact = false): RegExp 
 
 // when promoting queries, we convert all strings to regexes, and all string arrays to string sets
 type PromotedQuery = Omit<CallContextQuery, 'callName' | 'fileFilter' | 'linkTo'> & {
-    callName:    RegExp | Set<string>,
-    fileFilter?: FileFilter<RegExp | Set<string>>,
-    linkTo?:     PromotedLinkTo | PromotedLinkTo[]
+	callName:    RegExp | Set<string>,
+	fileFilter?: FileFilter<RegExp | Set<string>>,
+	linkTo?:     PromotedLinkTo | PromotedLinkTo[]
 };
-export type PromotedLinkTo<LT = LinkTo> = Omit<LT, 'callName'> & {callName: RegExp | Set<string>}
+export type PromotedLinkTo<LT = LinkTo> = Omit<LT, 'callName'> & { callName: RegExp | Set<string> };
 
 function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
-    promotedQueries: PromotedQuery[],
-    requiresCfg:     boolean
+	promotedQueries: PromotedQuery[],
+	requiresCfg:     boolean
 } {
 	let requiresCfg = false;
 	const promotedQueries: PromotedQuery[] = queries.map(q => {

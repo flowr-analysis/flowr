@@ -9,7 +9,7 @@ import {
 	isAccessed, isParentContainerIndex } from '../dataflow/graph/vertex';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { type RFunctionArgument , EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument, EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';

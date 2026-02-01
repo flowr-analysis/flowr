@@ -52,11 +52,11 @@ export interface FlowrAnalysisProvider<Parser extends KnownParser = KnownParser>
  * This allows us to exchange the underlying implementation of the analyzer without affecting the APIs.
  */
 export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = KnownParser> {
-    /**
-     * Returns a set of additional data and helper functions exposed by the underlying {@link KnownParser},
-     * including the parser's {@link BaseParserInformation.name} and corresponding version information.
-     */
-    parserInformation(): KnownParserInformation
+	/**
+	 * Returns a set of additional data and helper functions exposed by the underlying {@link KnownParser},
+	 * including the parser's {@link BaseParserInformation.name} and corresponding version information.
+	 */
+	parserInformation(): KnownParserInformation
 	/**
 	 * Returns a read-only version of the project context information.
 	 * This is the preferred method for users that want to inspect the context.
@@ -69,7 +69,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * @param force - Do not use the cache, instead force a new parse.
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekParse} - to get the parse output if already available without triggering a new computation.
 	 */
-    parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>>
+	parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>>
 	/**
 	 * Peek at the parse output for the request, if it was already computed.
 	 */
@@ -268,14 +268,14 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public async query<
-        Types extends SupportedQueryTypes = SupportedQueryTypes
-    >(query: Queries<Types>): Promise<QueryResults<Types>> {
+		Types extends SupportedQueryTypes = SupportedQueryTypes
+	>(query: Queries<Types>): Promise<QueryResults<Types>> {
 		return executeQueries({ analyzer: this }, query);
 	}
 
 	public async runSearch<
-        Search extends FlowrSearchLike
-    >(search: Search): Promise<GetSearchElements<SearchOutput<Search>>> {
+		Search extends FlowrSearchLike
+	>(search: Search): Promise<GetSearchElements<SearchOutput<Search>>> {
 		return runSearch(search, this);
 	}
 

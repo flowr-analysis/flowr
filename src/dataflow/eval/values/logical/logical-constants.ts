@@ -1,4 +1,4 @@
-import { type Lift, type TernaryLogical, type ValueLogical , Bottom, Top } from '../r-value';
+import { type Lift, type TernaryLogical, type ValueLogical, Bottom, Top } from '../r-value';
 
 
 /**

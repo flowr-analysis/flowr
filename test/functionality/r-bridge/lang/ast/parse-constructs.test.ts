@@ -1,6 +1,6 @@
 import { assertAst, withShell } from '../../../_helper/shell';
 import { exprList, numVal } from '../../../_helper/ast-builder';
-import { type SourceRange , addRanges, rangeFrom } from '../../../../../src/util/range';
+import { type SourceRange, addRanges, rangeFrom } from '../../../../../src/util/range';
 import { label } from '../../../_helper/label';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
@@ -61,7 +61,7 @@ const IfThenSpacingVariants: IfThenSpacing[] = [
 		str:          'if\n(TRUE)1',
 		locationTrue: rangeFrom(2, 2, 2, 5),
 		num:          1,
-		locationNum:  rangeFrom(2,7,2,7),
+		locationNum:  rangeFrom(2, 7, 2, 7),
 		then:         { type: RType.Number, location: rangeFrom(2, 7, 2, 7), lexeme: '1', content: numVal(1), info: {} },
 		end:          rangeFrom(2, 7, 2, 7),
 		capabilities: ['if', 'logical', 'numbers']
@@ -70,7 +70,7 @@ const IfThenSpacingVariants: IfThenSpacing[] = [
 		str:          'if(TRUE)\n1',
 		locationTrue: rangeFrom(1, 4, 1, 7),
 		num:          1,
-		locationNum:  rangeFrom(2,1,2,1),
+		locationNum:  rangeFrom(2, 1, 2, 1),
 		then:         { type: RType.Number, location: rangeFrom(2, 1, 2, 1), lexeme: '1', content: numVal(1), info: {} },
 		end:          rangeFrom(2, 1, 2, 1),
 		capabilities: ['if', 'logical', 'numbers']
@@ -79,7 +79,7 @@ const IfThenSpacingVariants: IfThenSpacing[] = [
 		str:          'if\n(\nTRUE\n)\n1',
 		locationTrue: rangeFrom(3, 1, 3, 4),
 		num:          1,
-		locationNum:  rangeFrom(5,1,5,1),
+		locationNum:  rangeFrom(5, 1, 5, 1),
 		then:         { type: RType.Number, location: rangeFrom(5, 1, 5, 1), lexeme: '1', content: numVal(1), info: {} },
 		end:          rangeFrom(5, 1, 5, 1),
 		capabilities: ['if', 'logical', 'numbers']
@@ -115,7 +115,7 @@ const IfThenBraceVariants: IfThenSpacing[] = [{
 	str:          'if(TRUE){1}',
 	locationTrue: rangeFrom(1, 4, 1, 7),
 	num:          1,
-	locationNum:  rangeFrom(1,10,1,10),
+	locationNum:  rangeFrom(1, 10, 1, 10),
 	then:         inBrace(rangeFrom(1, 9, 1, 9), rangeFrom(1, 11, 1, 11), { type: RType.Number, location: rangeFrom(1, 10, 1, 10), lexeme: '1', content: numVal(1), info: {} }),
 	end:          rangeFrom(1, 11, 1, 11),
 	capabilities: ['if', 'logical', 'numbers', 'grouping']
@@ -309,7 +309,7 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 				in#c
 				1:42#d
 			)
-			2`,exprList({
+			2`, exprList({
 				type:     RType.ForLoop,
 				location: rangeFrom(1, 1, 1, 3),
 				lexeme:   'for',

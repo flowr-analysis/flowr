@@ -13,7 +13,7 @@ describe.sequential('Parse simple assignments', withShell(shell => {
 			const opOffset = op.length - 1;
 			const data = OperatorDatabase[op];
 			assertAst(label(`x ${op} 5`, ['binary-operator', 'infix-calls', 'function-calls', ...data.capabilities]),
-				shell, `x ${op} 5`,exprList({
+				shell, `x ${op} 5`, exprList({
 					type:     RType.BinaryOp,
 					location: rangeFrom(1, 3, 1, 3 + opOffset),
 					lexeme:   op,

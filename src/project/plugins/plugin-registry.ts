@@ -57,8 +57,8 @@ export function registerPluginMaker(plugin: PluginProducer, name: Exclude<string
 	PluginRegistry.set(name, plugin);
 }
 
-export function getPlugin(name: BuiltInFlowrPluginName, args: BuiltInFlowrPluginArgs<typeof name>): FlowrAnalyzerPlugin
-export function getPlugin(name: string, args?: unknown[]): FlowrAnalyzerPlugin | undefined
+export function getPlugin(name: BuiltInFlowrPluginName, args: BuiltInFlowrPluginArgs<typeof name>): FlowrAnalyzerPlugin;
+export function getPlugin(name: string, args?: unknown[]): FlowrAnalyzerPlugin | undefined;
 /**
  * Retrieve a registered Flowr Analyzer plugin by its name.
  * @see {@link PluginToRegister}

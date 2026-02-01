@@ -42,7 +42,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 			}
 		);
 		assertAst(label('No Args', ['normal-definition', 'name-normal', 'numbers', 'grouping', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities]),
-			shell, 'function() { x + 2 * 3 }',exprList({
+			shell, 'function() { x + 2 * 3 }', exprList({
 				type:       RType.FunctionDefinition,
 				location:   rangeFrom(1, 1, 1, 8),
 				lexeme:     'function',

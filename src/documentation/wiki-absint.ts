@@ -149,7 +149,7 @@ In this simple example, we only want to support the addition and subtraction of 
 
 If we now want to run the interval inference, we can write the following code:
 
-${ctx.code(inferIntervals,{ dropLinesStart: 1, dropLinesEnd: 5 })}
+${ctx.code(inferIntervals, { dropLinesStart: 1, dropLinesEnd: 5 })}
 
 We first need a ${ctx.linkPage('wiki/Analyzer', 'flowR analyzer')} (in this case, using the ${ctx.linkPage('wiki/Engines', 'tree-sitter engine')}). In this example, we want to analyze a small example code that assigns \`42\` to the variable \`x\`, randomly assigns \`6\` or \`12\` to the variable \`y\`, and assignes the sum of \`x\` and \`y\` to the variable \`z\`. For the abstract interpretation visitor, we need to retrieve the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')}, ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, ${ctx.linkPage('wiki/Control Flow Graph', 'control flow graph')}, and context of the flowR anaylzer. Additionally, we need to provide a state abstract domain for the visitor -- in this case, a state abstract domain for the interval domain. We then construct a new ${ctx.link(IntervalInferenceVisitor)} using the control flow graph, dataflow graph, normalized AST, analyzer context, and state abstract domain, and start the visitor using ${ctx.linkM(AbstractInterpretationVisitor, 'start', { hideClass: true })}. After the visitor is finished, we retrieve the inferred abstract state at the end of the program using ${ctx.linkM(AbstractInterpretationVisitor, 'getEndState', { hideClass: true })}.
 

@@ -128,7 +128,7 @@ function linkEdgeName(edgeType: EdgeType, page = ''): string {
 
 async function getVertexExplanations(parser: TreeSitterExecutor, ctx: GeneralDocContext): Promise<string> {
 	/* we use the map to ensure order easily :D */
-	const vertexExplanations = new Map<VertexType,[ExplanationParameters, SubExplanationParameters[]]>();
+	const vertexExplanations = new Map<VertexType, [ExplanationParameters, SubExplanationParameters[]]>();
 
 	vertexExplanations.set(VertexType.Value, [{
 		name:        'Value Vertex',
@@ -630,7 +630,7 @@ Besides this being a theoretically "shorter" way of defining a function, this be
 }
 
 async function getEdgesExplanations(parser: KnownParser, ctx: GeneralDocContext): Promise<string> {
-	const edgeExplanations = new Map<EdgeType,[ExplanationParameters, SubExplanationParameters[]]>();
+	const edgeExplanations = new Map<EdgeType, [ExplanationParameters, SubExplanationParameters[]]>();
 
 	edgeExplanations.set(EdgeType.Reads, [{
 		name:        'Reads Edge',
@@ -916,7 +916,7 @@ wiki page if you are unsure.
 >
 > Also, check out the [${FlowrGithubGroupName}/sample-analyzer-df-diff](${FlowrGithubBaseRef}/sample-analyzer-df-diff) repository for a complete example project creating and comparing dataflow graphs.
 
-${await printDfGraphForCode(treeSitter,'x <- 3\ny <- x + 1\ny')}
+${await printDfGraphForCode(treeSitter, 'x <- 3\ny <- x + 1\ny')}
 
 
 The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between ${getAllVertices().length} types of vertices V and
@@ -931,7 +931,7 @@ although they are explicitly no data dependency and relate to the ${ctx.linkPage
 The following vertices types exist:
 
 1. ${getAllVertices().map(
-	([k,v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
+	([k, v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
 ).join('\n1. ')}
 
 ${details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', ctx.mermaid('DataflowGraphVertexInfo', { inlineTypes: ['MergeableRecord'] })))}
@@ -975,7 +975,7 @@ ${prefixLines(codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap)
 ${section('Vertices', 2, 'vertices')}
 
 1. ${getAllVertices().map(
-	([k,v]) => `[\`${k}\`](#${v.toLowerCase().replaceAll(/\s/g, '-')}-vertex)`
+	([k, v]) => `[\`${k}\`](#${v.toLowerCase().replaceAll(/\s/g, '-')}-vertex)`
 ).join('\n1. ')}
 
 ${await getVertexExplanations(treeSitter, ctx)}
@@ -996,7 +996,7 @@ and a boolean flag \`when\` to indicate if the control dependency is active when
 
 As an example, consider the following dataflow graph:
 
-${await printDfGraphForCode(treeSitter,'if(p) a else b')}
+${await printDfGraphForCode(treeSitter, 'if(p) a else b')}
 
 Whenever we visualize a graph, we represent the control dependencies as grayed out edges with a \`CD\` prefix, followed
 by the \`when\` flag.
@@ -1091,7 +1091,7 @@ In case _flowR_ encounters a function call that it cannot handle, it marks the c
 You can find these as part of the dataflow graph, specifically as \`unknownSideEffects\` (with a leading underscore if sesrialized as JSON).
 In the following graph, _flowR_ realizes that it is unable to correctly handle the impacts of the \`load\` call and therefore marks it as such (marked in bright red):
 
-${await printDfGraphForCode(treeSitter,'load("file")\nprint(x + y)')}
+${await printDfGraphForCode(treeSitter, 'load("file")\nprint(x + y)')}
 
 In general, as we cannot handle these correctly, we leave it up to other analyses (and [queries](${FlowrWikiBaseRef}/Query%20API)) to handle these cases
 as they see fit.

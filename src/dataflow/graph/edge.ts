@@ -53,7 +53,7 @@ export const enum EdgeTypeName {
 	NonStandardEvaluation = 'non-standard-evaluation'
 }
 
-export type EdgeTypeBits = number
+export type EdgeTypeBits = number;
 
 const edgeTypeToHumanReadableName: ReadonlyMap<EdgeType, EdgeTypeName> = new Map<EdgeType, EdgeTypeName>([
 	[EdgeType.Reads,                 EdgeTypeName.Reads                ],

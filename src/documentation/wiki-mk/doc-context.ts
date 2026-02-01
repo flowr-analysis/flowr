@@ -14,7 +14,7 @@ import type { PathLike } from 'fs';
 import { FlowrGithubRef } from '../doc-util/doc-files';
 import type { scripts } from '../../cli/common/scripts-info';
 import type { ScriptOptions } from '../doc-util/doc-cli-option';
-import { getReplCommand , getCliLongOptionOf } from '../doc-util/doc-cli-option';
+import { getReplCommand, getCliLongOptionOf } from '../doc-util/doc-cli-option';
 import type { ReplCommandNames } from '../../cli/repl/commands/repl-commands';
 
 /**

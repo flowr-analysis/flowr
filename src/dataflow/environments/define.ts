@@ -1,7 +1,7 @@
 import type { REnvironmentInformation  } from './environment';
-import type { Identifier, IdentifierDefinition , InGraphIdentifierDefinition } from './identifier';
+import type { Identifier, IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
 import { isNotUndefined } from '../../util/assert';
-import { type ContainerIndex, type ContainerIndices , isParentContainerIndex, isSameIndex } from '../graph/vertex';
+import { type ContainerIndex, type ContainerIndices, isParentContainerIndex, isSameIndex } from '../graph/vertex';
 import type { FlowrConfigOptions } from '../../config';
 
 /**

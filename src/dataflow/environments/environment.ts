@@ -105,6 +105,9 @@ export class Environment implements IEnvironment {
 	 */
 	public define(definition: IdentifierDefinition & { name: Identifier }): Environment {
 		const [name, ns] = Identifier.toArray(definition.name);
+		if(ns !== undefined && this.n !== ns) {
+			return this.defineInNamespace(definition, ns);
+		}
 		const newEnvironment = this.clone(false);
 		// When there are defined indices, merge the definitions
 		if(definition.cds === undefined) {
@@ -130,11 +133,32 @@ export class Environment implements IEnvironment {
 		if(this.n === ns) {
 			return this.define(definition);
 		}
+		// navigate to parent until either before built-in or matching namespace
+		const newEnvironment = this.clone(false);
+		const current = newEnvironment;
+		do{
+			if(current.n === ns) {
+				current.define(definition);
+				return newEnvironment;
+			} else if(current.parent && !current.parent.builtInEnv) {
+				// clone parent
+				current.parent = current.parent.clone(false);
+			} else {
+				break;
+			}
+		} while(current.n !== ns);
+		// we did not find the namespace, so we define it in the current environment
+		current.define(definition);
+		return newEnvironment;
 	}
 
 	public defineSuper(definition: IdentifierDefinition & { name: Identifier }): Environment {
-		const { name } = definition;
-		const newEnvironment = this.clone(true);
+		const [name, ns] = Identifier.toArray(definition.name);
+		const newEnvironment = this.clone(false);
+		if(ns !== undefined && this.n !== ns) {
+			newEnvironment.parent = newEnvironment.parent.defineInNamespace(definition, ns);
+			return newEnvironment;
+		}
 		let current = newEnvironment;
 		let last = undefined;
 		let found = false;
@@ -145,6 +169,7 @@ export class Environment implements IEnvironment {
 				break;
 			}
 			last = current;
+			current.parent = current.parent.clone(false);
 			current = current.parent;
 		} while(!current.builtInEnv);
 		if(!found) {
@@ -221,8 +246,13 @@ export class Environment implements IEnvironment {
 		return out;
 	}
 
-	public remove(name: Identifier) {
+	public remove(id: Identifier) {
 		if(this.builtInEnv) {
+			return this;
+		}
+		const [name, ns] = Identifier.toArray(id);
+		if(ns !== undefined && this.n !== ns) {
+			this.parent.remove(id);
 			return this;
 		}
 		const definition = this.memory.get(name);

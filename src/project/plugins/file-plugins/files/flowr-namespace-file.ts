@@ -277,12 +277,8 @@ function handleExportClassesCall(g: NamespaceFormat, args: readonly RFunctionArg
 	if(args.length !== 1) {
 		return g;
 	}
-	const classArg = args[0];
-	if(classArg === EmptyArgument || !classArg.lexeme) {
-		return g;
-	}
-	const className = removeRQuotes(classArg.lexeme);
-	g.current.exportedFunctions.push(className);
+	const classArgs = args.filter(a => a !== EmptyArgument).map(a => a.lexeme ? removeRQuotes(a.lexeme) : undefined).filter(isNotUndefined);
+	g.current.exportedFunctions.push(...classArgs);
 	return g;
 }
 const cleanLineCommentRegex = /^#.*$/gm;
@@ -330,20 +326,41 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 		}
 	}
 
+	const mergedS3Generics = new Map<string, string[]>();
+	for(const [key, value] of target.exportS3Generics) {
+		mergedS3Generics.set(key, [...value]);
+	}
+	for(const [key, value] of source.exportS3Generics) {
+		const existing = mergedS3Generics.get(key);
+		if(existing) {
+			existing.push(...value);
+		} else {
+			mergedS3Generics.set(key, [...value]);
+		}
+	}
+	const mergedImportedPackages = new Map<string, string[] | 'all'>();
+	for(const [key, value] of target.importedPackages) {
+		mergedImportedPackages.set(key, value);
+	}
+	for(const [key, value] of source.importedPackages) {
+		const existing = mergedImportedPackages.get(key);
+		if(existing === 'all' || value === 'all') {
+			mergedImportedPackages.set(key, 'all');
+		} else if(existing) {
+			mergedImportedPackages.set(key, [...existing, ...value]);
+		} else {
+			mergedImportedPackages.set(key, value);
+		}
+	}
+
 	return {
-		exportedSymbols:   [...target.exportedSymbols, ...source.exportedSymbols],
-		exportedFunctions: [...target.exportedFunctions, ...source.exportedFunctions],
-		exportS3Generics:  new Map<string, string[]>([
-			...target.exportS3Generics,
-			...source.exportS3Generics,
-		]),
-		exportedPatterns: [...target.exportedPatterns, ...source.exportedPatterns],
-		importedPackages: new Map<string, string[] | 'all'>([
-			...target.importedPackages,
-			...source.importedPackages,
-		]),
+		exportedSymbols:      [...target.exportedSymbols, ...source.exportedSymbols],
+		exportedFunctions:    [...target.exportedFunctions, ...source.exportedFunctions],
+		exportS3Generics:     mergedS3Generics,
+		exportedPatterns:     [...target.exportedPatterns, ...source.exportedPatterns],
+		importedPackages:     mergedImportedPackages,
 		loadsWithSideEffects: target.loadsWithSideEffects || source.loadsWithSideEffects,
-		conditional:          mergedConditional
+		conditional:          mergedConditional.size > 0 ? mergedConditional : undefined,
 	};
 }
 
